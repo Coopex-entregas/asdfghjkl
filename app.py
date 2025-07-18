@@ -1,14 +1,13 @@
 from pathlib import Path
 import shutil
 
-# Caminho para o diretório do app completo
-app_dir = Path("/mnt/data/painel_coopex_app_completo")
-
-# Criar a estrutura do app com os arquivos principais
+# Caminho para o diretório do app completo corrigido
+app_dir = Path("/mnt/data/app_flask_completo_corrigido")
 app_dir.mkdir(parents=True, exist_ok=True)
 
-# Criar arquivos principais do app Flask
-(app_dir / "app.py").write_text('''\
+# Criar arquivo app.py com as alterações completas
+app_py = app_dir / "app.py"
+app_py.write_text('''\
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -139,10 +138,56 @@ def dashboard():
                                data_inicio=data_inicio,
                                data_fim=data_fim)
 
+@app.route("/excluir_entrega/<int:entrega_id>", methods=["POST"])
+def excluir_entrega(entrega_id):
+    if "user_id" not in session or session["user_tipo"] != "adm":
+        return redirect(url_for("login"))
+    entrega = Entrega.query.get(entrega_id)
+    if entrega:
+        db.session.delete(entrega)
+        db.session.commit()
+    return redirect(url_for("dashboard"))
+
+@app.route("/exportar")
+def exportar():
+    data_inicio = request.args.get("data_inicio")
+    data_fim = request.args.get("data_fim")
+    cooperado_id = request.args.get("cooperado_id")
+
+    inicio_dt = datetime.strptime(data_inicio, "%Y-%m-%d")
+    fim_dt = datetime.strptime(data_fim, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+
+    query = Entrega.query.filter(Entrega.hora_pedido >= inicio_dt, Entrega.hora_pedido <= fim_dt)
+    if cooperado_id and cooperado_id != "todos":
+        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+
+    entregas = query.all()
+
+    dados = []
+    for e in entregas:
+        dados.append({
+            "Data": e.hora_pedido.strftime("%d/%m/%Y"),
+            "Nome do Cliente": e.descricao,
+            "Hora do Pedido": e.hora_pedido.strftime("%H:%M"),
+            "Hora Atribuída": e.hora_atribuida.strftime("%H:%M") if e.hora_atribuida else "",
+            "Nome do Cooperado": e.cooperado.nome if e.cooperado else "",
+            "Status de Pagamento": e.status_pagamento,
+            "Status da Entrega": e.status_entrega
+        })
+
+    df = pd.DataFrame(dados)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name="Entregas")
+
+    output.seek(0)
+    return send_file(output, download_name="relatorio_entregas.xlsx", as_attachment=True)
+
 if __name__ == "__main__":
     app.run(debug=True)
 ''')
 
-# Compactar em ZIP
-zip_path = shutil.make_archive("/mnt/data/app_flask_completo", 'zip', app_dir)
+# Compactar em ZIP para entrega
+zip_path = shutil.make_archive("/mnt/data/app_flask_completo_corrigido", 'zip', app_dir)
 zip_path
