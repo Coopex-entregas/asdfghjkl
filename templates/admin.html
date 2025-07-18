@@ -16,6 +16,15 @@
       color: white;
       padding: 1rem;
       text-align: center;
+      position: relative;
+    }
+    .logout {
+      position: absolute;
+      right: 1rem;
+      top: 1.2rem;
+      color: white;
+      text-decoration: none;
+      font-weight: bold;
     }
     .container {
       padding: 2rem;
@@ -55,12 +64,6 @@
       padding: 5px;
       margin-right: 1rem;
     }
-    .logout {
-      float: right;
-      color: white;
-      text-decoration: none;
-      font-weight: bold;
-    }
     .estatisticas {
       background: #e0e7ff;
       padding: 1rem;
@@ -68,6 +71,11 @@
     }
     .estatisticas div {
       margin: 0.5rem 0;
+    }
+    .flex-filtro {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
     }
   </style>
 </head>
@@ -84,22 +92,24 @@
     </div>
 
     <div class="filtros">
-      <form method="GET" action="">
+      <form method="GET" action="" class="flex-filtro">
         <label for="cooperado">Cooperado:</label>
         <select name="cooperado_id" id="cooperado">
-          <option value="">Todos</option>
+          <option value="todos">Todos</option>
           {% for c in cooperados %}
-          <option value="{{ c.id }}">{{ c.nome }}</option>
+          <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
           {% endfor %}
         </select>
 
         <label for="data_inicio">De:</label>
-        <input type="date" name="data_inicio" id="data_inicio">
+        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio }}">
 
         <label for="data_fim">Até:</label>
-        <input type="date" name="data_fim" id="data_fim">
+        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim }}">
 
         <button class="btn" type="submit">Filtrar</button>
+
+        <a class="btn" href="/exportar?data_inicio={{data_inicio}}&data_fim={{data_fim}}&cooperado_id={{request.args.get('cooperado_id', 'todos')}}">Exportar para Excel</a>
       </form>
     </div>
 
@@ -108,7 +118,9 @@
       <div>Total de Entregas do Dia: <strong>{{ estatisticas.total_dia }}</strong></div>
       <div>Total de Entregas do Mês: <strong>{{ estatisticas.total_mes }}</strong></div>
       <div>Total de Entregas do Ano: <strong>{{ estatisticas.total_ano }}</strong></div>
-      <div>Total Pagas: <strong>{{ estatisticas.pagas }}</strong> | Pendentes: <strong>{{ estatisticas.pendentes }}</strong></div>
+      <div>Total Valores do Dia: <strong>R$ {{ estatisticas.valores_dia }}</strong></div>
+      <div>Total Valores do Mês: <strong>R$ {{ estatisticas.valores_mes }}</strong></div>
+      <div>Total Valores do Ano: <strong>R$ {{ estatisticas.valores_ano }}</strong></div>
     </div>
 
     <div class="tabela">
