@@ -174,12 +174,12 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Descrição</th>
-            <th>Hora Pedido</th>
+            <th>Nome do Cliente</th>
+            <th>Hora do Pedido</th>
+            <th>Hora Atribuída</th>
+            <th>Nome do Cooperado</th>
             <th>Status Pagamento</th>
             <th>Status Entrega</th>
-            <th>Cooperado</th>
-            <th>Atribuído em</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -189,10 +189,10 @@
             <td>{{ e.id }}</td>
             <td>{{ e.descricao }}</td>
             <td>{{ e.hora_pedido.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>{{ e.hora_atribuida.strftime('%d/%m/%Y %H:%M') if e.hora_atribuida }}</td>
+            <td>{{ e.cooperado.nome if e.cooperado }}</td>
             <td>{{ e.status_pagamento }}</td>
             <td>{{ e.status_entrega }}</td>
-            <td>{{ e.cooperado.nome if e.cooperado }}</td>
-            <td>{{ e.hora_atribuida.strftime('%d/%m/%Y %H:%M') if e.hora_atribuida }}</td>
             <td>
               <a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a>
               <a class="btn" href="{{ url_for('excluir_entrega', entrega_id=e.id) }}" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</a>

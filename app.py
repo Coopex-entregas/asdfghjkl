@@ -1,13 +1,3 @@
-from pathlib import Path
-import shutil
-
-# Caminho para o diretório do app completo corrigido
-app_dir = Path("/mnt/data/app_flask_completo_corrigido")
-app_dir.mkdir(parents=True, exist_ok=True)
-
-# Criar arquivo app.py com as alterações completas
-app_py = app_dir / "app.py"
-app_py.write_text('''\
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -60,7 +50,7 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-@app.route("/dashboard", methods=["GET"])
+@app.route("/dashboard")
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
@@ -106,7 +96,8 @@ def dashboard():
         }
 
         cooperados = Usuario.query.filter_by(tipo="cooperado").all()
-        return render_template("admin.html", cooperados=cooperados, entregas=entregas, estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim)
+        return render_template("admin.html", entregas=entregas, estatisticas=estatisticas,
+                               cooperados=cooperados, data_inicio=data_inicio, data_fim=data_fim)
 
     else:
         data_inicio = request.args.get("data_inicio")
@@ -130,42 +121,64 @@ def dashboard():
         total_periodo_pago = sum(1 for e in entregas if e.status_pagamento == "pago")
         total_periodo_pendente = sum(1 for e in entregas if e.status_pagamento == "pendente")
 
-        return render_template("cooperado.html",
-                               entregas=entregas,
+        return render_template("cooperado.html", entregas=entregas,
                                total_periodo=total_periodo,
                                total_periodo_pago=total_periodo_pago,
                                total_periodo_pendente=total_periodo_pendente,
-                               data_inicio=data_inicio,
-                               data_fim=data_fim)
+                               data_inicio=data_inicio, data_fim=data_fim)
 
-@app.route("/excluir_entrega/<int:entrega_id>", methods=["POST"])
-def excluir_entrega(entrega_id):
+@app.route("/estatisticas")
+def estatisticas_cooperado():
     if "user_id" not in session or session["user_tipo"] != "adm":
         return redirect(url_for("login"))
-    entrega = Entrega.query.get(entrega_id)
-    if entrega:
-        db.session.delete(entrega)
-        db.session.commit()
-    return redirect(url_for("dashboard"))
+
+    cooperado_id = request.args.get("cooperado_id", "todos")
+    hoje = date.today()
+
+    if cooperado_id == "todos":
+        cooperados = Usuario.query.filter_by(tipo="cooperado").all()
+    else:
+        cooperados = Usuario.query.filter_by(id=cooperado_id).all()
+
+    stats = []
+    for coop in cooperados:
+        entregas = Entrega.query.filter_by(cooperado_id=coop.id).all()
+        total_dia = sum(1 for e in entregas if e.hora_pedido.date() == hoje)
+        total_mes = sum(1 for e in entregas if e.hora_pedido.month == hoje.month and e.hora_pedido.year == hoje.year)
+        total_ano = sum(1 for e in entregas if e.hora_pedido.year == hoje.year)
+        valores_dia = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.date() == hoje and "R$" in e.descricao)
+        valores_mes = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.month == hoje.month and e.hora_pedido.year == hoje.year and "R$" in e.descricao)
+        valores_ano = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.year == hoje.year and "R$" in e.descricao)
+
+        stats.append({
+            "nome": coop.nome,
+            "total_dia": total_dia,
+            "total_mes": total_mes,
+            "total_ano": total_ano,
+            "valores_dia": round(valores_dia, 2),
+            "valores_mes": round(valores_mes, 2),
+            "valores_ano": round(valores_ano, 2)
+        })
+
+    return render_template("estatisticas.html", stats=stats, cooperados=cooperados)
 
 @app.route("/exportar")
-def exportar():
+def exportar_excel():
     data_inicio = request.args.get("data_inicio")
     data_fim = request.args.get("data_fim")
-    cooperado_id = request.args.get("cooperado_id")
+    cooperado_id = request.args.get("cooperado_id", "todos")
 
     inicio_dt = datetime.strptime(data_inicio, "%Y-%m-%d")
     fim_dt = datetime.strptime(data_fim, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
 
     query = Entrega.query.filter(Entrega.hora_pedido >= inicio_dt, Entrega.hora_pedido <= fim_dt)
-    if cooperado_id and cooperado_id != "todos":
+    if cooperado_id != "todos":
         query = query.filter(Entrega.cooperado_id == int(cooperado_id))
-
     entregas = query.all()
 
-    dados = []
+    data = []
     for e in entregas:
-        dados.append({
+        data.append({
             "Data": e.hora_pedido.strftime("%d/%m/%Y"),
             "Nome do Cliente": e.descricao,
             "Hora do Pedido": e.hora_pedido.strftime("%H:%M"),
@@ -175,19 +188,18 @@ def exportar():
             "Status da Entrega": e.status_entrega
         })
 
-    df = pd.DataFrame(dados)
-
+    df = pd.DataFrame(data)
     output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+    with pd.ExcelWriter(output, engine="xlsxwriter") as writer:
         df.to_excel(writer, index=False, sheet_name="Entregas")
-
     output.seek(0)
-    return send_file(output, download_name="relatorio_entregas.xlsx", as_attachment=True)
 
-if __name__ == "__main__":
-    app.run(debug=True)
-''')
+    return send_file(output, as_attachment=True, download_name="entregas.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
 
-# Compactar em ZIP para entrega
-zip_path = shutil.make_archive("/mnt/data/app_flask_completo_corrigido", 'zip', app_dir)
-zip_path
+@app.route("/excluir_entrega/<int:entrega_id>", methods=["POST"])
+def excluir_entrega(entrega_id):
+    entrega = Entrega.query.get(entrega_id)
+    if entrega:
+        db.session.delete(entrega)
+        db.session.commit()
+    return redirect(url_for("dashboard"))
