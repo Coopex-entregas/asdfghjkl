@@ -1,4 +1,3 @@
-
 from flask import Flask, render_template, request, redirect, url_for, session, flash
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -25,15 +24,6 @@ class Entrega(db.Model):
     status_entrega = db.Column(db.String(20), default="pendente")    # pendente, em rota, entregue
     cooperado_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
     cooperado = db.relationship('Usuario')
-
-@app.before_first_request
-def criar_admin():
-    admin = Usuario.query.filter_by(nome="coopex").first()
-    if not admin:
-        senha_hash = generate_password_hash("05062721")
-        admin = Usuario(nome="coopex", senha_hash=senha_hash, tipo="adm")
-        db.session.add(admin)
-        db.session.commit()
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -155,4 +145,13 @@ def editar_entrega(entrega_id):
 if __name__ == "__main__":
     with app.app_context():
         db.create_all()
+
+        # Criação automática do admin no primeiro run
+        admin = Usuario.query.filter_by(nome="coopex").first()
+        if not admin:
+            senha_hash = generate_password_hash("05062721")
+            admin = Usuario(nome="coopex", senha_hash=senha_hash, tipo="adm")
+            db.session.add(admin)
+            db.session.commit()
+
     app.run(debug=True)
