@@ -1,8 +1,8 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel Administrativo - Coopex</title>
   <style>
     body {
@@ -40,6 +40,7 @@
       border-radius: 5px;
       cursor: pointer;
       margin-right: 1rem;
+      text-decoration: none;
     }
     .btn:hover {
       background-color: #002080;
@@ -77,6 +78,41 @@
       flex-wrap: wrap;
       align-items: center;
     }
+    .lista-espera {
+      margin-top: 2rem;
+      padding: 1rem;
+      background: #fff;
+      border: 1px solid #ccc;
+      border-radius: 10px;
+    }
+    .lista-espera h4 {
+      margin-bottom: 1rem;
+    }
+    .espera-input {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1rem;
+    }
+    .espera-input input {
+      padding: 5px;
+      margin-right: 10px;
+    }
+    .cooperado-espera {
+      display: inline-block;
+      background: #d1d5ff;
+      padding: 5px 10px;
+      border-radius: 20px;
+      margin: 5px;
+      position: relative;
+    }
+    .cooperado-espera button {
+      background: none;
+      border: none;
+      font-weight: bold;
+      color: red;
+      margin-left: 8px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -89,6 +125,7 @@
     <div class="actions">
       <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
       <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
+      <a href="{{ url_for('estatisticas') }}" class="btn">Estatísticas por Cooperado</a>
     </div>
 
     <div class="filtros">
@@ -123,6 +160,15 @@
       <div>Total Valores do Ano: <strong>R$ {{ estatisticas.valores_ano }}</strong></div>
     </div>
 
+    <div class="lista-espera">
+      <h4>Lista de Espera de Cooperados</h4>
+      <div class="espera-input">
+        <input type="text" id="nomeCooperadoEspera" placeholder="Nome do cooperado">
+        <button class="btn" type="button" onclick="adicionarCooperado()">+</button>
+      </div>
+      <div id="cooperadosLista"></div>
+    </div>
+
     <div class="tabela">
       <table>
         <thead>
@@ -147,12 +193,36 @@
             <td>{{ e.status_entrega }}</td>
             <td>{{ e.cooperado.nome if e.cooperado }}</td>
             <td>{{ e.hora_atribuida.strftime('%d/%m/%Y %H:%M') if e.hora_atribuida }}</td>
-            <td><a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a></td>
+            <td>
+              <a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a>
+              <a class="btn" href="{{ url_for('excluir_entrega', entrega_id=e.id) }}" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</a>
+            </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
   </div>
+
+  <script>
+    function adicionarCooperado() {
+      const nome = document.getElementById("nomeCooperadoEspera").value.trim();
+      if (nome === "") return;
+
+      const div = document.createElement("div");
+      div.className = "cooperado-espera";
+      div.textContent = nome;
+
+      const btn = document.createElement("button");
+      btn.textContent = "×";
+      btn.onclick = function () {
+        div.remove();
+      };
+      div.appendChild(btn);
+
+      document.getElementById("cooperadosLista").appendChild(div);
+      document.getElementById("nomeCooperadoEspera").value = "";
+    }
+  </script>
 </body>
 </html>
