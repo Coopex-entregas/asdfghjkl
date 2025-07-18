@@ -1,27 +1,93 @@
-
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8" />
-    <title>Login - Coopex</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Login - Coopex</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 0;
+      background: linear-gradient(to right, #0047ab, #007bff);
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100vh;
+    }
+
+    .login-container {
+      background-color: white;
+      padding: 40px 30px;
+      border-radius: 10px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+      width: 100%;
+      max-width: 400px;
+    }
+
+    .login-container h1 {
+      text-align: center;
+      color: #0047ab;
+      margin-bottom: 25px;
+    }
+
+    .login-container label {
+      display: block;
+      margin-bottom: 8px;
+      color: #333;
+      font-weight: bold;
+    }
+
+    .login-container input[type="text"],
+    .login-container input[type="password"] {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 20px;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    .login-container button {
+      width: 100%;
+      padding: 12px;
+      background-color: #0047ab;
+      border: none;
+      color: white;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+
+    .login-container button:hover {
+      background-color: #003f99;
+    }
+
+    .msg {
+      text-align: center;
+      color: red;
+      margin-bottom: 15px;
+    }
+  </style>
 </head>
 <body>
-    <h1>Login</h1>
+  <div class="login-container">
+    <h1>Login - Coopex</h1>
+
     {% with messages = get_flashed_messages() %}
       {% if messages %}
-        <ul>
-          {% for msg in messages %}
-            <li style="color:red;">{{ msg }}</li>
-          {% endfor %}
-        </ul>
+        <div class="msg">{{ messages[0] }}</div>
       {% endif %}
     {% endwith %}
+
     <form method="POST" action="{{ url_for('login') }}">
-        <label>Usuário:</label>
-        <input type="text" name="nome" required/><br/>
-        <label>Senha:</label>
-        <input type="password" name="senha" required/><br/>
-        <button type="submit">Entrar</button>
+      <label for="nome">Usuário:</label>
+      <input type="text" id="nome" name="nome" required />
+
+      <label for="senha">Senha:</label>
+      <input type="password" id="senha" name="senha" required />
+
+      <button type="submit">Entrar</button>
     </form>
+  </div>
 </body>
 </html>

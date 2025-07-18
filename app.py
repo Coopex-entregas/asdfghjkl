@@ -2,10 +2,12 @@ from flask import Flask, render_template, request, redirect, url_for, session, f
 from flask_sqlalchemy import SQLAlchemy
 from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime
+import os
 
 app = Flask(__name__)
 app.secret_key = "sua_chave_secreta"
-app.config["SQLALCHEMY_DATABASE_URI"] = "sqlite:///entregas.db"
+
+app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///entregas.db").replace("postgres://", "postgresql://")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
@@ -13,17 +15,17 @@ class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(80), unique=True, nullable=False)
     senha_hash = db.Column(db.String(128), nullable=False)
-    tipo = db.Column(db.String(10), nullable=False)  # 'adm' ou 'cooperado'
+    tipo = db.Column(db.String(10), nullable=False)
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     descricao = db.Column(db.String(200), nullable=False)
     hora_pedido = db.Column(db.DateTime, nullable=False)
     hora_atribuida = db.Column(db.DateTime, nullable=True)
-    status_pagamento = db.Column(db.String(20), default="pendente")  # pendente ou pago
-    status_entrega = db.Column(db.String(20), default="pendente")    # pendente, em rota, entregue
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
-    cooperado = db.relationship('Usuario')
+    status_pagamento = db.Column(db.String(20), default="pendente")
+    status_entrega = db.Column(db.String(20), default="pendente")
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
+    cooperado = db.relationship("Usuario")
 
 @app.route("/", methods=["GET", "POST"])
 def login():
@@ -46,17 +48,51 @@ def logout():
     session.clear()
     return redirect(url_for("login"))
 
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET"])
 def dashboard():
     if "user_id" not in session:
         return redirect(url_for("login"))
-    if session["user_tipo"] == "adm":
+
+    user_id = session["user_id"]
+    user_tipo = session["user_tipo"]
+
+    if user_tipo == "adm":
         cooperados = Usuario.query.filter_by(tipo="cooperado").all()
         entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
         return render_template("admin.html", cooperados=cooperados, entregas=entregas)
+
     else:
-        entregas = Entrega.query.filter_by(cooperado_id=session["user_id"]).order_by(Entrega.hora_pedido.desc()).all()
-        return render_template("cooperado.html", entregas=entregas)
+        data_inicio = request.args.get("data_inicio")
+        data_fim = request.args.get("data_fim")
+
+        hoje = datetime.now().date()
+        if not data_inicio:
+            data_inicio = hoje.strftime("%Y-%m-%d")
+        if not data_fim:
+            data_fim = hoje.strftime("%Y-%m-%d")
+
+        inicio_dt = datetime.strptime(data_inicio, "%Y-%m-%d")
+        fim_dt = datetime.strptime(data_fim, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+
+        entregas = Entrega.query.filter(
+            Entrega.cooperado_id == user_id,
+            Entrega.hora_pedido >= inicio_dt,
+            Entrega.hora_pedido <= fim_dt
+        ).order_by(Entrega.hora_pedido.desc()).all()
+
+        total_periodo = len(entregas)
+        total_periodo_pago = sum(1 for e in entregas if e.status_pagamento == "pago")
+        total_periodo_pendente = sum(1 for e in entregas if e.status_pagamento == "pendente")
+
+        return render_template(
+            "cooperado.html",
+            entregas=entregas,
+            total_periodo=total_periodo,
+            total_periodo_pago=total_periodo_pago,
+            total_periodo_pendente=total_periodo_pendente,
+            data_inicio=data_inicio,
+            data_fim=data_fim
+        )
 
 @app.route("/cadastrar_cooperado", methods=["GET", "POST"])
 def cadastrar_cooperado():
@@ -83,11 +119,15 @@ def cadastrar_entrega():
     cooperados = Usuario.query.filter_by(tipo="cooperado").all()
     if request.method == "POST":
         descricao = request.form["descricao"]
-        hora_pedido_str = request.form["hora_pedido"]
+        hora_pedido = datetime.now()
         cooperado_id = request.form.get("cooperado_id")
-        hora_pedido = datetime.strptime(hora_pedido_str, "%Y-%m-%dT%H:%M")
-        entrega = Entrega(descricao=descricao, hora_pedido=hora_pedido, status_pagamento="pendente", status_entrega="pendente")
-        if cooperado_id and cooperado_id != "":
+        entrega = Entrega(
+            descricao=descricao,
+            hora_pedido=hora_pedido,
+            status_pagamento="pendente",
+            status_entrega="pendente"
+        )
+        if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
             entrega.hora_atribuida = datetime.now()
         db.session.add(entrega)
@@ -110,31 +150,22 @@ def editar_entrega(entrega_id):
 
     if request.method == "POST":
         if user_tipo == "cooperado":
-            status_pag = request.form.get("status_pagamento")
-            status_ent = request.form.get("status_entrega")
-            if status_pag in ["pendente", "pago"]:
-                entrega.status_pagamento = status_pag
-            if status_ent in ["pendente", "em rota", "entregue"]:
-                entrega.status_entrega = status_ent
+            entrega.status_pagamento = request.form["status_pagamento"]
+            entrega.status_entrega = request.form["status_entrega"]
             db.session.commit()
             flash("Status atualizado.")
             return redirect(url_for("dashboard"))
         elif user_tipo == "adm":
-            descricao = request.form["descricao"]
-            cooperado_id = request.form.get("cooperado_id")
-            status_pag = request.form.get("status_pagamento")
-            status_ent = request.form.get("status_entrega")
-            entrega.descricao = descricao
-            if cooperado_id and cooperado_id != "":
-                entrega.cooperado_id = int(cooperado_id)
+            entrega.descricao = request.form["descricao"]
+            coop_id = request.form.get("cooperado_id")
+            entrega.status_pagamento = request.form["status_pagamento"]
+            entrega.status_entrega = request.form["status_entrega"]
+            if coop_id:
+                entrega.cooperado_id = int(coop_id)
                 entrega.hora_atribuida = datetime.now()
             else:
                 entrega.cooperado_id = None
                 entrega.hora_atribuida = None
-            if status_pag in ["pendente", "pago"]:
-                entrega.status_pagamento = status_pag
-            if status_ent in ["pendente", "em rota", "entregue"]:
-                entrega.status_entrega = status_ent
             db.session.commit()
             flash("Entrega atualizada.")
             return redirect(url_for("dashboard"))
@@ -142,16 +173,14 @@ def editar_entrega(entrega_id):
     cooperados = Usuario.query.filter_by(tipo="cooperado").all()
     return render_template("editar_entrega.html", entrega=entrega, cooperados=cooperados, user_tipo=user_tipo)
 
-if __name__ == "__main__":
-    with app.app_context():
+# Cria admin padrão
+with app.app_context():
+    if os.environ.get("FLASK_ENV") != "production":
         db.create_all()
-
-        # Criação automática do admin no primeiro run
-        admin = Usuario.query.filter_by(nome="coopex").first()
-        if not admin:
-            senha_hash = generate_password_hash("05062721")
-            admin = Usuario(nome="coopex", senha_hash=senha_hash, tipo="adm")
+        if not Usuario.query.filter_by(nome="coopex").first():
+            admin = Usuario(nome="coopex", senha_hash=generate_password_hash("05062721"), tipo="adm")
             db.session.add(admin)
             db.session.commit()
 
+if __name__ == "__main__":
     app.run(debug=True)
