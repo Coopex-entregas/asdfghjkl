@@ -1,0 +1,39 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Editar Entrega - Coopex</title>
+</head>
+<body>
+    <h1>Editar Entrega</h1>
+    <a href="{{ url_for('dashboard') }}">Voltar</a>
+    <form method="POST" action="{{ url_for('editar_entrega', entrega_id=entrega.id) }}">
+        {% if user_tipo == 'adm' %}
+            <label>Descrição:</label><br/>
+            <input type="text" name="descricao" value="{{ entrega.descricao }}" required/><br/>
+            <label>Atribuir Cooperado:</label><br/>
+            <select name="cooperado_id">
+                <option value="">-- Nenhum --</option>
+                {% for c in cooperados %}
+                <option value="{{ c.id }}" {% if entrega.cooperado_id == c.id %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+            </select><br/>
+        {% else %}
+            <p><strong>Descrição:</strong> {{ entrega.descricao }}</p>
+        {% endif %}
+        <label>Status Pagamento:</label><br/>
+        <select name="status_pagamento">
+            <option value="pendente" {% if entrega.status_pagamento == 'pendente' %}selected{% endif %}>Pendente</option>
+            <option value="pago" {% if entrega.status_pagamento == 'pago' %}selected{% endif %}>Pago</option>
+        </select><br/>
+        <label>Status Entrega:</label><br/>
+        <select name="status_entrega">
+            <option value="pendente" {% if entrega.status_entrega == 'pendente' %}selected{% endif %}>Pendente</option>
+            <option value="em rota" {% if entrega.status_entrega == 'em rota' %}selected{% endif %}>Em Rota</option>
+            <option value="entregue" {% if entrega.status_entrega == 'entregue' %}selected{% endif %}>Entregue</option>
+        </select><br/><br/>
+        <button type="submit">Salvar</button>
+    </form>
+</body>
+</html>

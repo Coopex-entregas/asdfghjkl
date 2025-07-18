@@ -1,0 +1,26 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Cadastrar Entrega - Coopex</title>
+</head>
+<body>
+    <h1>Cadastrar Entrega</h1>
+    <a href="{{ url_for('dashboard') }}">Voltar</a>
+    <form method="POST" action="{{ url_for('cadastrar_entrega') }}">
+        <label>Descrição:</label><br/>
+        <input type="text" name="descricao" required/><br/>
+        <label>Hora do Pedido:</label><br/>
+        <input type="datetime-local" name="hora_pedido" required/><br/>
+        <label>Atribuir Cooperado (opcional):</label><br/>
+        <select name="cooperado_id">
+            <option value="">-- Nenhum --</option>
+            {% for c in cooperados %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+            {% endfor %}
+        </select><br/><br/>
+        <button type="submit">Cadastrar</button>
+    </form>
+</body>
+</html>

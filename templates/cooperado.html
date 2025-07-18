@@ -1,0 +1,26 @@
+
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Dashboard Cooperado - Coopex</title>
+</head>
+<body>
+    <h1>Dashboard Cooperado - {{ session['user_nome'] }}</h1>
+    <a href="{{ url_for('logout') }}">Sair</a>
+    <h2>Minhas Entregas</h2>
+    <table border="1" cellpadding="5">
+        <tr><th>ID</th><th>Descrição</th><th>Hora Pedido</th><th>Status Pagamento</th><th>Status Entrega</th><th>Ações</th></tr>
+        {% for e in entregas %}
+        <tr>
+            <td>{{ e.id }}</td>
+            <td>{{ e.descricao }}</td>
+            <td>{{ e.hora_pedido.strftime('%d/%m/%Y %H:%M') }}</td>
+            <td>{{ e.status_pagamento }}</td>
+            <td>{{ e.status_entrega }}</td>
+            <td><a href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a></td>
+        </tr>
+        {% endfor %}
+    </table>
+</body>
+</html>
