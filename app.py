@@ -1,15 +1,19 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
 import pandas as pd
 from io import BytesIO
 
 app = Flask(__name__)
-app.secret_key = 'segredo'
+app.secret_key = 'segredo-super-seguro'
 
-# Conexão com o banco via variável de ambiente
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL")
+# Corrige para PostgreSQL no Render se necessário
+uri = os.getenv("DATABASE_URL")
+if uri and uri.startswith("postgres://"):
+    uri = uri.replace("postgres://", "postgresql://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = uri
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
@@ -41,13 +45,14 @@ def index():
 
 @app.route('/login', methods=['POST'])
 def login():
-    user = request.form['usuario']
-    password = request.form['senha']
-    if user == 'coopex' and password == '05062721':
+    nome = request.form.get('nome')
+    senha = request.form.get('senha')
+    if nome == 'coopex' and senha == '05062721':
         session['admin'] = True
         return redirect(url_for('admin'))
     else:
-        return 'Login incorreto'
+        flash('Usuário ou senha incorretos.')
+        return redirect(url_for('index'))
 
 @app.route('/admin')
 def admin():
@@ -56,7 +61,6 @@ def admin():
 
     entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
 
-    # Estatísticas
     hoje = datetime.now().date()
     ano_atual = hoje.year
     mes_atual = hoje.month
@@ -132,7 +136,6 @@ def exportar_excel():
     } for e in entregas]
 
     df = pd.DataFrame(data)
-
     output = BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         df.to_excel(writer, index=False, sheet_name='Entregas')
