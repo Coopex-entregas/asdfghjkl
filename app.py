@@ -1,191 +1,171 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file
 from flask_sqlalchemy import SQLAlchemy
-from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, date
-import os
-import io
 import pandas as pd
+import io
 
 app = Flask(__name__)
-app.secret_key = "sua_chave_secreta"
+app.secret_key = "secreto"
 
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///entregas.db").replace("postgres://", "postgresql://")
+# Altere a seguir para sua URL do PostgreSQL do Render
+app.config["SQLALCHEMY_DATABASE_URI"] = "postgresql://seu_usuario:senha@host:porta/banco"
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 db = SQLAlchemy(app)
 
+# MODELOS
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), unique=True, nullable=False)
-    senha_hash = db.Column(db.String(128), nullable=False)
-    tipo = db.Column(db.String(10), nullable=False)
+    nome = db.Column(db.String(100))
+    senha = db.Column(db.String(100))
+    tipo = db.Column(db.String(20))  # 'adm' ou 'cooperado'
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    descricao = db.Column(db.String(200), nullable=False)
-    hora_pedido = db.Column(db.DateTime, nullable=False)
-    hora_atribuida = db.Column(db.DateTime, nullable=True)
-    status_pagamento = db.Column(db.String(20), default="pendente")
-    status_entrega = db.Column(db.String(20), default="pendente")
-    cooperado_id = db.Column(db.Integer, db.ForeignKey("usuario.id"), nullable=True)
-    cooperado = db.relationship("Usuario")
+    nome_cliente = db.Column(db.String(100))
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("usuario.id"))
+    valor = db.Column(db.Float)
+    hora_pedido = db.Column(db.DateTime)
+    hora_atribuida = db.Column(db.DateTime)
+    status_pagamento = db.Column(db.String(20))
+    status_entrega = db.Column(db.String(20))
 
+class Espera(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100))
+
+# ROTAS
 @app.route("/", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
         nome = request.form["nome"]
         senha = request.form["senha"]
-        user = Usuario.query.filter_by(nome=nome).first()
-        if user and check_password_hash(user.senha_hash, senha):
+        user = Usuario.query.filter_by(nome=nome, senha=senha).first()
+        if user:
             session["user_id"] = user.id
             session["user_nome"] = user.nome
             session["user_tipo"] = user.tipo
-            return redirect(url_for("dashboard"))
+            return redirect(url_for("dashboard")) if user.tipo == "adm" else redirect(url_for("painel_cooperado"))
         else:
-            flash("Usuário ou senha inválidos.")
-            return redirect(url_for("login"))
-    return render_template("login.html")
+            return "Login inválido"
+    return render_template("index.html")
 
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-@app.route("/dashboard")
+@app.route("/dashboard", methods=["GET", "POST"])
 def dashboard():
-    if "user_id" not in session:
-        return redirect(url_for("login"))
-
-    user_id = session["user_id"]
-    user_tipo = session["user_tipo"]
-
-    if user_tipo == "adm":
-        data_inicio = request.args.get("data_inicio")
-        data_fim = request.args.get("data_fim")
-        cooperado_id = request.args.get("cooperado_id")
-
-        hoje = datetime.now().date()
-        if not data_inicio:
-            data_inicio = hoje.strftime("%Y-%m-%d")
-        if not data_fim:
-            data_fim = hoje.strftime("%Y-%m-%d")
-
-        inicio_dt = datetime.strptime(data_inicio, "%Y-%m-%d")
-        fim_dt = datetime.strptime(data_fim, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-
-        query = Entrega.query.filter(Entrega.hora_pedido >= inicio_dt, Entrega.hora_pedido <= fim_dt)
-        if cooperado_id and cooperado_id != "todos":
-            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
-        entregas = query.order_by(Entrega.hora_pedido.desc()).all()
-
-        hoje_data = date.today()
-        total_dia = Entrega.query.filter(db.func.date(Entrega.hora_pedido) == hoje_data).count()
-        total_mes = Entrega.query.filter(db.extract("month", Entrega.hora_pedido) == hoje_data.month).count()
-        total_ano = Entrega.query.filter(db.extract("year", Entrega.hora_pedido) == hoje_data.year).count()
-
-        valores_dia = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in Entrega.query.filter(db.func.date(Entrega.hora_pedido) == hoje_data).all() if "R$" in e.descricao)
-        valores_mes = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in Entrega.query.filter(db.extract("month", Entrega.hora_pedido) == hoje_data.month).all() if "R$" in e.descricao)
-        valores_ano = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in Entrega.query.filter(db.extract("year", Entrega.hora_pedido) == hoje_data.year).all() if "R$" in e.descricao)
-
-        estatisticas = {
-            "total_dia": total_dia,
-            "total_mes": total_mes,
-            "total_ano": total_ano,
-            "valores_dia": round(valores_dia, 2),
-            "valores_mes": round(valores_mes, 2),
-            "valores_ano": round(valores_ano, 2)
-        }
-
-        cooperados = Usuario.query.filter_by(tipo="cooperado").all()
-        return render_template("admin.html", entregas=entregas, estatisticas=estatisticas,
-                               cooperados=cooperados, data_inicio=data_inicio, data_fim=data_fim)
-
-    else:
-        data_inicio = request.args.get("data_inicio")
-        data_fim = request.args.get("data_fim")
-        hoje = datetime.now().date()
-        if not data_inicio:
-            data_inicio = hoje.strftime("%Y-%m-%d")
-        if not data_fim:
-            data_fim = hoje.strftime("%Y-%m-%d")
-
-        inicio_dt = datetime.strptime(data_inicio, "%Y-%m-%d")
-        fim_dt = datetime.strptime(data_fim, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
-
-        entregas = Entrega.query.filter(
-            Entrega.cooperado_id == user_id,
-            Entrega.hora_pedido >= inicio_dt,
-            Entrega.hora_pedido <= fim_dt
-        ).order_by(Entrega.hora_pedido.desc()).all()
-
-        total_periodo = len(entregas)
-        total_periodo_pago = sum(1 for e in entregas if e.status_pagamento == "pago")
-        total_periodo_pendente = sum(1 for e in entregas if e.status_pagamento == "pendente")
-
-        return render_template("cooperado.html", entregas=entregas,
-                               total_periodo=total_periodo,
-                               total_periodo_pago=total_periodo_pago,
-                               total_periodo_pendente=total_periodo_pendente,
-                               data_inicio=data_inicio, data_fim=data_fim)
-
-@app.route("/estatisticas")
-def estatisticas_cooperado():
     if "user_id" not in session or session["user_tipo"] != "adm":
         return redirect(url_for("login"))
 
-    cooperado_id = request.args.get("cooperado_id", "todos")
+    data_inicio = request.form.get("data_inicio")
+    data_fim = request.form.get("data_fim")
+    cooperado_id = request.form.get("cooperado_id")
+
+    query = Entrega.query
+    if data_inicio and data_fim:
+        data_i = datetime.strptime(data_inicio, "%Y-%m-%d")
+        data_f = datetime.strptime(data_fim, "%Y-%m-%d")
+        query = query.filter(Entrega.hora_pedido.between(data_i, data_f))
+    if cooperado_id and cooperado_id != "todos":
+        query = query.filter_by(cooperado_id=cooperado_id)
+
+    entregas = query.order_by(Entrega.hora_pedido.desc()).all()
+
     hoje = date.today()
+    entregas_hoje = Entrega.query.filter(db.func.date(Entrega.hora_pedido) == hoje).all()
+    total_hoje = sum(e.valor for e in entregas_hoje)
+    mes_atual = datetime.now().month
+    entregas_mes = Entrega.query.filter(db.extract("month", Entrega.hora_pedido) == mes_atual).all()
+    total_mes = sum(e.valor for e in entregas_mes)
+    ano_atual = datetime.now().year
+    entregas_ano = Entrega.query.filter(db.extract("year", Entrega.hora_pedido) == ano_atual).all()
+    total_ano = sum(e.valor for e in entregas_ano)
 
-    if cooperado_id == "todos":
-        cooperados = Usuario.query.filter_by(tipo="cooperado").all()
-    else:
-        cooperados = Usuario.query.filter_by(id=cooperado_id).all()
+    estatisticas = {
+        "total_hoje": total_hoje,
+        "total_mes": total_mes,
+        "total_ano": total_ano,
+    }
 
-    stats = []
-    for coop in cooperados:
-        entregas = Entrega.query.filter_by(cooperado_id=coop.id).all()
-        total_dia = sum(1 for e in entregas if e.hora_pedido.date() == hoje)
-        total_mes = sum(1 for e in entregas if e.hora_pedido.month == hoje.month and e.hora_pedido.year == hoje.year)
-        total_ano = sum(1 for e in entregas if e.hora_pedido.year == hoje.year)
-        valores_dia = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.date() == hoje and "R$" in e.descricao)
-        valores_mes = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.month == hoje.month and e.hora_pedido.year == hoje.year and "R$" in e.descricao)
-        valores_ano = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.year == hoje.year and "R$" in e.descricao)
+    cooperados = Usuario.query.filter_by(tipo="cooperado").all()
+    espera = Espera.query.all()
 
-        stats.append({
-            "nome": coop.nome,
-            "total_dia": total_dia,
-            "total_mes": total_mes,
-            "total_ano": total_ano,
-            "valores_dia": round(valores_dia, 2),
-            "valores_mes": round(valores_mes, 2),
-            "valores_ano": round(valores_ano, 2)
-        })
+    return render_template("admin.html", entregas=entregas, estatisticas=estatisticas, cooperados=cooperados, espera=espera, data_inicio=data_inicio, data_fim=data_fim)
 
-    return render_template("estatisticas.html", stats=stats, cooperados=cooperados)
+@app.route("/cadastrar-entrega", methods=["POST"])
+def cadastrar_entrega():
+    if "user_id" not in session or session["user_tipo"] != "adm":
+        return redirect(url_for("login"))
+    
+    nome_cliente = request.form["nome_cliente"]
+    cooperado_id = request.form.get("cooperado_id")
+    valor = float(request.form["valor"])
+    hora_pedido = datetime.now()
+    hora_atribuida = datetime.now() if cooperado_id else None
 
-@app.route("/exportar")
+    entrega = Entrega(
+        nome_cliente=nome_cliente,
+        cooperado_id=cooperado_id if cooperado_id else None,
+        valor=valor,
+        hora_pedido=hora_pedido,
+        hora_atribuida=hora_atribuida,
+        status_pagamento="pendente",
+        status_entrega="pendente"
+    )
+    db.session.add(entrega)
+    db.session.commit()
+    return redirect(url_for("dashboard"))
+
+@app.route("/excluir-entrega/<int:id>")
+def excluir_entrega(id):
+    entrega = Entrega.query.get(id)
+    if entrega:
+        db.session.delete(entrega)
+        db.session.commit()
+    return redirect(url_for("dashboard"))
+
+@app.route("/painel-cooperado")
+def painel_cooperado():
+    if "user_id" not in session or session["user_tipo"] != "cooperado":
+        return redirect(url_for("login"))
+    user_id = session["user_id"]
+    entregas = Entrega.query.filter_by(cooperado_id=user_id).order_by(Entrega.hora_pedido.desc()).all()
+
+    hoje = date.today()
+    dia = [e.valor for e in entregas if e.hora_pedido.date() == hoje]
+    mes = [e.valor for e in entregas if e.hora_pedido.month == datetime.now().month]
+
+    return render_template("cooperado.html", entregas=entregas, total_dia=sum(dia), total_mes=sum(mes))
+
+@app.route("/exportar-excel", methods=["POST"])
 def exportar_excel():
-    data_inicio = request.args.get("data_inicio")
-    data_fim = request.args.get("data_fim")
-    cooperado_id = request.args.get("cooperado_id", "todos")
+    data_inicio = request.form.get("data_inicio")
+    data_fim = request.form.get("data_fim")
+    cooperado_id = request.form.get("cooperado_id")
 
-    inicio_dt = datetime.strptime(data_inicio, "%Y-%m-%d")
-    fim_dt = datetime.strptime(data_fim, "%Y-%m-%d").replace(hour=23, minute=59, second=59)
+    query = Entrega.query
+    if data_inicio and data_fim:
+        data_i = datetime.strptime(data_inicio, "%Y-%m-%d")
+        data_f = datetime.strptime(data_fim, "%Y-%m-%d")
+        query = query.filter(Entrega.hora_pedido.between(data_i, data_f))
+    if cooperado_id and cooperado_id != "todos":
+        query = query.filter_by(cooperado_id=cooperado_id)
 
-    query = Entrega.query.filter(Entrega.hora_pedido >= inicio_dt, Entrega.hora_pedido <= fim_dt)
-    if cooperado_id != "todos":
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
     entregas = query.all()
 
     data = []
     for e in entregas:
+        cooperado = Usuario.query.get(e.cooperado_id)
         data.append({
-            "Data": e.hora_pedido.strftime("%d/%m/%Y"),
-            "Nome do Cliente": e.descricao,
+            "Data": e.hora_pedido.strftime("%Y-%m-%d"),
+            "Nome do Cliente": e.nome_cliente,
             "Hora do Pedido": e.hora_pedido.strftime("%H:%M"),
             "Hora Atribuída": e.hora_atribuida.strftime("%H:%M") if e.hora_atribuida else "",
-            "Nome do Cooperado": e.cooperado.nome if e.cooperado else "",
+            "Nome do Cooperado": cooperado.nome if cooperado else "",
             "Status de Pagamento": e.status_pagamento,
-            "Status da Entrega": e.status_entrega
+            "Status de Entrega": e.status_entrega,
         })
 
     df = pd.DataFrame(data)
@@ -194,12 +174,27 @@ def exportar_excel():
         df.to_excel(writer, index=False, sheet_name="Entregas")
     output.seek(0)
 
-    return send_file(output, as_attachment=True, download_name="entregas.xlsx", mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+    return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-@app.route("/excluir_entrega/<int:entrega_id>", methods=["POST"])
-def excluir_entrega(entrega_id):
-    entrega = Entrega.query.get(entrega_id)
-    if entrega:
-        db.session.delete(entrega)
+@app.route("/adicionar-espera", methods=["POST"])
+def adicionar_espera():
+    nome = request.form["nome"]
+    if nome.strip():
+        db.session.add(Espera(nome=nome.strip()))
         db.session.commit()
     return redirect(url_for("dashboard"))
+
+@app.route("/remover-espera/<int:id>")
+def remover_espera(id):
+    item = Espera.query.get(id)
+    if item:
+        db.session.delete(item)
+        db.session.commit()
+    return redirect(url_for("dashboard"))
+
+# CRIA TABELAS
+with app.app_context():
+    db.create_all()
+
+if __name__ == "__main__":
+    app.run(debug=True)
