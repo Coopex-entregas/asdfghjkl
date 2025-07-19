@@ -7,22 +7,22 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "secreto"
 
-# Configuração do banco de dados
+# Configuração do banco de dados (Render)
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
-    DATABASE_URL = 'postgresql://usuario:senha@host:5432/nome_do_banco'
+    DATABASE_URL = 'postgresql://banco_de_dados_qus2_user:o9OsVK4SDOxYahEyNI8DvrkTyji0nLLo@dpg-d1per5c9c44c738iiqr0-a.oregon-postgres.render.com/banco_de_dados_qus2'
+
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 db = SQLAlchemy(app)
 
-# Modelos
+# MODELOS
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100))
     login = db.Column(db.String(100), unique=True)
     senha = db.Column(db.String(100))
-    tipo = db.Column(db.String(20))
+    tipo = db.Column(db.String(20))  # adm ou cooperado
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -32,13 +32,15 @@ class Entrega(db.Model):
     cooperado = db.relationship('Usuario', backref='entregas')
     hora_pedido = db.Column(db.DateTime)
     hora_atribuida = db.Column(db.DateTime)
-    status_pagamento = db.Column(db.String(20))
-    status_entrega = db.Column(db.String(20))
+    status_pagamento = db.Column(db.String(20))  # pendente ou pago
+    status_entrega = db.Column(db.String(20))    # pendente ou entregue
 
+# ROTA INICIAL
 @app.route("/")
 def index():
     return redirect(url_for("login"))
 
+# LOGIN
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -53,6 +55,7 @@ def login():
             return "Login inválido"
     return render_template("login.html")
 
+# PAINEL DE REDIRECIONAMENTO
 @app.route("/painel")
 def painel():
     if "user_id" not in session:
@@ -60,6 +63,7 @@ def painel():
     user = Usuario.query.get(session["user_id"])
     return redirect(url_for("painel_admin" if user.tipo == "adm" else "painel_cooperado"))
 
+# PAINEL ADMIN
 @app.route("/painel_admin", methods=["GET", "POST"])
 def painel_admin():
     if "user_id" not in session or session["user_tipo"] != "adm":
@@ -87,6 +91,7 @@ def painel_admin():
     cooperados = Usuario.query.filter_by(tipo="cooperado").all()
     return render_template("admin.html", entregas=entregas, cooperados=cooperados)
 
+# PAINEL COOPERADO
 @app.route("/painel_cooperado")
 def painel_cooperado():
     if "user_id" not in session or session["user_tipo"] != "cooperado":
@@ -94,6 +99,7 @@ def painel_cooperado():
     entregas = Entrega.query.filter_by(cooperado_id=session["user_id"]).order_by(Entrega.hora_pedido.desc()).all()
     return render_template("cooperado.html", entregas=entregas)
 
+# ESTATÍSTICAS
 @app.route("/estatisticas")
 def estatisticas():
     if "user_id" not in session or session["user_tipo"] != "adm":
@@ -133,6 +139,7 @@ def estatisticas():
     return render_template("estatisticas.html", estatisticas=estatisticas, cooperados=cooperados,
                            data_inicio=data_inicio, data_fim=data_fim, cooperado_id=cooperado_id)
 
+# EXPORTAÇÃO PARA EXCEL
 @app.route("/exportar")
 def exportar():
     entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
@@ -152,27 +159,23 @@ def exportar():
     df.to_excel(caminho, index=False)
     return send_file(caminho, as_attachment=True)
 
+# LOGOUT
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
+# CRIAR BANCO E USUÁRIO ADMIN
 @app.cli.command("criar-banco")
 def criar_banco():
     db.create_all()
-    print("Banco criado!")
-
-# 🚨 ROTA TEMPORÁRIA PARA DELETAR A TABELA usuario
-@app.route("/reset_usuario/<senha>")
-def reset_usuario(senha):
-    if senha != "apagar123":
-        return "Acesso negado.", 403
-    try:
-        db.session.execute("DROP TABLE IF EXISTS usuario CASCADE;")
+    if not Usuario.query.filter_by(login="coopex").first():
+        admin = Usuario(nome="Administrador", login="coopex", senha="05062721", tipo="adm")
+        db.session.add(admin)
         db.session.commit()
-        return "Tabela 'usuario' deletada com sucesso."
-    except Exception as e:
-        return f"Erro: {str(e)}", 500
+        print("Usuário admin criado.")
+    print("Banco de dados pronto.")
 
+# EXECUTAR
 if __name__ == "__main__":
     app.run(debug=True)
