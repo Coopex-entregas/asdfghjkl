@@ -7,26 +7,22 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "secreto"
 
-# ✅ Configurar banco com a URI correta (Render usa DATABASE_URL)
-# Substitua os dados abaixo se não estiver usando variável de ambiente
+# Configuração do banco de dados
 DATABASE_URL = os.environ.get("DATABASE_URL")
-
-# 🔧 Fallback seguro, caso não use variável de ambiente:
 if not DATABASE_URL:
     DATABASE_URL = 'postgresql://usuario:senha@host:5432/nome_do_banco'
-
 app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# ✅ MODELOS
+# Modelos
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100))
     login = db.Column(db.String(100), unique=True)
     senha = db.Column(db.String(100))
-    tipo = db.Column(db.String(20))  # 'adm' ou 'cooperado'
+    tipo = db.Column(db.String(20))
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -36,10 +32,9 @@ class Entrega(db.Model):
     cooperado = db.relationship('Usuario', backref='entregas')
     hora_pedido = db.Column(db.DateTime)
     hora_atribuida = db.Column(db.DateTime)
-    status_pagamento = db.Column(db.String(20))  # 'pendente' ou 'pago'
-    status_entrega = db.Column(db.String(20))    # 'pendente' ou 'entregue'
+    status_pagamento = db.Column(db.String(20))
+    status_entrega = db.Column(db.String(20))
 
-# ✅ ROTA PRINCIPAL (exemplo)
 @app.route("/")
 def index():
     return redirect(url_for("login"))
@@ -47,8 +42,8 @@ def index():
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
-        login = request.form["login"]
-        senha = request.form["senha"]
+        login = request.form.get("login")
+        senha = request.form.get("senha")
         user = Usuario.query.filter_by(login=login, senha=senha).first()
         if user:
             session["user_id"] = user.id
@@ -63,32 +58,42 @@ def painel():
     if "user_id" not in session:
         return redirect(url_for("login"))
     user = Usuario.query.get(session["user_id"])
-    if user.tipo == "adm":
-        return redirect(url_for("painel_admin"))
-    else:
-        return redirect(url_for("painel_cooperado"))
+    return redirect(url_for("painel_admin" if user.tipo == "adm" else "painel_cooperado"))
 
-# ✅ ROTA DE PAINEL ADMINISTRATIVO (exemplo simples)
-@app.route("/painel_admin")
+@app.route("/painel_admin", methods=["GET", "POST"])
 def painel_admin():
     if "user_id" not in session or session["user_tipo"] != "adm":
         return redirect(url_for("login"))
+
+    if request.method == "POST":
+        cliente = request.form.get("cliente")
+        descricao = request.form.get("descricao")
+        cooperado_id = request.form.get("cooperado_id")
+        now = datetime.now()
+        entrega = Entrega(
+            cliente=cliente,
+            descricao=descricao,
+            cooperado_id=cooperado_id,
+            hora_pedido=now,
+            hora_atribuida=now,
+            status_pagamento="pendente",
+            status_entrega="pendente"
+        )
+        db.session.add(entrega)
+        db.session.commit()
+        return redirect(url_for("painel_admin"))
+
     entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
-    return render_template("admin.html", entregas=entregas)
+    cooperados = Usuario.query.filter_by(tipo="cooperado").all()
+    return render_template("admin.html", entregas=entregas, cooperados=cooperados)
 
-# ✅ LOGOUT
-@app.route("/logout")
-def logout():
-    session.clear()
-    return redirect(url_for("login"))
+@app.route("/painel_cooperado")
+def painel_cooperado():
+    if "user_id" not in session or session["user_tipo"] != "cooperado":
+        return redirect(url_for("login"))
+    entregas = Entrega.query.filter_by(cooperado_id=session["user_id"]).order_by(Entrega.hora_pedido.desc()).all()
+    return render_template("cooperado.html", entregas=entregas)
 
-# ✅ CRIAR O BANCO (usar uma vez)
-@app.cli.command("criar-banco")
-def criar_banco():
-    db.create_all()
-    print("Banco de dados criado.")
-
-# ✅ ROTA ESTATÍSTICAS
 @app.route("/estatisticas")
 def estatisticas():
     if "user_id" not in session or session["user_tipo"] != "adm":
@@ -128,6 +133,34 @@ def estatisticas():
     return render_template("estatisticas.html", estatisticas=estatisticas, cooperados=cooperados,
                            data_inicio=data_inicio, data_fim=data_fim, cooperado_id=cooperado_id)
 
-# ✅ EXECUTAR LOCALMENTE
+@app.route("/exportar")
+def exportar():
+    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
+    dados = []
+    for e in entregas:
+        dados.append({
+            "Cliente": e.cliente,
+            "Descrição": e.descricao,
+            "Data": e.hora_pedido.strftime("%d/%m/%Y %H:%M"),
+            "Atribuída": e.hora_atribuida.strftime("%d/%m/%Y %H:%M") if e.hora_atribuida else "",
+            "Cooperado": e.cooperado.nome if e.cooperado else "",
+            "Pagamento": e.status_pagamento,
+            "Entrega": e.status_entrega
+        })
+    df = pd.DataFrame(dados)
+    caminho = "entregas.xlsx"
+    df.to_excel(caminho, index=False)
+    return send_file(caminho, as_attachment=True)
+
+@app.route("/logout")
+def logout():
+    session.clear()
+    return redirect(url_for("login"))
+
+@app.cli.command("criar-banco")
+def criar_banco():
+    db.create_all()
+    print("Banco criado!")
+
 if __name__ == "__main__":
     app.run(debug=True)
