@@ -162,5 +162,17 @@ def criar_banco():
     db.create_all()
     print("Banco criado!")
 
+# 🚨 ROTA TEMPORÁRIA PARA DELETAR A TABELA usuario
+@app.route("/reset_usuario/<senha>")
+def reset_usuario(senha):
+    if senha != "apagar123":
+        return "Acesso negado.", 403
+    try:
+        db.session.execute("DROP TABLE IF EXISTS usuario CASCADE;")
+        db.session.commit()
+        return "Tabela 'usuario' deletada com sucesso."
+    except Exception as e:
+        return f"Erro: {str(e)}", 500
+
 if __name__ == "__main__":
     app.run(debug=True)
