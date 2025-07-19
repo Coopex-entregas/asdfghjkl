@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, session, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime, date
 import pandas as pd
@@ -7,40 +7,41 @@ import pandas as pd
 app = Flask(__name__)
 app.secret_key = "secreto"
 
-# Configuração do banco de dados (Render)
+# Configuração do banco de dados
 DATABASE_URL = os.environ.get("DATABASE_URL")
 if not DATABASE_URL:
-    DATABASE_URL = 'postgresql://banco_de_dados_qus2_user:o9OsVK4SDOxYahEyNI8DvrkTyji0nLLo@dpg-d1per5c9c44c738iiqr0-a.oregon-postgres.render.com/banco_de_dados_qus2'
+    DATABASE_URL = "postgresql://usuario:senha@host:5432/nome_do_banco"
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URL
+app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
 
-app.config['SQLALCHEMY_DATABASE_URI'] = DATABASE_URL
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# MODELOS
+# Modelos
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100))
     login = db.Column(db.String(100), unique=True)
     senha = db.Column(db.String(100))
-    tipo = db.Column(db.String(20))  # adm ou cooperado
+    tipo = db.Column(db.String(20))
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente = db.Column(db.String(100))
     descricao = db.Column(db.String(200))
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('usuario.id'))
-    cooperado = db.relationship('Usuario', backref='entregas')
+    cooperado_id = db.Column(db.Integer, db.ForeignKey("usuario.id"))
+    cooperado = db.relationship("Usuario", backref="entregas")
     hora_pedido = db.Column(db.DateTime)
     hora_atribuida = db.Column(db.DateTime)
-    status_pagamento = db.Column(db.String(20))  # pendente ou pago
-    status_entrega = db.Column(db.String(20))    # pendente ou entregue
+    status_pagamento = db.Column(db.String(20))
+    status_entrega = db.Column(db.String(20))
 
-# ROTA INICIAL
+# Simples lista de espera (memória temporária)
+lista_espera = []
+
 @app.route("/")
 def index():
     return redirect(url_for("login"))
 
-# LOGIN
 @app.route("/login", methods=["GET", "POST"])
 def login():
     if request.method == "POST":
@@ -55,7 +56,6 @@ def login():
             return "Login inválido"
     return render_template("login.html")
 
-# PAINEL DE REDIRECIONAMENTO
 @app.route("/painel")
 def painel():
     if "user_id" not in session:
@@ -63,7 +63,6 @@ def painel():
     user = Usuario.query.get(session["user_id"])
     return redirect(url_for("painel_admin" if user.tipo == "adm" else "painel_cooperado"))
 
-# PAINEL ADMIN
 @app.route("/painel_admin", methods=["GET", "POST"])
 def painel_admin():
     if "user_id" not in session or session["user_tipo"] != "adm":
@@ -89,9 +88,15 @@ def painel_admin():
 
     entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
     cooperados = Usuario.query.filter_by(tipo="cooperado").all()
-    return render_template("admin.html", entregas=entregas, cooperados=cooperados)
+    return render_template("admin.html", entregas=entregas, cooperados=cooperados, lista_espera=lista_espera)
 
-# PAINEL COOPERADO
+@app.route("/deletar_entrega/<int:id>")
+def deletar_entrega(id):
+    entrega = Entrega.query.get_or_404(id)
+    db.session.delete(entrega)
+    db.session.commit()
+    return redirect(url_for("painel_admin"))
+
 @app.route("/painel_cooperado")
 def painel_cooperado():
     if "user_id" not in session or session["user_tipo"] != "cooperado":
@@ -99,7 +104,6 @@ def painel_cooperado():
     entregas = Entrega.query.filter_by(cooperado_id=session["user_id"]).order_by(Entrega.hora_pedido.desc()).all()
     return render_template("cooperado.html", entregas=entregas)
 
-# ESTATÍSTICAS
 @app.route("/estatisticas")
 def estatisticas():
     if "user_id" not in session or session["user_tipo"] != "adm":
@@ -139,7 +143,6 @@ def estatisticas():
     return render_template("estatisticas.html", estatisticas=estatisticas, cooperados=cooperados,
                            data_inicio=data_inicio, data_fim=data_fim, cooperado_id=cooperado_id)
 
-# EXPORTAÇÃO PARA EXCEL
 @app.route("/exportar")
 def exportar():
     entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
@@ -159,23 +162,28 @@ def exportar():
     df.to_excel(caminho, index=False)
     return send_file(caminho, as_attachment=True)
 
-# LOGOUT
+@app.route("/adicionar_espera", methods=["POST"])
+def adicionar_espera():
+    nome = request.form.get("nome_espera")
+    if nome and nome not in lista_espera:
+        lista_espera.append(nome)
+    return redirect(url_for("painel_admin"))
+
+@app.route("/remover_espera/<string:nome>")
+def remover_espera(nome):
+    if nome in lista_espera:
+        lista_espera.remove(nome)
+    return redirect(url_for("painel_admin"))
+
 @app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for("login"))
 
-# CRIAR BANCO E USUÁRIO ADMIN
 @app.cli.command("criar-banco")
 def criar_banco():
     db.create_all()
-    if not Usuario.query.filter_by(login="coopex").first():
-        admin = Usuario(nome="Administrador", login="coopex", senha="05062721", tipo="adm")
-        db.session.add(admin)
-        db.session.commit()
-        print("Usuário admin criado.")
-    print("Banco de dados pronto.")
+    print("Banco criado!")
 
-# EXECUTAR
 if __name__ == "__main__":
     app.run(debug=True)
