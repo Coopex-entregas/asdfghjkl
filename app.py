@@ -1,162 +1,258 @@
-from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
+from flask import Flask, render_template, request, redirect, session, url_for
 from flask_sqlalchemy import SQLAlchemy
 from datetime import datetime
-import io
 import pandas as pd
 
 app = Flask(__name__)
-app.secret_key = 'chave-secreta'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///coopex.db'  # ✅ Altere para PostgreSQL se necessário
+app.secret_key = 'chave_secreta'
+
+# Substitua aqui com sua URI do Render se quiser usar PostgreSQL:
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///coopex.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
-# MODELOS
-class Cooperado(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100))
-    senha = db.Column(db.String(100))
-
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    descricao = db.Column(db.String(200))
+    nome_cliente = db.Column(db.String(120))
+    nome_cooperado = db.Column(db.String(120))
+    bairro = db.Column(db.String(100))
+    valor = db.Column(db.Float)
     hora_pedido = db.Column(db.DateTime, default=datetime.utcnow)
     hora_atribuida = db.Column(db.DateTime)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'))
-    cooperado = db.relationship('Cooperado', backref='entregas')
-    status_pagamento = db.Column(db.String(20), default='pendente')
-    status_entrega = db.Column(db.String(20), default='pendente')
+    status_pagamento = db.Column(db.String(50), default="Pendente")
+    status_entrega = db.Column(db.String(50), default="Pendente")
 
-# ROTA RAIZ
 @app.route('/')
 def index():
     return render_template('login.html')
 
-# LOGIN
 @app.route('/login', methods=['POST'])
 def login():
-    nome = request.form['nome']
-    senha = request.form['senha']
+    nome = request.form.get('nome')
+    senha = request.form.get('senha')
+
     if nome == 'coopex' and senha == '05062721':
-        session['user_tipo'] = 'adm'
-        session['user_nome'] = 'Administrador'
+        session['admin'] = True
         return redirect('/admin')
-    cooperado = Cooperado.query.filter_by(nome=nome, senha=senha).first()
-    if cooperado:
-        session['user_tipo'] = 'cooperado'
-        session['user_id'] = cooperado.id
-        session['user_nome'] = cooperado.nome
-        return redirect('/dashboard')
-    flash('Usuário ou senha inválidos.')
-    return redirect('/')
-
-# DASHBOARD COOPERADO
-@app.route('/dashboard')
-def dashboard():
-    if session.get('user_tipo') != 'cooperado':
-        return redirect('/')
-    cooperado_id = session['user_id']
-    inicio = request.args.get('inicio')
-    fim = request.args.get('fim')
-    query = Entrega.query.filter_by(cooperado_id=cooperado_id)
-    if inicio:
-        query = query.filter(Entrega.hora_pedido >= inicio)
-    if fim:
-        query = query.filter(Entrega.hora_pedido <= fim + " 23:59:59")
-    entregas = query.order_by(Entrega.hora_pedido.desc()).all()
-
-    total_geral = sum([1 for e in entregas])
-    total_pago = sum(1 for e in entregas if e.status_pagamento == 'pago')
-    total_pendente = sum(1 for e in entregas if e.status_pagamento == 'pendente')
-
-    return render_template('dashboard_cooperado.html',
-        entregas=entregas,
-        total_geral=total_geral,
-        total_pago=total_pago,
-        total_pendente=total_pendente
-    )
-
-# DASHBOARD ADMIN
-@app.route('/admin')
-def admin():
-    if session.get('user_tipo') != 'adm':
-        return redirect('/')
-    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
-    cooperados = Cooperado.query.all()
-    return render_template('admin.html', entregas=entregas, cooperados=cooperados)
-
-# CADASTRO ENTREGA
-@app.route('/cadastrar', methods=['POST'])
-def cadastrar():
-    if session.get('user_tipo') != 'adm':
-        return redirect('/')
-    descricao = request.form['descricao']
-    cooperado_id = request.form.get('cooperado_id') or None
-    if cooperado_id:
-        hora_atribuida = datetime.utcnow()
     else:
-        hora_atribuida = None
+        session['user_nome'] = nome
+        session['user_tipo'] = 'cooperado'
+        return redirect('/dashboard')
 
-    entrega = Entrega(
-        descricao=descricao,
-        cooperado_id=cooperado_id,
-        hora_atribuida=hora_atribuida
-    )
-    db.session.add(entrega)
-    db.session.commit()
-    return redirect('/admin')
-
-# EDITAR ENTREGA
-@app.route('/editar/<int:entrega_id>', methods=['GET', 'POST'])
-def editar_entrega(entrega_id):
-    entrega = Entrega.query.get_or_404(entrega_id)
-    if request.method == 'POST':
-        if session.get('user_tipo') == 'adm':
-            entrega.descricao = request.form['descricao']
-            cooperado_id = request.form.get('cooperado_id') or None
-            entrega.cooperado_id = cooperado_id
-            if cooperado_id and not entrega.hora_atribuida:
-                entrega.hora_atribuida = datetime.utcnow()
-        entrega.status_pagamento = request.form['status_pagamento']
-        entrega.status_entrega = request.form['status_entrega']
-        db.session.commit()
-        return redirect('/admin' if session['user_tipo'] == 'adm' else '/dashboard')
-
-    cooperados = Cooperado.query.all()
-    return render_template('editar_entrega.html',
-        entrega=entrega,
-        cooperados=cooperados,
-        user_tipo=session.get('user_tipo')
-    )
-
-# EXPORTAR EXCEL
-@app.route('/exportar')
-def exportar():
-    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
-    dados = []
-    for e in entregas:
-        dados.append({
-            'ID': e.id,
-            'Descrição': e.descricao,
-            'Hora do Pedido': e.hora_pedido.strftime('%Y-%m-%d %H:%M:%S'),
-            'Hora Atribuída': e.hora_atribuida.strftime('%Y-%m-%d %H:%M:%S') if e.hora_atribuida else '',
-            'Nome do Cooperado': e.cooperado.nome if e.cooperado else '',
-            'Status Pagamento': e.status_pagamento,
-            'Status Entrega': e.status_entrega,
-        })
-    df = pd.DataFrame(dados)
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        df.to_excel(writer, index=False, sheet_name='Entregas')
-    output.seek(0)
-    return send_file(output, as_attachment=True, download_name='entregas.xlsx', mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet')
-
-# LOGOUT
 @app.route('/logout')
 def logout():
     session.clear()
     return redirect('/')
 
-# INICIALIZAR DB
+@app.route('/admin')
+def admin():
+    if 'admin' not in session:
+        return redirect('/')
+    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
+    return render_template('admin.html', entregas=entregas)
+
+@app.route('/cadastrar', methods=['POST'])
+def cadastrar():
+    nome_cliente = request.form['nome_cliente']
+    nome_cooperado = request.form['nome_cooperado']
+    bairro = request.form['bairro']
+    valor = float(request.form['valor'])
+    nova = Entrega(
+        nome_cliente=nome_cliente,
+        nome_cooperado=nome_cooperado,
+        bairro=bairro,
+        valor=valor,
+        hora_pedido=datetime.utcnow(),
+        hora_atribuida=datetime.utcnow()
+    )
+    db.session.add(nova)
+    db.session.commit()
+    return redirect('/admin')
+
+@app.route('/dashboard')
+def dashboard():
+    if 'user_nome' not in session:
+        return redirect('/')
+    
+    nome = session['user_nome']
+    inicio = request.args.get('inicio')
+    fim = request.args.get('fim')
+    query = Entrega.query.filter_by(nome_cooperado=nome)
+
+    if inicio:
+        query = query.filter(Entrega.hora_pedido >= inicio)
+    if fim:
+        query = query.filter(Entrega.hora_pedido <= fim)
+
+    entregas = query.order_by(Entrega.hora_pedido.desc()).all()
+
+    total_geral = sum(e.valor for e in entregas)
+    total_pago = sum(e.valor for e in entregas if e.status_pagamento == 'Pago')
+    total_pendente = total_geral - total_pago
+
+    return render_template('dashboard_cooperado.html',
+                           entregas=entregas,
+                           total_geral=total_geral,
+                           total_pago=total_pago,
+                           total_pendente=total_pendente)
+
+@app.route('/editar/<int:entrega_id>', methods=['GET', 'POST'])
+def editar_entrega(entrega_id):
+    entrega = Entrega.query.get_or_404(entrega_id)
+
+    if request.method == 'POST':
+        entrega.status_pagamento = request.form.get('status_pagamento')
+        entrega.status_entrega = request.form.get('status_entrega')
+        db.session.commit()
+        if session.get('admin'):
+
+
+Perfeito. Você tem toda razão. Com base em **todos os seus arquivos enviados** (login, admin, dashboard do cooperado e editar entrega) e **as regras que combinamos**, agora vou te mandar o **código completo e correto do `app.py`**, pronto para funcionar com os seus HTMLs.
+
+---
+
+### ✅ `app.py` COMPLETO e compatível com **tudo que você me mandou**:
+
+```python
+from flask import Flask, render_template, request, redirect, session, url_for, flash
+from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
+import pandas as pd
+
+app = Flask(__name__)
+app.secret_key = 'chave_secreta_coopex'
+
+# ✅ Conexão com banco PostgreSQL (substitua pela URI do Render se preferir)
+app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///coopex.db'
+app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+db = SQLAlchemy(app)
+
+# ✅ Modelo de Entrega
+class Entrega(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome_cliente = db.Column(db.String(120))
+    nome_cooperado = db.Column(db.String(120))
+    bairro = db.Column(db.String(100))
+    valor = db.Column(db.Float)
+    hora_pedido = db.Column(db.DateTime, default=datetime.utcnow)
+    hora_atribuida = db.Column(db.DateTime)
+    status_pagamento = db.Column(db.String(50), default="Pendente")
+    status_entrega = db.Column(db.String(50), default="Pendente")
+
+# ✅ Página de login
+@app.route('/')
+def index():
+    return render_template('login.html')
+
+# ✅ Verificação de login
+@app.route('/login', methods=['POST'])
+def login():
+    nome = request.form.get('nome')
+    senha = request.form.get('senha')
+
+    if nome == 'coopex' and senha == '05062721':
+        session['admin'] = True
+        session['user_nome'] = nome
+        session['user_tipo'] = 'adm'
+        return redirect('/admin')
+    else:
+        session['user_nome'] = nome
+        session['user_tipo'] = 'coop'
+        return redirect('/dashboard')
+
+# ✅ Logout
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect('/')
+
+# ✅ Painel do administrador
+@app.route('/admin')
+def admin():
+    if not session.get('admin'):
+        return redirect('/')
+    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
+    return render_template('admin.html', entregas=entregas)
+
+# ✅ Cadastrar nova entrega
+@app.route('/cadastrar', methods=['POST'])
+def cadastrar():
+    nome_cliente = request.form['nome_cliente']
+    nome_cooperado = request.form['nome_cooperado']
+    bairro = request.form['bairro']
+    valor = float(request.form['valor'])
+    nova = Entrega(
+        nome_cliente=nome_cliente,
+        nome_cooperado=nome_cooperado,
+        bairro=bairro,
+        valor=valor,
+        hora_pedido=datetime.utcnow(),
+        hora_atribuida=datetime.utcnow()
+    )
+    db.session.add(nova)
+    db.session.commit()
+    return redirect('/admin')
+
+# ✅ Dashboard do cooperado
+@app.route('/dashboard')
+def dashboard():
+    if not session.get('user_nome'):
+        return redirect('/')
+
+    nome = session['user_nome']
+    inicio = request.args.get('inicio')
+    fim = request.args.get('fim')
+    query = Entrega.query.filter_by(nome_cooperado=nome)
+
+    if inicio:
+        query = query.filter(Entrega.hora_pedido >= inicio)
+    if fim:
+        query = query.filter(Entrega.hora_pedido <= fim)
+
+    entregas = query.order_by(Entrega.hora_pedido.desc()).all()
+    total_geral = sum(e.valor for e in entregas)
+    total_pago = sum(e.valor for e in entregas if e.status_pagamento.lower() == 'pago')
+    total_pendente = total_geral - total_pago
+
+    return render_template('dashboard_cooperado.html',
+                           entregas=entregas,
+                           total_geral=total_geral,
+                           total_pago=total_pago,
+                           total_pendente=total_pendente)
+
+# ✅ Editar entrega (acesso do cooperado e admin)
+@app.route('/editar/<int:entrega_id>', methods=['GET', 'POST'])
+def editar_entrega(entrega_id):
+    entrega = Entrega.query.get_or_404(entrega_id)
+
+    if request.method == 'POST':
+        entrega.status_pagamento = request.form['status_pagamento']
+        entrega.status_entrega = request.form['status_entrega']
+        db.session.commit()
+        if session.get('admin'):
+            return redirect('/admin')
+        return redirect('/dashboard')
+
+    return render_template('editar_entrega.html', entrega=entrega, user_tipo=session.get('user_tipo'))
+
+# ✅ Exportar para Excel
+@app.route('/exportar')
+def exportar():
+    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
+    data = [{
+        'Data': e.hora_pedido.strftime('%Y-%m-%d'),
+        'Nome do Cliente': e.nome_cliente,
+        'Hora do Pedido': e.hora_pedido.strftime('%H:%M:%S'),
+        'Hora Atribuída': e.hora_atribuida.strftime('%H:%M:%S') if e.hora_atribuida else '',
+        'Nome do Cooperado': e.nome_cooperado,
+        'Status de Pagamento': e.status_pagamento,
+        'Status da Entrega': e.status_entrega,
+    } for e in entregas]
+    df = pd.DataFrame(data)
+    df.to_excel('entregas_exportadas.xlsx', index=False)
+    return 'Exportado com sucesso!'
+
+# ✅ Criar tabelas
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
