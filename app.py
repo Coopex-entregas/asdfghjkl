@@ -1,5 +1,6 @@
 from flask import Flask, render_template, request, redirect, url_for, session, flash, send_file
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import text
 from datetime import datetime
 import pandas as pd
 import io
@@ -7,7 +8,10 @@ import os
 
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta'
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL', 'postgresql://banco_de_dados_qus2_user:o9OsVK4SDOxYahEyNI8DvrkTyji0nLLo@dpg-d1per5c9c44c738iiqr0-a.oregon-postgres.render.com/banco_de_dados_qus2')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
+    'DATABASE_URL',
+    'postgresql://banco_de_dados_umjo_user:RhyjcVd65ByuboYnBhTR5O4za6CkQbWZ@dpg-d1ukc36mcj7s73ek6v00-a.oregon-postgres.render.com/banco_de_dados_umjo'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -36,6 +40,29 @@ class Entrega(db.Model):
 
 with app.app_context():
     db.create_all()
+
+    # BLOCO DE CORREÇÃO DAS COLUNAS
+    def corrigir_tabela_entrega():
+        with db.engine.connect() as con:
+            colunas = con.execute(text("SELECT column_name FROM information_schema.columns WHERE table_name='entrega';"))
+            colunas_existentes = {row[0] for row in colunas}
+            alteracoes = []
+            if 'data_envio' not in colunas_existentes:
+                alteracoes.append("ADD COLUMN data_envio TIMESTAMP")
+            if 'data_recebido' not in colunas_existentes:
+                alteracoes.append("ADD COLUMN data_recebido TIMESTAMP")
+            if 'status' not in colunas_existentes:
+                alteracoes.append("ADD COLUMN status VARCHAR(20) DEFAULT 'pendente'")
+            if 'cooperado_id' not in colunas_existentes:
+                alteracoes.append("ADD COLUMN cooperado_id INTEGER")
+            if alteracoes:
+                con.execute(text(f'ALTER TABLE entrega {", ".join(alteracoes)};'))
+    corrigir_tabela_entrega()
+
+    # Cria usuário admin padrão, se não existir
+    if not Usuario.query.filter_by(nome='coopex').first():
+        db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
+        db.session.commit()
 
 # ROTAS
 
@@ -170,7 +197,6 @@ def marcar_pendente(id):
 def estatisticas():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
         return redirect(url_for('login'))
-    # Dados resumidos para painel admin
     entregas = Entrega.query.all()
     total = sum(e.valor for e in entregas)
     recebidas = [e for e in entregas if e.status == 'recebido']
@@ -224,12 +250,6 @@ def exportar_xlsx():
             df.to_excel(writer, sheet_name=cooperado.nome[:31], index=False)
     output.seek(0)
     return send_file(output, download_name="relatorio_entregas.xlsx", as_attachment=True)
-
-# Cria usuário admin padrão, se não existir
-with app.app_context():
-    if not Usuario.query.filter_by(nome='coopex').first():
-        db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
-        db.session.commit()
 
 if __name__ == '__main__':
     app.run(debug=True)
