@@ -11,6 +11,7 @@ app.secret_key = "sua_chave_secreta"
 
 app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("DATABASE_URL", "sqlite:///entregas.db").replace("postgres://", "postgresql://")
 app.config["SQLALCHEMY_TRACK_MODIFICATIONS"] = False
+
 db = SQLAlchemy(app)
 
 class Usuario(db.Model):
@@ -121,10 +122,17 @@ def dashboard():
         total_periodo_pago = sum(1 for e in entregas if e.status_pagamento == "pago")
         total_periodo_pendente = sum(1 for e in entregas if e.status_pagamento == "pendente")
 
+        total_geral = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if "R$" in e.descricao)
+        total_pago = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.status_pagamento == "pago" and "R$" in e.descricao)
+        total_pendente = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.status_pagamento == "pendente" and "R$" in e.descricao)
+
         return render_template("cooperado.html", entregas=entregas,
                                total_periodo=total_periodo,
                                total_periodo_pago=total_periodo_pago,
                                total_periodo_pendente=total_periodo_pendente,
+                               total_geral=round(total_geral, 2),
+                               total_pago=round(total_pago, 2),
+                               total_pendente=round(total_pendente, 2),
                                data_inicio=data_inicio, data_fim=data_fim)
 
 @app.route("/estatisticas")
@@ -140,27 +148,95 @@ def estatisticas_cooperado():
     else:
         cooperados = Usuario.query.filter_by(id=cooperado_id).all()
 
-    stats = []
+    total = pagas = pendentes = total_valor = 0
     for coop in cooperados:
         entregas = Entrega.query.filter_by(cooperado_id=coop.id).all()
-        total_dia = sum(1 for e in entregas if e.hora_pedido.date() == hoje)
-        total_mes = sum(1 for e in entregas if e.hora_pedido.month == hoje.month and e.hora_pedido.year == hoje.year)
-        total_ano = sum(1 for e in entregas if e.hora_pedido.year == hoje.year)
-        valores_dia = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.date() == hoje and "R$" in e.descricao)
-        valores_mes = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.month == hoje.month and e.hora_pedido.year == hoje.year and "R$" in e.descricao)
-        valores_ano = sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if e.hora_pedido.year == hoje.year and "R$" in e.descricao)
+        total += len(entregas)
+        pagas += sum(1 for e in entregas if e.status_pagamento == "pago")
+        pendentes += sum(1 for e in entregas if e.status_pagamento == "pendente")
+        total_valor += sum(float(e.descricao.split("R$")[-1].replace(",", ".")) for e in entregas if "R$" in e.descricao)
 
-        stats.append({
-            "nome": coop.nome,
-            "total_dia": total_dia,
-            "total_mes": total_mes,
-            "total_ano": total_ano,
-            "valores_dia": round(valores_dia, 2),
-            "valores_mes": round(valores_mes, 2),
-            "valores_ano": round(valores_ano, 2)
-        })
+    estatisticas = {
+        "total": total,
+        "pagas": pagas,
+        "pendentes": pendentes,
+        "total_valor": total_valor
+    }
 
-    return render_template("estatisticas.html", stats=stats, cooperados=cooperados)
+    return render_template("estatisticas.html", estatisticas=estatisticas, cooperados=cooperados, cooperado_id=cooperado_id)
+
+@app.route("/cadastrar_entrega", methods=["GET", "POST"])
+def cadastrar_entrega():
+    if "user_id" not in session or session["user_tipo"] != "adm":
+        return redirect(url_for("login"))
+
+    cooperados = Usuario.query.filter_by(tipo="cooperado").all()
+
+    if request.method == "POST":
+        descricao = request.form["descricao"]
+        hora_pedido = datetime.strptime(request.form["hora_pedido"], "%Y-%m-%dT%H:%M")
+        cooperado_id = request.form.get("cooperado_id")
+
+        entrega = Entrega(
+            descricao=descricao,
+            hora_pedido=hora_pedido,
+            hora_atribuida=hora_pedido if cooperado_id else None,
+            cooperado_id=int(cooperado_id) if cooperado_id else None
+        )
+        db.session.add(entrega)
+        db.session.commit()
+        flash("Entrega cadastrada com sucesso.")
+        return redirect(url_for("dashboard"))
+
+    return render_template("cadastrar_entrega.html", cooperados=cooperados)
+
+@app.route("/cadastrar_cooperado", methods=["GET", "POST"])
+def cadastrar_cooperado():
+    if "user_id" not in session or session["user_tipo"] != "adm":
+        return redirect(url_for("login"))
+
+    if request.method == "POST":
+        nome = request.form["nome"]
+        senha = request.form["senha"]
+
+        if Usuario.query.filter_by(nome=nome).first():
+            flash("Usuário já existe.")
+            return redirect(url_for("cadastrar_cooperado"))
+
+        novo = Usuario(
+            nome=nome,
+            senha_hash=generate_password_hash(senha),
+            tipo="cooperado"
+        )
+        db.session.add(novo)
+        db.session.commit()
+        flash("Cooperado cadastrado com sucesso.")
+        return redirect(url_for("dashboard"))
+
+    return render_template("cadastrar_cooperado.html")
+
+@app.route("/editar_entrega/<int:entrega_id>", methods=["GET", "POST"])
+def editar_entrega(entrega_id):
+    if "user_id" not in session:
+        return redirect(url_for("login"))
+
+    entrega = Entrega.query.get_or_404(entrega_id)
+    cooperados = Usuario.query.filter_by(tipo="cooperado").all()
+    user_tipo = session["user_tipo"]
+
+    if request.method == "POST":
+        if user_tipo == "adm":
+            entrega.descricao = request.form["descricao"]
+            coop_id = request.form.get("cooperado_id")
+            entrega.cooperado_id = int(coop_id) if coop_id else None
+            entrega.hora_atribuida = datetime.now() if coop_id else None
+        entrega.status_pagamento = request.form["status_pagamento"]
+        entrega.status_entrega = request.form["status_entrega"]
+        db.session.commit()
+        flash("Entrega atualizada com sucesso.")
+        return redirect(url_for("dashboard"))
+
+    return render_template("editar_entrega.html", entrega=entrega, cooperados=cooperados, user_tipo=user_tipo)
 
 @app.route("/exportar")
 def exportar_excel():
@@ -203,3 +279,8 @@ def excluir_entrega(entrega_id):
         db.session.delete(entrega)
         db.session.commit()
     return redirect(url_for("dashboard"))
+
+if __name__ == "__main__":
+    with app.app_context():
+        db.create_all()
+    app.run(debug=True)

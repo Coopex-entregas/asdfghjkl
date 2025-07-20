@@ -123,9 +123,10 @@
 
   <div class="container">
     <div class="actions">
-      <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
-      <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
-      <a href="{{ url_for('estatisticas') }}" class="btn">Estatísticas por Cooperado</a>
+      <!-- Botões comentados porque não existem no backend ainda -->
+      <!-- <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a> -->
+      <!-- <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a> -->
+      <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
     </div>
 
     <div class="filtros">
@@ -146,7 +147,7 @@
 
         <button class="btn" type="submit">Filtrar</button>
 
-        <a class="btn" href="/exportar?data_inicio={{data_inicio}}&data_fim={{data_fim}}&cooperado_id={{request.args.get('cooperado_id', 'todos')}}">Exportar para Excel</a>
+        <a class="btn" href="{{ url_for('exportar_entregas') }}?data_inicio={{data_inicio}}&data_fim={{data_fim}}&cooperado_id={{request.args.get('cooperado_id', 'todos')}}">Exportar para Excel</a>
       </form>
     </div>
 
@@ -194,8 +195,11 @@
             <td>{{ e.status_pagamento }}</td>
             <td>{{ e.status_entrega }}</td>
             <td>
-              <a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a>
-              <a class="btn" href="{{ url_for('excluir_entrega', entrega_id=e.id) }}" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</a>
+              <!-- Botão Editar desativado até rota existir -->
+              <!-- <a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a> -->
+              <form action="{{ url_for('excluir_entrega', entrega_id=e.id) }}" method="post" style="display:inline;">
+                <button type="submit" class="btn" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</button>
+              </form>
             </td>
           </tr>
           {% endfor %}
