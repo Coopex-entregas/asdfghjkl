@@ -35,9 +35,8 @@ class Entrega(db.Model):
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     data_recebimento = db.Column(db.DateTime, nullable=True)
 
-### RESETAR BANCO E CRIAR ADMIN (REMOVA DEPOIS DE CRIAR) ###
+# Cria o admin coopex se não existir
 with app.app_context():
-    db.drop_all()
     db.create_all()
     if not Usuario.query.filter_by(nome='coopex').first():
         admin = Usuario(nome='coopex', senha='05062721', tipo='admin')
