@@ -1,94 +1,30 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Painel Coopex</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Painel de Login</title>
     <style>
-        body {
-            background: #003366;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
-            margin: 0;
-        }
-        .login-container {
-            background: #fff;
-            color: #003366;
-            border-radius: 16px;
-            box-shadow: 0 8px 24px rgba(0,0,0,0.18);
-            padding: 32px 28px;
-            max-width: 350px;
-            width: 90vw;
-            display: flex;
-            flex-direction: column;
-        }
-        .login-container h2 {
-            text-align: center;
-            margin-bottom: 24px;
-            color: #003366;
-        }
-        .login-container label {
-            font-weight: bold;
-            margin-bottom: 4px;
-        }
-        .login-container input[type="text"],
-        .login-container input[type="password"] {
-            width: 100%;
-            padding: 10px 8px;
-            margin-bottom: 18px;
-            border: 1px solid #b0c4de;
-            border-radius: 8px;
-            background: #f6f8fa;
-            font-size: 16px;
-        }
-        .login-container button {
-            background: #003366;
-            color: #fff;
-            padding: 12px;
-            border: none;
-            border-radius: 8px;
-            font-size: 18px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-top: 10px;
-        }
-        .login-container button:hover {
-            background: #0050b3;
-        }
-        .msg {
-            margin: 0 0 10px 0;
-            color: #d8000c;
-            text-align: center;
-            font-size: 16px;
-        }
-        @media (max-width: 400px) {
-            .login-container {
-                padding: 18px 8px;
-            }
-        }
+        body { background: #fff; color: #222; font-family: Arial; }
+        .container { max-width: 350px; margin: 90px auto; background: #e3f0fd; border-radius: 14px; box-shadow: 0 2px 8px #ccc; padding: 36px 36px 32px 36px; }
+        h2 { color: #1967be; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin: 8px 0 16px 0; border-radius: 7px; border: 1px solid #d3d3d3;}
+        button { background: #1967be; color: #fff; border: none; border-radius: 7px; padding: 12px 0; width: 100%; font-size: 1.1em; font-weight: bold; }
+        .erro { color: red; margin-bottom: 10px; text-align: center;}
     </style>
 </head>
 <body>
-    <form class="login-container" method="POST" action="{{ url_for('login') }}">
+    <div class="container">
         <h2>Login</h2>
-        {% with messages = get_flashed_messages(with_categories=true) %}
-          {% if messages %}
-            {% for category, message in messages %}
-              <div class="msg">{{ message }}</div>
-            {% endfor %}
-          {% endif %}
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="erro">{{ messages[0] }}</div>
+            {% endif %}
         {% endwith %}
-        <label for="nome">Usuário</label>
-        <input type="text" id="nome" name="nome" required placeholder="coopex" autocomplete="username">
-
-        <label for="senha">Senha</label>
-        <input type="password" id="senha" name="senha" required placeholder="••••••••" autocomplete="current-password">
-
-        <button type="submit">Entrar</button>
-    </form>
+        <form method="POST">
+            <input type="text" name="usuario" placeholder="Usuário" required autofocus>
+            <input type="password" name="senha" placeholder="Senha" required>
+            <button type="submit">Entrar</button>
+        </form>
+    </div>
 </body>
 </html>
