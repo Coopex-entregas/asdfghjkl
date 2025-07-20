@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Editar Entrega - Coopex</title>
+  <title>Editar Entrega - Cooperado - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -38,7 +38,16 @@
       font-weight: bold;
     }
 
-    input[type="text"],
+    p {
+      color: #444;
+      font-size: 16px;
+      margin-bottom: 15px;
+    }
+
+    strong {
+      color: #000;
+    }
+
     select {
       width: 100%;
       padding: 10px;
@@ -74,38 +83,15 @@
     .back-link:hover {
       text-decoration: underline;
     }
-
-    p {
-      color: #444;
-      font-size: 16px;
-      margin-bottom: 15px;
-    }
-
-    strong {
-      color: #000;
-    }
   </style>
 </head>
 <body>
   <div class="form-container">
-    <h1>Editar Entrega</h1>
-    <a class="back-link" href="{{ url_for('dashboard') }}">← Voltar</a>
+    <h1>Editar Entrega - Cooperado</h1>
+    <a class="back-link" href="{{ url_for('painel_cooperado') }}">← Voltar</a>
 
-    <form method="POST" action="{{ url_for('editar_entrega', entrega_id=entrega.id) }}">
-      {% if user_tipo == 'adm' %}
-        <label for="descricao">Descrição:</label>
-        <input type="text" id="descricao" name="descricao" value="{{ entrega.descricao }}" required />
-
-        <label for="cooperado_id">Atribuir Cooperado:</label>
-        <select name="cooperado_id" id="cooperado_id">
-          <option value="">-- Nenhum --</option>
-          {% for c in cooperados %}
-            <option value="{{ c.id }}" {% if entrega.cooperado_id == c.id %}selected{% endif %}>{{ c.nome }}</option>
-          {% endfor %}
-        </select>
-      {% else %}
-        <p><strong>Descrição:</strong> {{ entrega.descricao }}</p>
-      {% endif %}
+    <form method="POST" action="{{ url_for('editar_entrega', id=entrega.id) }}">
+      <p><strong>Descrição:</strong> {{ entrega.descricao }}</p>
 
       <label for="status_pagamento">Status Pagamento:</label>
       <select name="status_pagamento" id="status_pagamento">
