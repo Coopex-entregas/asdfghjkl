@@ -47,6 +47,7 @@
       background: #e0e7ff;
       padding: 1.5rem;
       border-radius: 10px;
+      max-width: 400px;
     }
     .resultado div {
       margin: 1rem 0;
@@ -60,10 +61,10 @@
   </header>
 
   <div class="container">
-    <form method="GET" action="{{ url_for('estatisticas') }}" class="filtros">
+    <form method="GET" action="{{ url_for('estatisticas_cooperado') }}" class="filtros">
       <label for="cooperado">Cooperado:</label>
       <select name="cooperado_id" id="cooperado">
-        <option value="todos">Todos</option>
+        <option value="todos" {% if cooperado_id == 'todos' %}selected{% endif %}>Todos</option>
         {% for c in cooperados %}
         <option value="{{ c.id }}" {% if cooperado_id == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
         {% endfor %}
@@ -76,7 +77,7 @@
       <input type="date" name="data_fim" id="data_fim" value="{{ data_fim }}">
 
       <button class="btn" type="submit">Filtrar</button>
-      <a class="btn" href="{{ url_for('dashboard') }}">Voltar</a>
+      <a class="btn" href="{{ url_for('admin') }}">Voltar</a>
     </form>
 
     <div class="resultado">

@@ -8,9 +8,10 @@ import os
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta'
 
+# String de conexão com o banco (ajuste conforme necessário)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL',
-    'postgresql://usuario:senha@host:porta/banco'
+    'postgresql://banco_de_dados_umjo_user:RhyjcVd65ByuboYnBhTR5O4za6CkQbWZ@dpg-d1ukc36mcj7s73ek6v00-a.oregon-postgres.render.com:5432/banco_de_dados_umjo'
 )
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -42,8 +43,7 @@ class Entrega(db.Model):
 
 with app.app_context():
     db.create_all()
-
-    # Usuário admin padrão
+    # Cria o usuário admin padrão se não existir
     if not Usuario.query.filter_by(nome='coopex').first():
         db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
         db.session.commit()
@@ -73,8 +73,6 @@ def login():
 def logout():
     session.clear()
     return redirect(url_for('login'))
-
-# PAINEL ADMIN
 
 @app.route('/admin')
 def admin():
@@ -111,21 +109,15 @@ def admin():
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     cooperados = Cooperado.query.all()
 
-    # Estatísticas básicas para filtro aplicado
+    # Estatísticas básicas
     total_dia = sum(e.valor for e in entregas if e.data_envio.date() == datetime.utcnow().date())
     total_mes = sum(e.valor for e in entregas if e.data_envio.month == datetime.utcnow().month and e.data_envio.year == datetime.utcnow().year)
     total_ano = sum(e.valor for e in entregas if e.data_envio.year == datetime.utcnow().year)
-    valores_dia = total_dia
-    valores_mes = total_mes
-    valores_ano = total_ano
 
     estatisticas = {
         'total_dia': total_dia,
         'total_mes': total_mes,
-        'total_ano': total_ano,
-        'valores_dia': valores_dia,
-        'valores_mes': valores_mes,
-        'valores_ano': valores_ano
+        'total_ano': total_ano
     }
 
     return render_template('admin.html', entregas=entregas, cooperados=cooperados, estatisticas=estatisticas,
@@ -162,7 +154,15 @@ def cadastrar_entrega():
             cooperado_id = None
         else:
             cooperado_id = int(cooperado_id)
-        nova = Entrega(cliente=cliente, bairro=bairro, valor=valor, data_envio=datetime.utcnow(), status='pendente', cooperado_id=cooperado_id, data_atribuida=datetime.utcnow() if cooperado_id else None)
+        nova = Entrega(
+            cliente=cliente,
+            bairro=bairro,
+            valor=valor,
+            data_envio=datetime.utcnow(),
+            status='pendente',
+            cooperado_id=cooperado_id,
+            data_atribuida=datetime.utcnow() if cooperado_id else None
+        )
         db.session.add(nova)
         db.session.commit()
         flash('Entrega cadastrada!')
@@ -196,24 +196,23 @@ def editar_entrega(id):
                 entrega.data_recebido = datetime.utcnow()
             elif status == 'pendente':
                 entrega.data_recebido = None
-        elif user_tipo == 'cooperado':
-            # Cooperado só pode alterar status pagamento e status entrega
-            status_pagamento = request.form.get('status_pagamento')
-            status_entrega = request.form.get('status_entrega')
-            if status_pagamento in ['pendente', 'pago']:
-                entrega.status_pagamento = status_pagamento
-            if status_entrega in ['pendente', 'em rota', 'entregue']:
-                entrega.status_entrega = status_entrega
-            if status_entrega == 'entregue' and not entrega.data_recebido:
-                entrega.data_recebido = datetime.utcnow()
-            elif status_entrega != 'entregue':
-                entrega.data_recebido = None
+        else:
+            # Para cooperados, controle simples de status (pode adaptar conforme precisar)
+            status = request.form.get('status')
+            if status in ['pendente', 'recebido']:
+                entrega.status = status
+                if status == 'recebido' and not entrega.data_recebido:
+                    entrega.data_recebido = datetime.utcnow()
+                elif status == 'pendente':
+                    entrega.data_recebido = None
+
         db.session.commit()
         flash('Entrega atualizada!')
         if user_tipo == 'admin':
             return redirect(url_for('admin'))
         else:
             return redirect(url_for('painel_cooperado'))
+
     return render_template('editar_entrega_admin.html' if user_tipo == 'admin' else 'editar_entrega_cooperado.html',
                            entrega=entrega, cooperados=cooperados, user_tipo=user_tipo)
 
@@ -244,9 +243,8 @@ def painel_cooperado():
 
     entregas = query.order_by(Entrega.data_envio.desc()).all()
 
-    # Estatísticas
     total_geral = sum(e.valor for e in entregas)
-    total_pago = sum(e.valor for e in entregas if getattr(e, 'status_pagamento', 'pendente') == 'pago')
+    total_pago = sum(e.valor for e in entregas if getattr(e, 'status', 'pendente') == 'recebido')
     total_pendente = total_geral - total_pago
 
     return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
@@ -290,7 +288,6 @@ def exportar_xlsx():
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         if cooperado_id != 'todos':
-            # Aba única para 1 cooperado
             data = []
             for e in entregas:
                 tempo = (e.data_recebido - e.data_envio).total_seconds() / 60 if e.data_recebido else None
@@ -307,7 +304,6 @@ def exportar_xlsx():
             nome_aba = next((c.nome for c in cooperados if c.id == cooperado_id_int), 'Cooperado')
             df.to_excel(writer, sheet_name=nome_aba[:31], index=False)
         else:
-            # Aba por cooperado
             for cooperado in cooperados:
                 entregas_coop = [e for e in entregas if e.cooperado_id == cooperado.id]
                 data = []
