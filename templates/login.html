@@ -1,93 +1,30 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Login - Coopex</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(to right, #0047ab, #007bff);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-
-    .login-container {
-      background-color: white;
-      padding: 40px 30px;
-      border-radius: 10px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      max-width: 400px;
-    }
-
-    .login-container h1 {
-      text-align: center;
-      color: #0047ab;
-      margin-bottom: 25px;
-    }
-
-    .login-container label {
-      display: block;
-      margin-bottom: 8px;
-      color: #333;
-      font-weight: bold;
-    }
-
-    .login-container input[type="text"],
-    .login-container input[type="password"] {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 20px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    .login-container button {
-      width: 100%;
-      padding: 12px;
-      background-color: #0047ab;
-      border: none;
-      color: white;
-      font-size: 16px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    .login-container button:hover {
-      background-color: #003f99;
-    }
-
-    .msg {
-      text-align: center;
-      color: red;
-      margin-bottom: 15px;
-    }
-  </style>
+    <meta charset="UTF-8">
+    <title>Painel de Login</title>
+    <style>
+        body { background: #fff; color: #222; font-family: Arial; }
+        .container { max-width: 350px; margin: 90px auto; background: #e3f0fd; border-radius: 14px; box-shadow: 0 2px 8px #ccc; padding: 36px 36px 32px 36px; }
+        h2 { color: #1967be; }
+        input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin: 8px 0 16px 0; border-radius: 7px; border: 1px solid #d3d3d3;}
+        button { background: #1967be; color: #fff; border: none; border-radius: 7px; padding: 12px 0; width: 100%; font-size: 1.1em; font-weight: bold; }
+        .erro { color: red; margin-bottom: 10px; text-align: center;}
+    </style>
 </head>
 <body>
-  <div class="login-container">
-    <h1>Login - Coopex</h1>
-
-    {% with messages = get_flashed_messages() %}
-      {% if messages %}
-        <div class="msg">{{ messages[0] }}</div>
-      {% endif %}
-    {% endwith %}
-
-    <form method="POST" action="{{ url_for('login') }}">
-      <label for="nome">Usuário:</label>
-      <input type="text" id="nome" name="nome" required />
-
-      <label for="senha">Senha:</label>
-      <input type="password" id="senha" name="senha" required />
-
-      <button type="submit">Entrar</button>
-    </form>
-  </div>
+    <div class="container">
+        <h2>Login</h2>
+        {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="erro">{{ messages[0] }}</div>
+            {% endif %}
+        {% endwith %}
+        <form method="POST">
+            <input type="text" name="usuario" placeholder="Usuário" required autofocus>
+            <input type="password" name="senha" placeholder="Senha" required>
+            <button type="submit">Entrar</button>
+        </form>
+    </div>
 </body>
 </html>
