@@ -5,19 +5,20 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.secret_key = 'chave_super_secreta'
+app.secret_key = 'chave_secreta'
 
-# Configuração do banco PostgreSQL (Render)
+# Banco de dados PostgreSQL no Render (fallback para SQLite local)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///local.db").replace("postgres://", "postgresql://")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
 # MODELOS
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), unique=True, nullable=False)
+    nome = db.Column(db.String(100), nullable=False, unique=True)
     senha_hash = db.Column(db.String(200), nullable=False)
-    tipo = db.Column(db.String(20), default='cooperado')  # 'admin' ou 'cooperado'
+    tipo = db.Column(db.String(10), default='coop')  # coop ou adm
 
     def verificar_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
@@ -33,25 +34,26 @@ class Entrega(db.Model):
     hora_criacao = db.Column(db.DateTime, default=datetime.utcnow)
     valor = db.Column(db.Float, default=0.0)
 
-# ROTA RAIZ - TELA DE LOGIN
-@app.route('/', methods=['GET', 'POST'])
-@app.route('/login', methods=['GET', 'POST'])
-def login():
-    if request.method == 'POST':
-        nome = request.form['nome']
-        senha = request.form['senha']
-        usuario = Usuario.query.filter_by(nome=nome).first()
-        if usuario and usuario.verificar_senha(senha):
-            session['usuario_id'] = usuario.id
-            session['nome'] = usuario.nome
-            session['tipo'] = usuario.tipo
-            if usuario.tipo == 'admin':
-                return redirect('/admin')
-            else:
-                return redirect('/cooperado')
-        else:
-            flash("Usuário ou senha inválidos.")
+# ROTA INICIAL (LOGIN)
+@app.route('/')
+def index():
     return render_template('login.html')
+
+@app.route('/login', methods=['POST'])
+def login():
+    nome = request.form['nome']
+    senha = request.form['senha']
+    usuario = Usuario.query.filter_by(nome=nome).first()
+    if usuario and usuario.verificar_senha(senha):
+        session['usuario_id'] = usuario.id
+        session['nome'] = usuario.nome
+        session['tipo'] = usuario.tipo
+        if usuario.tipo == 'adm':
+            return redirect('/admin')
+        else:
+            return redirect('/cooperado')
+    flash('Login inválido')
+    return redirect('/')
 
 @app.route('/logout')
 def logout():
@@ -61,16 +63,16 @@ def logout():
 # PAINEL ADMINISTRADOR
 @app.route('/admin')
 def admin():
-    if 'usuario_id' not in session or session.get('tipo') != 'admin':
+    if session.get('tipo') != 'adm':
         return redirect('/')
     entregas = Entrega.query.all()
-    cooperados = Usuario.query.all()
+    cooperados = Usuario.query.filter_by(tipo='coop').all()
     return render_template('admin.html', entregas=entregas, cooperados=cooperados)
 
 # PAINEL COOPERADO
 @app.route('/cooperado')
 def cooperado():
-    if 'usuario_id' not in session or session.get('tipo') != 'cooperado':
+    if 'usuario_id' not in session or session.get('tipo') != 'coop':
         return redirect('/')
     entregas = Entrega.query.filter_by(cooperado_id=session['usuario_id']).all()
     return render_template('cooperado.html', entregas=entregas)
@@ -78,11 +80,13 @@ def cooperado():
 # CADASTRAR NOVO COOPERADO
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
+    if session.get('tipo') != 'adm':
+        return redirect('/')
     if request.method == 'POST':
         nome = request.form['nome']
         senha = request.form['senha']
         senha_hash = generate_password_hash(senha)
-        novo = Usuario(nome=nome, senha_hash=senha_hash, tipo='cooperado')
+        novo = Usuario(nome=nome, senha_hash=senha_hash, tipo='coop')
         db.session.add(novo)
         db.session.commit()
         return redirect('/admin')
@@ -91,7 +95,9 @@ def cadastrar_cooperado():
 # CADASTRAR ENTREGA
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
-    cooperados = Usuario.query.filter_by(tipo='cooperado').all()
+    if session.get('tipo') != 'adm':
+        return redirect('/')
+    cooperados = Usuario.query.filter_by(tipo='coop').all()
     if request.method == 'POST':
         descricao = request.form['descricao']
         cooperado_id = request.form.get('cooperado_id')
@@ -110,8 +116,10 @@ def cadastrar_entrega():
 # EDITAR ENTREGA
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
+    if session.get('tipo') != 'adm':
+        return redirect('/')
     entrega = Entrega.query.get_or_404(id)
-    cooperados = Usuario.query.filter_by(tipo='cooperado').all()
+    cooperados = Usuario.query.filter_by(tipo='coop').all()
     if request.method == 'POST':
         entrega.descricao = request.form['descricao']
         entrega.status_pagamento = request.form['status_pagamento']
@@ -125,19 +133,24 @@ def editar_entrega(id):
 # ESTATÍSTICAS
 @app.route('/estatisticas')
 def estatisticas():
+    if session.get('tipo') != 'adm':
+        return redirect('/')
     total_entregas = Entrega.query.count()
     total_recebidas = Entrega.query.filter_by(status_pagamento='recebido').count()
     total_pendentes = Entrega.query.filter_by(status_pagamento='pendente').count()
     total_valor = db.session.query(db.func.sum(Entrega.valor)).scalar() or 0.0
-    return render_template('estatisticas.html', total_entregas=total_entregas, total_recebidas=total_recebidas, total_pendentes=total_pendentes, total_valor=total_valor)
+    return render_template('estatisticas.html', total_entregas=total_entregas,
+                           total_recebidas=total_recebidas,
+                           total_pendentes=total_pendentes,
+                           total_valor=total_valor)
 
-# ROTA EXTRA PARA CRIAR AS TABELAS
+# SETUP INICIAL PARA CRIAR TABELAS
 @app.route('/setup')
 def setup():
     db.create_all()
-    return "Tabelas criadas com sucesso!"
+    return "✅ Tabelas criadas com sucesso!"
 
-# EXECUÇÃO LOCAL (desativado no Render)
+# LOCALHOST
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
