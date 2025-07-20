@@ -2,83 +2,23 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8">
-    <title>Login - Sistema Coopex</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <style>
-        body {
-            background: #f0f4ff;
-            font-family: Arial, sans-serif;
-            display: flex;
-            height: 100vh;
-            align-items: center;
-            justify-content: center;
-        }
-        .container {
-            background: white;
-            padding: 40px;
-            border-radius: 12px;
-            box-shadow: 0 0 20px rgba(0,0,0,0.1);
-            width: 100%;
-            max-width: 400px;
-        }
-        h2 {
-            text-align: center;
-            margin-bottom: 24px;
-            color: #1a237e;
-        }
-        label {
-            display: block;
-            margin-bottom: 8px;
-            font-weight: bold;
-            color: #333;
-        }
-        input[type="text"],
-        input[type="password"] {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 20px;
-            border-radius: 6px;
-            border: 1px solid #ccc;
-        }
-        button {
-            background: #1a237e;
-            color: white;
-            border: none;
-            padding: 12px;
-            width: 100%;
-            border-radius: 6px;
-            cursor: pointer;
-            font-size: 16px;
-        }
-        button:hover {
-            background: #283593;
-        }
-        .mensagem {
-            color: red;
-            text-align: center;
-            margin-bottom: 15px;
-        }
-    </style>
+    <title>Login - Coopex</title>
 </head>
-<body>
-    <div class="container">
-        <h2>Sistema Coopex</h2>
-
-        {% with mensagens = get_flashed_messages() %}
-            {% if mensagens %}
-                <div class="mensagem">{{ mensagens[0] }}</div>
-            {% endif %}
-        {% endwith %}
-
-        <form method="POST" action="{{ url_for('index') }}">
-            <label for="usuario">Usuário:</label>
-            <input type="text" name="usuario" id="usuario" required>
-
-            <label for="senha">Senha:</label>
-            <input type="password" name="senha" id="senha" required>
-
-            <button type="submit">Entrar</button>
-        </form>
-    </div>
+<body style="background: #f0f7ff;">
+    <h2>Login Coopex</h2>
+    <form method="post">
+        <label>Usuário:</label><br>
+        <input type="text" name="nome" required><br>
+        <label>Senha:</label><br>
+        <input type="password" name="senha" required><br>
+        <button type="submit">Entrar</button>
+    </form>
+    {% with messages = get_flashed_messages(with_categories=true) %}
+      {% if messages %}
+        {% for category, message in messages %}
+          <div>{{ message }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
 </body>
 </html>
