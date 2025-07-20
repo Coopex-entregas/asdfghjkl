@@ -1,213 +1,175 @@
 from flask import Flask, render_template, request, redirect, url_for, session, send_file, flash
-from flask_sqlalchemy import SQLAlchemy
+from models import db, Usuario, Cooperado, Entrega
 from werkzeug.security import generate_password_hash, check_password_hash
+import os
+from datetime import datetime
 import pandas as pd
 from io import BytesIO
-from datetime import datetime
-import os
 
 app = Flask(__name__)
-app.secret_key = 'sua_chave_secreta'
-
-# URL do PostgreSQL: substitua pelos seus dados se necessário!
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or "sqlite:///banco.db"
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv("DATABASE_URL", "sqlite:///app.db")
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+app.config['SECRET_KEY'] = 'supersegredo123'
 
-db = SQLAlchemy(app)
+db.init_app(app)
 
-# MODELS
-class Usuario(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), unique=True, nullable=False)
-    senha = db.Column(db.String(200), nullable=False)
-    tipo = db.Column(db.String(20), nullable=False)  # 'admin' ou 'cooperado'
-
-class Cooperado(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False)
-
-class Entrega(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    cliente = db.Column(db.String(100), nullable=False)
-    bairro = db.Column(db.String(100))
-    valor = db.Column(db.Float)
-    status = db.Column(db.String(20))
-    cooperado = db.Column(db.String(100), nullable=True)
-    data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atribuicao = db.Column(db.DateTime, nullable=True)
-    data_recebimento = db.Column(db.DateTime, nullable=True)
-
-# CRIAR O BANCO E USUÁRIO ADMIN NO PRIMEIRO START
+# CRIAR BANCO E ADMIN PADRÃO
 with app.app_context():
     db.create_all()
     if not Usuario.query.filter_by(nome='coopex').first():
-        user = Usuario(nome='coopex', senha=generate_password_hash('05062721'), tipo='admin')
-        db.session.add(user)
+        admin = Usuario(nome='coopex', senha=generate_password_hash('05062721'), tipo='admin')
+        db.session.add(admin)
         db.session.commit()
 
-# ROTAS
-
-@app.route('/')
-def home():
-    if 'usuario_id' in session:
-        user = Usuario.query.get(session['usuario_id'])
-        if user.tipo == 'admin':
-            return redirect(url_for('admin'))
-        else:
-            return redirect(url_for('painel_cooperado'))
-    return redirect(url_for('login'))
-
-@app.route('/login', methods=['GET', 'POST'])
+# --- Login ---
+@app.route("/", methods=['GET', 'POST'])
+@app.route("/login", methods=['GET', 'POST'])
 def login():
-    if request.method == 'POST':
+    if request.method == "POST":
         nome = request.form['nome']
         senha = request.form['senha']
-        usuario = Usuario.query.filter_by(nome=nome).first()
-        if usuario and check_password_hash(usuario.senha, senha):
-            session['usuario_id'] = usuario.id
-            session['usuario_tipo'] = usuario.tipo
-            if usuario.tipo == 'admin':
+        user = Usuario.query.filter_by(nome=nome).first()
+        if user and check_password_hash(user.senha, senha):
+            session['user_id'] = user.id
+            session['user_nome'] = user.nome
+            session['user_tipo'] = user.tipo
+            if user.tipo == "admin":
                 return redirect(url_for('admin'))
             else:
-                return redirect(url_for('painel_cooperado'))
+                return redirect(url_for('cooperado'))
         else:
-            flash('Usuário ou senha incorretos.')
-            return render_template('login.html')
-    return render_template('login.html')
+            flash("Usuário ou senha inválidos!", "danger")
+    return render_template("login.html")
 
-@app.route('/logout')
+@app.route("/logout")
 def logout():
     session.clear()
     return redirect(url_for('login'))
 
-@app.route('/admin')
+# --- Painel ADMIN ---
+@app.route("/admin")
 def admin():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+    if not session.get('user_tipo') == 'admin':
         return redirect(url_for('login'))
-    entregas = Entrega.query.all()
+    entregas = Entrega.query.order_by(Entrega.data_criacao.desc()).all()
     cooperados = Cooperado.query.all()
-    return render_template('admin.html', entregas=entregas, cooperados=cooperados)
+    return render_template("admin.html", entregas=entregas, cooperados=cooperados)
 
-@app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
-def cadastrar_cooperado():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+# --- Painel COOPERADO ---
+@app.route("/cooperado")
+def cooperado():
+    if not session.get('user_tipo') == 'cooperado':
         return redirect(url_for('login'))
-    if request.method == 'POST':
+    user = Usuario.query.get(session['user_id'])
+    coop = Cooperado.query.filter_by(nome=user.nome).first()
+    entregas = Entrega.query.filter_by(cooperado=coop).order_by(Entrega.data_criacao.desc()).all() if coop else []
+    return render_template("cooperado.html", entregas=entregas, cooperado=coop)
+
+# --- CADASTRAR NOVO COOPERADO ---
+@app.route("/cadastrar_cooperado", methods=["GET", "POST"])
+def cadastrar_cooperado():
+    if not session.get('user_tipo') == 'admin':
+        return redirect(url_for('login'))
+    if request.method == "POST":
         nome = request.form['nome']
         if not Cooperado.query.filter_by(nome=nome).first():
-            cooperado = Cooperado(nome=nome)
-            db.session.add(cooperado)
+            novo = Cooperado(nome=nome)
+            db.session.add(novo)
+            db.session.add(Usuario(nome=nome, senha=generate_password_hash('123456'), tipo='cooperado'))
             db.session.commit()
+            flash("Cooperado cadastrado com sucesso!", "success")
+        else:
+            flash("Nome já existe!", "danger")
         return redirect(url_for('admin'))
-    return render_template('cadastrar_cooperado.html')
+    return render_template("cadastrar_cooperado.html")
 
-@app.route('/cadastrar_entrega', methods=['GET', 'POST'])
+# --- CADASTRAR NOVA ENTREGA ---
+@app.route("/cadastrar_entrega", methods=["GET", "POST"])
 def cadastrar_entrega():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+    if not session.get('user_tipo') == 'admin':
         return redirect(url_for('login'))
     cooperados = Cooperado.query.all()
-    if request.method == 'POST':
+    if request.method == "POST":
         cliente = request.form['cliente']
         bairro = request.form['bairro']
-        valor = request.form['valor']
-        cooperado = request.form.get('cooperado') or None
-        entrega = Entrega(cliente=cliente, bairro=bairro, valor=valor, status='pendente', cooperado=cooperado)
-        if cooperado:
-            entrega.data_atribuicao = datetime.utcnow()
-        db.session.add(entrega)
+        valor = float(request.form['valor'])
+        status = request.form['status']
+        cooperado_id = request.form.get('cooperado_id')
+        cooperado = Cooperado.query.get(cooperado_id) if cooperado_id else None
+        nova = Entrega(cliente=cliente, bairro=bairro, valor=valor, status=status, cooperado=cooperado)
+        db.session.add(nova)
         db.session.commit()
+        flash("Entrega cadastrada!", "success")
         return redirect(url_for('admin'))
-    return render_template('cadastrar_entrega.html', cooperados=cooperados)
+    return render_template("cadastrar_entrega.html", cooperados=cooperados)
 
-@app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
-def editar_entrega(id):
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+# --- EDITAR ENTREGA ---
+@app.route("/editar_entrega/<int:entrega_id>", methods=["GET", "POST"])
+def editar_entrega(entrega_id):
+    if not session.get('user_tipo') == 'admin':
         return redirect(url_for('login'))
-    entrega = Entrega.query.get_or_404(id)
+    entrega = Entrega.query.get_or_404(entrega_id)
     cooperados = Cooperado.query.all()
-    if request.method == 'POST':
+    if request.method == "POST":
         entrega.cliente = request.form['cliente']
         entrega.bairro = request.form['bairro']
-        entrega.valor = request.form['valor']
+        entrega.valor = float(request.form['valor'])
         entrega.status = request.form['status']
-        cooperado_novo = request.form.get('cooperado') or None
-        if cooperado_novo and cooperado_novo != entrega.cooperado:
-            entrega.cooperado = cooperado_novo
-            entrega.data_atribuicao = datetime.utcnow()
+        entrega.cooperado_id = request.form.get('cooperado_id')
         db.session.commit()
+        flash("Entrega atualizada!", "success")
         return redirect(url_for('admin'))
-    return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados)
+    return render_template("editar_entrega.html", entrega=entrega, cooperados=cooperados)
 
-@app.route('/marcar_recebido/<int:id>')
-def marcar_recebido(id):
-    if 'usuario_id' not in session:
+# --- MARCAR ENTREGA COMO RECEBIDA (COOPERADO) ---
+@app.route("/receber_entrega/<int:entrega_id>")
+def receber_entrega(entrega_id):
+    if not session.get('user_tipo') == 'cooperado':
         return redirect(url_for('login'))
-    entrega = Entrega.query.get_or_404(id)
-    entrega.status = 'recebido'
+    entrega = Entrega.query.get_or_404(entrega_id)
+    entrega.status = "Recebido"
     entrega.data_recebimento = datetime.utcnow()
     db.session.commit()
-    return redirect(url_for('painel_cooperado' if session['usuario_tipo'] == 'cooperado' else 'admin'))
+    flash("Entrega marcada como recebida!", "success")
+    return redirect(url_for('cooperado'))
 
-@app.route('/painel_cooperado')
-def painel_cooperado():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'cooperado':
-        return redirect(url_for('login'))
-    user = Usuario.query.get(session['usuario_id'])
-    entregas = Entrega.query.filter_by(cooperado=user.nome).all()
-    return render_template('cooperado.html', entregas=entregas, nome=user.nome)
-
+# --- EXPORTAR DADOS PARA EXCEL XLSX ---
 @app.route('/exportar')
 def exportar():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+    if not session.get('user_tipo') == 'admin':
         return redirect(url_for('login'))
-    entregas = Entrega.query.all()
+    entregas = Entrega.query.order_by(Entrega.data_criacao.desc()).all()
     cooperados = Cooperado.query.all()
     output = BytesIO()
     writer = pd.ExcelWriter(output, engine='xlsxwriter')
-    for cooperado in cooperados:
-        entregas_coop = Entrega.query.filter_by(cooperado=cooperado.nome).all()
+    for coop in cooperados:
+        co_entregas = [e for e in entregas if e.cooperado == coop]
         data = []
-        for e in entregas_coop:
-            tempo_envio = None
-            if e.data_atribuicao and e.data_criacao:
-                tempo_envio = (e.data_atribuicao - e.data_criacao).total_seconds() / 60  # minutos
-            tempo_entrega = None
-            if e.data_recebimento and e.data_atribuicao:
-                tempo_entrega = (e.data_recebimento - e.data_atribuicao).total_seconds() / 60  # minutos
-            data.append([
-                e.id, e.cliente, e.bairro, e.valor, e.status, e.cooperado,
-                e.data_criacao.strftime('%d/%m/%Y %H:%M:%S') if e.data_criacao else '',
-                e.data_atribuicao.strftime('%d/%m/%Y %H:%M:%S') if e.data_atribuicao else '',
-                e.data_recebimento.strftime('%d/%m/%Y %H:%M:%S') if e.data_recebimento else '',
-                tempo_envio, tempo_entrega
-            ])
-        df = pd.DataFrame(data, columns=[
-            'ID', 'Cliente', 'Bairro', 'Valor', 'Status', 'Cooperado',
-            'Data Criação', 'Data Atribuição', 'Data Recebimento',
-            'Tempo até atribuir (min)', 'Tempo entrega (min)'
-        ])
-        df.to_excel(writer, sheet_name=cooperado.nome, index=False)
+        for e in co_entregas:
+            tempo = (e.data_recebimento - e.data_criacao).total_seconds()/60 if (e.data_recebimento and e.data_criacao) else ''
+            data.append({
+                "ID": e.id,
+                "Cliente": e.cliente,
+                "Bairro": e.bairro,
+                "Valor": e.valor,
+                "Status": e.status,
+                "Data Criação": e.data_criacao.strftime("%d/%m/%Y %H:%M") if e.data_criacao else '',
+                "Data Recebimento": e.data_recebimento.strftime("%d/%m/%Y %H:%M") if e.data_recebimento else '',
+                "Tempo (min)": tempo
+            })
+        df = pd.DataFrame(data)
+        df.to_excel(writer, index=False, sheet_name=coop.nome if coop else "Sem Cooperado")
     writer.close()
     output.seek(0)
-    return send_file(output, download_name="entregas.xlsx", as_attachment=True)
+    return send_file(output, as_attachment=True, download_name='entregas.xlsx')
 
-# --------- ESTATÍSTICAS (Exemplo Rota, pode melhorar se quiser) ---------
+# --- ESTATÍSTICAS (Exemplo de página extra) ---
 @app.route('/estatisticas')
 def estatisticas():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+    if not session.get('user_tipo'):
         return redirect(url_for('login'))
-    cooperados = Cooperado.query.all()
-    stats = []
-    for coop in cooperados:
-        total = Entrega.query.filter_by(cooperado=coop.nome, status='recebido').count()
-        stats.append((coop.nome, total))
-    return render_template('estatisticas.html', stats=stats)
+    # Faça aqui um resumo se quiser
+    return render_template("estatisticas.html")
 
-# --------- ERROS ---------
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('404.html'), 404
-
-# --------- INÍCIO ---------
-if __name__ == '__main__':
+if __name__ == "__main__":
     app.run(debug=True)
