@@ -2,8 +2,8 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>Painel Administrativo - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
       margin: 0;
@@ -107,15 +107,15 @@
         </select>
 
         <label for="data_inicio">De:</label>
-        <input type="date" name="data_inicio" id="data_inicio" value="{{ request.args.get('data_inicio', '') }}">
+        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}">
 
         <label for="data_fim">Até:</label>
-        <input type="date" name="data_fim" id="data_fim" value="{{ request.args.get('data_fim', '') }}">
+        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}">
 
         <button class="btn" type="submit">Filtrar</button>
 
         <a class="btn"
-          href="{{ url_for('exportar_xlsx') }}?data_inicio={{ request.args.get('data_inicio', '') }}&data_fim={{ request.args.get('data_fim', '') }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
+          href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
           Exportar para Excel
         </a>
       </form>
@@ -140,11 +140,11 @@
         <thead>
           <tr>
             <th>ID</th>
-            <th>Nome do Cliente</th>
+            <th>Cliente</th>
             <th>Bairro</th>
-            <th>Valor</th>
+            <th>Valor (R$)</th>
             <th>Data do Pedido</th>
-            <th>Data Recebido</th>
+            <th>Data Atribuída</th>
             <th>Cooperado</th>
             <th>Status</th>
             <th>Ações</th>
@@ -158,28 +158,18 @@
             <td>{{ e.bairro }}</td>
             <td>R$ {{ '%.2f'|format(e.valor) }}</td>
             <td>{{ e.data_envio.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td>
-              {% if e.data_recebido %}
-                {{ e.data_recebido.strftime('%d/%m/%Y %H:%M') }}
-              {% else %}
-                -
-              {% endif %}
-            </td>
-            <td>
-              {% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}
-              {{ coop.nome if coop else '' }}
-            </td>
+            <td>{% if e.data_atribuida %}{{ e.data_atribuida.strftime('%d/%m/%Y %H:%M') }}{% else %}-{% endif %}</td>
+            <td>{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
             <td>{{ e.status }}</td>
             <td>
               <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
-              <a class="btn" href="{{ url_for('marcar_recebido', id=e.id) }}">Recebido</a>
-              <a class="btn" href="{{ url_for('marcar_pendente', id=e.id) }}">Pendente</a>
             </td>
           </tr>
           {% endfor %}
         </tbody>
       </table>
     </div>
+
   </div>
 </body>
 </html>

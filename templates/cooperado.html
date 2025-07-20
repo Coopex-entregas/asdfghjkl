@@ -2,8 +2,8 @@
 <html lang="pt-br">
 <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <title>Dashboard Cooperado - Coopex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <style>
         body {
             margin: 0;
@@ -11,18 +11,15 @@
             background-color: #ffffff;
             color: #333;
         }
-
         header {
             background-color: #003399;
             color: white;
             padding: 1rem;
             text-align: center;
         }
-
         .container {
             padding: 1rem;
         }
-
         .logout {
             display: block;
             text-align: center;
@@ -31,12 +28,10 @@
             text-decoration: none;
             font-weight: bold;
         }
-
         h2 {
             color: #003399;
             text-align: center;
         }
-
         .estatisticas {
             display: flex;
             flex-direction: column;
@@ -44,43 +39,35 @@
             margin: 1rem 0;
             font-size: 16px;
         }
-
         .estatisticas div {
             margin: 4px 0;
         }
-
         form.filtros {
             text-align: center;
             margin-bottom: 1rem;
         }
-
         form.filtros input, form.filtros button {
             margin: 0 5px;
             padding: 6px;
         }
-
         .table-container {
             overflow-x: auto;
         }
-
         table {
             width: 100%;
             border-collapse: collapse;
             margin-top: 1rem;
         }
-
         th, td {
             border: 1px solid #ccc;
             padding: 10px;
             text-align: center;
             white-space: nowrap;
         }
-
         th {
             background-color: #003399;
             color: white;
         }
-
         a.btn {
             padding: 6px 12px;
             background-color: #003399;
@@ -88,16 +75,13 @@
             text-decoration: none;
             border-radius: 5px;
         }
-
         a.btn:hover {
             background-color: #002080;
         }
-
         @media (max-width: 600px) {
             table, thead, tbody, th, td, tr {
                 font-size: 14px;
             }
-
             a.btn {
                 font-size: 14px;
                 padding: 5px 10px;
@@ -111,27 +95,24 @@
     </header>
     <div class="container">
         <a class="logout" href="{{ url_for('logout') }}">Sair</a>
-
         <form method="get" class="filtros">
             <input type="date" name="inicio" value="{{ request.args.get('inicio', '') }}">
             <input type="date" name="fim" value="{{ request.args.get('fim', '') }}">
             <button type="submit">Filtrar</button>
         </form>
-
         <div class="estatisticas">
             <div><strong>Total no período:</strong> R$ {{ total_geral or 0.00 }}</div>
             <div><strong>Total pago:</strong> R$ {{ total_pago or 0.00 }}</div>
             <div><strong>Total pendente:</strong> R$ {{ total_pendente or 0.00 }}</div>
         </div>
-
         <h2>Minhas Entregas</h2>
         <div class="table-container">
             <table>
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Descrição</th>
-                        <th>Hora Pedido</th>
+                        <th>Cliente</th>
+                        <th>Data do Pedido</th>
                         <th>Status Pagamento</th>
                         <th>Status Entrega</th>
                         <th>Ações</th>
@@ -141,12 +122,12 @@
                     {% for e in entregas %}
                     <tr>
                         <td>{{ e.id }}</td>
-                        <td>{{ e.descricao }}</td>
-                        <td>{{ e.hora_pedido.strftime('%d/%m/%Y %H:%M') }}</td>
+                        <td>{{ e.cliente }}</td>
+                        <td>{{ e.data_envio.strftime('%d/%m/%Y %H:%M') }}</td>
                         <td>{{ e.status_pagamento }}</td>
                         <td>{{ e.status_entrega }}</td>
                         <td>
-                            <a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a>
+                            <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
                         </td>
                     </tr>
                     {% else %}
