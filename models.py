@@ -5,12 +5,13 @@ db = SQLAlchemy()
 
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False, unique=True)
-    senha = db.Column(db.String(100), nullable=False)
+    nome = db.Column(db.String(100), unique=True, nullable=False)
+    senha = db.Column(db.String(200), nullable=False)
+    tipo = db.Column(db.String(20), nullable=False)  # 'admin' ou 'cooperado'
 
 class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
+    nome = db.Column(db.String(100), unique=True, nullable=False)
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -20,4 +21,4 @@ class Entrega(db.Model):
     status = db.Column(db.String(20))
     cooperado = db.Column(db.String(100), nullable=True)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    data_entrega = db.Column(db.DateTime, nullable=True)
+    data_recebimento = db.Column(db.DateTime, nullable=True)
