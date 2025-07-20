@@ -8,6 +8,14 @@ import os
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta'
 
+# TRECHO ADICIONADO: imprime rotas registradas no servidor (para debug)
+@app.before_first_request
+def mostrar_rotas():
+    print("\n=== ROTAS REGISTRADAS ===")
+    for regra in app.url_map.iter_rules():
+        print(f"ENDPOINT: {regra.endpoint} - URL: {regra.rule}")
+    print("=========================\n")
+
 # String de conexão com o banco (ajuste conforme necessário)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL',
