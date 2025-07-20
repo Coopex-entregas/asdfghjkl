@@ -43,7 +43,6 @@ class Entrega(db.Model):
 
 with app.app_context():
     db.create_all()
-    # Cria o usuário admin padrão se não existir
     if not Usuario.query.filter_by(nome='coopex').first():
         db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
         db.session.commit()
@@ -109,7 +108,6 @@ def admin():
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     cooperados = Cooperado.query.all()
 
-    # Estatísticas básicas
     total_dia = sum(e.valor for e in entregas if e.data_envio.date() == datetime.utcnow().date())
     total_mes = sum(e.valor for e in entregas if e.data_envio.month == datetime.utcnow().month and e.data_envio.year == datetime.utcnow().year)
     total_ano = sum(e.valor for e in entregas if e.data_envio.year == datetime.utcnow().year)
@@ -122,6 +120,56 @@ def admin():
 
     return render_template('admin.html', entregas=entregas, cooperados=cooperados, estatisticas=estatisticas,
                            data_inicio=data_inicio, data_fim=data_fim)
+
+@app.route('/estatisticas_cooperado')
+def estatisticas_cooperado():
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    query = Entrega.query
+
+    if cooperado_id != 'todos':
+        try:
+            cooperado_id_int = int(cooperado_id)
+            query = query.filter(Entrega.cooperado_id == cooperado_id_int)
+        except:
+            pass
+
+    if data_inicio:
+        try:
+            dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
+            query = query.filter(Entrega.data_envio >= dt_inicio)
+        except:
+            pass
+
+    if data_fim:
+        try:
+            dt_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+            query = query.filter(Entrega.data_envio <= dt_fim)
+        except:
+            pass
+
+    entregas = query.all()
+    cooperados = Cooperado.query.all()
+
+    total = len(entregas)
+    pagas = len([e for e in entregas if e.status == 'recebido'])
+    pendentes = total - pagas
+    total_valor = sum(e.valor for e in entregas)
+
+    estatisticas = {
+        'total': total,
+        'pagas': pagas,
+        'pendentes': pendentes,
+        'total_valor': total_valor
+    }
+
+    return render_template('estatisticas_cooperado.html', cooperados=cooperados, estatisticas=estatisticas,
+                           cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim)
 
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
@@ -197,7 +245,6 @@ def editar_entrega(id):
             elif status == 'pendente':
                 entrega.data_recebido = None
         else:
-            # Para cooperados, controle simples de status (pode adaptar conforme precisar)
             status = request.form.get('status')
             if status in ['pendente', 'recebido']:
                 entrega.status = status
