@@ -23,6 +23,7 @@ class Entrega(db.Model):
     bairro = db.Column(db.String(80), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     data_envio = db.Column(db.DateTime, default=datetime.utcnow)
+    data_atribuida = db.Column(db.DateTime, nullable=True)  # Adicionado aqui
     data_recebido = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), default='pendente')
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
