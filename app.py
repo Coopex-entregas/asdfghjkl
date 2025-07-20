@@ -5,10 +5,10 @@ from datetime import datetime
 import os
 
 app = Flask(__name__)
-app.secret_key = 'chave_secreta'
+app.secret_key = 'segredo_super_seguro'
 
-# Banco de dados PostgreSQL no Render (fallback para SQLite local)
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///local.db").replace("postgres://", "postgresql://")
+# Render usa banco PostgreSQL
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///meubanco.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
@@ -16,142 +16,83 @@ db = SQLAlchemy(app)
 # MODELOS
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False, unique=True)
-    senha_hash = db.Column(db.String(200), nullable=False)
-    tipo = db.Column(db.String(10), default='coop')  # coop ou adm
-
-    def verificar_senha(self, senha):
-        return check_password_hash(self.senha_hash, senha)
+    nome = db.Column(db.String(100), unique=True, nullable=False)
+    senha = db.Column(db.String(200), nullable=False)
+    tipo = db.Column(db.String(10), nullable=False)  # 'adm' ou 'coop'
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    descricao = db.Column(db.String(200), nullable=False)
-    data = db.Column(db.DateTime, default=datetime.utcnow)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('usuario.id'), nullable=True)
-    status_pagamento = db.Column(db.String(50), default='pendente')
-    status_entrega = db.Column(db.String(50), default='pendente')
-    hora_atribuida = db.Column(db.DateTime, nullable=True)
-    hora_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    valor = db.Column(db.Float, default=0.0)
+    cliente = db.Column(db.String(100), nullable=False)
+    bairro = db.Column(db.String(100), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    status_pagamento = db.Column(db.String(20), default='Pendente')
+    status_entrega = db.Column(db.String(20), default='Pendente')
+    motoboy = db.Column(db.String(100))
+    hora_pedido = db.Column(db.DateTime, default=datetime.utcnow)
+    hora_atribuida = db.Column(db.DateTime)
 
-# ROTA INICIAL (LOGIN)
+# ROTA PRINCIPAL
 @app.route('/')
 def index():
-    return render_template('login.html')
+    return redirect(url_for('login'))
 
-@app.route('/login', methods=['POST'])
+# LOGIN
+@app.route('/login', methods=['GET', 'POST'])
 def login():
-    nome = request.form['nome']
-    senha = request.form['senha']
-    usuario = Usuario.query.filter_by(nome=nome).first()
-    if usuario and usuario.verificar_senha(senha):
-        session['usuario_id'] = usuario.id
-        session['nome'] = usuario.nome
-        session['tipo'] = usuario.tipo
-        if usuario.tipo == 'adm':
-            return redirect('/admin')
-        else:
-            return redirect('/cooperado')
-    flash('Login inválido')
-    return redirect('/')
-
-@app.route('/logout')
-def logout():
-    session.clear()
-    return redirect('/')
-
-# PAINEL ADMINISTRADOR
-@app.route('/admin')
-def admin():
-    if session.get('tipo') != 'adm':
-        return redirect('/')
-    entregas = Entrega.query.all()
-    cooperados = Usuario.query.filter_by(tipo='coop').all()
-    return render_template('admin.html', entregas=entregas, cooperados=cooperados)
-
-# PAINEL COOPERADO
-@app.route('/cooperado')
-def cooperado():
-    if 'usuario_id' not in session or session.get('tipo') != 'coop':
-        return redirect('/')
-    entregas = Entrega.query.filter_by(cooperado_id=session['usuario_id']).all()
-    return render_template('cooperado.html', entregas=entregas)
-
-# CADASTRAR NOVO COOPERADO
-@app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
-def cadastrar_cooperado():
-    if session.get('tipo') != 'adm':
-        return redirect('/')
     if request.method == 'POST':
         nome = request.form['nome']
         senha = request.form['senha']
-        senha_hash = generate_password_hash(senha)
-        novo = Usuario(nome=nome, senha_hash=senha_hash, tipo='coop')
-        db.session.add(novo)
-        db.session.commit()
-        return redirect('/admin')
-    return render_template('cadastrar_cooperado.html')
 
-# CADASTRAR ENTREGA
-@app.route('/cadastrar_entrega', methods=['GET', 'POST'])
-def cadastrar_entrega():
-    if session.get('tipo') != 'adm':
-        return redirect('/')
-    cooperados = Usuario.query.filter_by(tipo='coop').all()
-    if request.method == 'POST':
-        descricao = request.form['descricao']
-        cooperado_id = request.form.get('cooperado_id')
-        valor = float(request.form.get('valor', 0.0))
-        nova = Entrega(
-            descricao=descricao,
-            cooperado_id=cooperado_id if cooperado_id else None,
-            valor=valor,
-            hora_atribuida=datetime.utcnow() if cooperado_id else None
-        )
-        db.session.add(nova)
-        db.session.commit()
-        return redirect('/admin')
-    return render_template('cadastrar_entrega.html', cooperados=cooperados)
+        usuario = Usuario.query.filter_by(nome=nome).first()
+        if usuario and check_password_hash(usuario.senha, senha):
+            session['usuario'] = usuario.nome
+            session['tipo'] = usuario.tipo
+            if usuario.tipo == 'adm':
+                return redirect(url_for('admin'))
+            else:
+                return redirect(url_for('painel_cooperado'))
+        else:
+            flash("Usuário ou senha inválidos.")
+            return redirect(url_for('login'))
 
-# EDITAR ENTREGA
-@app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
-def editar_entrega(id):
-    if session.get('tipo') != 'adm':
-        return redirect('/')
-    entrega = Entrega.query.get_or_404(id)
-    cooperados = Usuario.query.filter_by(tipo='coop').all()
-    if request.method == 'POST':
-        entrega.descricao = request.form['descricao']
-        entrega.status_pagamento = request.form['status_pagamento']
-        entrega.status_entrega = request.form['status_entrega']
-        entrega.cooperado_id = request.form.get('cooperado_id')
-        entrega.valor = float(request.form.get('valor', 0.0))
-        db.session.commit()
-        return redirect('/admin')
-    return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados)
+    return render_template('login.html')
 
-# ESTATÍSTICAS
-@app.route('/estatisticas')
-def estatisticas():
-    if session.get('tipo') != 'adm':
-        return redirect('/')
-    total_entregas = Entrega.query.count()
-    total_recebidas = Entrega.query.filter_by(status_pagamento='recebido').count()
-    total_pendentes = Entrega.query.filter_by(status_pagamento='pendente').count()
-    total_valor = db.session.query(db.func.sum(Entrega.valor)).scalar() or 0.0
-    return render_template('estatisticas.html', total_entregas=total_entregas,
-                           total_recebidas=total_recebidas,
-                           total_pendentes=total_pendentes,
-                           total_valor=total_valor)
+# PAINEL DO ADMIN
+@app.route('/admin')
+def admin():
+    if 'usuario' not in session or session.get('tipo') != 'adm':
+        return redirect(url_for('login'))
+    entregas = Entrega.query.order_by(Entrega.hora_pedido.desc()).all()
+    return render_template('admin.html', entregas=entregas)
 
-# SETUP INICIAL PARA CRIAR TABELAS
+# PAINEL DO COOPERADO
+@app.route('/cooperado')
+def painel_cooperado():
+    if 'usuario' not in session or session.get('tipo') != 'coop':
+        return redirect(url_for('login'))
+    entregas = Entrega.query.filter_by(motoboy=session['usuario']).all()
+    return render_template('cooperado.html', entregas=entregas)
+
+# LOGOUT
+@app.route('/logout')
+def logout():
+    session.clear()
+    return redirect(url_for('login'))
+
+# SETUP INICIAL
 @app.route('/setup')
 def setup():
     db.create_all()
-    return "✅ Tabelas criadas com sucesso!"
+    if not Usuario.query.filter_by(nome='coopex').first():
+        novo = Usuario(
+            nome='coopex',
+            senha=generate_password_hash('05062721'),
+            tipo='adm'
+        )
+        db.session.add(novo)
+        db.session.commit()
+        return "✅ Admin criado com sucesso"
+    return "⚠️ Admin já existe"
 
-# LOCALHOST
 if __name__ == '__main__':
-    with app.app_context():
-        db.create_all()
     app.run(debug=True)
