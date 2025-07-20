@@ -1,34 +1,23 @@
-from datetime import datetime
 from flask_sqlalchemy import SQLAlchemy
+from datetime import datetime
 
 db = SQLAlchemy()
 
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), unique=True, nullable=False)
-    senha = db.Column(db.String(200), nullable=False)
-    tipo = db.Column(db.String(50), nullable=False)  # admin, cooperado, master
+    nome = db.Column(db.String(100), unique=True)
+    senha = db.Column(db.String(50))
+    tipo = db.Column(db.String(20))
 
 class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
-    email = db.Column(db.String(100), unique=True, nullable=False)
-    senha = db.Column(db.String(200), nullable=False)
-    complemento_inss = db.Column(db.String(50), nullable=True)  # Adicionado conforme sua solicitação
+    nome = db.Column(db.String(100), unique=True)
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    cliente = db.Column(db.String(100), nullable=False)
-    bairro = db.Column(db.String(100), nullable=False)
-    valor = db.Column(db.Float, nullable=False)
-    status = db.Column(db.String(20), nullable=False, default='pendente')  # recebido/pendente
+    cliente = db.Column(db.String(100))
+    bairro = db.Column(db.String(100))
+    valor = db.Column(db.Float)
+    status = db.Column(db.String(20))
     cooperado = db.Column(db.String(100), nullable=True)
     data_criacao = db.Column(db.DateTime, default=datetime.utcnow)
-    hora_coleta = db.Column(db.DateTime, nullable=True)  
-    hora_entrega = db.Column(db.DateTime, nullable=True)
-
-    @property
-    def tempo_coleta_entrega(self):
-        if self.hora_coleta and self.hora_entrega:
-            return (self.hora_entrega - self.hora_coleta).total_seconds() / 60
-        return None
