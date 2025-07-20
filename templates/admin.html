@@ -78,41 +78,6 @@
       flex-wrap: wrap;
       align-items: center;
     }
-    .lista-espera {
-      margin-top: 2rem;
-      padding: 1rem;
-      background: #fff;
-      border: 1px solid #ccc;
-      border-radius: 10px;
-    }
-    .lista-espera h4 {
-      margin-bottom: 1rem;
-    }
-    .espera-input {
-      display: flex;
-      align-items: center;
-      margin-bottom: 1rem;
-    }
-    .espera-input input {
-      padding: 5px;
-      margin-right: 10px;
-    }
-    .cooperado-espera {
-      display: inline-block;
-      background: #d1d5ff;
-      padding: 5px 10px;
-      border-radius: 20px;
-      margin: 5px;
-      position: relative;
-    }
-    .cooperado-espera button {
-      background: none;
-      border: none;
-      font-weight: bold;
-      color: red;
-      margin-left: 8px;
-      cursor: pointer;
-    }
   </style>
 </head>
 <body>
@@ -122,15 +87,17 @@
   </header>
 
   <div class="container">
+
+    <!-- BOTÕES PRINCIPAIS -->
     <div class="actions">
-      <!-- Botões comentados porque não existem no backend ainda -->
-      <!-- <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a> -->
-      <!-- <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a> -->
+      <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
+      <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
       <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
     </div>
 
+    <!-- FILTRO -->
     <div class="filtros">
-      <form method="GET" action="" class="flex-filtro">
+      <form method="GET" action="{{ url_for('admin') }}" class="flex-filtro">
         <label for="cooperado">Cooperado:</label>
         <select name="cooperado_id" id="cooperado">
           <option value="todos">Todos</option>
@@ -140,17 +107,22 @@
         </select>
 
         <label for="data_inicio">De:</label>
-        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio }}">
+        <input type="date" name="data_inicio" id="data_inicio" value="{{ request.args.get('data_inicio', '') }}">
 
         <label for="data_fim">Até:</label>
-        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim }}">
+        <input type="date" name="data_fim" id="data_fim" value="{{ request.args.get('data_fim', '') }}">
 
         <button class="btn" type="submit">Filtrar</button>
 
-        <a class="btn" href="{{ url_for('exportar_entregas') }}?data_inicio={{data_inicio}}&data_fim={{data_fim}}&cooperado_id={{request.args.get('cooperado_id', 'todos')}}">Exportar para Excel</a>
+        <a class="btn"
+          href="{{ url_for('exportar_xlsx') }}?data_inicio={{ request.args.get('data_inicio', '') }}&data_fim={{ request.args.get('data_fim', '') }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
+          Exportar para Excel
+        </a>
       </form>
     </div>
 
+    <!-- ESTATÍSTICAS -->
+    {% if estatisticas %}
     <div class="estatisticas">
       <h3>Estatísticas</h3>
       <div>Total de Entregas do Dia: <strong>{{ estatisticas.total_dia }}</strong></div>
@@ -160,27 +132,21 @@
       <div>Total Valores do Mês: <strong>R$ {{ estatisticas.valores_mes }}</strong></div>
       <div>Total Valores do Ano: <strong>R$ {{ estatisticas.valores_ano }}</strong></div>
     </div>
+    {% endif %}
 
-    <div class="lista-espera">
-      <h4>Lista de Espera de Cooperados</h4>
-      <div class="espera-input">
-        <input type="text" id="nomeCooperadoEspera" placeholder="Nome do cooperado">
-        <button class="btn" type="button" onclick="adicionarCooperado()">+</button>
-      </div>
-      <div id="cooperadosLista"></div>
-    </div>
-
+    <!-- TABELA DE ENTREGAS -->
     <div class="tabela">
       <table>
         <thead>
           <tr>
             <th>ID</th>
             <th>Nome do Cliente</th>
-            <th>Hora do Pedido</th>
-            <th>Hora Atribuída</th>
-            <th>Nome do Cooperado</th>
-            <th>Status Pagamento</th>
-            <th>Status Entrega</th>
+            <th>Bairro</th>
+            <th>Valor</th>
+            <th>Data do Pedido</th>
+            <th>Data Recebido</th>
+            <th>Cooperado</th>
+            <th>Status</th>
             <th>Ações</th>
           </tr>
         </thead>
@@ -188,18 +154,26 @@
           {% for e in entregas %}
           <tr>
             <td>{{ e.id }}</td>
-            <td>{{ e.descricao }}</td>
-            <td>{{ e.hora_pedido.strftime('%d/%m/%Y %H:%M') }}</td>
-            <td>{{ e.hora_atribuida.strftime('%d/%m/%Y %H:%M') if e.hora_atribuida }}</td>
-            <td>{{ e.cooperado.nome if e.cooperado }}</td>
-            <td>{{ e.status_pagamento }}</td>
-            <td>{{ e.status_entrega }}</td>
+            <td>{{ e.cliente }}</td>
+            <td>{{ e.bairro }}</td>
+            <td>R$ {{ '%.2f'|format(e.valor) }}</td>
+            <td>{{ e.data_envio.strftime('%d/%m/%Y %H:%M') }}</td>
             <td>
-              <!-- Botão Editar desativado até rota existir -->
-              <!-- <a class="btn" href="{{ url_for('editar_entrega', entrega_id=e.id) }}">Editar</a> -->
-              <form action="{{ url_for('excluir_entrega', entrega_id=e.id) }}" method="post" style="display:inline;">
-                <button type="submit" class="btn" onclick="return confirm('Tem certeza que deseja excluir?')">Excluir</button>
-              </form>
+              {% if e.data_recebido %}
+                {{ e.data_recebido.strftime('%d/%m/%Y %H:%M') }}
+              {% else %}
+                -
+              {% endif %}
+            </td>
+            <td>
+              {% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}
+              {{ coop.nome if coop else '' }}
+            </td>
+            <td>{{ e.status }}</td>
+            <td>
+              <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
+              <a class="btn" href="{{ url_for('marcar_recebido', id=e.id) }}">Recebido</a>
+              <a class="btn" href="{{ url_for('marcar_pendente', id=e.id) }}">Pendente</a>
             </td>
           </tr>
           {% endfor %}
@@ -207,26 +181,5 @@
       </table>
     </div>
   </div>
-
-  <script>
-    function adicionarCooperado() {
-      const nome = document.getElementById("nomeCooperadoEspera").value.trim();
-      if (nome === "") return;
-
-      const div = document.createElement("div");
-      div.className = "cooperado-espera";
-      div.textContent = nome;
-
-      const btn = document.createElement("button");
-      btn.textContent = "×";
-      btn.onclick = function () {
-        div.remove();
-      };
-      div.appendChild(btn);
-
-      document.getElementById("cooperadosLista").appendChild(div);
-      document.getElementById("nomeCooperadoEspera").value = "";
-    }
-  </script>
 </body>
 </html>
