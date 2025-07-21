@@ -3,13 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <title>Painel de Login</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <style>
-        body { background: #fff; color: #222; font-family: Arial; }
-        .container { max-width: 350px; margin: 90px auto; background: #e3f0fd; border-radius: 14px; box-shadow: 0 2px 8px #ccc; padding: 36px 36px 32px 36px; }
-        h2 { color: #1967be; }
-        input[type="text"], input[type="password"] { width: 100%; padding: 12px; margin: 8px 0 16px 0; border-radius: 7px; border: 1px solid #d3d3d3;}
-        button { background: #1967be; color: #fff; border: none; border-radius: 7px; padding: 12px 0; width: 100%; font-size: 1.1em; font-weight: bold; }
-        .erro { color: red; margin-bottom: 10px; text-align: center;}
+        body {
+            background: #fff;
+            color: #222;
+            font-family: Arial, sans-serif;
+            min-height: 100vh;
+            margin: 0;
+            padding: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        .container {
+            width: 100%;
+            max-width: 370px;
+            background: #e3f0fd;
+            border-radius: 14px;
+            box-shadow: 0 2px 8px #ccc;
+            padding: 36px 36px 32px 36px;
+            margin: 25px 12px;
+        }
+        h2 {
+            color: #1967be;
+            margin-top: 0;
+            text-align: center;
+            font-size: 1.6em;
+        }
+        input[type="text"], input[type="password"] {
+            width: 100%;
+            padding: 14px;
+            margin: 10px 0 18px 0;
+            border-radius: 7px;
+            border: 1px solid #d3d3d3;
+            font-size: 1.08em;
+        }
+        button {
+            background: #1967be;
+            color: #fff;
+            border: none;
+            border-radius: 7px;
+            padding: 13px 0;
+            width: 100%;
+            font-size: 1.12em;
+            font-weight: bold;
+            margin-top: 2px;
+        }
+        .erro {
+            color: red;
+            margin-bottom: 12px;
+            text-align: center;
+            font-size: 1.06em;
+        }
+        @media (max-width: 500px) {
+            .container {
+                max-width: 99vw;
+                padding: 23px 6vw 19px 6vw;
+                margin: 0;
+                border-radius: 0 0 14px 14px;
+                min-height: 92vh;
+                box-shadow: 0 2px 8px #b3c7e6;
+            }
+            h2 {
+                font-size: 1.25em;
+            }
+            input[type="text"], input[type="password"] {
+                font-size: 1em;
+                padding: 12px;
+            }
+            button {
+                font-size: 1em;
+                padding: 12px 0;
+            }
+        }
     </style>
 </head>
 <body>
@@ -20,7 +87,7 @@
                 <div class="erro">{{ messages[0] }}</div>
             {% endif %}
         {% endwith %}
-        <form method="POST">
+        <form method="POST" autocomplete="off">
             <input type="text" name="usuario" placeholder="Usuário" required autofocus>
             <input type="password" name="senha" placeholder="Senha" required>
             <button type="submit">Entrar</button>
