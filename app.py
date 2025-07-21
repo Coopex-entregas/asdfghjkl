@@ -238,95 +238,82 @@ def painel_cooperado():
     return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
                            total_pago=total_pago, total_pendente=total_pendente, to_brasilia=to_brasilia)
 
-# ============ ROTAS QUE FALTAVAM! ===============
-
-@app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
-def cadastrar_cooperado():
+# --- ROTA EXPORTAÇÃO PARA EXCEL ---
+@app.route('/exportar_xlsx')
+def exportar_xlsx():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
         return redirect(url_for('login'))
-    if request.method == 'POST':
-        nome = request.form['nome']
-        senha = request.form['senha']
-        if Cooperado.query.filter_by(nome=nome).first():
-            flash('Já existe cooperado com esse nome!')
-            return redirect(url_for('cadastrar_cooperado'))
-        novo = Cooperado(nome=nome, senha=senha)
-        db.session.add(novo)
-        db.session.commit()
-        flash('Cooperado cadastrado!')
-        return redirect(url_for('admin'))
-    return render_template('cadastrar_cooperado.html')
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
 
-@app.route('/cadastrar_entrega', methods=['GET', 'POST'])
-def cadastrar_entrega():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
-        return redirect(url_for('login'))
-    cooperados = Cooperado.query.all()
-    if request.method == 'POST':
-        cliente = request.form['cliente']
-        bairro = request.form['bairro']
-        valor = float(request.form['valor'])
-        cooperado_id = request.form.get('cooperado_id')
-        nova = Entrega(
-            cliente=cliente,
-            bairro=bairro,
-            valor=valor,
-            data_envio=datetime.utcnow(),
-            status="pendente"
-        )
-        if cooperado_id and cooperado_id != '':
-            nova.cooperado_id = int(cooperado_id)
-            nova.data_atribuida = datetime.utcnow()
-        db.session.add(nova)
-        db.session.commit()
-        flash('Entrega cadastrada!')
-        return redirect(url_for('admin'))
-    return render_template('cadastrar_entrega.html', cooperados=cooperados)
+    query = Entrega.query
 
-@app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
-def editar_entrega(id):
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
-        return redirect(url_for('login'))
-    entrega = Entrega.query.get_or_404(id)
-    cooperados = Cooperado.query.all()
-    if request.method == 'POST':
-        entrega.cliente = request.form['cliente']
-        entrega.bairro = request.form['bairro']
-        entrega.valor = float(request.form['valor'])
-        entrega.status = request.form.get('status', entrega.status)
-        entrega.status_pagamento = request.form.get('status_pagamento', entrega.status_pagamento)
-        cooperado_id = request.form.get('cooperado_id')
-        if cooperado_id == '':
-            entrega.cooperado_id = None
-        else:
-            entrega.cooperado_id = int(cooperado_id)
-            entrega.data_atribuida = datetime.utcnow()
-        db.session.commit()
-        flash('Entrega editada!')
-        return redirect(url_for('admin'))
-    return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados, to_brasilia=to_brasilia)
+    if cooperado_id != 'todos':
+        try:
+            cooperado_id_int = int(cooperado_id)
+            query = query.filter(Entrega.cooperado_id == cooperado_id_int)
+        except:
+            pass
 
-@app.route('/excluir_entrega/<int:id>', methods=['POST'])
-def excluir_entrega(id):
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
-        return redirect(url_for('login'))
-    entrega = Entrega.query.get_or_404(id)
-    db.session.delete(entrega)
-    db.session.commit()
-    flash('Entrega excluída!')
-    return redirect(url_for('admin'))
+    if data_inicio:
+        try:
+            dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
+            query = query.filter(Entrega.data_envio >= dt_inicio)
+        except:
+            pass
 
-@app.route('/excluir_cooperado/<int:id>', methods=['POST'])
-def excluir_cooperado(id):
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
-        return redirect(url_for('login'))
-    cooperado = Cooperado.query.get_or_404(id)
-    db.session.delete(cooperado)
-    db.session.commit()
-    flash('Cooperado excluído!')
-    return redirect(url_for('admin'))
+    if data_fim:
+        try:
+            dt_fim = datetime.strptime(data_fim, '%Y-%m-%d')
+            dt_fim = dt_fim.replace(hour=23, minute=59, second=59)
+            query = query.filter(Entrega.data_envio <= dt_fim)
+        except:
+            pass
 
-# ================================================
+    entregas = query.order_by(Entrega.data_envio.desc()).all()
+
+    # Agrupa por cooperado (uma aba pra cada)
+    cooperados = {c.id: c.nome for c in Cooperado.query.all()}
+    abas = {}
+    for e in entregas:
+        nome = cooperados.get(e.cooperado_id, "Sem cooperado")
+        if nome not in abas:
+            abas[nome] = []
+        tempo = None
+        if e.data_atribuida:
+            tempo = (e.data_atribuida - e.data_envio)
+        abas[nome].append({
+            "Cliente": e.cliente,
+            "Bairro": e.bairro,
+            "Valor": e.valor,
+            "Status": e.status,
+            "Status Pagamento": e.status_pagamento,
+            "Data Envio": to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '',
+            "Data Atribuida": to_brasilia(e.data_atribuida).strftime('%d/%m/%Y %H:%M') if e.data_atribuida else '',
+            "Data Recebido": to_brasilia(e.data_recebido).strftime('%d/%m/%Y %H:%M') if e.data_recebido else '',
+            "Tempo até atribuição": str(tempo) if tempo else ''
+        })
+
+    with pd.ExcelWriter('entregas.xlsx', engine='xlsxwriter') as writer:
+        for aba, linhas in abas.items():
+            df = pd.DataFrame(linhas)
+            df.to_excel(writer, sheet_name=aba[:31], index=False)
+        writer.save()
+
+    with open('entregas.xlsx', 'rb') as f:
+        data = f.read()
+    os.remove('entregas.xlsx')
+    return send_file(
+        io.BytesIO(data),
+        download_name="entregas.xlsx",
+        as_attachment=True,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+    )
+
+# Mantenha as demais rotas idênticas às suas!
+# Só adicione "to_brasilia=to_brasilia" nos templates que exibem hora/data.
+# (Você pode copiar/colar suas funções restantes normalmente!)
 
 if __name__ == '__main__':
     app.run(debug=True)
