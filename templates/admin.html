@@ -224,18 +224,10 @@
             <td>{{ e.bairro }}</td>
             <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
             <td>
-              {% if e.data_envio %}
-                {{ e.data_envio.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y %H:%M') }}
-              {% else %}
-                -
-              {% endif %}
+              {{ e.data_envio_br if e.data_envio_br else '-' }}
             </td>
             <td>
-              {% if e.data_atribuida %}
-                {{ e.data_atribuida.astimezone(pytz.timezone('America/Sao_Paulo')).strftime('%d/%m/%Y %H:%M') }}
-              {% else %}
-                -
-              {% endif %}
+              {{ e.data_atribuida_br if e.data_atribuida_br else '-' }}
             </td>
             <td>{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
             <td>{{ e.status }}</td>
