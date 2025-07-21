@@ -10,6 +10,7 @@
       font-family: Arial, sans-serif;
       background-color: #f9f9f9;
       color: #333;
+      font-size: 13px;
     }
     header {
       background-color: #003399;
@@ -25,22 +26,23 @@
       color: white;
       text-decoration: none;
       font-weight: bold;
+      font-size: 14px;
     }
     .container {
       padding: 1rem 0.5rem;
     }
-    .actions, .filtros, .estatisticas {
+    .actions, .filtros {
       margin-bottom: 1rem;
     }
     .btn {
       background-color: #003399;
       color: white;
       border: none;
-      padding: 0.25rem 0.6rem;
+      padding: 0.32rem 0.75rem;
       border-radius: 4px;
       cursor: pointer;
-      margin-right: 0.3rem;
-      font-size: 0.85rem;
+      margin-right: 0.35rem;
+      font-size: 13px;
       text-decoration: none;
     }
     .btn:hover {
@@ -49,57 +51,93 @@
     table {
       width: 100%;
       border-collapse: collapse;
-      font-size: 0.87rem;
+      font-size: 13px;
       table-layout: fixed;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 3px 2px;
+      padding: 5px 3px;
       text-align: center;
       vertical-align: middle;
       white-space: nowrap;
       overflow: hidden;
       text-overflow: ellipsis;
+      font-size: 13px;
     }
     th {
       background-color: #003399;
       color: white;
-      font-size: 0.90rem;
-      padding: 5px 2px;
+      font-size: 13px;
+      padding: 7px 2px;
     }
     th.col-id, td.col-id                 { width: 27px; }
-    th.col-cliente, td.col-cliente       { width: 70px; max-width: 72px; }
-    th.col-bairro, td.col-bairro         { width: 62px; max-width: 65px; }
-    th.col-valor, td.col-valor           { width: 58px; }
-    th.col-data, td.col-data             { width: 64px; }
-    th.col-hora, td.col-hora             { width: 48px; }
-    th.col-hora-atrib, td.col-hora-atrib { width: 55px; }
-    th.col-cooperado, td.col-cooperado   { width: 80px; max-width: 82px; }
-    th.col-status, td.col-status         { width: 54px; }
-    th.col-status-pg, td.col-status-pg   { width: 68px; }
-    th.col-acoes, td.col-acoes           { width: 78px; }
-    /* Status com cor */
+    th.col-cliente, td.col-cliente       { width: 80px; max-width: 95px; }
+    th.col-bairro, td.col-bairro         { width: 78px; max-width: 95px; }
+    th.col-valor, td.col-valor           { width: 67px; }
+    th.col-data, td.col-data             { width: 78px; }
+    th.col-hora, td.col-hora             { width: 65px; }
+    th.col-hora-atrib, td.col-hora-atrib { width: 65px; }
+    th.col-cooperado, td.col-cooperado   { width: 92px; max-width: 110px; }
+    th.col-status, td.col-status         { width: 70px; }
+    th.col-status-pg, td.col-status-pg   { width: 80px; }
+    th.col-acoes, td.col-acoes           { width: 90px; }
     .status-verde { color: #13a038; font-weight: bold; }
     .status-vermelho { color: #d11a1a; font-weight: bold; }
-    /* Responsivo para telas menores */
+    td { word-break: break-all; }
+    /* Estatísticas topo direito */
+    .estatisticas-topo {
+      position: absolute;
+      right: 30px;
+      top: 16px;
+      background: white;
+      border-radius: 7px;
+      box-shadow: 0 1px 4px #00339922;
+      padding: 12px 19px 12px 17px;
+      min-width: 185px;
+      font-size: 13px;
+      text-align: left;
+      z-index: 10;
+    }
+    .estatisticas-topo h3 {
+      margin: 0 0 7px 0;
+      font-size: 1.04em;
+      color: #003399;
+    }
+    .estatisticas-topo div {
+      margin-bottom: 4px;
+      font-size: 1em;
+    }
     @media (max-width: 950px) {
       .container { padding: 0.2rem; }
-      table { font-size: 0.75rem; }
-      .btn { font-size: 0.73rem; padding: 0.2rem 0.4rem; }
-      th, td { padding: 1.5px 1.5px; }
-      th.col-cooperado, td.col-cooperado { width: 60px; max-width: 65px;}
+      table { font-size: 12px; }
+      .btn { font-size: 11.8px; }
+      th, td { font-size: 12px; }
+      .estatisticas-topo {
+        position: static;
+        margin: 10px 0 8px 0;
+        box-shadow: none;
+        width: 100%;
+      }
     }
     @media (max-width: 750px) {
-      table, th, td { font-size: 0.7rem; }
-      .btn { font-size: 0.66rem; }
+      table, th, td { font-size: 11px; }
+      .btn { font-size: 10.7px; }
+      .estatisticas-topo { font-size: 11px; }
     }
-    td { word-break: break-all; }
   </style>
 </head>
 <body>
   <header>
-    <h1 style="font-size:1.1rem;">Painel da Supervisão - Coopex</h1>
+    <h1 style="font-size:1.14rem;">Painel da Supervisão - Coopex</h1>
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+    {% if estatisticas %}
+    <div class="estatisticas-topo">
+      <h3>Estatísticas</h3>
+      <div>Total de Entregas do Dia: <strong>{{ estatisticas.total_dia }}</strong></div>
+      <div>Total de Entregas do Mês: <strong>{{ estatisticas.total_mes }}</strong></div>
+      <div>Total de Entregas do Ano: <strong>{{ estatisticas.total_ano }}</strong></div>
+    </div>
+    {% endif %}
   </header>
 
   <div class="container">
@@ -113,14 +151,14 @@
 
     <!-- LISTA DE COOPERADOS COM FILTRO E BOTÃO EXCLUIR -->
     <div style="margin-bottom:1rem;">
-      <h3 style="margin-bottom:0.4rem;">Cooperados</h3>
-      <input type="text" id="filtro-cooperado" placeholder="Filtrar..." style="margin-bottom:5px;width:95px;padding:5px;">
-      <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:110px;overflow-y:auto;font-size:0.92em;">
+      <h3 style="margin-bottom:0.4rem; font-size:14px;">Cooperados</h3>
+      <input type="text" id="filtro-cooperado" placeholder="Filtrar..." style="margin-bottom:5px;width:95px;padding:5px;font-size:13px;">
+      <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:110px;overflow-y:auto;font-size:13px;">
         {% for c in cooperados %}
           <li style="margin-bottom:3px;">
             <b>{{ c.nome }}</b>
             <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
-              <button type="submit" style="background:red;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;">Excluir</button>
+              <button type="submit" style="background:red;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;font-size:12px;">Excluir</button>
             </form>
           </li>
         {% endfor %}
@@ -143,17 +181,17 @@
     <!-- FILTRO -->
     <div class="filtros">
       <form method="GET" action="{{ url_for('admin') }}" class="flex-filtro">
-        <label for="cooperado" style="font-size:0.94em;">Cooperado:</label>
-        <select name="cooperado_id" id="cooperado" style="font-size:0.93em;">
+        <label for="cooperado" style="font-size:13px;">Cooperado:</label>
+        <select name="cooperado_id" id="cooperado" style="font-size:13px;">
           <option value="todos">Todos</option>
           {% for c in cooperados %}
           <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
           {% endfor %}
         </select>
-        <label for="data_inicio" style="font-size:0.94em;">De:</label>
-        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:0.92em;">
-        <label for="data_fim" style="font-size:0.94em;">Até:</label>
-        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:0.92em;">
+        <label for="data_inicio" style="font-size:13px;">De:</label>
+        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:13px;">
+        <label for="data_fim" style="font-size:13px;">Até:</label>
+        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:13px;">
         <button class="btn" type="submit">Filtrar</button>
         <a class="btn"
           href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
@@ -161,16 +199,6 @@
         </a>
       </form>
     </div>
-
-    <!-- ESTATÍSTICAS -->
-    {% if estatisticas %}
-    <div class="estatisticas">
-      <h3 style="margin-bottom:0.3rem;">Estatísticas</h3>
-      <div style="font-size:0.94em;">Total de Entregas do Dia: <strong>{{ estatisticas.total_dia }}</strong></div>
-      <div style="font-size:0.94em;">Total de Entregas do Mês: <strong>{{ estatisticas.total_mes }}</strong></div>
-      <div style="font-size:0.94em;">Total de Entregas do Ano: <strong>{{ estatisticas.total_ano }}</strong></div>
-    </div>
-    {% endif %}
 
     <!-- TABELA DE ENTREGAS -->
     <div class="tabela" style="overflow-x:auto;">
@@ -224,7 +252,7 @@
             <td class="col-acoes">
               <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
               <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-                <button type="submit" style="background:red;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:2px;">Excluir</button>
+                <button type="submit" style="background:red;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:2px;font-size:12px;">Excluir</button>
               </form>
             </td>
           </tr>

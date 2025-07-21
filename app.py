@@ -283,24 +283,21 @@ def exportar_xlsx():
     entregas = query.all()
     cooperados = {c.id: c.nome for c in Cooperado.query.all()}
 
+    # Organiza os dados conforme solicitado (sem ID, sem Tempo até atribuição, formato que você pediu!)
     dados = {}
     for e in entregas:
         nome = cooperados.get(e.cooperado_id, 'Sem Cooperado')
         if nome not in dados:
             dados[nome] = []
-        tempo = ""
-        if e.data_envio and e.data_atribuida:
-            tempo = str(e.data_atribuida - e.data_envio).split(".")[0]
         dados[nome].append({
-            'ID': e.id,
+            'Data do Pedido': to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '',
+            'Hora do Pedido': to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '',
             'Cliente': e.cliente,
             'Bairro': e.bairro,
+            'Hora Atribuída': to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '',
             'Valor': e.valor,
-            'Data Pedido': to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '',
-            'Data Atribuída': to_brasilia(e.data_atribuida).strftime('%d/%m/%Y %H:%M') if e.data_atribuida else '',
-            'Tempo até atribuição': tempo,
-            'Status Pgto': e.status_pagamento,
-            'Status Entrega': e.status
+            'Status Pagamento': e.status_pagamento,
+            'Status da Entrega': e.status
         })
 
     output = io.BytesIO()
