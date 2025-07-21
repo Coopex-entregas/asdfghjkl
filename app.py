@@ -9,7 +9,6 @@ import io
 
 # Configuração
 app = Flask(__name__)
-# 🔒 SECRET_KEY FIXA! Altere se desejar, mas mantenha sempre igual entre deploys!
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -52,7 +51,6 @@ def to_brasilia(dt):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # NÃO limpar a sessão aqui, pois pode "deslogar" o admin ao navegar!
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
@@ -115,7 +113,7 @@ def admin():
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
-    if not session.get('user_id') or session.get('is_admin'):
+    if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
 
     user_id = session['user_id']
@@ -185,8 +183,7 @@ def cadastrar_entrega():
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    # Checagem de permissão: admin ou cooperado dono
-    if not session.get('user_id'):
+    if session.get('user_id') is None:
         return redirect(url_for('login'))
     is_admin = session.get('is_admin')
     if not is_admin and entrega.cooperado_id != session['user_id']:
@@ -194,7 +191,6 @@ def editar_entrega(id):
         return redirect(url_for('painel_cooperado'))
 
     if request.method == 'POST':
-        # Admin pode alterar tudo
         if is_admin:
             entrega.cliente = request.form.get('cliente')
             entrega.bairro = request.form.get('bairro')
@@ -208,7 +204,6 @@ def editar_entrega(id):
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
-        # Cooperado só pode marcar status/pagamento
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status_entrega') or entrega.status
@@ -216,7 +211,6 @@ def editar_entrega(id):
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
 
-    # Renderização correta: tela diferente se admin ou cooperado
     if is_admin:
         return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados)
     else:
@@ -237,7 +231,6 @@ def excluir_cooperado(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
     c = Cooperado.query.get_or_404(id)
-    # Remove entregas antes
     Entrega.query.filter_by(cooperado_id=c.id).delete()
     db.session.delete(c)
     db.session.commit()
@@ -290,7 +283,6 @@ def exportar_xlsx():
     entregas = query.all()
     cooperados = {c.id: c.nome for c in Cooperado.query.all()}
 
-    # Organiza dados para Excel: uma aba por cooperado
     dados = {}
     for e in entregas:
         nome = cooperados.get(e.cooperado_id, 'Sem Cooperado')
@@ -315,17 +307,15 @@ def exportar_xlsx():
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         for coop, entregas_list in dados.items():
             df = pd.DataFrame(entregas_list)
-            df.to_excel(writer, index=False, sheet_name=str(coop)[:31])  # Sheet name max 31 chars
+            df.to_excel(writer, index=False, sheet_name=str(coop)[:31])
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# CRIAÇÃO DE TABELAS (para Flask 2.3+)
 def criar_bd():
     with app.app_context():
         db.create_all()
 
 criar_bd()
 
-# Para Render: vai rodar o gunicorn app:app normalmente, então use só app
 if __name__ == '__main__':
     app.run(debug=True)
