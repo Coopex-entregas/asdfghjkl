@@ -9,7 +9,8 @@ import io
 
 # Configuração
 app = Flask(__name__)
-app.secret_key = 'supersecret'
+# 🔒 SECRET_KEY FIXA! Altere se desejar, mas mantenha sempre igual entre deploys!
+app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -51,7 +52,7 @@ def to_brasilia(dt):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # NÃO limpar a sessão aqui!
+    # NÃO limpar a sessão aqui, pois pode "deslogar" o admin ao navegar!
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
