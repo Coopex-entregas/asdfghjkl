@@ -63,6 +63,7 @@ def inicializar_banco():
 
 inicializar_banco()
 
+# UTIL: FUSO HORÁRIO BRASÍLIA
 def to_brasilia(dt):
     if dt:
         return dt - timedelta(hours=3)
@@ -71,9 +72,29 @@ def to_brasilia(dt):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # ... igual ao seu original ...
-    # (não muda nada aqui)
-    # ...
+    if request.method == 'POST':
+        nome = request.form['usuario']
+        senha = request.form['senha']
+
+        usuario = Usuario.query.filter_by(nome=nome).first()
+        if usuario and usuario.senha == senha:
+            session['usuario_id'] = usuario.id
+            session['usuario_tipo'] = usuario.tipo
+            session['user_nome'] = usuario.nome
+            if usuario.tipo == "admin":
+                return redirect(url_for('admin'))
+            else:
+                return redirect(url_for('painel_cooperado'))
+
+        cooperado = Cooperado.query.filter_by(nome=nome).first()
+        if cooperado and cooperado.senha == senha:
+            session['usuario_id'] = cooperado.id
+            session['usuario_tipo'] = "cooperado"
+            session['user_nome'] = cooperado.nome
+            return redirect(url_for('painel_cooperado'))
+
+        flash('Usuário ou senha inválidos')
+    return render_template('login.html')
 
 @app.route('/logout')
 def logout():
@@ -116,9 +137,10 @@ def admin():
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     cooperados = Cooperado.query.all()
 
-    total_dia = sum(e.valor for e in entregas if to_brasilia(e.data_envio).date() == (datetime.utcnow() - timedelta(hours=3)).date())
-    total_mes = sum(e.valor for e in entregas if to_brasilia(e.data_envio).month == (datetime.utcnow() - timedelta(hours=3)).month and to_brasilia(e.data_envio).year == (datetime.utcnow() - timedelta(hours=3)).year)
-    total_ano = sum(e.valor for e in entregas if to_brasilia(e.data_envio).year == (datetime.utcnow() - timedelta(hours=3)).year)
+    now_brasilia = datetime.utcnow() - timedelta(hours=3)
+    total_dia = sum(e.valor for e in entregas if to_brasilia(e.data_envio).date() == now_brasilia.date())
+    total_mes = sum(e.valor for e in entregas if to_brasilia(e.data_envio).month == now_brasilia.month and to_brasilia(e.data_envio).year == now_brasilia.year)
+    total_ano = sum(e.valor for e in entregas if to_brasilia(e.data_envio).year == now_brasilia.year)
 
     estatisticas = {
         'total_dia': total_dia,
@@ -178,10 +200,7 @@ def estatisticas_cooperado():
     }
 
     return render_template('estatisticas_cooperado.html', cooperados=cooperados, estatisticas=estatisticas,
-                           cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim)
-
-# As demais rotas permanecem idênticas!
-# Só precisa passar 'to_brasilia=to_brasilia' nos render_template onde mostra hora.
+                           cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia)
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
@@ -219,7 +238,9 @@ def painel_cooperado():
     return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
                            total_pago=total_pago, total_pendente=total_pendente, to_brasilia=to_brasilia)
 
-# Outras rotas mantidas!
+# Mantenha as demais rotas idênticas às suas!
+# Só adicione "to_brasilia=to_brasilia" nos templates que exibem hora/data.
+# (Você pode copiar/colar suas funções restantes normalmente!)
 
 if __name__ == '__main__':
     app.run(debug=True)
