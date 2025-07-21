@@ -17,7 +17,6 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 db = SQLAlchemy(app)
 
 # MODELOS
-
 class Usuario(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), unique=True, nullable=False)
@@ -63,7 +62,6 @@ def inicializar_banco():
 
 inicializar_banco()
 
-# UTIL: FUSO HORÁRIO BRASÍLIA
 def to_brasilia(dt):
     if dt:
         return dt - timedelta(hours=3)
@@ -151,42 +149,6 @@ def admin():
     return render_template('admin.html', entregas=entregas, cooperados=cooperados, estatisticas=estatisticas,
                            data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia)
 
-@app.route('/painel_cooperado')
-def painel_cooperado():
-    if 'usuario_id' not in session or session.get('usuario_tipo') != 'cooperado':
-        return redirect(url_for('login'))
-    cooperado = Cooperado.query.get(session['usuario_id'])
-    if not cooperado:
-        flash('Cooperado não encontrado!')
-        return redirect(url_for('login'))
-    inicio = request.args.get('inicio')
-    fim = request.args.get('fim')
-    query = Entrega.query.filter(Entrega.cooperado_id == cooperado.id)
-
-    if inicio:
-        try:
-            dt_inicio = datetime.strptime(inicio, '%Y-%m-%d')
-            query = query.filter(Entrega.data_envio >= dt_inicio)
-        except:
-            pass
-
-    if fim:
-        try:
-            dt_fim = datetime.strptime(fim, '%Y-%m-%d')
-            dt_fim = dt_fim.replace(hour=23, minute=59, second=59)
-            query = query.filter(Entrega.data_envio <= dt_fim)
-        except:
-            pass
-
-    entregas = query.order_by(Entrega.data_envio.desc()).all()
-
-    total_geral = sum(e.valor for e in entregas)
-    total_pago = sum(e.valor for e in entregas if getattr(e, 'status', 'pendente') == 'recebido')
-    total_pendente = total_geral - total_pago
-
-    return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
-                           total_pago=total_pago, total_pendente=total_pendente, to_brasilia=to_brasilia)
-
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
@@ -238,26 +200,107 @@ def estatisticas_cooperado():
     return render_template('estatisticas_cooperado.html', cooperados=cooperados, estatisticas=estatisticas,
                            cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia)
 
-# Rotas dos cadastros e edição com nomes EXATOS do seu HTML:
+@app.route('/painel_cooperado')
+def painel_cooperado():
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'cooperado':
+        return redirect(url_for('login'))
+    cooperado = Cooperado.query.get(session['usuario_id'])
+    if not cooperado:
+        flash('Cooperado não encontrado!')
+        return redirect(url_for('login'))
+    inicio = request.args.get('inicio')
+    fim = request.args.get('fim')
+    query = Entrega.query.filter(Entrega.cooperado_id == cooperado.id)
+
+    if inicio:
+        try:
+            dt_inicio = datetime.strptime(inicio, '%Y-%m-%d')
+            query = query.filter(Entrega.data_envio >= dt_inicio)
+        except:
+            pass
+
+    if fim:
+        try:
+            dt_fim = datetime.strptime(fim, '%Y-%m-%d')
+            dt_fim = dt_fim.replace(hour=23, minute=59, second=59)
+            query = query.filter(Entrega.data_envio <= dt_fim)
+        except:
+            pass
+
+    entregas = query.order_by(Entrega.data_envio.desc()).all()
+
+    total_geral = sum(e.valor for e in entregas)
+    total_pago = sum(e.valor for e in entregas if getattr(e, 'status', 'pendente') == 'recebido')
+    total_pendente = total_geral - total_pago
+
+    return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
+                           total_pago=total_pago, total_pendente=total_pendente, to_brasilia=to_brasilia)
+
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
-    # Implemente sua lógica de cadastro aqui
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        nome = request.form['nome']
+        senha = request.form['senha']
+        if Cooperado.query.filter_by(nome=nome).first():
+            flash('Já existe um cooperado com esse nome.')
+        else:
+            db.session.add(Cooperado(nome=nome, senha=senha))
+            db.session.commit()
+            flash('Cooperado cadastrado com sucesso!')
+            return redirect(url_for('admin'))
     return render_template('cadastrar_cooperado.html')
 
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
-    # Implemente sua lógica de cadastro aqui
-    return render_template('cadastrar_entrega.html')
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+    cooperados = Cooperado.query.all()
+    if request.method == 'POST':
+        cliente = request.form['cliente']
+        bairro = request.form['bairro']
+        valor = float(request.form['valor'])
+        cooperado_id = request.form.get('cooperado_id')
+        nova_entrega = Entrega(cliente=cliente, bairro=bairro, valor=valor, data_envio=datetime.utcnow(), cooperado_id=cooperado_id if cooperado_id else None)
+        db.session.add(nova_entrega)
+        db.session.commit()
+        flash('Entrega cadastrada com sucesso!')
+        return redirect(url_for('admin'))
+    return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
 @app.route('/editar_entrega_admin/<int:entrega_id>', methods=['GET', 'POST'])
 def editar_entrega_admin(entrega_id):
-    # Implemente sua lógica de edição aqui
-    return render_template('editar_entrega_admin.html')
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+    entrega = Entrega.query.get_or_404(entrega_id)
+    cooperados = Cooperado.query.all()
+    if request.method == 'POST':
+        entrega.cliente = request.form['cliente']
+        entrega.bairro = request.form['bairro']
+        entrega.valor = float(request.form['valor'])
+        entrega.status = request.form.get('status', entrega.status)
+        entrega.cooperado_id = request.form.get('cooperado_id', entrega.cooperado_id)
+        db.session.commit()
+        flash('Entrega editada com sucesso!')
+        return redirect(url_for('admin'))
+    return render_template('editar_entrega_admin.html', entrega=entrega, cooperados=cooperados)
 
 @app.route('/editar_entrega_cooperado/<int:entrega_id>', methods=['GET', 'POST'])
 def editar_entrega_cooperado(entrega_id):
-    # Implemente sua lógica de edição aqui
-    return render_template('editar_entrega_cooperado.html')
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'cooperado':
+        return redirect(url_for('login'))
+    entrega = Entrega.query.get_or_404(entrega_id)
+    if entrega.cooperado_id != session['usuario_id']:
+        flash('Acesso negado!')
+        return redirect(url_for('painel_cooperado'))
+    if request.method == 'POST':
+        entrega.status = request.form.get('status', entrega.status)
+        entrega.data_recebido = datetime.utcnow() if entrega.status == 'recebido' else None
+        db.session.commit()
+        flash('Entrega atualizada com sucesso!')
+        return redirect(url_for('painel_cooperado'))
+    return render_template('editar_entrega_cooperado.html', entrega=entrega)
 
 if __name__ == '__main__':
     app.run(debug=True)
