@@ -51,7 +51,7 @@ def to_brasilia(dt):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    session.clear()  # Sempre zera a sessão ao acessar o login
+    session.clear()  # sempre limpa sessão ao acessar login
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
@@ -323,8 +323,8 @@ def criar_bd():
     with app.app_context():
         db.create_all()
 
-# Para Render: vai rodar o gunicorn app:app normalmente, então use só app
 criar_bd()
 
+# Para Render: vai rodar o gunicorn app:app normalmente, então use só app
 if __name__ == '__main__':
     app.run(debug=True)
