@@ -51,17 +51,12 @@ def to_brasilia(dt):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    if 'user_id' in session:
-        if session.get('is_admin'):
-            return redirect(url_for('admin'))
-        else:
-            return redirect(url_for('painel_cooperado'))
-
+    session.clear()  # Sempre zera a sessão ao acessar o login
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
         if usuario.lower() == 'coopex':
-            if senha == '05062721':  # senha fixa para admin (COOPEX)
+            if senha == '05062721':
                 session['user_id'] = 0
                 session['user_nome'] = 'Coopex'
                 session['is_admin'] = True
@@ -323,11 +318,12 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# CRIAÇÃO DE TABELAS (compatível Render e Flask >=2.3)
+# CRIAÇÃO DE TABELAS (para Flask 2.3+)
 def criar_bd():
     with app.app_context():
         db.create_all()
 
+# Para Render: vai rodar o gunicorn app:app normalmente, então use só app
 criar_bd()
 
 if __name__ == '__main__':
