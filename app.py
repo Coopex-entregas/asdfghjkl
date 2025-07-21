@@ -199,6 +199,18 @@ def cadastrar_cooperado():
         return redirect(url_for('admin'))
     return render_template('cadastrar_cooperado.html')
 
+# === NOVA ROTA EXCLUIR COOPERADO ===
+@app.route('/excluir_cooperado/<int:id>', methods=['POST'])
+def excluir_cooperado(id):
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+    cooperado = Cooperado.query.get_or_404(id)
+    db.session.delete(cooperado)
+    db.session.commit()
+    flash('Cooperado excluído com sucesso!')
+    return redirect(url_for('admin'))
+# ===================================
+
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
