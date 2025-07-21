@@ -151,6 +151,36 @@ def admin():
     return render_template('admin.html', entregas=entregas, cooperados=cooperados, estatisticas=estatisticas,
                            data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia)
 
+@app.route('/cadastrar_entrega', methods=['GET', 'POST'])
+def cadastrar_entrega():
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+    cooperados = Cooperado.query.all()
+    if request.method == 'POST':
+        cliente = request.form['cliente']
+        bairro = request.form['bairro']
+        valor = float(request.form['valor'])
+        cooperado_id = request.form.get('cooperado_id')
+        if cooperado_id == '':
+            cooperado_id = None
+        else:
+            cooperado_id = int(cooperado_id)
+        nova = Entrega(
+            cliente=cliente,
+            bairro=bairro,
+            valor=valor,
+            data_envio=datetime.utcnow(),
+            status='pendente',
+            status_pagamento='Pendente',
+            cooperado_id=cooperado_id,
+            data_atribuida=datetime.utcnow() if cooperado_id else None
+        )
+        db.session.add(nova)
+        db.session.commit()
+        flash('Entrega cadastrada!')
+        return redirect(url_for('admin'))
+    return render_template('cadastrar_entrega.html', cooperados=cooperados, to_brasilia=to_brasilia)
+
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
@@ -238,9 +268,9 @@ def painel_cooperado():
     return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
                            total_pago=total_pago, total_pendente=total_pendente, to_brasilia=to_brasilia)
 
-# Mantenha as demais rotas idênticas às suas!
-# Só adicione "to_brasilia=to_brasilia" nos templates que exibem hora/data.
-# (Você pode copiar/colar suas funções restantes normalmente!)
+# As demais rotas de cadastro/edição/exclusão de cooperado/entrega, exportar_xlsx, etc, 
+# você pode manter logo abaixo, conforme seu arquivo original.
+# (não altere nada nas funções já existentes, apenas mantenha elas como estão!)
 
 if __name__ == '__main__':
     app.run(debug=True)
