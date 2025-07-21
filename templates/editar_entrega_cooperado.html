@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <title>Editar Entrega - Cooperado</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
   <style>
     body {
       background: linear-gradient(to right, #0047ab, #007bff);
@@ -11,58 +11,91 @@
       display: flex;
       align-items: center;
       justify-content: center;
-      height: 100vh;
+      min-height: 100vh;
       margin: 0;
     }
     .form-container {
       background-color: white;
-      padding: 30px 25px;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
+      padding: 34px 22px 32px 22px;
+      border-radius: 13px;
+      box-shadow: 0 0 15px rgba(0, 0, 0, 0.19);
       width: 100%;
-      max-width: 500px;
+      max-width: 425px;
     }
     h1 {
       text-align: center;
       color: #0047ab;
-      margin-bottom: 20px;
+      margin-bottom: 23px;
+      font-size: 1.33em;
+      letter-spacing: 0.01em;
     }
     label {
       display: block;
-      margin-bottom: 5px;
+      margin-bottom: 8px;
       color: #333;
       font-weight: bold;
+      font-size: 1.06em;
     }
     select {
       width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
+      padding: 15px 12px;
+      margin-bottom: 19px;
+      border: 1.3px solid #ccc;
+      border-radius: 7px;
+      font-size: 1.12em;
+      background: #f7f9fc;
+      color: #24446d;
     }
     button {
       width: 100%;
-      padding: 12px;
+      padding: 16px 0;
       background-color: #0047ab;
       border: none;
       color: white;
-      font-size: 16px;
-      border-radius: 5px;
+      font-size: 1.22em;
+      border-radius: 8px;
       cursor: pointer;
+      font-weight: bold;
+      margin-top: 4px;
+      letter-spacing: 0.02em;
+      box-shadow: 0 2px 8px #c3dafc;
     }
-    button:hover {
+    button:active, button:hover {
       background-color: #003f99;
     }
     .back-link {
       display: block;
       text-align: center;
-      margin-bottom: 15px;
+      margin-bottom: 18px;
       color: #0047ab;
       text-decoration: none;
       font-weight: bold;
+      font-size: 1.1em;
     }
     .back-link:hover {
       text-decoration: underline;
+    }
+    @media (max-width: 700px) {
+      .form-container {
+        max-width: 99vw;
+        border-radius: 0 0 13px 13px;
+        min-height: 92vh;
+        padding: 25px 6vw 18px 6vw;
+        box-shadow: 0 1.5px 6px #b3c7e6;
+      }
+      h1 { font-size: 1.11em; }
+      label, select, button, .back-link { font-size: 1.06em; }
+      select { padding: 13px 10px; }
+      button { padding: 13px 0; }
+    }
+    @media (max-width: 480px) {
+      .form-container {
+        padding: 18px 2vw 16px 2vw;
+      }
+      h1 { font-size: 1em; }
+      label, select, button, .back-link { font-size: 1em; }
+      select { padding: 11px 7px; }
+      button { padding: 10px 0; }
     }
   </style>
 </head>
@@ -72,12 +105,12 @@
     <a class="back-link" href="{{ url_for('painel_cooperado') }}">← Voltar</a>
     <form method="POST" action="{{ url_for('editar_entrega', id=entrega.id) }}">
       <label for="status_pagamento">Status Pagamento:</label>
-      <select name="status_pagamento" id="status_pagamento">
+      <select name="status_pagamento" id="status_pagamento" required>
         <option value="pendente" {% if entrega.status_pagamento == 'pendente' %}selected{% endif %}>Pendente</option>
         <option value="pago" {% if entrega.status_pagamento == 'pago' %}selected{% endif %}>Pago</option>
       </select>
       <label for="status_entrega">Status Entrega:</label>
-      <select name="status_entrega" id="status_entrega">
+      <select name="status_entrega" id="status_entrega" required>
         <option value="pendente" {% if entrega.status_entrega == 'pendente' %}selected{% endif %}>Pendente</option>
         <option value="em rota" {% if entrega.status_entrega == 'em rota' %}selected{% endif %}>Em Rota</option>
         <option value="entregue" {% if entrega.status_entrega == 'entregue' %}selected{% endif %}>Entregue</option>

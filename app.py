@@ -51,7 +51,7 @@ def to_brasilia(dt):
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    session.clear()  # sempre limpa sessão ao acessar login
+    # NÃO limpar a sessão aqui!
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
