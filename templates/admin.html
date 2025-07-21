@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Painel Administrativo - Coopex</title>
+  <title>Painel da Supervisão - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
     body {
@@ -98,7 +98,7 @@
 </head>
 <body>
   <header>
-    <h1 style="font-size:1.1rem;">Painel Administrativo - Coopex</h1>
+    <h1 style="font-size:1.1rem;">Painel da Supervisão - Coopex</h1>
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
   </header>
 
@@ -198,13 +198,13 @@
             <td class="col-bairro">{{ e.bairro }}</td>
             <td class="col-valor">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
             <td class="col-data">
-              {{ e.data_envio.strftime('%d/%m/%Y') if e.data_envio else '-' }}
+              {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}
             </td>
             <td class="col-hora">
-              {{ e.data_envio.strftime('%H:%M') if e.data_envio else '-' }}
+              {{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}
             </td>
             <td class="col-hora-atrib">
-              {{ e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '-' }}
+              {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}
             </td>
             <td class="col-cooperado">{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
             <td class="col-status">
