@@ -27,19 +27,20 @@
       font-weight: bold;
     }
     .container {
-      padding: 2rem;
+      padding: 1rem 0.5rem;
     }
     .actions, .filtros, .estatisticas {
-      margin-bottom: 2rem;
+      margin-bottom: 1rem;
     }
     .btn {
       background-color: #003399;
       color: white;
       border: none;
-      padding: 0.5rem 1rem;
-      border-radius: 5px;
+      padding: 0.25rem 0.6rem;
+      border-radius: 4px;
       cursor: pointer;
-      margin-right: 1rem;
+      margin-right: 0.3rem;
+      font-size: 0.85rem;
       text-decoration: none;
     }
     .btn:hover {
@@ -48,41 +49,54 @@
     table {
       width: 100%;
       border-collapse: collapse;
+      font-size: 0.87rem;
+      table-layout: fixed;
     }
     th, td {
       border: 1px solid #ccc;
-      padding: 8px;
+      padding: 3px 2px;
       text-align: center;
+      vertical-align: middle;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
     th {
       background-color: #003399;
       color: white;
+      font-size: 0.90rem;
+      padding: 5px 2px;
     }
-    label {
-      margin-right: 1rem;
+    th.col-id, td.col-id                 { width: 27px; }
+    th.col-cliente, td.col-cliente       { width: 70px; max-width: 72px; }
+    th.col-bairro, td.col-bairro         { width: 62px; max-width: 65px; }
+    th.col-valor, td.col-valor           { width: 58px; }
+    th.col-data, td.col-data             { width: 64px; }
+    th.col-hora, td.col-hora             { width: 48px; }
+    th.col-hora-atrib, td.col-hora-atrib { width: 55px; }
+    th.col-cooperado, td.col-cooperado   { width: 80px; max-width: 82px; }
+    th.col-status, td.col-status         { width: 54px; }
+    th.col-status-pg, td.col-status-pg   { width: 68px; }
+    th.col-acoes, td.col-acoes           { width: 78px; }
+
+    /* Responsivo para telas menores */
+    @media (max-width: 950px) {
+      .container { padding: 0.2rem; }
+      table { font-size: 0.75rem; }
+      .btn { font-size: 0.73rem; padding: 0.2rem 0.4rem; }
+      th, td { padding: 1.5px 1.5px; }
+      th.col-cooperado, td.col-cooperado { width: 60px; max-width: 65px;}
     }
-    input, select {
-      padding: 5px;
-      margin-right: 1rem;
+    @media (max-width: 750px) {
+      table, th, td { font-size: 0.7rem; }
+      .btn { font-size: 0.66rem; }
     }
-    .estatisticas {
-      background: #e0e7ff;
-      padding: 1rem;
-      border-radius: 10px;
-    }
-    .estatisticas div {
-      margin: 0.5rem 0;
-    }
-    .flex-filtro {
-      display: flex;
-      flex-wrap: wrap;
-      align-items: center;
-    }
+    td { word-break: break-all; }
   </style>
 </head>
 <body>
   <header>
-    <h1>Painel Administrativo - Coopex</h1>
+    <h1 style="font-size:1.1rem;">Painel Administrativo - Coopex</h1>
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
   </header>
 
@@ -96,15 +110,15 @@
     </div>
 
     <!-- LISTA DE COOPERADOS COM FILTRO E BOTÃO EXCLUIR -->
-    <div style="margin-bottom:2rem;">
-      <h3>Cooperados</h3>
-      <input type="text" id="filtro-cooperado" placeholder="Filtrar cooperados..." style="margin-bottom:10px;width:220px;padding:6px;">
-      <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:300px;overflow-y:auto;">
+    <div style="margin-bottom:1rem;">
+      <h3 style="margin-bottom:0.4rem;">Cooperados</h3>
+      <input type="text" id="filtro-cooperado" placeholder="Filtrar..." style="margin-bottom:5px;width:95px;padding:5px;">
+      <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:110px;overflow-y:auto;font-size:0.92em;">
         {% for c in cooperados %}
-          <li style="margin-bottom:8px;">
+          <li style="margin-bottom:3px;">
             <b>{{ c.nome }}</b>
             <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
-              <button type="submit" style="background:red;color:white;padding:4px 10px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:10px;">Excluir</button>
+              <button type="submit" style="background:red;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;">Excluir</button>
             </form>
           </li>
         {% endfor %}
@@ -124,61 +138,21 @@
     });
     </script>
 
-    <!-- ESPAÇO DINÂMICO PARA NOMES -->
-    <div id="dynamic-names-section" style="margin-top: 2rem; max-width: 400px; border: 1px solid #003399; border-radius: 8px; padding: 1rem;">
-      <h3 style="color:#003399; margin-bottom: 0.5rem;">Adicionar Nomes</h3>
-      <div id="names-container">
-        <div class="name-input-row" style="display:flex; align-items:center; margin-bottom:0.5rem;">
-          <input type="text" name="nomes[]" placeholder="Digite um nome" style="flex:1; padding:6px; font-size:1rem;" />
-          <button type="button" onclick="removerCampo(this)" style="margin-left:0.5rem; background-color:#cc0000; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:4px 8px; font-weight:bold;">-</button>
-        </div>
-      </div>
-      <button type="button" id="add-name-btn" style="background-color:#003399; color:#fff; border:none; padding:6px 12px; cursor:pointer; border-radius:5px;">+ Adicionar Nome</button>
-    </div>
-
-    <script>
-      function removerCampo(btn) {
-        const row = btn.parentNode;
-        const container = document.getElementById('names-container');
-        if (container.children.length > 1) {
-          container.removeChild(row);
-        } else {
-          row.querySelector('input').value = '';
-        }
-      }
-
-      document.getElementById('add-name-btn').addEventListener('click', () => {
-        const container = document.getElementById('names-container');
-        const newRow = document.createElement('div');
-        newRow.className = 'name-input-row';
-        newRow.style = "display:flex; align-items:center; margin-bottom:0.5rem;";
-        newRow.innerHTML = `
-          <input type="text" name="nomes[]" placeholder="Digite um nome" style="flex:1; padding:6px; font-size:1rem;" />
-          <button type="button" onclick="removerCampo(this)" style="margin-left:0.5rem; background-color:#cc0000; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:4px 8px; font-weight:bold;">-</button>
-        `;
-        container.appendChild(newRow);
-      });
-    </script>
-
     <!-- FILTRO -->
     <div class="filtros">
       <form method="GET" action="{{ url_for('admin') }}" class="flex-filtro">
-        <label for="cooperado">Cooperado:</label>
-        <select name="cooperado_id" id="cooperado">
+        <label for="cooperado" style="font-size:0.94em;">Cooperado:</label>
+        <select name="cooperado_id" id="cooperado" style="font-size:0.93em;">
           <option value="todos">Todos</option>
           {% for c in cooperados %}
           <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
           {% endfor %}
         </select>
-
-        <label for="data_inicio">De:</label>
-        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}">
-
-        <label for="data_fim">Até:</label>
-        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}">
-
+        <label for="data_inicio" style="font-size:0.94em;">De:</label>
+        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:0.92em;">
+        <label for="data_fim" style="font-size:0.94em;">Até:</label>
+        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:0.92em;">
         <button class="btn" type="submit">Filtrar</button>
-
         <a class="btn"
           href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
           Exportar para Excel
@@ -189,59 +163,60 @@
     <!-- ESTATÍSTICAS -->
     {% if estatisticas %}
     <div class="estatisticas">
-      <h3>Estatísticas</h3>
-      <div>Total de Entregas do Dia: <strong>{{ estatisticas.total_dia }}</strong></div>
-      <div>Total de Entregas do Mês: <strong>{{ estatisticas.total_mes }}</strong></div>
-      <div>Total de Entregas do Ano: <strong>{{ estatisticas.total_ano }}</strong></div>
-      <div>Total Valores do Dia: <strong>R$ {{ estatisticas.valores_dia|replace('.', ',') }}</strong></div>
-      <div>Total Valores do Mês: <strong>R$ {{ estatisticas.valores_mes|replace('.', ',') }}</strong></div>
-      <div>Total Valores do Ano: <strong>R$ {{ estatisticas.valores_ano|replace('.', ',') }}</strong></div>
+      <h3 style="margin-bottom:0.3rem;">Estatísticas</h3>
+      <div style="font-size:0.94em;">Total de Entregas do Dia: <strong>{{ estatisticas.total_dia }}</strong></div>
+      <div style="font-size:0.94em;">Total de Entregas do Mês: <strong>{{ estatisticas.total_mes }}</strong></div>
+      <div style="font-size:0.94em;">Total de Entregas do Ano: <strong>{{ estatisticas.total_ano }}</strong></div>
     </div>
     {% endif %}
 
     <!-- TABELA DE ENTREGAS -->
-    <div class="tabela">
+    <div class="tabela" style="overflow-x:auto;">
       <table>
         <thead>
           <tr>
-            <th>ID</th>
-            <th>Cliente</th>
-            <th>Bairro</th>
-            <th>Valor (R$)</th>
-            <th>Data do Pedido</th>
-            <th>Data Atribuída</th>
-            <th>Cooperado</th>
-            <th>Status</th>
-            <th>Status Pagamento</th>
-            <th>Ações</th>
+            <th class="col-id">ID</th>
+            <th class="col-cliente">Cliente</th>
+            <th class="col-bairro">Bairro</th>
+            <th class="col-valor">Valor</th>
+            <th class="col-data">Data<br>Pedido</th>
+            <th class="col-hora">Hora<br>Pedido</th>
+            <th class="col-hora-atrib">Hora<br>Atribuída</th>
+            <th class="col-cooperado">Cooperado</th>
+            <th class="col-status">Status</th>
+            <th class="col-status-pg">Pagamento</th>
+            <th class="col-acoes">Ações</th>
           </tr>
         </thead>
         <tbody>
           {% for e in entregas %}
           <tr>
-            <td>{{ e.id }}</td>
-            <td>{{ e.cliente }}</td>
-            <td>{{ e.bairro }}</td>
-            <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-            <td>
-              {{ e.data_envio_br if e.data_envio_br else '-' }}
+            <td class="col-id">{{ e.id }}</td>
+            <td class="col-cliente">{{ e.cliente }}</td>
+            <td class="col-bairro">{{ e.bairro }}</td>
+            <td class="col-valor">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+            <td class="col-data">
+              {{ e.data_envio.strftime('%d/%m/%Y') if e.data_envio else '-' }}
             </td>
-            <td>
-              {{ e.data_atribuida_br if e.data_atribuida_br else '-' }}
+            <td class="col-hora">
+              {{ e.data_envio.strftime('%H:%M') if e.data_envio else '-' }}
             </td>
-            <td>{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
-            <td>{{ e.status }}</td>
-            <td>
+            <td class="col-hora-atrib">
+              {{ e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '-' }}
+            </td>
+            <td class="col-cooperado">{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
+            <td class="col-status">{{ e.status }}</td>
+            <td class="col-status-pg">
               {% if e.status_pagamento %}
                 {{ e.status_pagamento }}
               {% else %}
                 Pendente
               {% endif %}
             </td>
-            <td>
+            <td class="col-acoes">
               <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
               <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-                <button type="submit" style="background:red;color:white;padding:4px 10px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;">Excluir</button>
+                <button type="submit" style="background:red;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:2px;">Excluir</button>
               </form>
             </td>
           </tr>
@@ -249,7 +224,6 @@
         </tbody>
       </table>
     </div>
-
   </div>
 </body>
 </html>

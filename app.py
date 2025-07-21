@@ -40,10 +40,27 @@ class Entrega(db.Model):
     data_recebido = db.Column(db.DateTime, nullable=True)
     status = db.Column(db.String(20), default="pendente")
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
+    # NOVA COLUNA:
+    status_pagamento = db.Column(db.String(20), nullable=True, default="Pendente")
+
+# MIGRAÇÃO AUTOMÁTICA: Adiciona coluna no banco se não existir (só para SQLite/Postgres comum)
+def checar_e_adicionar_coluna_status_pagamento():
+    with app.app_context():
+        from sqlalchemy import inspect, text
+        insp = inspect(db.engine)
+        colunas = [c['name'] for c in insp.get_columns('entrega')]
+        if 'status_pagamento' not in colunas:
+            # Adiciona coluna
+            try:
+                db.session.execute(text('ALTER TABLE entrega ADD COLUMN status_pagamento VARCHAR(20) DEFAULT \'Pendente\';'))
+                db.session.commit()
+            except Exception as e:
+                db.session.rollback()
 
 def inicializar_banco():
     with app.app_context():
         db.create_all()
+        checar_e_adicionar_coluna_status_pagamento()
         if not Usuario.query.filter_by(nome='coopex').first():
             db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
             db.session.commit()
@@ -56,7 +73,6 @@ def login():
         nome = request.form['usuario']
         senha = request.form['senha']
 
-        # Primeiro: tenta como admin/usuario
         usuario = Usuario.query.filter_by(nome=nome).first()
         if usuario and usuario.senha == senha:
             session['usuario_id'] = usuario.id
@@ -67,7 +83,6 @@ def login():
             else:
                 return redirect(url_for('painel_cooperado'))
 
-        # Depois: tenta como cooperado
         cooperado = Cooperado.query.filter_by(nome=nome).first()
         if cooperado and cooperado.senha == senha:
             session['usuario_id'] = cooperado.id
@@ -77,7 +92,6 @@ def login():
 
         flash('Usuário ou senha inválidos')
     return render_template('login.html')
-# ====================================
 
 @app.route('/logout')
 def logout():
@@ -88,7 +102,7 @@ def logout():
 def admin():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
         return redirect(url_for('login'))
-    
+
     cooperado_id = request.args.get('cooperado_id', 'todos')
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
@@ -101,7 +115,7 @@ def admin():
             query = query.filter(Entrega.cooperado_id == cooperado_id_int)
         except:
             pass
-    
+
     if data_inicio:
         try:
             dt_inicio = datetime.strptime(data_inicio, '%Y-%m-%d')
@@ -199,7 +213,6 @@ def cadastrar_cooperado():
         return redirect(url_for('admin'))
     return render_template('cadastrar_cooperado.html')
 
-# === NOVA ROTA EXCLUIR COOPERADO ===
 @app.route('/excluir_cooperado/<int:id>', methods=['POST'])
 def excluir_cooperado(id):
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
@@ -209,9 +222,7 @@ def excluir_cooperado(id):
     db.session.commit()
     flash('Cooperado excluído com sucesso!')
     return redirect(url_for('admin'))
-# ===================================
 
-# === NOVA ROTA EXCLUIR ENTREGA ===
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
@@ -221,7 +232,6 @@ def excluir_entrega(id):
     db.session.commit()
     flash('Entrega excluída com sucesso!')
     return redirect(url_for('admin'))
-# ==================================
 
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
@@ -243,6 +253,7 @@ def cadastrar_entrega():
             valor=valor,
             data_envio=datetime.utcnow(),
             status='pendente',
+            status_pagamento='Pendente',
             cooperado_id=cooperado_id,
             data_atribuida=datetime.utcnow() if cooperado_id else None
         )
@@ -275,6 +286,8 @@ def editar_entrega(id):
                 entrega.data_atribuida = datetime.utcnow()
             status = request.form.get('status')
             entrega.status = status
+            status_pagamento = request.form.get('status_pagamento')
+            entrega.status_pagamento = status_pagamento if status_pagamento else 'Pendente'
             if status == 'recebido' and not entrega.data_recebido:
                 entrega.data_recebido = datetime.utcnow()
             elif status == 'pendente':
@@ -302,11 +315,12 @@ def editar_entrega(id):
 def painel_cooperado():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'cooperado':
         return redirect(url_for('login'))
-    usuario = Usuario.query.get(session['usuario_id'])
-    cooperado = Cooperado.query.filter_by(nome=usuario.nome).first()
+    cooperado = Cooperado.query.get(session['usuario_id'])
+    if not cooperado:
+        flash('Cooperado não encontrado!')
+        return redirect(url_for('login'))
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
-
     query = Entrega.query.filter(Entrega.cooperado_id == cooperado.id)
 
     if inicio:
@@ -372,15 +386,15 @@ def exportar_xlsx():
         if cooperado_id != 'todos':
             data = []
             for e in entregas:
-                tempo = (e.data_recebido - e.data_envio).total_seconds() / 60 if e.data_recebido else None
                 data.append({
+                    'Data do Pedido': e.data_envio.strftime('%d/%m/%Y') if e.data_envio else '',
+                    'Hora do Pedido': e.data_envio.strftime('%H:%M') if e.data_envio else '',
                     'Cliente': e.cliente,
                     'Bairro': e.bairro,
-                    'Valor': e.valor,
-                    'Data Envio': e.data_envio.strftime('%d/%m/%Y %H:%M'),
-                    'Data Recebido': e.data_recebido.strftime('%d/%m/%Y %H:%M') if e.data_recebido else '',
-                    'Status': e.status,
-                    'Tempo (min)': round(tempo, 1) if tempo else '',
+                    'Hora Atribuída': e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '',
+                    'Valor': '%.2f' % e.valor if e.valor else '',
+                    'Status Pagamento': e.status_pagamento if e.status_pagamento else 'Pendente',
+                    'Status da Entrega': e.status
                 })
             df = pd.DataFrame(data)
             nome_aba = next((c.nome for c in cooperados if c.id == cooperado_id_int), 'Cooperado')
@@ -390,15 +404,15 @@ def exportar_xlsx():
                 entregas_coop = [e for e in entregas if e.cooperado_id == cooperado.id]
                 data = []
                 for e in entregas_coop:
-                    tempo = (e.data_recebido - e.data_envio).total_seconds() / 60 if e.data_recebido else None
                     data.append({
+                        'Data do Pedido': e.data_envio.strftime('%d/%m/%Y') if e.data_envio else '',
+                        'Hora do Pedido': e.data_envio.strftime('%H:%M') if e.data_envio else '',
                         'Cliente': e.cliente,
                         'Bairro': e.bairro,
-                        'Valor': e.valor,
-                        'Data Envio': e.data_envio.strftime('%d/%m/%Y %H:%M'),
-                        'Data Recebido': e.data_recebido.strftime('%d/%m/%Y %H:%M') if e.data_recebido else '',
-                        'Status': e.status,
-                        'Tempo (min)': round(tempo, 1) if tempo else '',
+                        'Hora Atribuída': e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '',
+                        'Valor': '%.2f' % e.valor if e.valor else '',
+                        'Status Pagamento': e.status_pagamento if e.status_pagamento else 'Pendente',
+                        'Status da Entrega': e.status
                     })
                 df = pd.DataFrame(data)
                 df.to_excel(writer, sheet_name=cooperado.nome[:31], index=False)
