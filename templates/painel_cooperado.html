@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8" />
+    <title>Painel Cooperado - Coopex</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <style>
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background: #fff;
+            color: #333;
+        }
+        header {
+            background: #003399;
+            color: #fff;
+            padding: 1rem;
+            text-align: center;
+            font-size: 1rem;
+        }
+        .container {
+            padding: 6px;
+            max-width: 99vw;
+            margin: 0 auto;
+        }
+        .logout {
+            display: block;
+            text-align: right;
+            margin: 8px 2px 8px 0;
+            color: #003399;
+            text-decoration: none;
+            font-weight: bold;
+            font-size: 15px;
+        }
+        h2 {
+            color: #003399;
+            text-align: center;
+            font-size: 1.08rem;
+            margin: 10px 0 6px 0;
+        }
+        .estatisticas {
+            font-size: 13px;
+            margin: 0 0 3px 0;
+        }
+        .estatisticas div { margin: 2px 0; }
+        form.filtros {
+            text-align: center;
+            margin-bottom: 6px;
+        }
+        form.filtros input, form.filtros button {
+            margin: 0 2px;
+            padding: 5px 6px;
+            font-size: 13px;
+        }
+        .table-container { overflow-x: auto; }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 4px 0 0 0;
+            font-size: 12.5px;
+            table-layout: fixed;
+        }
+        th, td {
+            border: 1px solid #ccc;
+            padding: 3px 2px;
+            text-align: center;
+            white-space: nowrap;
+        }
+        th { background: #003399; color: #fff; font-size: 12px; }
+        /* Larguras fixas para caber em tela pequena */
+        .col-c      { max-width: 70px; }
+        .col-v      { width: 52px; }
+        .col-d      { width: 63px; }
+        .col-hp     { width: 45px; }
+        .col-ha     { width: 50px; }
+        .col-pg     { width: 46px; }
+        .col-e      { width: 50px; }
+        .col-a      { width: 40px; }
+        a.btn {
+            padding: 2px 7px;
+            background: #003399;
+            color: #fff;
+            text-decoration: none;
+            border-radius: 3px;
+            font-size: 11px;
+            display: inline-block;
+        }
+        a.btn:hover { background: #002080; }
+        @media (max-width: 480px) {
+            th, td { font-size: 10.4px; padding: 2px 0; }
+            a.btn { font-size: 10px; }
+            .container { padding: 0; }
+        }
+    </style>
+</head>
+<body>
+    <header>
+        Cooperado: {{ session['user_nome'] }}
+    </header>
+    <div class="container">
+        <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+        <form method="get" class="filtros">
+            <input type="date" name="inicio" value="{{ request.args.get('inicio', '') }}">
+            <input type="date" name="fim" value="{{ request.args.get('fim', '') }}">
+            <button type="submit">Filtrar</button>
+        </form>
+        <div class="estatisticas">
+            <div><b>Total:</b> R$ {{ "%.2f"|format(total_geral or 0) }}</div>
+            <div><b>Pago:</b> R$ {{ "%.2f"|format(total_pago or 0) }}</div>
+            <div><b>Pendente:</b> R$ {{ "%.2f"|format(total_pendente or 0) }}</div>
+        </div>
+        <h2>Minhas Entregas</h2>
+        <div class="table-container">
+            <table>
+                <thead>
+                    <tr>
+                        <th class="col-c">Cliente</th>
+                        <th class="col-v">Valor</th>
+                        <th class="col-d">Data</th>
+                        <th class="col-hp">Hr Ped.</th>
+                        <th class="col-ha">Hr Atrib.</th>
+                        <th class="col-pg">Pgto</th>
+                        <th class="col-e">Ent.</th>
+                        <th class="col-a">Ac.</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for e in entregas %}
+                    <tr>
+                        <td class="col-c">{{ e.cliente }}</td>
+                        <td class="col-v">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+                        <td class="col-d">{{ e.data_envio.strftime('%d/%m') if e.data_envio else '-' }}</td>
+                        <td class="col-hp">{{ e.data_envio.strftime('%H:%M') if e.data_envio else '-' }}</td>
+                        <td class="col-ha">{{ e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+                        <td class="col-pg">{{ 'P' if e.status == 'recebido' else '-' }}</td>
+                        <td class="col-e">{{ 'E' if e.status == 'recebido' else '-' }}</td>
+                        <td class="col-a">
+                            <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">✎</a>
+                        </td>
+                    </tr>
+                    {% else %}
+                    <tr><td colspan="8">Nenhuma entrega encontrada.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</body>
+</html>
