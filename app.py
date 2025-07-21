@@ -65,6 +65,9 @@ def inicializar_banco():
             db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
             db.session.commit()
 
+# GARANTE QUE O BANCO E AS COLUNAS EXISTAM SEMPRE QUE O APP SUBIR!
+inicializar_banco()
+
 # ======= LOGIN AJUSTADO AQUI =======
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -421,5 +424,4 @@ def exportar_xlsx():
     return send_file(output, download_name="relatorio_entregas.xlsx", as_attachment=True)
 
 if __name__ == '__main__':
-    inicializar_banco()
     app.run(debug=True)
