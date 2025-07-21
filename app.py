@@ -7,6 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import io
 
+# Configuração
 app = Flask(__name__)
 app.secret_key = 'supersecret'
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
@@ -39,10 +40,11 @@ class Entrega(db.Model):
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
+# Função auxiliar para timezone Brasilia
 def to_brasilia(dt):
     if not dt:
         return None
-    return dt - timedelta(hours=3)
+    return dt - timedelta(hours=3)  # UTC-3 fixo
 
 # ROTAS
 
@@ -59,9 +61,9 @@ def login():
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
         if usuario.lower() == 'coopex':
-            if senha == '05062721':
+            if senha == '05062721':  # senha fixa para admin (COOPEX)
                 session['user_id'] = 0
-                session['user_nome'] = 'Admin'
+                session['user_nome'] = 'Coopex'
                 session['is_admin'] = True
                 return redirect(url_for('admin'))
             else:
@@ -100,6 +102,7 @@ def admin():
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
+    # Estatísticas simples
     hoje = datetime.utcnow().date()
     total_dia = Entrega.query.filter(func.date(Entrega.data_envio) == hoje).count()
     total_mes = Entrega.query.filter(func.extract('month', Entrega.data_envio) == hoje.month,
@@ -186,6 +189,7 @@ def cadastrar_entrega():
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    # Checagem de permissão: admin ou cooperado dono
     if not session.get('user_id'):
         return redirect(url_for('login'))
     is_admin = session.get('is_admin')
@@ -194,6 +198,7 @@ def editar_entrega(id):
         return redirect(url_for('painel_cooperado'))
 
     if request.method == 'POST':
+        # Admin pode alterar tudo
         if is_admin:
             entrega.cliente = request.form.get('cliente')
             entrega.bairro = request.form.get('bairro')
@@ -207,17 +212,15 @@ def editar_entrega(id):
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
+        # Cooperado só pode marcar status/pagamento
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
-            novo_status = request.form.get('status_entrega') or entrega.status
-            if novo_status == "entregue":
-                entrega.status = "recebido"
-            else:
-                entrega.status = novo_status
+            entrega.status = request.form.get('status_entrega') or entrega.status
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
 
+    # Renderização correta: tela diferente se admin ou cooperado
     if is_admin:
         return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados)
     else:
@@ -238,6 +241,7 @@ def excluir_cooperado(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
     c = Cooperado.query.get_or_404(id)
+    # Remove entregas antes
     Entrega.query.filter_by(cooperado_id=c.id).delete()
     db.session.delete(c)
     db.session.commit()
@@ -290,6 +294,7 @@ def exportar_xlsx():
     entregas = query.all()
     cooperados = {c.id: c.nome for c in Cooperado.query.all()}
 
+    # Organiza dados para Excel: uma aba por cooperado
     dados = {}
     for e in entregas:
         nome = cooperados.get(e.cooperado_id, 'Sem Cooperado')
@@ -314,13 +319,16 @@ def exportar_xlsx():
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         for coop, entregas_list in dados.items():
             df = pd.DataFrame(entregas_list)
-            df.to_excel(writer, index=False, sheet_name=str(coop)[:31])
+            df.to_excel(writer, index=False, sheet_name=str(coop)[:31])  # Sheet name max 31 chars
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-@app.before_first_request
+# CRIAÇÃO DE TABELAS (compatível Render e Flask >=2.3)
 def criar_bd():
-    db.create_all()
+    with app.app_context():
+        db.create_all()
+
+criar_bd()
 
 if __name__ == '__main__':
     app.run(debug=True)
