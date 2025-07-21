@@ -211,6 +211,18 @@ def excluir_cooperado(id):
     return redirect(url_for('admin'))
 # ===================================
 
+# === NOVA ROTA EXCLUIR ENTREGA ===
+@app.route('/excluir_entrega/<int:id>', methods=['POST'])
+def excluir_entrega(id):
+    if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
+        return redirect(url_for('login'))
+    entrega = Entrega.query.get_or_404(id)
+    db.session.delete(entrega)
+    db.session.commit()
+    flash('Entrega excluída com sucesso!')
+    return redirect(url_for('admin'))
+# ==================================
+
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if 'usuario_id' not in session or session.get('usuario_tipo') != 'admin':
