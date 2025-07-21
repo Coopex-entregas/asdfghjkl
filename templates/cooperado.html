@@ -101,9 +101,9 @@
             <button type="submit">Filtrar</button>
         </form>
         <div class="estatisticas">
-            <div><strong>Total no período:</strong> R$ {{ total_geral or 0.00 }}</div>
-            <div><strong>Total pago:</strong> R$ {{ total_pago or 0.00 }}</div>
-            <div><strong>Total pendente:</strong> R$ {{ total_pendente or 0.00 }}</div>
+            <div><strong>Total no período:</strong> R$ {{ "%.2f"|format(total_geral or 0) }}</div>
+            <div><strong>Total pago:</strong> R$ {{ "%.2f"|format(total_pago or 0) }}</div>
+            <div><strong>Total pendente:</strong> R$ {{ "%.2f"|format(total_pendente or 0) }}</div>
         </div>
         <h2>Minhas Entregas</h2>
         <div class="table-container">
@@ -124,8 +124,8 @@
                         <td>{{ e.id }}</td>
                         <td>{{ e.cliente }}</td>
                         <td>{{ e.data_envio.strftime('%d/%m/%Y %H:%M') }}</td>
-                        <td>{{ e.status_pagamento }}</td>
-                        <td>{{ e.status_entrega }}</td>
+                        <td>{{ 'Pago' if e.status == 'recebido' else 'Pendente' }}</td>
+                        <td>{{ 'Entregue' if e.status == 'recebido' else 'Pendente' }}</td>
                         <td>
                             <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
                         </td>

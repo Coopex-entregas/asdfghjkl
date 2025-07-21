@@ -95,6 +95,42 @@
       <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
     </div>
 
+    <!-- ESPAÇO DINÂMICO PARA NOMES -->
+    <div id="dynamic-names-section" style="margin-top: 2rem; max-width: 400px; border: 1px solid #003399; border-radius: 8px; padding: 1rem;">
+      <h3 style="color:#003399; margin-bottom: 0.5rem;">Adicionar Nomes</h3>
+      <div id="names-container">
+        <div class="name-input-row" style="display:flex; align-items:center; margin-bottom:0.5rem;">
+          <input type="text" name="nomes[]" placeholder="Digite um nome" style="flex:1; padding:6px; font-size:1rem;" />
+          <button type="button" onclick="removerCampo(this)" style="margin-left:0.5rem; background-color:#cc0000; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:4px 8px; font-weight:bold;">-</button>
+        </div>
+      </div>
+      <button type="button" id="add-name-btn" style="background-color:#003399; color:#fff; border:none; padding:6px 12px; cursor:pointer; border-radius:5px;">+ Adicionar Nome</button>
+    </div>
+
+    <script>
+      function removerCampo(btn) {
+        const row = btn.parentNode;
+        const container = document.getElementById('names-container');
+        if (container.children.length > 1) {
+          container.removeChild(row);
+        } else {
+          row.querySelector('input').value = '';
+        }
+      }
+
+      document.getElementById('add-name-btn').addEventListener('click', () => {
+        const container = document.getElementById('names-container');
+        const newRow = document.createElement('div');
+        newRow.className = 'name-input-row';
+        newRow.style = "display:flex; align-items:center; margin-bottom:0.5rem;";
+        newRow.innerHTML = `
+          <input type="text" name="nomes[]" placeholder="Digite um nome" style="flex:1; padding:6px; font-size:1rem;" />
+          <button type="button" onclick="removerCampo(this)" style="margin-left:0.5rem; background-color:#cc0000; color:#fff; border:none; border-radius:4px; cursor:pointer; padding:4px 8px; font-weight:bold;">-</button>
+        `;
+        container.appendChild(newRow);
+      });
+    </script>
+
     <!-- FILTRO -->
     <div class="filtros">
       <form method="GET" action="{{ url_for('admin') }}" class="flex-filtro">
