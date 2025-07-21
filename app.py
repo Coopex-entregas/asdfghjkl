@@ -8,14 +8,6 @@ import os
 app = Flask(__name__)
 app.secret_key = 'sua_chave_secreta'
 
-# TRECHO ADICIONADO: imprime rotas registradas no servidor (para debug)
-@app.before_first_request
-def mostrar_rotas():
-    print("\n=== ROTAS REGISTRADAS ===")
-    for regra in app.url_map.iter_rules():
-        print(f"ENDPOINT: {regra.endpoint} - URL: {regra.rule}")
-    print("=========================\n")
-
 # String de conexão com o banco (ajuste conforme necessário)
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get(
     'DATABASE_URL',
@@ -49,11 +41,12 @@ class Entrega(db.Model):
     status = db.Column(db.String(20), default="pendente")   # pendente ou recebido
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
 
-with app.app_context():
-    db.create_all()
-    if not Usuario.query.filter_by(nome='coopex').first():
-        db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
-        db.session.commit()
+def inicializar_banco():
+    with app.app_context():
+        db.create_all()
+        if not Usuario.query.filter_by(nome='coopex').first():
+            db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
+            db.session.commit()
 
 # ROTAS
 
@@ -379,5 +372,7 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="relatorio_entregas.xlsx", as_attachment=True)
 
+
 if __name__ == '__main__':
+    inicializar_banco()
     app.run(debug=True)
