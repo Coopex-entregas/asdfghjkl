@@ -78,7 +78,9 @@
     th.col-status, td.col-status         { width: 54px; }
     th.col-status-pg, td.col-status-pg   { width: 68px; }
     th.col-acoes, td.col-acoes           { width: 78px; }
-
+    /* Status com cor */
+    .status-verde { color: #13a038; font-weight: bold; }
+    .status-vermelho { color: #d11a1a; font-weight: bold; }
     /* Responsivo para telas menores */
     @media (max-width: 950px) {
       .container { padding: 0.2rem; }
@@ -205,12 +207,18 @@
               {{ e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '-' }}
             </td>
             <td class="col-cooperado">{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
-            <td class="col-status">{{ e.status }}</td>
-            <td class="col-status-pg">
-              {% if e.status_pagamento %}
-                {{ e.status_pagamento }}
+            <td class="col-status">
+              {% if e.status and e.status.lower() in ['recebido', 'entregue'] %}
+                <span class="status-verde">{{ e.status|capitalize }}</span>
               {% else %}
-                Pendente
+                <span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>
+              {% endif %}
+            </td>
+            <td class="col-status-pg">
+              {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}
+                <span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
+              {% else %}
+                <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
               {% endif %}
             </td>
             <td class="col-acoes">

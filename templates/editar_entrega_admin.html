@@ -5,85 +5,30 @@
   <title>Editar Entrega - Admin - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <style>
-    body {
-      margin: 0;
-      padding: 0;
-      background: linear-gradient(to right, #0047ab, #007bff);
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      height: 100vh;
-    }
-
-    .form-container {
-      background-color: white;
-      padding: 30px 25px;
-      border-radius: 10px;
-      box-shadow: 0 0 15px rgba(0, 0, 0, 0.2);
-      width: 100%;
-      max-width: 500px;
-    }
-
-    h1 {
-      text-align: center;
-      color: #0047ab;
-      margin-bottom: 20px;
-    }
-
-    label {
-      display: block;
-      margin-bottom: 5px;
-      color: #333;
-      font-weight: bold;
-    }
-
-    input[type="text"],
-    select {
-      width: 100%;
-      padding: 10px;
-      margin-bottom: 15px;
-      border: 1px solid #ccc;
-      border-radius: 5px;
-    }
-
-    button {
-      width: 100%;
-      padding: 12px;
-      background-color: #0047ab;
-      border: none;
-      color: white;
-      font-size: 16px;
-      border-radius: 5px;
-      cursor: pointer;
-    }
-
-    button:hover {
-      background-color: #003f99;
-    }
-
-    .back-link {
-      display: block;
-      text-align: center;
-      margin-bottom: 15px;
-      color: #0047ab;
-      text-decoration: none;
-      font-weight: bold;
-    }
-
-    .back-link:hover {
-      text-decoration: underline;
-    }
+    body { margin: 0; padding: 0; background: linear-gradient(to right, #0047ab, #007bff); font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; min-height: 100vh; }
+    .form-container { background-color: white; padding: 30px 25px; border-radius: 10px; box-shadow: 0 0 15px rgba(0, 0, 0, 0.15); width: 100%; max-width: 500px; margin: 32px auto; }
+    h1 { text-align: center; color: #0047ab; margin-bottom: 20px; font-size: 1.18rem; }
+    label { display: block; margin-bottom: 4px; color: #333; font-weight: bold; }
+    input[type="text"], input[type="number"], select { width: 100%; padding: 9px; margin-bottom: 13px; border: 1px solid #ccc; border-radius: 5px; }
+    button { width: 100%; padding: 12px; background-color: #0047ab; border: none; color: white; font-size: 16px; border-radius: 5px; cursor: pointer; }
+    button:hover { background-color: #003f99; }
+    .back-link { display: block; text-align: center; margin-bottom: 15px; color: #0047ab; text-decoration: none; font-weight: bold; }
+    .back-link:hover { text-decoration: underline; }
   </style>
 </head>
 <body>
   <div class="form-container">
-    <h1>Editar Entrega - Admin</h1>
+    <h1>Editar Entrega</h1>
     <a class="back-link" href="{{ url_for('admin') }}">← Voltar</a>
-
     <form method="POST" action="{{ url_for('editar_entrega', id=entrega.id) }}">
-      <label for="descricao">Descrição:</label>
-      <input type="text" id="descricao" name="descricao" value="{{ entrega.descricao }}" required />
+      <label for="cliente">Cliente:</label>
+      <input type="text" id="cliente" name="cliente" value="{{ entrega.cliente }}" required />
+
+      <label for="bairro">Bairro:</label>
+      <input type="text" id="bairro" name="bairro" value="{{ entrega.bairro }}" required />
+
+      <label for="valor">Valor:</label>
+      <input type="number" step="0.01" id="valor" name="valor" value="{{ entrega.valor }}" required />
 
       <label for="cooperado_id">Atribuir Cooperado:</label>
       <select name="cooperado_id" id="cooperado_id">
@@ -95,19 +40,4 @@
 
       <label for="status_pagamento">Status Pagamento:</label>
       <select name="status_pagamento" id="status_pagamento">
-        <option value="pendente" {% if entrega.status_pagamento == 'pendente' %}selected{% endif %}>Pendente</option>
-        <option value="pago" {% if entrega.status_pagamento == 'pago' %}selected{% endif %}>Pago</option>
-      </select>
-
-      <label for="status_entrega">Status Entrega:</label>
-      <select name="status_entrega" id="status_entrega">
-        <option value="pendente" {% if entrega.status_entrega == 'pendente' %}selected{% endif %}>Pendente</option>
-        <option value="em rota" {% if entrega.status_entrega == 'em rota' %}selected{% endif %}>Em Rota</option>
-        <option value="entregue" {% if entrega.status_entrega == 'entregue' %}selected{% endif %}>Entregue</option>
-      </select>
-
-      <button type="submit">Salvar</button>
-    </form>
-  </div>
-</body>
-</html>
+        <option value
