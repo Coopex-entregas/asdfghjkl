@@ -36,9 +36,9 @@ class Entrega(db.Model):
     bairro = db.Column(db.String(100), nullable=False)
     valor = db.Column(db.Float, nullable=False)
     data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    data_atribuida = db.Column(db.DateTime, nullable=True)  # Hora que foi atribuída ao cooperado
-    data_recebido = db.Column(db.DateTime, nullable=True)   # Hora que entregou / recebeu
-    status = db.Column(db.String(20), default="pendente")   # pendente ou recebido
+    data_atribuida = db.Column(db.DateTime, nullable=True)
+    data_recebido = db.Column(db.DateTime, nullable=True)
+    status = db.Column(db.String(20), default="pendente")
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
 
 def inicializar_banco():
@@ -48,14 +48,15 @@ def inicializar_banco():
             db.session.add(Usuario(nome='coopex', senha='05062721', tipo='admin'))
             db.session.commit()
 
-# ROTAS
-
+# ======= LOGIN AJUSTADO AQUI =======
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
         nome = request.form['usuario']
         senha = request.form['senha']
+
+        # Primeiro: tenta como admin/usuario
         usuario = Usuario.query.filter_by(nome=nome).first()
         if usuario and usuario.senha == senha:
             session['usuario_id'] = usuario.id
@@ -65,9 +66,18 @@ def login():
                 return redirect(url_for('admin'))
             else:
                 return redirect(url_for('painel_cooperado'))
-        else:
-            flash('Usuário ou senha inválidos')
+
+        # Depois: tenta como cooperado
+        cooperado = Cooperado.query.filter_by(nome=nome).first()
+        if cooperado and cooperado.senha == senha:
+            session['usuario_id'] = cooperado.id
+            session['usuario_tipo'] = "cooperado"
+            session['user_nome'] = cooperado.nome
+            return redirect(url_for('painel_cooperado'))
+
+        flash('Usuário ou senha inválidos')
     return render_template('login.html')
+# ====================================
 
 @app.route('/logout')
 def logout():
@@ -371,7 +381,6 @@ def exportar_xlsx():
 
     output.seek(0)
     return send_file(output, download_name="relatorio_entregas.xlsx", as_attachment=True)
-
 
 if __name__ == '__main__':
     inicializar_banco()
