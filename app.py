@@ -323,11 +323,10 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# CRIAÇÃO DE TABELAS NO PRIMEIRO RUN
-@app.before_first_request
+# CRIAÇÃO DE TABELAS (para Flask 2.3+)
 def criar_bd():
-    db.create_all()
+    with app.app_context():
+        db.create_all()
 
-# Iniciar o app
-if __name__ == '__main__':
-    app.run(debug=True)
+# Para Render: vai rodar o gunicorn app:app normalmente, então use só app
+criar_bd()
