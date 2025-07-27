@@ -111,9 +111,8 @@
       </select>
       <label for="status_entrega">Status Entrega:</label>
       <select name="status_entrega" id="status_entrega" required>
-        <option value="pendente" {% if entrega.status_entrega == 'pendente' %}selected{% endif %}>Pendente</option>
-        <option value="em rota" {% if entrega.status_entrega == 'em rota' %}selected{% endif %}>Em Rota</option>
-        <option value="entregue" {% if entrega.status_entrega == 'entregue' %}selected{% endif %}>Entregue</option>
+        <option value="pendente" {% if entrega.status == 'pendente' %}selected{% endif %}>Pendente</option>
+        <option value="recebido" {% if entrega.status == 'recebido' %}selected{% endif %}>Entregue</option>
       </select>
       <button type="submit">Salvar</button>
     </form>
