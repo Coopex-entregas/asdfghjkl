@@ -1,30 +1,30 @@
-from datetime import datetime
+# models.py
+
 from flask_sqlalchemy import SQLAlchemy
 
-db = SQLAlchemy(app)
-
-class Usuario(db.Model):
-    __tablename__ = 'usuario'
-    id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(80), unique=True, nullable=False)
-    senha = db.Column(db.String(120), nullable=False)
-    tipo = db.Column(db.String(20), default='admin')  # pode ser 'admin' ou 'cooperado'
+db = SQLAlchemy()
 
 class Cooperado(db.Model):
-    __tablename__ = 'cooperado'
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(120), nullable=False)
-    # Adicione outros campos conforme necessário
+    nome = db.Column(db.String(100), nullable=False, unique=True)
+    senha_hash = db.Column(db.String(128), nullable=False)
+
+    def set_senha(self, senha):
+        from werkzeug.security import generate_password_hash
+        self.senha_hash = generate_password_hash(senha)
+
+    def check_senha(self, senha):
+        from werkzeug.security import check_password_hash
+        return check_password_hash(self.senha_hash, senha)
 
 class Entrega(db.Model):
-    __tablename__ = 'entrega'
     id = db.Column(db.Integer, primary_key=True)
-    cliente = db.Column(db.String(120), nullable=False)
-    bairro = db.Column(db.String(80), nullable=False)
+    cliente = db.Column(db.String(100), nullable=False)
+    bairro = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
-    data_envio = db.Column(db.DateTime, default=datetime.utcnow)
-    data_atribuida = db.Column(db.DateTime, nullable=True)  # Adicionado aqui
-    data_recebido = db.Column(db.DateTime, nullable=True)
-    status = db.Column(db.String(20), default='pendente')
+    data_envio = db.Column(db.DateTime, nullable=False)
+    data_atribuida = db.Column(db.DateTime, nullable=True)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    cooperado = db.relationship('Cooperado', backref=db.backref('entregas', lazy=True))
+    status_pagamento = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(20), nullable=True)
+    cooperado = db.relationship('Cooperado', backref='entregas')

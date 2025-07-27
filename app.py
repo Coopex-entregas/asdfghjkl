@@ -7,7 +7,7 @@ from datetime import datetime, timedelta
 import pandas as pd
 import io
 
-# Configuração
+# ====== Configuração ======
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
@@ -15,7 +15,7 @@ app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 db = SQLAlchemy(app)
 
-# MODELS
+# ====== MODELS ======
 class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -40,13 +40,13 @@ class Entrega(db.Model):
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
-# Função auxiliar para timezone Brasilia
+# ====== Função auxiliar ======
 def to_brasilia(dt):
     if not dt:
         return None
     return dt - timedelta(hours=3)  # UTC-3 fixo
 
-# ROTAS
+# ====== ROTAS ======
 
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -82,51 +82,50 @@ def logout():
 def admin():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
     cooperado_id = request.args.get('cooperado_id', 'todos')
 
     query = Entrega.query
+
+    # Por padrão só mostra entregas do dia
+    if not data_inicio and not data_fim:
+        hoje = datetime.utcnow().date()
+        query = query.filter(func.date(Entrega.data_envio) == hoje)
     if cooperado_id and cooperado_id != 'todos':
         query = query.filter(Entrega.cooperado_id == int(cooperado_id))
     if data_inicio:
         query = query.filter(Entrega.data_envio >= datetime.strptime(data_inicio, "%Y-%m-%d"))
     if data_fim:
         query = query.filter(Entrega.data_envio <= datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1))
+
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
-    # Estatísticas simples
     hoje = datetime.utcnow().date()
     total_dia = Entrega.query.filter(func.date(Entrega.data_envio) == hoje).count()
     total_mes = Entrega.query.filter(func.extract('month', Entrega.data_envio) == hoje.month,
                                      func.extract('year', Entrega.data_envio) == hoje.year).count()
     total_ano = Entrega.query.filter(func.extract('year', Entrega.data_envio) == hoje.year).count()
+    estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
-    estatisticas = {
-        "total_dia": total_dia,
-        "total_mes": total_mes,
-        "total_ano": total_ano
-    }
     return render_template('admin.html', entregas=entregas, cooperados=cooperados,
-                           estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia)
+                           estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia, request=request)
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
-
     user_id = session['user_id']
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
-
     query = Entrega.query.filter(Entrega.cooperado_id == user_id)
     if inicio:
         query = query.filter(Entrega.data_envio >= datetime.strptime(inicio, "%Y-%m-%d"))
     if fim:
         query = query.filter(Entrega.data_envio <= datetime.strptime(fim, "%Y-%m-%d") + timedelta(days=1))
     entregas = query.order_by(Entrega.data_envio.desc()).all()
-
     total_geral = sum(e.valor for e in entregas)
     total_pago = sum(e.valor for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago')
     total_pendente = total_geral - total_pago
@@ -179,12 +178,37 @@ def cadastrar_entrega():
         return redirect(url_for('admin'))
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
+@app.route('/agendar_entrega', methods=['GET', 'POST'])
+def agendar_entrega():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        cliente = request.form.get('cliente')
+        bairro = request.form.get('bairro')
+        valor = float(request.form.get('valor'))
+        data_str = request.form.get('data')
+        status_entrega = request.form.get('status_entrega')
+        status_pagamento = request.form.get('status_pagamento')
+        data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
+        entrega = Entrega(
+            cliente=cliente,
+            bairro=bairro,
+            valor=valor,
+            data_envio=data_envio,
+            cooperado_id=None,
+            status=status_entrega,
+            status_pagamento=status_pagamento
+        )
+        db.session.add(entrega)
+        db.session.commit()
+        flash('Entrega agendada!')
+        return redirect(url_for('admin'))
+    return render_template('agendar_entrega.html')
+
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    if session.get('user_id') is None:
-        return redirect(url_for('login'))
     is_admin = session.get('is_admin')
     if not is_admin and entrega.cooperado_id != session['user_id']:
         flash("Acesso não permitido.")
@@ -195,10 +219,16 @@ def editar_entrega(id):
             entrega.cliente = request.form.get('cliente')
             entrega.bairro = request.form.get('bairro')
             entrega.valor = float(request.form.get('valor'))
-            coop_id = request.form.get('cooperado_id')
-            entrega.cooperado_id = int(coop_id) if coop_id else None
-            if coop_id and not entrega.data_atribuida:
-                entrega.data_atribuida = datetime.utcnow()
+            novo_coop_id = request.form.get('cooperado_id')
+            if novo_coop_id:
+                novo_coop_id = int(novo_coop_id)
+                # Se mudou de cooperado, atualiza hora atribuída
+                if entrega.cooperado_id != novo_coop_id:
+                    entrega.cooperado_id = novo_coop_id
+                    entrega.data_atribuida = datetime.utcnow()
+                # Se não mudou, mantém a hora
+            else:
+                entrega.cooperado_id = None
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
             db.session.commit()
@@ -283,7 +313,6 @@ def exportar_xlsx():
     entregas = query.all()
     cooperados = {c.id: c.nome for c in Cooperado.query.all()}
 
-    # Organiza os dados conforme solicitado (sem ID, sem Tempo até atribuição, formato que você pediu!)
     dados = {}
     for e in entregas:
         nome = cooperados.get(e.cooperado_id, 'Sem Cooperado')
