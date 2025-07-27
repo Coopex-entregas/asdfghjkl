@@ -63,7 +63,6 @@
       padding: 5px 3px;
       text-align: center;
       vertical-align: middle;
-      /* Só remove nowrap para ações depois! */
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -90,25 +89,43 @@
     .status-verde { color: var(--verde); font-weight: bold; }
     .status-vermelho { color: var(--vermelho); font-weight: bold; }
 
-    /* Botão excluir entrega VERMELHO robusto */
+    /* Botões pequenos e iguais para editar/excluir na tabela */
+    .btn-tabela {
+      background: var(--azul);
+      color: #fff;
+      border: none;
+      padding: 4px 14px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      margin-right: 5px;
+      margin-left: 0;
+      transition: background 0.18s;
+      box-shadow: 0 1px 4px #00339915;
+      min-width: 55px;
+      display: inline-block;
+    }
+    .btn-tabela:hover {
+      background: var(--azul-hover);
+    }
     .btn-excluir-vermelho {
-      background: #d11a1a !important;
-      color: #fff !important;
-      border: 2.5px solid #b1000a !important;
-      padding: 7px 20px !important;
-      border-radius: 7px !important;
-      font-weight: bold !important;
-      font-size: 16px !important;
-      cursor: pointer !important;
-      margin-left: 7px !important;
-      box-shadow: 0 2px 8px #b1000a40 !important;
-      display: inline-block !important;
-      min-width: 70px !important;
-      transition: background 0.2s, border 0.2s;
+      background: var(--vermelho);
+      color: #fff;
+      border: none;
+      padding: 4px 14px;
+      border-radius: 6px;
+      font-weight: 500;
+      font-size: 13px;
+      cursor: pointer;
+      margin-left: 0;
+      min-width: 55px;
+      box-shadow: 0 1px 4px #d11a1a33;
+      transition: background 0.18s;
+      display: inline-block;
     }
     .btn-excluir-vermelho:hover {
-      background: #a50000 !important;
-      border-color: #f55959 !important;
+      background: #a50000;
     }
     /* Corrige coluna ações: mostra tudo, nunca esconde botão */
     td.col-acoes, th.col-acoes {
@@ -255,7 +272,7 @@
               {% endif %}
             </td>
             <td class="col-acoes">
-              <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
+              <a class="btn-tabela" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
               <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
                 <button type="submit" class="btn-excluir-vermelho">Excluir</button>
               </form>
@@ -265,6 +282,122 @@
         </tbody>
       </table>
     </div>
+
   </div>
+
+  <!-- Mensagem Boa Noite -->
+  <div id="boanoite-popup" class="boanoite-popup"></div>
+
+  <!-- Modal de alerta de cobrança -->
+  <div id="modalAlerta" class="modal-alerta" style="display:none;">
+    <div class="modal-alerta-box">
+      <div class="alerta-msg">⚠️ Existem entregas com pagamento pendente!</div>
+      <div style="color:#444;font-size:1.05em;margin-bottom:12px;">Verifique e cobre seus cooperados!<br>
+      Se já recebeu, lembre de atualizar o pagamento.<br>
+      <span style="color:#13a038;font-weight:600;">Quanto mais rápido cobrar, melhor para todos 😉</span></div>
+      <button onclick="fecharModal()">OK, vou verificar!</button>
+    </div>
+  </div>
+
+  <script>
+    // Filtro cooperado
+    document.getElementById('filtro-cooperado').addEventListener('input', function() {
+      var filtro = this.value.toLowerCase();
+      var lista = document.getElementById('lista-cooperados').children;
+      for (let item of lista) {
+        item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
+      }
+    });
+
+    // Lista de Espera (ordem FIFO, numeração)
+    function renderChips() {
+      const esperaLista = document.getElementById('espera-lista');
+      esperaLista.innerHTML = '';
+      let nomes = JSON.parse(localStorage.getItem('coopex_lista_espera') || "[]");
+      nomes.forEach((nome, idx) => {
+        const chip = document.createElement('div');
+        chip.className = 'espera-chip';
+        chip.innerHTML = `<span class="espera-chip-num">${idx+1}</span>
+                          <span class="espera-chip-text">${nome}</span>`;
+        const btn = document.createElement('button');
+        btn.type = "button";
+        btn.className = "espera-chip-remove";
+        btn.title = "Remover";
+        btn.innerHTML = "×";
+        btn.onclick = function() {
+          nomes.splice(idx, 1);
+          localStorage.setItem('coopex_lista_espera', JSON.stringify(nomes));
+          renderChips();
+        };
+        chip.appendChild(btn);
+        esperaLista.appendChild(chip);
+      });
+    }
+    function addEspera() {
+      const nomeInput = document.getElementById('espera-nome');
+      const nome = nomeInput.value.trim().slice(0, 30);
+      if (!nome) return;
+      let nomes = JSON.parse(localStorage.getItem('coopex_lista_espera') || "[]");
+      nomes.push(nome);
+      localStorage.setItem('coopex_lista_espera', JSON.stringify(nomes));
+      renderChips();
+      nomeInput.value = "";
+      nomeInput.focus();
+    }
+    function carregaListaEspera() {
+      renderChips();
+    }
+    window.onload = carregaListaEspera;
+
+    // Mensagem de cobrança de pendente
+    {% if tem_pendente %}
+      function mostraAlertaPendente() {
+        document.getElementById('modalAlerta').style.display = 'flex';
+        document.body.style.overflow = 'hidden';
+      }
+      function fecharModal() {
+        document.getElementById('modalAlerta').style.display = 'none';
+        document.body.style.overflow = '';
+        localStorage.setItem('alerta_pendente_lido', new Date().toISOString().slice(0,13));
+      }
+      (function() {
+        let lido = localStorage.getItem('alerta_pendente_lido');
+        let agora = new Date().toISOString().slice(0,13);
+        if (lido != agora) {
+          mostraAlertaPendente();
+        }
+      })();
+      setInterval(function(){
+        let lido = localStorage.getItem('alerta_pendente_lido');
+        let agora = new Date().toISOString().slice(0,13);
+        if (lido != agora) {
+          mostraAlertaPendente();
+        }
+      }, 2*60*60*1000);
+    {% endif %}
+
+    // Mensagem de BOA NOITE às 22h
+    function mostraBoaNoite() {
+      let pop = document.getElementById('boanoite-popup');
+      pop.innerHTML = "🌙 Boa noite, supervisor!<br>Descanse bem, amanhã será mais um dia de conquistas na COOPEX! 😄";
+      pop.style.display = "block";
+      setTimeout(() => pop.style.display = "none", 3200);
+      localStorage.setItem('boanoite_vista', (new Date()).toISOString().slice(0,10));
+    }
+    function verificaBoaNoite() {
+      let agora = new Date();
+      let hora = agora.getHours();
+      let hoje = agora.toISOString().slice(0,10);
+      let vista = localStorage.getItem('boanoite_vista');
+      if (hora === 22 && vista !== hoje) {
+        mostraBoaNoite();
+      }
+    }
+    setInterval(verificaBoaNoite, 58*1000);
+    window.onload = function(){
+      carregaListaEspera();
+      verificaBoaNoite();
+    }
+  </script>
 </body>
 </html>
