@@ -6,6 +6,7 @@ from werkzeug.security import generate_password_hash, check_password_hash
 from datetime import datetime, timedelta
 import pandas as pd
 import io
+import holidays
 
 # ====== Configuração ======
 app = Flask(__name__)
@@ -45,6 +46,37 @@ def to_brasilia(dt):
     if not dt:
         return None
     return dt - timedelta(hours=3)  # UTC-3 fixo
+
+# ====== Filtro Jinja para dia da semana ======
+def diasemana(data):
+    dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+    return dias[data.weekday()]
+
+app.jinja_env.filters['diasemana'] = diasemana
+
+# ====== Função para verificar feriados ======
+def verifica_feriado(data=None):
+    if data is None:
+        data = datetime.utcnow().date()
+    feriados_brasil = holidays.Brazil(years=data.year)
+    feriados_rn = holidays.Brazil(state='RN', years=data.year)
+    feriados_natal = {
+        datetime(data.year, 12, 25).date(): "Natal (Municipal)",
+        # Adicione outros feriados municipais aqui, se desejar
+    }
+
+    feriados_hoje = []
+    if data in feriados_brasil:
+        feriados_hoje.append("Feriado Nacional: " + feriados_brasil.get(data))
+    if data in feriados_rn and feriados_rn.get(data) != feriados_brasil.get(data):
+        feriados_hoje.append("Feriado Estadual RN: " + feriados_rn.get(data))
+    if data in feriados_natal:
+        feriados_hoje.append("Feriado Municipal Natal: " + feriados_natal[data])
+
+    if feriados_hoje:
+        return " | ".join(feriados_hoje)
+    else:
+        return None
 
 # ====== ROTAS ======
 
@@ -110,8 +142,17 @@ def admin():
     total_ano = Entrega.query.filter(func.extract('year', Entrega.data_envio) == hoje.year).count()
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
+    feriado_hoje = verifica_feriado(hoje)
+
+    tem_pendente = Entrega.query.filter(
+        func.date(Entrega.data_envio) == hoje,
+        (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
+    ).count() > 0
+
     return render_template('admin.html', entregas=entregas, cooperados=cooperados,
-                           estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim, to_brasilia=to_brasilia, request=request)
+                           estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim,
+                           to_brasilia=to_brasilia, request=request, now=datetime.utcnow,
+                           feriado_hoje=feriado_hoje, tem_pendente=tem_pendente)
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
