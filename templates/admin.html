@@ -303,7 +303,7 @@
     }
     window.onload = carregaListaEspera;
 
-    // Imprimir cupom (logo local + QR Google)
+    // IMPRIMIR CUPOM - QR DIRETO PARA GOOGLE AVALIAÇÃO COOPEX
     function imprimirCupom(id) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == id);
       if (!linha) return;
@@ -318,7 +318,8 @@
       };
       const cupomNum = dados.id.toString().padStart(6, '0');
       const logoUrl = "/static/logo_coopex.png";
-      const qrLink = "https://www.google.com/search?sca_esv=32011946fbc5f18a&rlz=1C1OPNX_enBR1155BR1155&sxsrf=AE3TifPivsjoGJTCJGUHQs_EpB_eqDCcdQ:1753721695092&si=AMgyJEuzsz2NflaaWzrzdpjxXXRaJ2hfdMsbe_mSWso6src8sxY20io8tmpk-aU4938VZA1k6E1yyEY60x2lJEuMYP8AZ0WiO02rlQaglp-vX9-vBztSo4ulyVAgXO0fJsxCrvWygberyqJq3qTzDlbdM9ovN5Vzqw%3D%3D&q=Coopex+Entregas+Coment%C3%A1rios&sa=X&ved=2ahUKEwimuq61guCOAxUgiJUCHdNHBhYQ0bkNegQIIhAE&biw=1366&bih=599&dpr=1";
+      // LINK FIXO DO GOOGLE AVALIAÇÃO
+      const qrLink = "https://www.google.com/search?sca_esv=63099446d56d4ef8&rlz=1C1OPNX_enBR1155BR1155&sxsrf=AE3TifNl27eucNUQ0nHVvGgPwCAchG-EEw:1753736273459&si=AMgyJEuzsz2NflaaWzrzdpjxXXRaJ2hfdMsbe_mSWso6src8sxY20io8tmpk-aU4938VZA1k6E1yyEY60x2lJEuMYP8AZ0WiO02rlQaglp-vX9-vBztSo4ulyVAgXO0fJsxCrvWygberyqJq3qTzDlbdM9ovN5Vzqw%3D%3D&q=Coopex+Entregas+Coment%C3%A1rios&sa=X&ved=2ahUKEwi41O_cuOCOAxWrppUCHevSFCoQ0bkNegQIJRAE&biw=1366&bih=599&dpr=1";
       const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(qrLink);
       const cupom = `
         <div style="font-family:Arial,monospace;max-width:330px;margin:auto;padding:12px 10px;">
