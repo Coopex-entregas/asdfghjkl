@@ -6,57 +6,63 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
     <style>
         body { margin: 0; font-family: Arial, sans-serif; background: #fff; color: #333; }
-        header { background: #003399; color: #fff; padding: 1rem; text-align: center; font-size: 1.05rem; }
-        .container { padding: 8px 2vw; max-width: 100vw; margin: 0 auto; }
-        .logout { display: block; text-align: right; margin: 12px 4px 10px 0; color: #003399; text-decoration: none; font-weight: bold; font-size: 1.04em; }
-        h2 { color: #003399; text-align: center; font-size: 1.18rem; margin: 12px 0 8px 0; }
-        .estatisticas { font-size: 1em; margin: 3px 0 6px 0; display: flex; justify-content: space-around;}
-        .estatisticas div { margin: 2px 0; }
-        form.filtros { text-align: center; margin-bottom: 10px; }
+        header { background: #003399; color: #fff; padding: 1rem 0.3rem; text-align: center; font-size: 1.01rem; }
+        .container { padding: 5px 0.2vw; max-width: 100vw; margin: 0 auto; }
+        .logout { display: block; text-align: right; margin: 7px 6px 6px 0; color: #003399; text-decoration: none; font-weight: bold; font-size: 0.98em; }
+        h2 { color: #003399; text-align: center; font-size: 1.01rem; margin: 9px 0 5px 0; }
+        .estatisticas { font-size: 0.93em; margin: 2px 0 6px 0; display: flex; justify-content: space-between; flex-wrap: wrap; }
+        .estatisticas div { margin: 2px 0; min-width: 90px;}
+        form.filtros { text-align: center; margin-bottom: 7px; }
         form.filtros input, form.filtros button {
-            margin: 0 2px; padding: 11px 7px; font-size: 1em; border-radius: 7px; border: 1.2px solid #a3a3c9;
+            margin: 0 1px; padding: 7px 4px; font-size: 0.93em; border-radius: 5px; border: 1.2px solid #a3a3c9;
         }
         form.filtros button { background: #003399; color: #fff; border: none; font-weight: bold; }
         form.filtros button:active, form.filtros button:hover { background: #002080; }
-        .table-container { overflow-x: auto; margin-bottom: 12px; }
-        table { width: 100%; border-collapse: collapse; margin: 5px 0 0 0; font-size: 1em; min-width: 630px; }
-        th, td { border: 1px solid #ccc; padding: 14px 5px; text-align: center; }
-        th { background: #003399; color: #fff; font-size: 1.05em; }
-        .col-c { max-width: 85px; }
-        .col-v { width: 70px; }
-        .col-d, .col-hp, .col-ha { width: 62px; }
-        .col-pg, .col-e { width: 80px; }
-        .col-a { width: 48px; }
+        .table-container { width: 100%; overflow-x: auto; margin-bottom: 9px; }
+        table { width: 100%; border-collapse: collapse; margin: 4px auto 0 auto; font-size: 0.90em;}
+        th, td {
+            border: 1px solid #ccc;
+            padding: 4px 2px;
+            text-align: center;
+            white-space: normal;    /* Permite quebra */
+            word-break: break-word; /* Força quebra */
+            font-size: 0.95em;
+        }
+        th {
+            background: #003399;
+            color: #fff;
+            font-size: 0.93em;
+            max-width: 70px;        /* Limita largura do cabeçalho */
+            min-width: 52px;
+            line-height: 1.1em;
+        }
+        td {
+            max-width: 75px;        /* Limita largura de célula */
+            min-width: 35px;
+            overflow-wrap: break-word;
+        }
         .status-pago { color: #13a038; font-weight: bold; }
         .status-pendente { color: #d11a1a; font-weight: bold; }
         a.btn {
-            padding: 7px 16px; background: #003399; color: #fff; text-decoration: none; border-radius: 7px;
-            font-size: 1.17em; display: inline-block; font-weight: bold; box-shadow: 0 2px 6px #c3dafc;
+            padding: 2px 5px; background: #003399; color: #fff; text-decoration: none; border-radius: 5px;
+            font-size: 0.96em; display: inline-block; font-weight: bold; box-shadow: 0 1px 3px #c3dafc;
         }
         a.btn:active, a.btn:hover { background: #002080; }
-        @media (max-width: 950px) {
-            table { font-size: 0.99em; }
-            th, td { padding: 10px 2px; }
-        }
+
         @media (max-width: 700px) {
-            header { font-size: 1em; padding: 0.85rem; }
-            h2 { font-size: 1.04em; margin: 10px 0 7px 0; }
-            .estatisticas { flex-direction: column; gap: 2px; font-size: 0.98em;}
-            .logout { font-size: 0.98em; }
-            .container { padding: 4px 0.5vw; }
-            th, td { font-size: 0.93em; padding: 7px 1px;}
-            table { min-width: 570px; }
-            a.btn { font-size: 1em; padding: 6px 12px; }
+            header { font-size: 0.98em; padding: 0.6rem 0.1rem; }
+            h2 { font-size: 0.95em; margin: 7px 0 5px 0; }
+            .estatisticas { flex-direction: column; gap: 1px; font-size: 0.89em;}
+            .logout { font-size: 0.92em; }
+            .container { padding: 2px 0.2vw; }
+            th, td { font-size: 0.84em; padding: 3px 1px;}
+            th, td { max-width: 62px; min-width: 34px;}
+            table { font-size: 0.86em;}
+            a.btn { font-size: 0.91em; padding: 2px 5px; }
         }
-        @media (max-width: 500px) {
-            .container { padding: 0; }
-            header { font-size: 0.97em; }
-            h2 { font-size: 1em; }
-            .estatisticas { font-size: 0.93em;}
-            form.filtros input, form.filtros button { font-size: 0.92em; padding: 8px 3px; }
-            th, td { padding: 5px 1px; font-size: 0.90em; }
-            a.btn { padding: 5px 8px; font-size: 0.98em;}
-            table { min-width: 420px; }
+        @media (max-width: 440px) {
+            th, td { font-size: 0.75em; padding: 2px 1px; max-width: 45px; }
+            h2 { font-size: 0.89em; }
         }
     </style>
 </head>
@@ -81,35 +87,35 @@
             <table>
                 <thead>
                     <tr>
-                        <th class="col-c">Cliente</th>
-                        <th class="col-v">Valor</th>
-                        <th class="col-d">Data</th>
-                        <th class="col-hp">Hr Ped.</th>
-                        <th class="col-ha">Hr Atrib.</th>
-                        <th class="col-pg">Pgto</th>
-                        <th class="col-e">Entrega</th>
-                        <th class="col-a">Ac.</th>
+                        <th>Cliente</th>
+                        <th>Valor</th>
+                        <th>Data</th>
+                        <th>Hora Pedido</th>
+                        <th>Hora Entrega</th>
+                        <th>Pagamento</th>
+                        <th>Entrega</th>
+                        <th>Ação</th>
                     </tr>
                 </thead>
                 <tbody>
                     {% for e in entregas %}
                     <tr>
-                        <td class="col-c">{{ e.cliente }}</td>
-                        <td class="col-v">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-                        <td class="col-d">{{ e.data_envio.strftime('%d/%m') if e.data_envio else '-' }}</td>
-                        <td class="col-hp">{{ e.data_envio.strftime('%H:%M') if e.data_envio else '-' }}</td>
-                        <td class="col-ha">{{ e.data_atribuida.strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-                        <td class="col-pg">
+                        <td>{{ e.cliente }}</td>
+                        <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+                        <td>{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
+                        <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+                        <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+                        <td>
                           <span class="{{ 'status-pago' if e.status_pagamento and e.status_pagamento|lower == 'pago' else 'status-pendente' }}">
                             {{ e.status_pagamento if e.status_pagamento else 'Pendente' }}
                           </span>
                         </td>
-                        <td class="col-e">
+                        <td>
                           <span class="{{ 'status-pago' if e.status == 'recebido' else 'status-pendente' }}">
                             {{ 'Entregue' if e.status == 'recebido' else 'Pendente' }}
                           </span>
                         </td>
-                        <td class="col-a">
+                        <td>
                             <a class="btn" href="{{ url_for('editar_entrega', id=e.id) }}">✎</a>
                         </td>
                     </tr>
