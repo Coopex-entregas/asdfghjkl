@@ -38,7 +38,7 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
-    pagamento = db.Column(db.String(20), default="Dinheiro")    # <==== ADICIONADO
+    pagamento = db.Column(db.String(20), default="Dinheiro")    # Coluna pagamento adicionada
     cooperado = db.relationship('Cooperado', backref='entregas')
 
 # ====== Função auxiliar ======
