@@ -48,13 +48,14 @@
       min-height: 310px;
       transition: background-image 0.18s;
       box-shadow: var(--shadow);
+      overflow: hidden;
     }
     .painel-bg-trocavel::before {
       content: "";
       position: absolute;
       z-index: 1;
       left: 0; top: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.84);
+      background: rgba(255,255,255,0.25); /* <<<<<< Menos transparente! */
       border-radius: 18px;
       pointer-events: none;
     }
@@ -151,14 +152,12 @@
           </span>
         {% endif %}
       </div>
-
       <!-- Cards de estatísticas -->
       <div class="painel-superior">
         <div class="card">Entregas do Dia<br><strong>{{ estatisticas.total_dia }}</strong></div>
         <div class="card">Do Mês<br><strong>{{ estatisticas.total_mes }}</strong></div>
         <div class="card">Do Ano<br><strong>{{ estatisticas.total_ano }}</strong></div>
       </div>
-
       <!-- Lista de Espera + Cooperados -->
       <div class="painel-lateral">
         <!-- Lista de Espera -->
@@ -426,7 +425,6 @@
       printWindow.document.write('<html><head><title>Cupom COOPEX</title></head><body>' + cupom + '</body></html>');
       printWindow.document.close();
       printWindow.focus();
-      // Não executa window.print() automático!
     }
   </script>
 </body>
