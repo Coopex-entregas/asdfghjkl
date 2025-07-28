@@ -38,14 +38,14 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
-    pagamento = db.Column(db.String(20), default="Dinheiro")    # Coluna pagamento adicionada
+    pagamento = db.Column(db.String(20), default="Dinheiro")    # Método de pagamento
     cooperado = db.relationship('Cooperado', backref='entregas')
 
 # ====== Função auxiliar ======
 def to_brasilia(dt):
     if not dt:
         return None
-    return dt - timedelta(hours=3)  # UTC-3 fixo
+    return dt - timedelta(hours=3)  # Ajuste de fuso horário UTC-3 fixo
 
 # ====== Filtro Jinja para dia da semana ======
 def diasemana(data):
