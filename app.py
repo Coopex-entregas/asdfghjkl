@@ -321,7 +321,6 @@ def estatisticas_cooperado():
     return render_template('estatisticas_cooperado.html', cooperados=cooperados,
                            cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim,
                            estatisticas=estatisticas)
-
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -338,7 +337,6 @@ def exportar_xlsx():
         query = query.filter(Entrega.data_envio <= datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1))
     entregas = query.all()
     cooperados = {c.id: c.nome for c in Cooperado.query.all()}
-
     dados = {}
     for e in entregas:
         nome = cooperados.get(e.cooperado_id, 'Sem Cooperado')
