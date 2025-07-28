@@ -19,7 +19,7 @@ db = SQLAlchemy(app)
 # ====== MODELS ======
 class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
+    nome = db.Column(db.String(100), nullable=False, unique=True)
     senha_hash = db.Column(db.String(128), nullable=False)
 
     def set_senha(self, senha):
@@ -38,7 +38,7 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
-    pagamento = db.Column(db.String(20), default="Dinheiro")    # Método de pagamento
+    pagamento = db.Column(db.String(20), nullable=False, default="Dinheiro")  # Método de pagamento padrão
     cooperado = db.relationship('Cooperado', backref='entregas')
 
 # ====== Função auxiliar ======
