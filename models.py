@@ -1,5 +1,3 @@
-# models.py
-
 from flask_sqlalchemy import SQLAlchemy
 
 db = SQLAlchemy()
@@ -27,4 +25,5 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), nullable=True)
+    pagamento = db.Column(db.String(20), default="Dinheiro")
     cooperado = db.relationship('Cooperado', backref='entregas')

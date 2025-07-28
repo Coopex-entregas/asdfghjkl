@@ -1,137 +1,107 @@
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-    <meta charset="UTF-8">
-    <title>Agendar Entrega - Coopex</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-    <style>
-        :root {
-            --azul: #003399;
-            --azul-claro: #f3f8ff;
-            --cinza: #f9f9f9;
-            --verde: #13a038;
-            --vermelho: #d11a1a;
-            --branco: #fff;
-            --shadow: 0 2px 10px #00339912;
-            --azul-hover: #194bb3;
-        }
-        html, body {
-            margin: 0;
-            padding: 0;
-            font-family: 'Segoe UI', Arial, sans-serif;
-            background: var(--cinza);
-            color: #21243b;
-            font-size: 15px;
-        }
-        .container {
-            max-width: 420px;
-            margin: 35px auto;
-            background: var(--branco);
-            box-shadow: var(--shadow);
-            border-radius: 15px;
-            padding: 32px 32px 25px 32px;
-        }
-        h2 {
-            color: var(--azul);
-            text-align: center;
-            margin-top: 0;
-            margin-bottom: 25px;
-        }
-        label {
-            font-weight: 500;
-            color: var(--azul);
-        }
-        form {
-            display: flex;
-            flex-direction: column;
-            gap: 16px;
-        }
-        input[type="text"], input[type="number"], input[type="datetime-local"], select {
-            padding: 8px 11px;
-            border-radius: 7px;
-            border: 1.2px solid #bbcfff;
-            background: #f7faff;
-            font-size: 1em;
-            transition: border 0.2s;
-        }
-        input[type="text"]:focus, input[type="number"]:focus, input[type="datetime-local"]:focus, select:focus {
-            border: 1.2px solid var(--azul);
-            outline: none;
-        }
-        .btn {
-            background-color: var(--azul);
-            color: white;
-            border: none;
-            padding: 11px 0;
-            border-radius: 13px;
-            cursor: pointer;
-            font-size: 16px;
-            font-weight: bold;
-            margin-top: 10px;
-            margin-bottom: 8px;
-            box-shadow: var(--shadow);
-            transition: background .16s;
-        }
-        .btn:hover {
-            background: var(--azul-hover);
-        }
-        .voltar {
-            display: block;
-            text-align: center;
-            margin-top: 18px;
-            color: var(--azul);
-            text-decoration: none;
-            font-weight: bold;
-            font-size: 1em;
-        }
-        @media (max-width: 600px) {
-            .container {
-                padding: 15px 4vw 15px 4vw;
-            }
-            h2 { font-size: 1.15em; }
-            .btn { font-size: 15px; }
-        }
-    </style>
+  <meta charset="UTF-8" />
+  <title>Agendar Entrega - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f0f4ff;
+      color: #1a1a1a;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 20px;
+    }
+    h1 {
+      color: #0033aa;
+      margin-bottom: 20px;
+    }
+    form {
+      background-color: white;
+      padding: 25px;
+      border-radius: 12px;
+      box-shadow: 0 0 15px rgba(0,0,0,0.1);
+      width: 100%;
+      max-width: 400px;
+    }
+    label {
+      display: block;
+      margin: 10px 0 5px;
+      font-weight: bold;
+    }
+    input[type="text"],
+    input[type="number"],
+    select,
+    input[type="datetime-local"] {
+      width: 100%;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      margin-bottom: 15px;
+      box-sizing: border-box;
+    }
+    button {
+      background-color: #0033aa;
+      color: white;
+      padding: 12px;
+      width: 100%;
+      border: none;
+      border-radius: 8px;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #002b88;
+    }
+    a {
+      text-decoration: none;
+      color: #0033aa;
+      margin-bottom: 20px;
+      display: inline-block;
+    }
+    a:hover {
+      text-decoration: underline;
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h2>Agendar Entrega</h2>
-        <form method="POST">
-            <label>Cliente:
-                <input type="text" name="cliente" required>
-            </label>
-            <label>Bairro:
-                <input type="text" name="bairro" required>
-            </label>
-            <label>Valor:
-                <input type="number" step="0.01" name="valor" required>
-            </label>
-            <label>Data e Hora do Pedido:
-                <input type="datetime-local" name="data" required>
-            </label>
-            <label>Cooperado:
-                <select name="cooperado_id">
-                    <option value="">-- Sem cooperado --</option>
-                    {% for c in cooperados %}
-                        <option value="{{ c.id }}">{{ c.nome }}</option>
-                    {% endfor %}
-                </select>
-            </label>
-            <label>Status Pagamento:
-                <select name="status_pagamento">
-                    <option value="Pendente">Pendente</option>
-                    <option value="Pago">Pago</option>
-                </select>
-            </label>
-            <label>Status Entrega:
-                <select name="status">
-                    <option value="pendente">Pendente</option>
-                    <option value="recebido">Recebido</option>
-                </select>
-            </label>
-            <button type="submit" class="btn">Agendar</button>
-        </form>
-        <a href="{{ url_for('admin') }}" class="voltar">Voltar ao painel</a>
-    </div>
+  <h1>Agendar Entrega</h1>
+  <a href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+  <form method="POST" action="{{ url_for('agendar_entrega') }}">
+    <label>Nome do Cliente:</label>
+    <input type="text" name="cliente" required/>
+
+    <label>Bairro:</label>
+    <input type="text" name="bairro" required/>
+
+    <label>Valor (R$):</label>
+    <input type="number" name="valor" step="0.01" min="0" required/>
+
+    <label>Data e hora da entrega:</label>
+    <input type="datetime-local" name="data" required/>
+
+    <label>Status Pagamento:</label>
+    <select name="status_pagamento">
+      <option value="Pendente">Pendente</option>
+      <option value="Pago">Pago</option>
+    </select>
+
+    <label>Status Entrega:</label>
+    <select name="status_entrega">
+      <option value="pendente">Pendente</option>
+      <option value="recebido">Entregue</option>
+    </select>
+
+    <label>Forma de Pagamento:</label>
+    <select name="pagamento" required>
+      <option value="Dinheiro">Dinheiro</option>
+      <option value="Pix">Pix</option>
+      <option value="Comanda">Comanda</option>
+    </select>
+
+    <button type="submit">Agendar</button>
+  </form>
 </body>
 </html>

@@ -50,6 +50,13 @@
         <option value="recebido" {% if entrega.status == 'recebido' %}selected{% endif %}>Entregue</option>
       </select>
 
+      <label for="pagamento">Forma de Pagamento:</label>
+      <select name="pagamento" id="pagamento" required>
+        <option value="Dinheiro" {% if entrega.pagamento == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
+        <option value="Pix" {% if entrega.pagamento == 'Pix' %}selected{% endif %}>Pix</option>
+        <option value="Comanda" {% if entrega.pagamento == 'Comanda' %}selected{% endif %}>Comanda</option>
+      </select>
+
       <button type="submit">Salvar</button>
     </form>
   </div>

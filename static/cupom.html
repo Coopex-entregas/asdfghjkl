@@ -1,0 +1,76 @@
+from flask import render_template_string
+import qrcode
+import io
+import base64
+
+def gerar_cupom_html(entrega):
+    # Gera imagem do QR code (por exemplo, chave pix ou qualquer texto)
+    qr = qrcode.make(entrega.pagamento or "Pagamento")
+    buffer = io.BytesIO()
+    qr.save(buffer, format="PNG")
+    qr_img = base64.b64encode(buffer.getvalue()).decode("utf-8")
+    cupom_num = f"{entrega.id:06d}"
+    datahora = to_brasilia(entrega.data_envio).strftime('%d/%m/%Y %H:%M')
+    valor_fmt = f"{entrega.valor:,.2f}".replace('.', ',')
+    obs = entrega.status if entrega.status else "Entrega sem troco"
+
+    # Template HTML (tamanho de recibo de impressora térmica)
+    return render_template_string("""
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <style>
+        body { font-family: Arial, monospace; width: 340px; margin: auto; }
+        .logo { text-align: center; margin-bottom: 5px; }
+        .logo img { height: 48px; }
+        .coop { text-align: center; font-weight: bold; font-size: 15px; }
+        .info, .info2 { text-align: center; font-size: 12px; }
+        .linha { border-bottom: 1px dashed #333; margin: 7px 0 7px 0; }
+        .cupom-title { text-align: center; font-weight: bold; font-size: 13px;}
+        .dados { font-size: 12px; }
+        .label { font-weight: bold; }
+        .total-area { margin-top: 8px; font-size: 15px; }
+        .total-area span { font-weight: bold; }
+        .obs { font-size: 12px; }
+        .qr { text-align: center; margin-top: 7px; }
+        .qr img { width: 120px; height: 120px; }
+        @media print { body { width: auto; } }
+    </style>
+</head>
+<body>
+    <div class="logo">
+        <img src="https://i.ibb.co/D8R0TbJ/logo-coopex2.png" alt="CoopEX Logo">
+    </div>
+    <div class="coop">COOPERATIVA DE TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
+    <div class="info">
+        CNPJ: 05.289.938/0001-97<br>
+        Rua Jose Freire de Souza, 22<br>
+        Lagoa Nova – Natal/RN CEP: 59075-140<br>
+        Fone/WhatsApp: (84) 98111-0706
+    </div>
+    <div class="linha"></div>
+    <div class="cupom-title">CUPOM NÃO FISCAL N°: {{cupom_num}}</div>
+    <div class="dados">
+        Data/Hora: {{datahora}}<br>
+        Cliente: {{entrega.cliente}}<br>
+        Bairro: {{entrega.bairro}}
+    </div>
+    <div class="linha"></div>
+    <div class="dados"><span class="label">Valor do serviço:</span> <span>{{valor_fmt}}</span></div>
+    <div class="total-area">TOTAL:<span> {{valor_fmt}}</span></div>
+    <div class="linha"></div>
+    <div class="dados">Forma de pagamento: {{entrega.pagamento or '---'}}</div>
+    <div class="obs">Observações: {{obs}}</div>
+    <div class="qr">
+        <img src="data:image/png;base64,{{qr_img}}">
+    </div>
+</body>
+</html>
+    """, entrega=entrega, cupom_num=cupom_num, datahora=datahora, valor_fmt=valor_fmt, obs=obs, qr_img=qr_img)
+
+# Exemplo de rota Flask:
+@app.route('/cupom/<int:id>')
+def cupom(id):
+    entrega = Entrega.query.get_or_404(id)
+    return gerar_cupom_html(entrega)
