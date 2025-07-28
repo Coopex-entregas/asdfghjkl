@@ -37,6 +37,39 @@
       background: none; padding: 0 1vw;
       min-height: 100vh;
     }
+    /* Painel com plano de fundo personalizável */
+    .painel-bg-trocavel {
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      border-radius: 18px;
+      padding: 22px 1vw 18px 1vw;
+      margin-bottom: 23px;
+      min-height: 310px;
+      transition: background-image 0.18s;
+      box-shadow: var(--shadow);
+    }
+    .painel-bg-trocavel::before {
+      content: "";
+      position: absolute;
+      z-index: 1;
+      left: 0; top: 0; right: 0; bottom: 0;
+      background: rgba(255,255,255,0.84);
+      border-radius: 18px;
+      pointer-events: none;
+    }
+    .painel-bg-conteudo {
+      position: relative;
+      z-index: 2;
+    }
+    .painel-bg-btn-troca {
+      position: absolute;
+      top: 15px; right: 18px; z-index: 3;
+      background: var(--azul); color: #fff; border: none; border-radius: 8px;
+      padding: 7px 19px; font-weight: bold; cursor: pointer; font-size: 15px; transition: background .15s;
+      box-shadow: 0 1px 5px #00339922;
+    }
+    .painel-bg-btn-troca:hover { background: var(--azul-hover); }
     .painel-superior { display: flex; gap: 20px; margin-bottom: 12px;}
     .painel-superior .card { background: var(--azul-claro); color: var(--azul); border-radius: 12px; box-shadow: var(--shadow); padding: 13px 23px 10px 18px; min-width: 180px; font-size: 1.08em; font-weight: bold; border-left: 5px solid var(--azul); display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 8px;}
     .painel-superior .card strong { font-size: 1.13em; color: #21243b;}
@@ -89,6 +122,7 @@
     @media (max-width: 900px) {
       .painel-superior { flex-direction: column; }
       .painel-lateral { flex-direction: column; }
+      .painel-bg-trocavel { padding: 12px 1vw 8px 1vw; }
     }
   </style>
 </head>
@@ -98,162 +132,185 @@
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
   </header>
 
-  <div class="container">
-    <!-- Data, Dia da Semana e Feriado -->
-    <div style="margin-bottom:8px; font-size:1.1em; color:var(--azul);font-weight:600;">
-      Hoje: {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
-      - {{ to_brasilia(now())|diasemana }}
-      {% if feriado_hoje %}
-        <span style="color:#d11a1a; font-weight:bold; margin-left:15px;">
-          ⚠️ {{ feriado_hoje }}
-        </span>
-      {% else %}
-        <span style="color:#2767e6; font-weight:bold; margin-left:15px;">
-          Hoje não é feriado.
-        </span>
-      {% endif %}
-    </div>
+  <!-- Painel com plano de fundo personalizável -->
+  <div id="painel-bg" class="painel-bg-trocavel">
+    <button class="painel-bg-btn-troca" onclick="document.getElementById('upload-bg').click()">Trocar Plano de Fundo</button>
+    <input id="upload-bg" type="file" accept="image/*" style="display:none">
+    <div class="painel-bg-conteudo">
+      <!-- Data, Dia da Semana e Feriado -->
+      <div style="margin-bottom:8px; font-size:1.1em; color:var(--azul);font-weight:600;">
+        Hoje: {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
+        - {{ to_brasilia(now())|diasemana }}
+        {% if feriado_hoje %}
+          <span style="color:#d11a1a; font-weight:bold; margin-left:15px;">
+            ⚠️ {{ feriado_hoje }}
+          </span>
+        {% else %}
+          <span style="color:#2767e6; font-weight:bold; margin-left:15px;">
+            Hoje não é feriado.
+          </span>
+        {% endif %}
+      </div>
 
-    <!-- Cards de estatísticas -->
-    <div class="painel-superior">
-      <div class="card">Entregas do Dia<br><strong>{{ estatisticas.total_dia }}</strong></div>
-      <div class="card">Do Mês<br><strong>{{ estatisticas.total_mes }}</strong></div>
-      <div class="card">Do Ano<br><strong>{{ estatisticas.total_ano }}</strong></div>
-    </div>
+      <!-- Cards de estatísticas -->
+      <div class="painel-superior">
+        <div class="card">Entregas do Dia<br><strong>{{ estatisticas.total_dia }}</strong></div>
+        <div class="card">Do Mês<br><strong>{{ estatisticas.total_mes }}</strong></div>
+        <div class="card">Do Ano<br><strong>{{ estatisticas.total_ano }}</strong></div>
+      </div>
 
-    <!-- Lista de Espera + Cooperados -->
-    <div class="painel-lateral">
-      <!-- Lista de Espera -->
-      <div class="painel-lista">
-        <div class="espera-title">Lista de Espera</div>
-        <div class="espera-input-row">
-          <input id="espera-nome" type="text" placeholder="Adicionar nome..." maxlength="30">
-          <button type="button" onclick="addEspera()" class="espera-btn-add">+</button>
+      <!-- Lista de Espera + Cooperados -->
+      <div class="painel-lateral">
+        <!-- Lista de Espera -->
+        <div class="painel-lista">
+          <div class="espera-title">Lista de Espera</div>
+          <div class="espera-input-row">
+            <input id="espera-nome" type="text" placeholder="Adicionar nome..." maxlength="30">
+            <button type="button" onclick="addEspera()" class="espera-btn-add">+</button>
+          </div>
+          <div id="espera-lista" class="espera-chips"></div>
         </div>
-        <div id="espera-lista" class="espera-chips"></div>
+        <!-- Cooperados -->
+        <div class="painel-lista">
+          <h3>Cooperados</h3>
+          <input type="text" id="filtro-cooperado" placeholder="Filtrar...">
+          <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:110px;overflow-y:auto;font-size:13px;">
+            {% for c in cooperados %}
+              <li style="margin-bottom:3px;">
+                <b>{{ c.nome }}</b>
+                <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
+                  <button type="submit" style="background:#d11a1a;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;font-size:12px;">Excluir</button>
+                </form>
+              </li>
+            {% endfor %}
+          </ul>
+        </div>
       </div>
-      <!-- Cooperados -->
-      <div class="painel-lista">
-        <h3>Cooperados</h3>
-        <input type="text" id="filtro-cooperado" placeholder="Filtrar...">
-        <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:110px;overflow-y:auto;font-size:13px;">
-          {% for c in cooperados %}
-            <li style="margin-bottom:3px;">
-              <b>{{ c.nome }}</b>
-              <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
-                <button type="submit" style="background:#d11a1a;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;font-size:12px;">Excluir</button>
-              </form>
-            </li>
-          {% endfor %}
-        </ul>
+      <!-- Ações -->
+      <div class="actions">
+        <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
+        <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
+        <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
+        <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
+      </div>
+      <!-- Filtros -->
+      <div class="filtros">
+        <form method="GET" action="{{ url_for('admin') }}">
+          <label for="cooperado" style="font-size:13px;">Cooperado:</label>
+          <select name="cooperado_id" id="cooperado" style="font-size:13px;">
+            <option value="todos">Todos</option>
+            {% for c in cooperados %}
+            <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+            {% endfor %}
+          </select>
+          <label for="data_inicio" style="font-size:13px;">De:</label>
+          <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:13px;">
+          <label for="data_fim" style="font-size:13px;">Até:</label>
+          <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:13px;">
+          <button class="btn" type="submit">Filtrar</button>
+          <a class="btn"
+            href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
+            Exportar para Excel
+          </a>
+        </form>
       </div>
     </div>
+  </div>
 
-    <!-- Ações -->
-    <div class="actions">
-      <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
-      <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
-      <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
-      <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
-    </div>
-
-    <!-- Filtros -->
-    <div class="filtros">
-      <form method="GET" action="{{ url_for('admin') }}">
-        <label for="cooperado" style="font-size:13px;">Cooperado:</label>
-        <select name="cooperado_id" id="cooperado" style="font-size:13px;">
-          <option value="todos">Todos</option>
-          {% for c in cooperados %}
-          <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
-          {% endfor %}
-        </select>
-        <label for="data_inicio" style="font-size:13px;">De:</label>
-        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:13px;">
-        <label for="data_fim" style="font-size:13px;">Até:</label>
-        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:13px;">
-        <button class="btn" type="submit">Filtrar</button>
-        <a class="btn"
-          href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
-          Exportar para Excel
-        </a>
-      </form>
-    </div>
-
-    <!-- Tabela de entregas -->
-    <div class="tabela">
-      <table>
-        <thead>
-          <tr>
-            <th class="col-id">ID</th>
-            <th class="col-cliente">Cliente</th>
-            <th class="col-bairro">Bairro</th>
-            <th class="col-valor">Valor</th>
-            <th class="col-data">Data<br>e<br>Dia</th>
-            <th class="col-hora">Hora<br>Pedido</th>
-            <th class="col-hora-atrib">Hora<br>Atribuída</th>
-            <th class="col-cooperado">Cooperado</th>
-            <th class="col-pagamento">Forma Pgto</th>
-            <th class="col-status">Status</th>
-            <th class="col-status-pg">Pagamento</th>
-            <th class="col-acoes">Ações</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in entregas %}
-          <tr>
-            <td>{{ e.id }}</td>
-            <td>{{ e.cliente }}</td>
-            <td>{{ e.bairro }}</td>
-            <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-            <td>
-              {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
-              <span style="font-size:11px;color:#57a5ff;font-weight:bold;">
-                {{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}
-              </span>
-            </td>
-            <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-            <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-            <td>{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
-            <td>{{ e.pagamento }}</td>
-            <td>
-              {% if e.status and e.status.lower() in ['recebido', 'entregue'] %}
-                <span class="status-verde">{{ e.status|capitalize }}</span>
-              {% else %}
-                <span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>
-              {% endif %}
-            </td>
-            <td>
-              {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}
-                <span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
-              {% else %}
-                <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
-              {% endif %}
-            </td>
-            <td style="min-width:70px;">
-              <!-- Editar -->
-              <a title="Editar" class="icon-btn" href="{{ url_for('editar_entrega', id=e.id) }}">
-                <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
-              </a>
-              <!-- Excluir -->
-              <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-                <button title="Excluir" type="submit" class="icon-btn">
-                  <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
-                </button>
-              </form>
-              <!-- Imprimir -->
-              <button type="button" title="Imprimir cupom" class="icon-btn" onclick="imprimirCupom({{ e.id }})">
-                <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
+  <!-- Tabela de entregas -->
+  <div class="tabela">
+    <table>
+      <thead>
+        <tr>
+          <th class="col-id">ID</th>
+          <th class="col-cliente">Cliente</th>
+          <th class="col-bairro">Bairro</th>
+          <th class="col-valor">Valor</th>
+          <th class="col-data">Data<br>e<br>Dia</th>
+          <th class="col-hora">Hora<br>Pedido</th>
+          <th class="col-hora-atrib">Hora<br>Atribuída</th>
+          <th class="col-cooperado">Cooperado</th>
+          <th class="col-pagamento">Forma Pgto</th>
+          <th class="col-status">Status</th>
+          <th class="col-status-pg">Pagamento</th>
+          <th class="col-acoes">Ações</th>
+        </tr>
+      </thead>
+      <tbody>
+        {% for e in entregas %}
+        <tr>
+          <td>{{ e.id }}</td>
+          <td>{{ e.cliente }}</td>
+          <td>{{ e.bairro }}</td>
+          <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+          <td>
+            {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
+            <span style="font-size:11px;color:#57a5ff;font-weight:bold;">
+              {{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}
+            </span>
+          </td>
+          <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+          <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+          <td>{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
+          <td>{{ e.pagamento }}</td>
+          <td>
+            {% if e.status and e.status.lower() in ['recebido', 'entregue'] %}
+              <span class="status-verde">{{ e.status|capitalize }}</span>
+            {% else %}
+              <span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>
+            {% endif %}
+          </td>
+          <td>
+            {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}
+              <span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
+            {% else %}
+              <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
+            {% endif %}
+          </td>
+          <td style="min-width:70px;">
+            <!-- Editar -->
+            <a title="Editar" class="icon-btn" href="{{ url_for('editar_entrega', id=e.id) }}">
+              <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
+            </a>
+            <!-- Excluir -->
+            <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+              <button title="Excluir" type="submit" class="icon-btn">
+                <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
               </button>
-            </td>
-          </tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </div>
+            </form>
+            <!-- Imprimir -->
+            <button type="button" title="Imprimir cupom" class="icon-btn" onclick="imprimirCupom({{ e.id }})">
+              <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
+            </button>
+          </td>
+        </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 
   <!-- Scripts -->
   <script>
+    // TROCAR PLANO DE FUNDO DO PAINEL
+    const painelBg = document.getElementById('painel-bg');
+    const inputBg = document.getElementById('upload-bg');
+    // Carregar imagem salva (localStorage) ao abrir
+    window.addEventListener('DOMContentLoaded', () => {
+      const savedBg = localStorage.getItem('coopex_admin_painel_bg');
+      if(savedBg) painelBg.style.backgroundImage = `url('${savedBg}')`;
+    });
+    // Trocar imagem do painel
+    inputBg.addEventListener('change', function(e) {
+      const file = e.target.files[0];
+      if(!file) return;
+      const reader = new FileReader();
+      reader.onload = function(ev) {
+        painelBg.style.backgroundImage = `url('${ev.target.result}')`;
+        localStorage.setItem('coopex_admin_painel_bg', ev.target.result);
+      }
+      reader.readAsDataURL(file);
+    });
+
     // Filtro cooperado
     document.getElementById('filtro-cooperado').addEventListener('input', function() {
       var filtro = this.value.toLowerCase();
@@ -303,7 +360,7 @@
     }
     window.onload = carregaListaEspera;
 
-    // IMPRIMIR CUPOM - Corrigido para NÃO abrir duplicado
+    // IMPRIMIR CUPOM
     function imprimirCupom(id) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == id);
       if (!linha) return;
