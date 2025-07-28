@@ -188,11 +188,11 @@
             <th class="col-cliente">Cliente</th>
             <th class="col-bairro">Bairro</th>
             <th class="col-valor">Valor</th>
-            <th class="col-data">Data<br>Pedido<br>Dia Semana</th>
+            <th class="col-data">Data<br>e<br>Dia</th>
             <th class="col-hora">Hora<br>Pedido</th>
             <th class="col-hora-atrib">Hora<br>Atribuída</th>
             <th class="col-cooperado">Cooperado</th>
-            <th class="col-pagamento">Pagamento</th>
+            <th class="col-pagamento">Fora Pgto</th>
             <th class="col-status">Status</th>
             <th class="col-status-pg">Pagamento</th>
             <th class="col-acoes">Ações</th>
@@ -240,7 +240,7 @@
                   <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
                 </button>
               </form>
-              <!-- Imprimir - botão 100% fora de FORM! -->
+              <!-- Imprimir -->
               <button type="button" title="Imprimir cupom" class="icon-btn" onclick="imprimirCupom({{ e.id }})">
                 <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
               </button>
@@ -303,7 +303,7 @@
     }
     window.onload = carregaListaEspera;
 
-    // IMPRIMIR CUPOM - QR DIRETO PARA GOOGLE AVALIAÇÃO COOPEX
+    // IMPRIMIR CUPOM - Corrigido para NÃO abrir duplicado
     function imprimirCupom(id) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == id);
       if (!linha) return;
@@ -318,7 +318,6 @@
       };
       const cupomNum = dados.id.toString().padStart(6, '0');
       const logoUrl = "/static/logo_coopex.png";
-      // LINK GOOGLE REVIEW REAL
       const qrLink = "https://g.page/r/CY6ffwOT76pNEBM/review";
       const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(qrLink);
       const cupom = `
@@ -360,13 +359,17 @@
             <img src="${qrUrl}" alt="QR" style="width:110px;height:110px;"><br>
             <span style="font-size:11px;display:block;margin-top:2px;">Avalie a Coopex no Google!</span>
           </div>
+          <div style="text-align:center;margin-top:18px;">
+            <button onclick="window.print()" style="background:#003399;color:#fff;padding:8px 30px;font-size:15px;border:none;border-radius:10px;cursor:pointer;font-weight:bold;">Imprimir</button>
+          </div>
         </div>
       `;
+      // Abre só uma janela para o cupom, nunca duas!
       const printWindow = window.open('', '', 'width=350,height=600');
       printWindow.document.write('<html><head><title>Cupom COOPEX</title></head><body>' + cupom + '</body></html>');
       printWindow.document.close();
       printWindow.focus();
-      setTimeout(() => printWindow.print(), 300);
+      // Não executa window.print() automático!
     }
   </script>
 </body>
