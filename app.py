@@ -159,7 +159,8 @@ def painel_cooperado():
     total_pago = sum(e.valor for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago')
     total_pendente = total_geral - total_pago
     return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
-                           total_pago=total_pago, total_pendente=total_pendente, request=request)
+                           total_pago=total_pago, total_pendente=total_pendente, request=request,
+                           to_brasilia=to_brasilia)   # <-- Corrigido aqui!
 
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
