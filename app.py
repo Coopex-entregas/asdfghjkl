@@ -38,14 +38,14 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
-    pagamento = db.Column(db.String(20), nullable=False, default="Dinheiro")  # Método de pagamento padrão
+    pagamento = db.Column(db.String(20), nullable=False, default="Dinheiro")
     cooperado = db.relationship('Cooperado', backref='entregas')
 
 # ====== Função auxiliar ======
 def to_brasilia(dt):
     if not dt:
         return None
-    return dt - timedelta(hours=3)  # Ajuste de fuso horário UTC-3 fixo
+    return dt - timedelta(hours=3)
 
 # ====== Filtro Jinja para dia da semana ======
 def diasemana(data):
@@ -321,6 +321,7 @@ def estatisticas_cooperado():
     return render_template('estatisticas_cooperado.html', cooperados=cooperados,
                            cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim,
                            estatisticas=estatisticas)
+
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -349,6 +350,7 @@ def exportar_xlsx():
             'Bairro': e.bairro,
             'Hora Atribuída': to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '',
             'Valor': e.valor,
+            'Cooperado': nome,
             'Status Pagamento': e.status_pagamento,
             'Status da Entrega': e.status,
             'Pagamento': e.pagamento
