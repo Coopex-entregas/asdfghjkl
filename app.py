@@ -39,6 +39,7 @@ class Entrega(db.Model):
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
     pagamento = db.Column(db.String(20), nullable=False, default="Dinheiro")
+    recebido_por = db.Column(db.String(50), nullable=True)      # <-- NOVO CAMPO!
     cooperado = db.relationship('Cooperado', backref='entregas')
 
 # ====== Função auxiliar ======
@@ -47,14 +48,12 @@ def to_brasilia(dt):
         return None
     return dt - timedelta(hours=3)
 
-# ====== Filtro Jinja para dia da semana ======
 def diasemana(data):
     dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
     return dias[data.weekday()]
 
 app.jinja_env.filters['diasemana'] = diasemana
 
-# ====== Função para verificar feriados ======
 def verifica_feriado(data=None):
     if data is None:
         data = datetime.utcnow().date()
@@ -160,7 +159,7 @@ def painel_cooperado():
     total_pendente = total_geral - total_pago
     return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
                            total_pago=total_pago, total_pendente=total_pendente, request=request,
-                           to_brasilia=to_brasilia)   # <-- Corrigido aqui!
+                           to_brasilia=to_brasilia)
 
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
@@ -262,12 +261,13 @@ def editar_entrega(id):
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
             entrega.pagamento = request.form.get('pagamento', entrega.pagamento)
+            entrega.recebido_por = request.form.get('recebido_por') or None  # <-- salva novo campo
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
         else:
-            entrega.status_pagamento = request.form.get('status_pagamento')
-            entrega.status = request.form.get('status_entrega') or entrega.status
+            # Só pode editar "recebido_por" se não for admin
+            entrega.recebido_por = request.form.get('recebido_por') or None
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
@@ -354,7 +354,8 @@ def exportar_xlsx():
             'Cooperado': nome,
             'Status Pagamento': e.status_pagamento,
             'Status da Entrega': e.status,
-            'Pagamento': e.pagamento
+            'Pagamento': e.pagamento,
+            'Recebido por': e.recebido_por or ''
         })
 
     output = io.BytesIO()
