@@ -13,6 +13,7 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 db = SQLAlchemy(app)
 
 # ====== MODELS ======
@@ -70,7 +71,7 @@ def verifica_feriado(data=None):
         feriados_hoje.append("Feriado Municipal Natal: " + feriados_natal[data])
     return " | ".join(feriados_hoje) if feriados_hoje else None
 
-# ====== ROTAS LOGIN ======
+# ====== LOGIN ======
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -101,7 +102,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# ====== ROTA ADMIN ======
+# ====== PAINEL ADMIN ======
 @app.route('/admin')
 def admin():
     if not session.get('is_admin'):
@@ -137,7 +138,7 @@ def admin():
                            to_brasilia=to_brasilia, request=request, now=datetime.utcnow,
                            feriado_hoje=feriado_hoje, tem_pendente=tem_pendente)
 
-# ====== ROTA PAINEL COOPERADO ======
+# ====== PAINEL COOPERADO ======
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
@@ -158,7 +159,7 @@ def painel_cooperado():
                            total_pago=total_pago, total_pendente=total_pendente, request=request,
                            to_brasilia=to_brasilia)
 
-# ====== ROTA CADASTRAR COOPERADO ======
+# ====== CADASTRAR COOPERADO ======
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
     if not session.get('is_admin'):
@@ -177,7 +178,7 @@ def cadastrar_cooperado():
             return redirect(url_for('admin'))
     return render_template('cadastrar_cooperado.html')
 
-# ====== ROTA CADASTRAR ENTREGA ======
+# ====== CADASTRAR ENTREGA ======
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
@@ -207,18 +208,45 @@ def cadastrar_entrega():
         return redirect(url_for('admin'))
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
-# ====== ROTA EDITAR ENTREGA ======
+# ====== AGENDAR ENTREGA ======
+@app.route('/agendar_entrega', methods=['GET', 'POST'])
+def agendar_entrega():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        cliente = request.form.get('cliente')
+        bairro = request.form.get('bairro')
+        valor = float(request.form.get('valor'))
+        data_str = request.form.get('data')
+        status_entrega = request.form.get('status_entrega')
+        status_pagamento = request.form.get('status_pagamento')
+        pagamento = request.form.get('pagamento', 'Dinheiro')
+        data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
+        entrega = Entrega(
+            cliente=cliente,
+            bairro=bairro,
+            valor=valor,
+            data_envio=data_envio,
+            cooperado_id=None,
+            status=status_entrega,
+            status_pagamento=status_pagamento,
+            pagamento=pagamento
+        )
+        db.session.add(entrega)
+        db.session.commit()
+        flash('Entrega agendada!')
+        return redirect(url_for('admin'))
+    return render_template('agendar_entrega.html')
+
+# ====== EDITAR ENTREGA ======
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     is_admin = session.get('is_admin')
-    user_id = session.get('user_id')
-
-    if not is_admin and entrega.cooperado_id != user_id:
+    if not is_admin and entrega.cooperado_id != session.get('user_id'):
         flash("Acesso não permitido.")
         return redirect(url_for('painel_cooperado'))
-
     if request.method == 'POST':
         if is_admin:
             entrega.cliente = request.form.get('cliente')
@@ -246,13 +274,12 @@ def editar_entrega(id):
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
-
     if is_admin:
         return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados)
     else:
         return render_template('editar_entrega_cooperado.html', entrega=entrega)
 
-# ====== ROTA EXCLUIR ENTREGA ======
+# ====== EXCLUIR ENTREGA ======
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if not session.get('is_admin'):
@@ -263,7 +290,7 @@ def excluir_entrega(id):
     flash('Entrega excluída.')
     return redirect(url_for('admin'))
 
-# ====== ROTA EXCLUIR COOPERADO ======
+# ====== EXCLUIR COOPERADO ======
 @app.route('/excluir_cooperado/<int:id>', methods=['POST'])
 def excluir_cooperado(id):
     if not session.get('is_admin'):
@@ -275,7 +302,7 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect(url_for('admin'))
 
-# ====== ROTA ESTATISTICAS ======
+# ====== ESTATISTICAS COOPERADO ======
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if not session.get('is_admin'):
@@ -302,7 +329,7 @@ def estatisticas_cooperado():
                            cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim,
                            estatisticas=estatisticas)
 
-# ====== ROTA EXPORTAR XLSX ======
+# ====== EXPORTAR XLSX ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -344,6 +371,7 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
+# ====== CRIAR BANCO DE DADOS ======
 def criar_bd():
     with app.app_context():
         db.create_all()
