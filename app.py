@@ -216,7 +216,8 @@ def agendar_entrega():
         status_entrega = request.form.get('status_entrega')
         status_pagamento = request.form.get('status_pagamento')
         pagamento = request.form.get('pagamento', 'Dinheiro')
-        data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
+        # ====== AJUSTE FUSO HORÁRIO ======
+        data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M') + timedelta(hours=3)
         entrega = Entrega(
             cliente=cliente,
             bairro=bairro,
@@ -264,6 +265,7 @@ def editar_entrega(id):
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
+            # --- RECEBIDO POR NÃO É MAIS OBRIGATÓRIO NO PAINEL COOPERADO ---
             entrega.recebido_por = request.form.get('recebido_por') or None
             db.session.commit()
             flash('Entrega atualizada!')
