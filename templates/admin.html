@@ -37,7 +37,6 @@
       background: none; padding: 0 1vw;
       min-height: 100vh;
     }
-    /* Painel com plano de fundo personalizável */
     .painel-bg-trocavel {
       position: relative;
       background-size: cover;
@@ -55,14 +54,11 @@
       position: absolute;
       z-index: 1;
       left: 0; top: 0; right: 0; bottom: 0;
-      background: rgba(255,255,255,0.25); /* <<<<<< Menos transparente! */
+      background: rgba(255,255,255,0.25);
       border-radius: 18px;
       pointer-events: none;
     }
-    .painel-bg-conteudo {
-      position: relative;
-      z-index: 2;
-    }
+    .painel-bg-conteudo { position: relative; z-index: 2; }
     .painel-bg-btn-troca {
       position: absolute;
       top: 15px; right: 18px; z-index: 3;
@@ -120,6 +116,37 @@
     td { word-break: break-word; }
     .icon-btn { border: none; background: none; cursor: pointer; vertical-align: middle; padding: 2px; margin: 0 2px; }
     .icon-btn svg { display: inline-block; vertical-align: middle; }
+    /* Avisos */
+    .aviso-pagamento, .aviso-boa-noite {
+      position: fixed;
+      left: 50%; top: 45px;
+      transform: translateX(-50%);
+      background: #fffbe2;
+      color: #21243b;
+      border: 2px solid #ffc107;
+      border-radius: 13px;
+      box-shadow: 0 4px 20px #00339920;
+      font-size: 17px;
+      font-weight: 600;
+      padding: 18px 44px 15px 32px;
+      z-index: 8888;
+      display: none;
+      min-width: 280px;
+      max-width: 98vw;
+    }
+    .aviso-pagamento span, .aviso-boa-noite span { margin-left: 6px; }
+    .aviso-pagamento .fechar, .aviso-boa-noite .fechar {
+      background: #ffc107;
+      color: #003399;
+      font-size: 20px;
+      border: none;
+      border-radius: 50%;
+      cursor: pointer;
+      padding: 2px 11px;
+      float: right;
+      margin-left: 16px;
+      font-weight: bold;
+    }
     @media (max-width: 900px) {
       .painel-superior { flex-direction: column; }
       .painel-lateral { flex-direction: column; }
@@ -132,6 +159,15 @@
     <h1>Painel da Supervisão - Coopex</h1>
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
   </header>
+
+  <div id="aviso-pagamento" class="aviso-pagamento">
+    <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
+    <span>⚠️ Existem entregas <b>com pagamento pendente</b>! Não esqueça de cobrar os cooperados.</span>
+  </div>
+  <div id="aviso-boa-noite" class="aviso-boa-noite">
+    <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
+    <span>🌙 Boa noite! Não esqueça de fechar os pagamentos do dia antes de sair.</span>
+  </div>
 
   <!-- Painel com plano de fundo personalizável -->
   <div id="painel-bg" class="painel-bg-trocavel">
@@ -297,6 +333,8 @@
     window.addEventListener('DOMContentLoaded', () => {
       const savedBg = localStorage.getItem('coopex_admin_painel_bg');
       if(savedBg) painelBg.style.backgroundImage = `url('${savedBg}')`;
+      checaAvisos();
+      setInterval(checaAvisos, 60 * 1000); // Checa avisos a cada minuto
     });
     // Trocar imagem do painel
     inputBg.addEventListener('change', function(e) {
@@ -425,6 +463,46 @@
       printWindow.document.write('<html><head><title>Cupom COOPEX</title></head><body>' + cupom + '</body></html>');
       printWindow.document.close();
       printWindow.focus();
+    }
+
+    // Mostrar apenas entregas do dia por padrão
+    (function filtraEntregasDia() {
+      const url = new URL(window.location.href);
+      const temFiltro = url.searchParams.get("data_inicio") || url.searchParams.get("data_fim");
+      if (!temFiltro) {
+        // Redireciona para o filtro do dia atual, só se não tiver filtro já setado
+        const hoje = new Date();
+        const yyyy = hoje.getFullYear();
+        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
+        const dd = String(hoje.getDate()).padStart(2, '0');
+        url.searchParams.set('data_inicio', `${yyyy}-${mm}-${dd}`);
+        url.searchParams.set('data_fim', `${yyyy}-${mm}-${dd}`);
+        window.location.replace(url.toString());
+      }
+    })();
+
+    // AVISO de pagamento pendente de 2 em 2 horas
+    function checaAvisos() {
+      try {
+        // Somente se tem alguma entrega "pendente" na tabela visível
+        const existePendente = [...document.querySelectorAll('.tabela tbody tr')].some(
+          tr => tr.children[10] && tr.children[10].textContent.toLowerCase().includes('pendente')
+        );
+        // Mostra o aviso se for hora par e existir pendente, e só 1x por hora
+        const agora = new Date();
+        const hora = agora.getHours();
+        const minutos = agora.getMinutes();
+        const key = `aviso_pagamento_${agora.getFullYear()}${agora.getMonth()}${agora.getDate()}${hora}`;
+        if (existePendente && hora % 2 === 0 && minutos < 4 && !localStorage.getItem(key)) {
+          document.getElementById('aviso-pagamento').style.display = 'block';
+          localStorage.setItem(key, '1');
+        }
+        // Mensagem de boa noite às 22h, só uma vez por noite
+        if (hora === 22 && !localStorage.getItem('aviso_boa_noite_' + agora.toDateString())) {
+          document.getElementById('aviso-boa-noite').style.display = 'block';
+          localStorage.setItem('aviso_boa_noite_' + agora.toDateString(), '1');
+        }
+      } catch(e) {}
     }
   </script>
 </body>
