@@ -348,14 +348,12 @@
     // TROCAR PLANO DE FUNDO DO PAINEL
     const painelBg = document.getElementById('painel-bg');
     const inputBg = document.getElementById('upload-bg');
-    // Carregar imagem salva (localStorage) ao abrir
     window.addEventListener('DOMContentLoaded', () => {
       const savedBg = localStorage.getItem('coopex_admin_painel_bg');
       if(savedBg) painelBg.style.backgroundImage = `url('${savedBg}')`;
       checaAvisos();
-      setInterval(checaAvisos, 60 * 1000); // Checa avisos a cada minuto
+      setInterval(checaAvisos, 60 * 1000);
     });
-    // Trocar imagem do painel
     inputBg.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if(!file) return;
@@ -416,16 +414,21 @@
     }
     window.onload = carregaListaEspera;
 
-    // IMPRIMIR CUPOM
+    // IMPRIMIR CUPOM - AJUSTADO PARA SEMPRE SAIR DATA!
     function imprimirCupom(id) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == id);
       if (!linha) return;
+      // Pega sempre a primeira linha real da data (antes do <br> e sem espaços)
+      let dataBruta = linha.children[4].innerText || linha.children[4].textContent;
+      let dataParts = dataBruta.split('\n').map(s=>s.trim()).filter(Boolean);
+      let data = dataParts.length ? dataParts[0] : '-';
+
       const dados = {
         id: linha.children[0].textContent,
         cliente: linha.children[1].textContent,
         bairro: linha.children[2].textContent,
         valor: linha.children[3].textContent,
-        data: linha.children[4].textContent.split('\n')[0],
+        data: data,
         hora: linha.children[5].textContent,
         pagamento: linha.children[8].textContent,
       };
@@ -477,7 +480,6 @@
           </div>
         </div>
       `;
-      // Abre só uma janela para o cupom, nunca duas!
       const printWindow = window.open('', '', 'width=350,height=600');
       printWindow.document.write('<html><head><title>Cupom COOPEX</title></head><body>' + cupom + '</body></html>');
       printWindow.document.close();
@@ -489,7 +491,6 @@
       const url = new URL(window.location.href);
       const temFiltro = url.searchParams.get("data_inicio") || url.searchParams.get("data_fim");
       if (!temFiltro) {
-        // Redireciona para o filtro do dia atual, só se não tiver filtro já setado
         const hoje = new Date();
         const yyyy = hoje.getFullYear();
         const mm = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -503,11 +504,9 @@
     // AVISO de pagamento pendente de 2 em 2 horas
     function checaAvisos() {
       try {
-        // Somente se tem alguma entrega "pendente" na tabela visível
         const existePendente = [...document.querySelectorAll('.tabela tbody tr')].some(
           tr => tr.children[10] && tr.children[10].textContent.toLowerCase().includes('pendente')
         );
-        // Mostra o aviso se for hora par e existir pendente, e só 1x por hora
         const agora = new Date();
         const hora = agora.getHours();
         const minutos = agora.getMinutes();
@@ -516,7 +515,6 @@
           document.getElementById('aviso-pagamento').style.display = 'block';
           localStorage.setItem(key, '1');
         }
-        // Mensagem de boa noite às 22h, só uma vez por noite
         if (hora === 22 && !localStorage.getItem('aviso_boa_noite_' + agora.toDateString())) {
           document.getElementById('aviso-boa-noite').style.display = 'block';
           localStorage.setItem('aviso_boa_noite_' + agora.toDateString(), '1');
