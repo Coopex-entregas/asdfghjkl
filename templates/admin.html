@@ -86,7 +86,24 @@
     .actions { margin: 16px 0 7px 0; display: flex; flex-wrap: wrap; gap: 10px;}
     .btn { background-color: var(--azul); color: white; border: none; padding: 8px 22px; border-radius: 13px; cursor: pointer; font-size: 15px; text-decoration: none; font-weight: bold; box-shadow: var(--shadow); transition: background .16s;}
     .btn:hover { background: var(--azul-hover);}
-    .filtros { margin-bottom: 1.1rem;}
+    .filtros {
+      margin-bottom: 1.1rem;
+      background: rgba(255,255,255,0.88); /* Visibilidade sobre o papel de parede */
+      border-radius: 14px;
+      padding: 14px 16px 12px 16px;
+      box-shadow: 0 1px 8px #00339922;
+      display: inline-block;
+    }
+    .filtros label, .filtros input, .filtros select, .filtros button, .filtros a.btn {
+      background: transparent !important;
+      color: #003399 !important;
+      font-weight: bold;
+    }
+    .filtros button, .filtros a.btn {
+      background: #003399 !important;
+      color: #fff !important;
+      margin-top: 0 !important;
+    }
     .tabela {
       overflow-x: auto; background: var(--grafite);
       border-radius: 13px; box-shadow: var(--shadow);
@@ -162,11 +179,11 @@
 
   <div id="aviso-pagamento" class="aviso-pagamento">
     <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
-    <span⚠️ Existem entregas <b>com pagamento pendente</b>! Não esqueça de cobrar os cooperados.</span>
+    <span>⚠️ Existem entregas <b>com pagamento pendente</b>! Não esqueça de cobrar os Clientes.</span>
   </div>
   <div id="aviso-boa-noite" class="aviso-boa-noite">
     <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
-    <span>🌙 Boa noite! Não esqueça de fechar os pagamentos do dia antes de sair.</span>
+    <span>🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.</span>
   </div>
 
   <!-- Painel com plano de fundo personalizável -->
