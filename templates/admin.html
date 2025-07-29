@@ -133,7 +133,6 @@
     td { word-break: break-word; }
     .icon-btn { border: none; background: none; cursor: pointer; vertical-align: middle; padding: 2px; margin: 0 2px; }
     .icon-btn svg { display: inline-block; vertical-align: middle; }
-    /* Avisos */
     .aviso-pagamento, .aviso-boa-noite {
       position: fixed;
       left: 50%; top: 45px;
@@ -352,7 +351,7 @@
       const savedBg = localStorage.getItem('coopex_admin_painel_bg');
       if(savedBg) painelBg.style.backgroundImage = `url('${savedBg}')`;
       checaAvisos();
-      setInterval(checaAvisos, 60 * 1000);
+      setInterval(checaAvisos, 60 * 1000); // Checa avisos a cada minuto
     });
     inputBg.addEventListener('change', function(e) {
       const file = e.target.files[0];
@@ -414,14 +413,14 @@
     }
     window.onload = carregaListaEspera;
 
-    // IMPRIMIR CUPOM - AJUSTADO PARA SEMPRE SAIR DATA!
+    // IMPRIMIR CUPOM - Data, Hora, Cliente, Bairro (cada um numa linha)
     function imprimirCupom(id) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == id);
       if (!linha) return;
-      // Pega sempre a primeira linha real da data (antes do <br> e sem espaços)
       let dataBruta = linha.children[4].innerText || linha.children[4].textContent;
       let dataParts = dataBruta.split('\n').map(s=>s.trim()).filter(Boolean);
       let data = dataParts.length ? dataParts[0] : '-';
+      let hora = linha.children[5].textContent;
 
       const dados = {
         id: linha.children[0].textContent,
@@ -429,7 +428,7 @@
         bairro: linha.children[2].textContent,
         valor: linha.children[3].textContent,
         data: data,
-        hora: linha.children[5].textContent,
+        hora: hora,
         pagamento: linha.children[8].textContent,
       };
       const cupomNum = dados.id.toString().padStart(6, '0');
@@ -455,10 +454,11 @@
           <div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:2px;">
             CUPOM NÃO FISCAL N°: ${cupomNum}
           </div>
-          <div style="font-size:12px;">
-            Data/Hora: ${dados.data} ${dados.hora}<br>
-            Cliente: ${dados.cliente}<br>
-            Bairro: ${dados.bairro}
+          <div style="font-size:12px;text-align:left;">
+            <b>Data:</b> ${dados.data}<br>
+            <b>Hora:</b> ${dados.hora}<br>
+            <b>Cliente:</b> ${dados.cliente}<br>
+            <b>Bairro:</b> ${dados.bairro}
           </div>
           <div style="border-bottom:1px dashed #333;margin:7px 0 8px 0;"></div>
           <div style="font-size:13px;">
