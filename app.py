@@ -71,10 +71,14 @@ def verifica_feriado(data=None):
         feriados_hoje.append("Feriado Municipal Natal: " + feriados_natal[data])
     return " | ".join(feriados_hoje) if feriados_hoje else None
 
-# ====== ROTAS PRINCIPAIS (mesmas do texto anterior) ======
-# TODAS as rotas e funcionalidades já estão completas e atualizadas
-# com destaque para a rota editar_entrega() abaixo:
+# ====== ROTA ADMIN ======
+@app.route('/admin')
+def admin():
+    hoje = datetime.utcnow().date()
+    entregas = Entrega.query.filter(func.date(Entrega.data_envio) == hoje).order_by(Entrega.data_envio.desc()).all()
+    return render_template('admin.html', entregas=entregas, hoje=hoje)
 
+# ====== ROTA EDITAR ENTREGA ======
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
@@ -119,9 +123,7 @@ def editar_entrega(id):
     else:
         return render_template('editar_entrega_cooperado.html', entrega=entrega)
 
-# ====== Demais rotas e funcionalidades permanecem conforme já fornecido ======
-# Para detalhes, consulte o app.py enviado na mensagem anterior.
-
+# ====== CRIAR BANCO DE DADOS ======
 def criar_bd():
     with app.app_context():
         db.create_all()
