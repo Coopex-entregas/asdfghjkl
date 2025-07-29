@@ -71,7 +71,7 @@ def verifica_feriado(data=None):
         feriados_hoje.append("Feriado Municipal Natal: " + feriados_natal[data])
     return " | ".join(feriados_hoje) if feriados_hoje else None
 
-# ====== LOGIN ======
+# ====== ROTAS ======
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -102,7 +102,6 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-# ====== PAINEL ADMIN ======
 @app.route('/admin')
 def admin():
     if not session.get('is_admin'):
@@ -138,7 +137,6 @@ def admin():
                            to_brasilia=to_brasilia, request=request, now=datetime.utcnow,
                            feriado_hoje=feriado_hoje, tem_pendente=tem_pendente)
 
-# ====== PAINEL COOPERADO ======
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
@@ -159,7 +157,6 @@ def painel_cooperado():
                            total_pago=total_pago, total_pendente=total_pendente, request=request,
                            to_brasilia=to_brasilia)
 
-# ====== CADASTRAR COOPERADO ======
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
     if not session.get('is_admin'):
@@ -178,7 +175,6 @@ def cadastrar_cooperado():
             return redirect(url_for('admin'))
     return render_template('cadastrar_cooperado.html')
 
-# ====== CADASTRAR ENTREGA ======
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
@@ -208,7 +204,6 @@ def cadastrar_entrega():
         return redirect(url_for('admin'))
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
-# ====== AGENDAR ENTREGA ======
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
 def agendar_entrega():
     if not session.get('is_admin'):
@@ -238,13 +233,12 @@ def agendar_entrega():
         return redirect(url_for('admin'))
     return render_template('agendar_entrega.html')
 
-# ====== EDITAR ENTREGA ======
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     is_admin = session.get('is_admin')
-    if not is_admin and entrega.cooperado_id != session.get('user_id'):
+    if not is_admin and entrega.cooperado_id != session['user_id']:
         flash("Acesso não permitido.")
         return redirect(url_for('painel_cooperado'))
     if request.method == 'POST':
@@ -279,7 +273,6 @@ def editar_entrega(id):
     else:
         return render_template('editar_entrega_cooperado.html', entrega=entrega)
 
-# ====== EXCLUIR ENTREGA ======
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if not session.get('is_admin'):
@@ -290,7 +283,6 @@ def excluir_entrega(id):
     flash('Entrega excluída.')
     return redirect(url_for('admin'))
 
-# ====== EXCLUIR COOPERADO ======
 @app.route('/excluir_cooperado/<int:id>', methods=['POST'])
 def excluir_cooperado(id):
     if not session.get('is_admin'):
@@ -302,7 +294,6 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect(url_for('admin'))
 
-# ====== ESTATISTICAS COOPERADO ======
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if not session.get('is_admin'):
@@ -329,7 +320,6 @@ def estatisticas_cooperado():
                            cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim,
                            estatisticas=estatisticas)
 
-# ====== EXPORTAR XLSX ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -363,6 +353,7 @@ def exportar_xlsx():
             'Status da Entrega': e.status,
             'Pagamento': e.pagamento
         })
+
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         for coop, entregas_list in dados.items():
@@ -371,7 +362,6 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# ====== CRIAR BANCO DE DADOS ======
 def criar_bd():
     with app.app_context():
         db.create_all()
