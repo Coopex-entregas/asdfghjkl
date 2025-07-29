@@ -26,4 +26,6 @@ class Entrega(db.Model):
     status_pagamento = db.Column(db.String(20), nullable=True)
     status = db.Column(db.String(20), nullable=True)
     pagamento = db.Column(db.String(20), default="Dinheiro")
+    recebido_por = db.Column(db.String(50), nullable=True)  # <-- Campo para quem recebeu a entrega
+
     cooperado = db.relationship('Cooperado', backref='entregas')

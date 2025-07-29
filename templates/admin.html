@@ -162,7 +162,7 @@
 
   <div id="aviso-pagamento" class="aviso-pagamento">
     <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
-    <span>⚠️ Existem entregas <b>com pagamento pendente</b>! Não esqueça de cobrar os cooperados.</span>
+    <span⚠️ Existem entregas <b>com pagamento pendente</b>! Não esqueça de cobrar os cooperados.</span>
   </div>
   <div id="aviso-boa-noite" class="aviso-boa-noite">
     <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
@@ -268,6 +268,7 @@
           <th class="col-pagamento">Forma Pgto</th>
           <th class="col-status">Status</th>
           <th class="col-status-pg">Pagamento</th>
+          <th>Recebido por</th>
           <th class="col-acoes">Ações</th>
         </tr>
       </thead>
@@ -302,6 +303,7 @@
               <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
             {% endif %}
           </td>
+          <td>{{ e.recebido_por or '-' }}</td>
           <td style="min-width:70px;">
             <!-- Editar -->
             <a title="Editar" class="icon-btn" href="{{ url_for('editar_entrega', id=e.id) }}">
