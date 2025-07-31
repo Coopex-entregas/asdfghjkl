@@ -126,7 +126,12 @@ def admin():
             query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
         elif status_pagamento == 'pendente':
             query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
-    entregas = query.order_by(Entrega.data_envio.desc()).all()
+    # ---- AGRUPAMENTO: NÃO ATRIBUÍDOS PRIMEIRO, DEPOIS ATRIBUÍDOS ----
+    entregas_all = query.order_by(Entrega.data_envio.desc()).all()
+    nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
+    atribuidos = [e for e in entregas_all if e.cooperado_id]
+    entregas = nao_atribuidos + atribuidos
+    # ---------------------------------------------------------------
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     hoje = datetime.utcnow().date()
     total_dia = Entrega.query.filter(func.date(Entrega.data_envio) == hoje).count()
@@ -272,7 +277,6 @@ def editar_entrega(id):
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
-            # --- RECEBIDO POR NÃO É MAIS OBRIGATÓRIO NO PAINEL COOPERADO ---
             entrega.recebido_por = request.form.get('recebido_por') or None
             db.session.commit()
             flash('Entrega atualizada!')
