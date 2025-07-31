@@ -125,7 +125,6 @@
       border: 1px solid #3a3a3a; padding: 5px 3px; text-align: center; vertical-align: middle;
     }
     th { background-color: var(--azul); color: white; padding: 7px 2px;}
-    /* Larguras automáticas só para colunas pequenas; nomes não serão cortados! */
     th.col-id,        td.col-id         { width: 28px; }
     th.col-valor,     td.col-valor      { width: 62px; }
     th.col-data,      td.col-data       { width: 82px; }
@@ -136,7 +135,6 @@
     th.col-recebido,  td.col-recebido   { width: 92px; max-width: 140px; overflow: hidden; text-overflow: ellipsis; }
     td.col-recebido   { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     th.col-acoes,     td.col-acoes      { width: 85px; }
-    /* Nomes longos podem quebrar linha */
     td.col-cliente,
     td.col-bairro,
     td.col-cooperado {
@@ -277,9 +275,15 @@
           <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:13px;">
           <label for="data_fim" style="font-size:13px;">Até:</label>
           <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:13px;">
+          <label for="status_pagamento" style="font-size:13px;">Pagamento:</label>
+          <select name="status_pagamento" id="status_pagamento" style="font-size:13px;">
+            <option value="todos" {% if request.args.get('status_pagamento', 'todos') == 'todos' %}selected{% endif %}>Todos</option>
+            <option value="pago" {% if request.args.get('status_pagamento') == 'pago' %}selected{% endif %}>Pago</option>
+            <option value="pendente" {% if request.args.get('status_pagamento') == 'pendente' %}selected{% endif %}>Pendente</option>
+          </select>
           <button class="btn" type="submit">Filtrar</button>
           <a class="btn"
-            href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}">
+            href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}">
             Exportar para Excel
           </a>
         </form>
@@ -366,14 +370,12 @@
     // TROCAR PLANO DE FUNDO DO PAINEL
     const painelBg = document.getElementById('painel-bg');
     const inputBg = document.getElementById('upload-bg');
-    // Carregar imagem salva (localStorage) ao abrir
     window.addEventListener('DOMContentLoaded', () => {
       const savedBg = localStorage.getItem('coopex_admin_painel_bg');
       if(savedBg) painelBg.style.backgroundImage = `url('${savedBg}')`;
       checaAvisos();
-      setInterval(checaAvisos, 60 * 1000); // Checa avisos a cada minuto
+      setInterval(checaAvisos, 60 * 1000);
     });
-    // Trocar imagem do painel
     inputBg.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if(!file) return;
@@ -385,7 +387,6 @@
       reader.readAsDataURL(file);
     });
 
-    // Filtro cooperado
     document.getElementById('filtro-cooperado').addEventListener('input', function() {
       var filtro = this.value.toLowerCase();
       var lista = document.getElementById('lista-cooperados').children;
@@ -496,7 +497,6 @@
           </div>
         </div>
       `;
-      // Abre só uma janela para o cupom, nunca duas!
       const printWindow = window.open('', '', 'width=350,height=600');
       printWindow.document.write('<html><head><title>Cupom COOPEX</title></head><body>' + cupom + '</body></html>');
       printWindow.document.close();
@@ -508,7 +508,6 @@
       const url = new URL(window.location.href);
       const temFiltro = url.searchParams.get("data_inicio") || url.searchParams.get("data_fim");
       if (!temFiltro) {
-        // Redireciona para o filtro do dia atual, só se não tiver filtro já setado
         const hoje = new Date();
         const yyyy = hoje.getFullYear();
         const mm = String(hoje.getMonth() + 1).padStart(2, '0');
@@ -522,11 +521,9 @@
     // AVISO de pagamento pendente de 2 em 2 horas
     function checaAvisos() {
       try {
-        // Somente se tem alguma entrega "pendente" na tabela visível
         const existePendente = [...document.querySelectorAll('.tabela tbody tr')].some(
           tr => tr.children[10] && tr.children[10].textContent.toLowerCase().includes('pendente')
         );
-        // Mostra o aviso se for hora par e existir pendente, e só 1x por hora
         const agora = new Date();
         const hora = agora.getHours();
         const minutos = agora.getMinutes();
@@ -535,7 +532,6 @@
           document.getElementById('aviso-pagamento').style.display = 'block';
           localStorage.setItem(key, '1');
         }
-        // Mensagem de boa noite às 22h, só uma vez por noite
         if (hora === 22 && !localStorage.getItem('aviso_boa_noite_' + agora.toDateString())) {
           document.getElementById('aviso-boa-noite').style.display = 'block';
           localStorage.setItem('aviso_boa_noite_' + agora.toDateString(), '1');

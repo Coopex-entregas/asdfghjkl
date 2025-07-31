@@ -109,6 +109,7 @@ def admin():
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
     cooperado_id = request.args.get('cooperado_id', 'todos')
+    status_pagamento = request.args.get('status_pagamento', 'todos')  # NOVO FILTRO
     query = Entrega.query
     if not data_inicio and not data_fim:
         hoje = datetime.utcnow().date()
@@ -119,6 +120,12 @@ def admin():
         query = query.filter(Entrega.data_envio >= datetime.strptime(data_inicio, "%Y-%m-%d"))
     if data_fim:
         query = query.filter(Entrega.data_envio <= datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1))
+    # FILTRO NOVO DE STATUS PAGAMENTO (PENDENTE ou PAGO)
+    if status_pagamento and status_pagamento != 'todos':
+        if status_pagamento == 'pago':
+            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+        elif status_pagamento == 'pendente':
+            query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     hoje = datetime.utcnow().date()
