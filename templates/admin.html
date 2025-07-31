@@ -365,6 +365,9 @@
     </table>
   </div>
 
+  <!-- SOM DE AVISO DE PENDENTE -->
+  <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
+
   <!-- Scripts -->
   <script>
     // TROCAR PLANO DE FUNDO DO PAINEL
@@ -531,6 +534,12 @@
         if (existePendente && hora % 2 === 0 && minutos < 4 && !localStorage.getItem(key)) {
           document.getElementById('aviso-pagamento').style.display = 'block';
           localStorage.setItem(key, '1');
+          // --- SÓ ADICIONEI ESSE TRECHO ABAIXO ---
+          try {
+            const audio = document.getElementById('som-pendente');
+            audio.currentTime = 0;
+            audio.play();
+          } catch(e){}
         }
         if (hora === 22 && !localStorage.getItem('aviso_boa_noite_' + agora.toDateString())) {
           document.getElementById('aviso-boa-noite').style.display = 'block';
