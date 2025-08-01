@@ -24,20 +24,20 @@
             border: 1px solid #ccc;
             padding: 4px 2px;
             text-align: center;
-            white-space: normal;    /* Permite quebra */
-            word-break: break-word; /* Força quebra */
+            white-space: normal;
+            word-break: break-word;
             font-size: 0.95em;
         }
         th {
             background: #003399;
             color: #fff;
             font-size: 0.93em;
-            max-width: 70px;        /* Limita largura do cabeçalho */
+            max-width: 70px;
             min-width: 52px;
             line-height: 1.1em;
         }
         td {
-            max-width: 75px;        /* Limita largura de célula */
+            max-width: 75px;
             min-width: 35px;
             overflow-wrap: break-word;
         }
@@ -124,6 +124,12 @@
                     {% endfor %}
                 </tbody>
             </table>
+        </div>
+        <!-- Aviso aparece apenas quando está mostrando só as entregas do dia atual -->
+        <div style="text-align:center; color:#003399; font-size:0.96em; margin-top:10px;">
+            {% if not request.args.get('inicio') and not request.args.get('fim') %}
+                <b>Exibindo apenas as entregas do dia atual.<br>Para visualizar outros dias, utilize o filtro acima.</b>
+            {% endif %}
         </div>
     </div>
 </body>
