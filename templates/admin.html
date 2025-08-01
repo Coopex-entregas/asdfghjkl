@@ -291,13 +291,6 @@
     </div>
   </div>
 
-  <!-- AVISO DE FILTRO AUTOMÁTICO DO DIA ATUAL -->
-  {% if not request.args.get('data_inicio') and not request.args.get('data_fim') %}
-    <div style="color:#003399;font-size:14px;font-weight:600;margin-bottom:7px;text-align:center;">
-      Exibindo apenas as entregas do <b>dia atual</b>. Para visualizar outros dias, utilize o filtro acima.
-    </div>
-  {% endif %}
-
   <!-- Tabela de entregas -->
   <div class="tabela">
     <table>

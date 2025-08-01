@@ -77,11 +77,6 @@
             <input type="date" name="fim" value="{{ request.args.get('fim', '') }}">
             <button type="submit">Filtrar</button>
         </form>
-        {% if not request.args.get('inicio') and not request.args.get('fim') %}
-            <div style="color:#003399;font-size:14px;font-weight:600;margin-bottom:7px;text-align:center;">
-                Exibindo apenas as entregas do <b>dia atual</b>. Para visualizar outros dias, utilize o filtro acima.
-            </div>
-        {% endif %}
         <div class="estatisticas">
             <div><b>Total:</b> R$ {{ "%.2f"|format(total_geral or 0) }}</div>
             <div><b>Pago:</b> R$ {{ "%.2f"|format(total_pago or 0) }}</div>
