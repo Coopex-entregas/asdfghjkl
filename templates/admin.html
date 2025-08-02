@@ -552,13 +552,13 @@
         pagamento: linha.children[8].textContent,
       };
       const cupomNum = dados.id.toString().padStart(6, '0');
-      const logoUrl = "/static/logo_kratos.png";
+      const logoUrl = "/static/logo_coopex.png";
       const qrLink = "https://g.page/r/CY6ffwOT76pNEBM/review";
       const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(qrLink);
       const cupom = `
         <div style="font-family:Arial,monospace;max-width:330px;margin:auto;padding:12px 10px;">
           <div style="text-align:center;margin-bottom:4px;">
-            <img src="${logoUrl}" alt="Kratos Logo" style="height:110px;">
+            <img src="${logoUrl}" alt="Coopex Logo" style="height:110px;">
           </div>
           <div style="text-align:center;font-weight:bold;font-size:15px;margin-bottom:4px;">
             COOPERATIVA DE<br>
