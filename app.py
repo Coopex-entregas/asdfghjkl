@@ -148,12 +148,13 @@ def admin():
         Entrega.data_envio >= BRAZIL_TZ.localize(datetime.combine(hoje, time.min)).astimezone(pytz.utc),
         Entrega.data_envio <= BRAZIL_TZ.localize(datetime.combine(hoje, time.max)).astimezone(pytz.utc)
     ).count()
+    # Correção: retirado .astimezone() das colunas para evitar erro
     total_mes = Entrega.query.filter(
-        func.extract('month', Entrega.data_envio.astimezone(BRAZIL_TZ)) == hoje.month,
-        func.extract('year', Entrega.data_envio.astimezone(BRAZIL_TZ)) == hoje.year
+        func.extract('month', Entrega.data_envio) == hoje.month,
+        func.extract('year', Entrega.data_envio) == hoje.year
     ).count()
     total_ano = Entrega.query.filter(
-        func.extract('year', Entrega.data_envio.astimezone(BRAZIL_TZ)) == hoje.year
+        func.extract('year', Entrega.data_envio) == hoje.year
     ).count()
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
     feriado_hoje = verifica_feriado(hoje)
