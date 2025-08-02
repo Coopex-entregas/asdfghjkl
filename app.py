@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -45,6 +45,11 @@ class Entrega(db.Model):
     recebido_por = db.Column(db.String(100), nullable=True)     # Usado no editar por cooperado
 
     cooperado = db.relationship('Cooperado', backref='entregas')
+
+# ====== NOVO MODEL PARA FILA DE ESPERA ======
+class ListaEspera(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
 
 # ====== Função auxiliar ======
 def to_brasilia(dt):
@@ -168,10 +173,15 @@ def admin():
         Entrega.data_envio <= BRAZIL_TZ.localize(datetime.combine(hoje, time.max)).astimezone(pytz.utc),
         (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
     ).count() > 0
+
+    # Lista de espera carregada do banco
+    lista_espera = ListaEspera.query.order_by(ListaEspera.id).all()
+
     return render_template('admin.html', entregas=entregas, cooperados=cooperados,
                            estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim,
                            to_brasilia=to_brasilia, request=request, now=lambda: datetime.now(BRAZIL_TZ),
-                           feriado_hoje=feriado_hoje, tem_pendente=tem_pendente)
+                           feriado_hoje=feriado_hoje, tem_pendente=tem_pendente,
+                           lista_espera=lista_espera)
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
@@ -261,10 +271,10 @@ def agendar_entrega():
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
         data_str = request.form.get('data')
-        status_entrega = request.form.get('status_entrega')  # corrigido aqui
+        status_entrega = request.form.get('status_entrega')
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
-        pagamento = request.form.get('pagamento')  # pegar do form
+        pagamento = request.form.get('pagamento')
 
         data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
 
@@ -308,14 +318,14 @@ def editar_entrega(id):
                 entrega.cooperado_id = None
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
-            entrega.recebido_por = request.form.get('recebido_por')  # admin pode editar
+            entrega.recebido_por = request.form.get('recebido_por')
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status_entrega') or entrega.status
-            entrega.recebido_por = request.form.get('recebido_por')  # cooperado pode editar
+            entrega.recebido_por = request.form.get('recebido_por')
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
@@ -416,6 +426,30 @@ def exportar_xlsx():
             df.to_excel(writer, index=False, sheet_name=str(coop)[:31])
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
+
+
+# ROTAS PARA FILA DE ESPERA (NOVO)
+
+@app.route('/lista_espera/add', methods=['POST'])
+def lista_espera_add():
+    nome = request.form.get('nome')
+    if not nome or nome.strip() == '':
+        flash('Nome para fila de espera é obrigatório.')
+        return redirect(url_for('admin'))
+    novo = ListaEspera(nome=nome.strip())
+    db.session.add(novo)
+    db.session.commit()
+    flash('Nome adicionado à lista de espera.')
+    return redirect(url_for('admin'))
+
+@app.route('/lista_espera/remove/<int:id>', methods=['POST'])
+def lista_espera_remove(id):
+    item = ListaEspera.query.get_or_404(id)
+    db.session.delete(item)
+    db.session.commit()
+    flash('Nome removido da lista de espera.')
+    return redirect(url_for('admin'))
+
 
 def criar_bd():
     with app.app_context():
