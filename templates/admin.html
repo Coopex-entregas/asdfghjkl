@@ -617,28 +617,4 @@
     // AVISO de pagamento pendente de 2 em 2 horas
     function checaAvisos() {
       try {
-        const existePendente = [...document.querySelectorAll('.tabela tbody tr')].some(
-          tr => tr.children[10] && tr.children[10].textContent.toLowerCase().includes('pendente')
-        );
-        const agora = new Date();
-        const hora = agora.getHours();
-        const minutos = agora.getMinutes();
-        const key = `aviso_pagamento_${agora.getFullYear()}${agora.getMonth()}${agora.getDate()}${hora}`;
-        if (existePendente && hora % 2 === 0 && minutos < 4 && !localStorage.getItem(key)) {
-          document.getElementById('aviso-pagamento').style.display = 'block';
-          localStorage.setItem(key, '1');
-          try {
-            const audio = document.getElementById('som-pendente');
-            audio.currentTime = 0;
-            audio.play();
-          } catch(e){}
-        }
-        if (hora === 22 && !localStorage.getItem('aviso_boa_noite_' + agora.toDateString())) {
-          document.getElementById('aviso-boa-noite').style.display = 'block';
-          localStorage.setItem('aviso_boa_noite_' + agora.toDateString(), '1');
-        }
-      } catch(e) {}
-    }
-  </script>
-</body>
-</html>
+        const existePendente = [...document.querySelectorAll('.tabela tbody tr
