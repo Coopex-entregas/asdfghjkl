@@ -261,9 +261,10 @@ def agendar_entrega():
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
         data_str = request.form.get('data')
-        status_entrega = request.form.get('status')
+        status_entrega = request.form.get('status_entrega')  # corrigido aqui
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
+        pagamento = request.form.get('pagamento')  # pegar do form
 
         data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
 
@@ -274,7 +275,8 @@ def agendar_entrega():
             data_envio=data_envio,
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=status_entrega,
-            status_pagamento=status_pagamento
+            status_pagamento=status_pagamento,
+            pagamento=pagamento
         )
         db.session.add(entrega)
         db.session.commit()
