@@ -148,7 +148,7 @@ def admin():
         Entrega.data_envio >= BRAZIL_TZ.localize(datetime.combine(hoje, time.min)).astimezone(pytz.utc),
         Entrega.data_envio <= BRAZIL_TZ.localize(datetime.combine(hoje, time.max)).astimezone(pytz.utc)
     ).count()
-    # Correção: retirado .astimezone() das colunas para evitar erro
+    # Corrigido: removida chamada .astimezone() da coluna (não permitido no SQLAlchemy)
     total_mes = Entrega.query.filter(
         func.extract('month', Entrega.data_envio) == hoje.month,
         func.extract('year', Entrega.data_envio) == hoje.year
