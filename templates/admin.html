@@ -107,6 +107,8 @@
       left: 0; right: 0;
       margin-left: calc(50% - 50vw);
       margin-right: calc(50% - 50vw);
+      background-size: cover;
+      background-position: center center;
     }
     .painel-bg-btn-troca {
       position: absolute;
@@ -475,7 +477,11 @@
     const inputBg = document.getElementById('upload-bg');
     window.addEventListener('DOMContentLoaded', () => {
       const savedBg = localStorage.getItem('coopex_admin_painel_bg');
-      if(savedBg) painelBg.style.backgroundImage = `url('${savedBg}')`;
+      if(savedBg) {
+        painelBg.style.backgroundImage = `url('${savedBg}')`;
+        painelBg.style.backgroundSize = 'cover';
+        painelBg.style.backgroundPosition = 'center center';
+      }
       checaAvisos();
       setInterval(checaAvisos, 60 * 1000);
     });
@@ -485,8 +491,10 @@
       const reader = new FileReader();
       reader.onload = function(ev) {
         painelBg.style.backgroundImage = `url('${ev.target.result}')`;
+        painelBg.style.backgroundSize = 'cover';
+        painelBg.style.backgroundPosition = 'center center';
         localStorage.setItem('coopex_admin_painel_bg', ev.target.result);
-      }
+      };
       reader.readAsDataURL(file);
     });
 
