@@ -285,7 +285,6 @@
     .icon-btn:hover { transform: scale(1.17);}
     .icon-btn svg { display: inline-block; vertical-align: middle; }
     .col-recebido   { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-    /* Responsivo */
     @media (max-width: 900px) {
       .painel-superior { flex-direction: column; gap: 15px;}
       .painel-lateral { flex-direction: column; gap: 14px;}
@@ -297,7 +296,8 @@
 <body>
   <header>
     <h1>
-      <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo">
+      <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo"
+        onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')">
       Painel da Supervisão - Coopex
     </h1>
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
@@ -312,12 +312,10 @@
     <span>🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.</span>
   </div>
 
-  <!-- Painel com plano de fundo personalizável -->
   <div id="painel-bg" class="painel-bg-trocavel">
     <button class="painel-bg-btn-troca" onclick="document.getElementById('upload-bg').click()">Trocar Plano de Fundo</button>
     <input id="upload-bg" type="file" accept="image/*" style="display:none">
     <div class="painel-bg-conteudo">
-      <!-- Data, Dia da Semana e Feriado -->
       <div style="margin-bottom:8px; font-size:1.1em; color:var(--azul);font-weight:600;">
         Hoje: {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
         - {{ to_brasilia(now())|diasemana }}
@@ -331,15 +329,12 @@
           </span>
         {% endif %}
       </div>
-      <!-- Cards de estatísticas -->
       <div class="painel-superior">
         <div class="card">Entregas do Dia<br><strong>{{ estatisticas.total_dia }}</strong></div>
         <div class="card">Do Mês<br><strong>{{ estatisticas.total_mes }}</strong></div>
         <div class="card">Do Ano<br><strong>{{ estatisticas.total_ano }}</strong></div>
       </div>
-      <!-- Lista de Espera + Cooperados -->
       <div class="painel-lateral">
-        <!-- Lista de Espera -->
         <div class="painel-lista">
           <div class="espera-title">Lista de Espera</div>
           <div class="espera-input-row">
@@ -348,7 +343,6 @@
           </div>
           <div id="espera-lista" class="espera-chips"></div>
         </div>
-        <!-- Cooperados -->
         <div class="painel-lista">
           <h3>Cooperados</h3>
           <input type="text" id="filtro-cooperado" placeholder="Filtrar...">
@@ -364,14 +358,12 @@
           </ul>
         </div>
       </div>
-      <!-- Ações -->
       <div class="actions">
         <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
         <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
         <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
         <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
       </div>
-      <!-- Filtros -->
       <div class="filtros">
         <form method="GET" action="{{ url_for('admin') }}">
           <label for="cooperado" style="font-size:13px;">Cooperado:</label>
@@ -475,10 +467,8 @@
     </table>
   </div>
 
-  <!-- SOM DE AVISO DE PENDENTE -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
-  <!-- Scripts -->
   <script>
     // TROCAR PLANO DE FUNDO DO PAINEL
     const painelBg = document.getElementById('painel-bg');
@@ -615,21 +605,6 @@
       printWindow.document.close();
       printWindow.focus();
     }
-
-    // Mostrar apenas entregas do dia por padrão
-    (function filtraEntregasDia() {
-      const url = new URL(window.location.href);
-      const temFiltro = url.searchParams.get("data_inicio") || url.searchParams.get("data_fim");
-      if (!temFiltro) {
-        const hoje = new Date();
-        const yyyy = hoje.getFullYear();
-        const mm = String(hoje.getMonth() + 1).padStart(2, '0');
-        const dd = String(hoje.getDate()).padStart(2, '0');
-        url.searchParams.set('data_inicio', `${yyyy}-${mm}-${dd}`);
-        url.searchParams.set('data_fim', `${yyyy}-${mm}-${dd}`);
-        window.location.replace(url.toString());
-      }
-    })();
 
     // AVISO de pagamento pendente de 2 em 2 horas
     function checaAvisos() {
