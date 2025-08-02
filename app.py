@@ -41,7 +41,8 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
-    recebido_por = db.Column(db.String(100), nullable=True)     # NOVO campo
+    pagamento = db.Column(db.String(50), nullable=False)        # Forma de pagamento obrigatória
+    recebido_por = db.Column(db.String(100), nullable=True)     # Usado no editar por cooperado
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
@@ -230,13 +231,16 @@ def cadastrar_entrega():
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
         cooperado_id = request.form.get('cooperado_id')
+        pagamento = request.form.get('pagamento')
+
         entrega = Entrega(
             cliente=cliente,
             bairro=bairro,
             valor=valor,
             data_envio=datetime.utcnow(),
             status_pagamento='Pendente',
-            status='pendente'
+            status='pendente',
+            pagamento=pagamento
         )
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
@@ -302,14 +306,14 @@ def editar_entrega(id):
                 entrega.cooperado_id = None
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
-            entrega.recebido_por = request.form.get('recebido_por')  # salvar recebido_por
+            entrega.recebido_por = request.form.get('recebido_por')  # admin pode editar
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status_entrega') or entrega.status
-            entrega.recebido_por = request.form.get('recebido_por')  # salvar recebido_por
+            entrega.recebido_por = request.form.get('recebido_por')  # cooperado pode editar
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
