@@ -324,7 +324,7 @@ def editar_entrega(id):
             return redirect(url_for('admin'))
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
-            entrega.status = request.form.get('status_entrega') or entrega.status
+            entrega.status = request.form.get('status') or entrega.status
             entrega.recebido_por = request.form.get('recebido_por')
             db.session.commit()
             flash('Entrega atualizada!')
@@ -459,3 +459,4 @@ criar_bd()
 
 if __name__ == '__main__':
     app.run(debug=True)
+
