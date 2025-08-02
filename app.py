@@ -250,20 +250,24 @@ def cadastrar_entrega():
 def agendar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
         data_str = request.form.get('data')
-        status_entrega = request.form.get('status_entrega')
+        status_entrega = request.form.get('status')
         status_pagamento = request.form.get('status_pagamento')
+        cooperado_id = request.form.get('cooperado_id')
+
         data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
+
         entrega = Entrega(
             cliente=cliente,
             bairro=bairro,
             valor=valor,
             data_envio=data_envio,
-            cooperado_id=None,
+            cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=status_entrega,
             status_pagamento=status_pagamento
         )
@@ -271,7 +275,7 @@ def agendar_entrega():
         db.session.commit()
         flash('Entrega agendada!')
         return redirect(url_for('admin'))
-    return render_template('agendar_entrega.html')
+    return render_template('agendar_entrega.html', cooperados=cooperados)
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
