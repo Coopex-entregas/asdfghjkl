@@ -41,6 +41,7 @@ class Entrega(db.Model):
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
+    recebido_por = db.Column(db.String(100), nullable=True)     # NOVO campo
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
@@ -301,12 +302,14 @@ def editar_entrega(id):
                 entrega.cooperado_id = None
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
+            entrega.recebido_por = request.form.get('recebido_por')  # salvar recebido_por
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status_entrega') or entrega.status
+            entrega.recebido_por = request.form.get('recebido_por')  # salvar recebido_por
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
@@ -396,7 +399,8 @@ def exportar_xlsx():
             'Hora Atribuída': to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '',
             'Valor': e.valor,
             'Status Pagamento': e.status_pagamento,
-            'Status da Entrega': e.status
+            'Status da Entrega': e.status,
+            'Recebido Por': e.recebido_por or ''
         })
 
     output = io.BytesIO()
