@@ -4,7 +4,6 @@
   <meta charset="UTF-8" />
   <title>Painel da Supervisão - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <!-- Inter font para visual moderno -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root {
@@ -12,7 +11,6 @@
       --azul-escuro: #222b44;
       --azul-grad: linear-gradient(90deg, #003399 55%, #4f8cff 110%);
       --azul-hover: #174ea6;
-      --roxo: #6366f1;
       --verde: #13a038;
       --vermelho: #d11a1a;
       --amarelo: #ffe066;
@@ -23,61 +21,51 @@
       --shadow-sm: 0 2px 10px #00339918;
       --radius: 16px;
       --radius-sm: 11px;
-      --speed: 0.19s;
     }
     html, body { margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px; }
     body.locked { overflow:hidden; }
 
-    /* ====== HEADER com KPIs ao lado do nome ====== */
     header { background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
     .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; }
-    h1 { font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.5px; text-shadow:0 2px 14px #0001; user-select:none; white-space:nowrap; }
+    h1 { font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.5px; text-shadow:0 2px 14px #0001; white-space:nowrap; }
     .logo-topo { height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
 
     .kpis { display:flex; gap:10px; flex-wrap:wrap; }
-    .kpi { background: #ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
+    .kpi { background:#ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
     .kpi span { display:block; font-weight:700; line-height:1.1; }
     .kpi small { display:block; font-size:12px; opacity:.9; }
 
     .logout { color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap; }
     .logout:hover { background:#a20f1a; }
 
-    /* ====== PAINEL SUPERIOR (lista/cooperados/data) ====== */
-    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 0 12px; overflow:hidden; }
-    .painel-bg-btn-troca { position:absolute; top:12px; right:18px; z-index:5; background:var(--amarelo); color:var(--azul); border:none; border-radius:var(--radius-sm); padding:7px 14px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:var(--shadow-sm); }
+    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 2vw; overflow:hidden; }
     .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
 
-    /* linha com 3 colunas: Lista de Espera | Cooperados | Data/Feriado */
     .painel-linha { display:grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap:14px; align-items:start; }
     .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:14px 16px 12px; border:1px solid #e6ebff; }
     .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.02em; }
 
-    .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
-    #espera-nome { flex:1; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; }
-    .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:7px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
+    .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
+    .espera-select, .espera-input { flex:1; min-width:230px; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; color:#003399; }
+    .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:8px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
 
-    #filtro-cooperado { width:100%; margin-bottom:8px; border:1.2px solid #a8b9e4; border-radius:8px; padding:7px 10px; background:#f7faff; }
-    #lista-cooperados { list-style:none; padding:0; max-height:140px; overflow-y:auto; font-size:13px; margin:0; }
-    #lista-cooperados li { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
-    #lista-cooperados button { background:#d11a1a; color:white; padding:2px 6px; border-radius:4px; border:none; font-weight:bold; cursor:pointer; font-size:12px; }
+    /* chips numerados e arrastáveis */
+    #espera-lista { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px; }
+    .espera-chip { display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff; padding:8px 10px; border-radius:10px; cursor:grab; }
+    .espera-chip:active { cursor:grabbing; }
+    .espera-chip-num { background:#ffd166; color:#222; font-weight:900; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .espera-chip-text { font-weight:800; color:#003399; }
+    .espera-chip-remove { background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900; }
 
-    .info-dia h3 { margin:0 0 10px; color:var(--azul); font-size:1.02em; }
-    .info-dia .linha { font-size:1.02em; font-weight:700; color:#003399; }
-    .info-dia .ok { color:#2767e6; font-weight:800; }
-    .info-dia .alerta { color:#d11a1a; font-weight:800; }
-
-    /* ====== AÇÕES E FILTROS (COLADO NA TABELA) ====== */
     .actions { margin:8px 0 8px; display:flex; flex-wrap:wrap; gap:10px; }
-    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); }
+    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); white-space:nowrap; }
     .btn:hover { background:var(--azul-hover); }
 
-    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px 10px 12px; box-shadow:var(--shadow-sm); display:inline-flex; gap:8px; align-items:center; border:1px solid #e6ebff; }
+    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; gap:10px; align-items:center; border:1px solid #e6ebff; flex-wrap:wrap; }
     .filtros label { font-size:13px; color:#003399; font-weight:800; }
     .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
-    .filtros .btn { padding:8px 14px; }
 
-    /* ====== TABELA (PARTE DEBAIXO INALTERADA) ====== */
-    .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; }
+    .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px; }
     table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
     th, td { border:1px solid #3a3a3a; padding:9px 4px; text-align:center; vertical-align:middle; }
     th { background:linear-gradient(90deg,#003399 60%, #4f8cff 120%); color:#fff; font-size:1.03em; font-weight:700; }
@@ -85,19 +73,14 @@
     .status-verde { color:#13a038; font-weight:bold; background:#e7f9ef; border-radius:7px; padding:3px 6px; }
     .status-vermelho { color:#d11a1a; font-weight:bold; background:#fdeaea; border-radius:7px; padding:3px 6px; }
 
-    /* MODAL BLOQUEANTE */
     .modal-overlay { position:fixed; inset:0; background:rgba(10,16,28,0.58); display:none; align-items:center; justify-content:center; z-index:9999; }
     .modal { background:#fff; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.25); max-width:520px; width:92%; padding:22px 20px 18px; text-align:center; }
     .modal h2 { margin:0 0 8px; color:var(--azul); }
     .modal p { margin:6px 0 14px; color:#21324d; }
     .modal .modal-btn { background:var(--azul); color:#fff; border:none; border-radius:10px; padding:10px 22px; font-weight:800; cursor:pointer; box-shadow:var(--shadow-sm); }
-    .modal .modal-btn:hover { background:#174ea6; }
 
-    @media (max-width: 1100px) {
-      .kpis { justify-content:flex-start; }
-      .painel-linha { grid-template-columns:1fr; }
-    }
-    @media (max-width: 900px) {
+    @media (max-width: 1100px) { .painel-linha { grid-template-columns:1fr; } }
+    @media (max-width: 900px)  {
       header .header-grid { grid-template-columns:1fr auto; row-gap:8px; }
       .kpis { grid-column:1/-1; }
       .painel-bg-trocavel { padding:16px 2vw 9px 2vw; }
@@ -113,19 +96,16 @@
           onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')">
         Kratos System -  Supervisão
       </h1>
-
-      <!-- KPIs ao lado do nome -->
       <div class="kpis">
         <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
         <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
         <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
       </div>
-
       <a class="logout" href="{{ url_for('logout') }}">Sair</a>
     </div>
   </header>
 
-  <!-- Modal bloqueante -->
+  <!-- Modal -->
   <div id="overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal">
       <h2 id="modal-title">Atenção</h2>
@@ -134,64 +114,74 @@
     </div>
   </div>
 
-  <!-- Topo reestruturado: Lista de Espera | Cooperados | Data/Feriado -->
   <div id="painel-bg" class="painel-bg-trocavel">
-    <input id="upload-bg" type="file" accept="image/*" style="display:none">
     <div class="painel-bg-conteudo">
       <div class="painel-linha">
-        <!-- Lista de Espera (AGORA no banco) -->
+        <!-- LISTA DE ESPERA (puxa cooperados, numera, arrasta e salva ordem) -->
         <div class="painel-lista">
           <h3>Lista de Espera</h3>
           <form class="espera-bar" action="{{ url_for('lista_espera_add') }}" method="POST">
-            <input id="espera-nome" name="nome" type="text" placeholder="Adicionar nome..." maxlength="100" required>
+            <select name="cooperado_id" class="espera-select" required>
+              <option value="" selected disabled>Selecione um cooperado para colocar na fila…</option>
+              {% for c in cooperados_disponiveis %}
+                <option value="{{ c.id }}">{{ c.nome }}</option>
+              {% endfor %}
+            </select>
+            <!-- mantém compatibilidade se quiser digitar pelo nome -->
+            <input class="espera-input" name="nome" type="text" placeholder="(Opcional) digitar nome do cooperado">
             <button type="submit" class="espera-add">Adicionar</button>
           </form>
-          <ul id="espera-lista" style="list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px;">
-            {% for i, item in enumerate(lista_espera, start=1) %}
-              <li class="espera-chip">
-                <span class="espera-chip-num">{{ i }}</span>
-                <span class="espera-chip-text">{{ item.nome }}</span>
-                <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
-                  <button class="espera-chip-remove" title="Remover" type="submit">×</button>
-                </form>
-              </li>
+
+          <ul id="espera-lista">
+            {% if lista_espera|length == 0 %}
+              <li id="fila-vazia">Nenhum cooperado na fila.</li>
             {% else %}
-              <li>Nenhum nome na fila.</li>
-            {% endfor %}
+              {% for item in lista_espera %}
+                <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
+                  <span class="espera-chip-num">{{ loop.index }}</span>
+                  <span class="espera-chip-text">{{ item.nome }}</span>
+                  <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
+                    <button class="espera-chip-remove" title="Remover" type="submit">×</button>
+                  </form>
+                </li>
+              {% endfor %}
+            {% endif %}
           </ul>
         </div>
 
-        <!-- Cooperados (ao lado da lista) -->
+        <!-- Cooperados -->
         <div class="painel-lista">
           <h3>Cooperados</h3>
-          <input type="text" id="filtro-cooperado" placeholder="Filtrar...">
-          <ul id="lista-cooperados">
+          <input type="text" id="filtro-cooperado" placeholder="Filtrar..." class="espera-input">
+          <ul id="lista-cooperados" style="list-style:none; padding:0; max-height:140px; overflow-y:auto; font-size:13px; margin:0;">
             {% for c in cooperados %}
-              <li>
+              <li style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
                 <b>{{ c.nome }}</b>
                 <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
-                  <button type="submit">Excluir</button>
+                  <button type="submit" style="background:#d11a1a;color:#fff;padding:2px 6px;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-size:12px;">Excluir</button>
                 </form>
               </li>
             {% endfor %}
           </ul>
         </div>
 
-        <!-- Data e Feriado (ao lado de cooperados) -->
-        <div class="painel-lista info-dia">
+        <!-- Hoje / feriado -->
+        <div class="painel-lista">
           <h3>Hoje</h3>
-          <div class="linha">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}</div>
+          <div style="font-weight:700;color:#003399;">
+            {{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}
+          </div>
           <div style="margin-top:6px;">
             {% if feriado_hoje %}
-              <span class="alerta">⚠️ {{ feriado_hoje }}</span>
+              <span style="color:#d11a1a;font-weight:800;">⚠️ {{ feriado_hoje }}</span>
             {% else %}
-              <span class="ok">Hoje não é feriado.</span>
+              <span style="color:#2767e6;font-weight:800;">Hoje não é feriado.</span>
             {% endif %}
           </div>
         </div>
       </div>
 
-      <!-- Ações e Filtros mais colados da tabela -->
+      <!-- Ações e filtros -->
       <div class="actions">
         <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
         <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
@@ -200,34 +190,34 @@
       </div>
 
       <div class="filtros">
-        <form method="GET" action="{{ url_for('admin') }}">
-          <label for="cooperado" style="font-size:13px;">Cooperado:</label>
-          <select name="cooperado_id" id="cooperado" style="font-size:13px;">
+        <form method="GET" action="{{ url_for('admin') }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
+          <label for="cooperado">Cooperado:</label>
+          <select name="cooperado_id" id="cooperado">
             <option value="todos">Todos</option>
             {% for c in cooperados %}
             <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
             {% endfor %}
           </select>
 
-          <label for="data_inicio" style="font-size:13px;">De:</label>
-          <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:13px;">
+          <label for="data_inicio">De:</label>
+          <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}">
 
-          <label for="data_fim" style="font-size:13px;">Até:</label>
-          <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:13px;">
+          <label for="data_fim">Até:</label>
+          <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}">
 
-          <label for="status_pagamento" style="font-size:13px;">Pagamento:</label>
-          <select name="status_pagamento" id="status_pagamento" style="font-size:13px;">
+          <label for="status_pagamento">Pagamento:</label>
+          <select name="status_pagamento" id="status_pagamento">
             <option value="todos" {% if request.args.get('status_pagamento', 'todos') == 'todos' %}selected{% endif %}>Todos</option>
             <option value="pago" {% if request.args.get('status_pagamento') == 'pago' %}selected{% endif %}>Pago</option>
             <option value="pendente" {% if request.args.get('status_pagamento') == 'pendente' %}selected{% endif %}>Pendente</option>
           </select>
 
-          <label for="cliente" style="font-size:13px;">Cliente:</label>
-          <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" style="font-size:13px;" placeholder="Nome do cliente">
+          <label for="cliente">Cliente:</label>
+          <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" placeholder="Nome do cliente">
 
           <button class="btn" type="submit">Filtrar</button>
 
-          <!-- Exporta levando TODOS os filtros, inclusive cliente -->
+          <!-- Exporta levando TODOS os filtros -->
           <a class="btn"
             href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
             Exportar para Excel
@@ -237,7 +227,7 @@
     </div>
   </div>
 
-  <!-- Tabela de entregas -->
+  <!-- Tabela -->
   <div class="tabela">
     <table>
       <thead>
@@ -272,7 +262,7 @@
           </td>
           <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
           <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-          <td>{% set coop_td = (cooperados|selectattr('id','equalto',e.cooperado_id)|first) %}{{ coop_td.nome if coop_td else 'Sem Cooperado' }}</td>
+          <td>{% set coop_td = (e.cooperado.nome if e.cooperado else 'Sem Cooperado') %}{{ coop_td }}</td>
           <td>{{ e.pagamento }}</td>
           <td>
             {% if e.status and e.status.lower() in ['recebido','entregue'] %}<span class="status-verde">{{ e.status|capitalize }}</span>
@@ -284,37 +274,21 @@
           </td>
           <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
           <td style="min-width:90px; display:flex; gap:6px; justify-content:center; align-items:center;">
-            <!-- Editar -->
             <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
               <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
             </a>
 
-            <!-- Clonar (NOVIDADE) -->
             <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
               <button title="Clonar" type="submit" style="border:none;background:none;cursor:pointer">
-                <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24">
-                  <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                </svg>
+                <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
               </button>
             </form>
 
-            <!-- Excluir -->
             <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
               <button title="Excluir" type="submit" style="border:none;background:none;cursor:pointer">
                 <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
               </button>
             </form>
-
-            <!-- Imprimir (com cooperado via data-attr) -->
-            {% set coop_btn = (cooperados|selectattr('id','equalto',e.cooperado_id)|first) %}
-            <button
-              type="button"
-              title="Imprimir cupom"
-              style="border:none;background:none;cursor:pointer"
-              data-cooperado="{{ coop_btn.nome if coop_btn else 'Sem Cooperado' }}"
-              onclick="imprimirCupom({{ e.id }}, this)">
-              <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
-            </button>
           </td>
         </tr>
         {% endfor %}
@@ -322,11 +296,10 @@
     </table>
   </div>
 
-  <!-- Som -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <script>
-    // ===== Modal bloqueante =====
+    // Modal
     const overlay = document.getElementById('overlay');
     const modalTitle = document.getElementById('modal-title');
     const modalMsg = document.getElementById('modal-msg');
@@ -339,52 +312,17 @@
       modalMsg.textContent = mensagem;
       overlay.style.display = 'flex';
       document.body.classList.add('locked');
-
-      if (tocarSom) {
-        somPendente.currentTime = 0;
-        somPendente.play().catch(() => {/* toca no clique */});
-      }
+      if (tocarSom) { somPendente.currentTime = 0; somPendente.play().catch(()=>{}); }
       return new Promise(resolve => { _modalResolve = resolve; });
     }
-
     modalOk.addEventListener('click', () => {
-      if (somPendente.paused) {
-        somPendente.currentTime = 0;
-        somPendente.play().catch(()=>{});
-      }
       overlay.style.display = 'none';
       document.body.classList.remove('locked');
       if (_modalResolve) _modalResolve(true);
       _modalResolve = null;
     });
 
-    // ===== Plano de fundo custom (opcional, localStorage) =====
-    const painelBg = document.getElementById('painel-bg');
-    const inputBg = document.getElementById('upload-bg');
-    window.addEventListener('DOMContentLoaded', () => {
-      const savedBg = localStorage.getItem('coopex_admin_painel_bg');
-      if(savedBg) {
-        painelBg.style.backgroundImage = `url('${savedBg}')`;
-        painelBg.style.backgroundSize = 'cover';
-        painelBg.style.backgroundPosition = 'center center';
-      }
-      checaAvisos();
-      setInterval(checaAvisos, 60 * 1000);
-    });
-    inputBg.addEventListener('change', function(e) {
-      const file = e.target.files[0];
-      if(!file) return;
-      const reader = new FileReader();
-      reader.onload = function(ev) {
-        painelBg.style.backgroundImage = `url('${ev.target.result}')`;
-        painelBg.style.backgroundSize = 'cover';
-        painelBg.style.backgroundPosition = 'center center';
-        localStorage.setItem('coopex_admin_painel_bg', ev.target.result);
-      };
-      reader.readAsDataURL(file);
-    });
-
-    // Filtro de cooperados (visual)
+    // Filtro cooperados
     document.getElementById('filtro-cooperado').addEventListener('input', function() {
       var filtro = this.value.toLowerCase();
       var lista = document.getElementById('lista-cooperados').children;
@@ -393,99 +331,60 @@
       }
     });
 
-    // ===== Imprimir Cupom (COM cooperado via data-attr) =====
-    function imprimirCupom(id, btn) {
-      const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == String(id));
-      if (!linha) return;
+    // Drag & drop da fila
+    const ulFila = document.getElementById('espera-lista');
+    let dragEl = null;
 
-      const cooperadoNome =
-        (btn && btn.dataset && btn.dataset.cooperado) ?
-          btn.dataset.cooperado.trim() :
-          (linha.children[7]?.textContent.trim() || 'Sem Cooperado');
-
-      const dados = {
-        id: linha.children[0].textContent,
-        cliente: linha.children[1].textContent,
-        bairro: linha.children[2].textContent,
-        valor: linha.children[3].textContent,
-        data: linha.children[4].innerText.split('\n')[0].trim(),
-        hora: linha.children[5].innerText.trim(),
-        pagamento: linha.children[8].textContent,
-        cooperado: cooperadoNome
-      };
-      const cupomNum = dados.id.toString().padStart(6, '0');
-      const logoUrl = "/static/logo_coopex.png";
-      const qrLink = "https://g.page/r/CY6ffwOT76pNEBM/review";
-      const qrUrl = "https://api.qrserver.com/v1/create-qr-code/?size=110x110&data=" + encodeURIComponent(qrLink);
-      const cupom = `
-        <div style="font-family:Arial,monospace;max-width:330px;margin:auto;padding:12px 10px;">
-          <div style="text-align:center;margin-bottom:4px;">
-            <img src="${logoUrl}" alt="Coopex Logo" style="height:110px;">
-          </div>
-          <div style="text-align:center;font-weight:bold;font-size:15px;margin-bottom:4px;">
-            COOPERATIVA DE<br>
-            TRABALHADORES DE ENTREGA DO RN - COOPEX
-          </div>
-          <div style="text-align:center;font-size:12px;">
-            CNPJ: 05.289.938/0001-97<br>
-            Rua Jose Freire de Souza, 22<br>
-            Lagoa Nova – Natal/RN CEP: 59075-140<br>
-            Fone/WhatsApp: (84) 98111-0706
-          </div>
-          <div style="border-bottom:1px dashed #333;margin:7px 0 8px;"></div>
-          <div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:2px;">
-            CUPOM NÃO FISCAL N°: ${cupomNum}
-          </div>
-          <div style="font-size:12px;text-align:left;">
-            <b>Data:</b> ${dados.data}<br>
-            <b>Hora:</b> ${dados.hora}<br>
-            <b>Cliente:</b> ${dados.cliente}<br>
-            <b>Bairro:</b> ${dados.bairro}<br>
-            <b>Cooperado:</b> ${dados.cooperado}
-          </div>
-          <div style="border-bottom:1px dashed #333;margin:7px 0 8px;"></div>
-          <div style="font-size:13px;">
-            <b>Valor do serviço:</b>
-            <span style="float:right;font-weight:bold;">${dados.valor.replace("R$ ","")}</span>
-          </div>
-          <div style="font-size:19px;font-weight:bold;margin:6px 0 5px;text-align:right;">
-            <span style="float:left;">TOTAL:</span> ${dados.valor.replace("R$ ","")}
-          </div>
-          <div style="clear:both;border-bottom:1px dashed #333;margin:7px 0 8px;"></div>
-          <div style="font-size:12px;"><b>Forma de pagamento:</b> ${dados.pagamento}</div>
-          <div style="font-size:12px;margin-bottom:6px;"><b>Observações:</b> Entrega sem troco</div>
-          <div style="text-align:center;margin-top:6px;">
-            <img src="${qrUrl}" alt="QR" style="width:110px;height:110px;"><br>
-            <span style="font-size:11px;display:block;margin-top:2px;">Avalie a Coopex no Google!</span>
-          </div>
-          <div style="text-align:center;margin-top:18px;">
-            <button onclick="window.print()" style="background:#003399;color:#fff;padding:8px 30px;font-size:15px;border:none;border-radius:10px;cursor:pointer;font-weight:bold;">Imprimir</button>
-          </div>
-        </div>
-      `;
-      const printWindow = window.open('', '', 'width=350,height=600');
-      printWindow.document.write('<html><head><title>Cupom COOPEX</title></head><body>' + cupom + '</body></html>');
-      printWindow.document.close();
-      printWindow.focus();
+    function renumerar() {
+      [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1);
     }
 
-    // ===== Avisos bloqueantes =====
+    ulFila.addEventListener('dragstart', (e) => {
+      const li = e.target.closest('.espera-chip');
+      if (!li) return;
+      dragEl = li;
+      li.style.opacity = .6;
+    });
+
+    ulFila.addEventListener('dragend', (e) => {
+      const li = e.target.closest('.espera-chip');
+      if (!li) return;
+      li.style.opacity = 1;
+      dragEl = null;
+      salvarOrdem();
+    });
+
+    ulFila.addEventListener('dragover', (e) => {
+      e.preventDefault();
+      const li = e.target.closest('.espera-chip');
+      if (!li || li === dragEl) return;
+      const bbox = li.getBoundingClientRect();
+      const after = (e.clientY - bbox.top) > (bbox.height / 2);
+      if (after) li.after(dragEl); else li.before(dragEl);
+      renumerar();
+    });
+
+    function salvarOrdem() {
+      const ids = [...ulFila.querySelectorAll('.espera-chip')].map(li => li.dataset.id);
+      fetch('{{ url_for("lista_espera_reordenar") }}', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ordem: ids})
+      }).catch(()=>{});
+    }
+
+    // Avisos (mantidos)
     function existePagamentoPendenteNaTabela() {
-      // Coluna "Pagamento" é o índice 10
       return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
         const cel = tr.children[10];
         if (!cel) return false;
         return cel.textContent.trim().toLowerCase().includes('pendente');
       });
     }
-
     async function checaAvisos() {
       try {
         const agora = new Date();
-        const hora = agora.getHours();
-        const minutos = agora.getMinutes();
-
-        // Cobrança pendente: horas pares, nos 4 primeiros minutos, 1x por hora
+        const hora = agora.getHours(), minutos = agora.getMinutes();
         if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
           const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
           if (!localStorage.getItem(keyHora)) {
@@ -493,8 +392,6 @@
             localStorage.setItem(keyHora, '1');
           }
         }
-
-        // Boa noite às 22h, 1x por dia
         if (hora === 22) {
           const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
           if (!localStorage.getItem(keyBoaNoite)) {
@@ -502,10 +399,12 @@
             localStorage.setItem(keyBoaNoite, '1');
           }
         }
-      } catch(e) {
-        console.error(e);
-      }
+      } catch(e) { console.error(e); }
     }
+    window.addEventListener('DOMContentLoaded', () => {
+      checaAvisos();
+      setInterval(checaAvisos, 60 * 1000);
+    });
   </script>
 </body>
 </html>
