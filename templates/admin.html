@@ -28,11 +28,14 @@ h1{margin:0;font-weight:800;font-size:1.28rem;letter-spacing:.3px;white-space:no
 .kpi strong{display:block;color:#003399;font-size:1.25rem;margin-top:2px}
 .logout{background:#c1121f;color:#fff;border:none;border-radius:18px;padding:9px 22px;font-weight:800;box-shadow:var(--shadow-sm);text-decoration:none}
 .logout:hover{background:#a20f1a}
-/* ===== Painel ===== */
+/* ===== Painel com fundo trocável ===== */
 .painel-bg{position:relative;border-radius:var(--radius);box-shadow:var(--shadow);padding:14px 2vw 14px;margin:12px 0 18px;
-  overflow:hidden;background:linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%);}
+  overflow:hidden;background:linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%);background-size:cover;background-position:center}
+.painel-bg.has-image{background:none}
 .bg-overlay{position:absolute;inset:0;background:rgba(255,255,255,.38);backdrop-filter:blur(6px);z-index:0;border:1px solid var(--glass-b)}
 .painel-bg > .content{position:relative;z-index:2;max-width:1280px;margin:auto}
+.bg-btn{position:absolute;top:12px;right:18px;background:var(--amarelo);color:var(--azul);border:none;border-radius:12px;
+  padding:7px 16px;font-weight:800;box-shadow:var(--shadow-sm);cursor:pointer}
 /* ===== Linha 2: Lista / Cooperados / Data+Feriado ===== */
 .row-top{display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px}
 .card{background:#fff;border:1px solid #e6ebff;border-radius:13px;box-shadow:var(--shadow-sm);padding:14px}
@@ -58,7 +61,7 @@ h1{margin:0;font-weight:800;font-size:1.28rem;letter-spacing:.3px;white-space:no
 .filtros{display:flex;flex-wrap:wrap;gap:8px;align-items:center;background:#fff;border:1px solid #e6ebff;border-radius:12px;padding:8px 10px;box-shadow:var(--shadow-sm)}
 .filtros label{font-size:13px;color:#003399;font-weight:800}
 .filtros select,.filtros input{font-size:13px;padding:6px 8px;border-radius:8px;border:1px solid #a8b9e4;background:#f7faff;color:#003399;font-weight:600}
-/* ===== Tabela ===== */
+/* ===== Tabela (sem scroll lateral) ===== */
 .tabela{background:#fff;border:1px solid #e6ebff;border-radius:16px;box-shadow:var(--shadow);padding:10px;max-height:69vh;overflow:auto}
 table{width:100%;border-collapse:collapse;font-size:14.2px;table-layout:fixed}
 th,td{border:1px solid #e9edf8;padding:9px 6px;text-align:center;vertical-align:middle;word-break:break-word}
@@ -66,7 +69,7 @@ th{position:sticky;top:0;background:linear-gradient(90deg,rgba(0,51,153,.92) 60%
 tbody tr:hover td{background:#f1f6ff}
 .status-verde{color:#13a038;background:#e7f9ef;border-radius:7px;padding:3px 6px;font-weight:800;display:inline-block}
 .status-vermelho{color:#d11a1a;background:#fdeaea;border-radius:7px;padding:3px 6px;font-weight:800;display:inline-block}
-/* ===== Modal ===== */
+/* ===== Modal bonitão ===== */
 .modal-overlay{position:fixed;inset:0;background:rgba(10,16,28,.58);display:none;align-items:center;justify-content:center;z-index:9999}
 .modal{background:#fff;border:1px solid #e6ebff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.25);max-width:540px;width:92%;padding:22px 20px 18px;text-align:center}
 .modal h2{margin:0 0 8px;color:#003399}.modal p{margin:6px 0 14px;color:#21324d;font-weight:600}
@@ -77,10 +80,11 @@ tbody tr:hover td{background:#f1f6ff}
 </style>
 </head>
 <body>
-<!-- HEADER -->
+<!-- ===== HEADER ===== -->
 <header>
   <div class="header-left">
-    <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo">
+    <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo"
+         onerror="this.onerror=null;this.src='https://via.placeholder.com/58?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.');">
     <h1>Kratos System - Supervisão</h1>
   </div>
   <div class="header-kpis">
@@ -91,8 +95,8 @@ tbody tr:hover td{background:#f1f6ff}
   <a class="logout" href="{{ url_for('logout') }}">Sair</a>
 </header>
 
-<!-- MODAL -->
-<div id="overlay" class="modal-overlay">
+<!-- ===== MODAL ===== -->
+<div id="overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
   <div class="modal">
     <div class="icon">⚠️</div>
     <h2 id="modal-title">Atenção</h2>
@@ -101,22 +105,225 @@ tbody tr:hover td{background:#f1f6ff}
   </div>
 </div>
 
-<!-- PAINEL -->
+<!-- ===== PAINEL COM FUNDO ===== -->
 <div id="painel-bg" class="painel-bg">
-  <div class="bg-overlay"></div>
+  <div class="bg-overlay" aria-hidden="true"></div>
+  <button class="bg-btn" type="button" onclick="document.getElementById('upload-bg').click()">Trocar Plano de Fundo</button>
+  <input id="upload-bg" type="file" accept="image/*" style="display:none">
   <div class="content">
-    <!-- aqui segue igual seu HTML -->
+    <div class="row-top">
+      <!-- Lista de espera -->
+      <div class="card">
+        <h3>Lista de Espera</h3>
+        <div class="espera-bar">
+          <input id="espera-nome" type="text" placeholder="Adicionar nome..." maxlength="30">
+          <button class="espera-add" type="button" onclick="addEspera()">+</button>
+        </div>
+        <div id="espera-lista"></div>
+      </div>
+      <!-- Cooperados -->
+      <div class="card">
+        <h3>Cooperados</h3>
+        <input id="filtro-cooperado" type="text" placeholder="Filtrar...">
+        <ul id="lista-cooperados">
+          {% for c in cooperados %}
+            <li>
+              <b>{{ c.nome }}</b>
+              <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
+                <button type="submit">Excluir</button>
+              </form>
+            </li>
+          {% endfor %}
+        </ul>
+      </div>
+      <!-- Data e feriado -->
+      <div class="card">
+        <h3>Hoje</h3>
+        <div class="data-feriado">
+          <div>{{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}</div>
+          <div>
+            {% if feriado_hoje %}<span class="alert">⚠️ {{ feriado_hoje }}</span>
+            {% else %}<span class="ok">Hoje não é feriado.</span>{% endif %}
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Ações + filtros (colados) -->
+    <div class="actions-filtros">
+      <div class="actions">
+        <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
+        <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
+        <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
+        <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
+      </div>
+      <form class="filtros" method="GET" action="{{ url_for('admin') }}">
+        <label for="cooperado">Cooperado:</label>
+        <select name="cooperado_id" id="cooperado">
+          <option value="todos">Todos</option>
+          {% for c in cooperados %}
+          <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+        <label for="data_inicio">De:</label>
+        <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}">
+        <label for="data_fim">Até:</label>
+        <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}">
+        <label for="status_pagamento">Pagamento:</label>
+        <select name="status_pagamento" id="status_pagamento">
+          <option value="todos" {% if request.args.get('status_pagamento', 'todos') == 'todos' %}selected{% endif %}>Todos</option>
+          <option value="pago" {% if request.args.get('status_pagamento') == 'pago' %}selected{% endif %}>Pago</option>
+          <option value="pendente" {% if request.args.get('status_pagamento') == 'pendente' %}selected{% endif %}>Pendente</option>
+        </select>
+        <label for="cliente">Cliente:</label>
+        <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" placeholder="Nome do cliente">
+        <button class="btn" type="submit">Filtrar</button>
+        <a class="btn" href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">Exportar para Excel</a>
+      </form>
+    </div>
   </div>
 </div>
 
-<!-- scripts removendo função de trocar fundo -->
+<!-- ===== TABELA ===== -->
+<div class="tabela">
+  <table>
+    <thead>
+      <tr>
+        <th>ID</th><th>Cliente</th><th>Bairro</th><th>Valor</th>
+        <th>Data<br>e<br>Dia</th><th>Hora<br>Pedido</th><th>Hora<br>Atribuída</th>
+        <th>Cooperado</th><th>Forma Pgto</th><th>Status</th><th>Pagamento</th><th>Recebido por</th><th>Ações</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for e in entregas %}
+      <tr>
+        <td>{{ e.id }}</td>
+        <td>{{ e.cliente }}</td>
+        <td>{{ e.bairro }}</td>
+        <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+        <td>{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
+            <span style="font-size:11px;color:#2767e6;font-weight:800">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}</span></td>
+        <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+        <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+        <td>{% set coop_td = (cooperados|selectattr('id','equalto',e.cooperado_id)|first) %}{{ coop_td.nome if coop_td else 'Sem Cooperado' }}</td>
+        <td>{{ e.pagamento }}</td>
+        <td>{% if e.status and e.status.lower() in ['recebido','entregue'] %}<span class="status-verde">{{ e.status|capitalize }}</span>{% else %}<span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>{% endif %}</td>
+        <td>{% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}<span class="status-verde">{{ e.status_pagamento|capitalize }}</span>{% else %}<span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>{% endif %}</td>
+        <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
+        <td style="min-width:70px;">
+          <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
+            <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
+          </a>
+          {% set coop_btn = (cooperados|selectattr('id','equalto',e.cooperado_id)|first) %}
+          <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+            <button title="Excluir" type="submit" style="border:none;background:none;cursor:pointer">
+              <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
+            </button>
+          </form>
+          <button type="button" title="Imprimir cupom" style="border:none;background:none;cursor:pointer"
+                  data-cooperado="{{ coop_btn.nome if coop_btn else 'Sem Cooperado' }}"
+                  onclick="imprimirCupom({{ e.id }}, this)">
+            <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
+          </button>
+        </td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>
+
+<!-- ===== Som do aviso ===== -->
+<audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
+
 <script>
-const overlay=document.getElementById('overlay');
-const modalTitle=document.getElementById('modal-title');
-const modalMsg=document.getElementById('modal-msg');
-const modalOk=document.getElementById('modal-ok');
-function abrirModal(titulo,msg){modalTitle.textContent=titulo;modalMsg.textContent=msg;overlay.style.display='flex';}
-modalOk.addEventListener('click',()=>overlay.style.display='none');
+// ===== Modal =====
+const overlay=document.getElementById('overlay');const modalTitle=document.getElementById('modal-title');
+const modalMsg=document.getElementById('modal-msg');const modalOk=document.getElementById('modal-ok');
+const somPendente=document.getElementById('som-pendente');let _modalResolve=null;
+function abrirModal(titulo,msg,tocarSom=false){modalTitle.textContent=titulo;modalMsg.textContent=msg;
+  overlay.style.display='flex';document.body.classList.add('locked');
+  if(tocarSom){try{somPendente.currentTime=0;somPendente.play().catch(()=>{});}catch(e){}}
+  return new Promise(r=>{_modalResolve=r});}
+modalOk.addEventListener('click',()=>{overlay.style.display='none';document.body.classList.remove('locked');if(_modalResolve)_modalResolve(true);_modalResolve=null;});
+
+// ===== Fundo custom =====
+const painelBg=document.getElementById('painel-bg');const inputBg=document.getElementById('upload-bg');
+window.addEventListener('DOMContentLoaded',()=>{const savedBg=localStorage.getItem('coopex_admin_painel_bg');
+  if(savedBg){painelBg.style.backgroundImage=`url('${savedBg}')`;painelBg.classList.add('has-image');
+    painelBg.style.backgroundSize='cover';painelBg.style.backgroundPosition='center center';}
+  checaAvisos();setInterval(checaAvisos,60*1000);});
+inputBg.addEventListener('change',e=>{const f=e.target.files[0];if(!f)return;const R=new FileReader();
+  R.onload=ev=>{painelBg.style.backgroundImage=`url('${ev.target.result}')`;painelBg.classList.add('has-image');
+    painelBg.style.backgroundSize='cover';painelBg.style.backgroundPosition='center center';
+    localStorage.setItem('coopex_admin_painel_bg',ev.target.result);};R.readAsDataURL(f);});
+
+// ===== Filtro cooperados =====
+document.getElementById('filtro-cooperado').addEventListener('input',function(){const f=this.value.toLowerCase();
+  const itens=document.getElementById('lista-cooperados').children;for(let li of itens){li.style.display=li.innerText.toLowerCase().includes(f)?'':'none';}});
+
+// ===== Lista de espera (localStorage) =====
+function renderChips(){const root=document.getElementById('espera-lista');root.innerHTML='';
+  let nomes=JSON.parse(localStorage.getItem('coopex_lista_espera')||"[]");
+  nomes.forEach((nome,idx)=>{const el=document.createElement('div');el.className='chip';
+    el.innerHTML=`<span class="chip-num">${idx+1}</span><span>${nome}</span>`;
+    const btn=document.createElement('button');btn.className='chip-x';btn.title='Remover';btn.textContent='×';
+    btn.onclick=()=>{nomes.splice(idx,1);localStorage.setItem('coopex_lista_espera',JSON.stringify(nomes));renderChips();};
+    el.appendChild(btn);root.appendChild(el);});}
+function addEspera(){const i=document.getElementById('espera-nome');const v=i.value.trim().slice(0,30);if(!v)return;
+  let nomes=JSON.parse(localStorage.getItem('coopex_lista_espera')||"[]");nomes.push(v);
+  localStorage.setItem('coopex_lista_espera',JSON.stringify(nomes));renderChips();i.value='';i.focus();}
+window.onload=renderChips;
+
+// ===== Imprimir cupom =====
+function imprimirCupom(id,btn){
+  const linha=[...document.querySelectorAll('.tabela tbody tr')].find(tr=>tr.children[0].textContent==String(id));if(!linha)return;
+  const coop=(btn&&btn.dataset&&btn.dataset.cooperado)?btn.dataset.cooperado.trim():(linha.children[7]?.textContent.trim()||'Sem Cooperado');
+  const dados={id:linha.children[0].textContent,cliente:linha.children[1].textContent,bairro:linha.children[2].textContent,
+    valor:linha.children[3].textContent,data:linha.children[4].innerText.split('\n')[0].trim(),
+    hora:linha.children[5].innerText.trim(),pagamento:linha.children[8].textContent,cooperado:coop};
+  const cupomNum=dados.id.toString().padStart(6,'0');const logoUrl="/static/logo_coopex.png";
+  const qrLink="https://g.page/r/CY6ffwOT76pNEBM/review";const qrUrl="https://api.qrserver.com/v1/create-qr-code/?size=110x110&data="+encodeURIComponent(qrLink);
+  const html=`<div style="font-family:Arial,monospace;max-width:330px;margin:auto;padding:12px 10px;">
+    <div style="text-align:center;margin-bottom:4px;"><img src="${logoUrl}" alt="Coopex Logo" style="height:110px;"></div>
+    <div style="text-align:center;font-weight:bold;font-size:15px;margin-bottom:4px;">COOPERATIVA DE<br>TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
+    <div style="text-align:center;font-size:12px;">CNPJ: 05.289.938/0001-97<br>Rua Jose Freire de Souza, 22<br>Lagoa Nova – Natal/RN CEP: 59075-140<br>Fone/WhatsApp: (84) 98111-0706</div>
+    <div style="border-bottom:1px dashed #333;margin:7px 0 8px;"></div>
+    <div style="text-align:center;font-weight:bold;font-size:13px;margin-bottom:2px;">CUPOM NÃO FISCAL N°: ${cupomNum}</div>
+    <div style="font-size:12px;text-align:left;"><b>Data:</b> ${dados.data}<br><b>Hora:</b> ${dados.hora}<br><b>Cliente:</b> ${dados.cliente}<br><b>Bairro:</b> ${dados.bairro}<br><b>Cooperado:</b> ${dados.cooperado}</div>
+    <div style="border-bottom:1px dashed #333;margin:7px 0 8px;"></div>
+    <div style="font-size:13px;"><b>Valor do serviço:</b><span style="float:right;font-weight:bold;">${dados.valor.replace("R$ ","")}</span></div>
+    <div style="font-size:19px;font-weight:bold;margin:6px 0 5px;text-align:right;"><span style="float:left;">TOTAL:</span> ${dados.valor.replace("R$ ","")}</div>
+    <div style="clear:both;border-bottom:1px dashed #333;margin:7px 0 8px;"></div>
+    <div style="font-size:12px;"><b>Forma de pagamento:</b> ${dados.pagamento}</div>
+    <div style="font-size:12px;margin-bottom:6px;"><b>Observações:</b> Entrega sem troco</div>
+    <div style="text-align:center;margin-top:6px;"><img src="${qrUrl}" alt="QR" style="width:110px;height:110px;"><br>
+      <span style="font-size:11px;display:block;margin-top:2px;">Avalie a Coopex no Google!</span></div>
+    <div style="text-align:center;margin-top:18px;"><button onclick="window.print()" style="background:#003399;color:#fff;padding:8px 30px;font-size:15px;border:none;border-radius:10px;cursor:pointer;font-weight:bold;">Imprimir</button></div>
+  </div>`;
+  const w=window.open('','','width=350,height=600');w.document.write('<html><head><title>Cupom COOPEX</title></head><body>'+html+'</body></html>');w.document.close();w.focus();
+}
+
+// ===== Avisos bloqueantes (som corrigido) =====
+function existePagamentoPendenteNaTabela(){
+  return [...document.querySelectorAll('.tabela tbody tr')].some(tr=>{
+    const cel=tr.children[10];if(!cel)return false;return cel.textContent.trim().toLowerCase().includes('pendente');
+  });
+}
+async function checaAvisos(){
+  try{
+    const agora=new Date();const h=agora.getHours();const m=agora.getMinutes();
+    if(existePagamentoPendenteNaTabela() && h%2===0 && m<4){
+      const key=`coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${h}`;
+      if(!localStorage.getItem(key)){await abrirModal('Cobrança de Pagamento','⚠️ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',true);
+        localStorage.setItem(key,'1');}
+    }
+    if(h===22){
+      const kb=`coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
+      if(!localStorage.getItem(kb)){await abrirModal('Boa noite!','🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.',true);
+        localStorage.setItem(kb,'1');}
+    }
+  }catch(e){console.error(e);}
+}
 </script>
 </body>
 </html>
