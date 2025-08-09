@@ -42,7 +42,6 @@ html,body{margin:0;background:var(--bg);color:var(--ink);font-family:Inter,syste
 
 .cols{display:grid;grid-template-columns:1.1fr .9fr;gap:14px}
 .grid-2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
 h2{margin:.1rem 0 .6rem 0;font-size:1.06rem;color:var(--brand);letter-spacing:.2px}
 
 .table-wrap{overflow:auto;border-radius:12px;box-shadow:var(--shadow)}
@@ -61,17 +60,25 @@ tbody tr:hover{background:#f6f9ff}
 .rank-label{flex:1;font-weight:700;color:#0b2c6f}
 .rank-value{font-weight:900;color:#003399}
 
-.footer-actions{display:flex;gap:10px;flex-wrap:wrap}
 .hr{height:1px;background:#e8edff;border:0;margin:14px 0}
 .note{font-size:.9rem;color:#0b2c6f}
 
-@media (max-width:1180px){.grid-3{grid-template-columns:1fr}}
-@media (max-width:1100px){.cols{grid-template-columns:1fr}.kpis{grid-template-columns:repeat(2,1fr)}}
+.badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:6px 10px;font-weight:800;border:1px solid}
+.badge.ok{background:#e8fff2;color:#0a7a3a;border-color:#bff1d3}
+.badge.no{background:#fff3f3;color:#a01414;border-color:#ffc7c7}
+
+/* Sem dados */
+.no-data{display:flex;align-items:center;justify-content:center;min-height:140px;color:#6b7aa6;font-weight:800;border:2px dashed #e2e8ff;border-radius:12px}
+
+@media (max-width:1100px){
+  .cols{grid-template-columns:1fr}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .grid-2{grid-template-columns:1fr}
+}
 @media (max-width:680px){
   .topbar-inner{grid-template-columns:1fr auto; row-gap:8px}
   .period-chip{grid-column:1/-1; justify-self:flex-start}
   .kpis{grid-template-columns:1fr}
-  .grid-2{grid-template-columns:1fr}
 }
 </style>
 </head>
@@ -101,17 +108,14 @@ tbody tr:hover{background:#f6f9ff}
         {% endfor %}
       </select>
     </div>
-
     <div>
       <label for="data_inicio">De</label><br>
       <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio }}">
     </div>
-
     <div>
       <label for="data_fim">Até</label><br>
       <input type="date" name="data_fim" id="data_fim" value="{{ data_fim }}">
     </div>
-
     <div>
       <label for="status_pagamento">Pagamento</label><br>
       <select name="status_pagamento" id="status_pagamento">
@@ -120,15 +124,12 @@ tbody tr:hover{background:#f6f9ff}
         <option value="pendente" {% if status_pagamento == 'pendente' %}selected{% endif %}>Pendente</option>
       </select>
     </div>
-
     <div>
       <label for="cliente">Cliente</label><br>
       <input type="text" name="cliente" id="cliente" value="{{ cliente or '' }}" placeholder="Nome do cliente">
     </div>
-
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn" type="submit">Filtrar</button>
-      <!-- Export leva TODOS os filtros -->
       <a class="btn"
          href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}&cliente={{ cliente|urlencode if cliente }}">
         Exportar Excel
@@ -150,17 +151,27 @@ tbody tr:hover{background:#f6f9ff}
   <div class="grid-2">
     <div class="card">
       <h2>Entregas por dia</h2>
-      <canvas id="chartEntregasDia" height="140"></canvas>
+      {% if chart_entregas_labels and chart_entregas_labels|length %}
+        <canvas id="chartEntregasDia" height="140"></canvas>
+      {% else %}
+        <div class="no-data">Sem dados no período</div>
+      {% endif %}
     </div>
     <div class="card">
       <h2>Faturamento por cooperado</h2>
-      <canvas id="chartFaturamento" height="140"></canvas>
+      {% if chart_faturamento_labels and chart_faturamento_labels|length %}
+        <canvas id="chartFaturamento" height="140"></canvas>
+      {% elif ranking_cooperados and ranking_cooperados|length %}
+        <canvas id="chartFaturamento" height="140"></canvas>
+      {% else %}
+        <div class="no-data">Sem dados no período</div>
+      {% endif %}
     </div>
   </div>
 
   <div class="hr"></div>
 
-  <!-- COLUNAS -->
+  <!-- COLUNAS ESQUERDA: Tabela + Indicadores -->
   <div class="cols">
     <div class="card">
       <h2>Faturamento por cooperado (período)</h2>
@@ -210,9 +221,7 @@ tbody tr:hover{background:#f6f9ff}
           <strong>
             {% if horas_pico_top3 and horas_pico_top3|length %}
               {{ horas_pico_top3|join(' • ') }}
-            {% else %}
-              -
-            {% endif %}
+            {% else %}-{% endif %}
           </strong>
         </div>
         <div class="kpi">
@@ -233,8 +242,8 @@ tbody tr:hover{background:#f6f9ff}
 
   <div class="hr"></div>
 
-  <!-- RANKINGS -->
-  <div class="grid-3">
+  <!-- RANKINGS (2×2 para não “misturar”) -->
+  <div class="grid-2">
     <div class="card card-tight">
       <h2>Ranking de cooperados (TOP 10)</h2>
       <ul class="rank-list">
@@ -266,7 +275,9 @@ tbody tr:hover{background:#f6f9ff}
         {% endif %}
       </ul>
     </div>
+  </div>
 
+  <div class="grid-2" style="margin-top:14px">
     <div class="card card-tight">
       <h2>Ranking formas de pagamento</h2>
       <ul class="rank-list">
@@ -283,7 +294,6 @@ tbody tr:hover{background:#f6f9ff}
       </ul>
     </div>
 
-    <!-- Ranking Clientes com VALOR + TICKET -->
     <div class="card card-tight">
       <h2>Ranking de clientes (TOP 10)</h2>
       <ul class="rank-list">
@@ -303,7 +313,7 @@ tbody tr:hover{background:#f6f9ff}
 
   <div class="hr"></div>
 
-  <div class="footer-actions">
+  <div class="card" style="display:flex;gap:10px;flex-wrap:wrap">
     <a class="btn"
        href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}&cliente={{ cliente|urlencode if cliente }}">
       Exportar Excel (Cooperado × Valor)
@@ -315,16 +325,16 @@ tbody tr:hover{background:#f6f9ff}
 <script>
 const chartEntregasLabels = {{ (chart_entregas_labels or [])|tojson }};
 const chartEntregasValues = {{ (chart_entregas_values or [])|tojson }};
-
-const chartFaturamentoLabels = {{ (chart_faturamento_labels or (ranking_cooperados|map(attribute='nome')|list))|tojson }};
-const chartFaturamentoValues = {{ (chart_faturamento_values or (ranking_cooperados|map(attribute='total_valor')|list))|tojson }};
+const chartFaturamentoLabels = {{ (chart_faturamento_labels or (ranking_cooperados|map(attribute='nome')|list) or [])|tojson }};
+const chartFaturamentoValues = {{ (chart_faturamento_values or (ranking_cooperados|map(attribute='total_valor')|list) or [])|tojson }};
 
 function makeGradient(ctx, c1, c2){
   const g = ctx.createLinearGradient(0,0,0,220);
-  g.addColorStop(0, c1);
-  g.addColorStop(1, c2);
+  g.addColorStop(0, c1); g.addColorStop(1, c2);
   return g;
 }
+
+// Entregas por dia
 (function(){
   const el = document.getElementById('chartEntregasDia');
   if(!el || !chartEntregasLabels.length) return;
@@ -332,10 +342,31 @@ function makeGradient(ctx, c1, c2){
   const grad = makeGradient(ctx, 'rgba(39,103,230,0.30)','rgba(39,103,230,0.02)');
   new Chart(ctx, {
     type:'line',
-    data:{ labels: chartEntregasLabels, datasets:[{ label:'Entregas', data: chartEntregasValues, fill:true, backgroundColor: grad, borderColor:'#2767e6', borderWidth:2.2, pointRadius:3, tension:.3 }]},
-    options:{ responsive:true, scales:{ y:{ beginAtZero:true, grid:{ color:'#eef2ff' } }, x:{ grid:{ display:false } } }, plugins:{ legend:{ display:false }, tooltip:{ mode:'index', intersect:false } } }
+    data:{ 
+      labels: chartEntregasLabels, 
+      datasets:[{ 
+        label:'Entregas', 
+        data: chartEntregasValues, 
+        fill:true, 
+        backgroundColor: grad, 
+        borderColor:'#2767e6', 
+        borderWidth:2.2, 
+        pointRadius:3, 
+        tension:.3 
+      }]
+    },
+    options:{ 
+      responsive:true, 
+      scales:{ 
+        y:{ beginAtZero:true, grid:{ color:'#eef2ff' } }, 
+        x:{ grid:{ display:false } } 
+      }, 
+      plugins:{ legend:{ display:false }, tooltip:{ mode:'index', intersect:false } } 
+    }
   });
 })();
+
+// Faturamento por cooperado
 (function(){
   const el = document.getElementById('chartFaturamento');
   if(!el || !chartFaturamentoLabels.length) return;
@@ -343,8 +374,31 @@ function makeGradient(ctx, c1, c2){
   const grad = makeGradient(ctx, 'rgba(0,51,153,0.35)','rgba(0,51,153,0.05)');
   new Chart(ctx, {
     type:'bar',
-    data:{ labels: chartFaturamentoLabels, datasets:[{ label:'Faturamento (R$)', data: chartFaturamentoValues, backgroundColor: grad, borderColor:'#003399', borderWidth:1.5 }]},
-    options:{ responsive:true, scales:{ y:{ beginAtZero:true, grid:{ color:'#eef2ff' } }, x:{ grid:{ display:false } } }, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:(ctx)=> ' R$ ' + (ctx.parsed.y ?? 0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) } } }
+    data:{ 
+      labels: chartFaturamentoLabels, 
+      datasets:[{ 
+        label:'Faturamento (R$)', 
+        data: chartFaturamentoValues, 
+        backgroundColor: grad, 
+        borderColor:'#003399', 
+        borderWidth:1.5 
+      }]
+    },
+    options:{ 
+      responsive:true, 
+      scales:{ 
+        y:{ beginAtZero:true, grid:{ color:'#eef2ff' } }, 
+        x:{ grid:{ display:false } } 
+      }, 
+      plugins:{ 
+        legend:{ display:false }, 
+        tooltip:{ 
+          callbacks:{ 
+            label:(ctx)=> ' R$ ' + (ctx.parsed.y ?? 0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) 
+          } 
+        } 
+      } 
+    }
   });
 })();
 </script>
