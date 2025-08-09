@@ -43,7 +43,7 @@
     .logout:hover { background:#a20f1a; }
 
     /* ====== PAINEL SUPERIOR (lista/cooperados/data) ====== */
-    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 0 12px; overflow:visible; }
+    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 0 12px; overflow:hidden; }
     .painel-bg-btn-troca { position:absolute; top:12px; right:18px; z-index:5; background:var(--amarelo); color:var(--azul); border:none; border-radius:var(--radius-sm); padding:7px 14px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:var(--shadow-sm); }
     .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
 
@@ -52,17 +52,9 @@
     .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:14px 16px 12px; border:1px solid #e6ebff; }
     .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.02em; }
 
-    .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap; }
-    #espera-select { flex:1; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; color:#003399; }
-    .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:7px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); white-space:nowrap; }
-
-    /* Chips da fila */
-    #espera-lista { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px; }
-    .espera-chip { display:flex; align-items:center; gap:8px; padding:8px 10px; background:#eef4ff; border:1px solid #dbe6ff; border-radius:10px; }
-    .espera-chip-num { display:inline-flex; align-items:center; justify-content:center; width:24px; height:24px; background:#003399; color:#fff; font-weight:800; border-radius:50%; font-size:12px; }
-    .espera-chip-text { font-weight:800; color:#0b2c6f; }
-    .espera-chip-remove { margin-left:auto; background:#d11a1a; color:#fff; border:none; border-radius:7px; padding:4px 8px; font-weight:800; cursor:pointer; }
-    .espera-chip.dragging { opacity:.55; }
+    .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    #espera-nome { flex:1; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; }
+    .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:7px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
 
     #filtro-cooperado { width:100%; margin-bottom:8px; border:1.2px solid #a8b9e4; border-radius:8px; padding:7px 10px; background:#f7faff; }
     #lista-cooperados { list-style:none; padding:0; max-height:140px; overflow-y:auto; font-size:13px; margin:0; }
@@ -74,18 +66,17 @@
     .info-dia .ok { color:#2767e6; font-weight:800; }
     .info-dia .alerta { color:#d11a1a; font-weight:800; }
 
-    /* ====== AÇÕES E FILTROS ====== */
+    /* ====== AÇÕES E FILTROS (COLADO NA TABELA) ====== */
     .actions { margin:8px 0 8px; display:flex; flex-wrap:wrap; gap:10px; }
     .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); }
     .btn:hover { background:var(--azul-hover); }
-    .btn, .espera-add { white-space:nowrap; }
 
-    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); border:1px solid #e6ebff; }
-    .filtros form { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px 10px 12px; box-shadow:var(--shadow-sm); display:inline-flex; gap:8px; align-items:center; border:1px solid #e6ebff; }
     .filtros label { font-size:13px; color:#003399; font-weight:800; }
     .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
+    .filtros .btn { padding:8px 14px; }
 
-    /* ====== TABELA ====== */
+    /* ====== TABELA (PARTE DEBAIXO INALTERADA) ====== */
     .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; }
     table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
     th, td { border:1px solid #3a3a3a; padding:9px 4px; text-align:center; vertical-align:middle; }
@@ -148,48 +139,29 @@
     <input id="upload-bg" type="file" accept="image/*" style="display:none">
     <div class="painel-bg-conteudo">
       <div class="painel-linha">
-        <!-- Lista de Espera (puxando cooperados + numeração + drag apenas visual) -->
+        <!-- Lista de Espera (AGORA no banco) -->
         <div class="painel-lista">
           <h3>Lista de Espera</h3>
-
-          {# ids já na fila para não duplicar no select #}
-          {% set ns = namespace(ids=[]) %}
-          {% for item in lista_espera %}
-            {% if item.cooperado_id is defined %}
-              {% set ns.ids = ns.ids + [item.cooperado_id] %}
-            {% endif %}
-          {% endfor %}
-
-          <!-- Adicionar cooperado à fila -->
           <form class="espera-bar" action="{{ url_for('lista_espera_add') }}" method="POST">
-            <select id="espera-select" name="cooperado_id" required>
-              <option value="" disabled selected>Selecionar cooperado...</option>
-              {% for c in cooperados %}
-                {% if c.id not in ns.ids %}
-                  <option value="{{ c.id }}">{{ c.nome }}</option>
-                {% endif %}
-              {% endfor %}
-            </select>
+            <input id="espera-nome" name="nome" type="text" placeholder="Adicionar nome..." maxlength="100" required>
             <button type="submit" class="espera-add">Adicionar</button>
           </form>
-
-          <!-- Lista / Drag & drop (somente UI) -->
-          <ul id="espera-lista">
-            {% for item in lista_espera %}
-              <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
-                <span class="espera-chip-num">{{ loop.index }}</span>
-                <span class="espera-chip-text">{{ item.cooperado_nome if item.cooperado_nome is defined else item.nome }}</span>
+          <ul id="espera-lista" style="list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px;">
+            {% for i, item in enumerate(lista_espera, start=1) %}
+              <li class="espera-chip">
+                <span class="espera-chip-num">{{ i }}</span>
+                <span class="espera-chip-text">{{ item.nome }}</span>
                 <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
                   <button class="espera-chip-remove" title="Remover" type="submit">×</button>
                 </form>
               </li>
             {% else %}
-              <li id="fila-vazia">Nenhum cooperado na fila.</li>
+              <li>Nenhum nome na fila.</li>
             {% endfor %}
           </ul>
         </div>
 
-        <!-- Cooperados -->
+        <!-- Cooperados (ao lado da lista) -->
         <div class="painel-lista">
           <h3>Cooperados</h3>
           <input type="text" id="filtro-cooperado" placeholder="Filtrar...">
@@ -205,7 +177,7 @@
           </ul>
         </div>
 
-        <!-- Data e Feriado -->
+        <!-- Data e Feriado (ao lado de cooperados) -->
         <div class="painel-lista info-dia">
           <h3>Hoje</h3>
           <div class="linha">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}</div>
@@ -219,7 +191,7 @@
         </div>
       </div>
 
-      <!-- Ações e Filtros -->
+      <!-- Ações e Filtros mais colados da tabela -->
       <div class="actions">
         <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
         <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
@@ -255,7 +227,7 @@
 
           <button class="btn" type="submit">Filtrar</button>
 
-          <!-- Exporta levando TODOS os filtros -->
+          <!-- Exporta levando TODOS os filtros, inclusive cliente -->
           <a class="btn"
             href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
             Exportar para Excel
@@ -311,13 +283,13 @@
             {% else %}<span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>{% endif %}
           </td>
           <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
-          <td style="min-width:140px; display:flex; gap:6px; justify-content:center; align-items:center; flex-wrap:wrap;">
+          <td style="min-width:90px; display:flex; gap:6px; justify-content:center; align-items:center;">
             <!-- Editar -->
             <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
               <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
             </a>
 
-            <!-- Clonar -->
+            <!-- Clonar (NOVIDADE) -->
             <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
               <button title="Clonar" type="submit" style="border:none;background:none;cursor:pointer">
                 <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24">
@@ -341,7 +313,7 @@
               style="border:none;background:none;cursor:pointer"
               data-cooperado="{{ coop_btn.nome if coop_btn else 'Sem Cooperado' }}"
               onclick="imprimirCupom({{ e.id }}, this)">
-              <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
+              <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
             </button>
           </td>
         </tr>
@@ -398,11 +370,7 @@
       }
       checaAvisos();
       setInterval(checaAvisos, 60 * 1000);
-
-      initDragAndDropFila();     // arrastar/soltar na fila (apenas UI)
-      atualizaPlaceholderFila(); // mostra/oculta "Nenhum cooperado na fila."
     });
-
     inputBg.addEventListener('change', function(e) {
       const file = e.target.files[0];
       if(!file) return;
@@ -418,75 +386,14 @@
 
     // Filtro de cooperados (visual)
     document.getElementById('filtro-cooperado').addEventListener('input', function() {
-      const filtro = this.value.toLowerCase();
-      const lista = document.getElementById('lista-cooperados').children;
+      var filtro = this.value.toLowerCase();
+      var lista = document.getElementById('lista-cooperados').children;
       for (let item of lista) {
         item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
       }
     });
 
-    // ====== Drag & Drop da FILA de ESPERA (somente UI) ======
-    function initDragAndDropFila(){
-      const lista = document.getElementById('espera-lista');
-      if(!lista) return;
-
-      lista.querySelectorAll('.espera-chip').forEach(li => {
-        if(!li.hasAttribute('draggable')) return;
-        li.addEventListener('dragstart', (e)=>{
-          li.classList.add('dragging');
-          e.dataTransfer.effectAllowed = 'move';
-        });
-        li.addEventListener('dragend', ()=>{
-          li.classList.remove('dragging');
-          renumerarFila();
-        });
-      });
-
-      lista.addEventListener('dragover', (e)=>{
-        e.preventDefault();
-        const afterEl = getDragAfterElement(lista, e.clientY);
-        const dragging = lista.querySelector('.dragging');
-        if(!dragging) return;
-        if(afterEl == null){
-          lista.appendChild(dragging);
-        } else {
-          lista.insertBefore(dragging, afterEl);
-        }
-      });
-
-      function getDragAfterElement(container, y){
-        const els = [...container.querySelectorAll('.espera-chip:not(.dragging)')];
-        return els.reduce((closest, child)=>{
-          const box = child.getBoundingClientRect();
-          const offset = y - box.top - box.height/2;
-          if(offset < 0 && offset > closest.offset){
-            return { offset, element: child };
-          } else {
-            return closest;
-          }
-        }, { offset: Number.NEGATIVE_INFINITY }).element;
-      }
-    }
-
-    function renumerarFila(){
-      const itens = document.querySelectorAll('#espera-lista .espera-chip');
-      itens.forEach((li, i)=>{
-        const num = li.querySelector('.espera-chip-num');
-        if(num) num.textContent = (i+1).toString();
-      });
-      atualizaPlaceholderFila();
-    }
-
-    function atualizaPlaceholderFila(){
-      const lista = document.getElementById('espera-lista');
-      const vazio = document.getElementById('fila-vazia');
-      const temItens = !!lista.querySelector('.espera-chip');
-      if(vazio){
-        vazio.style.display = temItens ? 'none' : '';
-      }
-    }
-
-    // ===== Imprimir Cupom =====
+    // ===== Imprimir Cupom (COM cooperado via data-attr) =====
     function imprimirCupom(id, btn) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == String(id));
       if (!linha) return;
@@ -564,6 +471,7 @@
 
     // ===== Avisos bloqueantes =====
     function existePagamentoPendenteNaTabela() {
+      // Coluna "Pagamento" é o índice 10
       return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
         const cel = tr.children[10];
         if (!cel) return false;
