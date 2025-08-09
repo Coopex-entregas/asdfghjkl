@@ -91,11 +91,6 @@ tbody tr:hover{background:#f6f9ff}
 .rank-label{flex:1;font-weight:700;color:#0b2c6f}
 .rank-value{font-weight:900;color:#003399}
 
-/* Badges (status) */
-.badge{padding:6px 10px;border-radius:999px;font-weight:800}
-.badge.ok{background:#eaf8f0;color:#0b8f4b;border:1px solid #bfe9d1}
-.badge.no{background:#fdecec;color:#b51f1f;border:1px solid #f3b6b6}
-
 /* ====== Footer actions ====== */
 .footer-actions{display:flex;gap:10px;justify-content:flex-start;flex-wrap:wrap}
 .hr{height:1px;background:#e8edff;border:0;margin:14px 0}
@@ -124,7 +119,6 @@ tbody tr:hover{background:#f6f9ff}
       <h1>Estatísticas por Cooperado - Coopex</h1>
     </div>
 
-    <!-- Chip do período -->
     <div class="period-chip">
       📅 Período: <span style="font-weight:900">{{ periodo_legivel or 'todo o período' }}</span>
     </div>
@@ -168,9 +162,8 @@ tbody tr:hover{background:#f6f9ff}
 
     <div style="display:flex;gap:10px;flex-wrap:wrap">
       <button class="btn" type="submit">Filtrar</button>
-      <!-- Export corrigido: só inclui os parâmetros se houver valor -->
       <a class="btn"
-         href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}">
+         href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}{% if cliente %}&cliente={{ cliente | urlencode }}{% endif %}">
         Exportar Excel
       </a>
     </div>
@@ -250,11 +243,9 @@ tbody tr:hover{background:#f6f9ff}
         <div class="kpi">
           <small>Horários de pico (Top 3)</small>
           <strong>
-            {% if estatisticas.horarios_pico_top3 and estatisticas.horarios_pico_top3|length %}
-              {{ estatisticas.horarios_pico_top3|join(' • ') }}
-            {% else %}
-              -
-            {% endif %}
+            {% if horas_pico_top3 and horas_pico_top3|length %}
+              {{ horas_pico_top3|join(' • ') }}
+            {% else %}-{% endif %}
           </strong>
         </div>
         <div class="kpi">
@@ -327,46 +318,30 @@ tbody tr:hover{background:#f6f9ff}
         {% endif %}
       </ul>
     </div>
-  </div>
 
-  <div class="hr"></div>
-
-  <!-- NOVO: Tabela de Ranking de Clientes -->
-  <div class="card">
-    <h2>Ranking de clientes (TOP 10)</h2>
-    <div class="table-wrap">
-      <table>
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th class="t-center">Qtd Pedidos</th>
-            <th class="t-right">Valor Total (R$)</th>
-            <th class="t-right">Ticket Médio (R$)</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for r in ranking_clientes[:10] %}
-          <tr>
-            <td>{{ r.cliente }}</td>
-            <td class="t-center">{{ r.qtd }}</td>
-            <td class="t-right">{{ '%.2f'|format(r.total_valor or 0) }}</td>
-            <td class="t-right">{{ '%.2f'|format(r.ticket_medio or 0) }}</td>
-          </tr>
-          {% endfor %}
-          {% if ranking_clientes|length == 0 %}
-          <tr><td colspan="4">Sem dados no período.</td></tr>
-          {% endif %}
-        </tbody>
-      </table>
+    <!-- Ranking Clientes (com VALOR gasto) -->
+    <div class="card card-tight">
+      <h2>Ranking de clientes (TOP 10)</h2>
+      <ul class="rank-list">
+        {% for r in ranking_clientes[:10] %}
+        <li class="rank-item">
+          <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
+          <span class="rank-label">{{ r.cliente }}</span>
+          <span class="rank-value">R$ {{ '%.2f'|format(r.total_valor or 0) }} • {{ r.qtd }} pedidos</span>
+        </li>
+        {% endfor %}
+        {% if ranking_clientes|length == 0 %}
+        <li class="rank-item"><span class="rank-label">Sem dados no período.</span></li>
+        {% endif %}
+      </ul>
     </div>
   </div>
 
   <div class="hr"></div>
 
   <div class="footer-actions">
-    <!-- Export corrigido também no rodapé -->
     <a class="btn"
-       href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}">
+       href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}{% if cliente %}&cliente={{ cliente | urlencode }}{% endif %}">
       Exportar Excel (Cooperado × Valor)
     </a>
   </div>
@@ -383,7 +358,7 @@ const chartEntregasValues = {{ (chart_entregas_values or [])|tojson }};
 const chartFaturamentoLabels = {{ (chart_faturamento_labels or (ranking_cooperados|map(attribute='nome')|list))|tojson }};
 const chartFaturamentoValues = {{ (chart_faturamento_values or (ranking_cooperados|map(attribute='total_valor')|list))|tojson }};
 
-// Cria um gradiente bonito para os gráficos
+// Gradiente
 function makeGradient(ctx, c1, c2){
   const g = ctx.createLinearGradient(0,0,0,220);
   g.addColorStop(0, c1);
@@ -399,30 +374,8 @@ function makeGradient(ctx, c1, c2){
   const grad = makeGradient(ctx, 'rgba(39,103,230,0.30)','rgba(39,103,230,0.02)');
   new Chart(ctx, {
     type:'line',
-    data:{
-      labels: chartEntregasLabels,
-      datasets:[{
-        label:'Entregas',
-        data: chartEntregasValues,
-        fill:true,
-        backgroundColor: grad,
-        borderColor:'#2767e6',
-        borderWidth:2.2,
-        pointRadius:3,
-        tension:.3
-      }]
-    },
-    options:{
-      responsive:true,
-      scales:{
-        y:{ beginAtZero:true, grid:{ color:'#eef2ff' } },
-        x:{ grid:{ display:false } }
-      },
-      plugins:{
-        legend:{ display:false },
-        tooltip:{ mode:'index', intersect:false }
-      }
-    }
+    data:{ labels: chartEntregasLabels, datasets:[{ label:'Entregas', data: chartEntregasValues, fill:true, backgroundColor: grad, borderColor:'#2767e6', borderWidth:2.2, pointRadius:3, tension:.3 }] },
+    options:{ responsive:true, scales:{ y:{ beginAtZero:true, grid:{ color:'#eef2ff' } }, x:{ grid:{ display:false } } }, plugins:{ legend:{ display:false }, tooltip:{ mode:'index', intersect:false } } }
   });
 })();
 
@@ -434,29 +387,8 @@ function makeGradient(ctx, c1, c2){
   const grad = makeGradient(ctx, 'rgba(0,51,153,0.35)','rgba(0,51,153,0.05)');
   new Chart(ctx, {
     type:'bar',
-    data:{
-      labels: chartFaturamentoLabels,
-      datasets:[{
-        label:'Faturamento (R$)',
-        data: chartFaturamentoValues,
-        backgroundColor: grad,
-        borderColor:'#003399',
-        borderWidth:1.5
-      }]
-    },
-    options:{
-      responsive:true,
-      scales:{
-        y:{ beginAtZero:true, grid:{ color:'#eef2ff' } },
-        x:{ grid:{ display:false } }
-      },
-      plugins:{
-        legend:{ display:false },
-        tooltip:{ callbacks:{
-          label:(ctx)=> ' R$ ' + (ctx.parsed.y ?? 0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2})
-        }}
-      }
-    }
+    data:{ labels: chartFaturamentoLabels, datasets:[{ label:'Faturamento (R$)', data: chartFaturamentoValues, backgroundColor: grad, borderColor:'#003399', borderWidth:1.5 }] },
+    options:{ responsive:true, scales:{ y:{ beginAtZero:true, grid:{ color:'#eef2ff' } }, x:{ grid:{ display:false } } }, plugins:{ legend:{ display:false }, tooltip:{ callbacks:{ label:(ctx)=> ' R$ ' + (ctx.parsed.y ?? 0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2}) } } } }
   });
 })();
 </script>
