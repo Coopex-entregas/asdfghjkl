@@ -28,32 +28,60 @@
     html, body { margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px; }
     body.locked { overflow:hidden; }
 
-    header { background: var(--azul-grad); color:#fff; padding:1.1rem 2vw; box-shadow:var(--shadow); display:flex; align-items:center; justify-content:space-between; position:sticky; top:0; z-index:99; }
-    h1 { font-size:1.29rem; font-weight:800; margin:0; display:flex; align-items:center; gap:14px; letter-spacing:1px; text-shadow:0 2px 14px #0001; user-select:none; }
-    .logo-topo { height:38px; width:38px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:3px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
-    .logout { color:#fff; background:var(--roxo); border-radius:18px; padding:8px 22px; font-size:1em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); }
-    .logout:hover { background:#3730a3; }
+    /* ====== HEADER com KPIs ao lado do nome ====== */
+    header { background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
+    .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; }
+    h1 { font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.5px; text-shadow:0 2px 14px #0001; user-select:none; white-space:nowrap; }
+    .logo-topo { height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
 
-    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:32px 2vw 24px; margin-bottom:24px; overflow:hidden; min-height:245px; width:100vw; left:0; right:0; margin-left:calc(50% - 50vw); margin-right:calc(50% - 50vw); background-size:cover; background-position:center; }
-    .painel-bg-btn-troca { position:absolute; top:17px; right:27px; z-index:5; background:var(--amarelo); color:var(--azul); border:none; border-radius:var(--radius-sm); padding:7px 21px; font-weight:700; cursor:pointer; font-size:15px; box-shadow:var(--shadow-sm); }
+    .kpis { display:flex; gap:10px; flex-wrap:wrap; }
+    .kpi { background: #ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
+    .kpi span { display:block; font-weight:700; line-height:1.1; }
+    .kpi small { display:block; font-size:12px; opacity:.9; }
+
+    .logout { color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap; }
+    .logout:hover { background:#a20f1a; }
+
+    /* ====== PAINEL SUPERIOR (lista/cooperados/data) ====== */
+    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 0 12px; overflow:hidden; }
+    .painel-bg-btn-troca { position:absolute; top:12px; right:18px; z-index:5; background:var(--amarelo); color:var(--azul); border:none; border-radius:var(--radius-sm); padding:7px 14px; font-weight:700; cursor:pointer; font-size:14px; box-shadow:var(--shadow-sm); }
     .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
 
-    .painel-superior { display:flex; gap:28px; margin-bottom:14px; flex-wrap:wrap; }
-    .painel-superior .card { background:linear-gradient(112deg,#003399 82%,#90cdf4 140%); color:#fff; border-radius:14px; box-shadow:var(--shadow-sm); padding:23px 34px 17px 26px; min-width:140px; font-size:1.12em; font-weight:700; display:flex; flex-direction:column; align-items:flex-start; border-left:7px solid var(--amarelo); }
-    .painel-superior .card strong { font-size:1.24em; color:#ffe066; margin-top:7px; font-weight:bold; }
+    /* linha com 3 colunas: Lista de Espera | Cooperados | Data/Feriado */
+    .painel-linha { display:grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap:14px; align-items:start; }
+    .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:14px 16px 12px; border:1px solid #e6ebff; }
+    .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.02em; }
 
-    .painel-lateral { display:flex; gap:22px; margin-bottom:15px; flex-wrap:wrap;}
-    .painel-lateral .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:18px 21px 11px 17px; min-width:252px; max-width:340px; flex:1 1 230px; }
-    .painel-lateral h3 { color:var(--azul); margin:2px 0 11px; font-size:1.08em; }
+    .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:6px; }
+    #espera-nome { flex:1; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; }
+    .espera-add { background:#003399; color:#fff; border:none; border-radius:50%; font-size:1.1em; width:34px; height:34px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
+    #espera-lista { display:flex; flex-direction:column; gap:7px 0; min-height:16px; margin-top:6px; }
+    .espera-chip { display:flex; gap:8px; align-items:center; background:#f1f6ff; border:1px solid #d9e4ff; padding:5px 8px; border-radius:9px; }
+    .espera-chip-num { background:#003399; color:#fff; border-radius:6px; padding:2px 6px; font-weight:800; font-size:.85em; }
+    .espera-chip-text { font-weight:600; color:#0f2459; }
+    .espera-chip-remove { margin-left:auto; background:#e53e3e; color:#fff; border:none; border-radius:6px; width:24px; height:24px; cursor:pointer; font-weight:800; }
 
-    .actions { margin:15px 0 8px; display:flex; flex-wrap:wrap; gap:14px; }
-    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 26px; border-radius:14px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); }
+    #filtro-cooperado { width:100%; margin-bottom:8px; border:1.2px solid #a8b9e4; border-radius:8px; padding:7px 10px; background:#f7faff; }
+    #lista-cooperados { list-style:none; padding:0; max-height:140px; overflow-y:auto; font-size:13px; margin:0; }
+    #lista-cooperados li { display:flex; align-items:center; gap:8px; margin-bottom:4px; }
+    #lista-cooperados button { background:#d11a1a; color:white; padding:2px 6px; border-radius:4px; border:none; font-weight:bold; cursor:pointer; font-size:12px; }
+
+    .info-dia h3 { margin:0 0 10px; color:var(--azul); font-size:1.02em; }
+    .info-dia .linha { font-size:1.02em; font-weight:700; color:#003399; }
+    .info-dia .ok { color:#2767e6; font-weight:800; }
+    .info-dia .alerta { color:#d11a1a; font-weight:800; }
+
+    /* ====== AÇÕES E FILTROS (COLADO NA TABELA) ====== */
+    .actions { margin:8px 0 8px; display:flex; flex-wrap:wrap; gap:10px; }
+    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); }
     .btn:hover { background:var(--azul-hover); }
 
-    .filtros { margin-bottom:1.3rem; background:#fff; border-radius:14px; padding:19px 22px 13px 19px; box-shadow:var(--shadow-sm); display:inline-block; }
-    .filtros label, .filtros input, .filtros select, .filtros button, .filtros a.btn { background:transparent !important; color:#003399 !important; font-weight:bold; }
-    .filtros button, .filtros a.btn { background:#003399 !important; color:#fff !important; margin-top:0 !important; border-radius:10px; box-shadow:0 1px 5px #00339918; }
+    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px 10px 12px; box-shadow:var(--shadow-sm); display:inline-flex; gap:8px; align-items:center; border:1px solid #e6ebff; }
+    .filtros label { font-size:13px; color:#003399; font-weight:800; }
+    .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
+    .filtros .btn { padding:8px 14px; }
 
+    /* ====== TABELA (PARTE DEBAIXO INALTERADA) ====== */
     .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; }
     table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
     th, td { border:1px solid #3a3a3a; padding:9px 4px; text-align:center; vertical-align:middle; }
@@ -70,9 +98,13 @@
     .modal .modal-btn { background:var(--azul); color:#fff; border:none; border-radius:10px; padding:10px 22px; font-weight:800; cursor:pointer; box-shadow:var(--shadow-sm); }
     .modal .modal-btn:hover { background:#174ea6; }
 
+    @media (max-width: 1100px) {
+      .kpis { justify-content:flex-start; }
+      .painel-linha { grid-template-columns:1fr; }
+    }
     @media (max-width: 900px) {
-      .painel-superior { flex-direction:column; gap:15px; }
-      .painel-lateral { flex-direction:column; gap:14px; }
+      header .header-grid { grid-template-columns:1fr auto; row-gap:8px; }
+      .kpis { grid-column:1/-1; }
       .painel-bg-trocavel { padding:16px 2vw 9px 2vw; }
       table, th, td, tr { font-size:12.8px; }
     }
@@ -80,12 +112,22 @@
 </head>
 <body>
   <header>
-    <h1>
-      <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo"
-        onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')">
-      Painel da Supervisão - Coopex
-    </h1>
-    <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+    <div class="header-grid">
+      <h1>
+        <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo"
+          onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')">
+        Kratos System -  Supervisão
+      </h1>
+
+      <!-- KPIs ao lado do nome -->
+      <div class="kpis">
+        <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
+        <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
+        <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
+      </div>
+
+      <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+    </div>
   </header>
 
   <!-- Modal bloqueante -->
@@ -97,52 +139,52 @@
     </div>
   </div>
 
+  <!-- Topo reestruturado: Lista de Espera | Cooperados | Data/Feriado -->
   <div id="painel-bg" class="painel-bg-trocavel">
-    <button class="painel-bg-btn-troca" onclick="document.getElementById('upload-bg').click()">Trocar Plano de Fundo</button>
-    <input id="upload-bg" type="file" accept="image/*" style="display:none">
+        <input id="upload-bg" type="file" accept="image/*" style="display:none">
     <div class="painel-bg-conteudo">
-      <div style="margin-bottom:8px; font-size:1.1em; color:#003399;font-weight:600;">
-        Hoje: {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
-        - {{ to_brasilia(now())|diasemana }}
-        {% if feriado_hoje %}
-          <span style="color:#d11a1a; font-weight:bold; margin-left:15px;">⚠️ {{ feriado_hoje }}</span>
-        {% else %}
-          <span style="color:#2767e6; font-weight:bold; margin-left:15px;">Hoje não é feriado.</span>
-        {% endif %}
-      </div>
-
-      <div class="painel-superior">
-        <div class="card">Entregas do Dia<br><strong>{{ estatisticas.total_dia }}</strong></div>
-        <div class="card">Do Mês<br><strong>{{ estatisticas.total_mes }}</strong></div>
-        <div class="card">Do Ano<br><strong>{{ estatisticas.total_ano }}</strong></div>
-      </div>
-
-      <div class="painel-lateral">
+      <div class="painel-linha">
+        <!-- Lista de Espera (abaixo da logo) -->
         <div class="painel-lista">
-          <div style="color:#003399;font-weight:700;font-size:1.07em;margin-bottom:8px;">Lista de Espera</div>
-          <div style="display:flex;align-items:center;margin-bottom:4px;">
-            <input id="espera-nome" type="text" placeholder="Adicionar nome..." maxlength="30" style="flex:1;padding:7px 10px;border-radius:8px;border:1.2px solid #a8b9e4;font-size:1em;background:#f7faff;margin-right:6px;">
-            <button type="button" onclick="addEspera()" style="background:#003399;color:#fff;border:none;border-radius:50%;font-size:1.2em;width:34px;height:34px;cursor:pointer;font-weight:600;box-shadow:var(--shadow-sm);">+</button>
+          <h3>Lista de Espera</h3>
+          <div class="espera-bar">
+            <input id="espera-nome" type="text" placeholder="Adicionar nome..." maxlength="30">
+            <button type="button" class="espera-add" onclick="addEspera()">+</button>
           </div>
-          <div id="espera-lista" style="display:flex;flex-direction:column;gap:7px 0;min-height:16px;margin-top:6px;"></div>
+          <div id="espera-lista"></div>
         </div>
 
+        <!-- Cooperados (ao lado da lista) -->
         <div class="painel-lista">
           <h3>Cooperados</h3>
           <input type="text" id="filtro-cooperado" placeholder="Filtrar...">
-          <ul id="lista-cooperados" style="list-style:none;padding:0;max-height:110px;overflow-y:auto;font-size:13px;">
+          <ul id="lista-cooperados">
             {% for c in cooperados %}
-              <li style="margin-bottom:3px;">
+              <li>
                 <b>{{ c.nome }}</b>
                 <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
-                  <button type="submit" style="background:#d11a1a;color:white;padding:2px 5px;border-radius:4px;border:none;font-weight:bold;cursor:pointer;margin-left:4px;font-size:12px;">Excluir</button>
+                  <button type="submit">Excluir</button>
                 </form>
               </li>
             {% endfor %}
           </ul>
         </div>
+
+        <!-- Data e Feriado (ao lado de cooperados) -->
+        <div class="painel-lista info-dia">
+          <h3>Hoje</h3>
+          <div class="linha">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}</div>
+          <div style="margin-top:6px;">
+            {% if feriado_hoje %}
+              <span class="alerta">⚠️ {{ feriado_hoje }}</span>
+            {% else %}
+              <span class="ok">Hoje não é feriado.</span>
+            {% endif %}
+          </div>
+        </div>
       </div>
 
+      <!-- Ações e Filtros mais colados da tabela -->
       <div class="actions">
         <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
         <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
@@ -173,7 +215,6 @@
             <option value="pendente" {% if request.args.get('status_pagamento') == 'pendente' %}selected{% endif %}>Pendente</option>
           </select>
 
-          <!-- Filtro por Cliente -->
           <label for="cliente" style="font-size:13px;">Cliente:</label>
           <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" style="font-size:13px;" placeholder="Nome do cliente">
 
@@ -189,7 +230,7 @@
     </div>
   </div>
 
-  <!-- Tabela de entregas -->
+  <!-- Tabela de entregas (INALTERADA) -->
   <div class="tabela">
     <table>
       <thead>
