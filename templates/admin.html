@@ -31,262 +31,100 @@
       --speed: 0.19s;
     }
     html, body {
-      margin: 0;
-      padding: 0;
+      margin: 0; padding: 0;
       font-family: 'Inter', 'Segoe UI', Arial, sans-serif;
-      background: var(--cinza-bg);
-      color: var(--azul-escuro);
-      min-height: 100vh;
-      font-size: 15.5px;
+      background: var(--cinza-bg); color: var(--azul-escuro);
+      min-height: 100vh; font-size: 15.5px;
     }
+    body.locked { overflow: hidden; }
+
     header {
-      background: var(--azul-grad);
-      color: #fff;
-      padding: 1.1rem 2vw;
-      box-shadow: var(--shadow);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      position: sticky;
-      top: 0; z-index: 99;
+      background: var(--azul-grad); color: #fff;
+      padding: 1.1rem 2vw; box-shadow: var(--shadow);
+      display: flex; align-items: center; justify-content: space-between;
+      position: sticky; top: 0; z-index: 99;
     }
-    h1 {
-      font-size: 1.29rem;
-      font-weight: 800;
-      margin: 0;
-      display: flex;
-      align-items: center;
-      gap: 14px;
-      letter-spacing: 1px;
-      text-shadow: 0 2px 14px #0001;
-      user-select: none;
-    }
-    .logo-topo {
-      height: 38px; width: 38px;
-      border-radius: 14px;
-      background: #fff;
-      box-shadow: 0 2px 13px #0033991f;
-      padding: 3px;
-      object-fit: contain;
-      margin-right: 4px;
-      border: 2.5px solid #ddeaff;
-      transition: box-shadow .22s;
-    }
-    .logout {
-      color: #fff;
-      background: var(--roxo);
-      border-radius: 18px;
-      padding: 8px 22px;
-      font-size: 1em;
-      text-decoration: none;
-      font-weight: bold;
-      border: none;
-      box-shadow: var(--shadow-sm);
-      transition: background var(--speed), box-shadow .17s;
-    }
-    .logout:hover {
-      background: #3730a3;
-      box-shadow: 0 4px 20px #0033992e;
-    }
-    .container {
-      max-width: 1280px;
-      margin: 30px auto 0 auto;
-      padding: 0 1vw;
-    }
+    h1 { font-size: 1.29rem; font-weight: 800; margin: 0; display: flex; align-items: center; gap: 14px; letter-spacing: 1px; text-shadow: 0 2px 14px #0001; user-select: none; }
+    .logo-topo { height: 38px; width: 38px; border-radius: 14px; background: #fff; box-shadow: 0 2px 13px #0033991f; padding: 3px; object-fit: contain; margin-right: 4px; border: 2.5px solid #ddeaff; transition: box-shadow .22s; }
+    .logout { color: #fff; background: var(--roxo); border-radius: 18px; padding: 8px 22px; font-size: 1em; text-decoration: none; font-weight: bold; border: none; box-shadow: var(--shadow-sm); transition: background var(--speed), box-shadow .17s; }
+    .logout:hover { background: #3730a3; box-shadow: 0 4px 20px #0033992e; }
+
+    .container { max-width: 1280px; margin: 30px auto 0; padding: 0 1vw; }
     .painel-bg-trocavel {
-      position: relative;
-      background: linear-gradient(115deg, #f4f8ff 60%, #e3f2ff 100%);
-      border-radius: var(--radius);
-      box-shadow: var(--shadow);
-      padding: 32px 2vw 24px 2vw;
-      margin-bottom: 24px;
-      overflow: hidden;
-      min-height: 245px;
-      transition: box-shadow .18s;
-      width: 100vw;
-      left: 0; right: 0;
-      margin-left: calc(50% - 50vw);
-      margin-right: calc(50% - 50vw);
-      background-size: cover;
-      background-position: center center;
+      position: relative; background: linear-gradient(115deg, #f4f8ff 60%, #e3f2ff 100%);
+      border-radius: var(--radius); box-shadow: var(--shadow);
+      padding: 32px 2vw 24px; margin-bottom: 24px; overflow: hidden; min-height: 245px;
+      transition: box-shadow .18s; width: 100vw; left: 0; right: 0;
+      margin-left: calc(50% - 50vw); margin-right: calc(50% - 50vw);
+      background-size: cover; background-position: center center;
     }
     .painel-bg-btn-troca {
-      position: absolute;
-      top: 17px; right: 27px; z-index: 5;
-      background: var(--amarelo);
-      color: var(--azul);
-      border: none;
-      border-radius: var(--radius-sm);
-      padding: 7px 21px;
-      font-weight: 700;
-      cursor: pointer;
-      font-size: 15px;
-      box-shadow: var(--shadow-sm);
-      transition: background .13s;
-      display: flex; align-items: center; gap: 7px;
+      position: absolute; top: 17px; right: 27px; z-index: 5;
+      background: var(--amarelo); color: var(--azul); border: none; border-radius: var(--radius-sm);
+      padding: 7px 21px; font-weight: 700; cursor: pointer; font-size: 15px;
+      box-shadow: var(--shadow-sm); transition: background .13s; display: flex; align-items: center; gap: 7px;
     }
     .painel-bg-btn-troca:hover { background: #fff7b3; }
     .painel-bg-conteudo { position: relative; z-index: 2; max-width: 1280px; margin: auto; }
-    .painel-superior {
-      display: flex; gap: 28px; margin-bottom: 14px; flex-wrap: wrap;
-    }
+
+    .painel-superior { display: flex; gap: 28px; margin-bottom: 14px; flex-wrap: wrap; }
     .painel-superior .card {
-      background: linear-gradient(112deg, #003399 82%, #90cdf4 140%);
-      color: #fff;
-      border-radius: 14px;
-      box-shadow: var(--shadow-sm);
-      padding: 23px 34px 17px 26px;
-      min-width: 140px;
-      font-size: 1.12em;
-      font-weight: 700;
-      display: flex;
-      flex-direction: column;
-      align-items: flex-start;
-      margin-bottom: 8px;
-      position: relative;
-      overflow: hidden;
-      border: 0;
-      transition: box-shadow .16s;
-      animation: cardin .65s;
+      background: linear-gradient(112deg, #003399 82%, #90cdf4 140%); color: #fff;
+      border-radius: 14px; box-shadow: var(--shadow-sm);
+      padding: 23px 34px 17px 26px; min-width: 140px; font-size: 1.12em; font-weight: 700;
+      display: flex; flex-direction: column; align-items: flex-start; margin-bottom: 8px;
+      position: relative; overflow: hidden; border: 0; transition: box-shadow .16s; animation: cardin .65s;
       border-left: 7px solid var(--amarelo);
     }
     @keyframes cardin { from { opacity:0; transform:translateY(-25px);} to { opacity:1; transform:translateY(0);} }
     .painel-superior .card strong { font-size: 1.24em; color: #ffe066; margin-top: 7px; font-weight: bold; }
-    .painel-superior .card::after {
-      content: '';
-      position: absolute;
-      right: 13px; top: 13px;
-      width: 38px; height: 38px;
-      background: url('https://cdn-icons-png.flaticon.com/512/6697/6697956.png') no-repeat center/contain;
-      opacity: 0.11;
-      pointer-events: none;
-    }
+
     .painel-lateral { display: flex; gap: 22px; margin-bottom: 15px; flex-wrap: wrap;}
-    .painel-lateral .painel-lista {
-      background: var(--cinza-card);
-      border-radius: 13px;
-      box-shadow: var(--shadow-sm);
-      padding: 18px 21px 11px 17px;
-      min-width: 252px;
-      max-width: 340px;
-      flex: 1 1 230px;
-    }
+    .painel-lateral .painel-lista { background: var(--cinza-card); border-radius: 13px; box-shadow: var(--shadow-sm); padding: 18px 21px 11px 17px; min-width: 252px; max-width: 340px; flex: 1 1 230px; }
     .painel-lateral h3 { color: var(--azul); margin: 2px 0 11px 0; font-size: 1.08em; }
-    .espera-title { color: var(--azul); font-weight: bold; font-size: 1.07em; margin-bottom: 8px;}
-    .espera-input-row { display: flex; align-items: center; margin-bottom: 4px;}
-    #espera-nome { flex: 1; padding: 7px 10px; border-radius: 8px; border: 1.2px solid #a8b9e4; font-size: 1em; background: #f7faff; margin-right: 6px; transition: border-color .16s;}
-    #espera-nome:focus { border-color: #819cff; background: #eaf1ff;}
-    .espera-btn-add {
-      background: var(--azul);
-      color: #fff;
-      border: none;
-      border-radius: 50%;
-      font-size: 1.2em;
-      width: 34px; height: 34px;
-      cursor: pointer; font-weight: 600;
-      display: flex; align-items: center; justify-content: center;
-      box-shadow: var(--shadow-sm);
-      transition: background .12s;
-    }
-    .espera-btn-add:hover { background: #194bb3; color: #fff; }
-    .espera-chips {
-      display: flex; flex-direction: column;
-      gap: 7px 0; min-height: 16px; margin-top: 6px;
-      max-width: 100%;
-    }
-    .espera-chip {
-      background: var(--azul-grad);
-      color: #fff; border-radius: 19px;
-      padding: 5px 13px 5px 11px;
-      font-size: 1em; font-weight: 500;
-      box-shadow: 0 1px 5px #00339915;
-      border: none; display: flex; align-items: center; user-select: none;
-      transition: background .14s;
-      cursor: pointer;
-    }
-    .espera-chip-num { background: #fff3; color: #fff; margin-right: 10px; border-radius: 12px; font-size: 0.93em; font-weight: bold; padding: 2px 9px;}
-    .espera-chip-remove { background: none; border: none; color: #fff; font-size: 1.13em; margin-left: 8px; cursor: pointer; transition: color .15s;}
-    .espera-chip-remove:hover { color: #f87171;}
+
     .actions { margin: 15px 0 8px 0; display: flex; flex-wrap: wrap; gap: 14px;}
-    .btn {
-      background: var(--azul-grad);
-      color: #fff;
-      border: none;
-      padding: 10px 26px;
-      border-radius: 14px;
-      cursor: pointer;
-      font-size: 15px;
-      text-decoration: none;
-      font-weight: bold;
-      box-shadow: var(--shadow-sm);
-      transition: background var(--speed), box-shadow .12s, transform .12s;
-      display: flex; align-items: center; gap: 7px;
-    }
+    .btn { background: var(--azul-grad); color: #fff; border: none; padding: 10px 26px; border-radius: 14px; cursor: pointer; font-size: 15px; text-decoration: none; font-weight: bold; box-shadow: var(--shadow-sm); transition: background var(--speed), box-shadow .12s, transform .12s; display: flex; align-items: center; gap: 7px;}
     .btn:hover { background: #174ea6; transform: translateY(-2px) scale(1.02);}
+
     .filtros {
-      margin-bottom: 1.3rem;
-      background: #fff;
-      border-radius: 14px;
-      padding: 19px 22px 13px 19px;
-      box-shadow: var(--shadow-sm);
-      display: inline-block;
-      animation: fadein .77s;
+      margin-bottom: 1.3rem; background: #fff; border-radius: 14px; padding: 19px 22px 13px 19px; box-shadow: var(--shadow-sm); display: inline-block; animation: fadein .77s;
     }
     @keyframes fadein { from { opacity:0; } to { opacity:1; } }
-    .filtros label, .filtros input, .filtros select, .filtros button, .filtros a.btn {
-      background: transparent !important;
-      color: #003399 !important;
-      font-weight: bold;
-    }
-    .filtros button, .filtros a.btn {
-      background: #003399 !important;
-      color: #fff !important;
-      margin-top: 0 !important;
-      border-radius: 10px;
-      box-shadow: 0 1px 5px #00339918;
-      transition: background .12s;
-    }
+    .filtros label, .filtros input, .filtros select, .filtros button, .filtros a.btn { background: transparent !important; color: #003399 !important; font-weight: bold; }
+    .filtros button, .filtros a.btn { background: #003399 !important; color: #fff !important; margin-top: 0 !important; border-radius: 10px; box-shadow: 0 1px 5px #00339918; transition: background .12s; }
     .filtros button:hover, .filtros a.btn:hover { background: #174ea6 !important;}
-    .tabela {
-      overflow-x: auto;
-      background: var(--grafite);
-      border-radius: 17px;
-      box-shadow: var(--shadow);
-      padding: 12px;
-      max-height: 69vh;
-      overflow-y: auto;
-      animation: fadein .68s;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      font-size: 14.5px;
-      background: var(--grafite);
-      color: #fff;
-      border-radius: 12px;
-      overflow: hidden;
-    }
-    th, td {
-      border: 1px solid #3a3a3a;
-      padding: 9px 4px;
-      text-align: center;
-      vertical-align: middle;
-      transition: background .12s;
-    }
-    th {
-      background: linear-gradient(90deg,#003399 60%, #4f8cff 120%);
-      color: #fff;
-      padding: 9px 3px;
-      font-size: 1.03em;
-      font-weight: 700;
-    }
+
+    .tabela { overflow-x: auto; background: var(--grafite); border-radius: 17px; box-shadow: var(--shadow); padding: 12px; max-height: 69vh; overflow-y: auto; animation: fadein .68s; }
+    table { width: 100%; border-collapse: collapse; font-size: 14.5px; background: var(--grafite); color: #fff; border-radius: 12px; overflow: hidden; }
+    th, td { border: 1px solid #3a3a3a; padding: 9px 4px; text-align: center; vertical-align: middle; transition: background .12s; }
+    th { background: linear-gradient(90deg,#003399 60%, #4f8cff 120%); color: #fff; padding: 9px 3px; font-size: 1.03em; font-weight: 700; }
     tr:hover td { background: #33415555; }
     .status-verde { color: #13a038; font-weight: bold; background: #e7f9ef; border-radius: 7px; padding: 3px 6px; }
     .status-vermelho { color: #d11a1a; font-weight: bold; background: #fdeaea; border-radius: 7px; padding: 3px 6px;}
-    .icon-btn { border: none; background: none; cursor: pointer; vertical-align: middle; padding: 2px; margin: 0 2px; transition: transform .11s;}
-    .icon-btn:hover { transform: scale(1.17);}
-    .icon-btn svg { display: inline-block; vertical-align: middle; }
-    .col-recebido   { max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* MODAL BLOQUEANTE */
+    .modal-overlay {
+      position: fixed; inset: 0;
+      background: rgba(10,16,28,0.58);
+      display: none; align-items: center; justify-content: center;
+      z-index: 9999;
+    }
+    .modal {
+      background: #fff; border-radius: 14px; box-shadow: 0 10px 40px rgba(0,0,0,.25);
+      max-width: 520px; width: 92%; padding: 22px 20px 18px;
+      text-align: center;
+      animation: pop .15s ease-out;
+    }
+    @keyframes pop { from { transform: scale(.96); opacity: 0;} to { transform: scale(1); opacity: 1;} }
+    .modal h2 { margin: 0 0 8px; color: var(--azul); }
+    .modal p { margin: 6px 0 14px; color: #21324d; }
+    .modal .modal-btn {
+      background: var(--azul); color: #fff; border: none; border-radius: 10px; padding: 10px 22px; font-weight: 800; cursor: pointer;
+      box-shadow: var(--shadow-sm);
+    }
+    .modal .modal-btn:hover { background: #174ea6; }
+    .aviso-boa-noite, .aviso-pagamento { display:none; } /* Mantidos apenas por compatibilidade */
     @media (max-width: 900px) {
       .painel-superior { flex-direction: column; gap: 15px;}
       .painel-lateral { flex-direction: column; gap: 14px;}
@@ -305,14 +143,18 @@
     <a class="logout" href="{{ url_for('logout') }}">Sair</a>
   </header>
 
-  <div id="aviso-pagamento" class="aviso-pagamento" style="display:none;">
-    <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
-    <span>⚠️ Existem entregas <b>com pagamento pendente</b>! Não esqueça de cobrar os Clientes.</span>
+  <!-- Modal bloqueante -->
+  <div id="overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <h2 id="modal-title">Atenção</h2>
+      <p id="modal-msg">Mensagem</p>
+      <button id="modal-ok" class="modal-btn" type="button">OK</button>
+    </div>
   </div>
-  <div id="aviso-boa-noite" class="aviso-boa-noite" style="display:none;">
-    <button class="fechar" onclick="this.parentElement.style.display='none'">&times;</button>
-    <span>🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.</span>
-  </div>
+
+  <!-- (mantidos por compatibilidade, mas não usados) -->
+  <div id="aviso-pagamento" class="aviso-pagamento"></div>
+  <div id="aviso-boa-noite" class="aviso-boa-noite"></div>
 
   <div id="painel-bg" class="painel-bg-trocavel">
     <button class="painel-bg-btn-troca" onclick="document.getElementById('upload-bg').click()">Trocar Plano de Fundo</button>
@@ -322,20 +164,18 @@
         Hoje: {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
         - {{ to_brasilia(now())|diasemana }}
         {% if feriado_hoje %}
-          <span style="color:#d11a1a; font-weight:bold; margin-left:15px;">
-            ⚠️ {{ feriado_hoje }}
-          </span>
+          <span style="color:#d11a1a; font-weight:bold; margin-left:15px;">⚠️ {{ feriado_hoje }}</span>
         {% else %}
-          <span style="color:#2767e6; font-weight:bold; margin-left:15px;">
-            Hoje não é feriado.
-          </span>
+          <span style="color:#2767e6; font-weight:bold; margin-left:15px;">Hoje não é feriado.</span>
         {% endif %}
       </div>
+
       <div class="painel-superior">
         <div class="card">Entregas do Dia<br><strong>{{ estatisticas.total_dia }}</strong></div>
         <div class="card">Do Mês<br><strong>{{ estatisticas.total_mes }}</strong></div>
         <div class="card">Do Ano<br><strong>{{ estatisticas.total_ano }}</strong></div>
       </div>
+
       <div class="painel-lateral">
         <div class="painel-lista">
           <div class="espera-title">Lista de Espera</div>
@@ -360,12 +200,14 @@
           </ul>
         </div>
       </div>
+
       <div class="actions">
         <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
         <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
         <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
         <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Estatísticas por Cooperado</a>
       </div>
+
       <div class="filtros">
         <form method="GET" action="{{ url_for('admin') }}">
           <label for="cooperado" style="font-size:13px;">Cooperado:</label>
@@ -375,19 +217,29 @@
             <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
             {% endfor %}
           </select>
+
           <label for="data_inicio" style="font-size:13px;">De:</label>
           <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" style="font-size:13px;">
+
           <label for="data_fim" style="font-size:13px;">Até:</label>
           <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" style="font-size:13px;">
+
           <label for="status_pagamento" style="font-size:13px;">Pagamento:</label>
           <select name="status_pagamento" id="status_pagamento" style="font-size:13px;">
             <option value="todos" {% if request.args.get('status_pagamento', 'todos') == 'todos' %}selected{% endif %}>Todos</option>
             <option value="pago" {% if request.args.get('status_pagamento') == 'pago' %}selected{% endif %}>Pago</option>
             <option value="pendente" {% if request.args.get('status_pagamento') == 'pendente' %}selected{% endif %}>Pendente</option>
           </select>
+
+          <!-- NOVO: filtro por Cliente -->
+          <label for="cliente" style="font-size:13px;">Cliente:</label>
+          <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" style="font-size:13px;" placeholder="Nome do cliente">
+
           <button class="btn" type="submit">Filtrar</button>
+
+          <!-- Exporta levando TODOS os filtros, inclusive cliente -->
           <a class="btn"
-            href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}">
+            href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
             Exportar para Excel
           </a>
         </form>
@@ -430,35 +282,26 @@
           </td>
           <td class="col-hora">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
           <td class="col-hora-atrib">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-          <td class="col-cooperado">{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else '' }}</td>
+          <td class="col-cooperado">{% set coop = (cooperados|selectattr('id', 'equalto', e.cooperado_id)|first) %}{{ coop.nome if coop else 'Sem Cooperado' }}</td>
           <td class="col-pagamento">{{ e.pagamento }}</td>
           <td class="col-status">
-            {% if e.status and e.status.lower() in ['recebido', 'entregue'] %}
-              <span class="status-verde">{{ e.status|capitalize }}</span>
-            {% else %}
-              <span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>
-            {% endif %}
+            {% if e.status and e.status.lower() in ['recebido', 'entregue'] %}<span class="status-verde">{{ e.status|capitalize }}</span>
+            {% else %}<span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>{% endif %}
           </td>
           <td class="col-status-pg">
-            {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}
-              <span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
-            {% else %}
-              <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
-            {% endif %}
+            {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}<span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
+            {% else %}<span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>{% endif %}
           </td>
           <td class="col-recebido" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
           <td class="col-acoes" style="min-width:70px;">
-            <!-- Editar -->
             <a title="Editar" class="icon-btn" href="{{ url_for('editar_entrega', id=e.id) }}">
               <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
             </a>
-            <!-- Excluir -->
             <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
               <button title="Excluir" type="submit" class="icon-btn">
                 <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
               </button>
             </form>
-            <!-- Imprimir -->
             <button type="button" title="Imprimir cupom" class="icon-btn" onclick="imprimirCupom({{ e.id }})">
               <svg width="20" height="20" fill="#13a038" viewBox="0 0 24 24"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h14c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zm-11-5h8v5H8V3zm13 15c0 1.103-.897 2-2 2H5c-1.103 0-2-.897-2-2v-6c0-1.103.897-2 2-2h14c1.103 0 2 .897 2 2v6z"></path></svg>
             </button>
@@ -469,10 +312,44 @@
     </table>
   </div>
 
+  <!-- Sons -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <script>
-    // TROCAR PLANO DE FUNDO DO PAINEL
+    // ===== Modal bloqueante =====
+    const overlay = document.getElementById('overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMsg = document.getElementById('modal-msg');
+    const modalOk = document.getElementById('modal-ok');
+    const somPendente = document.getElementById('som-pendente');
+    let _modalResolve = null;
+
+    function abrirModal(titulo, mensagem, tocarSom = false) {
+      modalTitle.textContent = titulo;
+      modalMsg.textContent = mensagem;
+      overlay.style.display = 'flex';
+      document.body.classList.add('locked');
+
+      if (tocarSom) {
+        somPendente.currentTime = 0;
+        somPendente.play().catch(() => {/* toca no clique */});
+      }
+
+      return new Promise(resolve => { _modalResolve = resolve; });
+    }
+
+    modalOk.addEventListener('click', () => {
+      if (somPendente.paused) {
+        somPendente.currentTime = 0;
+        somPendente.play().catch(()=>{});
+      }
+      overlay.style.display = 'none';
+      document.body.classList.remove('locked');
+      if (_modalResolve) _modalResolve(true);
+      _modalResolve = null;
+    });
+
+    // ===== Plano de fundo custom =====
     const painelBg = document.getElementById('painel-bg');
     const inputBg = document.getElementById('upload-bg');
     window.addEventListener('DOMContentLoaded', () => {
@@ -506,7 +383,7 @@
       }
     });
 
-    // Lista de Espera
+    // ===== Lista de Espera (localStorage) =====
     function renderChips() {
       const esperaLista = document.getElementById('espera-lista');
       esperaLista.innerHTML = '';
@@ -541,12 +418,10 @@
       nomeInput.value = "";
       nomeInput.focus();
     }
-    function carregaListaEspera() {
-      renderChips();
-    }
+    function carregaListaEspera() { renderChips(); }
     window.onload = carregaListaEspera;
 
-    // IMPRIMIR CUPOM
+    // ===== Imprimir Cupom =====
     function imprimirCupom(id) {
       const linha = [...document.querySelectorAll('.tabela tbody tr')].find(tr => tr.children[0].textContent == id);
       if (!linha) return;
@@ -614,36 +489,49 @@
       printWindow.focus();
     }
 
-    // AVISO de pagamento pendente de 2 em 2 horas
-    function checaAvisos() {
+    // ===== Avisos bloqueantes =====
+    function existePagamentoPendenteNaTabela() {
+      // Coluna 10 (índice) = "Pagamento"
+      return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
+        const cel = tr.children[10];
+        if (!cel) return false;
+        return cel.textContent.trim().toLowerCase().includes('pendente');
+      });
+    }
+
+    async function checaAvisos() {
       try {
-        const existePendente = [...document.querySelectorAll('.tabela tbody tr')].some(
-          tr => tr.children[10] && tr.children[10].textContent.toLowerCase().includes('pendente')
-        );
         const agora = new Date();
         const hora = agora.getHours();
         const minutos = agora.getMinutes();
-        const key = `aviso_pagamento_${agora.getFullYear()}${agora.getMonth()}${agora.getDate()}${hora}`;
-        if (existePendente && hora % 2 === 0 && minutos < 4 && !localStorage.getItem(key)) {
-          document.getElementById('aviso-pagamento').style.display = 'block';
-          localStorage.setItem(key, '1');
-          try {
-            const audio = document.getElementById('som-pendente');
-            audio.currentTime = 0;
-            audio.play();
-          } catch(e){}
+
+        // 1) Cobrança pendente: a cada hora PAR, nos 4 primeiros minutos, 1x por hora
+        if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
+          const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
+          if (!localStorage.getItem(keyHora)) {
+            await abrirModal('Cobrança de Pagamento',
+              '⚠️ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',
+              true
+            );
+            localStorage.setItem(keyHora, '1');
+          }
         }
-        if (hora === 22 && !localStorage.getItem('aviso_boa_noite_' + agora.toDateString())) {
-          document.getElementById('aviso-boa-noite').style.display = 'block';
-          localStorage.setItem('aviso_boa_noite_' + agora.toDateString(), '1');
+
+        // 2) Boa noite às 22:00, 1x por dia
+        if (hora === 22) {
+          const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
+          if (!localStorage.getItem(keyBoaNoite)) {
+            await abrirModal('Boa noite!',
+              '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.',
+              true
+            );
+            localStorage.setItem(keyBoaNoite, '1');
+          }
         }
-      } catch(e) {}
+      } catch(e) {
+        console.error(e);
+      }
     }
   </script>
 </body>
 </html>
-
-    // AVISO de pagamento pendente de 2 em 2 horas
-    function checaAvisos() {
-      try {
-        const existePendente = [...document.querySelectorAll('.tabela tbody tr
