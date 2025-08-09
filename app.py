@@ -1,14 +1,19 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, text
-from werkzeug.security import generate_password_hash, check_password_hash
-from datetime import datetime, timedelta, time, date
-import pandas as pd
 import io
+import json
+from datetime import datetime, timedelta, time, date
+from collections import Counter, defaultdict
+
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import func
+from sqlalchemy.orm import joinedload
+from sqlalchemy.sql import text
+from werkzeug.security import generate_password_hash, check_password_hash
+
+import pandas as pd
 import holidays
 import pytz
-from collections import Counter, defaultdict
 
 # ====== Configuração ======
 app = Flask(__name__)
@@ -49,14 +54,22 @@ class Entrega(db.Model):
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
-# FILA DE ESPERA — agora com coluna cooperado_id e ordenação (pos)
 class ListaEspera(db.Model):
+    """
+    Compatível com seu schema antigo (que tinha apenas id, nome NOT NULL).
+    Agora usamos também:
+      - cooperado_id: FK pro cooperado
+      - pos: posição na fila
+      - created_at: data de criação
+    OBS: mantemos 'nome' para não quebrar telas que já usam item.nome.
+    """
     id = db.Column(db.Integer, primary_key=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)  # pode existir legado sem preencher
-    pos = db.Column(db.Integer, nullable=False, default=0)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    nome = db.Column(db.String(100), nullable=False)  # Mantido p/ compatibilidade
+    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
+    pos = db.Column(db.Integer, nullable=True)
+    created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
 
-    cooperado = db.relationship('Cooperado')
+    cooperado = db.relationship('Cooperado', lazy='joined')
 
 # ====== helpers datas ======
 def to_brasilia(dt):
@@ -116,42 +129,6 @@ def periodo_legivel_str(di_str, df_str):
         return f"até {df}"
     return "todo o período"
 
-# ====== util: garantir colunas da fila de espera no banco (sem Alembic) ======
-def ensure_lista_espera_schema():
-    try:
-        db.session.execute(text("CREATE TABLE IF NOT EXISTS lista_espera (id SERIAL PRIMARY KEY)"))
-        db.session.execute(text("ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER"))
-        db.session.execute(text("ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER NOT NULL DEFAULT 0"))
-        db.session.execute(text("ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP"))
-        # tenta vincular por nome legado (se existir coluna nome)
-        try:
-            db.session.execute(text("""
-                UPDATE lista_espera le
-                SET cooperado_id = c.id
-                FROM cooperado c
-                WHERE le.cooperado_id IS NULL
-                  AND EXISTS (SELECT 1 FROM information_schema.columns
-                              WHERE table_name='lista_espera' AND column_name='nome')
-                  AND lower(c.nome) = lower(COALESCE((SELECT le.nome), ''))
-            """))
-        except Exception:
-            pass
-        # preenche pos
-        db.session.execute(text("""
-            WITH numbered AS (
-                SELECT id, ROW_NUMBER() OVER (ORDER BY pos, created_at, id) AS rn
-                FROM lista_espera
-            )
-            UPDATE lista_espera le
-            SET pos = numbered.rn
-            FROM numbered
-            WHERE numbered.id = le.id AND (le.pos IS NULL OR le.pos = 0);
-        """))
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        print("ensure_lista_espera_schema error:", e)
-
 # ====== ROTAS ======
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -159,7 +136,7 @@ def login():
     if request.method == 'POST':
         usuario = request.form.get('usuario')
         senha = request.form.get('senha')
-        if usuario.lower() == 'coopex':
+        if usuario and usuario.lower() == 'coopex':
             if senha == '05062721':
                 session['user_id'] = 0
                 session['user_nome'] = 'Coopex'
@@ -168,7 +145,7 @@ def login():
             else:
                 flash('Usuário ou senha incorretos.')
         else:
-            cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == usuario.lower()).first()
+            cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == (usuario or '').lower()).first()
             if cooperado and cooperado.check_senha(senha):
                 session['user_id'] = cooperado.id
                 session['user_nome'] = cooperado.nome
@@ -223,7 +200,12 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    entregas_all = query.order_by(Entrega.data_envio.desc()).all()
+    entregas_all = (
+        query
+        .options(joinedload(Entrega.cooperado))      # performance
+        .order_by(Entrega.data_envio.desc())
+        .all()
+    )
     nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = nao_atribuidos + atribuidos
@@ -245,26 +227,24 @@ def admin():
         (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
     ).count() > 0
 
-    # FILA DE ESPERA: carrega ordenado
-    ensure_lista_espera_schema()
-    lista_raw = db.session.execute(text("""
-        SELECT le.id, le.cooperado_id, le.pos, co.nome
-        FROM lista_espera le
-        JOIN cooperado co ON co.id = le.cooperado_id
-        ORDER BY le.pos ASC, le.created_at ASC, le.id ASC
-    """)).fetchall()
-    lista_espera = [{"id": r.id, "cooperado_id": r.cooperado_id, "pos": r.pos, "nome": r.nome} for r in lista_raw]
+    # Fila de espera
+    lista_espera = (
+        ListaEspera.query
+        .order_by(ListaEspera.pos.asc().nulls_last(), ListaEspera.created_at.asc().nulls_last())
+        .all()
+    )
+    # Cooperados disponíveis para adicionar à fila: quem não está na fila
+    ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
+    cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
-    # cooperados disponiveis para adicionar na fila (não repetidos)
-    ids_fila = {r["cooperado_id"] for r in lista_espera}
-    cooperados_disponiveis = [c for c in cooperados if c.id not in ids_fila]
-
-    return render_template('admin.html',
-                           entregas=entregas, cooperados=cooperados,
-                           estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim,
-                           to_brasilia=to_brasilia, request=request, now=lambda: datetime.now(BRAZIL_TZ),
-                           feriado_hoje=feriado_hoje, tem_pendente=tem_pendente,
-                           lista_espera=lista_espera, cooperados_disponiveis=cooperados_disponiveis)
+    return render_template(
+        'admin.html',
+        entregas=entregas, cooperados=cooperados,
+        estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim,
+        to_brasilia=to_brasilia, request=request, now=lambda: datetime.now(BRAZIL_TZ),
+        feriado_hoje=feriado_hoje, tem_pendente=tem_pendente,
+        lista_espera=lista_espera, cooperados_disponiveis=cooperados_disponiveis
+    )
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
@@ -310,7 +290,11 @@ def painel_cooperado():
         _, fim_utc = local_date_window_to_utc_range(df)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
-    entregas = query.order_by(Entrega.data_envio.desc()).all()
+    entregas = (
+        query.options(joinedload(Entrega.cooperado))  # performance
+        .order_by(Entrega.data_envio.desc())
+        .all()
+    )
     total_geral = sum(e.valor for e in entregas)
     total_pago = sum(e.valor for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago')
     total_pendente = total_geral - total_pago
@@ -325,7 +309,7 @@ def cadastrar_cooperado():
     if request.method == 'POST':
         nome = request.form.get('nome')
         senha = request.form.get('senha')
-        if Cooperado.query.filter(func.lower(Cooperado.nome) == nome.lower()).first():
+        if Cooperado.query.filter(func.lower(Cooperado.nome) == (nome or '').lower()).first():
             flash('Já existe um cooperado com esse nome.')
         else:
             c = Cooperado(nome=nome)
@@ -335,14 +319,6 @@ def cadastrar_cooperado():
             flash('Cooperado cadastrado!')
             return redirect(url_for('admin'))
     return render_template('cadastrar_cooperado.html')
-
-# ===== util: remover cooperado da fila (usado em criar/editar entrega) =====
-def remover_da_fila_por_cooperado(cooperado_id: int):
-    try:
-        db.session.execute(text("DELETE FROM lista_espera WHERE cooperado_id = :cid"), {"cid": cooperado_id})
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
 
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
@@ -369,12 +345,12 @@ def cadastrar_entrega():
             entrega.cooperado_id = int(cooperado_id)
             entrega.data_atribuida = datetime.utcnow()
         db.session.add(entrega)
-        db.session.commit()
 
-        # se atribuiu cooperado, tira automaticamente da fila
+        # Remove da fila se atribuiu cooperado
         if cooperado_id:
-            remover_da_fila_por_cooperado(int(cooperado_id))
+            ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
+        db.session.commit()
         flash('Entrega cadastrada!')
         return redirect(url_for('admin'))
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
@@ -405,11 +381,12 @@ def agendar_entrega():
             pagamento=pagamento
         )
         db.session.add(entrega)
-        db.session.commit()
 
+        # Remove da fila se atribuiu cooperado
         if cooperado_id:
-            remover_da_fila_por_cooperado(int(cooperado_id))
+            ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
+        db.session.commit()
         flash('Entrega agendada!')
         return redirect(url_for('admin'))
     return render_template('agendar_entrega.html', cooperados=cooperados)
@@ -434,14 +411,10 @@ def editar_entrega(id):
                 if entrega.cooperado_id != novo_coop_id:
                     entrega.cooperado_id = novo_coop_id
                     entrega.data_atribuida = datetime.utcnow()
-                    db.session.commit()
-                    # remove da fila ao atribuir
-                    remover_da_fila_por_cooperado(novo_coop_id)
-                else:
-                    db.session.commit()
+                    # Remove da fila quando atribuído/alterado
+                    ListaEspera.query.filter_by(cooperado_id=novo_coop_id).delete()
             else:
                 entrega.cooperado_id = None
-                db.session.commit()
 
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
@@ -480,8 +453,7 @@ def excluir_cooperado(id):
         return redirect(url_for('login'))
     c = Cooperado.query.get_or_404(id)
     Entrega.query.filter_by(cooperado_id=c.id).delete()
-    # também limpa se estiver na fila
-    remover_da_fila_por_cooperado(c.id)
+    ListaEspera.query.filter_by(cooperado_id=c.id).delete()  # limpa fila
     db.session.delete(c)
     db.session.commit()
     flash('Cooperado excluído.')
@@ -520,12 +492,16 @@ def estatisticas_cooperado():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    entregas = query.order_by(Entrega.data_envio.asc()).all()
+    entregas = (
+        query.options(joinedload(Entrega.cooperado))   # performance
+        .order_by(Entrega.data_envio.asc())
+        .all()
+    )
 
     total = len(entregas)
     pagas = len([e for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago'])
     pendentes = total - pagas
-    total_valor = sum(float(e.valor or 0) for e in entregas)
+    total_valor = sum(e.valor for e in entregas)
     ticket_medio = (total_valor / total) if total > 0 else 0.0
 
     # Dia com mais entregas (Brasil)
@@ -579,22 +555,16 @@ def estatisticas_cooperado():
     # Ranking formas pgto
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
 
-    # Ranking clientes (AGORA com total e ticket médio)
-    mapa_clientes = defaultdict(lambda: {"qtd": 0, "total": 0.0})
+    # Ranking clientes (com valor total por cliente)
+    soma_por_cliente = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     for e in entregas:
         if e.cliente:
-            mapa_clientes[e.cliente]["qtd"] += 1
-            mapa_clientes[e.cliente]["total"] += float(e.valor or 0)
-    ranking_clientes = []
-    for cli, d in mapa_clientes.items():
-        tkt = (d["total"] / d["qtd"]) if d["qtd"] else 0.0
-        ranking_clientes.append({
-            "cliente": cli,
-            "qtd": d["qtd"],
-            "total": round(d["total"], 2),
-            "ticket": round(tkt, 2)
-        })
-    ranking_clientes.sort(key=lambda x: x["total"], reverse=True)
+            soma_por_cliente[e.cliente]["qtd"] += 1
+            soma_por_cliente[e.cliente]["total"] += float(e.valor or 0)
+    ranking_clientes = [
+        {"cliente": c, "qtd": d["qtd"], "total": round(d["total"], 2)}
+        for c, d in sorted(soma_por_cliente.items(), key=lambda kv: kv[1]["total"], reverse=True)
+    ]
 
     # Gráficos
     dias_ordenados = sorted(list(cont_dias.keys()))
@@ -629,8 +599,8 @@ def estatisticas_cooperado():
         ranking_cooperados=ranking_cooperados,
         ranking_bairros=ranking_bairros,
         ranking_pgto=ranking_pgto,
-        ranking_clientes=ranking_clientes,          # com total/ticket
-        horas_pico_top3=horas_pico_top3,
+        ranking_clientes=ranking_clientes,          # inclui total por cliente
+        horas_pico_top3=horas_pico_top3,            # top3 horários
         chart_entregas_labels=chart_entregas_labels,
         chart_entregas_values=chart_entregas_values,
         chart_faturamento_labels=chart_faturamento_labels,
@@ -648,7 +618,6 @@ def exportar_xlsx():
     data_fim = request.args.get('data_fim')
     cooperado_id = request.args.get('cooperado_id', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    status_pagamento = request.args.get('status_pagamento')
 
     query = Entrega.query
 
@@ -658,12 +627,6 @@ def exportar_xlsx():
     if cliente:
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
-
-    if status_pagamento and status_pagamento != 'todos':
-        if status_pagamento == 'pago':
-            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
-        elif status_pagamento == 'pendente':
-            query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
 
     if data_inicio:
         di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
@@ -795,73 +758,139 @@ def estatisticas_cooperado_exportar_xlsx():
 # ====== FILA DE ESPERA ======
 @app.route('/lista_espera/add', methods=['POST'])
 def lista_espera_add():
+    """
+    Adiciona à fila:
+      - Preferencialmente por 'cooperado_id' (select do admin.html)
+      - Mantém compatibilidade com 'nome' enviado pelo form (preenche automaticamente)
+    Evita duplicados e define posição (pos) no final da fila.
+    """
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    ensure_lista_espera_schema()
-
-    # aceita cooperado_id (preferencial) ou nome (legado)
     cooperado_id = request.form.get('cooperado_id')
-    nome = (request.form.get('nome') or '').strip()
+    nome_form = (request.form.get('nome') or '').strip()
 
-    if not cooperado_id:
-        if not nome:
-            flash('Informe um cooperado para adicionar na fila.')
-            return redirect(url_for('admin'))
-        c = Cooperado.query.filter(func.lower(Cooperado.nome) == nome.lower()).first()
-        if not c:
-            flash('Cooperado não encontrado.')
-            return redirect(url_for('admin'))
-        cooperado_id = c.id
-    else:
-        cooperado_id = int(cooperado_id)
-
-    ja_existe = db.session.execute(
-        text("SELECT 1 FROM lista_espera WHERE cooperado_id=:cid LIMIT 1"), {"cid": cooperado_id}
-    ).fetchone()
-    if ja_existe:
-        flash('Este cooperado já está na fila.')
+    if not cooperado_id and not nome_form:
+        flash('Selecione um cooperado ou informe um nome.')
         return redirect(url_for('admin'))
 
-    max_pos = db.session.execute(text("SELECT COALESCE(MAX(pos),0) FROM lista_espera")).scalar() or 0
-    db.session.execute(
-        text("INSERT INTO lista_espera (cooperado_id,pos,created_at) VALUES (:cid,:p,:dt)"),
-        {"cid": cooperado_id, "p": max_pos + 1, "dt": datetime.utcnow()}
+    # Se veio cooperado_id, buscamos o nome
+    if cooperado_id:
+        coop = Cooperado.query.get(int(cooperado_id))
+        if not coop:
+            flash('Cooperado inválido.')
+            return redirect(url_for('admin'))
+
+        # já está na fila?
+        if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
+            flash('Este cooperado já está na fila de espera.')
+            return redirect(url_for('admin'))
+
+        # Posição final
+        max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
+        item = ListaEspera(
+            cooperado_id=coop.id,
+            nome=coop.nome,              # preenche p/ compat com schema antigo
+            pos=max_pos + 1,
+            created_at=datetime.utcnow()
+        )
+        db.session.add(item)
+        db.session.commit()
+        flash('Cooperado adicionado à lista de espera.')
+        return redirect(url_for('admin'))
+
+    # Sem cooperado_id: usa apenas o nome (modo legado)
+    # Evita duplicado por nome
+    if ListaEspera.query.filter(func.lower(ListaEspera.nome) == nome_form.lower()).first():
+        flash('Este nome já está na fila de espera.')
+        return redirect(url_for('admin'))
+
+    max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
+    item = ListaEspera(
+        nome=nome_form,
+        cooperado_id=None,
+        pos=max_pos + 1,
+        created_at=datetime.utcnow()
     )
+    db.session.add(item)
     db.session.commit()
-    flash('Cooperado adicionado à lista de espera.')
+    flash('Nome adicionado à lista de espera.')
     return redirect(url_for('admin'))
 
 @app.route('/lista_espera/remove/<int:id>', methods=['POST'])
 def lista_espera_remove(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    db.session.execute(text("DELETE FROM lista_espera WHERE id=:id"), {"id": id})
+    item = ListaEspera.query.get_or_404(id)
+    db.session.delete(item)
     db.session.commit()
     flash('Removido da lista de espera.')
     return redirect(url_for('admin'))
 
 @app.route('/lista_espera/reordenar', methods=['POST'])
 def lista_espera_reordenar():
+    """
+    Recebe JSON: {"ordem": ["3","1","2", ...]} com IDs na ordem nova.
+    Atualiza 'pos' de cada item.
+    """
     if not session.get('is_admin'):
-        return redirect(url_for('login'))
-    # aceita JSON {"ordem":[ids]} ou form ordem="1,3,2"
-    ordem = request.json.get('ordem') if request.is_json else None
-    if not ordem:
-        raw = request.form.get('ordem') or ''
-        ordem = [int(x) for x in raw.split(',') if x.strip().isdigit()]
-    if not ordem:
-        return jsonify({"ok": False, "msg": "ordem vazia"}), 400
+        return ("", 403)
+    data = request.get_json(silent=True) or {}
+    ordem = data.get('ordem') or []
+    try:
+        for i, sid in enumerate(ordem, start=1):
+            try:
+                _id = int(sid)
+            except:
+                continue
+            db.session.query(ListaEspera).filter_by(id=_id).update({"pos": i})
+        db.session.commit()
+        return ("", 204)
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Reordenar fila falhou: {e}")
+        return ("", 500)
 
-    for idx, le_id in enumerate(ordem, start=1):
-        db.session.execute(text("UPDATE lista_espera SET pos=:p WHERE id=:id"), {"p": idx, "id": le_id})
-    db.session.commit()
-    return jsonify({"ok": True})
-
+# ====== BOOTSTRAP BANCO: criar tabelas, colunas faltantes e índices ======
 def criar_bd():
     with app.app_context():
         db.create_all()
-        ensure_lista_espera_schema()
+
+        # Tenta criar colunas novas da lista_espera caso seu banco antigo não tenha
+        ddl_cmds = [
+            # adiciona cooperado_id/pos/created_at se não existirem (Postgres)
+            "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER",
+            "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER",
+            "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
+            # cria FK (se possível, ignora erro se já existir ou se for SQLite)
+            "DO $$ BEGIN "
+            "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='lista_espera_cooperado_id_fkey') THEN "
+            "ALTER TABLE lista_espera ADD CONSTRAINT lista_espera_cooperado_id_fkey FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
+            "END IF; "
+            "END $$;"
+        ]
+        for s in ddl_cmds:
+            try:
+                db.session.execute(text(s))
+            except Exception:
+                # Provavelmente SQLite ou já existe; segue o baile
+                pass
+
+        # Índices p/ performance (se já existirem, ignora)
+        idx_cmds = [
+            "CREATE INDEX IF NOT EXISTS idx_entrega_data_envio ON entrega (data_envio DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_entrega_cooperado_id ON entrega (cooperado_id)",
+            "CREATE INDEX IF NOT EXISTS idx_entrega_status_pagamento_lower ON entrega ((lower(status_pagamento)))",
+            "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_lower ON entrega ((lower(cliente)))",
+            "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)"
+        ]
+        for s in idx_cmds:
+            try:
+                db.session.execute(text(s))
+            except Exception:
+                pass
+
+        db.session.commit()
 
 criar_bd()
 
