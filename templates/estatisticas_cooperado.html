@@ -268,9 +268,9 @@ tbody tr:hover{background:#f6f9ff}
     <div class="card card-tight">
       <h2>Ranking de cooperados (TOP 10)</h2>
       <ul class="rank-list">
-        {% for i, r in ranking_cooperados[:10]|enumerate(start=1) %}
+        {% for r in ranking_cooperados[:10] %}
         <li class="rank-item">
-          <span class="rank-medal m{{ 1 if i==1 else (2 if i==2 else (3 if i==3 else '2') ) }}">{{ i }}</span>
+          <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
           <span class="rank-label">{{ r.nome }}</span>
           <span class="rank-value">R$ {{ '%.2f'|format(r.total_valor or 0) }}</span>
         </li>
@@ -285,9 +285,9 @@ tbody tr:hover{background:#f6f9ff}
     <div class="card card-tight">
       <h2>Ranking de bairros (TOP 10)</h2>
       <ul class="rank-list">
-        {% for i, r in ranking_bairros[:10]|enumerate(start=1) %}
+        {% for r in ranking_bairros[:10] %}
         <li class="rank-item">
-          <span class="rank-medal m{{ 1 if i==1 else (2 if i==2 else (3 if i==3 else '2') ) }}">{{ i }}</span>
+          <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
           <span class="rank-label">{{ r.bairro }}</span>
           <span class="rank-value">{{ r.qtd }} entregas</span>
         </li>
@@ -302,9 +302,9 @@ tbody tr:hover{background:#f6f9ff}
     <div class="card card-tight">
       <h2>Ranking formas de pagamento</h2>
       <ul class="rank-list">
-        {% for i, r in ranking_pgto[:10]|enumerate(start=1) %}
+        {% for r in ranking_pgto[:10] %}
         <li class="rank-item">
-          <span class="rank-medal m{{ 1 if i==1 else (2 if i==2 else (3 if i==3 else '2') ) }}">{{ i }}</span>
+          <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
           <span class="rank-label">{{ r.forma }}</span>
           <span class="rank-value">{{ r.qtd }}</span>
         </li>
