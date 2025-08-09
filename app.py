@@ -36,6 +36,7 @@ class Entrega(db.Model):
     cliente = db.Column(db.String(100), nullable=False)
     bairro = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
+    # Guardamos em UTC "naive" (sem tzinfo) por consistência com datetime.utcnow()
     data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     data_atribuida = db.Column(db.DateTime, nullable=True)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
@@ -51,13 +52,36 @@ class ListaEspera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
 
-# ====== Função auxiliar ======
+# ====== Funções auxiliares ======
 def to_brasilia(dt):
+    """Converte um datetime salvo em UTC (naive) para America/Sao_Paulo para exibição."""
     if not dt:
         return None
     if dt.tzinfo is None:
+        # Foi salvo como UTC naive → anexa UTC
         dt = pytz.utc.localize(dt)
     return dt.astimezone(BRAZIL_TZ)
+
+def local_date_window_to_utc_range(local_date):
+    """
+    Recebe uma data (date) no fuso do Brasil e devolve (inicio_utc_naive, fim_utc_naive)
+    cobrindo aquele dia inteiro no Brasil, convertidos para UTC naive.
+    """
+    inicio_brasil = BRAZIL_TZ.localize(datetime.combine(local_date, time.min))
+    fim_brasil = BRAZIL_TZ.localize(datetime.combine(local_date, time.max))
+    inicio_utc = inicio_brasil.astimezone(pytz.utc).replace(tzinfo=None)
+    fim_utc = fim_brasil.astimezone(pytz.utc).replace(tzinfo=None)
+    return inicio_utc, fim_utc
+
+def parse_local_datetime_to_utc_naive(data_str):
+    """
+    Converte 'YYYY-MM-DDTHH:MM' (campo datetime-local sem tz) assumindo America/Sao_Paulo
+    para UTC (naive) a ser salvo no banco.
+    """
+    dt_local_naive = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
+    dt_local = BRAZIL_TZ.localize(dt_local_naive)
+    dt_utc = dt_local.astimezone(pytz.utc)
+    return dt_utc.replace(tzinfo=None)
 
 # ====== Filtro Jinja para dia da semana ======
 def diasemana(data):
@@ -131,19 +155,18 @@ def admin():
     # Filtrar pelo dia atual no fuso Brasil se não tem filtro manual
     if not data_inicio and not data_fim:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
-        inicio_brasil = BRAZIL_TZ.localize(datetime.combine(hoje_brasil, time.min))
-        fim_brasil = BRAZIL_TZ.localize(datetime.combine(hoje_brasil, time.max))
-        inicio_utc = inicio_brasil.astimezone(pytz.utc)
-        fim_utc = fim_brasil.astimezone(pytz.utc)
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
     if cooperado_id and cooperado_id != 'todos':
         query = query.filter(Entrega.cooperado_id == int(cooperado_id))
     if data_inicio:
-        data_inicio_br = BRAZIL_TZ.localize(datetime.strptime(data_inicio, "%Y-%m-%d"))
-        query = query.filter(Entrega.data_envio >= data_inicio_br.astimezone(pytz.utc))
+        data_inicio_br = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(data_inicio_br)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        data_fim_br = BRAZIL_TZ.localize(datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1))
-        query = query.filter(Entrega.data_envio <= data_fim_br.astimezone(pytz.utc))
+        data_fim_br = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(data_fim_br)
+        query = query.filter(Entrega.data_envio <= fim_utc)
     if status_pagamento and status_pagamento != 'todos':
         if status_pagamento == 'pago':
             query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
@@ -156,9 +179,16 @@ def admin():
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     hoje = datetime.now(BRAZIL_TZ).date()
     total_dia = Entrega.query.filter(
-        Entrega.data_envio >= BRAZIL_TZ.localize(datetime.combine(hoje, time.min)).astimezone(pytz.utc),
-        Entrega.data_envio <= BRAZIL_TZ.localize(datetime.combine(hoje, time.max)).astimezone(pytz.utc)
+        *local_date_window_to_utc_range(hoje)
+    ).count()  # não funciona assim diretamente; ajustar abaixo
+
+    # Ajuste do total_dia usando a mesma janela UTC
+    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
+    total_dia = Entrega.query.filter(
+        Entrega.data_envio >= inicio_dia_utc,
+        Entrega.data_envio <= fim_dia_utc
     ).count()
+
     total_mes = Entrega.query.filter(
         func.extract('month', Entrega.data_envio) == hoje.month,
         func.extract('year', Entrega.data_envio) == hoje.year
@@ -169,8 +199,8 @@ def admin():
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
     feriado_hoje = verifica_feriado(hoje)
     tem_pendente = Entrega.query.filter(
-        Entrega.data_envio >= BRAZIL_TZ.localize(datetime.combine(hoje, time.min)).astimezone(pytz.utc),
-        Entrega.data_envio <= BRAZIL_TZ.localize(datetime.combine(hoje, time.max)).astimezone(pytz.utc),
+        Entrega.data_envio >= inicio_dia_utc,
+        Entrega.data_envio <= fim_dia_utc,
         (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
     ).count() > 0
 
@@ -194,17 +224,16 @@ def painel_cooperado():
     # Sempre mostra só as entregas do dia Brasil (salvo se filtrar)
     if not inicio and not fim:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
-        inicio_brasil = BRAZIL_TZ.localize(datetime.combine(hoje_brasil, time.min))
-        fim_brasil = BRAZIL_TZ.localize(datetime.combine(hoje_brasil, time.max))
-        inicio_utc = inicio_brasil.astimezone(pytz.utc)
-        fim_utc = fim_brasil.astimezone(pytz.utc)
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
     if inicio:
-        data_inicio_br = BRAZIL_TZ.localize(datetime.strptime(inicio, "%Y-%m-%d"))
-        query = query.filter(Entrega.data_envio >= data_inicio_br.astimezone(pytz.utc))
+        data_inicio_br = datetime.strptime(inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(data_inicio_br)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
     if fim:
-        data_fim_br = BRAZIL_TZ.localize(datetime.strptime(fim, "%Y-%m-%d") + timedelta(days=1))
-        query = query.filter(Entrega.data_envio <= data_fim_br.astimezone(pytz.utc))
+        data_fim_br = datetime.strptime(fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(data_fim_br)
+        query = query.filter(Entrega.data_envio <= fim_utc)
     entregas = query.order_by(Entrega.data_envio.desc()).all()
     total_geral = sum(e.valor for e in entregas)
     total_pago = sum(e.valor for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago')
@@ -247,14 +276,14 @@ def cadastrar_entrega():
             cliente=cliente,
             bairro=bairro,
             valor=valor,
-            data_envio=datetime.utcnow(),
+            data_envio=datetime.utcnow(),  # UTC naive
             status_pagamento='Pendente',
             status='pendente',
             pagamento=pagamento
         )
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
-            entrega.data_atribuida = datetime.utcnow()
+            entrega.data_atribuida = datetime.utcnow()  # UTC naive
         db.session.add(entrega)
         db.session.commit()
         flash('Entrega cadastrada!')
@@ -270,19 +299,20 @@ def agendar_entrega():
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
-        data_str = request.form.get('data')
+        data_str = request.form.get('data')  # 'YYYY-MM-DDTHH:MM' sem TZ
         status_entrega = request.form.get('status_entrega')
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
         pagamento = request.form.get('pagamento')
 
-        data_envio = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
+        # >>> Correção de fuso: trata como hora local Brasil e salva como UTC naive
+        data_envio_utc_naive = parse_local_datetime_to_utc_naive(data_str)
 
         entrega = Entrega(
             cliente=cliente,
             bairro=bairro,
             valor=valor,
-            data_envio=data_envio,
+            data_envio=data_envio_utc_naive,
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=status_entrega,
             status_pagamento=status_pagamento,
@@ -313,7 +343,7 @@ def editar_entrega(id):
                 novo_coop_id = int(novo_coop_id)
                 if entrega.cooperado_id != novo_coop_id:
                     entrega.cooperado_id = novo_coop_id
-                    entrega.data_atribuida = datetime.utcnow()
+                    entrega.data_atribuida = datetime.utcnow()  # UTC naive
             else:
                 entrega.cooperado_id = None
             entrega.status_pagamento = request.form.get('status_pagamento')
@@ -368,12 +398,17 @@ def estatisticas_cooperado():
     query = Entrega.query
     if cooperado_id != 'todos':
         query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+    # >>> Correção: filtros por data respeitando dia Brasil convertido para UTC
     if data_inicio:
-        query = query.filter(Entrega.data_envio >= datetime.strptime(data_inicio, "%Y-%m-%d"))
+        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(di)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        query = query.filter(Entrega.data_envio <= datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1))
+        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df)
+        query = query.filter(Entrega.data_envio <= fim_utc)
 
-    entregas = query.all()
+    entregas = query.order_by(Entrega.data_envio.desc()).all()
     estatisticas = {
         "total": len(entregas),
         "pagas": len([e for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago']),
@@ -395,10 +430,17 @@ def exportar_xlsx():
     query = Entrega.query
     if cooperado_id != 'todos':
         query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+
+    # >>> Correção: aplicar mesma janela Brasil->UTC
     if data_inicio:
-        query = query.filter(Entrega.data_envio >= datetime.strptime(data_inicio, "%Y-%m-%d"))
+        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(di)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        query = query.filter(Entrega.data_envio <= datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1))
+        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df)
+        query = query.filter(Entrega.data_envio <= fim_utc)
+
     entregas = query.all()
     cooperados = {c.id: c.nome for c in Cooperado.query.all()}
 
@@ -427,7 +469,6 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-
 # ROTAS PARA FILA DE ESPERA (NOVO)
 
 @app.route('/lista_espera/add', methods=['POST'])
@@ -450,7 +491,6 @@ def lista_espera_remove(id):
     flash('Nome removido da lista de espera.')
     return redirect(url_for('admin'))
 
-
 def criar_bd():
     with app.app_context():
         db.create_all()
@@ -459,4 +499,3 @@ criar_bd()
 
 if __name__ == '__main__':
     app.run(debug=True)
-
