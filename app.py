@@ -51,9 +51,7 @@ class Entrega(db.Model):
 
 class ListaEspera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=False, unique=True)
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    pos = db.Column(db.Integer, nullable=True)
+    nome = db.Column(db.String(100), nullable=False)
 
 # ====== helpers datas ======
 def to_brasilia(dt):
@@ -112,31 +110,6 @@ def periodo_legivel_str(di_str, df_str):
         df = datetime.strptime(df_str, "%Y-%m-%d").strftime("%d/%m/%Y")
         return f"até {df}"
     return "todo o período"
-
-# ====== Helpers da FILA ======
-def fila_reordenar():
-    itens = ListaEspera.query.order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc()).all()
-    for i, it in enumerate(itens, start=1):
-        it.pos = i
-    db.session.commit()
-
-def fila_add_cooperado(cooperado_id: int):
-    if not cooperado_id:
-        return
-    if ListaEspera.query.filter_by(cooperado_id=cooperado_id).first():
-        return
-    ultimo = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
-    db.session.add(ListaEspera(cooperado_id=cooperado_id, pos=ultimo + 1))
-    db.session.commit()
-
-def fila_remove_por_cooperado(cooperado_id: int):
-    if not cooperado_id:
-        return
-    it = ListaEspera.query.filter_by(cooperado_id=cooperado_id).first()
-    if it:
-        db.session.delete(it)
-        db.session.commit()
-        fila_reordenar()
 
 # ====== ROTAS ======
 @app.route('/', methods=['GET', 'POST'])
@@ -231,29 +204,14 @@ def admin():
         (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
     ).count() > 0
 
-    # ===== FILA (JOIN para trazer o nome) =====
-    fila = (
-        db.session.query(
-            ListaEspera.id,
-            ListaEspera.cooperado_id,
-            ListaEspera.pos,
-            Cooperado.nome.label("nome"),
-        )
-        .join(Cooperado, Cooperado.id == ListaEspera.cooperado_id)
-        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
-        .all()
-    )
-    lista_espera = [{"id": r.id, "cooperado_id": r.cooperado_id, "pos": r.pos, "nome": r.nome} for r in fila]
-
-    ids_em_fila = {x["cooperado_id"] for x in lista_espera}
-    cooperados_para_incluir = [c for c in cooperados if c.id not in ids_em_fila]
+    lista_espera = ListaEspera.query.order_by(ListaEspera.id).all()
 
     return render_template('admin.html',
                            entregas=entregas, cooperados=cooperados,
                            estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim,
                            to_brasilia=to_brasilia, request=request, now=lambda: datetime.now(BRAZIL_TZ),
                            feriado_hoje=feriado_hoje, tem_pendente=tem_pendente,
-                           lista_espera=lista_espera, cooperados_para_incluir=cooperados_para_incluir)
+                           lista_espera=lista_espera)
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
@@ -264,9 +222,9 @@ def clonar_entrega(id):
         cliente=e.cliente,
         bairro=e.bairro,
         valor=e.valor,
-        data_envio=datetime.utcnow(),
-        data_atribuida=None,
-        cooperado_id=None,
+        data_envio=datetime.utcnow(),   # agora
+        data_atribuida=None,            # nao atribui
+        cooperado_id=None,              # nao clona cooperado
         status='pendente',
         status_pagamento='Pendente',
         pagamento=e.pagamento,
@@ -351,11 +309,6 @@ def cadastrar_entrega():
             entrega.data_atribuida = datetime.utcnow()
         db.session.add(entrega)
         db.session.commit()
-
-        # >>> remove da fila se estava aguardando
-        if cooperado_id:
-            fila_remove_por_cooperado(int(cooperado_id))
-
         flash('Entrega cadastrada!')
         return redirect(url_for('admin'))
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
@@ -387,10 +340,6 @@ def agendar_entrega():
         )
         db.session.add(entrega)
         db.session.commit()
-
-        if cooperado_id:
-            fila_remove_por_cooperado(int(cooperado_id))
-
         flash('Entrega agendada!')
         return redirect(url_for('admin'))
     return render_template('agendar_entrega.html', cooperados=cooperados)
@@ -424,11 +373,6 @@ def editar_entrega(id):
             entrega.pagamento = request.form.get('pagamento')
 
             db.session.commit()
-
-            # >>> remove da fila se atribuiu cooperado
-            if entrega.cooperado_id:
-                fila_remove_por_cooperado(entrega.cooperado_id)
-
             flash('Entrega atualizada!')
             return redirect(url_for('admin'))
         else:
@@ -506,6 +450,7 @@ def estatisticas_cooperado():
     total_valor = sum(e.valor for e in entregas)
     ticket_medio = (total_valor / total) if total > 0 else 0.0
 
+    # Dia com mais entregas (Brasil)
     cont_dias = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -516,6 +461,7 @@ def estatisticas_cooperado():
         d, qtd = cont_dias.most_common(1)[0]
         dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": f"{d.strftime('%d/%m/%Y')} ({qtd})"}
 
+    # Horários de pico (top1 + top3)
     cont_horas = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -524,9 +470,11 @@ def estatisticas_cooperado():
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
     horas_pico_top3 = [h for h, _ in cont_horas.most_common(3)] if cont_horas else []
 
+    # Forma de pagamento mais usada
     cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
     pgto_top = cont_pgto.most_common(1)[0][0] if cont_pgto else "-"
 
+    # Ranking cooperados
     mapa_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     total_geral_periodo = 0.0
     for e in entregas:
@@ -546,14 +494,18 @@ def estatisticas_cooperado():
         })
     ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
 
+    # Ranking bairros
     cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
 
+    # Ranking formas pgto
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
 
+    # Ranking clientes (NOVO)
     cont_clientes = Counter([e.cliente for e in entregas if e.cliente])
     ranking_clientes = [{"cliente": c, "qtd": q} for c, q in cont_clientes.most_common()]
 
+    # Gráficos
     dias_ordenados = sorted(list(cont_dias.keys()))
     chart_entregas_labels = [d.strftime("%d/%m") for d in dias_ordenados]
     chart_entregas_values = [cont_dias[d] for d in dias_ordenados]
@@ -564,9 +516,14 @@ def estatisticas_cooperado():
     periodo_legivel = periodo_legivel_str(data_inicio, data_fim)
 
     estatisticas = {
-        "total": total, "pagas": pagas, "pendentes": pendentes,
-        "total_valor": total_valor, "ticket_medio": ticket_medio,
-        "dia_top": dia_top, "hora_pico": hora_pico, "pgto_top": pgto_top
+        "total": total,
+        "pagas": pagas,
+        "pendentes": pendentes,
+        "total_valor": total_valor,
+        "ticket_medio": ticket_medio,
+        "dia_top": dia_top,
+        "hora_pico": hora_pico,
+        "pgto_top": pgto_top
     }
 
     return render_template(
@@ -581,8 +538,8 @@ def estatisticas_cooperado():
         ranking_cooperados=ranking_cooperados,
         ranking_bairros=ranking_bairros,
         ranking_pgto=ranking_pgto,
-        ranking_clientes=ranking_clientes,
-        horas_pico_top3=horas_pico_top3,
+        ranking_clientes=ranking_clientes,          # <-- NOVO
+        horas_pico_top3=horas_pico_top3,            # <-- NOVO
         chart_entregas_labels=chart_entregas_labels,
         chart_entregas_values=chart_entregas_values,
         chart_faturamento_labels=chart_faturamento_labels,
@@ -650,7 +607,7 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# ====== EXPORTAÇÃO resumo Cooperado × Valor ======
+# ====== EXPORTAÇÃO resumo Cooperado × Valor (título com período) ======
 @app.route('/estatisticas_cooperado_exportar_xlsx')
 def estatisticas_cooperado_exportar_xlsx():
     if not session.get('is_admin'):
@@ -738,42 +695,28 @@ def estatisticas_cooperado_exportar_xlsx():
     return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
 
 # ====== FILA DE ESPERA ======
-@app.post('/lista_espera/add')
+@app.route('/lista_espera/add', methods=['POST'])
 def lista_espera_add():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    cooperado_id = request.form.get('cooperado_id', type=int)
-    if not cooperado_id:
-        flash('Selecione um cooperado para adicionar à fila.')
+    nome = request.form.get('nome', '').strip()
+    if not nome:
+        flash('Nome para fila de espera é obrigatório.')
         return redirect(url_for('admin'))
-    fila_add_cooperado(cooperado_id)
-    flash('Cooperado adicionado à fila de espera.')
+    novo = ListaEspera(nome=nome)
+    db.session.add(novo)
+    db.session.commit()
+    flash('Nome adicionado à lista de espera.')
     return redirect(url_for('admin'))
 
-@app.post('/lista_espera/remove/<int:id>')
+@app.route('/lista_espera/remove/<int:id>', methods=['POST'])
 def lista_espera_remove(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
     item = ListaEspera.query.get_or_404(id)
     db.session.delete(item)
     db.session.commit()
-    fila_reordenar()
-    flash('Cooperado removido da fila de espera.')
-    return redirect(url_for('admin'))
-
-@app.post('/lista_espera/reordenar')
-def lista_espera_reordenar():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-    ordem = request.form.get('ordem', '')
-    ids = [int(x) for x in ordem.split(',') if x.strip().isdigit()]
-    pos = 1
-    for item_id in ids:
-        it = ListaEspera.query.get(item_id)
-        if it:
-            it.pos = pos
-            pos += 1
-    db.session.commit()
+    flash('Nome removido da lista de espera.')
     return redirect(url_for('admin'))
 
 def criar_bd():
