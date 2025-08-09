@@ -22,23 +22,41 @@
       --radius: 16px;
       --radius-sm: 11px;
     }
-    html, body { margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px; }
+    html, body {
+      margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif;
+      background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px;
+    }
     body.locked { overflow:hidden; }
 
-    header { background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
+    header {
+      background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow);
+      position:sticky; top:0; z-index:99;
+    }
     .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; }
-    h1 { font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.5px; text-shadow:0 2px 14px #0001; white-space:nowrap; }
-    .logo-topo { height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
+    h1 {
+      font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px;
+      letter-spacing:0.5px; text-shadow:0 2px 14px #0001; white-space:nowrap;
+    }
+    .logo-topo {
+      height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f;
+      padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff;
+    }
 
     .kpis { display:flex; gap:10px; flex-wrap:wrap; }
     .kpi { background:#ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
     .kpi span { display:block; font-weight:700; line-height:1.1; }
     .kpi small { display:block; font-size:12px; opacity:.9; }
 
-    .logout { color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap; }
+    .logout {
+      color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em;
+      text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap;
+    }
     .logout:hover { background:#a20f1a; }
 
-    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 2vw; overflow:hidden; }
+    .painel-bg-trocavel {
+      position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%);
+      border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 2vw; overflow:hidden;
+    }
     .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
 
     .painel-linha { display:grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap:14px; align-items:start; }
@@ -46,27 +64,51 @@
     .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.02em; }
 
     .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-    .espera-select, .espera-input { flex:1; min-width:230px; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; color:#003399; }
+    .espera-select, .espera-input {
+      flex:1; min-width:230px; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4;
+      font-size:1em; background:#f7faff; color:#003399;
+    }
     .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:8px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
 
     /* chips numerados e arrastáveis */
     #espera-lista { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px; }
-    .espera-chip { display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff; padding:8px 10px; border-radius:10px; cursor:grab; }
+    .espera-chip {
+      display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff;
+      padding:8px 10px; border-radius:10px; cursor:grab;
+    }
     .espera-chip:active { cursor:grabbing; }
-    .espera-chip-num { background:#ffd166; color:#222; font-weight:900; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .espera-chip-num {
+      background:#ffd166; color:#222; font-weight:900; width:26px; height:26px; border-radius:50%;
+      display:flex; align-items:center; justify-content:center;
+    }
     .espera-chip-text { font-weight:800; color:#003399; }
-    .espera-chip-remove { background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900; }
+    .espera-chip-remove {
+      background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900;
+    }
 
     .actions { margin:8px 0 8px; display:flex; flex-wrap:wrap; gap:10px; }
-    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); white-space:nowrap; }
+    .btn {
+      background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer;
+      font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); white-space:nowrap;
+    }
     .btn:hover { background:var(--azul-hover); }
 
-    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; gap:10px; align-items:center; border:1px solid #e6ebff; flex-wrap:wrap; }
+    .filtros {
+      margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm);
+      display:flex; gap:10px; align-items:center; border:1px solid #e6ebff; flex-wrap:wrap;
+    }
     .filtros label { font-size:13px; color:#003399; font-weight:800; }
-    .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
+    .filtros input, .filtros select {
+      font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600;
+    }
 
-    .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px; }
-    table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
+    .tabela {
+      overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow);
+      padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px;
+    }
+    table {
+      width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden;
+    }
     th, td { border:1px solid #3a3a3a; padding:9px 4px; text-align:center; vertical-align:middle; }
     th { background:linear-gradient(90deg,#003399 60%, #4f8cff 120%); color:#fff; font-size:1.03em; font-weight:700; }
     tr:hover td { background:#33415555; }
@@ -93,8 +135,8 @@
     <div class="header-grid">
       <h1>
         <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo"
-          onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')">
-        Kratos System -  Supervisão
+             onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')" />
+        Kratos System - Supervisão
       </h1>
       <div class="kpis">
         <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
@@ -117,18 +159,19 @@
   <div id="painel-bg" class="painel-bg-trocavel">
     <div class="painel-bg-conteudo">
       <div class="painel-linha">
-        <!-- LISTA DE ESPERA (puxa cooperados, numera, arrasta e salva ordem) -->
+        <!-- LISTA DE ESPERA (adiciona por select e permite arrastar) -->
         <div class="painel-lista">
           <h3>Lista de Espera</h3>
-          <form class="espera-bar" action="{{ url_for('lista_espera_add') }}" method="POST">
-            <select name="cooperado_id" class="espera-select" required>
+          <form class="espera-bar" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera">
+            {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
+            <select name="cooperado_id" id="cooperado-espera" class="espera-select" required>
               <option value="" selected disabled>Selecione um cooperado para colocar na fila…</option>
-              {% for c in cooperados_disponiveis %}
+              {% for c in coops_select %}
                 <option value="{{ c.id }}">{{ c.nome }}</option>
               {% endfor %}
             </select>
-            <!-- mantém compatibilidade se quiser digitar pelo nome -->
-            <input class="espera-input" name="nome" type="text" placeholder="(Opcional) digitar nome do cooperado">
+            <!-- Campo de nome mantido para compatibilidade com a rota /lista_espera/add que usa "nome" -->
+            <input class="espera-input" name="nome" id="nome-espera" type="text" placeholder="(Opcional) digitar nome do cooperado" />
             <button type="submit" class="espera-add">Adicionar</button>
           </form>
 
@@ -152,7 +195,7 @@
         <!-- Cooperados -->
         <div class="painel-lista">
           <h3>Cooperados</h3>
-          <input type="text" id="filtro-cooperado" placeholder="Filtrar..." class="espera-input">
+          <input type="text" id="filtro-cooperado" placeholder="Filtrar..." class="espera-input" />
           <ul id="lista-cooperados" style="list-style:none; padding:0; max-height:140px; overflow-y:auto; font-size:13px; margin:0;">
             {% for c in cooperados %}
               <li style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
@@ -195,15 +238,15 @@
           <select name="cooperado_id" id="cooperado">
             <option value="todos">Todos</option>
             {% for c in cooperados %}
-            <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+              <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
             {% endfor %}
           </select>
 
           <label for="data_inicio">De:</label>
-          <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}">
+          <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}"/>
 
           <label for="data_fim">Até:</label>
-          <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}">
+          <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}"/>
 
           <label for="status_pagamento">Pagamento:</label>
           <select name="status_pagamento" id="status_pagamento">
@@ -213,13 +256,13 @@
           </select>
 
           <label for="cliente">Cliente:</label>
-          <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" placeholder="Nome do cliente">
+          <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" placeholder="Nome do cliente"/>
 
           <button class="btn" type="submit">Filtrar</button>
 
           <!-- Exporta levando TODOS os filtros -->
           <a class="btn"
-            href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
+             href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
             Exportar para Excel
           </a>
         </form>
@@ -249,48 +292,54 @@
       </thead>
       <tbody>
         {% for e in entregas %}
-        <tr>
-          <td>{{ e.id }}</td>
-          <td>{{ e.cliente }}</td>
-          <td>{{ e.bairro }}</td>
-          <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-          <td>
-            {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
-            <span style="font-size:11px;color:#57a5ff;font-weight:bold;">
-              {{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}
-            </span>
-          </td>
-          <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-          <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-          <td>{% set coop_td = (e.cooperado.nome if e.cooperado else 'Sem Cooperado') %}{{ coop_td }}</td>
-          <td>{{ e.pagamento }}</td>
-          <td>
-            {% if e.status and e.status.lower() in ['recebido','entregue'] %}<span class="status-verde">{{ e.status|capitalize }}</span>
-            {% else %}<span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>{% endif %}
-          </td>
-          <td>
-            {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}<span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
-            {% else %}<span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>{% endif %}
-          </td>
-          <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
-          <td style="min-width:90px; display:flex; gap:6px; justify-content:center; align-items:center;">
-            <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
-              <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
-            </a>
+          <tr>
+            <td>{{ e.id }}</td>
+            <td>{{ e.cliente }}</td>
+            <td>{{ e.bairro }}</td>
+            <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+            <td>
+              {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
+              <span style="font-size:11px;color:#57a5ff;font-weight:bold;">
+                {{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}
+              </span>
+            </td>
+            <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+            <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+            <td>{% set coop_td = (e.cooperado.nome if e.cooperado else 'Sem Cooperado') %}{{ coop_td }}</td>
+            <td>{{ e.pagamento }}</td>
+            <td>
+              {% if e.status and e.status.lower() in ['recebido','entregue'] %}
+                <span class="status-verde">{{ e.status|capitalize }}</span>
+              {% else %}
+                <span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>
+              {% endif %}
+            </td>
+            <td>
+              {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}
+                <span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
+              {% else %}
+                <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
+              {% endif %}
+            </td>
+            <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
+            <td style="min-width:90px; display:flex; gap:6px; justify-content:center; align-items:center;">
+              <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
+                <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
+              </a>
 
-            <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
-              <button title="Clonar" type="submit" style="border:none;background:none;cursor:pointer">
-                <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
-              </button>
-            </form>
+              <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
+                <button title="Clonar" type="submit" style="border:none;background:none;cursor:pointer">
+                  <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                </button>
+              </form>
 
-            <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-              <button title="Excluir" type="submit" style="border:none;background:none;cursor:pointer">
-                <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
-              </button>
-            </form>
-          </td>
-        </tr>
+              <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+                <button title="Excluir" type="submit" style="border:none;background:none;cursor:pointer">
+                  <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
+                </button>
+              </form>
+            </td>
+          </tr>
         {% endfor %}
       </tbody>
     </table>
@@ -322,14 +371,37 @@
       _modalResolve = null;
     });
 
+    // Preenche automaticamente o "nome" com o texto do cooperado selecionado (mantém compatibilidade com backend atual)
+    const selCoop = document.getElementById('cooperado-espera');
+    const inpNome = document.getElementById('nome-espera');
+    const formEspera = document.getElementById('form-espera');
+
+    if (selCoop) {
+      selCoop.addEventListener('change', () => {
+        const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
+        if (!inpNome.value) inpNome.value = nome;
+      });
+    }
+    if (formEspera) {
+      formEspera.addEventListener('submit', () => {
+        if (!inpNome.value) {
+          const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
+          inpNome.value = nome; // garante que sempre envia um nome
+        }
+      });
+    }
+
     // Filtro cooperados
-    document.getElementById('filtro-cooperado').addEventListener('input', function() {
-      var filtro = this.value.toLowerCase();
-      var lista = document.getElementById('lista-cooperados').children;
-      for (let item of lista) {
-        item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
-      }
-    });
+    const filtroCoop = document.getElementById('filtro-cooperado');
+    if (filtroCoop) {
+      filtroCoop.addEventListener('input', function() {
+        const filtro = this.value.toLowerCase();
+        const lista = document.getElementById('lista-cooperados').children;
+        for (let item of lista) {
+          item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
+        }
+      });
+    }
 
     // Drag & drop da fila
     const ulFila = document.getElementById('espera-lista');
@@ -339,38 +411,41 @@
       [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1);
     }
 
-    ulFila.addEventListener('dragstart', (e) => {
-      const li = e.target.closest('.espera-chip');
-      if (!li) return;
-      dragEl = li;
-      li.style.opacity = .6;
-    });
+    if (ulFila) {
+      ulFila.addEventListener('dragstart', (e) => {
+        const li = e.target.closest('.espera-chip');
+        if (!li) return;
+        dragEl = li;
+        li.style.opacity = .6;
+      });
 
-    ulFila.addEventListener('dragend', (e) => {
-      const li = e.target.closest('.espera-chip');
-      if (!li) return;
-      li.style.opacity = 1;
-      dragEl = null;
-      salvarOrdem();
-    });
+      ulFila.addEventListener('dragend', (e) => {
+        const li = e.target.closest('.espera-chip');
+        if (!li) return;
+        li.style.opacity = 1;
+        dragEl = null;
+        salvarOrdem();
+      });
 
-    ulFila.addEventListener('dragover', (e) => {
-      e.preventDefault();
-      const li = e.target.closest('.espera-chip');
-      if (!li || li === dragEl) return;
-      const bbox = li.getBoundingClientRect();
-      const after = (e.clientY - bbox.top) > (bbox.height / 2);
-      if (after) li.after(dragEl); else li.before(dragEl);
-      renumerar();
-    });
+      ulFila.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const li = e.target.closest('.espera-chip');
+        if (!li || li === dragEl) return;
+        const bbox = li.getBoundingClientRect();
+        const after = (e.clientY - bbox.top) > (bbox.height / 2);
+        if (after) li.after(dragEl); else li.before(dragEl);
+        renumerar();
+      });
+    }
 
+    // Envia ordem nova para o backend (se a rota existir). Se não existir, apenas ignora.
     function salvarOrdem() {
       const ids = [...ulFila.querySelectorAll('.espera-chip')].map(li => li.dataset.id);
-      fetch('{{ url_for("lista_espera_reordenar") }}', {
+      fetch('/lista_espera/reordenar', {
         method: 'POST',
         headers: {'Content-Type': 'application/json'},
         body: JSON.stringify({ordem: ids})
-      }).catch(()=>{});
+      }).catch(()=>{ /* rota opcional; se não existir, só não persiste */ });
     }
 
     // Avisos (mantidos)
