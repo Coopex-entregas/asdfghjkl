@@ -1,5 +1,5 @@
 import os
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -38,25 +38,23 @@ class Entrega(db.Model):
     cliente = db.Column(db.String(100), nullable=False)
     bairro = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
-    # Armazenamos em UTC "naive" (sem tzinfo) por consistência com datetime.utcnow()
+    # guardado em UTC naive
     data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     data_atribuida = db.Column(db.DateTime, nullable=True)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago" ou "Pendente"
+    status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago"/"Pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
-    pagamento = db.Column(db.String(50), nullable=False)        # Forma de pagamento obrigatória
-    recebido_por = db.Column(db.String(100), nullable=True)     # Usado no editar por cooperado
+    pagamento = db.Column(db.String(50), nullable=False)        # forma de pagamento
+    recebido_por = db.Column(db.String(100), nullable=True)
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
-# ====== NOVO MODEL PARA FILA DE ESPERA ======
 class ListaEspera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
 
-# ====== Funções auxiliares de data/hora ======
+# ====== helpers datas ======
 def to_brasilia(dt):
-    """Converte um datetime salvo como UTC naive para America/Sao_Paulo para exibição."""
     if not dt:
         return None
     if dt.tzinfo is None:
@@ -64,7 +62,6 @@ def to_brasilia(dt):
     return dt.astimezone(BRAZIL_TZ)
 
 def local_date_window_to_utc_range(local_date: date):
-    """Para uma data no fuso Brasil, devolve (inicio_utc_naive, fim_utc_naive) em UTC naive."""
     inicio_brasil = BRAZIL_TZ.localize(datetime.combine(local_date, time.min))
     fim_brasil = BRAZIL_TZ.localize(datetime.combine(local_date, time.max))
     inicio_utc = inicio_brasil.astimezone(pytz.utc).replace(tzinfo=None)
@@ -72,49 +69,36 @@ def local_date_window_to_utc_range(local_date: date):
     return inicio_utc, fim_utc
 
 def parse_local_datetime_to_utc_naive(data_str: str):
-    """Converte 'YYYY-MM-DDTHH:MM' (datetime-local) assumindo Brasil para UTC naive."""
     dt_local_naive = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
     dt_local = BRAZIL_TZ.localize(dt_local_naive)
     dt_utc = dt_local.astimezone(pytz.utc)
     return dt_utc.replace(tzinfo=None)
 
-# ====== Filtro Jinja para dia da semana ======
 def diasemana(data):
     dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
     return dias[data.weekday()]
 
 app.jinja_env.filters['diasemana'] = diasemana
 
-# ====== Feriados (Nacional + RN + Municipal Natal) ======
-MUNICIPAIS_NATAL = {
-    # 21/11 – Padroeira de Natal
-    (11, 21): "Nossa Senhora da Apresentação (Municipal - Natal/RN)",
-}
+# ====== feriados (Nacional + RN + Natal) ======
+MUNICIPAIS_NATAL = {(11, 21): "Nossa Senhora da Apresentação (Municipal - Natal/RN)"}
 
 def verifica_feriado(data_ref=None):
-    """Retorna string com nomes de feriados aplicáveis para Natal/RN, ou None se não houver."""
     if data_ref is None:
         data_ref = datetime.now(BRAZIL_TZ).date()
-
-    feriados_nac = holidays.Brazil(years=data_ref.year)                     # Nacional
-    feriados_est = holidays.Brazil(state='RN', years=data_ref.year)         # Estadual RN
-
+    feriados_nac = holidays.Brazil(years=data_ref.year)
+    feriados_est = holidays.Brazil(state='RN', years=data_ref.year)
     nomes = []
-
     if data_ref in feriados_nac:
         nomes.append(f"Feriado Nacional – {feriados_nac.get(data_ref)}")
-
     if data_ref in feriados_est and feriados_est.get(data_ref) != feriados_nac.get(data_ref):
         nomes.append(f"Feriado Estadual (RN) – {feriados_est.get(data_ref)}")
-
     key = (data_ref.month, data_ref.day)
     if key in MUNICIPAIS_NATAL:
         nomes.append(f"Feriado Municipal (Natal/RN) – {MUNICIPAIS_NATAL[key]}")
-
     return " | ".join(nomes) if nomes else None
 
 def periodo_legivel_str(di_str, df_str):
-    """Formata o período para título/cabeçalho."""
     if di_str and df_str:
         di = datetime.strptime(di_str, "%Y-%m-%d").strftime("%d/%m/%Y")
         df = datetime.strptime(df_str, "%Y-%m-%d").strftime("%d/%m/%Y")
@@ -128,7 +112,6 @@ def periodo_legivel_str(di_str, df_str):
     return "todo o período"
 
 # ====== ROTAS ======
-
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -172,17 +155,14 @@ def admin():
 
     query = Entrega.query
 
-    # Filtro por dia atual (Brasil) se não há filtros de data
     if not data_inicio and not data_fim:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
-    # Cooperado
     if cooperado_id and cooperado_id != 'todos':
         query = query.filter(Entrega.cooperado_id == int(cooperado_id))
 
-    # Datas (Brasil → UTC naive)
     if data_inicio:
         di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
         inicio_utc, _ = local_date_window_to_utc_range(di)
@@ -192,14 +172,12 @@ def admin():
         _, fim_utc = local_date_window_to_utc_range(df)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
-    # Status pagamento
     if status_pagamento and status_pagamento != 'todos':
         if status_pagamento == 'pago':
             query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
         elif status_pagamento == 'pendente':
             query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
 
-    # Cliente (parcial, case-insensitive)
     if cliente:
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
@@ -211,20 +189,12 @@ def admin():
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
-    # Estatísticas do dia Brasil
     hoje = datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    total_dia = Entrega.query.filter(
-        Entrega.data_envio >= inicio_dia_utc,
-        Entrega.data_envio <= fim_dia_utc
-    ).count()
-    total_mes = Entrega.query.filter(
-        func.extract('month', Entrega.data_envio) == hoje.month,
-        func.extract('year', Entrega.data_envio) == hoje.year
-    ).count()
-    total_ano = Entrega.query.filter(
-        func.extract('year', Entrega.data_envio) == hoje.year
-    ).count()
+    total_dia = Entrega.query.filter(Entrega.data_envio >= inicio_dia_utc, Entrega.data_envio <= fim_dia_utc).count()
+    total_mes = Entrega.query.filter(func.extract('month', Entrega.data_envio) == hoje.month,
+                                     func.extract('year', Entrega.data_envio) == hoje.year).count()
+    total_ano = Entrega.query.filter(func.extract('year', Entrega.data_envio) == hoje.year).count()
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
     feriado_hoje = verifica_feriado(hoje)
@@ -234,14 +204,36 @@ def admin():
         (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
     ).count() > 0
 
-    # Lista de espera
     lista_espera = ListaEspera.query.order_by(ListaEspera.id).all()
 
-    return render_template('admin.html', entregas=entregas, cooperados=cooperados,
+    return render_template('admin.html',
+                           entregas=entregas, cooperados=cooperados,
                            estatisticas=estatisticas, data_inicio=data_inicio, data_fim=data_fim,
                            to_brasilia=to_brasilia, request=request, now=lambda: datetime.now(BRAZIL_TZ),
                            feriado_hoje=feriado_hoje, tem_pendente=tem_pendente,
                            lista_espera=lista_espera)
+
+@app.route('/clonar_entrega/<int:id>', methods=['POST'])
+def clonar_entrega(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    e = Entrega.query.get_or_404(id)
+    nova = Entrega(
+        cliente=e.cliente,
+        bairro=e.bairro,
+        valor=e.valor,
+        data_envio=datetime.utcnow(),   # agora
+        data_atribuida=None,            # nao atribui
+        cooperado_id=None,              # nao clona cooperado
+        status='pendente',
+        status_pagamento='Pendente',
+        pagamento=e.pagamento,
+        recebido_por=None
+    )
+    db.session.add(nova)
+    db.session.commit()
+    flash(f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.')
+    return redirect(url_for('admin'))
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
@@ -252,7 +244,6 @@ def painel_cooperado():
     fim = request.args.get('fim')
     query = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
-    # Sempre mostra o dia Brasil (salvo filtros)
     if not inicio and not fim:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
@@ -308,14 +299,14 @@ def cadastrar_entrega():
             cliente=cliente,
             bairro=bairro,
             valor=valor,
-            data_envio=datetime.utcnow(),  # UTC naive
+            data_envio=datetime.utcnow(),
             status_pagamento='Pendente',
             status='pendente',
             pagamento=pagamento
         )
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
-            entrega.data_atribuida = datetime.utcnow()  # UTC naive
+            entrega.data_atribuida = datetime.utcnow()
         db.session.add(entrega)
         db.session.commit()
         flash('Entrega cadastrada!')
@@ -337,13 +328,10 @@ def agendar_entrega():
         cooperado_id = request.form.get('cooperado_id')
         pagamento = request.form.get('pagamento')
 
-        # Converte hora local Brasil do input para UTC naive
         data_envio = parse_local_datetime_to_utc_naive(data_str)
 
         entrega = Entrega(
-            cliente=cliente,
-            bairro=bairro,
-            valor=valor,
+            cliente=cliente, bairro=bairro, valor=valor,
             data_envio=data_envio,
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=status_entrega,
@@ -375,14 +363,13 @@ def editar_entrega(id):
                 novo_coop_id = int(novo_coop_id)
                 if entrega.cooperado_id != novo_coop_id:
                     entrega.cooperado_id = novo_coop_id
-                    entrega.data_atribuida = datetime.utcnow()  # UTC naive
+                    entrega.data_atribuida = datetime.utcnow()
             else:
                 entrega.cooperado_id = None
 
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
             entrega.recebido_por = request.form.get('recebido_por')
-            # >>> Atualiza a forma de pagamento
             entrega.pagamento = request.form.get('pagamento')
 
             db.session.commit()
@@ -392,8 +379,6 @@ def editar_entrega(id):
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status') or entrega.status
             entrega.recebido_por = request.form.get('recebido_por')
-            # Se quiser permitir que o cooperado altere a forma de pagamento, descomente:
-            # entrega.pagamento = request.form.get('pagamento') or entrega.pagamento
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect(url_for('painel_cooperado'))
@@ -424,7 +409,7 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect(url_for('admin'))
 
-# ====== ESTATÍSTICAS (AGORA COMPLETAS – GRÁFICOS/RANKINGS) ======
+# ====== ESTATÍSTICAS ======
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if not session.get('is_admin'):
@@ -459,36 +444,31 @@ def estatisticas_cooperado():
 
     entregas = query.order_by(Entrega.data_envio.asc()).all()
 
-    # KPIs básicos
     total = len(entregas)
     pagas = len([e for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago'])
     pendentes = total - pagas
     total_valor = sum(e.valor for e in entregas)
-
-    # Ticket médio
     ticket_medio = (total_valor / total) if total > 0 else 0.0
 
-    # Dia com mais entregas (em data local Brasil)
+    # Dia com mais entregas (Brasil)
     cont_dias = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         if dt_local:
             cont_dias[dt_local.date()] += 1
-    dia_top = None
+    dia_top = {"data": None, "qtd": 0, "nome": "-"}
     if cont_dias:
         d, qtd = cont_dias.most_common(1)[0]
-        nome = f"{d.strftime('%d/%m/%Y')} ({qtd})"
-        dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": nome}
-    else:
-        dia_top = {"data": None, "qtd": 0, "nome": "-"}
+        dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": f"{d.strftime('%d/%m/%Y')} ({qtd})"}
 
-    # Horário de pico (hora)
+    # Horários de pico (top1 + top3)
     cont_horas = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         if dt_local:
             cont_horas[dt_local.strftime('%H:00')] += 1
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
+    horas_pico_top3 = [h for h, _ in cont_horas.most_common(3)] if cont_horas else []
 
     # Forma de pagamento mais usada
     cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
@@ -514,25 +494,25 @@ def estatisticas_cooperado():
         })
     ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
 
-    # Ranking bairros (por quantidade)
+    # Ranking bairros
     cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
 
-    # Ranking formas pgto (por quantidade)
+    # Ranking formas pgto
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
 
-    # Séries para gráficos
-    # Entregas por dia
-    # Ordena por data local
+    # Ranking clientes (NOVO)
+    cont_clientes = Counter([e.cliente for e in entregas if e.cliente])
+    ranking_clientes = [{"cliente": c, "qtd": q} for c, q in cont_clientes.most_common()]
+
+    # Gráficos
     dias_ordenados = sorted(list(cont_dias.keys()))
     chart_entregas_labels = [d.strftime("%d/%m") for d in dias_ordenados]
     chart_entregas_values = [cont_dias[d] for d in dias_ordenados]
 
-    # Faturamento por cooperado (usa ranking_cooperados)
     chart_faturamento_labels = [r["nome"] for r in ranking_cooperados]
     chart_faturamento_values = [r["total_valor"] for r in ranking_cooperados]
 
-    # Período legível para títulos/export
     periodo_legivel = periodo_legivel_str(data_inicio, data_fim)
 
     estatisticas = {
@@ -558,6 +538,8 @@ def estatisticas_cooperado():
         ranking_cooperados=ranking_cooperados,
         ranking_bairros=ranking_bairros,
         ranking_pgto=ranking_pgto,
+        ranking_clientes=ranking_clientes,          # <-- NOVO
+        horas_pico_top3=horas_pico_top3,            # <-- NOVO
         chart_entregas_labels=chart_entregas_labels,
         chart_entregas_values=chart_entregas_values,
         chart_faturamento_labels=chart_faturamento_labels,
@@ -565,7 +547,7 @@ def estatisticas_cooperado():
         periodo_legivel=periodo_legivel
     )
 
-# ====== EXPORTAÇÃO (uma única aba + Cooperado + demais dados detalhados) ======
+# ====== EXPORTAÇÃO detalhada ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -596,7 +578,6 @@ def exportar_xlsx():
 
     entregas = query.order_by(Entrega.data_envio.asc()).all()
 
-    # Uma ÚNICA aba com Cooperado + dados detalhados
     rows = []
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -626,7 +607,7 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# ====== EXPORTAÇÃO RESUMO COOPERADO × VALOR (título com período) ======
+# ====== EXPORTAÇÃO resumo Cooperado × Valor (título com período) ======
 @app.route('/estatisticas_cooperado_exportar_xlsx')
 def estatisticas_cooperado_exportar_xlsx():
     if not session.get('is_admin'):
@@ -660,7 +641,6 @@ def estatisticas_cooperado_exportar_xlsx():
 
     entregas = query.all()
 
-    # agrega por cooperado
     soma_por_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     total_geral = 0.0
     for e in entregas:
@@ -678,7 +658,6 @@ def estatisticas_cooperado_exportar_xlsx():
             "Valor Total (R$)": round(d["total"], 2),
             "% do Total": round(percent, 1)
         })
-    # Ordena por valor
     linhas.sort(key=lambda r: r["Valor Total (R$)"], reverse=True)
 
     df = pd.DataFrame(linhas)
@@ -688,27 +667,22 @@ def estatisticas_cooperado_exportar_xlsx():
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Resumo'
-        # Reservar linha 1 para o título
         start_row = 1
         df.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
         ws = writer.sheets[sheet]
 
-        # Título mesclado sobre as colunas do df
         last_col = len(df.columns) - 1
         ws.merge_range(0, 0, 0, last_col, titulo, writer.book.add_format({
             'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
             'font_color': '#003399'
         }))
 
-        # Larguras amigáveis
         widths = [28, 14, 18, 12]
         for i, w in enumerate(widths[:len(df.columns)]):
             ws.set_column(i, i, w)
 
-        # Formatação numérica
         money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
         pct_fmt = writer.book.add_format({'num_format': '0.0"%"'})
-        # Localiza colunas por nome
         cols = list(df.columns)
         if "Valor Total (R$)" in cols:
             idx = cols.index("Valor Total (R$)")
@@ -723,11 +697,13 @@ def estatisticas_cooperado_exportar_xlsx():
 # ====== FILA DE ESPERA ======
 @app.route('/lista_espera/add', methods=['POST'])
 def lista_espera_add():
-    nome = request.form.get('nome')
-    if not nome or nome.strip() == '':
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    nome = request.form.get('nome', '').strip()
+    if not nome:
         flash('Nome para fila de espera é obrigatório.')
         return redirect(url_for('admin'))
-    novo = ListaEspera(nome=nome.strip())
+    novo = ListaEspera(nome=nome)
     db.session.add(novo)
     db.session.commit()
     flash('Nome adicionado à lista de espera.')
@@ -735,6 +711,8 @@ def lista_espera_add():
 
 @app.route('/lista_espera/remove/<int:id>', methods=['POST'])
 def lista_espera_remove(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
     item = ListaEspera.query.get_or_404(id)
     db.session.delete(item)
     db.session.commit()
