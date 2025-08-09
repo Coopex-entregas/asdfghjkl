@@ -8,6 +8,7 @@ import pandas as pd
 import io
 import holidays
 import pytz
+from collections import Counter, defaultdict
 
 # ====== Configuração ======
 app = Flask(__name__)
@@ -85,7 +86,6 @@ def diasemana(data):
 app.jinja_env.filters['diasemana'] = diasemana
 
 # ====== Feriados (Nacional + RN + Municipal Natal) ======
-# Você pode acrescentar mais feriados municipais aqui:
 MUNICIPAIS_NATAL = {
     # 21/11 – Padroeira de Natal
     (11, 21): "Nossa Senhora da Apresentação (Municipal - Natal/RN)",
@@ -104,16 +104,28 @@ def verifica_feriado(data_ref=None):
     if data_ref in feriados_nac:
         nomes.append(f"Feriado Nacional – {feriados_nac.get(data_ref)}")
 
-    # Evitar duplicar se o nome estadual coincidir com o nacional
     if data_ref in feriados_est and feriados_est.get(data_ref) != feriados_nac.get(data_ref):
         nomes.append(f"Feriado Estadual (RN) – {feriados_est.get(data_ref)}")
 
-    # Municipais configuráveis (Natal/RN)
     key = (data_ref.month, data_ref.day)
     if key in MUNICIPAIS_NATAL:
         nomes.append(f"Feriado Municipal (Natal/RN) – {MUNICIPAIS_NATAL[key]}")
 
     return " | ".join(nomes) if nomes else None
+
+def periodo_legivel_str(di_str, df_str):
+    """Formata o período para título/cabeçalho."""
+    if di_str and df_str:
+        di = datetime.strptime(di_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+        df = datetime.strptime(df_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+        return f"{di} a {df}"
+    if di_str:
+        di = datetime.strptime(di_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+        return f"desde {di}"
+    if df_str:
+        df = datetime.strptime(df_str, "%Y-%m-%d").strftime("%d/%m/%Y")
+        return f"até {df}"
+    return "todo o período"
 
 # ====== ROTAS ======
 
@@ -370,7 +382,7 @@ def editar_entrega(id):
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status')
             entrega.recebido_por = request.form.get('recebido_por')
-            # >>> Atualiza a forma de pagamento (faltava)
+            # >>> Atualiza a forma de pagamento
             entrega.pagamento = request.form.get('pagamento')
 
             db.session.commit()
@@ -412,14 +424,17 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect(url_for('admin'))
 
+# ====== ESTATÍSTICAS (AGORA COMPLETAS – GRÁFICOS/RANKINGS) ======
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     cooperado_id = request.args.get('cooperado_id', 'todos')
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
+    status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
 
     query = Entrega.query
@@ -433,22 +448,124 @@ def estatisticas_cooperado():
         df = datetime.strptime(data_fim, "%Y-%m-%d").date()
         _, fim_utc = local_date_window_to_utc_range(df)
         query = query.filter(Entrega.data_envio <= fim_utc)
+    if status_pagamento and status_pagamento != 'todos':
+        if status_pagamento == 'pago':
+            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+        elif status_pagamento == 'pendente':
+            query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
     if cliente:
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    entregas = query.order_by(Entrega.data_envio.desc()).all()
-    estatisticas = {
-        "total": len(entregas),
-        "pagas": len([e for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago']),
-        "pendentes": len([e for e in entregas if not e.status_pagamento or e.status_pagamento.lower() != 'pago']),
-        "total_valor": sum(e.valor for e in entregas)
-    }
-    return render_template('estatisticas_cooperado.html', cooperados=cooperados,
-                           cooperado_id=cooperado_id, data_inicio=data_inicio, data_fim=data_fim,
-                           estatisticas=estatisticas)
+    entregas = query.order_by(Entrega.data_envio.asc()).all()
 
-# ====== EXPORTAÇÃO (uma única aba + coluna "Cooperado" + filtro cliente) ======
+    # KPIs básicos
+    total = len(entregas)
+    pagas = len([e for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago'])
+    pendentes = total - pagas
+    total_valor = sum(e.valor for e in entregas)
+
+    # Ticket médio
+    ticket_medio = (total_valor / total) if total > 0 else 0.0
+
+    # Dia com mais entregas (em data local Brasil)
+    cont_dias = Counter()
+    for e in entregas:
+        dt_local = to_brasilia(e.data_envio)
+        if dt_local:
+            cont_dias[dt_local.date()] += 1
+    dia_top = None
+    if cont_dias:
+        d, qtd = cont_dias.most_common(1)[0]
+        nome = f"{d.strftime('%d/%m/%Y')} ({qtd})"
+        dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": nome}
+    else:
+        dia_top = {"data": None, "qtd": 0, "nome": "-"}
+
+    # Horário de pico (hora)
+    cont_horas = Counter()
+    for e in entregas:
+        dt_local = to_brasilia(e.data_envio)
+        if dt_local:
+            cont_horas[dt_local.strftime('%H:00')] += 1
+    hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
+
+    # Forma de pagamento mais usada
+    cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
+    pgto_top = cont_pgto.most_common(1)[0][0] if cont_pgto else "-"
+
+    # Ranking cooperados
+    mapa_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
+    total_geral_periodo = 0.0
+    for e in entregas:
+        nm = e.cooperado.nome if e.cooperado else "Sem Cooperado"
+        mapa_coop[nm]["qtd"] += 1
+        mapa_coop[nm]["total"] += float(e.valor or 0)
+        total_geral_periodo += float(e.valor or 0)
+
+    ranking_cooperados = []
+    for nome, dct in mapa_coop.items():
+        percent = (dct["total"] / total_geral_periodo * 100.0) if total_geral_periodo > 0 else 0.0
+        ranking_cooperados.append({
+            "nome": nome,
+            "qtd": dct["qtd"],
+            "total_valor": round(dct["total"], 2),
+            "percent": percent
+        })
+    ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
+
+    # Ranking bairros (por quantidade)
+    cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
+    ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
+
+    # Ranking formas pgto (por quantidade)
+    ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
+
+    # Séries para gráficos
+    # Entregas por dia
+    # Ordena por data local
+    dias_ordenados = sorted(list(cont_dias.keys()))
+    chart_entregas_labels = [d.strftime("%d/%m") for d in dias_ordenados]
+    chart_entregas_values = [cont_dias[d] for d in dias_ordenados]
+
+    # Faturamento por cooperado (usa ranking_cooperados)
+    chart_faturamento_labels = [r["nome"] for r in ranking_cooperados]
+    chart_faturamento_values = [r["total_valor"] for r in ranking_cooperados]
+
+    # Período legível para títulos/export
+    periodo_legivel = periodo_legivel_str(data_inicio, data_fim)
+
+    estatisticas = {
+        "total": total,
+        "pagas": pagas,
+        "pendentes": pendentes,
+        "total_valor": total_valor,
+        "ticket_medio": ticket_medio,
+        "dia_top": dia_top,
+        "hora_pico": hora_pico,
+        "pgto_top": pgto_top
+    }
+
+    return render_template(
+        'estatisticas_cooperado.html',
+        cooperados=cooperados,
+        cooperado_id=cooperado_id,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        status_pagamento=status_pagamento,
+        cliente=cliente,
+        estatisticas=estatisticas,
+        ranking_cooperados=ranking_cooperados,
+        ranking_bairros=ranking_bairros,
+        ranking_pgto=ranking_pgto,
+        chart_entregas_labels=chart_entregas_labels,
+        chart_entregas_values=chart_entregas_values,
+        chart_faturamento_labels=chart_faturamento_labels,
+        chart_faturamento_values=chart_faturamento_values,
+        periodo_legivel=periodo_legivel
+    )
+
+# ====== EXPORTAÇÃO (uma única aba + Cooperado + demais dados detalhados) ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -479,7 +596,7 @@ def exportar_xlsx():
 
     entregas = query.order_by(Entrega.data_envio.asc()).all()
 
-    # Uma ÚNICA aba com Cooperado
+    # Uma ÚNICA aba com Cooperado + dados detalhados
     rows = []
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -502,14 +619,106 @@ def exportar_xlsx():
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Entregas'
         df.to_excel(writer, index=False, sheet_name=sheet)
-        # Ajuste de largura para legibilidade
         ws = writer.sheets[sheet]
         col_widths = [10, 6, 28, 18, 10, 18, 16, 16, 22, 18]
         for i, w in enumerate(col_widths[:len(df.columns)]):
             ws.set_column(i, i, w)
-
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
+
+# ====== EXPORTAÇÃO RESUMO COOPERADO × VALOR (título com período) ======
+@app.route('/estatisticas_cooperado_exportar_xlsx')
+def estatisticas_cooperado_exportar_xlsx():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    status_pagamento = request.args.get('status_pagamento', 'todos')
+    cliente = (request.args.get('cliente') or '').strip()
+
+    query = Entrega.query
+    if cooperado_id != 'todos':
+        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+    if data_inicio:
+        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(di)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
+    if data_fim:
+        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df)
+        query = query.filter(Entrega.data_envio <= fim_utc)
+    if status_pagamento and status_pagamento != 'todos':
+        if status_pagamento == 'pago':
+            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+        elif status_pagamento == 'pendente':
+            query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
+    if cliente:
+        like = f"%{cliente.lower()}%"
+        query = query.filter(func.lower(Entrega.cliente).like(like))
+
+    entregas = query.all()
+
+    # agrega por cooperado
+    soma_por_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
+    total_geral = 0.0
+    for e in entregas:
+        nm = e.cooperado.nome if e.cooperado else "Sem Cooperado"
+        soma_por_coop[nm]["qtd"] += 1
+        soma_por_coop[nm]["total"] += float(e.valor or 0)
+        total_geral += float(e.valor or 0)
+
+    linhas = []
+    for nome, d in soma_por_coop.items():
+        percent = (d["total"] / total_geral * 100.0) if total_geral > 0 else 0.0
+        linhas.append({
+            "Cooperado": nome,
+            "Qtd Entregas": d["qtd"],
+            "Valor Total (R$)": round(d["total"], 2),
+            "% do Total": round(percent, 1)
+        })
+    # Ordena por valor
+    linhas.sort(key=lambda r: r["Valor Total (R$)"], reverse=True)
+
+    df = pd.DataFrame(linhas)
+
+    titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Resumo'
+        # Reservar linha 1 para o título
+        start_row = 1
+        df.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
+        ws = writer.sheets[sheet]
+
+        # Título mesclado sobre as colunas do df
+        last_col = len(df.columns) - 1
+        ws.merge_range(0, 0, 0, last_col, titulo, writer.book.add_format({
+            'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
+            'font_color': '#003399'
+        }))
+
+        # Larguras amigáveis
+        widths = [28, 14, 18, 12]
+        for i, w in enumerate(widths[:len(df.columns)]):
+            ws.set_column(i, i, w)
+
+        # Formatação numérica
+        money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
+        pct_fmt = writer.book.add_format({'num_format': '0.0"%"'})
+        # Localiza colunas por nome
+        cols = list(df.columns)
+        if "Valor Total (R$)" in cols:
+            idx = cols.index("Valor Total (R$)")
+            ws.set_column(idx, idx, 18, money_fmt)
+        if "% do Total" in cols:
+            idx = cols.index("% do Total")
+            ws.set_column(idx, idx, 12, pct_fmt)
+
+    output.seek(0)
+    return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
 
 # ====== FILA DE ESPERA ======
 @app.route('/lista_espera/add', methods=['POST'])
