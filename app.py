@@ -783,8 +783,7 @@ def estatisticas_cooperado_exportar_xlsx():
 
     df = pd.DataFrame(linhas)
 
-    titulo = f"Faturamento dos cooperados do período ({período_legível_str(data_inicio, data_fim)})"
-    # Corrige acento em função no título
+    # Título usando helper correta (sem acento no nome da função)
     titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
 
     output = io.BytesIO()
