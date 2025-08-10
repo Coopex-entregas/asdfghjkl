@@ -22,41 +22,23 @@
       --radius: 16px;
       --radius-sm: 11px;
     }
-    html, body {
-      margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif;
-      background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px;
-    }
+    html, body { margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px; }
     body.locked { overflow:hidden; }
 
-    header {
-      background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow);
-      position:sticky; top:0; z-index:99;
-    }
+    header { background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
     .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; }
-    h1 {
-      font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px;
-      letter-spacing:0.5px; text-shadow:0 2px 14px #0001; white-space:nowrap;
-    }
-    .logo-topo {
-      height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f;
-      padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff;
-    }
+    h1 { font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.5px; text-shadow:0 2px 14px #0001; white-space:nowrap; }
+    .logo-topo { height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
 
     .kpis { display:flex; gap:10px; flex-wrap:wrap; }
     .kpi { background:#ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
     .kpi span { display:block; font-weight:700; line-height:1.1; }
     .kpi small { display:block; font-size:12px; opacity:.9; }
 
-    .logout {
-      color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em;
-      text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap;
-    }
+    .logout { color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap; }
     .logout:hover { background:#a20f1a; }
 
-    .painel-bg-trocavel {
-      position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%);
-      border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 2vw; overflow:hidden;
-    }
+    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 2vw; overflow:hidden; }
     .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
 
     .painel-linha { display:grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap:14px; align-items:start; }
@@ -64,51 +46,26 @@
     .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.02em; }
 
     .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-    .espera-select, .espera-input {
-      flex:1; min-width:230px; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4;
-      font-size:1em; background:#f7faff; color:#003399;
-    }
+    .espera-select, .espera-input { flex:1; min-width:230px; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; color:#003399; }
     .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:8px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
 
-    /* chips numerados e arrastáveis */
     #espera-lista { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px; }
-    .espera-chip {
-      display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff;
-      padding:8px 10px; border-radius:10px; cursor:grab;
-    }
+    .espera-chip { display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff; padding:8px 10px; border-radius:10px; cursor:grab; }
     .espera-chip:active { cursor:grabbing; }
-    .espera-chip-num {
-      background:#ffd166; color:#222; font-weight:900; width:26px; height:26px; border-radius:50%;
-      display:flex; align-items:center; justify-content:center;
-    }
+    .espera-chip-num { background:#ffd166; color:#222; font-weight:900; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
     .espera-chip-text { font-weight:800; color:#003399; }
-    .espera-chip-remove {
-      background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900;
-    }
+    .espera-chip-remove { background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900; }
 
     .actions { margin:8px 0 8px; display:flex; flex-wrap:wrap; gap:10px; }
-    .btn {
-      background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer;
-      font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); white-space:nowrap;
-    }
+    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); white-space:nowrap; }
     .btn:hover { background:var(--azul-hover); }
 
-    .filtros {
-      margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm);
-      display:flex; gap:10px; align-items:center; border:1px solid #e6ebff; flex-wrap:wrap;
-    }
+    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; gap:10px; align-items:center; border:1px solid #e6ebff; flex-wrap:wrap; }
     .filtros label { font-size:13px; color:#003399; font-weight:800; }
-    .filtros input, .filtros select {
-      font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600;
-    }
+    .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
 
-    .tabela {
-      overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow);
-      padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px;
-    }
-    table {
-      width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden;
-    }
+    .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px; }
+    table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
     th, td { border:1px solid #3a3a3a; padding:9px 4px; text-align:center; vertical-align:middle; }
     th { background:linear-gradient(90deg,#003399 60%, #4f8cff 120%); color:#fff; font-size:1.03em; font-weight:700; }
     tr:hover td { background:#33415555; }
@@ -154,8 +111,8 @@
   <!-- Modal -->
   <div id="overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal">
-      <h2 id="modal-title">Atenção</h2>
-      <p id="modal-msg">Mensagem</p>
+      <h2 id="modal-title">Pop-up bloqueado</h2>
+      <p id="modal-msg">Ative os pop-ups para imprimir.</p>
       <button id="modal-ok" class="modal-btn" type="button">OK</button>
     </div>
   </div>
@@ -163,7 +120,7 @@
   <div id="painel-bg" class="painel-bg-trocavel">
     <div class="painel-bg-conteudo">
       <div class="painel-linha">
-        <!-- LISTA DE ESPERA (adiciona por select e permite arrastar) -->
+        <!-- LISTA DE ESPERA -->
         <div class="painel-lista">
           <h3>Lista de Espera</h3>
           <form class="espera-bar" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera">
@@ -174,7 +131,6 @@
                 <option value="{{ c.id }}">{{ c.nome }}</option>
               {% endfor %}
             </select>
-            <!-- Campo de nome mantido para compatibilidade com a rota /lista_espera/add que usa "nome" -->
             <input class="espera-input" name="nome" id="nome-espera" type="text" placeholder="(Opcional) digitar nome do cooperado" />
             <button type="submit" class="espera-add">Adicionar</button>
           </form>
@@ -264,7 +220,6 @@
 
           <button class="btn" type="submit">Filtrar</button>
 
-          <!-- Exporta levando TODOS os filtros -->
           <a class="btn"
              href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
             Exportar para Excel
@@ -327,32 +282,27 @@
             </td>
             <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
             <td style="min-width:120px; display:flex; gap:6px; justify-content:center; align-items:center;">
-              <!-- Editar -->
               <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
                 <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
               </a>
 
-              <!-- Clonar -->
               <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
                 <button title="Clonar" type="submit" class="icon-btn">
                   <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                 </button>
               </form>
 
-              <!-- Imprimir (com cooperado via data-attr) -->
-              {% set coop_btn_coop = e.cooperado if e.cooperado else (cooperados|selectattr('id','equalto',e.cooperado_id)|first) %}
               <button
                 type="button"
                 title="Imprimir cupom"
                 class="icon-btn"
-                data-cooperado="{{ coop_btn_coop.nome if coop_btn_coop else 'Sem Cooperado' }}"
+                data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
                 onclick="imprimirCupom({{ e.id }}, this)">
                 <svg width="20" height="20" viewBox="0 0 24 24" fill="#13a038">
                   <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
                 </svg>
               </button>
 
-              <!-- Excluir -->
               <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
                 <button title="Excluir" type="submit" class="icon-btn">
                   <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
@@ -391,25 +341,12 @@
       _modalResolve = null;
     });
 
-    // Preenche automaticamente o "nome" com o texto do cooperado selecionado (mantém compatibilidade com backend atual)
+    // Preenche "nome" da fila a partir do select
     const selCoop = document.getElementById('cooperado-espera');
     const inpNome = document.getElementById('nome-espera');
     const formEspera = document.getElementById('form-espera');
-
-    if (selCoop) {
-      selCoop.addEventListener('change', () => {
-        const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
-        if (!inpNome.value) inpNome.value = nome;
-      });
-    }
-    if (formEspera) {
-      formEspera.addEventListener('submit', () => {
-        if (!inpNome.value) {
-          const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
-          inpNome.value = nome; // garante que sempre envia um nome
-        }
-      });
-    }
+    if (selCoop) { selCoop.addEventListener('change', () => { const nome = selCoop.options[selCoop.selectedIndex]?.text || ''; if (!inpNome.value) inpNome.value = nome; }); }
+    if (formEspera) { formEspera.addEventListener('submit', () => { if (!inpNome.value) { const nome = selCoop.options[selCoop.selectedIndex]?.text || ''; inpNome.value = nome; } }); }
 
     // Filtro cooperados
     const filtroCoop = document.getElementById('filtro-cooperado');
@@ -417,76 +354,40 @@
       filtroCoop.addEventListener('input', function() {
         const filtro = this.value.toLowerCase();
         const lista = document.getElementById('lista-cooperados').children;
-        for (let item of lista) {
-          item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
-        }
+        for (let item of lista) item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
       });
     }
 
     // Drag & drop da fila
     const ulFila = document.getElementById('espera-lista');
     let dragEl = null;
-
-    function renumerar() {
-      [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1);
-    }
-
+    function renumerar() { [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1); }
     if (ulFila) {
-      ulFila.addEventListener('dragstart', (e) => {
-        const li = e.target.closest('.espera-chip');
-        if (!li) return;
-        dragEl = li;
-        li.style.opacity = .6;
-      });
-
-      ulFila.addEventListener('dragend', (e) => {
-        const li = e.target.closest('.espera-chip');
-        if (!li) return;
-        li.style.opacity = 1;
-        dragEl = null;
-        salvarOrdem();
-      });
-
-      ulFila.addEventListener('dragover', (e) => {
-        e.preventDefault();
-        const li = e.target.closest('.espera-chip');
-        if (!li || li === dragEl) return;
-        const bbox = li.getBoundingClientRect();
-        const after = (e.clientY - bbox.top) > (bbox.height / 2);
-        if (after) li.after(dragEl); else li.before(dragEl);
-        renumerar();
-      });
+      ulFila.addEventListener('dragstart', (e) => { const li = e.target.closest('.espera-chip'); if (!li) return; dragEl = li; li.style.opacity = .6; });
+      ulFila.addEventListener('dragend', (e) => { const li = e.target.closest('.espera-chip'); if (!li) return; li.style.opacity = 1; dragEl = null; salvarOrdem(); });
+      ulFila.addEventListener('dragover', (e) => { e.preventDefault(); const li = e.target.closest('.espera-chip'); if (!li || li === dragEl) return; const bbox = li.getBoundingClientRect(); const after = (e.clientY - bbox.top) > (bbox.height / 2); if (after) li.after(dragEl); else li.before(dragEl); renumerar(); });
     }
-
-    // Envia ordem nova para o backend (se a rota existir). Se não existir, apenas ignora.
     function salvarOrdem() {
       const ids = [...ulFila.querySelectorAll('.espera-chip')].map(li => li.dataset.id);
-      fetch('/lista_espera/reordenar', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ordem: ids})
-      }).catch(()=>{ /* rota opcional; se não existir, só não persiste */ });
+      fetch('/lista_espera/reordenar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ordem: ids}) }).catch(()=>{});
     }
 
-    // -------- IMPRESSÃO DE CUPOM (térmico 80mm) --------
+    // -------- IMPRESSÃO DE CUPOM (80mm) — com fallback sem pop-up --------
     function imprimirCupom(idEntrega, botao) {
-      // teste de popup
-      const teste = window.open('', '', 'width=10,height=10');
-      if (!teste || teste.closed) {
-        abrirModal('Pop-up bloqueado', 'Ative os pop-ups do navegador para imprimir o cupom.');
-        if (teste) try { teste.close(); } catch(e){}
-        return;
-      }
-      try { teste.close(); } catch(e){}
-
       const tr = botao.closest('tr');
-      const get = (idx)=> tr?.children[idx]?.innerText.trim() || '-';
+      const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
+
+      // Data vem na mesma célula do dia da semana; extrai só a data
+      const dataDiaBruto = (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim();
+      const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
+
       const dados = {
         id: get(0),
+        idPad: String(get(0)).padStart(6,'0'),
         cliente: get(1),
         bairro: get(2),
-        valor: get(3),
-        dataDia: (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim(),
+        valor: get(3).replace(/^R\$\s*/,'').trim(),
+        data: dataSo,
         horaPedido: get(5),
         horaAtribuida: get(6),
         cooperado: botao?.dataset?.cooperado || get(7) || '-',
@@ -497,12 +398,9 @@
       };
 
       const agora = new Date();
-      const win = window.open('', '_blank', 'width=420,height=640');
-      if (!win) { abrirModal('Pop-up bloqueado', 'Ative os pop-ups para imprimir.'); return; }
-      try { win.opener = null; } catch(e){}
+      const reviewUrl = "{{ avaliacao_google_url or 'https://g.page/r/SEU_PLACE_ID/review' }}"; // defina no backend se quiser
 
-      const html = `
-<!DOCTYPE html>
+      const html = `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="utf-8">
@@ -511,60 +409,97 @@
 <style>
   @page { size: 80mm auto; margin: 6mm; }
   *{box-sizing:border-box}
-  body{font-family: system-ui, -apple-system, 'Segoe UI', Roboto, Arial, sans-serif; margin:0; color:#000;}
+  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000;}
   .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
   .center{text-align:center}
-  .right{text-align:right}
   .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
   .muted{color:#333}
-  .title{font-weight:800; font-size:14px; letter-spacing:.2px}
-  .big{font-weight:900; font-size:16px}
-  hr{border:none; border-top:1px dashed #000; margin:6px 0}
-  .logo{max-width:120px; max-height:60px; object-fit:contain; margin:0 auto 6px; display:block}
+  .title{font-weight:900; font-size:14px; letter-spacing:.2px; text-transform:uppercase}
+  .big{font-weight:900; font-size:18px}
+  hr{border:none; border-top:1px dotted #000; margin:8px 0}
+  .logo{max-width:120px; max-height:60px; object-fit:contain; margin:2px auto 6px; display:block}
   .footer{font-size:11px; text-align:center; margin-top:6px}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
   .badge{display:inline-block; padding:2px 6px; border:1px solid #000; border-radius:4px; font-size:11px; font-weight:700}
+  .qrcode{display:block; margin:10px auto 2px; width:140px; height:140px}
+  .tiny{font-size:10.5px}
 </style>
 </head>
-<body onload="window.print(); setTimeout(()=>window.close(), 400)">
+<body onload="window.print(); setTimeout(()=>window.close && window.close(), 400)">
   <div class="cupom">
-    <img src="{{ url_for('static', filename='logo_kratos.png') }}" class="logo" onerror="this.style.display='none'">
-    <div class="center title">Kratos System — Coopex</div>
-    <div class="center muted">Comprovante de Entrega</div>
-    <div class="center mono" style="margin-top:2px">${agora.toLocaleString('pt-BR')}</div>
+    <img src="{{ url_for('static', filename='logo_coopex.png') }}" class="logo" onerror="this.style.display='none'">
+    <div class="center title">COOPERATIVA DE TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
+    <div class="center tiny">
+      CNPJ: 05.289.938/0001-97<br>
+      Rua Jose Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
+      Fone/WhatsApp: (84) 98111-0706
+    </div>
     <hr>
-    <div class="line"><span>Pedido</span><span class="mono">#${dados.id}</span></div>
-    <div class="line"><span>Cliente</span><span class="mono">${dados.cliente}</span></div>
-    <div class="line"><span>Bairro</span><span class="mono">${dados.bairro}</span></div>
-    <div class="line"><span>Data/Dia</span><span class="mono">${dados.dataDia}</span></div>
-    <div class="line"><span>Hora Pedido</span><span class="mono">${dados.horaPedido}</span></div>
-    <div class="line"><span>Hora Atribuída</span><span class="mono">${dados.horaAtribuida}</span></div>
-    <div class="line"><span>Cooperado</span><span class="mono">${dados.cooperado}</span></div>
-    <div class="line"><span>Forma de Pgto</span><span class="mono">${dados.formaPgto}</span></div>
-    <div class="line"><span>Status</span><span class="mono"><span class="badge">${dados.status}</span></span></div>
-    <div class="line"><span>Pagamento</span><span class="mono"><span class="badge">${dados.pagamento}</span></span></div>
+    <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span></div>
+    <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
+    <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
+    <div class="line"><span>Hora Atribuída:</span><span class="mono">${dados.horaAtribuida}</span></div>
+    <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
+    <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
+    <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
+    <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
+    <div class="line"><span>Status do Pagamento:</span><span class="mono"><span class="badge">${dados.pagamento}</span></span></div>
     <hr>
-    <div class="line big"><span>Total</span><span class="mono">${dados.valor}</span></div>
+    <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
+    <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
+    <hr>
+    <div class="center tiny">Avalie nossa cooperativa no Google! Sua opinião é muito importante.</div>
+    <img class="qrcode" alt="QR Code avaliação" src="https://chart.googleapis.com/chart?chs=180x180&cht=qr&chl=${encodeURIComponent(reviewUrl)}">
+    <div class="center tiny"><a href="${reviewUrl}">${reviewUrl}</a></div>
+    <hr>
     <div class="footer">
-      Recebido por: <span class="mono">${dados.recebidoPor}</span><br>
-      Obrigado por utilizar a Coopex!<br>
-      <span class="mono">Impresso em ${agora.toLocaleDateString('pt-BR')} às ${agora.toLocaleTimeString('pt-BR')}</span>
+      Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às
+      <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
+      Recebido por: <span class="mono">${dados.recebidoPor}</span>
     </div>
   </div>
 </body>
 </html>`;
-      win.document.open();
-      win.document.write(html);
-      win.document.close();
+
+      // 1) tenta nova janela
+      let win = null;
+      try { win = window.open('', '_blank', 'width=420,height=640'); } catch(e){}
+      if (win && !win.closed) {
+        try { win.opener = null; } catch(e){}
+        win.document.open(); win.document.write(html); win.document.close();
+        return;
+      }
+
+      // 2) fallback: iframe oculto (sem pop-up)
+      let iframe = document.getElementById('print-cupom-frame');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-cupom-frame';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+      }
+      if ('srcdoc' in iframe) {
+        iframe.onload = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } finally { setTimeout(()=> iframe.remove(), 1000); } };
+        iframe.srcdoc = html;
+      } else {
+        const doc = iframe.contentWindow || iframe.contentDocument;
+        const iDoc = doc.document || doc;
+        iDoc.open(); iDoc.write(html); iDoc.close();
+        setTimeout(() => { try { doc.focus(); doc.print(); } finally { setTimeout(()=> iframe.remove(), 1000); } }, 250);
+      }
     }
-    // -----------------------------------------------
+    // ---------------------------------------------------------------------
 
     // Avisos (mantidos)
     function existePagamentoPendenteNaTabela() {
       return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
         const cel = tr.children[10];
-        if (!cel) return false;
-        return cel.textContent.trim().toLowerCase().includes('pendente');
+        return cel && cel.textContent.trim().toLowerCase().includes('pendente');
       });
     }
     async function checaAvisos() {
