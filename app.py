@@ -3,6 +3,7 @@ import io
 import json
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
+from urllib.parse import urlparse, parse_qs
 
 from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
 from flask_sqlalchemy import SQLAlchemy
@@ -18,8 +19,17 @@ import pytz
 # ====== Configuração ======
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
+
+# Banco
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Performance de conexão (especialmente em Postgres)
+app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
+    "pool_pre_ping": True,
+    "pool_recycle": 300,
+    "pool_size": 5,
+    "max_overflow": 10,
+}
 
 db = SQLAlchemy(app)
 
@@ -56,12 +66,12 @@ class Entrega(db.Model):
 
 class ListaEspera(db.Model):
     """
-    Compatível com seu schema antigo (que tinha apenas id, nome NOT NULL).
+    Compatível com schema antigo (id, nome NOT NULL).
     Agora usamos também:
       - cooperado_id: FK pro cooperado
       - pos: posição na fila
       - created_at: data de criação
-    OBS: mantemos 'nome' para não quebrar telas que já usam item.nome.
+    Mantemos 'nome' para não quebrar telas que já usam item.nome.
     """
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)  # Mantido p/ compatibilidade
@@ -85,6 +95,19 @@ def local_date_window_to_utc_range(local_date: date):
     inicio_utc = inicio_brasil.astimezone(pytz.utc).replace(tzinfo=None)
     fim_utc = fim_brasil.astimezone(pytz.utc).replace(tzinfo=None)
     return inicio_utc, fim_utc
+
+def month_range_utc(local_date: date):
+    first = local_date.replace(day=1)
+    if first.month == 12:
+        next_first = first.replace(year=first.year+1, month=1, day=1)
+    else:
+        next_first = first.replace(month=first.month+1, day=1)
+    return local_date_window_to_utc_range(first)[0], local_date_window_to_utc_range(next_first - timedelta(days=1))[1]
+
+def year_range_utc(local_date: date):
+    first = local_date.replace(month=1, day=1)
+    next_first = first.replace(year=first.year+1)
+    return local_date_window_to_utc_range(first)[0], local_date_window_to_utc_range(next_first - timedelta(days=1))[1]
 
 def parse_local_datetime_to_utc_naive(data_str: str):
     dt_local_naive = datetime.strptime(data_str, '%Y-%m-%dT%H:%M')
@@ -128,6 +151,38 @@ def periodo_legivel_str(di_str, df_str):
         df = datetime.strptime(df_str, "%Y-%m-%d").strftime("%d/%m/%Y")
         return f"até {df}"
     return "todo o período"
+
+# ====== Preservar filtros do /admin ======
+@app.before_request
+def remember_admin_filters():
+    # guarda últimos filtros do /admin na sessão
+    if request.endpoint == "admin" and request.method == "GET":
+        keys = ["cooperado_id", "data_inicio", "data_fim", "status_pagamento", "cliente"]
+        session["last_filters"] = {k: request.args.get(k) for k in keys if request.args.get(k)}
+
+def _build_admin_url_from_referrer():
+    ref = request.headers.get("Referer") or ""
+    if not ref:
+        return None
+    try:
+        p = urlparse(ref)
+        if not p.path.endswith("/admin"):
+            return None
+        qs = parse_qs(p.query)
+        params = {k: v[0] for k, v in qs.items() if v}
+        return url_for("admin", **params)
+    except Exception:
+        return None
+
+def redirect_back_to_admin():
+    next_url = request.args.get("next") or request.form.get("next")
+    if next_url:
+        return redirect(next_url)
+    from_ref = _build_admin_url_from_referrer()
+    if from_ref:
+        return redirect(from_ref)
+    params = session.get("last_filters") or {}
+    return redirect(url_for("admin", **params))
 
 # ====== ROTAS ======
 @app.route('/', methods=['GET', 'POST'])
@@ -214,10 +269,15 @@ def admin():
 
     hoje = datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    total_dia = Entrega.query.filter(Entrega.data_envio >= inicio_dia_utc, Entrega.data_envio <= fim_dia_utc).count()
-    total_mes = Entrega.query.filter(func.extract('month', Entrega.data_envio) == hoje.month,
-                                     func.extract('year', Entrega.data_envio) == hoje.year).count()
-    total_ano = Entrega.query.filter(func.extract('year', Entrega.data_envio) == hoje.year).count()
+    # Contagens usando ranges (aproveita índice em data_envio)
+    total_dia = Entrega.query.filter(Entrega.data_envio >= inicio_dia_utc,
+                                     Entrega.data_envio <= fim_dia_utc).count()
+    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+    total_mes = Entrega.query.filter(Entrega.data_envio >= mes_ini_utc,
+                                     Entrega.data_envio <= mes_fim_utc).count()
+    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+    total_ano = Entrega.query.filter(Entrega.data_envio >= ano_ini_utc,
+                                     Entrega.data_envio <= ano_fim_utc).count()
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
     feriado_hoje = verifica_feriado(hoje)
@@ -266,7 +326,7 @@ def clonar_entrega(id):
     db.session.add(nova)
     db.session.commit()
     flash(f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.')
-    return redirect(url_for('admin'))
+    return redirect_back_to_admin()
 
 @app.route('/painel_cooperado')
 def painel_cooperado():
@@ -317,7 +377,7 @@ def cadastrar_cooperado():
             db.session.add(c)
             db.session.commit()
             flash('Cooperado cadastrado!')
-            return redirect(url_for('admin'))
+            return redirect_back_to_admin()
     return render_template('cadastrar_cooperado.html')
 
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
@@ -352,7 +412,7 @@ def cadastrar_entrega():
 
         db.session.commit()
         flash('Entrega cadastrada!')
-        return redirect(url_for('admin'))
+        return redirect_back_to_admin()
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
@@ -388,7 +448,7 @@ def agendar_entrega():
 
         db.session.commit()
         flash('Entrega agendada!')
-        return redirect(url_for('admin'))
+        return redirect_back_to_admin()
     return render_template('agendar_entrega.html', cooperados=cooperados)
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
@@ -423,7 +483,7 @@ def editar_entrega(id):
 
             db.session.commit()
             flash('Entrega atualizada!')
-            return redirect(url_for('admin'))
+            return redirect_back_to_admin()
         else:
             entrega.status_pagamento = request.form.get('status_pagamento')
             entrega.status = request.form.get('status') or entrega.status
@@ -445,7 +505,7 @@ def excluir_entrega(id):
     db.session.delete(entrega)
     db.session.commit()
     flash('Entrega excluída.')
-    return redirect(url_for('admin'))
+    return redirect_back_to_admin()
 
 @app.route('/excluir_cooperado/<int:id>', methods=['POST'])
 def excluir_cooperado(id):
@@ -457,7 +517,7 @@ def excluir_cooperado(id):
     db.session.delete(c)
     db.session.commit()
     flash('Cooperado excluído.')
-    return redirect(url_for('admin'))
+    return redirect_back_to_admin()
 
 # ====== ESTATÍSTICAS ======
 @app.route('/estatisticas_cooperado')
@@ -723,6 +783,8 @@ def estatisticas_cooperado_exportar_xlsx():
 
     df = pd.DataFrame(linhas)
 
+    titulo = f"Faturamento dos cooperados do período ({período_legível_str(data_inicio, data_fim)})"
+    # Corrige acento em função no título
     titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
 
     output = io.BytesIO()
@@ -772,38 +834,37 @@ def lista_espera_add():
 
     if not cooperado_id and not nome_form:
         flash('Selecione um cooperado ou informe um nome.')
-        return redirect(url_for('admin'))
+        return redirect_back_to_admin()
 
     # Se veio cooperado_id, buscamos o nome
     if cooperado_id:
         coop = Cooperado.query.get(int(cooperado_id))
         if not coop:
             flash('Cooperado inválido.')
-            return redirect(url_for('admin'))
+            return redirect_back_to_admin()
 
         # já está na fila?
         if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
             flash('Este cooperado já está na fila de espera.')
-            return redirect(url_for('admin'))
+            return redirect_back_to_admin()
 
         # Posição final
         max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
         item = ListaEspera(
             cooperado_id=coop.id,
-            nome=coop.nome,              # preenche p/ compat com schema antigo
+            nome=coop.nome,              # preenche p/ compat com schema antigo (NOT NULL)
             pos=max_pos + 1,
             created_at=datetime.utcnow()
         )
         db.session.add(item)
         db.session.commit()
         flash('Cooperado adicionado à lista de espera.')
-        return redirect(url_for('admin'))
+        return redirect_back_to_admin()
 
     # Sem cooperado_id: usa apenas o nome (modo legado)
-    # Evita duplicado por nome
     if ListaEspera.query.filter(func.lower(ListaEspera.nome) == nome_form.lower()).first():
         flash('Este nome já está na fila de espera.')
-        return redirect(url_for('admin'))
+        return redirect_back_to_admin()
 
     max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
     item = ListaEspera(
@@ -815,7 +876,7 @@ def lista_espera_add():
     db.session.add(item)
     db.session.commit()
     flash('Nome adicionado à lista de espera.')
-    return redirect(url_for('admin'))
+    return redirect_back_to_admin()
 
 @app.route('/lista_espera/remove/<int:id>', methods=['POST'])
 def lista_espera_remove(id):
@@ -825,7 +886,7 @@ def lista_espera_remove(id):
     db.session.delete(item)
     db.session.commit()
     flash('Removido da lista de espera.')
-    return redirect(url_for('admin'))
+    return redirect_back_to_admin()
 
 @app.route('/lista_espera/reordenar', methods=['POST'])
 def lista_espera_reordenar():
@@ -873,7 +934,7 @@ def criar_bd():
             try:
                 db.session.execute(text(s))
             except Exception:
-                # Provavelmente SQLite ou já existe; segue o baile
+                # Provavelmente SQLite ou já existe; ignora
                 pass
 
         # Índices p/ performance (se já existirem, ignora)
