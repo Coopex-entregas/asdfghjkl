@@ -111,8 +111,8 @@
   <!-- Modal -->
   <div id="overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal">
-      <h2 id="modal-title">Atenção</h2>
-      <p id="modal-msg">Mensagem</p>
+      <h2 id="modal-title">Pop-up bloqueado</h2>
+      <p id="modal-msg">Ative os pop-ups para imprimir.</p>
       <button id="modal-ok" class="modal-btn" type="button">OK</button>
     </div>
   </div>
@@ -282,19 +282,16 @@
             </td>
             <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
             <td style="min-width:120px; display:flex; gap:6px; justify-content:center; align-items:center;">
-              <!-- Editar -->
               <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
                 <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
               </a>
 
-              <!-- Clonar -->
               <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
                 <button title="Clonar" type="submit" class="icon-btn">
                   <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
                 </button>
               </form>
 
-              <!-- Imprimir -->
               <button
                 type="button"
                 title="Imprimir cupom"
@@ -306,7 +303,6 @@
                 </svg>
               </button>
 
-              <!-- Excluir -->
               <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
                 <button title="Excluir" type="submit" class="icon-btn">
                   <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
@@ -345,7 +341,7 @@
       _modalResolve = null;
     });
 
-    // Preenche "nome" na lista de espera
+    // Preenche "nome" da fila a partir do select
     const selCoop = document.getElementById('cooperado-espera');
     const inpNome = document.getElementById('nome-espera');
     const formEspera = document.getElementById('form-espera');
@@ -362,7 +358,7 @@
       });
     }
 
-    // Drag&drop fila
+    // Drag & drop da fila
     const ulFila = document.getElementById('espera-lista');
     let dragEl = null;
     function renumerar() { [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1); }
@@ -376,28 +372,30 @@
       fetch('/lista_espera/reordenar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ordem: ids}) }).catch(()=>{});
     }
 
-    // -------- IMPRESSÃO DE CUPOM 80mm — LOGO GRANDE, QR com link e linha "Supervisor" --------
+    // -------- IMPRESSÃO DE CUPOM (80mm) — logo grande, SEM hora atribuída/sem status, QR Google + "Supervisor" --------
     function imprimirCupom(idEntrega, botao) {
       const tr = botao.closest('tr');
-      const get = (i)=> (tr?.children[i]?.innerText || '').trim() || '-';
+      const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
 
-      const dataCel = (tr?.children[4]?.innerText || '').replace(/\s+/g,' ').trim();
-      const dataApenas = (dataCel.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
+      // Data vem na mesma célula do dia da semana; extrai só a data
+      const dataDiaBruto = (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim();
+      const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
 
       const dados = {
         id: get(0),
-        idPad: String(get(0)).padStart(6, '0'),
+        idPad: String(get(0)).padStart(6,'0'),
         cliente: get(1),
         bairro: get(2),
         valor: get(3).replace(/^R\$\s*/,'').trim(),
-        data: dataApenas,
+        data: dataSo,
         horaPedido: get(5),
+        // horaAtribuida: get(6), // (intencionalmente NÃO usado no cupom)
         cooperado: botao?.dataset?.cooperado || get(7) || '-',
         formaPgto: get(8),
+        // pagamento: get(10),     // (intencionalmente NÃO usado no cupom)
         recebidoPor: get(11)
       };
 
-      // Link fixo de avaliação (seu link)
       const reviewUrl = "https://g.page/r/CY6ffwOT76pNEAE/review";
 
       const html = `<!DOCTYPE html>
@@ -409,28 +407,27 @@
 <style>
   @page { size: 80mm auto; margin: 6mm; }
   *{box-sizing:border-box}
-  body{font-family: Arial,'Segoe UI',Roboto,system-ui,sans-serif; margin:0; color:#000;}
+  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000;}
   .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
   .center{text-align:center}
   .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
   .title{font-weight:900; font-size:14px; letter-spacing:.2px; text-transform:uppercase}
   .big{font-weight:900; font-size:18px}
   hr{border:none; border-top:1px dotted #000; margin:8px 0}
-  /* LOGO GRANDE PROPORCIONAL AO PAPEL (≈62mm) */
+  /* LOGO GRANDE PROPORCIONAL AO PAPEL */
   .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
   .footer{font-size:11px; text-align:center; margin-top:6px}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
   .qrcode{display:block; margin:10px auto 4px; width:38mm; height:38mm}
   .tiny{font-size:10.5px}
-  a{color:#000; text-decoration:none}
-  /* Assinatura */
   .sign{ text-align:center; margin-top:8px; }
   .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
+  a{color:#000; text-decoration:none}
 </style>
 </head>
-<body>
+<body onload="window.print(); setTimeout(()=>window.close && window.close(), 400)">
   <div class="cupom">
-    <img src="{{ url_for('static', filename='logo_coopex.png') }}" class="logo" onload="__ready('logo')" onerror="__ready('logo')">
+    <img src="{{ url_for('static', filename='logo_coopex.png') }}" class="logo" onerror="this.style.display='none'">
     <div class="center title">COOPERATIVA DE TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
     <div class="center tiny">
       CNPJ: 05.289.938/0001-97<br>
@@ -451,8 +448,7 @@
     <hr>
     <div class="center tiny">Avalie nossa cooperativa no Google! Sua opinião é muito importante.</div>
     <img class="qrcode" alt="QR Code avaliação"
-         src="https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(reviewUrl)}"
-         onload="__ready('qr')" onerror="__ready('qr')">
+         src="https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(reviewUrl)}">
     <div class="center tiny"><a href="${reviewUrl}">${reviewUrl}</a></div>
 
     <div class="sign">
@@ -467,14 +463,6 @@
       Recebido por: <span class="mono">${dados.recebidoPor}</span>
     </div>
   </div>
-  <script>
-    // Espera logo e QR carregarem; imprime depois (evita sumir)
-    const __waits = new Set(['logo','qr']);
-    function __ready(id){ __waits.delete(id); if(!__waits.size) __start(); }
-    function __start(){ setTimeout(()=>{ window.focus(); window.print(); setTimeout(()=>window.close&&window.close(), 400); }, 100); }
-    // Plano B: se algo travar, imprime em 2s
-    setTimeout(__start, 2000);
-  </script>
 </body>
 </html>`;
 
@@ -501,11 +489,13 @@
         document.body.appendChild(iframe);
       }
       if ('srcdoc' in iframe) {
+        iframe.onload = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } finally { setTimeout(()=> iframe.remove(), 1000); } };
         iframe.srcdoc = html;
       } else {
         const doc = iframe.contentWindow || iframe.contentDocument;
         const iDoc = doc.document || doc;
         iDoc.open(); iDoc.write(html); iDoc.close();
+        setTimeout(() => { try { doc.focus(); doc.print(); } finally { setTimeout(()=> iframe.remove(), 1000); } }, 250);
       }
     }
     // ---------------------------------------------------------------------
