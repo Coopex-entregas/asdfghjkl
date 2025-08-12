@@ -301,7 +301,8 @@ tbody tr:hover{background:#f6f9ff}
         <li class="rank-item">
           <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
           <span class="rank-label">{{ r.cliente }}</span>
-          <span class="rank-value">R$ {{ '%.2f'|format(r.total or 0) }} • {{ r.qtd }} pedidos • tkt R$ {{ '%.2f'|format(r.ticket or 0) }}</span>
+          <!-- >>> AQUI: ticket médio calculado a partir da coluna valor (total ÷ qtd) <<< -->
+          <span class="rank-value">R$ {{ '%.2f'|format(r.total or 0) }} • {{ r.qtd }} pedidos • tkt R$ {{ '%.2f'|format(((r.total or 0) / (r.qtd if r.qtd else 1))) }}</span>
         </li>
         {% endfor %}
         {% if ranking_clientes|length == 0 %}
