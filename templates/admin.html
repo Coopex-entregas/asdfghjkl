@@ -372,7 +372,7 @@
       fetch('/lista_espera/reordenar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ordem: ids}) }).catch(()=>{});
     }
 
-    // -------- IMPRESSÃO DE CUPOM (80mm) — Visualização + botão "Imprimir" --------
+    // -------- IMPRESSÃO DE CUPOM (80mm) — logo grande, SEM hora atribuída/sem status, QR Google + "Supervisor" --------
     function imprimirCupom(idEntrega, botao) {
       const tr = botao.closest('tr');
       const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
@@ -389,13 +389,14 @@
         valor: get(3).replace(/^R\$\s*/,'').trim(),
         data: dataSo,
         horaPedido: get(5),
+        // horaAtribuida: get(6), // (intencionalmente NÃO usado no cupom)
         cooperado: botao?.dataset?.cooperado || get(7) || '-',
         formaPgto: get(8),
+        // pagamento: get(10),     // (intencionalmente NÃO usado no cupom)
         recebidoPor: get(11)
       };
 
       const reviewUrl = "https://g.page/r/CY6ffwOT76pNEAE/review";
-      const cacheBust = Date.now(); // evita cache travar imagem
 
       const html = `<!DOCTYPE html>
 <html lang="pt-br">
@@ -406,169 +407,96 @@
 <style>
   @page { size: 80mm auto; margin: 6mm; }
   *{box-sizing:border-box}
-  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000;}
   .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
   .center{text-align:center}
   .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
   .title{font-weight:900; font-size:14px; letter-spacing:.2px; text-transform:uppercase}
   .big{font-weight:900; font-size:18px}
   hr{border:none; border-top:1px dotted #000; margin:8px 0}
+  /* LOGO GRANDE PROPORCIONAL AO PAPEL */
   .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
   .footer{font-size:11px; text-align:center; margin-top:6px}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-  .qrcode{display:block; margin:10px auto 4px; width:38mm; height:38mm; image-rendering:crisp-edges; image-rendering:pixelated}
+  .qrcode{display:block; margin:10px auto 4px; width:38mm; height:38mm}
   .tiny{font-size:10.5px}
   .sign{ text-align:center; margin-top:8px; }
   .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
-  .actions{display:flex; justify-content:center; gap:10px; padding:12px 0 16px}
-  .btn-print{padding:10px 18px; border-radius:10px; border:1px solid #003399; background:#003399; color:#fff; font-weight:800; cursor:pointer}
-  .btn-print:active{transform:translateY(1px)}
-  .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
-  @media print { .actions{display:none} body{background:#fff} }
+  a{color:#000; text-decoration:none}
 </style>
-<base href="${location.origin}/">
 </head>
-<body>
-  <div class="wrap">
-    <div class="cupom">
-      <img src="{{ url_for('static', filename='logo_coopex.png') }}" class="logo" onerror="this.style.display='none'">
-      <div class="center title">COOPERATIVA DE TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
-      <div class="center tiny">
-        CNPJ: 05.289.938/0001-97<br>
-        Rua Jose Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
-        Fone/WhatsApp: (84) 98111-0706
-      </div>
-      <hr>
-      <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span></div>
-      <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
-      <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
-      <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
-      <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
-      <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
-      <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
-      <hr>
-      <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
-      <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
-      <hr>
+<body onload="window.print(); setTimeout(()=>window.close && window.close(), 400)">
+  <div class="cupom">
+    <img src="{{ url_for('static', filename='logo_coopex.png') }}" class="logo" onerror="this.style.display='none'">
+    <div class="center title">COOPERATIVA DE TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
+    <div class="center tiny">
+      CNPJ: 05.289.938/0001-97<br>
+      Rua Jose Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
+      Fone/WhatsApp: (84) 98111-0706
+    </div>
+    <hr>
+    <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span></div>
+    <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
+    <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
+    <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
+    <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
+    <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
+    <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
+    <hr>
+    <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
+    <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
+    <hr>
+    <div class="center tiny">Avalie nossa cooperativa no Google! Sua opinião é muito importante.</div>
+    <img class="qrcode" alt="QR Code avaliação"
+         src="https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(reviewUrl)}">
+    <div class="center tiny"><a href="${reviewUrl}">${reviewUrl}</a></div>
 
-      <!-- QR Code: 1) local PNG  2) fallback online -->
-      <img id="qr-img" class="qrcode" alt="QR Code"
-           src="{{ url_for('static', filename='qr_review.png') }}?v=${cacheBust}">
+    <div class="sign">
+      <div class="sign-line"></div>
+      <div class="tiny">Supervisor</div>
     </div>
 
-    <div class="actions">
-      <button class="btn-print" onclick="window.print()">Imprimir</button>
+    <hr>
+    <div class="footer">
+      Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às
+      <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
+      Recebido por: <span class="mono">${dados.recebidoPor}</span>
     </div>
   </div>
-
-  <script>
-    (function(){
-      const img = document.getElementById('qr-img');
-      const fallback = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' + encodeURIComponent('${reviewUrl}');
-      let triedFallback = false;
-
-      function ensureLoaded(){
-        // se a imagem não carregar (erro) -> usa fallback online
-        img.onerror = function(){
-          if (triedFallback) return;
-          triedFallback = true;
-          img.src = fallback + '&_=' + Date.now(); // cache-buster
-        };
-        // se carregou mas ficou com tamanho 0 (alguns drivers) -> força reflow
-        img.onload = function(){
-          if (!img.naturalWidth || !img.naturalHeight) {
-            // tenta fallback mesmo assim
-            if (!triedFallback) { triedFallback = true; img.src = fallback + '&_=' + Date.now(); }
-          }
-        };
-        // disparo imediato caso o local já tenha falhado
-        if (img.complete && (!img.naturalWidth || !img.naturalHeight)) {
-          img.onerror();
-        }
-      }
-      ensureLoaded();
-    })();
-  </script>
 </body>
 </html>`;
 
-      // 1) Nova janela com visualização
+      // 1) tenta nova janela
       let win = null;
-      try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
+      try { win = window.open('', '_blank', 'width=420,height=640'); } catch(e){}
       if (win && !win.closed) {
         try { win.opener = null; } catch(e){}
         win.document.open(); win.document.write(html); win.document.close();
         return;
       }
 
-      // 2) Fallback: overlay com iframe + botão imprimir
-      criarOverlayPreview(html);
-    }
-
-    // Overlay de preview quando pop-up bloqueado
-    function criarOverlayPreview(html){
-      const wrap = document.createElement('div');
-      wrap.id = 'print-preview-overlay';
-      Object.assign(wrap.style, {
-        position:'fixed', inset:'0', background:'rgba(10,16,28,0.75)', zIndex:'10000',
-        display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'
-      });
-
-      const box = document.createElement('div');
-      Object.assign(box.style, {
-        background:'#fff', borderRadius:'14px', width:'min(720px, 96vw)', height:'min(90vh, 900px)',
-        boxShadow:'0 10px 40px rgba(0,0,0,.35)', display:'flex', flexDirection:'column', overflow:'hidden'
-      });
-
-      const header = document.createElement('div');
-      header.textContent = 'Visualização do Cupom';
-      Object.assign(header.style, {
-        padding:'10px 14px', fontWeight:'800', color:'#003399', borderBottom:'1px solid #e6ebff'
-      });
-
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('title','Pré-visualização do cupom');
-      Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
+      // 2) fallback: iframe oculto (sem pop-up)
+      let iframe = document.getElementById('print-cupom-frame');
+      if (!iframe) {
+        iframe = document.createElement('iframe');
+        iframe.id = 'print-cupom-frame';
+        iframe.style.position = 'fixed';
+        iframe.style.right = '0';
+        iframe.style.bottom = '0';
+        iframe.style.width = '0';
+        iframe.style.height = '0';
+        iframe.style.border = '0';
+        document.body.appendChild(iframe);
+      }
       if ('srcdoc' in iframe) {
+        iframe.onload = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } finally { setTimeout(()=> iframe.remove(), 1000); } };
         iframe.srcdoc = html;
       } else {
         const doc = iframe.contentWindow || iframe.contentDocument;
         const iDoc = doc.document || doc;
         iDoc.open(); iDoc.write(html); iDoc.close();
+        setTimeout(() => { try { doc.focus(); doc.print(); } finally { setTimeout(()=> iframe.remove(), 1000); } }, 250);
       }
-
-      const footer = document.createElement('div');
-      Object.assign(footer.style, {
-        padding:'10px', borderTop:'1px solid #e6ebff', display:'flex', gap:'10px',
-        justifyContent:'center', background:'#f8faff'
-      });
-
-      const btImprimir = document.createElement('button');
-      btImprimir.textContent = 'Imprimir';
-      Object.assign(btImprimir.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #003399',
-        background:'#003399', color:'#fff', fontWeight:'800', cursor:'pointer'
-      });
-      btImprimir.onclick = () => {
-        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){}
-      };
-
-      const btFechar = document.createElement('button');
-      btFechar.textContent = 'Fechar';
-      Object.assign(btFechar.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #c3c8d5',
-        background:'#fff', color:'#003399', fontWeight:'800', cursor:'pointer'
-      });
-      btFechar.onclick = () => wrap.remove();
-
-      footer.appendChild(btImprimir);
-      footer.appendChild(btFechar);
-
-      box.appendChild(header);
-      box.appendChild(iframe);
-      box.appendChild(footer);
-      wrap.appendChild(box);
-      document.body.appendChild(wrap);
     }
     // ---------------------------------------------------------------------
 
