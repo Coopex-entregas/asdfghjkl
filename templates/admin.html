@@ -395,6 +395,7 @@
       };
 
       const reviewUrl = "https://g.page/r/CY6ffwOT76pNEAE/review";
+      const cacheBust = Date.now(); // evita cache travar imagem
 
       const html = `<!DOCTYPE html>
 <html lang="pt-br">
@@ -425,6 +426,7 @@
   .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
   @media print { .actions{display:none} body{background:#fff} }
 </style>
+<base href="${location.origin}/">
 </head>
 <body>
   <div class="wrap">
@@ -449,29 +451,44 @@
       <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
       <hr>
 
-      <!-- Apenas o QR Code (sem frase/link). Primeiro tenta local, depois fallback online -->
-      <img class="qrcode" alt="QR Code de avaliação"
-           src="{{ url_for('static', filename='qr_review.png') }}"
-           onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent('${reviewUrl}');">
-
-      <div class="sign">
-        <div class="sign-line"></div>
-        <div class="tiny">Supervisor</div>
-      </div>
-
-      <hr>
-      <div class="footer">
-        Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às
-        <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
-        Recebido por: <span class="mono">${dados.recebidoPor}</span>
-      </div>
+      <!-- QR Code: 1) local PNG  2) fallback online -->
+      <img id="qr-img" class="qrcode" alt="QR Code"
+           src="{{ url_for('static', filename='qr_review.png') }}?v=${cacheBust}">
     </div>
 
-    <!-- Botão de imprimir (visualização primeiro) -->
     <div class="actions">
       <button class="btn-print" onclick="window.print()">Imprimir</button>
     </div>
   </div>
+
+  <script>
+    (function(){
+      const img = document.getElementById('qr-img');
+      const fallback = 'https://api.qrserver.com/v1/create-qr-code/?size=280x280&data=' + encodeURIComponent('${reviewUrl}');
+      let triedFallback = false;
+
+      function ensureLoaded(){
+        // se a imagem não carregar (erro) -> usa fallback online
+        img.onerror = function(){
+          if (triedFallback) return;
+          triedFallback = true;
+          img.src = fallback + '&_=' + Date.now(); // cache-buster
+        };
+        // se carregou mas ficou com tamanho 0 (alguns drivers) -> força reflow
+        img.onload = function(){
+          if (!img.naturalWidth || !img.naturalHeight) {
+            // tenta fallback mesmo assim
+            if (!triedFallback) { triedFallback = true; img.src = fallback + '&_=' + Date.now(); }
+          }
+        };
+        // disparo imediato caso o local já tenha falhado
+        if (img.complete && (!img.naturalWidth || !img.naturalHeight)) {
+          img.onerror();
+        }
+      }
+      ensureLoaded();
+    })();
+  </script>
 </body>
 </html>`;
 
