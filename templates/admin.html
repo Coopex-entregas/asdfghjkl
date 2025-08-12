@@ -389,10 +389,8 @@
         valor: get(3).replace(/^R\$\s*/,'').trim(),
         data: dataSo,
         horaPedido: get(5),
-        // horaAtribuida: get(6), // intencionalmente NÃO usado no cupom
         cooperado: botao?.dataset?.cooperado || get(7) || '-',
         formaPgto: get(8),
-        // pagamento: get(10),     // intencionalmente NÃO usado no cupom
         recebidoPor: get(11)
       };
 
@@ -407,18 +405,17 @@
 <style>
   @page { size: 80mm auto; margin: 6mm; }
   *{box-sizing:border-box}
-  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000; background:#fff;}
+  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
   .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
   .center{text-align:center}
   .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
   .title{font-weight:900; font-size:14px; letter-spacing:.2px; text-transform:uppercase}
   .big{font-weight:900; font-size:18px}
   hr{border:none; border-top:1px dotted #000; margin:8px 0}
-  /* LOGO GRANDE PROPORCIONAL AO PAPEL */
   .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
   .footer{font-size:11px; text-align:center; margin-top:6px}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-  .qrcode{display:block; margin:10px auto 4px; width:38mm; height:38mm}
+  .qrcode{display:block; margin:10px auto 4px; width:38mm; height:38mm; image-rendering:crisp-edges; image-rendering:pixelated}
   .tiny{font-size:10.5px}
   .sign{ text-align:center; margin-top:8px; }
   .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
@@ -451,10 +448,11 @@
       <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
       <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
       <hr>
-      <div class="center tiny">Avalie nossa cooperativa no Google! Sua opinião é muito importante.</div>
-      <!-- Apenas o QR Code (sem frase/link) -->
-      <img class="qrcode" alt="QR Code avaliação"
-           src="https://chart.googleapis.com/chart?chs=240x240&cht=qr&chl=${encodeURIComponent(reviewUrl)}">
+
+      <!-- Apenas o QR Code (sem frase/link). Primeiro tenta local, depois fallback online -->
+      <img class="qrcode" alt="QR Code de avaliação"
+           src="{{ url_for('static', filename='qr_review.png') }}"
+           onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data='+encodeURIComponent('${reviewUrl}');">
 
       <div class="sign">
         <div class="sign-line"></div>
@@ -477,7 +475,7 @@
 </body>
 </html>`;
 
-      // 1) Tenta abrir nova janela com visualização
+      // 1) Nova janela com visualização
       let win = null;
       try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
       if (win && !win.closed) {
@@ -486,13 +484,12 @@
         return;
       }
 
-      // 2) Fallback: visualização em overlay com iframe + botão imprimir
+      // 2) Fallback: overlay com iframe + botão imprimir
       criarOverlayPreview(html);
     }
 
     // Overlay de preview quando pop-up bloqueado
     function criarOverlayPreview(html){
-      // cria container
       const wrap = document.createElement('div');
       wrap.id = 'print-preview-overlay';
       Object.assign(wrap.style, {
@@ -515,7 +512,6 @@
       const iframe = document.createElement('iframe');
       iframe.setAttribute('title','Pré-visualização do cupom');
       Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
-      // usa srcdoc se disponível
       if ('srcdoc' in iframe) {
         iframe.srcdoc = html;
       } else {
