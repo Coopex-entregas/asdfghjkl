@@ -519,6 +519,26 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect_back_to_admin()
 
+# ========= NOVO: endpoints para clique nos status =========
+@app.post('/entregas/<int:id>/marcar-pagamento')
+def marcar_pagamento(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    e = Entrega.query.get_or_404(id)
+    e.status_pagamento = "pago"  # lowercase para combinar com checagens .lower()
+    db.session.commit()
+    return redirect_back_to_admin()
+
+@app.post('/entregas/<int:id>/marcar-entregue')
+def marcar_entregue(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    e = Entrega.query.get_or_404(id)
+    e.status = "entregue"
+    db.session.commit()
+    return redirect_back_to_admin()
+# =========================================================
+
 # ====== ESTATÍSTICAS ======
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
