@@ -72,6 +72,10 @@
     .status-verde { color:#13a038; font-weight:bold; background:#e7f9ef; border-radius:7px; padding:3px 6px; }
     .status-vermelho { color:#d11a1a; font-weight:bold; background:#fdeaea; border-radius:7px; padding:3px 6px; }
 
+    /* Apenas para indicar interatividade nas células clicáveis */
+    .clicavel { cursor:pointer; }
+    .clicavel:hover { filter: brightness(1.05); }
+
     .modal-overlay { position:fixed; inset:0; background:rgba(10,16,28,0.58); display:none; align-items:center; justify-content:center; z-index:9999; }
     .modal { background:#fff; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.25); max-width:520px; width:92%; padding:22px 20px 18px; text-align:center; }
     .modal h2 { margin:0 0 8px; color:var(--azul); }
@@ -266,21 +270,40 @@
             <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
             <td>{% set coop_td = (e.cooperado.nome if e.cooperado else 'Sem Cooperado') %}{{ coop_td }}</td>
             <td>{{ e.pagamento }}</td>
+
+            <!-- STATUS ENTREGA (clicável se pendente) -->
             <td>
-              {% if e.status and e.status.lower() in ['recebido','entregue'] %}
-                <span class="status-verde">{{ e.status|capitalize }}</span>
+              {% set status_txt = (e.status|capitalize if e.status else 'Pendente') %}
+              {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
+              {% if is_ok %}
+                <span class="status-verde" title="Entrega finalizada">{{ status_txt }}</span>
               {% else %}
-                <span class="status-vermelho">{{ e.status|capitalize if e.status else 'Pendente' }}</span>
+                <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST" style="display:inline;">
+                  <input type="hidden" name="status" value="entregue">
+                  <span class="status-vermelho clicavel js-toggle-entrega" title="Clique para marcar como ENTREGUE">
+                    {{ status_txt }}
+                  </span>
+                </form>
               {% endif %}
             </td>
+
+            <!-- STATUS PAGAMENTO (clicável se pendente) -->
             <td>
-              {% if e.status_pagamento and e.status_pagamento|lower == 'pago' %}
-                <span class="status-verde">{{ e.status_pagamento|capitalize }}</span>
+              {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+              {% if sp == 'pago' %}
+                <span class="status-verde" title="Pagamento quitado">Pago</span>
               {% else %}
-                <span class="status-vermelho">{{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}</span>
+                <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST" style="display:inline;">
+                  <input type="hidden" name="status_pagamento" value="pago">
+                  <span class="status-vermelho clicavel js-toggle-pagto" title="Clique para marcar como PAGO">
+                    {{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}
+                  </span>
+                </form>
               {% endif %}
             </td>
+
             <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
+
             <td style="min-width:120px; display:flex; gap:6px; justify-content:center; align-items:center;">
               <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
                 <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
@@ -288,7 +311,7 @@
 
               <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
                 <button title="Clonar" type="submit" class="icon-btn">
-                  <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg>
+                  <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
                 </button>
               </form>
 
@@ -591,6 +614,29 @@
       checaAvisos();
       setInterval(checaAvisos, 60 * 1000);
     });
+
+    // ===== NOVO: Clique nos status para marcar como ENTREGUE/PAGO =====
+    // Usa forms já inseridos nas células. Não interfere no "Editar".
+    document.addEventListener('click', function (ev) {
+      const alvo = ev.target;
+
+      // Pagamento
+      if (alvo.classList.contains('js-toggle-pagto')) {
+        const form = alvo.closest('form');
+        if (!form) return;
+        const confirmar = confirm('Confirmar pagamento como PAGO?');
+        if (confirmar) form.submit();
+      }
+
+      // Entrega
+      if (alvo.classList.contains('js-toggle-entrega')) {
+        const form = alvo.closest('form');
+        if (!form) return;
+        const confirmar = confirm('Confirmar entrega como ENTREGUE?');
+        if (confirmar) form.submit();
+      }
+    });
+    // ================================================================
   </script>
 </body>
 </html>
