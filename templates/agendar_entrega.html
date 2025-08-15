@@ -52,29 +52,46 @@
       font-size: 16px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #002b88;
-    }
+    button:hover { background-color: #002b88; }
     a {
       text-decoration: none;
       color: #0033aa;
       margin-bottom: 20px;
       display: inline-block;
     }
-    a:hover {
-      text-decoration: underline;
-    }
+    a:hover { text-decoration: underline; }
+    small.hint { display:block; margin-top:-10px; margin-bottom:12px; color:#555; }
   </style>
 </head>
 <body>
   <h1>Agendar Entrega</h1>
   <a href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+
   <form method="POST" action="{{ url_for('agendar_entrega') }}">
-    <label>Nome do Cliente:</label>
-    <input type="text" name="cliente" required/>
+    <!-- 1) Selecionar cliente cadastrado (opcional) -->
+    <label>Selecionar Cliente (cadastrado) — opcional:</label>
+    <select id="cliente-select">
+      <option value="">-- Selecione um cliente cadastrado --</option>
+      {% if clientes %}
+        {% for cl in clientes %}
+          <option
+            value="{{ cl.nome }}"
+            data-bairro="{{ cl.bairro_origem or '' }}"
+            data-telefone="{{ cl.telefone or '' }}"
+          >
+            {{ cl.nome }}
+          </option>
+        {% endfor %}
+      {% endif %}
+    </select>
+    <small class="hint">Se selecionar acima, o nome e o bairro serão preenchidos. Você ainda pode ajustar manualmente.</small>
+
+    <!-- 2) Campo manual (este é o que vai no POST como 'cliente') -->
+    <label>Nome do Cliente (manual):</label>
+    <input id="cliente-input" type="text" name="cliente" placeholder="Digite o nome do cliente" required />
 
     <label>Bairro:</label>
-    <input type="text" name="bairro" required/>
+    <input id="bairro" type="text" name="bairro" required/>
 
     <label>Valor (R$):</label>
     <input type="number" name="valor" step="0.01" min="0" required/>
@@ -103,5 +120,30 @@
 
     <button type="submit">Agendar</button>
   </form>
+
+  <script>
+    (function () {
+      const sel = document.getElementById('cliente-select');
+      const inpNome = document.getElementById('cliente-input');
+      const inpBairro = document.getElementById('bairro');
+
+      // Ao escolher um cliente cadastrado, preenche os campos manuais
+      sel.addEventListener('change', function () {
+        const opt = sel.options[sel.selectedIndex];
+        if (!opt || !opt.value) return;
+        const nome = opt.value || '';
+        const bairro = opt.getAttribute('data-bairro') || '';
+
+        // Preenche (mas você ainda pode editar manualmente)
+        if (nome) inpNome.value = nome;
+        if (bairro && !inpBairro.value) inpBairro.value = bairro;
+      });
+
+      // Se o usuário digitar manualmente, "desvincula" a seleção
+      inpNome.addEventListener('input', function () {
+        if (sel.value) sel.value = '';
+      });
+    })();
+  </script>
 </body>
 </html>
