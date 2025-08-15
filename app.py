@@ -48,6 +48,12 @@ class Cooperado(db.Model):
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
+class Cliente(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    telefone = db.Column(db.String(30), nullable=True)
+    bairro_origem = db.Column(db.String(50), nullable=True)
+
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente = db.Column(db.String(100), nullable=False)
@@ -380,11 +386,69 @@ def cadastrar_cooperado():
             return redirect_back_to_admin()
     return render_template('cadastrar_cooperado.html')
 
+# ====== CLIENTES (CRUD) ======
+@app.route('/clientes', methods=['GET', 'POST'])
+def clientes():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        nome = (request.form.get('nome') or '').strip()
+        telefone = (request.form.get('telefone') or '').strip()
+        bairro_origem = (request.form.get('bairro_origem') or '').strip()
+        if not nome:
+            flash('Informe o nome do cliente.')
+            return redirect(url_for('clientes'))
+        existe = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
+        if existe:
+            flash('Já existe um cliente com esse nome.')
+            return redirect(url_for('clientes'))
+        cl = Cliente(nome=nome, telefone=telefone, bairro_origem=bairro_origem)
+        db.session.add(cl)
+        db.session.commit()
+        flash('Cliente cadastrado!')
+        return redirect(url_for('clientes'))
+    lista = Cliente.query.order_by(Cliente.nome).all()
+    return render_template('clientes.html', clientes=lista)
+
+@app.route('/clientes/<int:id>/editar', methods=['POST'])
+def editar_cliente(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    cl = Cliente.query.get_or_404(id)
+    nome = (request.form.get('nome') or '').strip()
+    telefone = (request.form.get('telefone') or '').strip()
+    bairro_origem = (request.form.get('bairro_origem') or '').strip()
+    if not nome:
+        flash('Informe o nome do cliente.')
+        return redirect(url_for('clientes'))
+    existe = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower(), Cliente.id != id).first()
+    if existe:
+        flash('Já existe outro cliente com esse nome.')
+        return redirect(url_for('clientes'))
+    cl.nome = nome
+    cl.telefone = telefone
+    cl.bairro_origem = bairro_origem
+    db.session.commit()
+    flash('Cliente atualizado!')
+    return redirect(url_for('clientes'))
+
+@app.route('/clientes/<int:id>/excluir', methods=['POST'])
+def excluir_cliente(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    cl = Cliente.query.get_or_404(id)
+    db.session.delete(cl)
+    db.session.commit()
+    flash('Cliente excluído.')
+    return redirect(url_for('clientes'))
+
+# ====== ENTREGAS ======
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
@@ -413,13 +477,14 @@ def cadastrar_entrega():
         db.session.commit()
         flash('Entrega cadastrada!')
         return redirect_back_to_admin()
-    return render_template('cadastrar_entrega.html', cooperados=cooperados)
+    return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
 def agendar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
@@ -449,7 +514,7 @@ def agendar_entrega():
         db.session.commit()
         flash('Entrega agendada!')
         return redirect_back_to_admin()
-    return render_template('agendar_entrega.html', cooperados=cooperados)
+    return render_template('agendar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
@@ -962,7 +1027,8 @@ def criar_bd():
             "CREATE INDEX IF NOT EXISTS idx_entrega_cooperado_id ON entrega (cooperado_id)",
             "CREATE INDEX IF NOT EXISTS idx_entrega_status_pagamento_lower ON entrega ((lower(status_pagamento)))",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_lower ON entrega ((lower(cliente)))",
-            "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)"
+            "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)",
+            "CREATE INDEX IF NOT EXISTS idx_cliente_nome_lower ON cliente ((lower(nome)))"
         ]
         for s in idx_cmds:
             try:
