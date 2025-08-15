@@ -86,7 +86,7 @@
       <div class="card">
         <div class="searchbar">
           <label for="filtro" style="margin:0">Filtro:</label>
-          <input id="filtro" type="text" placeholder="Digite para filtrar por nome…">
+          <input id="filtro" type="text" placeholder="Filtrar por nome, telefone (final/inteiro) ou bairro…">
         </div>
         <div style="overflow:auto; max-height:65vh;">
           <table id="tabela">
@@ -125,16 +125,44 @@
   </div>
 
   <script>
-    // Filtro por nome
+    // Funções utilitárias de normalização (ignora acentos e caixa)
+    function norm(str){
+      return (str || '')
+        .toString()
+        .normalize('NFD')
+        .replace(/[\u0300-\u036f]/g,'') // remove acentos
+        .toLowerCase()
+        .trim();
+    }
+    function onlyDigits(str){
+      return (str || '').toString().replace(/\D/g,'');
+    }
+
+    // Filtro por nome, telefone (final/inteiro) ou bairro
     const filtro = document.getElementById('filtro');
     const tbody  = document.querySelector('#tabela tbody');
-    filtro?.addEventListener('input', () => {
-      const v = (filtro.value || '').toLowerCase();
+
+    function aplicaFiltro(){
+      const termo = filtro?.value || '';
+      const termoNorm = norm(termo);
+      const termoDigits = onlyDigits(termo);
+
       [...tbody.rows].forEach(tr => {
-        const nome = tr.querySelector('input[name="nome"]')?.value?.toLowerCase() || '';
-        tr.style.display = nome.includes(v) ? '' : 'none';
+        const nome = norm(tr.querySelector('input[name="nome"]')?.value);
+        const tel  = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
+        const bairro = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
+
+        const match =
+          !termoNorm && !termoDigits ? true :
+          nome.includes(termoNorm) ||
+          bairro.includes(termoNorm) ||
+          (termoDigits && tel.includes(termoDigits));
+
+        tr.style.display = match ? '' : 'none';
       });
-    });
+    }
+
+    filtro?.addEventListener('input', aplicaFiltro);
   </script>
 </body>
 </html>
