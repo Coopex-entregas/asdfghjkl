@@ -693,9 +693,28 @@ def estatisticas_cooperado():
         })
     ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
 
-    # Ranking bairros
+    # Ranking bairros (destino, vindos das entregas)
     cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
+
+    # >>> NOVO: Ranking de bairros de origem (dos clientes cadastrados) <<<
+    # Mapeia nome do cliente -> Cliente (apenas os que aparecem nas entregas)
+    nomes_clientes = {e.cliente for e in entregas if e.cliente}
+    # Buscar clientes cadastrados correspondentes (igualdade exata do nome)
+    clientes_cadastrados = []
+    if nomes_clientes:
+        clientes_cadastrados = Cliente.query.filter(Cliente.nome.in_(list(nomes_clientes))).all()
+    mapa_cliente = {c.nome: c for c in clientes_cadastrados}
+
+    cont_bairros_origem = Counter()
+    for e in entregas:
+        if not e.cliente:
+            continue
+        cl = mapa_cliente.get(e.cliente)
+        if cl and cl.bairro_origem:
+            cont_bairros_origem[cl.bairro_origem] += 1
+    ranking_bairros_origem = [{"bairro_origem": b, "qtd": q} for b, q in cont_bairros_origem.most_common()]
+    # <<< FIM NOVO >>>
 
     # Ranking formas pgto
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
@@ -743,6 +762,7 @@ def estatisticas_cooperado():
         estatisticas=estatisticas,
         ranking_cooperados=ranking_cooperados,
         ranking_bairros=ranking_bairros,
+        ranking_bairros_origem=ranking_bairros_origem,   # <<< enviado ao template
         ranking_pgto=ranking_pgto,
         ranking_clientes=ranking_clientes,          # inclui total por cliente
         horas_pico_top3=horas_pico_top3,            # top3 horários
