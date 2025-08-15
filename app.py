@@ -698,9 +698,8 @@ def estatisticas_cooperado():
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
 
     # >>> NOVO: Ranking de bairros de origem (dos clientes cadastrados) <<<
-    # Mapeia nome do cliente -> Cliente (apenas os que aparecem nas entregas)
+    # Mapeia nome exato do cliente que aparece nas entregas -> registro do Cliente
     nomes_clientes = {e.cliente for e in entregas if e.cliente}
-    # Buscar clientes cadastrados correspondentes (igualdade exata do nome)
     clientes_cadastrados = []
     if nomes_clientes:
         clientes_cadastrados = Cliente.query.filter(Cliente.nome.in_(list(nomes_clientes))).all()
@@ -712,8 +711,11 @@ def estatisticas_cooperado():
             continue
         cl = mapa_cliente.get(e.cliente)
         if cl and cl.bairro_origem:
-            cont_bairros_origem[cl.bairro_origem] += 1
-    ranking_bairros_origem = [{"bairro_origem": b, "qtd": q} for b, q in cont_bairros_origem.most_common()]
+            cont_bairros_origem[(cl.bairro_origem or '').strip()] += 1
+
+    # >>> AQUI A CORREÇÃO: usar chave 'bairro' (o template lê r.bairro)
+    ranking_bairros_origem = [{"bairro": (b or 'Não informado'), "qtd": q}
+                              for b, q in cont_bairros_origem.most_common()]
     # <<< FIM NOVO >>>
 
     # Ranking formas pgto
