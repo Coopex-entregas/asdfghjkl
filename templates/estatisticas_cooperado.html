@@ -278,19 +278,19 @@ tbody tr:hover{background:#f6f9ff}
   </div>
 
   <!-- RANKINGS (2ª grade): bairros de ORIGEM (clientes) + clientes -->
+  {% set rb_origem = ranking_bairros_origem | default([]) %}
   <div class="grid-2" style="margin-top:14px">
     <div class="card card-tight">
       <h2>Ranking de bairros dos clientes (ORIGEM) — TOP 10</h2>
-      <!-- Espera variável "ranking_bairros_origem": [{"bairro": "...", "qtd": 10}, ...] -->
       <ul class="rank-list">
-        {% for r in ranking_bairros_origem[:10] %}
+        {% for r in rb_origem[:10] %}
         <li class="rank-item">
           <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
           <span class="rank-label">{{ r.bairro }}</span>
           <span class="rank-value">{{ r.qtd }} pedidos</span>
         </li>
         {% endfor %}
-        {% if not ranking_bairros_origem or ranking_bairros_origem|length == 0 %}
+        {% if rb_origem | length == 0 %}
         <li class="rank-item"><span class="rank-label">Sem dados no período.</span></li>
         {% endif %}
       </ul>
@@ -303,7 +303,6 @@ tbody tr:hover{background:#f6f9ff}
         <li class="rank-item">
           <span class="rank-medal m{{ 1 if loop.index==1 else (2 if loop.index==2 else (3 if loop.index==3 else '2') ) }}">{{ loop.index }}</span>
           <span class="rank-label">{{ r.cliente }}</span>
-          <!-- total e ticket médio -->
           <span class="rank-value">R$ {{ '%.2f'|format(r.total or 0) }} • {{ r.qtd }} pedidos • tkt R$ {{ '%.2f'|format(((r.total or 0) / (r.qtd if r.qtd else 1))) }}</span>
         </li>
         {% endfor %}
@@ -331,7 +330,6 @@ tbody tr:hover{background:#f6f9ff}
         {% endif %}
       </ul>
     </div>
-    <!-- Espaço livre para manter a grade 2x2 simétrica; você pode colocar outro card aqui no futuro -->
     <div class="card card-tight" style="display:flex;align-items:center;justify-content:center">
       <div class="no-data" style="width:100%;min-height:auto;border:none">—</div>
     </div>
