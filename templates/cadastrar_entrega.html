@@ -2,60 +2,36 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <title>Cadastrar Entrega - Coopex</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Cadastrar Entrega - Cliente da lista ou manual</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <style>
-    body {
+    body{
       font-family: Arial, sans-serif;
-      background-color: #f0f4ff;
-      color: #1a1a1a;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: 20px;
+      background:#f0f4ff;
+      color:#1a1a1a;
+      display:flex; flex-direction:column; align-items:center;
+      padding:20px;
     }
-    h1 {
-      color: #0033aa;
-      margin-bottom: 20px;
+    h1{ color:#0033aa; margin-bottom:18px; }
+    form{
+      background:#fff; padding:22px; border-radius:12px;
+      box-shadow:0 0 15px rgba(0,0,0,.1);
+      width:100%; max-width:460px;
     }
-    form {
-      background-color: white;
-      padding: 25px;
-      border-radius: 12px;
-      box-shadow: 0 0 15px rgba(0,0,0,0.1);
-      width: 100%;
-      max-width: 420px;
+    label{ display:block; margin:10px 0 6px; font-weight:bold; }
+    input[type="text"], input[type="number"], select{
+      width:100%; padding:10px; border:1px solid #ccc; border-radius:6px;
+      margin-bottom:14px; box-sizing:border-box;
     }
-    label {
-      display: block;
-      margin: 10px 0 5px;
-      font-weight: bold;
+    button{
+      width:100%; padding:12px; border:none; border-radius:8px;
+      background:#0033aa; color:#fff; font-size:16px; cursor:pointer;
     }
-    input[type="text"],
-    input[type="number"],
-    select {
-      width: 100%;
-      padding: 10px;
-      border: 1px solid #ccc;
-      border-radius: 6px;
-      margin-bottom: 15px;
-      box-sizing: border-box;
-    }
-    small.hint { display:block; margin-top:-10px; margin-bottom:12px; color:#555; }
-    .top-actions{width:100%; max-width:420px; display:flex; justify-content:space-between; gap:10px; margin-bottom:10px;}
-    .link { text-decoration: none; color: #0033aa; }
-    .link:hover { text-decoration: underline; }
-    button {
-      background-color: #0033aa;
-      color: white;
-      padding: 12px;
-      width: 100%;
-      border: none;
-      border-radius: 8px;
-      font-size: 16px;
-      cursor: pointer;
-    }
-    button:hover { background-color: #002b88; }
+    button:hover{ background:#002b88; }
+    small.hint{ display:block; margin:-6px 0 12px; color:#555; }
+    .top-actions{width:100%; max-width:460px; display:flex; justify-content:space-between; gap:10px; margin-bottom:10px;}
+    a.link{ color:#0033aa; text-decoration:none; }
+    a.link:hover{ text-decoration:underline }
   </style>
 </head>
 <body>
@@ -67,35 +43,44 @@
   </div>
 
   <form method="POST" action="{{ url_for('cadastrar_entrega') }}">
-    <!-- CLIENTE com datalist -->
-    <label for="cliente-input">Nome do Cliente:</label>
+    <!-- 1) PUXAR CLIENTE DA LISTA -->
+    <label for="cliente_select">Cliente (cadastrado):</label>
+    <select id="cliente_select">
+      <option value="">-- Selecione um cliente (opcional) --</option>
+      {% if clientes %}
+        {% for cl in clientes %}
+          <option value="{{ cl.nome }}">{{ cl.nome }}</option>
+        {% endfor %}
+      {% endif %}
+    </select>
+    <small class="hint">Se não encontrar o cliente, digite abaixo.</small>
+
+    <!-- 2) DIGITAR MANUALMENTE (este campo é o que será enviado) -->
+    <label for="cliente_manual">Ou digite o nome do cliente (manual):</label>
     <input
-      id="cliente-input"
-      list="clientes-datalist"
+      id="cliente_manual"
       name="cliente"
       type="text"
-      placeholder="Digite ou selecione…"
+      placeholder="Ex.: Restaurante Bom Sabor"
       required
       autocomplete="off"
     />
-    <datalist id="clientes-datalist">
-      {% if clientes %}
-        {% for cl in clientes %}
-          <option
-            value="{{ cl.nome }}"
-            data-bairro="{{ cl.bairro_origem or '' }}"
-            data-telefone="{{ cl.telefone or '' }}"
-          ></option>
-        {% endfor %}
-      {% endif %}
-    </datalist>
-    <small class="hint">Comece a digitar e escolha um cliente já cadastrado (ou cadastre um novo em “Gerenciar Clientes”).</small>
+    <small class="hint">Se você escolher no campo acima, vou preencher aqui automaticamente (pode editar).</small>
 
-    <label for="bairro">Bairro:</label>
-    <input id="bairro" type="text" name="bairro" required/>
+    <!-- BAIRRO 100% MANUAL -->
+    <label for="bairro">Bairro da entrega:</label>
+    <input id="bairro" name="bairro" type="text" placeholder="Digite o bairro da entrega" required>
 
+    <!-- Demais campos -->
     <label for="valor">Valor (R$):</label>
-    <input id="valor" type="number" name="valor" step="0.01" min="0" required/>
+    <input id="valor" name="valor" type="number" step="0.01" min="0" required>
+
+    <label for="pagamento">Forma de Pagamento:</label>
+    <select id="pagamento" name="pagamento" required>
+      <option value="Dinheiro">Dinheiro</option>
+      <option value="Pix">Pix</option>
+      <option value="Comanda">Comanda</option>
+    </select>
 
     <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
     <select id="cooperado_id" name="cooperado_id">
@@ -105,39 +90,22 @@
       {% endfor %}
     </select>
 
-    <label for="pagamento">Forma de Pagamento:</label>
-    <select id="pagamento" name="pagamento" required>
-      <option value="Dinheiro">Dinheiro</option>
-      <option value="Pix">Pix</option>
-      <option value="Comanda">Comanda</option>
-    </select>
-
     <button type="submit">Cadastrar</button>
   </form>
 
   <script>
-    // Auto-preenche o "Bairro" quando o cliente é escolhido do datalist
+    // Se o usuário escolher um cliente no select, copiamos o nome para o campo manual.
     (function () {
-      const inpCliente = document.getElementById('cliente-input');
-      const lista = document.getElementById('clientes-datalist');
-      const inpBairro = document.getElementById('bairro');
+      const sel = document.getElementById('cliente_select');
+      const manual = document.getElementById('cliente_manual');
 
-      function preencherCamposSeConhecido() {
-        if (!lista) return;
-        const valor = (inpCliente.value || '').trim().toLowerCase();
-        if (!valor) return;
+      if (!sel || !manual) return;
 
-        // Procura option cujo value case-insensitive bate com o digitado
-        const opt = Array.from(lista.options).find(o => (o.value || '').trim().toLowerCase() === valor);
-        if (opt) {
-          const bairro = opt.getAttribute('data-bairro') || '';
-          // Só preenche bairro se estiver vazio (para não sobrescrever manual)
-          if (bairro && !inpBairro.value) inpBairro.value = bairro;
-        }
-      }
-
-      inpCliente.addEventListener('change', preencherCamposSeConhecido);
-      inpCliente.addEventListener('blur', preencherCamposSeConhecido);
+      sel.addEventListener('change', () => {
+        const nome = sel.value || '';
+        // Só preenche se o campo manual estiver vazio, para não sobrescrever o que o usuário escreveu.
+        if (!manual.value && nome) manual.value = nome;
+      });
     })();
   </script>
 </body>
