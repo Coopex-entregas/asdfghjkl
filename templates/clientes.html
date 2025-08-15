@@ -4,209 +4,137 @@
   <meta charset="UTF-8" />
   <title>Clientes - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
   <style>
     :root{
-      --azul:#003399; --azul-escuro:#222b44;
-      --azul-grad:linear-gradient(90deg,#003399 55%, #4f8cff 110%);
-      --cinza-bg:#f6f8fa; --cinza-card:#fff;
-      --shadow:0 6px 24px #0033991a; --shadow-sm:0 2px 10px #00339918;
-      --radius:16px; --radius-sm:12px;
-      --vermelho:#d11a1a;
+      --azul:#003399; --azul-grad:linear-gradient(90deg,#003399 55%,#4f8cff 110%);
+      --azul-hover:#174ea6; --cinza-bg:#f6f8fa; --cinza-card:#fff;
+      --shadow:0 6px 24px #0033991a; --shadow-sm:0 2px 10px #00339918; --radius:14px;
+      --vermelho:#d11a1a; --verde:#13a038;
     }
-    html,body{margin:0;background:var(--cinza-bg);color:var(--azul-escuro);
-      font-family:'Inter','Segoe UI',Arial,sans-serif}
-    header{background:var(--azul-grad);color:#fff;padding:12px 2vw;box-shadow:var(--shadow)}
-    h1{margin:0;font-size:1.2rem}
-    .wrap{max-width:1100px;margin:18px auto;padding:0 2vw}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 12px}
-    .btn{background:var(--azul-grad);color:#fff;border:none;border-radius:12px;
-      padding:10px 18px;font-weight:800;cursor:pointer;text-decoration:none}
-    .btn.sec{background:#fff;color:#003399;border:1px solid #c3c8d5}
-    .btn.danger{background:var(--vermelho)}
-    .card{background:var(--cinza-card);border:1px solid #e6ebff;border-radius:14px;
-      box-shadow:var(--shadow-sm);padding:14px}
-    .search{flex:1 1 240px;min-width:230px;padding:9px 12px;border:1px solid #a8b9e4;border-radius:10px;background:#f7faff}
-    .tabela{overflow-x:auto;background:#232942;border-radius:17px;box-shadow:var(--shadow);
-      padding:12px;margin-top:10px}
-    table{width:100%;border-collapse:collapse;font-size:14.5px;background:#232942;color:#fff;border-radius:12px;overflow:hidden}
-    th,td{border:1px solid #3a3a3a;padding:9px 6px;text-align:left;vertical-align:middle}
-    th{background:linear-gradient(90deg,#003399 60%, #4f8cff 120%);color:#fff;font-weight:800}
-    tr:hover td{background:#33415555}
-    .acoes{display:flex;gap:8px;align-items:center}
-    .icon-btn{border:none;background:#ffffff10;color:#fff;padding:6px 10px;border-radius:8px;cursor:pointer;font-weight:800}
-    .icon-btn:hover{filter:brightness(1.1)}
-    /* Modal genérico */
-    .overlay{position:fixed;inset:0;background:rgba(10,16,28,.6);display:none;align-items:center;justify-content:center;z-index:9999}
-    .modal{background:#fff;border-radius:14px;box-shadow:0 10px 40px rgba(0,0,0,.25);max-width:520px;width:92%;padding:18px}
-    .modal h2{margin:0 0 10px;color:var(--azul)}
-    label{display:block;font-weight:800;color:#003399;margin-top:10px}
-    input{width:100%;padding:10px;border:1px solid #a8b9e4;border-radius:10px;background:#f7faff}
-    .modal-actions{display:flex;gap:10px;margin-top:16px;justify-content:flex-end}
-    .small{font-size:12px;color:#6b7aa8}
-    @media (max-width:900px){table,th,td{font-size:13px}}
+    *{box-sizing:border-box}
+    body{font-family:'Inter','Segoe UI',Arial,sans-serif; margin:0; background:var(--cinza-bg); color:#222b44; padding:18px}
+    h1{margin:0 0 14px; color:var(--azul)}
+    .wrap{max-width:1100px; margin:0 auto}
+    .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px}
+    .btn{background:var(--azul-grad); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; display:inline-block}
+    .btn:hover{background:var(--azul-hover)}
+    .card{background:var(--cinza-card); border:1px solid #e6ebff; border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px}
+    .grid{display:grid; grid-template-columns: 1fr 2fr; gap:14px}
+    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+
+    form .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
+    form .row-3{display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px}
+    @media (max-width:700px){ form .row, form .row-3{grid-template-columns:1fr} }
+    label{font-size:13px; font-weight:800; color:#003399; margin-bottom:4px; display:block}
+    input[type="text"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
+    .submit{margin-top:10px}
+
+    table{width:100%; border-collapse:collapse; font-size:14px}
+    th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left}
+    th{background:#f3f7ff; color:#003399}
+    td.actions{white-space:nowrap; text-align:center}
+    .btn-del{background:#fff; color:var(--vermelho); border:1px solid #f1c7c7}
+    .btn-save{background:#fff; color:var(--verde); border:1px solid #bfe6c8}
+    .btn-small{padding:6px 10px; border-radius:8px; font-weight:800; cursor:pointer; margin:0 2px}
+    .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
+    .searchbar{display:flex; gap:8px; align-items:center; margin-bottom:10px}
+    .searchbar input{flex:1}
   </style>
 </head>
 <body>
-  <header><h1>Clientes</h1></header>
-
   <div class="wrap">
-    <div class="card">
-      <div class="toolbar">
-        <button class="btn" id="btnNovo">Novo cliente</button>
-        <input class="search" id="busca" placeholder="Buscar por nome, telefone ou bairro…">
-        <a class="btn sec" href="{{ url_for('admin') }}">Voltar ao painel</a>
+    <div class="topbar">
+      <h1>Clientes</h1>
+      <div style="display:flex; gap:8px;">
+        <a class="btn" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+      </div>
+    </div>
+
+    {% with msgs = get_flashed_messages() %}
+      {% if msgs %}
+        {% for m in msgs %}
+          <div class="flash">{{ m }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <div class="grid">
+      <!-- Cadastro novo -->
+      <div class="card">
+        <h3 style="margin-top:0; color:#003399">Cadastrar novo cliente</h3>
+        <form method="POST" action="{{ url_for('clientes') }}">
+          <div class="row-3">
+            <div>
+              <label for="nome">Nome *</label>
+              <input id="nome" name="nome" type="text" required placeholder="Ex.: Restaurante X">
+            </div>
+            <div>
+              <label for="telefone">Telefone</label>
+              <input id="telefone" name="telefone" type="text" placeholder="(84) 9 0000-0000">
+            </div>
+            <div>
+              <label for="bairro_origem">Bairro de origem</label>
+              <input id="bairro_origem" name="bairro_origem" type="text" placeholder="Onde o cliente está">
+            </div>
+          </div>
+          <button class="btn submit" type="submit">Cadastrar Cliente</button>
+        </form>
       </div>
 
-      <div class="tabela">
-        <table id="tbl">
-          <thead>
-            <tr>
-              <th style="width:52px">ID</th>
-              <th>Nome do cliente</th>
-              <th>Telefone</th>
-              <th>Bairro de origem</th>
-              <th style="width:160px">Ações</th>
-            </tr>
-          </thead>
-          <tbody id="tbody">
-            {% for c in clientes %}
-              <tr data-id="{{ c.id }}"
-                  data-nome="{{ c.nome|e }}"
-                  data-telefone="{{ c.telefone or '' }}"
-                  data-bairro="{{ c.bairro_origem or '' }}">
-                <td>{{ c.id }}</td>
-                <td>{{ c.nome }}</td>
-                <td>{{ c.telefone or '-' }}</td>
-                <td>{{ c.bairro_origem or '-' }}</td>
-                <td class="acoes">
-                  <button class="icon-btn js-editar" type="button">Editar</button>
-                  <button class="icon-btn js-excluir" type="button">Excluir</button>
-                </td>
+      <!-- Lista / Edição -->
+      <div class="card">
+        <div class="searchbar">
+          <label for="filtro" style="margin:0">Filtro:</label>
+          <input id="filtro" type="text" placeholder="Digite para filtrar por nome…">
+        </div>
+        <div style="overflow:auto; max-height:65vh;">
+          <table id="tabela">
+            <thead>
+              <tr>
+                <th style="width:34%">Nome</th>
+                <th style="width:22%">Telefone</th>
+                <th style="width:22%">Bairro de origem</th>
+                <th style="width:22%; text-align:center">Ações</th>
               </tr>
-            {% else %}
-              <tr><td colspan="5">Nenhum cliente cadastrado ainda.</td></tr>
-            {% endfor %}
-          </tbody>
-        </table>
+            </thead>
+            <tbody>
+              {% for cl in clientes %}
+                <tr>
+                  <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}">
+                    <td><input type="text" name="nome" value="{{ cl.nome }}" required></td>
+                    <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}"></td>
+                    <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}"></td>
+                    <td class="actions">
+                      <button class="btn-small btn-save" type="submit" title="Salvar alterações">Salvar</button>
+                  </form>
+                      <form method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" style="display:inline" onsubmit="return confirm('Excluir o cliente &quot;{{ cl.nome }}&quot;?');">
+                        <button class="btn-small btn-del" type="submit" title="Excluir">Excluir</button>
+                      </form>
+                    </td>
+                </tr>
+              {% endfor %}
+              {% if not clientes or clientes|length == 0 %}
+                <tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>
+              {% endif %}
+            </tbody>
+          </table>
+        </div>
       </div>
-    </div>
-  </div>
-
-  <!-- MODAL CADASTRO/EDIÇÃO -->
-  <div class="overlay" id="ovrForm" role="dialog" aria-modal="true" aria-labelledby="titForm">
-    <div class="modal">
-      <h2 id="titForm">Novo cliente</h2>
-      <form id="formCliente" method="POST" action="{{ url_for('salvar_cliente') }}" autocomplete="off">
-        {# Se usar Flask-WTF/CSRF, descomente: {{ csrf_token() }} #}
-        <input type="hidden" name="id" id="cliId" />
-        <label for="cliNome">Nome do cliente</label>
-        <input id="cliNome" name="nome" required placeholder="Ex.: Maria da Silva" />
-        <label for="cliTel">Telefone</label>
-        <input id="cliTel" name="telefone" inputmode="tel" placeholder="(84) 9 9999-9999" />
-        <label for="cliBairro">Bairro de origem</label>
-        <input id="cliBairro" name="bairro_origem" placeholder="Ex.: Lagoa Nova" />
-        <div class="modal-actions">
-          <button type="button" class="btn sec" id="btCancelForm">Cancelar</button>
-          <button type="submit" class="btn" id="btSubmitForm">Salvar</button>
-        </div>
-        <div class="small">Obrigatório: nome.</div>
-      </form>
-    </div>
-  </div>
-
-  <!-- MODAL CONFIRMAR EXCLUSÃO -->
-  <div class="overlay" id="ovrDel" role="dialog" aria-modal="true" aria-labelledby="titDel">
-    <div class="modal">
-      <h2 id="titDel">Excluir cliente</h2>
-      <p id="msgDel">Tem certeza?</p>
-      <form id="formExcluir" method="POST" action="{{ url_for('excluir_cliente') }}">
-        {# Se usar CSRF: {{ csrf_token() }} #}
-        <input type="hidden" name="id" id="delId">
-        <div class="modal-actions">
-          <button type="button" class="btn sec" id="btCancelDel">Cancelar</button>
-          <button type="submit" class="btn danger">Sim, excluir</button>
-        </div>
-      </form>
     </div>
   </div>
 
   <script>
-    // ===== Util =====
-    const $ = (s, r=document)=> r.querySelector(s);
-    const $$ = (s, r=document)=> Array.from(r.querySelectorAll(s));
-
-    // ===== Busca simples na tabela =====
-    $('#busca')?.addEventListener('input', function(){
-      const q = this.value.toLowerCase();
-      $$('#tbody tr').forEach(tr=>{
-        const txt = tr.innerText.toLowerCase();
-        tr.style.display = txt.includes(q) ? '' : 'none';
+    // Filtro por nome
+    const filtro = document.getElementById('filtro');
+    const tbody  = document.querySelector('#tabela tbody');
+    filtro?.addEventListener('input', () => {
+      const v = (filtro.value || '').toLowerCase();
+      [...tbody.rows].forEach(tr => {
+        const nome = tr.querySelector('input[name="nome"]')?.value?.toLowerCase() || '';
+        tr.style.display = nome.includes(v) ? '' : 'none';
       });
     });
-
-    // ===== Modal helpers =====
-    function show(el){ el.style.display='flex'; }
-    function hide(el){ el.style.display='none'; }
-
-    // ===== Form modal (novo/editar) =====
-    const ovrForm = $('#ovrForm');
-    const form = $('#formCliente');
-    const titForm = $('#titForm');
-    const btCancelForm = $('#btCancelForm');
-
-    function abrirNovo(){
-      titForm.textContent = 'Novo cliente';
-      form.reset();
-      $('#cliId').value = '';
-      $('#btSubmitForm').textContent='Salvar';
-      show(ovrForm);
-      setTimeout(()=> $('#cliNome').focus(), 50);
-    }
-    function abrirEditar(data){
-      titForm.textContent = 'Editar cliente';
-      $('#cliId').value = data.id || '';
-      $('#cliNome').value = data.nome || '';
-      $('#cliTel').value = data.telefone || '';
-      $('#cliBairro').value = data.bairro || '';
-      $('#btSubmitForm').textContent='Salvar alterações';
-      show(ovrForm);
-      setTimeout(()=> $('#cliNome').focus(), 50);
-    }
-    btCancelForm.addEventListener('click', ()=> hide(ovrForm));
-    ovrForm.addEventListener('click', (e)=>{ if(e.target===ovrForm) hide(ovrForm); });
-
-    // Botão "Novo cliente"
-    $('#btnNovo')?.addEventListener('click', abrirNovo);
-
-    // Ações Editar/Excluir na tabela
-    document.addEventListener('click', (ev)=>{
-      const b = ev.target;
-
-      if(b.classList.contains('js-editar')){
-        const tr=b.closest('tr');
-        abrirEditar({
-          id: tr.dataset.id,
-          nome: tr.dataset.nome,
-          telefone: tr.dataset.telefone,
-          bairro: tr.dataset.bairro
-        });
-      }
-
-      if(b.classList.contains('js-excluir')){
-        const tr=b.closest('tr');
-        const id = tr.dataset.id;
-        const nome = tr.dataset.nome || tr.children[1]?.innerText || '';
-        $('#delId').value = id;
-        $('#msgDel').innerHTML = `Tem certeza que deseja excluir <b>${nome}</b>?`;
-        show($('#ovrDel'));
-      }
-    });
-
-    // Modal excluir
-    const ovrDel = $('#ovrDel');
-    $('#btCancelDel').addEventListener('click', ()=> hide(ovrDel));
-    ovrDel.addEventListener('click', (e)=>{ if(e.target===ovrDel) hide(ovrDel); });
   </script>
 </body>
 </html>
