@@ -24,7 +24,7 @@
       border-radius: 12px;
       box-shadow: 0 0 15px rgba(0,0,0,0.1);
       width: 100%;
-      max-width: 400px;
+      max-width: 420px;
     }
     label {
       display: block;
@@ -41,6 +41,10 @@
       margin-bottom: 15px;
       box-sizing: border-box;
     }
+    small.hint { display:block; margin-top:-10px; margin-bottom:12px; color:#555; }
+    .top-actions{width:100%; max-width:420px; display:flex; justify-content:space-between; gap:10px; margin-bottom:10px;}
+    .link { text-decoration: none; color: #0033aa; }
+    .link:hover { text-decoration: underline; }
     button {
       background-color: #0033aa;
       color: white;
@@ -51,43 +55,58 @@
       font-size: 16px;
       cursor: pointer;
     }
-    button:hover {
-      background-color: #002b88;
-    }
-    a {
-      text-decoration: none;
-      color: #0033aa;
-      margin-bottom: 20px;
-      display: inline-block;
-    }
-    a:hover {
-      text-decoration: underline;
-    }
+    button:hover { background-color: #002b88; }
   </style>
 </head>
 <body>
   <h1>Cadastrar Entrega</h1>
-  <a href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+
+  <div class="top-actions">
+    <a class="link" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+    <a class="link" href="{{ url_for('clientes') }}">⚙️ Gerenciar Clientes</a>
+  </div>
+
   <form method="POST" action="{{ url_for('cadastrar_entrega') }}">
-    <label>Nome do Cliente:</label>
-    <input type="text" name="cliente" required/>
+    <!-- CLIENTE com datalist -->
+    <label for="cliente-input">Nome do Cliente:</label>
+    <input
+      id="cliente-input"
+      list="clientes-datalist"
+      name="cliente"
+      type="text"
+      placeholder="Digite ou selecione…"
+      required
+      autocomplete="off"
+    />
+    <datalist id="clientes-datalist">
+      {% if clientes %}
+        {% for cl in clientes %}
+          <option
+            value="{{ cl.nome }}"
+            data-bairro="{{ cl.bairro_origem or '' }}"
+            data-telefone="{{ cl.telefone or '' }}"
+          ></option>
+        {% endfor %}
+      {% endif %}
+    </datalist>
+    <small class="hint">Comece a digitar e escolha um cliente já cadastrado (ou cadastre um novo em “Gerenciar Clientes”).</small>
 
-    <label>Bairro:</label>
-    <input type="text" name="bairro" required/>
+    <label for="bairro">Bairro:</label>
+    <input id="bairro" type="text" name="bairro" required/>
 
-    <label>Valor (R$):</label>
-    <input type="number" name="valor" step="0.01" min="0" required/>
+    <label for="valor">Valor (R$):</label>
+    <input id="valor" type="number" name="valor" step="0.01" min="0" required/>
 
-    <label>Atribuir Cooperado (opcional):</label>
-    <select name="cooperado_id">
+    <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
+    <select id="cooperado_id" name="cooperado_id">
       <option value="">-- Nenhum --</option>
       {% for c in cooperados %}
-      <option value="{{ c.id }}">{{ c.nome }}</option>
+        <option value="{{ c.id }}">{{ c.nome }}</option>
       {% endfor %}
     </select>
 
-    <label>Forma de Pagamento:</label>
-    <select name="pagamento" required>
+    <label for="pagamento">Forma de Pagamento:</label>
+    <select id="pagamento" name="pagamento" required>
       <option value="Dinheiro">Dinheiro</option>
       <option value="Pix">Pix</option>
       <option value="Comanda">Comanda</option>
@@ -95,5 +114,31 @@
 
     <button type="submit">Cadastrar</button>
   </form>
+
+  <script>
+    // Auto-preenche o "Bairro" quando o cliente é escolhido do datalist
+    (function () {
+      const inpCliente = document.getElementById('cliente-input');
+      const lista = document.getElementById('clientes-datalist');
+      const inpBairro = document.getElementById('bairro');
+
+      function preencherCamposSeConhecido() {
+        if (!lista) return;
+        const valor = (inpCliente.value || '').trim().toLowerCase();
+        if (!valor) return;
+
+        // Procura option cujo value case-insensitive bate com o digitado
+        const opt = Array.from(lista.options).find(o => (o.value || '').trim().toLowerCase() === valor);
+        if (opt) {
+          const bairro = opt.getAttribute('data-bairro') || '';
+          // Só preenche bairro se estiver vazio (para não sobrescrever manual)
+          if (bairro && !inpBairro.value) inpBairro.value = bairro;
+        }
+      }
+
+      inpCliente.addEventListener('change', preencherCamposSeConhecido);
+      inpCliente.addEventListener('blur', preencherCamposSeConhecido);
+    })();
+  </script>
 </body>
 </html>
