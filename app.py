@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify, abort  # <- adições: jsonify, abort
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -63,8 +63,8 @@ class Entrega(db.Model):
     data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
     data_atribuida = db.Column(db.DateTime, nullable=True)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    status_pagamento = db.Column(db.String(20), nullable=True)  # "Pago"/"Pendente"
-    status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"
+    status_pagamento = db.Column(db.String(20), nullable=True)  # "pago" / "pendente"
+    status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"/"entregue"
     pagamento = db.Column(db.String(50), nullable=False)        # forma de pagamento
     recebido_por = db.Column(db.String(100), nullable=True)
 
@@ -334,7 +334,7 @@ def clonar_entrega(id):
         data_atribuida=None,            # nao atribui
         cooperado_id=None,              # nao clona cooperado
         status='pendente',
-        status_pagamento='Pendente',
+        status_pagamento='pendente',
         pagamento=e.pagamento,
         recebido_por=None
     )
@@ -343,15 +343,20 @@ def clonar_entrega(id):
     flash(f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.')
     return redirect_back_to_admin()
 
+# ====== PAINEL COOPERADO ======
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
+
     user_id = session['user_id']
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
+    status_pgto = (request.args.get('status_pgto') or 'todas').lower()  # todas | pago | pendente
+
     query = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
+    # Filtro por data (default = hoje)
     if not inicio and not fim:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
@@ -365,17 +370,33 @@ def painel_cooperado():
         _, fim_utc = local_date_window_to_utc_range(df)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
+    # Filtro por status do pagamento
+    if status_pgto == 'pago':
+        query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+    elif status_pgto == 'pendente':
+        query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
+
     entregas = (
         query.options(joinedload(Entrega.cooperado))  # performance
         .order_by(Entrega.data_envio.desc())
         .all()
     )
-    total_geral = sum(e.valor for e in entregas)
-    total_pago = sum(e.valor for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago')
-    total_pendente = total_geral - total_pago
-    return render_template('painel_cooperado.html', entregas=entregas, total_geral=total_geral,
-                           total_pago=total_pago, total_pendente=total_pendente, request=request,
-                           to_brasilia=to_brasilia)
+
+    # Totais do conjunto filtrado
+    total_geral = sum(float(e.valor or 0) for e in entregas)
+    total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
+    total_pendente = max(0.0, total_geral - total_pago)
+
+    return render_template(
+        'painel_cooperado.html',
+        entregas=entregas,
+        total_geral=total_geral,
+        total_pago=total_pago,
+        total_pendente=total_pendente,
+        request=request,
+        to_brasilia=to_brasilia,
+        status_pgto=status_pgto
+    )
 
 @app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
 def cadastrar_cooperado():
@@ -470,7 +491,7 @@ def cadastrar_entrega():
             bairro=bairro,
             valor=valor,
             data_envio=datetime.utcnow(),
-            status_pagamento='Pendente',
+            status_pagamento='pendente',
             status='pendente',
             pagamento=pagamento
         )
@@ -510,8 +531,8 @@ def agendar_entrega():
             cliente=cliente, bairro=bairro, valor=valor,
             data_envio=data_envio,
             cooperado_id=int(cooperado_id) if cooperado_id else None,
-            status=status_entrega,
-            status_pagamento=status_pagamento,
+            status=(status_entrega or 'pendente'),
+            status_pagamento=(status_pagamento or 'pendente').lower(),
             pagamento=pagamento
         )
         db.session.add(entrega)
@@ -550,16 +571,16 @@ def editar_entrega(id):
             else:
                 entrega.cooperado_id = None
 
-            entrega.status_pagamento = request.form.get('status_pagamento')
-            entrega.status = request.form.get('status')
+            entrega.status_pagamento = (request.form.get('status_pagamento') or entrega.status_pagamento or 'pendente').lower()
+            entrega.status = request.form.get('status') or entrega.status
             entrega.recebido_por = request.form.get('recebido_por')
-            entrega.pagamento = request.form.get('pagamento')
+            entrega.pagamento = request.form.get('pagamento') or entrega.pagamento
 
             db.session.commit()
             flash('Entrega atualizada!')
             return redirect_back_to_admin()
         else:
-            entrega.status_pagamento = request.form.get('status_pagamento')
+            entrega.status_pagamento = (request.form.get('status_pagamento') or entrega.status_pagamento or 'pendente').lower()
             entrega.status = request.form.get('status') or entrega.status
             entrega.recebido_por = request.form.get('recebido_por')
             db.session.commit()
@@ -593,13 +614,13 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect_back_to_admin()
 
-# ========= NOVO: endpoints para clique nos status (ADMIN) =========
+# ========= BOTÕES RÁPIDOS (ADMIN) =========
 @app.post('/entregas/<int:id>/marcar-pagamento')
 def marcar_pagamento(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
     e = Entrega.query.get_or_404(id)
-    e.status_pagamento = "pago"  # lowercase para combinar com checagens .lower()
+    e.status_pagamento = "pago"
     db.session.commit()
     return redirect_back_to_admin()
 
@@ -611,9 +632,8 @@ def marcar_entregue(id):
     e.status = "entregue"
     db.session.commit()
     return redirect_back_to_admin()
-# =========================================================
 
-# ========= NOVO: endpoints JSON para o PAINEL DO COOPERADO =========
+# ========= JSON do PAINEL DO COOPERADO =========
 @app.post('/cooperado/toggle_pagamento/<int:id>')
 def toggle_pagamento(id):
     """Alterna Pago/Pendente na própria entrega do cooperado."""
@@ -639,9 +659,8 @@ def cooperado_marcar_entregue(id):
     e.recebido_por = recebido_por
     db.session.commit()
     return jsonify(ok=True)
-# ================================================================
 
-# ====== ESTATÍSTICAS ======
+# ====== ESTATÍSTICAS (ADMIN) ======
 @app.route('/estatisticas_cooperado')
 def estatisticas_cooperado():
     if not session.get('is_admin'):
@@ -681,9 +700,9 @@ def estatisticas_cooperado():
     )
 
     total = len(entregas)
-    pagas = len([e for e in entregas if e.status_pagamento and e.status_pagamento.lower() == 'pago'])
+    pagas = len([e for e in entregas if (e.status_pagamento or '').lower() == 'pago'])
     pendentes = total - pagas
-    total_valor = sum(e.valor for e in entregas)
+    total_valor = sum(float(e.valor or 0) for e in entregas)
     ticket_medio = (total_valor / total) if total > 0 else 0.0
 
     # Dia com mais entregas (Brasil)
@@ -704,6 +723,7 @@ def estatisticas_cooperado():
         if dt_local:
             cont_horas[dt_local.strftime('%H:00')] += 1
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
+    horas_pico_top3 = [{"hora": h, "qtd": q} for h, q in cont_horas.most_common(3)]
 
     # Forma de pagamento mais usada
     cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
@@ -991,7 +1011,7 @@ def lista_espera_add():
         max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
         item = ListaEspera(
             cooperado_id=coop.id,
-            nome=coop.nome,              # preenche p/ compat com schema antigo (NOT NULL)
+            nome=coop.nome,              # compat com schema antigo (NOT NULL)
             pos=max_pos + 1,
             created_at=datetime.utcnow()
         )
