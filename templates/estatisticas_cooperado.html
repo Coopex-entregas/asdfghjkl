@@ -169,6 +169,83 @@ tbody tr:hover{background:#f6f9ff}
     </div>
   </div>
 
+  <!-- NOVO BLOCO: CRESCIMENTO ANUAL (2025+) -->
+  <div class="hr"></div>
+  <div class="card">
+    <h2>Crescimento anual (2025+)</h2>
+    {% if chart_ano_labels and chart_ano_labels|length and chart_ano_totais and chart_ano_totais|length %}
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:8px">
+        <label for="selMetrica" style="font-weight:800;color:var(--brand)">Métrica:</label>
+        <select id="selMetrica" style="border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;border-radius:9px;padding:8px 10px;font-weight:700;min-height:38px">
+          <option value="faturamento" selected>Faturamento (R$)</option>
+          <option value="entregas">Quantidade de entregas</option>
+          <option value="ticket">Ticket médio (R$)</option>
+        </select>
+      </div>
+      <div class="grid-2" style="align-items:center">
+        <div>
+          <canvas id="chartCrescimentoAnual" height="170"></canvas>
+        </div>
+        <div class="kpis">
+          <div class="kpi">
+            <small>Último ano</small>
+            <strong id="kpiUltimoAno">-</strong>
+          </div>
+          <div class="kpi">
+            <small><span id="kpiLabelValor">Faturamento do último ano (R$)</span></small>
+            <strong id="kpiUltimoValor">-</strong>
+          </div>
+          <div class="kpi">
+            <small>Crescimento vs. ano anterior</small>
+            <strong id="kpiYoY">-</strong>
+          </div>
+          <div class="kpi">
+            <small><span id="kpiLabelMedia">Média anual (R$)</span></small>
+            <strong id="kpiMediaAnual">-</strong>
+          </div>
+          <div class="kpi">
+            <small><span id="kpiLabelTotalPeriodo">Total do período selecionado (R$)</span></small>
+            <strong id="kpiTotalSelecionado">-</strong>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="no-data">Sem dados para 2025 em diante</div>
+    {% endif %}
+  </div>
+
+  <div class="hr"></div>
+  <div class="card">
+    <h2>Crescimento anual (2025+)</h2>
+    {% if chart_ano_labels and chart_ano_labels|length and chart_ano_totais and chart_ano_totais|length %}
+      <div class="grid-2" style="align-items:center">
+        <div>
+          <canvas id="chartCrescimentoAnual" height="170"></canvas>
+        </div>
+        <div class="kpis">
+          <div class="kpi">
+            <small>Último ano</small>
+            <strong id="kpiUltimoAno">-</strong>
+          </div>
+          <div class="kpi">
+            <small>Faturamento do último ano (R$)</small>
+            <strong id="kpiUltimoTotal">-</strong>
+          </div>
+          <div class="kpi">
+            <small>Crescimento vs. ano anterior</small>
+            <strong id="kpiYoY">-</strong>
+          </div>
+          <div class="kpi">
+            <small>Média anual (R$)</small>
+            <strong id="kpiMediaAnual">-</strong>
+          </div>
+        </div>
+      </div>
+    {% else %}
+      <div class="no-data">Sem dados para 2025 em diante</div>
+    {% endif %}
+  </div>
+
   <div class="hr"></div>
 
   <!-- COLUNAS ESQUERDA: Tabela + Indicadores -->
@@ -352,6 +429,17 @@ const chartEntregasValues = {{ (chart_entregas_values or [])|tojson }};
 const chartFaturamentoLabels = {{ (chart_faturamento_labels or (ranking_cooperados|map(attribute='nome')|list) or [])|tojson }};
 const chartFaturamentoValues = {{ (chart_faturamento_values or (ranking_cooperados|map(attribute='total_valor')|list) or [])|tojson }};
 
+/* NOVAS VARIÁVEIS: séries anuais. Passe isso do backend.
+   chart_ano_labels: [2025, 2026, ...]
+   chart_ano_totais: [12345.67, 23456.78, ...]  (faturamento por ano)
+   chart_ano_qtd:    [120, 140, ...]            (quantidade de entregas)
+   chart_ano_ticket: [101.23, 110.50, ...]      (ticket médio do ano)
+*/
+const chartAnoLabelsRaw  = {{ (chart_ano_labels  or [])|tojson }};
+const chartAnoTotaisRaw  = {{ (chart_ano_totais  or [])|tojson }};   // faturamento
+const chartAnoQtdRaw     = {{ (chart_ano_qtd     or [])|tojson }};   // quantidade
+const chartAnoTicketRaw  = {{ (chart_ano_ticket  or [])|tojson }};   // ticket médio
+
 function makeGradient(ctx, c1, c2){
   const g = ctx.createLinearGradient(0,0,0,220);
   g.addColorStop(0, c1); g.addColorStop(1, c2);
@@ -424,6 +512,179 @@ function makeGradient(ctx, c1, c2){
       } 
     }
   });
+})();
+
+// Crescimento anual (2025+)
+(function(){
+  const el = document.getElementById('chartCrescimentoAnual');
+  if(!el || !chartAnoLabelsRaw.length || !chartAnoTotaisRaw.length) return;
+
+  // Filtra somente anos >= 2025
+  const anosNum = chartAnoLabelsRaw.map(y => parseInt(y,10));
+  const mask = anosNum.map(y => y >= 2025);
+  const anos   = chartAnoLabelsRaw.filter((_,i)=> mask[i]);
+  const totR$  = chartAnoTotaisRaw.filter((_,i)=> mask[i]);
+  const qtd    = (chartAnoQtdRaw||[]).length ? chartAnoQtdRaw.filter((_,i)=> mask[i]) : Array(anos.length).fill(null);
+  const ticket = (chartAnoTicketRaw||[]).length ? chartAnoTicketRaw.filter((_,i)=> mask[i]) : Array(anos.length).fill(null);
+  if(!anos.length) return;
+
+  const ctx = el.getContext('2d');
+  const gradBar = makeGradient(ctx, 'rgba(0,51,153,0.35)','rgba(0,51,153,0.05)');
+
+  const sel = document.getElementById('selMetrica');
+  const ultimoAnoEl   = document.getElementById('kpiUltimoAno');
+  const ultimoValorEl = document.getElementById('kpiUltimoValor');
+  const mediaEl       = document.getElementById('kpiMediaAnual');
+  const yoyEl         = document.getElementById('kpiYoY');
+  const labelValorEl  = document.getElementById('kpiLabelValor');
+  const labelMediaEl  = document.getElementById('kpiLabelMedia');
+  const labelTotEl    = document.getElementById('kpiLabelTotalPeriodo');
+  const totSelEl      = document.getElementById('kpiTotalSelecionado');
+
+  function fmt(metric, v){
+    if(v===null || v===undefined) return '—';
+    if(metric==='faturamento' || metric==='ticket'){
+      return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
+    }
+    // entregas (inteiro)
+    return (v||0).toLocaleString('pt-BR');
+  }
+
+  function computeYoY(arr){
+    return arr.map((v,i)=>{
+      if(i===0) return null;
+      const prev = arr[i-1];
+      if(prev===0 || prev===null || prev===undefined) return null;
+      return ((v - prev) / prev) * 100.0;
+    });
+  }
+
+  let currentMetric = (sel && sel.value) || 'faturamento';
+
+  const chart = new Chart(ctx, {
+    data: {
+      labels: anos,
+      datasets: [
+        {
+          type: 'bar',
+          label: 'Valor',
+          data: currentMetric==='faturamento' ? totR$ : (currentMetric==='entregas' ? qtd : ticket),
+          backgroundColor: gradBar,
+          borderColor: '#003399',
+          borderWidth: 1.5,
+          yAxisID: 'y',
+        },
+        {
+          type: 'line',
+          label: 'Crescimento YoY (%)',
+          data: computeYoY(currentMetric==='faturamento' ? totR$ : (currentMetric==='entregas' ? qtd : ticket)),
+          spanGaps: true,
+          borderColor: '#2767e6',
+          backgroundColor: 'rgba(39,103,230,0.12)',
+          borderWidth: 2,
+          pointRadius: 3,
+          tension: .3,
+          yAxisID: 'y1',
+        }
+      ]
+    },
+    options: {
+      responsive: true,
+      scales: {
+        y: { beginAtZero: true, grid: { color: '#eef2ff' }, title: { display:true, text:'Valor' } },
+        y1:{ beginAtZero: true, position:'right', grid:{ drawOnChartArea:false }, title:{ display:true, text:'% YoY' } },
+        x: { grid: { display:false } }
+      },
+      plugins:{
+        legend:{ display:true },
+        tooltip:{
+          callbacks:{
+            label: (ctx)=>{
+              if(ctx.datasetIndex===0){
+                const v = ctx.parsed.y;
+                if(currentMetric==='faturamento') return ' R$ ' + fmt('faturamento', v);
+                if(currentMetric==='ticket')      return ' R$ ' + fmt('ticket', v);
+                return ' ' + fmt('entregas', v) + ' entregas';
+              } else {
+                const v = ctx.parsed.y;
+                return (v===null || v===undefined) ? ' — ' : ' ' + v.toLocaleString('pt-BR',{minimumFractionDigits:1, maximumFractionDigits:1}) + '%';
+              }
+            }
+          }
+        }
+      }
+    }
+  });
+
+  function refreshKPIs(){
+    const series = currentMetric==='faturamento' ? totR$ : (currentMetric==='entregas' ? qtd : ticket);
+    const n = series.length;
+    if(!n) return;
+
+    if(ultimoAnoEl)   ultimoAnoEl.textContent   = anos[n-1];
+    if(ultimoValorEl) ultimoValorEl.textContent = (currentMetric==='entregas' ? fmt('entregas', series[n-1]) : fmt('faturamento', series[n-1]));
+
+    if(mediaEl){
+      // média simples (para ticket e faturamento). Para entregas, média anual de entregas.
+      const valid = series.filter(v=>v!==null && v!==undefined);
+      const media = valid.length ? valid.reduce((a,b)=>a+(+b||0),0)/valid.length : 0;
+      mediaEl.textContent = (currentMetric==='entregas' ? fmt('entregas', media) : fmt('faturamento', media));
+    }
+
+    if(yoyEl){
+      const prev = n>1 ? series[n-2] : null;
+      const curr = series[n-1];
+      let txt = '—';
+      if(prev && prev!==0){
+        const pct = ((curr - prev)/prev)*100;
+        txt = (pct>=0? '+':'') + pct.toLocaleString('pt-BR',{minimumFractionDigits:1, maximumFractionDigits:1}) + '%';
+      }
+      yoyEl.textContent = txt;
+    }
+
+    if(labelValorEl){
+      if(currentMetric==='faturamento') labelValorEl.textContent = 'Faturamento do último ano (R$)';
+      else if(currentMetric==='entregas') labelValorEl.textContent = 'Entregas no último ano (qtd)';
+      else labelValorEl.textContent = 'Ticket médio do último ano (R$)';
+    }
+
+    if(labelMediaEl){
+      if(currentMetric==='faturamento') labelMediaEl.textContent = 'Média anual (R$)';
+      else if(currentMetric==='entregas') labelMediaEl.textContent = 'Média anual (qtd)';
+      else labelMediaEl.textContent = 'Média anual (R$)';
+    }
+
+    if(labelTotEl && totSelEl){
+      if(currentMetric==='ticket'){
+        labelTotEl.textContent = 'Média do período (R$)';
+        const valid = series.filter(v=>v!==null && v!==undefined);
+        const media = valid.length ? valid.reduce((a,b)=>a+(+b||0),0)/valid.length : 0;
+        totSelEl.textContent = fmt('faturamento', media);
+      } else {
+        labelTotEl.textContent = currentMetric==='entregas' ? 'Total do período (qtd)' : 'Total do período (R$)';
+        const total = series.reduce((a,b)=>a+(+b||0),0);
+        totSelEl.textContent = currentMetric==='entregas' ? fmt('entregas', total) : fmt('faturamento', total);
+      }
+    }
+  }
+
+  function refreshChart(){
+    const series = currentMetric==='faturamento' ? totR$ : (currentMetric==='entregas' ? qtd : ticket);
+    chart.data.datasets[0].data = series;
+    chart.data.datasets[1].data = computeYoY(series);
+    chart.options.scales.y.title.text = (currentMetric==='entregas' ? 'Entregas' : 'R$');
+    chart.update();
+    refreshKPIs();
+  }
+
+  refreshKPIs();
+
+  if(sel){
+    sel.addEventListener('change', ()=>{
+      currentMetric = sel.value;
+      refreshChart();
+    });
+  }
 })();
 </script>
 </body>
