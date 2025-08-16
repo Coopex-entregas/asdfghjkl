@@ -5,7 +5,7 @@ from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file
+from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify, abort  # <- adições: jsonify, abort
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -189,6 +189,15 @@ def redirect_back_to_admin():
         return redirect(from_ref)
     params = session.get("last_filters") or {}
     return redirect(url_for("admin", **params))
+
+# ====== (NOVO) Helper de segurança para o painel do cooperado ======
+def _assert_entrega_do_cooperado(entrega: Entrega):
+    """Garante que o usuário logado é o dono da entrega."""
+    uid = session.get('user_id')
+    if uid is None or session.get('is_admin'):
+        abort(403)
+    if entrega.cooperado_id != uid:
+        abort(403)
 
 # ====== ROTAS ======
 @app.route('/', methods=['GET', 'POST'])
@@ -584,7 +593,7 @@ def excluir_cooperado(id):
     flash('Cooperado excluído.')
     return redirect_back_to_admin()
 
-# ========= NOVO: endpoints para clique nos status =========
+# ========= NOVO: endpoints para clique nos status (ADMIN) =========
 @app.post('/entregas/<int:id>/marcar-pagamento')
 def marcar_pagamento(id):
     if not session.get('is_admin'):
@@ -603,6 +612,34 @@ def marcar_entregue(id):
     db.session.commit()
     return redirect_back_to_admin()
 # =========================================================
+
+# ========= NOVO: endpoints JSON para o PAINEL DO COOPERADO =========
+@app.post('/cooperado/toggle_pagamento/<int:id>')
+def toggle_pagamento(id):
+    """Alterna Pago/Pendente na própria entrega do cooperado."""
+    e = Entrega.query.get_or_404(id)
+    _assert_entrega_do_cooperado(e)
+    atual = (e.status_pagamento or 'pendente').lower()
+    novo = 'pago' if atual != 'pago' else 'pendente'
+    e.status_pagamento = novo
+    db.session.commit()
+    return jsonify(ok=True, status_pagamento=novo)
+
+@app.post('/cooperado/marcar_entregue/<int:id>')
+def cooperado_marcar_entregue(id):
+    """Marca como entregue + salva recebido_por (campo obrigatório)."""
+    e = Entrega.query.get_or_404(id)
+    _assert_entrega_do_cooperado(e)
+    payload = request.get_json(silent=True) or {}
+    recebido_por = (payload.get('recebido_por') or '').strip()
+    if not recebido_por:
+        return jsonify(ok=False, error='Campo "recebido_por" é obrigatório.'), 400
+    # compatibilidade: alguns lugares usam status 'recebido'
+    e.status = 'recebido'
+    e.recebido_por = recebido_por
+    db.session.commit()
+    return jsonify(ok=True)
+# ================================================================
 
 # ====== ESTATÍSTICAS ======
 @app.route('/estatisticas_cooperado')
@@ -667,7 +704,6 @@ def estatisticas_cooperado():
         if dt_local:
             cont_horas[dt_local.strftime('%H:00')] += 1
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
-    horas_pico_top3 = [h for h, _ in cont_horas.most_common(3)] if cont_horas else []
 
     # Forma de pagamento mais usada
     cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
@@ -697,8 +733,7 @@ def estatisticas_cooperado():
     cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
 
-    # >>> NOVO: Ranking de bairros de origem (dos clientes cadastrados) <<<
-    # Mapeia nome exato do cliente que aparece nas entregas -> registro do Cliente
+    # Ranking de bairros de origem (clientes)
     nomes_clientes = {e.cliente for e in entregas if e.cliente}
     clientes_cadastrados = []
     if nomes_clientes:
@@ -713,15 +748,13 @@ def estatisticas_cooperado():
         if cl and cl.bairro_origem:
             cont_bairros_origem[(cl.bairro_origem or '').strip()] += 1
 
-    # >>> AQUI A CORREÇÃO: usar chave 'bairro' (o template lê r.bairro)
     ranking_bairros_origem = [{"bairro": (b or 'Não informado'), "qtd": q}
                               for b, q in cont_bairros_origem.most_common()]
-    # <<< FIM NOVO >>>
 
     # Ranking formas pgto
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
 
-    # Ranking clientes (com valor total por cliente)
+    # Ranking clientes (valor total por cliente)
     soma_por_cliente = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     for e in entregas:
         if e.cliente:
@@ -764,10 +797,10 @@ def estatisticas_cooperado():
         estatisticas=estatisticas,
         ranking_cooperados=ranking_cooperados,
         ranking_bairros=ranking_bairros,
-        ranking_bairros_origem=ranking_bairros_origem,   # <<< enviado ao template
+        ranking_bairros_origem=ranking_bairros_origem,
         ranking_pgto=ranking_pgto,
-        ranking_clientes=ranking_clientes,          # inclui total por cliente
-        horas_pico_top3=horas_pico_top3,            # top3 horários
+        ranking_clientes=ranking_clientes,
+        horas_pico_top3=horas_pico_top3,
         chart_entregas_labels=chart_entregas_labels,
         chart_entregas_values=chart_entregas_values,
         chart_faturamento_labels=chart_faturamento_labels,
