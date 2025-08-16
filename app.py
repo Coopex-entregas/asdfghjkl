@@ -339,6 +339,7 @@ def clonar_entrega(id):
         recebido_por=None
     )
     db.session.add(nova)
+    # Remove da fila se atribuiu cooperado (não se aplica aqui, pois cooperado_id é None)
     db.session.commit()
     flash(f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.')
     return redirect_back_to_admin()
@@ -716,14 +717,14 @@ def estatisticas_cooperado():
         d, qtd = cont_dias.most_common(1)[0]
         dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": f"{d.strftime('%d/%m/%Y')} ({qtd})"}
 
-    # Horários de pico (top1 + top3)
+    # Horários de pico (Top 3) – formato de string p/ bater com o template (join)
     cont_horas = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         if dt_local:
             cont_horas[dt_local.strftime('%H:00')] += 1
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
-    horas_pico_top3 = [{"hora": h, "qtd": q} for h, q in cont_horas.most_common(3)]
+    horas_pico_top3 = [f"{h} ({q})" for h, q in cont_horas.most_common(3)]
 
     # Forma de pagamento mais usada
     cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
@@ -749,7 +750,7 @@ def estatisticas_cooperado():
         })
     ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
 
-    # Ranking bairros (destino, vindos das entregas)
+    # Ranking bairros (destino)
     cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
 
@@ -785,7 +786,7 @@ def estatisticas_cooperado():
         for c, d in sorted(soma_por_cliente.items(), key=lambda kv: kv[1]["total"], reverse=True)
     ]
 
-    # Gráficos
+    # Gráficos por dia
     dias_ordenados = sorted(list(cont_dias.keys()))
     chart_entregas_labels = [d.strftime("%d/%m") for d in dias_ordenados]
     chart_entregas_values = [cont_dias[d] for d in dias_ordenados]
@@ -806,6 +807,39 @@ def estatisticas_cooperado():
         "pgto_top": pgto_top
     }
 
+    # ====== NOVO: Séries anuais (2025+) – faturamento, quantidade, ticket médio ======
+    # Agrupa por ANO LOCAL (Brasil). Assim, 31/12 é o último dia e 01/01 "zera" naturalmente.
+    por_ano_total = defaultdict(float)
+    por_ano_qtd = defaultdict(int)
+
+    for e in entregas:
+        dt_local = to_brasilia(e.data_envio)
+        if not dt_local:
+            continue
+        ano_local = dt_local.year
+        if ano_local < 2025:
+            continue
+        por_ano_qtd[ano_local] += 1
+        por_ano_total[ano_local] += float(e.valor or 0)
+
+    if por_ano_total:
+        ultimo_ano = max(por_ano_total.keys() | por_ano_qtd.keys())
+    else:
+        ultimo_ano = max(2025, datetime.now(BRAZIL_TZ).year)
+
+    chart_ano_labels = list(range(2025, ultimo_ano + 1))
+    chart_ano_totais = []
+    chart_ano_qtd = []
+    chart_ano_ticket = []
+
+    for y in chart_ano_labels:
+        tot = float(por_ano_total.get(y, 0.0))
+        qtd = int(por_ano_qtd.get(y, 0))
+        tkt = (tot / qtd) if qtd else 0.0
+        chart_ano_totais.append(round(tot, 2))
+        chart_ano_qtd.append(qtd)
+        chart_ano_ticket.append(round(tkt, 2))
+
     return render_template(
         'estatisticas_cooperado.html',
         cooperados=cooperados,
@@ -825,7 +859,12 @@ def estatisticas_cooperado():
         chart_entregas_values=chart_entregas_values,
         chart_faturamento_labels=chart_faturamento_labels,
         chart_faturamento_values=chart_faturamento_values,
-        periodo_legivel=periodo_legivel
+        periodo_legivel=periodo_legivel,
+        # Séries anuais (para o bloco Crescimento Anual 2025+)
+        chart_ano_labels=chart_ano_labels,
+        chart_ano_totais=chart_ano_totais,
+        chart_ano_qtd=chart_ano_qtd,
+        chart_ano_ticket=chart_ano_ticket,
     )
 
 # ====== EXPORTAÇÃO detalhada ======
