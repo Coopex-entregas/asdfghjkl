@@ -6,28 +6,38 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <style>
   :root{--azul:#003399;--azul-claro:#e8f0fe;--branco:#fff;--verde:#13a038;--vermelho:#d11a1a;--cinza-card:#f3f6fb}
-  *{box-sizing:border-box} body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--azul-claro);color:#222b44}
-  header{background:linear-gradient(90deg,#003399 66%,#386fff 100%);color:#fff;padding:.6rem 3vw;font-weight:700;text-align:center;position:sticky;top:0}
-  .logo-coopex{display:flex;justify-content:center;margin:14px 0 4px}.logo-coopex img{height:56px}
+  *{box-sizing:border-box}
+  html,body{width:100%;max-width:100%;overflow-x:hidden}
+  body{margin:0;font-family:'Segoe UI',Arial,sans-serif;background:var(--azul-claro);color:#222b44}
+  header{background:linear-gradient(90deg,#003399 66%,#386fff 100%);color:#fff;padding:.6rem 3vw;font-weight:700;text-align:center;position:sticky;top:0;z-index:10}
+  .logo-coopex{display:flex;justify-content:center;margin:14px 0 4px}
+  .logo-coopex img{height:56px;max-width:180px}
   .container{max-width:540px;margin:10px auto 22px;background:var(--branco);border-radius:18px;box-shadow:0 2px 10px #00339916;padding:0 3vw 18px}
   .logout{display:block;text-align:right;margin:8px 10px 0 0;color:#003399;font-weight:700;text-decoration:none}
+
   .estatisticas{display:flex;gap:8px;margin:8px 0;flex-wrap:wrap}
   .estat-card{flex:1 1 90px;background:#003399;color:#fff;border-radius:12px;padding:10px 12px}
   .estat-card strong{color:#ffe066}
-  form.filtros{display:flex;gap:8px;justify-content:center;background:var(--cinza-card);padding:8px;border-radius:10px}
-  form.filtros input,form.filtros button{border:1px solid #c9d6ff;border-radius:8px;padding:7px 8px}
+
+  form.filtros{display:flex;gap:8px;justify-content:center;flex-wrap:wrap;background:var(--cinza-card);padding:8px;border-radius:10px}
+  form.filtros input,form.filtros select,form.filtros button{border:1px solid #c9d6ff;border-radius:8px;padding:7px 8px;font-size:0.98rem}
   form.filtros button{background:#003399;color:#fff;border:none;font-weight:700;cursor:pointer}
+
   h2{text-align:center;color:#003399;font-size:1.05rem;margin:10px 0}
 
   table{width:100%;border-collapse:collapse;table-layout:fixed;box-shadow:0 1px 6px #00339912}
   th,td{padding:12px 6px;text-align:center;border-bottom:1px solid #e6ecff;word-break:normal;overflow-wrap:break-word}
   th{background:#003399;color:#fff}
   .status-chip{display:inline-block;padding:4px 10px;border-radius:8px;font-weight:700}
-  .status-pago{color:#13a038;background:#e6faee}.status-pendente{color:#d11a1a;background:#fbeaea}.status-entregue{color:#13a038;background:#e6faee}
+  .status-pago{color:#13a038;background:#e6faee}
+  .status-pendente{color:#d11a1a;background:#fbeaea}
+  .status-entregue{color:#13a038;background:#e6faee}
   .clickable{cursor:pointer}
 
   .cliente-btn{all:unset;cursor:pointer;color:#003399;font-weight:700}
-  .row-details{display:none}.row-open + .row-details{display:table-row}
+  .row-details{display:none}
+  .row-open + .row-details{display:table-row}
+
   .recebido-inline{display:none;margin-top:6px;gap:6px;justify-content:center}
   .recebido-inline input{border:1px solid #c9d6ff;border-radius:8px;padding:6px 8px;width:70%}
   .recebido-inline button{background:#003399;color:#fff;border:none;border-radius:8px;padding:6px 10px;font-weight:700;cursor:pointer}
@@ -35,9 +45,11 @@
   /* mobile cards */
   @media (max-width:560px){
     .container{border-radius:0;padding:0 2vw 18px}
-    table,thead,tbody,th,tr{display:block} thead{display:none}
+    table,thead,tbody,th,tr{display:block}
+    thead{display:none}
     tr{background:#fff;margin:10px 0;border-radius:12px;box-shadow:0 1px 6px #00339912;padding:8px 10px}
-    .row-details{display:none}.row-open + .row-details{display:block}
+    .row-details{display:none}
+    .row-open + .row-details{display:block}
     td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:7px 2px;background:transparent}
     td::before{content:attr(data-label);font-weight:700;color:#003399;padding-right:8px}
   }
@@ -46,7 +58,9 @@
 <body>
 <header>Cooperado: {{ session['user_nome'] }}</header>
 
-<div class="logo-coopex"><img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos"></div>
+<div class="logo-coopex">
+  <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos">
+</div>
 
 <div class="container">
   <a class="logout" href="{{ url_for('logout') }}">Sair</a>
@@ -57,15 +71,23 @@
     <div class="estat-card">Pendente<br><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
   </div>
 
-  <form method="get" class="filtros">
+  <form method="get" class="filtros" id="form-filtros">
     <input type="date" name="inicio" value="{{ request.args.get('inicio','') }}">
     <input type="date" name="fim" value="{{ request.args.get('fim','') }}">
+
+    <!-- NOVO: filtro de pagamento -->
+    <select name="status_pgto" id="status_pgto">
+      <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
+      <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
+      <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
+    </select>
+
     <button type="submit">Filtrar</button>
   </form>
 
   <h2>Minhas Entregas</h2>
 
-  <table>
+  <table id="tabela-entregas">
     <thead>
       <tr>
         <th>Cliente</th>
@@ -84,27 +106,40 @@
         <td data-label="Cliente">
           <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
         </td>
+
         <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
-        <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+
+        <!-- data-valor guarda o número bruto para cálculo -->
+        <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">
+          R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}
+        </td>
+
         <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
         <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
         <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
 
         <td data-label="Pagamento">
-          <span class="status-chip clickable {{ 'status-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'status-pendente' }}"
-                data-id="{{ e.id }}" data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
-                onclick="togglePagamento(this)">
+          <span
+            class="status-chip clickable {{ 'status-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'status-pendente' }}"
+            data-id="{{ e.id }}"
+            data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
+            onclick="togglePagamento(this)"
+          >
             {{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}
           </span>
         </td>
 
         <td data-label="Entrega">
           {% set entregue = (e.status in ['recebido','entregue']) %}
-          <span class="status-chip clickable {{ 'status-entregue' if entregue else 'status-pendente' }}"
-                data-id="{{ e.id }}" data-entregue="{{ '1' if entregue else '0' }}"
-                onclick="handleEntregaClick(this)">
+          <span
+            class="status-chip clickable {{ 'status-entregue' if entregue else 'status-pendente' }}"
+            data-id="{{ e.id }}"
+            data-entregue="{{ '1' if entregue else '0' }}"
+            onclick="handleEntregaClick(this)"
+          >
             {{ 'Entregue' if entregue else 'Pendente' }}
           </span>
+
           <div class="recebido-inline" id="rcb-{{ e.id }}">
             <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60">
             <button type="button" onclick="confirmarRecebido({{ e.id }})">OK</button>
@@ -124,7 +159,7 @@
         </td>
       </tr>
       {% else %}
-      <tr><td data-label="" colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td></tr>
+      <tr class="no-rows"><td data-label="" colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td></tr>
       {% endfor %}
     </tbody>
   </table>
@@ -141,51 +176,91 @@
     const tr = document.getElementById('row-'+id);
     const details = document.getElementById('details-'+id);
     const open = tr.classList.toggle('row-open');
-    details.style.display = open ? (window.matchMedia("(max-width:560px)").matches ? "block" : "table-row") : "none";
+    const isMobile = window.matchMedia("(max-width:560px)").matches;
+    details.style.display = open ? (isMobile ? "block" : "table-row") : "none";
   }
 
-  function parseMoney(str){ return Number(String(str).replace(/[^\d,.-]/g,'').replace('.','').replace(',','.')) || 0 }
-  function updateTotais(deltaPago, deltaPendente){
-    const p = document.getElementById('tot-pago'), pe = document.getElementById('tot-pendente');
-    const vP = parseMoney(p.textContent), vPe = parseMoney(pe.textContent);
-    p.textContent = 'R$ ' + (vP + deltaPago).toFixed(2).replace('.',',');
-    pe.textContent = 'R$ ' + (vPe + deltaPendente).toFixed(2).replace('.',',');
+  function recalcTotals(){
+    const rows = document.querySelectorAll('tbody tr[id^="row-"]');
+    let total = 0, pago = 0;
+    rows.forEach(r => {
+      const vtd = r.querySelector('[data-valor]');
+      if(!vtd) return;
+      const v = parseFloat(vtd.dataset.valor || '0') || 0;
+      total += v;
+      const chip = r.querySelector('td[data-label="Pagamento"] .status-chip');
+      if(chip && (chip.dataset.status || '').toLowerCase() === 'pago'){ pago += v; }
+    });
+    const pendente = Math.max(0, total - pago);
+    document.getElementById('tot-geral').textContent    = 'R$ ' + total.toFixed(2).replace('.',',');
+    document.getElementById('tot-pago').textContent     = 'R$ ' + pago.toFixed(2).replace('.',',');
+    document.getElementById('tot-pendente').textContent = 'R$ ' + pendente.toFixed(2).replace('.',',');
   }
 
-  async function safeFetch(url, options){
-    const resp = await fetch(url, options);
-    let data = null, text = '';
-    try { data = await resp.json(); } catch { text = await resp.text(); }
-    return { resp, data, text };
+  function currentFilter(){
+    const sel = document.getElementById('status_pgto');
+    return (sel?.value || 'todas').toLowerCase(); // todas | pago | pendente
+  }
+
+  function ensureEmptyMessage(){
+    const tbody = document.querySelector('#tabela-entregas tbody');
+    const anyRow = tbody.querySelector('tr[id^="row-"]');
+    let msg = tbody.querySelector('.no-rows');
+    if(!anyRow){
+      if(!msg){
+        msg = document.createElement('tr');
+        msg.className = 'no-rows';
+        msg.innerHTML = '<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>';
+        tbody.appendChild(msg);
+      }
+    }else if(msg){
+      msg.remove();
+    }
   }
 
   async function togglePagamento(el){
     const id = el.dataset.id;
-    const valorTd = document.querySelector(`#row-${id} [data-valor]`);
-    const valor = parseFloat(valorTd?.dataset?.valor || '0');
+    const filtro = currentFilter(); // antes de mudar
 
     try{
-      const {resp, data, text} = await safeFetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id), {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
+      const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({})
       });
-      if(!resp.ok){ alert((data&&data.error)||text||'Falha ao alterar pagamento.'); return; }
-      if(data && data.ok){
-        const novo = (data.status_pagamento||'').toLowerCase();
-        const eraPago = el.dataset.status === 'pago';
-        el.dataset.status = novo;
-        el.textContent = (novo === 'pago') ? 'Pago' : 'Pendente';
-        el.classList.toggle('status-pago', novo==='pago');
-        el.classList.toggle('status-pendente', novo!=='pago');
-        if(novo==='pago' && !eraPago){ updateTotais(+valor, -valor); }
-        if(novo!=='pago' && eraPago){ updateTotais(-valor, +valor); }
-      }else{
-        alert((data&&data.error)||'Não foi possível alterar pagamento.');
+
+      let data = null, text = '';
+      try{ data = await resp.json(); }catch{ text = await resp.text(); }
+
+      if(!resp.ok){
+        alert((data && data.error) || text || 'Falha ao alterar pagamento.');
+        return;
       }
-    }catch(e){ alert('Erro de conexão ao alterar pagamento.'); }
+
+      const novo = (data.status_pagamento || 'pendente').toLowerCase();
+      el.dataset.status = novo;
+      el.textContent = (novo === 'pago') ? 'Pago' : 'Pendente';
+      el.classList.toggle('status-pago', novo === 'pago');
+      el.classList.toggle('status-pendente', novo !== 'pago');
+
+      // Se o filtro atual for "pagas" ou "pendentes" e a linha não pertence mais, removemos da tela
+      if((filtro === 'pago' && novo !== 'pago') || (filtro === 'pendente' && novo !== 'pendente')){
+        const row = document.getElementById(`row-${id}`);
+        const det = document.getElementById(`details-${id}`);
+        row?.remove(); det?.remove();
+        ensureEmptyMessage();
+      }
+
+      // Recalcular totals SEMPRE a partir das linhas visíveis
+      recalcTotals();
+
+    }catch(e){
+      alert('Erro de conexão ao alterar pagamento.');
+    }
   }
 
   function handleEntregaClick(el){
-    if(el.dataset.entregue === '1') return;
+    if(el.dataset.entregue === '1') return; // já entregue
     const id = el.dataset.id;
     const box = document.getElementById(`rcb-${id}`);
     box.style.display = 'flex';
@@ -199,10 +274,20 @@
     if(!nome){ alert('Informe quem recebeu.'); return; }
 
     try{
-      const {resp, data, text} = await safeFetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id), {
-        method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ recebido_por: nome })
+      const resp = await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id), {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body: JSON.stringify({ recebido_por: nome })
       });
-      if(!resp.ok){ alert((data&&data.error)||text||'Falha ao marcar entregue.'); return; }
+
+      let data = null, text = '';
+      try{ data = await resp.json(); }catch{ text = await resp.text(); }
+
+      if(!resp.ok){
+        alert((data && data.error) || text || 'Falha ao marcar entregue.');
+        return;
+      }
+
       if(data && data.ok){
         const row = document.getElementById(`row-${id}`);
         const entregaSpan = row.querySelector('[data-entregue]');
@@ -212,10 +297,14 @@
         entregaSpan.dataset.entregue = '1';
         box.style.display = 'none';
       }else{
-        alert((data&&data.error)||'Não foi possível marcar como entregue.');
+        alert((data && data.error) || 'Não foi possível marcar como entregue.');
       }
-    }catch(e){ alert('Erro de conexão ao marcar entregue.'); }
+    }catch(e){
+      alert('Erro de conexão ao marcar entregue.');
+    }
   }
+
+  document.addEventListener('DOMContentLoaded', recalcTotals);
 </script>
 </body>
 </html>
