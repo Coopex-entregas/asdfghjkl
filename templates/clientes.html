@@ -37,37 +37,31 @@
     .searchbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
     .searchbar input{flex:1; min-width:220px}
 
-    /* ==== STATS ===== */
     .stats{display:flex; gap:10px; flex-wrap:wrap}
-    .stat{
-      background:#fff; border:1px solid #d7e2ff; border-radius:10px; padding:10px 12px;
-      display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-sm); min-width:180px
-    }
+    .stat{background:#fff; border:1px solid #d7e2ff; border-radius:10px; padding:10px 12px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-sm); min-width:180px}
     .stat .n{font-weight:800; font-size:20px; color:#0b2b80}
     .stat small{color:#4b5a7f}
 
-    /* === Tabela === */
     table{width:100%; border-collapse:collapse; font-size:14px; table-layout:auto}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
 
-    thead th:nth-child(1){min-width:220px} /* Nome */
-    thead th:nth-child(2){min-width:150px} /* Telefone */
-    thead th:nth-child(3){min-width:160px} /* Bairro */
-    thead th:nth-child(4){min-width:300px} /* Endereço (1cm a mais) */
-    thead th:nth-child(5){min-width:140px; text-align:left} /* Último uso */
-    thead th:nth-child(6){min-width:70px; text-align:center} /* Total */
-    thead th:nth-child(7){min-width:160px; text-align:center} /* Ações */
+    thead th:nth-child(1){min-width:220px}
+    thead th:nth-child(2){min-width:150px}
+    thead th:nth-child(3){min-width:160px}
+    /* Endereço ~1cm mais largo (≈38px), deixei 340px mínima */
+    thead th:nth-child(4){min-width:340px}
+    thead th:nth-child(5){min-width:140px; text-align:left}
+    thead th:nth-child(6){min-width:70px; text-align:center}
+    thead th:nth-child(7){min-width:160px; text-align:center}
 
     td.actions{white-space:nowrap; text-align:center}
     td input[type="text"]{width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis}
 
-    /* Cores por idade do último uso (aplicadas na <tr>) */
-    .st-gt60 { background:#ffeaea } /* >60 dias */
-    .st-gt30 { background:#fff9e0 } /* 31-60 dias */
-    .st-lt30 { background:#eafaea } /* <=30 dias */
+    .st-gt60 { background:#ffeaea } /* >60d */
+    .st-gt30 { background:#fff9e0 } /* 31–60d */
+    .st-lt30 { background:#eafaea } /* ≤30d */
 
-    /* Último uso: data + possível badge */
     .ultimo-uso-cell{ display:flex; align-items:center; gap:8px; white-space:nowrap }
     .contact-flag{
       display:inline-block; margin-left:2px; padding:2px 6px; border-radius:8px;
@@ -147,7 +141,6 @@
         </div>
       </div>
 
-      <!-- Contadores -->
       <div class="stats" id="stats">
         <div class="stat"><div class="n" id="stat-total">0</div><div><div>Total de clientes</div><small>cadastrados</small></div></div>
         <div class="stat"><div class="n" id="stat-ativos">0</div><div><div>Ativos</div><small>último uso ≤ 6 meses</small></div></div>
@@ -207,25 +200,9 @@
     }
     function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
 
-    function parseYMD(s){
-      if(!s) return null;
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
-      if(!m) return null;
-      const y = +m[1], mo = +m[2]-1, d = +m[3];
-      return new Date(y, mo, d);
-    }
-    function parseAnyToLocalDate(s){
-      if(!s) return null;
-      const ymd = (s.length >= 10) ? s.slice(0,10) : s;
-      return parseYMD(ymd);
-    }
-    function daysSince(date){
-      if(!date) return null;
-      const a = new Date(date.getFullYear(), date.getMonth(), date.getDate());
-      const b = new Date(); const t = new Date(b.getFullYear(), b.getMonth(), b.getDate());
-      const ms = t - a;
-      return Math.floor(ms / (1000*60*60*24));
-    }
+    function parseYMD(s){ if(!s) return null; const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s); if(!m) return null; return new Date(+m[1], +m[2]-1, +m[3]); }
+    function parseAnyToLocalDate(s){ if(!s) return null; const y=s.slice(0,10); return parseYMD(y); }
+    function daysSince(date){ if(!date) return null; const a=new Date(date.getFullYear(),date.getMonth(),date.getDate()); const b=new Date(); const t=new Date(b.getFullYear(),b.getMonth(),b.getDate()); return Math.floor((t-a)/(1000*60*60*24)); }
     function fmtDateBR(date){ return date ? date.toLocaleDateString('pt-BR') : '—'; }
 
     const filtro = document.getElementById('filtro');
@@ -236,7 +213,7 @@
     const importFile = document.getElementById('arquivo-xlsx');
     const importLog  = document.getElementById('import-log');
 
-    // ---------- Hidrata (data + cores + days cache) ----------
+    // ---------- Hidrata (data + cores) ----------
     function hydrateRow(tr){
       const raw = tr.dataset.ultimo || '';
       const dt  = parseAnyToLocalDate(raw);
@@ -262,11 +239,11 @@
     }
     [...tbody.rows].forEach(hydrateRow);
 
-    // ---------- Contadores (Total / Ativos / Inativos) ----------
+    // ---------- Contadores ----------
     function recomputeStats(){
       const rows = [...tbody.rows];
       const total = rows.length;
-      const SIX_MONTHS_DAYS = 6 * 30; // aproximação prática: 180 dias
+      const SIX_MONTHS_DAYS = 180;
       let ativos = 0, inativos = 0;
       rows.forEach(tr => {
         const d = tr.dataset.days;
@@ -280,230 +257,157 @@
     }
     recomputeStats();
 
-    // ---------- Filtros unificados ----------
-    const state = { search:'', age:null }; // age: null|lte30|lte60|active|inactive
+    // ---------- Filtros ----------
+    const state = { search:{n:'',d:''}, age:null };
     function rowMatches(tr){
-      // busca
-      const termoNorm = state.search.n || '';
-      const termoDigits = state.search.d || '';
-      const nome    = norm(tr.querySelector('input[name="nome"]')?.value);
-      const tel     = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
-      const bairro  = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
-      const ender   = norm(tr.querySelector('input[name="endereco"]')?.value);
-      const matchesSearch =
-        (!termoNorm && !termoDigits) ||
-        nome.includes(termoNorm) || bairro.includes(termoNorm) || ender.includes(termoNorm) ||
-        (termoDigits && tel.includes(termoDigits));
+      const nome   = norm(tr.querySelector('input[name="nome"]')?.value);
+      const tel    = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
+      const bairro = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
+      const ender  = norm(tr.querySelector('input[name="endereco"]')?.value);
+      const sN = state.search.n, sD = state.search.d;
 
-      if(!matchesSearch) return false;
+      const matchSearch = (!sN && !sD) || nome.includes(sN) || bairro.includes(sN) || ender.includes(sN) || (sD && tel.includes(sD));
+      if(!matchSearch) return false;
 
-      // idade último uso
       const d = tr.dataset.days;
       const dias = (d === '' ? null : parseInt(d,10));
       switch(state.age){
-        case 'lte30':     return dias != null && dias <= 30;
-        case 'lte60':     return dias != null && dias <= 60;
-        case 'active':    return dias != null && dias <= 180;
-        case 'inactive':  return (dias == null || dias > 180);
-        default:          return true;
+        case 'lte30': return dias != null && dias <= 30;
+        case 'lte60': return dias != null && dias <= 60;
+        case 'active': return dias != null && dias <= 180;
+        case 'inactive': return (dias == null || dias > 180);
+        default: return true;
       }
     }
-    function applyAllFilters(){
-      [...tbody.rows].forEach(tr => {
-        tr.style.display = rowMatches(tr) ? '' : 'none';
-      });
-    }
+    function applyAllFilters(){ [...tbody.rows].forEach(tr => tr.style.display = rowMatches(tr) ? '' : 'none'); }
 
-    filtro?.addEventListener('input', () => {
-      state.search = { n:norm(filtro.value), d:onlyDigits(filtro.value) };
-      applyAllFilters();
-    });
+    filtro?.addEventListener('input', () => { state.search = { n:norm(filtro.value), d:onlyDigits(filtro.value) }; applyAllFilters(); });
     document.getElementById('filtro-ate30')?.addEventListener('click', () => { state.age='lte30'; applyAllFilters(); });
     document.getElementById('filtro-ate60')?.addEventListener('click', () => { state.age='lte60'; applyAllFilters(); });
     document.getElementById('filtro-ativos')?.addEventListener('click', () => { state.age='active'; applyAllFilters(); });
     document.getElementById('filtro-inativos')?.addEventListener('click', () => { state.age='inactive'; applyAllFilters(); });
-    document.getElementById('limpar')?.addEventListener('click', () => {
-      state.age = null; state.search = {n:'', d:''}; filtro.value = ''; applyAllFilters();
-    });
+    document.getElementById('limpar')?.addEventListener('click', () => { state.age=null; state.search={n:'',d:''}; filtro.value=''; applyAllFilters(); });
 
     // ---------- Ordenações ----------
     function sortBy(getKey, desc=false){
       const rows = [...tbody.rows];
       rows.sort((a,b) => {
-        const ka = getKey(a), kb = getKey(b);
-        if(ka == null && kb == null) return 0;
-        if(ka == null) return 1;
-        if(kb == null) return -1;
-        if(ka < kb) return desc ? 1 : -1;
-        if(ka > kb) return desc ? -1 : 1;
+        const ka=getKey(a), kb=getKey(b);
+        if(ka==null && kb==null) return 0;
+        if(ka==null) return 1;
+        if(kb==null) return -1;
+        if(ka<kb) return desc?1:-1;
+        if(ka>kb) return desc?-1:1;
         return 0;
       });
       rows.forEach(r => tbody.appendChild(r));
     }
-    document.getElementById('sort-mais')?.addEventListener('click', () =>
-      sortBy(tr => parseInt(tr.dataset.total || '0',10), true)
-    );
-    document.getElementById('sort-menos')?.addEventListener('click', () =>
-      sortBy(tr => parseInt(tr.dataset.total || '0',10), false)
-    );
-    document.getElementById('sort-nome')?.addEventListener('click', () =>
-      sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value))
-    );
+    document.getElementById('sort-mais')?.addEventListener('click', () => sortBy(tr => parseInt(tr.dataset.total||'0',10), true));
+    document.getElementById('sort-menos')?.addEventListener('click', () => sortBy(tr => parseInt(tr.dataset.total||'0',10), false));
+    document.getElementById('sort-nome')?.addEventListener('click', () => sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value)));
 
     // ---------- Máscara telefone ----------
     function maskTel(v){
-      const d = (v||'').replace(/\D/g,'').slice(0,11);
-      if(d.length <= 2) return `(${d}`;
-      if(d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
-      if(d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+      const d=(v||'').replace(/\D/g,'').slice(0,11);
+      if(d.length<=2) return `(${d}`;
+      if(d.length<=6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+      if(d.length<=10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
       return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
     }
     function applyMaskTelOn(el){
       el.addEventListener('input', e => {
-        const pos = e.target.selectionStart;
-        const old = e.target.value;
-        e.target.value = maskTel(e.target.value);
-        const diff = e.target.value.length - old.length;
-        const newPos = Math.max(0,(pos+diff));
-        try{ e.target.setSelectionRange(newPos, newPos); }catch(_){}
+        const pos=e.target.selectionStart, old=e.target.value;
+        e.target.value=maskTel(e.target.value);
+        const diff=e.target.value.length-old.length;
+        try{ e.target.setSelectionRange(Math.max(0,pos+diff), Math.max(0,pos+diff)); }catch(_){}
       });
     }
     document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
-    const telCreate = document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
+    const telCreate=document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
 
-    // ---------- Title sempre mostra conteúdo completo ----------
+    // ---------- Titles ----------
     document.querySelectorAll('#tbody-clientes input[type="text"]').forEach(inp=>{
       inp.addEventListener('input', ()=> { inp.title = inp.value; });
     });
 
     // ---------- Dirty tracking ----------
-    const dirtyMap = new Set();
-    function markDirty(tr, yes){
-      const id = tr.dataset.id;
-      if(!id) return;
-      if(yes) dirtyMap.add(id); else dirtyMap.delete(id);
-      countPend.textContent = dirtyMap.size;
-    }
-    document.querySelectorAll('#tbody-clientes tr').forEach(tr => {
-      tr.querySelectorAll('input.dirty-watch').forEach(inp => {
-        const original = inp.value; inp.dataset._orig = original;
-        inp.addEventListener('input', () => {
-          const anyChanged = [...tr.querySelectorAll('input.dirty-watch')].some(i => i.value !== i.dataset._orig);
-          markDirty(tr, anyChanged);
-        });
+    const dirtyMap=new Set();
+    function markDirty(tr,yes){ const id=tr.dataset.id; if(!id) return; if(yes) dirtyMap.add(id); else dirtyMap.delete(id); document.getElementById('count-pend').textContent=dirtyMap.size; }
+    document.querySelectorAll('#tbody-clientes tr').forEach(tr=>{
+      tr.querySelectorAll('input.dirty-watch').forEach(inp=>{
+        const original=inp.value; inp.dataset._orig=original;
+        inp.addEventListener('input', ()=>{ const anyChanged=[...tr.querySelectorAll('input.dirty-watch')].some(i=>i.value!==i.dataset._orig); markDirty(tr,anyChanged); });
       });
     });
-    function clearDirty(tr){
-      tr.querySelectorAll('input.dirty-watch').forEach(inp => { inp.dataset._orig = inp.value; });
-      markDirty(tr, false);
-    }
+    function clearDirty(tr){ tr.querySelectorAll('input.dirty-watch').forEach(inp=>{ inp.dataset._orig=inp.value; }); markDirty(tr,false); }
 
-    // ---------- Salvar 1 linha (AJAX) ----------
-    document.querySelectorAll('.row-form').forEach(form => {
-      form.addEventListener('submit', async (ev) => {
+    // ---------- Salvar linha ----------
+    document.querySelectorAll('.row-form').forEach(form=>{
+      form.addEventListener('submit', async (ev)=>{
         ev.preventDefault();
-        const tr = form.closest('tr');
-        const url = form.getAttribute('action');
-        const fd = new FormData(form);
-
-        try {
-          const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With':'fetch' }});
-          if(!res.ok) throw new Error('Falha ao salvar');
-
-          let data = null; try { data = await res.json(); } catch(_) {}
-          if (data && typeof data === 'object'){
-            if ('ultimo_uso' in data){
-              tr.dataset.ultimo = (data.ultimo_uso || '').slice(0,10);
-              hydrateRow(tr);
-            }
-            if ('total_pedidos' in data){
-              tr.dataset.total = data.total_pedidos;
-              const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
-            }
+        const tr=form.closest('tr'); const url=form.getAttribute('action'); const fd=new FormData(form);
+        try{
+          const res=await fetch(url,{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}});
+          if(!res.ok) throw new Error();
+          let data=null; try{ data=await res.json(); }catch(_){}
+          if(data && typeof data==='object'){
+            if('ultimo_uso' in data){ tr.dataset.ultimo=(data.ultimo_uso||'').slice(0,10); hydrateRow(tr); }
+            if('total_pedidos' in data){ tr.dataset.total=data.total_pedidos; const tc=tr.querySelector('.total-cell'); if(tc) tc.textContent=data.total_pedidos; }
           }
-          clearDirty(tr);
-          recomputeStats();
-
-          const btn = form.querySelector('.btn-save');
-          const oldTxt = btn.textContent; btn.textContent = 'Salvo!';
-          setTimeout(()=> btn.textContent = oldTxt, 1200);
-        } catch (e) {
-          alert('Erro ao salvar este cliente.');
-        }
+          clearDirty(tr); recomputeStats();
+          const btn=form.querySelector('.btn-save'); const old=btn.textContent; btn.textContent='Salvo!'; setTimeout(()=>btn.textContent=old,1200);
+        }catch(_){ alert('Erro ao salvar este cliente.'); }
       });
     });
 
     // ---------- Salvar tudo ----------
-    btnSalvarTudo?.addEventListener('click', async () => {
-      const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
-      if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
-
+    btnSalvarTudo?.addEventListener('click', async ()=>{
+      const rowsChanged=[...tbody.rows].filter(tr=>dirtyMap.has(tr.dataset.id));
+      if(rowsChanged.length===0){ alert('Nada para salvar.'); return; }
       for(const tr of rowsChanged){
-        const form = tr.querySelector('.row-form');
-        if(!form) continue;
-        const url = form.getAttribute('action');
-        const fd  = new FormData(form);
+        const form=tr.querySelector('.row-form'); const url=form.getAttribute('action'); const fd=new FormData(form);
         try{
-          const res = await fetch(url, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
+          const res=await fetch(url,{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}});
           if(!res.ok) throw new Error();
-          let data = null; try { data = await res.json(); } catch(_){ }
-          if (data && typeof data === 'object'){
-            if ('ultimo_uso' in data){
-              tr.dataset.ultimo = (data.ultimo_uso || '').slice(0,10);
-              hydrateRow(tr);
-            }
-            if ('total_pedidos' in data){
-              tr.dataset.total = data.total_pedidos;
-              const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
-            }
+          let data=null; try{ data=await res.json(); }catch(_){}
+          if(data && typeof data==='object'){
+            if('ultimo_uso' in data){ tr.dataset.ultimo=(data.ultimo_uso||'').slice(0,10); hydrateRow(tr); }
+            if('total_pedidos' in data){ tr.dataset.total=data.total_pedidos; const tc=tr.querySelector('.total-cell'); if(tc) tc.textContent=data.total_pedidos; }
           }
           clearDirty(tr);
-        }catch(e){
-          console.warn('Falha ao salvar linha', tr.dataset.id);
-        }
+        }catch(_){ console.warn('Falha ao salvar', tr.dataset.id); }
       }
-      recomputeStats();
-      alert('Salvamento concluído.');
+      recomputeStats(); alert('Salvamento concluído.');
     });
 
     // ---------- Excluir ----------
-    document.querySelectorAll('.btn-excluir').forEach(btn => {
-      btn.addEventListener('click', async (e) => {
-        const tr = e.target.closest('tr');
-        const name = tr.querySelector('input[name="nome"]').value || 'o cliente';
+    document.querySelectorAll('.btn-excluir').forEach(btn=>{
+      btn.addEventListener('click', async (e)=>{
+        const tr=e.target.closest('tr'); const name=tr.querySelector('input[name="nome"]').value||'o cliente';
         if(!confirm(`Excluir ${name}?`)) return;
-        const formDel = tr.querySelector('.form-del'); if(!formDel) return;
+        const formDel=tr.querySelector('.form-del'); if(!formDel) return;
         try{
-          const res = await fetch(formDel.getAttribute('action'), { method:'POST', headers:{'X-Requested-With':'fetch'} });
+          const res=await fetch(formDel.getAttribute('action'),{method:'POST',headers:{'X-Requested-With':'fetch'}});
           if(!res.ok) throw new Error();
-          tr.remove();
-          markDirty(tr, false);
-          recomputeStats();
+          tr.remove(); markDirty(tr,false); recomputeStats();
         }catch(_){ alert('Não foi possível excluir.'); }
       });
     });
 
-    // ---------- Importar XLSX ----------
-    importForm?.addEventListener('submit', async (ev) => {
+    // ---------- Importar ----------
+    importForm?.addEventListener('submit', async (ev)=>{
       ev.preventDefault();
-      const file = importFile?.files?.[0];
-      if(!file){ alert('Selecione um arquivo .xlsx'); return; }
-      const fd = new FormData(importForm);
-      importLog.textContent = 'Enviando arquivo…';
-
+      const file=importFile?.files?.[0]; if(!file){ alert('Selecione um arquivo .xlsx'); return; }
+      const fd=new FormData(importForm); importLog.textContent='Enviando arquivo…';
       try{
-        const res = await fetch(importForm.getAttribute('action'), { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
-        if(!res.ok) throw new Error('Falha no upload');
-        let data = null; try{ data = await res.json(); }catch(_){ }
+        const res=await fetch(importForm.getAttribute('action'),{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}});
+        if(!res.ok) throw new Error();
+        let data=null; try{ data=await res.json(); }catch(_){}
         if(data && data.ok){
-          const add = data.adicionados ?? 0, upd = data.atualizados ?? 0, err = data.erros ?? 0;
-          importLog.innerHTML = `Importação concluída: <b>${add}</b> adicionados, <b>${upd}</b> atualizados, <b>${err}</b> erros.<br><span class="muted">Atualize a página para ver os novos clientes.</span>`;
-        } else {
-          importLog.textContent = 'Importação finalizada.';
-        }
-      }catch(e){
-        importLog.textContent = 'Erro ao importar o arquivo.';
-      }
+          const add=data.adicionados??0, upd=data.atualizados??0, err=data.erros??0;
+          importLog.innerHTML=`Importação concluída: <b>${add}</b> adicionados, <b>${upd}</b> atualizados, <b>${err}</b> erros.<br><span class="muted">Atualize a página para ver os novos clientes.</span>`;
+        } else { importLog.textContent='Importação finalizada.'; }
+      }catch(_){ importLog.textContent='Erro ao importar o arquivo.'; }
     });
   </script>
 </body>
