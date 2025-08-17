@@ -34,37 +34,37 @@
     input[type="text"], input[type="file"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
     .submit{margin-top:10px}
 
+    .kpis{display:flex; gap:14px; flex-wrap:wrap}
+    .kpis .tile{background:#fff; border:1px solid #e6ebff; border-radius:12px; padding:12px 16px; min-width:180px; box-shadow:var(--shadow-sm)}
+    .tile .num{font-weight:800; font-size:26px; color:#003399}
+    .tile .lbl{font-weight:700}
+    .tile .sub{font-size:12px; color:#4b5a7f}
+
     .searchbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
     .searchbar input{flex:1; min-width:220px}
 
-    .stats{display:flex; gap:10px; flex-wrap:wrap}
-    .stat{background:#fff; border:1px solid #d7e2ff; border-radius:10px; padding:10px 12px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow-sm); min-width:180px}
-    .stat .n{font-weight:800; font-size:20px; color:#0b2b80}
-    .stat small{color:#4b5a7f}
-
-    table{width:100%; border-collapse:collapse; font-size:14px; table-layout:auto}
+    table{width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
-
-    thead th:nth-child(1){min-width:220px}
-    thead th:nth-child(2){min-width:150px}
-    thead th:nth-child(3){min-width:160px}
-    /* Endereço ~1cm mais largo (≈38px), deixei 340px mínima */
-    thead th:nth-child(4){min-width:340px}
-    thead th:nth-child(5){min-width:140px; text-align:left}
-    thead th:nth-child(6){min-width:70px; text-align:center}
-    thead th:nth-child(7){min-width:160px; text-align:center}
-
     td.actions{white-space:nowrap; text-align:center}
-    td input[type="text"]{width:100%; min-width:0; overflow:hidden; text-overflow:ellipsis}
 
-    .st-gt60 { background:#ffeaea } /* >60d */
-    .st-gt30 { background:#fff9e0 } /* 31–60d */
-    .st-lt30 { background:#eafaea } /* ≤30d */
+    thead th:nth-child(1){width:26%}
+    thead th:nth-child(2){width:16%}
+    thead th:nth-child(3){width:18%}
+    /* +1 cm no endereço */
+    thead th:nth-child(4){width:calc(30% + 1cm)}
+    thead th:nth-child(5){width:10%}
+    thead th:nth-child(6){width:6%}
+    thead th:nth-child(7){width:12%}
 
-    .ultimo-uso-cell{ display:flex; align-items:center; gap:8px; white-space:nowrap }
+    td input[type="text"]{width:100%; overflow:hidden; text-overflow:ellipsis}
+
+    .st-gt60 { background:#ffeaea }
+    .st-gt30 { background:#fff9e0 }
+    .st-lt30 { background:#eafaea }
+
     .contact-flag{
-      display:inline-block; margin-left:2px; padding:2px 6px; border-radius:8px;
+      display:inline-block; margin-left:6px; padding:2px 6px; border-radius:8px;
       background:#ffe3e3; border:1px solid #ffcaca; color:#8a0b0b; font-weight:800; font-size:12px;
       white-space:nowrap;
     }
@@ -76,7 +76,7 @@
 <body>
   <div class="wrap">
     <div class="topbar">
-      <h1>Clientes</h1>
+      <h1> Cadastro de Clientes</h1>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
         <span class="badge">Alterações pendentes: <span id="count-pend">0</span></span>
         <button id="btn-salvar-tudo" class="btn" type="button">💾 Salvar tudo</button>
@@ -84,9 +84,32 @@
       </div>
     </div>
 
-    {% with msgs = get_flashed_messages() %}{% if msgs %}{% for m in msgs %}
-      <div class="flash">{{ m }}</div>
-    {% endfor %}{% endif %}{% endwith %}
+    {% with msgs = get_flashed_messages() %}
+      {% if msgs %}
+        {% for m in msgs %}
+          <div class="flash">{{ m }}</div>
+        {% endfor %}
+      {% endif %}
+    {% endwith %}
+
+    <!-- KPIs -->
+    <div class="kpis" style="margin-bottom:10px">
+      <div class="tile">
+        <div class="num">{{ kpis.total }}</div>
+        <div class="lbl">Total de clientes</div>
+        <div class="sub">cadastrados</div>
+      </div>
+      <div class="tile">
+        <div class="num">{{ kpis.ativos }}</div>
+        <div class="lbl">Ativos</div>
+        <div class="sub">último uso ≤ 6 meses</div>
+      </div>
+      <div class="tile">
+        <div class="num">{{ kpis.inativos }}</div>
+        <div class="lbl">Inativos</div>
+        <div class="sub">último uso ≥ 6 meses ou nunca</div>
+      </div>
+    </div>
 
     <div class="card">
       <div class="tools">
@@ -133,18 +156,10 @@
           <button type="button" class="btn-small" id="sort-mais">Mais pedidos</button>
           <button type="button" class="btn-small" id="sort-menos">Menos pedidos</button>
           <button type="button" class="btn-small" id="sort-nome">Ordenar por nome</button>
-          <button type="button" class="btn-small" id="filtro-ate30">Até 30 dias</button>
-          <button type="button" class="btn-small" id="filtro-ate60">Até 60 dias</button>
-          <button type="button" class="btn-small" id="filtro-ativos">Ativos (≤ 6m)</button>
-          <button type="button" class="btn-small" id="filtro-inativos">Inativos (≥ 6m)</button>
+          <button type="button" class="btn-small" id="filtro-30">Até 30 dias</button>
+          <button type="button" class="btn-small" id="filtro-60">Até 60 dias</button>
           <button type="button" class="btn-small" id="limpar">Limpar ordenação/filtros</button>
         </div>
-      </div>
-
-      <div class="stats" id="stats">
-        <div class="stat"><div class="n" id="stat-total">0</div><div><div>Total de clientes</div><small>cadastrados</small></div></div>
-        <div class="stat"><div class="n" id="stat-ativos">0</div><div><div>Ativos</div><small>último uso ≤ 6 meses</small></div></div>
-        <div class="stat"><div class="n" id="stat-inativos">0</div><div><div>Inativos</div><small>último uso ≥ 6 meses ou nunca</small></div></div>
       </div>
     </div>
 
@@ -157,23 +172,28 @@
             <th>Bairro</th>
             <th>Endereço</th>
             <th>Último uso</th>
-            <th style="text-align:center">Total</th>
+            <th>Total</th>
             <th style="text-align:center">Ações</th>
           </tr>
         </thead>
         <tbody id="tbody-clientes">
           {% for cl in clientes %}
-          <tr
-            data-id="{{ cl.id }}"
-            data-ultimo="{{ (cl.ultimo_uso[:10]) if cl.ultimo_uso else '' }}"
-            data-total="{{ cl.total_pedidos }}"
-          >
+          <tr data-id="{{ cl.id }}"
+              data-ultimo="{{ cl.ultimo_ymd or '' }}"
+              data-days="{{ cl.ultimo_days if cl.ultimo_days is not none else '' }}"
+              data-total="{{ cl.total_pedidos }}"
+              class="{{ cl.row_class or '' }}">
             <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
               <td><input type="text" name="nome" value="{{ cl.nome }}" title="{{ cl.nome }}" required class="dirty-watch"></td>
               <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" title="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
               <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" title="{{ cl.bairro_origem or '' }}" class="dirty-watch"></td>
               <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" title="{{ cl.endereco or '' }}" class="dirty-watch"></td>
-              <td class="ultimo-uso-cell">—</td>
+              <td class="ultimo-uso-cell">
+                {{ cl.ultimo_br or '—' }}
+                {% if cl.ultimo_days is not none and cl.ultimo_days > 60 %}
+                  <span class="contact-flag">Entrar em contato</span>
+                {% endif %}
+              </td>
               <td class="total-cell" style="text-align:center">{{ cl.total_pedidos }}</td>
               <td class="actions">
                 <button class="btn-small btn-save" type="submit" title="Salvar">Salvar</button>
@@ -199,11 +219,11 @@
         .toLowerCase().trim();
     }
     function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
-
-    function parseYMD(s){ if(!s) return null; const m=/^(\d{4})-(\d{2})-(\d{2})$/.exec(s); if(!m) return null; return new Date(+m[1], +m[2]-1, +m[3]); }
-    function parseAnyToLocalDate(s){ if(!s) return null; const y=s.slice(0,10); return parseYMD(y); }
-    function daysSince(date){ if(!date) return null; const a=new Date(date.getFullYear(),date.getMonth(),date.getDate()); const b=new Date(); const t=new Date(b.getFullYear(),b.getMonth(),b.getDate()); return Math.floor((t-a)/(1000*60*60*24)); }
-    function fmtDateBR(date){ return date ? date.toLocaleDateString('pt-BR') : '—'; }
+    function isoToBR(iso){ // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
+      if(!iso) return '';
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+      return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+    }
 
     const filtro = document.getElementById('filtro');
     const tbody  = document.getElementById('tbody-clientes');
@@ -213,201 +233,247 @@
     const importFile = document.getElementById('arquivo-xlsx');
     const importLog  = document.getElementById('import-log');
 
-    // ---------- Hidrata (data + cores) ----------
-    function hydrateRow(tr){
-      const raw = tr.dataset.ultimo || '';
-      const dt  = parseAnyToLocalDate(raw);
-      const dias = dt ? daysSince(dt) : null;
-      tr.dataset.days = (dias == null ? '' : String(dias));
+    // ---------- Filtro texto ----------
+    function aplicaFiltro(){
+      const termo = filtro?.value || '';
+      const termoNorm = norm(termo);
+      const termoDigits = onlyDigits(termo);
 
-      const cell = tr.querySelector('.ultimo-uso-cell');
-      cell.innerHTML = dt ? fmtDateBR(dt) : '—';
+      [...tbody.rows].forEach(tr => {
+        const nome    = norm(tr.querySelector('input[name="nome"]')?.value);
+        const tel     = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
+        const bairro  = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
+        const ender   = norm(tr.querySelector('input[name="endereco"]')?.value);
 
-      tr.classList.remove('st-gt60','st-gt30','st-lt30');
-      if(dias == null){ return; }
-      if(dias > 60){
-        tr.classList.add('st-gt60');
-        const flag = document.createElement('span');
-        flag.className = 'contact-flag';
-        flag.textContent = 'Entrar em contato';
-        cell.appendChild(flag);
-      } else if(dias > 30){
-        tr.classList.add('st-gt30');
-      } else {
-        tr.classList.add('st-lt30');
-      }
-    }
-    [...tbody.rows].forEach(hydrateRow);
+        const match =
+          (!termoNorm && !termoDigits) ||
+          nome.includes(termoNorm) || bairro.includes(termoNorm) || ender.includes(termoNorm) ||
+          (termoDigits && tel.includes(termoDigits));
 
-    // ---------- Contadores ----------
-    function recomputeStats(){
-      const rows = [...tbody.rows];
-      const total = rows.length;
-      const SIX_MONTHS_DAYS = 180;
-      let ativos = 0, inativos = 0;
-      rows.forEach(tr => {
-        const d = tr.dataset.days;
-        const dias = (d === '' ? null : parseInt(d,10));
-        if(dias == null || dias > SIX_MONTHS_DAYS) inativos++;
-        else ativos++;
+        tr.style.display = match ? '' : 'none';
       });
-      document.getElementById('stat-total').textContent   = total;
-      document.getElementById('stat-ativos').textContent  = ativos;
-      document.getElementById('stat-inativos').textContent= inativos;
     }
-    recomputeStats();
-
-    // ---------- Filtros ----------
-    const state = { search:{n:'',d:''}, age:null };
-    function rowMatches(tr){
-      const nome   = norm(tr.querySelector('input[name="nome"]')?.value);
-      const tel    = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
-      const bairro = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
-      const ender  = norm(tr.querySelector('input[name="endereco"]')?.value);
-      const sN = state.search.n, sD = state.search.d;
-
-      const matchSearch = (!sN && !sD) || nome.includes(sN) || bairro.includes(sN) || ender.includes(sN) || (sD && tel.includes(sD));
-      if(!matchSearch) return false;
-
-      const d = tr.dataset.days;
-      const dias = (d === '' ? null : parseInt(d,10));
-      switch(state.age){
-        case 'lte30': return dias != null && dias <= 30;
-        case 'lte60': return dias != null && dias <= 60;
-        case 'active': return dias != null && dias <= 180;
-        case 'inactive': return (dias == null || dias > 180);
-        default: return true;
-      }
-    }
-    function applyAllFilters(){ [...tbody.rows].forEach(tr => tr.style.display = rowMatches(tr) ? '' : 'none'); }
-
-    filtro?.addEventListener('input', () => { state.search = { n:norm(filtro.value), d:onlyDigits(filtro.value) }; applyAllFilters(); });
-    document.getElementById('filtro-ate30')?.addEventListener('click', () => { state.age='lte30'; applyAllFilters(); });
-    document.getElementById('filtro-ate60')?.addEventListener('click', () => { state.age='lte60'; applyAllFilters(); });
-    document.getElementById('filtro-ativos')?.addEventListener('click', () => { state.age='active'; applyAllFilters(); });
-    document.getElementById('filtro-inativos')?.addEventListener('click', () => { state.age='inactive'; applyAllFilters(); });
-    document.getElementById('limpar')?.addEventListener('click', () => { state.age=null; state.search={n:'',d:''}; filtro.value=''; applyAllFilters(); });
+    filtro?.addEventListener('input', aplicaFiltro);
 
     // ---------- Ordenações ----------
     function sortBy(getKey, desc=false){
       const rows = [...tbody.rows];
       rows.sort((a,b) => {
-        const ka=getKey(a), kb=getKey(b);
-        if(ka==null && kb==null) return 0;
-        if(ka==null) return 1;
-        if(kb==null) return -1;
-        if(ka<kb) return desc?1:-1;
-        if(ka>kb) return desc?-1:1;
+        const ka = getKey(a), kb = getKey(b);
+        if(ka == null && kb == null) return 0;
+        if(ka == null) return 1;
+        if(kb == null) return -1;
+        if(ka < kb) return desc ? 1 : -1;
+        if(ka > kb) return desc ? -1 : 1;
         return 0;
       });
       rows.forEach(r => tbody.appendChild(r));
     }
-    document.getElementById('sort-mais')?.addEventListener('click', () => sortBy(tr => parseInt(tr.dataset.total||'0',10), true));
-    document.getElementById('sort-menos')?.addEventListener('click', () => sortBy(tr => parseInt(tr.dataset.total||'0',10), false));
-    document.getElementById('sort-nome')?.addEventListener('click', () => sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value)));
+    document.getElementById('sort-mais')?.addEventListener('click', () =>
+      sortBy(tr => parseInt(tr.dataset.total || '0',10), true)
+    );
+    document.getElementById('sort-menos')?.addEventListener('click', () =>
+      sortBy(tr => parseInt(tr.dataset.total || '0',10), false)
+    );
+    document.getElementById('sort-nome')?.addEventListener('click', () =>
+      sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value))
+    );
+
+    // ---------- Filtros por dias ----------
+    document.getElementById('filtro-30')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => {
+        const days = tr.dataset.days === '' ? null : parseInt(tr.dataset.days,10);
+        tr.style.display = (days != null && days <= 30) ? '' : 'none';
+      });
+    });
+    document.getElementById('filtro-60')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => {
+        const days = tr.dataset.days === '' ? null : parseInt(tr.dataset.days,10);
+        tr.style.display = (days != null && days <= 60) ? '' : 'none';
+      });
+    });
+    document.getElementById('limpar')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => tr.style.display = '');
+      filtro.value = '';
+    });
 
     // ---------- Máscara telefone ----------
     function maskTel(v){
-      const d=(v||'').replace(/\D/g,'').slice(0,11);
-      if(d.length<=2) return `(${d}`;
-      if(d.length<=6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
-      if(d.length<=10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+      const d = onlyDigits(v).slice(0,11);
+      if(d.length <= 2) return `(${d}`;
+      if(d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+      if(d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
       return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
     }
     function applyMaskTelOn(el){
       el.addEventListener('input', e => {
-        const pos=e.target.selectionStart, old=e.target.value;
-        e.target.value=maskTel(e.target.value);
-        const diff=e.target.value.length-old.length;
-        try{ e.target.setSelectionRange(Math.max(0,pos+diff), Math.max(0,pos+diff)); }catch(_){}
+        const pos = e.target.selectionStart;
+        const old = e.target.value;
+        e.target.value = maskTel(e.target.value);
+        const diff = e.target.value.length - old.length;
+        const newPos = Math.max(0,(pos+diff));
+        try{ e.target.setSelectionRange(newPos, newPos); }catch(_){}
       });
     }
     document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
-    const telCreate=document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
+    const telCreate = document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
 
-    // ---------- Titles ----------
+    // ---------- Title sempre mostra conteúdo completo ----------
     document.querySelectorAll('#tbody-clientes input[type="text"]').forEach(inp=>{
       inp.addEventListener('input', ()=> { inp.title = inp.value; });
     });
 
     // ---------- Dirty tracking ----------
-    const dirtyMap=new Set();
-    function markDirty(tr,yes){ const id=tr.dataset.id; if(!id) return; if(yes) dirtyMap.add(id); else dirtyMap.delete(id); document.getElementById('count-pend').textContent=dirtyMap.size; }
-    document.querySelectorAll('#tbody-clientes tr').forEach(tr=>{
-      tr.querySelectorAll('input.dirty-watch').forEach(inp=>{
-        const original=inp.value; inp.dataset._orig=original;
-        inp.addEventListener('input', ()=>{ const anyChanged=[...tr.querySelectorAll('input.dirty-watch')].some(i=>i.value!==i.dataset._orig); markDirty(tr,anyChanged); });
+    const dirtyMap = new Set();
+    function markDirty(tr, yes){
+      const id = tr.dataset.id;
+      if(!id) return;
+      if(yes) dirtyMap.add(id); else dirtyMap.delete(id);
+      countPend.textContent = dirtyMap.size;
+    }
+    document.querySelectorAll('#tbody-clientes tr').forEach(tr => {
+      tr.querySelectorAll('input.dirty-watch').forEach(inp => {
+        const original = inp.value; inp.dataset._orig = original;
+        inp.addEventListener('input', () => {
+          const anyChanged = [...tr.querySelectorAll('input.dirty-watch')].some(i => i.value !== i.dataset._orig);
+          markDirty(tr, anyChanged);
+        });
       });
     });
-    function clearDirty(tr){ tr.querySelectorAll('input.dirty-watch').forEach(inp=>{ inp.dataset._orig=inp.value; }); markDirty(tr,false); }
+    function clearDirty(tr){
+      tr.querySelectorAll('input.dirty-watch').forEach(inp => { inp.dataset._orig = inp.value; });
+      markDirty(tr, false);
+    }
 
-    // ---------- Salvar linha ----------
-    document.querySelectorAll('.row-form').forEach(form=>{
-      form.addEventListener('submit', async (ev)=>{
+    // ---------- Salvar 1 linha (AJAX) ----------
+    document.querySelectorAll('.row-form').forEach(form => {
+      form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
-        const tr=form.closest('tr'); const url=form.getAttribute('action'); const fd=new FormData(form);
-        try{
-          const res=await fetch(url,{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}});
-          if(!res.ok) throw new Error();
-          let data=null; try{ data=await res.json(); }catch(_){}
-          if(data && typeof data==='object'){
-            if('ultimo_uso' in data){ tr.dataset.ultimo=(data.ultimo_uso||'').slice(0,10); hydrateRow(tr); }
-            if('total_pedidos' in data){ tr.dataset.total=data.total_pedidos; const tc=tr.querySelector('.total-cell'); if(tc) tc.textContent=data.total_pedidos; }
+        const tr = form.closest('tr');
+        const url = form.getAttribute('action');
+        const fd = new FormData(form);
+
+        try {
+          const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With':'fetch' }});
+          if(!res.ok) throw new Error('Falha ao salvar');
+
+          let data = null;
+          try { data = await res.json(); } catch(_) {}
+
+          if (data && typeof data === 'object'){
+            if ('ultimo_uso' in data){
+              const iso = data.ultimo_uso || '';
+              tr.dataset.ultimo = iso;
+              const cell = tr.querySelector('.ultimo-uso-cell');
+              const br = isoToBR(iso);
+              cell.textContent = br || '—';
+              // Recalcula days e classes
+              if (iso){
+                const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
+                if (m){
+                  const d = new Date(+m[1], +m[2]-1, +m[3]);
+                  const now = new Date(); const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+                  const days = Math.floor((t - d) / (1000*60*60*24));
+                  tr.dataset.days = days;
+                  tr.classList.remove('st-gt60','st-gt30','st-lt30');
+                  if      (days > 60) tr.classList.add('st-gt60');
+                  else if (days > 30) tr.classList.add('st-gt30');
+                  else                tr.classList.add('st-lt30');
+                }
+              }
+            }
+            if ('total_pedidos' in data){
+              tr.dataset.total = data.total_pedidos;
+              const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
+            }
           }
-          clearDirty(tr); recomputeStats();
-          const btn=form.querySelector('.btn-save'); const old=btn.textContent; btn.textContent='Salvo!'; setTimeout(()=>btn.textContent=old,1200);
-        }catch(_){ alert('Erro ao salvar este cliente.'); }
+          clearDirty(tr);
+
+          const btn = form.querySelector('.btn-save');
+          const oldTxt = btn.textContent; btn.textContent = 'Salvo!';
+          setTimeout(()=> btn.textContent = oldTxt, 1200);
+        } catch (e) {
+          alert('Erro ao salvar este cliente.');
+        }
       });
     });
 
     // ---------- Salvar tudo ----------
-    btnSalvarTudo?.addEventListener('click', async ()=>{
-      const rowsChanged=[...tbody.rows].filter(tr=>dirtyMap.has(tr.dataset.id));
-      if(rowsChanged.length===0){ alert('Nada para salvar.'); return; }
+    btnSalvarTudo?.addEventListener('click', async () => {
+      const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
+      if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
       for(const tr of rowsChanged){
-        const form=tr.querySelector('.row-form'); const url=form.getAttribute('action'); const fd=new FormData(form);
+        const form = tr.querySelector('.row-form');
+        if(!form) continue;
+        const url = form.getAttribute('action');
+        const fd  = new FormData(form);
         try{
-          const res=await fetch(url,{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}});
+          const res = await fetch(url, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
           if(!res.ok) throw new Error();
-          let data=null; try{ data=await res.json(); }catch(_){}
-          if(data && typeof data==='object'){
-            if('ultimo_uso' in data){ tr.dataset.ultimo=(data.ultimo_uso||'').slice(0,10); hydrateRow(tr); }
-            if('total_pedidos' in data){ tr.dataset.total=data.total_pedidos; const tc=tr.querySelector('.total-cell'); if(tc) tc.textContent=data.total_pedidos; }
+          let data = null; try { data = await res.json(); } catch(_){ }
+          if (data && typeof data === 'object'){
+            if ('ultimo_uso' in data){
+              const iso = data.ultimo_uso || '';
+              tr.dataset.ultimo = iso;
+              const cell = tr.querySelector('.ultimo-uso-cell');
+              const br = isoToBR(iso);
+              cell.textContent = br || '—';
+            }
+            if ('total_pedidos' in data){
+              tr.dataset.total = data.total_pedidos;
+              const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
+            }
           }
           clearDirty(tr);
-        }catch(_){ console.warn('Falha ao salvar', tr.dataset.id); }
+        }catch(e){
+          console.warn('Falha ao salvar linha', tr.dataset.id);
+        }
       }
-      recomputeStats(); alert('Salvamento concluído.');
+      alert('Salvamento concluído.');
     });
 
     // ---------- Excluir ----------
-    document.querySelectorAll('.btn-excluir').forEach(btn=>{
-      btn.addEventListener('click', async (e)=>{
-        const tr=e.target.closest('tr'); const name=tr.querySelector('input[name="nome"]').value||'o cliente';
+    document.querySelectorAll('.btn-excluir').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const tr = e.target.closest('tr');
+        const name = tr.querySelector('input[name="nome"]').value || 'o cliente';
         if(!confirm(`Excluir ${name}?`)) return;
-        const formDel=tr.querySelector('.form-del'); if(!formDel) return;
+        const formDel = tr.querySelector('.form-del'); if(!formDel) return;
         try{
-          const res=await fetch(formDel.getAttribute('action'),{method:'POST',headers:{'X-Requested-With':'fetch'}});
+          const res = await fetch(formDel.getAttribute('action'), { method:'POST', headers:{'X-Requested-With':'fetch'} });
           if(!res.ok) throw new Error();
-          tr.remove(); markDirty(tr,false); recomputeStats();
+          tr.remove();
+          // limpa contador
+          const id = tr.dataset.id; 
+          const dirty = document.getElementById('count-pend');
+          if (dirty && id) {
+            // se estava marcado como sujo, retira
+          }
         }catch(_){ alert('Não foi possível excluir.'); }
       });
     });
 
-    // ---------- Importar ----------
-    importForm?.addEventListener('submit', async (ev)=>{
+    // ---------- Importar XLSX ----------
+    importForm?.addEventListener('submit', async (ev) => {
       ev.preventDefault();
-      const file=importFile?.files?.[0]; if(!file){ alert('Selecione um arquivo .xlsx'); return; }
-      const fd=new FormData(importForm); importLog.textContent='Enviando arquivo…';
+      const file = importFile?.files?.[0];
+      if(!file){ alert('Selecione um arquivo .xlsx'); return; }
+      const fd = new FormData(importForm);
+      importLog.textContent = 'Enviando arquivo…';
+
       try{
-        const res=await fetch(importForm.getAttribute('action'),{method:'POST',body:fd,headers:{'X-Requested-With':'fetch'}});
-        if(!res.ok) throw new Error();
-        let data=null; try{ data=await res.json(); }catch(_){}
+        const res = await fetch(importForm.getAttribute('action'), { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
+        if(!res.ok) throw new Error('Falha no upload');
+        let data = null; try{ data = await res.json(); }catch(_){ }
         if(data && data.ok){
-          const add=data.adicionados??0, upd=data.atualizados??0, err=data.erros??0;
-          importLog.innerHTML=`Importação concluída: <b>${add}</b> adicionados, <b>${upd}</b> atualizados, <b>${err}</b> erros.<br><span class="muted">Atualize a página para ver os novos clientes.</span>`;
-        } else { importLog.textContent='Importação finalizada.'; }
-      }catch(_){ importLog.textContent='Erro ao importar o arquivo.'; }
+          const add = data.adicionados ?? 0, upd = data.atualizados ?? 0, err = data.erros ?? 0;
+          importLog.innerHTML = `Importação concluída: <b>${add}</b> adicionados, <b>${upd}</b> atualizados, <b>${err}</b> erros.`;
+        } else {
+          importLog.textContent = 'Importação finalizada.';
+        }
+      }catch(e){
+        importLog.textContent = 'Erro ao importar o arquivo.';
+      }
     });
   </script>
 </body>
