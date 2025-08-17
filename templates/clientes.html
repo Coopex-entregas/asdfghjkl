@@ -15,8 +15,8 @@
     *{box-sizing:border-box}
     html,body{width:100%;overflow-x:hidden}
     body{font-family:'Inter','Segoe UI',Arial,sans-serif; margin:0; background:var(--cinza-bg); color:#222b44; padding:18px}
-    h1{margin:0 0 14px; color:var(--azul)}
-    .wrap{max-width:980px; margin:0 auto}
+    h1{margin:0 0 14px; color:#003399}
+    .wrap{max-width:1100px; margin:0 auto}
 
     .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap}
     .btn{background:var(--azul-grad); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; display:inline-block}
@@ -34,14 +34,15 @@
     input[type="text"], input[type="file"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
     .submit{margin-top:10px}
 
-    .kpis{display:flex; gap:14px; flex-wrap:wrap}
-    .kpis .tile{background:#fff; border:1px solid #e6ebff; border-radius:12px; padding:12px 16px; min-width:180px; box-shadow:var(--shadow-sm)}
-    .tile .num{font-weight:800; font-size:26px; color:#003399}
-    .tile .lbl{font-weight:700}
-    .tile .sub{font-size:12px; color:#4b5a7f}
-
     .searchbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
     .searchbar input{flex:1; min-width:220px}
+
+    /* KPIs */
+    .kpi{display:flex; gap:14px; flex-wrap:wrap; margin:6px 0 16px}
+    .kpi .tile{flex:1 1 220px; background:#fff; border:1px solid #e6ebff; border-radius:12px; padding:12px; box-shadow:var(--shadow-sm)}
+    .kpi .title{font-size:13px; color:#4b5a7f; margin-bottom:6px}
+    .kpi .num{font-size:28px; font-weight:800; color:#0a3a87}
+    .kpi small{color:#6c7aa6}
 
     table{width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
@@ -51,7 +52,7 @@
     thead th:nth-child(1){width:26%}
     thead th:nth-child(2){width:16%}
     thead th:nth-child(3){width:18%}
-    /* +1 cm no endereço */
+    /* Endereço +1cm */
     thead th:nth-child(4){width:calc(30% + 1cm)}
     thead th:nth-child(5){width:10%}
     thead th:nth-child(6){width:6%}
@@ -69,6 +70,14 @@
       white-space:nowrap;
     }
 
+    /* NOVO: selo de status Ativo/Inativo */
+    .status-badge{
+      display:inline-block; margin-left:6px; padding:2px 8px; border-radius:999px;
+      font-weight:800; font-size:12px; line-height:1;
+    }
+    .status-badge.ativo{ background:#eafaea; border:1px solid #bfe6c8; color:#0e5f2e }
+    .status-badge.inativo{ background:#ffeaea; border:1px solid #ffcaca; color:#8a0b0b }
+
     .tools{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
     .muted{font-size:12px; color:#4b5a7f}
   </style>
@@ -76,7 +85,7 @@
 <body>
   <div class="wrap">
     <div class="topbar">
-      <h1> Cadastro de Clientes</h1>
+      <h1>Clientes</h1>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
         <span class="badge">Alterações pendentes: <span id="count-pend">0</span></span>
         <button id="btn-salvar-tudo" class="btn" type="button">💾 Salvar tudo</button>
@@ -92,24 +101,22 @@
       {% endif %}
     {% endwith %}
 
-    <!-- KPIs -->
-    <div class="kpis" style="margin-bottom:10px">
+    {% if kpis is defined %}
+    <div class="kpi">
       <div class="tile">
+        <div class="title">Total de clientes <small>cadastrados</small></div>
         <div class="num">{{ kpis.total }}</div>
-        <div class="lbl">Total de clientes</div>
-        <div class="sub">cadastrados</div>
       </div>
       <div class="tile">
+        <div class="title">Ativos <small>último uso ≤ 6 meses</small></div>
         <div class="num">{{ kpis.ativos }}</div>
-        <div class="lbl">Ativos</div>
-        <div class="sub">último uso ≤ 6 meses</div>
       </div>
       <div class="tile">
+        <div class="title">Inativos <small>último uso ≥ 6 meses ou nunca</small></div>
         <div class="num">{{ kpis.inativos }}</div>
-        <div class="lbl">Inativos</div>
-        <div class="sub">último uso ≥ 6 meses ou nunca</div>
       </div>
     </div>
+    {% endif %}
 
     <div class="card">
       <div class="tools">
@@ -141,7 +148,7 @@
           </div>
           <div>
             <label for="endereco">Endereço (opcional)</label>
-            <input id="endereco" name="endereco" type="text" placeholder="Rua Teatrólogo Jesiel Figueiredo Damanscena Barroso, 1920">
+            <input id="endereco" name="endereco" type="text" placeholder="Rua, nº, complemento…">
           </div>
         </div>
         <button class="btn submit" type="submit">Cadastrar Cliente</button>
@@ -156,9 +163,12 @@
           <button type="button" class="btn-small" id="sort-mais">Mais pedidos</button>
           <button type="button" class="btn-small" id="sort-menos">Menos pedidos</button>
           <button type="button" class="btn-small" id="sort-nome">Ordenar por nome</button>
-          <button type="button" class="btn-small" id="filtro-30">Até 30 dias</button>
-          <button type="button" class="btn-small" id="filtro-60">Até 60 dias</button>
-          <button type="button" class="btn-small" id="limpar">Limpar ordenação/filtros</button>
+          <button type="button" class="btn-small" id="filtro-ate-30">Até 30 dias</button>
+          <button type="button" class="btn-small" id="filtro-ate-60">Até 60 dias</button>
+          <!-- NOVOS filtros -->
+          <button type="button" class="btn-small" id="filtro-ativos">Somente Ativos</button>
+          <button type="button" class="btn-small" id="filtro-inativos">Somente Inativos</button>
+          <button type="button" class="btn-small" id="limpar">Limpar filtros/ordenação</button>
         </div>
       </div>
     </div>
@@ -178,22 +188,13 @@
         </thead>
         <tbody id="tbody-clientes">
           {% for cl in clientes %}
-          <tr data-id="{{ cl.id }}"
-              data-ultimo="{{ cl.ultimo_ymd or '' }}"
-              data-days="{{ cl.ultimo_days if cl.ultimo_days is not none else '' }}"
-              data-total="{{ cl.total_pedidos }}"
-              class="{{ cl.row_class or '' }}">
+          <tr data-id="{{ cl.id }}" data-ultimo="{{ cl.ultimo_ymd or '' }}" data-total="{{ cl.total_pedidos }}">
             <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
               <td><input type="text" name="nome" value="{{ cl.nome }}" title="{{ cl.nome }}" required class="dirty-watch"></td>
               <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" title="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
               <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" title="{{ cl.bairro_origem or '' }}" class="dirty-watch"></td>
               <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" title="{{ cl.endereco or '' }}" class="dirty-watch"></td>
-              <td class="ultimo-uso-cell">
-                {{ cl.ultimo_br or '—' }}
-                {% if cl.ultimo_days is not none and cl.ultimo_days > 60 %}
-                  <span class="contact-flag">Entrar em contato</span>
-                {% endif %}
-              </td>
+              <td class="ultimo-uso-cell">—</td>
               <td class="total-cell" style="text-align:center">{{ cl.total_pedidos }}</td>
               <td class="actions">
                 <button class="btn-small btn-save" type="submit" title="Salvar">Salvar</button>
@@ -219,10 +220,22 @@
         .toLowerCase().trim();
     }
     function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
-    function isoToBR(iso){ // 'YYYY-MM-DD' -> 'DD/MM/YYYY'
-      if(!iso) return '';
-      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-      return m ? `${m[3]}/${m[2]}/${m[1]}` : '';
+
+    function parseYMD(s){
+      if(!s) return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+      if(!m) return null;
+      return new Date(+m[1], +m[2]-1, +m[3]); // local date
+    }
+    function daysSince(date){
+      if(!date) return null;
+      const a = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const b = new Date(); const t = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+      return Math.floor((t - a) / (1000*60*60*24));
+    }
+    function fmtDateBR(date){
+      if(!date) return '—';
+      return date.toLocaleDateString('pt-BR');
     }
 
     const filtro = document.getElementById('filtro');
@@ -232,6 +245,50 @@
     const importForm = document.getElementById('form-import');
     const importFile = document.getElementById('arquivo-xlsx');
     const importLog  = document.getElementById('import-log');
+
+    // ---------- Hidrata (cores + data + status) ----------
+    function hydrateRow(tr){
+      const ymd = tr.dataset.ultimo || '';
+      const dt  = parseYMD(ymd);
+      const dias = dt ? daysSince(dt) : null;
+
+      const cell = tr.querySelector('.ultimo-uso-cell');
+      cell.textContent = dt ? fmtDateBR(dt) : '—';
+      cell.title = dt ? fmtDateBR(dt) : '';
+
+      // Remove selo anterior e classes
+      const oldFlag = cell.querySelector('.contact-flag');
+      if (oldFlag) oldFlag.remove();
+      const oldStatus = cell.querySelector('.status-badge');
+      if (oldStatus) oldStatus.remove();
+      tr.classList.remove('st-gt60','st-gt30','st-lt30');
+
+      // Cores 30/60
+      if(dias != null){
+        if(dias > 60){
+          tr.classList.add('st-gt60');
+          const flag = document.createElement('span');
+          flag.className = 'contact-flag';
+          flag.textContent = 'Entrar em contato';
+          cell.appendChild(flag);
+        } else if(dias > 30){
+          tr.classList.add('st-gt30');
+        } else {
+          tr.classList.add('st-lt30');
+        }
+      }
+
+      // Status Ativo/Inativo (≤180 dias é ativo)
+      let status = 'inativo';
+      if (dias != null && dias <= 180) status = 'ativo';
+      tr.dataset.status = status;
+
+      const sb = document.createElement('span');
+      sb.className = 'status-badge ' + status;
+      sb.textContent = status === 'ativo' ? 'Ativo' : 'Inativo';
+      cell.appendChild(sb);
+    }
+    [...tbody.rows].forEach(hydrateRow);
 
     // ---------- Filtro texto ----------
     function aplicaFiltro(){
@@ -279,27 +336,43 @@
       sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value))
     );
 
-    // ---------- Filtros por dias ----------
-    document.getElementById('filtro-30')?.addEventListener('click', () => {
+    // Até 30 e 60 dias (inclui quem tem data e está dentro do limite)
+    document.getElementById('filtro-ate-30')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
-        const days = tr.dataset.days === '' ? null : parseInt(tr.dataset.days,10);
-        tr.style.display = (days != null && days <= 30) ? '' : 'none';
+        const dt = parseYMD(tr.dataset.ultimo || '');
+        const dias = dt ? daysSince(dt) : null;
+        tr.style.display = (dias != null && dias <= 30) ? '' : 'none';
       });
     });
-    document.getElementById('filtro-60')?.addEventListener('click', () => {
+    document.getElementById('filtro-ate-60')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
-        const days = tr.dataset.days === '' ? null : parseInt(tr.dataset.days,10);
-        tr.style.display = (days != null && days <= 60) ? '' : 'none';
+        const dt = parseYMD(tr.dataset.ultimo || '');
+        const dias = dt ? daysSince(dt) : null;
+        tr.style.display = (dias != null && dias <= 60) ? '' : 'none';
       });
     });
+
+    // NOVOS filtros: Ativos/Inativos
+    document.getElementById('filtro-ativos')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => {
+        tr.style.display = (tr.dataset.status === 'ativo') ? '' : 'none';
+      });
+    });
+    document.getElementById('filtro-inativos')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => {
+        tr.style.display = (tr.dataset.status === 'inativo') ? '' : 'none';
+      });
+    });
+
     document.getElementById('limpar')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => tr.style.display = '');
       filtro.value = '';
     });
 
     // ---------- Máscara telefone ----------
+    function onlyDigits2(s){ return (s||'').replace(/\D/g,''); }
     function maskTel(v){
-      const d = onlyDigits(v).slice(0,11);
+      const d = onlyDigits2(v).slice(0,11);
       if(d.length <= 2) return `(${d}`;
       if(d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
       if(d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
@@ -318,7 +391,7 @@
     document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
     const telCreate = document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
 
-    // ---------- Title sempre mostra conteúdo completo ----------
+    // ---------- Title completo ----------
     document.querySelectorAll('#tbody-clientes input[type="text"]').forEach(inp=>{
       inp.addEventListener('input', ()=> { inp.title = inp.value; });
     });
@@ -359,34 +432,15 @@
 
           let data = null;
           try { data = await res.json(); } catch(_) {}
-
           if (data && typeof data === 'object'){
-            if ('ultimo_uso' in data){
-              const iso = data.ultimo_uso || '';
-              tr.dataset.ultimo = iso;
-              const cell = tr.querySelector('.ultimo-uso-cell');
-              const br = isoToBR(iso);
-              cell.textContent = br || '—';
-              // Recalcula days e classes
-              if (iso){
-                const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(iso);
-                if (m){
-                  const d = new Date(+m[1], +m[2]-1, +m[3]);
-                  const now = new Date(); const t = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-                  const days = Math.floor((t - d) / (1000*60*60*24));
-                  tr.dataset.days = days;
-                  tr.classList.remove('st-gt60','st-gt30','st-lt30');
-                  if      (days > 60) tr.classList.add('st-gt60');
-                  else if (days > 30) tr.classList.add('st-gt30');
-                  else                tr.classList.add('st-lt30');
-                }
-              }
-            }
+            if ('ultimo_uso' in data) tr.dataset.ultimo = data.ultimo_uso || '';
             if ('total_pedidos' in data){
               tr.dataset.total = data.total_pedidos;
               const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
             }
           }
+          // recalcula selo/status
+          hydrateRow(tr);
           clearDirty(tr);
 
           const btn = form.querySelector('.btn-save');
@@ -402,6 +456,7 @@
     btnSalvarTudo?.addEventListener('click', async () => {
       const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
       if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
+
       for(const tr of rowsChanged){
         const form = tr.querySelector('.row-form');
         if(!form) continue;
@@ -412,18 +467,13 @@
           if(!res.ok) throw new Error();
           let data = null; try { data = await res.json(); } catch(_){ }
           if (data && typeof data === 'object'){
-            if ('ultimo_uso' in data){
-              const iso = data.ultimo_uso || '';
-              tr.dataset.ultimo = iso;
-              const cell = tr.querySelector('.ultimo-uso-cell');
-              const br = isoToBR(iso);
-              cell.textContent = br || '—';
-            }
+            if ('ultimo_uso' in data) tr.dataset.ultimo = data.ultimo_uso || '';
             if ('total_pedidos' in data){
               tr.dataset.total = data.total_pedidos;
               const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
             }
           }
+          hydrateRow(tr);
           clearDirty(tr);
         }catch(e){
           console.warn('Falha ao salvar linha', tr.dataset.id);
@@ -443,12 +493,7 @@
           const res = await fetch(formDel.getAttribute('action'), { method:'POST', headers:{'X-Requested-With':'fetch'} });
           if(!res.ok) throw new Error();
           tr.remove();
-          // limpa contador
-          const id = tr.dataset.id; 
-          const dirty = document.getElementById('count-pend');
-          if (dirty && id) {
-            // se estava marcado como sujo, retira
-          }
+          markDirty(tr, false);
         }catch(_){ alert('Não foi possível excluir.'); }
       });
     });
