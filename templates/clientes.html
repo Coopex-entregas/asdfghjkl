@@ -14,39 +14,57 @@
     }
     *{box-sizing:border-box}
     body{font-family:'Inter','Segoe UI',Arial,sans-serif; margin:0; background:var(--cinza-bg); color:#222b44; padding:18px}
-    h1{margin:0 0 14px; color:var(--azul)}
-    .wrap{max-width:1100px; margin:0 auto}
+    h1{margin:0 0 14px; color:#003399}
+    .wrap{max-width:1200px; margin:0 auto}
     .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px}
     .btn{background:var(--azul-grad); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; display:inline-block}
     .btn:hover{background:var(--azul-hover)}
+    .btn-small{padding:6px 10px; border-radius:8px; font-weight:800; cursor:pointer; margin:0 2px; border:1px solid #d7e2ff; background:#fff}
+    .btn-del{background:#fff; color:var(--vermelho); border:1px solid #f1c7c7}
+    .btn-save{background:#fff; color:var(--verde); border:1px solid #bfe6c8}
+
     .card{background:var(--cinza-card); border:1px solid #e6ebff; border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px}
     .grid{display:grid; grid-template-columns: 1fr 2fr; gap:14px}
-    @media (max-width: 900px){ .grid{grid-template-columns:1fr} }
+    @media (max-width: 1000px){ .grid{grid-template-columns:1fr} }
 
     form .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
     form .row-3{display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px}
-    @media (max-width:700px){ form .row, form .row-3{grid-template-columns:1fr} }
+    form .row-4{display:grid; grid-template-columns:1.2fr 1fr 1fr 1.6fr; gap:10px}
+    @media (max-width:800px){ form .row, form .row-3, form .row-4{grid-template-columns:1fr} }
     label{font-size:13px; font-weight:800; color:#003399; margin-bottom:4px; display:block}
-    input[type="text"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
+    input[type="text"], input[type="file"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
     .submit{margin-top:10px}
 
+    .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
+
+    .searchbar{display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+    .searchbar input{flex:1; min-width:200px}
+
     table{width:100%; border-collapse:collapse; font-size:14px}
-    th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left}
+    th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
     td.actions{white-space:nowrap; text-align:center}
-    .btn-del{background:#fff; color:var(--vermelho); border:1px solid #f1c7c7}
-    .btn-save{background:#fff; color:var(--verde); border:1px solid #bfe6c8}
-    .btn-small{padding:6px 10px; border-radius:8px; font-weight:800; cursor:pointer; margin:0 2px}
-    .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
-    .searchbar{display:flex; gap:8px; align-items:center; margin-bottom:10px}
-    .searchbar input{flex:1}
+
+    /* Estados por idade do último uso */
+    .st-gt60 { background:#ffeaea }   /* vermelho claro */
+    .st-gt30 { background:#fff9e0 }   /* amarelo claro */
+    .st-lt30 { background:#eafaea }   /* verde claro  */
+
+    /* Contador de alterações */
+    .badge{display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #d7e2ff; border-radius:999px; padding:6px 10px; font-weight:700}
+
+    /* Barra de import/export */
+    .tools{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .muted{font-size:12px; color:#4b5a7f}
   </style>
 </head>
 <body>
   <div class="wrap">
     <div class="topbar">
       <h1>Clientes</h1>
-      <div style="display:flex; gap:8px;">
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="badge">Alterações pendentes: <span id="count-pend">0</span></span>
+        <button id="btn-salvar-tudo" class="btn" type="button" title="Salvar todas as edições">💾 Salvar tudo</button>
         <a class="btn" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
       </div>
     </div>
@@ -59,23 +77,40 @@
       {% endif %}
     {% endwith %}
 
+    <!-- Importar / Exportar -->
+    <div class="card" style="margin-bottom:14px">
+      <div class="tools">
+        <a class="btn" id="btn-exportar" href="{{ url_for('exportar_clientes') }}" target="_blank" rel="noopener">⬇️ Exportar XLSX</a>
+        <form id="form-import" method="POST" action="{{ url_for('importar_clientes') }}" enctype="multipart/form-data" style="display:flex; gap:8px; align-items:center;">
+          <input type="file" id="arquivo-xlsx" name="arquivo" accept=".xlsx" required>
+          <button class="btn" type="submit">⬆️ Importar XLSX</button>
+        </form>
+        <span class="muted">Formato esperado: colunas <b>Nome, Telefone, Bairro, Endereco</b> (ID é opcional para atualizar).</span>
+      </div>
+      <div id="import-log" class="muted" style="margin-top:8px"></div>
+    </div>
+
     <div class="grid">
       <!-- Cadastro novo -->
       <div class="card">
         <h3 style="margin-top:0; color:#003399">Cadastrar novo cliente</h3>
-        <form method="POST" action="{{ url_for('clientes') }}">
-          <div class="row-3">
+        <form method="POST" action="{{ url_for('clientes') }}" id="form-create">
+          <div class="row-4">
             <div>
               <label for="nome">Nome *</label>
               <input id="nome" name="nome" type="text" required placeholder="Ex.: Restaurante X">
             </div>
             <div>
               <label for="telefone">Telefone</label>
-              <input id="telefone" name="telefone" type="text" placeholder="(84) 9 0000-0000">
+              <input id="telefone" name="telefone" type="text" placeholder="(84) 99800-3714" class="tel">
             </div>
             <div>
               <label for="bairro_origem">Bairro de origem</label>
               <input id="bairro_origem" name="bairro_origem" type="text" placeholder="Onde o cliente está">
+            </div>
+            <div>
+              <label for="endereco">Endereço (opcional)</label>
+              <input id="endereco" name="endereco" type="text" placeholder="Rua, número, complemento">
             </div>
           </div>
           <button class="btn submit" type="submit">Cadastrar Cliente</button>
@@ -86,36 +121,53 @@
       <div class="card">
         <div class="searchbar">
           <label for="filtro" style="margin:0">Filtro:</label>
-          <input id="filtro" type="text" placeholder="Filtrar por nome, telefone (final/inteiro) ou bairro…">
+          <input id="filtro" type="text" placeholder="Filtrar por nome, telefone, bairro ou endereço…">
+          <div style="display:flex; gap:6px; flex-wrap:wrap">
+            <button type="button" class="btn-small" id="sort-mais">Mais pedidos</button>
+            <button type="button" class="btn-small" id="sort-menos">Menos pedidos</button>
+            <button type="button" class="btn-small" id="sort-nome">Ordenar por nome</button>
+            <button type="button" class="btn-small" id="filtro-30">Somente &gt; 30 dias</button>
+            <button type="button" class="btn-small" id="filtro-60">Somente &gt; 60 dias</button>
+            <button type="button" class="btn-small" id="limpar">Limpar ordenação/filtros</button>
+          </div>
         </div>
         <div style="overflow:auto; max-height:65vh;">
           <table id="tabela">
             <thead>
               <tr>
-                <th style="width:34%">Nome</th>
-                <th style="width:22%">Telefone</th>
-                <th style="width:22%">Bairro de origem</th>
-                <th style="width:22%; text-align:center">Ações</th>
+                <th style="width:24%">Nome</th>
+                <th style="width:14%">Telefone</th>
+                <th style="width:16%">Bairro</th>
+                <th style="width:18%">Endereço</th>
+                <th style="width:12%">Último uso</th>
+                <th style="width:8%">Total</th>
+                <th style="width:8%; text-align:center">Ações</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody id="tbody-clientes">
               {% for cl in clientes %}
-                <tr>
-                  <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}">
-                    <td><input type="text" name="nome" value="{{ cl.nome }}" required></td>
-                    <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}"></td>
-                    <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}"></td>
-                    <td class="actions">
-                      <button class="btn-small btn-save" type="submit" title="Salvar alterações">Salvar</button>
-                  </form>
-                      <form method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" style="display:inline" onsubmit="return confirm('Excluir o cliente &quot;{{ cl.nome }}&quot;?');">
-                        <button class="btn-small btn-del" type="submit" title="Excluir">Excluir</button>
-                      </form>
-                    </td>
-                </tr>
+              <tr
+                data-id="{{ cl.id }}"
+                data-ultimo="{{ cl.ultimo_uso or '' }}"
+                data-total="{{ cl.total_pedidos }}"
+              >
+                <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
+                  <td><input type="text" name="nome" value="{{ cl.nome }}" required class="dirty-watch"></td>
+                  <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
+                  <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" class="dirty-watch"></td>
+                  <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" class="dirty-watch"></td>
+                  <td class="ultimo-uso-cell">—</td>
+                  <td class="total-cell" style="text-align:center">{{ cl.total_pedidos }}</td>
+                  <td class="actions">
+                    <button class="btn-small btn-save" type="submit" title="Salvar">Salvar</button>
+                    <button class="btn-small btn-del btn-excluir" type="button" title="Excluir">Excluir</button>
+                  </td>
+                </form>
+                <form method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" style="display:none" class="form-del"></form>
+              </tr>
               {% endfor %}
               {% if not clientes or clientes|length == 0 %}
-                <tr><td colspan="4">Nenhum cliente cadastrado.</td></tr>
+                <tr><td colspan="7">Nenhum cliente cadastrado.</td></tr>
               {% endif %}
             </tbody>
           </table>
@@ -125,44 +177,288 @@
   </div>
 
   <script>
-    // Funções utilitárias de normalização (ignora acentos e caixa)
+    // ---------- Utilitários ----------
     function norm(str){
       return (str || '')
         .toString()
         .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'') // remove acentos
+        .replace(/[\u0300-\u036f]/g,'')
         .toLowerCase()
         .trim();
     }
-    function onlyDigits(str){
-      return (str || '').toString().replace(/\D/g,'');
+    function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
+
+    function parseISO(d){
+      if(!d) return null;
+      const dt = new Date(d);
+      return isNaN(dt) ? null : dt;
+    }
+    function daysSince(date){
+      if(!date) return null;
+      const now = new Date();
+      const ms = now - date;
+      return Math.floor(ms / (1000*60*60*24));
+    }
+    function fmtDateBR(date){
+      if(!date) return '—';
+      return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     }
 
-    // Filtro por nome, telefone (final/inteiro) ou bairro
+    // ---------- Elementos ----------
     const filtro = document.getElementById('filtro');
-    const tbody  = document.querySelector('#tabela tbody');
+    const tbody  = document.getElementById('tbody-clientes');
+    const btnSalvarTudo = document.getElementById('btn-salvar-tudo');
+    const countPend = document.getElementById('count-pend');
+    const importForm = document.getElementById('form-import');
+    const importFile = document.getElementById('arquivo-xlsx');
+    const importLog  = document.getElementById('import-log');
 
+    // ---------- Hidratação (pinta linha e escreve Último uso) ----------
+    function hydrateRow(tr){
+      const iso = tr.dataset.ultimo || '';
+      const dt  = parseISO(iso);
+      const dias = dt ? daysSince(dt) : null;
+
+      const cell = tr.querySelector('.ultimo-uso-cell');
+      cell.textContent = dt ? `${fmtDateBR(dt)} (${dias}d)` : '—';
+
+      tr.classList.remove('st-gt60','st-gt30','st-lt30');
+      if(dias == null){
+        return; // sem uso ainda
+      }
+      if(dias > 60) tr.classList.add('st-gt60');
+      else if(dias > 30) tr.classList.add('st-gt30');
+      else tr.classList.add('st-lt30');
+    }
+
+    // Inicializa todas as linhas
+    [...tbody.rows].forEach(hydrateRow);
+
+    // ---------- Filtro de texto ----------
     function aplicaFiltro(){
       const termo = filtro?.value || '';
       const termoNorm = norm(termo);
       const termoDigits = onlyDigits(termo);
 
       [...tbody.rows].forEach(tr => {
-        const nome = norm(tr.querySelector('input[name="nome"]')?.value);
-        const tel  = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
-        const bairro = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
+        const nome    = norm(tr.querySelector('input[name="nome"]')?.value);
+        const tel     = onlyDigits(tr.querySelector('input[name="telefone"]')?.value);
+        const bairro  = norm(tr.querySelector('input[name="bairro_origem"]')?.value);
+        const ender   = norm(tr.querySelector('input[name="endereco"]')?.value);
 
         const match =
           !termoNorm && !termoDigits ? true :
-          nome.includes(termoNorm) ||
-          bairro.includes(termoNorm) ||
+          nome.includes(termoNorm) || bairro.includes(termoNorm) || ender.includes(termoNorm) ||
           (termoDigits && tel.includes(termoDigits));
 
         tr.style.display = match ? '' : 'none';
       });
     }
-
     filtro?.addEventListener('input', aplicaFiltro);
+
+    // ---------- Ordenações e filtros especiais ----------
+    function sortBy(getKey, desc=false){
+      const rows = [...tbody.rows];
+      rows.sort((a,b) => {
+        const ka = getKey(a), kb = getKey(b);
+        if(ka == null && kb == null) return 0;
+        if(ka == null) return 1;
+        if(kb == null) return -1;
+        if(ka < kb) return desc ? 1 : -1;
+        if(ka > kb) return desc ? -1 : 1;
+        return 0;
+      });
+      rows.forEach(r => tbody.appendChild(r));
+    }
+
+    document.getElementById('sort-mais')?.addEventListener('click', () =>
+      sortBy(tr => parseInt(tr.dataset.total || '0',10), true)
+    );
+    document.getElementById('sort-menos')?.addEventListener('click', () =>
+      sortBy(tr => parseInt(tr.dataset.total || '0',10), false)
+    );
+    document.getElementById('sort-nome')?.addEventListener('click', () =>
+      sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value))
+    );
+
+    document.getElementById('filtro-30')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => {
+        const iso = tr.dataset.ultimo || '';
+        const dt  = parseISO(iso);
+        const dias = dt ? daysSince(dt) : null;
+        tr.style.display = (dias != null && dias > 30) ? '' : 'none';
+      });
+    });
+
+    document.getElementById('filtro-60')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => {
+        const iso = tr.dataset.ultimo || '';
+        const dt  = parseISO(iso);
+        const dias = dt ? daysSince(dt) : null;
+        tr.style.display = (dias != null && dias > 60) ? '' : 'none';
+      });
+    });
+
+    document.getElementById('limpar')?.addEventListener('click', () => {
+      [...tbody.rows].forEach(tr => tr.style.display = '');
+      filtro.value = '';
+    });
+
+    // ---------- Máscara de telefone (BR) ----------
+    function maskTel(v){
+      const d = onlyDigits(v).slice(0,11); // DDD + 8/9
+      if(d.length <= 2) return `(${d}`;
+      if(d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
+      if(d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
+      return `(${d.slice(0,2)}) ${d.slice(2,7)}-${d.slice(7)}`;
+    }
+    function applyMaskTelOn(el){
+      el.addEventListener('input', e => {
+        const pos = e.target.selectionStart;
+        const old = e.target.value;
+        e.target.value = maskTel(e.target.value);
+        const diff = e.target.value.length - old.length;
+        const newPos = Math.max(0,(pos+diff));
+        try{ e.target.setSelectionRange(newPos, newPos); }catch(_){/* ignore */}
+      });
+    }
+    document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
+
+    // ---------- Dirty tracking (contar alterações) ----------
+    const dirtyMap = new Set(); // ids de TR com alteração
+    function markDirty(tr, yes){
+      const id = tr.dataset.id;
+      if(!id) return;
+      if(yes) dirtyMap.add(id); else dirtyMap.delete(id);
+      countPend.textContent = dirtyMap.size;
+    }
+
+    // qualquer mudança em inputs marca a linha
+    document.querySelectorAll('#tbody-clientes tr').forEach(tr => {
+      tr.querySelectorAll('input.dirty-watch').forEach(inp => {
+        const original = inp.value;
+        inp.dataset._orig = original;
+        inp.addEventListener('input', () => {
+          const changed = inp.value !== inp.dataset._orig;
+          const anyChanged = [...tr.querySelectorAll('input.dirty-watch')].some(i => i.value !== i.dataset._orig);
+          markDirty(tr, anyChanged);
+        });
+      });
+    });
+
+    // quando salvar com sucesso, atualiza originais e limpa dirty
+    function clearDirty(tr){
+      tr.querySelectorAll('input.dirty-watch').forEach(inp => { inp.dataset._orig = inp.value; });
+      markDirty(tr, false);
+    }
+
+    // ---------- Salvar 1 linha sem recarregar ----------
+    document.querySelectorAll('.row-form').forEach(form => {
+      form.addEventListener('submit', async (ev) => {
+        ev.preventDefault();
+        const tr = form.closest('tr');
+        const url = form.getAttribute('action');
+        const fd = new FormData(form);
+
+        try {
+          const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With':'fetch' }});
+          if(!res.ok) throw new Error('Falha ao salvar');
+
+          let data = null;
+          try { data = await res.json(); } catch(_) {}
+          if (data && typeof data === 'object'){
+            if ('ultimo_uso' in data) tr.dataset.ultimo = data.ultimo_uso || '';
+            if ('total_pedidos' in data){
+              tr.dataset.total = data.total_pedidos;
+              const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
+            }
+          }
+          hydrateRow(tr);
+          clearDirty(tr);
+
+          const btn = form.querySelector('.btn-save');
+          const oldTxt = btn.textContent; btn.textContent = 'Salvo!';
+          setTimeout(()=> btn.textContent = oldTxt, 1200);
+        } catch (e) {
+          alert('Erro ao salvar este cliente.');
+        }
+      });
+    });
+
+    // ---------- Salvar tudo ----------
+    btnSalvarTudo?.addEventListener('click', async () => {
+      const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
+      if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
+
+      for(const tr of rowsChanged){
+        const form = tr.querySelector('.row-form');
+        if(!form) continue;
+        const url = form.getAttribute('action');
+        const fd  = new FormData(form);
+        try{
+          const res = await fetch(url, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
+          if(!res.ok) throw new Error();
+          let data = null; try { data = await res.json(); } catch(_){ }
+          if (data && typeof data === 'object'){
+            if ('ultimo_uso' in data) tr.dataset.ultimo = data.ultimo_uso || '';
+            if ('total_pedidos' in data){
+              tr.dataset.total = data.total_pedidos;
+              const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
+            }
+          }
+          hydrateRow(tr);
+          clearDirty(tr);
+        }catch(e){
+          console.warn('Falha ao salvar linha', tr.dataset.id);
+        }
+      }
+      alert('Salvamento concluído.');
+    });
+
+    // ---------- Excluir (AJAX leve) ----------
+    document.querySelectorAll('.btn-excluir').forEach(btn => {
+      btn.addEventListener('click', async (e) => {
+        const tr = e.target.closest('tr');
+        const name = tr.querySelector('input[name="nome"]').value || 'o cliente';
+        if(!confirm(`Excluir ${name}?`)) return;
+        const formDel = tr.querySelector('.form-del');
+        if(!formDel) return;
+        try{
+          const res = await fetch(formDel.getAttribute('action'), { method:'POST', headers:{'X-Requested-With':'fetch'} });
+          if(!res.ok) throw new Error();
+          tr.remove();
+          markDirty(tr, false);
+        }catch(_){ alert('Não foi possível excluir.'); }
+      });
+    });
+
+    // ---------- Criar: máscara no telefone ----------
+    const telCreate = document.getElementById('telefone');
+    if(telCreate) applyMaskTelOn(telCreate);
+
+    // ---------- Importar XLSX (AJAX) ----------
+    importForm?.addEventListener('submit', async (ev) => {
+      ev.preventDefault();
+      const file = importFile?.files?.[0];
+      if(!file){ alert('Selecione um arquivo .xlsx'); return; }
+      const fd = new FormData(importForm);
+      importLog.textContent = 'Enviando arquivo…';
+
+      try{
+        const res = await fetch(importForm.getAttribute('action'), { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
+        if(!res.ok) throw new Error('Falha no upload');
+        let data = null; try{ data = await res.json(); }catch(_){ }
+        if(data && data.ok){
+          const add = data.adicionados ?? 0, upd = data.atualizados ?? 0, err = data.erros ?? 0;
+          importLog.innerHTML = `Importação concluída: <b>${add}</b> adicionados, <b>${upd}</b> atualizados, <b>${err}</b> erros.`;
+          // Opcional: se backend retornar lista de clientes atualizados, poderíamos atualizar a tabela aqui.
+        } else {
+          importLog.textContent = 'Importação finalizada.';
+        }
+      }catch(e){
+        importLog.textContent = 'Erro ao importar o arquivo.';
+      }
+    });
   </script>
 </body>
 </html>
