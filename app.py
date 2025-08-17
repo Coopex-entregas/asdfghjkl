@@ -1,6 +1,8 @@
 import os
 import io
+import re
 import json
+import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
@@ -128,6 +130,33 @@ def diasemana(data):
     return dias[data.weekday()]
 
 app.jinja_env.filters['diasemana'] = diasemana
+
+# ====== Normalização forte (clientes) ======
+def _strip_accents(s: str) -> str:
+    return ''.join(c for c in unicodedata.normalize('NFD', s or '') if unicodedata.category(c) != 'Mn')
+
+def normalize_letters_key(s: str) -> str:
+    """
+    1) tira acentos
+    2) lowercase
+    3) remove números e pontuação (só letras e espaço)
+    4) compacta espaços
+    """
+    s = _strip_accents(s).lower()
+    s = re.sub(r'[^a-z\u00c0-\u024f\s]', ' ', s)   # letras latinas + espaço
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
+
+def normalize_first_token(s: str) -> str:
+    k = normalize_letters_key(s)
+    return (k.split(' ')[0] if k else '')
+
+def br_date_ymd(dt_utc_naive: datetime) -> str:
+    """Converte UTC naive para data local Brasil 'YYYY-MM-DD'."""
+    if not dt_utc_naive:
+        return ''
+    loc = to_brasilia(dt_utc_naive)
+    return loc.date().isoformat()
 
 # ====== feriados (Nacional + RN + Natal) ======
 MUNICIPAIS_NATAL = {(11, 21): "Nossa Senhora da Apresentação (Municipal - Natal/RN)"}
@@ -442,39 +471,55 @@ def clientes():
         flash('Cliente cadastrado!')
         return redirect(url_for('clientes'))
 
-    # --- GET: lista com métricas ultimo_uso e total_pedidos (join por nome normalizado) ---
-    # Subconsulta por nome normalizado de Entrega.cliente
-    # key = lower(trim(Entrega.cliente))
-    sub = (
+    # --- GET: lista com métricas ultimo_uso e total_pedidos (normalização forte) ---
+    aggs = (
         db.session.query(
-            func.lower(func.trim(Entrega.cliente)).label("key"),
-            func.count(Entrega.id).label("total_pedidos"),
-            func.max(Entrega.data_envio).label("ultimo_uso"),
+            Entrega.cliente.label('cli'),
+            func.count(Entrega.id).label('qtd'),
+            func.max(Entrega.data_envio).label('ultimo')
         )
-        .group_by(func.lower(func.trim(Entrega.cliente)))
-        .subquery()
-    )
-    rows = (
-        db.session.query(
-            Cliente,
-            sub.c.total_pedidos,
-            sub.c.ultimo_uso
-        )
-        .outerjoin(sub, sub.c.key == func.lower(func.trim(Cliente.nome)))
-        .order_by(Cliente.nome.asc())
+        .group_by(Entrega.cliente)
         .all()
     )
 
+    stats_by_full = defaultdict(lambda: {"qtd":0, "ultimo":None})
+    stats_by_first = defaultdict(lambda: {"qtd":0, "ultimo":None})
+    for row in aggs:
+        raw = (row.cli or '').strip()
+        key_full = normalize_letters_key(raw)
+        key_first = normalize_first_token(raw)
+
+        s = stats_by_full[key_full]
+        s["qtd"] += int(row.qtd or 0)
+        if row.ultimo and (s["ultimo"] is None or row.ultimo > s["ultimo"]):
+            s["ultimo"] = row.ultimo
+
+        f = stats_by_first[key_first]
+        f["qtd"] += int(row.qtd or 0)
+        if row.ultimo and (f["ultimo"] is None or row.ultimo > f["ultimo"]):
+            f["ultimo"] = row.ultimo
+
     lista = []
-    for cl, total, ultimo in rows:
+    for cl in Cliente.query.order_by(Cliente.nome).all():
+        k_full = normalize_letters_key(cl.nome or '')
+        k_first = normalize_first_token(cl.nome or '')
+
+        tot, dt = 0, None
+        if k_full in stats_by_full:
+            tot = stats_by_full[k_full]["qtd"]
+            dt = stats_by_full[k_full]["ultimo"]
+        elif k_first in stats_by_first:
+            tot = stats_by_first[k_first]["qtd"]
+            dt = stats_by_first[k_first]["ultimo"]
+
         lista.append({
             "id": cl.id,
             "nome": cl.nome,
             "telefone": cl.telefone,
             "bairro_origem": cl.bairro_origem,
             "endereco": getattr(cl, "endereco", None),
-            "total_pedidos": int(total or 0),
-            "ultimo_uso": (ultimo.isoformat() if ultimo else None),
+            "total_pedidos": int(tot or 0),
+            "ultimo_ymd": (br_date_ymd(dt) if dt else None),
         })
     return render_template('clientes.html', clientes=lista)
 
@@ -507,18 +552,26 @@ def editar_cliente(id):
 
     # Se foi AJAX (fetch), devolve JSON com métricas atualizadas para esta linha
     if request.headers.get('X-Requested-With') == 'fetch':
-        # recalc pelas entregas por nome
-        stats = (
+        # Recalcula com normalização forte
+        aggs = (
             db.session.query(
-                func.count(Entrega.id),
-                func.max(Entrega.data_envio)
-            )
-            .filter(func.lower(func.trim(Entrega.cliente)) == func.lower(func.trim(cl.nome)))
-            .first()
+                Entrega.cliente.label('cli'),
+                func.count(Entrega.id).label('qtd'),
+                func.max(Entrega.data_envio).label('ultimo')
+            ).group_by(Entrega.cliente).all()
         )
-        total = int(stats[0] or 0)
-        ultimo = stats[1].isoformat() if stats[1] else None
-        return jsonify({"ok": True, "total_pedidos": total, "ultimo_uso": ultimo}), 200
+        k_full = normalize_letters_key(cl.nome or '')
+        k_first = normalize_first_token(cl.nome or '')
+
+        tot, ultimo = 0, None
+        for row in aggs:
+            raw = (row.cli or '')
+            if normalize_letters_key(raw) == k_full or normalize_first_token(raw) == k_first:
+                tot += int(row.qtd or 0)
+                if row.ultimo and (ultimo is None or row.ultimo > ultimo):
+                    ultimo = row.ultimo
+
+        return jsonify({"ok": True, "total_pedidos": int(tot or 0), "ultimo_uso": (br_date_ymd(ultimo) if ultimo else None)}), 200
 
     flash('Cliente atualizado!')
     return redirect(url_for('clientes'))
@@ -870,7 +923,6 @@ def estatisticas_cooperado():
     }
 
     # ====== NOVO: Séries anuais (2025+) – faturamento, quantidade, ticket médio ======
-    # Agrupa por ANO LOCAL (Brasil). Assim, 31/12 é o último dia e 01/01 "zera" naturalmente.
     por_ano_total = defaultdict(float)
     por_ano_qtd = defaultdict(int)
 
@@ -929,7 +981,7 @@ def estatisticas_cooperado():
         chart_ano_ticket=chart_ano_ticket,
     )
 
-# ====== EXPORTAÇÃO detalhada ======
+# ====== EXPORTAÇÃO detalhada (sem HORA; só Data) ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -965,7 +1017,6 @@ def exportar_xlsx():
         dt_local = to_brasilia(e.data_envio)
         rows.append({
             'Data': dt_local.strftime('%d/%m/%Y') if dt_local else '',
-            'Hora': dt_local.strftime('%H:%M') if dt_local else '',
             'Cliente': e.cliente,
             'Bairro': e.bairro,
             'Valor': e.valor,
@@ -983,7 +1034,7 @@ def exportar_xlsx():
         sheet = 'Entregas'
         df.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
-        col_widths = [10, 6, 28, 18, 10, 18, 16, 16, 22, 18]
+        col_widths = [12, 28, 18, 10, 18, 16, 16, 22, 18]
         for i, w in enumerate(col_widths[:len(df.columns)]):
             ws.set_column(i, i, w)
     output.seek(0)
@@ -1083,46 +1134,43 @@ def exportar_clientes():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # Sub por nome normalizado a partir de Entrega
-    sub = (
+    # Agrega entregas por nome original e consolida por chave normalizada
+    aggs = (
         db.session.query(
-            func.lower(func.trim(Entrega.cliente)).label("key"),
-            func.count(Entrega.id).label("total_pedidos"),
-            func.max(Entrega.data_envio).label("ultimo_uso"),
+            Entrega.cliente.label('cli'),
+            func.count(Entrega.id).label('qtd'),
+            func.max(Entrega.data_envio).label('ultimo')
         )
-        .group_by(func.lower(func.trim(Entrega.cliente)))
-        .subquery()
-    )
-
-    rows = (
-        db.session.query(
-            Cliente.id,
-            Cliente.nome,
-            Cliente.telefone,
-            Cliente.bairro_origem,
-            Cliente.endereco,
-            sub.c.ultimo_uso,
-            sub.c.total_pedidos,
-        )
-        .outerjoin(sub, sub.c.key == func.lower(func.trim(Cliente.nome)))
-        .order_by(Cliente.nome.asc())
+        .group_by(Entrega.cliente)
         .all()
     )
+    stats = defaultdict(lambda: {"qtd":0, "ultimo":None})
+    for row in aggs:
+        key = normalize_letters_key(row.cli or '')
+        s = stats[key]
+        s["qtd"] += int(row.qtd or 0)
+        if row.ultimo and (s["ultimo"] is None or row.ultimo > s["ultimo"]):
+            s["ultimo"] = row.ultimo
+
+    rows = []
+    for c in Cliente.query.order_by(Cliente.nome).all():
+        key = normalize_letters_key(c.nome or '')
+        s = stats.get(key, {})
+        rows.append([
+            c.id, c.nome, c.telefone, c.bairro_origem, c.endereco,
+            br_date_ymd(s.get("ultimo")) if s else "", int((s or {}).get("qtd") or 0)
+        ])
 
     df = pd.DataFrame(rows, columns=[
-        "ID", "Nome", "Telefone", "Bairro", "Endereco", "UltimoUsoUTC", "TotalPedidos"
+        "ID", "Nome", "Telefone", "Bairro", "Endereco", "UltimoUso", "TotalPedidos"
     ])
-
-    # Formata datas como ISO (string)
-    if not df.empty and "UltimoUsoUTC" in df.columns:
-        df["UltimoUsoUTC"] = df["UltimoUsoUTC"].apply(lambda x: x.isoformat() if pd.notna(x) else "")
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Clientes'
         df.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
-        widths = [8, 28, 18, 18, 32, 22, 14]
+        widths = [8, 28, 18, 18, 32, 12, 14]
         for i, w in enumerate(widths[:len(df.columns)]):
             ws.set_column(i, i, w)
     output.seek(0)
@@ -1149,7 +1197,7 @@ def importar_clientes():
         return redirect(url_for('clientes'))
 
     # Normaliza nomes de colunas esperadas
-    cols_map = {c.lower().strip(): c for c in df.columns}
+    cols_map = {str(c).lower().strip(): c for c in df.columns}
     def colget(*ops):
         for k in ops:
             if k in cols_map:
