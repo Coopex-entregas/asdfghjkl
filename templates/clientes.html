@@ -14,8 +14,8 @@
     }
     *{box-sizing:border-box}
     body{font-family:'Inter','Segoe UI',Arial,sans-serif; margin:0; background:var(--cinza-bg); color:#222b44; padding:18px}
-    h1{margin:0 0 14px; color:#003399}
-    .wrap{max-width:1200px; margin:0 auto}
+    h1{margin:0 0 14px; color:var(--azul)}
+    .wrap{max-width:1800px; margin:0 auto}
     .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px}
     .btn{background:var(--azul-grad); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; display:inline-block}
     .btn:hover{background:var(--azul-hover)}
@@ -25,12 +25,13 @@
 
     .card{background:var(--cinza-card); border:1px solid #e6ebff; border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px}
     .grid{display:grid; grid-template-columns: 1fr 2fr; gap:14px}
-    @media (max-width: 1000px){ .grid{grid-template-columns:1fr} }
+    @media (max-width: 1100px){ .grid{grid-template-columns:1fr} }
 
     form .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-    form .row-3{display:grid; grid-template-columns:1.2fr 1fr 1fr; gap:10px}
-    form .row-4{display:grid; grid-template-columns:1.2fr 1fr 1fr 1.6fr; gap:10px}
-    @media (max-width:800px){ form .row, form .row-3, form .row-4{grid-template-columns:1fr} }
+    /* Cadastro: privilegia Nome e Endereço */
+    form .row-4{display:grid; grid-template-columns:1.6fr 1.2fr 1.2fr 2.6fr; gap:10px}
+    @media (max-width:900px){ form .row, form .row-4{grid-template-columns:1fr} }
+
     label{font-size:13px; font-weight:800; color:#003399; margin-bottom:4px; display:block}
     input[type="text"], input[type="file"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
     .submit{margin-top:10px}
@@ -38,24 +39,45 @@
     .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
 
     .searchbar{display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
-    .searchbar input{flex:1; min-width:200px}
+    .searchbar input{flex:1; min-width:220px}
 
     table{width:100%; border-collapse:collapse; font-size:14px}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
     td.actions{white-space:nowrap; text-align:center}
 
-    /* Estados por idade do último uso */
-    .st-gt60 { background:#ffeaea }   /* vermelho claro */
-    .st-gt30 { background:#fff9e0 }   /* amarelo claro */
-    .st-lt30 { background:#eafaea }   /* verde claro  */
+    /* Colunas mais largas para caber frases grandes */
+    thead th:nth-child(1){width:28%}  /* Nome   */
+    thead th:nth-child(2){width:16%}  /* Telefone */
+    thead th:nth-child(3){width:22%}  /* Bairro */
+    thead th:nth-child(4){width:26%}  /* Endereço */
+    thead th:nth-child(5){width:6%}   /* Último uso */
+    thead th:nth-child(6){width:1%}   /* Total */
+    thead th:nth-child(7){width:1%}   /* Ações */
 
-    /* Contador de alterações */
+    /* Inputs autogrow: tamanho mínimo confortável */
+    td input[name="nome"]{min-width:420px}
+    td input[name="telefone"]{min-width:260px}
+    td input[name="bairro_origem"]{min-width:380px}
+    td input[name="endereco"]{min-width:720px}
+
+    /* Estados por idade do último uso */
+    .st-gt60 { background:#ffeaea }   /* vermelho claro  */
+    .st-gt30 { background:#fff9e0 }   /* amarelo claro   */
+    .st-lt30 { background:#eafaea }   /* verde claro     */
+
     .badge{display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #d7e2ff; border-radius:999px; padding:6px 10px; font-weight:700}
 
     /* Barra de import/export */
     .tools{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
     .muted{font-size:12px; color:#4b5a7f}
+
+    /* Selo de contato quando >60d */
+    .contact-flag{
+      display:inline-block; margin-left:6px; padding:2px 6px; border-radius:8px;
+      background:#ffe3e3; border:1px solid #ffcaca; color:#8a0b0b; font-weight:800; font-size:12px;
+      white-space:nowrap;
+    }
   </style>
 </head>
 <body>
@@ -85,7 +107,7 @@
           <input type="file" id="arquivo-xlsx" name="arquivo" accept=".xlsx" required>
           <button class="btn" type="submit">⬆️ Importar XLSX</button>
         </form>
-        <span class="muted">Formato esperado: colunas <b>Nome, Telefone, Bairro, Endereco</b> (ID é opcional para atualizar).</span>
+        <span class="muted">Formato: <b>Nome, Telefone, Bairro, Endereco</b> (ID opcional para atualizar).</span>
       </div>
       <div id="import-log" class="muted" style="margin-top:8px"></div>
     </div>
@@ -98,19 +120,19 @@
           <div class="row-4">
             <div>
               <label for="nome">Nome *</label>
-              <input id="nome" name="nome" type="text" required placeholder="Ex.: Restaurante X">
+              <input id="nome" name="nome" type="text" required placeholder="Ex.: Julio Trindade Barros" class="autogrow">
             </div>
             <div>
               <label for="telefone">Telefone</label>
-              <input id="telefone" name="telefone" type="text" placeholder="(84) 99800-3714" class="tel">
+              <input id="telefone" name="telefone" type="text" placeholder="(84) 99800-3714" class="tel autogrow">
             </div>
             <div>
               <label for="bairro_origem">Bairro de origem</label>
-              <input id="bairro_origem" name="bairro_origem" type="text" placeholder="Onde o cliente está">
+              <input id="bairro_origem" name="bairro_origem" type="text" placeholder="São Gonçalo do Amarante" class="autogrow">
             </div>
             <div>
               <label for="endereco">Endereço (opcional)</label>
-              <input id="endereco" name="endereco" type="text" placeholder="Rua, número, complemento">
+              <input id="endereco" name="endereco" type="text" placeholder="Rua Teatrólogo Jesiel Figueiredo Damanscena Barroso, 1920" class="autogrow">
             </div>
           </div>
           <button class="btn submit" type="submit">Cadastrar Cliente</button>
@@ -135,13 +157,13 @@
           <table id="tabela">
             <thead>
               <tr>
-                <th style="width:24%">Nome</th>
-                <th style="width:14%">Telefone</th>
-                <th style="width:16%">Bairro</th>
-                <th style="width:18%">Endereço</th>
-                <th style="width:12%">Último uso</th>
-                <th style="width:8%">Total</th>
-                <th style="width:8%; text-align:center">Ações</th>
+                <th>Nome</th>
+                <th>Telefone</th>
+                <th>Bairro</th>
+                <th>Endereço</th>
+                <th>Último uso</th>
+                <th>Total</th>
+                <th style="text-align:center">Ações</th>
               </tr>
             </thead>
             <tbody id="tbody-clientes">
@@ -152,10 +174,10 @@
                 data-total="{{ cl.total_pedidos }}"
               >
                 <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
-                  <td><input type="text" name="nome" value="{{ cl.nome }}" required class="dirty-watch"></td>
-                  <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
-                  <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" class="dirty-watch"></td>
-                  <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" class="dirty-watch"></td>
+                  <td><input type="text" name="nome" value="{{ cl.nome }}" required class="dirty-watch autogrow"></td>
+                  <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" class="tel dirty-watch autogrow"></td>
+                  <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" class="dirty-watch autogrow"></td>
+                  <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" class="dirty-watch autogrow"></td>
                   <td class="ultimo-uso-cell">—</td>
                   <td class="total-cell" style="text-align:center">{{ cl.total_pedidos }}</td>
                   <td class="actions">
@@ -220,15 +242,28 @@
       const dias = dt ? daysSince(dt) : null;
 
       const cell = tr.querySelector('.ultimo-uso-cell');
-      cell.textContent = dt ? `${fmtDateBR(dt)} (${dias}d)` : '—';
+      cell.textContent = dt ? fmtDateBR(dt) : '—';
+      cell.title = dt ? `${fmtDateBR(dt)}` : ''; // dica somente data
 
+      // badge extra quando >60d
+      const oldFlag = cell.querySelector('.contact-flag');
+      if (oldFlag) oldFlag.remove();
       tr.classList.remove('st-gt60','st-gt30','st-lt30');
+
       if(dias == null){
         return; // sem uso ainda
       }
-      if(dias > 60) tr.classList.add('st-gt60');
-      else if(dias > 30) tr.classList.add('st-gt30');
-      else tr.classList.add('st-lt30');
+      if(dias > 60){
+        tr.classList.add('st-gt60');
+        const flag = document.createElement('span');
+        flag.className = 'contact-flag';
+        flag.textContent = 'Entrar em contato';
+        cell.appendChild(flag);
+      } else if(dias > 30){
+        tr.classList.add('st-gt30');
+      } else {
+        tr.classList.add('st-lt30');
+      }
     }
 
     // Inicializa todas as linhas
@@ -324,6 +359,35 @@
     }
     document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
 
+    // ---------- Inputs autogrow (não cortar textos) ----------
+    const measurer = document.createElement('span');
+    measurer.style.position = 'absolute';
+    measurer.style.visibility = 'hidden';
+    measurer.style.whiteSpace = 'pre';
+    document.body.appendChild(measurer);
+
+    function autoGrowInput(inp, min=120, pad=28, max=1600){
+      const cs = getComputedStyle(inp);
+      measurer.style.font = cs.font;
+      measurer.textContent = inp.value || inp.placeholder || '';
+      const w = Math.ceil(measurer.getBoundingClientRect().width + pad);
+      inp.style.width = Math.max(min, Math.min(w, max)) + 'px';
+    }
+
+    function wireAutogrowOn(el, min){
+      autoGrowInput(el, min);
+      el.addEventListener('input', () => autoGrowInput(el, min));
+    }
+
+    document.querySelectorAll('input.autogrow').forEach(el => {
+      let min = 140;
+      if (el.name === 'nome') min = 380;
+      if (el.name === 'telefone') min = 240;
+      if (el.name === 'bairro_origem') min = 360;
+      if (el.name === 'endereco') min = 680;
+      wireAutogrowOn(el, min);
+    });
+
     // ---------- Dirty tracking (contar alterações) ----------
     const dirtyMap = new Set(); // ids de TR com alteração
     function markDirty(tr, yes){
@@ -339,14 +403,12 @@
         const original = inp.value;
         inp.dataset._orig = original;
         inp.addEventListener('input', () => {
-          const changed = inp.value !== inp.dataset._orig;
           const anyChanged = [...tr.querySelectorAll('input.dirty-watch')].some(i => i.value !== i.dataset._orig);
           markDirty(tr, anyChanged);
         });
       });
     });
 
-    // quando salvar com sucesso, atualiza originais e limpa dirty
     function clearDirty(tr){
       tr.querySelectorAll('input.dirty-watch').forEach(inp => { inp.dataset._orig = inp.value; });
       markDirty(tr, false);
@@ -451,7 +513,6 @@
         if(data && data.ok){
           const add = data.adicionados ?? 0, upd = data.atualizados ?? 0, err = data.erros ?? 0;
           importLog.innerHTML = `Importação concluída: <b>${add}</b> adicionados, <b>${upd}</b> atualizados, <b>${err}</b> erros.`;
-          // Opcional: se backend retornar lista de clientes atualizados, poderíamos atualizar a tabela aqui.
         } else {
           importLog.textContent = 'Importação finalizada.';
         }
