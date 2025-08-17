@@ -13,78 +13,76 @@
       --vermelho:#d11a1a; --verde:#13a038;
     }
     *{box-sizing:border-box}
+    html,body{width:100%;overflow-x:hidden}
     body{font-family:'Inter','Segoe UI',Arial,sans-serif; margin:0; background:var(--cinza-bg); color:#222b44; padding:18px}
     h1{margin:0 0 14px; color:var(--azul)}
-    .wrap{max-width:1800px; margin:0 auto}
-    .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px}
+    .wrap{max-width:980px; margin:0 auto}
+
+    /* topo + botões */
+    .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap}
     .btn{background:var(--azul-grad); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; display:inline-block}
     .btn:hover{background:var(--azul-hover)}
     .btn-small{padding:6px 10px; border-radius:8px; font-weight:800; cursor:pointer; margin:0 2px; border:1px solid #d7e2ff; background:#fff}
     .btn-del{background:#fff; color:var(--vermelho); border:1px solid #f1c7c7}
     .btn-save{background:#fff; color:var(--verde); border:1px solid #bfe6c8}
+    .badge{display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #d7e2ff; border-radius:999px; padding:6px 10px; font-weight:700}
 
-    .card{background:var(--cinza-card); border:1px solid #e6ebff; border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px}
-    .grid{display:grid; grid-template-columns: 1fr 2fr; gap:14px}
-    @media (max-width: 1100px){ .grid{grid-template-columns:1fr} }
+    /* cartões em coluna (sem grid lado a lado) */
+    .card{background:var(--cinza-card); border:1px solid #e6ebff; border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px; margin-bottom:14px}
+    .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
 
-    form .row{display:grid; grid-template-columns:1fr 1fr; gap:10px}
-    /* Cadastro: privilegia Nome e Endereço */
-    form .row-4{display:grid; grid-template-columns:1.6fr 1.2fr 1.2fr 2.6fr; gap:10px}
-    @media (max-width:900px){ form .row, form .row-4{grid-template-columns:1fr} }
-
+    /* formulário de cadastro: campos empilhados (um abaixo do outro) */
+    form .row-4{display:grid; grid-template-columns:1fr; gap:10px}
     label{font-size:13px; font-weight:800; color:#003399; margin-bottom:4px; display:block}
     input[type="text"], input[type="file"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
     .submit{margin-top:10px}
 
-    .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
-
-    .searchbar{display:flex; gap:8px; align-items:center; margin-bottom:10px; flex-wrap:wrap}
+    /* barra de busca */
+    .searchbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
     .searchbar input{flex:1; min-width:220px}
 
-    table{width:100%; border-collapse:collapse; font-size:14px}
+    /* tabela: sem scroll lateral (usa table-layout:fixed e larguras percentuais somando 100%) */
+    table{width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
     td.actions{white-space:nowrap; text-align:center}
 
-    /* Colunas mais largas para caber frases grandes */
-    thead th:nth-child(1){width:28%}  /* Nome   */
-    thead th:nth-child(2){width:16%}  /* Telefone */
-    thead th:nth-child(3){width:22%}  /* Bairro */
-    thead th:nth-child(4){width:26%}  /* Endereço */
-    thead th:nth-child(5){width:6%}   /* Último uso */
-    thead th:nth-child(6){width:1%}   /* Total */
-    thead th:nth-child(7){width:1%}   /* Ações */
+    /* larguras equilibradas e estáveis (sem exagero) */
+    thead th:nth-child(1){width:26%} /* Nome      */
+    thead th:nth-child(2){width:16%} /* Telefone  */
+    thead th:nth-child(3){width:18%} /* Bairro    */
+    thead th:nth-child(4){width:30%} /* Endereço  */
+    thead th:nth-child(5){width:6%}  /* Último uso*/
+    thead th:nth-child(6){width:2%}  /* Total     */
+    thead th:nth-child(7){width:2%}  /* Ações     */
 
-    /* Inputs autogrow: tamanho mínimo confortável */
-    td input[name="nome"]{min-width:420px}
-    td input[name="telefone"]{min-width:260px}
-    td input[name="bairro_origem"]{min-width:380px}
-    td input[name="endereco"]{min-width:720px}
+    /* inputs ocupam a célula, sem min-width para evitar scroll lateral */
+    td input[type="text"]{width:100%; overflow:hidden; text-overflow:ellipsis}
 
-    /* Estados por idade do último uso */
+    /* estados por idade do último uso */
     .st-gt60 { background:#ffeaea }   /* vermelho claro  */
     .st-gt30 { background:#fff9e0 }   /* amarelo claro   */
     .st-lt30 { background:#eafaea }   /* verde claro     */
 
-    .badge{display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #d7e2ff; border-radius:999px; padding:6px 10px; font-weight:700}
-
-    /* Barra de import/export */
-    .tools{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-    .muted{font-size:12px; color:#4b5a7f}
-
-    /* Selo de contato quando >60d */
+    /* selo >60d */
     .contact-flag{
       display:inline-block; margin-left:6px; padding:2px 6px; border-radius:8px;
       background:#ffe3e3; border:1px solid #ffcaca; color:#8a0b0b; font-weight:800; font-size:12px;
       white-space:nowrap;
     }
+
+    /* utilidades */
+    .tools{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .muted{font-size:12px; color:#4b5a7f}
   </style>
 </head>
 <body>
   <div class="wrap">
+
+    <!-- Cabeçalho e botões -->
     <div class="topbar">
       <h1>Clientes</h1>
-      <div style="display:flex; gap:8px; align-items:center;">
+      <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
         <span class="badge">Alterações pendentes: <span id="count-pend">0</span></span>
         <button id="btn-salvar-tudo" class="btn" type="button" title="Salvar todas as edições">💾 Salvar tudo</button>
         <a class="btn" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
@@ -100,7 +98,7 @@
     {% endwith %}
 
     <!-- Importar / Exportar -->
-    <div class="card" style="margin-bottom:14px">
+    <div class="card">
       <div class="tools">
         <a class="btn" id="btn-exportar" href="{{ url_for('exportar_clientes') }}" target="_blank" rel="noopener">⬇️ Exportar XLSX</a>
         <form id="form-import" method="POST" action="{{ url_for('importar_clientes') }}" enctype="multipart/form-data" style="display:flex; gap:8px; align-items:center;">
@@ -112,90 +110,91 @@
       <div id="import-log" class="muted" style="margin-top:8px"></div>
     </div>
 
-    <div class="grid">
-      <!-- Cadastro novo -->
-      <div class="card">
-        <h3 style="margin-top:0; color:#003399">Cadastrar novo cliente</h3>
-        <form method="POST" action="{{ url_for('clientes') }}" id="form-create">
-          <div class="row-4">
-            <div>
-              <label for="nome">Nome *</label>
-              <input id="nome" name="nome" type="text" required placeholder="Ex.: Julio Trindade Barros" class="autogrow">
-            </div>
-            <div>
-              <label for="telefone">Telefone</label>
-              <input id="telefone" name="telefone" type="text" placeholder="(84) 99800-3714" class="tel autogrow">
-            </div>
-            <div>
-              <label for="bairro_origem">Bairro de origem</label>
-              <input id="bairro_origem" name="bairro_origem" type="text" placeholder="São Gonçalo do Amarante" class="autogrow">
-            </div>
-            <div>
-              <label for="endereco">Endereço (opcional)</label>
-              <input id="endereco" name="endereco" type="text" placeholder="Rua Teatrólogo Jesiel Figueiredo Damanscena Barroso, 1920" class="autogrow">
-            </div>
+    <!-- Cadastro novo (empilhado) -->
+    <div class="card">
+      <h3 style="margin-top:0; color:#003399">Cadastrar novo cliente</h3>
+      <form method="POST" action="{{ url_for('clientes') }}" id="form-create">
+        <div class="row-4">
+          <div>
+            <label for="nome">Nome *</label>
+            <input id="nome" name="nome" type="text" required placeholder="Ex.: Julio Trindade Barros">
           </div>
-          <button class="btn submit" type="submit">Cadastrar Cliente</button>
-        </form>
-      </div>
-
-      <!-- Lista / Edição -->
-      <div class="card">
-        <div class="searchbar">
-          <label for="filtro" style="margin:0">Filtro:</label>
-          <input id="filtro" type="text" placeholder="Filtrar por nome, telefone, bairro ou endereço…">
-          <div style="display:flex; gap:6px; flex-wrap:wrap">
-            <button type="button" class="btn-small" id="sort-mais">Mais pedidos</button>
-            <button type="button" class="btn-small" id="sort-menos">Menos pedidos</button>
-            <button type="button" class="btn-small" id="sort-nome">Ordenar por nome</button>
-            <button type="button" class="btn-small" id="filtro-30">Somente &gt; 30 dias</button>
-            <button type="button" class="btn-small" id="filtro-60">Somente &gt; 60 dias</button>
-            <button type="button" class="btn-small" id="limpar">Limpar ordenação/filtros</button>
+          <div>
+            <label for="telefone">Telefone</label>
+            <input id="telefone" name="telefone" type="text" placeholder="(84) 99800-3714" class="tel">
+          </div>
+          <div>
+            <label for="bairro_origem">Bairro de origem</label>
+            <input id="bairro_origem" name="bairro_origem" type="text" placeholder="São Gonçalo do Amarante">
+          </div>
+          <div>
+            <label for="endereco">Endereço (opcional)</label>
+            <input id="endereco" name="endereco" type="text" placeholder="Rua Teatrólogo Jesiel Figueiredo Damanscena Barroso, 1920">
           </div>
         </div>
-        <div style="overflow:auto; max-height:65vh;">
-          <table id="tabela">
-            <thead>
-              <tr>
-                <th>Nome</th>
-                <th>Telefone</th>
-                <th>Bairro</th>
-                <th>Endereço</th>
-                <th>Último uso</th>
-                <th>Total</th>
-                <th style="text-align:center">Ações</th>
-              </tr>
-            </thead>
-            <tbody id="tbody-clientes">
-              {% for cl in clientes %}
-              <tr
-                data-id="{{ cl.id }}"
-                data-ultimo="{{ cl.ultimo_uso or '' }}"
-                data-total="{{ cl.total_pedidos }}"
-              >
-                <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
-                  <td><input type="text" name="nome" value="{{ cl.nome }}" required class="dirty-watch autogrow"></td>
-                  <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" class="tel dirty-watch autogrow"></td>
-                  <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" class="dirty-watch autogrow"></td>
-                  <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" class="dirty-watch autogrow"></td>
-                  <td class="ultimo-uso-cell">—</td>
-                  <td class="total-cell" style="text-align:center">{{ cl.total_pedidos }}</td>
-                  <td class="actions">
-                    <button class="btn-small btn-save" type="submit" title="Salvar">Salvar</button>
-                    <button class="btn-small btn-del btn-excluir" type="button" title="Excluir">Excluir</button>
-                  </td>
-                </form>
-                <form method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" style="display:none" class="form-del"></form>
-              </tr>
-              {% endfor %}
-              {% if not clientes or clientes|length == 0 %}
-                <tr><td colspan="7">Nenhum cliente cadastrado.</td></tr>
-              {% endif %}
-            </tbody>
-          </table>
+        <button class="btn submit" type="submit">Cadastrar Cliente</button>
+      </form>
+    </div>
+
+    <!-- Filtros e ordenações -->
+    <div class="card">
+      <div class="searchbar">
+        <label for="filtro" style="margin:0">Filtro:</label>
+        <input id="filtro" type="text" placeholder="Filtrar por nome, telefone, bairro ou endereço…">
+        <div style="display:flex; gap:6px; flex-wrap:wrap">
+          <button type="button" class="btn-small" id="sort-mais">Mais pedidos</button>
+          <button type="button" class="btn-small" id="sort-menos">Menos pedidos</button>
+          <button type="button" class="btn-small" id="sort-nome">Ordenar por nome</button>
+          <button type="button" class="btn-small" id="filtro-30">Somente &gt; 30 dias</button>
+          <button type="button" class="btn-small" id="filtro-60">Somente &gt; 60 dias</button>
+          <button type="button" class="btn-small" id="limpar">Limpar ordenação/filtros</button>
         </div>
       </div>
     </div>
+
+    <!-- Lista / Edição (uma linha por cliente) -->
+    <div class="card">
+      <table id="tabela">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Telefone</th>
+            <th>Bairro</th>
+            <th>Endereço</th>
+            <th>Último uso</th>
+            <th>Total</th>
+            <th style="text-align:center">Ações</th>
+          </tr>
+        </thead>
+        <tbody id="tbody-clientes">
+          {% for cl in clientes %}
+          <tr
+            data-id="{{ cl.id }}"
+            data-ultimo="{{ cl.ultimo_uso or '' }}"
+            data-total="{{ cl.total_pedidos }}"
+          >
+            <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
+              <td><input type="text" name="nome" value="{{ cl.nome }}" title="{{ cl.nome }}" required class="dirty-watch"></td>
+              <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" title="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
+              <td><input type="text" name="bairro_origem" value="{{ cl.bairro_origem or '' }}" title="{{ cl.bairro_origem or '' }}" class="dirty-watch"></td>
+              <td><input type="text" name="endereco" value="{{ cl.endereco or '' }}" title="{{ cl.endereco or '' }}" class="dirty-watch"></td>
+              <td class="ultimo-uso-cell">—</td>
+              <td class="total-cell" style="text-align:center">{{ cl.total_pedidos }}</td>
+              <td class="actions">
+                <button class="btn-small btn-save" type="submit" title="Salvar">Salvar</button>
+                <button class="btn-small btn-del btn-excluir" type="button" title="Excluir">Excluir</button>
+              </td>
+            </form>
+            <form method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" style="display:none" class="form-del"></form>
+          </tr>
+          {% endfor %}
+          {% if not clientes or clientes|length == 0 %}
+            <tr><td colspan="7">Nenhum cliente cadastrado.</td></tr>
+          {% endif %}
+        </tbody>
+      </table>
+    </div>
+
   </div>
 
   <script>
@@ -226,7 +225,7 @@
       return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
     }
 
-    // ---------- Elementos ----------
+    // elementos
     const filtro = document.getElementById('filtro');
     const tbody  = document.getElementById('tbody-clientes');
     const btnSalvarTudo = document.getElementById('btn-salvar-tudo');
@@ -235,7 +234,7 @@
     const importFile = document.getElementById('arquivo-xlsx');
     const importLog  = document.getElementById('import-log');
 
-    // ---------- Hidratação (pinta linha e escreve Último uso) ----------
+    // ---------- hidratação (cores + ultima data sem dias) ----------
     function hydrateRow(tr){
       const iso = tr.dataset.ultimo || '';
       const dt  = parseISO(iso);
@@ -243,16 +242,14 @@
 
       const cell = tr.querySelector('.ultimo-uso-cell');
       cell.textContent = dt ? fmtDateBR(dt) : '—';
-      cell.title = dt ? `${fmtDateBR(dt)}` : ''; // dica somente data
+      cell.title = dt ? fmtDateBR(dt) : '';
 
-      // badge extra quando >60d
+      // limpa selo anterior e classes
       const oldFlag = cell.querySelector('.contact-flag');
       if (oldFlag) oldFlag.remove();
       tr.classList.remove('st-gt60','st-gt30','st-lt30');
 
-      if(dias == null){
-        return; // sem uso ainda
-      }
+      if(dias == null){ return; }
       if(dias > 60){
         tr.classList.add('st-gt60');
         const flag = document.createElement('span');
@@ -265,11 +262,9 @@
         tr.classList.add('st-lt30');
       }
     }
-
-    // Inicializa todas as linhas
     [...tbody.rows].forEach(hydrateRow);
 
-    // ---------- Filtro de texto ----------
+    // ---------- filtro ----------
     function aplicaFiltro(){
       const termo = filtro?.value || '';
       const termoNorm = norm(termo);
@@ -291,7 +286,7 @@
     }
     filtro?.addEventListener('input', aplicaFiltro);
 
-    // ---------- Ordenações e filtros especiais ----------
+    // ---------- ordenações ----------
     function sortBy(getKey, desc=false){
       const rows = [...tbody.rows];
       rows.sort((a,b) => {
@@ -305,7 +300,6 @@
       });
       rows.forEach(r => tbody.appendChild(r));
     }
-
     document.getElementById('sort-mais')?.addEventListener('click', () =>
       sortBy(tr => parseInt(tr.dataset.total || '0',10), true)
     );
@@ -315,7 +309,6 @@
     document.getElementById('sort-nome')?.addEventListener('click', () =>
       sortBy(tr => norm(tr.querySelector('input[name="nome"]')?.value))
     );
-
     document.getElementById('filtro-30')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
         const iso = tr.dataset.ultimo || '';
@@ -324,7 +317,6 @@
         tr.style.display = (dias != null && dias > 30) ? '' : 'none';
       });
     });
-
     document.getElementById('filtro-60')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
         const iso = tr.dataset.ultimo || '';
@@ -333,13 +325,13 @@
         tr.style.display = (dias != null && dias > 60) ? '' : 'none';
       });
     });
-
     document.getElementById('limpar')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => tr.style.display = '');
       filtro.value = '';
     });
 
-    // ---------- Máscara de telefone (BR) ----------
+    // ---------- máscara telefone ----------
+    function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
     function maskTel(v){
       const d = onlyDigits(v).slice(0,11); // DDD + 8/9
       if(d.length <= 2) return `(${d}`;
@@ -354,67 +346,41 @@
         e.target.value = maskTel(e.target.value);
         const diff = e.target.value.length - old.length;
         const newPos = Math.max(0,(pos+diff));
-        try{ e.target.setSelectionRange(newPos, newPos); }catch(_){/* ignore */}
+        try{ e.target.setSelectionRange(newPos, newPos); }catch(_){}
       });
     }
     document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
+    const telCreate = document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
 
-    // ---------- Inputs autogrow (não cortar textos) ----------
-    const measurer = document.createElement('span');
-    measurer.style.position = 'absolute';
-    measurer.style.visibility = 'hidden';
-    measurer.style.whiteSpace = 'pre';
-    document.body.appendChild(measurer);
-
-    function autoGrowInput(inp, min=120, pad=28, max=1600){
-      const cs = getComputedStyle(inp);
-      measurer.style.font = cs.font;
-      measurer.textContent = inp.value || inp.placeholder || '';
-      const w = Math.ceil(measurer.getBoundingClientRect().width + pad);
-      inp.style.width = Math.max(min, Math.min(w, max)) + 'px';
-    }
-
-    function wireAutogrowOn(el, min){
-      autoGrowInput(el, min);
-      el.addEventListener('input', () => autoGrowInput(el, min));
-    }
-
-    document.querySelectorAll('input.autogrow').forEach(el => {
-      let min = 140;
-      if (el.name === 'nome') min = 380;
-      if (el.name === 'telefone') min = 240;
-      if (el.name === 'bairro_origem') min = 360;
-      if (el.name === 'endereco') min = 680;
-      wireAutogrowOn(el, min);
+    // ---------- títulos dos inputs = conteúdo completo (pra ver inteiro ao passar o mouse) ----------
+    document.querySelectorAll('#tbody-clientes input[type="text"]').forEach(inp=>{
+      inp.addEventListener('input', ()=> { inp.title = inp.value; });
     });
 
-    // ---------- Dirty tracking (contar alterações) ----------
-    const dirtyMap = new Set(); // ids de TR com alteração
+    // ---------- dirty tracking ----------
+    const dirtyMap = new Set();
+    const countPend = document.getElementById('count-pend');
     function markDirty(tr, yes){
       const id = tr.dataset.id;
       if(!id) return;
       if(yes) dirtyMap.add(id); else dirtyMap.delete(id);
       countPend.textContent = dirtyMap.size;
     }
-
-    // qualquer mudança em inputs marca a linha
     document.querySelectorAll('#tbody-clientes tr').forEach(tr => {
       tr.querySelectorAll('input.dirty-watch').forEach(inp => {
-        const original = inp.value;
-        inp.dataset._orig = original;
+        const original = inp.value; inp.dataset._orig = original;
         inp.addEventListener('input', () => {
           const anyChanged = [...tr.querySelectorAll('input.dirty-watch')].some(i => i.value !== i.dataset._orig);
           markDirty(tr, anyChanged);
         });
       });
     });
-
     function clearDirty(tr){
       tr.querySelectorAll('input.dirty-watch').forEach(inp => { inp.dataset._orig = inp.value; });
       markDirty(tr, false);
     }
 
-    // ---------- Salvar 1 linha sem recarregar ----------
+    // ---------- salvar 1 linha (AJAX) ----------
     document.querySelectorAll('.row-form').forEach(form => {
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
@@ -447,8 +413,8 @@
       });
     });
 
-    // ---------- Salvar tudo ----------
-    btnSalvarTudo?.addEventListener('click', async () => {
+    // ---------- salvar tudo ----------
+    document.getElementById('btn-salvar-tudo')?.addEventListener('click', async () => {
       const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
       if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
 
@@ -477,7 +443,7 @@
       alert('Salvamento concluído.');
     });
 
-    // ---------- Excluir (AJAX leve) ----------
+    // ---------- excluir (AJAX leve) ----------
     document.querySelectorAll('.btn-excluir').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const tr = e.target.closest('tr');
@@ -494,11 +460,7 @@
       });
     });
 
-    // ---------- Criar: máscara no telefone ----------
-    const telCreate = document.getElementById('telefone');
-    if(telCreate) applyMaskTelOn(telCreate);
-
-    // ---------- Importar XLSX (AJAX) ----------
+    // ---------- importar XLSX ----------
     importForm?.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const file = importFile?.files?.[0];
