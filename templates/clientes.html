@@ -37,32 +37,32 @@
     .searchbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
     .searchbar input{flex:1; min-width:220px}
 
-    /* === Tabela: sem table-layout:fixed para não amassar colunas === */
+    /* === Tabela === */
     table{width:100%; border-collapse:collapse; font-size:14px; table-layout:auto}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
 
-    /* Larguras mínimas para evitar “junção” Último uso × Total */
+    /* Larguras mínimas para caber bem e não “juntar” colunas */
     thead th:nth-child(1){min-width:220px} /* Nome */
     thead th:nth-child(2){min-width:150px} /* Telefone */
     thead th:nth-child(3){min-width:160px} /* Bairro */
-    thead th:nth-child(4){min-width:260px} /* Endereço */
-    thead th:nth-child(5){min-width:110px; text-align:left} /* Último uso */
+    thead th:nth-child(4){min-width:300px} /* Endereço (+ ~1cm) */
+    thead th:nth-child(5){min-width:120px; text-align:left} /* Último uso */
     thead th:nth-child(6){min-width:70px; text-align:center} /* Total */
     thead th:nth-child(7){min-width:160px; text-align:center} /* Ações */
 
     td.actions{white-space:nowrap; text-align:center}
     td input[type="text"]{
-      width:100%; min-width:0; /* permite encolher sem scroll */
+      width:100%; min-width:0;
       overflow:hidden; text-overflow:ellipsis;
     }
 
     /* Cores por idade do último uso (aplicadas na <tr>) */
-    .st-gt60 { background:#ffeaea }
-    .st-gt30 { background:#fff9e0 }
-    .st-lt30 { background:#eafaea }
+    .st-gt60 { background:#ffeaea } /* >60 dias */
+    .st-gt30 { background:#fff9e0 } /* 31-60 dias */
+    .st-lt30 { background:#eafaea } /* <=30 dias */
 
-    /* Badge “Entrar em contato” (só > 60d) */
+    /* Último uso: data + possível badge */
     .ultimo-uso-cell{ display:flex; align-items:center; gap:8px; white-space:nowrap }
     .contact-flag{
       display:inline-block; margin-left:2px; padding:2px 6px; border-radius:8px;
@@ -156,7 +156,11 @@
         </thead>
         <tbody id="tbody-clientes">
           {% for cl in clientes %}
-          <tr data-id="{{ cl.id }}" data-ultimo="{{ cl.ultimo_ymd or '' }}" data-total="{{ cl.total_pedidos }}">
+          <tr
+            data-id="{{ cl.id }}"
+            data-ultimo="{{ (cl.ultimo_uso[:10]) if cl.ultimo_uso else '' }}"
+            data-total="{{ cl.total_pedidos }}"
+          >
             <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
               <td><input type="text" name="nome" value="{{ cl.nome }}" title="{{ cl.nome }}" required class="dirty-watch"></td>
               <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" title="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
@@ -190,12 +194,17 @@
     function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
 
     function parseYMD(s){
-      // s = 'YYYY-MM-DD'
       if(!s) return null;
       const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
       if(!m) return null;
       const y = +m[1], mo = +m[2]-1, d = +m[3];
-      return new Date(y, mo, d); // local date
+      return new Date(y, mo, d);
+    }
+    // aceita ISO completo e retorna Date local só com a parte YYYY-MM-DD
+    function parseAnyToLocalDate(s){
+      if(!s) return null;
+      const ymd = (s.length >= 10) ? s.slice(0,10) : s;
+      return parseYMD(ymd);
     }
     function daysSince(date){
       if(!date) return null;
@@ -219,15 +228,12 @@
 
     // ---------- Hidrata (data + cores) ----------
     function hydrateRow(tr){
-      const ymd = tr.dataset.ultimo || '';
-      const dt  = parseYMD(ymd);
+      const raw = tr.dataset.ultimo || '';
+      const dt  = parseAnyToLocalDate(raw);
       const dias = dt ? daysSince(dt) : null;
 
       const cell = tr.querySelector('.ultimo-uso-cell');
-      // Limpa conteúdo anterior
       cell.innerHTML = dt ? fmtDateBR(dt) : '—';
-
-      // limpa classes
       tr.classList.remove('st-gt60','st-gt30','st-lt30');
 
       if(dias == null){ return; }
@@ -292,14 +298,14 @@
     );
     document.getElementById('filtro-30')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
-        const dt = parseYMD(tr.dataset.ultimo || '');
+        const dt = parseAnyToLocalDate(tr.dataset.ultimo || '');
         const dias = dt ? daysSince(dt) : null;
         tr.style.display = (dias != null && dias > 30) ? '' : 'none';
       });
     });
     document.getElementById('filtro-60')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
-        const dt = parseYMD(tr.dataset.ultimo || '');
+        const dt = parseAnyToLocalDate(tr.dataset.ultimo || '');
         const dias = dt ? daysSince(dt) : null;
         tr.style.display = (dias != null && dias > 60) ? '' : 'none';
       });
@@ -310,9 +316,8 @@
     });
 
     // ---------- Máscara telefone ----------
-    function onlyDigitsStr(v){ return (v||'').replace(/\D/g,''); }
     function maskTel(v){
-      const d = onlyDigitsStr(v).slice(0,11);
+      const d = (v||'').replace(/\D/g,'').slice(0,11);
       if(d.length <= 2) return `(${d}`;
       if(d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
       if(d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
@@ -338,7 +343,6 @@
 
     // ---------- Dirty tracking ----------
     const dirtyMap = new Set();
-    const countPend = document.getElementById('count-pend');
     function markDirty(tr, yes){
       const id = tr.dataset.id;
       if(!id) return;
@@ -374,7 +378,7 @@
           let data = null;
           try { data = await res.json(); } catch(_) {}
           if (data && typeof data === 'object'){
-            if ('ultimo_uso' in data) tr.dataset.ultimo = data.ultimo_uso || '';
+            if ('ultimo_uso' in data) tr.dataset.ultimo = (data.ultimo_uso || '').slice(0,10);
             if ('total_pedidos' in data){
               tr.dataset.total = data.total_pedidos;
               const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
@@ -393,7 +397,7 @@
     });
 
     // ---------- Salvar tudo ----------
-    document.getElementById('btn-salvar-tudo')?.addEventListener('click', async () => {
+    btnSalvarTudo?.addEventListener('click', async () => {
       const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
       if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
 
@@ -407,7 +411,7 @@
           if(!res.ok) throw new Error();
           let data = null; try { data = await res.json(); } catch(_){ }
           if (data && typeof data === 'object'){
-            if ('ultimo_uso' in data) tr.dataset.ultimo = data.ultimo_uso || '';
+            if ('ultimo_uso' in data) tr.dataset.ultimo = (data.ultimo_uso || '').slice(0,10);
             if ('total_pedidos' in data){
               tr.dataset.total = data.total_pedidos;
               const tc = tr.querySelector('.total-cell'); if(tc) tc.textContent = data.total_pedidos;
