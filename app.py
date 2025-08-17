@@ -453,6 +453,8 @@ def cadastrar_cooperado():
 def clientes():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
+    # POST = criar cliente
     if request.method == 'POST':
         nome = (request.form.get('nome') or '').strip()
         telefone = (request.form.get('telefone') or '').strip()
@@ -471,7 +473,7 @@ def clientes():
         flash('Cliente cadastrado!')
         return redirect(url_for('clientes'))
 
-    # --- GET: lista com métricas ultimo_uso e total_pedidos (normalização forte) ---
+    # ---------- GET: métricas de uso com normalização forte ----------
     aggs = (
         db.session.query(
             Entrega.cliente.label('cli'),
@@ -482,8 +484,8 @@ def clientes():
         .all()
     )
 
-    stats_by_full = defaultdict(lambda: {"qtd":0, "ultimo":None})
-    stats_by_first = defaultdict(lambda: {"qtd":0, "ultimo":None})
+    stats_by_full = defaultdict(lambda: {"qtd": 0, "ultimo": None})
+    stats_by_first = defaultdict(lambda: {"qtd": 0, "ultimo": None})
     for row in aggs:
         raw = (row.cli or '').strip()
         key_full = normalize_letters_key(raw)
@@ -499,18 +501,32 @@ def clientes():
         if row.ultimo and (f["ultimo"] is None or row.ultimo > f["ultimo"]):
             f["ultimo"] = row.ultimo
 
+    hoje_local = datetime.now(BRAZIL_TZ).date()
+
     lista = []
     for cl in Cliente.query.order_by(Cliente.nome).all():
-        k_full = normalize_letters_key(cl.nome or '')
+        k_full  = normalize_letters_key(cl.nome or '')
         k_first = normalize_first_token(cl.nome or '')
 
         tot, dt = 0, None
         if k_full in stats_by_full:
             tot = stats_by_full[k_full]["qtd"]
-            dt = stats_by_full[k_full]["ultimo"]
+            dt  = stats_by_full[k_full]["ultimo"]
         elif k_first in stats_by_first:
             tot = stats_by_first[k_first]["qtd"]
-            dt = stats_by_first[k_first]["ultimo"]
+            dt  = stats_by_first[k_first]["ultimo"]
+
+        # Datas prontas para o HTML (sem depender de JS)
+        ultimo_ymd, ultimo_br, ultimo_days, row_class = None, None, None, ""
+        if dt:
+            loc_date = to_brasilia(dt).date()
+            ultimo_ymd  = loc_date.isoformat()              # 'YYYY-MM-DD'
+            ultimo_br   = loc_date.strftime('%d/%m/%Y')     # 'DD/MM/YYYY'
+            ultimo_days = (hoje_local - loc_date).days
+
+            if   ultimo_days > 60: row_class = "st-gt60"    # vermelho
+            elif ultimo_days > 30: row_class = "st-gt30"    # amarelo
+            else:                  row_class = "st-lt30"    # verde
 
         lista.append({
             "id": cl.id,
@@ -519,9 +535,20 @@ def clientes():
             "bairro_origem": cl.bairro_origem,
             "endereco": getattr(cl, "endereco", None),
             "total_pedidos": int(tot or 0),
-            "ultimo_ymd": (br_date_ymd(dt) if dt else None),
+            "ultimo_ymd": ultimo_ymd,       # para filtros/sort
+            "ultimo_br": ultimo_br,         # já formatado para exibir
+            "ultimo_days": ultimo_days,     # número de dias desde o último uso
+            "row_class": row_class
         })
-    return render_template('clientes.html', clientes=lista)
+
+    # KPIs: Ativos (<=6 meses) / Inativos (>=6 meses ou nunca)
+    total_clientes = len(lista)
+    ativos   = sum(1 for i in lista if i["ultimo_days"] is not None and i["ultimo_days"] <= 180)
+    inativos = total_clientes - ativos
+
+    return render_template('clientes.html',
+                           clientes=lista,
+                           kpis={"total": total_clientes, "ativos": ativos, "inativos": inativos})
 
 @app.route('/clientes/<int:id>/editar', methods=['POST'])
 def editar_cliente(id):
