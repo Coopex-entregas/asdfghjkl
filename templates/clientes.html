@@ -18,7 +18,6 @@
     h1{margin:0 0 14px; color:var(--azul)}
     .wrap{max-width:980px; margin:0 auto}
 
-    /* topo + botões */
     .topbar{display:flex; gap:10px; align-items:center; justify-content:space-between; margin-bottom:14px; flex-wrap:wrap}
     .btn{background:var(--azul-grad); color:#fff; border:none; padding:10px 16px; border-radius:10px; font-weight:700; cursor:pointer; box-shadow:var(--shadow-sm); text-decoration:none; display:inline-block}
     .btn:hover{background:var(--azul-hover)}
@@ -27,64 +26,53 @@
     .btn-save{background:#fff; color:var(--verde); border:1px solid #bfe6c8}
     .badge{display:inline-flex; align-items:center; gap:6px; background:#fff; border:1px solid #d7e2ff; border-radius:999px; padding:6px 10px; font-weight:700}
 
-    /* cartões em coluna (sem grid lado a lado) */
     .card{background:var(--cinza-card); border:1px solid #e6ebff; border-radius:var(--radius); box-shadow:var(--shadow-sm); padding:16px; margin-bottom:14px}
     .flash{margin:8px 0; padding:10px 12px; background:#eef6ff; border:1px solid #cfe1ff; border-radius:8px; color:#0a3a87}
 
-    /* formulário de cadastro: campos empilhados (um abaixo do outro) */
     form .row-4{display:grid; grid-template-columns:1fr; gap:10px}
     label{font-size:13px; font-weight:800; color:#003399; margin-bottom:4px; display:block}
     input[type="text"], input[type="file"]{width:100%; padding:10px; border:1px solid #a8b9e4; border-radius:8px; background:#f7faff}
     .submit{margin-top:10px}
 
-    /* barra de busca */
     .searchbar{display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px}
     .searchbar input{flex:1; min-width:220px}
 
-    /* tabela: sem scroll lateral (usa table-layout:fixed e larguras percentuais somando 100%) */
     table{width:100%; border-collapse:collapse; font-size:14px; table-layout:fixed}
     th,td{border:1px solid #e8ecff; padding:8px 6px; text-align:left; vertical-align:middle}
     th{background:#f3f7ff; color:#003399}
     td.actions{white-space:nowrap; text-align:center}
 
-    /* larguras equilibradas e estáveis (sem exagero) */
-    thead th:nth-child(1){width:26%} /* Nome      */
-    thead th:nth-child(2){width:16%} /* Telefone  */
-    thead th:nth-child(3){width:18%} /* Bairro    */
-    thead th:nth-child(4){width:30%} /* Endereço  */
-    thead th:nth-child(5){width:6%}  /* Último uso*/
-    thead th:nth-child(6){width:2%}  /* Total     */
-    thead th:nth-child(7){width:2%}  /* Ações     */
+    thead th:nth-child(1){width:26%}
+    thead th:nth-child(2){width:16%}
+    thead th:nth-child(3){width:18%}
+    thead th:nth-child(4){width:30%}
+    thead th:nth-child(5){width:6%}
+    thead th:nth-child(6){width:2%}
+    thead th:nth-child(7){width:2%}
 
-    /* inputs ocupam a célula, sem min-width para evitar scroll lateral */
     td input[type="text"]{width:100%; overflow:hidden; text-overflow:ellipsis}
 
-    /* estados por idade do último uso */
-    .st-gt60 { background:#ffeaea }   /* vermelho claro  */
-    .st-gt30 { background:#fff9e0 }   /* amarelo claro   */
-    .st-lt30 { background:#eafaea }   /* verde claro     */
+    .st-gt60 { background:#ffeaea }
+    .st-gt30 { background:#fff9e0 }
+    .st-lt30 { background:#eafaea }
 
-    /* selo >60d */
     .contact-flag{
       display:inline-block; margin-left:6px; padding:2px 6px; border-radius:8px;
       background:#ffe3e3; border:1px solid #ffcaca; color:#8a0b0b; font-weight:800; font-size:12px;
       white-space:nowrap;
     }
 
-    /* utilidades */
     .tools{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
     .muted{font-size:12px; color:#4b5a7f}
   </style>
 </head>
 <body>
   <div class="wrap">
-
-    <!-- Cabeçalho e botões -->
     <div class="topbar">
       <h1>Clientes</h1>
       <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap">
         <span class="badge">Alterações pendentes: <span id="count-pend">0</span></span>
-        <button id="btn-salvar-tudo" class="btn" type="button" title="Salvar todas as edições">💾 Salvar tudo</button>
+        <button id="btn-salvar-tudo" class="btn" type="button">💾 Salvar tudo</button>
         <a class="btn" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
       </div>
     </div>
@@ -97,7 +85,6 @@
       {% endif %}
     {% endwith %}
 
-    <!-- Importar / Exportar -->
     <div class="card">
       <div class="tools">
         <a class="btn" id="btn-exportar" href="{{ url_for('exportar_clientes') }}" target="_blank" rel="noopener">⬇️ Exportar XLSX</a>
@@ -110,7 +97,6 @@
       <div id="import-log" class="muted" style="margin-top:8px"></div>
     </div>
 
-    <!-- Cadastro novo (empilhado) -->
     <div class="card">
       <h3 style="margin-top:0; color:#003399">Cadastrar novo cliente</h3>
       <form method="POST" action="{{ url_for('clientes') }}" id="form-create">
@@ -136,7 +122,6 @@
       </form>
     </div>
 
-    <!-- Filtros e ordenações -->
     <div class="card">
       <div class="searchbar">
         <label for="filtro" style="margin:0">Filtro:</label>
@@ -152,7 +137,6 @@
       </div>
     </div>
 
-    <!-- Lista / Edição (uma linha por cliente) -->
     <div class="card">
       <table id="tabela">
         <thead>
@@ -168,11 +152,7 @@
         </thead>
         <tbody id="tbody-clientes">
           {% for cl in clientes %}
-          <tr
-            data-id="{{ cl.id }}"
-            data-ultimo="{{ cl.ultimo_uso or '' }}"
-            data-total="{{ cl.total_pedidos }}"
-          >
+          <tr data-id="{{ cl.id }}" data-ultimo="{{ cl.ultimo_ymd or '' }}" data-total="{{ cl.total_pedidos }}">
             <form method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}" class="row-form">
               <td><input type="text" name="nome" value="{{ cl.nome }}" title="{{ cl.nome }}" required class="dirty-watch"></td>
               <td><input type="text" name="telefone" value="{{ cl.telefone or '' }}" title="{{ cl.telefone or '' }}" class="tel dirty-watch"></td>
@@ -194,38 +174,37 @@
         </tbody>
       </table>
     </div>
-
   </div>
 
   <script>
-    // ---------- Utilitários ----------
+    // ---------- Utils ----------
     function norm(str){
-      return (str || '')
-        .toString()
-        .normalize('NFD')
-        .replace(/[\u0300-\u036f]/g,'')
-        .toLowerCase()
-        .trim();
+      return (str || '').toString()
+        .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+        .toLowerCase().trim();
     }
     function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
 
-    function parseISO(d){
-      if(!d) return null;
-      const dt = new Date(d);
-      return isNaN(dt) ? null : dt;
+    function parseYMD(s){
+      // s = 'YYYY-MM-DD'
+      if(!s) return null;
+      const m = /^(\d{4})-(\d{2})-(\d{2})$/.exec(s);
+      if(!m) return null;
+      const y = +m[1], mo = +m[2]-1, d = +m[3];
+      return new Date(y, mo, d); // local date
     }
     function daysSince(date){
       if(!date) return null;
-      const now = new Date();
-      const ms = now - date;
+      const a = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+      const b = new Date(); const t = new Date(b.getFullYear(), b.getMonth(), b.getDate());
+      const ms = t - a;
       return Math.floor(ms / (1000*60*60*24));
     }
     function fmtDateBR(date){
       if(!date) return '—';
-      return date.toLocaleDateString('pt-BR', { timeZone: 'America/Sao_Paulo' });
+      return date.toLocaleDateString('pt-BR');
     }
 
-    // elementos
     const filtro = document.getElementById('filtro');
     const tbody  = document.getElementById('tbody-clientes');
     const btnSalvarTudo = document.getElementById('btn-salvar-tudo');
@@ -234,10 +213,10 @@
     const importFile = document.getElementById('arquivo-xlsx');
     const importLog  = document.getElementById('import-log');
 
-    // ---------- hidratação (cores + ultima data sem dias) ----------
+    // ---------- Hidrata (cores + data) ----------
     function hydrateRow(tr){
-      const iso = tr.dataset.ultimo || '';
-      const dt  = parseISO(iso);
+      const ymd = tr.dataset.ultimo || '';
+      const dt  = parseYMD(ymd);
       const dias = dt ? daysSince(dt) : null;
 
       const cell = tr.querySelector('.ultimo-uso-cell');
@@ -264,7 +243,7 @@
     }
     [...tbody.rows].forEach(hydrateRow);
 
-    // ---------- filtro ----------
+    // ---------- Filtro ----------
     function aplicaFiltro(){
       const termo = filtro?.value || '';
       const termoNorm = norm(termo);
@@ -277,7 +256,7 @@
         const ender   = norm(tr.querySelector('input[name="endereco"]')?.value);
 
         const match =
-          !termoNorm && !termoDigits ? true :
+          (!termoNorm && !termoDigits) ||
           nome.includes(termoNorm) || bairro.includes(termoNorm) || ender.includes(termoNorm) ||
           (termoDigits && tel.includes(termoDigits));
 
@@ -286,7 +265,7 @@
     }
     filtro?.addEventListener('input', aplicaFiltro);
 
-    // ---------- ordenações ----------
+    // ---------- Ordenações ----------
     function sortBy(getKey, desc=false){
       const rows = [...tbody.rows];
       rows.sort((a,b) => {
@@ -311,16 +290,14 @@
     );
     document.getElementById('filtro-30')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
-        const iso = tr.dataset.ultimo || '';
-        const dt  = parseISO(iso);
+        const dt = parseYMD(tr.dataset.ultimo || '');
         const dias = dt ? daysSince(dt) : null;
         tr.style.display = (dias != null && dias > 30) ? '' : 'none';
       });
     });
     document.getElementById('filtro-60')?.addEventListener('click', () => {
       [...tbody.rows].forEach(tr => {
-        const iso = tr.dataset.ultimo || '';
-        const dt  = parseISO(iso);
+        const dt = parseYMD(tr.dataset.ultimo || '');
         const dias = dt ? daysSince(dt) : null;
         tr.style.display = (dias != null && dias > 60) ? '' : 'none';
       });
@@ -330,10 +307,9 @@
       filtro.value = '';
     });
 
-    // ---------- máscara telefone ----------
-    function onlyDigits(str){ return (str || '').toString().replace(/\D/g,''); }
+    // ---------- Máscara telefone ----------
     function maskTel(v){
-      const d = onlyDigits(v).slice(0,11); // DDD + 8/9
+      const d = onlyDigits(v).slice(0,11);
       if(d.length <= 2) return `(${d}`;
       if(d.length <= 6) return `(${d.slice(0,2)}) ${d.slice(2)}`;
       if(d.length <= 10) return `(${d.slice(0,2)}) ${d.slice(2,6)}-${d.slice(6)}`;
@@ -352,14 +328,13 @@
     document.querySelectorAll('input.tel').forEach(applyMaskTelOn);
     const telCreate = document.getElementById('telefone'); if(telCreate) applyMaskTelOn(telCreate);
 
-    // ---------- títulos dos inputs = conteúdo completo (pra ver inteiro ao passar o mouse) ----------
+    // ---------- Title sempre mostra conteúdo completo ----------
     document.querySelectorAll('#tbody-clientes input[type="text"]').forEach(inp=>{
       inp.addEventListener('input', ()=> { inp.title = inp.value; });
     });
 
-    // ---------- dirty tracking ----------
+    // ---------- Dirty tracking ----------
     const dirtyMap = new Set();
-    const countPend = document.getElementById('count-pend');
     function markDirty(tr, yes){
       const id = tr.dataset.id;
       if(!id) return;
@@ -380,7 +355,7 @@
       markDirty(tr, false);
     }
 
-    // ---------- salvar 1 linha (AJAX) ----------
+    // ---------- Salvar 1 linha (AJAX) ----------
     document.querySelectorAll('.row-form').forEach(form => {
       form.addEventListener('submit', async (ev) => {
         ev.preventDefault();
@@ -413,8 +388,8 @@
       });
     });
 
-    // ---------- salvar tudo ----------
-    document.getElementById('btn-salvar-tudo')?.addEventListener('click', async () => {
+    // ---------- Salvar tudo ----------
+    btnSalvarTudo?.addEventListener('click', async () => {
       const rowsChanged = [...tbody.rows].filter(tr => dirtyMap.has(tr.dataset.id));
       if(rowsChanged.length === 0){ alert('Nada para salvar.'); return; }
 
@@ -443,14 +418,13 @@
       alert('Salvamento concluído.');
     });
 
-    // ---------- excluir (AJAX leve) ----------
+    // ---------- Excluir ----------
     document.querySelectorAll('.btn-excluir').forEach(btn => {
       btn.addEventListener('click', async (e) => {
         const tr = e.target.closest('tr');
         const name = tr.querySelector('input[name="nome"]').value || 'o cliente';
         if(!confirm(`Excluir ${name}?`)) return;
-        const formDel = tr.querySelector('.form-del');
-        if(!formDel) return;
+        const formDel = tr.querySelector('.form-del'); if(!formDel) return;
         try{
           const res = await fetch(formDel.getAttribute('action'), { method:'POST', headers:{'X-Requested-With':'fetch'} });
           if(!res.ok) throw new Error();
@@ -460,7 +434,7 @@
       });
     });
 
-    // ---------- importar XLSX ----------
+    // ---------- Importar XLSX ----------
     importForm?.addEventListener('submit', async (ev) => {
       ev.preventDefault();
       const file = importFile?.files?.[0];
