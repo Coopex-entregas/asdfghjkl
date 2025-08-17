@@ -53,6 +53,8 @@ class Cliente(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     telefone = db.Column(db.String(30), nullable=True)
     bairro_origem = db.Column(db.String(50), nullable=True)
+    # NOVO: endereço opcional
+    endereco = db.Column(db.String(255), nullable=True)
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -426,6 +428,7 @@ def clientes():
         nome = (request.form.get('nome') or '').strip()
         telefone = (request.form.get('telefone') or '').strip()
         bairro_origem = (request.form.get('bairro_origem') or '').strip()
+        endereco = (request.form.get('endereco') or '').strip()
         if not nome:
             flash('Informe o nome do cliente.')
             return redirect(url_for('clientes'))
@@ -433,12 +436,46 @@ def clientes():
         if existe:
             flash('Já existe um cliente com esse nome.')
             return redirect(url_for('clientes'))
-        cl = Cliente(nome=nome, telefone=telefone, bairro_origem=bairro_origem)
+        cl = Cliente(nome=nome, telefone=telefone, bairro_origem=bairro_origem, endereco=endereco or None)
         db.session.add(cl)
         db.session.commit()
         flash('Cliente cadastrado!')
         return redirect(url_for('clientes'))
-    lista = Cliente.query.order_by(Cliente.nome).all()
+
+    # --- GET: lista com métricas ultimo_uso e total_pedidos (join por nome normalizado) ---
+    # Subconsulta por nome normalizado de Entrega.cliente
+    # key = lower(trim(Entrega.cliente))
+    sub = (
+        db.session.query(
+            func.lower(func.trim(Entrega.cliente)).label("key"),
+            func.count(Entrega.id).label("total_pedidos"),
+            func.max(Entrega.data_envio).label("ultimo_uso"),
+        )
+        .group_by(func.lower(func.trim(Entrega.cliente)))
+        .subquery()
+    )
+    rows = (
+        db.session.query(
+            Cliente,
+            sub.c.total_pedidos,
+            sub.c.ultimo_uso
+        )
+        .outerjoin(sub, sub.c.key == func.lower(func.trim(Cliente.nome)))
+        .order_by(Cliente.nome.asc())
+        .all()
+    )
+
+    lista = []
+    for cl, total, ultimo in rows:
+        lista.append({
+            "id": cl.id,
+            "nome": cl.nome,
+            "telefone": cl.telefone,
+            "bairro_origem": cl.bairro_origem,
+            "endereco": getattr(cl, "endereco", None),
+            "total_pedidos": int(total or 0),
+            "ultimo_uso": (ultimo.isoformat() if ultimo else None),
+        })
     return render_template('clientes.html', clientes=lista)
 
 @app.route('/clientes/<int:id>/editar', methods=['POST'])
@@ -449,17 +486,40 @@ def editar_cliente(id):
     nome = (request.form.get('nome') or '').strip()
     telefone = (request.form.get('telefone') or '').strip()
     bairro_origem = (request.form.get('bairro_origem') or '').strip()
+    endereco = (request.form.get('endereco') or '').strip()
     if not nome:
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error='Informe o nome do cliente.'), 400
         flash('Informe o nome do cliente.')
         return redirect(url_for('clientes'))
     existe = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower(), Cliente.id != id).first()
     if existe:
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error='Já existe outro cliente com esse nome.'), 400
         flash('Já existe outro cliente com esse nome.')
         return redirect(url_for('clientes'))
+
     cl.nome = nome
     cl.telefone = telefone
     cl.bairro_origem = bairro_origem
+    cl.endereco = endereco or None
     db.session.commit()
+
+    # Se foi AJAX (fetch), devolve JSON com métricas atualizadas para esta linha
+    if request.headers.get('X-Requested-With') == 'fetch':
+        # recalc pelas entregas por nome
+        stats = (
+            db.session.query(
+                func.count(Entrega.id),
+                func.max(Entrega.data_envio)
+            )
+            .filter(func.lower(func.trim(Entrega.cliente)) == func.lower(func.trim(cl.nome)))
+            .first()
+        )
+        total = int(stats[0] or 0)
+        ultimo = stats[1].isoformat() if stats[1] else None
+        return jsonify({"ok": True, "total_pedidos": total, "ultimo_uso": ultimo}), 200
+
     flash('Cliente atualizado!')
     return redirect(url_for('clientes'))
 
@@ -470,6 +530,8 @@ def excluir_cliente(id):
     cl = Cliente.query.get_or_404(id)
     db.session.delete(cl)
     db.session.commit()
+    if request.headers.get('X-Requested-With') == 'fetch':
+        return ("", 204)
     flash('Cliente excluído.')
     return redirect(url_for('clientes'))
 
@@ -1015,6 +1077,145 @@ def estatisticas_cooperado_exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
 
+# ====== IMPORTAR / EXPORTAR CLIENTES (NOVO) ======
+@app.route('/clientes/exportar')
+def exportar_clientes():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    # Sub por nome normalizado a partir de Entrega
+    sub = (
+        db.session.query(
+            func.lower(func.trim(Entrega.cliente)).label("key"),
+            func.count(Entrega.id).label("total_pedidos"),
+            func.max(Entrega.data_envio).label("ultimo_uso"),
+        )
+        .group_by(func.lower(func.trim(Entrega.cliente)))
+        .subquery()
+    )
+
+    rows = (
+        db.session.query(
+            Cliente.id,
+            Cliente.nome,
+            Cliente.telefone,
+            Cliente.bairro_origem,
+            Cliente.endereco,
+            sub.c.ultimo_uso,
+            sub.c.total_pedidos,
+        )
+        .outerjoin(sub, sub.c.key == func.lower(func.trim(Cliente.nome)))
+        .order_by(Cliente.nome.asc())
+        .all()
+    )
+
+    df = pd.DataFrame(rows, columns=[
+        "ID", "Nome", "Telefone", "Bairro", "Endereco", "UltimoUsoUTC", "TotalPedidos"
+    ])
+
+    # Formata datas como ISO (string)
+    if not df.empty and "UltimoUsoUTC" in df.columns:
+        df["UltimoUsoUTC"] = df["UltimoUsoUTC"].apply(lambda x: x.isoformat() if pd.notna(x) else "")
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Clientes'
+        df.to_excel(writer, index=False, sheet_name=sheet)
+        ws = writer.sheets[sheet]
+        widths = [8, 28, 18, 18, 32, 22, 14]
+        for i, w in enumerate(widths[:len(df.columns)]):
+            ws.set_column(i, i, w)
+    output.seek(0)
+    return send_file(output, download_name="clientes.xlsx", as_attachment=True)
+
+@app.route('/clientes/importar', methods=['POST'])
+def importar_clientes():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    f = request.files.get('arquivo')
+    if not f:
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error="Envie um arquivo .xlsx"), 400
+        flash("Envie um arquivo .xlsx")
+        return redirect(url_for('clientes'))
+
+    try:
+        df = pd.read_excel(f)
+    except Exception:
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error="Não consegui ler o XLSX."), 400
+        flash("Não consegui ler o XLSX.")
+        return redirect(url_for('clientes'))
+
+    # Normaliza nomes de colunas esperadas
+    cols_map = {c.lower().strip(): c for c in df.columns}
+    def colget(*ops):
+        for k in ops:
+            if k in cols_map:
+                return cols_map[k]
+        return None
+
+    col_id = colget('id')
+    col_nome = colget('nome')
+    col_tel = colget('telefone', 'phone')
+    col_bairro = colget('bairro', 'bairro_origem')
+    col_endereco = colget('endereco', 'endereço')
+
+    adicionados = 0
+    atualizados = 0
+    erros = 0
+
+    for idx, row in df.iterrows():
+        try:
+            rid = int(row[col_id]) if (col_id and not pd.isna(row[col_id])) else None
+        except Exception:
+            rid = None
+
+        nome = str(row[col_nome]).strip() if col_nome and not pd.isna(row[col_nome]) else ""
+        tel = str(row[col_tel]).strip() if col_tel and not pd.isna(row[col_tel]) else None
+        bairro = str(row[col_bairro]).strip() if col_bairro and not pd.isna(row[col_bairro]) else None
+        ender = str(row[col_endereco]).strip() if col_endereco and not pd.isna(row[col_endereco]) else None
+
+        if not nome:
+            erros += 1
+            continue
+
+        if rid:
+            cl = Cliente.query.get(rid)
+            if not cl:
+                # se ID não existir, tenta por nome
+                cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
+        else:
+            cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
+
+        if cl:
+            cl.nome = nome
+            cl.telefone = tel
+            cl.bairro_origem = bairro
+            cl.endereco = ender or None
+            atualizados += 1
+        else:
+            novo = Cliente(nome=nome, telefone=tel, bairro_origem=bairro, endereco=ender or None)
+            db.session.add(novo)
+            adicionados += 1
+
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error="Erro ao salvar no banco."), 500
+        flash("Erro ao salvar no banco.")
+        return redirect(url_for('clientes'))
+
+    # Resposta
+    if request.headers.get('X-Requested-With') == 'fetch':
+        return jsonify(ok=True, adicionados=adicionados, atualizados=atualizados, erros=erros)
+    else:
+        flash(f'Importação concluída: {adicionados} adicionados, {atualizados} atualizados, {erros} erros.')
+        return redirect(url_for('clientes'))
+
 # ====== FILA DE ESPERA ======
 @app.route('/lista_espera/add', methods=['POST'])
 def lista_espera_add():
@@ -1115,12 +1316,14 @@ def criar_bd():
     with app.app_context():
         db.create_all()
 
-        # Tenta criar colunas novas da lista_espera caso seu banco antigo não tenha
+        # Tenta criar colunas novas
         ddl_cmds = [
             # adiciona cooperado_id/pos/created_at se não existirem (Postgres)
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
+            # NOVO: adiciona endereco em cliente (Postgres)
+            "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS endereco VARCHAR(255)",
             # cria FK (se possível, ignora erro se já existir ou se for SQLite)
             "DO $$ BEGIN "
             "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints WHERE constraint_name='lista_espera_cooperado_id_fkey') THEN "
