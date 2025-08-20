@@ -449,20 +449,30 @@ tbody tr:hover{background:#f6f9ff}
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 
-<!-- Script do GATE (botão) -->
+<!-- Script do GATE (botão) com sessão por aba -->
 <script>
   (function(){
     const SENHA_CORRETA = "84253700";
+    const STORAGE_KEY   = "coopex_gate_ok"; // "1" = liberado nesta aba
     const gate   = document.getElementById('gate-acesso');
     const input  = document.getElementById('campo-senha');
     const btn    = document.getElementById('btn-entrar');
     const erro   = document.getElementById('msg-erro');
     const app    = document.getElementById('conteudo');
 
+    // Se já liberou nesta ABA (sessionStorage), não mostra o gate
+    if (sessionStorage.getItem(STORAGE_KEY) === "1") {
+      gate.style.display = 'none';
+      app.style.display  = '';
+    } else {
+      setTimeout(()=> input && input.focus(), 50);
+    }
+
     function entrar(){
-      if(input.value === SENHA_CORRETA){
+      if (input.value === SENHA_CORRETA) {
+        sessionStorage.setItem(STORAGE_KEY, "1");  // libera nesta aba
         gate.style.display = 'none';
-        app.style.display = '';
+        app.style.display  = '';
         input.value = '';
       } else {
         erro.style.display = 'block';
@@ -473,10 +483,7 @@ tbody tr:hover{background:#f6f9ff}
     }
 
     btn.addEventListener('click', entrar);
-    input.addEventListener('keydown', (e)=>{
-      if(e.key === 'Enter'){ entrar(); }
-    });
-    setTimeout(()=> input.focus(), 50);
+    input.addEventListener('keydown', (e)=>{ if (e.key === 'Enter') entrar(); });
   })();
 </script>
 
@@ -486,12 +493,7 @@ const chartEntregasValues = {{ (chart_entregas_values or [])|tojson }};
 const chartFaturamentoLabels = {{ (chart_faturamento_labels or (ranking_cooperados|map(attribute='nome')|list) or [])|tojson }};
 const chartFaturamentoValues = {{ (chart_faturamento_values or (ranking_cooperados|map(attribute='total_valor')|list) or [])|tojson }};
 
-/* NOVAS VARIÁVEIS: séries anuais. Passe isso do backend.
-   chart_ano_labels: [2025, 2026, ...]
-   chart_ano_totais: [12345.67, 23456.78, ...]  (faturamento por ano)
-   chart_ano_qtd:    [120, 140, ...]            (quantidade de entregas)
-   chart_ano_ticket: [101.23, 110.50, ...]      (ticket médio do ano)
-*/
+/* NOVAS VARIÁVEIS: séries anuais */
 const chartAnoLabelsRaw  = {{ (chart_ano_labels  or [])|tojson }};
 const chartAnoTotaisRaw  = {{ (chart_ano_totais  or [])|tojson }};   // faturamento
 const chartAnoQtdRaw     = {{ (chart_ano_qtd     or [])|tojson }};   // quantidade
@@ -603,8 +605,7 @@ function makeGradient(ctx, c1, c2){
     if(metric==='faturamento' || metric==='ticket'){
       return (v||0).toLocaleString('pt-BR',{minimumFractionDigits:2, maximumFractionDigits:2});
     }
-    // entregas (inteiro)
-    return (v||0).toLocaleString('pt-BR');
+    return (v||0).toLocaleString('pt-BR'); // entregas
   }
 
   function computeYoY(arr){
