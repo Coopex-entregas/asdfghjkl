@@ -20,6 +20,7 @@
   <div class="form-container">
     <h1>Editar Entrega</h1>
     <a class="back-link" href="{{ url_for('admin') }}">← Voltar</a>
+
     <form method="POST" action="{{ url_for('editar_entrega', id=entrega.id) }}">
       <label for="cliente">Cliente:</label>
       <input type="text" id="cliente" name="cliente" value="{{ entrega.cliente }}" required />
@@ -55,7 +56,8 @@
         <option value="Dinheiro" {% if entrega.pagamento == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
         <option value="Pix" {% if entrega.pagamento == 'Pix' %}selected{% endif %}>Pix</option>
         <option value="Comanda" {% if entrega.pagamento == 'Comanda' %}selected{% endif %}>Comanda</option>
-         <option value="Pix (Cooperativa)" {{ 'selected' if pg=='Pix Cooperativa' }}>Pix Cooperativa</option>
+        <!-- Pix (Cooperativa) — considera os dois textos que você pode ter salvo: -->
+        <option value="Pix (Cooperativa)" {% if entrega.pagamento in ['Pix (Cooperativa)', 'Pix Cooperativa'] %}selected{% endif %}>Pix (Cooperativa)</option>
       </select>
 
       <button type="submit">Salvar</button>
