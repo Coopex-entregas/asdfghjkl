@@ -55,6 +55,7 @@
         <option value="Dinheiro" {% if entrega.pagamento == 'Dinheiro' %}selected{% endif %}>Dinheiro</option>
         <option value="Pix" {% if entrega.pagamento == 'Pix' %}selected{% endif %}>Pix</option>
         <option value="Comanda" {% if entrega.pagamento == 'Comanda' %}selected{% endif %}>Comanda</option>
+         <option value="Pix Cooperativa" {{ 'selected' if pg=='Pix Cooperativa' }}>Pix Cooperativa</option>
       </select>
 
       <button type="submit">Salvar</button>
