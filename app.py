@@ -1203,90 +1203,177 @@ def exportar_clientes():
     output.seek(0)
     return send_file(output, download_name="clientes.xlsx", as_attachment=True)
 
+# ---------- ROTA IMPORTAÇÃO ROBUSTA ----------
 @app.route('/clientes/importar', methods=['POST'])
 def importar_clientes():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
     f = request.files.get('arquivo')
-    if not f:
+    if not f or not f.filename:
         if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error="Envie um arquivo .xlsx"), 400
-        flash("Envie um arquivo .xlsx")
+            return jsonify(ok=False, error="Envie um arquivo (.xlsx ou .csv)."), 400
+        flash("Envie um arquivo (.xlsx ou .csv).")
         return redirect(url_for('clientes'))
 
+    filename = f.filename.lower()
+
+    # Lê o upload em memória
     try:
-        df = pd.read_excel(f)
-    except Exception:
+        raw = f.read()
+        if not raw:
+            raise ValueError("Arquivo vazio.")
+    except Exception as e:
+        msg = f"Falha ao ler upload: {e}"
         if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error="Não consegui ler o XLSX."), 400
-        flash("Não consegui ler o XLSX.")
-        return redirect(url_for('clientes'))
+            return jsonify(ok=False, error=msg), 400
+        flash(msg); return redirect(url_for('clientes'))
 
-    # Normaliza nomes de colunas esperadas
+    df = None
+    load_errors = []
+
+    # Preferência: XLSX com pandas + openpyxl
+    if filename.endswith('.xlsx'):
+        try:
+            df = pd.read_excel(io.BytesIO(raw), engine='openpyxl', dtype=str)
+        except Exception as e:
+            load_errors.append(f"Pandas/openpyxl: {e}")
+
+        # Fallback: openpyxl puro
+        if df is None:
+            try:
+                from openpyxl import load_workbook
+                wb = load_workbook(io.BytesIO(raw), data_only=True)
+                ws = wb['Sheet1'] if 'Sheet1' in wb.sheetnames else wb.active
+                rows = list(ws.iter_rows(values_only=True))
+                if not rows:
+                    raise ValueError("Planilha vazia.")
+                header = [str(x).strip() if x is not None else '' for x in rows[0]]
+                data = [[("" if c is None else str(c)) for c in r] for r in rows[1:]]
+                df = pd.DataFrame(data, columns=header)
+            except Exception as e:
+                load_errors.append(f"openpyxl: {e}")
+
+    # CSV (ou txt)
+    if df is None and (filename.endswith('.csv') or filename.endswith('.txt')):
+        try:
+            df = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='utf-8')
+        except Exception:
+            try:
+                df = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='latin-1')
+            except Exception as e:
+                load_errors.append(f"CSV: {e}")
+
+    if df is None:
+        msg = "Não consegui ler o arquivo. " + (" | ".join(load_errors) if load_errors else "")
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error=msg), 400
+        flash(msg); return redirect(url_for('clientes'))
+
+    # --- mapeamento de colunas ---
     cols_map = {str(c).lower().strip(): c for c in df.columns}
-    def colget(*ops):
+
+    def colget(*ops, opt=False):
         for k in ops:
             if k in cols_map:
                 return cols_map[k]
-        return None
+        return None if opt else None
 
-    col_id = colget('id')
-    col_nome = colget('nome')
-    col_tel = colget('telefone', 'phone')
-    col_bairro = colget('bairro', 'bairro_origem')
-    col_endereco = colget('endereco', 'endereço')
+    col_id      = colget('id')
+    col_nome    = colget('nome','name')
+    col_tel     = colget('telefone','phone','numero','número','mobile','celular')
+    col_bairro  = colget('bairro','bairro_origem')
+    col_end     = colget('endereco','endereço','address')
+
+    missing = []
+    if not col_nome: missing.append("Nome")
+    if not col_tel:  missing.append("Telefone/Número")
+    if missing:
+        msg = f"Cabeçalho ausente: {', '.join(missing)}. Colunas recebidas: {list(df.columns)}"
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error=msg), 400
+        flash(msg); return redirect(url_for('clientes'))
+
+    # --- normalização de telefone ---
+    def norm_phone(s: str) -> str:
+        if s is None: return ""
+        digits = re.sub(r'\D+', '', str(s))
+        if digits.startswith('55'):
+            digits = digits[2:]
+        if len(digits) > 11:
+            digits = digits[-11:]
+        return digits
 
     adicionados = 0
     atualizados = 0
     erros = 0
+    detalhes = []
 
-    for idx, row in df.iterrows():
+    for i, row in df.iterrows():
         try:
-            rid = int(row[col_id]) if (col_id and not pd.isna(row[col_id])) else None
-        except Exception:
             rid = None
+            if col_id and not pd.isna(row.get(col_id)):
+                try:
+                    rid = int(str(row[col_id]).strip())
+                except Exception:
+                    rid = None
 
-        nome = str(row[col_nome]).strip() if col_nome and not pd.isna(row[col_nome]) else ""
-        tel = str(row[col_tel]).strip() if col_tel and not pd.isna(row[col_tel]) else None
-        bairro = str(row[col_bairro]).strip() if col_bairro and not pd.isna(row[col_bairro]) else None
-        ender = str(row[col_endereco]).strip() if col_endereco and not pd.isna(row[col_endereco]) else None
+            nome = str(row.get(col_nome) or '').strip()
+            tel  = norm_phone(row.get(col_tel))
+            bairro = str(row.get(col_bairro) or '').strip() if col_bairro else None
+            ender  = str(row.get(col_end) or '').strip() if col_end else None
 
-        if not nome:
-            erros += 1
-            continue
+            if not nome and not tel:
+                continue
 
-        if rid:
-            cl = Cliente.query.get(rid)
-            if not cl:
-                # se ID não existir, tenta por nome
+            if tel and len(tel) not in (10, 11):
+                erros += 1
+                detalhes.append(f"Linha {i+2}: telefone inválido '{tel}' (esperado 10 ou 11 dígitos).")
+                continue
+
+            if rid:
+                cl = Cliente.query.get(rid)
+                if not cl:
+                    # Atualiza por nome se ID não encontrado
+                    cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
+            else:
                 cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
-        else:
-            cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
 
-        if cl:
-            cl.nome = nome
-            cl.telefone = tel
-            cl.bairro_origem = bairro
-            cl.endereco = ender or None
-            atualizados += 1
-        else:
-            novo = Cliente(nome=nome, telefone=tel, bairro_origem=bairro, endereco=ender or None)
-            db.session.add(novo)
-            adicionados += 1
+            if cl:
+                cl.nome = nome
+                cl.telefone = tel or None
+                cl.bairro_origem = bairro or None
+                cl.endereco = ender or None
+                atualizados += 1
+            else:
+                novo = Cliente(
+                    nome=nome,
+                    telefone=tel or None,
+                    bairro_origem=bairro or None,
+                    endereco=ender or None
+                )
+                db.session.add(novo)
+                adicionados += 1
+
+        except Exception as e:
+            erros += 1
+            detalhes.append(f"Linha {i+2}: erro inesperado ({e}).")
 
     try:
         db.session.commit()
-    except Exception:
+    except Exception as e:
         db.session.rollback()
+        app.logger.exception("Erro ao salvar no banco durante importação")
+        msg = "Erro ao salvar no banco."
+        if app.debug:
+            msg += f" Detalhes: {e}"
         if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error="Erro ao salvar no banco."), 500
-        flash("Erro ao salvar no banco.")
+            return jsonify(ok=False, error=msg), 500
+        flash(msg)
         return redirect(url_for('clientes'))
 
-    # Resposta
     if request.headers.get('X-Requested-With') == 'fetch':
-        return jsonify(ok=True, adicionados=adicionados, atualizados=atualizados, erros=erros)
+        return jsonify(ok=True, adicionados=adicionados, atualizados=atualizados, erros=erros, detalhes=detalhes)
     else:
         flash(f'Importação concluída: {adicionados} adicionados, {atualizados} atualizados, {erros} erros.')
         return redirect(url_for('clientes'))
@@ -1433,4 +1520,5 @@ def criar_bd():
 criar_bd()
 
 if __name__ == '__main__':
+    # Em dev, isto habilita mensagens detalhadas no JSON de erro do import.
     app.run(debug=True)
