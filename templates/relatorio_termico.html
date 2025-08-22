@@ -75,10 +75,8 @@
           </tr>
         </thead>
         <tbody>
-          {% set total = 0 %}
           {% for e in entregas %}
             {% set dt = to_brasilia(e.data_atribuida or e.data_envio) %}
-            {% set total = total + (e.valor or 0) %}
             <tr>
               <td>
                 <b>{{ e.cliente }}</b><br>
@@ -93,7 +91,9 @@
           {% endfor %}
           <tr>
             <td class="total">TOTAL</td>
-            <td class="val total">{{ '%.2f'|format(total) | replace('.', ',') }}</td>
+            <td class="val total">
+              {{ '%.2f' % (total_relatorio|default(0)) | replace('.', ',') }}
+            </td>
           </tr>
         </tbody>
       </table>
