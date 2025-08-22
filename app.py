@@ -393,8 +393,8 @@ def painel_cooperado():
     query = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
     # Filtro por data (default = hoje)
+    hoje_brasil = datetime.now(BRAZIL_TZ).date()
     if not inicio and not fim:
-        hoje_brasil = datetime.now(BRAZIL_TZ).date()
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
     if inicio:
@@ -1547,6 +1547,9 @@ def relatorio_termico():
         if coop:
             coop_nome = coop.nome
 
+    # TOTAL do relatório (calculado no backend)
+    total_relatorio = sum(float(e.valor or 0) for e in entregas)
+
     agora = datetime.now(BRAZIL_TZ)
 
     return render_template(
@@ -1555,7 +1558,8 @@ def relatorio_termico():
         periodo_txt=periodo_txt,
         coop_nome=coop_nome,
         agora=agora,
-        to_brasilia=to_brasilia
+        to_brasilia=to_brasilia,
+        total_relatorio=total_relatorio
     )
 
 # ====== BOOTSTRAP BANCO: criar tabelas, colunas faltantes e índices ======
