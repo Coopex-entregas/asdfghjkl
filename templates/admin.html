@@ -72,6 +72,7 @@
     .status-verde { color:#13a038; font-weight:bold; background:#e7f9ef; border-radius:7px; padding:3px 6px; }
     .status-vermelho { color:#d11a1a; font-weight:bold; background:#fdeaea; border-radius:7px; padding:3px 6px; }
 
+    /* Apenas para indicar interatividade nas células clicáveis */
     .clicavel { cursor:pointer; }
     .clicavel:hover { filter: brightness(1.05); }
 
@@ -227,13 +228,6 @@
           <a class="btn"
              href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
             Exportar para Excel
-          </a>
-
-          <!-- NOVO: Relatório térmico 80 mm (Epson TM-T20) -->
-          <a class="btn"
-             href="{{ url_for('relatorio_termico') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}"
-             target="_blank" rel="noopener">
-            Imprimir Relatório 80&nbsp;mm
           </a>
         </form>
       </div>
@@ -424,6 +418,9 @@
         recebidoPor: get(11)
       };
 
+      // link da avaliação
+      const reviewUrl = "https://g.page/r/CY6ffwOT76pNEAE/review";
+      const encReview = encodeURIComponent(reviewUrl);
       const cacheBust = Date.now();
 
       const html = `<!DOCTYPE html>
@@ -445,35 +442,26 @@
   .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
   .footer{font-size:11px; text-align:center; margin-top:6px}
   .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+  .qrcode{display:block; margin:10px auto 4px; width:38mm; height:38mm; image-rendering:crisp-edges; image-rendering:pixelated}
   .tiny{font-size:10.5px}
   .sign{ text-align:center; margin-top:8px; }
   .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
   .actions{display:flex; justify-content:center; gap:10px; padding:12px 0 16px}
   .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}
-  .btn-print{border:1px solid #000; background:#000; color:#fff}
-  .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}
+  .btn-print{border:1px solid #003399; background:#003399; color:#fff}
+  .btn-close{border:1px solid #c3c8d5; background:#fff; color:#003399}
   .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
   @media print { .actions{display:none} body{background:#fff} }
-  /* Garantir preto puro para térmica */
-  svg { fill: #000; color: #000; }
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="cupom">
-      <!-- LOGO MONOCROMÁTICA EM SVG (ideal para térmica) -->
-      <svg class="logo" viewBox="0 0 520 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Coopex">
-        <g>
-          <circle cx="60" cy="60" r="38" stroke="#000" stroke-width="8" fill="none"/>
-          <path d="M60 22 L78 52 L42 52 Z" fill="#000"/>
-          <circle cx="60" cy="60" r="6" fill="#000"/>
-        </g>
-        <text x="120" y="78" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" fill="#000">COOPEX</text>
-      </svg>
-
+      <img src="{{ url_for('static', filename='logo_coopex.png') }}" class="logo" onerror="this.style.display='none'">
+      <div class="center title">COOPERATIVA DE TRABALHADORES DE ENTREGA DO RN - COOPEX</div>
       <div class="center tiny">
         CNPJ: 05.289.938/0001-97<br>
-        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
+        Rua Jose Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
         Fone/WhatsApp: (84) 98111-0706
       </div>
       <hr>
@@ -489,6 +477,11 @@
       <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
       <hr>
 
+      <!-- Apenas o QR (sem frase/sem link): 1) local  2) fallback online -->
+      <img class="qrcode" alt="QR Code"
+           src="{{ url_for('static', filename='qr_review.png') }}?v=${cacheBust}"
+           onerror="this.onerror=null; this.src='https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encReview}';">
+
       <div class="sign">
         <div class="sign-line"></div>
         <div class="tiny">Supervisor</div>
@@ -502,6 +495,7 @@
       </div>
     </div>
 
+    <!-- Botões (visualização primeiro) -->
     <div class="actions">
       <button class="btn btn-print" onclick="window.print()">Imprimir</button>
       <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>
@@ -509,7 +503,8 @@
   </div>
 </body>
 </html>`;
-      // abre nova aba (ou fallback overlay)
+
+      // 1) abre em nova aba/janela
       let win = null;
       try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
       if (win && !win.closed) {
@@ -517,10 +512,12 @@
         win.document.open(); win.document.write(html); win.document.close();
         return;
       }
+
+      // 2) se pop-up bloqueado: overlay com preview + botão imprimir
       criarOverlayPreview(html);
     }
 
-    // Overlay de preview
+    // Overlay de preview (sem remover nada do layout)
     function criarOverlayPreview(html){
       const wrap = document.createElement('div');
       wrap.id = 'print-preview-overlay';
@@ -544,8 +541,9 @@
       const iframe = document.createElement('iframe');
       iframe.setAttribute('title','Pré-visualização do cupom');
       Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
-      if ('srcdoc' in iframe) { iframe.srcdoc = html; }
-      else {
+      if ('srcdoc' in iframe) {
+        iframe.srcdoc = html;
+      } else {
         const doc = iframe.contentWindow || iframe.contentDocument;
         const iDoc = doc.document || doc;
         iDoc.open(); iDoc.write(html); iDoc.close();
@@ -563,7 +561,9 @@
         padding:'10px 18px', borderRadius:'10px', border:'1px solid #003399',
         background:'#003399', color:'#fff', fontWeight:'800', cursor:'pointer'
       });
-      btImprimir.onclick = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){} };
+      btImprimir.onclick = () => {
+        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){}
+      };
 
       const btFechar = document.createElement('button');
       btFechar.textContent = 'Fechar';
@@ -582,6 +582,7 @@
       wrap.appendChild(box);
       document.body.appendChild(wrap);
     }
+    // ---------------------------------------------------------------------
 
     // Avisos (mantidos)
     function existePagamentoPendenteNaTabela() {
@@ -616,6 +617,7 @@
     });
 
     // ===== NOVO: Clique nos status para marcar como ENTREGUE/PAGO =====
+    // Usa forms já inseridos nas células. Não interfere no "Editar".
     document.addEventListener('click', function (ev) {
       const alvo = ev.target;
 
@@ -635,6 +637,7 @@
         if (confirmar) form.submit();
       }
     });
+    // ================================================================
   </script>
 </body>
 </html>
