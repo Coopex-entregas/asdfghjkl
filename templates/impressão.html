@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<title>Relatório 80mm</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<style>
+  @page { size: 80mm auto; margin: 4mm; }
+  *{ box-sizing:border-box }
+  body{ margin:0; font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; color:#000; -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  .wrap{ width:100%; max-width:72mm; margin:0 auto; }
+  .center{ text-align:center }
+  .muted{ color:#000 }
+  .logo{ width:58mm; height:auto; margin:2mm auto 1mm; display:block }
+  h1{ font-size:13px; margin:2mm 0 1mm; text-transform:uppercase; font-weight:900 }
+  .meta{ font-size:10px; line-height:1.25; margin:0 0 2mm }
+  hr{ border:none; border-top:1px dashed #000; margin:2mm 0 }
+
+  table{ width:100%; border-collapse:collapse; font-size:11px }
+  th, td{ padding:2px 0 }
+  th{ text-align:left; border-bottom:1px dashed #000; font-weight:900 }
+  td.right, th.right{ text-align:right }
+  tfoot td{ border-top:1px dashed #000; font-weight:900; padding-top:2mm }
+
+  .linha-total{ font-size:12px }
+  .small{ font-size:10px }
+  .emitido{ margin-top:2mm; font-size:10px; text-align:center }
+  .actions{ display:none } /* sem botões na térmica */
+  @media print { .actions{ display:none } }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <!-- LOGO da COOPEX (arquivo na pasta static) -->
+  <img class="logo" src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX">
+
+  <h1 class="center">Relatório de Entregas</h1>
+  <div class="meta center">
+    Período: <b>{{ periodo_txt }}</b><br>
+    Cooperado: <b>{{ coop_nome }}</b><br>
+    Emitido: {{ agora.strftime('%d/%m/%Y %H:%M') }}
+  </div>
+  <hr>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Cliente</th>
+        <th class="right">Valor</th>
+        <th class="right">Atrib.</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% set total = 0 %}
+      {% for e in entregas %}
+        {% set dt_attr = e.data_atribuida or e.data_envio %}
+        {% set total = total + (e.valor or 0) %}
+        <tr>
+          <td>{{ e.cliente }}</td>
+          <td class="right">R$ {{ '%.2f'|format(e.valor or 0) | replace('.', ',') }}</td>
+          <td class="right">
+            {% if dt_attr %}
+              {{ to_brasilia(dt_attr).strftime('%d/%m %H:%M') }}
+            {% else %}
+              -
+            {% endif %}
+          </td>
+        </tr>
+      {% endfor %}
+    </tbody>
+    <tfoot>
+      <tr class="linha-total">
+        <td class="right">TOTAL</td>
+        <td class="right">R$ {{ '%.2f'|format(total) | replace('.', ',') }}</td>
+        <td></td>
+      </tr>
+    </tfoot>
+  </table>
+
+  <div class="emitido">
+    * Guarde o Relatório, para que possa esclarecer qualquer dúvida!.
+  </div>
+
+  <hr>
+  <div class="center small">
+    COOPEX - Cooperativa de Trabalhadores de Entrega do RN<br>
+    Desde 2002
+  </div>
+</div>
+
+<script>
+  // Abre a impressão automaticamente
+  window.addEventListener('load', function(){
+    try { window.print(); } catch(e){}
+  });
+</script>
+</body>
+</html>
