@@ -233,7 +233,7 @@
           <a class="btn"
              href="{{ url_for('relatorio_termico') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}"
              target="_blank" rel="noopener">
-            Imprimir Relatório 80&nbsp;mm
+            Imprimir Relatório&nbsp;
           </a>
         </form>
       </div>
