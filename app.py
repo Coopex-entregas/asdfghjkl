@@ -1,13 +1,15 @@
 import os
 import io
 import re
-import json
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 
-from flask import Flask, render_template, request, redirect, url_for, flash, session, send_file, jsonify, abort
+from flask import (
+    Flask, render_template, request, redirect, url_for,
+    flash, session, send_file, jsonify, abort
+)
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -50,6 +52,7 @@ class Cooperado(db.Model):
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
+
 class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
@@ -57,6 +60,7 @@ class Cliente(db.Model):
     bairro_origem = db.Column(db.String(50), nullable=True)
     # NOVO: endereço opcional
     endereco = db.Column(db.String(255), nullable=True)
+
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -73,6 +77,7 @@ class Entrega(db.Model):
     recebido_por = db.Column(db.String(100), nullable=True)
 
     cooperado = db.relationship('Cooperado', backref='entregas')
+
 
 class ListaEspera(db.Model):
     """
@@ -109,14 +114,14 @@ def local_date_window_to_utc_range(local_date: date):
 def month_range_utc(local_date: date):
     first = local_date.replace(day=1)
     if first.month == 12:
-        next_first = first.replace(year=first.year+1, month=1, day=1)
+        next_first = first.replace(year=first.year + 1, month=1, day=1)
     else:
-        next_first = first.replace(month=first.month+1, day=1)
+        next_first = first.replace(month=first.month + 1, day=1)
     return local_date_window_to_utc_range(first)[0], local_date_window_to_utc_range(next_first - timedelta(days=1))[1]
 
 def year_range_utc(local_date: date):
     first = local_date.replace(month=1, day=1)
-    next_first = first.replace(year=first.year+1)
+    next_first = first.replace(year=first.year + 1)
     return local_date_window_to_utc_range(first)[0], local_date_window_to_utc_range(next_first - timedelta(days=1))[1]
 
 def parse_local_datetime_to_utc_naive(data_str: str):
@@ -199,8 +204,6 @@ def remember_admin_filters():
 
 def _build_admin_url_from_referrer():
     ref = request.headers.get("Referer") or ""
-    if not ref:
-        return None
     try:
         p = urlparse(ref)
         if not p.path.endswith("/admin"):
@@ -287,8 +290,8 @@ def admin():
         inicio_utc, _ = local_date_window_to_utc_range(di)
         query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df)
+        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
     if status_pagamento and status_pagamento != 'todos':
@@ -315,9 +318,11 @@ def admin():
 
     hoje = datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    # Contagens usando ranges (aproveita índice em data_envio)
-    total_dia = Entrega.query.filter(Entrega.data_envio >= inicio_dia_utc,
-                                     Entrega.data_envio <= fim_dia_utc).count()
+
+    total_dia = Entrega.query.filter(
+        Entrega.data_envio >= inicio_dia_utc,
+        Entrega.data_envio <= fim_dia_utc
+    ).count()
     mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
     total_mes = Entrega.query.filter(Entrega.data_envio >= mes_ini_utc,
                                      Entrega.data_envio <= mes_fim_utc).count()
@@ -330,13 +335,13 @@ def admin():
     tem_pendente = Entrega.query.filter(
         Entrega.data_envio >= inicio_dia_utc,
         Entrega.data_envio <= fim_dia_utc,
-        (Entrega.status_pagamento == None) | (Entrega.status_pagamento.ilike('pendente'))
+        (Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')
     ).count() > 0
 
-    # Fila de espera
+    # Fila de espera (sem usar NULLS LAST para portabilidade)
     lista_espera = (
         ListaEspera.query
-        .order_by(ListaEspera.pos.asc().nulls_last(), ListaEspera.created_at.asc().nulls_last())
+        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
         .all()
     )
     # Cooperados disponíveis para adicionar à fila: quem não está na fila
@@ -370,7 +375,6 @@ def clonar_entrega(id):
         recebido_por=None
     )
     db.session.add(nova)
-    # Remove da fila se atribuiu cooperado (não se aplica aqui, pois cooperado_id é None)
     db.session.commit()
     flash(f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.')
     return redirect_back_to_admin()
@@ -398,8 +402,8 @@ def painel_cooperado():
         inicio_utc, _ = local_date_window_to_utc_range(di)
         query = query.filter(Entrega.data_envio >= inicio_utc)
     if fim:
-        df = datetime.strptime(fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df)
+        df_ = datetime.strptime(fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
     # Filtro por status do pagamento
@@ -579,7 +583,6 @@ def editar_cliente(id):
 
     # Se foi AJAX (fetch), devolve JSON com métricas atualizadas para esta linha
     if request.headers.get('X-Requested-With') == 'fetch':
-        # Recalcula com normalização forte
         aggs = (
             db.session.query(
                 Entrega.cliente.label('cli'),
@@ -824,8 +827,8 @@ def estatisticas_cooperado():
         inicio_utc, _ = local_date_window_to_utc_range(di)
         query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df)
+        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
     if status_pagamento and status_pagamento != 'todos':
         if status_pagamento == 'pago':
@@ -859,7 +862,7 @@ def estatisticas_cooperado():
         d, qtd = cont_dias.most_common(1)[0]
         dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": f"{d.strftime('%d/%m/%Y')} ({qtd})"}
 
-    # Horários de pico (Top 3) – formato de string p/ bater com o template (join)
+    # Horários de pico (Top 3)
     cont_horas = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -898,9 +901,7 @@ def estatisticas_cooperado():
 
     # Ranking de bairros de origem (clientes)
     nomes_clientes = {e.cliente for e in entregas if e.cliente}
-    clientes_cadastrados = []
-    if nomes_clientes:
-        clientes_cadastrados = Cliente.query.filter(Cliente.nome.in_(list(nomes_clientes))).all()
+    clientes_cadastrados = Cliente.query.filter(Cliente.nome.in_(list(nomes_clientes))).all() if nomes_clientes else []
     mapa_cliente = {c.nome: c for c in clientes_cadastrados}
 
     cont_bairros_origem = Counter()
@@ -949,7 +950,7 @@ def estatisticas_cooperado():
         "pgto_top": pgto_top
     }
 
-    # ====== NOVO: Séries anuais (2025+) – faturamento, quantidade, ticket médio ======
+    # ====== Séries anuais (2025+) – faturamento, quantidade, ticket médio ======
     por_ano_total = defaultdict(float)
     por_ano_qtd = defaultdict(int)
 
@@ -964,7 +965,7 @@ def estatisticas_cooperado():
         por_ano_total[ano_local] += float(e.valor or 0)
 
     if por_ano_total:
-        ultimo_ano = max(por_ano_total.keys() | por_ano_qtd.keys())
+        ultimo_ano = max(set(por_ano_total.keys()) | set(por_ano_qtd.keys()))
     else:
         ultimo_ano = max(2025, datetime.now(BRAZIL_TZ).year)
 
@@ -1001,7 +1002,6 @@ def estatisticas_cooperado():
         chart_faturamento_labels=chart_faturamento_labels,
         chart_faturamento_values=chart_faturamento_values,
         periodo_legivel=periodo_legivel,
-        # Séries anuais (para o bloco Crescimento Anual 2025+)
         chart_ano_labels=chart_ano_labels,
         chart_ano_totais=chart_ano_totais,
         chart_ano_qtd=chart_ano_qtd,
@@ -1033,8 +1033,8 @@ def exportar_xlsx():
         inicio_utc, _ = local_date_window_to_utc_range(di)
         query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df)
+        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
     entregas = query.order_by(Entrega.data_envio.asc()).all()
@@ -1054,15 +1054,15 @@ def exportar_xlsx():
             'Recebido Por': e.recebido_por or ''
         })
 
-    df = pd.DataFrame(rows)
+    df_out = pd.DataFrame(rows)
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Entregas'
-        df.to_excel(writer, index=False, sheet_name=sheet)
+        df_out.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
         col_widths = [12, 28, 18, 10, 18, 16, 16, 22, 18]
-        for i, w in enumerate(col_widths[:len(df.columns)]):
+        for i, w in enumerate(col_widths[:len(df_out.columns)]):
             ws.set_column(i, i, w)
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
@@ -1087,8 +1087,8 @@ def estatisticas_cooperado_exportar_xlsx():
         inicio_utc, _ = local_date_window_to_utc_range(di)
         query = query.filter(Entrega.data_envio >= inicio_utc)
     if data_fim:
-        df = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df)
+        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
     if status_pagamento and status_pagamento != 'todos':
         if status_pagamento == 'pago':
@@ -1120,31 +1120,30 @@ def estatisticas_cooperado_exportar_xlsx():
         })
     linhas.sort(key=lambda r: r["Valor Total (R$)"], reverse=True)
 
-    df = pd.DataFrame(linhas)
+    df_out = pd.DataFrame(linhas)
 
-    # Título usando helper correta (sem acento no nome da função)
     titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Resumo'
         start_row = 1
-        df.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
+        df_out.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
         ws = writer.sheets[sheet]
 
-        last_col = len(df.columns) - 1
+        last_col = len(df_out.columns) - 1
         ws.merge_range(0, 0, 0, last_col, titulo, writer.book.add_format({
             'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
             'font_color': '#003399'
         }))
 
         widths = [28, 14, 18, 12]
-        for i, w in enumerate(widths[:len(df.columns)]):
+        for i, w in enumerate(widths[:len(df_out.columns)]):
             ws.set_column(i, i, w)
 
         money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
         pct_fmt = writer.book.add_format({'num_format': '0.0"%"'})
-        cols = list(df.columns)
+        cols = list(df_out.columns)
         if "Valor Total (R$)" in cols:
             idx = cols.index("Valor Total (R$)")
             ws.set_column(idx, idx, 18, money_fmt)
@@ -1171,7 +1170,7 @@ def exportar_clientes():
         .group_by(Entrega.cliente)
         .all()
     )
-    stats = defaultdict(lambda: {"qtd":0, "ultimo":None})
+    stats = defaultdict(lambda: {"qtd": 0, "ultimo": None})
     for row in aggs:
         key = normalize_letters_key(row.cli or '')
         s = stats[key]
@@ -1188,17 +1187,17 @@ def exportar_clientes():
             br_date_ymd(s.get("ultimo")) if s else "", int((s or {}).get("qtd") or 0)
         ])
 
-    df = pd.DataFrame(rows, columns=[
+    df_out = pd.DataFrame(rows, columns=[
         "ID", "Nome", "Telefone", "Bairro", "Endereco", "UltimoUso", "TotalPedidos"
     ])
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Clientes'
-        df.to_excel(writer, index=False, sheet_name=sheet)
+        df_out.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
         widths = [8, 28, 18, 18, 32, 12, 14]
-        for i, w in enumerate(widths[:len(df.columns)]):
+        for i, w in enumerate(widths[:len(df_out.columns)]):
             ws.set_column(i, i, w)
     output.seek(0)
     return send_file(output, download_name="clientes.xlsx", as_attachment=True)
@@ -1227,20 +1226,21 @@ def importar_clientes():
         msg = f"Falha ao ler upload: {e}"
         if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 400
-        flash(msg); return redirect(url_for('clientes'))
+        flash(msg)
+        return redirect(url_for('clientes'))
 
-    df = None
+    df_in = None
     load_errors = []
 
     # Preferência: XLSX com pandas + openpyxl
     if filename.endswith('.xlsx'):
         try:
-            df = pd.read_excel(io.BytesIO(raw), engine='openpyxl', dtype=str)
+            df_in = pd.read_excel(io.BytesIO(raw), engine='openpyxl', dtype=str)
         except Exception as e:
             load_errors.append(f"Pandas/openpyxl: {e}")
 
         # Fallback: openpyxl puro
-        if df is None:
+        if df_in is None:
             try:
                 from openpyxl import load_workbook
                 wb = load_workbook(io.BytesIO(raw), data_only=True)
@@ -1250,28 +1250,29 @@ def importar_clientes():
                     raise ValueError("Planilha vazia.")
                 header = [str(x).strip() if x is not None else '' for x in rows[0]]
                 data = [[("" if c is None else str(c)) for c in r] for r in rows[1:]]
-                df = pd.DataFrame(data, columns=header)
+                df_in = pd.DataFrame(data, columns=header)
             except Exception as e:
                 load_errors.append(f"openpyxl: {e}")
 
     # CSV (ou txt)
-    if df is None and (filename.endswith('.csv') or filename.endswith('.txt')):
+    if df_in is None and (filename.endswith('.csv') or filename.endswith('.txt')):
         try:
-            df = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='utf-8')
+            df_in = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='utf-8')
         except Exception:
             try:
-                df = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='latin-1')
+                df_in = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='latin-1')
             except Exception as e:
                 load_errors.append(f"CSV: {e}")
 
-    if df is None:
+    if df_in is None:
         msg = "Não consegui ler o arquivo. " + (" | ".join(load_errors) if load_errors else "")
         if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 400
-        flash(msg); return redirect(url_for('clientes'))
+        flash(msg)
+        return redirect(url_for('clientes'))
 
     # --- mapeamento de colunas ---
-    cols_map = {str(c).lower().strip(): c for c in df.columns}
+    cols_map = {str(c).lower().strip(): c for c in df_in.columns}
 
     def colget(*ops, opt=False):
         for k in ops:
@@ -1279,24 +1280,28 @@ def importar_clientes():
                 return cols_map[k]
         return None if opt else None
 
-    col_id      = colget('id')
-    col_nome    = colget('nome','name')
-    col_tel     = colget('telefone','phone','numero','número','mobile','celular')
-    col_bairro  = colget('bairro','bairro_origem')
-    col_end     = colget('endereco','endereço','address')
+    col_id     = colget('id')
+    col_nome   = colget('nome', 'name')
+    col_tel    = colget('telefone', 'phone', 'numero', 'número', 'mobile', 'celular')
+    col_bairro = colget('bairro', 'bairro_origem')
+    col_end    = colget('endereco', 'endereço', 'address')
 
     missing = []
-    if not col_nome: missing.append("Nome")
-    if not col_tel:  missing.append("Telefone/Número")
+    if not col_nome:
+        missing.append("Nome")
+    if not col_tel:
+        missing.append("Telefone/Número")
     if missing:
-        msg = f"Cabeçalho ausente: {', '.join(missing)}. Colunas recebidas: {list(df.columns)}"
+        msg = f"Cabeçalho ausente: {', '.join(missing)}. Colunas recebidas: {list(df_in.columns)}"
         if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 400
-        flash(msg); return redirect(url_for('clientes'))
+        flash(msg)
+        return redirect(url_for('clientes'))
 
     # --- normalização de telefone ---
     def norm_phone(s: str) -> str:
-        if s is None: return ""
+        if s is None:
+            return ""
         digits = re.sub(r'\D+', '', str(s))
         if digits.startswith('55'):
             digits = digits[2:]
@@ -1309,7 +1314,7 @@ def importar_clientes():
     erros = 0
     detalhes = []
 
-    for i, row in df.iterrows():
+    for i, row in df_in.iterrows():
         try:
             rid = None
             if col_id and not pd.isna(row.get(col_id)):
@@ -1463,7 +1468,7 @@ def lista_espera_reordenar():
         for i, sid in enumerate(ordem, start=1):
             try:
                 _id = int(sid)
-            except:
+            except Exception:
                 continue
             db.session.query(ListaEspera).filter_by(id=_id).update({"pos": i})
         db.session.commit()
@@ -1513,7 +1518,7 @@ def relatorio_termico():
     if cooperado_id and cooperado_id != 'todos':
         try:
             q = q.filter(Entrega.cooperado_id == int(cooperado_id))
-        except:
+        except Exception:
             pass
 
     if status_pagamento and status_pagamento != 'todos':
@@ -1558,22 +1563,22 @@ def criar_bd():
     with app.app_context():
         db.create_all()
 
-        # Tenta criar colunas novas
+        # Tenta criar colunas novas (Postgres; em SQLite será ignorado via except)
         ddl_cmds = [
-            # adiciona cooperado_id/pos/created_at se não existirem (Postgres)
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
-            # NOVO: adiciona endereco em cliente (Postgres)
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS endereco VARCHAR(255)",
-            # cria FK (se possível, ignora erro se já existir ou se for SQLite)
-            "DO $$ BEGIN "
-            "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
-            "WHERE constraint_name='lista_espera_cooperado_id_fkey') THEN "
-            "ALTER TABLE lista_espera ADD CONSTRAINT lista_espera_cooperado_id_fkey "
-            "FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
-            "END IF; "
-            "END $$;"
+            # cria FK em Postgres (ignorado em SQLite)
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='lista_espera_cooperado_id_fkey') THEN "
+                "ALTER TABLE lista_espera ADD CONSTRAINT lista_espera_cooperado_id_fkey "
+                "FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
+                "END IF; "
+                "END $$;"
+            ),
         ]
         for s in ddl_cmds:
             try:
