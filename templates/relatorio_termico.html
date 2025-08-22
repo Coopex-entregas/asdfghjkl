@@ -1,0 +1,119 @@
+<!-- templates/relatorio_termico.html -->
+<!doctype html>
+<html lang="pt-br">
+<head>
+  <meta charset="utf-8">
+  <title>Relatório térmico</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    :root { font-size: 12px; }
+    html, body { margin:0; padding:0; }
+    body {
+      font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+      -webkit-print-color-adjust: exact;
+      color-adjust: exact;
+    }
+    .ticket {
+      width: 80mm;
+      max-width: 80mm;
+      padding: 6px 8px 10px;
+      box-sizing: border-box;
+    }
+    .header { text-align:center; }
+    .logo {
+      width: 58mm; max-width: 58mm;
+      margin: 4px auto 6px;
+      display:block;
+    }
+    h1, h2, h3, p { margin: 0; }
+    h3 { font-size: 1.1rem; }
+    .muted { color:#444; }
+    .line { border-top: 1px dashed #000; margin: 6px 0; }
+    .pair { display:flex; justify-content:space-between; align-items:baseline; gap: 6px; }
+    .pair b { font-size: 1.1rem; }
+    table { width:100%; border-collapse:collapse; }
+    th, td { text-align:left; padding: 4px 0; vertical-align:top; }
+    th { border-bottom: 1px solid #000; }
+    td.val { text-align:right; white-space:nowrap; }
+    .row-date { font-size: 0.9rem; color:#333; }
+    .total { font-weight:700; border-top:1px solid #000; padding-top:6px; }
+    .center { text-align:center; }
+    .small { font-size:0.9rem; }
+    .footer { margin-top:8px; text-align:center; }
+    @media print {
+      .no-print { display:none !important; }
+      body { margin:0; }
+    }
+    @page {
+      size: 80mm auto;
+      margin: 0;
+    }
+  </style>
+</head>
+<body>
+  <div class="ticket">
+    <div class="header">
+      <img class="logo" src="{{ url_for('static', filename='logo_coopex.png') }}" alt="Logo" onerror="this.style.display='none'">
+      <h3>Relatório de Entregas (80&nbsp;mm)</h3>
+      <div class="small muted" style="margin-top:2px;">
+        Período: <b>{{ periodo_txt }}</b><br>
+        Cooperado: <b>{{ coop_nome }}</b><br>
+        Gerado: {{ agora.strftime('%d/%m/%Y %H:%M') }}
+      </div>
+    </div>
+
+    <div class="line"></div>
+
+    {% if entregas|length == 0 %}
+      <p class="center"><b>Nenhuma entrega no período.</b></p>
+    {% else %}
+      <table>
+        <thead>
+          <tr>
+            <th>Cliente</th>
+            <th class="val">Valor (R$)</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% set total = 0 %}
+          {% for e in entregas %}
+            {% set dt = to_brasilia(e.data_atribuida or e.data_envio) %}
+            {% set total = total + (e.valor or 0) %}
+            <tr>
+              <td>
+                <b>{{ e.cliente }}</b><br>
+                <span class="row-date">
+                  {{ dt.strftime('%d/%m/%Y %H:%M') }}
+                  {% if e.cooperado %} • {{ e.cooperado.nome }}{% endif %}
+                  {% if e.pagamento %} • {{ e.pagamento }}{% endif %}
+                </span>
+              </td>
+              <td class="val">{{ '%.2f'|format(e.valor or 0) | replace('.', ',') }}</td>
+            </tr>
+          {% endfor %}
+          <tr>
+            <td class="total">TOTAL</td>
+            <td class="val total">{{ '%.2f'|format(total) | replace('.', ',') }}</td>
+          </tr>
+        </tbody>
+      </table>
+    {% endif %}
+
+    <div class="line"></div>
+
+    <div class="footer small">
+      Coopex • {{ agora.strftime('%d/%m/%Y %H:%M') }}<br>
+      <span class="muted">Relatório para impressão térmica 80 mm</span>
+    </div>
+
+    <div class="center no-print" style="margin-top:8px;">
+      <button onclick="window.print()">Imprimir</button>
+    </div>
+  </div>
+
+  <script>
+    // Autoimpressão ao abrir (com pequeno atraso para carregar imagens)
+    setTimeout(function(){ try { window.print(); } catch(e){} }, 300);
+  </script>
+</body>
+</html>
