@@ -1479,8 +1479,8 @@ def lista_espera_reordenar():
         return ("", 500)
 
 # ====== >>> NOVA ROTA: RELATÓRIO 80 mm (Epson TM-T20) <<< ======
-@app.route('/impressão')
-def impressao():
+@app.route('/relatorio_termico')
+def relatorio_termico():
     """
     Relatório térmico 80mm (logo em static/logo_coopex.png)
     Campos: Cliente, Valor, Data/Hora da ATRIBUIÇÃO (fallback: envio).
@@ -1550,7 +1550,7 @@ def impressao():
     agora = datetime.now(BRAZIL_TZ)
 
     return render_template(
-        'impressao.html',   # salve seu HTML com este nome
+        'relatorio_termico.html',   # salve seu HTML com este nome
         entregas=entregas,
         periodo_txt=periodo_txt,
         coop_nome=coop_nome,
