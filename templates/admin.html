@@ -461,15 +461,10 @@
 <body>
   <div class="wrap">
     <div class="cupom">
-      <!-- LOGO MONOCROMÁTICA EM SVG (ideal para térmica) -->
-      <svg class="logo" viewBox="0 0 520 120" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Coopex">
-        <g>
-          <circle cx="60" cy="60" r="38" stroke="#000" stroke-width="8" fill="none"/>
-          <path d="M60 22 L78 52 L42 52 Z" fill="#000"/>
-          <circle cx="60" cy="60" r="6" fill="#000"/>
-        </g>
-        <text x="120" y="78" font-family="Arial, Helvetica, sans-serif" font-size="64" font-weight="900" fill="#000">COOPEX</text>
-      </svg>
+     <!-- LOGO COOPEX (imagem em static) -->
+<img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" 
+     alt="Logo Coopex" class="logo"
+     onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
 
       <div class="center tiny">
         CNPJ: 05.289.938/0001-97<br>
