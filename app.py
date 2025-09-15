@@ -14,6 +14,7 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
+from sqlalchemy.exc import OperationalError  # <<< NOVO
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import pandas as pd
@@ -24,15 +25,30 @@ import pytz
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 
-# Banco
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
+# Banco (corrige postgres:// -> postgresql:// e aplica keepalives no Postgres)
+_raw_db_url = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
+if _raw_db_url.startswith('postgres://'):
+    _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
+app.config['SQLALCHEMY_DATABASE_URI'] = _raw_db_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
+_connect_args = {}
+if _raw_db_url.startswith('postgresql'):
+    _connect_args = {
+        "keepalives": 1,
+        "keepalives_idle": 60,
+        "keepalives_interval": 30,
+        "keepalives_count": 5,
+    }
+
 # Performance de conexão (especialmente em Postgres)
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "pool_size": 5,
     "max_overflow": 10,
+    "pool_timeout": 30,
+    "connect_args": _connect_args,
 }
 
 db = SQLAlchemy(app)
@@ -1448,10 +1464,14 @@ def lista_espera_add():
 def lista_espera_remove(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    item = ListaEspera.query.get_or_404(id)
-    db.session.delete(item)
-    db.session.commit()
-    flash('Removido da lista de espera.')
+    try:
+        item = ListaEspera.query.get_or_404(id)
+        db.session.delete(item)
+        db.session.commit()
+        flash('Removido da lista de espera.')
+    except OperationalError:
+        db.session.rollback()
+        flash('Falha temporária no banco. Tente novamente em instantes.', 'danger')
     return redirect_back_to_admin()
 
 @app.route('/lista_espera/reordenar', methods=['POST'])
@@ -1562,10 +1582,24 @@ def relatorio_termico():
         total_relatorio=total_relatorio
     )
 
+# ====== HEALTHCHECK (NOVO) ======
+@app.get("/healthz")
+def healthz():
+    try:
+        db.session.execute(text("SELECT 1"))
+        return "ok", 200
+    except Exception:
+        return "db_unavailable", 503
+
 # ====== BOOTSTRAP BANCO: criar tabelas, colunas faltantes e índices ======
 def criar_bd():
     with app.app_context():
-        db.create_all()
+        try:
+            db.create_all()
+        except Exception as e:
+            # Se o DB estiver indisponível no boot, não derruba o worker; segue e tenta depois via requests.
+            app.logger.error(f"create_all falhou (vai tentar de novo no próximo request): {e}")
+            return
 
         # Tenta criar colunas novas (Postgres; em SQLite será ignorado via except)
         ddl_cmds = [
@@ -1606,7 +1640,10 @@ def criar_bd():
             except Exception:
                 pass
 
-        db.session.commit()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
 criar_bd()
 
