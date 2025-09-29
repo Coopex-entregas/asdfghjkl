@@ -14,7 +14,6 @@ from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
-from sqlalchemy.exc import OperationalError  # <<< NOVO
 from werkzeug.security import generate_password_hash, check_password_hash
 
 import pandas as pd
@@ -25,30 +24,15 @@ import pytz
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 
-# Banco (corrige postgres:// -> postgresql:// e aplica keepalives no Postgres)
-_raw_db_url = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
-if _raw_db_url.startswith('postgres://'):
-    _raw_db_url = _raw_db_url.replace('postgres://', 'postgresql://', 1)
-app.config['SQLALCHEMY_DATABASE_URI'] = _raw_db_url
+# Banco
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
-_connect_args = {}
-if _raw_db_url.startswith('postgresql'):
-    _connect_args = {
-        "keepalives": 1,
-        "keepalives_idle": 60,
-        "keepalives_interval": 30,
-        "keepalives_count": 5,
-    }
-
 # Performance de conexão (especialmente em Postgres)
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
     "pool_size": 5,
     "max_overflow": 10,
-    "pool_timeout": 30,
-    "connect_args": _connect_args,
 }
 
 db = SQLAlchemy(app)
@@ -61,13 +45,13 @@ class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     senha_hash = db.Column(db.String(128), nullable=False)
+    ativo = db.Column(db.Boolean, nullable=False, default=True)  # <== AQUI
 
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
 
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
-
 
 class Cliente(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -273,7 +257,8 @@ def login():
                 return redirect(url_for('painel_cooperado'))
             else:
                 flash('Usuário ou senha incorretos.')
-    return render_template('login.html')
+    # Se for GET ou cair nos flash de erro, retorna o login de novo
+    return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
 
 @app.route('/logout')
 def logout():
@@ -450,23 +435,67 @@ def painel_cooperado():
         status_pgto=status_pgto
     )
 
-@app.route('/cadastrar_cooperado', methods=['GET', 'POST'])
+@app.route('/cooperados/cadastrar', methods=['GET', 'POST'])
 def cadastrar_cooperado():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
     if request.method == 'POST':
         nome = request.form.get('nome')
         senha = request.form.get('senha')
-        if Cooperado.query.filter(func.lower(Cooperado.nome) == (nome or '').lower()).first():
-            flash('Já existe um cooperado com esse nome.')
+        if nome and senha:
+            if Cooperado.query.filter_by(nome=nome).first():
+                flash('Já existe um cooperado com esse nome!')
+            else:
+                novo = Cooperado(nome=nome)
+                novo.set_senha(senha)
+                db.session.add(novo)
+                db.session.commit()
+                flash('Cooperado cadastrado com sucesso!')
         else:
-            c = Cooperado(nome=nome)
-            c.set_senha(senha)
-            db.session.add(c)
-            db.session.commit()
-            flash('Cooperado cadastrado!')
-            return redirect_back_to_admin()
-    return render_template('cadastrar_cooperado.html')
+            flash('Preencha todos os campos.')
+        return redirect(url_for('cadastrar_cooperado'))
+
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    return render_template('cadastrar_cooperado.html', cooperados=cooperados)
+
+# ATUALIZAR COOPERADO (nome e/ou senha)
+@app.route('/cooperados/<int:coop_id>/atualizar', methods=['POST'])
+def atualizar_cooperado(coop_id):
+    cooperado = Cooperado.query.get_or_404(coop_id)
+    novo_nome = request.form.get('novo_nome')
+    nova_senha = request.form.get('nova_senha')
+    # Atualiza nome se informado e diferente
+    if novo_nome and novo_nome != cooperado.nome:
+        existe = Cooperado.query.filter_by(nome=novo_nome).first()
+        if existe and existe.id != cooperado.id:
+            flash('Já existe um cooperado com esse nome!')
+            return redirect(url_for('cadastrar_cooperado'))
+        cooperado.nome = novo_nome
+    # Atualiza senha se informado
+    if nova_senha:
+        cooperado.set_senha(nova_senha)
+    db.session.commit()
+    flash('Dados do cooperado atualizados!')
+    return redirect(url_for('cadastrar_cooperado'))
+
+# EXCLUIR COOPERADO
+@app.route('/cooperados/<int:coop_id>/excluir', methods=['POST'])
+def excluir_cooperado(coop_id):
+    cooperado = Cooperado.query.get_or_404(coop_id)
+    db.session.delete(cooperado)
+    db.session.commit()
+    flash('Cooperado excluído com sucesso!')
+    return redirect(url_for('cadastrar_cooperado'))
+
+@app.route('/cooperados/<int:coop_id>/status', methods=['POST'])
+def mudar_status_cooperado(coop_id):
+    novo_status = request.form.get('novo_status')
+    cooperado = Cooperado.query.get_or_404(coop_id)
+    if novo_status == "1":
+        cooperado.ativo = True
+    else:
+        cooperado.ativo = False
+    db.session.commit()
+    flash(f"Status de {cooperado.nome} alterado para {'Ativo' if cooperado.ativo else 'Inativo'}!")
+    return redirect(url_for('cadastrar_cooperado'))
 
 # ====== CLIENTES (CRUD) ======
 @app.route('/clientes', methods=['GET', 'POST'])
@@ -764,17 +793,6 @@ def excluir_entrega(id):
     flash('Entrega excluída.')
     return redirect_back_to_admin()
 
-@app.route('/excluir_cooperado/<int:id>', methods=['POST'])
-def excluir_cooperado(id):
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-    c = Cooperado.query.get_or_404(id)
-    Entrega.query.filter_by(cooperado_id=c.id).delete()
-    ListaEspera.query.filter_by(cooperado_id=c.id).delete()  # limpa fila
-    db.session.delete(c)
-    db.session.commit()
-    flash('Cooperado excluído.')
-    return redirect_back_to_admin()
 
 # ========= BOTÕES RÁPIDOS (ADMIN) =========
 @app.post('/entregas/<int:id>/marcar-pagamento')
@@ -1464,14 +1482,10 @@ def lista_espera_add():
 def lista_espera_remove(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    try:
-        item = ListaEspera.query.get_or_404(id)
-        db.session.delete(item)
-        db.session.commit()
-        flash('Removido da lista de espera.')
-    except OperationalError:
-        db.session.rollback()
-        flash('Falha temporária no banco. Tente novamente em instantes.', 'danger')
+    item = ListaEspera.query.get_or_404(id)
+    db.session.delete(item)
+    db.session.commit()
+    flash('Removido da lista de espera.')
     return redirect_back_to_admin()
 
 @app.route('/lista_espera/reordenar', methods=['POST'])
@@ -1582,24 +1596,10 @@ def relatorio_termico():
         total_relatorio=total_relatorio
     )
 
-# ====== HEALTHCHECK (NOVO) ======
-@app.get("/healthz")
-def healthz():
-    try:
-        db.session.execute(text("SELECT 1"))
-        return "ok", 200
-    except Exception:
-        return "db_unavailable", 503
-
 # ====== BOOTSTRAP BANCO: criar tabelas, colunas faltantes e índices ======
 def criar_bd():
     with app.app_context():
-        try:
-            db.create_all()
-        except Exception as e:
-            # Se o DB estiver indisponível no boot, não derruba o worker; segue e tenta depois via requests.
-            app.logger.error(f"create_all falhou (vai tentar de novo no próximo request): {e}")
-            return
+        db.create_all()
 
         # Tenta criar colunas novas (Postgres; em SQLite será ignorado via except)
         ddl_cmds = [
@@ -1640,10 +1640,7 @@ def criar_bd():
             except Exception:
                 pass
 
-        try:
-            db.session.commit()
-        except Exception:
-            db.session.rollback()
+        db.session.commit()
 
 criar_bd()
 
