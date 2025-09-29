@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <title>Painel da Supervisão - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root {
       --azul: #003399;
@@ -13,68 +13,81 @@
       --azul-hover: #174ea6;
       --verde: #13a038;
       --vermelho: #d11a1a;
-      --amarelo: #ffe066;
+      --amarelo: #ffd166;
       --cinza-bg: #f6f8fa;
-      --cinza-card: #fff;
+      --cinza-card: #ffffff;
       --grafite: #232942;
+      --borda-clara: #e6ebff;
+      --borda-escura: #3a3a3a;
       --shadow: 0 6px 24px #0033991a;
       --shadow-sm: 0 2px 10px #00339918;
       --radius: 16px;
       --radius-sm: 11px;
     }
+
     html, body { margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px; }
     body.locked { overflow:hidden; }
 
-    header { background: var(--azul-grad); color:#fff; padding:0.9rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
-    .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; }
-    h1 { font-size:1.1rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.5px; text-shadow:0 2px 14px #0001; white-space:nowrap; }
+    /* Header */
+    header { background: var(--azul-grad); color:#fff; padding:1rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
+    .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; max-width:1280px; margin:0 auto; }
+    h1 { font-size:1.15rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.4px; text-shadow:0 2px 14px #0001; white-space:nowrap; }
     .logo-topo { height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
 
-    .kpis { display:flex; gap:10px; flex-wrap:wrap; }
+    .kpis { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
     .kpi { background:#ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
-    .kpi span { display:block; font-weight:700; line-height:1.1; }
-    .kpi small { display:block; font-size:12px; opacity:.9; }
+    .kpi span { display:block; font-weight:800; font-size:1.05rem; line-height:1.1; }
+    .kpi small { display:block; font-size:12px; opacity:.92; font-weight:600; }
 
     .logout { color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap; }
     .logout:hover { background:#a20f1a; }
 
-    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 12px; margin:12px 2vw; overflow:hidden; }
+    /* Wrapper */
+    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 16px; margin:16px 2vw; overflow:hidden; }
     .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
 
-    .painel-linha { display:grid; grid-template-columns: 1.2fr 1fr 0.8fr; gap:14px; align-items:start; }
-    .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:14px 16px 12px; border:1px solid #e6ebff; }
-    .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.02em; }
+    /* Linha com lista de espera + hoje */
+    .painel-linha { display:grid; grid-template-columns: 1.3fr 0.8fr; gap:14px; align-items:start; }
+    .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:14px 16px 12px; border:1px solid var(--borda-clara); }
+    .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.04em; letter-spacing:.2px; }
 
+    /* Lista de espera */
     .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-    .espera-select, .espera-input { flex:1; min-width:230px; padding:7px 10px; border-radius:8px; border:1.2px solid #a8b9e4; font-size:1em; background:#f7faff; color:#003399; }
-    .espera-add { background:#003399; color:#fff; border:none; border-radius:8px; font-size:0.95em; padding:8px 14px; cursor:pointer; font-weight:700; box-shadow:var(--shadow-sm); }
+    .espera-select, .espera-input { flex:1; min-width:230px; padding:9px 12px; border-radius:9px; border:1.2px solid #a8b9e4; font-size:0.98em; background:#f7faff; color:#003399; }
+    .espera-add { background:#003399; color:#fff; border:none; border-radius:9px; font-size:0.95em; padding:9px 16px; cursor:pointer; font-weight:800; box-shadow:var(--shadow-sm); }
+    .espera-add:hover { background:var(--azul-hover); }
 
     #espera-lista { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px; }
-    .espera-chip { display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff; padding:8px 10px; border-radius:10px; cursor:grab; }
+    .espera-chip { display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff; padding:9px 10px; border-radius:10px; cursor:grab; }
     .espera-chip:active { cursor:grabbing; }
-    .espera-chip-num { background:#ffd166; color:#222; font-weight:900; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
+    .espera-chip-num { background:var(--amarelo); color:#222; font-weight:900; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
     .espera-chip-text { font-weight:800; color:#003399; }
     .espera-chip-remove { background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900; }
 
-    .actions { margin:8px 0 8px; display:flex; flex-wrap:wrap; gap:10px; }
-    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:bold; box-shadow:var(--shadow-sm); white-space:nowrap; }
+    /* Ações */
+    .actions { margin:12px 0 12px; display:flex; flex-wrap:wrap; gap:10px; }
+    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:800; box-shadow:var(--shadow-sm); white-space:nowrap; }
     .btn:hover { background:var(--azul-hover); }
 
-    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; gap:10px; align-items:center; border:1px solid #e6ebff; flex-wrap:wrap; }
+    /* Filtros */
+    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; gap:10px; align-items:center; border:1px solid var(--borda-clara); flex-wrap:wrap; }
     .filtros label { font-size:13px; color:#003399; font-weight:800; }
     .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
 
+    /* Tabela */
     .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px; }
     table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
-    th, td { border:1px solid #3a3a3a; padding:9px 4px; text-align:center; vertical-align:middle; }
+    th, td { border:1px solid var(--borda-escura); padding:9px 4px; text-align:center; vertical-align:middle; }
     th { background:linear-gradient(90deg,#003399 60%, #4f8cff 120%); color:#fff; font-size:1.03em; font-weight:700; }
     tr:hover td { background:#33415555; }
-    .status-verde { color:#13a038; font-weight:bold; background:#e7f9ef; border-radius:7px; padding:3px 6px; }
-    .status-vermelho { color:#d11a1a; font-weight:bold; background:#fdeaea; border-radius:7px; padding:3px 6px; }
+
+    .status-verde { color:#13a038; font-weight:800; background:#e7f9ef; border-radius:7px; padding:3px 6px; }
+    .status-vermelho { color:#d11a1a; font-weight:800; background:#fdeaea; border-radius:7px; padding:3px 6px; }
 
     .clicavel { cursor:pointer; }
     .clicavel:hover { filter: brightness(1.05); }
 
+    /* Modal simples */
     .modal-overlay { position:fixed; inset:0; background:rgba(10,16,28,0.58); display:none; align-items:center; justify-content:center; z-index:9999; }
     .modal { background:#fff; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.25); max-width:520px; width:92%; padding:22px 20px 18px; text-align:center; }
     .modal h2 { margin:0 0 8px; color:var(--azul); }
@@ -88,8 +101,8 @@
     @media (max-width: 1100px) { .painel-linha { grid-template-columns:1fr; } }
     @media (max-width: 900px)  {
       header .header-grid { grid-template-columns:1fr auto; row-gap:8px; }
-      .kpis { grid-column:1/-1; }
-      .painel-bg-trocavel { padding:16px 2vw 9px 2vw; }
+      .kpis { grid-column:1/-1; justify-content:flex-start; }
+      .painel-bg-trocavel { padding:16px 2vw 12px 2vw; }
       table, th, td, tr { font-size:12.8px; }
     }
   </style>
@@ -155,26 +168,10 @@
           </ul>
         </div>
 
-        <!-- Cooperados -->
-        <div class="painel-lista">
-          <h3>Cooperados</h3>
-          <input type="text" id="filtro-cooperado" placeholder="Filtrar..." class="espera-input" />
-          <ul id="lista-cooperados" style="list-style:none; padding:0; max-height:140px; overflow-y:auto; font-size:13px; margin:0;">
-            {% for c in cooperados %}
-              <li style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                <b>{{ c.nome }}</b>
-                <form action="{{ url_for('excluir_cooperado', id=c.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir este cooperado?');">
-                  <button type="submit" style="background:#d11a1a;color:#fff;padding:2px 6px;border:none;border-radius:4px;font-weight:bold;cursor:pointer;font-size:12px;">Excluir</button>
-                </form>
-              </li>
-            {% endfor %}
-          </ul>
-        </div>
-
         <!-- Hoje / feriado -->
         <div class="painel-lista">
           <h3>Hoje</h3>
-          <div style="font-weight:700;color:#003399;">
+          <div style="font-weight:800;color:#003399;">
             {{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}
           </div>
           <div style="margin-top:6px;">
@@ -191,9 +188,18 @@
       <div class="actions">
         <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
         <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
-        <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Novo Cooperado</a>
-        <a href="{{ url_for('clientes') }}" class="btn">Cadastrar Cliente</a>
+        <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Gestão de Cooperados</a>
+        <a href="{{ url_for('clientes') }}" class="btn">Gestão de Clientes</a>
         <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Dashboard</a>
+        <a class="btn"
+           href="{{ url_for('relatorio_termico') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}"
+           target="_blank" rel="noopener">
+          Imprimir Relatório
+        </a>
+        <a class="btn"
+           href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
+          Exportar Entregas
+        </a>
       </div>
 
       <div class="filtros">
@@ -223,18 +229,6 @@
           <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" placeholder="Nome do cliente"/>
 
           <button class="btn" type="submit">Filtrar</button>
-
-          <a class="btn"
-             href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
-            Exportar para Excel
-          </a>
-
-          <!-- NOVO: Relatório térmico 80 mm (Epson TM-T20) -->
-          <a class="btn"
-             href="{{ url_for('relatorio_termico') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}"
-             target="_blank" rel="noopener">
-            Imprimir Relatório&nbsp;
-          </a>
         </form>
       </div>
     </div>
@@ -375,16 +369,18 @@
     const selCoop = document.getElementById('cooperado-espera');
     const inpNome = document.getElementById('nome-espera');
     const formEspera = document.getElementById('form-espera');
-    if (selCoop) { selCoop.addEventListener('change', () => { const nome = selCoop.options[selCoop.selectedIndex]?.text || ''; if (!inpNome.value) inpNome.value = nome; }); }
-    if (formEspera) { formEspera.addEventListener('submit', () => { if (!inpNome.value) { const nome = selCoop.options[selCoop.selectedIndex]?.text || ''; inpNome.value = nome; } }); }
-
-    // Filtro cooperados
-    const filtroCoop = document.getElementById('filtro-cooperado');
-    if (filtroCoop) {
-      filtroCoop.addEventListener('input', function() {
-        const filtro = this.value.toLowerCase();
-        const lista = document.getElementById('lista-cooperados').children;
-        for (let item of lista) item.style.display = item.innerText.toLowerCase().includes(filtro) ? '' : 'none';
+    if (selCoop) {
+      selCoop.addEventListener('change', () => {
+        const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
+        if (!inpNome.value) inpNome.value = nome;
+      });
+    }
+    if (formEspera) {
+      formEspera.addEventListener('submit', () => {
+        if (!inpNome.value) {
+          const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
+          inpNome.value = nome;
+        }
       });
     }
 
@@ -393,16 +389,33 @@
     let dragEl = null;
     function renumerar() { [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1); }
     if (ulFila) {
-      ulFila.addEventListener('dragstart', (e) => { const li = e.target.closest('.espera-chip'); if (!li) return; dragEl = li; li.style.opacity = .6; });
-      ulFila.addEventListener('dragend', (e) => { const li = e.target.closest('.espera-chip'); if (!li) return; li.style.opacity = 1; dragEl = null; salvarOrdem(); });
-      ulFila.addEventListener('dragover', (e) => { e.preventDefault(); const li = e.target.closest('.espera-chip'); if (!li || li === dragEl) return; const bbox = li.getBoundingClientRect(); const after = (e.clientY - bbox.top) > (bbox.height / 2); if (after) li.after(dragEl); else li.before(dragEl); renumerar(); });
+      ulFila.addEventListener('dragstart', (e) => {
+        const li = e.target.closest('.espera-chip'); if (!li) return;
+        dragEl = li; li.style.opacity = .6;
+      });
+      ulFila.addEventListener('dragend', (e) => {
+        const li = e.target.closest('.espera-chip'); if (!li) return;
+        li.style.opacity = 1; dragEl = null; salvarOrdem();
+      });
+      ulFila.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        const li = e.target.closest('.espera-chip'); if (!li || li === dragEl) return;
+        const bbox = li.getBoundingClientRect();
+        const after = (e.clientY - bbox.top) > (bbox.height / 2);
+        if (after) li.after(dragEl); else li.before(dragEl);
+        renumerar();
+      });
     }
     function salvarOrdem() {
       const ids = [...ulFila.querySelectorAll('.espera-chip')].map(li => li.dataset.id);
-      fetch('/lista_espera/reordenar', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ordem: ids}) }).catch(()=>{});
+      fetch('/lista_espera/reordenar', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ordem: ids})
+      }).catch(()=>{});
     }
 
-    // -------- IMPRESSÃO DE CUPOM (80mm) — preview + botão imprimir; QR sem texto --------
+    // -------- IMPRESSÃO DE CUPOM (80mm) — preview + botão imprimir --------
     function imprimirCupom(idEntrega, botao) {
       const tr = botao.closest('tr');
       const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
@@ -439,7 +452,6 @@
   .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
   .center{text-align:center}
   .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
-  .title{font-weight:900; font-size:14px; letter-spacing:.2px; text-transform:uppercase}
   .big{font-weight:900; font-size:18px}
   hr{border:none; border-top:1px dotted #000; margin:8px 0}
   .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
@@ -448,23 +460,21 @@
   .tiny{font-size:10.5px}
   .sign{ text-align:center; margin-top:8px; }
   .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
-  .actions{display:flex; justify-content:center; gap:10px; padding:12px 0 16px}
+  .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}
   .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}
   .btn-print{border:1px solid #000; background:#000; color:#fff}
   .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}
   .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
   @media print { .actions{display:none} body{background:#fff} }
-  /* Garantir preto puro para térmica */
   svg { fill: #000; color: #000; }
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="cupom">
-     <!-- LOGO COOPEX (imagem em static) -->
-<img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" 
-     alt="Logo Coopex" class="logo"
-     onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
+      <img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}"
+           alt="Logo Coopex" class="logo"
+           onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
 
       <div class="center tiny">
         CNPJ: 05.289.938/0001-97<br>
@@ -504,6 +514,7 @@
   </div>
 </body>
 </html>`;
+
       // abre nova aba (ou fallback overlay)
       let win = null;
       try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
@@ -515,7 +526,7 @@
       criarOverlayPreview(html);
     }
 
-    // Overlay de preview
+    // Overlay de preview (fallback se popup bloquear)
     function criarOverlayPreview(html){
       const wrap = document.createElement('div');
       wrap.id = 'print-preview-overlay';
@@ -578,7 +589,7 @@
       document.body.appendChild(wrap);
     }
 
-    // Avisos (mantidos)
+    // Avisos (pendências e boa noite)
     function existePagamentoPendenteNaTabela() {
       return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
         const cel = tr.children[10];
@@ -610,7 +621,7 @@
       setInterval(checaAvisos, 60 * 1000);
     });
 
-    // ===== NOVO: Clique nos status para marcar como ENTREGUE/PAGO =====
+    // Clique nos status para marcar como ENTREGUE/PAGO
     document.addEventListener('click', function (ev) {
       const alvo = ev.target;
 
