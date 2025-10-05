@@ -3,118 +3,166 @@
 <head>
   <meta charset="UTF-8" />
   <title>Painel da Supervisão - Coopex</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    :root {
-      --azul: #003399;
-      --azul-escuro: #222b44;
-      --azul-grad: linear-gradient(90deg, #003399 55%, #4f8cff 110%);
-      --azul-hover: #174ea6;
-      --verde: #13a038;
-      --vermelho: #d11a1a;
-      --amarelo: #ffd166;
-      --cinza-bg: #f6f8fa;
-      --cinza-card: #ffffff;
-      --grafite: #232942;
-      --borda-clara: #e6ebff;
-      --borda-escura: #3a3a3a;
-      --shadow: 0 6px 24px #0033991a;
-      --shadow-sm: 0 2px 10px #00339918;
-      --radius: 16px;
-      --radius-sm: 11px;
+    :root{
+      --royal:#0033cc;
+      --royal-2:#2750ff;
+      --ink:#0e1a33;
+      --bg:#071127;
+      --panel:#0b1633;
+      --panel-2:#0e1c44;
+      --white:#ffffff;
+      --muted:#cfe0ff;
+      --good:#10b981;
+      --bad:#ef4444;
+      --warn:#f59e0b;
+      --line:#1e2f66;
+      --chip:#0e2a6c;
+      --shadow:0 12px 40px rgba(0,0,0,.28);
+      --r:14px;
     }
 
-    html, body { margin:0; padding:0; font-family:'Inter','Segoe UI',Arial,sans-serif; background:var(--cinza-bg); color:var(--azul-escuro); min-height:100vh; font-size:15.5px; }
-    body.locked { overflow:hidden; }
-
-    /* Header */
-    header { background: var(--azul-grad); color:#fff; padding:1rem 2vw; box-shadow:var(--shadow); position:sticky; top:0; z-index:99; }
-    .header-grid { display:grid; grid-template-columns:auto 1fr auto; gap:18px; align-items:center; max-width:1280px; margin:0 auto; }
-    h1 { font-size:1.15rem; font-weight:800; margin:0; display:flex; align-items:center; gap:12px; letter-spacing:0.4px; text-shadow:0 2px 14px #0001; white-space:nowrap; }
-    .logo-topo { height:42px; width:42px; border-radius:14px; background:#fff; box-shadow:0 2px 13px #0033991f; padding:4px; object-fit:contain; margin-right:4px; border:2.5px solid #ddeaff; }
-
-    .kpis { display:flex; gap:10px; flex-wrap:wrap; justify-content:flex-end; }
-    .kpi { background:#ffffff1c; border:1px solid #ffffff55; border-radius:12px; padding:8px 14px; box-shadow:var(--shadow-sm); min-width:150px; }
-    .kpi span { display:block; font-weight:800; font-size:1.05rem; line-height:1.1; }
-    .kpi small { display:block; font-size:12px; opacity:.92; font-weight:600; }
-
-    .logout { color:#fff; background:#c1121f; border-radius:18px; padding:8px 18px; font-size:0.98em; text-decoration:none; font-weight:bold; border:none; box-shadow:var(--shadow-sm); white-space:nowrap; }
-    .logout:hover { background:#a20f1a; }
-
-    /* Wrapper */
-    .painel-bg-trocavel { position:relative; background: linear-gradient(115deg,#f4f8ff 60%,#e3f2ff 100%); border-radius:var(--radius); box-shadow:var(--shadow); padding:18px 2vw 16px; margin:16px 2vw; overflow:hidden; }
-    .painel-bg-conteudo { position:relative; z-index:2; max-width:1280px; margin:auto; }
-
-    /* Linha com lista de espera + hoje */
-    .painel-linha { display:grid; grid-template-columns: 1.3fr 0.8fr; gap:14px; align-items:start; }
-    .painel-lista { background:var(--cinza-card); border-radius:13px; box-shadow:var(--shadow-sm); padding:14px 16px 12px; border:1px solid var(--borda-clara); }
-    .painel-lista h3 { color:var(--azul); margin:0 0 10px; font-size:1.04em; letter-spacing:.2px; }
-
-    /* Lista de espera */
-    .espera-bar { display:flex; align-items:center; gap:8px; margin-bottom:8px; flex-wrap:wrap; }
-    .espera-select, .espera-input { flex:1; min-width:230px; padding:9px 12px; border-radius:9px; border:1.2px solid #a8b9e4; font-size:0.98em; background:#f7faff; color:#003399; }
-    .espera-add { background:#003399; color:#fff; border:none; border-radius:9px; font-size:0.95em; padding:9px 16px; cursor:pointer; font-weight:800; box-shadow:var(--shadow-sm); }
-    .espera-add:hover { background:var(--azul-hover); }
-
-    #espera-lista { list-style:none; padding:0; margin:6px 0 0; display:flex; flex-direction:column; gap:7px; }
-    .espera-chip { display:flex; align-items:center; gap:10px; background:#eef4ff; border:1px dashed #cddaff; padding:9px 10px; border-radius:10px; cursor:grab; }
-    .espera-chip:active { cursor:grabbing; }
-    .espera-chip-num { background:var(--amarelo); color:#222; font-weight:900; width:26px; height:26px; border-radius:50%; display:flex; align-items:center; justify-content:center; }
-    .espera-chip-text { font-weight:800; color:#003399; }
-    .espera-chip-remove { background:#d11a1a; color:#fff; border:none; width:28px; height:28px; border-radius:8px; cursor:pointer; font-weight:900; }
-
-    /* Ações */
-    .actions { margin:12px 0 12px; display:flex; flex-wrap:wrap; gap:10px; }
-    .btn { background:var(--azul-grad); color:#fff; border:none; padding:10px 20px; border-radius:12px; cursor:pointer; font-size:15px; text-decoration:none; font-weight:800; box-shadow:var(--shadow-sm); white-space:nowrap; }
-    .btn:hover { background:var(--azul-hover); }
-
-    /* Filtros */
-    .filtros { margin: 6px 0 10px; background:#fff; border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm); display:flex; gap:10px; align-items:center; border:1px solid var(--borda-clara); flex-wrap:wrap; }
-    .filtros label { font-size:13px; color:#003399; font-weight:800; }
-    .filtros input, .filtros select { font-size:13px; padding:6px 8px; border-radius:8px; border:1px solid #a8b9e4; background:#f7faff; color:#003399; font-weight:600; }
-
-    /* Tabela */
-    .tabela { overflow-x:auto; background:var(--grafite); border-radius:17px; box-shadow:var(--shadow); padding:12px; max-height:69vh; overflow-y:auto; margin:0 2vw 24px; }
-    table { width:100%; border-collapse:collapse; font-size:14.5px; background:var(--grafite); color:#fff; border-radius:12px; overflow:hidden; }
-    th, td { border:1px solid var(--borda-escura); padding:9px 4px; text-align:center; vertical-align:middle; }
-    th { background:linear-gradient(90deg,#003399 60%, #4f8cff 120%); color:#fff; font-size:1.03em; font-weight:700; }
-    tr:hover td { background:#33415555; }
-
-    .status-verde { color:#13a038; font-weight:800; background:#e7f9ef; border-radius:7px; padding:3px 6px; }
-    .status-vermelho { color:#d11a1a; font-weight:800; background:#fdeaea; border-radius:7px; padding:3px 6px; }
-
-    .clicavel { cursor:pointer; }
-    .clicavel:hover { filter: brightness(1.05); }
-
-    /* Modal simples */
-    .modal-overlay { position:fixed; inset:0; background:rgba(10,16,28,0.58); display:none; align-items:center; justify-content:center; z-index:9999; }
-    .modal { background:#fff; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.25); max-width:520px; width:92%; padding:22px 20px 18px; text-align:center; }
-    .modal h2 { margin:0 0 8px; color:var(--azul); }
-    .modal p { margin:6px 0 14px; color:#21324d; }
-    .modal .modal-btn { background:var(--azul); color:#fff; border:none; border-radius:10px; padding:10px 22px; font-weight:800; cursor:pointer; box-shadow:var(--shadow-sm); }
-
-    .icon-btn{border:none;background:none;padding:4px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
-    .icon-btn:hover{transform:translateY(-1px)}
-    .icon-btn:active{transform:translateY(0)}
-
-    @media (max-width: 1100px) { .painel-linha { grid-template-columns:1fr; } }
-    @media (max-width: 900px)  {
-      header .header-grid { grid-template-columns:1fr auto; row-gap:8px; }
-      .kpis { grid-column:1/-1; justify-content:flex-start; }
-      .painel-bg-trocavel { padding:16px 2vw 12px 2vw; }
-      table, th, td, tr { font-size:12.8px; }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      background:linear-gradient(180deg,#05102a 0%, #0a1430 100%);
+      color:var(--white);
     }
+
+    /* Header fixo (100% largura) */
+    header{
+      position:sticky; top:0; z-index:60;
+      background:linear-gradient(90deg,var(--royal) 0%, #1a48ff 60%, #87a2ff 130%);
+      box-shadow:var(--shadow);
+    }
+    .topbar{
+      width:100%; max-width:100%;
+      padding:14px 22px;
+      display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center;
+    }
+    .brand{display:flex;align-items:center;gap:12px;font-weight:900}
+    .brand img{width:40px;height:40px;border-radius:12px;background:#fff;border:2px solid #eaf0ff;object-fit:contain}
+    .brand span{font-size:1.02rem;text-shadow:0 2px 18px rgba(0,0,0,.2)}
+    .kpis{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}
+    .kpi{min-width:150px;padding:8px 12px;border:1px solid rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.12)}
+    .kpi small{display:block;opacity:.9}
+    .kpi span{display:block;font-weight:800;font-size:1.12rem}
+    .logout{color:#fff;background:#c1121f;border:none;border-radius:24px;padding:9px 16px;font-weight:800;text-decoration:none}
+    .logout:hover{filter:brightness(1.05)}
+
+    /* Banner de feriado/hoje no topo do painel */
+    .banner{
+      display:flex;align-items:center;gap:10px;justify-content:space-between;
+      background:linear-gradient(90deg,#0c1b44 0%, #0e2155 100%);
+      border-bottom:1px solid var(--line);
+      padding:10px 22px;
+    }
+    .banner .today{font-weight:800;color:#dbe6ff}
+    .badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:5px 10px;font-weight:800;font-size:.84rem}
+    .badge.good{background:rgba(16,185,129,.16);color:#7ee6bf;border:1px solid rgba(16,185,129,.4)}
+    .badge.bad{background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.4)}
+    .badge.neu{background:#0f2a6a;color:#cfe0ff;border:1px solid #28458d}
+
+    /* Viewport: só as entregas rolam */
+    .viewport{
+      height:calc(100vh - 64px - 46px); /* header ~64 + banner ~46 */
+      padding:16px 18px 16px 18px;
+    }
+    .grid{
+      height:100%;
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:16px;
+    }
+    @media (max-width:1200px){ .grid{grid-template-columns:320px 1fr} }
+    @media (max-width:1024px){ .grid{grid-template-columns:1fr} }
+
+    /* Cards da coluna esquerda */
+    .card{
+      background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);
+      border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
+    }
+    .left{
+      display:flex; flex-direction:column; gap:14px; min-height:0;
+    }
+    .card .body{padding:14px}
+    .card h3{margin:0 0 10px;font-size:1rem;color:#dbe6ff}
+    .stack{display:flex;flex-direction:column;gap:10px}
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none
+    }
+    .btn.alt{background:#132554;border:1px solid #2a4492}
+    .btn.block{width:100%}
+    .btn:hover{filter:brightness(1.05)}
+    label{font-size:.85rem;color:#b9c7ff;font-weight:700}
+    select,input[type="date"],input[type="text"]{
+      width:100%;padding:9px 10px;border-radius:10px;border:1px solid #2a3b72;background:#0c1838;color:#e9edff;font-weight:600
+    }
+
+    /* Conteúdo direito (entregas) */
+    .right{min-height:0;display:flex;flex-direction:column}
+    .right .head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid var(--line)
+    }
+    .right h2{margin:0;font-size:1rem;color:#dbe6ff}
+    .toggle{background:#10214a;border:1px solid #2a3b72;color:#cfe0ff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
+
+    /* ===== Filtros horizontais (fixos acima da tabela) ===== */
+    .filters-bar{
+      position:sticky; top:0; z-index:5; /* fixa dentro do card direito */
+      background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);
+      border-bottom:1px solid var(--line);
+      padding:10px 12px;
+    }
+    .filters-form{
+      display:grid;
+      grid-template-columns: repeat(5, minmax(160px, 1fr)) auto;
+      gap:10px; align-items:end;
+    }
+    .filters-form .field{display:flex;flex-direction:column;gap:6px}
+    .filters-form label{font-size:.82rem;color:#cfe0ff;font-weight:800}
+    .filters-form .btn{height:40px}
+
+    .content{min-height:0;overflow:hidden}
+    .scroll-area{height:100%;overflow:auto}
+
+    /* Tabela compacta */
+    table{width:100%;border-collapse:collapse;color:#eaf0ff;font-size:13.6px}
+    thead th{position:sticky;top:0;background:#0e1d48;z-index:1}
+    th,td{border-bottom:1px solid #1e2d59;padding:7px 6px;text-align:center;vertical-align:middle}
+    tbody tr:hover td{background:#0f224e}
+    .small{font-size:.84rem;color:#cfe0ff}
+    .icon-btn{border:none;background:none;cursor:pointer;padding:5px}
+    .icon-btn svg{width:18px;height:18px}
+
+    /* Cards (modo alternativo) */
+    .cards{display:none;padding:12px 12px}
+    .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+    @media (max-width:1100px){ .cards.grid{grid-template-columns:1fr} }
+    .delivery{background:#0f1e44;border:1px solid #21376f;border-radius:12px;padding:10px;display:grid;gap:8px}
+    .chip{background:#0d2b6b;border:1px solid #29438a;border-radius:999px;padding:5px 9px;font-weight:700}
+
+    a:focus,button:focus,select:focus,input:focus{outline:2px solid #6ea8ff;outline-offset:2px}
   </style>
 </head>
 <body>
+  <!-- HEADER -->
   <header>
-    <div class="header-grid">
-      <h1>
-        <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos" class="logo-topo"
-             onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO';alert('Logo logo_kratos.png não encontrada! Verifique a pasta static.')" />
-        Kratos System - Supervisão
-      </h1>
+    <div class="topbar">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='logo_kratos.png') }}"
+             alt="Logo"
+             onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO'">
+        <span>Kratos System – Supervisão</span>
+      </div>
       <div class="kpis">
         <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
         <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
@@ -124,523 +172,428 @@
     </div>
   </header>
 
-  <!-- Modal -->
-  <div id="overlay" class="modal-overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="modal">
-      <h2 id="modal-title">Pop-up bloqueado</h2>
-      <p id="modal-msg">Ative os pop-ups para imprimir.</p>
-      <button id="modal-ok" class="modal-btn" type="button">OK</button>
+  <!-- BANNER SUPERIOR (data e feriado) -->
+  <div class="banner">
+    <div class="today">
+      {{ to_brasilia(now()).strftime('%d/%m/%Y') }} — {{ to_brasilia(now())|diasemana }}
+    </div>
+    <div>
+      {% if feriado_hoje %}
+        <span class="badge bad">⚠ {{ feriado_hoje }}</span>
+      {% else %}
+        <span class="badge neu">Hoje não é feriado</span>
+      {% endif %}
     </div>
   </div>
 
-  <div id="painel-bg" class="painel-bg-trocavel">
-    <div class="painel-bg-conteudo">
-      <div class="painel-linha">
-        <!-- LISTA DE ESPERA -->
-        <div class="painel-lista">
-          <h3>Lista de Espera</h3>
-          <form class="espera-bar" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera">
-            {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
-            <select name="cooperado_id" id="cooperado-espera" class="espera-select" required>
-              <option value="" selected disabled>Selecione um cooperado para colocar na fila…</option>
-              {% for c in coops_select %}
-                <option value="{{ c.id }}">{{ c.nome }}</option>
-              {% endfor %}
-            </select>
-            <input class="espera-input" name="nome" id="nome-espera" type="text" placeholder="(Opcional) digitar nome do cooperado" />
-            <button type="submit" class="espera-add">Adicionar</button>
+  <!-- VIEWPORT -->
+  <div class="viewport">
+    <div class="grid">
+      <!-- COLUNA ESQUERDA -->
+      <aside class="left">
+        <!-- LISTA DE ESPERA (EM CIMA) -->
+        <div class="card">
+          <div class="body">
+            <h3>Lista de Espera</h3>
+            <form class="row" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera">
+              {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
+              <select name="cooperado_id" id="cooperado-espera" required>
+                <option value="" selected disabled>Selecione um cooperado…</option>
+                {% for c in coops_select %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+              </select>
+              <input name="nome" id="nome-espera" type="text" placeholder="(Opcional) nome do cooperado" />
+              <button type="submit" class="btn">Adicionar</button>
+            </form>
+            <div class="wait-list">
+              <ul id="espera-lista">
+                {% if lista_espera|length == 0 %}
+                  <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
+                {% else %}
+                  {% for item in lista_espera %}
+                    <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
+                      <span class="espera-chip-num">{{ loop.index }}</span>
+                      <span class="espera-chip-text">{{ item.nome }}</span>
+                      <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
+                        <button class="espera-chip-remove" title="Remover" type="submit">×</button>
+                      </form>
+                    </li>
+                  {% endfor %}
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+        </div>
+
+        <!-- AÇÕES RÁPIDAS -->
+        <div class="card">
+          <div class="body">
+            <h3>Ações rápidas</h3>
+            <div class="stack">
+              <a class="btn block" href="{{ url_for('cadastrar_entrega') }}">+ Nova Entrega</a>
+              <a class="btn alt block" href="{{ url_for('agendar_entrega') }}">Agendar</a>
+              <div class="row">
+                <a class="btn alt" href="{{ url_for('cadastrar_cooperado') }}">Cooperados</a>
+                <a class="btn alt" href="{{ url_for('clientes') }}">Clientes</a>
+              </div>
+              {% if session.is_master %}
+                <a class="btn alt block" href="{{ url_for('estatisticas_cooperado') }}">Dashboard</a>
+              {% endif %}
+              <div class="row">
+                <a class="btn alt" href="{{ url_for('exportar_xlsx',
+                   data_inicio=data_inicio or '',
+                   data_fim=data_fim or '',
+                   cooperado_id=request.args.get('cooperado_id','todos'),
+                   status_pagamento=request.args.get('status_pagamento','todos'),
+                   cliente=request.args.get('cliente','')) }}">Exportar</a>
+
+                <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
+                   data_inicio=data_inicio or '',
+                   data_fim=data_fim or '',
+                   cooperado_id=request.args.get('cooperado_id','todos'),
+                   status_pagamento=request.args.get('status_pagamento','todos'),
+                   cliente=request.args.get('cliente','')) }}">Imprimir</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- COLUNA DIREITA (ENTREGAS) -->
+      <section class="right card">
+        <div class="head">
+          <h2>Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}</h2>
+          <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
+        </div>
+
+        <!-- FILTROS HORIZONTAIS (fixos) -->
+        <div class="filters-bar">
+          <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
+            <div class="field">
+              <label for="cooperado">Cooperado</label>
+              <select name="cooperado_id" id="cooperado">
+                <option value="todos">Todos</option>
+                {% for c in cooperados %}
+                  <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="data_inicio">De</label>
+              <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" />
+            </div>
+
+            <div class="field">
+              <label for="data_fim">Até</label>
+              <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" />
+            </div>
+
+            <div class="field">
+              <label for="status_pagamento">Pagamento</label>
+              <select name="status_pagamento" id="status_pagamento">
+                <option value="todos" {% if request.args.get('status_pagamento','todos')=='todos' %}selected{% endif %}>Todos</option>
+                <option value="pago" {% if request.args.get('status_pagamento')=='pago' %}selected{% endif %}>Pago</option>
+                <option value="pendente" {% if request.args.get('status_pagamento')=='pendente' %}selected{% endif %}>Pendente</option>
+              </select>
+            </div>
+
+            <div class="field">
+              <label for="cliente">Cliente</label>
+              <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
+            </div>
+
+            <button class="btn" type="submit">Filtrar</button>
           </form>
+        </div>
 
-          <ul id="espera-lista">
-            {% if lista_espera|length == 0 %}
-              <li id="fila-vazia">Nenhum cooperado na fila.</li>
-            {% else %}
-              {% for item in lista_espera %}
-                <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
-                  <span class="espera-chip-num">{{ loop.index }}</span>
-                  <span class="espera-chip-text">{{ item.nome }}</span>
-                  <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
-                    <button class="espera-chip-remove" title="Remover" type="submit">×</button>
+        <div class="content">
+          <div id="tbl" class="scroll-area">
+            <table>
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Bairro</th>
+                  <th>Valor</th>
+                  <th>Data<br>e<br>Dia</th>
+                  <th>Hora<br>Pedido</th>
+                  <th>Hora<br>Atribuída</th>
+                  <th>Cooperado</th>
+                  <th>Forma Pgto</th>
+                  <th>Status</th>
+                  <th>Pagamento</th>
+                  <th>Recebido por</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for e in entregas %}
+                <tr>
+                  <td>{{ e.id }}</td>
+                  <td>{{ e.cliente }}</td>
+                  <td>{{ e.bairro }}</td>
+                  <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+                  <td>
+                    {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
+                    <span class="small">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}</span>
+                  </td>
+                  <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+                  <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+                  <td>{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</td>
+                  <td>{{ e.pagamento }}</td>
+
+                  <!-- Status entrega -->
+                  <td>
+                    {% set status_txt = (e.status|capitalize if e.status else 'Pendente') %}
+                    {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
+                    {% if is_ok %}
+                      <span class="badge good">Entregue</span>
+                    {% else %}
+                      <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST" style="display:inline">
+                        <input type="hidden" name="status" value="entregue">
+                        <span class="badge bad js-toggle-entrega" role="button" title="Clique para marcar como ENTREGUE">Pendente</span>
+                      </form>
+                    {% endif %}
+                  </td>
+
+                  <!-- Status pagamento -->
+                  <td>
+                    {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+                    {% if sp == 'pago' %}
+                      <span class="badge good">Pago</span>
+                    {% else %}
+                      <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST" style="display:inline">
+                        <input type="hidden" name="status_pagamento" value="pago">
+                        <span class="badge bad js-toggle-pagto" role="button" title="Clique para marcar como PAGO">Pendente</span>
+                      </form>
+                    {% endif %}
+                  </td>
+
+                  <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
+
+                  <td>
+                    <a title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" class="icon-btn" aria-label="Editar">
+                      <svg viewBox="0 0 24 24" fill="#7ea6ff"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                    </a>
+
+                    <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline">
+                      <button title="Clonar" type="submit" class="icon-btn" aria-label="Clonar">
+                        <svg viewBox="0 0 24 24" fill="#aed1ff"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
+                      </button>
+                    </form>
+
+                    <button type="button" class="icon-btn" title="Imprimir" aria-label="Imprimir"
+                      data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
+                      onclick="imprimirCupom({{ e.id }}, this)">
+                      <svg viewBox="0 0 24 24" fill="#22c55e"><path d="M19 8h-1V3c0-1.1-.9-2-2-2H8C6.9 1 6 1.9 6 3v5H5C2.8 8 1 9.8 1 12v6c0 2.2 1.8 4 4 4h2v-3h10v3h2c2.2 0 4-1.8 4-4v-6c0-2.2-1.8-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg>
+                    </button>
+
+                    <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline" onsubmit="return confirm('Excluir entrega?');">
+                      <button title="Excluir" type="submit" class="icon-btn" aria-label="Excluir">
+                        <svg viewBox="0 0 24 24" fill="#ef4444"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg>
+                      </button>
+                    </form>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+
+          <!-- CARDS -->
+          <div id="cards" class="cards grid">
+            {% for e in entregas %}
+            <div class="delivery">
+              <div class="row">
+                <strong>#{{ e.id }}</strong>
+                <span class="chip">{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</span>
+                <span style="margin-left:auto" class="small">{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</span>
+              </div>
+              <div class="row small">
+                <div><strong>Cliente:</strong> {{ e.cliente }}</div>
+                <div style="margin-left:auto"><strong>Bairro:</strong> {{ e.bairro }}</div>
+              </div>
+              <div class="row small">
+                <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
+                <div style="margin-left:auto"><strong>Pgto:</strong> <span class="chip">{{ e.pagamento }}</span></div>
+              </div>
+              <div class="row" style="align-items:center">
+                {% set status_txt = (e.status|capitalize if e.status else 'Pendente') %}
+                {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
+                {% if is_ok %}
+                  <span class="badge good">Entregue</span>
+                {% else %}
+                  <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST">
+                    <input type="hidden" name="status" value="entregue">
+                    <span class="badge bad js-toggle-entrega">Pendente</span>
                   </form>
-                </li>
-              {% endfor %}
-            {% endif %}
-          </ul>
-        </div>
+                {% endif %}
 
-        <!-- Hoje / feriado -->
-        <div class="painel-lista">
-          <h3>Hoje</h3>
-          <div style="font-weight:800;color:#003399;">
-            {{ to_brasilia(now()).strftime('%d/%m/%Y') }} - {{ to_brasilia(now())|diasemana }}
-          </div>
-          <div style="margin-top:6px;">
-            {% if feriado_hoje %}
-              <span style="color:#d11a1a;font-weight:800;">⚠️ {{ feriado_hoje }}</span>
-            {% else %}
-              <span style="color:#2767e6;font-weight:800;">Hoje não é feriado.</span>
-            {% endif %}
-          </div>
-        </div>
-      </div>
+                {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+                {% if sp == 'pago' %}
+                  <span class="badge good">Pago</span>
+                {% else %}
+                  <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST">
+                    <input type="hidden" name="status_pagamento" value="pago">
+                    <span class="badge bad js-toggle-pagto">Pendente</span>
+                  </form>
+                {% endif %}
 
-      <!-- Ações e filtros -->
-      <div class="actions">
-        <a href="{{ url_for('cadastrar_entrega') }}" class="btn">Nova Entrega</a>
-        <a href="{{ url_for('agendar_entrega') }}" class="btn">Agendar Entrega</a>
-        <a href="{{ url_for('cadastrar_cooperado') }}" class="btn">Gestão de Cooperados</a>
-        <a href="{{ url_for('clientes') }}" class="btn">Gestão de Clientes</a>
-        <a href="{{ url_for('estatisticas_cooperado') }}" class="btn">Dashboard</a>
-        <a class="btn"
-           href="{{ url_for('relatorio_termico') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}"
-           target="_blank" rel="noopener">
-          Imprimir Relatório
-        </a>
-        <a class="btn"
-           href="{{ url_for('exportar_xlsx') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}">
-          Exportar Entregas
-        </a>
-      </div>
-
-      <div class="filtros">
-        <form method="GET" action="{{ url_for('admin') }}" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;">
-          <label for="cooperado">Cooperado:</label>
-          <select name="cooperado_id" id="cooperado">
-            <option value="todos">Todos</option>
-            {% for c in cooperados %}
-              <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+                <div style="margin-left:auto" class="row">
+                  <a class="btn alt" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
+                  <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST">
+                    <button class="btn alt" type="submit">Clonar</button>
+                  </form>
+                  <button class="btn" type="button"
+                      data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
+                      onclick="imprimirCupom({{ e.id }}, this)">Imprimir</button>
+                  <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" onsubmit="return confirm('Excluir entrega?')">
+                    <button class="btn alt" type="submit">Excluir</button>
+                  </form>
+                </div>
+              </div>
+            </div>
             {% endfor %}
-          </select>
-
-          <label for="data_inicio">De:</label>
-          <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}"/>
-
-          <label for="data_fim">Até:</label>
-          <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}"/>
-
-          <label for="status_pagamento">Pagamento:</label>
-          <select name="status_pagamento" id="status_pagamento">
-            <option value="todos" {% if request.args.get('status_pagamento', 'todos') == 'todos' %}selected{% endif %}>Todos</option>
-            <option value="pago" {% if request.args.get('status_pagamento') == 'pago' %}selected{% endif %}>Pago</option>
-            <option value="pendente" {% if request.args.get('status_pagamento') == 'pendente' %}selected{% endif %}>Pendente</option>
-          </select>
-
-          <label for="cliente">Cliente:</label>
-          <input type="text" name="cliente" id="cliente" value="{{ request.args.get('cliente','') }}" placeholder="Nome do cliente"/>
-
-          <button class="btn" type="submit">Filtrar</button>
-        </form>
-      </div>
+          </div>
+        </div>
+      </section>
     </div>
   </div>
 
-  <!-- Tabela -->
-  <div class="tabela">
-    <table>
-      <thead>
-        <tr>
-          <th>ID</th>
-          <th>Cliente</th>
-          <th>Bairro</th>
-          <th>Valor</th>
-          <th>Data<br>e<br>Dia</th>
-          <th>Hora<br>Pedido</th>
-          <th>Hora<br>Atribuída</th>
-          <th>Cooperado</th>
-          <th>Forma Pgto</th>
-          <th>Status</th>
-          <th>Pagamento</th>
-          <th>Recebido por</th>
-          <th>Ações</th>
-        </tr>
-      </thead>
-      <tbody>
-        {% for e in entregas %}
-          <tr>
-            <td>{{ e.id }}</td>
-            <td>{{ e.cliente }}</td>
-            <td>{{ e.bairro }}</td>
-            <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-            <td>
-              {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
-              <span style="font-size:11px;color:#57a5ff;font-weight:bold;">
-                {{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}
-              </span>
-            </td>
-            <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-            <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-            <td>{% set coop_td = (e.cooperado.nome if e.cooperado else 'Sem Cooperado') %}{{ coop_td }}</td>
-            <td>{{ e.pagamento }}</td>
-
-            <!-- STATUS ENTREGA (clicável se pendente) -->
-            <td>
-              {% set status_txt = (e.status|capitalize if e.status else 'Pendente') %}
-              {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
-              {% if is_ok %}
-                <span class="status-verde" title="Entrega finalizada">{{ status_txt }}</span>
-              {% else %}
-                <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST" style="display:inline;">
-                  <input type="hidden" name="status" value="entregue">
-                  <span class="status-vermelho clicavel js-toggle-entrega" title="Clique para marcar como ENTREGUE">
-                    {{ status_txt }}
-                  </span>
-                </form>
-              {% endif %}
-            </td>
-
-            <!-- STATUS PAGAMENTO (clicável se pendente) -->
-            <td>
-              {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
-              {% if sp == 'pago' %}
-                <span class="status-verde" title="Pagamento quitado">Pago</span>
-              {% else %}
-                <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST" style="display:inline;">
-                  <input type="hidden" name="status_pagamento" value="pago">
-                  <span class="status-vermelho clicavel js-toggle-pagto" title="Clique para marcar como PAGO">
-                    {{ e.status_pagamento|capitalize if e.status_pagamento else 'Pendente' }}
-                  </span>
-                </form>
-              {% endif %}
-            </td>
-
-            <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
-
-            <td style="min-width:120px; display:flex; gap:6px; justify-content:center; align-items:center;">
-              <a title="Editar" style="border:none;background:none;cursor:pointer" href="{{ url_for('editar_entrega', id=e.id) }}">
-                <svg width="18" height="18" fill="#003399" viewBox="0 0 24 24"><path d="M18.4 3.6a2 2 0 0 1 2.8 2.8l-13 13a1 1 0 0 1-.5.3l-4 1a1 1 0 0 1-1.2-1.2l1-4a1 1 0 0 1 .3-.5l13-13zm1.4 1.4L19 4.4 17.6 5.8l1.8 1.8 1.4-1.4zm-2.8 2.8L6 17.2V18h.8l10.6-10.6-1.8-1.8z"></path></svg>
-              </a>
-
-              <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
-                <button title="Clonar" type="submit" class="icon-btn">
-                  <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
-                </button>
-              </form>
-
-              <button
-                type="button"
-                title="Imprimir cupom"
-                class="icon-btn"
-                data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
-                onclick="imprimirCupom({{ e.id }}, this)">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="#13a038">
-                  <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
-                </svg>
-              </button>
-
-              <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-                <button title="Excluir" type="submit" class="icon-btn">
-                  <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
-                </button>
-              </form>
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
-
+  <!-- Áudio -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <script>
-    // Modal
-    const overlay = document.getElementById('overlay');
-    const modalTitle = document.getElementById('modal-title');
-    const modalMsg = document.getElementById('modal-msg');
-    const modalOk = document.getElementById('modal-ok');
-    const somPendente = document.getElementById('som-pendente');
-    let _modalResolve = null;
-
-    function abrirModal(titulo, mensagem, tocarSom = false) {
-      modalTitle.textContent = titulo;
-      modalMsg.textContent = mensagem;
-      overlay.style.display = 'flex';
-      document.body.classList.add('locked');
-      if (tocarSom) { try { somPendente.currentTime = 0; somPendente.play(); } catch(e){} }
-      return new Promise(resolve => { _modalResolve = resolve; });
-    }
-    modalOk.addEventListener('click', () => {
-      overlay.style.display = 'none';
-      document.body.classList.remove('locked');
-      if (_modalResolve) _modalResolve(true);
-      _modalResolve = null;
+    // ===== Alternar Tabela/Cartões =====
+    const btToggle = document.getElementById('toggleView');
+    const tbl = document.getElementById('tbl');
+    const cards = document.getElementById('cards');
+    btToggle.addEventListener('click', ()=>{
+      const showCards = cards.style.display !== 'grid';
+      cards.style.display = showCards ? 'grid' : 'none';
+      tbl.style.display   = showCards ? 'none' : 'block';
     });
 
-    // Preenche "nome" da fila a partir do select
+    // ===== Preenchimento do nome na fila =====
     const selCoop = document.getElementById('cooperado-espera');
     const inpNome = document.getElementById('nome-espera');
     const formEspera = document.getElementById('form-espera');
-    if (selCoop) {
-      selCoop.addEventListener('change', () => {
+    if(selCoop){
+      selCoop.addEventListener('change', ()=>{
         const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
-        if (!inpNome.value) inpNome.value = nome;
+        if(!inpNome.value) inpNome.value = nome;
       });
     }
-    if (formEspera) {
-      formEspera.addEventListener('submit', () => {
-        if (!inpNome.value) {
+    if(formEspera){
+      formEspera.addEventListener('submit', ()=>{
+        if(!inpNome.value){
           const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
           inpNome.value = nome;
         }
       });
     }
 
-    // Drag & drop da fila
+    // ===== Drag & Drop da Lista de Espera =====
     const ulFila = document.getElementById('espera-lista');
     let dragEl = null;
-    function renumerar() { [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el, i) => el.textContent = i + 1); }
-    if (ulFila) {
-      ulFila.addEventListener('dragstart', (e) => {
-        const li = e.target.closest('.espera-chip'); if (!li) return;
-        dragEl = li; li.style.opacity = .6;
-      });
-      ulFila.addEventListener('dragend', (e) => {
-        const li = e.target.closest('.espera-chip'); if (!li) return;
-        li.style.opacity = 1; dragEl = null; salvarOrdem();
-      });
-      ulFila.addEventListener('dragover', (e) => {
+    function renumerar(){ [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el,i)=>el.textContent=i+1); }
+    function salvarOrdem(){
+      const ids=[...ulFila.querySelectorAll('.espera-chip')].map(li=>li.dataset.id);
+      fetch('/lista_espera/reordenar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ordem:ids})}).catch(()=>{});
+    }
+    if(ulFila){
+      ulFila.addEventListener('dragstart',(e)=>{ const li=e.target.closest('.espera-chip'); if(!li)return; dragEl=li; li.style.opacity=.6; });
+      ulFila.addEventListener('dragend',(e)=>{ const li=e.target.closest('.espera-chip'); if(!li)return; li.style.opacity=1; dragEl=null; salvarOrdem(); });
+      ulFila.addEventListener('dragover',(e)=>{
         e.preventDefault();
-        const li = e.target.closest('.espera-chip'); if (!li || li === dragEl) return;
-        const bbox = li.getBoundingClientRect();
-        const after = (e.clientY - bbox.top) > (bbox.height / 2);
-        if (after) li.after(dragEl); else li.before(dragEl);
-        renumerar();
+        const li=e.target.closest('.espera-chip'); if(!li||li===dragEl)return;
+        const r=li.getBoundingClientRect(); const after=(e.clientY-r.top)>(r.height/2);
+        if(after) li.after(dragEl); else li.before(dragEl); renumerar();
       });
     }
-    function salvarOrdem() {
-      const ids = [...ulFila.querySelectorAll('.espera-chip')].map(li => li.dataset.id);
-      fetch('/lista_espera/reordenar', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ordem: ids})
-      }).catch(()=>{});
+
+    // ===== Clique nos status (AJAX, sem recarregar página / sem "subir") =====
+    document.addEventListener('click', async (ev)=>{
+      const st = ev.target.closest('.js-toggle-pagto, .js-toggle-entrega');
+      if(!st) return;
+      const form = st.closest('form'); if(!form) return;
+
+      const confirmar = st.classList.contains('js-toggle-pagto')
+        ? 'Confirmar pagamento como PAGO?'
+        : 'Confirmar entrega como ENTREGUE?';
+      if(!confirm(confirmar)) return;
+
+      ev.preventDefault();
+
+      try{
+        const fd = new FormData(form);
+        const res = await fetch(form.action, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
+        if(!res.ok) throw new Error('Falha ao atualizar.');
+
+        // Atualiza visualmente SEM reload
+        if(st.classList.contains('js-toggle-pagto')){
+          st.classList.remove('bad'); st.classList.add('good'); st.textContent='Pago';
+          st.title='Pagamento quitado';
+        }else{
+          st.classList.remove('bad'); st.classList.add('good'); st.textContent='Entregue';
+          st.title='Entrega finalizada';
+        }
+      }catch(e){
+        console.error(e);
+        alert('Não foi possível atualizar. Recarregue e tente novamente.');
+      }
+    });
+
+    // ===== Preservar posição de rolagem da tabela de entregas =====
+    const area = document.querySelector('.scroll-area');
+    const KEY='admin_scroll_entregas';
+    if(area){
+      const saved = sessionStorage.getItem(KEY);
+      if(saved) area.scrollTop = parseInt(saved,10)||0;
+      area.addEventListener('scroll', ()=> sessionStorage.setItem(KEY, String(area.scrollTop)));
     }
 
-    // -------- IMPRESSÃO DE CUPOM (80mm) — preview + botão imprimir --------
-    function imprimirCupom(idEntrega, botao) {
+    // ===== Impressão (mesma lógica) =====
+    function imprimirCupom(idEntrega, botao){
       const tr = botao.closest('tr');
-      const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
-
-      // extrai só a data
-      const dataDiaBruto = (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim();
-      const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
-
-      const dados = {
-        id: get(0),
-        idPad: String(get(0)).padStart(6,'0'),
-        cliente: get(1),
-        bairro: get(2),
-        valor: get(3).replace(/^R\$\s*/,'').trim(),
-        data: dataSo,
-        horaPedido: get(5),
-        cooperado: botao?.dataset?.cooperado || get(7) || '-',
-        formaPgto: get(8),
-        recebidoPor: get(11)
+      const get=(idx)=> (tr?.children[idx]?.innerText||'').trim()||'-';
+      const dataDiaBruto=(tr?.children[4]?.innerText||'-').replace(/\s+/g,' ').trim();
+      const dataSo=(dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/)||['-'])[0];
+      const dados={
+        id:get(0), idPad:String(get(0)).padStart(6,'0'),
+        cliente:get(1), bairro:get(2), valor:get(3).replace(/^R\$\s*/,'').trim(),
+        data:dataSo, horaPedido:get(5),
+        cooperado:botao?.dataset?.cooperado||get(7)||'-', formaPgto:get(8), recebidoPor:get(11)
       };
-
-      const cacheBust = Date.now();
-
-      const html = `<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-<meta charset="utf-8">
-<title>Cupom #${dados.id}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-  @page { size: 80mm 100mm; margin: 3mm; }
-  *{box-sizing:border-box}
-  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
-  .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
-  .center{text-align:center}
-  .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
-  .big{font-weight:900; font-size:18px}
-  hr{border:none; border-top:1px dotted #000; margin:8px 0}
-  .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
-  .footer{font-size:11px; text-align:center; margin-top:6px}
-  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-  .tiny{font-size:10.5px}
-  .sign{ text-align:center; margin-top:8px; }
-  .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
-  .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}
-  .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}
-  .btn-print{border:1px solid #000; background:#000; color:#fff}
-  .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}
-  .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
-  @media print { .actions{display:none} body{background:#fff} }
-  svg { fill: #000; color: #000; }
-</style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="cupom">
-      <img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}"
-           alt="Logo Coopex" class="logo"
-           onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
-
-      <div class="center tiny">
-        CNPJ: 05.289.938/0001-97<br>
-        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
-        Fone/WhatsApp: (84) 98111-0706
-      </div>
-      <hr>
+      const cacheBust=Date.now();
+      const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="utf-8"><title>Cupom #${dados.id}</title>
+      <meta name="viewport" content="width=device-width, initial-scale=1.0">
+      <style>@page{size:80mm 100mm;margin:3mm}*{box-sizing:border-box}body{font-family:Arial,Segoe UI,Roboto,system-ui,sans-serif;margin:0}
+      .cupom{width:100%;max-width:72mm;margin:0 auto}.center{text-align:center}.line{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin:2px 0}
+      .big{font-weight:900;font-size:18px}hr{border:none;border-top:1px dotted #000;margin:8px 0}.logo{width:62mm;display:block;margin:2px auto 6px}
+      .footer{font-size:11px;text-align:center;margin-top:6px}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
+      .actions{display:flex;gap:10px;justify-content:center;padding:12px 0 16px}.btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+      .btn-print{border:1px solid #000;background:#000;color:#fff}.btn-close{border:1px solid #c3c8d5;background:#fff}</style></head>
+      <body><div class="wrap"><div class="cupom">
+      <img class="logo" src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" alt="Logo">
+      <div class="center" style="font-size:10.5px">CNPJ: 05.289.938/0001-97<br>Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>Fone/Whats: (84) 98111-0706</div><hr>
       <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span></div>
       <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
       <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
       <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
       <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
       <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
-      <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
-      <hr>
+      <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div><hr>
       <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
-      <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
-      <hr>
-
-      <div class="sign">
-        <div class="sign-line"></div>
-        <div class="tiny">Supervisor</div>
-      </div>
-
-      <hr>
-      <div class="footer">
-        Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às
-        <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
-        Recebido por: <span class="mono">${dados.recebidoPor}</span>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-print" onclick="window.print()">Imprimir</button>
-      <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>
-    </div>
-  </div>
-</body>
-</html>`;
-
-      // abre nova aba (ou fallback overlay)
-      let win = null;
-      try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
-      if (win && !win.closed) {
-        try { win.opener = null; } catch(e){}
-        win.document.open(); win.document.write(html); win.document.close();
-        return;
-      }
-      criarOverlayPreview(html);
+      <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div><hr>
+      <div class="footer">Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
+      Recebido por: <span class="mono">${dados.recebidoPor}</span></div></div>
+      <div class="actions"><button class="btn btn-print" onclick="window.print()">Imprimir</button><button class="btn btn-close" onclick="window.close&&window.close()">Fechar</button></div></div></body></html>`;
+      let win=null; try{ win=window.open('','_blank','noopener,noreferrer,width=480,height=800'); }catch(e){}
+      if(win && !win.closed){ try{ win.opener=null; }catch(e){} win.document.open(); win.document.write(html); win.document.close(); return; }
+      alert('Ative os pop-ups para imprimir.');
     }
-
-    // Overlay de preview (fallback se popup bloquear)
-    function criarOverlayPreview(html){
-      const wrap = document.createElement('div');
-      wrap.id = 'print-preview-overlay';
-      Object.assign(wrap.style, {
-        position:'fixed', inset:'0', background:'rgba(10,16,28,0.75)', zIndex:'10000',
-        display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'
-      });
-
-      const box = document.createElement('div');
-      Object.assign(box.style, {
-        background:'#fff', borderRadius:'14px', width:'min(720px, 96vw)', height:'min(90vh, 900px)',
-        boxShadow:'0 10px 40px rgba(0,0,0,.35)', display:'flex', flexDirection:'column', overflow:'hidden'
-      });
-
-      const header = document.createElement('div');
-      header.textContent = 'Visualização do Cupom';
-      Object.assign(header.style, {
-        padding:'10px 14px', fontWeight:'800', color:'#003399', borderBottom:'1px solid #e6ebff'
-      });
-
-      const iframe = document.createElement('iframe');
-      iframe.setAttribute('title','Pré-visualização do cupom');
-      Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
-      if ('srcdoc' in iframe) { iframe.srcdoc = html; }
-      else {
-        const doc = iframe.contentWindow || iframe.contentDocument;
-        const iDoc = doc.document || doc;
-        iDoc.open(); iDoc.write(html); iDoc.close();
-      }
-
-      const footer = document.createElement('div');
-      Object.assign(footer.style, {
-        padding:'10px', borderTop:'1px solid #e6ebff', display:'flex', gap:'10px',
-        justifyContent:'center', background:'#f8faff'
-      });
-
-      const btImprimir = document.createElement('button');
-      btImprimir.textContent = 'Imprimir';
-      Object.assign(btImprimir.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #003399',
-        background:'#003399', color:'#fff', fontWeight:'800', cursor:'pointer'
-      });
-      btImprimir.onclick = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){} };
-
-      const btFechar = document.createElement('button');
-      btFechar.textContent = 'Fechar';
-      Object.assign(btFechar.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #c3c8d5',
-        background:'#fff', color:'#003399', fontWeight:'800', cursor:'pointer'
-      });
-      btFechar.onclick = () => wrap.remove();
-
-      footer.appendChild(btImprimir);
-      footer.appendChild(btFechar);
-
-      box.appendChild(header);
-      box.appendChild(iframe);
-      box.appendChild(footer);
-      wrap.appendChild(box);
-      document.body.appendChild(wrap);
-    }
-
-    // Avisos (pendências e boa noite)
-    function existePagamentoPendenteNaTabela() {
-      return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
-        const cel = tr.children[10];
-        return cel && cel.textContent.trim().toLowerCase().includes('pendente');
-      });
-    }
-    async function checaAvisos() {
-      try {
-        const agora = new Date();
-        const hora = agora.getHours(), minutos = agora.getMinutes();
-        if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
-          const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
-          if (!localStorage.getItem(keyHora)) {
-            await abrirModal('Cobrança de Pagamento', '⚠️ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.', true);
-            localStorage.setItem(keyHora, '1');
-          }
-        }
-        if (hora === 22) {
-          const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
-          if (!localStorage.getItem(keyBoaNoite)) {
-            await abrirModal('Boa noite!', '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.', true);
-            localStorage.setItem(keyBoaNoite, '1');
-          }
-        }
-      } catch(e) { console.error(e); }
-    }
-    window.addEventListener('DOMContentLoaded', () => {
-      checaAvisos();
-      setInterval(checaAvisos, 60 * 1000);
-    });
-
-    // Clique nos status para marcar como ENTREGUE/PAGO
-    document.addEventListener('click', function (ev) {
-      const alvo = ev.target;
-
-      // Pagamento
-      if (alvo.classList.contains('js-toggle-pagto')) {
-        const form = alvo.closest('form');
-        if (!form) return;
-        const confirmar = confirm('Confirmar pagamento como PAGO?');
-        if (confirmar) form.submit();
-      }
-
-      // Entrega
-      if (alvo.classList.contains('js-toggle-entrega')) {
-        const form = alvo.closest('form');
-        if (!form) return;
-        const confirmar = confirm('Confirmar entrega como ENTREGUE?');
-        if (confirmar) form.submit();
-      }
-    });
+    window.imprimirCupom = imprimirCupom;
   </script>
 </body>
 </html>
