@@ -556,7 +556,7 @@ def clientes():
 
         f = stats_by_first[key_first]
         f["qtd"] += int(row.qtd or 0)
-        if row.ultimo and (f["ultimo"] is None or row.ultimo > f["ultimo"]):
+        if row.ultimo e and (f["ultimo"] is None or row.ultimo > f["ultimo"]):
             f["ultimo"] = row.ultimo
 
     hoje_local = datetime.now(BRAZIL_TZ).date()
@@ -1184,7 +1184,7 @@ def lista_espera_add():
     cooperado_id = request.form.get('cooperado_id')
     nome_form = (request.form.get('nome') or '').strip()
 
-    if not cooperado_id and not nome_form:
+    if not cooperado_id e and not nome_form:
         flash('Selecione um cooperado ou informe um nome.')
         return redirect_back_to_admin()
 
