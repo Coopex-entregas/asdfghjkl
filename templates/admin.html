@@ -28,6 +28,9 @@
       --pane-line:rgba(255,255,255,.14);
       --pane-text:#ffffff;
       --pane-text-soft:#e7efff;
+
+      /* cor de borda primária */
+      --primary-border:#2f4de6;
     }
 
     *{box-sizing:border-box}
@@ -89,20 +92,54 @@
 
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .stack{display:flex;flex-direction:column;gap:10px}
+
+    /* === TODOS OS BOTÕES AZUIS === */
     .btn{
       display:inline-flex;align-items:center;justify-content:center;gap:6px;
       background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none
+      color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none;
+      box-shadow:0 6px 16px rgba(0,50,200,.18);
     }
-    .btn.alt{background:#ffffff;color:#2240a7;border:1px solid var(--line-dark)}
+    /* .btn.alt também azul */
+    .btn.alt{
+      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff;border:none;
+    }
     .btn.block{width:100%}
     .btn:hover{filter:brightness(1.05)}
 
+    /* Inputs padrão da coluna esquerda — borda azul */
     label{font-size:.85rem;color:#28409f;font-weight:700}
     select,input[type="date"],input[type="text"]{
-      width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--line-dark);
+      width:100%;padding:9px 10px;border-radius:10px;
+      border:1.5px solid var(--primary-border);
       background:#fff;color:var(--ink);font-weight:600
     }
+    /* foco azul mais visível */
+    a:focus,button:focus,select:focus,input:focus{
+      outline:2px solid var(--primary-border);outline-offset:2px
+    }
+    /* reforço nos campos da fila (pedido específico) */
+    #cooperado-espera,#nome-espera{border-color:var(--primary-border)}
+
+    /* Caixa/lista de espera com borda azul */
+    #espera-lista{
+      list-style:none;margin:8px 0 0;padding:10px;
+      border:1.5px solid var(--primary-border);
+      border-radius:12px;background:#f7faff;
+      display:flex;flex-direction:column;gap:8px
+    }
+    .espera-chip{
+      display:flex;align-items:center;gap:10px;
+      background:#ffffff;
+      border:1.5px solid var(--primary-border);
+      padding:9px 10px;border-radius:10px;cursor:grab;
+      box-shadow:0 4px 10px rgba(0,60,220,.06)
+    }
+    .espera-chip:active{cursor:grabbing}
+    .espera-chip-num{background:#2750ff;color:#fff;font-weight:900;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+    .espera-chip-text{font-weight:800;color:#113299}
+    .espera-chip-remove{background:#d11a1a;color:#fff;border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-weight:900}
 
     /* Coluna direita (painel royal) */
     .right{
@@ -137,7 +174,7 @@
     .content{min-height:0;overflow:hidden}
     .scrollable{height:100%;overflow:auto}
 
-    /* Tabela royal: branco sobre azul */
+    /* Tabela royal */
     table{width:100%;border-collapse:collapse;color:var(--pane-text);font-size:13.6px;background:transparent}
     thead th{
       position:sticky;top:0;z-index:1;
@@ -155,7 +192,7 @@
     .badge.table.good{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:#a7ffdf}
     .badge.table.bad{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.36);color:#ffb4b4}
 
-    /* Cards (mesmo esquema royal, com caixas translúcidas) */
+    /* Cards (royal) */
     .cards-wrap.scrollable{padding:12px}
     .cards{display:none}
     .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
@@ -166,26 +203,6 @@
       box-shadow:0 6px 18px rgba(0,0,0,.15)
     }
     .chip{background:rgba(255,255,255,.15);border:1px solid var(--pane-line);color:#fff;border-radius:999px;padding:5px 9px;font-weight:700}
-
-    /* Lista de espera chips */
-    #espera-lista{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
-    .espera-chip{display:flex;align-items:center;gap:10px;background:#f2f6ff;border:1px dashed #d7e2ff;padding:9px 10px;border-radius:10px;cursor:grab}
-    .espera-chip:active{cursor:grabbing}
-    .espera-chip-num{background:#ffd166;color:#222;font-weight:900;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-    .espera-chip-text{font-weight:800;color:#113299}
-    .espera-chip-remove{background:#d11a1a;color:#fff;border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-weight:900}
-
-    a:focus,button:focus,select:focus,input:focus{outline:2px solid #6ea8ff;outline-offset:2px}
-
-    /* Overlay de preview (cupom) */
-    .pp-wrap{position:fixed;inset:0;background:rgba(5,12,30,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
-    .pp-box{background:#fff;border-radius:14px;width:min(720px,96vw);height:min(90vh,900px);box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
-    .pp-head{padding:10px 14px;font-weight:800;color:#213a99;border-bottom:1px solid #e6eaff}
-    .pp-iframe{flex:1 1 auto;width:100%;border:0;background:#fff}
-    .pp-foot{padding:10px;border-top:1px solid #e6eaff;display:flex;gap:10px;justify-content:center;background:#f6f8ff}
-    .pp-btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
-    .pp-print{border:1px solid #0a1b3f;background:#0a1b3f;color:#fff}
-    .pp-close{border:1px solid #c3c8d5;background:#fff;color:#2140a4}
   </style>
 </head>
 <body>
@@ -237,6 +254,8 @@
               <input name="nome" id="nome-espera" type="text" placeholder="(Opcional) nome do cooperado" />
               <button type="submit" class="btn">Adicionar</button>
             </form>
+
+            <!-- lista com borda azul -->
             <ul id="espera-lista">
               {% if lista_espera|length == 0 %}
                 <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
@@ -522,7 +541,7 @@
       });
     }
 
-    // Clique nos status (AJAX; sem “saltar” a página)
+    // Clique nos status (AJAX)
     document.addEventListener('click', async (ev)=>{
       const st = ev.target.closest('.js-toggle-pagto, .js-toggle-entrega');
       if(!st) return;
@@ -547,7 +566,7 @@
       }catch(e){ console.error(e); alert('Não foi possível atualizar agora.'); }
     });
 
-    // Preservar scroll da tabela
+    // Preservar scroll
     const tblArea = document.getElementById('tbl');
     const cardsArea = document.getElementById('cardsWrap');
     const KEY_T='scroll_tbl', KEY_C='scroll_cards';
@@ -560,7 +579,7 @@
       cardsArea.addEventListener('scroll', ()=> sessionStorage.setItem(KEY_C, cardsArea.scrollTop));
     }
 
-    // ====== Cupom: tenta nova aba; se bloquear, overlay (sem alert) ======
+    // Preview/print cupom (fallback overlay)
     function criarOverlayPreview(html){
       const wrap=document.createElement('div'); wrap.className='pp-wrap';
       const box=document.createElement('div'); box.className='pp-box';
@@ -620,7 +639,6 @@
       <div class="footer">Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
       Recebido por: <span class="mono">${dados.recebidoPor}</span></div></div></div></body></html>`;
 
-      // tenta nova aba (rápido). se bloquear, overlay.
       let win=null; try{ win=window.open('','_blank','noopener,noreferrer,width=480,height=800'); }catch(e){}
       if(win && !win.closed){ try{ win.opener=null; }catch(e){} win.document.open(); win.document.write(html); win.document.close(); return; }
       criarOverlayPreview(html);
