@@ -25,19 +25,17 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 
 # --- Admins fixos (login direto) ---
-# Em produção, defina as senhas via variáveis de ambiente:
-#   ADMIN_PWD_COOPEX  e  ADMIN_PWD_COOPEX
-ADMIN_USERS = {
-    'coopex': list(filter(None, [
-        os.environ.get('ADMIN_PWD_COOPEX',  '05062721'),
-        os.environ.get('ADMIN_PWD_COOPEX2', 'coopex05289'),
-    ]))
+# Ambos têm acesso de admin; a senha 'coopex05289' marca is_master=True
+ADMIN_CREDENTIALS = {
+    'coopex': {
+        os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'coopex05289'): {'is_master': True},
+        os.environ.get('ADMIN_PWD_COOPEX',        '05062721'):     {'is_master': False},
+    }
 }
 
 # Banco
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-# Performance de conexão (especialmente em Postgres)
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
@@ -47,7 +45,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
-# Fuso do Brasil (Natal/RN segue America/Sao_Paulo)
+# Fuso do Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
 # ====== MODELS ======
@@ -55,7 +53,7 @@ class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)
     senha_hash = db.Column(db.String(128), nullable=False)
-    ativo = db.Column(db.Boolean, nullable=False, default=True)  # <== AQUI
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
 
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
@@ -68,38 +66,26 @@ class Cliente(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     telefone = db.Column(db.String(30), nullable=True)
     bairro_origem = db.Column(db.String(50), nullable=True)
-    # NOVO: endereço opcional
     endereco = db.Column(db.String(255), nullable=True)
-
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente = db.Column(db.String(100), nullable=False)
     bairro = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
-    # guardado em UTC naive
-    data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # UTC naive
     data_atribuida = db.Column(db.DateTime, nullable=True)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    status_pagamento = db.Column(db.String(20), nullable=True)  # "pago" / "pendente"
+    status_pagamento = db.Column(db.String(20), nullable=True)  # "pago"/"pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"/"entregue"
-    pagamento = db.Column(db.String(50), nullable=False)        # forma de pagamento
+    pagamento = db.Column(db.String(50), nullable=False)
     recebido_por = db.Column(db.String(100), nullable=True)
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
-
 class ListaEspera(db.Model):
-    """
-    Compatível com schema antigo (id, nome NOT NULL).
-    Agora usamos também:
-      - cooperado_id: FK pro cooperado
-      - pos: posição na fila
-      - created_at: data de criação
-    Mantemos 'nome' para não quebrar telas que já usam item.nome.
-    """
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)  # Mantido p/ compatibilidade
+    nome = db.Column(db.String(100), nullable=False)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     pos = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
@@ -151,14 +137,8 @@ def _strip_accents(s: str) -> str:
     return ''.join(c for c in unicodedata.normalize('NFD', s or '') if unicodedata.category(c) != 'Mn')
 
 def normalize_letters_key(s: str) -> str:
-    """
-    1) tira acentos
-    2) lowercase
-    3) remove números e pontuação (só letras e espaço)
-    4) compacta espaços
-    """
     s = _strip_accents(s).lower()
-    s = re.sub(r'[^a-z\u00c0-\u024f\s]', ' ', s)   # letras latinas + espaço
+    s = re.sub(r'[^a-z\u00c0-\u024f\s]', ' ', s)
     s = re.sub(r'\s+', ' ', s).strip()
     return s
 
@@ -167,13 +147,12 @@ def normalize_first_token(s: str) -> str:
     return (k.split(' ')[0] if k else '')
 
 def br_date_ymd(dt_utc_naive: datetime) -> str:
-    """Converte UTC naive para data local Brasil 'YYYY-MM-DD'."""
     if not dt_utc_naive:
         return ''
     loc = to_brasilia(dt_utc_naive)
     return loc.date().isoformat()
 
-# ====== feriados (Nacional + RN + Natal) ======
+# ====== feriados ======
 MUNICIPAIS_NATAL = {(11, 21): "Nossa Senhora da Apresentação (Municipal - Natal/RN)"}
 
 def verifica_feriado(data_ref=None):
@@ -207,7 +186,6 @@ def periodo_legivel_str(di_str, df_str):
 # ====== Preservar filtros do /admin ======
 @app.before_request
 def remember_admin_filters():
-    # guarda últimos filtros do /admin na sessão
     if request.endpoint == "admin" and request.method == "GET":
         keys = ["cooperado_id", "data_inicio", "data_fim", "status_pagamento", "cliente"]
         session["last_filters"] = {k: request.args.get(k) for k in keys if request.args.get(k)}
@@ -234,9 +212,8 @@ def redirect_back_to_admin():
     params = session.get("last_filters") or {}
     return redirect(url_for("admin", **params))
 
-# ====== (NOVO) Helper de segurança para o painel do cooperado ======
+# ====== Helper segurança cooperado ======
 def _assert_entrega_do_cooperado(entrega: Entrega):
-    """Garante que o usuário logado é o dono da entrega."""
     uid = session.get('user_id')
     if uid is None or session.get('is_admin'):
         abort(403)
@@ -252,17 +229,19 @@ def login():
         senha   = request.form.get('senha') or ''
         user_lc = usuario.lower()
 
-       # --- Admins fixos (coopex) ---
-if user_lc in ADMIN_USERS:
-    if senha in ADMIN_USERS[user_lc]:
-        session['user_id'] = 0
-        session['user_nome'] = usuario
-        session['is_admin'] = True
-        return redirect(url_for('admin'))
-    else:
-        flash('Usuário ou senha incorretos.')
-        return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
-
+        # --- Admin fixo (coopex com 2 senhas) ---
+        if user_lc in ADMIN_CREDENTIALS:
+            cred_map = ADMIN_CREDENTIALS[user_lc]
+            if senha in cred_map:
+                session['user_id'] = 0
+                session['user_nome'] = usuario
+                session['is_admin'] = True
+                session['is_master'] = bool(cred_map[senha].get('is_master'))
+                # ambos acessam o dashboard:
+                return redirect(url_for('admin'))
+            else:
+                flash('Usuário ou senha incorretos.')
+                return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
 
         # --- Cooperado normal ---
         cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == user_lc).first()
@@ -273,10 +252,11 @@ if user_lc in ADMIN_USERS:
             session['user_id'] = cooperado.id
             session['user_nome'] = cooperado.nome
             session['is_admin'] = False
+            session['is_master'] = False
             return redirect(url_for('painel_cooperado'))
         else:
             flash('Usuário ou senha incorretos.')
-    # Se for GET ou cair nos flash de erro, retorna o login de novo
+
     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
 
 @app.route('/logout')
@@ -286,6 +266,7 @@ def logout():
 
 @app.route('/admin')
 def admin():
+    # agora qualquer is_admin True acessa; is_master só marca privilégios extras no template
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
@@ -326,7 +307,7 @@ def admin():
 
     entregas_all = (
         query
-        .options(joinedload(Entrega.cooperado))      # performance
+        .options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
         .all()
     )
@@ -358,13 +339,11 @@ def admin():
         (Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')
     ).count() > 0
 
-    # Fila de espera (sem usar NULLS LAST para portabilidade)
     lista_espera = (
         ListaEspera.query
         .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
         .all()
     )
-    # Cooperados disponíveis para adicionar à fila: quem não está na fila
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
@@ -386,9 +365,9 @@ def clonar_entrega(id):
         cliente=e.cliente,
         bairro=e.bairro,
         valor=e.valor,
-        data_envio=datetime.utcnow(),   # agora
-        data_atribuida=None,            # nao atribui
-        cooperado_id=None,              # nao clona cooperado
+        data_envio=datetime.utcnow(),
+        data_atribuida=None,
+        cooperado_id=None,
         status='pendente',
         status_pagamento='pendente',
         pagamento=e.pagamento,
@@ -408,11 +387,10 @@ def painel_cooperado():
     user_id = session['user_id']
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
-    status_pgto = (request.args.get('status_pgto') or 'todas').lower()  # todas | pago | pendente
+    status_pgto = (request.args.get('status_pgto') or 'todas').lower()
 
     query = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
-    # Filtro por data (default = hoje)
     hoje_brasil = datetime.now(BRAZIL_TZ).date()
     if not inicio and not fim:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
@@ -426,19 +404,17 @@ def painel_cooperado():
         _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
-    # Filtro por status do pagamento
     if status_pgto == 'pago':
         query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
     elif status_pgto == 'pendente':
         query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
 
     entregas = (
-        query.options(joinedload(Entrega.cooperado))  # performance
+        query.options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
         .all()
     )
 
-    # Totais do conjunto filtrado
     total_geral = sum(float(e.valor or 0) for e in entregas)
     total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
     total_pendente = max(0.0, total_geral - total_pago)
@@ -475,27 +451,23 @@ def cadastrar_cooperado():
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     return render_template('cadastrar_cooperado.html', cooperados=cooperados)
 
-# ATUALIZAR COOPERADO (nome e/ou senha)
 @app.route('/cooperados/<int:coop_id>/atualizar', methods=['POST'])
 def atualizar_cooperado(coop_id):
     cooperado = Cooperado.query.get_or_404(coop_id)
     novo_nome = request.form.get('novo_nome')
     nova_senha = request.form.get('nova_senha')
-    # Atualiza nome se informado e diferente
     if novo_nome and novo_nome != cooperado.nome:
         existe = Cooperado.query.filter_by(nome=novo_nome).first()
         if existe and existe.id != cooperado.id:
             flash('Já existe um cooperado com esse nome!')
             return redirect(url_for('cadastrar_cooperado'))
         cooperado.nome = novo_nome
-    # Atualiza senha se informado
     if nova_senha:
         cooperado.set_senha(nova_senha)
     db.session.commit()
     flash('Dados do cooperado atualizados!')
     return redirect(url_for('cadastrar_cooperado'))
 
-# EXCLUIR COOPERADO
 @app.route('/cooperados/<int:coop_id>/excluir', methods=['POST'])
 def excluir_cooperado(coop_id):
     cooperado = Cooperado.query.get_or_404(coop_id)
@@ -508,10 +480,7 @@ def excluir_cooperado(coop_id):
 def mudar_status_cooperado(coop_id):
     novo_status = request.form.get('novo_status')
     cooperado = Cooperado.query.get_or_404(coop_id)
-    if novo_status == "1":
-        cooperado.ativo = True
-    else:
-        cooperado.ativo = False
+    cooperado.ativo = (novo_status == "1")
     db.session.commit()
     flash(f"Status de {cooperado.nome} alterado para {'Ativo' if cooperado.ativo else 'Inativo'}!")
     return redirect(url_for('cadastrar_cooperado'))
@@ -522,7 +491,6 @@ def clientes():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # POST = criar cliente
     if request.method == 'POST':
         nome = (request.form.get('nome') or '').strip()
         telefone = (request.form.get('telefone') or '').strip()
@@ -541,7 +509,6 @@ def clientes():
         flash('Cliente cadastrado!')
         return redirect(url_for('clientes'))
 
-    # ---------- GET: métricas de uso com normalização forte ----------
     aggs = (
         db.session.query(
             Entrega.cliente.label('cli'),
@@ -558,24 +525,20 @@ def clientes():
         raw = (row.cli or '').strip()
         key_full = normalize_letters_key(raw)
         key_first = normalize_first_token(raw)
-
         s = stats_by_full[key_full]
         s["qtd"] += int(row.qtd or 0)
         if row.ultimo and (s["ultimo"] is None or row.ultimo > s["ultimo"]):
             s["ultimo"] = row.ultimo
-
         f = stats_by_first[key_first]
         f["qtd"] += int(row.qtd or 0)
         if row.ultimo and (f["ultimo"] is None or row.ultimo > f["ultimo"]):
             f["ultimo"] = row.ultimo
 
     hoje_local = datetime.now(BRAZIL_TZ).date()
-
     lista = []
     for cl in Cliente.query.order_by(Cliente.nome).all():
         k_full  = normalize_letters_key(cl.nome or '')
         k_first = normalize_first_token(cl.nome or '')
-
         tot, dt = 0, None
         if k_full in stats_by_full:
             tot = stats_by_full[k_full]["qtd"]
@@ -584,17 +547,15 @@ def clientes():
             tot = stats_by_first[k_first]["qtd"]
             dt  = stats_by_first[k_first]["ultimo"]
 
-        # Datas prontas para o HTML (sem depender de JS)
         ultimo_ymd, ultimo_br, ultimo_days, row_class = None, None, None, ""
         if dt:
             loc_date = to_brasilia(dt).date()
-            ultimo_ymd  = loc_date.isoformat()              # 'YYYY-MM-DD'
-            ultimo_br   = loc_date.strftime('%d/%m/%Y')     # 'DD/MM/YYYY'
+            ultimo_ymd  = loc_date.isoformat()
+            ultimo_br   = loc_date.strftime('%d/%m/%Y')
             ultimo_days = (hoje_local - loc_date).days
-
-            if   ultimo_days > 60: row_class = "st-gt60"    # vermelho
-            elif ultimo_days > 30: row_class = "st-gt30"    # amarelo
-            else:                  row_class = "st-lt30"    # verde
+            if   ultimo_days > 60: row_class = "st-gt60"
+            elif ultimo_days > 30: row_class = "st-gt30"
+            else:                  row_class = "st-lt30"
 
         lista.append({
             "id": cl.id,
@@ -603,13 +564,12 @@ def clientes():
             "bairro_origem": cl.bairro_origem,
             "endereco": getattr(cl, "endereco", None),
             "total_pedidos": int(tot or 0),
-            "ultimo_ymd": ultimo_ymd,       # para filtros/sort
-            "ultimo_br": ultimo_br,         # já formatado para exibir
-            "ultimo_days": ultimo_days,     # número de dias desde o último uso
+            "ultimo_ymd": ultimo_ymd,
+            "ultimo_br": ultimo_br,
+            "ultimo_days": ultimo_days,
             "row_class": row_class
         })
 
-    # KPIs: Ativos (<=6 meses) / Inativos (>=6 meses ou nunca)
     total_clientes = len(lista)
     ativos   = sum(1 for i in lista if i["ultimo_days"] is not None and i["ultimo_days"] <= 180)
     inativos = total_clientes - ativos
@@ -645,7 +605,6 @@ def editar_cliente(id):
     cl.endereco = endereco or None
     db.session.commit()
 
-    # Se foi AJAX (fetch), devolve JSON com métricas atualizadas para esta linha
     if request.headers.get('X-Requested-With') == 'fetch':
         aggs = (
             db.session.query(
@@ -710,7 +669,6 @@ def cadastrar_entrega():
             entrega.data_atribuida = datetime.utcnow()
         db.session.add(entrega)
 
-        # Remove da fila se atribuiu cooperado
         if cooperado_id:
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
@@ -729,7 +687,7 @@ def agendar_entrega():
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
-        data_str = request.form.get('data')  # 'YYYY-MM-DDTHH:MM'
+        data_str = request.form.get('data')
         status_entrega = request.form.get('status_entrega')
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
@@ -747,7 +705,6 @@ def agendar_entrega():
         )
         db.session.add(entrega)
 
-        # Remove da fila se atribuiu cooperado
         if cooperado_id:
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
@@ -776,7 +733,6 @@ def editar_entrega(id):
                 if entrega.cooperado_id != novo_coop_id:
                     entrega.cooperado_id = novo_coop_id
                     entrega.data_atribuida = datetime.utcnow()
-                    # Remove da fila quando atribuído/alterado
                     ListaEspera.query.filter_by(cooperado_id=novo_coop_id).delete()
             else:
                 entrega.cooperado_id = None
@@ -812,7 +768,6 @@ def excluir_entrega(id):
     flash('Entrega excluída.')
     return redirect_back_to_admin()
 
-
 # ========= BOTÕES RÁPIDOS (ADMIN) =========
 @app.post('/entregas/<int:id>/marcar-pagamento')
 def marcar_pagamento(id):
@@ -835,7 +790,6 @@ def marcar_entregue(id):
 # ========= JSON do PAINEL DO COOPERADO =========
 @app.post('/cooperado/toggle_pagamento/<int:id>')
 def toggle_pagamento(id):
-    """Alterna Pago/Pendente na própria entrega do cooperado."""
     e = Entrega.query.get_or_404(id)
     _assert_entrega_do_cooperado(e)
     atual = (e.status_pagamento or 'pendente').lower()
@@ -846,14 +800,12 @@ def toggle_pagamento(id):
 
 @app.post('/cooperado/marcar_entregue/<int:id>')
 def cooperado_marcar_entregue(id):
-    """Marca como entregue + salva recebido_por (campo obrigatório)."""
     e = Entrega.query.get_or_404(id)
     _assert_entrega_do_cooperado(e)
     payload = request.get_json(silent=True) or {}
     recebido_por = (payload.get('recebido_por') or '').strip()
     if not recebido_por:
         return jsonify(ok=False, error='Campo "recebido_por" é obrigatório.'), 400
-    # compatibilidade: alguns lugares usam status 'recebido'
     e.status = 'recebido'
     e.recebido_por = recebido_por
     db.session.commit()
@@ -893,7 +845,7 @@ def estatisticas_cooperado():
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
     entregas = (
-        query.options(joinedload(Entrega.cooperado))   # performance
+        query.options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.asc())
         .all()
     )
@@ -904,7 +856,6 @@ def estatisticas_cooperado():
     total_valor = sum(float(e.valor or 0) for e in entregas)
     ticket_medio = (total_valor / total) if total > 0 else 0.0
 
-    # Dia com mais entregas (Brasil)
     cont_dias = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -915,7 +866,6 @@ def estatisticas_cooperado():
         d, qtd = cont_dias.most_common(1)[0]
         dia_top = {"data": d.strftime('%Y-%m-%d'), "qtd": qtd, "nome": f"{d.strftime('%d/%m/%Y')} ({qtd})"}
 
-    # Horários de pico (Top 3)
     cont_horas = Counter()
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
@@ -924,11 +874,9 @@ def estatisticas_cooperado():
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
     horas_pico_top3 = [f"{h} ({q})" for h, q in cont_horas.most_common(3)]
 
-    # Forma de pagamento mais usada
     cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
     pgto_top = cont_pgto.most_common(1)[0][0] if cont_pgto else "-"
 
-    # Ranking cooperados
     mapa_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     total_geral_periodo = 0.0
     for e in entregas:
@@ -948,11 +896,9 @@ def estatisticas_cooperado():
         })
     ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
 
-    # Ranking bairros (destino)
     cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
     ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
 
-    # Ranking de bairros de origem (clientes)
     nomes_clientes = {e.cliente for e in entregas if e.cliente}
     clientes_cadastrados = Cliente.query.filter(Cliente.nome.in_(list(nomes_clientes))).all() if nomes_clientes else []
     mapa_cliente = {c.nome: c for c in clientes_cadastrados}
@@ -967,11 +913,8 @@ def estatisticas_cooperado():
 
     ranking_bairros_origem = [{"bairro": (b or 'Não informado'), "qtd": q}
                               for b, q in cont_bairros_origem.most_common()]
-
-    # Ranking formas pgto
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
 
-    # Ranking clientes (valor total por cliente)
     soma_por_cliente = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     for e in entregas:
         if e.cliente:
@@ -982,7 +925,6 @@ def estatisticas_cooperado():
         for c, d in sorted(soma_por_cliente.items(), key=lambda kv: kv[1]["total"], reverse=True)
     ]
 
-    # Gráficos por dia
     dias_ordenados = sorted(list(cont_dias.keys()))
     chart_entregas_labels = [d.strftime("%d/%m") for d in dias_ordenados]
     chart_entregas_values = [cont_dias[d] for d in dias_ordenados]
@@ -1003,10 +945,9 @@ def estatisticas_cooperado():
         "pgto_top": pgto_top
     }
 
-    # ====== Séries anuais (2025+) – faturamento, quantidade, ticket médio ======
+    # Séries anuais (2025+)
     por_ano_total = defaultdict(float)
     por_ano_qtd = defaultdict(int)
-
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         if not dt_local:
@@ -1026,7 +967,6 @@ def estatisticas_cooperado():
     chart_ano_totais = []
     chart_ano_qtd = []
     chart_ano_ticket = []
-
     for y in chart_ano_labels:
         tot = float(por_ano_total.get(y, 0.0))
         qtd = int(por_ano_qtd.get(y, 0))
@@ -1061,7 +1001,7 @@ def estatisticas_cooperado():
         chart_ano_ticket=chart_ano_ticket,
     )
 
-# ====== EXPORTAÇÃO detalhada (sem HORA; só Data) ======
+# ====== EXPORTAÇÃO detalhada ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -1120,7 +1060,7 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# ====== EXPORTAÇÃO resumo Cooperado × Valor (título com período) ======
+# ====== EXPORTAÇÃO resumo Cooperado × Valor ======
 @app.route('/estatisticas_cooperado_exportar_xlsx')
 def estatisticas_cooperado_exportar_xlsx():
     if not session.get('is_admin'):
@@ -1206,235 +1146,6 @@ def estatisticas_cooperado_exportar_xlsx():
 
     output.seek(0)
     return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
-
-# ====== IMPORTAR / EXPORTAR CLIENTES (NOVO) ======
-@app.route('/clientes/exportar')
-def exportar_clientes():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    # Agrega entregas por nome original e consolida por chave normalizada
-    aggs = (
-        db.session.query(
-            Entrega.cliente.label('cli'),
-            func.count(Entrega.id).label('qtd'),
-            func.max(Entrega.data_envio).label('ultimo')
-        )
-        .group_by(Entrega.cliente)
-        .all()
-    )
-    stats = defaultdict(lambda: {"qtd": 0, "ultimo": None})
-    for row in aggs:
-        key = normalize_letters_key(row.cli or '')
-        s = stats[key]
-        s["qtd"] += int(row.qtd or 0)
-        if row.ultimo and (s["ultimo"] is None or row.ultimo > s["ultimo"]):
-            s["ultimo"] = row.ultimo
-
-    rows = []
-    for c in Cliente.query.order_by(Cliente.nome).all():
-        key = normalize_letters_key(c.nome or '')
-        s = stats.get(key, {})
-        rows.append([
-            c.id, c.nome, c.telefone, c.bairro_origem, c.endereco,
-            br_date_ymd(s.get("ultimo")) if s else "", int((s or {}).get("qtd") or 0)
-        ])
-
-    df_out = pd.DataFrame(rows, columns=[
-        "ID", "Nome", "Telefone", "Bairro", "Endereco", "UltimoUso", "TotalPedidos"
-    ])
-
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        sheet = 'Clientes'
-        df_out.to_excel(writer, index=False, sheet_name=sheet)
-        ws = writer.sheets[sheet]
-        widths = [8, 28, 18, 18, 32, 12, 14]
-        for i, w in enumerate(widths[:len(df_out.columns)]):
-            ws.set_column(i, i, w)
-    output.seek(0)
-    return send_file(output, download_name="clientes.xlsx", as_attachment=True)
-
-# ---------- ROTA IMPORTAÇÃO ROBUSTA ----------
-@app.route('/clientes/importar', methods=['POST'])
-def importar_clientes():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    f = request.files.get('arquivo')
-    if not f or not f.filename:
-        if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error="Envie um arquivo (.xlsx ou .csv)."), 400
-        flash("Envie um arquivo (.xlsx ou .csv).")
-        return redirect(url_for('clientes'))
-
-    filename = f.filename.lower()
-
-    # Lê o upload em memória
-    try:
-        raw = f.read()
-        if not raw:
-            raise ValueError("Arquivo vazio.")
-    except Exception as e:
-        msg = f"Falha ao ler upload: {e}"
-        if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error=msg), 400
-        flash(msg)
-        return redirect(url_for('clientes'))
-
-    df_in = None
-    load_errors = []
-
-    # Preferência: XLSX com pandas + openpyxl
-    if filename.endswith('.xlsx'):
-        try:
-            df_in = pd.read_excel(io.BytesIO(raw), engine='openpyxl', dtype=str)
-        except Exception as e:
-            load_errors.append(f"Pandas/openpyxl: {e}")
-
-        # Fallback: openpyxl puro
-        if df_in is None:
-            try:
-                from openpyxl import load_workbook
-                wb = load_workbook(io.BytesIO(raw), data_only=True)
-                ws = wb['Sheet1'] if 'Sheet1' in wb.sheetnames else wb.active
-                rows = list(ws.iter_rows(values_only=True))
-                if not rows:
-                    raise ValueError("Planilha vazia.")
-                header = [str(x).strip() if x is not None else '' for x in rows[0]]
-                data = [[("" if c is None else str(c)) for c in r] for r in rows[1:]]
-                df_in = pd.DataFrame(data, columns=header)
-            except Exception as e:
-                load_errors.append(f"openpyxl: {e}")
-
-    # CSV (ou txt)
-    if df_in is None and (filename.endswith('.csv') or filename.endswith('.txt')):
-        try:
-            df_in = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='utf-8')
-        except Exception:
-            try:
-                df_in = pd.read_csv(io.BytesIO(raw), sep=None, engine='python', dtype=str, encoding='latin-1')
-            except Exception as e:
-                load_errors.append(f"CSV: {e}")
-
-    if df_in is None:
-        msg = "Não consegui ler o arquivo. " + (" | ".join(load_errors) if load_errors else "")
-        if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error=msg), 400
-        flash(msg)
-        return redirect(url_for('clientes'))
-
-    # --- mapeamento de colunas ---
-    cols_map = {str(c).lower().strip(): c for c in df_in.columns}
-
-    def colget(*ops, opt=False):
-        for k in ops:
-            if k in cols_map:
-                return cols_map[k]
-        return None if opt else None
-
-    col_id     = colget('id')
-    col_nome   = colget('nome', 'name')
-    col_tel    = colget('telefone', 'phone', 'numero', 'número', 'mobile', 'celular')
-    col_bairro = colget('bairro', 'bairro_origem')
-    col_end    = colget('endereco', 'endereço', 'address')
-
-    missing = []
-    if not col_nome:
-        missing.append("Nome")
-    if not col_tel:
-        missing.append("Telefone/Número")
-    if missing:
-        msg = f"Cabeçalho ausente: {', '.join(missing)}. Colunas recebidas: {list(df_in.columns)}"
-        if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error=msg), 400
-        flash(msg)
-        return redirect(url_for('clientes'))
-
-    # --- normalização de telefone ---
-    def norm_phone(s: str) -> str:
-        if s is None:
-            return ""
-        digits = re.sub(r'\D+', '', str(s))
-        if digits.startswith('55'):
-            digits = digits[2:]
-        if len(digits) > 11:
-            digits = digits[-11:]
-        return digits
-
-    adicionados = 0
-    atualizados = 0
-    erros = 0
-    detalhes = []
-
-    for i, row in df_in.iterrows():
-        try:
-            rid = None
-            if col_id and not pd.isna(row.get(col_id)):
-                try:
-                    rid = int(str(row[col_id]).strip())
-                except Exception:
-                    rid = None
-
-            nome = str(row.get(col_nome) or '').strip()
-            tel  = norm_phone(row.get(col_tel))
-            bairro = str(row.get(col_bairro) or '').strip() if col_bairro else None
-            ender  = str(row.get(col_end) or '').strip() if col_end else None
-
-            if not nome and not tel:
-                continue
-
-            if tel and len(tel) not in (10, 11):
-                erros += 1
-                detalhes.append(f"Linha {i+2}: telefone inválido '{tel}' (esperado 10 ou 11 dígitos).")
-                continue
-
-            if rid:
-                cl = Cliente.query.get(rid)
-                if not cl:
-                    # Atualiza por nome se ID não encontrado
-                    cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
-            else:
-                cl = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
-
-            if cl:
-                cl.nome = nome
-                cl.telefone = tel or None
-                cl.bairro_origem = bairro or None
-                cl.endereco = ender or None
-                atualizados += 1
-            else:
-                novo = Cliente(
-                    nome=nome,
-                    telefone=tel or None,
-                    bairro_origem=bairro or None,
-                    endereco=ender or None
-                )
-                db.session.add(novo)
-                adicionados += 1
-
-        except Exception as e:
-            erros += 1
-            detalhes.append(f"Linha {i+2}: erro inesperado ({e}).")
-
-    try:
-        db.session.commit()
-    except Exception as e:
-        db.session.rollback()
-        app.logger.exception("Erro ao salvar no banco durante importação")
-        msg = "Erro ao salvar no banco."
-        if app.debug:
-            msg += f" Detalhes: {e}"
-        if request.headers.get('X-Requested-With') == 'fetch':
-            return jsonify(ok=False, error=msg), 500
-        flash(msg)
-        return redirect(url_for('clientes'))
-
-    if request.headers.get('X-Requested-With') == 'fetch':
-        return jsonify(ok=True, adicionados=adicionados, atualizados=atualizados, erros=erros, detalhes=detalhes)
-    else:
-        flash(f'Importação concluída: {adicionados} adicionados, {atualizados} atualizados, {erros} erros.')
-        return redirect(url_for('clientes'))
 
 # ====== FILA DE ESPERA ======
 @app.route('/lista_espera/add', methods=['POST'])
