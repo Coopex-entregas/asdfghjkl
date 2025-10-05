@@ -26,10 +26,10 @@ app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 
 # --- Admins fixos (login direto) ---
 # Em produção, defina as senhas via variáveis de ambiente:
-#   ADMIN_PWD_COOPEX  e  ADMIN_PWD_COOPES
+#   ADMIN_PWD_COOPEX  e  ADMIN_PWD_COOPEX
 ADMIN_USERS = {
     'coopex': os.environ.get('ADMIN_PWD_COOPEX', '05062721'),
-    'coopes': os.environ.get('ADMIN_PWD_COOPES', 'coopex05289'),  # novo admin
+    'coopex': os.environ.get('ADMIN_PWD_COOPEX', 'coopex05289'),  # novo admin
 }
 
 # Banco
@@ -250,7 +250,7 @@ def login():
         senha   = request.form.get('senha') or ''
         user_lc = usuario.lower()
 
-        # --- Admins fixos (coopex, coopes, etc.) ---
+        # --- Admins fixos (coopex, coopex, etc.) ---
         if user_lc in ADMIN_USERS:
             if senha == ADMIN_USERS[user_lc]:
                 session['user_id'] = 0
