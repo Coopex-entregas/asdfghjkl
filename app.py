@@ -28,8 +28,10 @@ app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 # Em produção, defina as senhas via variáveis de ambiente:
 #   ADMIN_PWD_COOPEX  e  ADMIN_PWD_COOPEX
 ADMIN_USERS = {
-    'coopex': os.environ.get('ADMIN_PWD_COOPEX', '05062721'),
-    'coopex': os.environ.get('ADMIN_PWD_COOPEX', 'coopex05289'),  # novo admin
+    'coopex': list(filter(None, [
+        os.environ.get('ADMIN_PWD_COOPEX',  '05062721'),
+        os.environ.get('ADMIN_PWD_COOPEX2', 'coopex05289'),
+    ]))
 }
 
 # Banco
@@ -250,16 +252,17 @@ def login():
         senha   = request.form.get('senha') or ''
         user_lc = usuario.lower()
 
-        # --- Admins fixos (coopex, coopex, etc.) ---
-        if user_lc in ADMIN_USERS:
-            if senha == ADMIN_USERS[user_lc]:
-                session['user_id'] = 0
-                session['user_nome'] = usuario  # mantém o que foi digitado
-                session['is_admin'] = True
-                return redirect(url_for('admin'))
-            else:
-                flash('Usuário ou senha incorretos.')
-                return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
+       # --- Admins fixos (coopex) ---
+if user_lc in ADMIN_USERS:
+    if senha in ADMIN_USERS[user_lc]:
+        session['user_id'] = 0
+        session['user_nome'] = usuario
+        session['is_admin'] = True
+        return redirect(url_for('admin'))
+    else:
+        flash('Usuário ou senha incorretos.')
+        return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
+
 
         # --- Cooperado normal ---
         cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == user_lc).first()
