@@ -25,8 +25,8 @@ app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 
 # --- Admins fixos (login direto) ---
-# Você pode definir as senhas em variáveis de ambiente na produção:
-# ADMIN_PWD_COOPEX, ADMIN_PWD_COOPES
+# Em produção, defina as senhas via variáveis de ambiente:
+#   ADMIN_PWD_COOPEX  e  ADMIN_PWD_COOPES
 ADMIN_USERS = {
     'coopex': os.environ.get('ADMIN_PWD_COOPEX', '05062721'),
     'coopes': os.environ.get('ADMIN_PWD_COOPES', 'coopex05289'),  # novo admin
@@ -254,7 +254,7 @@ def login():
         if user_lc in ADMIN_USERS:
             if senha == ADMIN_USERS[user_lc]:
                 session['user_id'] = 0
-                session['user_nome'] = usuario  # mantém o nome digitado (ex.: Coopex, Coopes)
+                session['user_nome'] = usuario  # mantém o que foi digitado
                 session['is_admin'] = True
                 return redirect(url_for('admin'))
             else:
@@ -264,18 +264,15 @@ def login():
         # --- Cooperado normal ---
         cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == user_lc).first()
         if cooperado and cooperado.check_senha(senha):
-            # (opcional) bloquear cooperado inativo
             if not getattr(cooperado, 'ativo', True):
                 flash('Usuário inativo. Fale com o administrador.')
                 return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
-
             session['user_id'] = cooperado.id
             session['user_nome'] = cooperado.nome
             session['is_admin'] = False
             return redirect(url_for('painel_cooperado'))
         else:
             flash('Usuário ou senha incorretos.')
-
     # Se for GET ou cair nos flash de erro, retorna o login de novo
     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
 
@@ -1297,7 +1294,7 @@ def importar_clientes():
             try:
                 from openpyxl import load_workbook
                 wb = load_workbook(io.BytesIO(raw), data_only=True)
-                                ws = wb['Sheet1'] if 'Sheet1' in wb.sheetnames else wb.active
+                ws = wb['Sheet1'] if 'Sheet1' in wb.sheetnames else wb.active
                 rows = list(ws.iter_rows(values_only=True))
                 if not rows:
                     raise ValueError("Planilha vazia.")
@@ -1531,7 +1528,7 @@ def lista_espera_reordenar():
         app.logger.error(f"Reordenar fila falhou: {e}")
         return ("", 500)
 
-# ====== RELATÓRIO TÉRMICO 80mm ======
+# ====== >>> NOVA ROTA: RELATÓRIO 80 mm (Epson TM-T20) <<< ======
 @app.route('/relatorio_termico')
 def relatorio_termico():
     """
@@ -1561,6 +1558,7 @@ def relatorio_termico():
         df_date = datetime.strptime(data_fim, "%Y-%m-%d").date()
         _tmp2, fim_utc = local_date_window_to_utc_range(df_date)
     else:
+        # se não informar fim, usa mesmo dia do início
         base = datetime.strptime(data_inicio, "%Y-%m-%d").date() if data_inicio else datetime.now(BRAZIL_TZ).date()
         _tmp2, fim_utc = local_date_window_to_utc_range(base)
 
@@ -1605,7 +1603,7 @@ def relatorio_termico():
     agora = datetime.now(BRAZIL_TZ)
 
     return render_template(
-        'relatorio_termico.html',
+        'relatorio_termico.html',   # salve seu HTML com este nome
         entregas=entregas,
         periodo_txt=periodo_txt,
         coop_nome=coop_nome,
@@ -1625,6 +1623,7 @@ def criar_bd():
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS endereco VARCHAR(255)",
+            # cria FK em Postgres (ignorado em SQLite)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -1664,4 +1663,3 @@ criar_bd()
 if __name__ == '__main__':
     # Em dev, isto habilita mensagens detalhadas no JSON de erro do import.
     app.run(debug=True)
-
