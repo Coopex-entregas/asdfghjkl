@@ -19,13 +19,16 @@ from werkzeug.security import generate_password_hash, check_password_hash
 import pandas as pd
 import holidays
 import pytz
+from functools import wraps
 
 # ====== Configuração ======
 app = Flask(__name__)
 app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 
-# --- Admins fixos (login direto) ---
-# Ambos têm acesso de admin; a senha 'coopex05289' marca is_master=True
+# --- Admins fixos (usuario: coopex, 2 senhas) ---
+# Em produção, defina via env:
+#   ADMIN_PWD_COOPEX_MASTER (padrão: 'coopex05289')
+#   ADMIN_PWD_COOPEX        (padrão: '05062721')
 ADMIN_CREDENTIALS = {
     'coopex': {
         os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'coopex05289'): {'is_master': True},
@@ -36,6 +39,7 @@ ADMIN_CREDENTIALS = {
 # Banco
 app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+# Performance de conexão (especialmente em Postgres)
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
     "pool_recycle": 300,
@@ -45,7 +49,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
-# Fuso do Brasil
+# Fuso do Brasil (Natal/RN segue America/Sao_Paulo)
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
 # ====== MODELS ======
@@ -76,16 +80,16 @@ class Entrega(db.Model):
     data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # UTC naive
     data_atribuida = db.Column(db.DateTime, nullable=True)
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    status_pagamento = db.Column(db.String(20), nullable=True)  # "pago"/"pendente"
+    status_pagamento = db.Column(db.String(20), nullable=True)  # "pago" / "pendente"
     status = db.Column(db.String(20), nullable=True)            # "recebido"/"pendente"/"entregue"
-    pagamento = db.Column(db.String(50), nullable=False)
+    pagamento = db.Column(db.String(50), nullable=False)        # forma de pagamento
     recebido_por = db.Column(db.String(100), nullable=True)
 
     cooperado = db.relationship('Cooperado', backref='entregas')
 
 class ListaEspera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    nome = db.Column(db.String(100), nullable=False)
+    nome = db.Column(db.String(100), nullable=False)  # compat legado
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
     pos = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
@@ -138,7 +142,7 @@ def _strip_accents(s: str) -> str:
 
 def normalize_letters_key(s: str) -> str:
     s = _strip_accents(s).lower()
-    s = re.sub(r'[^a-z\u00c0-\u024f\s]', ' ', s)
+    s = re.sub(r'[^a-z\u00c0-\u024f\s]', ' ', s)   # letras latinas + espaço
     s = re.sub(r'\s+', ' ', s).strip()
     return s
 
@@ -152,7 +156,7 @@ def br_date_ymd(dt_utc_naive: datetime) -> str:
     loc = to_brasilia(dt_utc_naive)
     return loc.date().isoformat()
 
-# ====== feriados ======
+# ====== feriados (Nacional + RN + Natal) ======
 MUNICIPAIS_NATAL = {(11, 21): "Nossa Senhora da Apresentação (Municipal - Natal/RN)"}
 
 def verifica_feriado(data_ref=None):
@@ -186,6 +190,7 @@ def periodo_legivel_str(di_str, df_str):
 # ====== Preservar filtros do /admin ======
 @app.before_request
 def remember_admin_filters():
+    # guarda últimos filtros do /admin na sessão
     if request.endpoint == "admin" and request.method == "GET":
         keys = ["cooperado_id", "data_inicio", "data_fim", "status_pagamento", "cliente"]
         session["last_filters"] = {k: request.args.get(k) for k in keys if request.args.get(k)}
@@ -212,13 +217,25 @@ def redirect_back_to_admin():
     params = session.get("last_filters") or {}
     return redirect(url_for("admin", **params))
 
-# ====== Helper segurança cooperado ======
-def _assert_entrega_do_cooperado(entrega: Entrega):
+# ====== (NOVO) Helpers de segurança ======
+def _assert_entrega_do_cooperado(entrega: 'Entrega'):
+    """Garante que o usuário logado é o dono da entrega."""
     uid = session.get('user_id')
     if uid is None or session.get('is_admin'):
         abort(403)
     if entrega.cooperado_id != uid:
         abort(403)
+
+def master_required(view_func):
+    @wraps(view_func)
+    def _wrapped(*args, **kwargs):
+        if not session.get('is_admin'):
+            return redirect(url_for('login'))
+        if not session.get('is_master'):
+            flash('Acesso restrito ao admin master.')
+            return redirect(url_for('admin'))
+        return view_func(*args, **kwargs)
+    return _wrapped
 
 # ====== ROTAS ======
 @app.route('/', methods=['GET', 'POST'])
@@ -229,15 +246,14 @@ def login():
         senha   = request.form.get('senha') or ''
         user_lc = usuario.lower()
 
-        # --- Admin fixo (coopex com 2 senhas) ---
+        # --- Admin fixo (usuario: coopex com 2 senhas) ---
         if user_lc in ADMIN_CREDENTIALS:
             cred_map = ADMIN_CREDENTIALS[user_lc]
             if senha in cred_map:
                 session['user_id'] = 0
-                session['user_nome'] = usuario
+                session['user_nome'] = usuario  # mantém o digitado
                 session['is_admin'] = True
                 session['is_master'] = bool(cred_map[senha].get('is_master'))
-                # ambos acessam o dashboard:
                 return redirect(url_for('admin'))
             else:
                 flash('Usuário ou senha incorretos.')
@@ -256,7 +272,7 @@ def login():
             return redirect(url_for('painel_cooperado'))
         else:
             flash('Usuário ou senha incorretos.')
-
+    # Se for GET ou cair em erro, volta ao login
     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
 
 @app.route('/logout')
@@ -266,7 +282,6 @@ def logout():
 
 @app.route('/admin')
 def admin():
-    # agora qualquer is_admin True acessa; is_master só marca privilégios extras no template
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
@@ -339,6 +354,7 @@ def admin():
         (Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')
     ).count() > 0
 
+    # Fila de espera
     lista_espera = (
         ListaEspera.query
         .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
@@ -387,10 +403,11 @@ def painel_cooperado():
     user_id = session['user_id']
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
-    status_pgto = (request.args.get('status_pgto') or 'todas').lower()
+    status_pgto = (request.args.get('status_pgto') or 'todas').lower()  # todas | pago | pendente
 
     query = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
+    # Filtro por data (default = hoje)
     hoje_brasil = datetime.now(BRAZIL_TZ).date()
     if not inicio and not fim:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
@@ -404,6 +421,7 @@ def painel_cooperado():
         _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
+    # Filtro por status do pagamento
     if status_pgto == 'pago':
         query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
     elif status_pgto == 'pendente':
@@ -415,6 +433,7 @@ def painel_cooperado():
         .all()
     )
 
+    # Totais do conjunto filtrado
     total_geral = sum(float(e.valor or 0) for e in entregas)
     total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
     total_pendente = max(0.0, total_geral - total_pago)
@@ -451,6 +470,7 @@ def cadastrar_cooperado():
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     return render_template('cadastrar_cooperado.html', cooperados=cooperados)
 
+# ATUALIZAR COOPERADO (nome e/ou senha)
 @app.route('/cooperados/<int:coop_id>/atualizar', methods=['POST'])
 def atualizar_cooperado(coop_id):
     cooperado = Cooperado.query.get_or_404(coop_id)
@@ -468,6 +488,7 @@ def atualizar_cooperado(coop_id):
     flash('Dados do cooperado atualizados!')
     return redirect(url_for('cadastrar_cooperado'))
 
+# EXCLUIR COOPERADO
 @app.route('/cooperados/<int:coop_id>/excluir', methods=['POST'])
 def excluir_cooperado(coop_id):
     cooperado = Cooperado.query.get_or_404(coop_id)
@@ -491,6 +512,7 @@ def clientes():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
+    # POST = criar cliente
     if request.method == 'POST':
         nome = (request.form.get('nome') or '').strip()
         telefone = (request.form.get('telefone') or '').strip()
@@ -509,6 +531,7 @@ def clientes():
         flash('Cliente cadastrado!')
         return redirect(url_for('clientes'))
 
+    # ---------- GET: métricas de uso com normalização forte ----------
     aggs = (
         db.session.query(
             Entrega.cliente.label('cli'),
@@ -525,20 +548,24 @@ def clientes():
         raw = (row.cli or '').strip()
         key_full = normalize_letters_key(raw)
         key_first = normalize_first_token(raw)
+
         s = stats_by_full[key_full]
         s["qtd"] += int(row.qtd or 0)
         if row.ultimo and (s["ultimo"] is None or row.ultimo > s["ultimo"]):
             s["ultimo"] = row.ultimo
+
         f = stats_by_first[key_first]
         f["qtd"] += int(row.qtd or 0)
         if row.ultimo and (f["ultimo"] is None or row.ultimo > f["ultimo"]):
             f["ultimo"] = row.ultimo
 
     hoje_local = datetime.now(BRAZIL_TZ).date()
+
     lista = []
     for cl in Cliente.query.order_by(Cliente.nome).all():
         k_full  = normalize_letters_key(cl.nome or '')
         k_first = normalize_first_token(cl.nome or '')
+
         tot, dt = 0, None
         if k_full in stats_by_full:
             tot = stats_by_full[k_full]["qtd"]
@@ -553,6 +580,7 @@ def clientes():
             ultimo_ymd  = loc_date.isoformat()
             ultimo_br   = loc_date.strftime('%d/%m/%Y')
             ultimo_days = (hoje_local - loc_date).days
+
             if   ultimo_days > 60: row_class = "st-gt60"
             elif ultimo_days > 30: row_class = "st-gt30"
             else:                  row_class = "st-lt30"
@@ -687,7 +715,7 @@ def agendar_entrega():
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
         valor = float(request.form.get('valor'))
-        data_str = request.form.get('data')
+        data_str = request.form.get('data')  # 'YYYY-MM-DDTHH:MM'
         status_entrega = request.form.get('status_entrega')
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
@@ -790,6 +818,7 @@ def marcar_entregue(id):
 # ========= JSON do PAINEL DO COOPERADO =========
 @app.post('/cooperado/toggle_pagamento/<int:id>')
 def toggle_pagamento(id):
+    """Alterna Pago/Pendente na própria entrega do cooperado."""
     e = Entrega.query.get_or_404(id)
     _assert_entrega_do_cooperado(e)
     atual = (e.status_pagamento or 'pendente').lower()
@@ -800,6 +829,7 @@ def toggle_pagamento(id):
 
 @app.post('/cooperado/marcar_entregue/<int:id>')
 def cooperado_marcar_entregue(id):
+    """Marca como entregue + salva recebido_por (campo obrigatório)."""
     e = Entrega.query.get_or_404(id)
     _assert_entrega_do_cooperado(e)
     payload = request.get_json(silent=True) or {}
@@ -811,12 +841,10 @@ def cooperado_marcar_entregue(id):
     db.session.commit()
     return jsonify(ok=True)
 
-# ====== ESTATÍSTICAS (ADMIN) ======
+# ====== ESTATÍSTICAS (ADMIN MASTER) ======
 @app.route('/estatisticas_cooperado')
+@master_required
 def estatisticas_cooperado():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     cooperado_id = request.args.get('cooperado_id', 'todos')
     data_inicio = request.args.get('data_inicio')
@@ -913,6 +941,7 @@ def estatisticas_cooperado():
 
     ranking_bairros_origem = [{"bairro": (b or 'Não informado'), "qtd": q}
                               for b, q in cont_bairros_origem.most_common()]
+
     ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
 
     soma_por_cliente = defaultdict(lambda: {"qtd": 0, "total": 0.0})
@@ -945,9 +974,10 @@ def estatisticas_cooperado():
         "pgto_top": pgto_top
     }
 
-    # Séries anuais (2025+)
+    # ====== Séries anuais (2025+) – faturamento, quantidade, ticket médio ======
     por_ano_total = defaultdict(float)
     por_ano_qtd = defaultdict(int)
+
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         if not dt_local:
@@ -967,6 +997,7 @@ def estatisticas_cooperado():
     chart_ano_totais = []
     chart_ano_qtd = []
     chart_ano_ticket = []
+
     for y in chart_ano_labels:
         tot = float(por_ano_total.get(y, 0.0))
         qtd = int(por_ano_qtd.get(y, 0))
@@ -1001,7 +1032,91 @@ def estatisticas_cooperado():
         chart_ano_ticket=chart_ano_ticket,
     )
 
-# ====== EXPORTAÇÃO detalhada ======
+# ====== EXPORTAÇÃO (MASTER) ======
+@app.route('/estatisticas_cooperado_exportar_xlsx')
+@master_required
+def estatisticas_cooperado_exportar_xlsx():
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    status_pagamento = request.args.get('status_pagamento', 'todos')
+    cliente = (request.args.get('cliente') or '').strip()
+
+    query = Entrega.query
+    if cooperado_id != 'todos':
+        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+    if data_inicio:
+        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(di)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
+    if data_fim:
+        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
+        query = query.filter(Entrega.data_envio <= fim_utc)
+    if status_pagamento and status_pagamento != 'todos':
+        if status_pagamento == 'pago':
+            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+        elif status_pagamento == 'pendente':
+            query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
+    if cliente:
+        like = f"%{cliente.lower()}%"
+        query = query.filter(func.lower(Entrega.cliente).like(like))
+
+    entregas = query.all()
+
+    soma_por_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
+    total_geral = 0.0
+    for e in entregas:
+        nm = e.cooperado.nome if e.cooperado else "Sem Cooperado"
+        soma_por_coop[nm]["qtd"] += 1
+        soma_por_coop[nm]["total"] += float(e.valor or 0)
+        total_geral += float(e.valor or 0)
+
+    linhas = []
+    for nome, d in soma_por_coop.items():
+        percent = (d["total"] / total_geral * 100.0) if total_geral > 0 else 0.0
+        linhas.append({
+            "Cooperado": nome,
+            "Qtd Entregas": d["qtd"],
+            "Valor Total (R$)": round(d["total"], 2),
+            "% do Total": round(percent, 1)
+        })
+    linhas.sort(key=lambda r: r["Valor Total (R$)"], reverse=True)
+
+    df_out = pd.DataFrame(linhas)
+    titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Resumo'
+        start_row = 1
+        df_out.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
+        ws = writer.sheets[sheet]
+
+        last_col = len(df_out.columns) - 1
+        ws.merge_range(0, 0, 0, last_col, titulo, writer.book.add_format({
+            'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
+            'font_color': '#003399'
+        }))
+
+        widths = [28, 14, 18, 12]
+        for i, w in enumerate(widths[:len(df_out.columns)]):
+            ws.set_column(i, i, w)
+
+        money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
+        pct_fmt = writer.book.add_format({'num_format': '0.0"%"'})
+        cols = list(df_out.columns)
+        if "Valor Total (R$)" in cols:
+            idx = cols.index("Valor Total (R$)")
+            ws.set_column(idx, idx, 18, money_fmt)
+        if "% do Total" in cols:
+            idx = cols.index("% do Total")
+            ws.set_column(idx, idx, 12, pct_fmt)
+
+    output.seek(0)
+    return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
+
+# ====== EXPORTAÇÃO detalhada (sem HORA; só Data) ======
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
@@ -1060,102 +1175,9 @@ def exportar_xlsx():
     output.seek(0)
     return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
-# ====== EXPORTAÇÃO resumo Cooperado × Valor ======
-@app.route('/estatisticas_cooperado_exportar_xlsx')
-def estatisticas_cooperado_exportar_xlsx():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    status_pagamento = request.args.get('status_pagamento', 'todos')
-    cliente = (request.args.get('cliente') or '').strip()
-
-    query = Entrega.query
-    if cooperado_id != 'todos':
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
-    if data_inicio:
-        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-        inicio_utc, _ = local_date_window_to_utc_range(di)
-        query = query.filter(Entrega.data_envio >= inicio_utc)
-    if data_fim:
-        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df_)
-        query = query.filter(Entrega.data_envio <= fim_utc)
-    if status_pagamento and status_pagamento != 'todos':
-        if status_pagamento == 'pago':
-            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
-        elif status_pagamento == 'pendente':
-            query = query.filter((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente'))
-    if cliente:
-        like = f"%{cliente.lower()}%"
-        query = query.filter(func.lower(Entrega.cliente).like(like))
-
-    entregas = query.all()
-
-    soma_por_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
-    total_geral = 0.0
-    for e in entregas:
-        nm = e.cooperado.nome if e.cooperado else "Sem Cooperado"
-        soma_por_coop[nm]["qtd"] += 1
-        soma_por_coop[nm]["total"] += float(e.valor or 0)
-        total_geral += float(e.valor or 0)
-
-    linhas = []
-    for nome, d in soma_por_coop.items():
-        percent = (d["total"] / total_geral * 100.0) if total_geral > 0 else 0.0
-        linhas.append({
-            "Cooperado": nome,
-            "Qtd Entregas": d["qtd"],
-            "Valor Total (R$)": round(d["total"], 2),
-            "% do Total": round(percent, 1)
-        })
-    linhas.sort(key=lambda r: r["Valor Total (R$)"], reverse=True)
-
-    df_out = pd.DataFrame(linhas)
-
-    titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
-
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        sheet = 'Resumo'
-        start_row = 1
-        df_out.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
-        ws = writer.sheets[sheet]
-
-        last_col = len(df_out.columns) - 1
-        ws.merge_range(0, 0, 0, last_col, titulo, writer.book.add_format({
-            'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
-            'font_color': '#003399'
-        }))
-
-        widths = [28, 14, 18, 12]
-        for i, w in enumerate(widths[:len(df_out.columns)]):
-            ws.set_column(i, i, w)
-
-        money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
-        pct_fmt = writer.book.add_format({'num_format': '0.0"%"'})
-        cols = list(df_out.columns)
-        if "Valor Total (R$)" in cols:
-            idx = cols.index("Valor Total (R$)")
-            ws.set_column(idx, idx, 18, money_fmt)
-        if "% do Total" in cols:
-            idx = cols.index("% do Total")
-            ws.set_column(idx, idx, 12, pct_fmt)
-
-    output.seek(0)
-    return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
-
 # ====== FILA DE ESPERA ======
 @app.route('/lista_espera/add', methods=['POST'])
 def lista_espera_add():
-    """
-    Adiciona à fila:
-      - Preferencialmente por 'cooperado_id' (select do admin.html)
-      - Mantém compatibilidade com 'nome' enviado pelo form (preenche automaticamente)
-    Evita duplicados e define posição (pos) no final da fila.
-    """
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
@@ -1166,23 +1188,20 @@ def lista_espera_add():
         flash('Selecione um cooperado ou informe um nome.')
         return redirect_back_to_admin()
 
-    # Se veio cooperado_id, buscamos o nome
     if cooperado_id:
         coop = Cooperado.query.get(int(cooperado_id))
         if not coop:
             flash('Cooperado inválido.')
             return redirect_back_to_admin()
 
-        # já está na fila?
         if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
             flash('Este cooperado já está na fila de espera.')
             return redirect_back_to_admin()
 
-        # Posição final
         max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
         item = ListaEspera(
             cooperado_id=coop.id,
-            nome=coop.nome,              # compat com schema antigo (NOT NULL)
+            nome=coop.nome,
             pos=max_pos + 1,
             created_at=datetime.utcnow()
         )
@@ -1191,7 +1210,6 @@ def lista_espera_add():
         flash('Cooperado adicionado à lista de espera.')
         return redirect_back_to_admin()
 
-    # Sem cooperado_id: usa apenas o nome (modo legado)
     if ListaEspera.query.filter(func.lower(ListaEspera.nome) == nome_form.lower()).first():
         flash('Este nome já está na fila de espera.')
         return redirect_back_to_admin()
@@ -1220,10 +1238,6 @@ def lista_espera_remove(id):
 
 @app.route('/lista_espera/reordenar', methods=['POST'])
 def lista_espera_reordenar():
-    """
-    Recebe JSON: {"ordem": ["3","1","2", ...]} com IDs na ordem nova.
-    Atualiza 'pos' de cada item.
-    """
     if not session.get('is_admin'):
         return ("", 403)
     data = request.get_json(silent=True) or {}
@@ -1242,15 +1256,9 @@ def lista_espera_reordenar():
         app.logger.error(f"Reordenar fila falhou: {e}")
         return ("", 500)
 
-# ====== >>> NOVA ROTA: RELATÓRIO 80 mm (Epson TM-T20) <<< ======
+# ====== RELATÓRIO TÉRMICO 80mm ======
 @app.route('/relatorio_termico')
 def relatorio_termico():
-    """
-    Relatório térmico 80mm (logo em static/logo_coopex.png)
-    Campos: Cliente, Valor, Data/Hora da ATRIBUIÇÃO (fallback: envio).
-    Respeita filtros: cooperado_id, data_inicio, data_fim, status_pagamento, cliente.
-    O período usa COALESCE(data_atribuida, data_envio).
-    """
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
@@ -1260,7 +1268,6 @@ def relatorio_termico():
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
 
-    # Janela de tempo (default = hoje local)
     if data_inicio:
         di_date = datetime.strptime(data_inicio, "%Y-%m-%d").date()
         inicio_utc, _tmp = local_date_window_to_utc_range(di_date)
@@ -1272,13 +1279,11 @@ def relatorio_termico():
         df_date = datetime.strptime(data_fim, "%Y-%m-%d").date()
         _tmp2, fim_utc = local_date_window_to_utc_range(df_date)
     else:
-        # se não informar fim, usa mesmo dia do início
         base = datetime.strptime(data_inicio, "%Y-%m-%d").date() if data_inicio else datetime.now(BRAZIL_TZ).date()
         _tmp2, fim_utc = local_date_window_to_utc_range(base)
 
     q = Entrega.query
 
-    # Filtros iguais aos do admin
     if cooperado_id and cooperado_id != 'todos':
         try:
             q = q.filter(Entrega.cooperado_id == int(cooperado_id))
@@ -1295,29 +1300,24 @@ def relatorio_termico():
         like = f"%{cliente.lower()}%"
         q = q.filter(func.lower(Entrega.cliente).like(like))
 
-    # Usa COALESCE para janela por data atribuída (ou envio se não houver)
     coalesce_dt = func.coalesce(Entrega.data_atribuida, Entrega.data_envio)
     q = q.filter(coalesce_dt >= inicio_utc, coalesce_dt <= fim_utc).order_by(coalesce_dt.asc(), Entrega.cliente.asc())
 
     entregas = q.options(joinedload(Entrega.cooperado)).all()
 
-    # Texto do período pronto
     periodo_txt = periodo_legivel_str(data_inicio, data_fim)
 
-    # Nome do cooperado (ou "Todos")
     coop_nome = "Todos"
     if cooperado_id and cooperado_id != "todos":
         coop = Cooperado.query.get(int(cooperado_id))
         if coop:
             coop_nome = coop.nome
 
-    # TOTAL do relatório (calculado no backend)
     total_relatorio = sum(float(e.valor or 0) for e in entregas)
-
     agora = datetime.now(BRAZIL_TZ)
 
     return render_template(
-        'relatorio_termico.html',   # salve seu HTML com este nome
+        'relatorio_termico.html',
         entregas=entregas,
         periodo_txt=periodo_txt,
         coop_nome=coop_nome,
@@ -1326,18 +1326,16 @@ def relatorio_termico():
         total_relatorio=total_relatorio
     )
 
-# ====== BOOTSTRAP BANCO: criar tabelas, colunas faltantes e índices ======
+# ====== BOOTSTRAP BANCO ======
 def criar_bd():
     with app.app_context():
         db.create_all()
 
-        # Tenta criar colunas novas (Postgres; em SQLite será ignorado via except)
         ddl_cmds = [
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS endereco VARCHAR(255)",
-            # cria FK em Postgres (ignorado em SQLite)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -1352,10 +1350,8 @@ def criar_bd():
             try:
                 db.session.execute(text(s))
             except Exception:
-                # Provavelmente SQLite ou já existe; ignora
                 pass
 
-        # Índices p/ performance (se já existirem, ignora)
         idx_cmds = [
             "CREATE INDEX IF NOT EXISTS idx_entrega_data_envio ON entrega (data_envio DESC)",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cooperado_id ON entrega (cooperado_id)",
@@ -1375,5 +1371,4 @@ def criar_bd():
 criar_bd()
 
 if __name__ == '__main__':
-    # Em dev, isto habilita mensagens detalhadas no JSON de erro do import.
     app.run(debug=True)
