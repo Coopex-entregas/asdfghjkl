@@ -9,19 +9,18 @@
     :root{
       --royal:#0033cc;
       --royal-2:#2750ff;
-      --ink:#0e1a33;
-      --bg:#071127;
-      --panel:#0b1633;
-      --panel-2:#0e1c44;
-      --white:#ffffff;
-      --muted:#cfe0ff;
+      --ink:#0a1b3f;
+      --muted:#4b5a86;
+      --bg:#f6f8ff;          /* fundo geral branco/azulado */
+      --card:#ffffff;        /* cards brancos */
+      --line:#e3e9ff;        /* linhas claras */
+      --line-dark:#cfd9ff;
       --good:#10b981;
       --bad:#ef4444;
       --warn:#f59e0b;
-      --line:#1e2f66;
-      --chip:#0e2a6c;
-      --shadow:0 12px 40px rgba(0,0,0,.28);
       --r:14px;
+      --shadow:0 8px 30px rgba(0,30,130,.08);
+      --shadow-2:0 10px 40px rgba(0,30,130,.12);
     }
 
     *{box-sizing:border-box}
@@ -29,128 +28,130 @@
     body{
       margin:0;
       font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:linear-gradient(180deg,#05102a 0%, #0a1430 100%);
-      color:var(--white);
+      background:var(--bg);
+      color:var(--ink);
     }
 
-    /* Header fixo (100% largura) */
+    /* Header (barra azul royal full width) */
     header{
-      position:sticky; top:0; z-index:60;
-      background:linear-gradient(90deg,var(--royal) 0%, #1a48ff 60%, #87a2ff 130%);
-      box-shadow:var(--shadow);
+      position:sticky; top:0; z-index:100;
+      background:linear-gradient(90deg,var(--royal) 0%, #2b54ff 60%, #7ea0ff 130%);
+      color:#fff;
+      box-shadow:var(--shadow-2);
     }
     .topbar{
-      width:100%; max-width:100%;
+      width:100%;
       padding:14px 22px;
       display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center;
     }
     .brand{display:flex;align-items:center;gap:12px;font-weight:900}
     .brand img{width:40px;height:40px;border-radius:12px;background:#fff;border:2px solid #eaf0ff;object-fit:contain}
     .brand span{font-size:1.02rem;text-shadow:0 2px 18px rgba(0,0,0,.2)}
-    .kpis{display:flex;gap:12px;flex-wrap:wrap;justify-content:flex-end}
-    .kpi{min-width:150px;padding:8px 12px;border:1px solid rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.12)}
-    .kpi small{display:block;opacity:.9}
+    .kpis{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .kpi{min-width:150px;padding:8px 12px;border:1px solid rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.14)}
+    .kpi small{display:block;opacity:.95}
     .kpi span{display:block;font-weight:800;font-size:1.12rem}
     .logout{color:#fff;background:#c1121f;border:none;border-radius:24px;padding:9px 16px;font-weight:800;text-decoration:none}
     .logout:hover{filter:brightness(1.05)}
 
-    /* Banner de feriado/hoje no topo do painel */
+    /* Faixa data/feriado (bem visível, no topo) */
     .banner{
-      display:flex;align-items:center;gap:10px;justify-content:space-between;
-      background:linear-gradient(90deg,#0c1b44 0%, #0e2155 100%);
+      display:flex;align-items:center;gap:14px;justify-content:space-between;
+      background:#fff; color:var(--ink);
       border-bottom:1px solid var(--line);
       padding:10px 22px;
+      box-shadow:var(--shadow);
     }
-    .banner .today{font-weight:800;color:#dbe6ff}
-    .badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:5px 10px;font-weight:800;font-size:.84rem}
-    .badge.good{background:rgba(16,185,129,.16);color:#7ee6bf;border:1px solid rgba(16,185,129,.4)}
-    .badge.bad{background:rgba(239,68,68,.16);color:#fecaca;border:1px solid rgba(239,68,68,.4)}
-    .badge.neu{background:#0f2a6a;color:#cfe0ff;border:1px solid #28458d}
+    .today{font-weight:800}
+    .badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-weight:800;font-size:.84rem;border:1px solid}
+    .badge.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
+    .badge.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
+    .badge.neu{background:#edf3ff;border-color:#cfdbff;color:#2347c7}
 
-    /* Viewport: só as entregas rolam */
-    .viewport{
-      height:calc(100vh - 64px - 46px); /* header ~64 + banner ~46 */
-      padding:16px 18px 16px 18px;
-    }
-    .grid{
-      height:100%;
-      display:grid;
-      grid-template-columns:360px 1fr;
-      gap:16px;
-    }
+    /* Layout: só as entregas rolam */
+    .viewport{height:calc(100vh - 64px - 54px); padding:16px 18px}
+    .grid{height:100%; display:grid; grid-template-columns:360px 1fr; gap:16px}
     @media (max-width:1200px){ .grid{grid-template-columns:320px 1fr} }
     @media (max-width:1024px){ .grid{grid-template-columns:1fr} }
 
-    /* Cards da coluna esquerda */
-    .card{
-      background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);
-      border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow);
-    }
-    .left{
-      display:flex; flex-direction:column; gap:14px; min-height:0;
-    }
+    /* Cards da esquerda (brancos) */
+    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
+    .left{display:flex; flex-direction:column; gap:14px; min-height:0}
     .card .body{padding:14px}
-    .card h3{margin:0 0 10px;font-size:1rem;color:#dbe6ff}
-    .stack{display:flex;flex-direction:column;gap:10px}
+    .card h3{margin:0 0 10px;font-size:1rem;color:#213a99}
+
     .row{display:flex;gap:10px;flex-wrap:wrap}
+    .stack{display:flex;flex-direction:column;gap:10px}
     .btn{
       display:inline-flex;align-items:center;justify-content:center;gap:6px;
       background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
       color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none
     }
-    .btn.alt{background:#132554;border:1px solid #2a4492}
+    .btn.alt{background:#ffffff;color:#2240a7;border:1px solid var(--line-dark)}
     .btn.block{width:100%}
     .btn:hover{filter:brightness(1.05)}
-    label{font-size:.85rem;color:#b9c7ff;font-weight:700}
+
+    label{font-size:.85rem;color:#28409f;font-weight:700}
     select,input[type="date"],input[type="text"]{
-      width:100%;padding:9px 10px;border-radius:10px;border:1px solid #2a3b72;background:#0c1838;color:#e9edff;font-weight:600
+      width:100%;padding:9px 10px;border-radius:10px;border:1px solid var(--line-dark);
+      background:#fff;color:var(--ink);font-weight:600
     }
 
-    /* Conteúdo direito (entregas) */
-    .right{min-height:0;display:flex;flex-direction:column}
-    .right .head{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:12px 14px;border-bottom:1px solid var(--line)
-    }
-    .right h2{margin:0;font-size:1rem;color:#dbe6ff}
-    .toggle{background:#10214a;border:1px solid #2a3b72;color:#cfe0ff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
+    /* Direita (entregas) */
+    .right{min-height:0;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
+    .right .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
+    .right h2{margin:0;font-size:1rem;color:#213a99}
+    .toggle{background:#fff;border:1px solid var(--line-dark);color:#2240a7;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
 
-    /* ===== Filtros horizontais (fixos acima da tabela) ===== */
-    .filters-bar{
-      position:sticky; top:0; z-index:5; /* fixa dentro do card direito */
-      background:linear-gradient(180deg,var(--panel) 0%, var(--panel-2) 100%);
-      border-bottom:1px solid var(--line);
-      padding:10px 12px;
-    }
-    .filters-form{
-      display:grid;
-      grid-template-columns: repeat(5, minmax(160px, 1fr)) auto;
-      gap:10px; align-items:end;
-    }
+    /* Filtros horizontais (fixos no topo da direita) */
+    .filters-bar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 12px}
+    .filters-form{display:grid;grid-template-columns: repeat(5, minmax(160px, 1fr)) auto; gap:10px; align-items:end}
     .filters-form .field{display:flex;flex-direction:column;gap:6px}
-    .filters-form label{font-size:.82rem;color:#cfe0ff;font-weight:800}
+    .filters-form label{font-size:.82rem;color:#2642a1;font-weight:800}
     .filters-form .btn{height:40px}
 
     .content{min-height:0;overflow:hidden}
     .scroll-area{height:100%;overflow:auto}
 
-    /* Tabela compacta */
-    table{width:100%;border-collapse:collapse;color:#eaf0ff;font-size:13.6px}
-    thead th{position:sticky;top:0;background:#0e1d48;z-index:1}
-    th,td{border-bottom:1px solid #1e2d59;padding:7px 6px;text-align:center;vertical-align:middle}
-    tbody tr:hover td{background:#0f224e}
-    .small{font-size:.84rem;color:#cfe0ff}
+    /* Tabela compacta (branca) */
+    table{width:100%;border-collapse:collapse;color:#071431;font-size:13.6px;background:#fff}
+    thead th{position:sticky;top:0;background:#eaf0ff;color:#122a88;z-index:1}
+    th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:center;vertical-align:middle}
+    tbody tr:hover td{background:#f4f7ff}
+    .small{font-size:.84rem;color:#334}
     .icon-btn{border:none;background:none;cursor:pointer;padding:5px}
     .icon-btn svg{width:18px;height:18px}
 
+    .badge.table{border-radius:8px;padding:4px 8px;font-weight:900}
+    .badge.table.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
+    .badge.table.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
+
     /* Cards (modo alternativo) */
-    .cards{display:none;padding:12px 12px}
+    .cards{display:none;padding:12px 12px;background:#fff}
     .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
     @media (max-width:1100px){ .cards.grid{grid-template-columns:1fr} }
-    .delivery{background:#0f1e44;border:1px solid #21376f;border-radius:12px;padding:10px;display:grid;gap:8px}
-    .chip{background:#0d2b6b;border:1px solid #29438a;border-radius:999px;padding:5px 9px;font-weight:700}
+    .delivery{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px;box-shadow:var(--shadow)}
+    .chip{background:#edf3ff;border:1px solid var(--line-dark);color:#2347c7;border-radius:999px;padding:5px 9px;font-weight:700}
+
+    /* Lista de espera chips (reusa estilos do template original) */
+    #espera-lista{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
+    .espera-chip{display:flex;align-items:center;gap:10px;background:#f2f6ff;border:1px dashed #d7e2ff;padding:9px 10px;border-radius:10px;cursor:grab}
+    .espera-chip:active{cursor:grabbing}
+    .espera-chip-num{background:#ffd166;color:#222;font-weight:900;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+    .espera-chip-text{font-weight:800;color:#113299}
+    .espera-chip-remove{background:#d11a1a;color:#fff;border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-weight:900}
 
     a:focus,button:focus,select:focus,input:focus{outline:2px solid #6ea8ff;outline-offset:2px}
+
+    /* Overlay de preview (cupom) */
+    .pp-wrap{position:fixed;inset:0;background:rgba(5,12,30,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
+    .pp-box{background:#fff;border-radius:14px;width:min(720px,96vw);height:min(90vh,900px);box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
+    .pp-head{padding:10px 14px;font-weight:800;color:#213a99;border-bottom:1px solid var(--line)}
+    .pp-iframe{flex:1 1 auto;width:100%;border:0;background:#fff}
+    .pp-foot{padding:10px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:center;background:#f6f8ff}
+    .pp-btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+    .pp-print{border:1px solid var(--ink);background:var(--ink);color:#fff}
+    .pp-close{border:1px solid var(--line-dark);background:#fff;color:#2140a4}
   </style>
 </head>
 <body>
@@ -172,11 +173,9 @@
     </div>
   </header>
 
-  <!-- BANNER SUPERIOR (data e feriado) -->
+  <!-- BANNER SUPERIOR (data + feriado) -->
   <div class="banner">
-    <div class="today">
-      {{ to_brasilia(now()).strftime('%d/%m/%Y') }} — {{ to_brasilia(now())|diasemana }}
-    </div>
+    <div class="today">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} — {{ to_brasilia(now())|diasemana }}</div>
     <div>
       {% if feriado_hoje %}
         <span class="badge bad">⚠ {{ feriado_hoje }}</span>
@@ -186,7 +185,7 @@
     </div>
   </div>
 
-  <!-- VIEWPORT -->
+  <!-- CONTEÚDO -->
   <div class="viewport">
     <div class="grid">
       <!-- COLUNA ESQUERDA -->
@@ -204,23 +203,21 @@
               <input name="nome" id="nome-espera" type="text" placeholder="(Opcional) nome do cooperado" />
               <button type="submit" class="btn">Adicionar</button>
             </form>
-            <div class="wait-list">
-              <ul id="espera-lista">
-                {% if lista_espera|length == 0 %}
-                  <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
-                {% else %}
-                  {% for item in lista_espera %}
-                    <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
-                      <span class="espera-chip-num">{{ loop.index }}</span>
-                      <span class="espera-chip-text">{{ item.nome }}</span>
-                      <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
-                        <button class="espera-chip-remove" title="Remover" type="submit">×</button>
-                      </form>
-                    </li>
-                  {% endfor %}
-                {% endif %}
-              </ul>
-            </div>
+            <ul id="espera-lista">
+              {% if lista_espera|length == 0 %}
+                <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
+              {% else %}
+                {% for item in lista_espera %}
+                  <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
+                    <span class="espera-chip-num">{{ loop.index }}</span>
+                    <span class="espera-chip-text">{{ item.nome }}</span>
+                    <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
+                      <button class="espera-chip-remove" title="Remover" type="submit">×</button>
+                    </form>
+                  </li>
+                {% endfor %}
+              {% endif %}
+            </ul>
           </div>
         </div>
 
@@ -232,8 +229,9 @@
               <a class="btn block" href="{{ url_for('cadastrar_entrega') }}">+ Nova Entrega</a>
               <a class="btn alt block" href="{{ url_for('agendar_entrega') }}">Agendar</a>
               <div class="row">
-                <a class="btn alt" href="{{ url_for('cadastrar_cooperado') }}">Cooperados</a>
+                <!-- Clientes agora abre normal (mesma aba) -->
                 <a class="btn alt" href="{{ url_for('clientes') }}">Clientes</a>
+                <a class="btn alt" href="{{ url_for('cadastrar_cooperado') }}">Cooperados</a>
               </div>
               {% if session.is_master %}
                 <a class="btn alt block" href="{{ url_for('estatisticas_cooperado') }}">Dashboard</a>
@@ -246,12 +244,13 @@
                    status_pagamento=request.args.get('status_pagamento','todos'),
                    cliente=request.args.get('cliente','')) }}">Exportar</a>
 
+                <!-- Relatório abre em NOVA ABA para não “travar” -->
                 <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
                    data_inicio=data_inicio or '',
                    data_fim=data_fim or '',
                    cooperado_id=request.args.get('cooperado_id','todos'),
                    status_pagamento=request.args.get('status_pagamento','todos'),
-                   cliente=request.args.get('cliente','')) }}">Imprimir</a>
+                   cliente=request.args.get('cliente','')) }}">Imprimir Relatório</a>
               </div>
             </div>
           </div>
@@ -259,13 +258,13 @@
       </aside>
 
       <!-- COLUNA DIREITA (ENTREGAS) -->
-      <section class="right card">
+      <section class="right">
         <div class="head">
           <h2>Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}</h2>
           <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
         </div>
 
-        <!-- FILTROS HORIZONTAIS (fixos) -->
+        <!-- FILTROS HORIZONTAIS -->
         <div class="filters-bar">
           <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
             <div class="field">
@@ -277,17 +276,14 @@
                 {% endfor %}
               </select>
             </div>
-
             <div class="field">
               <label for="data_inicio">De</label>
               <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" />
             </div>
-
             <div class="field">
               <label for="data_fim">Até</label>
               <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" />
             </div>
-
             <div class="field">
               <label for="status_pagamento">Pagamento</label>
               <select name="status_pagamento" id="status_pagamento">
@@ -296,34 +292,23 @@
                 <option value="pendente" {% if request.args.get('status_pagamento')=='pendente' %}selected{% endif %}>Pendente</option>
               </select>
             </div>
-
             <div class="field">
               <label for="cliente">Cliente</label>
               <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
             </div>
-
             <button class="btn" type="submit">Filtrar</button>
           </form>
         </div>
 
         <div class="content">
+          <!-- TABELA -->
           <div id="tbl" class="scroll-area">
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Cliente</th>
-                  <th>Bairro</th>
-                  <th>Valor</th>
-                  <th>Data<br>e<br>Dia</th>
-                  <th>Hora<br>Pedido</th>
-                  <th>Hora<br>Atribuída</th>
-                  <th>Cooperado</th>
-                  <th>Forma Pgto</th>
-                  <th>Status</th>
-                  <th>Pagamento</th>
-                  <th>Recebido por</th>
-                  <th>Ações</th>
+                  <th>ID</th><th>Cliente</th><th>Bairro</th><th>Valor</th>
+                  <th>Data<br>e<br>Dia</th><th>Hora<br>Pedido</th><th>Hora<br>Atribuída</th>
+                  <th>Cooperado</th><th>Forma Pgto</th><th>Status</th><th>Pagamento</th><th>Recebido por</th><th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -344,14 +329,13 @@
 
                   <!-- Status entrega -->
                   <td>
-                    {% set status_txt = (e.status|capitalize if e.status else 'Pendente') %}
                     {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
                     {% if is_ok %}
-                      <span class="badge good">Entregue</span>
+                      <span class="badge table good">Entregue</span>
                     {% else %}
                       <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST" style="display:inline">
                         <input type="hidden" name="status" value="entregue">
-                        <span class="badge bad js-toggle-entrega" role="button" title="Clique para marcar como ENTREGUE">Pendente</span>
+                        <span class="badge table bad js-toggle-entrega" role="button" title="Clique para marcar como ENTREGUE">Pendente</span>
                       </form>
                     {% endif %}
                   </td>
@@ -360,11 +344,11 @@
                   <td>
                     {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
                     {% if sp == 'pago' %}
-                      <span class="badge good">Pago</span>
+                      <span class="badge table good">Pago</span>
                     {% else %}
                       <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST" style="display:inline">
                         <input type="hidden" name="status_pagamento" value="pago">
-                        <span class="badge bad js-toggle-pagto" role="button" title="Clique para marcar como PAGO">Pendente</span>
+                        <span class="badge table bad js-toggle-pagto" role="button" title="Clique para marcar como PAGO">Pendente</span>
                       </form>
                     {% endif %}
                   </td>
@@ -373,19 +357,19 @@
 
                   <td>
                     <a title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" class="icon-btn" aria-label="Editar">
-                      <svg viewBox="0 0 24 24" fill="#7ea6ff"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                      <svg viewBox="0 0 24 24" fill="#254ad8"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </a>
 
                     <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline">
                       <button title="Clonar" type="submit" class="icon-btn" aria-label="Clonar">
-                        <svg viewBox="0 0 24 24" fill="#aed1ff"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="#7798ff"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
                       </button>
                     </form>
 
-                    <button type="button" class="icon-btn" title="Imprimir" aria-label="Imprimir"
+                    <button type="button" class="icon-btn" title="Imprimir cupom" aria-label="Imprimir"
                       data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
                       onclick="imprimirCupom({{ e.id }}, this)">
-                      <svg viewBox="0 0 24 24" fill="#22c55e"><path d="M19 8h-1V3c0-1.1-.9-2-2-2H8C6.9 1 6 1.9 6 3v5H5C2.8 8 1 9.8 1 12v6c0 2.2 1.8 4 4 4h2v-3h10v3h2c2.2 0 4-1.8 4-4v-6c0-2.2-1.8-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg>
+                      <svg viewBox="0 0 24 24" fill="#10b981"><path d="M19 8h-1V3c0-1.1-.9-2-2-2H8C6.9 1 6 1.9 6 3v5H5C2.8 8 1 9.8 1 12v6c0 2.2 1.8 4 4 4h2v-3h10v3h2c2.2 0 4-1.8 4-4v-6c0-2.2-1.8-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg>
                     </button>
 
                     <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline" onsubmit="return confirm('Excluir entrega?');">
@@ -418,7 +402,6 @@
                 <div style="margin-left:auto"><strong>Pgto:</strong> <span class="chip">{{ e.pagamento }}</span></div>
               </div>
               <div class="row" style="align-items:center">
-                {% set status_txt = (e.status|capitalize if e.status else 'Pendente') %}
                 {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
                 {% if is_ok %}
                   <span class="badge good">Entregue</span>
@@ -460,11 +443,10 @@
     </div>
   </div>
 
-  <!-- Áudio -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <script>
-    // ===== Alternar Tabela/Cartões =====
+    // Alternar Tabela/Cartões
     const btToggle = document.getElementById('toggleView');
     const tbl = document.getElementById('tbl');
     const cards = document.getElementById('cards');
@@ -474,37 +456,25 @@
       tbl.style.display   = showCards ? 'none' : 'block';
     });
 
-    // ===== Preenchimento do nome na fila =====
+    // Preencher nome na fila
     const selCoop = document.getElementById('cooperado-espera');
     const inpNome = document.getElementById('nome-espera');
     const formEspera = document.getElementById('form-espera');
-    if(selCoop){
-      selCoop.addEventListener('change', ()=>{
-        const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
-        if(!inpNome.value) inpNome.value = nome;
-      });
-    }
-    if(formEspera){
-      formEspera.addEventListener('submit', ()=>{
-        if(!inpNome.value){
-          const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
-          inpNome.value = nome;
-        }
-      });
-    }
+    if(selCoop){ selCoop.addEventListener('change', ()=>{ const nome=selCoop.options[selCoop.selectedIndex]?.text||''; if(!inpNome.value) inpNome.value=nome; }); }
+    if(formEspera){ formEspera.addEventListener('submit', ()=>{ if(!inpNome.value){ const nome=selCoop.options[selCoop.selectedIndex]?.text||''; inpNome.value=nome; } }); }
 
-    // ===== Drag & Drop da Lista de Espera =====
+    // Drag & Drop lista de espera
     const ulFila = document.getElementById('espera-lista');
-    let dragEl = null;
+    let dragEl=null;
     function renumerar(){ [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el,i)=>el.textContent=i+1); }
     function salvarOrdem(){
       const ids=[...ulFila.querySelectorAll('.espera-chip')].map(li=>li.dataset.id);
       fetch('/lista_espera/reordenar',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({ordem:ids})}).catch(()=>{});
     }
     if(ulFila){
-      ulFila.addEventListener('dragstart',(e)=>{ const li=e.target.closest('.espera-chip'); if(!li)return; dragEl=li; li.style.opacity=.6; });
-      ulFila.addEventListener('dragend',(e)=>{ const li=e.target.closest('.espera-chip'); if(!li)return; li.style.opacity=1; dragEl=null; salvarOrdem(); });
-      ulFila.addEventListener('dragover',(e)=>{
+      ulFila.addEventListener('dragstart',e=>{ const li=e.target.closest('.espera-chip'); if(!li)return; dragEl=li; li.style.opacity=.6; });
+      ulFila.addEventListener('dragend',e=>{ const li=e.target.closest('.espera-chip'); if(!li)return; li.style.opacity=1; dragEl=null; salvarOrdem(); });
+      ulFila.addEventListener('dragover',e=>{
         e.preventDefault();
         const li=e.target.closest('.espera-chip'); if(!li||li===dragEl)return;
         const r=li.getBoundingClientRect(); const after=(e.clientY-r.top)>(r.height/2);
@@ -512,7 +482,7 @@
       });
     }
 
-    // ===== Clique nos status (AJAX, sem recarregar página / sem "subir") =====
+    // Clique nos status (AJAX; sem mover a página)
     document.addEventListener('click', async (ev)=>{
       const st = ev.target.closest('.js-toggle-pagto, .js-toggle-entrega');
       if(!st) return;
@@ -530,12 +500,12 @@
         const res = await fetch(form.action, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
         if(!res.ok) throw new Error('Falha ao atualizar.');
 
-        // Atualiza visualmente SEM reload
+        // Atualiza visual sem reload
         if(st.classList.contains('js-toggle-pagto')){
-          st.classList.remove('bad'); st.classList.add('good'); st.textContent='Pago';
+          st.classList.remove('bad','table'); st.classList.add('good','table'); st.textContent='Pago';
           st.title='Pagamento quitado';
         }else{
-          st.classList.remove('bad'); st.classList.add('good'); st.textContent='Entregue';
+          st.classList.remove('bad','table'); st.classList.add('good','table'); st.textContent='Entregue';
           st.title='Entrega finalizada';
         }
       }catch(e){
@@ -544,7 +514,7 @@
       }
     });
 
-    // ===== Preservar posição de rolagem da tabela de entregas =====
+    // Preservar scroll apenas da lista de entregas
     const area = document.querySelector('.scroll-area');
     const KEY='admin_scroll_entregas';
     if(area){
@@ -553,12 +523,33 @@
       area.addEventListener('scroll', ()=> sessionStorage.setItem(KEY, String(area.scrollTop)));
     }
 
-    // ===== Impressão (mesma lógica) =====
+    // ====== PREVIEW DE CUPOM (overlay sem depender de pop-up) ======
+    function criarOverlayPreview(html){
+      const wrap=document.createElement('div'); wrap.className='pp-wrap';
+      const box=document.createElement('div'); box.className='pp-box';
+      const head=document.createElement('div'); head.className='pp-head'; head.textContent='Visualização do Cupom';
+      const iframe=document.createElement('iframe'); iframe.className='pp-iframe'; iframe.setAttribute('title','Pré-visualização do cupom');
+
+      if('srcdoc' in iframe) iframe.srcdoc=html;
+      else { const doc=(iframe.contentWindow||iframe.contentDocument); const idoc=doc.document||doc; idoc.open(); idoc.write(html); idoc.close(); }
+
+      const foot=document.createElement('div'); foot.className='pp-foot';
+      const btPrint=document.createElement('button'); btPrint.className='pp-btn pp-print'; btPrint.textContent='Imprimir';
+      btPrint.onclick=()=>{ try{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }catch(e){} };
+      const btClose=document.createElement('button'); btClose.className='pp-btn pp-close'; btClose.textContent='Fechar';
+      btClose.onclick=()=>wrap.remove();
+
+      foot.appendChild(btPrint); foot.appendChild(btClose);
+      box.appendChild(head); box.appendChild(iframe); box.appendChild(foot); wrap.appendChild(box);
+      document.body.appendChild(wrap);
+    }
+
     function imprimirCupom(idEntrega, botao){
       const tr = botao.closest('tr');
       const get=(idx)=> (tr?.children[idx]?.innerText||'').trim()||'-';
       const dataDiaBruto=(tr?.children[4]?.innerText||'-').replace(/\s+/g,' ').trim();
       const dataSo=(dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/)||['-'])[0];
+
       const dados={
         id:get(0), idPad:String(get(0)).padStart(6,'0'),
         cliente:get(1), bairro:get(2), valor:get(3).replace(/^R\$\s*/,'').trim(),
@@ -568,15 +559,18 @@
       const cacheBust=Date.now();
       const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="utf-8"><title>Cupom #${dados.id}</title>
       <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>@page{size:80mm 100mm;margin:3mm}*{box-sizing:border-box}body{font-family:Arial,Segoe UI,Roboto,system-ui,sans-serif;margin:0}
-      .cupom{width:100%;max-width:72mm;margin:0 auto}.center{text-align:center}.line{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin:2px 0}
-      .big{font-weight:900;font-size:18px}hr{border:none;border-top:1px dotted #000;margin:8px 0}.logo{width:62mm;display:block;margin:2px auto 6px}
+      <style>@page{size:80mm 100mm;margin:3mm}*{box-sizing:border-box}body{font-family:Arial,Segoe UI,Roboto,system-ui,sans-serif;margin:0;background:#fff}
+      .cupom{width:100%;max-width:72mm;margin:0 auto;padding:0}.center{text-align:center}
+      .line{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin:2px 0}
+      .big{font-weight:900;font-size:18px}hr{border:none;border-top:1px dotted #000;margin:8px 0}
+      .logo{width:62mm;max-width:100%;height:auto;object-fit:contain;margin:2px auto 6px;display:block}
       .footer{font-size:11px;text-align:center;margin-top:6px}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-      .actions{display:flex;gap:10px;justify-content:center;padding:12px 0 16px}.btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
-      .btn-print{border:1px solid #000;background:#000;color:#fff}.btn-close{border:1px solid #c3c8d5;background:#fff}</style></head>
-      <body><div class="wrap"><div class="cupom">
-      <img class="logo" src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" alt="Logo">
-      <div class="center" style="font-size:10.5px">CNPJ: 05.289.938/0001-97<br>Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>Fone/Whats: (84) 98111-0706</div><hr>
+      .wrap{padding:8px}</style></head><body>
+      <div class="wrap"><div class="cupom">
+      <img class="logo" src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" alt="Logo Coopex">
+      <div class="center" style="font-size:10.5px">
+        CNPJ: 05.289.938/0001-97<br>Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>Fone/Whats: (84) 98111-0706
+      </div><hr>
       <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span></div>
       <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
       <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
@@ -587,11 +581,12 @@
       <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
       <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div><hr>
       <div class="footer">Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
-      Recebido por: <span class="mono">${dados.recebidoPor}</span></div></div>
-      <div class="actions"><button class="btn btn-print" onclick="window.print()">Imprimir</button><button class="btn btn-close" onclick="window.close&&window.close()">Fechar</button></div></div></body></html>`;
+      Recebido por: <span class="mono">${dados.recebidoPor}</span></div></div></div></body></html>`;
+
+      // 1) tenta nova aba, 2) senão usa overlay (sem alerts)
       let win=null; try{ win=window.open('','_blank','noopener,noreferrer,width=480,height=800'); }catch(e){}
       if(win && !win.closed){ try{ win.opener=null; }catch(e){} win.document.open(); win.document.write(html); win.document.close(); return; }
-      alert('Ative os pop-ups para imprimir.');
+      criarOverlayPreview(html);
     }
     window.imprimirCupom = imprimirCupom;
   </script>
