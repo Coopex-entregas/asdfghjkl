@@ -7,20 +7,27 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      --royal:#0033cc;
+      --royal:#0033cc;        /* azul royal */
       --royal-2:#2750ff;
       --ink:#0a1b3f;
-      --muted:#4b5a86;
-      --bg:#f6f8ff;          /* fundo geral branco/azulado */
-      --card:#ffffff;        /* cards brancos */
-      --line:#e3e9ff;        /* linhas claras */
+      --muted:#cfe0ff;
+      --bg:#f6f8ff;
+      --card:#ffffff;
+      --line:#e3e9ff;
       --line-dark:#cfd9ff;
       --good:#10b981;
       --bad:#ef4444;
-      --warn:#f59e0b;
       --r:14px;
       --shadow:0 8px 30px rgba(0,30,130,.08);
       --shadow-2:0 10px 40px rgba(0,30,130,.12);
+
+      /* bloco das entregas (royal escuro) */
+      --pane:#0c2aa8;             /* fundo principal */
+      --pane-2:#0a238f;           /* listras/hover */
+      --pane-header:#082070;      /* cabeçalho */
+      --pane-line:rgba(255,255,255,.14);
+      --pane-text:#ffffff;
+      --pane-text-soft:#e7efff;
     }
 
     *{box-sizing:border-box}
@@ -32,7 +39,7 @@
       color:var(--ink);
     }
 
-    /* Header (barra azul royal full width) */
+    /* Header */
     header{
       position:sticky; top:0; z-index:100;
       background:linear-gradient(90deg,var(--royal) 0%, #2b54ff 60%, #7ea0ff 130%);
@@ -54,7 +61,7 @@
     .logout{color:#fff;background:#c1121f;border:none;border-radius:24px;padding:9px 16px;font-weight:800;text-decoration:none}
     .logout:hover{filter:brightness(1.05)}
 
-    /* Faixa data/feriado (bem visível, no topo) */
+    /* Banner superior (data/feriado) */
     .banner{
       display:flex;align-items:center;gap:14px;justify-content:space-between;
       background:#fff; color:var(--ink);
@@ -74,7 +81,7 @@
     @media (max-width:1200px){ .grid{grid-template-columns:320px 1fr} }
     @media (max-width:1024px){ .grid{grid-template-columns:1fr} }
 
-    /* Cards da esquerda (brancos) */
+    /* Coluna esquerda */
     .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
     .left{display:flex; flex-direction:column; gap:14px; min-height:0}
     .card .body{padding:14px}
@@ -97,43 +104,70 @@
       background:#fff;color:var(--ink);font-weight:600
     }
 
-    /* Direita (entregas) */
-    .right{min-height:0;display:flex;flex-direction:column;background:#fff;border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow)}
-    .right .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--line)}
-    .right h2{margin:0;font-size:1rem;color:#213a99}
-    .toggle{background:#fff;border:1px solid var(--line-dark);color:#2240a7;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
+    /* Coluna direita (painel royal) */
+    .right{
+      min-height:0;display:flex;flex-direction:column;
+      background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
+      border:1px solid var(--pane-line);border-radius:var(--r);box-shadow:var(--shadow);
+      color:var(--pane-text);
+    }
+    .right .head{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:12px 14px;border-bottom:1px solid var(--pane-line)
+    }
+    .right h2{margin:0;font-size:1rem;color:#fff}
+    .toggle{background:transparent;border:1px solid var(--muted);color:#fff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
 
-    /* Filtros horizontais (fixos no topo da direita) */
-    .filters-bar{position:sticky;top:0;z-index:5;background:#fff;border-bottom:1px solid var(--line);padding:10px 12px}
+    /* Filtros horizontais (no topo da direita) */
+    .filters-bar{
+      position:sticky;top:0;z-index:5;
+      background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
+      border-bottom:1px solid var(--pane-line);
+      padding:10px 12px
+    }
     .filters-form{display:grid;grid-template-columns: repeat(5, minmax(160px, 1fr)) auto; gap:10px; align-items:end}
     .filters-form .field{display:flex;flex-direction:column;gap:6px}
-    .filters-form label{font-size:.82rem;color:#2642a1;font-weight:800}
+    .filters-form label{font-size:.82rem;color:#dfe8ff;font-weight:800}
+    .filters-form select,
+    .filters-form input{
+      background:#0a1f7e;border:1px solid #2f4de6;color:#fff;border-radius:10px;padding:8px 10px;font-weight:700
+    }
     .filters-form .btn{height:40px}
 
     .content{min-height:0;overflow:hidden}
-    .scroll-area{height:100%;overflow:auto}
+    .scrollable{height:100%;overflow:auto}
 
-    /* Tabela compacta (branca) */
-    table{width:100%;border-collapse:collapse;color:#071431;font-size:13.6px;background:#fff}
-    thead th{position:sticky;top:0;background:#eaf0ff;color:#122a88;z-index:1}
-    th,td{border-bottom:1px solid var(--line);padding:7px 6px;text-align:center;vertical-align:middle}
-    tbody tr:hover td{background:#f4f7ff}
-    .small{font-size:.84rem;color:#334}
+    /* Tabela royal: branco sobre azul */
+    table{width:100%;border-collapse:collapse;color:var(--pane-text);font-size:13.6px;background:transparent}
+    thead th{
+      position:sticky;top:0;z-index:1;
+      background:#031a66;color:#fff;
+      border-bottom:1px solid var(--pane-line);
+    }
+    th,td{border-bottom:1px solid var(--pane-line);padding:7px 6px;text-align:center;vertical-align:middle}
+    tbody tr:nth-child(even) td{background:rgba(255,255,255,.03)}
+    tbody tr:hover td{background:rgba(255,255,255,.06)}
+    .small{font-size:.84rem;color:var(--pane-text-soft)}
     .icon-btn{border:none;background:none;cursor:pointer;padding:5px}
     .icon-btn svg{width:18px;height:18px}
 
-    .badge.table{border-radius:8px;padding:4px 8px;font-weight:900}
-    .badge.table.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
-    .badge.table.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
+    .badge.table{border-radius:8px;padding:4px 8px;font-weight:900;border:1px solid transparent}
+    .badge.table.good{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:#a7ffdf}
+    .badge.table.bad{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.36);color:#ffb4b4}
 
-    /* Cards (modo alternativo) */
-    .cards{display:none;padding:12px 12px;background:#fff}
-    .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(280px,1fr));gap:12px}
+    /* Cards (mesmo esquema royal, com caixas translúcidas) */
+    .cards-wrap.scrollable{padding:12px}
+    .cards{display:none}
+    .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
     @media (max-width:1100px){ .cards.grid{grid-template-columns:1fr} }
-    .delivery{background:#fff;border:1px solid var(--line);border-radius:12px;padding:10px;display:grid;gap:8px;box-shadow:var(--shadow)}
-    .chip{background:#edf3ff;border:1px solid var(--line-dark);color:#2347c7;border-radius:999px;padding:5px 9px;font-weight:700}
+    .delivery{
+      background:rgba(255,255,255,.06); color:#fff;
+      border:1px solid var(--pane-line); border-radius:12px; padding:10px; display:grid; gap:8px;
+      box-shadow:0 6px 18px rgba(0,0,0,.15)
+    }
+    .chip{background:rgba(255,255,255,.15);border:1px solid var(--pane-line);color:#fff;border-radius:999px;padding:5px 9px;font-weight:700}
 
-    /* Lista de espera chips (reusa estilos do template original) */
+    /* Lista de espera chips */
     #espera-lista{list-style:none;padding:0;margin:8px 0 0;display:flex;flex-direction:column;gap:8px}
     .espera-chip{display:flex;align-items:center;gap:10px;background:#f2f6ff;border:1px dashed #d7e2ff;padding:9px 10px;border-radius:10px;cursor:grab}
     .espera-chip:active{cursor:grabbing}
@@ -146,12 +180,12 @@
     /* Overlay de preview (cupom) */
     .pp-wrap{position:fixed;inset:0;background:rgba(5,12,30,.55);display:flex;align-items:center;justify-content:center;padding:20px;z-index:9999}
     .pp-box{background:#fff;border-radius:14px;width:min(720px,96vw);height:min(90vh,900px);box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
-    .pp-head{padding:10px 14px;font-weight:800;color:#213a99;border-bottom:1px solid var(--line)}
+    .pp-head{padding:10px 14px;font-weight:800;color:#213a99;border-bottom:1px solid #e6eaff}
     .pp-iframe{flex:1 1 auto;width:100%;border:0;background:#fff}
-    .pp-foot{padding:10px;border-top:1px solid var(--line);display:flex;gap:10px;justify-content:center;background:#f6f8ff}
+    .pp-foot{padding:10px;border-top:1px solid #e6eaff;display:flex;gap:10px;justify-content:center;background:#f6f8ff}
     .pp-btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
-    .pp-print{border:1px solid var(--ink);background:var(--ink);color:#fff}
-    .pp-close{border:1px solid var(--line-dark);background:#fff;color:#2140a4}
+    .pp-print{border:1px solid #0a1b3f;background:#0a1b3f;color:#fff}
+    .pp-close{border:1px solid #c3c8d5;background:#fff;color:#2140a4}
   </style>
 </head>
 <body>
@@ -173,7 +207,7 @@
     </div>
   </header>
 
-  <!-- BANNER SUPERIOR (data + feriado) -->
+  <!-- BANNER (data + feriado) -->
   <div class="banner">
     <div class="today">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} — {{ to_brasilia(now())|diasemana }}</div>
     <div>
@@ -188,9 +222,9 @@
   <!-- CONTEÚDO -->
   <div class="viewport">
     <div class="grid">
-      <!-- COLUNA ESQUERDA -->
+      <!-- ESQUERDA -->
       <aside class="left">
-        <!-- LISTA DE ESPERA (EM CIMA) -->
+        <!-- LISTA DE ESPERA -->
         <div class="card">
           <div class="body">
             <h3>Lista de Espera</h3>
@@ -229,7 +263,6 @@
               <a class="btn block" href="{{ url_for('cadastrar_entrega') }}">+ Nova Entrega</a>
               <a class="btn alt block" href="{{ url_for('agendar_entrega') }}">Agendar</a>
               <div class="row">
-                <!-- Clientes agora abre normal (mesma aba) -->
                 <a class="btn alt" href="{{ url_for('clientes') }}">Clientes</a>
                 <a class="btn alt" href="{{ url_for('cadastrar_cooperado') }}">Cooperados</a>
               </div>
@@ -244,7 +277,7 @@
                    status_pagamento=request.args.get('status_pagamento','todos'),
                    cliente=request.args.get('cliente','')) }}">Exportar</a>
 
-                <!-- Relatório abre em NOVA ABA para não “travar” -->
+                <!-- relatório abre em nova aba -->
                 <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
                    data_inicio=data_inicio or '',
                    data_fim=data_fim or '',
@@ -257,14 +290,14 @@
         </div>
       </aside>
 
-      <!-- COLUNA DIREITA (ENTREGAS) -->
+      <!-- DIREITA (ENTREGAS) -->
       <section class="right">
         <div class="head">
           <h2>Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}</h2>
           <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
         </div>
 
-        <!-- FILTROS HORIZONTAIS -->
+        <!-- FILTROS -->
         <div class="filters-bar">
           <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
             <div class="field">
@@ -301,8 +334,8 @@
         </div>
 
         <div class="content">
-          <!-- TABELA -->
-          <div id="tbl" class="scroll-area">
+          <!-- TABELA (rolagem própria) -->
+          <div id="tbl" class="scrollable">
             <table>
               <thead>
                 <tr>
@@ -357,12 +390,12 @@
 
                   <td>
                     <a title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" class="icon-btn" aria-label="Editar">
-                      <svg viewBox="0 0 24 24" fill="#254ad8"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
+                      <svg viewBox="0 0 24 24" fill="#9fc0ff"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </a>
 
                     <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline">
                       <button title="Clonar" type="submit" class="icon-btn" aria-label="Clonar">
-                        <svg viewBox="0 0 24 24" fill="#7798ff"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="#c7d8ff"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
                       </button>
                     </form>
 
@@ -374,7 +407,7 @@
 
                     <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline" onsubmit="return confirm('Excluir entrega?');">
                       <button title="Excluir" type="submit" class="icon-btn" aria-label="Excluir">
-                        <svg viewBox="0 0 24 24" fill="#ef4444"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg>
+                        <svg viewBox="0 0 24 24" fill="#ff9b9b"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg>
                       </button>
                     </form>
                   </td>
@@ -384,59 +417,61 @@
             </table>
           </div>
 
-          <!-- CARDS -->
-          <div id="cards" class="cards grid">
-            {% for e in entregas %}
-            <div class="delivery">
-              <div class="row">
-                <strong>#{{ e.id }}</strong>
-                <span class="chip">{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</span>
-                <span style="margin-left:auto" class="small">{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</span>
-              </div>
-              <div class="row small">
-                <div><strong>Cliente:</strong> {{ e.cliente }}</div>
-                <div style="margin-left:auto"><strong>Bairro:</strong> {{ e.bairro }}</div>
-              </div>
-              <div class="row small">
-                <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
-                <div style="margin-left:auto"><strong>Pgto:</strong> <span class="chip">{{ e.pagamento }}</span></div>
-              </div>
-              <div class="row" style="align-items:center">
-                {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
-                {% if is_ok %}
-                  <span class="badge good">Entregue</span>
-                {% else %}
-                  <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST">
-                    <input type="hidden" name="status" value="entregue">
-                    <span class="badge bad js-toggle-entrega">Pendente</span>
-                  </form>
-                {% endif %}
+          <!-- CARDS (rolagem própria) -->
+          <div id="cardsWrap" class="cards-wrap scrollable" style="display:none">
+            <div id="cards" class="cards grid">
+              {% for e in entregas %}
+              <div class="delivery">
+                <div class="row">
+                  <strong>#{{ e.id }}</strong>
+                  <span class="chip">{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</span>
+                  <span style="margin-left:auto" class="small">{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</span>
+                </div>
+                <div class="row small">
+                  <div><strong>Cliente:</strong> {{ e.cliente }}</div>
+                  <div style="margin-left:auto"><strong>Bairro:</strong> {{ e.bairro }}</div>
+                </div>
+                <div class="row small">
+                  <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
+                  <div style="margin-left:auto"><strong>Pgto:</strong> <span class="chip">{{ e.pagamento }}</span></div>
+                </div>
+                <div class="row" style="align-items:center">
+                  {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
+                  {% if is_ok %}
+                    <span class="badge table good">Entregue</span>
+                  {% else %}
+                    <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST">
+                      <input type="hidden" name="status" value="entregue">
+                      <span class="badge table bad js-toggle-entrega">Pendente</span>
+                    </form>
+                  {% endif %}
 
-                {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
-                {% if sp == 'pago' %}
-                  <span class="badge good">Pago</span>
-                {% else %}
-                  <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST">
-                    <input type="hidden" name="status_pagamento" value="pago">
-                    <span class="badge bad js-toggle-pagto">Pendente</span>
-                  </form>
-                {% endif %}
+                  {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+                  {% if sp == 'pago' %}
+                    <span class="badge table good">Pago</span>
+                  {% else %}
+                    <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST">
+                      <input type="hidden" name="status_pagamento" value="pago">
+                      <span class="badge table bad js-toggle-pagto">Pendente</span>
+                    </form>
+                  {% endif %}
 
-                <div style="margin-left:auto" class="row">
-                  <a class="btn alt" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
-                  <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST">
-                    <button class="btn alt" type="submit">Clonar</button>
-                  </form>
-                  <button class="btn" type="button"
-                      data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
-                      onclick="imprimirCupom({{ e.id }}, this)">Imprimir</button>
-                  <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" onsubmit="return confirm('Excluir entrega?')">
-                    <button class="btn alt" type="submit">Excluir</button>
-                  </form>
+                  <div style="margin-left:auto" class="row">
+                    <a class="btn alt" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
+                    <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST">
+                      <button class="btn alt" type="submit">Clonar</button>
+                    </form>
+                    <button class="btn" type="button"
+                        data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
+                        onclick="imprimirCupom({{ e.id }}, this)">Imprimir</button>
+                    <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" onsubmit="return confirm('Excluir entrega?')">
+                      <button class="btn alt" type="submit">Excluir</button>
+                    </form>
+                  </div>
                 </div>
               </div>
+              {% endfor %}
             </div>
-            {% endfor %}
           </div>
         </div>
       </section>
@@ -446,14 +481,19 @@
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <script>
-    // Alternar Tabela/Cartões
+    // Alternar Tabela/Cartões (ambos com rolagem)
     const btToggle = document.getElementById('toggleView');
     const tbl = document.getElementById('tbl');
-    const cards = document.getElementById('cards');
+    const cardsWrap = document.getElementById('cardsWrap');
     btToggle.addEventListener('click', ()=>{
-      const showCards = cards.style.display !== 'grid';
-      cards.style.display = showCards ? 'grid' : 'none';
-      tbl.style.display   = showCards ? 'none' : 'block';
+      const showingCards = cardsWrap.style.display !== 'none';
+      if (showingCards) {
+        cardsWrap.style.display = 'none';
+        tbl.style.display = 'block';
+      } else {
+        tbl.style.display = 'none';
+        cardsWrap.style.display = 'block';
+      }
     });
 
     // Preencher nome na fila
@@ -482,15 +522,14 @@
       });
     }
 
-    // Clique nos status (AJAX; sem mover a página)
+    // Clique nos status (AJAX; sem “saltar” a página)
     document.addEventListener('click', async (ev)=>{
       const st = ev.target.closest('.js-toggle-pagto, .js-toggle-entrega');
       if(!st) return;
       const form = st.closest('form'); if(!form) return;
 
       const confirmar = st.classList.contains('js-toggle-pagto')
-        ? 'Confirmar pagamento como PAGO?'
-        : 'Confirmar entrega como ENTREGUE?';
+        ? 'Confirmar pagamento como PAGO?' : 'Confirmar entrega como ENTREGUE?';
       if(!confirm(confirmar)) return;
 
       ev.preventDefault();
@@ -500,30 +539,28 @@
         const res = await fetch(form.action, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
         if(!res.ok) throw new Error('Falha ao atualizar.');
 
-        // Atualiza visual sem reload
         if(st.classList.contains('js-toggle-pagto')){
-          st.classList.remove('bad','table'); st.classList.add('good','table'); st.textContent='Pago';
-          st.title='Pagamento quitado';
+          st.classList.remove('bad'); st.classList.add('good'); st.textContent='Pago'; st.title='Pagamento quitado';
         }else{
-          st.classList.remove('bad','table'); st.classList.add('good','table'); st.textContent='Entregue';
-          st.title='Entrega finalizada';
+          st.classList.remove('bad'); st.classList.add('good'); st.textContent='Entregue'; st.title='Entrega finalizada';
         }
-      }catch(e){
-        console.error(e);
-        alert('Não foi possível atualizar. Recarregue e tente novamente.');
-      }
+      }catch(e){ console.error(e); alert('Não foi possível atualizar agora.'); }
     });
 
-    // Preservar scroll apenas da lista de entregas
-    const area = document.querySelector('.scroll-area');
-    const KEY='admin_scroll_entregas';
-    if(area){
-      const saved = sessionStorage.getItem(KEY);
-      if(saved) area.scrollTop = parseInt(saved,10)||0;
-      area.addEventListener('scroll', ()=> sessionStorage.setItem(KEY, String(area.scrollTop)));
+    // Preservar scroll da tabela
+    const tblArea = document.getElementById('tbl');
+    const cardsArea = document.getElementById('cardsWrap');
+    const KEY_T='scroll_tbl', KEY_C='scroll_cards';
+    if(tblArea){
+      const s = sessionStorage.getItem(KEY_T); if(s) tblArea.scrollTop = +s || 0;
+      tblArea.addEventListener('scroll', ()=> sessionStorage.setItem(KEY_T, tblArea.scrollTop));
+    }
+    if(cardsArea){
+      const s2 = sessionStorage.getItem(KEY_C); if(s2) cardsArea.scrollTop = +s2 || 0;
+      cardsArea.addEventListener('scroll', ()=> sessionStorage.setItem(KEY_C, cardsArea.scrollTop));
     }
 
-    // ====== PREVIEW DE CUPOM (overlay sem depender de pop-up) ======
+    // ====== Cupom: tenta nova aba; se bloquear, overlay (sem alert) ======
     function criarOverlayPreview(html){
       const wrap=document.createElement('div'); wrap.className='pp-wrap';
       const box=document.createElement('div'); box.className='pp-box';
@@ -583,7 +620,7 @@
       <div class="footer">Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
       Recebido por: <span class="mono">${dados.recebidoPor}</span></div></div></div></body></html>`;
 
-      // 1) tenta nova aba, 2) senão usa overlay (sem alerts)
+      // tenta nova aba (rápido). se bloquear, overlay.
       let win=null; try{ win=window.open('','_blank','noopener,noreferrer,width=480,height=800'); }catch(e){}
       if(win && !win.closed){ try{ win.opener=null; }catch(e){} win.document.open(); win.document.write(html); win.document.close(); return; }
       criarOverlayPreview(html);
