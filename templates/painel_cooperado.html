@@ -33,7 +33,7 @@
     border:2px solid var(--royal);
   }
 
-  /* Logo (mantida, mas enxuta) */
+  /* Logo (mantida) */
   .logo-coopex{display:flex;justify-content:center;margin:12px 0 6px}
   .logo-coopex img{height:52px;max-width:170px;filter:drop-shadow(0 4px 8px #00339922)}
 
@@ -42,7 +42,7 @@
     font-weight:800;text-decoration:none}
   .logout:hover{text-decoration:underline}
 
-  /* Estatísticas: mais finas, azuis e lado a lado */
+  /* Estatísticas finas e azuis, lado a lado */
   .estatisticas{
     display:flex;gap:8px;margin:10px 0 8px;flex-wrap:wrap;justify-content:space-between
   }
@@ -56,7 +56,7 @@
   .estat-card small{display:block;opacity:.9;font-weight:700;font-size:.78rem}
   .estat-card strong{display:block;color:#ffe066;font-size:.95rem;margin-top:2px}
 
-  /* Filtros: compactos e dentro do limite dos cards */
+  /* Filtros compactos dentro do limite dos cards */
   form.filtros{
     display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center;
     background:#eef3ff;border-radius:12px;padding:8px;border:2px solid var(--royal);
@@ -76,7 +76,7 @@
   /* Título seção */
   h2{text-align:center;color:var(--royal);font-size:1.05rem;margin:12px 0 8px}
 
-  /* Tabela desktop */
+  /* Tabela / Cards */
   table{width:100%;border-collapse:collapse;table-layout:fixed;box-shadow:0 1px 8px #00339914;border:2px solid var(--royal);border-radius:12px;overflow:hidden}
   th,td{padding:12px 6px;text-align:center;border-bottom:1px solid #e1e9ff;word-break:normal;overflow-wrap:break-word}
   th{background:var(--royal);color:#fff}
@@ -98,7 +98,7 @@
   .recebido-inline input{border:2px solid var(--royal);border-radius:10px;padding:6px 8px;width:70%}
   .recebido-inline button{background:var(--royal);color:#fff;border:none;border-radius:10px;padding:6px 10px;font-weight:800;cursor:pointer}
 
-  /* “Cards” no mobile (um abaixo do outro), com borda azul-royal */
+  /* Cards no mobile (um abaixo do outro) com borda azul-royal */
   @media (max-width:560px){
     .container{border-radius:0;padding:0 2vw 18px}
     table,thead,tbody,th,tr{display:block}
@@ -125,7 +125,7 @@
 <div class="container">
   <a class="logout" href="{{ url_for('logout') }}">Sair</a>
 
-  <!-- Estatísticas: Total / Pago / Pendente (finos e horizontais) -->
+  <!-- Estatísticas: Total / Pago / Pendente -->
   <div class="estatisticas">
     <div class="estat-card">
       <small>Total</small>
@@ -141,7 +141,7 @@
     </div>
   </div>
 
-  <!-- Filtros compactos (só datas e pago/pendente), dentro do limite dos cards -->
+  <!-- Filtros compactos (só datas e pago/pendente) -->
   <form method="get" class="filtros" id="form-filtros">
     <input type="date" name="inicio" value="{{ request.args.get('inicio','') }}">
     <input type="date" name="fim" value="{{ request.args.get('fim','') }}">
@@ -311,6 +311,7 @@
       el.classList.toggle('status-pago', novo === 'pago');
       el.classList.toggle('status-pendente', novo !== 'pago');
 
+      // Se estiver filtrado, remove a linha que não pertence mais
       if((filtro === 'pago' && novo !== 'pago') || (filtro === 'pendente' && novo !== 'pendente')){
         const row = document.getElementById(`row-${id}`);
         const det = document.getElementById(`details-${id}`);
@@ -318,7 +319,9 @@
         ensureEmptyMessage();
       }
 
+      // Recalcular totals a partir das linhas visíveis
       recalcTotals();
+
     }catch(e){
       alert('Erro de conexão ao alterar pagamento.');
     }
