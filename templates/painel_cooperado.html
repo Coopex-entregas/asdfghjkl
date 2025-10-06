@@ -6,121 +6,116 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 <style>
   :root{
-    --azul:#003399; --azul-2:#386fff; --azul-claro:#e8f0fe;
-    --branco:#fff; --verde:#13a038; --vermelho:#d11a1a; --cinza-card:#f3f6fb;
-    --royal:#003399; --royal-borda:#002c80;
+    --royal:#003399; --royal-2:#2753ff;
+    --bg:#ffffff; --cinza:#f3f6fb; --sombra:#0b2a7a12;
+    --verde:#13a038; --vermelho:#d11a1a;
   }
 
   *{box-sizing:border-box}
   html,body{width:100%;max-width:100%;overflow-x:hidden}
   body{
-    margin:0;font-family:'Segoe UI',Arial,sans-serif;color:#1c2740;
-    background:linear-gradient(180deg,#dfe7ff 0%, #e8f0fe 40%, #f6f9ff 100%);
+    margin:0;font-family:'Segoe UI',Arial,sans-serif;color:#152039;background:var(--bg);
   }
 
-  /* Cabeçalho */
+  /* Cabeçalho branco com texto azul-royal */
   header{
-    background:linear-gradient(90deg,var(--azul) 66%,var(--azul-2) 100%);
-    color:#fff;padding:.7rem 3vw;font-weight:800;text-align:center;
-    position:sticky;top:0;z-index:10;letter-spacing:.2px;
-    box-shadow:0 4px 14px #00339933
+    background:#fff;color:var(--royal);
+    padding:.75rem 3vw;font-weight:900;text-align:center;letter-spacing:.2px;
+    position:sticky;top:0;z-index:10;border-bottom:2px solid var(--royal);
   }
 
-  /* Container principal */
+  /* Container principal branco com borda azul-royal */
   .container{
-    max-width:560px;margin:10px auto 22px;background:var(--branco);
-    border-radius:18px;box-shadow:0 2px 14px #00339920;padding:0 3vw 18px;
-    border:2px solid var(--royal);
+    max-width:560px;margin:12px auto 24px;background:#fff;
+    border-radius:16px;border:2px solid var(--royal);
+    box-shadow:0 6px 18px var(--sombra);padding:0 3vw 18px;
   }
-
-  /* Logo (mantida) */
-  .logo-coopex{display:flex;justify-content:center;margin:12px 0 6px}
-  .logo-coopex img{height:52px;max-width:170px;filter:drop-shadow(0 4px 8px #00339922)}
 
   /* Sair */
-  .logout{display:block;text-align:right;margin:8px 8px 0 0;color:var(--royal);
-    font-weight:800;text-decoration:none}
+  .logout{
+    display:block;text-align:right;margin:10px 8px 0 0;color:var(--royal);
+    font-weight:900;text-decoration:none
+  }
   .logout:hover{text-decoration:underline}
 
-  /* Estatísticas finas e azuis, lado a lado */
+  /* Painéis: brancos, borda azul e tipografia forte */
   .estatisticas{
-    display:flex;gap:8px;margin:10px 0 8px;flex-wrap:wrap;justify-content:space-between
+    display:flex;gap:8px;margin:10px 0 10px;flex-wrap:wrap;justify-content:space-between
   }
   .estat-card{
-    flex:1 1 120px;
-    background:var(--royal); color:#fff; border-radius:12px;
-    padding:8px 10px; text-align:center; line-height:1.05;
-    border:2px solid var(--royal-borda);
-    box-shadow:0 6px 14px #0033991a;
+    flex:1 1 120px;background:#fff;color:var(--royal);
+    border-radius:12px;border:2px solid var(--royal);
+    padding:6px 8px;text-align:center;line-height:1.05;box-shadow:0 4px 12px var(--sombra)
   }
-  .estat-card small{display:block;opacity:.9;font-weight:700;font-size:.78rem}
-  .estat-card strong{display:block;color:#ffe066;font-size:.95rem;margin-top:2px}
+  .estat-card small{display:block;font-weight:800;font-size:.75rem}
+  .estat-card strong{display:block;font-size:.95rem;margin-top:1px;white-space:nowrap}
 
-  /* Filtros compactos dentro do limite dos cards */
+  /* Filtros: compactos, branco com borda azul */
   form.filtros{
-    display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:6px;align-items:center;
-    background:#eef3ff;border-radius:12px;padding:8px;border:2px solid var(--royal);
-    box-shadow:0 2px 10px #00339914
+    display:grid;grid-template-columns:1fr 1fr;gap:6px;align-items:center;
+    background:#fff;border-radius:12px;padding:8px;border:2px solid var(--royal);
+    box-shadow:0 4px 12px var(--sombra)
   }
+  @media (min-width:420px){ form.filtros{grid-template-columns:1fr 1fr 1fr} }
+  @media (min-width:520px){ form.filtros{grid-template-columns:1fr 1fr 1fr auto} }
   form.filtros input,form.filtros select,form.filtros button{
-    border:2px solid var(--royal);border-radius:10px;padding:7px 8px;font-size:.95rem;outline:none;
-    background:#fff;color:#0f1f3d
+    min-width:0;border:2px solid var(--royal);border-radius:10px;
+    padding:7px 8px;font-size:.95rem;outline:none;background:#fff;color:#0e1a38
   }
   form.filtros input:focus,form.filtros select:focus{
-    box-shadow:0 0 0 3px #3b6bff33;border-color:#2753ff
+    box-shadow:0 0 0 3px #3b6bff2e;border-color:var(--royal-2)
   }
   form.filtros button{
-    background:var(--royal);color:#fff;border:none;font-weight:800;cursor:pointer;padding:8px 10px
+    background:var(--royal);color:#fff;border:none;font-weight:900;cursor:pointer;padding:8px 10px
   }
 
-  /* Título seção */
+  /* Título */
   h2{text-align:center;color:var(--royal);font-size:1.05rem;margin:12px 0 8px}
 
-  /* Tabela / Cards */
-  table{width:100%;border-collapse:collapse;table-layout:fixed;box-shadow:0 1px 8px #00339914;border:2px solid var(--royal);border-radius:12px;overflow:hidden}
-  th,td{padding:12px 6px;text-align:center;border-bottom:1px solid #e1e9ff;word-break:normal;overflow-wrap:break-word}
-  th{background:var(--royal);color:#fff}
+  /* Tabela branca com linhas e títulos em azul (sem fundo sólido) */
+  table{
+    width:100%;border-collapse:collapse;table-layout:fixed;
+    border:2px solid var(--royal);border-radius:12px;overflow:hidden;
+    background:#fff;box-shadow:0 4px 12px var(--sombra)
+  }
+  th,td{padding:12px 6px;text-align:center;border-bottom:1px solid #e6ecff}
+  th{background:#fff;color:var(--royal);font-weight:900;border-bottom:2px solid var(--royal)}
   tr:last-child td{border-bottom:none}
 
   .status-chip{
-    display:inline-block;padding:5px 10px;border-radius:10px;font-weight:800;border:2px solid var(--royal)
+    display:inline-block;padding:5px 10px;border-radius:10px;font-weight:900;border:2px solid var(--royal)
   }
-  .status-pago{color:#13a038;background:#e6faee;border-color:#10a040}
-  .status-pendente{color:#d11a1a;background:#ffefef;border-color:#d11a1a33}
-  .status-entregue{color:#13a038;background:#e6faee;border-color:#10a040}
+  .status-pago{color:var(--verde);background:#e6faee;border-color:#10a040}
+  .status-pendente{color:var(--vermelho);background:#ffefef;border-color:#e7b7b7}
+  .status-entregue{color:var(--verde);background:#e6faee;border-color:#10a040}
   .clickable{cursor:pointer}
 
-  .cliente-btn{all:unset;cursor:pointer;color:var(--royal);font-weight:800}
+  .cliente-btn{all:unset;cursor:pointer;color:var(--royal);font-weight:900}
   .row-details{display:none}
   .row-open + .row-details{display:table-row}
 
   .recebido-inline{display:none;margin-top:6px;gap:6px;justify-content:center}
   .recebido-inline input{border:2px solid var(--royal);border-radius:10px;padding:6px 8px;width:70%}
-  .recebido-inline button{background:var(--royal);color:#fff;border:none;border-radius:10px;padding:6px 10px;font-weight:800;cursor:pointer}
+  .recebido-inline button{background:var(--royal);color:#fff;border:none;border-radius:10px;padding:6px 10px;font-weight:900;cursor:pointer}
 
-  /* Cards no mobile (um abaixo do outro) com borda azul-royal */
+  /* Cards no mobile brancos, com borda azul */
   @media (max-width:560px){
     .container{border-radius:0;padding:0 2vw 18px}
     table,thead,tbody,th,tr{display:block}
     thead{display:none}
     tr{
-      background:linear-gradient(180deg,#eef3ff 0%,#f8faff 100%);
-      margin:10px 0;border-radius:12px;box-shadow:0 1px 8px #0033991c;padding:8px 10px;
-      border:2px solid var(--royal)
+      background:#fff;margin:10px 0;border-radius:12px;padding:8px 10px;
+      border:2px solid var(--royal);box-shadow:0 4px 10px var(--sombra)
     }
     .row-details{display:none}
     .row-open + .row-details{display:block}
     td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:7px 2px;background:transparent}
-    td::before{content:attr(data-label);font-weight:800;color:var(--royal);padding-right:8px}
+    td::before{content:attr(data-label);font-weight:900;color:var(--royal);padding-right:8px}
   }
 </style>
 </head>
 <body>
 <header>Cooperado: {{ session['user_nome'] }}</header>
-
-<div class="logo-coopex">
-  <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Kratos">
-</div>
 
 <div class="container">
   <a class="logout" href="{{ url_for('logout') }}">Sair</a>
@@ -141,7 +136,7 @@
     </div>
   </div>
 
-  <!-- Filtros compactos (só datas e pago/pendente) -->
+  <!-- Filtros: datas + status (compacto e responsivo) -->
   <form method="get" class="filtros" id="form-filtros">
     <input type="date" name="inicio" value="{{ request.args.get('inicio','') }}">
     <input type="date" name="fim" value="{{ request.args.get('fim','') }}">
@@ -232,7 +227,7 @@
     </tbody>
   </table>
 
-  <div style="text-align:center;color:#003399;font-size:.95rem;margin-top:12px">
+  <div style="text-align:center;color:var(--royal);font-size:.95rem;margin-top:12px">
     {% if not request.args.get('inicio') and not request.args.get('fim') %}
       <b>Exibindo apenas as entregas do dia atual. Use o filtro para outros dias.</b>
     {% endif %}
