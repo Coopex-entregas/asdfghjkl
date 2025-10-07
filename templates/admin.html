@@ -619,7 +619,7 @@
           const fd = new FormData(); fd.append('cooperado_id', coopId);
           const res = await fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
           if(!res.ok) throw new Error('Falha ao salvar');
-        }catch(e){ console.error(e); alert('Não foi possível salvar agora.'); }
+        }catch(e){ console.error(e); }
         const span = document.createElement('span');
         const tem = !!sel.value;
         span.className = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
