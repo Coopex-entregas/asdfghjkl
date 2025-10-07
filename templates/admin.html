@@ -78,109 +78,75 @@
     .badge.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
     .badge.neu{background:#edf3ff;border-color:#cfdbff;color:#2347c7}
 
-    /* Layout: só as entregas rolam */
+    /* Layout INVERTIDO: entregas à ESQUERDA, sidebar à DIREITA */
     .viewport{height:calc(100vh - 64px - 54px); padding:16px 18px}
-    .grid{height:100%; display:grid; grid-template-columns:360px 1fr; gap:16px}
-    @media (max-width:1200px){ .grid{grid-template-columns:320px 1fr} }
-    @media (max-width:1024px){ .grid{grid-template-columns:1fr} }
+    .grid{
+      height:100%;
+      display:grid;
+      grid-template-columns:1fr 360px;       /* ESQUERDA (entregas) / DIREITA (sidebar) */
+      gap:16px;
+      grid-template-areas:'deliveries sidebar';
+    }
+    @media (max-width:1200px){
+      .grid{grid-template-columns:1fr; grid-template-areas:'deliveries' 'sidebar'}
+    }
 
-    /* Coluna esquerda */
+    /* Cartão base + containers */
     .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
-    .left{display:flex; flex-direction:column; gap:14px; min-height:0}
     .card .body{padding:14px}
     .card h3{margin:0 0 10px;font-size:1rem;color:#213a99}
-
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .stack{display:flex;flex-direction:column;gap:10px}
 
-    /* === TODOS OS BOTÕES AZUIS === */
+    /* BOTÕES azuis */
     .btn{
       display:inline-flex;align-items:center;justify-content:center;gap:6px;
       background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
       color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none;
       box-shadow:0 6px 16px rgba(0,50,200,.18);
     }
-    /* .btn.alt também azul */
-    .btn.alt{
-      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff;border:none;
-    }
+    .btn.alt{background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);color:#fff;border:none}
     .btn.block{width:100%}
     .btn:hover{filter:brightness(1.05)}
 
-    /* Inputs padrão da coluna esquerda — borda azul */
+    /* Inputs padrão — borda azul */
     label{font-size:.85rem;color:#28409f;font-weight:700}
     select,input[type="date"],input[type="text"]{
       width:100%;padding:9px 10px;border-radius:10px;
       border:1.5px solid var(--primary-border);
       background:#fff;color:var(--ink);font-weight:600
     }
-    /* foco azul mais visível */
-    a:focus,button:focus,select:focus,input:focus{
-      outline:2px solid var(--primary-border);outline-offset:2px
-    }
-    /* reforço nos campos da fila (pedido específico) */
+    a:focus,button:focus,select:focus,input:focus{ outline:2px solid var(--primary-border);outline-offset:2px }
     #cooperado-espera,#nome-espera{border-color:var(--primary-border)}
 
-    /* Caixa/lista de espera com borda azul */
-    #espera-lista{
-      list-style:none;margin:8px 0 0;padding:10px;
-      border:1.5px solid var(--primary-border);
-      border-radius:12px;background:#f7faff;
-      display:flex;flex-direction:column;gap:8px
-    }
-    .espera-chip{
-      display:flex;align-items:center;gap:10px;
-      background:#ffffff;
-      border:1.5px solid var(--primary-border);
-      padding:9px 10px;border-radius:10px;cursor:grab;
-      box-shadow:0 4px 10px rgba(0,60,220,.06)
-    }
-    .espera-chip:active{cursor:grabbing}
-    .espera-chip-num{background:#2750ff;color:#fff;font-weight:900;width:26px;height:26px;border-radius:50%;display:flex;align-items:center;justify-content:center}
-    .espera-chip-text{font-weight:800;color:#113299}
-    .espera-chip-remove{background:#d11a1a;color:#fff;border:none;width:28px;height:28px;border-radius:8px;cursor:pointer;font-weight:900}
+    /* Sidebar (DIREITA) */
+    .left{grid-area:sidebar; display:flex; flex-direction:column; gap:14px; min-height:0}
 
-    /* Coluna direita (painel royal) */
+    /* Painel ENTREGAS (ESQUERDA) */
     .right{
-      min-height:0;display:flex;flex-direction:column;
+      grid-area:deliveries; min-height:0;display:flex;flex-direction:column;
       background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
       border:1px solid var(--pane-line);border-radius:var(--r);box-shadow:var(--shadow);
       color:var(--pane-text);
     }
-    .right .head{
-      display:flex;align-items:center;justify-content:space-between;
-      padding:12px 14px;border-bottom:1px solid var(--pane-line)
-    }
+    .right .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--pane-line)}
     .right h2{margin:0;font-size:1rem;color:#fff}
     .toggle{background:transparent;border:1px solid var(--muted);color:#fff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
 
-    /* Filtros horizontais (no topo da direita) */
-    .filters-bar{
-      position:sticky;top:0;z-index:5;
-      background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
-      border-bottom:1px solid var(--pane-line);
-      padding:10px 12px
-    }
+    /* Filtros */
+    .filters-bar{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);border-bottom:1px solid var(--pane-line);padding:10px 12px}
     .filters-form{display:grid;grid-template-columns: repeat(5, minmax(160px, 1fr)) auto; gap:10px; align-items:end}
     .filters-form .field{display:flex;flex-direction:column;gap:6px}
     .filters-form label{font-size:.82rem;color:#dfe8ff;font-weight:800}
-    .filters-form select,
-    .filters-form input{
-      background:#0a1f7e;border:1px solid #2f4de6;color:#fff;border-radius:10px;padding:8px 10px;font-weight:700
-    }
+    .filters-form select,.filters-form input{background:#0a1f7e;border:1px solid #2f4de6;color:#fff;border-radius:10px;padding:8px 10px;font-weight:700}
     .filters-form .btn{height:40px}
 
     .content{min-height:0;overflow:hidden}
     .scrollable{height:100%;overflow:auto}
 
-    /* Tabela royal */
+    /* Tabela */
     table{width:100%;border-collapse:collapse;color:var(--pane-text);font-size:13.6px;background:transparent}
-    thead th{
-      position:sticky;top:0;z-index:1;
-      background:#031a66;color:#fff;
-      border-bottom:1px solid var(--pane-line);
-    }
+    thead th{position:sticky;top:0;z-index:1;background:#031a66;color:#fff;border-bottom:1px solid var(--pane-line)}
     th,td{border-bottom:1px solid var(--pane-line);padding:7px 6px;text-align:center;vertical-align:middle}
     tbody tr:nth-child(even) td{background:rgba(255,255,255,.03)}
     tbody tr:hover td{background:rgba(255,255,255,.06)}
@@ -192,17 +158,29 @@
     .badge.table.good{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:#a7ffdf}
     .badge.table.bad{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.36);color:#ffb4b4}
 
-    /* Cards (royal) */
+    /* Cards */
     .cards-wrap.scrollable{padding:12px}
     .cards{display:none}
     .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
     @media (max-width:1100px){ .cards.grid{grid-template-columns:1fr} }
     .delivery{
-      background:rgba(255,255,255,.06); color:#fff;
-      border:1px solid var(--pane-line); border-radius:12px; padding:10px; display:grid; gap:8px;
+      background:rgba(255,255,255,.06); color:#fff; border:1px solid var(--pane-line); border-radius:12px; padding:10px; display:grid; gap:8px;
       box-shadow:0 6px 18px rgba(0,0,0,.15)
     }
     .chip{background:rgba(255,255,255,.15);border:1px solid var(--pane-line);color:#fff;border-radius:999px;padding:5px 9px;font-weight:700}
+
+    /* Bolinha de status ao lado do ID */
+    .id-with-dot{display:inline-flex;align-items:center;gap:8px;justify-content:flex-start}
+    .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.5)}
+    .status-dot.ok{background:#10b981}
+    .status-dot.no{background:#ef4444}
+
+    /* Edição inline cooperado */
+    .coop-dot{display:inline-flex;align-items:center;gap:6px;font-weight:800}
+    .coop-dot::before{content:"";width:10px;height:10px;border-radius:50%;display:inline-block;background:#aaa;border:1px solid rgba(255,255,255,.5)}
+    .coop-dot.ok::before{background:#10b981}
+    .coop-dot.no::before{background:#ef4444}
+    .coop-editable{cursor:pointer;text-decoration:underline dotted rgba(255,255,255,.5)}
   </style>
 </head>
 <body>
@@ -239,7 +217,7 @@
   <!-- CONTEÚDO -->
   <div class="viewport">
     <div class="grid">
-      <!-- ESQUERDA -->
+      <!-- Sidebar (DIREITA) -->
       <aside class="left">
         <!-- LISTA DE ESPERA -->
         <div class="card">
@@ -255,7 +233,6 @@
               <button type="submit" class="btn">Adicionar</button>
             </form>
 
-            <!-- lista com borda azul -->
             <ul id="espera-lista">
               {% if lista_espera|length == 0 %}
                 <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
@@ -296,7 +273,6 @@
                    status_pagamento=request.args.get('status_pagamento','todos'),
                    cliente=request.args.get('cliente','')) }}">Exportar</a>
 
-                <!-- relatório abre em nova aba -->
                 <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
                    data_inicio=data_inicio or '',
                    data_fim=data_fim or '',
@@ -309,7 +285,7 @@
         </div>
       </aside>
 
-      <!-- DIREITA (ENTREGAS) -->
+      <!-- ENTREGAS (ESQUERDA) -->
       <section class="right">
         <div class="head">
           <h2>Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}</h2>
@@ -353,7 +329,7 @@
         </div>
 
         <div class="content">
-          <!-- TABELA (rolagem própria) -->
+          <!-- TABELA -->
           <div id="tbl" class="scrollable">
             <table>
               <thead>
@@ -365,8 +341,21 @@
               </thead>
               <tbody>
                 {% for e in entregas %}
-                <tr>
-                  <td>{{ e.id }}</td>
+                {% set tem_coop = (e.cooperado is not none) %}
+                <tr
+                  data-id="{{ e.id }}"
+                  data-envio-epoch="{{ (to_brasilia(e.data_envio).timestamp()|int) if e.data_envio else '' }}"
+                >
+                  <!-- ID + bolinha de status à ESQUERDA -->
+                  <td>
+                    <span class="id-with-dot">
+                      <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
+                            aria-label="{{ 'Atribuído' if tem_coop else 'Sem cooperado' }}"
+                            title="{{ 'Atribuído' if tem_coop else 'Sem cooperado' }}"></span>
+                      <span>{{ e.id }}</span>
+                    </span>
+                  </td>
+
                   <td>{{ e.cliente }}</td>
                   <td>{{ e.bairro }}</td>
                   <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
@@ -376,7 +365,17 @@
                   </td>
                   <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
                   <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-                  <td>{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</td>
+
+                  <!-- Cooperado (clicável para edição rápida) -->
+                  <td>
+                    <span class="coop-dot {{ 'ok' if tem_coop else 'no' }} coop-editable"
+                          data-id="{{ e.id }}"
+                          data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
+                          title="Clique para trocar o cooperado">
+                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
+                    </span>
+                  </td>
+
                   <td>{{ e.pagamento }}</td>
 
                   <!-- Status entrega -->
@@ -412,21 +411,28 @@
                       <svg viewBox="0 0 24 24" fill="#9fc0ff"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
                     </a>
 
+                    <!-- CLONAR -->
                     <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
-                <button title="Clonar" type="submit" class="icon-btn">
-                  <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
-                </button>
-              </form>
+                      <button title="Clonar" type="submit" class="icon-btn">
+                        <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
+                      </button>
+                    </form>
 
-                    <button type="button" class="icon-btn" title="Imprimir cupom" aria-label="Imprimir"
+                    <!-- IMPRIMIR -->
+                    <button
+                      type="button"
+                      title="Imprimir cupom"
+                      class="icon-btn"
                       data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
                       onclick="imprimirCupom({{ e.id }}, this)">
-                      <svg viewBox="0 0 24 24" fill="#10b981"><path d="M19 8h-1V3c0-1.1-.9-2-2-2H8C6.9 1 6 1.9 6 3v5H5C2.8 8 1 9.8 1 12v6c0 2.2 1.8 4 4 4h2v-3h10v3h2c2.2 0 4-1.8 4-4v-6c0-2.2-1.8-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg>
+                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#13a038">
+                        <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
+                      </svg>
                     </button>
 
-                    <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline" onsubmit="return confirm('Excluir entrega?');">
-                      <button title="Excluir" type="submit" class="icon-btn" aria-label="Excluir">
-                        <svg viewBox="0 0 24 24" fill="#ff9b9b"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg>
+                    <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+                      <button title="Excluir" type="submit" class="icon-btn">
+                        <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
                       </button>
                     </form>
                   </td>
@@ -436,13 +442,17 @@
             </table>
           </div>
 
-          <!-- CARDS (rolagem própria) -->
+          <!-- CARDS -->
           <div id="cardsWrap" class="cards-wrap scrollable" style="display:none">
             <div id="cards" class="cards grid">
               {% for e in entregas %}
+              {% set tem_coop = (e.cooperado is not none) %}
               <div class="delivery">
                 <div class="row">
-                  <strong>#{{ e.id }}</strong>
+                  <strong>
+                    <span class="status-dot {{ 'ok' if tem_coop else 'no' }}" style="vertical-align:middle;margin-right:6px"></span>
+                    #{{ e.id }}
+                  </strong>
                   <span class="chip">{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</span>
                   <span style="margin-left:auto" class="small">{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</span>
                 </div>
@@ -497,34 +507,47 @@
     </div>
   </div>
 
+  <!-- áudio do aviso -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <script>
-    // Alternar Tabela/Cartões (ambos com rolagem)
+    // === Lista de cooperados para edição rápida ===
+    window.COOPERADOS = [
+      {% for c in cooperados %}{ id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
+    ];
+
+    // Alternar Tabela/Cartões
     const btToggle = document.getElementById('toggleView');
     const tbl = document.getElementById('tbl');
     const cardsWrap = document.getElementById('cardsWrap');
     btToggle.addEventListener('click', ()=>{
       const showingCards = cardsWrap.style.display !== 'none';
-      if (showingCards) {
-        cardsWrap.style.display = 'none';
-        tbl.style.display = 'block';
-      } else {
-        tbl.style.display = 'none';
-        cardsWrap.style.display = 'block';
-      }
+      cardsWrap.style.display = showingCards ? 'none' : 'block';
+      tbl.style.display = showingCards ? 'block' : 'none';
     });
 
-    // Preencher nome na fila
+    // Preenche "nome" da fila a partir do select
     const selCoop = document.getElementById('cooperado-espera');
     const inpNome = document.getElementById('nome-espera');
     const formEspera = document.getElementById('form-espera');
-    if(selCoop){ selCoop.addEventListener('change', ()=>{ const nome=selCoop.options[selCoop.selectedIndex]?.text||''; if(!inpNome.value) inpNome.value=nome; }); }
-    if(formEspera){ formEspera.addEventListener('submit', ()=>{ if(!inpNome.value){ const nome=selCoop.options[selCoop.selectedIndex]?.text||''; inpNome.value=nome; } }); }
+    if (selCoop) {
+      selCoop.addEventListener('change', () => {
+        const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
+        if (!inpNome.value) inpNome.value = nome;
+      });
+    }
+    if (formEspera) {
+      formEspera.addEventListener('submit', () => {
+        if (!inpNome.value) {
+          const nome = selCoop.options[selCoop.selectedIndex]?.text || '';
+          inpNome.value = nome;
+        }
+      });
+    }
 
-    // Drag & Drop lista de espera
+    // Drag & drop da fila
     const ulFila = document.getElementById('espera-lista');
-    let dragEl=null;
+    let dragEl = null;
     function renumerar(){ [...ulFila.querySelectorAll('.espera-chip-num')].forEach((el,i)=>el.textContent=i+1); }
     function salvarOrdem(){
       const ids=[...ulFila.querySelectorAll('.espera-chip')].map(li=>li.dataset.id);
@@ -552,12 +575,10 @@
       if(!confirm(confirmar)) return;
 
       ev.preventDefault();
-
       try{
         const fd = new FormData(form);
         const res = await fetch(form.action, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
         if(!res.ok) throw new Error('Falha ao atualizar.');
-
         if(st.classList.contains('js-toggle-pagto')){
           st.classList.remove('bad'); st.classList.add('good'); st.textContent='Pago'; st.title='Pagamento quitado';
         }else{
@@ -579,57 +600,69 @@
       cardsArea.addEventListener('scroll', ()=> sessionStorage.setItem(KEY_C, cardsArea.scrollTop));
     }
 
-    <script>
-  function abrirJanelaHTML(html) {
-    // 1) tenta abrir e escrever em about:blank (rápido)
-    let win = null;
-    try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
-    if (win && !win.closed) {
-      try {
-        win.opener = null;
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-        return true;
-      } catch(e){}
-    }
+    // ===== Edição rápida do cooperado (click no nome) =====
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest('.coop-editable');
+      if(!el) return;
+      const idEntrega = el.dataset.id;
+      const atual = el.dataset.cooperadoId || '';
+      const sel = document.createElement('select');
+      sel.style.background='#0a1f7e'; sel.style.color='#fff'; sel.style.border='1px solid #2f4de6'; sel.style.borderRadius='8px';
+      sel.style.padding='4px 6px'; sel.style.fontWeight='800';
+      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Sem Cooperado'; sel.appendChild(opt0);
+      window.COOPERADOS.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.nome; if(String(c.id)===String(atual)) o.selected=true; sel.appendChild(o); });
+      el.replaceWith(sel); sel.focus();
+      const salvar = async ()=>{
+        const coopId = sel.value || '';
+        try{
+          const url = `/atribuir_cooperado/${idEntrega}`;
+          const fd = new FormData(); fd.append('cooperado_id', coopId);
+          const res = await fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
+          if(!res.ok) throw new Error('Falha ao salvar');
+        }catch(e){ console.error(e); alert('Não foi possível salvar agora.'); }
+        const span = document.createElement('span');
+        const tem = !!sel.value;
+        span.className = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
+        span.dataset.id = idEntrega; span.dataset.cooperadoId = sel.value;
+        span.title = tem? 'Atribuído':'Sem cooperado';
+        const nome = tem ? (window.COOPERADOS.find(x=>String(x.id)===String(sel.value))?.nome || '-') : 'Sem Cooperado';
+        span.textContent = nome;
+        sel.replaceWith(span);
+        // Atualiza também o dot da primeira coluna (ID)
+        const tr = span.closest('tr');
+        tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('ok', tem);
+        tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('no', !tem);
+      };
+      sel.addEventListener('change', salvar);
+      sel.addEventListener('blur', salvar, {once:true});
+    });
 
-    // 2) fallback via Blob (evita aba branca em alguns navegadores)
-    try {
-      const blob = new Blob([html], {type:'text/html'});
-      const url = URL.createObjectURL(blob);
-      const w2 = window.open(url, '_blank', 'noopener,noreferrer,width=480,height=800');
-      if (w2 && !w2.closed) return true;
-    } catch(e){}
+    // ===== IMPRESSÃO DE CUPOM =====
+    function imprimirCupom(idEntrega, botao) {
+      const tr = botao.closest('tr');
+      const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
+      const dataDiaBruto = (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim();
+      const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
 
-    // 3) último recurso: overlay embutido
-    return false;
-  }
+      const rawId = get(0);
+      const numId = (rawId.match(/\d+/)||[''])[0] || rawId;
 
-  // -------- IMPRESSÃO DE CUPOM (80mm) — preview + botão imprimir --------
-  function imprimirCupom(idEntrega, botao) {
-    const tr = botao.closest('tr');
-    const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
+      const dados = {
+        id: numId,
+        idPad: String(numId).padStart(6,'0'),
+        cliente: get(1),
+        bairro: get(2),
+        valor: get(3).replace(/^R\$\s*/,'').trim(),
+        data: dataSo,
+        horaPedido: get(5),
+        cooperado: botao?.dataset?.cooperado || get(7) || '-',
+        formaPgto: get(8),
+        recebidoPor: get(11)
+      };
 
-    const dataDiaBruto = (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim();
-    const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
+      const cacheBust = Date.now();
 
-    const dados = {
-      id: get(0),
-      idPad: String(get(0)).padStart(6,'0'),
-      cliente: get(1),
-      bairro: get(2),
-      valor: get(3).replace(/^R\$\s*/,'').trim(),
-      data: dataSo,
-      horaPedido: get(5),
-      cooperado: botao?.dataset?.cooperado || get(7) || '-',
-      formaPgto: get(8),
-      recebidoPor: get(11)
-    };
-
-    const cacheBust = Date.now();
-
-    const html = `<!DOCTYPE html>
+      const html = `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="utf-8">
@@ -656,12 +689,14 @@
   .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}
   .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
   @media print { .actions{display:none} body{background:#fff} }
+  svg { fill: #000; color: #000; }
 </style>
 </head>
 <body>
   <div class="wrap">
     <div class="cupom">
-      <img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" alt="Logo Coopex" class="logo"
+      <img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}"
+           alt="Logo Coopex" class="logo"
            onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
 
       <div class="center tiny">
@@ -703,14 +738,144 @@
 </body>
 </html>`;
 
-    // tenta abrir; se falhar, cai no overlay
-    if (!abrirJanelaHTML(html)) {
+      // abre nova aba; se falhar, usa overlay
+      let win = null;
+      try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
+      if (win && !win.closed) {
+        try { win.opener = null; } catch(e){}
+        win.document.open(); win.document.write(html); win.document.close();
+        return;
+      }
       criarOverlayPreview(html);
     }
-  }
 
-  // garante que o handler esteja disponível no escopo global
-  window.imprimirCupom = imprimirCupom;
-</script>
+    // Overlay de preview (fallback se popup bloquear)
+    function criarOverlayPreview(html){
+      const wrap = document.createElement('div');
+      wrap.id = 'print-preview-overlay';
+      Object.assign(wrap.style, {
+        position:'fixed', inset:'0', background:'rgba(10,16,28,0.75)', zIndex:'10000',
+        display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'
+      });
+
+      const box = document.createElement('div');
+      Object.assign(box.style, {
+        background:'#fff', borderRadius:'14px', width:'min(720px, 96vw)', height:'min(90vh, 900px)',
+        boxShadow:'0 10px 40px rgba(0,0,0,.35)', display:'flex', flexDirection:'column', overflow:'hidden'
+      });
+
+      const header = document.createElement('div');
+      header.textContent = 'Visualização do Cupom';
+      Object.assign(header.style, {
+        padding:'10px 14px', fontWeight:'800', color:'#003399', borderBottom:'1px solid #e6ebff'
+      });
+
+      const iframe = document.createElement('iframe');
+      iframe.setAttribute('title','Pré-visualização do cupom');
+      Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
+      if ('srcdoc' in iframe) { iframe.srcdoc = html; }
+      else {
+        const doc = iframe.contentWindow || iframe.contentDocument;
+        const iDoc = doc.document || doc;
+        iDoc.open(); iDoc.write(html); iDoc.close();
+      }
+
+      const footer = document.createElement('div');
+      Object.assign(footer.style, {
+        padding:'10px', borderTop:'1px solid #e6ebff', display:'flex', gap:'10px',
+        justifyContent:'center', background:'#f8faff'
+      });
+
+      const btImprimir = document.createElement('button');
+      btImprimir.textContent = 'Imprimir';
+      Object.assign(btImprimir.style, {
+        padding:'10px 18px', borderRadius:'10px', border:'1px solid #003399',
+        background:'#003399', color:'#fff', fontWeight:'800', cursor:'pointer'
+      });
+      btImprimir.onclick = () => { try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){} };
+
+      const btFechar = document.createElement('button');
+      btFechar.textContent = 'Fechar';
+      Object.assign(btFechar.style, {
+        padding:'10px 18px', borderRadius:'10px', border:'1px solid #c3c8d5',
+        background:'#fff', color:'#003399', fontWeight:'800', cursor:'pointer'
+      });
+      btFechar.onclick = () => wrap.remove();
+
+      footer.appendChild(btImprimir);
+      footer.appendChild(btFechar);
+
+      box.appendChild(header);
+      box.appendChild(iframe);
+      box.appendChild(footer);
+      wrap.appendChild(box);
+      document.body.appendChild(wrap);
+    }
+
+    // ===== AVISO SONORO: toca quando entrega ficar PENDENTE por >= 2 horas =====
+    (function(){
+      const AUDIO = document.getElementById('som-pendente');
+      if (!AUDIO) return;
+
+      const LIMIAR_MS = 2 * 60 * 60 * 1000; // 2 horas
+      const STORAGE_KEY = 'pendente_alertados_v1'; // guarda IDs já tocados
+      let tocados = {};
+      try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
+
+      function pendentesAtrasados() {
+        const agora = Date.now();
+        const rows = document.querySelectorAll('tbody tr');
+        const atrasados = [];
+        rows.forEach(tr => {
+          const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
+          if (!badgePendente) return; // não está pendente
+          const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
+          if (!epoch) return;
+          const ms = (agora/1000 - epoch) * 1000;
+          if (ms >= LIMIAR_MS) {
+            const id = tr.getAttribute('data-id') || '';
+            if (id && !tocados[id]) atrasados.push(id);
+          }
+        });
+        return atrasados;
+      }
+
+      async function tocar() {
+        try {
+          AUDIO.currentTime = 0;
+          await AUDIO.play();
+        } catch(e) {
+          // navegador pode exigir interação; ignora
+        }
+      }
+
+      function checar() {
+        const ids = pendentesAtrasados();
+        if (ids.length > 0) {
+          tocar();
+          ids.forEach(id => tocados[id] = true);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
+        }
+      }
+
+      // checa ao carregar e depois a cada 60s
+      checar();
+      setInterval(checar, 60000);
+
+      // quando marcar entregue, remove do "tocados" (se quiser tocar de novo no futuro se voltar a pendente)
+      document.addEventListener('click', (ev)=>{
+        const st = ev.target.closest('.js-toggle-entrega');
+        if (!st) return;
+        const tr = st.closest('tr');
+        const id = tr?.getAttribute('data-id') || '';
+        if (id && tocados[id]) {
+          delete tocados[id];
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
+        }
+        // re-checa após potencial update por AJAX
+        setTimeout(checar, 1500);
+      });
+    })();
+  </script>
 </body>
 </html>
