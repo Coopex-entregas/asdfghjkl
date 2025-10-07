@@ -181,6 +181,15 @@
     .coop-dot.ok::before{background:#10b981}
     .coop-dot.no::before{background:#ef4444}
     .coop-editable{cursor:pointer;text-decoration:underline dotted rgba(255,255,255,.5)}
+
+    /* NOVO: Modal (overlay) */
+    body.locked{overflow:hidden}
+    #overlay{display:none;position:fixed;inset:0;background:rgba(6,12,24,.6);z-index:9999;align-items:center;justify-content:center;padding:20px}
+    #overlay .box{background:#fff;border-radius:14px;max-width:520px;width:96%;box-shadow:0 16px 48px rgba(0,0,0,.35);overflow:hidden}
+    #overlay .box h3{margin:0;padding:14px 16px;background:#f0f4ff;border-bottom:1px solid #e1e8ff;color:#0a2c8b}
+    #overlay .box p{margin:0;padding:16px}
+    #overlay .box .actions{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eef3ff}
+    #overlay .box .btn{box-shadow:none}
   </style>
 </head>
 <body>
@@ -325,6 +334,11 @@
               <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
             </div>
             <button class="btn" type="submit">Filtrar</button>
+
+            <!-- NOVO: botão para zerar o cronômetro de pendentes (2h) -->
+            <button class="btn alt" type="button" id="btResetAviso" title="Zerar cronômetro de pendentes (2h)">
+              Zerar aviso pendentes
+            </button>
           </form>
         </div>
 
@@ -509,6 +523,17 @@
 
   <!-- áudio do aviso -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
+
+  <!-- NOVO: Modal (overlay) -->
+  <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="box">
+      <h3 id="modal-title">Aviso</h3>
+      <p id="modal-msg">Mensagem</p>
+      <div class="actions">
+        <button id="modal-ok" class="btn">OK</button>
+      </div>
+    </div>
+  </div>
 
   <script>
     // === Lista de cooperados para edição rápida ===
@@ -812,27 +837,32 @@
       document.body.appendChild(wrap);
     }
 
-    // ===== AVISO SONORO: toca quando entrega ficar PENDENTE por >= 2 horas =====
+    // ===== AVISO SONORO (2 horas) + botão ZERAR ===== // NOVO
     (function(){
       const AUDIO = document.getElementById('som-pendente');
       if (!AUDIO) return;
 
       const LIMIAR_MS = 2 * 60 * 60 * 1000; // 2 horas
-      const STORAGE_KEY = 'pendente_alertados_v1'; // guarda IDs já tocados
+      const STORAGE_TOCADOS = 'pendente_alertados_v1';
+      const STORAGE_RESET_AT = 'pendente_reset_at';
       let tocados = {};
-      try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
+      try { tocados = JSON.parse(localStorage.getItem(STORAGE_TOCADOS) || '{}') || {}; } catch(e){ tocados = {}; }
+
+      function getResetMs(){ return parseInt(localStorage.getItem(STORAGE_RESET_AT)||'0',10) || 0; }
+      function setResetNow(){ localStorage.setItem(STORAGE_RESET_AT, String(Date.now())); }
 
       function pendentesAtrasados() {
         const agora = Date.now();
-        const rows = document.querySelectorAll('tbody tr');
+        const resetAt = getResetMs();
+        const rows = document.querySelectorAll('#tbl table tbody tr');
         const atrasados = [];
         rows.forEach(tr => {
           const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
           if (!badgePendente) return; // não está pendente
           const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
           if (!epoch) return;
-          const ms = (agora/1000 - epoch) * 1000;
-          if (ms >= LIMIAR_MS) {
+          const inicio = Math.max(epoch * 1000, resetAt);
+          if ((agora - inicio) >= LIMIAR_MS) {
             const id = tr.getAttribute('data-id') || '';
             if (id && !tocados[id]) atrasados.push(id);
           }
@@ -841,20 +871,16 @@
       }
 
       async function tocar() {
-        try {
-          AUDIO.currentTime = 0;
-          await AUDIO.play();
-        } catch(e) {
-          // navegador pode exigir interação; ignora
-        }
+        try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e) {}
       }
 
-      function checar() {
+      async function checar() {
         const ids = pendentesAtrasados();
         if (ids.length > 0) {
-          tocar();
+          await tocar();
           ids.forEach(id => tocados[id] = true);
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
+          try { localStorage.setItem(STORAGE_TOCADOS, JSON.stringify(tocados)); } catch(e){}
+          abrirModal('Entregas pendentes (2h+)', '⚠️ Existem entregas pendentes há 2 horas ou mais. Verifique agora.', false);
         }
       }
 
@@ -862,7 +888,17 @@
       checar();
       setInterval(checar, 60000);
 
-      // quando marcar entregue, remove do "tocados" (se quiser tocar de novo no futuro se voltar a pendente)
+      // Botão para zerar o cronômetro de pendentes
+      const btReset = document.getElementById('btResetAviso');
+      if (btReset){
+        btReset.addEventListener('click', async ()=>{
+          tocados = {}; try { localStorage.setItem(STORAGE_TOCADOS, JSON.stringify(tocados)); } catch(e){}
+          setResetNow();
+          await abrirModal('Aviso reiniciado', '⏱️ O cronômetro dos avisos foi zerado. Se ainda houver pendências, o aviso tocará novamente após 2 horas.', false);
+        });
+      }
+
+      // quando marcar entregue, remove do "tocados"
       document.addEventListener('click', (ev)=>{
         const st = ev.target.closest('.js-toggle-entrega');
         if (!st) return;
@@ -870,12 +906,90 @@
         const id = tr?.getAttribute('data-id') || '';
         if (id && tocados[id]) {
           delete tocados[id];
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
+          try { localStorage.setItem(STORAGE_TOCADOS, JSON.stringify(tocados)); } catch(e){}
         }
-        // re-checa após potencial update por AJAX
         setTimeout(checar, 1500);
       });
     })();
+
+    // ===== Modal helpers (balões) ===== // NOVO
+    const overlay = document.getElementById('overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMsg = document.getElementById('modal-msg');
+    const modalOk = document.getElementById('modal-ok');
+    let _modalResolve = null;
+    function abrirModal(titulo, mensagem, tocarSom = false) {
+      modalTitle.textContent = titulo;
+      modalMsg.textContent = mensagem;
+      overlay.style.display = 'flex';
+      document.body.classList.add('locked');
+      if (tocarSom) { try { const a=document.getElementById('som-pendente'); a.currentTime=0; a.play(); } catch(e){} }
+      return new Promise(resolve => { _modalResolve = resolve; });
+    }
+    modalOk.addEventListener('click', () => {
+      overlay.style.display = 'none';
+      document.body.classList.remove('locked');
+      if (_modalResolve) _modalResolve(true);
+      _modalResolve = null;
+    });
+
+    // ===== Balões: pagamentos pendentes + boa noite ===== // NOVO
+    function existePagamentoPendenteNaTabela() {
+      // usa a tabela real do painel
+      return [...document.querySelectorAll('#tbl table tbody tr')].some(tr => {
+        const cel = tr.children[10]; // coluna "Pagamento"
+        return cel && cel.textContent.trim().toLowerCase().includes('pendente');
+      });
+    }
+    async function checaAvisos() {
+      try {
+        const agora = new Date();
+        const hora = agora.getHours(), minutos = agora.getMinutes();
+
+        // Pagamento pendente: hora par e < 4 min
+        if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
+          const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
+          if (!localStorage.getItem(keyHora)) {
+            await abrirModal('Cobrança de Pagamento', '⚠️ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.', true);
+            localStorage.setItem(keyHora, '1');
+          }
+        }
+
+        // Boa noite às 21:59 (uma vez por dia)
+        if (hora === 21 && minutos === 59) {
+          const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
+          if (!localStorage.getItem(keyBoaNoite)) {
+            await abrirModal('Boa noite!', '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.', true);
+            localStorage.setItem(keyBoaNoite, '1');
+          }
+        }
+      } catch(e) { console.error(e); }
+    }
+    window.addEventListener('DOMContentLoaded', () => {
+      checaAvisos();
+      setInterval(checaAvisos, 60 * 1000);
+    });
+
+    // Clique nos status para marcar como ENTREGUE/PAGO (backup)
+    document.addEventListener('click', function (ev) {
+      const alvo = ev.target;
+
+      // Pagamento
+      if (alvo.classList.contains('js-toggle-pagto')) {
+        const form = alvo.closest('form');
+        if (!form) return;
+        const confirmar = confirm('Confirmar pagamento como PAGO?');
+        if (confirmar) form.submit();
+      }
+
+      // Entrega
+      if (alvo.classList.contains('js-toggle-entrega')) {
+        const form = alvo.closest('form');
+        if (!form) return;
+        const confirmar = confirm('Confirmar entrega como ENTREGUE?');
+        if (confirmar) form.submit();
+      }
+    });
   </script>
 </body>
 </html>
