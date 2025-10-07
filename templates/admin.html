@@ -597,8 +597,20 @@
   .pp-close{border:1px solid #c3c8d5;background:#fff;color:#003399}
 </style>
 
+<!-- === Preview/print Cupom (overlay + janela about:blank) === -->
+<style id="print-overlay-styles">
+  .pp-wrap{position:fixed;inset:0;background:rgba(10,16,28,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px}
+  .pp-box{background:#fff;border-radius:14px;width:min(720px,96vw);height:min(90vh,900px);box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
+  .pp-head{padding:10px 14px;font-weight:800;color:#003399;border-bottom:1px solid #e6ebff}
+  .pp-iframe{flex:1 1 auto;width:100%;border:0;background:#fff}
+  .pp-foot{padding:10px;border-top:1px solid #e6ebff;display:flex;gap:10px;justify-content:center;background:#f8faff}
+  .pp-btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+  .pp-print{border:1px solid #003399;background:#003399;color:#fff}
+  .pp-close{border:1px solid #c3c8d5;background:#fff;color:#003399}
+</style>
+
 <script>
-  // Overlay de preview (fallback se popup for bloqueado)
+  // Fallback: overlay de preview se popup for bloqueado
   function criarOverlayPreview(html){
     const wrap=document.createElement('div'); wrap.className='pp-wrap';
     const box=document.createElement('div'); box.className='pp-box';
@@ -622,7 +634,7 @@
     document.body.appendChild(wrap);
   }
 
-  // Impressão do cupom (janela via Blob URL + <base> para /static)
+  // Impressão do cupom (about:blank + document.write)
   function imprimirCupom(idEntrega, botao){
     const tr = botao.closest('tr');
     const get=(idx)=> (tr?.children[idx]?.innerText||'').trim()||'-';
@@ -645,13 +657,17 @@
     };
 
     const cacheBust=Date.now();
-    const baseHref = location.origin + '/'; // garante /static/... dentro do Blob
+
+    // IMPORTANTE: sem "noreferrer", para manter same-origin e permitir document.write
+    let win=null;
+    try{
+      win = window.open('about:blank','_blank','noopener,width=480,height=800'); 
+    }catch(e){ /* ignorar */ }
 
     const html = `<!DOCTYPE html>
 <html lang="pt-br">
 <head>
 <meta charset="utf-8">
-<base href="${baseHref}">
 <title>Cupom #${dados.id}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
@@ -724,20 +740,15 @@
 </body>
 </html>`;
 
-    // Abre via Blob (evita about:blank + document.write)
-    try{
-      const blob=new Blob([html],{type:'text/html;charset=utf-8'});
-      const url=URL.createObjectURL(blob);
-      const w=window.open(url,'_blank','noopener,width=480,height=800');
-      if(!w||w.closed) throw new Error('Popup bloqueado');
-      const revoke=()=>{ try{ URL.revokeObjectURL(url); }catch(e){} };
-      w.addEventListener?.('load',revoke,{once:true});
-      setTimeout(revoke,10000);
-      return;
-    }catch(e){
-      // fallback overlay se popup bloquear
-      criarOverlayPreview(html);
+    // Se a janela abriu, escreve o HTML. Senão, usa overlay.
+    if(win && !win.closed){
+      try{
+        // Em alguns browsers precisa de um pequeno atraso
+        setTimeout(()=>{ try{ win.document.open(); win.document.write(html); win.document.close(); }catch(e){} }, 0);
+        return;
+      }catch(e){}
     }
+    criarOverlayPreview(html);
   }
 
   // expõe para o onclick do botão
