@@ -33,6 +33,16 @@
       --primary-border:#2f4de6;
     }
 
+    /* ===== MODO ESCURO: troca apenas variáveis ===== */
+    body.dark{
+      --bg:#0b0f17;
+      --card:#0f1623;
+      --ink:#e7edf9;
+      --line:#1d2636;
+      --line-dark:#2b3b59;
+      --muted:#2b3b59;
+    }
+
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
@@ -52,7 +62,7 @@
     .topbar{
       width:100%;
       padding:14px 22px;
-      display:grid; grid-template-columns:auto 1fr auto; gap:16px; align-items:center;
+      display:grid; grid-template-columns:auto 1fr auto auto; gap:16px; align-items:center;
     }
     .brand{display:flex;align-items:center;gap:12px;font-weight:900}
     .brand img{width:40px;height:40px;border-radius:12px;background:#fff;border:2px solid #eaf0ff;object-fit:contain}
@@ -63,11 +73,19 @@
     .kpi span{display:block;font-weight:800;font-size:1.12rem}
     .logout{color:#fff;background:#c1121f;border:none;border-radius:24px;padding:9px 16px;font-weight:800;text-decoration:none}
     .logout:hover{filter:brightness(1.05)}
+    /* Botão modo escuro/claro */
+    .theme-toggle{
+      margin-left:6px;
+      color:#fff;background:rgba(255,255,255,.15);
+      border:1px solid rgba(255,255,255,.4);
+      border-radius:12px;padding:9px 14px;font-weight:800;cursor:pointer
+    }
+    .theme-toggle:hover{filter:brightness(1.06)}
 
     /* Banner superior (data/feriado) */
     .banner{
       display:flex;align-items:center;gap:14px;justify-content:space-between;
-      background:#fff; color:var(--ink);
+      background:var(--card); color:var(--ink);
       border-bottom:1px solid var(--line);
       padding:10px 22px;
       box-shadow:var(--shadow);
@@ -77,6 +95,9 @@
     .badge.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
     .badge.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
     .badge.neu{background:#edf3ff;border-color:#cfdbff;color:#2347c7}
+    body.dark .badge.neu{background:#1b2750;border-color:#2b3b59;color:#cfe0ff}
+    body.dark .badge.good{background:#0f2b22;border-color:#1c614d;color:#72f0c7}
+    body.dark .badge.bad{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
 
     /* Layout INVERTIDO: entregas à ESQUERDA, sidebar à DIREITA */
     .viewport{height:calc(100vh - 64px - 54px); padding:16px 18px}
@@ -95,6 +116,7 @@
     .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
     .card .body{padding:14px}
     .card h3{margin:0 0 10px;font-size:1rem;color:#213a99}
+    body.dark .card h3{color:#97b3ff}
     .row{display:flex;gap:10px;flex-wrap:wrap}
     .stack{display:flex;flex-direction:column;gap:10px}
 
@@ -104,6 +126,7 @@
       background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
       color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none;
       box-shadow:0 6px 16px rgba(0,50,200,.18);
+      cursor:pointer;
     }
     .btn.alt{background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);color:#fff;border:none}
     .btn.block{width:100%}
@@ -111,10 +134,14 @@
 
     /* Inputs padrão — borda azul */
     label{font-size:.85rem;color:#28409f;font-weight:700}
+    body.dark label{color:#b9ccff}
     select,input[type="date"],input[type="text"]{
       width:100%;padding:9px 10px;border-radius:10px;
       border:1.5px solid var(--primary-border);
       background:#fff;color:var(--ink);font-weight:600
+    }
+    body.dark select, body.dark input[type="date"], body.dark input[type="text"]{
+      background:#0b1a3a; color:#e7edf9; border-color:#2f4de6;
     }
     a:focus,button:focus,select:focus,input:focus{ outline:2px solid var(--primary-border);outline-offset:2px }
     #cooperado-espera,#nome-espera{border-color:var(--primary-border)}
@@ -182,14 +209,25 @@
     .coop-dot.no::before{background:#ef4444}
     .coop-editable{cursor:pointer;text-decoration:underline dotted rgba(255,255,255,.5)}
 
-    /* NOVO: Modal (overlay) */
+    /* ===== Modal/Balão bloqueante ===== */
+    #overlay{
+      position:fixed; inset:0; background:rgba(8,12,24,.78);
+      display:none; align-items:center; justify-content:center; z-index:2000;
+      backdrop-filter: blur(2px);
+    }
+    .modal{
+      width:min(520px, 92vw);
+      background:#fff; color:#0a1b3f; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.35);
+      border:1px solid #e6ebff; overflow:hidden;
+    }
+    .modal header{padding:12px 16px; font-weight:900; color:#003399; border-bottom:1px solid #e6ebff; background:#f7f9ff}
+    .modal .content{padding:14px 16px; font-weight:700}
+    .modal footer{display:flex; gap:10px; justify-content:center; padding:12px; border-top:1px solid #e6ebff; background:#f8faff}
+    .modal .ok{padding:10px 18px; border-radius:10px; border:1px solid #003399; background:#003399; color:#fff; font-weight:900; cursor:pointer}
+    body.dark .modal{background:#0f1623; color:#e7edf9; border-color:#1d2636}
+    body.dark .modal header{color:#b9ccff; background:#0b1320; border-color:#1d2636}
+    body.dark .modal footer{background:#0b1320; border-color:#1d2636}
     body.locked{overflow:hidden}
-    #overlay{display:none;position:fixed;inset:0;background:rgba(6,12,24,.6);z-index:9999;align-items:center;justify-content:center;padding:20px}
-    #overlay .box{background:#fff;border-radius:14px;max-width:520px;width:96%;box-shadow:0 16px 48px rgba(0,0,0,.35);overflow:hidden}
-    #overlay .box h3{margin:0;padding:14px 16px;background:#f0f4ff;border-bottom:1px solid #e1e8ff;color:#0a2c8b}
-    #overlay .box p{margin:0;padding:16px}
-    #overlay .box .actions{display:flex;gap:10px;justify-content:flex-end;padding:12px 16px;border-top:1px solid #eef3ff}
-    #overlay .box .btn{box-shadow:none}
   </style>
 </head>
 <body>
@@ -207,6 +245,8 @@
         <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
         <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
       </div>
+      <!-- Botão modo claro/escuro -->
+      <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
       <a class="logout" href="{{ url_for('logout') }}">Sair</a>
     </div>
   </header>
@@ -334,18 +374,13 @@
               <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
             </div>
             <button class="btn" type="submit">Filtrar</button>
-
-            <!-- NOVO: botão para zerar o cronômetro de pendentes (2h) -->
-            <button class="btn alt" type="button" id="btResetAviso" title="Zerar cronômetro de pendentes (2h)">
-              Zerar aviso pendentes
-            </button>
           </form>
         </div>
 
         <div class="content">
           <!-- TABELA -->
           <div id="tbl" class="scrollable">
-            <table>
+            <table class="tabela">
               <thead>
                 <tr>
                   <th>ID</th><th>Cliente</th><th>Bairro</th><th>Valor</th>
@@ -524,14 +559,14 @@
   <!-- áudio do aviso -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
-  <!-- NOVO: Modal (overlay) -->
+  <!-- Modal bloqueante -->
   <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
-    <div class="box">
-      <h3 id="modal-title">Aviso</h3>
-      <p id="modal-msg">Mensagem</p>
-      <div class="actions">
-        <button id="modal-ok" class="btn">OK</button>
-      </div>
+    <div class="modal">
+      <header id="modal-title">Aviso</header>
+      <div class="content" id="modal-msg">Mensagem</div>
+      <footer>
+        <button id="modal-ok" class="ok" type="button">Ok</button>
+      </footer>
     </div>
   </div>
 
@@ -540,6 +575,22 @@
     window.COOPERADOS = [
       {% for c in cooperados %}{ id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
     ];
+
+    // Tema: aplica salvo
+    (function(){
+      try{
+        const saved = localStorage.getItem('coopex_theme') || 'light';
+        if(saved==='dark') document.body.classList.add('dark');
+        const btn = document.getElementById('btnTheme');
+        const sync = ()=> btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro';
+        sync();
+        btn.addEventListener('click', ()=>{
+          document.body.classList.toggle('dark');
+          localStorage.setItem('coopex_theme', document.body.classList.contains('dark')?'dark':'light');
+          sync();
+        });
+      }catch(e){}
+    })();
 
     // Alternar Tabela/Cartões
     const btToggle = document.getElementById('toggleView');
@@ -588,6 +639,29 @@
         if(after) li.after(dragEl); else li.before(dragEl); renumerar();
       });
     }
+
+    // ===== Modal/Balão bloqueante =====
+    const overlay = document.getElementById('overlay');
+    const modalTitle = document.getElementById('modal-title');
+    const modalMsg = document.getElementById('modal-msg');
+    const modalOk = document.getElementById('modal-ok');
+    const somPendente = document.getElementById('som-pendente');
+    let _modalResolve = null;
+
+    function abrirModal(titulo, mensagem, tocarSom = false) {
+      modalTitle.textContent = titulo;
+      modalMsg.textContent = mensagem;
+      overlay.style.display = 'flex';
+      document.body.classList.add('locked');
+      if (tocarSom) { try { somPendente.currentTime = 0; somPendente.play(); } catch(e){} }
+      return new Promise(resolve => { _modalResolve = resolve; });
+    }
+    modalOk.addEventListener('click', () => {
+      overlay.style.display = 'none';
+      document.body.classList.remove('locked');
+      if (_modalResolve) _modalResolve(true);
+      _modalResolve = null;
+    });
 
     // Clique nos status (AJAX)
     document.addEventListener('click', async (ev)=>{
@@ -722,7 +796,7 @@
     <div class="cupom">
       <img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}"
            alt="Logo Coopex" class="logo"
-           onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
+           onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';'">
 
       <div class="center tiny">
         CNPJ: 05.289.938/0001-97<br>
@@ -837,32 +911,31 @@
       document.body.appendChild(wrap);
     }
 
-    // ===== AVISO SONORO (2 horas) + botão ZERAR ===== // NOVO
+    /* =========================
+       AVISOS/BALÕES BLOQUEANTES
+       ========================= */
+
+    // 1) Entregas pendentes >= 2 horas: som + balão
     (function(){
       const AUDIO = document.getElementById('som-pendente');
       if (!AUDIO) return;
 
       const LIMIAR_MS = 2 * 60 * 60 * 1000; // 2 horas
-      const STORAGE_TOCADOS = 'pendente_alertados_v1';
-      const STORAGE_RESET_AT = 'pendente_reset_at';
+      const STORAGE_KEY = 'pendente_alertados_v1';
       let tocados = {};
-      try { tocados = JSON.parse(localStorage.getItem(STORAGE_TOCADOS) || '{}') || {}; } catch(e){ tocados = {}; }
-
-      function getResetMs(){ return parseInt(localStorage.getItem(STORAGE_RESET_AT)||'0',10) || 0; }
-      function setResetNow(){ localStorage.setItem(STORAGE_RESET_AT, String(Date.now())); }
+      try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
 
       function pendentesAtrasados() {
         const agora = Date.now();
-        const resetAt = getResetMs();
-        const rows = document.querySelectorAll('#tbl table tbody tr');
+        const rows = document.querySelectorAll('tbody tr');
         const atrasados = [];
         rows.forEach(tr => {
           const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
-          if (!badgePendente) return; // não está pendente
+          if (!badgePendente) return;
           const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
           if (!epoch) return;
-          const inicio = Math.max(epoch * 1000, resetAt);
-          if ((agora - inicio) >= LIMIAR_MS) {
+          const ms = (agora/1000 - epoch) * 1000;
+          if (ms >= LIMIAR_MS) {
             const id = tr.getAttribute('data-id') || '';
             if (id && !tocados[id]) atrasados.push(id);
           }
@@ -870,33 +943,19 @@
         return atrasados;
       }
 
-      async function tocar() {
-        try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e) {}
-      }
-
-      async function checar() {
+      async function checar2h() {
         const ids = pendentesAtrasados();
         if (ids.length > 0) {
-          await tocar();
+          try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e){}
+          await abrirModal('Entregas pendentes (2h+)', '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.', false);
           ids.forEach(id => tocados[id] = true);
-          try { localStorage.setItem(STORAGE_TOCADOS, JSON.stringify(tocados)); } catch(e){}
-          abrirModal('Entregas pendentes (2h+)', '⚠️ Existem entregas pendentes há 2 horas ou mais. Verifique agora.', false);
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
         }
       }
 
       // checa ao carregar e depois a cada 60s
-      checar();
-      setInterval(checar, 60000);
-
-      // Botão para zerar o cronômetro de pendentes
-      const btReset = document.getElementById('btResetAviso');
-      if (btReset){
-        btReset.addEventListener('click', async ()=>{
-          tocados = {}; try { localStorage.setItem(STORAGE_TOCADOS, JSON.stringify(tocados)); } catch(e){}
-          setResetNow();
-          await abrirModal('Aviso reiniciado', '⏱️ O cronômetro dos avisos foi zerado. Se ainda houver pendências, o aviso tocará novamente após 2 horas.', false);
-        });
-      }
+      checar2h();
+      setInterval(checar2h, 60000);
 
       // quando marcar entregue, remove do "tocados"
       document.addEventListener('click', (ev)=>{
@@ -906,89 +965,47 @@
         const id = tr?.getAttribute('data-id') || '';
         if (id && tocados[id]) {
           delete tocados[id];
-          try { localStorage.setItem(STORAGE_TOCADOS, JSON.stringify(tocados)); } catch(e){}
+          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
         }
-        setTimeout(checar, 1500);
+        setTimeout(checar2h, 1500);
       });
     })();
 
-    // ===== Modal helpers (balões) ===== // NOVO
-    const overlay = document.getElementById('overlay');
-    const modalTitle = document.getElementById('modal-title');
-    const modalMsg = document.getElementById('modal-msg');
-    const modalOk = document.getElementById('modal-ok');
-    let _modalResolve = null;
-    function abrirModal(titulo, mensagem, tocarSom = false) {
-      modalTitle.textContent = titulo;
-      modalMsg.textContent = mensagem;
-      overlay.style.display = 'flex';
-      document.body.classList.add('locked');
-      if (tocarSom) { try { const a=document.getElementById('som-pendente'); a.currentTime=0; a.play(); } catch(e){} }
-      return new Promise(resolve => { _modalResolve = resolve; });
-    }
-    modalOk.addEventListener('click', () => {
-      overlay.style.display = 'none';
-      document.body.classList.remove('locked');
-      if (_modalResolve) _modalResolve(true);
-      _modalResolve = null;
-    });
-
-    // ===== Balões: pagamentos pendentes + boa noite ===== // NOVO
+    // 2) Balão de pagamentos pendentes (hora par, 0–3 min), bloqueante
     function existePagamentoPendenteNaTabela() {
-      // usa a tabela real do painel
-      return [...document.querySelectorAll('#tbl table tbody tr')].some(tr => {
+      // usa a classe "tabela" como no seu script antigo
+      return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
         const cel = tr.children[10]; // coluna "Pagamento"
         return cel && cel.textContent.trim().toLowerCase().includes('pendente');
       });
     }
-    async function checaAvisos() {
+    async function checaAvisosPagamentoEBoaNoite() {
       try {
         const agora = new Date();
         const hora = agora.getHours(), minutos = agora.getMinutes();
 
-        // Pagamento pendente: hora par e < 4 min
+        // Pagamentos pendentes: a cada hora PAR, nos 4 primeiros minutos
         if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
           const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
           if (!localStorage.getItem(keyHora)) {
-            await abrirModal('Cobrança de Pagamento', '⚠️ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.', true);
+            await abrirModal('Cobrança de Pagamento', '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.', true);
             localStorage.setItem(keyHora, '1');
           }
         }
 
-        // Boa noite às 21:59 (uma vez por dia)
+        // Boa noite às 21:59
         if (hora === 21 && minutos === 59) {
           const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
           if (!localStorage.getItem(keyBoaNoite)) {
-            await abrirModal('Boa noite!', '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.', true);
+            await abrirModal('Boa noite!', '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.', false);
             localStorage.setItem(keyBoaNoite, '1');
           }
         }
       } catch(e) { console.error(e); }
     }
     window.addEventListener('DOMContentLoaded', () => {
-      checaAvisos();
-      setInterval(checaAvisos, 60 * 1000);
-    });
-
-    // Clique nos status para marcar como ENTREGUE/PAGO (backup)
-    document.addEventListener('click', function (ev) {
-      const alvo = ev.target;
-
-      // Pagamento
-      if (alvo.classList.contains('js-toggle-pagto')) {
-        const form = alvo.closest('form');
-        if (!form) return;
-        const confirmar = confirm('Confirmar pagamento como PAGO?');
-        if (confirmar) form.submit();
-      }
-
-      // Entrega
-      if (alvo.classList.contains('js-toggle-entrega')) {
-        const form = alvo.closest('form');
-        if (!form) return;
-        const confirmar = confirm('Confirmar entrega como ENTREGUE?');
-        if (confirmar) form.submit();
-      }
+      checaAvisosPagamentoEBoaNoite();
+      setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000);
     });
   </script>
 </body>
