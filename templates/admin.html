@@ -296,18 +296,15 @@
                    status_pagamento=request.args.get('status_pagamento','todos'),
                    cliente=request.args.get('cliente','')) }}">Exportar</a>
 
-                <!-- relatório abre em nova aba -->
-                <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
-                   data_inicio=data_inicio or '',
-                   data_fim=data_fim or '',
-                   cooperado_id=request.args.get('cooperado_id','todos'),
-                   status_pagamento=request.args.get('status_pagamento','todos'),
-                   cliente=request.args.get('cliente','')) }}">Imprimir Relatório</a>
-              </div>
-            </div>
-          </div>
-        </div>
-      </aside>
+                <a
+  id="btn-relatorio"
+  class="btn"
+  target="_blank"
+  rel="noopener"
+  href="{{ url_for('relatorio_termico') }}?data_inicio={{ data_inicio or '' }}&data_fim={{ data_fim or '' }}&cooperado_id={{ request.args.get('cooperado_id', 'todos') }}&status_pagamento={{ request.args.get('status_pagamento', 'todos') }}&cliente={{ request.args.get('cliente','') | urlencode }}"
+>
+  Imprimir Relatório
+</a>
 
       <!-- DIREITA (ENTREGAS) -->
       <section class="right">
