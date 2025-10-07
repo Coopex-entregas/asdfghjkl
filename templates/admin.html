@@ -585,71 +585,163 @@
       cardsArea.addEventListener('scroll', ()=> sessionStorage.setItem(KEY_C, cardsArea.scrollTop));
     }
 
-    // Preview/print cupom (fallback overlay)
-    function criarOverlayPreview(html){
-      const wrap=document.createElement('div'); wrap.className='pp-wrap';
-      const box=document.createElement('div'); box.className='pp-box';
-      const head=document.createElement('div'); head.className='pp-head'; head.textContent='Visualização do Cupom';
-      const iframe=document.createElement('iframe'); iframe.className='pp-iframe'; iframe.setAttribute('title','Pré-visualização do cupom');
+    <!-- === Preview/print Cupom (overlay + janela Blob) === -->
+<style id="print-overlay-styles">
+  .pp-wrap{position:fixed;inset:0;background:rgba(10,16,28,.75);z-index:10000;display:flex;align-items:center;justify-content:center;padding:20px}
+  .pp-box{background:#fff;border-radius:14px;width:min(720px,96vw);height:min(90vh,900px);box-shadow:0 10px 40px rgba(0,0,0,.35);display:flex;flex-direction:column;overflow:hidden}
+  .pp-head{padding:10px 14px;font-weight:800;color:#003399;border-bottom:1px solid #e6ebff}
+  .pp-iframe{flex:1 1 auto;width:100%;border:0;background:#fff}
+  .pp-foot{padding:10px;border-top:1px solid #e6ebff;display:flex;gap:10px;justify-content:center;background:#f8faff}
+  .pp-btn{padding:10px 18px;border-radius:10px;font-weight:800;cursor:pointer}
+  .pp-print{border:1px solid #003399;background:#003399;color:#fff}
+  .pp-close{border:1px solid #c3c8d5;background:#fff;color:#003399}
+</style>
 
-      if('srcdoc' in iframe) iframe.srcdoc=html;
-      else { const doc=(iframe.contentWindow||iframe.contentDocument); const idoc=doc.document||doc; idoc.open(); idoc.write(html); idoc.close(); }
+<script>
+  // Overlay de preview (fallback se popup for bloqueado)
+  function criarOverlayPreview(html){
+    const wrap=document.createElement('div'); wrap.className='pp-wrap';
+    const box=document.createElement('div'); box.className='pp-box';
+    const head=document.createElement('div'); head.className='pp-head'; head.textContent='Visualização do Cupom';
+    const iframe=document.createElement('iframe'); iframe.className='pp-iframe'; iframe.setAttribute('title','Pré-visualização do cupom');
 
-      const foot=document.createElement('div'); foot.className='pp-foot';
-      const btPrint=document.createElement('button'); btPrint.className='pp-btn pp-print'; btPrint.textContent='Imprimir';
-      btPrint.onclick=()=>{ try{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }catch(e){} };
-      const btClose=document.createElement('button'); btClose.className='pp-btn pp-close'; btClose.textContent='Fechar';
-      btClose.onclick=()=>wrap.remove();
-
-      foot.appendChild(btPrint); foot.appendChild(btClose);
-      box.appendChild(head); box.appendChild(iframe); box.appendChild(foot); wrap.appendChild(box);
-      document.body.appendChild(wrap);
+    if('srcdoc' in iframe) iframe.srcdoc=html;
+    else {
+      const doc=(iframe.contentWindow||iframe.contentDocument);
+      const idoc=doc.document||doc; idoc.open(); idoc.write(html); idoc.close();
     }
 
-    function imprimirCupom(idEntrega, botao){
-      const tr = botao.closest('tr');
-      const get=(idx)=> (tr?.children[idx]?.innerText||'').trim()||'-';
-      const dataDiaBruto=(tr?.children[4]?.innerText||'-').replace(/\s+/g,' ').trim();
-      const dataSo=(dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/)||['-'])[0];
+    const foot=document.createElement('div'); foot.className='pp-foot';
+    const btPrint=document.createElement('button'); btPrint.className='pp-btn pp-print'; btPrint.textContent='Imprimir';
+    btPrint.onclick=()=>{ try{ iframe.contentWindow.focus(); iframe.contentWindow.print(); }catch(e){} };
+    const btClose=document.createElement('button'); btClose.className='pp-btn pp-close'; btClose.textContent='Fechar';
+    btClose.onclick=()=>wrap.remove();
 
-      const dados={
-        id:get(0), idPad:String(get(0)).padStart(6,'0'),
-        cliente:get(1), bairro:get(2), valor:get(3).replace(/^R\$\s*/,'').trim(),
-        data:dataSo, horaPedido:get(5),
-        cooperado:botao?.dataset?.cooperado||get(7)||'-', formaPgto:get(8), recebidoPor:get(11)
-      };
-      const cacheBust=Date.now();
-      const html = `<!DOCTYPE html><html lang="pt-br"><head><meta charset="utf-8"><title>Cupom #${dados.id}</title>
-      <meta name="viewport" content="width=device-width, initial-scale=1.0">
-      <style>@page{size:80mm 100mm;margin:3mm}*{box-sizing:border-box}body{font-family:Arial,Segoe UI,Roboto,system-ui,sans-serif;margin:0;background:#fff}
-      .cupom{width:100%;max-width:72mm;margin:0 auto;padding:0}.center{text-align:center}
-      .line{display:flex;justify-content:space-between;gap:8px;font-size:12.5px;margin:2px 0}
-      .big{font-weight:900;font-size:18px}hr{border:none;border-top:1px dotted #000;margin:8px 0}
-      .logo{width:62mm;max-width:100%;height:auto;object-fit:contain;margin:2px auto 6px;display:block}
-      .footer{font-size:11px;text-align:center;margin-top:6px}.mono{font-family:ui-monospace,Menlo,Consolas,monospace}
-      .wrap{padding:8px}</style></head><body>
-      <div class="wrap"><div class="cupom">
-      <img class="logo" src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}" alt="Logo Coopex">
-      <div class="center" style="font-size:10.5px">
-        CNPJ: 05.289.938/0001-97<br>Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>Fone/Whats: (84) 98111-0706
-      </div><hr>
+    foot.appendChild(btPrint); foot.appendChild(btClose);
+    box.appendChild(head); box.appendChild(iframe); box.appendChild(foot); wrap.appendChild(box);
+    document.body.appendChild(wrap);
+  }
+
+  // Impressão do cupom (janela via Blob URL + <base> para /static)
+  function imprimirCupom(idEntrega, botao){
+    const tr = botao.closest('tr');
+    const get=(idx)=> (tr?.children[idx]?.innerText||'').trim()||'-';
+
+    // extrai só a data (dd/mm/aaaa)
+    const dataDiaBruto=(tr?.children[4]?.innerText||'-').replace(/\s+/g,' ').trim();
+    const dataSo=(dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/)||['-'])[0];
+
+    const dados={
+      id:get(0),
+      idPad:String(get(0)).padStart(6,'0'),
+      cliente:get(1),
+      bairro:get(2),
+      valor:get(3).replace(/^R\$\s*/,'').trim(),
+      data:dataSo,
+      horaPedido:get(5),
+      cooperado:botao?.dataset?.cooperado||get(7)||'-',
+      formaPgto:get(8),
+      recebidoPor:get(11)
+    };
+
+    const cacheBust=Date.now();
+    const baseHref = location.origin + '/'; // garante /static/... dentro do Blob
+
+    const html = `<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<base href="${baseHref}">
+<title>Cupom #${dados.id}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+  @page { size: 80mm 100mm; margin: 3mm; }
+  *{box-sizing:border-box}
+  body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
+  .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
+  .center{text-align:center}
+  .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
+  .big{font-weight:900; font-size:18px}
+  hr{border:none; border-top:1px dotted #000; margin:8px 0}
+  .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
+  .footer{font-size:11px; text-align:center; margin-top:6px}
+  .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
+  .tiny{font-size:10.5px}
+  .sign{ text-align:center; margin-top:8px; }
+  .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
+  .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}
+  .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}
+  .btn-print{border:1px solid #000; background:#000; color:#fff}
+  .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}
+  .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
+  @media print { .actions{display:none} body{background:#fff} }
+  svg { fill: #000; color: #000; }
+</style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="cupom">
+      <img src="{{ url_for('static', filename='logo_coopex.png') }}?v=${cacheBust}"
+           alt="Logo Coopex" class="logo"
+           onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
+
+      <div class="center tiny">
+        CNPJ: 05.289.938/0001-97<br>
+        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
+        Fone/WhatsApp: (84) 98111-0706
+      </div>
+      <hr>
       <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span></div>
       <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
       <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
       <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
       <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
       <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
-      <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div><hr>
+      <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
+      <hr>
       <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
-      <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div><hr>
-      <div class="footer">Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
-      Recebido por: <span class="mono">${dados.recebidoPor}</span></div></div></div></body></html>`;
+      <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
+      <hr>
 
-      let win=null; try{ win=window.open('','_blank','noopener,noreferrer,width=480,height=800'); }catch(e){}
-      if(win && !win.closed){ try{ win.opener=null; }catch(e){} win.document.open(); win.document.write(html); win.document.close(); return; }
+      <div class="sign">
+        <div class="sign-line"></div>
+        <div class="tiny">Supervisor</div>
+      </div>
+
+      <hr>
+      <div class="footer">
+        Emitido em <span class="mono">${new Date().toLocaleDateString('pt-BR')}</span> às
+        <span class="mono">${new Date().toLocaleTimeString('pt-BR')}</span><br>
+        Recebido por: <span class="mono">${dados.recebidoPor}</span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn btn-print" onclick="window.print()">Imprimir</button>
+      <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>
+    </div>
+  </div>
+</body>
+</html>`;
+
+    // Abre via Blob (evita about:blank + document.write)
+    try{
+      const blob=new Blob([html],{type:'text/html;charset=utf-8'});
+      const url=URL.createObjectURL(blob);
+      const w=window.open(url,'_blank','noopener,width=480,height=800');
+      if(!w||w.closed) throw new Error('Popup bloqueado');
+      const revoke=()=>{ try{ URL.revokeObjectURL(url); }catch(e){} };
+      w.addEventListener?.('load',revoke,{once:true});
+      setTimeout(revoke,10000);
+      return;
+    }catch(e){
+      // fallback overlay se popup bloquear
       criarOverlayPreview(html);
     }
-    window.imprimirCupom = imprimirCupom;
-  </script>
+  }
+
+  // expõe para o onclick do botão
+  window.imprimirCupom = imprimirCupom;
+</script>
 </body>
 </html>
