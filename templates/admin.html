@@ -337,11 +337,10 @@
       <!-- ENTREGAS (ESQUERDA) -->
       <section class="right">
         <div class="head">
-          <h2>
-            Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
-             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
-          <h2>
-         <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
+          <h2>Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}</h2>
+          <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
+          
+          <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
         </div>
 
         <!-- FILTROS -->
@@ -579,7 +578,7 @@
       {% for c in cooperados %}{ id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
     ];
 
-    // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
+        // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
     function contarSemCooperado(){
       try{
         const rows = document.querySelectorAll('.tabela tbody tr');
@@ -616,6 +615,22 @@
         });
       }catch(e){}
     })();
+
+        // Badge "X em aberto": atualizar ao carregar…
+    window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
+
+    // …e sempre que a tabela sofrer mudanças (linhas/atributos)
+    window.addEventListener('DOMContentLoaded', () => {
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody) return;
+      const obs = new MutationObserver(() => atualizarBadgeAbertas());
+      obs.observe(tbody, {
+        childList: true,
+        subtree: true,
+        attributes: true,
+        attributeFilter: ['data-cooperado-id']
+      });
+    });
 
     // Alternar Tabela/Cartões
     const btToggle = document.getElementById('toggleView');
@@ -756,6 +771,7 @@
         const tr = span.closest('tr');
         tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('ok', tem);
         tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('no', !tem);
+        if (typeof atualizarBadgeAbertas === 'function') atualizarBadgeAbertas();
       };
       sel.addEventListener('change', salvar);
       sel.addEventListener('blur', salvar, {once:true});
