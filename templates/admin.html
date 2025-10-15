@@ -157,7 +157,7 @@
       color:var(--pane-text);
     }
     .right .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--pane-line)}
-    .right h2{margin:0;font-size:1rem;color:#fff;display:flex;align-items:center;gap:10px}
+    .right h2{margin:0;font-size:1rem;color:#fff}
     .toggle{background:transparent;border:1px solid var(--muted);color:#fff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
 
     /* Filtros */
@@ -340,8 +340,8 @@
           <h2>
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
              <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
-          </h2>
-          <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
+          <h2>
+         <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
         </div>
 
         <!-- FILTROS -->
@@ -478,7 +478,7 @@
                       data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
                       onclick="imprimirCupom({{ e.id }}, this)">
                       <svg width="20" height="20" viewBox="0 0 24 24" fill="#13a038">
-                        <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
+                        <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
                       </svg>
                     </button>
 
@@ -625,8 +625,6 @@
       const showingCards = cardsWrap.style.display !== 'none';
       cardsWrap.style.display = showingCards ? 'none' : 'block';
       tbl.style.display = showingCards ? 'block' : 'none';
-      // atualiza o badge se voltar para a tabela (fonte de verdade do contador)
-      atualizarBadgeAbertas();
     });
 
     // Preenche "nome" da fila a partir do select
@@ -746,22 +744,18 @@
           const res = await fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
           if(!res.ok) throw new Error('Falha ao salvar');
         }catch(e){ console.error(e); }
-
         const span = document.createElement('span');
         const tem = !!sel.value;
         span.className = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
         span.dataset.id = idEntrega; span.dataset.cooperadoId = sel.value;
-        span.title = tem? 'Atribuído' : 'Sem cooperado';
+        span.title = tem? 'Atribuído':'Sem cooperado';
         const nome = tem ? (window.COOPERADOS.find(x=>String(x.id)===String(sel.value))?.nome || '-') : 'Sem Cooperado';
         span.textContent = nome;
         sel.replaceWith(span);
-
         // Atualiza também o dot da primeira coluna (ID)
         const tr = span.closest('tr');
         tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('ok', tem);
         tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('no', !tem);
-        
-        atualizarBadgeAbertas();  // <-- ADICIONE ESTA LINHA
       };
       sel.addEventListener('change', salvar);
       sel.addEventListener('blur', salvar, {once:true});
@@ -1035,7 +1029,6 @@
       } catch(e) { console.error(e); }
     }
     window.addEventListener('DOMContentLoaded', () => {
-      atualizarBadgeAbertas();            // <-- ADICIONE ESTA LINHA
       checaAvisosPagamentoEBoaNoite();
       setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000);
     });
