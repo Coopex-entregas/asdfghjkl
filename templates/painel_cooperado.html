@@ -331,22 +331,52 @@
 
     async function confirmarRecebido(id,desfazer=false){
       lastScrollY=window.scrollY;
-      const nome=desfazer?'':document.getElementById('rcb-input-'+id).value.trim();
-      if(!desfazer && !nome){alert('Informe o nome de quem recebeu.');return;}
+
+      if(desfazer){
+        // desfazer = voltar status para 'pendente' e limpar recebido_por
+        const fd = new FormData();
+        fd.append('status','pendente');
+        fd.append('recebido_por','');
+
+        try{
+          const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{
+            method:'POST',
+            body: fd
+          });
+          if(!resp.ok){alert('Falha ao desfazer recebido.'); return;}
+          const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
+          if(chip){
+            chip.dataset.entregue='0';
+            chip.textContent='Pendente';
+            chip.classList.remove('entregue');
+            chip.classList.add('pgto-pendente');
+          }
+        }catch(err){
+          alert('Erro: '+err.message);
+        }
+        setTimeout(preserveScroll,60);
+        return;
+      }
+
+      // marcar recebido (JSON -> cooperado_marcar_entregue)
+      const nome = document.getElementById('rcb-input-'+id).value.trim();
+      if(!nome){alert('Informe o nome de quem recebeu.');return;}
+
       try{
-        const resp=await fetch(`{{ url_for('confirmar_recebido', id=0) }}`.replace('0',id),{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({recebido_por:nome, desfazer})
+        const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{
+          method:'POST', headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({recebido_por:nome})
         });
         let data=null;try{data=await resp.json();}catch{}
-        if(!resp.ok){alert((data&&data.error)||'Falha ao atualizar entrega.');return;}
-        const novo=data.status.toLowerCase();
+        if(!resp.ok || (data && data.ok===false)){
+          alert((data&&data.error)||'Falha ao atualizar entrega.');return;
+        }
         const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
         if(chip){
-          chip.dataset.entregue=(novo==='entregue'||novo==='recebido')?'1':'0';
-          chip.textContent=(chip.dataset.entregue==='1')?'Entregue':'Pendente';
-          chip.classList.toggle('entregue',chip.dataset.entregue==='1');
-          chip.classList.toggle('pgto-pendente',chip.dataset.entregue!=='1');
+          chip.dataset.entregue='1';
+          chip.textContent='Entregue';
+          chip.classList.add('entregue');
+          chip.classList.remove('pgto-pendente');
         }
         document.getElementById('rcb-'+id).style.display='none';
       }catch(err){alert('Erro: '+err.message);}
