@@ -953,111 +953,122 @@
       document.body.appendChild(wrap);
     }
 
-    /* =========================
-       AVISOS/BALÕES BLOQUEANTES
-       ========================= */
+      // 1) Entregas pendentes >= 2 horas: som + balão (a cada 2 horas)
+(function(){
+  const AUDIO = document.getElementById('som-pendente');
+  if (!AUDIO) return;
 
-    // 1) Entregas pendentes >= 2 horas: som + balão
-    (function(){
-      const AUDIO = document.getElementById('som-pendente');
-      if (!AUDIO) return;
+  const LIMIAR_MS   = 2 * 60 * 60 * 1000; // 2 horas
+  const STORAGE_KEY = 'pendente_alertados_v2_ts'; // salva timestamp do último alerta por entrega
+  let tocados = {};
+  try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
 
-      const LIMIAR_MS = 2 * 60 * 60 * 1000; // 2 horas
-      const STORAGE_KEY = 'pendente_alertados_v1';
-      let tocados = {};
-      try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
-
-      function pendentesAtrasados() {
-        const agora = Date.now();
-        const rows = document.querySelectorAll('tbody tr');
-        const atrasados = [];
-        rows.forEach(tr => {
-          const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
-          if (!badgePendente) return;
-          const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
-          if (!epoch) return;
-          const ms = (agora/1000 - epoch) * 1000;
-          if (ms >= LIMIAR_MS) {
-            const id = tr.getAttribute('data-id') || '';
-            if (id && !tocados[id]) atrasados.push(id);
-          }
-        });
-        return atrasados;
+  function pendentesAtrasados() {
+    const agora = Date.now();
+    const rows = document.querySelectorAll('tbody tr');
+    const atrasados = [];
+    rows.forEach(tr => {
+      const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
+      if (!badgePendente) return;
+      const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
+      if (!epoch) return;
+      const ms = (agora/1000 - epoch) * 1000;
+      if (ms >= LIMIAR_MS) {
+        const id = tr.getAttribute('data-id') || '';
+        if (id) atrasados.push(id);
       }
-
-      async function checar2h() {
-        const ids = pendentesAtrasados();
-        if (ids.length > 0) {
-          try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e){}
-          await abrirModal('Entregas pendentes (2h+)', '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.', false);
-          ids.forEach(id => tocados[id] = true);
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-      }
-
-      // checa ao carregar e depois a cada 60s
-      checar2h();
-      setInterval(checar2h, 60 * 60 * 1000); // 1.800.000 ms
-
-      // quando marcar entregue, remove do "tocados"
-      document.addEventListener('click', (ev)=>{
-        const st = ev.target.closest('.js-toggle-entrega');
-        if (!st) return;
-        const tr = st.closest('tr');
-        const id = tr?.getAttribute('data-id') || '';
-        if (id && tocados[id]) {
-          delete tocados[id];
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-        setTimeout(checar2h, 1500);
-      });
-    })();
-
-    // 2) Balão de pagamentos pendentes (hora par, 0–3 min), bloqueante
-    function existePagamentoPendenteNaTabela() {
-      // usa a classe "tabela" como no seu script antigo
-      return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
-        const cel = tr.children[10]; // coluna "Pagamento"
-        return cel && cel.textContent.trim().toLowerCase().includes('pendente');
-      });
-    }
-    async function checaAvisosPagamentoEBoaNoite() {
-      try {
-        const agora = new Date();
-        const hora = agora.getHours(), minutos = agora.getMinutes();
-
-       // substitua TODO o bloco de "Pagamentos pendentes: a cada hora PAR..." por:
-const PAG_ALERT_KEY = 'coopex_pend_pag_last_ts'; // timestamp do último alerta (ms)
-
-if (existePagamentoPendenteNaTabela()) {
-  const now = Date.now();
-  const last = +(localStorage.getItem(PAG_ALERT_KEY) || 0);
-  const SIXTY_MIN = 60 * 60 * 1000;
-
-  if (now - last >= SIXTY_MIN) {
-    await abrirModal(
-      'Cobrança de Pagamento',
-      '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',
-      true
-    );
-    localStorage.setItem(PAG_ALERT_KEY, String(now));
+    });
+    return atrasados;
   }
+
+  async function checar2h() {
+    const agora = Date.now();
+    const ids = pendentesAtrasados();
+
+    // Seleciona apenas os que precisam de novo alerta (passaram 2h desde o último alerta daquele ID)
+    const precisaAlertar = ids.filter(id => {
+      const last = +(tocados[id] || 0);
+      return (agora - last) >= LIMIAR_MS;
+    });
+
+    if (precisaAlertar.length > 0) {
+      try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e){}
+      await abrirModal(
+        'Entregas pendentes (2h+)',
+        '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.',
+        true // tocarSom = true (balão + som)
+      );
+
+      // marca timestamp do alerta para cada ID alertado
+      precisaAlertar.forEach(id => tocados[id] = agora);
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
+    }
+  }
+
+  // checa ao carregar e depois a cada 2 horas
+  checar2h();
+  setInterval(checar2h, 2 * 60 * 60 * 1000); // 7.200.000 ms (2h)
+
+  // quando marcar ENTREGUE, remove do controle para, se voltar a ficar pendente no futuro, iniciar novo ciclo
+  document.addEventListener('click', (ev)=>{
+    const st = ev.target.closest('.js-toggle-entrega');
+    if (!st) return;
+    const tr = st.closest('tr');
+    const id = tr?.getAttribute('data-id') || '';
+    if (id && tocados[id]) {
+      delete tocados[id];
+      try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
+    }
+    setTimeout(checar2h, 1500);
+  });
+})();
+
+// 2) Balão de pagamentos pendentes (a cada 60 min), bloqueante
+function existePagamentoPendenteNaTabela() {
+  // usa a classe "tabela" como no seu script
+  return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
+    const cel = tr.children[10]; // coluna "Pagamento"
+    return cel && cel.textContent.trim().toLowerCase().includes('pendente');
+  });
 }
 
-        // Boa noite às 21:59
-        if (hora === 21 && minutos === 59) {
-          const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
-          if (!localStorage.getItem(keyBoaNoite)) {
-            await abrirModal('Boa noite!', '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.', false);
-            localStorage.setItem(keyBoaNoite, '1');
-          }
-        }
-      } catch(e) { console.error(e); }
+async function checaAvisosPagamentoEBoaNoite() {
+  try {
+    const agora = new Date();
+    const hora = agora.getHours(), minutos = agora.getMinutes();
+
+    // Alerta de pagamentos pendentes a cada 60min
+    const PAG_ALERT_KEY = 'coopex_pend_pag_last_ts'; // timestamp do último alerta (ms)
+    if (existePagamentoPendenteNaTabela()) {
+      const now = Date.now();
+      const last = +(localStorage.getItem(PAG_ALERT_KEY) || 0);
+      const SIXTY_MIN = 60 * 60 * 1000;
+
+      if (now - last >= SIXTY_MIN) {
+        await abrirModal(
+          'Cobrança de Pagamento',
+          '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',
+          true
+        );
+        localStorage.setItem(PAG_ALERT_KEY, String(now));
+      }
     }
-    window.addEventListener('DOMContentLoaded', () => {
-      checaAvisosPagamentoEBoaNoite();
-      setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000);
-    });
+
+    // Boa noite às 21:59 (uma vez por dia)
+    if (hora === 21 && minutos === 59) {
+      const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
+      if (!localStorage.getItem(keyBoaNoite)) {
+        await abrirModal('Boa noite!', '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.', false);
+        localStorage.setItem(keyBoaNoite, '1');
+      }
+    }
+  } catch(e) { console.error(e); }
+}
+
+window.addEventListener('DOMContentLoaded', () => {
+  checaAvisosPagamentoEBoaNoite();
+  setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000); // checagem a cada 1 min; alerta a cada 60 por chave
+});
   </script>
 </body>
 </html>
