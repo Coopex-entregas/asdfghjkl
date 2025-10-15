@@ -580,26 +580,45 @@
     ];
 
     // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
-    function contarSemCooperado(){
-      try{
-        const rows = document.querySelectorAll('.tabela tbody tr');
-        let n = 0;
-        rows.forEach(tr=>{
-          const el = tr.querySelector('.coop-editable, .coop-dot');
-          const cid = el?.dataset?.cooperadoId || '';
-          if(!cid) n++;
-        });
-        return n;
-      }catch(e){ return 0; }
-    }
-    function atualizarBadgeAbertas(){
-      const badge = document.getElementById('abertasBadge');
-      if(!badge) return;
-      const n = contarSemCooperado();
-      badge.textContent = `${n} em aberto`;
-      badge.style.display = 'inline-flex';
-      badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
-    }
+function contarSemCooperado(){
+  try{
+    const rows = document.querySelectorAll('.tabela tbody tr');
+    let n = 0;
+    rows.forEach(tr=>{
+      const el = tr.querySelector('.coop-editable, .coop-dot');
+      const cid = el?.dataset?.cooperadoId || '';
+      if(!cid) n++;
+    });
+    return n;
+  }catch(e){ return 0; }
+}
+
+function atualizarBadgeAbertas(){
+  const badge = document.getElementById('abertasBadge');
+  if(!badge) return;
+  const n = contarSemCooperado();
+  badge.textContent = `${n} em aberto`;
+  badge.style.display = 'inline-flex';
+  badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
+}
+
+// Chama assim que a página carregar
+window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
+
+// Observa mudanças na tabela para manter o contador certo
+window.addEventListener('DOMContentLoaded', () => {
+  const tbody = document.querySelector('.tabela tbody');
+  if (!tbody) return;
+
+  const obs = new MutationObserver(() => atualizarBadgeAbertas());
+  obs.observe(tbody, {
+    childList: true,     // linhas adicionadas/removidas
+    subtree: true,       // mudanças dentro das células
+    attributes: true,    // mudanças de atributos (ex.: data-cooperado-id)
+    attributeFilter: ['data-cooperado-id']
+  });
+});
+
 
     // Tema: aplica salvo
     (function(){
@@ -724,42 +743,98 @@
       cardsArea.addEventListener('scroll', ()=> sessionStorage.setItem(KEY_C, cardsArea.scrollTop));
     }
 
-    // ===== Edição rápida do cooperado (click no nome) =====
-    document.addEventListener('click', (ev)=>{
-      const el = ev.target.closest('.coop-editable');
-      if(!el) return;
-      const idEntrega = el.dataset.id;
-      const atual = el.dataset.cooperadoId || '';
-      const sel = document.createElement('select');
-      sel.style.background='#0a1f7e'; sel.style.color='#fff'; sel.style.border='1px solid #2f4de6'; sel.style.borderRadius='8px';
-      sel.style.padding='4px 6px'; sel.style.fontWeight='800';
-      const opt0 = document.createElement('option'); opt0.value=''; opt0.textContent='Sem Cooperado'; sel.appendChild(opt0);
-      window.COOPERADOS.forEach(c=>{ const o=document.createElement('option'); o.value=c.id; o.textContent=c.nome; if(String(c.id)===String(atual)) o.selected=true; sel.appendChild(o); });
-      el.replaceWith(sel); sel.focus();
-      const salvar = async ()=>{
-        const coopId = sel.value || '';
-        try{
-          const url = `/atribuir_cooperado/${idEntrega}`;
-          const fd = new FormData(); fd.append('cooperado_id', coopId);
-          const res = await fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
-          if(!res.ok) throw new Error('Falha ao salvar');
-        }catch(e){ console.error(e); }
-        const span = document.createElement('span');
-        const tem = !!sel.value;
-        span.className = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
-        span.dataset.id = idEntrega; span.dataset.cooperadoId = sel.value;
-        span.title = tem? 'Atribuído':'Sem cooperado';
-        const nome = tem ? (window.COOPERADOS.find(x=>String(x.id)===String(sel.value))?.nome || '-') : 'Sem Cooperado';
-        span.textContent = nome;
-        sel.replaceWith(span);
-        // Atualiza também o dot da primeira coluna (ID)
-        const tr = span.closest('tr');
-        tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('ok', tem);
-        tr?.querySelector('.id-with-dot .status-dot')?.classList.toggle('no', !tem);
-      };
-      sel.addEventListener('change', salvar);
-      sel.addEventListener('blur', salvar, {once:true});
-    });
+    // ===== Edição rápida do cooperado (clique no nome) =====
+document.addEventListener('click', (ev) => {
+  const el = ev.target.closest('.coop-editable');
+  if (!el) return;
+
+  const idEntrega = el.dataset.id;
+  const atual = el.dataset.cooperadoId || '';
+
+  // cria o <select> no lugar do span
+  const sel = document.createElement('select');
+  // mantém largura para evitar "pulo" no layout
+  const w = Math.max(el.offsetWidth, 160);
+  sel.style.minWidth = w + 'px';
+  sel.style.background = '#0a1f7e';
+  sel.style.color = '#fff';
+  sel.style.border = '1px solid #2f4de6';
+  sel.style.borderRadius = '8px';
+  sel.style.padding = '4px 6px';
+  sel.style.fontWeight = '800';
+
+  // opções
+  const opt0 = document.createElement('option');
+  opt0.value = '';
+  opt0.textContent = 'Sem Cooperado';
+  sel.appendChild(opt0);
+
+  window.COOPERADOS.forEach(c => {
+    const o = document.createElement('option');
+    o.value = c.id;
+    o.textContent = c.nome;
+    if (String(c.id) === String(atual)) o.selected = true;
+    sel.appendChild(o);
+  });
+
+  // troca elementos
+  el.replaceWith(sel);
+  sel.focus();
+
+  // salva a seleção
+  const salvar = async () => {
+    const coopId = sel.value || '';
+    let ok = true;
+    try {
+      const url = `/atribuir_cooperado/${idEntrega}`;
+      const fd = new FormData();
+      fd.append('cooperado_id', coopId);
+      const res = await fetch(url, { method: 'POST', body: fd, headers: { 'X-Requested-With': 'fetch' } });
+      if (!res.ok) throw new Error('Falha ao salvar');
+    } catch (e) {
+      console.error(e);
+      ok = false;
+      alert('Não foi possível salvar agora.');
+    }
+
+    // reconstrói o span (mesmo em caso de erro, volta ao estado visual anterior)
+    const span = document.createElement('span');
+    const tem = !!sel.value && ok; // se falhou, mantém como estava
+    const coopSelecionado = window.COOPERADOS.find(x => String(x.id) === String(sel.value));
+    const nome = tem ? (coopSelecionado?.nome || '-') : (el.textContent || 'Sem Cooperado');
+
+    span.className = 'coop-dot ' + (tem ? 'ok' : 'no') + ' coop-editable';
+    span.dataset.id = idEntrega;
+    span.dataset.cooperadoId = tem ? sel.value : (el.dataset.cooperadoId || '');
+    span.title = tem ? 'Atribuído' : 'Sem cooperado';
+    span.textContent = nome;
+
+    sel.replaceWith(span);
+
+    // Atualiza também o dot da primeira coluna (ID)
+    const tr = span.closest('tr');
+    const dot = tr?.querySelector('.id-with-dot .status-dot');
+    if (dot) {
+      dot.classList.toggle('ok', tem);
+      dot.classList.toggle('no', !tem);
+    }
+
+    // Recalcula o badge "X em aberto"
+    if (typeof atualizarBadgeAbertas === 'function') atualizarBadgeAbertas();
+  };
+
+  // cancelar com ESC (volta sem salvar)
+  const cancelar = () => {
+    sel.replaceWith(el);
+  };
+
+  sel.addEventListener('change', salvar);
+  sel.addEventListener('blur', salvar, { once: true });
+  sel.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') { e.preventDefault(); salvar(); }
+    if (e.key === 'Escape') { e.preventDefault(); cancelar(); }
+  });
+});
 
     // ===== IMPRESSÃO DE CUPOM =====
     function imprimirCupom(idEntrega, botao) {
@@ -940,83 +1015,93 @@
        AVISOS/BALÕES BLOQUEANTES
        ========================= */
 
-    // 1) Entregas pendentes >= 2 horas: som + balão
-    (function(){
-      const AUDIO = document.getElementById('som-pendente');
-      if (!AUDIO) return;
+    // 1) Entregas pendentes >= 2 horas: som + balão (reaparece a cada 30 min)
+(function(){
+  const AUDIO = document.getElementById('som-pendente');
+  if (!AUDIO) return;
 
-      const LIMIAR_MS = 2 * 60 * 60 * 1000; // 2 horas
-      const STORAGE_KEY = 'pendente_alertados_v1';
-      let tocados = {};
-      try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
+  const LIMIAR_MS   = 2 * 60 * 60 * 1000;       // 2 horas
+  const COOLDOWN_MS = 30 * 60 * 1000;           // 30 minutos
+  const STORAGE_KEY = 'pendente_alertados_v2_30m';
 
-      function pendentesAtrasados() {
-        const agora = Date.now();
-        const rows = document.querySelectorAll('tbody tr');
-        const atrasados = [];
-        rows.forEach(tr => {
-          const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
-          if (!badgePendente) return;
-          const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
-          if (!epoch) return;
-          const ms = (agora/1000 - epoch) * 1000;
-          if (ms >= LIMIAR_MS) {
-            const id = tr.getAttribute('data-id') || '';
-            if (id && !tocados[id]) atrasados.push(id);
-          }
-        });
-        return atrasados;
+  function loadMap(){
+    try {
+      const raw = localStorage.getItem(STORAGE_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === 'object') ? obj : {};
+    } catch(e){ return {}; }
+  }
+  function saveMap(map){
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify(map)); } catch(e){}
+  }
+
+  function idsAptosParaAlertar() {
+    const agora = Date.now();
+    const map = loadMap();
+    const rows = document.querySelectorAll('tbody tr');
+    const ids = [];
+
+    rows.forEach(tr => {
+      const badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
+      if (!badgePendente) return;
+
+      const epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
+      if (!epoch) return;
+
+      const msDecorridos = (agora/1000 - epoch) * 1000;
+      if (msDecorridos < LIMIAR_MS) return;
+
+      const id = tr.getAttribute('data-id') || '';
+      if (!id) return;
+
+      const ultimo = Number(map[id] || 0);
+      // Se nunca alertou ou já passou o cooldown, pode alertar de novo
+      if (!ultimo || (agora - ultimo) >= COOLDOWN_MS) {
+        ids.push(id);
       }
+    });
 
-      async function checar2h() {
-        const ids = pendentesAtrasados();
-        if (ids.length > 0) {
-          try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e){}
-          await abrirModal('Entregas pendentes (2h+)', '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.', false);
-          ids.forEach(id => tocados[id] = true);
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-      }
+    return ids;
+  }
 
-      // checa ao carregar e depois a cada 60s
-      checar2h();
-      setInterval(checar2h, 60000);
+  async function checar2h() {
+    const ids = idsAptosParaAlertar();
+    if (ids.length > 0) {
+      try { AUDIO.currentTime = 0; await AUDIO.play(); } catch(e){}
+      await abrirModal(
+        'Entregas pendentes (2h+)',
+        '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.',
+        false
+      );
 
-      // quando marcar entregue, remove do "tocados"
-      document.addEventListener('click', (ev)=>{
-        const st = ev.target.closest('.js-toggle-entrega');
-        if (!st) return;
-        const tr = st.closest('tr');
-        const id = tr?.getAttribute('data-id') || '';
-        if (id && tocados[id]) {
-          delete tocados[id];
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-        setTimeout(checar2h, 1500);
-      });
-    })();
-
-    // 2) Balão de pagamentos pendentes (hora par, 0–3 min), bloqueante
-    function existePagamentoPendenteNaTabela() {
-      // usa a classe "tabela" como no seu script antigo
-      return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
-        const cel = tr.children[10]; // coluna "Pagamento"
-        return cel && cel.textContent.trim().toLowerCase().includes('pendente');
-      });
+      // registra horário do alerta para cada ID alertado
+      const map = loadMap();
+      const t = Date.now();
+      ids.forEach(id => { map[id] = t; });
+      saveMap(map);
     }
-    async function checaAvisosPagamentoEBoaNoite() {
-      try {
-        const agora = new Date();
-        const hora = agora.getHours(), minutos = agora.getMinutes();
+  }
 
-        // Pagamentos pendentes: a cada hora PAR, nos 4 primeiros minutos
-        if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
-          const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
-          if (!localStorage.getItem(keyHora)) {
-            await abrirModal('Cobrança de Pagamento', '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.', true);
-            localStorage.setItem(keyHora, '1');
-          }
-        }
+  // checa ao carregar e depois a cada 60s
+  checar2h();
+  setInterval(checar2h, 60000);
+
+  // quando marcar ENTREGUE, remove do mapa (para não segurar futuras reatribuições)
+  document.addEventListener('click', (ev)=>{
+    const st = ev.target.closest('.js-toggle-entrega');
+    if (!st) return;
+    const tr = st.closest('tr');
+    const id = tr?.getAttribute('data-id') || '';
+    if (!id) return;
+
+    const map = loadMap();
+    if (map[id]) {
+      delete map[id];
+      saveMap(map);
+    }
+    setTimeout(checar2h, 1500);
+  });
+})();
 
         // Boa noite às 21:59
         if (hora === 21 && minutos === 59) {
