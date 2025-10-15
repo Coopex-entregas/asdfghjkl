@@ -1,360 +1,201 @@
 <!DOCTYPE html>
-<html lang="pt-br">
+<html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Painel do Cooperado</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --royal:#0033cc;
-      --royal-2:#2750ff;
-      --ink:#0b1b3a;
-      --muted:#7a8bb7;
-      --bg:#eaf0ff;
-      --card:#ffffff;
-      --line:#e4ebff;
-      --good:#12b886;
-      --bad:#e03131;
-      --warn:#f59f00;
-      --r:16px;
-      --shadow:0 10px 30px rgba(0,51,204,.08);
-    }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-    body{
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(39,80,255,.12), transparent 60%),
-        radial-gradient(1200px 600px at 110% -10%, rgba(0,51,204,.10), transparent 60%),
-        var(--bg);
-    }
-
-    header{
-      position:sticky; top:0; z-index:50;
-      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff; padding:.8rem 4vw; font-weight:800; letter-spacing:.3px;
-      box-shadow:0 6px 18px rgba(0,40,130,.22);
-    }
-    header .sub{font-weight:600; font-size:.9rem; opacity:.9}
-
-    .wrap{max-width:1100px; margin:18px auto; padding:0 4vw}
-
-    .stats{display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:14px; margin:14px 0 18px}
-    .stat{
-      background:var(--card); border-radius:var(--r); padding:18px; box-shadow:var(--shadow);
-      display:flex; align-items:center; gap:14px; border:1px solid var(--line)
-    }
-    .stat .icon{width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(180deg,#f5f9ff,#eef4ff); border:1px solid var(--line)}
-    .stat h4{margin:0; font-weight:700; font-size:.95rem; color:var(--muted)}
-    .stat strong{display:block; font-size:1.25rem; margin-top:6px}
-
-    .filters{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:12px; box-shadow:var(--shadow);}
-    .filters form{display:flex; flex-wrap:wrap; align-items:center; gap:10px}
-    .filters input[type=date], .filters select, .filters button{
-      border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:.98rem; background:#fff
-    }
-    .filters select{min-width:160px}
-    .filters .btn{
-      background:var(--royal); color:#fff; border:none; font-weight:800; cursor:pointer;
-      transition:transform .06s ease, box-shadow .06s ease; box-shadow:0 4px 14px rgba(0,51,204,.22)
-    }
-    .filters .btn:hover{transform:translateY(-1px)}
-
-    .card-table{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden;}
-    table{width:100%; border-collapse:collapse}
-    thead th{background:#0f2a80; color:#fff; text-align:center; padding:12px 6px; font-size:.92rem}
-    tbody td{padding:12px 8px; text-align:center; border-bottom:1px solid var(--line)}
-
-    .chip{display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.85rem; cursor:pointer; user-select:none}
-    .chip.pgto-pago{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
-    .chip.pgto-pendente{background:#fff2f2; color:var(--bad); border:1px solid #ffd6d6}
-    .chip.entregue{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
-
-    .row-details{display:none; background:#f8faff}
-    .row-open + .row-details{display:table-row}
-
-    .cliente-btn{all:unset; color:var(--royal); font-weight:800; cursor:pointer}
-
-    /* 🔧 CAMPO RECEBIDO POR MAIS LARGO */
-    .recebido-inline{
-      display:none;
-      margin-top:8px;
-      gap:8px;
-      justify-content:center;
-      width:100%;
-    }
-    .recebido-inline input{
-      border:1px solid var(--line);
-      border-radius:10px;
-      padding:10px 12px;
-      flex:1;
-      max-width:700px; /* antes era 360px */
-      font-size:1rem;
-    }
-    .recebido-inline button{
-      background:var(--royal);
-      color:#fff;
-      border:none;
-      border-radius:10px;
-      padding:10px 16px;
-      font-weight:800;
-      cursor:pointer;
-    }
-
-    .scope{margin:12px 0 0; text-align:center; color:#0f2a80; font-weight:700}
-
-    @media (max-width:760px){
-      .stats{grid-template-columns:1fr 1fr}
-      thead{display:none}
-      table, tbody, tr, td{display:block; width:100%}
-      .card-table{padding:6px}
-      tbody tr{background:#fff; margin:10px 0; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,.04); border:1px solid var(--line)}
-      tbody td{display:grid; grid-template-columns:42% 58%; text-align:left; border:none}
-      tbody td::before{content:attr(data-label); font-weight:800; color:#0f2a80; padding-right:8px}
-      .row-details{display:none}
-      .row-open + .row-details{display:block}
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Controle de Entregas - Coopex</title>
+<style>
+:root{
+  --bg:#f9fafb;
+  --card:#fff;
+  --line:#d1d5db;
+  --text:#111827;
+  --ok:#16a34a;
+  --warn:#dc2626;
+}
+body{
+  font-family:Arial,Helvetica,sans-serif;
+  background:var(--bg);
+  color:var(--text);
+  margin:0;
+  padding:0;
+}
+.container{
+  padding:8px;
+  max-width:420px; /* ideal p/ tela 6.1" */
+  margin:auto;
+}
+.card{
+  background:var(--card);
+  border-radius:10px;
+  box-shadow:0 1px 3px rgba(0,0,0,0.1);
+  margin-bottom:8px;
+  padding:8px 10px;
+  line-height:1.3;
+}
+.card h3{
+  margin:0 0 4px 0;
+  font-size:1rem;
+}
+.chip{
+  display:inline-block;
+  padding:3px 8px;
+  border-radius:8px;
+  font-size:0.78rem;
+  color:#fff;
+  margin-top:4px;
+  cursor:pointer;
+  user-select:none;
+}
+.chip.pgto-pendente{background:var(--warn);}
+.chip.pago{background:var(--ok);}
+.chip.entregue{background:#0284c7;}
+.chip.pendente{background:#f59e0b;}
+.recebido-block{
+  display:none;
+  margin-top:5px;
+}
+.recebido-inline{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:6px;
+  width:100%;
+}
+.recebido-inline button{
+  background:var(--ok);
+  color:#fff;
+  border:none;
+  padding:6px 10px;
+  border-radius:8px;
+  font-weight:bold;
+  cursor:pointer;
+  flex-shrink:0;
+}
+.recebido-inline input{
+  flex:1;
+  border:1px solid var(--line);
+  border-radius:8px;
+  padding:8px;
+  font-size:0.95rem;
+  width:100%;
+  min-width:0;
+}
+.footer{
+  position:sticky;
+  bottom:0;
+  background:var(--card);
+  padding:8px;
+  box-shadow:0 -2px 4px rgba(0,0,0,0.1);
+  display:flex;
+  justify-content:space-around;
+}
+.footer button{
+  flex:1;
+  margin:0 3px;
+  padding:8px 0;
+  border:none;
+  border-radius:8px;
+  background:#0284c7;
+  color:white;
+  font-weight:bold;
+  cursor:pointer;
+  font-size:0.9rem;
+}
+.footer button.active{background:#0369a1;}
+</style>
 </head>
 <body>
-  <header>
-    Painel do Cooperado
-    <div class="sub">{{ session['user_nome'] }}</div>
-  </header>
-  <div class="wrap">
+<div class="container" id="lista-entregas">
 
-    <section class="stats" aria-label="Estatísticas de valores">
-      <div class="stat">
-        <div class="icon">💰</div>
-        <div>
-          <h4>Total</h4>
-          <strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong>
-        </div>
+  <div class="card" data-status="pendente">
+    <h3>Entrega 1 - João Silva</h3>
+    <span class="chip pendente" data-id="1" data-entregue="0" onclick="handleEntregaClick(this)">Pendente</span>
+    <div class="recebido-block" id="rcb-1">
+      <div class="recebido-inline">
+        <button onclick="confirmarRecebido(1)">OK</button>
+        <input type="text" id="rcb-input-1" placeholder="Recebido por...">
       </div>
-      <div class="stat">
-        <div class="icon">✅</div>
-        <div>
-          <h4>Pago</h4>
-          <strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong>
-        </div>
-      </div>
-      <div class="stat">
-        <div class="icon">⏳</div>
-        <div>
-          <h4>Pendente</h4>
-          <strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong>
-        </div>
-      </div>
-    </section>
-
-    <section class="filters" aria-label="Filtros">
-      <form id="form-filtros" method="get">
-        <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
-        <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
-        <select name="status_pgto" id="status_pgto">
-          <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
-          <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
-          <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
-        </select>
-        <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
-        <button class="btn" type="submit">Filtrar</button>
-      </form>
-      <div id="escopo" class="scope"></div>
-    </section>
-
-    <section class="card-table" aria-label="Minhas entregas">
-      <table id="tabela-entregas">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Forma Pgto</th>
-            <th>Valor</th>
-            <th>Data</th>
-            <th>Hora Pedido</th>
-            <th>Hora Entrega</th>
-            <th>Pagamento</th>
-            <th>Entrega</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in entregas %}
-          <tr id="row-{{ e.id }}">
-            <td data-label="Cliente">
-              <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
-            </td>
-            <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
-            <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-            <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
-            <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-            <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-            <td data-label="Pagamento">
-              <span
-                class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
-                data-id="{{ e.id }}"
-                data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
-                onclick="togglePagamento(event,this)"
-                role="button" aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
-              >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
-            </td>
-            <td data-label="Entrega">
-              {% set entregue = (e.status in ['recebido','entregue']) %}
-              <span
-                class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
-                data-id="{{ e.id }}"
-                data-entregue="{{ '1' if entregue else '0' }}"
-                onclick="handleEntregaClick(this)"
-              >{{ 'Entregue' if entregue else 'Pendente' }}</span>
-              <div class="recebido-inline" id="rcb-{{ e.id }}">
-                <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60">
-                <button type="button" onclick="confirmarRecebido({{ e.id }})">OK</button>
-              </div>
-            </td>
-          </tr>
-          <tr class="row-details" id="details-{{ e.id }}">
-            <td colspan="8" style="text-align:left;padding:10px 14px">
-              <div><strong>Cliente:</strong> {{ e.cliente }}</div>
-              <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
-              <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
-              <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
-              <div><strong>Data/Hora Pedido:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</div>
-              <div><strong>Hora Entrega:</strong> {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</div>
-              <div><strong>Recebido por:</strong> {{ e.recebido_por or '-' }}</div>
-            </td>
-          </tr>
-          {% else %}
-          <tr class="no-rows"><td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
-    </section>
+    </div>
   </div>
 
-  <script>
-    let lastScrollY = window.scrollY;
-    const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
+  <div class="card" data-status="entregue">
+    <h3>Entrega 2 - Maria Souza</h3>
+    <span class="chip entregue" data-id="2" data-entregue="1" onclick="handleEntregaClick(this)">Entregue</span>
+    <div class="recebido-block" id="rcb-2">
+      <div class="recebido-inline">
+        <button onclick="confirmarRecebido(2)">OK</button>
+        <input type="text" id="rcb-input-2" placeholder="Recebido por...">
+      </div>
+    </div>
+  </div>
 
-    function toggleRow(id){
-      const tr=document.getElementById('row-'+id);
-      const d=document.getElementById('details-'+id);
-      const open=tr.classList.toggle('row-open');
-      const isMobile=window.matchMedia('(max-width:760px)').matches;
-      d.style.display=open?(isMobile?'block':'table-row'):'none';
+</div>
+
+<div class="footer">
+  <button id="btn-todas" class="active" onclick="filtrar('todas')">Todas</button>
+  <button id="btn-pendentes" onclick="filtrar('pendentes')">Pendentes</button>
+</div>
+
+<script>
+let filtroAtual='todas';
+let lastScrollY=0;
+
+function preserveScroll(){
+  window.scrollTo({top:lastScrollY});
+}
+
+function filtrar(tipo){
+  filtroAtual=tipo;
+  document.getElementById('btn-todas').classList.toggle('active',tipo==='todas');
+  document.getElementById('btn-pendentes').classList.toggle('active',tipo==='pendentes');
+  const cards=document.querySelectorAll('.card');
+  cards.forEach(c=>{
+    const pendente=c.querySelector('.chip').dataset.entregue==='0';
+    if(tipo==='pendentes') c.style.display=pendente?'block':'none';
+    else c.style.display='block';
+  });
+  setTimeout(preserveScroll,60);
+}
+
+function handleEntregaClick(el){
+  const id=el.dataset.id;
+  const entregue=el.dataset.entregue==='1';
+  const bloco=document.getElementById('rcb-'+id);
+  if(!entregue){
+    bloco.style.display='flex';
+  }else{
+    if(confirm('Marcar como PENDENTE novamente?')){
+      confirmarRecebido(id,true);
     }
+  }
+}
 
-    function recalcTotals(){
-      const rows=document.querySelectorAll('tbody tr[id^="row-"]');
-      let total=0,pago=0;
-      rows.forEach(r=>{
-        const vtd=r.querySelector('[data-valor]');
-        if(!vtd) return;
-        const v=parseFloat(vtd.dataset.valor||'0')||0;
-        total+=v;
-        const chip=r.querySelector('td[data-label="Pagamento"] .chip');
-        if(chip&&(chip.dataset.status||'').toLowerCase()==='pago'){pago+=v;}
-      });
-      const pendente=Math.max(0,total-pago);
-      const fmt=(n)=>'R$ '+n.toFixed(2).replace('.',',');
-      document.getElementById('tot-geral').textContent=fmt(total);
-      document.getElementById('tot-pago').textContent=fmt(pago);
-      document.getElementById('tot-pendente').textContent=fmt(pendente);
-    }
+function confirmarRecebido(id,desfazer=false){
+  lastScrollY=window.scrollY;
+  const nomeInput=document.getElementById('rcb-input-'+id);
+  const nome=desfazer?'':(nomeInput?nomeInput.value.trim():'');
+  if(!desfazer && !nome){alert('Informe o nome de quem recebeu.');return;}
+  const chip=document.querySelector(`.chip[data-id="${id}"]`);
+  if(!chip)return;
+  if(desfazer){
+    chip.textContent='Pendente';
+    chip.classList.remove('entregue');
+    chip.classList.add('pendente');
+    chip.dataset.entregue='0';
+  }else{
+    chip.textContent='Entregue';
+    chip.classList.remove('pendente');
+    chip.classList.add('entregue');
+    chip.dataset.entregue='1';
+  }
+  document.getElementById('rcb-'+id).style.display='none';
+  filtrar(filtroAtual);
+  setTimeout(preserveScroll,60);
+}
 
-    function ensureEmpty(){
-      const tbody=document.querySelector('#tabela-entregas tbody');
-      const any=tbody.querySelector('tr[id^="row-"]');
-      let msg=tbody.querySelector('.no-rows');
-      if(!any){
-        if(!msg){
-          msg=document.createElement('tr');
-          msg.className='no-rows';
-          msg.innerHTML='<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>';
-          tbody.appendChild(msg);
-        }
-      }else if(msg){msg.remove();}
-    }
-
-    /* 🔧 Filtro pendentes mostra todas automaticamente */
-    const form=document.getElementById('form-filtros');
-    form.addEventListener('submit',(ev)=>{
-      const status=document.getElementById('status_pgto').value;
-      const hidden=document.getElementById('todas_datas');
-      if(status==='pendente'){hidden.value='1';} else {hidden.value='';}
-    });
-
-    function updateScope(){
-      const status=(new URL(location.href)).searchParams.get('status_pgto')||document.getElementById('status_pgto').value||'todas';
-      const el=document.getElementById('escopo');
-      if(status==='pendente'){
-        el.textContent='Exibindo TODAS as entregas PENDENTES.';
-      }else{
-        el.textContent='Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
-      }
-    }
-
-    async function togglePagamento(evt,el){
-      evt.preventDefault();
-      lastScrollY=window.scrollY;
-      const id=el.dataset.id;
-      const filtroAtual=(document.getElementById('status_pgto').value||'todas').toLowerCase();
-      try{
-        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
-        let data=null;try{data=await resp.json();}catch{}
-        if(!resp.ok){alert((data&&data.error)||'Falha ao alterar pagamento.');return;}
-        const novo=(data.status_pagamento||'pendente').toLowerCase();
-        el.dataset.status=novo;
-        el.textContent=(novo==='pago')?'Pago':'Pendente';
-        el.classList.toggle('pgto-pago',novo==='pago');
-        el.classList.toggle('pgto-pendente',novo!=='pago');
-        el.setAttribute('aria-pressed',String(novo==='pago'));
-        if((filtroAtual==='pago'&&novo!=='pago')||(filtroAtual==='pendente'&&novo==='pago')){
-          el.closest('tr').remove();
-        }
-        recalcTotals(); ensureEmpty();
-      }catch(err){alert('Erro: '+err.message);}
-      setTimeout(preserveScroll,60);
-    }
-
-    function handleEntregaClick(el){
-      const id=el.dataset.id;
-      const entregue=el.dataset.entregue==='1';
-      const bloco=document.getElementById('rcb-'+id);
-      if(!entregue){bloco.style.display='flex';} else {
-        if(confirm('Marcar como PENDENTE novamente?')){
-          confirmarRecebido(id,true);
-        }
-      }
-    }
-
-    async function confirmarRecebido(id,desfazer=false){
-      lastScrollY=window.scrollY;
-      const nome=desfazer?'':document.getElementById('rcb-input-'+id).value.trim();
-      if(!desfazer && !nome){alert('Informe o nome de quem recebeu.');return;}
-      try{
-        const resp=await fetch(`{{ url_for('confirmar_recebido', id=0) }}`.replace('0',id),{
-          method:'POST',headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({recebido_por:nome, desfazer})
-        });
-        let data=null;try{data=await resp.json();}catch{}
-        if(!resp.ok){alert((data&&data.error)||'Falha ao atualizar entrega.');return;}
-        const novo=data.status.toLowerCase();
-        const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-        if(chip){
-          chip.dataset.entregue=(novo==='entregue'||novo==='recebido')?'1':'0';
-          chip.textContent=(chip.dataset.entregue==='1')?'Entregue':'Pendente';
-          chip.classList.toggle('entregue',chip.dataset.entregue==='1');
-          chip.classList.toggle('pgto-pendente',chip.dataset.entregue!=='1');
-        }
-        document.getElementById('rcb-'+id).style.display='none';
-      }catch(err){alert('Erro: '+err.message);}
-      setTimeout(preserveScroll,60);
-    }
-
-    window.addEventListener('beforeunload',()=>{lastScrollY=window.scrollY;});
-    window.addEventListener('load',()=>{updateScope();recalcTotals();setTimeout(preserveScroll,60);});
-  </script>
+window.addEventListener('beforeunload',()=>{lastScrollY=window.scrollY;});
+window.addEventListener('load',()=>{setTimeout(preserveScroll,60);});
+</script>
 </body>
 </html>
