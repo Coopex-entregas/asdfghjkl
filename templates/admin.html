@@ -997,7 +997,7 @@
 
       // checa ao carregar e depois a cada 60s
       checar2h();
-      setInterval(checar2h, 30 * 60 * 1000); // 1.800.000 ms
+      setInterval(checar2h, 60 * 60 * 1000); // 1.800.000 ms
 
       // quando marcar entregue, remove do "tocados"
       document.addEventListener('click', (ev)=>{
@@ -1026,14 +1026,23 @@
         const agora = new Date();
         const hora = agora.getHours(), minutos = agora.getMinutes();
 
-        // Pagamentos pendentes: a cada hora PAR, nos 4 primeiros minutos
-        if (existePagamentoPendenteNaTabela() && hora % 2 === 0 && minutos < 4) {
-          const keyHora = `coopex_aviso_pendente_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}_${hora}`;
-          if (!localStorage.getItem(keyHora)) {
-            await abrirModal('Cobrança de Pagamento', '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.', true);
-            localStorage.setItem(keyHora, '1');
-          }
-        }
+       // substitua TODO o bloco de "Pagamentos pendentes: a cada hora PAR..." por:
+const PAG_ALERT_KEY = 'coopex_pend_pag_last_ts'; // timestamp do último alerta (ms)
+
+if (existePagamentoPendenteNaTabela()) {
+  const now = Date.now();
+  const last = +(localStorage.getItem(PAG_ALERT_KEY) || 0);
+  const SIXTY_MIN = 60 * 60 * 1000;
+
+  if (now - last >= SIXTY_MIN) {
+    await abrirModal(
+      'Cobrança de Pagamento',
+      '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',
+      true
+    );
+    localStorage.setItem(PAG_ALERT_KEY, String(now));
+  }
+}
 
         // Boa noite às 21:59
         if (hora === 21 && minutos === 59) {
