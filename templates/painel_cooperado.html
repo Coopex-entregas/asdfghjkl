@@ -7,18 +7,17 @@
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
     :root{
-      /* Paleta azul royal + branco */
-      --royal:#0033cc;         /* azul principal */
-      --royal-2:#2750ff;       /* hover/acento */
-      --ink:#0b1b3a;           /* texto principal */
-      --muted:#7a8bb7;         /* texto secundário */
-      --bg:#eaf0ff;            /* fundo da página */
-      --card:#ffffff;          /* cards */
-      --line:#e4ebff;          /* linhas suaves */
-      --good:#12b886;          /* verde ok */
-      --bad:#e03131;           /* vermelho alerta */
-      --warn:#f59f00;          /* amarelo */
-      --r:16px;                /* raio padrão */
+      --royal:#0033cc;
+      --royal-2:#2750ff;
+      --ink:#0b1b3a;
+      --muted:#7a8bb7;
+      --bg:#eaf0ff;
+      --card:#ffffff;
+      --line:#e4ebff;
+      --good:#12b886;
+      --bad:#e03131;
+      --warn:#f59f00;
+      --r:16px;
       --shadow:0 10px 30px rgba(0,51,204,.08);
     }
 
@@ -34,7 +33,6 @@
         var(--bg);
     }
 
-    /* Cabeçalho fino (sem logo) */
     header{
       position:sticky; top:0; z-index:50;
       background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
@@ -45,7 +43,6 @@
 
     .wrap{max-width:1100px; margin:18px auto; padding:0 4vw}
 
-    /* Estatísticas em cards */
     .stats{display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:14px; margin:14px 0 18px}
     .stat{
       background:var(--card); border-radius:var(--r); padding:18px; box-shadow:var(--shadow);
@@ -55,7 +52,6 @@
     .stat h4{margin:0; font-weight:700; font-size:.95rem; color:var(--muted)}
     .stat strong{display:block; font-size:1.25rem; margin-top:6px}
 
-    /* Filtros compactos */
     .filters{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:12px; box-shadow:var(--shadow);}
     .filters form{display:flex; flex-wrap:wrap; align-items:center; gap:10px}
     .filters input[type=date], .filters select, .filters button{
@@ -68,7 +64,6 @@
     }
     .filters .btn:hover{transform:translateY(-1px)}
 
-    /* Tabela responsiva com cards (mobile) */
     .card-table{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden;}
     table{width:100%; border-collapse:collapse}
     thead th{background:#0f2a80; color:#fff; text-align:center; padding:12px 6px; font-size:.92rem}
@@ -84,14 +79,34 @@
 
     .cliente-btn{all:unset; color:var(--royal); font-weight:800; cursor:pointer}
 
-    .recebido-inline{display:none; margin-top:8px; gap:8px; justify-content:center}
-    .recebido-inline input{border:1px solid var(--line); border-radius:10px; padding:8px 10px; width:min(360px,80vw)}
-    .recebido-inline button{background:var(--royal); color:#fff; border:none; border-radius:10px; padding:8px 12px; font-weight:800; cursor:pointer}
+    /* 🔧 CAMPO RECEBIDO POR MAIS LARGO */
+    .recebido-inline{
+      display:none;
+      margin-top:8px;
+      gap:8px;
+      justify-content:center;
+      width:100%;
+    }
+    .recebido-inline input{
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:10px 12px;
+      flex:1;
+      max-width:700px; /* antes era 360px */
+      font-size:1rem;
+    }
+    .recebido-inline button{
+      background:var(--royal);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:10px 16px;
+      font-weight:800;
+      cursor:pointer;
+    }
 
-    /* Mensagens de escopo */
     .scope{margin:12px 0 0; text-align:center; color:#0f2a80; font-weight:700}
 
-    /* Mobile */
     @media (max-width:760px){
       .stats{grid-template-columns:1fr 1fr}
       thead{display:none}
@@ -111,7 +126,7 @@
     <div class="sub">{{ session['user_nome'] }}</div>
   </header>
   <div class="wrap">
-    <!-- Estatísticas rápidas -->
+
     <section class="stats" aria-label="Estatísticas de valores">
       <div class="stat">
         <div class="icon">💰</div>
@@ -136,27 +151,21 @@
       </div>
     </section>
 
-    <!-- Filtros -->
     <section class="filters" aria-label="Filtros">
       <form id="form-filtros" method="get">
         <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
         <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
-
         <select name="status_pgto" id="status_pgto">
           <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
           <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
           <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
         </select>
-
-        <!-- Campo oculto só quando for preciso pedir \"todas as datas\" para pendentes -->
         <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
-
         <button class="btn" type="submit">Filtrar</button>
       </form>
       <div id="escopo" class="scope"></div>
     </section>
 
-    <!-- Tabela/cards de entregas -->
     <section class="card-table" aria-label="Minhas entregas">
       <table id="tabela-entregas">
         <thead>
@@ -199,7 +208,6 @@
                 data-entregue="{{ '1' if entregue else '0' }}"
                 onclick="handleEntregaClick(this)"
               >{{ 'Entregue' if entregue else 'Pendente' }}</span>
-
               <div class="recebido-inline" id="rcb-{{ e.id }}">
                 <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60">
                 <button type="button" onclick="confirmarRecebido({{ e.id }})">OK</button>
@@ -226,152 +234,127 @@
   </div>
 
   <script>
-    // ===== Acessibilidade e UX =====
-    // Evita \"piscada\" e \"subir\" ao marcar como pago: preserva a posição do scroll
     let lastScrollY = window.scrollY;
     const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
 
     function toggleRow(id){
-      const tr = document.getElementById('row-'+id);
-      const details = document.getElementById('details-'+id);
-      const open = tr.classList.toggle('row-open');
-      const isMobile = window.matchMedia('(max-width:760px)').matches;
-      details.style.display = open ? (isMobile ? 'block' : 'table-row') : 'none';
+      const tr=document.getElementById('row-'+id);
+      const d=document.getElementById('details-'+id);
+      const open=tr.classList.toggle('row-open');
+      const isMobile=window.matchMedia('(max-width:760px)').matches;
+      d.style.display=open?(isMobile?'block':'table-row'):'none';
     }
 
     function recalcTotals(){
-      const rows = document.querySelectorAll('tbody tr[id^="row-"]');
-      let total=0, pago=0;
+      const rows=document.querySelectorAll('tbody tr[id^="row-"]');
+      let total=0,pago=0;
       rows.forEach(r=>{
-        const vtd = r.querySelector('[data-valor]');
+        const vtd=r.querySelector('[data-valor]');
         if(!vtd) return;
-        const v = parseFloat(vtd.dataset.valor||'0')||0;
-        total += v;
-        const chip = r.querySelector('td[data-label="Pagamento"] .chip');
-        if(chip && (chip.dataset.status||'').toLowerCase()==='pago'){ pago += v; }
+        const v=parseFloat(vtd.dataset.valor||'0')||0;
+        total+=v;
+        const chip=r.querySelector('td[data-label="Pagamento"] .chip');
+        if(chip&&(chip.dataset.status||'').toLowerCase()==='pago'){pago+=v;}
       });
-      const pendente = Math.max(0,total-pago);
-      const fmt = (n)=> 'R$ '+n.toFixed(2).replace('.', ',');
-      document.getElementById('tot-geral').textContent = fmt(total);
-      document.getElementById('tot-pago').textContent = fmt(pago);
-      document.getElementById('tot-pendente').textContent = fmt(pendente);
+      const pendente=Math.max(0,total-pago);
+      const fmt=(n)=>'R$ '+n.toFixed(2).replace('.',',');
+      document.getElementById('tot-geral').textContent=fmt(total);
+      document.getElementById('tot-pago').textContent=fmt(pago);
+      document.getElementById('tot-pendente').textContent=fmt(pendente);
     }
 
     function ensureEmpty(){
-      const tbody = document.querySelector('#tabela-entregas tbody');
-      const any = tbody.querySelector('tr[id^="row-"]');
-      let msg = tbody.querySelector('.no-rows');
+      const tbody=document.querySelector('#tabela-entregas tbody');
+      const any=tbody.querySelector('tr[id^="row-"]');
+      let msg=tbody.querySelector('.no-rows');
       if(!any){
         if(!msg){
-          msg = document.createElement('tr');
-          msg.className = 'no-rows';
-          msg.innerHTML = '<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>';
+          msg=document.createElement('tr');
+          msg.className='no-rows';
+          msg.innerHTML='<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>';
           tbody.appendChild(msg);
         }
       }else if(msg){msg.remove();}
     }
 
-    // ===== Novo: comportamento do filtro PENDENTES =====
-    // Se o usuário escolher \"Pendentes\" e NÃO informar datas, enviamos todas_datas=1
-    const form = document.getElementById('form-filtros');
-    form.addEventListener('submit', (ev)=>{
-      const status = document.getElementById('status_pgto').value;
-      const ini = (document.getElementById('f-inicio').value||'').trim();
-      const fim = (document.getElementById('f-fim').value||'').trim();
-      const hidden = document.getElementById('todas_datas');
-      if(status==='pendente' && !ini && !fim){ hidden.value = '1'; } else { hidden.value=''; }
-      // deixa o submit seguir normalmente
+    /* 🔧 Filtro pendentes mostra todas automaticamente */
+    const form=document.getElementById('form-filtros');
+    form.addEventListener('submit',(ev)=>{
+      const status=document.getElementById('status_pgto').value;
+      const hidden=document.getElementById('todas_datas');
+      if(status==='pendente'){hidden.value='1';} else {hidden.value='';}
     });
 
-    // Mensagem de escopo dinâmica (texto no topo dos cards)
     function updateScope(){
-      const status = (new URL(location.href)).searchParams.get('status_pgto') || document.getElementById('status_pgto').value || 'todas';
-      const ini = (new URL(location.href)).searchParams.get('inicio') || document.getElementById('f-inicio').value || '';
-      const fim = (new URL(location.href)).searchParams.get('fim')|| document.getElementById('f-fim').value || '';
-      const todas = (new URL(location.href)).searchParams.get('todas_datas') || document.getElementById('todas_datas').value || '';
-      const el = document.getElementById('escopo');
-      if(status==='pendente' && !ini && !fim && todas==='1'){
-        el.textContent = 'Exibindo TODAS as entregas PENDENTES (todas as datas).';
-      }else if(ini || fim){
-        const d = (s)=> s? s.split('-').reverse().join('/') : '';
-        el.textContent = `Exibindo ${status.toUpperCase()} no período ${d(ini)} ${ini&&fim?'até':''} ${d(fim)}`.trim();
+      const status=(new URL(location.href)).searchParams.get('status_pgto')||document.getElementById('status_pgto').value||'todas';
+      const el=document.getElementById('escopo');
+      if(status==='pendente'){
+        el.textContent='Exibindo TODAS as entregas PENDENTES.';
       }else{
-        el.textContent = 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
+        el.textContent='Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
       }
     }
 
-    // ===== Marcar como pago sem piscar, sem subir =====
-    async function togglePagamento(evt, el){
-      evt.preventDefault(); // não deixa focar e \"puxar\" a tela
-      lastScrollY = window.scrollY;
-      const id = el.dataset.id;
-      const filtroAtual = (document.getElementById('status_pgto').value||'todas').toLowerCase();
+    async function togglePagamento(evt,el){
+      evt.preventDefault();
+      lastScrollY=window.scrollY;
+      const id=el.dataset.id;
+      const filtroAtual=(document.getElementById('status_pgto').value||'todas').toLowerCase();
       try{
-        const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id), {
-          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({})
-        });
-        let data=null, text='';
-        try{ data = await resp.json(); }catch{ text = await resp.text(); }
-        if(!resp.ok){ alert((data&&data.error)||text||'Falha ao alterar pagamento.'); return; }
-
-        const novo = (data.status_pagamento||'pendente').toLowerCase();
-        el.dataset.status = novo;
-        el.textContent = (novo==='pago')? 'Pago' : 'Pendente';
-        el.classList.toggle('pgto-pago', novo==='pago');
-        el.classList.toggle('pgto-pendente', novo!=='pago');
-        el.setAttribute('aria-pressed', String(novo==='pago'));
-
-        // Se o filtro for pagas/pendentes, removemos a linha que não pertence mais
-        if((filtroAtual==='pago' && novo!=='pago') || (filtroAtual==='pendente' && novo!=='pendente')){
-          document.getElementById(`row-${id}`)?.remove();
-          document.getElementById(`details-${id}`)?.remove();
-          ensureEmpty();
+        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+        let data=null;try{data=await resp.json();}catch{}
+        if(!resp.ok){alert((data&&data.error)||'Falha ao alterar pagamento.');return;}
+        const novo=(data.status_pagamento||'pendente').toLowerCase();
+        el.dataset.status=novo;
+        el.textContent=(novo==='pago')?'Pago':'Pendente';
+        el.classList.toggle('pgto-pago',novo==='pago');
+        el.classList.toggle('pgto-pendente',novo!=='pago');
+        el.setAttribute('aria-pressed',String(novo==='pago'));
+        if((filtroAtual==='pago'&&novo!=='pago')||(filtroAtual==='pendente'&&novo==='pago')){
+          el.closest('tr').remove();
         }
-
-        recalcTotals();
-        preserveScroll();
-      }catch(e){ alert('Erro de conexão ao alterar pagamento.'); }
+        recalcTotals(); ensureEmpty();
+      }catch(err){alert('Erro: '+err.message);}
+      setTimeout(preserveScroll,60);
     }
 
     function handleEntregaClick(el){
-      if(el.dataset.entregue==='1') return;
-      const id = el.dataset.id;
-      const box = document.getElementById(`rcb-${id}`);
-      box.style.display = 'flex';
-      document.getElementById(`rcb-input-${id}`).focus();
+      const id=el.dataset.id;
+      const entregue=el.dataset.entregue==='1';
+      const bloco=document.getElementById('rcb-'+id);
+      if(!entregue){bloco.style.display='flex';} else {
+        if(confirm('Marcar como PENDENTE novamente?')){
+          confirmarRecebido(id,true);
+        }
+      }
     }
 
-    async function confirmarRecebido(id){
-      lastScrollY = window.scrollY;
-      const box = document.getElementById(`rcb-${id}`);
-      const input = document.getElementById(`rcb-input-${id}`);
-      const nome = (input.value||'').trim();
-      if(!nome){ alert('Informe quem recebeu.'); return; }
+    async function confirmarRecebido(id,desfazer=false){
+      lastScrollY=window.scrollY;
+      const nome=desfazer?'':document.getElementById('rcb-input-'+id).value.trim();
+      if(!desfazer && !nome){alert('Informe o nome de quem recebeu.');return;}
       try{
-        const resp = await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id), {
-          method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ recebido_por: nome })
+        const resp=await fetch(`{{ url_for('confirmar_recebido', id=0) }}`.replace('0',id),{
+          method:'POST',headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({recebido_por:nome, desfazer})
         });
-        let data=null, text='';
-        try{ data = await resp.json(); }catch{ text = await resp.text(); }
-        if(!resp.ok){ alert((data&&data.error)||text||'Falha ao marcar entregue.'); return; }
-        if(data && data.ok){
-          const row = document.getElementById(`row-${id}`);
-          const entregaSpan = row.querySelector('[data-entregue]');
-          entregaSpan.textContent = 'Entregue';
-          entregaSpan.classList.remove('pgto-pendente');
-          entregaSpan.classList.add('entregue');
-          entregaSpan.dataset.entregue = '1';
-          box.style.display = 'none';
-          preserveScroll();
-        }else{ alert((data&&data.error)||'Não foi possível marcar como entregue.'); }
-      }catch(e){ alert('Erro de conexão ao marcar entregue.'); }
+        let data=null;try{data=await resp.json();}catch{}
+        if(!resp.ok){alert((data&&data.error)||'Falha ao atualizar entrega.');return;}
+        const novo=data.status.toLowerCase();
+        const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
+        if(chip){
+          chip.dataset.entregue=(novo==='entregue'||novo==='recebido')?'1':'0';
+          chip.textContent=(chip.dataset.entregue==='1')?'Entregue':'Pendente';
+          chip.classList.toggle('entregue',chip.dataset.entregue==='1');
+          chip.classList.toggle('pgto-pendente',chip.dataset.entregue!=='1');
+        }
+        document.getElementById('rcb-'+id).style.display='none';
+      }catch(err){alert('Erro: '+err.message);}
+      setTimeout(preserveScroll,60);
     }
 
-    // Init
-    document.addEventListener('DOMContentLoaded', ()=>{
-      recalcTotals();
-      updateScope();
-    });
+    window.addEventListener('beforeunload',()=>{lastScrollY=window.scrollY;});
+    window.addEventListener('load',()=>{updateScope();recalcTotals();setTimeout(preserveScroll,60);});
   </script>
 </body>
 </html>
