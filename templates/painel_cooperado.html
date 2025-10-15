@@ -6,22 +6,15 @@
   <title>Painel do Cooperado</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* =============================
-       TEMA AZUL ROYAL + BRANCO
-       ============================= */
+    /* =========================================
+       TEMA PROFISSIONAL — ROYAL + BRANCO
+       Mantém o visual da TABELA/CHIPS
+       ========================================= */
     :root{
-      --royal:#0033cc;        /* azul royal principal */
-      --royal-2:#2750ff;      /* variação */
-      --ink:#0b1b3a;          /* texto principal */
-      --muted:#6f7fb0;        /* texto secundário */
-      --bg:#eef2ff;           /* fundo */
-      --card:#ffffff;         /* cards */
-      --line:#e0e7ff;         /* linhas sutis */
-      --good:#12b886;         /* verde aprovado */
-      --bad:#e03131;          /* vermelho alerta */
-      --r:14px;               /* raio padrão */
-      --shadow:0 8px 24px rgba(0,51,204,.10);
-      --shadow-sm:0 6px 16px rgba(0,51,204,.08);
+      --royal:#0033cc; --royal-2:#2750ff; --ink:#0b1b3a; --muted:#6f7fb0;
+      --bg:#eef2ff; --card:#ffffff; --line:#e0e7ff;
+      --good:#12b886; --bad:#e03131; --blue:#2750ff;
+      --r:14px; --shadow:0 8px 24px rgba(0,51,204,.10); --shadow-sm:0 6px 16px rgba(0,51,204,.08);
     }
 
     *{box-sizing:border-box}
@@ -34,104 +27,76 @@
         var(--bg);
     }
 
-    /* =============================
-       TOPO ENXUTO
-       ============================= */
-    header{
-      position:sticky; top:0; z-index:40;
-      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff; padding:.6rem 3.5vw; font-weight:800; letter-spacing:.3px;
-      box-shadow:0 6px 18px rgba(0,40,130,.18);
-      display:flex; align-items:center; justify-content:space-between;
-    }
-    header .sub{font-weight:600; font-size:.9rem; opacity:.95}
+    /* ===== TOPBAR ENXUTO ===== */
+    header{position:sticky;top:0;z-index:40;background:linear-gradient(90deg,var(--royal),var(--royal-2));color:#fff;padding:.65rem 3.5vw;display:flex;align-items:center;justify-content:space-between;font-weight:800;letter-spacing:.3px;box-shadow:0 6px 18px rgba(0,40,130,.18)}
+    header .sub{font-weight:600;font-size:.9rem;opacity:.95}
 
-    .wrap{max-width:1080px; margin:12px auto 18px; padding:0 3.5vw}
+    .wrap{max-width:1100px;margin:12px auto 18px;padding:0 3.5vw}
 
-    /* =============================
-       CARDS MUITO COMPACTOS
-       ============================= */
-    .stats{display:grid; grid-template-columns:repeat(3, minmax(160px, 1fr)); gap:10px; margin:10px 0 12px}
-    .stat{
-      background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm);
-    }
-    .stat h4{margin:0; color:var(--muted); font-size:.82rem; font-weight:800}
-    .stat strong{display:block; margin-top:2px; font-size:1.08rem; line-height:1}
+    /* ===== CARDS: 2 em cima (Pago, Pendente) e Total embaixo pegando toda a largura ===== */
+    .stats{display:grid;grid-template-columns:repeat(2, minmax(250px,1fr));gap:10px;margin:10px 0 14px}
+    .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:space-between;min-height:64px}
+    .stat h4{margin:0;font-size:.85rem;font-weight:800;color:var(--muted)}
+    .stat strong{margin:0;font-size:1.18rem;line-height:1}
 
-    /* =============================
-       FILTROS EM LINHA (pendentes=TODAS)
-       ============================= */
-    .filters{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px; box-shadow:var(--shadow-sm)}
-    .filters form{display:flex; flex-wrap:wrap; align-items:center; gap:8px}
-    .filters input[type=date], .filters select, .filters button{border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:.94rem; background:#fff}
-    .filters .btn{background:var(--royal); color:#fff; border:none; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(0,51,204,.22)}
-    .scope{margin:6px 0 0; text-align:center; color:#0f2a80; font-weight:800; font-size:.88rem}
+    .stat--pago{border-color:#d6e2ff;background:linear-gradient(180deg,#f4f7ff,#eef2ff)}
+    .stat--pago h4{color:var(--blue)}
+    .stat--pago strong{color:#0f2a80}
 
-    /* =============================
-       TABELA (mantida) — AZUL ROYAL
-       ============================= */
-    .card-table{background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden;}
-    table{width:100%; border-collapse:collapse}
-    thead th{background:#0f2a80; color:#fff; text-align:center; padding:10px 6px; font-size:.88rem}
-    tbody td{padding:10px 8px; text-align:center; border-bottom:1px solid var(--line); font-size:.95rem}
+    .stat--pendente{background:#fff2f2;border-color:#ffd6d6}
+    .stat--pendente h4,.stat--pendente strong{color:var(--bad)}
 
-    .chip{display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.82rem; cursor:pointer; user-select:none}
-    .chip.pgto-pago{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
-    .chip.pgto-pendente{background:#fff2f2; color:var(--bad); border:1px solid #ffd6d6}
-    .chip.entregue{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
+    .stat--total{background:#e9fbf5;border-color:#b3f0dc;grid-column:1/-1}
+    .stat--total h4,.stat--total strong{color:var(--good)}
 
-    .row-details{display:none; background:#f8faff}
+    /* ===== FILTROS ===== */
+    .filters{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:var(--shadow-sm)}
+    .filters form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .filters input[type=date], .filters select, .filters button{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.94rem;background:#fff}
+    .filters .btn{background:var(--royal);color:#fff;border:none;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(0,51,204,.22)}
+    .scope{margin:6px 0 0;text-align:center;color:#0f2a80;font-weight:800;font-size:.9rem}
+
+    /* ===== TABELA (mantida) ===== */
+    .card-table{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead th{background:#0f2a80;color:#fff;text-align:center;padding:10px 6px;font-size:.88rem}
+    tbody td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);font-size:.95rem}
+
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:.82rem;cursor:pointer;user-select:none}
+    .chip.pgto-pago{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
+    .chip.pgto-pendente{background:#fff2f2;color:var(--bad);border:1px solid #ffd6d6}
+    .chip.entregue{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
+
+    .row-details{display:none;background:#f8faff}
     .row-open + .row-details{display:table-row}
 
-    .cliente-btn{all:unset; color:var(--royal); font-weight:800; cursor:pointer}
+    .cliente-btn{all:unset;color:var(--royal);font-weight:800;cursor:pointer}
 
-    /* Campo “Recebido por” largo e discreto */
-    .recebido-inline{display:none; margin-top:8px; gap:8px; justify-content:center; width:100%}
-    .recebido-inline input{border:1px solid var(--line); border-radius:10px; padding:10px 12px; flex:1; max-width:880px; font-size:1rem}
-    .recebido-inline button{background:var(--royal); color:#fff; border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer}
+    /* ===== MODAL “Recebido por” (amplo e confortável) ===== */
+    .overlay{position:fixed;inset:0;background:rgba(8,16,48,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:clamp(10px,2vw,24px)}
+    .overlay.open{display:flex}
+    .modal{width:min(1100px, 98vw);max-height:92vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);padding:18px 16px;display:grid;gap:14px}
+    .modal h3{margin:0;font-size:1.08rem;color:#0f2a80}
+    .modal .row{display:flex;gap:10px;align-items:center}
+    .modal input[type=text]{flex:1;min-width:0;width:100%;border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:1.06rem;letter-spacing:.2px}
+    .modal .hint{font-size:.85rem;color:var(--muted)}
+    .modal .actions{display:flex;gap:10px;justify-content:flex-end}
+    .btn-primary{background:var(--royal);color:#fff;border:none;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
+    .btn-ghost{background:#fff;color:#0f2a80;border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
 
-    /* =============================
-       MOBILE (cards e tabela em cartões)
-       ============================= */
+    /* ===== MOBILE ===== */
     @media (max-width:760px){
       header{padding:.55rem 3.5vw}
       .wrap{margin:8px auto 14px}
-      .stats{grid-template-columns:1fr 1fr; gap:8px}
-      .stat{padding:9px 10px}
-      .stat h4{font-size:.8rem}
-      .stat strong{font-size:1.02rem}
-
+      .stats{grid-template-columns:1fr 1fr}
       thead{display:none}
-      table, tbody, tr, td{display:block; width:100%}
-      .card-table{padding:6px; border-radius:12px; box-shadow:var(--shadow-sm)}
-      tbody tr{background:#fff; margin:8px 0; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,.04); border:1px solid var(--line)}
-      tbody td{display:grid; grid-template-columns:42% 58%; text-align:left; border:none; padding:9px 10px; font-size:.95rem}
-      tbody td::before{content:attr(data-label); font-weight:800; color:#0f2a80; padding-right:8px; font-size:.88rem}
-      .row-details{display:none}
+      table,tbody,tr,td{display:block;width:100%}
+      .card-table{padding:6px;border-radius:12px;box-shadow:var(--shadow-sm)}
+      tbody tr{background:#fff;margin:8px 0;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.04);border:1px solid var(--line)}
+      tbody td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:9px 10px;font-size:.95rem}
+      tbody td::before{content:attr(data-label);font-weight:800;color:#0f2a80;padding-right:8px;font-size:.88rem}
       .row-open + .row-details{display:block}
-
-      .recebido-inline{padding:0 2px}
-      .recebido-inline input{max-width:none; width:100%}
     }
-
-    @media (max-width:400px){
-      .stat h4{font-size:.78rem}
-      .stat strong{font-size:1rem}
-      tbody td{grid-template-columns:46% 54%}
-    }
-      
-    /* =============================
-       MODAL "Recebido por" (full screen)
-       ============================= */
-    .overlay{position:fixed; inset:0; background:rgba(8,16,48,.55); display:none; align-items:center; justify-content:center; z-index:1000; padding:clamp(10px, 2vw, 24px)}
-    .overlay.open{display:flex}
-    .modal{ width:min(900px, 96vw); max-height:90vh; overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.25); padding:16px; display:grid; gap:12px }
-    .modal h3{margin:0; font-size:1.05rem; color:#0f2a80}
-    .modal .row{display:flex; gap:10px; align-items:center}
-    .modal input[type=text]{flex:1; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:1rem}
-    .modal .actions{display:flex; gap:10px; justify-content:flex-end}
-    .btn-primary{background:var(--royal); color:#fff; border:none; border-radius:12px; padding:12px 16px; font-weight:800; cursor:pointer}
-    .btn-ghost{background:#fff; color:#0f2a80; border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-weight:800; cursor:pointer}
   </style>
 </head>
 <body>
@@ -141,14 +106,14 @@
   </header>
 
   <div class="wrap">
-    <!-- CARDS ENXUTOS -->
+    <!-- CARDS: Pago (azul), Pendente (vermelho) em cima; Total (verde) embaixo ocupando 100% -->
     <section class="stats" aria-label="Estatísticas de valores">
-      <div class="stat"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
-      <div class="stat"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
-      <div class="stat"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
+      <div class="stat stat--pago" aria-label="Valor pago"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
+      <div class="stat stat--pendente" aria-label="Valor pendente"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
+      <div class="stat stat--total" aria-label="Total geral"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
     </section>
 
-    <!-- FILTROS: quando for "pendente" => todas_datas=1 -->
+    <!-- FILTROS (pendente = TODAS sem data) -->
     <section class="filters" aria-label="Filtros">
       <form id="form-filtros" method="get">
         <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
@@ -164,7 +129,7 @@
       <div id="escopo" class="scope"></div>
     </section>
 
-    <!-- TABELA DE ENTREGAS (mesmo markup, visual azul) -->
+    <!-- TABELA DE ENTREGAS (markup mantido) -->
     <section class="card-table" aria-label="Minhas entregas">
       <table id="tabela-entregas">
         <thead>
@@ -207,7 +172,6 @@
                 data-entregue="{{ '1' if entregue else '0' }}"
                 onclick="handleEntregaClick(this)"
               >{{ 'Entregue' if entregue else 'Pendente' }}</span>
-              
             </td>
           </tr>
           <tr class="row-details" id="details-{{ e.id }}">
@@ -234,8 +198,9 @@
     <div class="modal">
       <h3 id="rcb-title">Confirmar recebimento</h3>
       <div class="row">
-        <input type="text" id="rcb-input-global" placeholder="Recebido por" maxlength="60" inputmode="text" autocomplete="name" />
+        <input type="text" id="rcb-input-global" placeholder="Recebido por (ex.: porteiro fulano de tal)" maxlength="100" inputmode="text" autocomplete="name" />
       </div>
+      <div class="hint">Pressione <strong>Enter</strong> para confirmar ou <strong>Esc</strong> para cancelar.</div>
       <div class="actions">
         <button type="button" class="btn-ghost" id="rcb-cancel">Cancelar</button>
         <button type="button" class="btn-primary" id="rcb-ok">OK</button>
@@ -244,70 +209,8 @@
   </div>
 
   <script>
-  /* === Overrides: modal de Recebido por em tela cheia e clique no chip de Entrega === */
-  let CURRENT_ENTREGA_ID=null;
-  function openRecebidoModal(id){
-    CURRENT_ENTREGA_ID=id; lastScrollY=window.scrollY;
-    const ov=document.getElementById('rcb-overlay');
-    ov.classList.add('open');
-    document.body.style.overflow='hidden';
-    const input=document.getElementById('rcb-input-global');
-    input.value='';
-    setTimeout(()=>input.focus(),0);
-  }
-  function closeRecebidoModal(){
-    const ov=document.getElementById('rcb-overlay');
-    ov.classList.remove('open');
-    document.body.style.overflow='';
-    setTimeout(()=>requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'})),0);
-  }
-  window.addEventListener('load',()=>{
-    const ov=document.getElementById('rcb-overlay');
-    document.getElementById('rcb-cancel').addEventListener('click', closeRecebidoModal);
-    ov.addEventListener('click', (e)=>{ if(e.target.id==='rcb-overlay') closeRecebidoModal(); });
-    document.getElementById('rcb-ok').addEventListener('click', ()=>{ if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID,false); });
-    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeRecebidoModal(); }});
-  });
-
-  // Substitui o handler para abrir o modal ao clicar no chip de Entrega quando estiver Pendente
-  function handleEntregaClick(el){
-    const id=el.dataset.id;
-    const entregue=el.dataset.entregue==='1';
-    if(!entregue){ openRecebidoModal(id); }
-    else if(confirm('Marcar como PENDENTE novamente?')){ confirmarRecebido(id,true); }
-  }
-
-  // Sobrescreve confirmarRecebido para usar o modal global
-  async function confirmarRecebido(id,desfazer=false){
-    lastScrollY=window.scrollY;
-
-    if(desfazer){
-      const fd = new FormData(); fd.append('status','pendente'); fd.append('recebido_por','');
-      try{
-        const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{ method:'POST', body: fd });
-        if(!resp.ok){alert('Falha ao desfazer recebido.'); return;}
-        const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-        if(chip){ chip.dataset.entregue='0'; chip.textContent='Pendente'; chip.classList.remove('entregue'); chip.classList.add('pgto-pendente'); }
-      }catch(err){ alert('Erro: '+err.message); }
-      setTimeout(()=>requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'})),0);
-      return;
-    }
-
-    const nome = (document.getElementById('rcb-input-global').value||'').trim();
-    if(!nome){alert('Informe o nome de quem recebeu.');return;}
-
-    try{
-      const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({recebido_por:nome}) });
-      let data=null; try{data=await resp.json();}catch{}
-      if(!resp.ok || (data && data.ok===false)){ alert((data&&data.error)||'Falha ao atualizar entrega.'); return; }
-      const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-      if(chip){ chip.dataset.entregue='1'; chip.textContent='Entregue'; chip.classList.add('entregue'); chip.classList.remove('pgto-pendente'); }
-      closeRecebidoModal();
-    }catch(err){ alert('Erro: '+err.message); }
-    setTimeout(()=>requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'})),0);
-  }
     // =============================
-    // JS: pendentes = TODAS sem data + não remover linha ao pagar
+    // Lógica: pendentes = TODAS sem data + não remover linha ao pagar + modal amplo
     // =============================
     let lastScrollY = window.scrollY;
     const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
@@ -352,117 +255,97 @@
       }else if(msg){msg.remove();}
     }
 
-    // 1) SUBMIT: se "pendente" => força todas_datas=1 e limpa datas
+    // SUBMIT: se "pendente" => todas_datas=1 e limpa datas
     const form=document.getElementById('form-filtros');
-    form.addEventListener('submit',(ev)=>{
+    form.addEventListener('submit',()=>{
       const status=document.getElementById('status_pgto').value;
       const hidden=document.getElementById('todas_datas');
       if(status==='pendente'){
         hidden.value='1';
-        // limpa as datas para não filtrar por período
         document.getElementById('f-inicio').value='';
         document.getElementById('f-fim').value='';
-      }else{
-        hidden.value='';
-      }
+      }else{ hidden.value=''; }
     });
 
-    // 2) onLoad: se URL já estiver em pendente, garante escopo claro
     function updateScope(){
       const url=new URL(location.href);
       const status=url.searchParams.get('status_pgto')||document.getElementById('status_pgto').value||'todas';
-      const el=document.getElementById('escopo');
-      if(status==='pendente'){
-        el.textContent='Exibindo TODAS as entregas PENDENTES (sem filtrar por data).';
-      }else{
-        el.textContent='Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
-      }
+      document.getElementById('escopo').textContent = (status==='pendente') ? 'Exibindo TODAS as entregas PENDENTES (sem filtrar por data).' : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
     }
 
-    // 3) togglePagamento: NÃO remove a linha e mantém a posição
+    // PAGAMENTO: não remove linha nem mexe no scroll
     async function togglePagamento(evt,el){
-      evt.preventDefault();
-      lastScrollY=window.scrollY; // memoriza antes de qualquer mudança visual
+      evt.preventDefault(); lastScrollY=window.scrollY;
       const id=el.dataset.id;
       try{
-        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{
-          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})
-        });
+        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
         let data=null; try{data=await resp.json();}catch{}
         if(!resp.ok){alert((data&&data.error)||'Falha ao alterar pagamento.');return;}
-
         const novo=(data.status_pagamento||'pendente').toLowerCase();
-        // Atualiza chip, NÃO remove a linha mesmo no filtro de pendentes
-        el.dataset.status=novo;
-        el.textContent=(novo==='pago')?'Pago':'Pendente';
-        el.classList.toggle('pgto-pago',novo==='pago');
-        el.classList.toggle('pgto-pendente',novo!=='pago');
+        el.dataset.status=novo; el.textContent=(novo==='pago')?'Pago':'Pendente';
+        el.classList.toggle('pgto-pago',novo==='pago'); el.classList.toggle('pgto-pendente',novo!=='pago');
         el.setAttribute('aria-pressed',String(novo==='pago'));
-
         recalcTotals();
-      }catch(err){
-        alert('Erro: '+err.message);
-      }
-      // restaura exatamente a posição do scroll
-      setTimeout(preserveScroll, 0);
+      }catch(err){alert('Erro: '+err.message);} 
+      setTimeout(preserveScroll,0);
     }
 
-    function handleEntregaClick(el){
-      const id=el.dataset.id;
-      const entregue=el.dataset.entregue==='1';
-      const bloco=document.getElementById('rcb-'+id);
-      if(!entregue){
-        bloco.style.display='flex';
-      } else {
-        if(confirm('Marcar como PENDENTE novamente?')){
-          confirmarRecebido(id,true);
-        }
+    // ===== MODAL Recebido por =====
+    let CURRENT_ENTREGA_ID=null;
+    function openRecebidoModal(id){
+      CURRENT_ENTREGA_ID=id; lastScrollY=window.scrollY;
+      const ov=document.getElementById('rcb-overlay');
+      ov.classList.add('open');
+      document.body.style.overflow='hidden';
+      const input=document.getElementById('rcb-input-global');
+      input.value='';
+      setTimeout(()=>input.focus(),0);
+    }
+    function closeRecebidoModal(){
+      const ov=document.getElementById('rcb-overlay');
+      ov.classList.remove('open');
+      document.body.style.overflow='';
+      setTimeout(preserveScroll,0);
+    }
+
+    document.getElementById('rcb-cancel').addEventListener('click', closeRecebidoModal);
+    document.getElementById('rcb-overlay').addEventListener('click', (e)=>{ if(e.target.id==='rcb-overlay') closeRecebidoModal(); });
+    document.getElementById('rcb-ok').addEventListener('click', ()=>{ if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID,false); });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key==='Escape') closeRecebidoModal();
+      if(e.key==='Enter' && document.getElementById('rcb-overlay').classList.contains('open')){
+        e.preventDefault(); if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID,false);
       }
+    });
+
+    function handleEntregaClick(el){
+      const id=el.dataset.id; const entregue=el.dataset.entregue==='1';
+      if(!entregue){ openRecebidoModal(id); }
+      else if(confirm('Marcar como PENDENTE novamente?')){ confirmarRecebido(id,true); }
     }
 
     async function confirmarRecebido(id,desfazer=false){
       lastScrollY=window.scrollY;
-
       if(desfazer){
-        const fd = new FormData();
-        fd.append('status','pendente');
-        fd.append('recebido_por','');
-
+        const fd = new FormData(); fd.append('status','pendente'); fd.append('recebido_por','');
         try{
           const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{ method:'POST', body: fd });
           if(!resp.ok){alert('Falha ao desfazer recebido.'); return;}
           const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-          if(chip){
-            chip.dataset.entregue='0';
-            chip.textContent='Pendente';
-            chip.classList.remove('entregue');
-            chip.classList.add('pgto-pendente');
-          }
+          if(chip){ chip.dataset.entregue='0'; chip.textContent='Pendente'; chip.classList.remove('entregue'); chip.classList.add('pgto-pendente'); }
         }catch(err){ alert('Erro: '+err.message); }
-        setTimeout(preserveScroll,0);
-        return;
+        setTimeout(preserveScroll,0); return;
       }
-
-      const nome = document.getElementById('rcb-input-'+id).value.trim();
+      const nome=(document.getElementById('rcb-input-global').value||'').trim();
       if(!nome){alert('Informe o nome de quem recebeu.');return;}
-
       try{
-        const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{
-          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({recebido_por:nome})
-        });
-        let data=null;try{data=await resp.json();}catch{}
-        if(!resp.ok || (data && data.ok===false)){
-          alert((data&&data.error)||'Falha ao atualizar entrega.');return;
-        }
+        const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({recebido_por:nome}) });
+        let data=null; try{data=await resp.json();}catch{}
+        if(!resp.ok || (data && data.ok===false)){ alert((data&&data.error)||'Falha ao atualizar entrega.'); return; }
         const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-        if(chip){
-          chip.dataset.entregue='1';
-          chip.textContent='Entregue';
-          chip.classList.add('entregue');
-          chip.classList.remove('pgto-pendente');
-        }
-        document.getElementById('rcb-'+id).style.display='none';
-      }catch(err){alert('Erro: '+err.message);} 
+        if(chip){ chip.dataset.entregue='1'; chip.textContent='Entregue'; chip.classList.add('entregue'); chip.classList.remove('pgto-pendente'); }
+        closeRecebidoModal();
+      }catch(err){ alert('Erro: '+err.message); }
       setTimeout(preserveScroll,0);
     }
 
