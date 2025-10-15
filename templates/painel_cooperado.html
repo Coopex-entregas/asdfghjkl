@@ -119,6 +119,19 @@
       .stat strong{font-size:1rem}
       tbody td{grid-template-columns:46% 54%}
     }
+      
+    /* =============================
+       MODAL "Recebido por" (full screen)
+       ============================= */
+    .overlay{position:fixed; inset:0; background:rgba(8,16,48,.55); display:none; align-items:center; justify-content:center; z-index:1000; padding:clamp(10px, 2vw, 24px)}
+    .overlay.open{display:flex}
+    .modal{ width:min(900px, 96vw); max-height:90vh; overflow:auto; background:var(--card); border:1px solid var(--line); border-radius:16px; box-shadow:0 20px 50px rgba(0,0,0,.25); padding:16px; display:grid; gap:12px }
+    .modal h3{margin:0; font-size:1.05rem; color:#0f2a80}
+    .modal .row{display:flex; gap:10px; align-items:center}
+    .modal input[type=text]{flex:1; border:1px solid var(--line); border-radius:12px; padding:12px 14px; font-size:1rem}
+    .modal .actions{display:flex; gap:10px; justify-content:flex-end}
+    .btn-primary{background:var(--royal); color:#fff; border:none; border-radius:12px; padding:12px 16px; font-weight:800; cursor:pointer}
+    .btn-ghost{background:#fff; color:#0f2a80; border:1px solid var(--line); border-radius:12px; padding:12px 16px; font-weight:800; cursor:pointer}
   </style>
 </head>
 <body>
@@ -194,10 +207,7 @@
                 data-entregue="{{ '1' if entregue else '0' }}"
                 onclick="handleEntregaClick(this)"
               >{{ 'Entregue' if entregue else 'Pendente' }}</span>
-              <div class="recebido-inline" id="rcb-{{ e.id }}">
-                <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60" inputmode="text" autocomplete="name">
-                <button type="button" onclick="confirmarRecebido({{ e.id }})">OK</button>
-              </div>
+              
             </td>
           </tr>
           <tr class="row-details" id="details-{{ e.id }}">
@@ -219,7 +229,83 @@
     </section>
   </div>
 
+  <!-- MODAL GLOBAL Recebido por -->
+  <div class="overlay" id="rcb-overlay" role="dialog" aria-modal="true" aria-labelledby="rcb-title">
+    <div class="modal">
+      <h3 id="rcb-title">Confirmar recebimento</h3>
+      <div class="row">
+        <input type="text" id="rcb-input-global" placeholder="Recebido por" maxlength="60" inputmode="text" autocomplete="name" />
+      </div>
+      <div class="actions">
+        <button type="button" class="btn-ghost" id="rcb-cancel">Cancelar</button>
+        <button type="button" class="btn-primary" id="rcb-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
   <script>
+  /* === Overrides: modal de Recebido por em tela cheia e clique no chip de Entrega === */
+  let CURRENT_ENTREGA_ID=null;
+  function openRecebidoModal(id){
+    CURRENT_ENTREGA_ID=id; lastScrollY=window.scrollY;
+    const ov=document.getElementById('rcb-overlay');
+    ov.classList.add('open');
+    document.body.style.overflow='hidden';
+    const input=document.getElementById('rcb-input-global');
+    input.value='';
+    setTimeout(()=>input.focus(),0);
+  }
+  function closeRecebidoModal(){
+    const ov=document.getElementById('rcb-overlay');
+    ov.classList.remove('open');
+    document.body.style.overflow='';
+    setTimeout(()=>requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'})),0);
+  }
+  window.addEventListener('load',()=>{
+    const ov=document.getElementById('rcb-overlay');
+    document.getElementById('rcb-cancel').addEventListener('click', closeRecebidoModal);
+    ov.addEventListener('click', (e)=>{ if(e.target.id==='rcb-overlay') closeRecebidoModal(); });
+    document.getElementById('rcb-ok').addEventListener('click', ()=>{ if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID,false); });
+    document.addEventListener('keydown', (e)=>{ if(e.key==='Escape'){ closeRecebidoModal(); }});
+  });
+
+  // Substitui o handler para abrir o modal ao clicar no chip de Entrega quando estiver Pendente
+  function handleEntregaClick(el){
+    const id=el.dataset.id;
+    const entregue=el.dataset.entregue==='1';
+    if(!entregue){ openRecebidoModal(id); }
+    else if(confirm('Marcar como PENDENTE novamente?')){ confirmarRecebido(id,true); }
+  }
+
+  // Sobrescreve confirmarRecebido para usar o modal global
+  async function confirmarRecebido(id,desfazer=false){
+    lastScrollY=window.scrollY;
+
+    if(desfazer){
+      const fd = new FormData(); fd.append('status','pendente'); fd.append('recebido_por','');
+      try{
+        const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{ method:'POST', body: fd });
+        if(!resp.ok){alert('Falha ao desfazer recebido.'); return;}
+        const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
+        if(chip){ chip.dataset.entregue='0'; chip.textContent='Pendente'; chip.classList.remove('entregue'); chip.classList.add('pgto-pendente'); }
+      }catch(err){ alert('Erro: '+err.message); }
+      setTimeout(()=>requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'})),0);
+      return;
+    }
+
+    const nome = (document.getElementById('rcb-input-global').value||'').trim();
+    if(!nome){alert('Informe o nome de quem recebeu.');return;}
+
+    try{
+      const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{ method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({recebido_por:nome}) });
+      let data=null; try{data=await resp.json();}catch{}
+      if(!resp.ok || (data && data.ok===false)){ alert((data&&data.error)||'Falha ao atualizar entrega.'); return; }
+      const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
+      if(chip){ chip.dataset.entregue='1'; chip.textContent='Entregue'; chip.classList.add('entregue'); chip.classList.remove('pgto-pendente'); }
+      closeRecebidoModal();
+    }catch(err){ alert('Erro: '+err.message); }
+    setTimeout(()=>requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'})),0);
+  }
     // =============================
     // JS: pendentes = TODAS sem data + não remover linha ao pagar
     // =============================
