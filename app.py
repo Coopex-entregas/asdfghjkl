@@ -722,6 +722,43 @@ def editar_entrega(id):
     else:
         return render_template('editar_entrega_cooperado.html', entrega=entrega)
 
+@app.post('/atribuir_cooperado/<int:id>')
+def atribuir_cooperado(id):
+    # Somente admin pode atribuir/desatribuir
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    entrega = Entrega.query.get_or_404(id)
+    coop_id = (request.form.get('cooperado_id') or '').strip()
+
+    try:
+        if coop_id:
+            coop = Cooperado.query.get_or_404(int(coop_id))
+            # atribui e carimba horário
+            entrega.cooperado_id = coop.id
+            entrega.data_atribuida = datetime.utcnow()
+            # se estava na fila, remove
+            ListaEspera.query.filter_by(cooperado_id=coop.id).delete()
+        else:
+            # permitir “Sem Cooperado”
+            entrega.cooperado_id = None
+
+        db.session.commit()
+
+        # Se veio via fetch/AJAX, devolve JSON 200
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=True, cooperado_id=entrega.cooperado_id), 200
+
+        flash('Cooperado atualizado na entrega.')
+        return redirect_back_to_admin()
+
+    except Exception as e:
+        db.session.rollback()
+        if request.headers.get('X-Requested-With') == 'fetch':
+            return jsonify(ok=False, error=str(e)), 400
+        flash('Não foi possível atualizar o cooperado.')
+        return redirect_back_to_admin()
+
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if not session.get('is_admin'):
