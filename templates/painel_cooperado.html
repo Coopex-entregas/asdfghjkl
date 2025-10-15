@@ -6,108 +6,136 @@
   <title>Painel do Cooperado</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
-    /* ============================
-       TEMA ENXUTO (claro/escuro)
-       ============================ */
+    /* =============================
+       TEMA AZUL ROYAL + BRANCO
+       ============================= */
     :root{
-      --bg:#f6f8ff; --card:#fff; --ink:#0e1a33; --muted:#6e7aa5; --line:#e3e8ff;
-      --pri:#1a4dff; --good:#12b886; --bad:#e03131; --r:14px;
-      --shadow:0 8px 24px rgba(0,0,0,.06);
-    }
-    @media (prefers-color-scheme: dark){
-      :root{ --bg:#0d1222; --card:#121937; --ink:#e9edff; --muted:#9aa6ff; --line:#263066; --shadow:0 8px 24px rgba(0,0,0,.35) }
-      thead th{background:#1b2a66}
-      tbody tr{border-color:#263066}
-      .chip.pgto-pendente{background:#2a1420; color:#ffb3b3; border:1px solid #5b2b38}
-      .chip.pgto-pago,.chip.entregue{background:#0f2b23; color:#a9f0d9; border:1px solid #1f6b54}
+      --royal:#0033cc;        /* azul royal principal */
+      --royal-2:#2750ff;      /* variação */
+      --ink:#0b1b3a;          /* texto principal */
+      --muted:#6f7fb0;        /* texto secundário */
+      --bg:#eef2ff;           /* fundo */
+      --card:#ffffff;         /* cards */
+      --line:#e0e7ff;         /* linhas sutis */
+      --good:#12b886;         /* verde aprovado */
+      --bad:#e03131;          /* vermelho alerta */
+      --r:14px;               /* raio padrão */
+      --shadow:0 8px 24px rgba(0,51,204,.10);
+      --shadow-sm:0 6px 16px rgba(0,51,204,.08);
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
-    body{margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink); background:var(--bg)}
+    body{
+      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
+      background:
+        radial-gradient(1100px 520px at 10% -10%, rgba(39,80,255,.12), transparent 60%),
+        radial-gradient(1100px 520px at 110% -10%, rgba(0,51,204,.10), transparent 60%),
+        var(--bg);
+    }
 
-    /* ============================
-       TOPO COMPACTO
-       ============================ */
-    header{position:sticky;top:0;z-index:10;background:var(--card);border-bottom:1px solid var(--line);padding:10px 14px;display:flex;gap:10px;align-items:center;justify-content:space-between}
-    .brand{display:flex;gap:10px;align-items:center;font-weight:800}
-    .brand .dot{width:10px;height:10px;border-radius:50%;background:var(--pri)}
-    .who{font-weight:600;color:var(--muted);font-size:.92rem}
+    /* =============================
+       TOPO ENXUTO
+       ============================= */
+    header{
+      position:sticky; top:0; z-index:40;
+      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff; padding:.6rem 3.5vw; font-weight:800; letter-spacing:.3px;
+      box-shadow:0 6px 18px rgba(0,40,130,.18);
+      display:flex; align-items:center; justify-content:space-between;
+    }
+    header .sub{font-weight:600; font-size:.9rem; opacity:.95}
 
-    .wrap{max-width:1024px;margin:10px auto 18px;padding:0 14px}
+    .wrap{max-width:1080px; margin:12px auto 18px; padding:0 3.5vw}
 
-    /* ============================
-       CARDS (minimais)
-       ============================ */
-    .stats{display:grid;grid-template-columns:repeat(3, minmax(160px,1fr));gap:10px}
-    .stat{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);padding:10px 12px}
-    .stat h4{margin:0;color:var(--muted);font-size:.86rem;font-weight:700}
-    .stat strong{display:block;margin-top:2px;font-size:1.12rem}
+    /* =============================
+       CARDS MUITO COMPACTOS
+       ============================= */
+    .stats{display:grid; grid-template-columns:repeat(3, minmax(160px, 1fr)); gap:10px; margin:10px 0 12px}
+    .stat{
+      background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px 12px; box-shadow:var(--shadow-sm);
+    }
+    .stat h4{margin:0; color:var(--muted); font-size:.82rem; font-weight:800}
+    .stat strong{display:block; margin-top:2px; font-size:1.08rem; line-height:1}
 
-    /* ============================
-       FILTROS (uma linha)
-       ============================ */
-    .filters{margin:10px 0;background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:10px;display:grid;gap:8px}
-    .filters form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-    .filters input[type=date],.filters select,.filters button{border:1px solid var(--line);background:#fff;border-radius:10px;padding:8px 10px;font-size:.95rem}
-    @media (prefers-color-scheme: dark){ .filters input[type=date],.filters select,.filters button{background:#0e1430;color:var(--ink)} }
-    .btn{background:var(--pri);color:#fff;border:none;font-weight:800;cursor:pointer}
-    .scope{font-weight:700;color:var(--pri);font-size:.88rem;text-align:center}
+    /* =============================
+       FILTROS EM LINHA (pendentes=TODAS)
+       ============================= */
+    .filters{background:var(--card); border:1px solid var(--line); border-radius:12px; padding:10px; box-shadow:var(--shadow-sm)}
+    .filters form{display:flex; flex-wrap:wrap; align-items:center; gap:8px}
+    .filters input[type=date], .filters select, .filters button{border:1px solid var(--line); border-radius:10px; padding:8px 10px; font-size:.94rem; background:#fff}
+    .filters .btn{background:var(--royal); color:#fff; border:none; font-weight:800; cursor:pointer; box-shadow:0 4px 12px rgba(0,51,204,.22)}
+    .scope{margin:6px 0 0; text-align:center; color:#0f2a80; font-weight:800; font-size:.88rem}
 
-    /* ============================
-       TABELA (mesmo visual base)
-       ============================ */
-    .card-table{background:var(--card);border:1px solid var(--line);border-radius:var(--r);box-shadow:var(--shadow);overflow:hidden}
-    table{width:100%;border-collapse:collapse}
-    thead th{background:#0f2a80;color:#fff;text-align:center;padding:10px 6px;font-size:.88rem}
-    tbody td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);font-size:.95rem}
+    /* =============================
+       TABELA (mantida) — AZUL ROYAL
+       ============================= */
+    .card-table{background:var(--card); border:1px solid var(--line); border-radius:14px; box-shadow:var(--shadow); overflow:hidden;}
+    table{width:100%; border-collapse:collapse}
+    thead th{background:#0f2a80; color:#fff; text-align:center; padding:10px 6px; font-size:.88rem}
+    tbody td{padding:10px 8px; text-align:center; border-bottom:1px solid var(--line); font-size:.95rem}
 
-    .chip{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:.82rem;cursor:pointer;user-select:none}
-    .chip.pgto-pago{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
-    .chip.pgto-pendente{background:#fff2f2;color:var(--bad);border:1px solid #ffd6d6}
-    .chip.entregue{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
+    .chip{display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.82rem; cursor:pointer; user-select:none}
+    .chip.pgto-pago{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
+    .chip.pgto-pendente{background:#fff2f2; color:var(--bad); border:1px solid #ffd6d6}
+    .chip.entregue{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
 
-    .row-details{display:none;background:rgba(0,0,0,.02)}
+    .row-details{display:none; background:#f8faff}
     .row-open + .row-details{display:table-row}
 
-    .cliente-btn{all:unset;color:#1a4dff;font-weight:800;cursor:pointer}
+    .cliente-btn{all:unset; color:var(--royal); font-weight:800; cursor:pointer}
 
-    .recebido-inline{display:none;margin-top:8px;gap:8px;justify-content:center;width:100%}
-    .recebido-inline input{border:1px solid var(--line);border-radius:10px;padding:10px 12px;flex:1;max-width:800px;font-size:1rem}
-    .recebido-inline button{background:var(--pri);color:#fff;border:none;border-radius:10px;padding:10px 14px;font-weight:800;cursor:pointer}
+    /* Campo “Recebido por” largo e discreto */
+    .recebido-inline{display:none; margin-top:8px; gap:8px; justify-content:center; width:100%}
+    .recebido-inline input{border:1px solid var(--line); border-radius:10px; padding:10px 12px; flex:1; max-width:880px; font-size:1rem}
+    .recebido-inline button{background:var(--royal); color:#fff; border:none; border-radius:10px; padding:10px 14px; font-weight:800; cursor:pointer}
 
-    /* ============================
-       MOBILE (cards em lista)
-       ============================ */
+    /* =============================
+       MOBILE (cards e tabela em cartões)
+       ============================= */
     @media (max-width:760px){
-      .stats{grid-template-columns:1fr 1fr}
+      header{padding:.55rem 3.5vw}
+      .wrap{margin:8px auto 14px}
+      .stats{grid-template-columns:1fr 1fr; gap:8px}
+      .stat{padding:9px 10px}
+      .stat h4{font-size:.8rem}
+      .stat strong{font-size:1.02rem}
+
       thead{display:none}
-      table,tbody,tr,td{display:block;width:100%}
-      .card-table{padding:6px}
-      tbody tr{background:var(--card);margin:8px 0;border-radius:12px;border:1px solid var(--line)}
-      tbody td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:9px 10px}
-      tbody td::before{content:attr(data-label);font-weight:800;color:#0f2a80;padding-right:8px;font-size:.88rem}
+      table, tbody, tr, td{display:block; width:100%}
+      .card-table{padding:6px; border-radius:12px; box-shadow:var(--shadow-sm)}
+      tbody tr{background:#fff; margin:8px 0; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,.04); border:1px solid var(--line)}
+      tbody td{display:grid; grid-template-columns:42% 58%; text-align:left; border:none; padding:9px 10px; font-size:.95rem}
+      tbody td::before{content:attr(data-label); font-weight:800; color:#0f2a80; padding-right:8px; font-size:.88rem}
+      .row-details{display:none}
       .row-open + .row-details{display:block}
+
       .recebido-inline{padding:0 2px}
-      .recebido-inline input{max-width:none;width:100%}
+      .recebido-inline input{max-width:none; width:100%}
+    }
+
+    @media (max-width:400px){
+      .stat h4{font-size:.78rem}
+      .stat strong{font-size:1rem}
+      tbody td{grid-template-columns:46% 54%}
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand"><span class="dot"></span> Painel do Cooperado</div>
-    <div class="who">{{ session['user_nome'] }}</div>
+    <div>Painel do Cooperado</div>
+    <div class="sub">{{ session['user_nome'] }}</div>
   </header>
 
-  <main class="wrap">
-    <!-- RESUMO -->
+  <div class="wrap">
+    <!-- CARDS ENXUTOS -->
     <section class="stats" aria-label="Estatísticas de valores">
       <div class="stat"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
       <div class="stat"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
       <div class="stat"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
     </section>
 
-    <!-- FILTROS -->
+    <!-- FILTROS: quando for "pendente" => todas_datas=1 -->
     <section class="filters" aria-label="Filtros">
       <form id="form-filtros" method="get">
         <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
@@ -123,29 +151,49 @@
       <div id="escopo" class="scope"></div>
     </section>
 
-    <!-- ENTREGAS (mantido o mesmo HTML/IDs/classes para total compatibilidade) -->
+    <!-- TABELA DE ENTREGAS (mesmo markup, visual azul) -->
     <section class="card-table" aria-label="Minhas entregas">
       <table id="tabela-entregas">
         <thead>
           <tr>
-            <th>Cliente</th><th>Forma Pgto</th><th>Valor</th><th>Data</th><th>Hora Pedido</th><th>Hora Entrega</th><th>Pagamento</th><th>Entrega</th>
+            <th>Cliente</th>
+            <th>Forma Pgto</th>
+            <th>Valor</th>
+            <th>Data</th>
+            <th>Hora Pedido</th>
+            <th>Hora Entrega</th>
+            <th>Pagamento</th>
+            <th>Entrega</th>
           </tr>
         </thead>
         <tbody>
           {% for e in entregas %}
           <tr id="row-{{ e.id }}">
-            <td data-label="Cliente"><button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button></td>
+            <td data-label="Cliente">
+              <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
+            </td>
             <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
             <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
             <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
             <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
             <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
             <td data-label="Pagamento">
-              <span class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}" data-id="{{ e.id }}" data-status="{{ (e.status_pagamento or 'pendente')|lower }}" onclick="togglePagamento(event,this)" role="button" aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}">{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
+              <span
+                class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
+                data-id="{{ e.id }}"
+                data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
+                onclick="togglePagamento(event,this)"
+                role="button" aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
+              >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
             </td>
             <td data-label="Entrega">
               {% set entregue = (e.status in ['recebido','entregue']) %}
-              <span class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}" data-id="{{ e.id }}" data-entregue="{{ '1' if entregue else '0' }}" onclick="handleEntregaClick(this)">{{ 'Entregue' if entregue else 'Pendente' }}</span>
+              <span
+                class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
+                data-id="{{ e.id }}"
+                data-entregue="{{ '1' if entregue else '0' }}"
+                onclick="handleEntregaClick(this)"
+              >{{ 'Entregue' if entregue else 'Pendente' }}</span>
               <div class="recebido-inline" id="rcb-{{ e.id }}">
                 <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60" inputmode="text" autocomplete="name">
                 <button type="button" onclick="confirmarRecebido({{ e.id }})">OK</button>
@@ -153,7 +201,7 @@
             </td>
           </tr>
           <tr class="row-details" id="details-{{ e.id }}">
-            <td colspan="8" style="text-align:left;padding:10px 12px">
+            <td colspan="8" style="text-align:left;padding:10px 14px">
               <div><strong>Cliente:</strong> {{ e.cliente }}</div>
               <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
               <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
@@ -169,12 +217,12 @@
         </tbody>
       </table>
     </section>
-  </main>
+  </div>
 
   <script>
-    // ============================
-    // JS ENXUTO (mesma lógica)
-    // ============================
+    // =============================
+    // JS: pendentes = TODAS sem data + não remover linha ao pagar
+    // =============================
     let lastScrollY = window.scrollY;
     const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
 
@@ -195,7 +243,7 @@
         const v=parseFloat(vtd.dataset.valor||'0')||0;
         total+=v;
         const chip=r.querySelector('td[data-label="Pagamento"] .chip');
-        if(chip && (chip.dataset.status||'').toLowerCase()==='pago') pago+=v;
+        if(chip&&(chip.dataset.status||'').toLowerCase()==='pago'){pago+=v;}
       });
       const pendente=Math.max(0,total-pago);
       const fmt=(n)=>'R$ '+n.toFixed(2).replace('.',',');
@@ -209,73 +257,131 @@
       const any=tbody.querySelector('tr[id^="row-"]');
       let msg=tbody.querySelector('.no-rows');
       if(!any){
-        if(!msg){ msg=document.createElement('tr'); msg.className='no-rows'; msg.innerHTML='<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>'; tbody.appendChild(msg); }
-      }else if(msg){ msg.remove(); }
+        if(!msg){
+          msg=document.createElement('tr');
+          msg.className='no-rows';
+          msg.innerHTML='<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>';
+          tbody.appendChild(msg);
+        }
+      }else if(msg){msg.remove();}
     }
 
+    // 1) SUBMIT: se "pendente" => força todas_datas=1 e limpa datas
     const form=document.getElementById('form-filtros');
-    form.addEventListener('submit',()=>{
+    form.addEventListener('submit',(ev)=>{
       const status=document.getElementById('status_pgto').value;
       const hidden=document.getElementById('todas_datas');
-      hidden.value = (status==='pendente') ? '1' : '';
+      if(status==='pendente'){
+        hidden.value='1';
+        // limpa as datas para não filtrar por período
+        document.getElementById('f-inicio').value='';
+        document.getElementById('f-fim').value='';
+      }else{
+        hidden.value='';
+      }
     });
 
+    // 2) onLoad: se URL já estiver em pendente, garante escopo claro
     function updateScope(){
       const url=new URL(location.href);
       const status=url.searchParams.get('status_pgto')||document.getElementById('status_pgto').value||'todas';
-      document.getElementById('escopo').textContent = (status==='pendente') ? 'Exibindo TODAS as entregas PENDENTES.' : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
+      const el=document.getElementById('escopo');
+      if(status==='pendente'){
+        el.textContent='Exibindo TODAS as entregas PENDENTES (sem filtrar por data).';
+      }else{
+        el.textContent='Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
+      }
     }
 
+    // 3) togglePagamento: NÃO remove a linha e mantém a posição
     async function togglePagamento(evt,el){
-      evt.preventDefault(); lastScrollY=window.scrollY;
-      const id=el.dataset.id; const filtro=(document.getElementById('status_pgto').value||'todas').toLowerCase();
+      evt.preventDefault();
+      lastScrollY=window.scrollY; // memoriza antes de qualquer mudança visual
+      const id=el.dataset.id;
       try{
-        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({})});
+        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({})
+        });
         let data=null; try{data=await resp.json();}catch{}
         if(!resp.ok){alert((data&&data.error)||'Falha ao alterar pagamento.');return;}
+
         const novo=(data.status_pagamento||'pendente').toLowerCase();
-        el.dataset.status=novo; el.textContent=(novo==='pago')?'Pago':'Pendente';
-        el.classList.toggle('pgto-pago',novo==='pago'); el.classList.toggle('pgto-pendente',novo!=='pago');
+        // Atualiza chip, NÃO remove a linha mesmo no filtro de pendentes
+        el.dataset.status=novo;
+        el.textContent=(novo==='pago')?'Pago':'Pendente';
+        el.classList.toggle('pgto-pago',novo==='pago');
+        el.classList.toggle('pgto-pendente',novo!=='pago');
         el.setAttribute('aria-pressed',String(novo==='pago'));
-        if((filtro==='pago'&&novo!=='pago')||(filtro==='pendente'&&novo==='pago')) el.closest('tr').remove();
-        recalcTotals(); ensureEmpty();
-      }catch(err){alert('Erro: '+err.message);} 
-      setTimeout(preserveScroll,60);
+
+        recalcTotals();
+      }catch(err){
+        alert('Erro: '+err.message);
+      }
+      // restaura exatamente a posição do scroll
+      setTimeout(preserveScroll, 0);
     }
 
     function handleEntregaClick(el){
-      const id=el.dataset.id; const entregue=el.dataset.entregue==='1'; const bloco=document.getElementById('rcb-'+id);
-      if(!entregue){ bloco.style.display='flex'; }
-      else if(confirm('Marcar como PENDENTE novamente?')){ confirmarRecebido(id,true); }
+      const id=el.dataset.id;
+      const entregue=el.dataset.entregue==='1';
+      const bloco=document.getElementById('rcb-'+id);
+      if(!entregue){
+        bloco.style.display='flex';
+      } else {
+        if(confirm('Marcar como PENDENTE novamente?')){
+          confirmarRecebido(id,true);
+        }
+      }
     }
 
     async function confirmarRecebido(id,desfazer=false){
       lastScrollY=window.scrollY;
+
       if(desfazer){
-        const fd = new FormData(); fd.append('status','pendente'); fd.append('recebido_por','');
+        const fd = new FormData();
+        fd.append('status','pendente');
+        fd.append('recebido_por','');
+
         try{
-          const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{method:'POST',body: fd});
-          if(!resp.ok){alert('Falha ao desfazer recebido.');return;}
+          const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{ method:'POST', body: fd });
+          if(!resp.ok){alert('Falha ao desfazer recebido.'); return;}
           const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-          if(chip){ chip.dataset.entregue='0'; chip.textContent='Pendente'; chip.classList.remove('entregue'); chip.classList.add('pgto-pendente'); }
+          if(chip){
+            chip.dataset.entregue='0';
+            chip.textContent='Pendente';
+            chip.classList.remove('entregue');
+            chip.classList.add('pgto-pendente');
+          }
         }catch(err){ alert('Erro: '+err.message); }
-        setTimeout(preserveScroll,60); return;
+        setTimeout(preserveScroll,0);
+        return;
       }
+
       const nome = document.getElementById('rcb-input-'+id).value.trim();
       if(!nome){alert('Informe o nome de quem recebeu.');return;}
+
       try{
-        const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({recebido_por:nome})});
-        let data=null; try{data=await resp.json();}catch{}
-        if(!resp.ok || (data && data.ok===false)){ alert((data&&data.error)||'Falha ao atualizar entrega.'); return; }
+        const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{
+          method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify({recebido_por:nome})
+        });
+        let data=null;try{data=await resp.json();}catch{}
+        if(!resp.ok || (data && data.ok===false)){
+          alert((data&&data.error)||'Falha ao atualizar entrega.');return;
+        }
         const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
-        if(chip){ chip.dataset.entregue='1'; chip.textContent='Entregue'; chip.classList.add('entregue'); chip.classList.remove('pgto-pendente'); }
+        if(chip){
+          chip.dataset.entregue='1';
+          chip.textContent='Entregue';
+          chip.classList.add('entregue');
+          chip.classList.remove('pgto-pendente');
+        }
         document.getElementById('rcb-'+id).style.display='none';
-      }catch(err){ alert('Erro: '+err.message); }
-      setTimeout(preserveScroll,60);
+      }catch(err){alert('Erro: '+err.message);} 
+      setTimeout(preserveScroll,0);
     }
 
     window.addEventListener('beforeunload',()=>{lastScrollY=window.scrollY;});
-    window.addEventListener('load',()=>{updateScope();recalcTotals();setTimeout(preserveScroll,60);});
+    window.addEventListener('load',()=>{updateScope();recalcTotals();setTimeout(preserveScroll,0);});
   </script>
 </body>
 </html>
