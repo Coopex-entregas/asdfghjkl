@@ -2,7 +2,7 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Painel do Cooperado</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
   <style>
@@ -13,12 +13,12 @@
       --muted:#7a8bb7;
       --bg:#eaf0ff;
       --card:#ffffff;
-      --line:#e4ebff;
+      --line:#d9e2ff; /* linha mais fina / clara */
       --good:#12b886;
       --bad:#e03131;
-      --warn:#f59f00;
-      --r:16px;
-      --shadow:0 10px 30px rgba(0,51,204,.08);
+      --r:14px;
+      --shadow:0 8px 24px rgba(0,51,204,.06);
+      --shadow-sm:0 4px 14px rgba(0,51,204,.08);
     }
 
     *{box-sizing:border-box}
@@ -28,48 +28,65 @@
       font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(1200px 600px at 10% -10%, rgba(39,80,255,.12), transparent 60%),
-        radial-gradient(1200px 600px at 110% -10%, rgba(0,51,204,.10), transparent 60%),
+        radial-gradient(1200px 600px at 10% -10%, rgba(39,80,255,.10), transparent 60%),
+        radial-gradient(1200px 600px at 110% -10%, rgba(0,51,204,.08), transparent 60%),
         var(--bg);
     }
 
     header{
       position:sticky; top:0; z-index:50;
       background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff; padding:.8rem 4vw; font-weight:800; letter-spacing:.3px;
-      box-shadow:0 6px 18px rgba(0,40,130,.22);
+      color:#fff; padding:.5rem 4vw; font-weight:800; letter-spacing:.3px;
+      box-shadow:0 6px 18px rgba(0,40,130,.16);
     }
     header .sub{font-weight:600; font-size:.9rem; opacity:.9}
 
-    .wrap{max-width:1100px; margin:18px auto; padding:0 4vw}
+    .wrap{max-width:1100px; margin:10px auto 16px; padding:0 4vw}
 
-    .stats{display:grid; grid-template-columns:repeat(3, minmax(180px, 1fr)); gap:14px; margin:14px 0 18px}
+    /* ==== CARDS DE ESTATÍSTICA (compactos) ==== */
+    .stats{display:grid; grid-template-columns:repeat(3, minmax(150px, 1fr)); gap:10px; margin:6px 0 10px}
     .stat{
-      background:var(--card); border-radius:var(--r); padding:18px; box-shadow:var(--shadow);
-      display:flex; align-items:center; gap:14px; border:1px solid var(--line)
+      background:var(--card); border-radius:var(--r); padding:10px; box-shadow:var(--shadow-sm);
+      display:flex; align-items:center; gap:10px; border:1px solid var(--line)
     }
-    .stat .icon{width:42px; height:42px; border-radius:12px; display:grid; place-items:center; background:linear-gradient(180deg,#f5f9ff,#eef4ff); border:1px solid var(--line)}
-    .stat h4{margin:0; font-weight:700; font-size:.95rem; color:var(--muted)}
-    .stat strong{display:block; font-size:1.25rem; margin-top:6px}
+    .stat .icon{width:28px; height:28px; border-radius:10px; display:grid; place-items:center; background:linear-gradient(180deg,#f7faff,#eef3ff); border:1px solid var(--line); font-size:16px}
+    .stat h4{margin:0; font-weight:700; font-size:.82rem; color:var(--muted); line-height:1.1}
+    .stat strong{display:block; font-size:1.04rem; margin-top:2px; line-height:1.05}
 
-    .filters{background:var(--card); border:1px solid var(--line); border-radius:var(--r); padding:12px; box-shadow:var(--shadow);}
-    .filters form{display:flex; flex-wrap:wrap; align-items:center; gap:10px}
-    .filters input[type=date], .filters select, .filters button{
-      border:1px solid var(--line); border-radius:12px; padding:10px 12px; font-size:.98rem; background:#fff
+    /* ==== FILTROS lado a lado, borda fina; botão abaixo no mobile ==== */
+    .filters{
+      background:var(--card); border:1px solid var(--line); border-radius:var(--r);
+      padding:8px; box-shadow:var(--shadow-sm);
     }
-    .filters select{min-width:160px}
+    .filters form{
+      display:grid;
+      grid-template-columns: repeat(3, minmax(0,1fr));
+      gap:8px;
+      align-items:center;
+    }
+    .filters input[type=date], .filters select{
+      border:1px solid var(--line);
+      border-radius:10px;
+      padding:7px 9px;
+      font-size:.93rem;
+      background:#fff;
+      width:100%;
+      min-width:0;
+    }
     .filters .btn{
       background:var(--royal); color:#fff; border:none; font-weight:800; cursor:pointer;
-      transition:transform .06s ease, box-shadow .06s ease; box-shadow:0 4px 14px rgba(0,51,204,.22)
+      padding:9px 10px; border-radius:10px; box-shadow:0 3px 10px rgba(0,51,204,.18);
+      /* no desktop, fica ao lado; no mobile, vai para baixo ocupando 100% */
     }
-    .filters .btn:hover{transform:translateY(-1px)}
+    .scope{margin:6px 0 0; text-align:center; color:#0f2a80; font-weight:700; font-size:.86rem}
 
+    /* ==== TABELA ==== */
     .card-table{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow); overflow:hidden;}
     table{width:100%; border-collapse:collapse}
-    thead th{background:#0f2a80; color:#fff; text-align:center; padding:12px 6px; font-size:.92rem}
-    tbody td{padding:12px 8px; text-align:center; border-bottom:1px solid var(--line)}
+    thead th{background:#0f2a80; color:#fff; text-align:center; padding:9px 6px; font-size:.88rem}
+    tbody td{padding:9px 8px; text-align:center; border-bottom:1px solid var(--line); font-size:.95rem}
 
-    .chip{display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.85rem; cursor:pointer; user-select:none}
+    .chip{display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:.82rem; cursor:pointer; user-select:none}
     .chip.pgto-pago{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
     .chip.pgto-pendente{background:#fff2f2; color:var(--bad); border:1px solid #ffd6d6}
     .chip.entregue{background:#e9fbf5; color:var(--good); border:1px solid #b3f0dc}
@@ -79,7 +96,7 @@
 
     .cliente-btn{all:unset; color:var(--royal); font-weight:800; cursor:pointer}
 
-    /* 🔧 CAMPO RECEBIDO POR MAIS LARGO */
+    /* ====== CAMPO "RECEBIDO POR" ====== */
     .recebido-inline{
       display:none;
       margin-top:8px;
@@ -90,9 +107,9 @@
     .recebido-inline input{
       border:1px solid var(--line);
       border-radius:10px;
-      padding:10px 12px;
+      padding:12px 14px;
       flex:1;
-      max-width:700px; /* antes era 360px */
+      max-width:900px;
       font-size:1rem;
     }
     .recebido-inline button{
@@ -100,23 +117,79 @@
       color:#fff;
       border:none;
       border-radius:10px;
-      padding:10px 16px;
+      padding:12px 16px;
       font-weight:800;
       cursor:pointer;
+      white-space:nowrap;
     }
 
-    .scope{margin:12px 0 0; text-align:center; color:#0f2a80; font-weight:700}
-
+    /* ====== MOBILE ====== */
     @media (max-width:760px){
-      .stats{grid-template-columns:1fr 1fr}
+      header{padding:.45rem 4vw}
+      .wrap{margin:8px auto 12px; padding:0 3.5vw}
+
+      /* Cards ainda menores (cabem junto no 1º viewport) */
+      .stats{grid-template-columns:1fr 1fr; gap:6px; margin:4px 0 6px}
+      .stat{padding:8px; gap:8px; border-radius:12px}
+      .stat .icon{width:24px; height:24px; font-size:14px}
+      .stat h4{font-size:.78rem}
+      .stat strong{font-size:.98rem}
+
+      /* Filtros LADO A LADO, bordas finas; botão embaixo ocupando 100% */
+      .filters{padding:8px; border-radius:12px}
+      .filters form{
+        grid-template-columns: repeat(3, 1fr);
+        gap:6px;
+      }
+      .filters input[type=date], .filters select{
+        padding:7px 9px; font-size:.92rem; border-radius:10px; border-width:1px;
+      }
+      .filters .btn{
+        grid-column: 1 / -1;   /* botão vai pra LINHA de baixo */
+        width:100%;
+        margin-top:2px;
+        padding:10px 12px;
+      }
+      .scope{font-size:.82rem}
+
+      /* Cards de entrega (estilo lista) */
       thead{display:none}
       table, tbody, tr, td{display:block; width:100%}
-      .card-table{padding:6px}
-      tbody tr{background:#fff; margin:10px 0; border-radius:14px; box-shadow:0 4px 12px rgba(0,0,0,.04); border:1px solid var(--line)}
-      tbody td{display:grid; grid-template-columns:42% 58%; text-align:left; border:none}
-      tbody td::before{content:attr(data-label); font-weight:800; color:#0f2a80; padding-right:8px}
+      .card-table{padding:6px; border-radius:12px; box-shadow:var(--shadow-sm)}
+      tbody tr{background:#fff; margin:8px 0; border-radius:12px; box-shadow:0 4px 10px rgba(0,0,0,.04); border:1px solid var(--line)}
+      tbody td{display:grid; grid-template-columns:42% 58%; text-align:left; border:none; padding:9px 10px; font-size:.95rem}
+      tbody td::before{content:attr(data-label); font-weight:800; color:#0f2a80; padding-right:8px; font-size:.88rem}
       .row-details{display:none}
       .row-open + .row-details{display:block}
+
+      /* “Recebido por + OK” ocupa a LARGURA TOTAL DA TELA, sem cortar à esquerda */
+      .recebido-inline{
+        /* expande para a largura da viewport */
+        width:100vw;
+        margin-left:calc(50% - 50vw);
+        padding:0 12px 8px;
+        box-sizing:border-box;
+        display:flex;
+        align-items:center;
+      }
+      .recebido-inline input{
+        max-width:none;
+        width:100%;
+        font-size:1rem;
+        padding:12px 14px;
+      }
+      .recebido-inline button{
+        padding:12px 14px;
+        margin-left:8px;
+      }
+    }
+
+    /* Telas bem estreitas (ex.: 360–393px, ~6.1") */
+    @media (max-width:400px){
+      .stat h4{font-size:.76rem}
+      .stat strong{font-size:.95rem}
+      .filters form{gap:6px}
+      tbody td{grid-template-columns:45% 55%}
     }
   </style>
 </head>
@@ -125,6 +198,7 @@
     Painel do Cooperado
     <div class="sub">{{ session['user_nome'] }}</div>
   </header>
+
   <div class="wrap">
 
     <section class="stats" aria-label="Estatísticas de valores">
@@ -160,9 +234,13 @@
           <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
           <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
         </select>
+
         <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
+
+        <!-- Botão vai para baixo no mobile (grid-column: 1 / -1) -->
         <button class="btn" type="submit">Filtrar</button>
       </form>
+
       <div id="escopo" class="scope"></div>
     </section>
 
@@ -208,8 +286,10 @@
                 data-entregue="{{ '1' if entregue else '0' }}"
                 onclick="handleEntregaClick(this)"
               >{{ 'Entregue' if entregue else 'Pendente' }}</span>
+
+              <!-- Bloco que ocupa 100vw no mobile -->
               <div class="recebido-inline" id="rcb-{{ e.id }}">
-                <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60">
+                <input type="text" placeholder="Recebido por" id="rcb-input-{{ e.id }}" maxlength="60" inputmode="text" autocomplete="name">
                 <button type="button" onclick="confirmarRecebido({{ e.id }})">OK</button>
               </div>
             </td>
@@ -277,7 +357,7 @@
       }else if(msg){msg.remove();}
     }
 
-    /* 🔧 Filtro pendentes mostra todas automaticamente */
+    /* 🔧 Pendente mostra todas automaticamente */
     const form=document.getElementById('form-filtros');
     form.addEventListener('submit',(ev)=>{
       const status=document.getElementById('status_pgto').value;
@@ -333,15 +413,13 @@
       lastScrollY=window.scrollY;
 
       if(desfazer){
-        // desfazer = voltar status para 'pendente' e limpar recebido_por
         const fd = new FormData();
         fd.append('status','pendente');
         fd.append('recebido_por','');
 
         try{
           const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{
-            method:'POST',
-            body: fd
+            method:'POST', body: fd
           });
           if(!resp.ok){alert('Falha ao desfazer recebido.'); return;}
           const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
@@ -351,14 +429,11 @@
             chip.classList.remove('entregue');
             chip.classList.add('pgto-pendente');
           }
-        }catch(err){
-          alert('Erro: '+err.message);
-        }
+        }catch(err){alert('Erro: '+err.message);}
         setTimeout(preserveScroll,60);
         return;
       }
 
-      // marcar recebido (JSON -> cooperado_marcar_entregue)
       const nome = document.getElementById('rcb-input-'+id).value.trim();
       if(!nome){alert('Informe o nome de quem recebeu.');return;}
 
