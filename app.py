@@ -2057,6 +2057,85 @@ def creditos():
                            to_brasilia=to_brasilia,
                            now=lambda: datetime.now(BRAZIL_TZ))
 
+@app.route('/creditos/exportar')
+def creditos_exportar():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    # filtros vindos do template
+    cliente_id = request.args.get('cliente_id', type=int)
+    data_inicio = request.args.get('data_inicio')  # 'YYYY-MM-DD'
+    data_fim = request.args.get('data_fim')        # 'YYYY-MM-DD'
+
+    # monta consulta com join para pegar nome do cliente
+    q = (db.session.query(
+            Credito.id.label('id'),
+            Cliente.nome.label('cliente'),
+            Credito.valor_bruto.label('valor_bruto'),
+            Credito.desconto_tipo.label('desconto_tipo'),
+            Credito.desconto_valor.label('desconto_valor'),
+            Credito.valor_final.label('valor_final'),
+            Credito.motivo.label('motivo'),
+            Credito.saldo_antes.label('saldo_antes'),
+            Credito.saldo_depois.label('saldo_depois'),
+            Credito.criado_por.label('criado_por'),
+            Credito.criado_em.label('criado_em'),
+        )
+        .join(Cliente, Cliente.id == Credito.cliente_id)
+    )
+
+    if cliente_id:
+        q = q.filter(Credito.cliente_id == cliente_id)
+    if data_inicio:
+        di = datetime.strptime(data_inicio, "%Y-%m-%d")
+        q = q.filter(Credito.criado_em >= di)
+    if data_fim:
+        df = datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
+        q = q.filter(Credito.criado_em <= df)
+
+    q = q.order_by(Credito.criado_em.asc())
+
+    # prepara linhas para XLSX
+    rows = []
+    for r in q.all():
+        dt_local = to_brasilia(r.criado_em)
+        rows.append({
+            'Data': dt_local.strftime('%d/%m/%Y %H:%M') if dt_local else '',
+            'Cliente': r.cliente,
+            'Valor Bruto': float(r.valor_bruto or 0),
+            'Desconto Tipo': r.desconto_tipo or 'nenhum',
+            'Desconto Valor': float(r.desconto_valor or 0),
+            'Valor Final': float(r.valor_final or 0),
+            'Motivo': r.motivo or '',
+            'Saldo Antes': float(r.saldo_antes or 0),
+            'Saldo Depois': float(r.saldo_depois or 0),
+            'Criado Por': r.criado_por or '',
+            'ID Crédito': int(r.id),
+        })
+
+    df_out = pd.DataFrame(rows)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Créditos'
+        df_out.to_excel(writer, index=False, sheet_name=sheet)
+        ws = writer.sheets[sheet]
+
+        # larguras
+        widths = [20, 28, 14, 16, 16, 14, 30, 14, 14, 16, 12]
+        for i, w in enumerate(widths[:len(df_out.columns)]):
+            ws.set_column(i, i, w)
+
+        # formatação monetária
+        money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
+        for col_name in ['Valor Bruto', 'Desconto Valor', 'Valor Final', 'Saldo Antes', 'Saldo Depois']:
+            if col_name in df_out.columns:
+                idx = list(df_out.columns).index(col_name)
+                ws.set_column(idx, idx, None, money_fmt)
+
+    output.seek(0)
+    return send_file(output, download_name='creditos.xlsx', as_attachment=True)
+
 
 @app.route('/creditos/cadastrar', methods=['POST'])
 def creditos_cadastrar():
