@@ -4,6 +4,7 @@
   <meta charset="utf-8">
   <title>Entrar · Kratos System</title>
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <link rel="icon" href="{{ url_for('static', filename='logo_kratos.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600&family=Roboto:wght@400;700&display=swap" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" rel="stylesheet">
@@ -53,13 +54,13 @@
     .ok{color:#11693a;background:#eafff2;border:1px solid #c9f2da;border-radius:10px;padding:10px 12px;margin-bottom:14px}
     .hidden{display:none !important}
     .meter{height:8px;background:#e9efff;border-radius:999px;overflow:hidden}
-    .meter > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b6b,#ffd166,#6bcB77);transition:width .25s}
+    .meter > i{display:block;height:100%;width:0;background:linear-gradient(90deg,#ff6b6b,#ffd166,#6bcb77);transition:width .25s}
     .mini{font-size:.9rem;color:#3b3b3b}
     @media(max-width:550px){.brand-logo{width:70px;height:70px}}
   </style>
 </head>
 <body>
-  <div class="glass-card" id="cardRoot" data-mode="login">
+  <div class="glass-card" id="cardRoot">
     <div class="card-top">
       <div class="brand">
         <img src="{{ url_for('static', filename='logo_kratos.png') }}" class="brand-logo" alt="Kratos System">
@@ -92,6 +93,7 @@
     <div class="card-body" id="paneLogin">
       <h5 class="mb-3 fw-bold">Entrar</h5>
       <form method="POST" action="{{ url_for('login') }}" class="needs-validation" novalidate autocomplete="off">
+        <input type="hidden" name="next" value="/meu_credito">
         <div class="mb-3">
           <label class="form-label" for="usuario">Usuário</label>
           <input class="form-control form-control-lg" id="usuario" name="usuario" required autocomplete="username" placeholder="Digite seu usuário">
@@ -113,8 +115,8 @@
         </button>
       </form>
 
-      <a href="#" class="link-swap" id="goSignup"><i class="bi bi-person-plus me-1"></i> Primeiro acesso? Cadastre-se</a>
-      <div class="marca-sistema">© {{ now().year }} Criado por — Kratos System</div>
+      <a href="#primeiro" class="link-swap" id="goSignup"><i class="bi bi-person-plus me-1"></i> Primeiro acesso? Cadastre-se</a>
+      <div class="marca-sistema">© <span id="ano"></span> Criado por — Kratos System</div>
     </div>
 
     <!-- PRIMEIRO ACESSO (CLIENTE) -->
@@ -122,6 +124,7 @@
       <h5 class="mb-3 fw-bold">Primeiro acesso do Cliente</h5>
       <form method="POST" action="/cliente/primeiro_acesso" class="needs-validation" novalidate autocomplete="off" id="formSignup">
         <input type="hidden" name="perfil" value="cliente">
+        <input type="hidden" name="next" value="/meu_credito">
         <div class="mb-3">
           <label class="form-label" for="nome">Nome do cliente</label>
           <input class="form-control form-control-lg" id="nome" name="nome" required placeholder="Ex.: Maria Silva">
@@ -175,18 +178,50 @@
         </button>
       </form>
 
-      <a href="#" class="link-swap" id="goLogin"><i class="bi bi-arrow-left-circle me-1"></i> Já tenho conta</a>
-      <div class="marca-sistema">© {{ now().year }} Criado por — Kratos System</div>
+      <a href="#login" class="link-swap" id="goLogin"><i class="bi bi-arrow-left-circle me-1"></i> Já tenho conta</a>
+      <div class="marca-sistema">© <span id="ano2"></span> Criado por — Kratos System</div>
     </div>
   </div>
 
+  <noscript>
+    <style>.hidden{display:block!important}</style>
+    <div class="container mt-3">
+      <div class="alert alert-danger">Ative o JavaScript para usar o primeiro acesso.</div>
+    </div>
+  </noscript>
+
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
   <script>
+    // util
+    const byId = (id)=>document.getElementById(id);
+    const show = (el)=>el.classList.remove('hidden');
+    const hide = (el)=>el.classList.add('hidden');
+
+    // referências
+    const paneLogin  = byId('paneLogin');
+    const paneSignup = byId('paneSignup');
+
     // troca de painéis
-    const paneLogin = document.getElementById('paneLogin');
-    const paneSignup = document.getElementById('paneSignup');
-    document.getElementById('goSignup').addEventListener('click', (e)=>{ e.preventDefault(); paneLogin.classList.add('hidden'); paneSignup.classList.remove('hidden'); });
-    document.getElementById('goLogin').addEventListener('click', (e)=>{ e.preventDefault(); paneSignup.classList.add('hidden'); paneLogin.classList.remove('hidden'); });
+    const openSignup = ()=>{
+      hide(paneLogin); show(paneSignup);
+      history.replaceState(null,'', '#primeiro');
+    };
+    const openLogin = ()=>{
+      hide(paneSignup); show(paneLogin);
+      history.replaceState(null,'', '#login');
+    };
+
+    byId('goSignup').addEventListener('click', (e)=>{ e.preventDefault(); openSignup(); });
+    byId('goLogin').addEventListener('click', (e)=>{ e.preventDefault(); openLogin(); });
+
+    // auto-abertura pelo hash ou query (?primeiro=1 | ?signup=1)
+    (function(){
+      const url = new URL(location.href);
+      const q = url.searchParams;
+      if (location.hash === '#primeiro' || q.get('primeiro') === '1' || q.get('signup') === '1') {
+        openSignup();
+      }
+    })();
 
     // validação bootstrap simples
     document.querySelectorAll('form.needs-validation').forEach(form=>{
@@ -199,19 +234,19 @@
     });
 
     // máscara telefone (BR)
-    const tel = document.getElementById('telefone');
+    const tel = byId('telefone');
     const maskBR = v => v.replace(/\D/g,'')
       .replace(/^(\d{2})(\d)/, '($1) $2')
       .replace(/(\d{5})(\d{4})$/, '$1-$2');
     tel.addEventListener('input', ()=>{ tel.value = maskBR(tel.value); });
 
-    // ver/ocultar senhas
+    // ver/ocultar senhas (usa event corretamente)
     const toggle = (btnId, inputId)=>{
-      document.getElementById(btnId).addEventListener('click', ()=>{
-        const i = document.getElementById(inputId);
+      byId(btnId).addEventListener('click', (ev)=>{
+        const i = byId(inputId);
         const isPwd = i.type === 'password';
         i.type = isPwd ? 'text' : 'password';
-        event.currentTarget.innerHTML = isPwd ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+        ev.currentTarget.innerHTML = isPwd ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
         i.focus();
       });
     };
@@ -219,34 +254,40 @@
     toggle('togglePassSignup1','senha_cad');
     toggle('togglePassSignup2','senha_conf');
 
-    // força da senha
-    const meterBar = document.getElementById('meterBar');
-    const meterTxt = document.getElementById('meterTxt');
-    const senhaCad = document.getElementById('senha_cad');
+    // força da senha (corrigido)
+    const meterBar = byId('meterBar');
+    const meterTxt = byId('meterTxt');
+    const senhaCad = byId('senha_cad');
     senhaCad.addEventListener('input', ()=>{
       const v = senhaCad.value;
       let score = 0;
-      if(v.length >= 6) score++;
-      if(/[A-Z]/.test(v)) score++;
-      if(/[a-z]/.test(v)) score++;
-      if/\d/.test(v) ? score++ : score;
-      if(/[^A-Za-z0-9]/.test(v)) score++;
+      if (v.length >= 6) score++;
+      if (/[A-Z]/.test(v)) score++;
+      if (/[a-z]/.test(v)) score++;
+      if (/\d/.test(v)) score++;           // <<< CORRIGIDO
+      if (/[^A-Za-z0-9]/.test(v)) score++;
       const pct = [0,20,40,60,80,100][score];
-      meterBar.style.width = pct + '%';
+      meterBar.style.width = (pct||0) + '%';
       meterTxt.textContent = ['Muito fraca','Fraca','Ok','Boa','Forte','Excelente'][score] || 'Força da senha';
     });
 
-    // confirm senha
-    const senhaConf = document.getElementById('senha_conf');
-    const formSignup = document.getElementById('formSignup');
+    // confirma senha
+    const senhaConf = byId('senha_conf');
+    const formSignup = byId('formSignup');
     formSignup.addEventListener('submit', (e)=>{
       if(senhaCad.value !== senhaConf.value){
         e.preventDefault(); e.stopPropagation();
-        senhaConf.setCustomValidity('Senhas diferentes'); formSignup.classList.add('was-validated');
+        senhaConf.setCustomValidity('Senhas diferentes');
+        formSignup.classList.add('was-validated');
       }else{
         senhaConf.setCustomValidity('');
       }
     });
+
+    // ano automático
+    const ano = new Date().getFullYear();
+    const a1 = byId('ano'); if (a1) a1.textContent = ano;
+    const a2 = byId('ano2'); if (a2) a2.textContent = ano;
   </script>
 </body>
 </html>
