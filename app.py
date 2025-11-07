@@ -63,6 +63,8 @@ class Cliente(db.Model):
     telefone = db.Column(db.String(30), nullable=True)
     bairro_origem = db.Column(db.String(50), nullable=True)
     endereco = db.Column(db.String(255), nullable=True)
+    # NOVO: saldo de crédito do cliente
+    saldo_atual = db.Column(db.Float, nullable=False, default=0.0)
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -77,6 +79,44 @@ class Entrega(db.Model):
     pagamento = db.Column(db.String(50), nullable=False)
     recebido_por = db.Column(db.String(100), nullable=True)
     cooperado = db.relationship('Cooperado', backref='entregas')
+
+    # NOVOS: controle de crédito usado nesta entrega
+    credito_usado = db.Column(db.Float, nullable=False, default=0.0)
+    credito_mov_id = db.Column(db.Integer, nullable=True)
+
+class Credito(db.Model):
+    __tablename__ = "credito"
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+
+    valor_bruto = db.Column(db.Float, nullable=False)
+    desconto_tipo = db.Column(db.String(20), nullable=False, default="nenhum")  # 'nenhum'|'percentual'|'real'
+    desconto_valor = db.Column(db.Float, nullable=False, default=0.0)
+    valor_final = db.Column(db.Float, nullable=False)
+
+    motivo = db.Column(db.String(180))
+    saldo_antes = db.Column(db.Float, nullable=False, default=0.0)
+    saldo_depois = db.Column(db.Float, nullable=False, default=0.0)
+
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    criado_por = db.Column(db.String(80))
+
+class CreditoMovimento(db.Model):
+    """
+    tipo='credito'  (entrada: quando a supervisão concede crédito)
+    tipo='debito'   (saída: quando o crédito é usado numa entrega)
+    """
+    __tablename__ = "credito_movimento"
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+
+    tipo = db.Column(db.String(10), nullable=False)  # 'credito' | 'debito'
+    valor = db.Column(db.Float, nullable=False)
+    referencia = db.Column(db.String(120))           # ex.: "Crédito #10" ou "Entrega #123"
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
+    credito_id = db.Column(db.Integer, db.ForeignKey("credito.id"), nullable=True)  # (quando tipo='credito')
+    entrega_id = db.Column(db.Integer, db.ForeignKey("entrega.id"), nullable=True)  # (quando tipo='debito')
 
 class ListaEspera(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -132,6 +172,144 @@ def normalize_letters_key(s: str) -> str:
 def normalize_first_token(s: str) -> str:
     k = normalize_letters_key(s)
     return (k.split(' ')[0] if k else '')
+
+# ====== CRÉDITO: helpers e regras ======
+def _as_decimal(x) -> Decimal:
+    if x is None: return Decimal("0.00")
+    if isinstance(x, Decimal): return x
+    return Decimal(str(x)).quantize(Decimal("0.01"))
+
+def calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor) -> Decimal:
+    bruto = _as_decimal(valor_bruto)
+    d     = _as_decimal(desconto_valor)
+    if desconto_tipo == "percentual":
+        desc = (bruto * d) / Decimal("100")
+    elif desconto_tipo == "real":
+        desc = d
+    else:
+        desc = Decimal("0.00")
+    if desc > bruto: desc = bruto
+    return (bruto - desc).quantize(Decimal("0.01"))
+
+def _find_cliente_by_nome(nome: str):
+    if not nome: return None
+    cli = Cliente.query.filter(func.lower(Cliente.nome) == (nome or '').lower()).first()
+    if cli: return cli
+    # fallback por normalização forte
+    target = normalize_letters_key(nome or '')
+    for c in Cliente.query.all():
+        if normalize_letters_key(c.nome or '') == target:
+            return c
+    # último recurso: 1º token
+    tok = normalize_first_token(nome or '')
+    for c in Cliente.query.all():
+        if normalize_first_token(c.nome or '') == tok:
+            return c
+    return None
+
+def registrar_credito(cliente_id:int, valor_bruto, desconto_tipo:str, desconto_valor, motivo:str="", criado_por:str=""):
+    cli = Cliente.query.get(cliente_id)
+    if not cli: raise ValueError("Cliente não encontrado")
+
+    valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
+    saldo_antes = _as_decimal(cli.saldo_atual)
+    cli.saldo_atual = float((saldo_antes + valor_final))
+
+    c = Credito(
+        cliente_id=cli.id,
+        valor_bruto=float(_as_decimal(valor_bruto)),
+        desconto_tipo=desconto_tipo or "nenhum",
+        desconto_valor=float(_as_decimal(desconto_valor or 0)),
+        valor_final=float(valor_final),
+        motivo=motivo or "",
+        saldo_antes=float(saldo_antes),
+        saldo_depois=float(_as_decimal(cli.saldo_atual)),
+        criado_por=criado_por or "Supervisor"
+    )
+    db.session.add(c); db.session.flush()
+
+    mov = CreditoMovimento(
+        cliente_id=cli.id,
+        tipo="credito",
+        valor=float(valor_final),
+        referencia=f"Crédito #{c.id}",
+        credito_id=c.id
+    )
+    db.session.add(mov)
+    db.session.commit()
+    return c
+
+def consumir_credito_em_entrega(entrega_id:int) -> Decimal:
+    e = Entrega.query.get(entrega_id)
+    if not e: return Decimal("0.00")
+
+    cli = _find_cliente_by_nome(e.cliente)
+    if not cli: return Decimal("0.00")
+
+    valor = _as_decimal(e.valor or 0)
+    usado = _as_decimal(e.credito_usado or 0)
+    faltante = (valor - usado)
+    if faltante <= 0: return Decimal("0.00")
+
+    saldo = _as_decimal(cli.saldo_atual or 0)
+    consumir = min(saldo, faltante)
+    if consumir <= 0: return Decimal("0.00")
+
+    cli.saldo_atual = float((saldo - consumir))
+    e.credito_usado  = float((usado + consumir))
+
+    mov = CreditoMovimento(
+        cliente_id=cli.id,
+        tipo="debito",
+        valor=float(consumir),
+        referencia=f"Entrega #{e.id}",
+        entrega_id=e.id
+    )
+    db.session.add(mov); db.session.flush()
+    e.credito_mov_id = mov.id
+
+    if _as_decimal(e.credito_usado) >= valor:
+        e.status_pagamento = "pago"
+        e.pagamento = "Crédito"
+        if not (e.recebido_por or "").strip():
+            e.recebido_por = "Crédito automático"
+    else:
+        if (e.pagamento or "").lower() != "crédito":
+            e.pagamento = "Crédito Parcial"
+
+    db.session.commit()
+    return consumir
+
+def desfazer_consumo_credito_da_entrega(entrega_id:int) -> Decimal:
+    e = Entrega.query.get(entrega_id)
+    if not e: return Decimal("0.00")
+    usado = _as_decimal(e.credito_usado or 0)
+    if usado <= 0: return Decimal("0.00")
+
+    cli = _find_cliente_by_nome(e.cliente)
+    if not cli: return Decimal("0.00")
+
+    cli.saldo_atual = float((_as_decimal(cli.saldo_atual) + usado))
+
+    # registra estorno
+    mov_estorno = CreditoMovimento(
+        cliente_id=cli.id,
+        tipo="credito",
+        valor=float(usado),
+        referencia=f"Estorno Entrega #{e.id}"
+    )
+    db.session.add(mov_estorno)
+
+    e.credito_usado = 0.0
+    if (e.pagamento or "").lower().startswith("crédito"):
+        e.pagamento = ""
+    if (e.status_pagamento or "").lower() == "pago" and (e.recebido_por or "").lower().startswith("crédito"):
+        e.status_pagamento = "pendente"
+        e.recebido_por = None
+
+    db.session.commit()
+    return usado
+
 
 def br_date_ymd(dt_utc_naive: datetime) -> str:
     if not dt_utc_naive: return ''
@@ -613,8 +791,10 @@ def excluir_cliente(id):
 def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     clientes_lista = Cliente.query.order_by(Cliente.nome).all()
+
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
@@ -623,30 +803,47 @@ def cadastrar_entrega():
         pagamento = request.form.get('pagamento')
 
         entrega = Entrega(
-            cliente=cliente, bairro=bairro, valor=valor,
+            cliente=cliente,
+            bairro=bairro,
+            valor=valor,
             data_envio=datetime.utcnow(),
-            status_pagamento='pendente', status='pendente',
+            status_pagamento='pendente',
+            status='pendente',
             pagamento=pagamento
         )
+
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
             entrega.data_atribuida = datetime.utcnow()
+
         db.session.add(entrega)
 
+        # Se atribuiu cooperado, remove da fila
         if cooperado_id:
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
-        db.session.commit()
+        db.session.commit()  # garante entrega.id
+
+        # >>> Consumo automático de crédito do cliente <<<
+        try:
+            consumir_credito_em_entrega(entrega.id)
+        except Exception as ex:
+            app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
+
         flash('Entrega cadastrada!')
         return redirect_back_to_admin()
+
     return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
 def agendar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     clientes_lista = Cliente.query.order_by(Cliente.nome).all()
+
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
@@ -660,7 +857,9 @@ def agendar_entrega():
         data_envio = parse_local_datetime_to_utc_naive(data_str)
 
         entrega = Entrega(
-            cliente=cliente, bairro=bairro, valor=valor,
+            cliente=cliente,
+            bairro=bairro,
+            valor=valor,
             data_envio=data_envio,
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=(status_entrega or 'pendente'),
@@ -673,24 +872,36 @@ def agendar_entrega():
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
         db.session.commit()
+
+        # >>> Consumo automático de crédito do cliente (agendada) <<<
+        try:
+            consumir_credito_em_entrega(entrega.id)
+        except Exception as ex:
+            app.logger.exception("Falha ao consumir crédito (agendada) na entrega %s: %s", entrega.id, ex)
+
         flash('Entrega agendada!')
         return redirect_back_to_admin()
+
     return render_template('agendar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
     entrega = Entrega.query.get_or_404(id)
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     is_admin = session.get('is_admin')
+
     if not is_admin and entrega.cooperado_id != session['user_id']:
         flash("Acesso não permitido.")
         return redirect(url_for('painel_cooperado'))
 
     if request.method == 'POST':
         if is_admin:
+            # aplica alterações
             entrega.cliente = request.form.get('cliente')
             entrega.bairro = request.form.get('bairro')
             entrega.valor = float(request.form.get('valor'))
+
             novo_coop_id = request.form.get('cooperado_id')
             if novo_coop_id:
                 novo_coop_id = int(novo_coop_id)
@@ -707,6 +918,14 @@ def editar_entrega(id):
             entrega.pagamento = request.form.get('pagamento') or entrega.pagamento
 
             db.session.commit()
+
+            # >>> Recalcula crédito (estorna o usado e consome o valor atual) <<<
+            try:
+                desfazer_consumo_credito_da_entrega(entrega.id)
+                consumir_credito_em_entrega(entrega.id)
+            except Exception as ex:
+                app.logger.exception("Falha ao recalcular crédito na entrega %s: %s", entrega.id, ex)
+
             flash('Entrega atualizada!')
             return redirect_back_to_admin()
         else:
@@ -721,6 +940,7 @@ def editar_entrega(id):
         return render_template('editar_entrega.html', entrega=entrega, cooperados=cooperados)
     else:
         return render_template('editar_entrega_cooperado.html', entrega=entrega)
+
 
 @app.post('/atribuir_cooperado/<int:id>')
 def atribuir_cooperado(id):
@@ -759,15 +979,25 @@ def atribuir_cooperado(id):
         flash('Não foi possível atualizar o cooperado.')
         return redirect_back_to_admin()
 
+
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     entrega = Entrega.query.get_or_404(id)
+
+    # >>> Estorna eventual crédito usado antes de apagar <<<
+    try:
+        desfazer_consumo_credito_da_entrega(entrega.id)
+    except Exception as ex:
+        app.logger.exception("Falha ao estornar crédito da entrega %s: %s", entrega.id, ex)
+
     db.session.delete(entrega)
     db.session.commit()
     flash('Entrega excluída.')
     return redirect_back_to_admin()
+
 
 # ========= BOTÕES RÁPIDOS (ADMIN) =========
 @app.post('/entregas/<int:id>/marcar-pagamento')
@@ -779,6 +1009,7 @@ def marcar_pagamento(id):
     db.session.commit()
     return redirect_back_to_admin()
 
+
 @app.post('/entregas/<int:id>/marcar-entregue')
 def marcar_entregue(id):
     if not session.get('is_admin'):
@@ -787,6 +1018,81 @@ def marcar_entregue(id):
     e.status = "entregue"
     db.session.commit()
     return redirect_back_to_admin()
+
+# ====== CRÉDITOS (Supervisor) ======
+@app.route('/creditos')
+def creditos():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cliente_id = request.args.get('cliente_id', type=int)
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    q = Credito.query
+    if cliente_id:
+        q = q.filter(Credito.cliente_id == cliente_id)
+    if data_inicio:
+        di = datetime.strptime(data_inicio, "%Y-%m-%d")
+        q = q.filter(Credito.criado_em >= di)
+    if data_fim:
+        df = datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
+        q = q.filter(Credito.criado_em <= df)
+
+    creditos = q.order_by(Credito.criado_em.desc()).all()
+    clientes = Cliente.query.order_by(Cliente.nome).all()
+
+    # renderiza seu template (use o que te enviei)
+    return render_template('creditos.html',
+                           clientes=clientes,
+                           creditos=creditos,
+                           filtros={"cliente_id": cliente_id, "data_inicio": data_inicio, "data_fim": data_fim},
+                           to_brasilia=to_brasilia,
+                           now=lambda: datetime.now(BRAZIL_TZ))
+
+@app.route('/creditos/cadastrar', methods=['POST'])
+def creditos_cadastrar():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    cliente_id = int(request.form['cliente_id'])
+    valor_bruto = request.form['valor_bruto']
+    desconto_tipo = request.form.get('desconto_tipo', 'nenhum')
+    desconto_valor = request.form.get('desconto_valor', 0)
+    motivo = request.form.get('motivo', '')
+    criado_por = session.get('user_nome', 'Supervisor')
+
+    registrar_credito(cliente_id, valor_bruto, desconto_tipo, desconto_valor, motivo, criado_por)
+    flash('Crédito registrado com sucesso!')
+    return redirect(url_for('creditos'))
+
+# ====== VISÃO DO CLIENTE (mobile) ======
+@app.route('/cliente/<int:cliente_id>/credito')
+def cliente_credito(cliente_id):
+    # Segurança mínima: só admin, por enquanto. (Se tiver área do cliente, adapte)
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cli = Cliente.query.get_or_404(cliente_id)
+    movs = (CreditoMovimento.query
+            .filter(CreditoMovimento.cliente_id == cliente_id)
+            .order_by(CreditoMovimento.criado_em.desc()).all())
+
+    movimentos = []
+    for m in movs:
+        movimentos.append({
+            "tipo": m.tipo,  # 'credito' ou 'debito'
+            "titulo": "Crédito" if m.tipo == "credito" else "Atribuição/Débito",
+            "descricao": m.referencia or "",
+            "valor": float(m.valor or 0),
+            "data": m.criado_em,
+            "referencia": m.referencia or ""
+        })
+
+    return render_template('credito_cliente.html',
+                           cliente=cli,
+                           movimentos=movimentos,
+                           to_brasilia=to_brasilia,
+                           now=lambda: datetime.now(BRAZIL_TZ))
 
 # ========= JSON do PAINEL DO COOPERADO =========
 @app.post('/cooperado/toggle_pagamento/<int:id>')
@@ -1500,6 +1806,9 @@ def criar_bd():
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS pos INTEGER",
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS endereco VARCHAR(255)",
+            "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS saldo_atual REAL DEFAULT 0",
+            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_usado REAL DEFAULT 0",
+            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_mov_id INTEGER",
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
