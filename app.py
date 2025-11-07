@@ -1989,6 +1989,11 @@ def atribuir_cooperado(id):
         return redirect_back_to_admin()
 
 
+# TIPOS de movimento
+TIPO_ENTRADA = 'ENTRADA'
+TIPO_CONSUMO = 'CONSUMO'
+TIPO_AJUSTE  = 'AJUSTE'
+
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if not session.get('is_admin'):
@@ -1996,16 +2001,88 @@ def excluir_entrega(id):
 
     entrega = Entrega.query.get_or_404(id)
 
-    # >>> Estorna eventual crédito usado antes de apagar <<<
+    # 1) Estorna eventual consumo vinculado à entrega (sua função existente)
     try:
         desfazer_consumo_credito_da_entrega(entrega.id)
     except Exception as ex:
-        app.logger.exception("Falha ao estornar crédito da entrega %s: %s", entrega.id, ex)
+        current_app.logger.exception("Falha ao estornar crédito da entrega %s: %s", entrega.id, ex)
 
-    db.session.delete(entrega)
-    db.session.commit()
-    flash('Entrega excluída.')
-    return redirect_back_to_admin()
+    try:
+        # 2) Desacopla movimentos que referenciam esta entrega (evita o erro de FK)
+        db.session.execute(
+            text("UPDATE credito_movimento SET entrega_id = NULL WHERE entrega_id = :eid"),
+            {"eid": id}
+        )
+
+        # 3) (Opcional) zera ponteiro inverso na entrega, se você usa
+        try:
+            db.session.execute(
+                text("UPDATE entrega SET credito_mov_id = NULL WHERE id = :eid"),
+                {"eid": id}
+            )
+        except Exception:
+            pass
+
+        # 4) Deleta a entrega
+        db.session.delete(entrega)
+        db.session.commit()
+        flash('Entrega excluída com sucesso.', 'success')
+    except IntegrityError as e:
+        db.session.rollback()
+        flash('Não foi possível excluir: há vínculos de crédito ainda ativos.', 'danger')
+        current_app.logger.exception("IntegrityError ao excluir entrega %s", id)
+    except Exception as e:
+        db.session.rollback()
+        flash(f'Erro ao excluir entrega: {e.__class__.__name__}', 'danger')
+        current_app.logger.exception("Erro ao excluir entrega %s", id)
+
+    return redirect(url_for('admin', cooperado_id='todos', status_pagamento='todos'))
+        db.session.commit()
+        flash('Entrega excluída.')
+        return redirect_back_to_admin()
+
+
+def calc_valor_final(valor: float, desconto_tipo: str = 'nenhum', desconto_valor: float = 0.0) -> float:
+    desconto_tipo = (desconto_tipo or 'nenhum').lower()
+    try:
+        v = float(valor or 0)
+        d = float(desconto_valor or 0)
+    except Exception:
+        v, d = 0.0, 0.0
+
+    if desconto_tipo == 'percentual':
+        return max(0.0, v * (1.0 - d/100.0))
+    elif desconto_tipo in ('fixo', 'valor'):
+        return max(0.0, v - d)
+    return max(0.0, v)
+
+def atualizar_saldo_cliente(cliente_id: int, delta: float):
+    if not cliente_id:
+        return
+    cli = Cliente.query.get(cliente_id)
+    if not cli:
+        return
+    cli.saldo_atual = float(cli.saldo_atual or 0) + float(delta or 0)
+    db.session.add(cli)
+
+def registrar_movimento(cliente_id: int, tipo: str, valor: float, referencia: str = '', credito_id: int | None = None, entrega_id: int | None = None):
+    mov = CreditoMovimento(
+        cliente_id=cliente_id,
+        tipo=tipo,
+        valor=float(valor or 0),
+        referencia=(referencia or '')[:120],
+        credito_id=credito_id,
+        entrega_id=entrega_id,
+    )
+    db.session.add(mov)
+    return mov
+
+def consumo_total_do_credito(credito_id: int) -> float:
+    q = db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0)).filter(
+        CreditoMovimento.credito_id == credito_id,
+        CreditoMovimento.tipo == TIPO_CONSUMO
+    )
+    return float(q.scalar() or 0.0)
 
 
 # ========= BOTÕES RÁPIDOS (ADMIN) =========
@@ -2034,30 +2111,127 @@ def marcar_entregue(id):
 def creditos():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-
     cliente_id = request.args.get('cliente_id', type=int)
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-
     q = Credito.query
     if cliente_id:
         q = q.filter(Credito.cliente_id == cliente_id)
-    if data_inicio:
-        di = datetime.strptime(data_inicio, "%Y-%m-%d")
-        q = q.filter(Credito.criado_em >= di)
-    if data_fim:
-        df = datetime.strptime(data_fim, "%Y-%m-%d") + timedelta(days=1) - timedelta(seconds=1)
-        q = q.filter(Credito.criado_em <= df)
+    lista = q.order_by(Credito.id.desc()).limit(500).all()
+    # Renderize seu template; aqui só um retorno simples para não travar
+    return render_template('creditos.html', creditos=lista, cliente_id=cliente_id)
 
-    creditos = q.order_by(Credito.criado_em.desc()).all()
-    clientes = Cliente.query.order_by(Cliente.nome).all()
+@app.route('/creditos/novo', methods=['GET', 'POST'])
+def creditos_novo():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    if request.method == 'POST':
+        cliente_id     = request.form.get('cliente_id', type=int)
+        valor          = request.form.get('valor', type=float)
+        desconto_tipo  = request.form.get('desconto_tipo', default='nenhum')
+        desconto_valor = request.form.get('desconto_valor', type=float, default=0.0)
+        motivo         = request.form.get('motivo', default='')
 
-    return render_template('creditos.html',
-                           clientes=clientes,
-                           creditos=creditos,
-                           filtros={"cliente_id": cliente_id, "data_inicio": data_inicio, "data_fim": data_fim},
-                           to_brasilia=to_brasilia,
-                           now=lambda: datetime.now(BRAZIL_TZ))
+        valor_final = calc_valor_final(valor, desconto_tipo, desconto_valor)
+
+        try:
+            cred = Credito(
+                cliente_id=cliente_id,
+                valor=valor,
+                desconto_tipo=desconto_tipo,
+                desconto_valor=desconto_valor,
+                valor_final=valor_final,
+                motivo=motivo,
+            )
+            db.session.add(cred)
+
+            # entra no saldo
+            atualizar_saldo_cliente(cliente_id, +valor_final)
+
+            # registra movimento de ENTRADA
+            registrar_movimento(cliente_id, TIPO_ENTRADA, valor_final, referencia='Crédito criado', credito_id=None)
+
+            db.session.commit()
+            flash('Crédito criado com sucesso.', 'success')
+            return redirect(url_for('creditos', cliente_id=cliente_id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Erro ao criar crédito')
+            flash(f'Erro ao criar crédito: {e.__class__.__name__}', 'danger')
+
+    # GET
+    return render_template('credito_form.html')
+
+@app.route('/creditos/<int:credito_id>/editar', methods=['GET', 'POST'])
+def creditos_editar(credito_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    cred = Credito.query.get_or_404(credito_id)
+    if request.method == 'POST':
+        old_final = float(cred.valor_final or 0)
+
+        # campos editáveis
+        cred.valor          = request.form.get('valor', type=float, default=cred.valor)
+        cred.desconto_tipo  = request.form.get('desconto_tipo', default=cred.desconto_tipo)
+        cred.desconto_valor = request.form.get('desconto_valor', type=float, default=cred.desconto_valor)
+        cred.motivo         = request.form.get('motivo', default=cred.motivo)
+
+        new_final = calc_valor_final(cred.valor, cred.desconto_tipo, cred.desconto_valor)
+        cred.valor_final = new_final
+
+        delta = new_final - old_final
+        try:
+            if abs(delta) > 1e-7:
+                # ajusta saldo e registra movimento de ajuste
+                atualizar_saldo_cliente(cred.cliente_id, delta)
+                ref = f'Ajuste do crédito #{cred.id}'
+                registrar_movimento(cred.cliente_id, TIPO_AJUSTE, abs(delta), referencia=ref, credito_id=cred.id)
+
+            db.session.commit()
+            flash('Crédito atualizado.', 'success')
+            return redirect(url_for('creditos', cliente_id=cred.cliente_id))
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Erro ao editar crédito')
+            flash(f'Erro ao editar crédito: {e.__class__.__name__}', 'danger')
+
+    # GET
+    return render_template('credito_form.html', credito=cred)
+
+@app.route('/creditos/<int:credito_id>/excluir', methods=['POST'])
+def creditos_excluir(credito_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    cred = Credito.query.get_or_404(credito_id)
+
+    # BLOQUEIA se houve consumo desse crédito (pra não bagunçar saldo/histórico)
+    total_consumo = consumo_total_do_credito(cred.id)
+    if total_consumo > 0.0:
+        flash('Não é possível excluir: este crédito possui consumo vinculado. Estorne/exclua os consumos primeiro.', 'warning')
+        return redirect(url_for('creditos', cliente_id=cred.cliente_id))
+
+    try:
+        # Se não houve consumo, remover o crédito implica tirar seu efeito do saldo
+        delta = -float(cred.valor_final or 0)
+        if abs(delta) > 1e-7:
+            atualizar_saldo_cliente(cred.cliente_id, delta)
+
+        # Limpa movimentos que apontam para este crédito (AJUSTES/ENTRADAS)
+        db.session.execute(
+            text("DELETE FROM credito_movimento WHERE credito_id = :cid"),
+            {"cid": cred.id}
+        )
+
+        db.session.delete(cred)
+        db.session.commit()
+        flash('Crédito excluído.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('Não foi possível excluir o crédito por vínculos existentes.', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao excluir crédito')
+        flash(f'Erro ao excluir crédito: {e.__class__.__name__}', 'danger')
+
+    return redirect(url_for('creditos', cliente_id=cred.cliente_id))
 
 @app.route('/creditos/exportar')
 def creditos_exportar():
@@ -2182,6 +2356,114 @@ def cliente_credito(cliente_id):
                            movimentos=movimentos,
                            to_brasilia=to_brasilia,
                            now=lambda: datetime.now(BRAZIL_TZ))
+
+@app.route('/creditos/movimento/novo', methods=['POST'])
+def credmov_novo():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cliente_id = request.form.get('cliente_id', type=int)
+    credito_id = request.form.get('credito_id', type=int)
+    entrega_id = request.form.get('entrega_id', type=int)
+    tipo       = request.form.get('tipo', default=TIPO_AJUSTE).upper()
+    valor      = abs(request.form.get('valor', type=float, default=0.0))
+    referencia = request.form.get('referencia', default='')
+
+    try:
+        # efeito no saldo
+        if tipo == TIPO_ENTRADA:
+            atualizar_saldo_cliente(cliente_id, +valor)
+        elif tipo == TIPO_CONSUMO:
+            atualizar_saldo_cliente(cliente_id, -valor)  # consumo reduz saldo
+        elif tipo == TIPO_AJUSTE:
+            # ajuste positivo = entra; ajuste negativo: envie valor positivo e use referência
+            atualizar_saldo_cliente(cliente_id, +valor)
+
+        registrar_movimento(cliente_id, tipo, valor, referencia=referencia, credito_id=credito_id, entrega_id=entrega_id)
+        db.session.commit()
+        flash('Movimento registrado.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao criar movimento')
+        flash(f'Erro ao criar movimento: {e.__class__.__name__}', 'danger')
+
+    return redirect(url_for('creditos', cliente_id=cliente_id))
+
+@app.route('/creditos/movimento/<int:mov_id>/editar', methods=['GET', 'POST'])
+def credmov_editar(mov_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    mov = CreditoMovimento.query.get_or_404(mov_id)
+
+    if request.method == 'POST':
+        novo_tipo = (request.form.get('tipo', default=mov.tipo) or mov.tipo).upper()
+        novo_valor = abs(request.form.get('valor', type=float, default=mov.valor))
+        nova_ref = request.form.get('referencia', default=mov.referencia)
+
+        try:
+            # Reverte efeito antigo do saldo
+            if mov.tipo == TIPO_ENTRADA or mov.tipo == TIPO_AJUSTE:
+                atualizar_saldo_cliente(mov.cliente_id, -float(mov.valor or 0))
+            elif mov.tipo == TIPO_CONSUMO:
+                atualizar_saldo_cliente(mov.cliente_id, +float(mov.valor or 0))
+
+            # Aplica efeito novo
+            if novo_tipo == TIPO_ENTRADA or novo_tipo == TIPO_AJUSTE:
+                atualizar_saldo_cliente(mov.cliente_id, +float(novo_valor or 0))
+            elif novo_tipo == TIPO_CONSUMO:
+                atualizar_saldo_cliente(mov.cliente_id, -float(novo_valor or 0))
+
+            # Atualiza registro
+            mov.tipo = novo_tipo
+            mov.valor = novo_valor
+            mov.referencia = (nova_ref or '')[:120]
+            db.session.add(mov)
+            db.session.commit()
+            flash('Movimento atualizado.', 'success')
+        except Exception as e:
+            db.session.rollback()
+            current_app.logger.exception('Erro ao editar movimento')
+            flash(f'Erro ao editar movimento: {e.__class__.__name__}', 'danger')
+
+        return redirect(url_for('creditos', cliente_id=mov.cliente_id))
+
+    # GET
+    return render_template('credmov_form.html', movimento=mov)
+
+@app.route('/creditos/movimento/<int:mov_id>/excluir', methods=['POST'])
+def credmov_excluir(mov_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    mov = CreditoMovimento.query.get_or_404(mov_id)
+    try:
+        # Reverte efeito no saldo
+        if mov.tipo == TIPO_ENTRADA or mov.tipo == TIPO_AJUSTE:
+            atualizar_saldo_cliente(mov.cliente_id, -float(mov.valor or 0))
+        elif mov.tipo == TIPO_CONSUMO:
+            atualizar_saldo_cliente(mov.cliente_id, +float(mov.valor or 0))
+
+        # Desacopla entrega, se tinha
+        if mov.entrega_id:
+            try:
+                db.session.execute(
+                    text("UPDATE entrega SET credito_mov_id = NULL WHERE id = :eid"),
+                    {"eid": mov.entrega_id}
+                )
+            except Exception:
+                pass
+
+        db.session.delete(mov)
+        db.session.commit()
+        flash('Movimento excluído.', 'success')
+    except IntegrityError:
+        db.session.rollback()
+        flash('Não foi possível excluir o movimento (vínculos).', 'danger')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao excluir movimento')
+        flash(f'Erro ao excluir movimento: {e.__class__.__name__}', 'danger')
+
+    return redirect(url_for('creditos', cliente_id=mov.cliente_id))
 
 
 # ========= JSON do PAINEL DO COOPERADO =========
@@ -2896,13 +3178,16 @@ def relatorio_termico():
     )
 
 
+from sqlalchemy.sql import text
+from sqlalchemy import func
+from sqlalchemy.exc import IntegrityError
+
 # ====== BOOTSTRAP BANCO ======
 def criar_bd():
     with app.app_context():
-        # Cria tabelas que ainda não existem
         db.create_all()
 
-        # (SQLite) garantir FKs ligados em dev/local
+        # (SQLite) garantir FKs ativados em dev/local
         try:
             db.session.execute(text("PRAGMA foreign_keys = ON"))
         except Exception:
@@ -2924,9 +3209,9 @@ def criar_bd():
             # entrega
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_usado REAL DEFAULT 0",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_mov_id INTEGER",
-            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS cliente_id INTEGER",   # << NOVO
+            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
 
-            # credito (garante campos do modelo)
+            # credito (garantias básicas)
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_tipo VARCHAR(20) DEFAULT 'nenhum'",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_valor REAL DEFAULT 0",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS valor_final REAL",
@@ -2936,7 +3221,7 @@ def criar_bd():
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS criado_por VARCHAR(80)",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP",
 
-            # credito_movimento (garante campos do modelo)
+            # credito_movimento
             "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
             "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS tipo VARCHAR(10)",
             "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS valor REAL",
@@ -2949,12 +3234,11 @@ def criar_bd():
             try:
                 db.session.execute(text(s))
             except Exception:
-                # Ignora erros específicos (ex.: SQLite já com estrutura diferente)
                 pass
 
-        # ---------- FKs (somente Postgres; DO $$ é ignorado em SQLite) ----------
-        fk_cmds = [
-            # lista_espera.cooperado_id -> cooperado.id
+        # ---------- FKs (Postgres) ----------
+        fk_cmds_create_if_missing = [
+            # lista_espera.cooperado_id -> cooperado.id (SET NULL)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -2963,7 +3247,7 @@ def criar_bd():
                 "FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
                 "END IF; END $$;"
             ),
-            # entrega.cooperado_id -> cooperado.id
+            # entrega.cooperado_id -> cooperado.id (SET NULL)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -2972,7 +3256,7 @@ def criar_bd():
                 "FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
                 "END IF; END $$;"
             ),
-            # entrega.cliente_id -> cliente.id (SET NULL para permitir excluir entrega/cliente separadamente)
+            # entrega.cliente_id -> cliente.id (SET NULL)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -2981,7 +3265,7 @@ def criar_bd():
                 "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE SET NULL; "
                 "END IF; END $$;"
             ),
-            # credito.cliente_id -> cliente.id (CASCADE: excluir cliente apaga créditos)
+            # credito.cliente_id -> cliente.id (CASCADE)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -2999,7 +3283,7 @@ def criar_bd():
                 "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE CASCADE; "
                 "END IF; END $$;"
             ),
-            # credito_movimento.credito_id -> credito.id (SET NULL para preservar histórico)
+            # credito_movimento.credito_id -> credito.id (SET NULL)
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -3008,7 +3292,7 @@ def criar_bd():
                 "FOREIGN KEY (credito_id) REFERENCES credito(id) ON DELETE SET NULL; "
                 "END IF; END $$;"
             ),
-            # credito_movimento.entrega_id -> entrega.id (SET NULL para poder excluir entrega)
+            # credito_movimento.entrega_id -> entrega.id (SET NULL)  **alvo do erro**
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
@@ -3018,12 +3302,30 @@ def criar_bd():
                 "END IF; END $$;"
             ),
         ]
-        for s in fk_cmds:
+        for s in fk_cmds_create_if_missing:
             try:
                 db.session.execute(text(s))
             except Exception:
-                # Em SQLite ou quando já existe, ignorar
                 pass
+
+        # ---------- CORREÇÃO: se o FK já existe mas SEM SET NULL, derruba e recria com SET NULL ----------
+        # confdeltype em Postgres: 'a'=NO ACTION, 'r'=RESTRICT, 'c'=CASCADE, 'n'=SET NULL, 'd'=SET DEFAULT
+        fix_fk_cmd = (
+            "DO $$ DECLARE del CHAR; BEGIN "
+            "IF EXISTS (SELECT 1 FROM pg_constraint WHERE conname='credito_movimento_entrega_id_fkey') THEN "
+            "  SELECT c.confdeltype INTO del FROM pg_constraint c WHERE c.conname='credito_movimento_entrega_id_fkey'; "
+            "  IF del IS DISTINCT FROM 'n' THEN "
+            "    ALTER TABLE credito_movimento DROP CONSTRAINT credito_movimento_entrega_id_fkey; "
+            "    ALTER TABLE credito_movimento ADD CONSTRAINT credito_movimento_entrega_id_fkey "
+            "    FOREIGN KEY (entrega_id) REFERENCES entrega(id) ON DELETE SET NULL; "
+            "  END IF; "
+            "END IF; "
+            "END $$;"
+        )
+        try:
+            db.session.execute(text(fix_fk_cmd))
+        except Exception:
+            pass
 
         # ---------- Índices ----------
         idx_cmds = [
@@ -3033,18 +3335,14 @@ def criar_bd():
             "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_id ON entrega (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_entrega_status_pagamento_lower ON entrega ((lower(status_pagamento)))",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_lower ON entrega ((lower(cliente)))",
-
             # lista_espera
             "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)",
-
             # cliente
             "CREATE INDEX IF NOT EXISTS idx_cliente_nome_lower ON cliente ((lower(nome)))",
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_username ON cliente (username)",
-
             # credito
             "CREATE INDEX IF NOT EXISTS idx_credito_cliente_id ON credito (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_credito_criado_em ON credito (criado_em DESC)",
-
             # credito_movimento
             "CREATE INDEX IF NOT EXISTS idx_credmov_cliente_id ON credito_movimento (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_credmov_entrega_id ON credito_movimento (entrega_id)",
@@ -3057,10 +3355,10 @@ def criar_bd():
             except Exception:
                 pass
 
-        # ---------- Backfill simples: entrega.cliente_id a partir do nome exato ----------
+        # ---------- Backfill simples: entrega.cliente_id a partir do nome (igual exato) ----------
         try:
             pend = (Entrega.query
-                    .filter((Entrega.cliente_id == None) | (Entrega.cliente_id.is_(None)))  # noqa
+                    .filter((Entrega.cliente_id == None) | (Entrega.cliente_id.is_(None)))
                     .limit(5000).all())
             if pend:
                 nomes = {(e.cliente or '').strip().lower() for e in pend if (e.cliente or '').strip()}
@@ -3082,6 +3380,10 @@ def criar_bd():
             db.session.rollback()
 
         db.session.commit()
+
+
+# executa no boot
+criar_bd()
 
 if __name__ == '__main__':
     app.run(debug=True)
