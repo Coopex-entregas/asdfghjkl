@@ -94,6 +94,8 @@ class Entrega(db.Model):
     # NOVOS: controle de crédito usado nesta entrega
     credito_usado = db.Column(db.Float, nullable=False, default=0.0)
     credito_mov_id = db.Column(db.Integer, nullable=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)  # << NOVO
 
 class Credito(db.Model):
     __tablename__ = "credito"
@@ -2897,8 +2899,16 @@ def relatorio_termico():
 # ====== BOOTSTRAP BANCO ======
 def criar_bd():
     with app.app_context():
+        # Cria tabelas que ainda não existem
         db.create_all()
 
+        # (SQLite) garantir FKs ligados em dev/local
+        try:
+            db.session.execute(text("PRAGMA foreign_keys = ON"))
+        except Exception:
+            pass
+
+        # ---------- DDL: adicionar colunas que podem faltar ----------
         ddl_cmds = [
             # lista_espera
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER",
@@ -2914,33 +2924,132 @@ def criar_bd():
             # entrega
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_usado REAL DEFAULT 0",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_mov_id INTEGER",
+            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS cliente_id INTEGER",   # << NOVO
 
-            # FK de lista_espera.cooperado_id -> cooperado.id (somente Postgres)
+            # credito (garante campos do modelo)
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_tipo VARCHAR(20) DEFAULT 'nenhum'",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_valor REAL DEFAULT 0",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS valor_final REAL",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS motivo VARCHAR(180)",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS saldo_antes REAL DEFAULT 0",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS saldo_depois REAL DEFAULT 0",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS criado_por VARCHAR(80)",
+            "ALTER TABLE credito ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP",
+
+            # credito_movimento (garante campos do modelo)
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS tipo VARCHAR(10)",
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS valor REAL",
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS referencia VARCHAR(120)",
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP",
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS credito_id INTEGER",
+            "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS entrega_id INTEGER",
+        ]
+        for s in ddl_cmds:
+            try:
+                db.session.execute(text(s))
+            except Exception:
+                # Ignora erros específicos (ex.: SQLite já com estrutura diferente)
+                pass
+
+        # ---------- FKs (somente Postgres; DO $$ é ignorado em SQLite) ----------
+        fk_cmds = [
+            # lista_espera.cooperado_id -> cooperado.id
             (
                 "DO $$ BEGIN "
                 "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
                 "WHERE constraint_name='lista_espera_cooperado_id_fkey') THEN "
                 "ALTER TABLE lista_espera ADD CONSTRAINT lista_espera_cooperado_id_fkey "
                 "FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
-                "END IF; "
-                "END $$;"
+                "END IF; END $$;"
+            ),
+            # entrega.cooperado_id -> cooperado.id
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='entrega_cooperado_id_fkey') THEN "
+                "ALTER TABLE entrega ADD CONSTRAINT entrega_cooperado_id_fkey "
+                "FOREIGN KEY (cooperado_id) REFERENCES cooperado(id) ON DELETE SET NULL; "
+                "END IF; END $$;"
+            ),
+            # entrega.cliente_id -> cliente.id (SET NULL para permitir excluir entrega/cliente separadamente)
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='entrega_cliente_id_fkey') THEN "
+                "ALTER TABLE entrega ADD CONSTRAINT entrega_cliente_id_fkey "
+                "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE SET NULL; "
+                "END IF; END $$;"
+            ),
+            # credito.cliente_id -> cliente.id (CASCADE: excluir cliente apaga créditos)
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='credito_cliente_id_fkey') THEN "
+                "ALTER TABLE credito ADD CONSTRAINT credito_cliente_id_fkey "
+                "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE CASCADE; "
+                "END IF; END $$;"
+            ),
+            # credito_movimento.cliente_id -> cliente.id (CASCADE)
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='credito_movimento_cliente_id_fkey') THEN "
+                "ALTER TABLE credito_movimento ADD CONSTRAINT credito_movimento_cliente_id_fkey "
+                "FOREIGN KEY (cliente_id) REFERENCES cliente(id) ON DELETE CASCADE; "
+                "END IF; END $$;"
+            ),
+            # credito_movimento.credito_id -> credito.id (SET NULL para preservar histórico)
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='credito_movimento_credito_id_fkey') THEN "
+                "ALTER TABLE credito_movimento ADD CONSTRAINT credito_movimento_credito_id_fkey "
+                "FOREIGN KEY (credito_id) REFERENCES credito(id) ON DELETE SET NULL; "
+                "END IF; END $$;"
+            ),
+            # credito_movimento.entrega_id -> entrega.id (SET NULL para poder excluir entrega)
+            (
+                "DO $$ BEGIN "
+                "IF NOT EXISTS (SELECT 1 FROM information_schema.table_constraints "
+                "WHERE constraint_name='credito_movimento_entrega_id_fkey') THEN "
+                "ALTER TABLE credito_movimento ADD CONSTRAINT credito_movimento_entrega_id_fkey "
+                "FOREIGN KEY (entrega_id) REFERENCES entrega(id) ON DELETE SET NULL; "
+                "END IF; END $$;"
             ),
         ]
-        for s in ddl_cmds:
+        for s in fk_cmds:
             try:
                 db.session.execute(text(s))
             except Exception:
-                # Ignora erros em SQLite/local
+                # Em SQLite ou quando já existe, ignorar
                 pass
 
+        # ---------- Índices ----------
         idx_cmds = [
+            # entrega
             "CREATE INDEX IF NOT EXISTS idx_entrega_data_envio ON entrega (data_envio DESC)",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cooperado_id ON entrega (cooperado_id)",
+            "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_id ON entrega (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_entrega_status_pagamento_lower ON entrega ((lower(status_pagamento)))",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_lower ON entrega ((lower(cliente)))",
+
+            # lista_espera
             "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)",
+
+            # cliente
             "CREATE INDEX IF NOT EXISTS idx_cliente_nome_lower ON cliente ((lower(nome)))",
-            "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_username ON cliente (username)"
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_username ON cliente (username)",
+
+            # credito
+            "CREATE INDEX IF NOT EXISTS idx_credito_cliente_id ON credito (cliente_id)",
+            "CREATE INDEX IF NOT EXISTS idx_credito_criado_em ON credito (criado_em DESC)",
+
+            # credito_movimento
+            "CREATE INDEX IF NOT EXISTS idx_credmov_cliente_id ON credito_movimento (cliente_id)",
+            "CREATE INDEX IF NOT EXISTS idx_credmov_entrega_id ON credito_movimento (entrega_id)",
+            "CREATE INDEX IF NOT EXISTS idx_credmov_criado_em ON credito_movimento (criado_em DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_credmov_tipo ON credito_movimento (tipo)",
         ]
         for s in idx_cmds:
             try:
@@ -2948,10 +3057,31 @@ def criar_bd():
             except Exception:
                 pass
 
+        # ---------- Backfill simples: entrega.cliente_id a partir do nome exato ----------
+        try:
+            pend = (Entrega.query
+                    .filter((Entrega.cliente_id == None) | (Entrega.cliente_id.is_(None)))  # noqa
+                    .limit(5000).all())
+            if pend:
+                nomes = {(e.cliente or '').strip().lower() for e in pend if (e.cliente or '').strip()}
+                if nomes:
+                    mapa = {
+                        c.nome.strip().lower(): c.id
+                        for c in Cliente.query.filter(func.lower(Cliente.nome).in_(list(nomes))).all()
+                        if (c.nome or '').strip()
+                    }
+                    mudou = 0
+                    for e in pend:
+                        cid = mapa.get((e.cliente or '').strip().lower())
+                        if cid:
+                            e.cliente_id = cid
+                            mudou += 1
+                    if mudou:
+                        db.session.commit()
+        except Exception:
+            db.session.rollback()
+
         db.session.commit()
-
-
-criar_bd()
 
 if __name__ == '__main__':
     app.run(debug=True)
