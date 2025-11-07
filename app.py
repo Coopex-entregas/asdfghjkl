@@ -6,6 +6,7 @@ from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 from functools import wraps
+from decimal import Decimal
 
 from flask import (
     Flask, render_template, request, redirect, url_for,
