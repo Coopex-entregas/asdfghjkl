@@ -4,9 +4,8 @@
   <meta charset="UTF-8" />
   <title>Crédito de Clientes — Supervisão | Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link rel="icon" href="{{ url_for('static', filename='logo_kratos.png') }}">
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-  <!-- SheetJS para exportar XLSX (fallback para CSV se indisponível) -->
-  <script src="https://cdn.jsdelivr.net/npm/xlsx@0.19.3/dist/xlsx.full.min.js" defer></script>
   <style>
     :root{
       --royal:#0033cc; --royal-2:#2750ff;
@@ -26,8 +25,7 @@
     .brand img{width:36px;height:36px;border-radius:10px;background:#fff;border:2px solid #eaf0ff;object-fit:contain}
     .brand span{font-size:1.02rem;text-shadow:0 2px 18px rgba(0,0,0,.2)}
     .spacer{flex:1}
-    .ghost{display:inline-flex;align-items:center;gap:8px;background:transparent;border:1.5px solid rgba(255,255,255,.7);color:#fff;border-radius:12px;padding:9px 14px;font-weight:800;text-decoration:none}
-    .ghost:hover{background:rgba(255,255,255,.12)}
+    .back-admin{color:#2347c7;background:#fff;border:1.5px solid var(--primary-border);border-radius:12px;padding:9px 14px;font-weight:800;text-decoration:none}
     .theme-toggle{color:#fff;background:rgba(255,255,255,.15);border:1px solid rgba(255,255,255,.4);border-radius:12px;padding:9px 14px;font-weight:800;cursor:pointer}
     .logout{color:#fff;background:#c1121f;border:none;border-radius:24px;padding:9px 16px;font-weight:800;text-decoration:none}
 
@@ -39,7 +37,6 @@
     .card h2,.card h3{margin:0 0 10px}
     .btn{display:inline-flex;align-items:center;justify-content:center;gap:6px;background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none;box-shadow:0 6px 16px rgba(0,50,200,.18);cursor:pointer}
     .btn.alt{background:#fff;color:#2347c7;border:1.5px solid var(--primary-border)}
-    .btn.muted{background:#ebf0ff;color:#2a46ca;border:1px solid #cdd9ff}
     .btn.block{width:100%}
     label{font-size:.86rem;color:#28409f;font-weight:800}
     body.dark label{color:#b9ccff}
@@ -64,7 +61,6 @@
     .totais{display:flex;gap:8px;flex-wrap:wrap}
     .totais .pill{background:#edf3ff;border:1px solid #cfdbff;color:#2347c7;border-radius:999px;padding:6px 10px;font-weight:900}
     .hint{font-size:.8rem;color:#5b6ea8}
-
     .sticky-actions{position:sticky;bottom:0;padding-top:12px;background:linear-gradient(180deg, rgba(246,248,255,0), var(--bg));display:flex;gap:10px}
   </style>
 </head>
@@ -76,15 +72,20 @@
         <span>Crédito de Clientes — Supervisão</span>
       </div>
       <div class="spacer"></div>
-      <!-- VOLTAR AO ADMIN -->
-      <a class="ghost" href="{{ url_for('admin') }}">← Voltar ao Admin</a>
+      <a class="back-admin" href="/admin?cooperado_id=todos&status_pagamento=todos">← Admin</a>
       <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
       <a class="logout" href="{{ url_for('logout') }}">Sair</a>
     </div>
   </header>
 
+  <!-- contexto para export -->
+  <div id="ctx"
+       data-cliente="{{ request.args.get('cliente_id','') }}"
+       data-inicio="{{ request.args.get('data_inicio','') }}"
+       data-fim="{{ request.args.get('data_fim','') }}"></div>
+
   <main class="wrap">
-    <!-- LADO ESQUERDO: FORM + HISTÓRICO -->
+    <!-- ESQUERDA: FORM + HISTÓRICO -->
     <section class="card">
       <div class="body">
         <h2>Registrar Crédito</h2>
@@ -146,12 +147,7 @@
       </div>
 
       <div class="body" style="border-top:1px solid var(--line)">
-        <div class="row" style="justify-content:space-between;align-items:center;margin-bottom:6px">
-          <h3 style="margin:0">Histórico de Créditos</h3>
-          <div class="row" style="gap:8px">
-            <button class="btn muted" type="button" id="btnExport">Exportar XLSX</button>
-          </div>
-        </div>
+        <h3>Histórico de Créditos</h3>
 
         <form class="row" method="GET" action="{{ url_for('creditos') }}" style="margin-bottom:10px">
           <div style="display:flex;flex-direction:column;min-width:220px">
@@ -173,13 +169,14 @@
           </div>
           <div style="display:flex;gap:10px;align-items:flex-end">
             <button class="btn" type="submit">Filtrar</button>
+            <button class="btn alt" type="button" id="btnExport">Exportar</button>
           </div>
         </form>
 
         <div class="totais" id="totaisBar" style="margin:8px 0 12px"></div>
 
         <div class="table-wrap">
-          <table id="table-hist">
+          <table id="tabelaCreditos">
             <thead>
               <tr>
                 <th>ID</th>
@@ -197,10 +194,10 @@
             </thead>
             <tbody id="hist-body">
               {% for c in creditos %}
-              {% set nome_cli = (clientes|selectattr('id','equalto', c.cliente_id)|map(attribute='nome')|list|first) %}
+              {% set cli_nome = (clientes | selectattr('id','equalto',c.cliente_id) | first).nome if (clientes | selectattr('id','equalto',c.cliente_id) | first) else ('ID ' ~ c.cliente_id) %}
               <tr>
                 <td>#{{ c.id }}</td>
-                <td>{{ nome_cli or ('ID ' ~ c.cliente_id) }}</td>
+                <td>{{ cli_nome }}</td>
                 <td>R$ {{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
                 <td>
                   {% if c.desconto_tipo == 'percentual' %}
@@ -218,7 +215,8 @@
                 <td>{{ c.criado_por or '-' }}</td>
                 <td><span class="badge neu" title="Quantidade de usos/atribuições">🔗 {{ c.atribuicoes_count or 0 }}</span></td>
                 <td>
-                  <a class="btn alt" href="{{ url_for('creditos_atribuir', credito_id=c.id) }}">Atribuir</a>
+                  <!-- sem url_for para evitar BuildError -->
+                  <a class="btn alt" href="/creditos/atribuir/{{ c.id }}">Atribuir</a>
                 </td>
               </tr>
               {% endfor %}
@@ -231,7 +229,7 @@
       </div>
     </section>
 
-    <!-- LADO DIREITO: Ajuda/Resumo -->
+    <!-- DIREITA: Ajuda/Resumo -->
     <aside class="card">
       <div class="body">
         <h3>Como funciona</h3>
@@ -283,20 +281,16 @@
       const bruto = Math.max(0, parseFloat($bruto.value||'0'));
       const tipo  = $tipo.value;
       const d     = Math.max(0, parseFloat($desc.value||'0'));
-
       let desconto = 0;
       if(tipo==='percentual'){ desconto = (bruto * d)/100; $hint.textContent = 'Desconto em percentual (%)'; }
       else if(tipo==='real'){ desconto = d; $hint.textContent = 'Desconto em reais (R$)'; }
       else { desconto = 0; $hint.textContent = 'Sem desconto aplicado'; }
-
-      desconto = Math.min(desconto, bruto); // nunca passar de 100%
+      desconto = Math.min(desconto, bruto);
       const final = bruto - desconto;
-
       $finalV.textContent = fmtBRL(final);
       $finalH.value = final.toFixed(2);
       $simu.textContent = fmtBRL(final);
     }
-
     ['input','change','blur'].forEach(evt=>{
       $bruto.addEventListener(evt, calcFinal);
       $tipo.addEventListener(evt, calcFinal);
@@ -304,7 +298,7 @@
     });
     calcFinal();
 
-    // barra de totais (via DOM)
+    // barra de totais
     (function(){
       try{
         const rows = [...document.querySelectorAll('#hist-body tr')];
@@ -328,45 +322,37 @@
       }catch(e){}
     })();
 
-    // Exportar XLSX (fallback CSV)
+    // Exportar CSV (sem backend)
     document.getElementById('btnExport').addEventListener('click', ()=>{
-      const table = document.getElementById('table-hist');
-      // nome do arquivo com filtros
-      const clienteSel = document.getElementById('f_cliente')?.value || '';
-      const de = document.getElementById('f_de')?.value || '';
-      const ate = document.getElementById('f_ate')?.value || '';
-      const stamp = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
-      const fname = `creditos${clienteSel?('_cli-'+clienteSel):''}${de?('_de-'+de):''}${ate?('_ate-'+ate):''}__${stamp}`;
-
-      try{
-        if(typeof XLSX !== 'undefined' && XLSX.utils && XLSX.writeFile){
-          const ws = XLSX.utils.table_to_sheet(table, {raw:false});
-          const wb = XLSX.utils.book_new();
-          XLSX.utils.book_append_sheet(wb, ws, 'Créditos');
-          XLSX.writeFile(wb, `${fname}.xlsx`);
-          return;
-        }
-        throw new Error('SheetJS indisponível');
-      }catch(err){
-        // fallback CSV simples
-        let csv = '';
-        const rows = table.querySelectorAll('tr');
-        rows.forEach((tr,idx)=>{
-          const cols = tr.querySelectorAll(idx===0?'th':'td');
-          const line = [...cols].map(td=>{
-            const t = (td.innerText||'').replace(/\s+/g,' ').trim().replace(/"/g,'""');
-            return `"${t}"`;
-          }).join(',');
-          csv += line + '\n';
+      const table = document.getElementById('tabelaCreditos');
+      const rows = [...table.querySelectorAll('tr')];
+      const csvRows = [];
+      rows.forEach(tr=>{
+        const cells = [...tr.querySelectorAll('th,td')].map(td=>{
+          let txt = (td.innerText||'').replace(/\s+/g,' ').trim();
+          // normaliza seta e moeda
+          txt = txt.replace(/→/g,'->').replace(/\u00A0/g,' ');
+          // aspas para csv
+          if(txt.includes(';') || txt.includes('"')) txt = '"' + txt.replace(/"/g,'""') + '"';
+          return txt;
         });
-        const blob = new Blob([csv], {type:'text/csv;charset=utf-8;'});
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = `${fname}.csv`;
-        document.body.appendChild(a);
-        a.click();
-        a.remove();
-      }
+        csvRows.push(cells.join(';'));
+      });
+      const ctx = document.getElementById('ctx');
+      const cliente = ctx.dataset.cliente || 'todos';
+      const di = ctx.dataset.inicio || '';
+      const df = ctx.dataset.fim || '';
+      const now = new Date();
+      const pad = n=> String(n).padStart(2,'0');
+      const fname = `creditos_${cliente}_${di || 'ini'}_${df || 'fim'}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
+      const blob = new Blob(['\uFEFF' + csvRows.join('\n')], {type:'text/csv;charset=utf-8;'}); // BOM p/ Excel
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = fname;
+      document.body.appendChild(a);
+      a.click();
+      URL.revokeObjectURL(a.href);
+      a.remove();
     });
   </script>
 </body>
