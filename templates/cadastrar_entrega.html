@@ -123,11 +123,18 @@
 
     <label for="pagamento">Forma de Pagamento:</label>
     <select id="pagamento" name="pagamento" required>
+      <!-- NOVA OPÇÃO AUTOMÁTICA (primeira) -->
+      <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
+      <!-- SUAS OPÇÕES ORIGINAIS, MANTIDAS -->
       <option value="Dinheiro">Dinheiro</option>
       <option value="Pix">Pix</option>
       <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
       <option value="Comanda">Comanda</option>
     </select>
+    <small class="hint">
+      Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo de crédito do cliente.
+      Se o cliente não tiver crédito suficiente, será exibido um aviso para você escolher outra forma de pagamento.
+    </small>
 
     <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
     <select id="cooperado_id" name="cooperado_id">
