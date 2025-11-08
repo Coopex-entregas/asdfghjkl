@@ -53,9 +53,6 @@
     thead th{position:sticky;top:0;background:#031a66;color:#fff;padding:8px;border-bottom:1px solid var(--line)}
     tbody td{padding:8px;border-bottom:1px solid var(--line)}
     tbody tr:nth-child(even) td{background:rgba(0,0,0,.02)}
-    .badge{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:4px 8px;font-size:.82rem;font-weight:900;border:1px solid}
-    .badge.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
-    .badge.neu{background:#edf3ff;border-color:#cfdbff;color:#2347c7}
     .money{font-weight:900}
     .help{font-size:.86rem;opacity:.95}
     .totais{display:flex;gap:8px;flex-wrap:wrap}
@@ -127,7 +124,7 @@
 
           <div class="row" style="flex-direction:column">
             <label for="criado_em">Data</label>
-            <!-- sem uso de now() para evitar erro -->
+            <!-- sem now() pra não dar erro -->
             <input type="date" id="criado_em" name="criado_em">
           </div>
 
@@ -211,10 +208,10 @@
                 <td><strong>R$ {{ '%.2f'|format(c.valor_final) | replace('.', ',') }}</strong></td>
                 <td>R$ {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }} → <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong></td>
                 <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
-                <td>{{ to_brasilia(c.criado_em).strftime('%d/%m/%Y %H:%M') }}</td>
+                <!-- sem to_brasilia pra não dar UndefinedError -->
+                <td>{{ c.criado_em.strftime('%d/%m/%Y %H:%M') if c.criado_em else '-' }}</td>
                 <td>{{ c.criado_por or '-' }}</td>
                 <td>
-                  <!-- ação para usar o crédito (texto sem "atribuir") -->
                   <a class="btn alt" href="/creditos/atribuir/{{ c.id }}">Usar crédito</a>
                 </td>
               </tr>
@@ -236,7 +233,7 @@
           • Preencha o valor do crédito.<br>
           • Se quiser aplicar desconto, escolha o tipo (% ou R$) e informe o valor.<br>
           • O <strong>valor final</strong> é calculado automaticamente e será somado ao saldo do cliente.<br>
-          • As atribuições acontecem quando o crédito é usado para pagar entregas/lançamentos.
+          • O botão “Usar crédito” aplica o crédito em entregas/lançamentos.
         </p>
         <hr style="border:none;border-top:1px solid var(--line);margin:12px 0">
         <h3>Simulador</h3>
@@ -315,8 +312,14 @@
         rows.forEach(tr=>{
           const tds = tr.querySelectorAll('td');
           if(!tds.length) return;
-          const brutoTxt = (tds[2]?.innerText || '0').replace(/[^\d,.-]/g,'').replace('.','').replace(',','.');
-          const finalTxt = (tds[4]?.innerText || '0').replace/[^\d,.-]/g,'').replace('.','').replace(',','.');
+          const brutoTxt = (tds[2]?.innerText || '0')
+            .replace(/[^\d,.-]/g,'')
+            .replace('.','')
+            .replace(',','.');
+          const finalTxt = (tds[4]?.innerText || '0')
+            .replace(/[^\d,.-]/g,'')
+            .replace('.','')
+            .replace(',','.');
           const bruto = parseFloat(brutoTxt)||0, final = parseFloat(finalTxt)||0;
           totalReg++; somaBruto += bruto; somaFinal += final;
         });
@@ -339,9 +342,7 @@
       rows.forEach(tr=>{
         const cells = [...tr.querySelectorAll('th,td')].map(td=>{
           let txt = (td.innerText||'').replace(/\s+/g,' ').trim();
-          // normaliza seta e moeda
           txt = txt.replace(/→/g,'->').replace(/\u00A0/g,' ');
-          // aspas para csv
           if(txt.includes(';') || txt.includes('"')) txt = '"' + txt.replace(/"/g,'""') + '"';
           return txt;
         });
