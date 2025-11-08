@@ -253,26 +253,38 @@ def registrar_credito(cliente_id:int, valor_bruto, desconto_tipo:str, desconto_v
     return c
 
 def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
+    """
+    Consome crédito do cliente APENAS se a forma de pagamento da entrega
+    começar com 'crédito'. Ex.: 'Crédito', 'Crédito automático', 'Crédito + Pix'.
+
+    - Debita do saldo_atual do cliente
+    - Atualiza entrega.credito_usado
+    - Cria um CreditoMovimento(tipo='debito')
+    - Se cobrir 100% do valor, marca status_pagamento='pago'
+
+    NÃO mexe em 'recebido_por' (é só pro cooperado escrever quem recebeu).
+    """
     e = Entrega.query.get(entrega_id)
     if not e:
         return Decimal("0.00")
 
-    # 1) Tenta achar o cliente pelo FK primeiro
-    cli = None
-    if e.cliente_id:
-        cli = Cliente.query.get(e.cliente_id)
+    # Só usa crédito se a forma de pagamento for algum tipo de "Crédito"
+    pagamento = (e.pagamento or "").strip().lower()
+    if not pagamento.startswith("crédito"):
+        return Decimal("0.00")
 
-    # 2) Se não tiver cliente_id ainda, tenta pelo nome e amarra o FK
+    # Acha o cliente (preferindo o cliente_id, se já existe)
+    cli = None
+    if getattr(e, "cliente_id", None):
+        cli = Cliente.query.get(e.cliente_id)
     if not cli:
         cli = _find_cliente_by_nome(e.cliente)
-        if not cli:
-            return Decimal("0.00")
-        # amarra pra próxima vez ficar mais confiável
-        e.cliente_id = cli.id
+    if not cli:
+        return Decimal("0.00")
 
     valor = _as_decimal(e.valor or 0)
     usado = _as_decimal(e.credito_usado or 0)
-    faltante = valor - usado
+    faltante = (valor - usado)
     if faltante <= 0:
         return Decimal("0.00")
 
@@ -281,11 +293,10 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     if consumir <= 0:
         return Decimal("0.00")
 
-    # 3) Aplica no saldo e na entrega
+    # Debita do saldo e registra na entrega
     cli.saldo_atual = float(saldo - consumir)
     e.credito_usado = float(usado + consumir)
 
-    # 4) Registra movimento de débito (uso de crédito)
     mov = CreditoMovimento(
         cliente_id=cli.id,
         tipo="debito",
@@ -297,24 +308,24 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     db.session.flush()
     e.credito_mov_id = mov.id
 
-    # 5) Ajusta status / forma de pagamento
+    # Se o crédito cobrir tudo, marca como pago
     if _as_decimal(e.credito_usado) >= valor:
-        # Crédito cobriu TUDO
         e.status_pagamento = "pago"
-        # Aqui fica o texto bonitinho na **forma de pagamento**
-        e.pagamento = "Crédito automático"
-        # NÃO mexe em recebido_por — isso é pra nome de pessoa
     else:
-        # Crédito cobriu só uma parte
-        pag = (e.pagamento or "").strip().lower()
-        if not pag or pag.startswith("crédito"):
-            e.pagamento = "Crédito parcial"
+        # Crédito parcial: mantém a forma de pagamento escolhida
+        # (ex.: 'Crédito + Pix', 'Crédito + Dinheiro', etc)
+        if not (e.status_pagamento or "").strip():
+            e.status_pagamento = "pendente"
 
     db.session.commit()
     return consumir
 
 
 def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
+    """
+    Estorna TODO crédito usado nesta entrega, devolvendo para o saldo do cliente
+    e zerando entrega.credito_usado. NÃO mexe na forma de pagamento escolhida.
+    """
     e = Entrega.query.get(entrega_id)
     if not e:
         return Decimal("0.00")
@@ -323,40 +334,34 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     if usado <= 0:
         return Decimal("0.00")
 
-    # 1) Tenta pelo FK primeiro
+    # Acha o cliente
     cli = None
-    if e.cliente_id:
+    if getattr(e, "cliente_id", None):
         cli = Cliente.query.get(e.cliente_id)
-
-    # 2) Se não tiver, tenta achar pelo nome e já amarra
     if not cli:
         cli = _find_cliente_by_nome(e.cliente)
-        if not cli:
-            return Decimal("0.00")
-        e.cliente_id = cli.id
+    if not cli:
+        return Decimal("0.00")
 
-    # 3) Devolve o crédito pro saldo do cliente
+    # Devolve para o saldo
     cli.saldo_atual = float(_as_decimal(cli.saldo_atual) + usado)
 
-    # 4) Registra um estorno de crédito
+    # registra estorno como 'credito' (entrada)
     mov_estorno = CreditoMovimento(
         cliente_id=cli.id,
         tipo="credito",
         valor=float(usado),
-        referencia=f"Estorno crédito entrega #{e.id}",
-        entrega_id=None,  # não precisa amarrar no FK da entrega
+        referencia=f"Estorno Entrega #{e.id}",
     )
     db.session.add(mov_estorno)
 
-    # 5) Limpa dados de crédito da entrega
+    # Zera controle da entrega
     e.credito_usado = 0.0
     e.credito_mov_id = None
 
-    # Se estava marcado como pago por crédito, volta pra pendente
-    if (e.status_pagamento or "").lower() == "pago" and (e.pagamento or "").lower().startswith("crédito"):
-        e.status_pagamento = "pendente"
-        # NÃO mexe em recebido_por aqui também
-
+    # Se o status estava pago apenas por causa do crédito automático,
+    # você pode, se quiser, voltar para pendente. Aqui eu NÃO forço nada,
+    # deixo o status_pagamento do jeito que estiver.
     db.session.commit()
     return usado
 
@@ -1949,14 +1954,17 @@ def editar_entrega(id):
             novo_cliente_nome = (request.form.get('cliente') or '').strip()
             entrega.cliente = novo_cliente_nome
             entrega.bairro = request.form.get('bairro')
-            entrega.valor = float(request.form.get('valor'))
 
-            # Se o formulário mandar cliente_id (select de clientes), amarra direto
+            try:
+                entrega.valor = float(request.form.get('valor') or entrega.valor or 0)
+            except Exception:
+                entrega.valor = 0.0
+
+            # Cliente
             cliente_id_form = request.form.get('cliente_id', type=int)
             if cliente_id_form:
                 entrega.cliente_id = cliente_id_form
             else:
-                # Senão, tenta achar pelo nome e amarra (ajuda o crédito a funcionar)
                 cli = _find_cliente_by_nome(novo_cliente_nome)
                 entrega.cliente_id = cli.id if cli else None
 
@@ -1967,33 +1975,48 @@ def editar_entrega(id):
                 if entrega.cooperado_id != novo_coop_id:
                     entrega.cooperado_id = novo_coop_id
                     entrega.data_atribuida = datetime.utcnow()
-                    # remove da fila se estiver lá
                     ListaEspera.query.filter_by(cooperado_id=novo_coop_id).delete()
             else:
                 entrega.cooperado_id = None
 
             # Status / pagamento / recebido_por
-            entrega.status_pagamento = (request.form.get('status_pagamento') or entrega.status_pagamento or 'pendente').lower()
+            entrega.status_pagamento = (
+                request.form.get('status_pagamento')
+                or entrega.status_pagamento
+                or 'pendente'
+            ).lower()
             entrega.status = request.form.get('status') or entrega.status
-            entrega.recebido_por = request.form.get('recebido_por')
-            entrega.pagamento = request.form.get('pagamento') or entrega.pagamento
+            entrega.recebido_por = request.form.get('recebido_por')  # campo livre para o cooperado
+            entrega.pagamento = (request.form.get('pagamento') or entrega.pagamento or '').strip()
 
             db.session.commit()
 
-            # ===== REFAZ O USO DE CRÉDITO DESSA ENTREGA (SE HOUVER) =====
+            # ===== REGRAS DE CRÉDITO =====
             try:
-                # 1) Estorna qualquer crédito que já tenha sido usado nessa entrega
-                desfazer_consumo_credito_da_entrega(entrega.id)
-                # 2) Tenta usar o crédito de novo com valor/cliente/saldo atuais
-                consumir_credito_em_entrega(entrega.id)
+                pagamento_lower = (entrega.pagamento or "").strip().lower()
+
+                if pagamento_lower.startswith("crédito"):
+                    # Usa crédito: estorna o antigo e consome o valor novo
+                    desfazer_consumo_credito_da_entrega(entrega.id)
+                    consumir_credito_em_entrega(entrega.id)
+                else:
+                    # Pagamento NÃO é crédito → estorna se houver algo consumido
+                    if (entrega.credito_usado or 0) > 0:
+                        desfazer_consumo_credito_da_entrega(entrega.id)
+
             except Exception as ex:
                 app.logger.exception("Falha ao recalcular crédito na entrega %s: %s", entrega.id, ex)
 
             flash('Entrega atualizada!')
             return redirect_back_to_admin()
+
         else:
             # ===== COOPERADO EDITA APENAS STATUS/RECEBIDO_POR =====
-            entrega.status_pagamento = (request.form.get('status_pagamento') or entrega.status_pagamento or 'pendente').lower()
+            entrega.status_pagamento = (
+                request.form.get('status_pagamento')
+                or entrega.status_pagamento
+                or 'pendente'
+            ).lower()
             entrega.status = request.form.get('status') or entrega.status
             entrega.recebido_por = request.form.get('recebido_por')
             db.session.commit()
@@ -2009,7 +2032,6 @@ def editar_entrega(id):
 
 @app.post('/atribuir_cooperado/<int:id>')
 def atribuir_cooperado(id):
-    # Somente admin pode atribuir/desatribuir
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
@@ -2019,27 +2041,21 @@ def atribuir_cooperado(id):
     try:
         if coop_id:
             coop = Cooperado.query.get_or_404(int(coop_id))
-            # atribui e carimba horário
             entrega.cooperado_id = coop.id
             entrega.data_atribuida = datetime.utcnow()
-            # se estava na fila, remove
             ListaEspera.query.filter_by(cooperado_id=coop.id).delete()
         else:
-            # permitir “Sem Cooperado”
             entrega.cooperado_id = None
 
         db.session.commit()
 
-        # Depois de atribuir, também tenta usar crédito (se o cliente tiver saldo)
+        # Só tenta consumir crédito se for forma de pagamento tipo "Crédito"
         try:
-            consumir_credito_em_entrega(entrega.id)
+            if (entrega.pagamento or "").strip().lower().startswith("crédito"):
+                consumir_credito_em_entrega(entrega.id)
         except Exception as ex:
-            app.logger.exception(
-                "Falha ao consumir crédito ao atribuir cooperado na entrega %s: %s",
-                entrega.id, ex
-            )
+            app.logger.exception("Falha ao consumir crédito ao atribuir cooperado %s: %s", entrega.id, ex)
 
-        # Se veio via fetch/AJAX, devolve JSON
         if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=True, cooperado_id=entrega.cooperado_id), 200
 
@@ -2054,11 +2070,6 @@ def atribuir_cooperado(id):
         return redirect_back_to_admin()
 
 
-# TIPOS de movimento
-TIPO_ENTRADA = 'ENTRADA'
-TIPO_CONSUMO = 'CONSUMO'
-TIPO_AJUSTE  = 'AJUSTE'
-
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
     if not session.get('is_admin'):
@@ -2066,38 +2077,31 @@ def excluir_entrega(id):
 
     entrega = Entrega.query.get_or_404(id)
 
-    # 1) Estorna eventual consumo vinculado à entrega
+    # 1) Estorna eventual crédito
     try:
         desfazer_consumo_credito_da_entrega(entrega.id)
     except Exception as ex:
-        current_app.logger.exception(
-            "Falha ao estornar crédito da entrega %s: %s", entrega.id, ex
-        )
+        current_app.logger.exception("Falha ao estornar crédito da entrega %s: %s", entrega.id, ex)
 
     try:
-        # 2) Desacopla movimentos que referenciam esta entrega (evita o erro de FK)
+        # 2) Remove vínculos com movimentos
         db.session.execute(
             text("UPDATE credito_movimento SET entrega_id = NULL WHERE entrega_id = :eid"),
             {"eid": id}
         )
+        db.session.execute(
+            text("UPDATE entrega SET credito_mov_id = NULL WHERE id = :eid"),
+            {"eid": id}
+        )
 
-        # 3) (Opcional) zera ponteiro inverso na entrega, se você usa
-        try:
-            db.session.execute(
-                text("UPDATE entrega SET credito_mov_id = NULL WHERE id = :eid"),
-                {"eid": id}
-            )
-        except Exception:
-            pass
-
-        # 4) Deleta a entrega
+        # 3) Exclui a entrega
         db.session.delete(entrega)
         db.session.commit()
         flash('Entrega excluída com sucesso.', 'success')
 
     except IntegrityError:
         db.session.rollback()
-        flash('Não foi possível excluir: há vínculos de crédito ainda ativos.', 'danger')
+        flash('Não foi possível excluir: há vínculos de crédito ativos.', 'danger')
         current_app.logger.exception("IntegrityError ao excluir entrega %s", id)
 
     except Exception as e:
@@ -2105,52 +2109,7 @@ def excluir_entrega(id):
         flash(f'Erro ao excluir entrega: {e.__class__.__name__}', 'danger')
         current_app.logger.exception("Erro ao excluir entrega %s", id)
 
-    # redireciona de volta mantendo filtros do admin
     return redirect_back_to_admin()
-
-
-
-def calc_valor_final(valor: float, desconto_tipo: str = 'nenhum', desconto_valor: float = 0.0) -> float:
-    desconto_tipo = (desconto_tipo or 'nenhum').lower()
-    try:
-        v = float(valor or 0)
-        d = float(desconto_valor or 0)
-    except Exception:
-        v, d = 0.0, 0.0
-
-    if desconto_tipo == 'percentual':
-        return max(0.0, v * (1.0 - d/100.0))
-    elif desconto_tipo in ('fixo', 'valor'):
-        return max(0.0, v - d)
-    return max(0.0, v)
-
-def atualizar_saldo_cliente(cliente_id: int, delta: float):
-    if not cliente_id:
-        return
-    cli = Cliente.query.get(cliente_id)
-    if not cli:
-        return
-    cli.saldo_atual = float(cli.saldo_atual or 0) + float(delta or 0)
-    db.session.add(cli)
-
-def registrar_movimento(cliente_id: int, tipo: str, valor: float, referencia: str = '', credito_id: int | None = None, entrega_id: int | None = None):
-    mov = CreditoMovimento(
-        cliente_id=cliente_id,
-        tipo=tipo,
-        valor=float(valor or 0),
-        referencia=(referencia or '')[:120],
-        credito_id=credito_id,
-        entrega_id=entrega_id,
-    )
-    db.session.add(mov)
-    return mov
-
-def consumo_total_do_credito(credito_id: int) -> float:
-    q = db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0)).filter(
-        CreditoMovimento.credito_id == credito_id,
-        CreditoMovimento.tipo == TIPO_CONSUMO
-    )
-    return float(q.scalar() or 0.0)
 
 
 # ========= BOTÕES RÁPIDOS (ADMIN) =========
