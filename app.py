@@ -254,8 +254,8 @@ def registrar_credito(cliente_id:int, valor_bruto, desconto_tipo:str, desconto_v
 
 def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     """
-    Consome crédito do cliente APENAS se a forma de pagamento da entrega
-    começar com 'crédito'. Ex.: 'Crédito', 'Crédito automático', 'Crédito + Pix'.
+    Consome crédito do cliente quando a forma de pagamento da entrega
+    indicar uso de crédito (ex.: 'Crédito', 'Crédito automático', 'Crédito + Pix').
 
     - Debita do saldo_atual do cliente
     - Atualiza entrega.credito_usado
@@ -267,8 +267,7 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
         return Decimal("0.00")
 
     # Só usa crédito se a forma de pagamento for algum tipo de "Crédito"
-    pagamento = (e.pagamento or "").strip().lower()
-    if not pagamento.startswith("crédito"):
+    if not pagamento_usa_credito(e.pagamento):
         return Decimal("0.00")
 
     # Acha o cliente (preferindo o cliente_id, se já existe)
@@ -325,7 +324,6 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
             e.recebido_por = "Crédito automático"
     else:
         # Crédito parcial: mantém a forma de pagamento escolhida
-        # (ex.: 'Crédito + Pix', 'Crédito + Dinheiro', etc)
         if not (e.status_pagamento or "").strip():
             e.status_pagamento = "pendente"
 
@@ -1859,9 +1857,9 @@ def cadastrar_entrega():
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
-        valor = float(request.form.get('valor'))
+        valor = float(request.form.get('valor') or 0)
         cooperado_id = request.form.get('cooperado_id')
-        pagamento = request.form.get('pagamento')
+        pagamento = (request.form.get('pagamento') or '').strip()
 
         entrega = Entrega(
             cliente=cliente,
@@ -1872,6 +1870,14 @@ def cadastrar_entrega():
             status='pendente',
             pagamento=pagamento
         )
+
+        # Tenta vincular ao Cliente (se campo cliente_id existir no form)
+        cliente_id_form = request.form.get('cliente_id', type=int)
+        if cliente_id_form:
+            entrega.cliente_id = cliente_id_form
+        else:
+            cli = _find_cliente_by_nome(cliente)
+            entrega.cliente_id = cli.id if cli else None
 
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
@@ -1908,12 +1914,12 @@ def agendar_entrega():
     if request.method == 'POST':
         cliente = request.form.get('cliente')
         bairro = request.form.get('bairro')
-        valor = float(request.form.get('valor'))
+        valor = float(request.form.get('valor') or 0)
         data_str = request.form.get('data')  # 'YYYY-MM-DDTHH:MM'
         status_entrega = request.form.get('status_entrega')
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
-        pagamento = request.form.get('pagamento')
+        pagamento = (request.form.get('pagamento') or '').strip()
 
         data_envio = parse_local_datetime_to_utc_naive(data_str)
 
@@ -1927,6 +1933,15 @@ def agendar_entrega():
             status_pagamento=(status_pagamento or 'pendente').lower(),
             pagamento=pagamento
         )
+
+        # Tenta vincular ao Cliente (se campo cliente_id existir no form)
+        cliente_id_form = request.form.get('cliente_id', type=int)
+        if cliente_id_form:
+            entrega.cliente_id = cliente_id_form
+        else:
+            cli = _find_cliente_by_nome(cliente)
+            entrega.cliente_id = cli.id if cli else None
+
         db.session.add(entrega)
 
         if cooperado_id:
@@ -1964,6 +1979,7 @@ def editar_entrega(id):
             entrega.cliente = novo_cliente_nome
             entrega.bairro = request.form.get('bairro')
 
+            # atualiza valor (se mudar, o consumo será recalculado logo abaixo)
             try:
                 entrega.valor = float(request.form.get('valor') or entrega.valor or 0)
             except Exception:
@@ -2001,10 +2017,10 @@ def editar_entrega(id):
             db.session.commit()
 
             # ===== REGRAS DE CRÉDITO =====
+            # Aqui garantimos que, se o valor da entrega for alterado, o consumo de crédito
+            # é estornado e recalculado com base no novo valor e na nova forma de pagamento.
             try:
-                pagamento_lower = (entrega.pagamento or "").strip().lower()
-
-                if pagamento_lower.startswith("crédito"):
+                if pagamento_usa_credito(entrega.pagamento):
                     # Usa crédito: estorna o antigo e consome o valor novo
                     desfazer_consumo_credito_da_entrega(entrega.id)
                     consumir_credito_em_entrega(entrega.id)
@@ -2058,9 +2074,9 @@ def atribuir_cooperado(id):
 
         db.session.commit()
 
-        # Só tenta consumir crédito se for forma de pagamento tipo "Crédito"
+        # Só tenta consumir crédito se a forma de pagamento indicar uso de crédito
         try:
-            if (entrega.pagamento or "").strip().lower().startswith("crédito"):
+            if pagamento_usa_credito(entrega.pagamento):
                 consumir_credito_em_entrega(entrega.id)
         except Exception as ex:
             app.logger.exception("Falha ao consumir crédito ao atribuir cooperado %s: %s", entrega.id, ex)
