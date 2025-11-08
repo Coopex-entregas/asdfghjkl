@@ -252,24 +252,37 @@ def registrar_credito(cliente_id:int, valor_bruto, desconto_tipo:str, desconto_v
     db.session.commit()
     return c
 
-def consumir_credito_em_entrega(entrega_id:int) -> Decimal:
+def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     e = Entrega.query.get(entrega_id)
-    if not e: return Decimal("0.00")
+    if not e:
+        return Decimal("0.00")
 
-    cli = _find_cliente_by_nome(e.cliente)
-    if not cli: return Decimal("0.00")
+    # 1º tenta achar o cliente pela FK (cliente_id)
+    cli = None
+    if getattr(e, "cliente_id", None):
+        cli = Cliente.query.get(e.cliente_id)
+
+    # fallback: tenta pelo nome (legado)
+    if not cli:
+        cli = _find_cliente_by_nome(e.cliente)
+
+    if not cli:
+        return Decimal("0.00")
 
     valor = _as_decimal(e.valor or 0)
     usado = _as_decimal(e.credito_usado or 0)
-    faltante = (valor - usado)
-    if faltante <= 0: return Decimal("0.00")
+    faltante = valor - usado
+    if faltante <= 0:
+        return Decimal("0.00")
 
     saldo = _as_decimal(cli.saldo_atual or 0)
     consumir = min(saldo, faltante)
-    if consumir <= 0: return Decimal("0.00")
+    if consumir <= 0:
+        return Decimal("0.00")
 
-    cli.saldo_atual = float((saldo - consumir))
-    e.credito_usado  = float((usado + consumir))
+    # aplica consumo no saldo e na entrega
+    cli.saldo_atual = float(saldo - consumir)
+    e.credito_usado = float(usado + consumir)
 
     mov = CreditoMovimento(
         cliente_id=cli.id,
@@ -278,9 +291,11 @@ def consumir_credito_em_entrega(entrega_id:int) -> Decimal:
         referencia=f"Entrega #{e.id}",
         entrega_id=e.id
     )
-    db.session.add(mov); db.session.flush()
+    db.session.add(mov)
+    db.session.flush()
     e.credito_mov_id = mov.id
 
+    # ajusta status da entrega conforme cobertura do crédito
     if _as_decimal(e.credito_usado) >= valor:
         e.status_pagamento = "pago"
         e.pagamento = "Crédito"
@@ -293,16 +308,30 @@ def consumir_credito_em_entrega(entrega_id:int) -> Decimal:
     db.session.commit()
     return consumir
 
-def desfazer_consumo_credito_da_entrega(entrega_id:int) -> Decimal:
+
+def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     e = Entrega.query.get(entrega_id)
-    if not e: return Decimal("0.00")
+    if not e:
+        return Decimal("0.00")
+
     usado = _as_decimal(e.credito_usado or 0)
-    if usado <= 0: return Decimal("0.00")
+    if usado <= 0:
+        return Decimal("0.00")
 
-    cli = _find_cliente_by_nome(e.cliente)
-    if not cli: return Decimal("0.00")
+    # 1º tenta achar o cliente pela FK (cliente_id)
+    cli = None
+    if getattr(e, "cliente_id", None):
+        cli = Cliente.query.get(e.cliente_id)
 
-    cli.saldo_atual = float((_as_decimal(cli.saldo_atual) + usado))
+    # fallback: tenta pelo nome (legado)
+    if not cli:
+        cli = _find_cliente_by_nome(e.cliente)
+
+    if not cli:
+        return Decimal("0.00")
+
+    # devolve o saldo
+    cli.saldo_atual = float(_as_decimal(cli.saldo_atual) + usado)
 
     # registra estorno
     mov_estorno = CreditoMovimento(
@@ -313,6 +342,7 @@ def desfazer_consumo_credito_da_entrega(entrega_id:int) -> Decimal:
     )
     db.session.add(mov_estorno)
 
+    # limpa uso de crédito na entrega
     e.credito_usado = 0.0
     if (e.pagamento or "").lower().startswith("crédito"):
         e.pagamento = ""
@@ -323,8 +353,10 @@ def desfazer_consumo_credito_da_entrega(entrega_id:int) -> Decimal:
     db.session.commit()
     return usado
 
+
 def br_date_ymd(dt_utc_naive: datetime) -> str:
-    if not dt_utc_naive: return ''
+    if not dt_utc_naive:
+        return ''
     return to_brasilia(dt_utc_naive).date().isoformat()
 
 # ====== feriados ======
