@@ -262,34 +262,26 @@
     </div>
   </header>
 
-  <!-- contexto para export CSV -->
-  <div id="ctx"
-       data-cliente="{{ request.args.get('cliente_id','todos') }}"
-       data-inicio="{{ request.args.get('data_inicio','') }}"
-       data-fim="{{ request.args.get('data_fim','') }}"></div>
-
   <main class="wrap">
     <!-- ESQUERDA: FORM + HISTÓRICO -->
     <section class="card">
       <div class="body">
         <h2>Registrar crédito</h2>
 
-        {# cliente selecionado (se vier da URL ou da view) #}
         {% set selected_cliente = (cliente_id|string) if cliente_id is not none else request.args.get('cliente_id','') %}
 
-        <form class="grid-2" action="{{ url_for('creditos') }}" method="POST" id="form-credito">
+        <!-- IMPORTANTE: POST vai para creditos_cadastrar -->
+        <form class="grid-2" action="{{ url_for('creditos_cadastrar') }}" method="POST" id="form-credito">
           <div class="column">
             <label for="cliente_id">Cliente</label>
             <select id="cliente_id" name="cliente_id" required>
               <option value="" disabled {% if not selected_cliente %}selected{% endif %}>Selecione…</option>
-              {% if clientes is defined %}
-                {% for cli in clientes %}
-                  <option value="{{ cli.id }}"
-                          {% if selected_cliente and selected_cliente|string == cli.id|string %}selected{% endif %}>
-                    {{ cli.nome }}
-                  </option>
-                {% endfor %}
-              {% endif %}
+              {% for cli in clientes %}
+                <option value="{{ cli.id }}"
+                        {% if selected_cliente and selected_cliente|string == cli.id|string %}selected{% endif %}>
+                  {{ cli.nome }}
+                </option>
+              {% endfor %}
             </select>
           </div>
 
@@ -323,7 +315,7 @@
 
           <div class="column">
             <label for="criado_em">Data do crédito</label>
-            <!-- sem now() pra evitar erro; JS preenche padrão -->
+            <!-- valor padrão via JS, sem usar now() -->
             <input type="date" id="criado_em" name="criado_em" value="">
           </div>
 
@@ -344,7 +336,6 @@
       <div class="body" style="border-top:1px solid var(--line)">
         <h3>Histórico de créditos</h3>
 
-        {# filtros usando request.args, sem precisar de objeto filtros #}
         {% set filtro_cliente = request.args.get('cliente_id','') %}
         {% set filtro_di = request.args.get('data_inicio','') %}
         {% set filtro_df = request.args.get('data_fim','') %}
@@ -354,14 +345,12 @@
             <label for="f_cliente">Cliente</label>
             <select id="f_cliente" name="cliente_id">
               <option value="">Todos</option>
-              {% if clientes is defined %}
-                {% for cli in clientes %}
-                  <option value="{{ cli.id }}"
-                          {% if filtro_cliente and filtro_cliente|string == cli.id|string %}selected{% endif %}>
-                    {{ cli.nome }}
-                  </option>
-                {% endfor %}
-              {% endif %}
+              {% for cli in clientes %}
+                <option value="{{ cli.id }}"
+                        {% if filtro_cliente and filtro_cliente|string == cli.id|string %}selected{% endif %}>
+                  {{ cli.nome }}
+                </option>
+              {% endfor %}
             </select>
           </div>
           <div class="column">
@@ -374,7 +363,15 @@
           </div>
           <div style="display:flex;gap:10px;align-items:flex-end">
             <button class="btn" type="submit">Filtrar</button>
-            <button class="btn alt" type="button" id="btnExport">Exportar</button>
+
+            <!-- usa tua rota /creditos/exportar -->
+            <a class="btn alt"
+               href="{{ url_for('creditos_exportar',
+                                cliente_id=filtro_cliente or None,
+                                data_inicio=filtro_di or None,
+                                data_fim=filtro_df or None) }}">
+              Exportar XLSX
+            </a>
           </div>
         </form>
 
@@ -398,19 +395,12 @@
             </thead>
             <tbody id="hist-body">
               {% for c in creditos %}
-                {% if clientes is defined %}
-                  {% set cli_obj = (clientes | selectattr('id','equalto',c.cliente_id) | first) %}
-                  {% set cli_nome = cli_obj.nome if cli_obj else ('ID ' ~ c.cliente_id) %}
-                {% else %}
-                  {% set cli_nome = 'ID ' ~ c.cliente_id %}
-                {% endif %}
+                {% set cli_obj = (clientes | selectattr('id','equalto',c.cliente_id) | first) %}
+                {% set cli_nome = cli_obj.nome if cli_obj else ('ID ' ~ c.cliente_id) %}
               <tr>
                 <td>#{{ c.id }}</td>
                 <td>{{ cli_nome }}</td>
-                <td>
-                  R$
-                  {{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}
-                </td>
+                <td>R{{' '}}{{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
                 <td>
                   {% if c.desconto_tipo == 'percentual' %}
                     {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}%
@@ -420,25 +410,27 @@
                     —
                   {% endif %}
                 </td>
+                <td><strong>R$ {{ '%.2f'|format(c.valor_final) | replace('.', ',') }}</strong></td>
                 <td>
-                  <strong>
-                    R$ {{ '%.2f'|format(c.valor_final) | replace('.', ',') }}
-                  </strong>
-                </td>
-                <td>
-                  R$
-                  {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }}
+                  R$ {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }}
                   →
                   <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong>
                 </td>
                 <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
-                <!-- sem to_brasilia pra evitar erro; assume que c.criado_em já vem formatado -->
+                <!-- assume que c.criado_em já vem formatado / ou string -->
                 <td>{{ c.criado_em }}</td>
                 <td>{{ c.criado_por or '-' }}</td>
                 <td>
                   <div class="actions-cell">
-                    <a class="btn small alt" href="/editar_credito/{{ c.id }}">Editar</a>
-                    <form action="/excluir_credito/{{ c.id }}" method="POST"
+                    <!-- EDITAR: usa rota creditos_editar -->
+                    <a class="btn small alt"
+                       href="{{ url_for('creditos_editar', credito_id=c.id) }}">
+                      Editar
+                    </a>
+
+                    <!-- EXCLUIR: usa rota creditos_excluir -->
+                    <form action="{{ url_for('creditos_excluir', credito_id=c.id) }}"
+                          method="POST"
                           onsubmit="return confirm('Confirma excluir este crédito? Esta ação não poderá ser desfeita.');">
                       <button type="submit" class="btn small danger">Excluir</button>
                     </form>
@@ -504,7 +496,7 @@
       }catch(e){}
     })();
 
-    // data padrão de hoje no campo de data (sem usar now() do Jinja)
+    // data padrão hoje (sem Jinja now)
     (function(){
       const input = document.getElementById('criado_em');
       if(input && !input.value){
@@ -558,7 +550,7 @@
     });
     calcFinal();
 
-    // barra de totais (registros, soma bruta, soma final)
+    // barra de totais
     (function(){
       try{
         const rows = Array.from(document.querySelectorAll('#hist-body tr'));
@@ -597,50 +589,6 @@
         }
       }catch(e){}
     })();
-
-    // Exportar CSV (lado cliente, sem backend)
-    const btnExport = document.getElementById('btnExport');
-    if(btnExport){
-      btnExport.addEventListener('click', ()=>{
-        const table = document.getElementById('tabelaCreditos');
-        const rows = Array.from(table.querySelectorAll('tr'));
-        const csvRows = [];
-
-        rows.forEach(tr=>{
-          const cells = Array.from(tr.querySelectorAll('th,td')).map(td=>{
-            let txt = (td.innerText || '').replace(/\s+/g,' ').trim();
-            txt = txt.replace(/→/g,'->').replace(/\u00A0/g,' ');
-            if(txt.includes(';') || txt.includes('"')){
-              txt = '"' + txt.replace(/"/g,'""') + '"';
-            }
-            return txt;
-          });
-          csvRows.push(cells.join(';'));
-        });
-
-        const ctx = document.getElementById('ctx');
-        const cliente = ctx?.dataset?.cliente || 'todos';
-        const di = ctx?.dataset?.inicio || '';
-        const df = ctx?.dataset?.fim || '';
-        const now = new Date();
-        const pad = n=> String(n).padStart(2,'0');
-        const fname =
-          `creditos_${cliente}_${di || 'ini'}_${df || 'fim'}_`+
-          `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_`+
-          `${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
-
-        const blob = new Blob(['\uFEFF' + csvRows.join('\n')], {
-          type:'text/csv;charset=utf-8;'
-        }); // BOM p/ Excel
-        const a = document.createElement('a');
-        a.href = URL.createObjectURL(blob);
-        a.download = fname;
-        document.body.appendChild(a);
-        a.click();
-        URL.revokeObjectURL(a.href);
-        a.remove();
-      });
-    }
   </script>
 </body>
 </html>
