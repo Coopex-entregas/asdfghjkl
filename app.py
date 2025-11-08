@@ -10,7 +10,7 @@ from decimal import Decimal
 
 from flask import (
     Flask, render_template, render_template_string, request, redirect, url_for,
-    flash, session, send_file, jsonify, abort
+    flash, session, send_file, jsonify, abort, current_app
 )
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
@@ -2001,11 +2001,13 @@ def excluir_entrega(id):
 
     entrega = Entrega.query.get_or_404(id)
 
-    # 1) Estorna eventual consumo vinculado à entrega (sua função existente)
+    # 1) Estorna eventual consumo vinculado à entrega
     try:
         desfazer_consumo_credito_da_entrega(entrega.id)
     except Exception as ex:
-        current_app.logger.exception("Falha ao estornar crédito da entrega %s: %s", entrega.id, ex)
+        current_app.logger.exception(
+            "Falha ao estornar crédito da entrega %s: %s", entrega.id, ex
+        )
 
     try:
         # 2) Desacopla movimentos que referenciam esta entrega (evita o erro de FK)
@@ -2027,19 +2029,20 @@ def excluir_entrega(id):
         db.session.delete(entrega)
         db.session.commit()
         flash('Entrega excluída com sucesso.', 'success')
-    except IntegrityError as e:
+
+    except IntegrityError:
         db.session.rollback()
         flash('Não foi possível excluir: há vínculos de crédito ainda ativos.', 'danger')
         current_app.logger.exception("IntegrityError ao excluir entrega %s", id)
+
     except Exception as e:
         db.session.rollback()
         flash(f'Erro ao excluir entrega: {e.__class__.__name__}', 'danger')
         current_app.logger.exception("Erro ao excluir entrega %s", id)
 
-    return redirect(url_for('admin', cooperado_id='todos', status_pagamento='todos'))
-        db.session.commit()
-        flash('Entrega excluída.')
-        return redirect_back_to_admin()
+    # redireciona de volta mantendo filtros do admin
+    return redirect_back_to_admin()
+
 
 
 def calc_valor_final(valor: float, desconto_tipo: str = 'nenhum', desconto_valor: float = 0.0) -> float:
