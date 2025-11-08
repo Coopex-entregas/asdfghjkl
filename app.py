@@ -309,11 +309,20 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     e.credito_mov_id = mov.id
 
     # Se o crédito cobrir tudo, marca como pago
-    if _as_decimal(e.credito_usado) >= valor:
+        # Decide status/pagamento conforme quanto de crédito foi usado
+    if usado >= valor:
+        # Crédito cobriu 100% da entrega
         e.status_pagamento = "pago"
+
+        # Se não tiver forma de pagamento definida, marca como Crédito
+        if not (e.pagamento or "").strip():
+            e.pagamento = "Crédito"
+
+        # Se ninguém foi informado como quem recebeu, marca automático
+        if not (e.recebido_por or "").strip():
+            e.recebido_por = "Crédito automático"
     else:
-        # Crédito parcial: mantém a forma de pagamento escolhida
-        # (ex.: 'Crédito + Pix', 'Crédito + Dinheiro', etc)
+        # Crédito parcial: mantém a forma de pagamento escolhida (Pix, Dinheiro, etc)
         if not (e.status_pagamento or "").strip():
             e.status_pagamento = "pendente"
 
