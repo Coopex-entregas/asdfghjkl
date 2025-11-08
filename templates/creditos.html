@@ -127,7 +127,8 @@
 
           <div class="row" style="flex-direction:column">
             <label for="criado_em">Data</label>
-            <input type="date" id="criado_em" name="criado_em" value="{{ to_brasilia(now()).strftime('%Y-%m-%d') }}">
+            <!-- sem uso de now() para evitar erro -->
+            <input type="date" id="criado_em" name="criado_em">
           </div>
 
           <div class="row" style="align-items:flex-end">
@@ -161,11 +162,11 @@
           </div>
           <div style="display:flex;flex-direction:column">
             <label for="f_de">De</label>
-            <input type="date" id="f_de" name="data_inicio" value="{{ filtros.data_inicio or '' }}">
+            <input type="date" id="f_de" name="data_inicio" value="{{ filtros.data_inicio if filtros and filtros.data_inicio else '' }}">
           </div>
           <div style="display:flex;flex-direction:column">
             <label for="f_ate">Até</label>
-            <input type="date" id="f_ate" name="data_fim" value="{{ filtros.data_fim or '' }}">
+            <input type="date" id="f_ate" name="data_fim" value="{{ filtros.data_fim if filtros and filtros.data_fim else '' }}">
           </div>
           <div style="display:flex;gap:10px;align-items:flex-end">
             <button class="btn" type="submit">Filtrar</button>
@@ -188,7 +189,6 @@
                 <th>Motivo</th>
                 <th>Criado em</th>
                 <th>Por</th>
-                <th>Atribuições</th>
                 <th>Ações</th>
               </tr>
             </thead>
@@ -213,15 +213,14 @@
                 <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
                 <td>{{ to_brasilia(c.criado_em).strftime('%d/%m/%Y %H:%M') }}</td>
                 <td>{{ c.criado_por or '-' }}</td>
-                <td><span class="badge neu" title="Quantidade de usos/atribuições">🔗 {{ c.atribuicoes_count or 0 }}</span></td>
                 <td>
-                  <!-- sem url_for para evitar BuildError -->
-                  <a class="btn alt" href="/creditos/atribuir/{{ c.id }}">Atribuir</a>
+                  <!-- ação para usar o crédito (texto sem "atribuir") -->
+                  <a class="btn alt" href="/creditos/atribuir/{{ c.id }}">Usar crédito</a>
                 </td>
               </tr>
               {% endfor %}
               {% if creditos|length == 0 %}
-                <tr><td colspan="11" style="text-align:center;opacity:.7;padding:16px">Nenhum crédito encontrado.</td></tr>
+                <tr><td colspan="10" style="text-align:center;opacity:.7;padding:16px">Nenhum crédito encontrado.</td></tr>
               {% endif %}
             </tbody>
           </table>
@@ -267,6 +266,16 @@
       }catch(e){}
     })();
 
+    // preencher data de hoje no campo criado_em (sem usar Jinja now)
+    (function(){
+      const input = document.getElementById('criado_em');
+      if(input && !input.value){
+        const now = new Date();
+        const pad = n => String(n).padStart(2,'0');
+        input.value = `${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}`;
+      }
+    })();
+
     const fmtBRL = (v)=> (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(+v||0));
 
     const $bruto = document.getElementById('valor_bruto');
@@ -307,7 +316,7 @@
           const tds = tr.querySelectorAll('td');
           if(!tds.length) return;
           const brutoTxt = (tds[2]?.innerText || '0').replace(/[^\d,.-]/g,'').replace('.','').replace(',','.');
-          const finalTxt = (tds[4]?.innerText || '0').replace(/[^\d,.-]/g,'').replace('.','').replace(',','.');
+          const finalTxt = (tds[4]?.innerText || '0').replace/[^\d,.-]/g,'').replace('.','').replace(',','.');
           const bruto = parseFloat(brutoTxt)||0, final = parseFloat(finalTxt)||0;
           totalReg++; somaBruto += bruto; somaFinal += final;
         });
@@ -345,7 +354,7 @@
       const now = new Date();
       const pad = n=> String(n).padStart(2,'0');
       const fname = `creditos_${cliente}_${di || 'ini'}_${df || 'fim'}_${now.getFullYear()}-${pad(now.getMonth()+1)}-${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}.csv`;
-      const blob = new Blob(['\uFEFF' + csvRows.join('\n')], {type:'text/csv;charset=utf-8;'}); // BOM p/ Excel
+      const blob = new Blob(['\uFEFF' + csvRows.join('\n')], {type:'text/csv;charset=utf-8;'});
       const a = document.createElement('a');
       a.href = URL.createObjectURL(blob);
       a.download = fname;
