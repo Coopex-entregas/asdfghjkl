@@ -2114,13 +2114,23 @@ def marcar_entregue(id):
 def creditos():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     cliente_id = request.args.get('cliente_id', type=int)
+
     q = Credito.query
     if cliente_id:
         q = q.filter(Credito.cliente_id == cliente_id)
+
     lista = q.order_by(Credito.id.desc()).limit(500).all()
-    # Renderize seu template; aqui só um retorno simples para não travar
-    return render_template('creditos.html', creditos=lista, cliente_id=cliente_id)
+    clientes = Cliente.query.order_by(Cliente.nome).all()  # <<< PARA O SELECT E NOME NA TABELA
+
+    return render_template(
+        'creditos.html',
+        creditos=lista,
+        cliente_id=cliente_id,
+        clientes=clientes,          # <<< IMPORTANTE
+        request=request
+    )
 
 @app.route('/creditos/novo', methods=['GET', 'POST'])
 def creditos_novo():
