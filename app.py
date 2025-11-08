@@ -261,8 +261,6 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     - Atualiza entrega.credito_usado
     - Cria um CreditoMovimento(tipo='debito')
     - Se cobrir 100% do valor, marca status_pagamento='pago'
-
-    NÃO mexe em 'recebido_por' (é só pro cooperado escrever quem recebeu).
     """
     e = Entrega.query.get(entrega_id)
     if not e:
@@ -283,19 +281,24 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
         return Decimal("0.00")
 
     valor = _as_decimal(e.valor or 0)
-    usado = _as_decimal(e.credito_usado or 0)
-    faltante = (valor - usado)
+    usado_antes = _as_decimal(e.credito_usado or 0)
+    faltante = valor - usado_antes
     if faltante <= 0:
+        # já estava totalmente coberto
         return Decimal("0.00")
 
     saldo = _as_decimal(cli.saldo_atual or 0)
     consumir = min(saldo, faltante)
     if consumir <= 0:
+        # não tem saldo pra consumir
         return Decimal("0.00")
 
     # Debita do saldo e registra na entrega
-    cli.saldo_atual = float(saldo - consumir)
-    e.credito_usado = float(usado + consumir)
+    novo_saldo = saldo - consumir
+    novo_usado = usado_antes + consumir
+
+    cli.saldo_atual = float(novo_saldo)
+    e.credito_usado = float(novo_usado)
 
     mov = CreditoMovimento(
         cliente_id=cli.id,
@@ -308,9 +311,8 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     db.session.flush()
     e.credito_mov_id = mov.id
 
-    # Se o crédito cobrir tudo, marca como pago
-        # Decide status/pagamento conforme quanto de crédito foi usado
-    if usado >= valor:
+    # Decide status/pagamento conforme o NOVO valor usado
+    if novo_usado >= valor:
         # Crédito cobriu 100% da entrega
         e.status_pagamento = "pago"
 
@@ -322,7 +324,8 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
         if not (e.recebido_por or "").strip():
             e.recebido_por = "Crédito automático"
     else:
-        # Crédito parcial: mantém a forma de pagamento escolhida (Pix, Dinheiro, etc)
+        # Crédito parcial: mantém a forma de pagamento escolhida
+        # (ex.: 'Crédito + Pix', 'Crédito + Dinheiro', etc)
         if not (e.status_pagamento or "").strip():
             e.status_pagamento = "pendente"
 
@@ -368,9 +371,6 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     e.credito_usado = 0.0
     e.credito_mov_id = None
 
-    # Se o status estava pago apenas por causa do crédito automático,
-    # você pode, se quiser, voltar para pendente. Aqui eu NÃO forço nada,
-    # deixo o status_pagamento do jeito que estiver.
     db.session.commit()
     return usado
 
