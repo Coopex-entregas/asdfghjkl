@@ -2008,7 +2008,7 @@ def editar_entrega(id):
             except Exception:
                 entrega.valor = 0.0
 
-            # Cliente
+            # Cliente (tenta por ID do form; se não vier, tenta achar pelo nome)
             cliente_id_form = request.form.get('cliente_id', type=int)
             cli = None
             if cliente_id_form:
@@ -2040,10 +2040,9 @@ def editar_entrega(id):
 
             db.session.commit()
 
-            # === 3) Se a forma de pagamento usar crédito, consome de novo ===
+            # === 3) Reaplica o consumo de crédito SEM depender da forma de pagamento ===
             try:
-                if pagamento_usa_credito(entrega.pagamento):
-                    consumir_credito_em_entrega(entrega.id)
+                consumir_credito_em_entrega(entrega.id)
             except Exception as ex:
                 current_app.logger.exception(
                     "Falha ao consumir crédito após editar entrega %s: %s",
@@ -2054,7 +2053,7 @@ def editar_entrega(id):
             return redirect_back_to_admin()
 
         else:
-            # Cooperado só mexe em status/recebido_por
+            # === COOPERADO: só mexe em status e recebido_por (NÃO mexe em crédito) ===
             entrega.status_pagamento = (
                 request.form.get('status_pagamento')
                 or entrega.status_pagamento
