@@ -349,6 +349,43 @@ def consumo_total_do_credito(credito_id: int) -> float:
     )
     return float(total or 0.0)
 
+# ---- Constantes "semânticas" para compatibilidade com código antigo
+TIPO_ENTRADA = 'ENTRADA'
+TIPO_CONSUMO = 'CONSUMO'
+TIPO_AJUSTE  = 'AJUSTE'
+
+# ---- Compat: wrapper com o nome antigo usado em algumas rotas
+def calc_valor_final(valor, desconto_tipo, desconto_valor):
+    return float(calcular_valor_final(valor, desconto_tipo, desconto_valor))
+
+# ---- Atualiza saldo do cliente (sem dar commit; quem chama decide)
+def atualizar_saldo_cliente(cliente_id, delta):
+    cli = Cliente.query.get(cliente_id)
+    if not cli:
+        return
+    cli.saldo_atual = float(_as_decimal(cli.saldo_atual) + _as_decimal(delta))
+    db.session.add(cli)
+
+# ---- Registrar movimento (mapeia para CreditoMovimento.tipo = 'credito'/'debito')
+def registrar_movimento(cliente_id, tipo, valor, referencia='', credito_id=None, entrega_id=None):
+    tipo_up = (tipo or '').upper()
+    if tipo_up in (TIPO_ENTRADA, TIPO_AJUSTE, 'CREDITO'):
+        tm = 'credito'
+    elif tipo_up in (TIPO_CONSUMO, 'DEBITO', 'DÉBITO'):
+        tm = 'debito'
+    else:
+        tm = 'credito'
+    mov = CreditoMovimento(
+        cliente_id=cliente_id,
+        tipo=tm,
+        valor=float(_as_decimal(valor)),
+        referencia=(referencia or '')[:120],
+        credito_id=credito_id,
+        entrega_id=entrega_id
+    )
+    db.session.add(mov)
+    return mov
+
 
 def br_date_ymd(dt_utc_naive: datetime) -> str:
     if not dt_utc_naive:
@@ -2179,33 +2216,17 @@ def creditos():
 def creditos_novo():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     if request.method == 'POST':
         cliente_id     = request.form.get('cliente_id', type=int)
-        valor          = request.form.get('valor', type=float)
+        valor_bruto    = request.form.get('valor', type=float)  # aceita 'valor' vindo do form
         desconto_tipo  = request.form.get('desconto_tipo', default='nenhum')
         desconto_valor = request.form.get('desconto_valor', type=float, default=0.0)
         motivo         = request.form.get('motivo', default='')
-
-        valor_final = calc_valor_final(valor, desconto_tipo, desconto_valor)
+        criado_por     = session.get('user_nome', 'Supervisor')
 
         try:
-            cred = Credito(
-                cliente_id=cliente_id,
-                valor=valor,
-                desconto_tipo=desconto_tipo,
-                desconto_valor=desconto_valor,
-                valor_final=valor_final,
-                motivo=motivo,
-            )
-            db.session.add(cred)
-
-            # entra no saldo
-            atualizar_saldo_cliente(cliente_id, +valor_final)
-
-            # registra movimento de ENTRADA
-            registrar_movimento(cliente_id, TIPO_ENTRADA, valor_final, referencia='Crédito criado', credito_id=None)
-
-            db.session.commit()
+            registrar_credito(cliente_id, valor_bruto, desconto_tipo, desconto_valor, motivo, criado_por)
             flash('Crédito criado com sucesso.', 'success')
             return redirect(url_for('creditos', cliente_id=cliente_id))
         except Exception as e:
@@ -2216,31 +2237,41 @@ def creditos_novo():
     # GET
     return render_template('credito_form.html')
 
+
 @app.route('/creditos/<int:credito_id>/editar', methods=['GET', 'POST'])
 def creditos_editar(credito_id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     cred = Credito.query.get_or_404(credito_id)
+
     if request.method == 'POST':
-        old_final = float(cred.valor_final or 0)
+        old_final = float(cred.valor_final or 0.0)
 
-        # campos editáveis
-        cred.valor          = request.form.get('valor', type=float, default=cred.valor)
-        cred.desconto_tipo  = request.form.get('desconto_tipo', default=cred.desconto_tipo)
-        cred.desconto_valor = request.form.get('desconto_valor', type=float, default=cred.desconto_valor)
-        cred.motivo         = request.form.get('motivo', default=cred.motivo)
+        # aceita campo 'valor' do form mas grava em valor_bruto
+        novo_valor_bruto = request.form.get('valor', type=float, default=cred.valor_bruto)
+        cred.valor_bruto = novo_valor_bruto
+        cred.desconto_tipo  = request.form.get('desconto_tipo', default=cred.desconto_tipo or 'nenhum')
+        cred.desconto_valor = request.form.get('desconto_valor', type=float, default=cred.desconto_valor or 0.0)
+        cred.motivo         = request.form.get('motivo', default=cred.motivo or '')
 
-        new_final = calc_valor_final(cred.valor, cred.desconto_tipo, cred.desconto_valor)
+        new_final = float(calcular_valor_final(cred.valor_bruto, cred.desconto_tipo, cred.desconto_valor))
         cred.valor_final = new_final
-
         delta = new_final - old_final
+
         try:
             if abs(delta) > 1e-7:
-                # ajusta saldo e registra movimento de ajuste
+                # 1) ajusta saldo
                 atualizar_saldo_cliente(cred.cliente_id, delta)
+                # 2) registra movimento (credito p/ +delta, debito p/ -delta)
                 ref = f'Ajuste do crédito #{cred.id}'
-                registrar_movimento(cred.cliente_id, TIPO_AJUSTE, abs(delta), referencia=ref, credito_id=cred.id)
-
+                registrar_movimento(
+                    cred.cliente_id,
+                    (TIPO_ENTRADA if delta > 0 else TIPO_CONSUMO),
+                    abs(delta),
+                    referencia=ref,
+                    credito_id=cred.id
+                )
             db.session.commit()
             flash('Crédito atualizado.', 'success')
             return redirect(url_for('creditos', cliente_id=cred.cliente_id))
@@ -2256,38 +2287,39 @@ def creditos_editar(credito_id):
 def creditos_excluir(credito_id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+
     cred = Credito.query.get_or_404(credito_id)
 
-    # BLOQUEIA se houve consumo desse crédito (pra não bagunçar saldo/histórico)
-    total_consumo = consumo_total_do_credito(cred.id)
+    total_consumo = consumo_total_do_credito(cred.id)  # costuma ser 0 (débitos não amarram no crédito)
     if total_consumo > 0.0:
         flash('Não é possível excluir: este crédito possui consumo vinculado. Estorne/exclua os consumos primeiro.', 'warning')
         return redirect(url_for('creditos', cliente_id=cred.cliente_id))
 
     try:
-        # Se não houve consumo, remover o crédito implica tirar seu efeito do saldo
-        delta = -float(cred.valor_final or 0)
+        delta = -float(cred.valor_final or 0.0)
         if abs(delta) > 1e-7:
             atualizar_saldo_cliente(cred.cliente_id, delta)
+            registrar_movimento(
+                cred.cliente_id,
+                TIPO_CONSUMO,  # tirar do saldo
+                abs(delta),
+                referencia=f'Exclusão do crédito #{cred.id}',
+                credito_id=cred.id
+            )
 
-        # Limpa movimentos que apontam para este crédito (AJUSTES/ENTRADAS)
-        db.session.execute(
-            text("DELETE FROM credito_movimento WHERE credito_id = :cid"),
-            {"cid": cred.id}
-        )
+        # limpa movimentos ligados a este crédito (entradas/ajustes)
+        db.session.execute(text("DELETE FROM credito_movimento WHERE credito_id = :cid"), {"cid": cred.id})
 
         db.session.delete(cred)
         db.session.commit()
         flash('Crédito excluído.', 'success')
-    except IntegrityError:
-        db.session.rollback()
-        flash('Não foi possível excluir o crédito por vínculos existentes.', 'danger')
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Erro ao excluir crédito')
         flash(f'Erro ao excluir crédito: {e.__class__.__name__}', 'danger')
 
     return redirect(url_for('creditos', cliente_id=cred.cliente_id))
+
 
 @app.route('/creditos/exportar')
 def creditos_exportar():
