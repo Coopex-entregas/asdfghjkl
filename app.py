@@ -220,37 +220,67 @@ def _find_cliente_by_nome(nome: str):
             return c
     return None
 
-def registrar_credito(cliente_id:int, valor_bruto, desconto_tipo:str, desconto_valor, motivo:str="", criado_por:str=""):
-    cli = Cliente.query.get(cliente_id)
-    if not cli: raise ValueError("Cliente não encontrado")
+def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
+    e = Entrega.query.get(entrega_id)
+    if not e:
+        return Decimal("0.00")
 
-    valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
-    saldo_antes = _as_decimal(cli.saldo_atual)
-    cli.saldo_atual = float((saldo_antes + valor_final))
+    # Só usa crédito se a forma de pagamento for algum tipo de "Crédito"
+    if not pagamento_usa_credito(e.pagamento):
+        return Decimal("0.00")
 
-    c = Credito(
-        cliente_id=cli.id,
-        valor_bruto=float(_as_decimal(valor_bruto)),
-        desconto_tipo=desconto_tipo or "nenhum",
-        desconto_valor=float(_as_decimal(desconto_valor or 0)),
-        valor_final=float(valor_final),
-        motivo=motivo or "",
-        saldo_antes=float(saldo_antes),
-        saldo_depois=float(_as_decimal(cli.saldo_atual)),
-        criado_por=criado_por or "Supervisor"
-    )
-    db.session.add(c); db.session.flush()
+    # Acha o cliente (preferindo o cliente_id, se já existe)
+    cli = None
+    if getattr(e, "cliente_id", None):
+        cli = Cliente.query.get(e.cliente_id)
+    if not cli:
+        cli = _find_cliente_by_nome(e.cliente)
+    if not cli:
+        return Decimal("0.00")
+
+    valor = _as_decimal(e.valor or 0)
+    usado_antes = _as_decimal(e.credito_usado or 0)
+    faltante = valor - usado_antes
+    if faltante <= 0:
+        return Decimal("0.00")
+
+    saldo = _as_decimal(cli.saldo_atual or 0)
+    consumir = min(saldo, faltante)
+    if consumir <= 0:
+        return Decimal("0.00")
+
+    novo_saldo = saldo - consumir
+    novo_usado = usado_antes + consumir
+
+    cli.saldo_atual = float(novo_saldo)
+    e.credito_usado = float(novo_usado)
 
     mov = CreditoMovimento(
         cliente_id=cli.id,
-        tipo="credito",
-        valor=float(valor_final),
-        referencia=f"Crédito #{c.id}",
-        credito_id=c.id
+        tipo="debito",
+        valor=float(consumir),
+        referencia=f"Entrega #{e.id}",
+        entrega_id=e.id,
     )
     db.session.add(mov)
+    db.session.flush()
+    e.credito_mov_id = mov.id
+
+    if novo_usado >= valor:
+        e.status_pagamento = "pago"
+
+        if not (e.pagamento or "").strip():
+            e.pagamento = "Crédito"
+
+        if not (e.recebido_por or "").strip():
+            e.recebido_por = "Crédito automático"
+    else:
+        if not (e.status_pagamento or "").strip():
+            e.status_pagamento = "pendente"
+
     db.session.commit()
-    return c
+    return consumir
+
 
 def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     """
@@ -634,7 +664,7 @@ def meu_credito():
             .filter(CreditoMovimento.cliente_id == cid)
             .order_by(CreditoMovimento.criado_em.desc()).all())
     # Render com fallback
-    return render_or_string("meucredito.html", """
+    return render_or_string("meu_credito.html", """
 <!doctype html>
 <html lang="pt-BR"><head>
 <meta charset="utf-8">
@@ -680,6 +710,7 @@ th{background:#102053;position:sticky;top:0}
   </div>
 </body></html>
     """, cli=cli, movs=movs, to_brasilia=to_brasilia)
+
 
 # ===========================
 # ====== ROTAS EXISTENTES ===
