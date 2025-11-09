@@ -2459,13 +2459,15 @@ def lista_espera_add():
         flash('Selecione um cooperado ou informe um nome.')
         return redirect_back_to_admin()
 
+    # Caso venha cooperado_id: adiciona cooperado na fila
     if cooperado_id:
         coop = Cooperado.query.get(int(cooperado_id))
         if not coop:
             flash('Cooperado inválido.')
             return redirect_back_to_admin()
 
-                if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
+        # Evita duplicado
+        if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
             flash('Este cooperado já está na fila de espera.')
             return redirect_back_to_admin()
 
@@ -2524,8 +2526,8 @@ def lista_espera_mover(item_id):
         flash('Direção inválida para mover na fila.', 'warning')
         return redirect_back_to_admin()
 
+    # Garante posições sequenciais
     if item.pos is None:
-        # força reordenação antes de mexer
         itens = ListaEspera.query.order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc()).all()
         for idx, it in enumerate(itens, start=1):
             it.pos = idx
@@ -2546,20 +2548,27 @@ def lista_espera_mover(item_id):
         # Já é o primeiro ou o último
         return redirect_back_to_admin()
 
+    # Troca de posições
     item.pos, alvo.pos = alvo.pos, item.pos
     db.session.commit()
     return redirect_back_to_admin()
 
 
-# ====== HEALTHCHECK SIMPLES ======
+# ====== HEALTHCHECK (Render) ======
 @app.route('/health')
 def health():
     return 'OK', 200
 
 
+# ====== MAIN ======
 if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     debug_flag = os.environ.get('FLASK_DEBUG', '0') == '1'
-    app.run(host='0.0.0.0', port=int(os.environ.get('PORT', 5000)), debug=debug_flag)
+    app.run(
+        host='0.0.0.0',
+        port=int(os.environ.get('PORT', 5000)),
+        debug=debug_flag
+    )
+
 
