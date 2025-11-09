@@ -221,71 +221,9 @@ def _find_cliente_by_nome(nome: str):
     return None
 
 def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
-    e = Entrega.query.get(entrega_id)
-    if not e:
-        return Decimal("0.00")
-
-    # Só usa crédito se a forma de pagamento for algum tipo de "Crédito"
-    if not pagamento_usa_credito(e.pagamento):
-        return Decimal("0.00")
-
-    # Acha o cliente (preferindo o cliente_id, se já existe)
-    cli = None
-    if getattr(e, "cliente_id", None):
-        cli = Cliente.query.get(e.cliente_id)
-    if not cli:
-        cli = _find_cliente_by_nome(e.cliente)
-    if not cli:
-        return Decimal("0.00")
-
-    valor = _as_decimal(e.valor or 0)
-    usado_antes = _as_decimal(e.credito_usado or 0)
-    faltante = valor - usado_antes
-    if faltante <= 0:
-        return Decimal("0.00")
-
-    saldo = _as_decimal(cli.saldo_atual or 0)
-    consumir = min(saldo, faltante)
-    if consumir <= 0:
-        return Decimal("0.00")
-
-    novo_saldo = saldo - consumir
-    novo_usado = usado_antes + consumir
-
-    cli.saldo_atual = float(novo_saldo)
-    e.credito_usado = float(novo_usado)
-
-    mov = CreditoMovimento(
-        cliente_id=cli.id,
-        tipo="debito",
-        valor=float(consumir),
-        referencia=f"Entrega #{e.id}",
-        entrega_id=e.id,
-    )
-    db.session.add(mov)
-    db.session.flush()
-    e.credito_mov_id = mov.id
-
-    if novo_usado >= valor:
-        e.status_pagamento = "pago"
-
-        if not (e.pagamento or "").strip():
-            e.pagamento = "Crédito"
-
-        if not (e.recebido_por or "").strip():
-            e.recebido_por = "Crédito automático"
-    else:
-        if not (e.status_pagamento or "").strip():
-            e.status_pagamento = "pendente"
-
-    db.session.commit()
-    return consumir
-
-
-def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     """
-    Consome crédito do cliente quando a forma de pagamento da entrega
-    indicar uso de crédito (ex.: 'Crédito', 'Crédito automático', 'Crédito + Pix').
+    Consome crédito do cliente SEM depender da forma de pagamento.
+    Sempre que houver saldo, usa para abater o valor da entrega.
 
     - Debita do saldo_atual do cliente
     - Atualiza entrega.credito_usado
@@ -296,11 +234,7 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     if not e:
         return Decimal("0.00")
 
-    # Só usa crédito se a forma de pagamento for algum tipo de "Crédito"
-    if not pagamento_usa_credito(e.pagamento):
-        return Decimal("0.00")
-
-    # Acha o cliente (preferindo o cliente_id, se já existe)
+    # Acha o cliente (cliente_id tem prioridade)
     cli = None
     if getattr(e, "cliente_id", None):
         cli = Cliente.query.get(e.cliente_id)
@@ -313,16 +247,15 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     usado_antes = _as_decimal(e.credito_usado or 0)
     faltante = valor - usado_antes
     if faltante <= 0:
-        # já estava totalmente coberto
+        # já totalmente coberto
         return Decimal("0.00")
 
     saldo = _as_decimal(cli.saldo_atual or 0)
     consumir = min(saldo, faltante)
     if consumir <= 0:
-        # não tem saldo pra consumir
+        # não há saldo
         return Decimal("0.00")
 
-    # Debita do saldo e registra na entrega
     novo_saldo = saldo - consumir
     novo_usado = usado_antes + consumir
 
@@ -340,20 +273,18 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     db.session.flush()
     e.credito_mov_id = mov.id
 
-    # Decide status/pagamento conforme o NOVO valor usado
+    # Se o crédito cobriu tudo → marca pago
     if novo_usado >= valor:
-        # Crédito cobriu 100% da entrega
         e.status_pagamento = "pago"
 
-        # Se não tiver forma de pagamento definida, marca como Crédito
+        # Só força "Crédito" se estiver vazio
         if not (e.pagamento or "").strip():
             e.pagamento = "Crédito"
 
-        # Se ninguém foi informado como quem recebeu, marca automático
         if not (e.recebido_por or "").strip():
             e.recebido_por = "Crédito automático"
     else:
-        # Crédito parcial: mantém a forma de pagamento escolhida
+        # crédito parcial → mantém status se já tiver, senão "pendente"
         if not (e.status_pagamento or "").strip():
             e.status_pagamento = "pendente"
 
@@ -364,7 +295,8 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
 def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     """
     Estorna TODO crédito usado nesta entrega, devolvendo para o saldo do cliente
-    e zerando entrega.credito_usado. NÃO mexe na forma de pagamento escolhida.
+    e zerando entrega.credito_usado / entrega.credito_mov_id.
+    NÃO mexe em pagamento/status_pagamento.
     """
     e = Entrega.query.get(entrega_id)
     if not e:
@@ -383,10 +315,9 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     if not cli:
         return Decimal("0.00")
 
-    # Devolve para o saldo
+    # devolve ao saldo
     cli.saldo_atual = float(_as_decimal(cli.saldo_atual) + usado)
 
-    # registra estorno como 'credito' (entrada)
     mov_estorno = CreditoMovimento(
         cliente_id=cli.id,
         tipo="credito",
@@ -395,12 +326,28 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     )
     db.session.add(mov_estorno)
 
-    # Zera controle da entrega
     e.credito_usado = 0.0
     e.credito_mov_id = None
 
     db.session.commit()
     return usado
+
+def consumo_total_do_credito(credito_id: int) -> float:
+    """
+    Soma quanto já foi CONSUMIDO (tipo='debito') vinculado a este crédito.
+    No modelo atual quase sempre será 0, porque os débitos não usam credito_id,
+    mas a função existe para manter compatibilidade com creditos_excluir.
+    """
+    total = (
+        db.session.query(func.sum(CreditoMovimento.valor))
+        .filter(
+            CreditoMovimento.credito_id == credito_id,
+            CreditoMovimento.tipo == "debito"
+        )
+        .scalar()
+        or 0.0
+    )
+    return float(total or 0.0)
 
 
 def br_date_ymd(dt_utc_naive: datetime) -> str:
