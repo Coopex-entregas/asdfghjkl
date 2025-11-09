@@ -1071,29 +1071,6 @@ def cadastrar_entrega():
         cooperado_id = request.form.get('cooperado_id')
         pagamento = request.form.get('pagamento')
 
-        import os
-import io
-import re
-import unicodedata
-from datetime import datetime, timedelta, time, date
-from collections import Counter, defaultdict
-from urllib.parse import urlparse, parse_qs
-from functools import wraps
-from decimal import Decimal  # <-- IMPORT NECESSÁRIO
-
-from flask import (
-    Flask, render_template, request, redirect, url_for,
-    flash, session, send_file, jsonify, abort
-)
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import text
-from werkzeug.security import generate_password_hash, check_password_hash
-
-import pandas as pd
-import holidays
-import pytz
 
 # ====== Configuração ======
 app = Flask(__name__)
@@ -1252,13 +1229,10 @@ def pagamento_usa_credito(pagamento: str) -> bool:
       - "Crédito automático"
       - "Crédito + Pix", etc.
     """
-    txt = _strip_accents((pagamento or '').strip().lower())
-    txt = re.sub(r'\s+', ' ', txt)  # normaliza espaços
-    return txt.startswith('credito')
-
-def normalize_first_token(s: str) -> str:
-    k = normalize_letters_key(s)
-    return (k.split(' ')[0] if k else '')
+    texto = _strip_accents((pagamento or '').strip().lower())
+    texto = re.sub(r'\s+', ' ', texto)
+    # se começar com 'credito', consideramos que usa crédito
+    return texto.startswith('credito')
 
 # ====== CRÉDITO: helpers e regras ======
 def _as_decimal(x) -> Decimal:
@@ -1889,7 +1863,7 @@ def cadastrar_entrega():
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
 
-        # tenta linkar com cliente_id (select escondido) ou pelo nome
+        # tenta linkar com um Cliente (via select oculto ou pelo nome)
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
         if cliente_id_form:
@@ -1913,25 +1887,27 @@ def cadastrar_entrega():
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
             entrega.data_atribuida = datetime.utcnow()
-
-        db.session.add(entrega)
-
-        # Se atribuiu cooperado, remove da fila
-        if cooperado_id:
+            # se entrou pela fila, tira da fila
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
-        db.session.commit()  # garante entrega.id
+        db.session.add(entrega)
+        db.session.commit()  # precisa do ID da entrega
 
-        # >>> Consumo automático de crédito do cliente <<<
+        # 👉 aqui consumimos o crédito, se a forma de pagamento usar crédito
         try:
-            consumir_credito_em_entrega(entrega.id)
+            if pagamento_usa_credito(entrega.pagamento):
+                consumir_credito_em_entrega(entrega.id)
         except Exception as ex:
-            app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
+            current_app.logger.exception(
+                "Falha ao consumir crédito na entrega %s: %s", entrega.id, ex
+            )
 
         flash('Entrega cadastrada!')
         return redirect_back_to_admin()
 
-    return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+    return render_template('cadastrar_entrega.html',
+                           cooperados=cooperados,
+                           clientes=clientes_lista)
 
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
@@ -1954,7 +1930,7 @@ def agendar_entrega():
 
         data_envio = parse_local_datetime_to_utc_naive(data_str)
 
-        # tenta linkar com cliente
+        # linkar cliente
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
         if cliente_id_form:
@@ -1983,16 +1959,21 @@ def agendar_entrega():
 
         db.session.commit()
 
-        # >>> Consumo automático de crédito do cliente (agendada) <<<
+        # 👉 consumir crédito na entrega agendada (se for pagamento com crédito)
         try:
-            consumir_credito_em_entrega(entrega.id)
+            if pagamento_usa_credito(entrega.pagamento):
+                consumir_credito_em_entrega(entrega.id)
         except Exception as ex:
-            app.logger.exception("Falha ao consumir crédito (agendada) na entrega %s: %s", entrega.id, ex)
+            current_app.logger.exception(
+                "Falha ao consumir crédito (agendada) na entrega %s: %s", entrega.id, ex
+            )
 
         flash('Entrega agendada!')
         return redirect_back_to_admin()
 
-    return render_template('agendar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+    return render_template('agendar_entrega.html',
+                           cooperados=cooperados,
+                           clientes=clientes_lista)
 
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
@@ -2008,7 +1989,16 @@ def editar_entrega(id):
 
     if request.method == 'POST':
         if is_admin:
-            # ===== ADMIN EDITA A ENTREGA =====
+            # === 1) Estorna qualquer crédito já usado ANTES de mexer nos dados ===
+            try:
+                desfazer_consumo_credito_da_entrega(entrega.id)
+            except Exception as ex:
+                current_app.logger.exception(
+                    "Falha ao estornar crédito antes de editar entrega %s: %s",
+                    entrega.id, ex
+                )
+
+            # === 2) Atualiza campos da entrega ===
             novo_cliente_nome = (request.form.get('cliente') or '').strip()
             entrega.cliente = novo_cliente_nome
             entrega.bairro = request.form.get('bairro')
@@ -2050,25 +2040,21 @@ def editar_entrega(id):
 
             db.session.commit()
 
-            # ===== REGRAS DE CRÉDITO =====
+            # === 3) Se a forma de pagamento usar crédito, consome de novo ===
             try:
                 if pagamento_usa_credito(entrega.pagamento):
-                    # Usa crédito: estorna tudo e consome de novo com o novo valor
-                    desfazer_consumo_credito_da_entrega(entrega.id)
                     consumir_credito_em_entrega(entrega.id)
-                else:
-                    # Pagamento NÃO é crédito → estorna se tiver algo consumido
-                    if (entrega.credito_usado or 0) > 0:
-                        desfazer_consumo_credito_da_entrega(entrega.id)
-
             except Exception as ex:
-                app.logger.exception("Falha ao recalcular crédito na entrega %s: %s", entrega.id, ex)
+                current_app.logger.exception(
+                    "Falha ao consumir crédito após editar entrega %s: %s",
+                    entrega.id, ex
+                )
 
             flash('Entrega atualizada!')
             return redirect_back_to_admin()
 
         else:
-            # ===== COOPERADO EDITA APENAS STATUS/RECEBIDO_POR =====
+            # Cooperado só mexe em status/recebido_por
             entrega.status_pagamento = (
                 request.form.get('status_pagamento')
                 or entrega.status_pagamento
