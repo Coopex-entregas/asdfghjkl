@@ -1698,57 +1698,78 @@ def importar_clientes():
 # ====== Lista de Espera ==========
 # =================================
 
-@app.route('/lista_espera/add/<int:cooperado_id>', methods=['POST'])
-@master_required
-def lista_espera_add(cooperado_id):
-    c = Cooperado.query.get_or_404(cooperado_id)
-    
-    if ListaEspera.query.filter_by(cooperado_id=c.id).first():
-        flash(f'{c.nome} já está na fila.', 'warning')
-        return redirect(url_for('admin'))
-        
-    last_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
-    
-    item = ListaEspera(
-        cooperado_id=c.id,
-        nome=c.nome,
-        pos=last_pos + 1
-    )
+# ====== FILA DE ESPERA ======
+@app.route('/lista_espera/add', methods=['POST'])
+def lista_espera_add():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cooperado_id = request.form.get('cooperado_id')
+    nome_form = (request.form.get('nome') or '').strip()
+
+    if not cooperado_id and not nome_form:
+        flash('Selecione um cooperado ou informe um nome.')
+        return redirect_back_to_admin()
+
+    if cooperado_id:
+        coop = Cooperado.query.get(int(cooperado_id))
+        if not coop:
+            flash('Cooperado inválido.')
+            return redirect_back_to_admin()
+
+        if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
+            flash('Este cooperado já está na fila de espera.')
+            return redirect_back_to_admin()
+
+        max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
+        item = ListaEspera(cooperado_id=coop.id, nome=coop.nome, pos=max_pos + 1, created_at=datetime.utcnow())
+        db.session.add(item)
+        db.session.commit()
+        flash('Cooperado adicionado à lista de espera.')
+        return redirect_back_to_admin()
+
+    if ListaEspera.query.filter(func.lower(ListaEspera.nome) == nome_form.lower()).first():
+        flash('Este nome já está na fila de espera.')
+        return redirect_back_to_admin()
+
+    max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
+    item = ListaEspera(nome=nome_form, cooperado_id=None, pos=max_pos + 1, created_at=datetime.utcnow())
     db.session.add(item)
     db.session.commit()
-    flash(f'{c.nome} adicionado à lista de espera.')
-    return redirect(url_for('admin'))
+    flash('Nome adicionado à lista de espera.')
+    return redirect_back_to_admin()
+
 
 @app.route('/lista_espera/remove/<int:id>', methods=['POST'])
-@master_required
 def lista_espera_remove(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
     item = ListaEspera.query.get_or_404(id)
-    nome = item.nome
     db.session.delete(item)
-    
-    # Reorganiza a fila (opcional, mas bom)
-    db.session.execute(text("""
-        UPDATE lista_espera 
-        SET pos = sub.new_pos
-        FROM (
-            SELECT id, ROW_NUMBER() OVER(ORDER BY pos ASC, created_at ASC) as new_pos
-            FROM lista_espera
-        ) AS sub
-        WHERE lista_espera.id = sub.id;
-    """))
-    
     db.session.commit()
-    flash(f'{nome} removido da lista de espera.')
-    return redirect(url_for('admin'))
+    flash('Removido da lista de espera.')
+    return redirect_back_to_admin()
 
-@app.route('/lista_espera/clear', methods=['POST'])
-@master_required
-def lista_espera_clear():
-    ListaEspera.query.delete()
-    db.session.commit()
-    flash('Lista de espera limpa.', 'warning')
-    return redirect(url_for('admin'))
 
+@app.route('/lista_espera/reordenar', methods=['POST'])
+def lista_espera_reordenar():
+    if not session.get('is_admin'):
+        return ("", 403)
+    data = request.get_json(silent=True) or {}
+    ordem = data.get('ordem') or []
+    try:
+        for i, sid in enumerate(ordem, start=1):
+            try:
+                _id = int(sid)
+            except Exception:
+                continue
+            db.session.query(ListaEspera).filter_by(id=_id).update({"pos": i})
+        db.session.commit()
+        return ("", 204)
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Reordenar fila falhou: {e}")
+        return ("", 500)
 
 # =================================
 # ====== Gerenciar Cooperados =====
