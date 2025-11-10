@@ -1706,13 +1706,12 @@ def creditos_exportar():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # filtros vindos do template
     cliente_id = request.args.get('cliente_id', type=int)
-    data_inicio = request.args.get('data_inicio')  # 'YYYY-MM-DD'
-    data_fim = request.args.get('data_fim')        # 'YYYY-MM-DD'
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
 
-    # monta consulta com join para pegar nome do cliente
-    q = (db.session.query(
+    q = (
+        db.session.query(
             Credito.id.label('id'),
             Cliente.nome.label('cliente'),
             Credito.valor_bruto.label('valor_bruto'),
@@ -1739,7 +1738,6 @@ def creditos_exportar():
 
     q = q.order_by(Credito.criado_em.asc())
 
-    # prepara linhas para XLSX
     rows = []
     for r in q.all():
         dt_local = to_brasilia(r.criado_em)
@@ -1765,20 +1763,26 @@ def creditos_exportar():
         df_out.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
 
-        # larguras
+        # larguras de coluna
         widths = [20, 28, 14, 16, 16, 14, 30, 14, 14, 16, 12]
         for i, w in enumerate(widths[:len(df_out.columns)]):
             ws.set_column(i, i, w)
 
-        # formatação monetária
+        # formatação de moeda
         money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
         for col_name in ['Valor Bruto', 'Desconto Valor', 'Valor Final', 'Saldo Antes', 'Saldo Depois']:
             if col_name in df_out.columns:
                 idx = list(df_out.columns).index(col_name)
-                ws.set_column(idx, idx, None, money_fmt)
+                ws.set_column(idx, idx, widths[idx], money_fmt)
 
     output.seek(0)
-    return send_file(output, download_name='creditos.xlsx', as_attachment=True)
+    filename = 'creditos_exportados.xlsx'
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
 
 
 @app.route('/creditos/cadastrar', methods=['POST'])
