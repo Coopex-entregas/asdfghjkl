@@ -786,40 +786,12 @@ def admin():
     )
 
 # ====== TABELA DE PREÇOS & ROTAS ======
-@app.route('/precos-rotas', methods=['GET'])
+@app.route('/precos-rotas', methods=['GET'], endpoint='precos_rotas')
 def precos_rotas():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-
-    # --- dados básicos para o template (pode ajustar depois) ---
-    base_padrao = 12.0
-
-    # lista de bairros a partir dos clientes já cadastrados (somente informados)
-    try:
-        bairros_rows = (Cliente.query
-                        .filter(Cliente.bairro_origem.isnot(None))
-                        .with_entities(Cliente.bairro_origem)
-                        .all())
-        bairros = sorted({(b[0] or '').strip() for b in bairros_rows if (b[0] or '').strip()})
-    except Exception:
-        bairros = []
-
-    # regras fictícias de exemplo (substitua pelas suas depois, se quiser)
-    regras = [
-        {"origem": "Mesmo bairro", "destino": "Mesmo bairro", "preco": base_padrao, "obs": "Base"},
-        {"origem": "Centro", "destino": "Grande Natal", "preco": base_padrao + 3, "obs": "+3 anéis"},
-    ]
-
-    atualizado_em = datetime.now(BRAZIL_TZ)
-
-    # se você criou o arquivo templates/precos_rotas.html, use render_template
-    return render_template(
-        'precos_rotas.html',
-        regras=regras,
-        bairros=bairros,
-        base_padrao=base_padrao,
-        atualizado_em=atualizado_em
-    )
+    # Se já tem templates/precos_rotas.html, basta renderizar:
+    return render_template('precos_rotas.html')
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
