@@ -1,0 +1,495 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>COOPEX — Tabela de Preços & Rotas</title>
+  <!-- Leaflet (mapa) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+  <style>
+    /* ================= Tema base (Claro) ================= */
+    :root{
+      --royal:#4169E1; --royal-700:#3158d7; --royal-900:#1f3ea6;
+      --ink:#0b1220; --muted:#5b677a; --bg:#f7f9ff;
+      --panel:#ffffff; --panel-2:#f0f5ff; --border:#e5ecff;
+      --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444;
+      --shadow:0 10px 30px rgba(49,88,215,.12), 0 4px 10px rgba(49,88,215,.08);
+      --shadow-soft:0 8px 24px rgba(0,0,0,.06);
+      --chip:#fff; --chip-text:#334155; --table-head:#eef4ff; --table-head-text:#1f2a44;
+      --map-stroke:#1f77b4; --origin:#10b981; --dest:#ef4444;
+    }
+    /* ================= Tema Escuro ================= */
+    /* Aciona quando body.dark OU quando o SO estiver em dark e não houver preferência salva */
+    @media (prefers-color-scheme: dark){
+      :root:not([data-theme-forced="light"]){
+        --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
+        --ink:#e7edf9; --muted:#8aa0c7; --chip:#0f1623; --chip-text:#d8e3ff;
+        --table-head:#0b1320; --table-head-text:#b9ccff; --shadow:0 10px 26px rgba(0,0,0,.4);
+      }
+    }
+    body.dark :root, :root[data-theme-forced="dark"]{
+      --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
+      --ink:#e7edf9; --muted:#8aa0c7; --chip:#0f1623; --chip-text:#d8e3ff;
+      --table-head:#0b1320; --table-head-text:#b9ccff; --shadow:0 10px 26px rgba(0,0,0,.4);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
+    a{color:var(--royal);text-decoration:none}
+
+    /* Header minimal ">=" com botão tema opcional */
+    header{position:sticky;top:0;background:linear-gradient(90deg,var(--royal), #6ea1ff);color:#fff;z-index:30;box-shadow:var(--shadow)}
+    .wrap{max-width:1240px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center}
+    .logo{width:34px;height:34px;border-radius:10px;background:conic-gradient(from 210deg at 50% 50%, var(--royal), #6ea1ff, var(--royal));box-shadow:0 6px 16px rgba(65,105,225,.25)}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.15)}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--chip);color:var(--chip-text)}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#f6f9ff);cursor:pointer;box-shadow:var(--shadow-soft)}
+    .btn.primary{background:linear-gradient(180deg,var(--royal),var(--royal-700));border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(65,105,225,.35)}
+
+    /* Layout */
+    .layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 64px)}
+    @media (max-width:1100px){.layout{grid-template-columns:1fr}}
+    .sidebar{position:sticky;top:64px;height:calc(100vh - 64px);background:var(--panel);border-right:1px solid var(--border);overflow:auto}
+    .nav{padding:12px}
+    .nav a{display:flex;align-items:center;gap:12px;padding:12px 14px;border-radius:12px;border:1px solid transparent;color:inherit}
+    .nav a.active,.nav a:hover{background:var(--panel-2);border-color:var(--border)}
+    .content{padding:16px}
+    .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:14px;box-shadow:var(--shadow)}
+    .grid{display:grid;gap:12px}
+    .grid.cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .grid.cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    @media (max-width:1020px){.grid.cols-2,.grid.cols-3{grid-template-columns:1fr}}
+    label{display:block;margin:6px 0 4px;color:var(--muted)}
+    input,select{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:var(--panel);color:var(--ink)}
+    input:focus,select:focus{outline:3px solid rgba(65,105,225,.25)}
+    .table{width:100%;border-collapse:separate;border-spacing:0;border:1px solid var(--border);border-radius:14px;overflow:hidden;background:var(--panel)}
+    .table th,.table td{padding:12px;border-bottom:1px solid var(--border);text-align:left}
+    .table th{background:var(--table-head);color:var(--table-head-text);font-weight:700}
+
+    /* Mapa */
+    #map{width:100%;min-height:420px;height:52vh;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow)}
+    .legend{display:flex;gap:10px;align-items:center}
+    .legend .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+  </style>
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <i class="logo" aria-hidden="true"></i>
+      <div class="pill">
+        <span style="opacity:.9">R$ por km</span>
+        <input id="perKm" type="number" step="0.01" min="0" value="3.00" style="width:110px;background:#fff;border:0;border-radius:10px;padding:6px 8px"/>
+        <button class="btn primary" id="savePerKm">Salvar</button>
+      </div>
+      <span class="chip">Registros: <strong id="statTotal">0</strong></span>
+      <span class="chip">Bairros: <strong id="statBairros">0</strong></span>
+      <div style="margin-left:auto"></div>
+      <button id="btnTheme" class="btn" title="Alternar tema">Tema: auto</button>
+    </div>
+  </header>
+
+  <div class="layout">
+    <aside class="sidebar">
+      <nav class="nav">
+        <a href="#tab-consulta" data-gotab class="active">Consultar por Bairros</a>
+        <a href="#tab-endereco" data-gotab>Endereço/CEP (Rotas)</a>
+        <a href="#tab-cadastro" data-gotab>Cadastrar/Editar</a>
+        <a href="#tab-ajustes" data-gotab>Ajustes em Massa</a>
+        <a href="#tab-dados" data-gotab>Dados</a>
+        <a href="#tab-testes" data-gotab>Testes</a>
+      </nav>
+    </aside>
+
+    <main class="content">
+      <!-- CONSULTA -->
+      <section id="tab-consulta" class="card section active">
+        <div class="grid cols-3">
+          <div>
+            <label>Origem (bairro)</label>
+            <input list="dl-bairros" id="qOrigem" placeholder="Ex.: Lagoa Nova" />
+          </div>
+          <div>
+            <label>Destino (bairro)</label>
+            <input list="dl-bairros" id="qDestino" placeholder="Ex.: Tirol" />
+          </div>
+          <div>
+            <label>&nbsp;</label>
+            <button class="btn primary" id="btnConsultar">Consultar</button>
+          </div>
+        </div>
+        <div class="card" style="margin-top:8px;background:var(--panel-2)">
+          <div style="display:flex;gap:10px;align-items:center">
+            <div class="grow">
+              <div style="color:var(--muted)">Resultado</div>
+              <div id="consultaResultado" style="font-size:28px;font-weight:800">—</div>
+            </div>
+            <span class="chip" id="consultaStatus">sem consulta</span>
+          </div>
+        </div>
+      </section>
+
+      <!-- ROTAS -->
+      <section id="tab-endereco" class="card section">
+        <div class="grid cols-2">
+          <div class="card" style="box-shadow:none">
+            <label>CEP</label>
+            <input id="cepOrigem" placeholder="Ex.: 59064-050" inputmode="numeric" />
+            <label style="margin-top:8px">Origem (auto-completar)</label>
+            <input id="endOrigem" placeholder="Rua, número, bairro, cidade" />
+            <div id="sugOrigem" class="card" style="display:none;margin-top:8px"></div>
+          </div>
+          <div class="card" style="box-shadow:none">
+            <label>CEP</label>
+            <input id="cepDestino" placeholder="Ex.: 59020-000" inputmode="numeric" />
+            <label style="margin-top:8px">Destino (auto-completar)</label>
+            <input id="endDestino" placeholder="Rua, número, bairro, cidade" />
+            <div id="sugDestino" class="card" style="display:none;margin-top:8px"></div>
+          </div>
+        </div>
+
+        <div id="map" class="card" style="margin:10px 0"></div>
+        <div class="legend"><span class="dot" style="background:var(--map-stroke)"></span><span class="muted">Rota OSRM</span>
+          <span class="dot" style="background:var(--origin)"></span><span class="muted">Origem</span>
+          <span class="dot" style="background:var(--dest)"></span><span class="muted">Destino</span>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn primary" id="btnCalcularKm">Calcular rota</button>
+          <button class="btn" id="btnInverter">Inverter endereços</button>
+        </div>
+
+        <div class="grid cols-3" style="margin-top:10px">
+          <div class="card" style="box-shadow:none">
+            <label>Distância (km)</label>
+            <input id="outKm" readonly>
+          </div>
+          <div class="card" style="box-shadow:none">
+            <label>Valor por km (R$)</label>
+            <input id="outPerKm" type="number" step="0.01" min="0">
+          </div>
+          <div class="card" style="box-shadow:none">
+            <label>Preço estimado (R$)</label>
+            <input id="outPreco" readonly>
+          </div>
+        </div>
+      </section>
+
+      <!-- CADASTRAR / EDITAR -->
+      <section id="tab-cadastro" class="card section">
+        <div class="grid cols-3">
+          <div>
+            <label>Origem (bairro)</label>
+            <input list="dl-bairros" id="cOrigem" placeholder="Ex.: Lagoa Nova">
+          </div>
+          <div>
+            <label>Destino (bairro)</label>
+            <input list="dl-bairros" id="cDestino" placeholder="Ex.: Tirol">
+          </div>
+          <div>
+            <label>Valor (R$)</label>
+            <input id="cValor" type="number" step="0.01" min="0" placeholder="Ex.: 12,00">
+          </div>
+        </div>
+        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+          <button class="btn primary" id="btnSalvar">Salvar / Atualizar</button>
+          <button class="btn" id="btnLimpar">Limpar</button>
+        </div>
+
+        <div style="display:flex;gap:10px;align-items:center;margin:14px 0 6px">
+          <div class="grow"><strong>Combinações cadastradas</strong></div>
+          <input id="filtroTabela" placeholder="Filtrar… (origem, destino, valor)" style="width:240px">
+          <button class="btn" id="btnExportar">Exportar JSON</button>
+          <label class="btn" style="cursor:pointer">Importar JSON<input type="file" id="fileImport" accept="application/json" hidden></label>
+        </div>
+        <div style="max-height:420px;overflow:auto;margin-top:8px">
+          <table class="table" id="tabela">
+            <thead>
+              <tr><th>Origem</th><th>Destino</th><th style="text-align:right">Valor (R$)</th><th style="text-align:right">Ações</th></tr>
+            </thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </section>
+
+      <!-- AJUSTES -->
+      <section id="tab-ajustes" class="card section">
+        <div class="grid cols-2">
+          <div class="card" style="box-shadow:none">
+            <label>Bairro alvo</label>
+            <input list="dl-bairros" id="ajBairro" placeholder="Ex.: Lagoa Nova">
+            <label style="margin-top:8px">Acrescentar (R$) — use negativo para reduzir</label>
+            <input id="ajValor" type="number" step="0.01" value="1.00">
+            <div style="margin-top:10px"><button class="btn" id="btnAplicarBairro">Aplicar nos ligados ao bairro</button></div>
+          </div>
+          <div class="card" style="box-shadow:none">
+            <label>Acrescentar a todos (R$)</label>
+            <input id="ajGlobal" type="number" step="0.01" value="0.50">
+            <div style="margin-top:10px"><button class="btn" id="btnAplicarGlobal">Aplicar em todas as combinações</button></div>
+          </div>
+        </div>
+        <div id="ajFeedback" style="color:var(--muted);margin-top:8px"></div>
+      </section>
+
+      <!-- DADOS -->
+      <section id="tab-dados" class="card section">
+        <div class="grid cols-2">
+          <div>
+            <p>Seus dados ficam no <code>localStorage</code>. Faça backup/restaure com JSON.</p>
+            <div style="display:flex;gap:10px;flex-wrap:wrap">
+              <button class="btn" id="btnDump">Ver JSON atual</button>
+              <button class="btn" style="background:#fff;border-color:#ef4444;color:#ef4444" id="btnLimparTudo">Apagar tudo</button>
+            </div>
+          </div>
+          <div>
+            <ul style="margin:0;color:var(--muted)">
+              <li>Consulte por bairros; se não existir, calcule rota por ruas (OSRM).</li>
+              <li>Edite/Exclua combinações e faça ajustes em massa por bairro ou global.</li>
+            </ul>
+          </div>
+        </div>
+        <pre id="dump" class="card" style="white-space:pre-wrap"></pre>
+      </section>
+
+      <!-- TESTES -->
+      <section id="tab-testes" class="card section">
+        <div style="display:flex;gap:10px;align-items:center">
+          <div class="grow"><strong>Auto-teste</strong></div>
+          <button class="btn" id="btnRunTests">Rodar Testes</button>
+        </div>
+        <pre id="testsOut" class="card" style="white-space:pre-wrap;min-height:120px"></pre>
+      </section>
+
+      <datalist id="dl-bairros"></datalist>
+    </main>
+  </div>
+
+<script>
+// =======================
+// Tema auto: segue preferência do SO e o toggle do seu painel
+// =======================
+(function themeInit(){
+  try{
+    const pref = localStorage.getItem('coopex_theme'); // 'light' | 'dark' | null
+    const btn = document.getElementById('btnTheme');
+
+    function apply(mode){
+      // mode: 'light' | 'dark' | 'auto'
+      document.documentElement.removeAttribute('data-theme-forced');
+      document.body.classList.remove('dark');
+      if(mode==='dark'){ document.body.classList.add('dark'); document.documentElement.setAttribute('data-theme-forced','dark'); btn.textContent='Tema: escuro'; }
+      else if(mode==='light'){ document.documentElement.setAttribute('data-theme-forced','light'); btn.textContent='Tema: claro'; }
+      else { btn.textContent='Tema: auto'; }
+      localStorage.setItem('coopex_theme_subpage', mode);
+    }
+
+    // Se a tela principal salvar em 'coopex_theme', herdamos. Senão usamos 'auto'.
+    if(pref==='dark'){ apply('dark'); }
+    else if(pref==='light'){ apply('light'); }
+    else {
+      const saved = localStorage.getItem('coopex_theme_subpage');
+      apply(saved||'auto');
+    }
+
+    // Toggle local: alterna entre auto -> dark -> light -> auto
+    btn.addEventListener('click', ()=>{
+      const cur = localStorage.getItem('coopex_theme_subpage')||'auto';
+      const next = cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+      apply(next);
+    });
+  }catch(e){}
+})();
+
+// =======================
+// Util & Persistência
+// =======================
+const LS_KEY = 'tabelaPrecos';
+const $$ = sel => document.querySelector(sel);
+const $$$ = sel => Array.from(document.querySelectorAll(sel));
+function alpha(a,b){ return a.localeCompare(b,'pt-BR',{sensitivity:'base'}); }
+function keyFor(a,b){ return `${norm(a)}|${norm(b)}`; }
+function norm(s){ return String(s||'').trim(); }
+function moeda(n){ if(Number.isNaN(n)) return '—'; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function round2(n){ return Math.round(n*100)/100; }
+function escapeHtml(s){ return String(s).replace(/[&<>\"]+/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+function escapeAttr(s){ return String(s).replace(/["'\\]/g, m=>({"\"":"&quot;","'":"&#39;","\\":"\\\\"}[m])); }
+
+function loadStore(){
+  const fallback = { perKm: 3.00, bairros: [], combinacoes: {} };
+  try{
+    const raw = localStorage.getItem(LS_KEY);
+    if(!raw){ localStorage.setItem(LS_KEY, JSON.stringify(fallback)); return fallback; }
+    const data = JSON.parse(raw);
+    data.perKm = Number(data.perKm ?? fallback.perKm);
+    data.bairros = Array.isArray(data.bairros) ? [...new Set(data.bairros)].sort(alpha) : [];
+    data.combinacoes = data.combinacoes || {};
+    return data;
+  }catch(e){ console.error(e); localStorage.setItem(LS_KEY, JSON.stringify(fallback)); return fallback; }
+}
+function saveStore(data){ localStorage.setItem(LS_KEY, JSON.stringify(data)); refreshUI(); }
+let DB = loadStore();
+
+function refreshUI(){
+  DB = loadStore();
+  $$('#statTotal').textContent = Object.keys(DB.combinacoes).length;
+  $$('#statBairros').textContent = DB.bairros.length;
+  if($$('#perKm')) $$('#perKm').value = DB.perKm.toFixed(2);
+  const dl = $$('#dl-bairros'); if(dl) dl.innerHTML = DB.bairros.map(b=>`<option value="${escapeHtml(b)}"></option>`).join('');
+  renderTabela();
+}
+function renderTabela(){
+  const tbody = $$('#tabela tbody'); if(!tbody) return;
+  const q = norm($$('#filtroTabela')?.value).toLowerCase();
+  const rows = [];
+  for(const [k,valor] of Object.entries(DB.combinacoes)){
+    const [origem,destino] = k.split('|');
+    const show = !q || origem.toLowerCase().includes(q) || destino.toLowerCase().includes(q) || String(valor).includes(q);
+    if(!show) continue;
+    rows.push(`<tr>
+      <td>${escapeHtml(origem)}</td>
+      <td>${escapeHtml(destino)}</td>
+      <td style="text-align:right">${moeda(Number(valor))}</td>
+      <td style="text-align:right">
+        <button class="btn" onclick="editComb('${escapeAttr(origem)}','${escapeAttr(destino)}')">Editar</button>
+        <button class="btn" style="background:#fff;border-color:#ef4444;color:#ef4444" onclick="delComb('${escapeAttr(origem)}','${escapeAttr(destino)}')">Excluir</button>
+      </td>
+    </tr>`);
+  }
+  tbody.innerHTML = rows.join('') || `<tr><td colspan="4" style="color:var(--muted)">Nenhum registro ainda.</td></tr>`;
+}
+
+function upsertComb(origem,destino,valor){
+  origem = norm(origem); destino = norm(destino); valor = Number(valor);
+  if(!origem || !destino || Number.isNaN(valor)) return alert('Preencha origem, destino e valor válido.');
+  const k = keyFor(origem,destino);
+  DB.combinacoes[k] = round2(valor);
+  if(!DB.bairros.includes(origem)) DB.bairros.push(origem);
+  if(!DB.bairros.includes(destino)) DB.bairros.push(destino);
+  DB.bairros.sort(alpha);
+  saveStore(DB);
+  $$('#cOrigem').value = origem; $$('#cDestino').value = destino; $$('#cValor').value = valor.toFixed(2);
+}
+function editComb(origem,destino){
+  goTab('#tab-cadastro');
+  $$('#cOrigem').value = origem; $$('#cDestino').value = destino;
+  const k = keyFor(origem,destino);
+  $$('#cValor').value = Number(DB.combinacoes[k]||0).toFixed(2);
+}
+function delComb(origem,destino){
+  if(!confirm(`Excluir preço de "${origem}" → "${destino}"?`)) return;
+  const k = keyFor(origem,destino);
+  delete DB.combinacoes[k];
+  saveStore(DB);
+}
+
+function consultar(){
+  const o = norm($$('#qOrigem').value); const d = norm($$('#qDestino').value);
+  if(!o || !d) { setConsulta('—','preencha origem e destino','warn'); return; }
+  const k = keyFor(o,d);
+  const v = DB.combinacoes[k];
+  if(v==null){ setConsulta('Sem cadastro','use Endereço/CEP (rotas)','danger'); }
+  else { setConsulta(moeda(Number(v)), 'preço cadastrado','ok'); }
+}
+function setConsulta(text,status,badge){
+  $$('#consultaResultado').textContent = text;
+  $$('#consultaStatus').textContent = status;
+  $$('#consultaStatus').style.background = badge==='ok'? '#dcfce7' : badge==='warn' ? '#fef3c7' : '#fee2e2';
+}
+
+function aplicarPorBairro(){
+  const alvo = norm($$('#ajBairro').value); const inc = Number($$('#ajValor').value||0);
+  if(!alvo) return alert('Informe o bairro alvo.');
+  let count = 0;
+  for(const k of Object.keys(DB.combinacoes)){
+    const [o,d] = k.split('|');
+    if(o===alvo || d===alvo){ DB.combinacoes[k] = round2(Number(DB.combinacoes[k])+inc); count++; }
+  }
+  saveStore(DB);
+  $$('#ajFeedback').textContent = `Ajustadas ${count} combinações ligadas a "${alvo}" em R$ ${inc.toFixed(2)}.`;
+}
+function aplicarGlobal(){
+  const inc = Number($$('#ajGlobal').value||0);
+  let count = 0;
+  for(const k of Object.keys(DB.combinacoes)){
+    DB.combinacoes[k] = round2(Number(DB.combinacoes[k])+inc); count++;
+  }
+  saveStore(DB);
+  $$('#ajFeedback').textContent = `Ajustadas ${count} combinações em R$ ${inc.toFixed(2)} (global).`;
+}
+
+function exportarJSON(){
+  const blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tabela-precos.json'; a.click(); URL.revokeObjectURL(a.href);
+}
+async function importarJSON(file){
+  try{
+    const text = await file.text(); const data = JSON.parse(text);
+    if(!data || typeof data !== 'object') throw new Error('JSON inválido');
+    if(!('combinacoes' in data)) throw new Error('Faltou campo "combinacoes"');
+    const merged = loadStore();
+    merged.perKm = Number(data.perKm ?? merged.perKm);
+    merged.bairros = Array.from(new Set([...(merged.bairros||[]),...(data.bairros||[])])).sort(alpha);
+    merged.combinacoes = {...merged.combinacoes, ...(data.combinacoes||{})};
+    saveStore(merged);
+    alert('Importado com sucesso!');
+  }catch(e){ alert('Falha ao importar: '+e.message); }
+}
+function dumpJSON(){ $$('#dump').textContent = JSON.stringify(DB,null,2); }
+function clearAll(){ if(confirm('Apagar todos os dados?')) { localStorage.removeItem(LS_KEY); refreshUI(); $$('#dump').textContent=''; } }
+
+// ======================= Geocodificação e Rotas =======================
+async function viaCEP(cep){ cep = (cep||'').replace(/\D/g,''); if(cep.length!==8) return null; const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`); if(!r.ok) return null; const j = await r.json(); if(j.erro) return null; return j; }
+async function geocode(q){ const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`; const r = await fetch(url,{headers:{'Accept-Language':'pt-BR'}}); if(!r.ok) throw new Error('Falha ao geocodificar'); const j = await r.json(); return j.map(it=>({ label: it.display_name, lat: Number(it.lat), lon: Number(it.lon) })); }
+async function osrmRouteKm(a,b){ const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`; const r = await fetch(url); if(!r.ok) throw new Error('OSRM indisponível'); const j = await r.json(); if(!j.routes || !j.routes.length) throw new Error('Sem rota'); const distKm = j.routes[0].distance/1000; const coords = j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]); return {km: distKm, line: coords}; }
+function haversineKm(a,b){ const R=6371; const dLat=rad(b.lat-a.lat); const dLon=rad(b.lon-a.lon); const s1=Math.sin(dLat/2), s2=Math.sin(dLon/2); const q=s1*s1 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*s2*s2; return R*2*Math.asin(Math.min(1,Math.sqrt(q))); }
+function rad(d){ return d*Math.PI/180; }
+let debTimer; function debounce(fn,ms){ return (...args)=>{ clearTimeout(debTimer); debTimer=setTimeout(()=>fn(...args),ms); }; }
+
+let map, markerO, markerD, routeLayer; 
+function ensureMap(){ if(map) return map; map = L.map('map',{zoomControl:true}).setView([-5.794, -35.211], 12); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map); setTimeout(()=> map.invalidateSize(), 60); return map; }
+function fixMapSize(){ if(map){ setTimeout(()=> map.invalidateSize(), 60); } }
+function setMarker(which, lat, lon){ ensureMap(); const color = which==='O' ? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim() || '#10b981' : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim() || '#ef4444'; const icon = L.divIcon({html:`<div style="width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,iconSize:[14,14],className:''}); if(which==='O'){ if(markerO) markerO.remove(); markerO = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Origem').openPopup(); } else { if(markerD) markerD.remove(); markerD = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Destino').openPopup(); } }
+function drawRoute(latlngs){ ensureMap(); if(routeLayer) routeLayer.remove(); const color = getComputedStyle(document.documentElement).getPropertyValue('--map-stroke').trim() || '#1f77b4'; routeLayer = L.polyline(latlngs,{weight:6, opacity:.98, color}).addTo(map); const group = new L.featureGroup([markerO, markerD, routeLayer].filter(Boolean)); map.fitBounds(group.getBounds().pad(0.25)); fixMapSize(); }
+
+async function sugestionar(inputEl, holderId){ const q = norm(inputEl.value); const holder = $$(holderId); if(!q || q.length<3){ holder.style.display='none'; holder.innerHTML=''; return; } holder.style.display='block'; holder.textContent='Buscando…'; try{ const items = await geocode(q); holder.innerHTML = items.map(it=>`<button class=\"btn\" style=\"width:100%;text-align:left\" onclick='selSug("${holderId}", ${JSON.stringify(it).replace(/'/g,"&apos;")})'>${escapeHtml(it.label)}</button>`).join(''); }catch(e){ holder.textContent='Sem sugestões.'; } }
+function selSug(holderId, obj){ const holder = $$(holderId); holder.style.display='none'; holder.innerHTML=''; const input = holderId.includes('Origem') ? $$('#endOrigem') : $$('#endDestino'); input.value = obj.label; input.dataset.lat = obj.lat; input.dataset.lon = obj.lon; setMarker(holderId.includes('Origem')?'O':'D', obj.lat, obj.lon); }
+async function preencherPorCEP(cepEl, endEl, sugId){ const j = await viaCEP(cepEl.value); if(!j){ return; } const texto = `${j.logradouro || ''}, ${j.bairro || ''}, ${j.localidade || ''} - ${j.uf}`.replace(/^[,\s]+|[,\s]+$/g,''); endEl.value = texto; debounce(()=>sugestionar(endEl, sugId), 60)(); }
+
+async function calcularRota(){ const o = { lat: Number($$('#endOrigem').dataset.lat), lon: Number($$('#endOrigem').dataset.lon) }; const d = { lat: Number($$('#endDestino').dataset.lat), lon: Number($$('#endDestino').dataset.lon) }; if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão de endereço para origem e destino.'); return; } ensureMap(); fixMapSize(); try{ const {km, line} = await osrmRouteKm(o,d); $$('#outKm').value = km.toFixed(2); const perKm = Number($$('#outPerKm').value || DB.perKm || 0); $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2); drawRoute(line); }catch(e){ const km = haversineKm(o,d); $$('#outKm').value = km.toFixed(2); const perKm = Number($$('#outPerKm').value || DB.perKm || 0); $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2); drawRoute([[o.lat,o.lon],[d.lat,d.lon]]); } }
+function inverterEnd(){ const eo = $$('#endOrigem'), ed=$$('#endDestino'); const vo = eo.value, vd = ed.value, lo = eo.dataset.lat, ln = eo.dataset.lon; eo.value = vd; ed.value = vo; eo.dataset.lat = ed.dataset.lat; eo.dataset.lon = ed.dataset.lon; ed.dataset.lat = lo; ed.dataset.lon = ln; if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon)); if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon)); }
+
+// ======================= Navegação =======================
+$$$('.nav a').forEach(a=> a.addEventListener('click', e=>{ e.preventDefault(); $$$('.nav a').forEach(x=>x.classList.remove('active')); a.classList.add('active'); const id=a.getAttribute('href'); $$$('.section').forEach(s=> s.classList.remove('active')); const el = $$(id); if(!el) return; el.classList.add('active'); if(id==='#tab-endereco'){ ensureMap(); setTimeout(fixMapSize, 120); } }));
+
+// ======================= Eventos =======================
+$$('#btnConsultar').addEventListener('click', consultar);
+$$('#btnExportar').addEventListener('click', exportarJSON);
+$$('#fileImport').addEventListener('change', e=> e.target.files[0] && importarJSON(e.target.files[0]));
+$$('#btnDump').addEventListener('click', dumpJSON);
+$$('#btnLimparTudo').addEventListener('click', clearAll);
+$$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
+$$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
+$$('#savePerKm').addEventListener('click',()=>{ DB.perKm = Number($$('#perKm').value||0); saveStore(DB); $$('#outPerKm').value = DB.perKm.toFixed(2); });
+$$('#btnSalvar').addEventListener('click',()=> upsertComb($$('#cOrigem').value,$$('#cDestino').value,$$('#cValor').value));
+$$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
+$$('#filtroTabela').addEventListener('input', renderTabela);
+$$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
+$$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
+$$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
+$$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
+$$('#btnCalcularKm').addEventListener('click', calcularRota);
+$$('#btnInverter').addEventListener('click', inverterEnd);
+
+// ======================= Testes =======================
+function runTests(){ const out = $$('#testsOut'); const logs = []; const log = (ok,msg)=> logs.push(`${ok?'✅':'❌'} ${msg}`); const assert = (c,m)=>{ if(!c) throw new Error(m); }; const backup = localStorage.getItem(LS_KEY); try{ localStorage.removeItem(LS_KEY); let tmp = loadStore(); assert(tmp && typeof tmp==='object','loadStore objeto'); assert(tmp.perKm===3,'perKm padrão = 3'); log(true,'Bootstrap OK'); DB = loadStore(); upsertComb('Lagoa Nova','Lagoa Nova',12); upsertComb('Lagoa Nova','Tirol',13); $$('#qOrigem').value='Lagoa Nova'; $$('#qDestino').value='Tirol'; consultar(); assert($$('#consultaResultado').textContent.length>1,'Consulta exibiu valor'); log(true,'Upsert/Consulta OK'); const before = DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')]; $$('#ajGlobal').value='0.50'; aplicarGlobal(); assert(DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')]===round2(before+0.50),'Global +0,50'); log(true,'Ajuste global OK'); out.textContent = logs.join('\n'); }catch(e){ logs.push('❌ Falha: '+e.message); out.textContent = logs.join('\n'); } finally{ if(backup==null) localStorage.removeItem(LS_KEY); else localStorage.setItem(LS_KEY, backup); DB = loadStore(); refreshUI(); } }
+$$('#btnRunTests').addEventListener('click', runTests);
+
+// ======================= Init =======================
+(function init(){
+  refreshUI();
+  const outPerKm = $$('#outPerKm'); if(outPerKm) outPerKm.value = DB.perKm.toFixed(2);
+})();
+</script>
+</body>
+</html>
