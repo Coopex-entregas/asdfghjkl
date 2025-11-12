@@ -1611,11 +1611,18 @@ def precos_rotas():
         return redirect(url_for('login'))
 
     base_padrao = 12.0
+
+    # per_km salvo nos parâmetros do sistema (usado pelo template)
+    per_km_val = get_per_km()
+
+    # tenta puxar a lista de bairros a partir dos clientes
     try:
-        bairros_rows = (Cliente.query
-                        .filter(Cliente.bairro_origem.isnot(None))
-                        .with_entities(Cliente.bairro_origem)
-                        .all())
+        bairros_rows = (
+            Cliente.query
+            .filter(Cliente.bairro_origem.isnot(None))
+            .with_entities(Cliente.bairro_origem)
+            .all()
+        )
         bairros = sorted({(b[0] or '').strip() for b in bairros_rows if (b[0] or '').strip()})
     except Exception:
         bairros = []
@@ -1626,22 +1633,30 @@ def precos_rotas():
     ]
     atualizado_em = datetime.now(BRAZIL_TZ)
 
-    # Se tiver templates/precos_rotas.html, ele será usado; senão renderiza o HTML mínimo abaixo
-    return render_or_string("precos_rotas.html", """
-    <!doctype html><meta charset="utf-8">
-    <h1>Tabela de Preços & Rotas</h1>
-    <p>Base: R$ {{ '%.2f'|format(base_padrao) }}</p>
-    <p>Atualizado em: {{ atualizado_em.strftime('%d/%m/%Y %H:%M') }}</p>
-    <h3>Regras</h3>
-    <ul>
-      {% for r in regras %}
-        <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>: R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})</li>
-      {% endfor %}
-    </ul>
-    <h3>Bairros (a partir dos clientes)</h3>
-    <p>{{ bairros|join(', ') if bairros else '—' }}</p>
-    """,
-    regras=regras, bairros=bairros, base_padrao=base_padrao, atualizado_em=atualizado_em)
+    # Se existir templates/precos_rotas.html, ele será usado; senão cai no fallback abaixo
+    return render_or_string(
+        "precos_rotas.html",
+        """
+        <!doctype html><meta charset="utf-8">
+        <h1>Tabela de Preços & Rotas</h1>
+        <p>Base: R$ {{ '%.2f'|format(base_padrao) }}</p>
+        <p>Valor por km (per_km): R$ {{ '%.2f'|format(per_km) }}</p>
+        <p>Atualizado em: {{ atualizado_em.strftime('%d/%m/%Y %H:%M') }}</p>
+        <h3>Regras</h3>
+        <ul>
+          {% for r in regras %}
+            <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>: R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})</li>
+          {% endfor %}
+        </ul>
+        <h3>Bairros (a partir dos clientes)</h3>
+        <p>{{ bairros|join(', ') if bairros else '—' }}</p>
+        """,
+        regras=regras,
+        bairros=bairros,
+        base_padrao=base_padrao,
+        atualizado_em=atualizado_em,
+        per_km=per_km_val,  # << ESSENCIAL pro template não estourar
+    )
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
