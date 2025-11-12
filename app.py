@@ -1430,40 +1430,107 @@ def periodo_legivel_str(di_str, df_str):
         return f"até {df}"
     return "todo o período"
 
-def _per_km_safe_default():
-    # tenta vir de env; senao 1.00
-    import os
+def _now_brt():
     try:
-        return float(os.getenv("PER_KM", "1.00"))
+        return datetime.now(BRAZIL_TZ)  # se você já definiu BRAZIL_TZ
     except Exception:
-        return 1.00
+        return datetime.now()
 
-def get_per_km_safe():
-    """
-    1) Se já existir get_per_km() no projeto, usa.
-    2) Tenta buscar em ParametroSistema (se existir).
-    3) Cai para variável de ambiente PER_KM ou 1.00.
-    """
-    # 1) usa get_per_km se já tiver no projeto
+# Detecta se já existe ParametroSistema no projeto
+ParametroSistemaCls = globals().get("ParametroSistema", None)
+
+# Se não existir ParametroSistema, criamos uma KV simples
+if ParametroSistemaCls is None:
+    class ConfigKV(db.Model):
+        __tablename__ = "config_kv"
+        id = db.Column(db.Integer, primary_key=True)
+        chave = db.Column(db.String(80), unique=True, nullable=False, index=True)
+        valor = db.Column(db.String(255), nullable=True)
+
+        def __repr__(self):
+            return f"<ConfigKV {self.chave}={self.valor}>"
+
+    def _get_param(chave: str, default=None):
+        row = ConfigKV.query.filter_by(chave=chave).first()
+        return row.valor if row and row.valor is not None else default
+
+    def _set_param(chave: str, valor: str):
+        row = ConfigKV.query.filter_by(chave=chave).first()
+        if not row:
+            row = ConfigKV(chave=chave, valor=valor)
+            db.session.add(row)
+        else:
+            row.valor = valor
+        db.session.commit()
+
+else:
+    # Usa o ParametroSistema do seu projeto
+    def _get_param(chave: str, default=None):
+        row = ParametroSistema.query.filter_by(chave=chave).first()
+        return row.valor if row and row.valor is not None else default
+
+    def _set_param(chave: str, valor: str):
+        row = ParametroSistema.query.filter_by(chave=chave).first()
+        if not row:
+            row = ParametroSistema(chave=chave, valor=str(valor))
+            db.session.add(row)
+        else:
+            row.valor = str(valor)
+        db.session.commit()
+
+def get_per_km():
+    # ordem: DB -> ENV -> 3.00
+    v = _get_param("per_km", None)
+    if v is not None:
+        try:
+            return float(v)
+        except Exception:
+            pass
     try:
-        if "get_per_km" in globals() and callable(get_per_km):
-            return float(get_per_km())
+        return float(os.getenv("PER_KM", "3.00"))
     except Exception:
-        pass
+        return 3.00
 
-    # 2) tenta ParametroSistema (se sua app tiver esse model)
+def set_per_km(novo_valor: float):
+    _set_param("per_km", f"{float(novo_valor):.2f}")
+    return get_per_km()
+
+# Modelo no banco para a tabela de preços
+class PrecoRota(db.Model):
+    __tablename__ = "preco_rota"
+    id       = db.Column(db.Integer, primary_key=True)
+    origem   = db.Column(db.String(120), nullable=False, index=True)
+    destino  = db.Column(db.String(120), nullable=False, index=True)
+    valor    = db.Column(db.Numeric(10,2), nullable=False, default=0)
+    criado_em  = db.Column(db.DateTime, default=_now_brt)
+    atualizado_em = db.Column(db.DateTime, default=_now_brt, onupdate=_now_brt)
+
+    __table_args__ = (
+        db.UniqueConstraint("origem","destino", name="uq_preco_rota_pair"),
+    )
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "origem": self.origem,
+            "destino": self.destino,
+            "valor": float(self.valor),
+        }
+
+# Garante criação das tabelas novas (não mexe nas existentes)
+with app.app_context():
     try:
-        # evita import top-level pra não gerar import circular
-        ParametroSistema = globals().get("ParametroSistema")
-        if ParametroSistema is not None:
-            row = ParametroSistema.query.filter_by(chave="per_km").first()
-            if row and getattr(row, "valor", None):
-                return float(row.valor)
-    except Exception:
-        pass
+        db.create_all()
+    except Exception as e:
+        # não derruba a app se o create_all falhar em produção
+        app.logger.warning(f"create_all falhou (ignorado): {e}")
 
-    # 3) fallback
-    return _per_km_safe_default()
+# Normalizadores
+def _norm(s: str) -> str:
+    return (s or "").strip()
+
+def _ci_equal(a: str, b: str) -> bool:
+    return (_norm(a).casefold() == _norm(b).casefold())
 
 # ====== Preservar filtros do /admin ======
 @app.before_request
@@ -1639,16 +1706,15 @@ def admin():
         lista_espera=lista_espera, cooperados_disponiveis=cooperados_disponiveis
     )
 
-# ====== TABELA DE PREÇOS & ROTAS ======
+# -------------------
+# ROTA DA PÁGINA HTML
+# -------------------
 @app.route('/precos-rotas', methods=['GET'], endpoint='precos_rotas')
 def precos_rotas():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    base_padrao = 12.0
-    per_km_val = get_per_km_safe()   # <<<<<<<<<< essencial pro template
-
-    # tenta puxar a lista de bairros a partir dos clientes
+    # Bairros sugeridos a partir dos clientes (se existir a tabela Cliente)
     try:
         bairros_rows = (
             Cliente.query
@@ -1656,42 +1722,214 @@ def precos_rotas():
             .with_entities(Cliente.bairro_origem)
             .all()
         )
-        bairros = sorted({(b[0] or '').strip() for b in bairros_rows if (b[0] or '').strip()})
+        bairros = sorted({(_norm(b[0])) for b in bairros_rows if _norm(b[0])})
     except Exception:
         bairros = []
 
-    regras = [
-        {"origem": "Mesmo bairro", "destino": "Mesmo bairro", "preco": base_padrao,     "obs": "Base"},
-        {"origem": "Centro",       "destino": "Grande Natal", "preco": base_padrao + 3, "obs": "+3 anéis"},
-    ]
-    atualizado_em = datetime.now(BRAZIL_TZ)
+    base_padrao = 12.0
+    atualizado_em = _now_brt()
+    per_km_val = get_per_km()
 
-    # Se tiver templates/precos_rotas.html, ele será usado; senão renderiza o HTML mínimo abaixo
+    # Se tiver template real, ele será usado. Senão, cai no HTML mínimo inline.
     return render_or_string(
         "precos_rotas.html",
         """
         <!doctype html><meta charset="utf-8">
-        <h1>Tabela de Preços & Rotas</h1>
+        <h1>COOPEX — Tabela de Preços & Rotas</h1>
         <p>Base: R$ {{ '%.2f'|format(base_padrao) }}</p>
-        <p>Valor por km: R$ {{ '%.2f'|format(per_km) }}</p>
+        <p>R$/km: <b>{{ '%.2f'|format(per_km) }}</b></p>
         <p>Atualizado em: {{ atualizado_em.strftime('%d/%m/%Y %H:%M') }}</p>
-        <h3>Regras</h3>
-        <ul>
-          {% for r in regras %}
-            <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>:
-                R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})
-            </li>
-          {% endfor %}
-        </ul>
-        <h3>Bairros (a partir dos clientes)</h3>
-        <p>{{ bairros|join(', ') if bairros else '—' }}</p>
         """,
-        regras=regras,
-        bairros=bairros,
         base_padrao=base_padrao,
         atualizado_em=atualizado_em,
-        per_km=per_km_val,  # <<<<<<<<<< passa pro template (corrige o 500)
+        bairros=bairros,
+        per_km=per_km_val,
     )
+
+# ---------------
+# API — LISTAGEM
+# ---------------
+@app.route("/api/precos", methods=["GET"], endpoint="api_list_precos")
+def api_list_precos():
+    if not session.get("is_admin"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    q = request.args.get("q", "", type=str).strip()
+    query = PrecoRota.query
+    if q:
+        # filtro simples por origem/destino/valor
+        like = f"%{q}%"
+        query = query.filter(
+            db.or_(
+                PrecoRota.origem.ilike(like),
+                PrecoRota.destino.ilike(like),
+                func.cast(PrecoRota.valor, db.String).ilike(like),
+            )
+        )
+
+    itens = [p.to_dict() for p in query.order_by(PrecoRota.origem.asc(), PrecoRota.destino.asc()).all()]
+
+    # Bairros para o datalist
+    try:
+        bairros_rows = (
+            Cliente.query
+            .filter(Cliente.bairro_origem.isnot(None))
+            .with_entities(Cliente.bairro_origem)
+            .all()
+        )
+        bairros = sorted({(_norm(b[0])) for b in bairros_rows if _norm(b[0])})
+    except Exception:
+        # fallback: inferir dos próprios registros
+        bairros = sorted({p["origem"] for p in itens} | {p["destino"] for p in itens})
+
+    return jsonify({
+        "ok": True,
+        "per_km": get_per_km(),
+        "items": itens,
+        "bairros": bairros,
+    })
+
+# ---------------
+# API — UPSERT
+# ---------------
+@app.route("/api/precos", methods=["POST"], endpoint="api_upsert_preco")
+def api_upsert_preco():
+    if not session.get("is_admin"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    origem  = _norm(data.get("origem"))
+    destino = _norm(data.get("destino"))
+    valor   = data.get("valor", None)
+
+    if not origem or not destino:
+        return jsonify({"ok": False, "error": "Informe origem e destino."}), 400
+    try:
+        valor_f = float(valor)
+    except Exception:
+        return jsonify({"ok": False, "error": "Valor inválido."}), 400
+
+    # Tenta achar par (case-insensitive)
+    existente = (
+        PrecoRota.query
+        .filter(func.lower(PrecoRota.origem)==origem.lower(),
+                func.lower(PrecoRota.destino)==destino.lower())
+        .first()
+    )
+    if existente:
+        existente.origem  = origem  # preserva com a grafia mais recente
+        existente.destino = destino
+        existente.valor   = round(valor_f, 2)
+        try:
+            db.session.commit()
+            return jsonify({"ok": True, "id": existente.id})
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": f"Falha ao atualizar: {e}"}), 500
+    else:
+        novo = PrecoRota(origem=origem, destino=destino, valor=round(valor_f, 2))
+        db.session.add(novo)
+        try:
+            db.session.commit()
+            return jsonify({"ok": True, "id": novo.id})
+        except IntegrityError:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": "Par origem/destino já existe."}), 409
+        except Exception as e:
+            db.session.rollback()
+            return jsonify({"ok": False, "error": f"Falha ao salvar: {e}"}), 500
+
+# ----------------
+# API — DELETE
+# ----------------
+@app.route("/api/precos/<int:item_id>", methods=["DELETE"], endpoint="api_delete_preco")
+def api_delete_preco(item_id):
+    if not session.get("is_admin"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    it = PrecoRota.query.get(item_id)
+    if not it:
+        return jsonify({"ok": False, "error": "id não encontrado"}), 404
+    db.session.delete(it)
+    try:
+        db.session.commit()
+        return jsonify({"ok": True})
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Falha ao excluir: {e}"}), 500
+
+# --------------------------
+# API — AJUSTES EM MASSA
+# --------------------------
+@app.route("/api/precos/ajustes", methods=["PATCH"], endpoint="api_ajustes")
+def api_ajustes():
+    if not session.get("is_admin"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    bairro      = _norm(data.get("bairro", ""))
+    delta       = data.get("delta", None)
+    global_delta= data.get("global_delta", None)
+
+    changed = 0
+
+    try:
+        if bairro and delta is not None:
+            # aplica em todos que tocam o bairro
+            try:
+                dv = float(delta)
+            except Exception:
+                return jsonify({"ok": False, "error": "delta inválido."}), 400
+
+            qs = PrecoRota.query.filter(
+                db.or_(func.lower(PrecoRota.origem) == bairro.lower(),
+                       func.lower(PrecoRota.destino) == bairro.lower())
+            ).all()
+
+            for it in qs:
+                it.valor = round(float(it.valor) + dv, 2)
+                changed += 1
+
+            db.session.commit()
+            return jsonify({"ok": True, "changed": changed})
+
+        if global_delta is not None:
+            try:
+                gd = float(global_delta)
+            except Exception:
+                return jsonify({"ok": False, "error": "global_delta inválido."}), 400
+
+            qs = PrecoRota.query.all()
+            for it in qs:
+                it.valor = round(float(it.valor) + gd, 2)
+                changed += 1
+
+            db.session.commit()
+            return jsonify({"ok": True, "changed": changed})
+
+        return jsonify({"ok": False, "error": "Nada a aplicar. Envie {bairro, delta} ou {global_delta}."}), 400
+
+    except Exception as e:
+        db.session.rollback()
+        return jsonify({"ok": False, "error": f"Falha no ajuste: {e}"}), 500
+
+# --------------------------
+# API — DEFINIR PER_KM
+# --------------------------
+@app.route("/api/perkm", methods=["POST"], endpoint="api_per_km")
+def api_per_km():
+    if not session.get("is_admin"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    data = request.get_json(silent=True) or {}
+    v = data.get("per_km", None)
+    try:
+        v = float(v)
+    except Exception:
+        return jsonify({"ok": False, "error": "per_km inválido."}), 400
+
+    novo = set_per_km(v)
+    return jsonify({"ok": True, "per_km": float(novo)})
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
