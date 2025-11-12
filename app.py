@@ -419,6 +419,58 @@ def periodo_legivel_str(di_str, df_str):
         return f"até {df}"
     return "todo o período"
 
+class PrecoRota(db.Model):
+    __tablename__ = "precos_rotas"
+    id = db.Column(db.Integer, primary_key=True)
+    origem = db.Column(db.String(120), nullable=False)
+    destino = db.Column(db.String(120), nullable=False)
+    valor = db.Column(db.Numeric(10, 2), nullable=False)
+
+    # campos normalizados p/ unicidade e busca
+    origem_norm = db.Column(db.String(120), index=True, nullable=False)
+    destino_norm = db.Column(db.String(120), index=True, nullable=False)
+
+    __table_args__ = (
+        db.UniqueConstraint("origem_norm", "destino_norm", name="uq_preco_origem_destino"),
+    )
+
+    def as_dict(self):
+        return {
+            "id": self.id,
+            "origem": self.origem,
+            "destino": self.destino,
+            "valor": float(self.valor),
+        }
+
+class ParametroSistema(db.Model):
+    __tablename__ = "parametros_sistema"
+    key = db.Column(db.String(64), primary_key=True)
+    value = db.Column(db.String(256), nullable=False)
+
+def get_per_km(default=3.00) -> float:
+    p = ParametroSistema.query.get("per_km")
+    try:
+        return float(p.value) if p else float(default)
+    except Exception:
+        return float(default)
+
+def set_per_km(v: float):
+    v = round(float(v), 2)
+    p = ParametroSistema.query.get("per_km")
+    if not p:
+        p = ParametroSistema(key="per_km", value=f"{v:.2f}")
+        db.session.add(p)
+    else:
+        p.value = f"{v:.2f}"
+    db.session.commit()
+
+# Garanta que as tabelas existem (se você não usa migrações)
+with app.app_context():
+    try:
+        db.create_all()
+    except Exception:
+        pass
+
 # ====== Preservar filtros do /admin ======
 @app.before_request
 def remember_admin_filters():
@@ -1604,44 +1656,197 @@ def admin():
         lista_espera=lista_espera, cooperados_disponiveis=cooperados_disponiveis
     )
 
-# ====== TABELA DE PREÇOS & ROTAS ======
-@app.route('/precos-rotas', methods=['GET'], endpoint='precos_rotas')
+# ---------------------------
+# PÁGINA
+# ---------------------------
+@app.route('/precos-rotas', methods=['GET'])
 def precos_rotas():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    base_padrao = 12.0
+    # lista de bairros com base nas origens/destinos cadastrados
+    bairros = (
+        db.session.query(PrecoRota.origem)
+        .distinct().all()
+    )
+    bairros += (
+        db.session.query(PrecoRota.destino)
+        .distinct().all()
+    )
+    bairros = sorted({(b[0] or '').strip() for b in bairros if (b[0] or '').strip()})
+
+    return render_template(
+        'precos_rotas.html',
+        bairros=bairros,
+        per_km=get_per_km(),
+    )
+
+# ---------------------------
+# API (JSON)
+# ---------------------------
+
+def _require_admin():
+    if not session.get('is_admin'):
+        return False
+    return True
+
+@app.route('/api/precos', methods=['GET'])
+def api_list_precos():
+    if not _require_admin():
+        return jsonify({"error": "unauthorized"}), 401
+
+    q = request.args.get('q', '', type=str).strip().lower()
+    page = max(request.args.get('page', 1, type=int), 1)
+    per_page = min(max(request.args.get('per_page', 500, type=int), 1), 5000)
+
+    base = PrecoRota.query
+    if q:
+        like = f"%{q}%"
+        base = base.filter(
+            db.or_(
+                PrecoRota.origem.ilike(like),
+                PrecoRota.destino.ilike(like),
+                func.cast(PrecoRota.valor, db.String).ilike(like),
+            )
+        )
+
+    total = base.count()
+    items = (base
+             .order_by(PrecoRota.origem_norm.asc(), PrecoRota.destino_norm.asc())
+             .offset((page-1)*per_page)
+             .limit(per_page)
+             .all())
+
+    # também devolve lista de bairros (para o datalist)
+    bairros = (
+        db.session.query(PrecoRota.origem).distinct().all()
+    )
+    bairros += (
+        db.session.query(PrecoRota.destino).distinct().all()
+    )
+    bairros = sorted({(b[0] or '').strip() for b in bairros if (b[0] or '').strip()})
+
+    return jsonify({
+        "total": total,
+        "items": [it.as_dict() for it in items],
+        "bairros": bairros,
+        "per_km": get_per_km(),
+    })
+
+@app.route('/api/precos', methods=['POST'])
+def api_upsert_preco():
+    if not _require_admin():
+        return jsonify({"error": "unauthorized"}), 401
+
+    data = request.get_json(force=True, silent=True) or {}
+    origem = (data.get('origem') or '').strip()
+    destino = (data.get('destino') or '').strip()
+    valor_raw = data.get('valor')
+
+    if not origem or not destino:
+        return jsonify({"error": "Informe origem e destino"}), 400
+
+    # aceita vírgula/ponto
     try:
-        bairros_rows = (Cliente.query
-                        .filter(Cliente.bairro_origem.isnot(None))
-                        .with_entities(Cliente.bairro_origem)
-                        .all())
-        bairros = sorted({(b[0] or '').strip() for b in bairros_rows if (b[0] or '').strip()})
+        if isinstance(valor_raw, str):
+            valor_raw = valor_raw.replace(',', '.')
+        valor = Decimal(str(valor_raw))
     except Exception:
-        bairros = []
+        return jsonify({"error": "Valor inválido"}), 400
 
-    regras = [
-        {"origem": "Mesmo bairro", "destino": "Mesmo bairro", "preco": base_padrao,     "obs": "Base"},
-        {"origem": "Centro",       "destino": "Grande Natal", "preco": base_padrao + 3, "obs": "+3 anéis"},
-    ]
-    atualizado_em = datetime.now(BRAZIL_TZ)
+    origem_norm = _norm_txt(origem)
+    destino_norm = _norm_txt(destino)
 
-    # Se tiver templates/precos_rotas.html, ele será usado; senão renderiza o HTML mínimo abaixo
-    return render_or_string("precos_rotas.html", """
-    <!doctype html><meta charset="utf-8">
-    <h1>Tabela de Preços & Rotas</h1>
-    <p>Base: R$ {{ '%.2f'|format(base_padrao) }}</p>
-    <p>Atualizado em: {{ atualizado_em.strftime('%d/%m/%Y %H:%M') }}</p>
-    <h3>Regras</h3>
-    <ul>
-      {% for r in regras %}
-        <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>: R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})</li>
-      {% endfor %}
-    </ul>
-    <h3>Bairros (a partir dos clientes)</h3>
-    <p>{{ bairros|join(', ') if bairros else '—' }}</p>
-    """,
-    regras=regras, bairros=bairros, base_padrao=base_padrao, atualizado_em=atualizado_em)
+    item = (PrecoRota.query
+            .filter_by(origem_norm=origem_norm, destino_norm=destino_norm)
+            .first())
+    if not item:
+        item = PrecoRota(
+            origem=origem, destino=destino,
+            origem_norm=origem_norm, destino_norm=destino_norm,
+            valor=valor
+        )
+        db.session.add(item)
+    else:
+        item.origem = origem
+        item.destino = destino
+        item.valor = valor
+
+    db.session.commit()
+    return jsonify({"ok": True, "item": item.as_dict()})
+
+@app.route('/api/precos/<int:item_id>', methods=['DELETE'])
+def api_delete_preco(item_id):
+    if not _require_admin():
+        return jsonify({"error": "unauthorized"}), 401
+    item = PrecoRota.query.get_or_404(item_id)
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify({"ok": True})
+
+@app.route('/api/precos/ajustes', methods=['PATCH'])
+def api_ajustes():
+    if not _require_admin():
+        return jsonify({"error": "unauthorized"}), 401
+    data = request.get_json(force=True, silent=True) or {}
+    bairro = (data.get('bairro') or '').strip()
+    delta = data.get('delta')
+    global_delta = data.get('global_delta')
+
+    changed = 0
+
+    if bairro:
+        try:
+            if isinstance(delta, str):
+                delta = Decimal(delta.replace(',', '.'))
+            else:
+                delta = Decimal(str(delta))
+        except Exception:
+            return jsonify({"error": "Delta inválido"}), 400
+
+        alvo = _norm_txt(bairro)
+        rows = (PrecoRota.query
+                .filter(db.or_(PrecoRota.origem_norm==alvo,
+                               PrecoRota.destino_norm==alvo))
+                .all())
+        for r in rows:
+            r.valor = Decimal(r.valor) + delta
+            changed += 1
+
+    elif global_delta is not None:
+        try:
+            if isinstance(global_delta, str):
+                global_delta = Decimal(global_delta.replace(',', '.'))
+            else:
+                global_delta = Decimal(str(global_delta))
+        except Exception:
+            return jsonify({"error": "Delta inválido"}), 400
+        rows = PrecoRota.query.all()
+        for r in rows:
+            r.valor = Decimal(r.valor) + Decimal(global_delta)
+            changed += 1
+    else:
+        return jsonify({"error": "Informe 'bairro'+'delta' OU 'global_delta'"}), 400
+
+    db.session.commit()
+    return jsonify({"ok": True, "changed": changed})
+
+@app.route('/api/perkm', methods=['GET', 'POST'])
+def api_per_km():
+    if not _require_admin():
+        return jsonify({"error": "unauthorized"}), 401
+    if request.method == 'GET':
+        return jsonify({"per_km": get_per_km()})
+    data = request.get_json(force=True, silent=True) or {}
+    raw = data.get('per_km', 3.00)
+    try:
+        if isinstance(raw, str):
+            raw = raw.replace(',', '.')
+        v = round(float(raw), 2)
+    except Exception:
+        return jsonify({"error": "Valor inválido"}), 400
+    set_per_km(v)
+    return jsonify({"ok": True, "per_km": v})
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
