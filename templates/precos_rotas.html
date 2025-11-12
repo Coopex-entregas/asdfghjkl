@@ -4,13 +4,15 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>COOPEX — Tabela de Preços & Rotas</title>
-  <!-- Leaflet (mapa) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Leaflet -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
+
   <style>
     :root{
-      --royal:#4169E1; --royal-700:#3158d7; --royal-900:#1f3ea6;
+      --royal:#4169E1; --royal-700:#3158d7;
       --ink:#0b1220; --muted:#5b677a; --bg:#f7f9ff;
       --panel:#ffffff; --panel-2:#f0f5ff; --border:#e5ecff;
       --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444;
@@ -31,7 +33,6 @@
       --ink:#e7edf9; --muted:#8aa0c7; --chip:#0f1623; --chip-text:#d8e3ff;
       --table-head:#0b1320; --table-head-text:#b9ccff; --shadow:0 10px 26px rgba(0,0,0,.4);
     }
-
     *{box-sizing:border-box}
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
@@ -44,7 +45,7 @@
     .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--chip);color:var(--chip-text)}
     .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#f6f9ff);cursor:pointer;box-shadow:var(--shadow-soft)}
     .btn.primary{background:linear-gradient(180deg,var(--royal),var(--royal-700));border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(65,105,225,.35)}
-    .btn[disabled]{opacity:.6;cursor:not-allowed}
+    .btn.link{background:transparent;border-color:rgba(255,255,255,.4);color:#fff}
 
     .layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 64px)}
     @media (max-width:1100px){.layout{grid-template-columns:1fr}}
@@ -69,32 +70,44 @@
     .legend{display:flex;gap:10px;align-items:center}
     .legend .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
 
-    .muted{color:var(--muted)}
-    .grow{flex:1}
     .section{display:none}
     .section.active{display:block}
-    .toast{position:fixed;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);padding:10px 12px;border-radius:12px}
+
+    .toast{
+      position:fixed;right:16px;bottom:16px;background:#0f172a;color:#fff;padding:10px 14px;border-radius:12px;
+      box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transform:translateY(8px);transition:.2s;z-index:99
+    }
+    .toast.show{opacity:1;transform:translateY(0)}
   </style>
 </head>
 <body>
   <header>
     <div class="wrap">
       <i class="logo" aria-hidden="true"></i>
+
+      <a class="btn link" href="{{ url_for('admin') }}">← Voltar ao Admin</a>
+
       <div class="pill">
         <span style="opacity:.9">R$ por km</span>
-        <input id="perKm" type="number" step="0.01" min="0" value="3.00" style="width:110px;background:#fff;border:0;border-radius:10px;padding:6px 8px"/>
+        <input id="perKm" type="text" inputmode="decimal" style="width:110px;background:#fff;border:0;border-radius:10px;padding:6px 8px" value="{{ '%.2f' % per_km }}"/>
         <button class="btn primary" id="savePerKm">Salvar</button>
       </div>
+
       <span class="chip">Registros: <strong id="statTotal">0</strong></span>
       <span class="chip">Bairros: <strong id="statBairros">0</strong></span>
-      <div style="margin-left:auto;display:flex;gap:8px;align-items:center"></div>
-      <!-- BOTÃO VOLTAR AO ADMIN -->
-      <a class="btn" href="{{ url_for('admin') }}" title="Voltar ao painel do administrador">← Voltar ao Admin</a>
+
+      <div style="margin-left:auto"></div>
       <button id="btnTheme" class="btn" title="Alternar tema">Tema: auto</button>
     </div>
   </header>
 
-  <div class="layout">
+  <div class="layout" 
+       data-end-list="{{ url_for('api_list_precos') }}"
+       data-end-upsert="{{ url_for('api_upsert_preco') }}"
+       data-end-delete="{{ url_for('api_delete_preco', item_id=0)[:-1] }}"  <!-- corta o 0 final -->
+       data-end-ajustes="{{ url_for('api_ajustes') }}"
+       data-end-perkm="{{ url_for('api_per_km') }}"
+  >
     <aside class="sidebar">
       <nav class="nav">
         <a href="#tab-consulta" data-gotab class="active">Consultar por Bairros</a>
@@ -126,7 +139,7 @@
         <div class="card" style="margin-top:8px;background:var(--panel-2)">
           <div style="display:flex;gap:10px;align-items:center">
             <div class="grow">
-              <div class="muted">Resultado</div>
+              <div style="color:var(--muted)">Resultado</div>
               <div id="consultaResultado" style="font-size:28px;font-weight:800">—</div>
             </div>
             <span class="chip" id="consultaStatus">sem consulta</span>
@@ -170,7 +183,7 @@
           </div>
           <div class="card" style="box-shadow:none">
             <label>Valor por km (R$)</label>
-            <input id="outPerKm" type="number" step="0.01" min="0">
+            <input id="outPerKm" type="text" inputmode="decimal">
           </div>
           <div class="card" style="box-shadow:none">
             <label>Preço estimado (R$)</label>
@@ -192,7 +205,7 @@
           </div>
           <div>
             <label>Valor (R$)</label>
-            <input id="cValor" type="text" inputmode="decimal" placeholder="Ex.: 12.00">
+            <input id="cValor" type="text" inputmode="decimal" placeholder="Ex.: 12,00">
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
@@ -204,7 +217,6 @@
           <div class="grow"><strong>Combinações cadastradas</strong></div>
           <input id="filtroTabela" placeholder="Filtrar… (origem, destino, valor)" style="width:240px">
           <button class="btn" id="btnExportar">Exportar JSON</button>
-          <label class="btn" style="cursor:pointer">Importar JSON<input type="file" id="fileImport" accept="application/json" hidden></label>
         </div>
         <div style="max-height:420px;overflow:auto;margin-top:8px">
           <table class="table" id="tabela">
@@ -222,31 +234,30 @@
           <div class="card" style="box-shadow:none">
             <label>Bairro alvo</label>
             <input list="dl-bairros" id="ajBairro" placeholder="Ex.: Lagoa Nova">
-            <label style="margin-top:8px">Acrescentar (R$) — use negativo para reduzir</label>
-            <input id="ajValor" type="text" inputmode="decimal" value="1.00">
+            <label style="margin-top:8px">Acrescentar (R$) — negativo para reduzir</label>
+            <input id="ajValor" type="text" inputmode="decimal" value="1,00">
             <div style="margin-top:10px"><button class="btn" id="btnAplicarBairro">Aplicar nos ligados ao bairro</button></div>
           </div>
           <div class="card" style="box-shadow:none">
             <label>Acrescentar a todos (R$)</label>
-            <input id="ajGlobal" type="text" inputmode="decimal" value="0.50">
+            <input id="ajGlobal" type="text" inputmode="decimal" value="0,50">
             <div style="margin-top:10px"><button class="btn" id="btnAplicarGlobal">Aplicar em todas as combinações</button></div>
           </div>
         </div>
-        <div id="ajFeedback" class="muted" style="margin-top:8px"></div>
+        <div id="ajFeedback" style="color:var(--muted);margin-top:8px"></div>
       </section>
 
       <!-- DADOS -->
       <section id="tab-dados" class="card section">
         <div class="grid cols-2">
           <div>
-            <p>Seus dados ficam no <code>localStorage</code>. Faça backup/restaure com JSON.</p>
+            <p>Agora os dados ficam no <strong>banco de dados</strong>. O botão abaixo exporta um JSON do que está no servidor.</p>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn" id="btnDump">Ver JSON atual</button>
-              <button class="btn" style="background:#fff;border-color:#ef4444;color:#ef4444" id="btnLimparTudo">Apagar tudo</button>
             </div>
           </div>
           <div>
-            <ul class="muted" style="margin:0">
+            <ul style="margin:0;color:var(--muted)">
               <li>Consulte por bairros; se não existir, calcule rota por ruas (OSRM).</li>
               <li>Edite/Exclua combinações e faça ajustes em massa por bairro ou global.</li>
             </ul>
@@ -258,20 +269,24 @@
       <!-- TESTES -->
       <section id="tab-testes" class="card section">
         <div style="display:flex;gap:10px;align-items:center">
-          <div class="grow"><strong>Auto-teste</strong></div>
+          <div class="grow"><strong>Auto-teste (contra API)</strong></div>
           <button class="btn" id="btnRunTests">Rodar Testes</button>
         </div>
         <pre id="testsOut" class="card" style="white-space:pre-wrap;min-height:120px"></pre>
       </section>
 
-      <datalist id="dl-bairros"></datalist>
+      <datalist id="dl-bairros">
+        {% for b in bairros %}
+          <option value="{{ b|e }}"></option>
+        {% endfor %}
+      </datalist>
     </main>
   </div>
 
-<div id="toast" class="toast" style="display:none"></div>
+  <div id="toast" class="toast"></div>
 
 <script>
-/* ========= Tema ========= */
+/* ======== Tema (igual ao anterior) ======== */
 (function themeInit(){
   try{
     const pref = localStorage.getItem('coopex_theme');
@@ -289,112 +304,150 @@
     else { apply(localStorage.getItem('coopex_theme_subpage')||'auto'); }
     btn.addEventListener('click', ()=>{
       const cur = localStorage.getItem('coopex_theme_subpage')||'auto';
-      apply(cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto');
+      const next = cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
+      apply(next);
     });
   }catch(e){}
 })();
 
-/* ========= Utils & Store ========= */
-const LS_KEY = 'tabelaPrecos';
-const $$ = sel => document.querySelector(sel);
+/* ======== Utils ======== */
+const $$  = sel => document.querySelector(sel);
 const $$$ = sel => Array.from(document.querySelectorAll(sel));
-function alpha(a,b){ return a.localeCompare(b,'pt-BR',{sensitivity:'base'}); }
-function keyFor(a,b){ return `${norm(a)}|${norm(b)}`; }
-function norm(s){ return String(s||'').trim(); }
-function moeda(n){ if(Number.isNaN(n)) return '—'; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
-function round2(n){ return Math.round(n*100)/100; }
-function escapeHtml(s){ return String(s).replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;"}[m])); }
-function escapeAttr(s){ return String(s).replace(/["'\\]/g, m=>({"\"":"&quot;","'":"&#39;","\\":"\\\\"}[m])); }
-function parseValor(v){
-  if(v==null) return NaN;
-  const s = String(v).replace(/\s/g,'').replace(/^R\$\s?/,'').replace(/\./g,'').replace(',','.');
-  const n = Number(s);
-  return Number.isFinite(n) ? n : NaN;
-}
+const ROOT = document.querySelector('.layout');
+const END_LIST    = ROOT.dataset.endList;
+const END_UPSERT  = ROOT.dataset.endUpsert;
+const END_DELETE0 = ROOT.dataset.endDelete; // sem o / final
+const END_AJUSTES = ROOT.dataset.endAjustes;
+const END_PERKM   = ROOT.dataset.endPerkm;
+
 function toast(msg){
-  const t = $$('#toast'); if(!t) return;
-  t.textContent = msg; t.style.display='block'; t.style.opacity='1';
-  setTimeout(()=>{ t.style.transition='opacity .3s'; t.style.opacity='0'; setTimeout(()=>{ t.style.display='none'; t.style.transition=''; }, 300); }, 1200);
+  const el = $$('#toast'); el.textContent = msg; el.classList.add('show');
+  setTimeout(()=> el.classList.remove('show'), 1800);
+}
+function alpha(a,b){ return a.localeCompare(b,'pt-BR',{sensitivity:'base'}); }
+function moeda(n){ if(Number.isNaN(n)) return '—'; return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+function parseValor(s){
+  if(s==null) return NaN;
+  if(typeof s === 'number') return s;
+  s = String(s).trim().replace(/\./g,'').replace(',','.');
+  const v = Number(s);
+  return Number.isFinite(v) ? v : NaN;
 }
 
-function loadStore(){
-  const fallback = { perKm: 3.00, bairros: [], combinacoes: {} };
-  try{
-    const raw = localStorage.getItem(LS_KEY);
-    if(!raw){ localStorage.setItem(LS_KEY, JSON.stringify(fallback)); return fallback; }
-    const data = JSON.parse(raw);
-    data.perKm = Number(data.perKm ?? fallback.perKm);
-    data.bairros = Array.isArray(data.bairros) ? [...new Set(data.bairros)].sort(alpha) : [];
-    data.combinacoes = data.combinacoes || {};
-    return data;
-  }catch(e){ console.error(e); localStorage.setItem(LS_KEY, JSON.stringify(fallback)); return fallback; }
-}
-function saveStore(data){ localStorage.setItem(LS_KEY, JSON.stringify(data)); refreshUI(); }
-let DB = loadStore();
+/* ======== Estado carregado do servidor ======== */
+let LISTA = [];      // {id, origem, destino, valor}
+let Bairros = [];    // datalist
+let perKm  = parseFloat("{{ '%.2f' % per_km }}");
 
-function refreshUI(){
-  DB = loadStore();
-  $$('#statTotal').textContent = Object.keys(DB.combinacoes).length;
-  $$('#statBairros').textContent = DB.bairros.length;
-  if($$('#perKm')) $$('#perKm').value = DB.perKm.toFixed(2);
-  const dl = $$('#dl-bairros'); if(dl) dl.innerHTML = DB.bairros.map(b=>`<option value="${escapeHtml(b)}"></option>`).join('');
-  renderTabela();
+/* ======== Abas ======== */
+function goTab(id){
+  $$$('.nav a').forEach(x=> x.classList.remove('active'));
+  const link = $$(`.nav a[href="${id}"]`); if(link) link.classList.add('active');
+  $$$('.section').forEach(s=> s.classList.remove('active'));
+  const el = $$(id); if(el) el.classList.add('active');
+  if(id==='#tab-endereco'){ ensureMap(); setTimeout(fixMapSize, 120); }
 }
+$$$('.nav a[data-gotab]').forEach(a=>{
+  a.addEventListener('click', e=>{
+    e.preventDefault();
+    goTab(a.getAttribute('href'));
+  });
+});
+
+/* ======== Tabela ======== */
 function renderTabela(){
   const tbody = $$('#tabela tbody'); if(!tbody) return;
-  const q = norm($$('#filtroTabela')?.value).toLowerCase();
-  const rows = [];
-  for(const [k,valor] of Object.entries(DB.combinacoes)){
-    const [origem,destino] = k.split('|');
-    const show = !q || origem.toLowerCase().includes(q) || destino.toLowerCase().includes(q) || String(valor).includes(q);
-    if(!show) continue;
-    rows.push(`<tr>
-      <td>${escapeHtml(origem)}</td>
-      <td>${escapeHtml(destino)}</td>
-      <td style="text-align:right">${moeda(Number(valor))}</td>
-      <td style="text-align:right">
-        <button class="btn" onclick="editComb('${escapeAttr(origem)}','${escapeAttr(destino)}')">Editar</button>
-        <button class="btn" style="background:#fff;border-color:#ef4444;color:#ef4444" onclick="delComb('${escapeAttr(origem)}','${escapeAttr(destino)}')">Excluir</button>
-      </td>
-    </tr>`);
+  const q = ($$('#filtroTabela')?.value||'').trim().toLowerCase();
+  let rows = LISTA;
+  if(q){
+    rows = rows.filter(r =>
+      r.origem.toLowerCase().includes(q) ||
+      r.destino.toLowerCase().includes(q) ||
+      String(r.valor).includes(q)
+    );
   }
-  tbody.innerHTML = rows.join('') || `<tr><td colspan="4" class="muted">Nenhum registro ainda.</td></tr>`;
+  rows = rows.slice().sort((a,b)=> alpha(a.origem,b.origem) || alpha(a.destino,b.destino));
+  $$('#statTotal').textContent = LISTA.length;
+  $$('#statBairros').textContent = Bairros.length;
+
+  tbody.innerHTML = rows.map(r=>`
+    <tr>
+      <td>${r.origem}</td>
+      <td>${r.destino}</td>
+      <td style="text-align:right">${moeda(r.valor)}</td>
+      <td style="text-align:right">
+        <button class="btn" onclick="editComb(${r.id})">Editar</button>
+        <button class="btn" style="background:#fff;border-color:#ef4444;color:#ef4444" onclick="delComb(${r.id})">Excluir</button>
+      </td>
+    </tr>
+  `).join('') || `<tr><td colspan="4" style="color:var(--muted)">Nenhum registro ainda.</td></tr>`;
 }
 
-function upsertComb(origem,destino,valorStr){
-  origem = norm(origem); destino = norm(destino);
-  const valor = parseValor(valorStr);
-  if(!origem || !destino || Number.isNaN(valor)) { alert('Preencha origem, destino e um valor válido (use vírgula ou ponto).'); return; }
-  const k = keyFor(origem,destino);
-  DB.combinacoes[k] = round2(valor);
-  if(!DB.bairros.includes(origem)) DB.bairros.push(origem);
-  if(!DB.bairros.includes(destino)) DB.bairros.push(destino);
-  DB.bairros.sort(alpha);
-  saveStore(DB);
-  $$('#cOrigem').value = origem; $$('#cDestino').value = destino; $$('#cValor').value = valor.toFixed(2);
-  toast('Salvo!');
+function fillDatalist(){
+  const dl = $$('#dl-bairros');
+  dl.innerHTML = Bairros.map(b=>`<option value="${b.replace(/"/g,"&quot;")}"></option>`).join('');
 }
-function editComb(origem,destino){
+
+async function reloadLista(){
+  const url = new URL(END_LIST, window.location.origin);
+  const q = ($$('#filtroTabela')?.value||'').trim();
+  if(q) url.searchParams.set('q', q);
+  const r = await fetch(url.toString(), {credentials:'same-origin'});
+  const j = await r.json();
+  LISTA = j.items||[];
+  Bairros = j.bairros||[];
+  perKm = j.per_km ?? perKm;
+  $$('#outPerKm').value = Number(perKm).toFixed(2);
+  fillDatalist();
+  renderTabela();
+}
+
+/* ======== CRUD ======== */
+function editComb(id){
+  const it = LISTA.find(x=> x.id===id); if(!it) return;
   goTab('#tab-cadastro');
-  $$('#cOrigem').value = origem; $$('#cDestino').value = destino;
-  const k = keyFor(origem,destino);
-  $$('#cValor').value = Number(DB.combinacoes[k]||0).toFixed(2);
-}
-function delComb(origem,destino){
-  if(!confirm(`Excluir preço de "${origem}" → "${destino}"?`)) return;
-  const k = keyFor(origem,destino);
-  delete DB.combinacoes[k];
-  saveStore(DB);
-  toast('Excluído');
+  $$('#cOrigem').value = it.origem;
+  $$('#cDestino').value = it.destino;
+  $$('#cValor').value = Number(it.valor).toFixed(2);
 }
 
+async function upsertComb(){
+  const origem = ($$('#cOrigem').value||'').trim();
+  const destino = ($$('#cDestino').value||'').trim();
+  const v = parseValor($$('#cValor').value);
+  if(!origem || !destino || !Number.isFinite(v)){ alert('Preencha origem, destino e valor válido.'); return; }
+
+  const r = await fetch(END_UPSERT, {
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    credentials:'same-origin',
+    body: JSON.stringify({origem, destino, valor: v})
+  });
+  const j = await r.json();
+  if(!r.ok || j.error){ alert(j.error || 'Falha ao salvar'); return; }
+  toast('Salvo!');
+  await reloadLista();
+  // mantém valores no form
+  $$('#cValor').value = Number(v).toFixed(2);
+}
+
+async function delComb(id){
+  if(!confirm('Excluir este registro?')) return;
+  const r = await fetch(`${END_DELETE0}${id}`, {method:'DELETE', credentials:'same-origin'});
+  const j = await r.json();
+  if(!r.ok || j.error){ alert(j.error || 'Falha ao excluir'); return; }
+  toast('Excluído!');
+  await reloadLista();
+}
+
+/* ======== Consulta ======== */
 function consultar(){
-  const o = norm($$('#qOrigem').value); const d = norm($$('#qDestino').value);
-  if(!o || !d) { setConsulta('—','preencha origem e destino','warn'); return; }
-  const k = keyFor(o,d);
-  const v = DB.combinacoes[k];
-  if(v==null){ setConsulta('Sem cadastro','use Endereço/CEP (rotas)','danger'); }
-  else { setConsulta(moeda(Number(v)), 'preço cadastrado','ok'); }
+  const o = ($$('#qOrigem').value||'').trim().toLowerCase();
+  const d = ($$('#qDestino').value||'').trim().toLowerCase();
+  if(!o || !d){ setConsulta('—','preencha origem e destino','warn'); return; }
+  const it = LISTA.find(x=> x.origem.toLowerCase()===o && x.destino.toLowerCase()===d);
+  if(!it){ setConsulta('Sem cadastro','use Endereço/CEP (rotas)','danger'); }
+  else { setConsulta(moeda(Number(it.valor)), 'preço cadastrado','ok'); }
 }
 function setConsulta(text,status,badge){
   $$('#consultaResultado').textContent = text;
@@ -402,172 +455,128 @@ function setConsulta(text,status,badge){
   $$('#consultaStatus').style.background = badge==='ok'? '#dcfce7' : badge==='warn' ? '#fef3c7' : '#fee2e2';
 }
 
-/* ========= Ajustes ========= */
-function aplicarPorBairro(){
-  const alvo = norm($$('#ajBairro').value); const inc = parseValor($$('#ajValor').value||0);
-  if(!alvo) return alert('Informe o bairro alvo.');
-  if(Number.isNaN(inc)) return alert('Valor inválido nos ajustes.');
-  let count = 0;
-  for(const k of Object.keys(DB.combinacoes)){
-    const [o,d] = k.split('|');
-    if(o===alvo || d===alvo){ DB.combinacoes[k] = round2(Number(DB.combinacoes[k])+inc); count++; }
-  }
-  saveStore(DB);
-  $$('#ajFeedback').textContent = `Ajustadas ${count} combinações ligadas a "${alvo}" em R$ ${inc.toFixed(2)}.`;
-  toast('Ajuste aplicado');
+/* ======== Ajustes em massa ======== */
+async function aplicarPorBairro(){
+  const bairro = ($$('#ajBairro').value||'').trim();
+  const delta  = parseValor($$('#ajValor').value);
+  if(!bairro || !Number.isFinite(delta)){ alert('Informe bairro e valor válido.'); return; }
+  const r = await fetch(END_AJUSTES, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({bairro, delta})
+  });
+  const j = await r.json();
+  if(!r.ok || j.error){ alert(j.error || 'Falha ao aplicar'); return; }
+  toast(`Ajustadas ${j.changed} combinações.`);
+  $$('#ajFeedback').textContent = `Ajustadas ${j.changed} combinações ligadas a "${bairro}" em R$ ${delta.toFixed(2)}.`;
+  await reloadLista();
 }
-function aplicarGlobal(){
-  const inc = parseValor($$('#ajGlobal').value||0);
-  if(Number.isNaN(inc)) return alert('Valor inválido no ajuste global.');
-  let count = 0;
-  for(const k of Object.keys(DB.combinacoes)){
-    DB.combinacoes[k] = round2(Number(DB.combinacoes[k])+inc); count++;
-  }
-  saveStore(DB);
-  $$('#ajFeedback').textContent = `Ajustadas ${count} combinações em R$ ${inc.toFixed(2)} (global).`;
-  toast('Ajuste global aplicado');
+async function aplicarGlobal(){
+  const g = parseValor($$('#ajGlobal').value);
+  if(!Number.isFinite(g)){ alert('Valor inválido.'); return; }
+  const r = await fetch(END_AJUSTES, {
+    method:'PATCH', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({global_delta: g})
+  });
+  const j = await r.json();
+  if(!r.ok || j.error){ alert(j.error || 'Falha ao aplicar'); return; }
+  toast(`Ajustadas ${j.changed} combinações.`);
+  $$('#ajFeedback').textContent = `Ajustadas ${j.changed} combinações em R$ ${g.toFixed(2)} (global).`;
+  await reloadLista();
 }
 
-/* ========= Export/Import ========= */
+/* ======== Per Km ======== */
+async function salvarPerKm(){
+  const v = parseValor($$('#perKm').value);
+  if(!Number.isFinite(v)){ alert('R$ por km inválido'); return; }
+  const r = await fetch(END_PERKM, {
+    method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin',
+    body: JSON.stringify({per_km: v})
+  });
+  const j = await r.json();
+  if(!r.ok || j.error){ alert(j.error || 'Falha ao salvar'); return; }
+  toast('R$/km salvo!');
+  perKm = j.per_km;
+  $$('#outPerKm').value = Number(perKm).toFixed(2);
+}
+
+/* ======== Export JSON ======== */
 function exportarJSON(){
-  const blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
-  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tabela-precos.json'; a.click(); URL.revokeObjectURL(a.href);
+  const blob = new Blob([JSON.stringify({items: LISTA, perKm}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tabela-precos.json';
+  a.click(); URL.revokeObjectURL(a.href);
 }
-async function importarJSON(file){
-  try{
-    const text = await file.text(); const data = JSON.parse(text);
-    if(!data || typeof data !== 'object') throw new Error('JSON inválido');
-    if(!('combinacoes' in data)) throw new Error('Faltou campo "combinacoes"');
-    const merged = loadStore();
-    merged.perKm = Number(data.perKm ?? merged.perKm);
-    merged.bairros = Array.from(new Set([...(merged.bairros||[]),...(data.bairros||[])])).sort(alpha);
-    merged.combinacoes = {...merged.combinacoes, ...(data.combinacoes||{})};
-    saveStore(merged);
-    alert('Importado com sucesso!');
-  }catch(e){ alert('Falha ao importar: '+e.message); }
+async function dumpJSON(){
+  const r = await fetch(END_LIST, {credentials:'same-origin'});
+  const j = await r.json();
+  const blob = JSON.stringify(j, null, 2);
+  $$('#dump').textContent = blob;
 }
-function dumpJSON(){ $$('#dump').textContent = JSON.stringify(DB,null,2); }
-function clearAll(){ if(confirm('Apagar todos os dados?')) { localStorage.removeItem(LS_KEY); refreshUI(); $$('#dump').textContent=''; } }
 
-/* ========= Geocodificação & Rotas ========= */
-async function viaCEP(cep){ cep = (cep||'').replace(/\D/g,''); if(cep.length!==8) return null; const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`); if(!r.ok) return null; const j = await r.json(); if(j.erro) return null; return j; }
-async function geocode(q){ const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`; const r = await fetch(url,{headers:{'Accept-Language':'pt-BR'}}); if(!r.ok) throw new Error('Falha ao geocodificar'); const j = await r.json(); return j.map(it=>({ label: it.display_name, lat: Number(it.lat), lon: Number(it.lon) })); }
-async function osrmRouteKm(a,b){ const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`; const r = await fetch(url); if(!r.ok) throw new Error('OSRM indisponível'); const j = await r.json(); if(!j.routes || !j.routes.length) throw new Error('Sem rota'); const distKm = j.routes[0].distance/1000; const coords = j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]); return {km: distKm, line: coords}; }
-function haversineKm(a,b){ const R=6371; const dLat=rad(b.lat-a.lat); const dLon=rad(b.lon-a.lon); const s1=Math.sin(dLat/2), s2=Math.sin(dLon/2); const q=s1*s1 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*s2*s2; return R*2*Math.asin(Math.min(1,Math.sqrt(q))); }
+/* ======== Geocodificação e Rotas (iguais) ======== */
+async function viaCEP(cep){ cep=(cep||'').replace(/\D/g,''); if(cep.length!==8) return null;
+  const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); if(!r.ok) return null; const j=await r.json(); if(j.erro) return null; return j;}
+async function geocode(q){ const url=`https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`; const r=await fetch(url,{headers:{'Accept-Language':'pt-BR'}}); if(!r.ok) throw new Error('Falha ao geocodificar'); const j=await r.json(); return j.map(it=>({label:it.display_name, lat:+it.lat, lon:+it.lon}));}
+async function osrmRouteKm(a,b){ const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`; const r=await fetch(url); if(!r.ok) throw new Error('OSRM indisponível'); const j=await r.json(); if(!j.routes?.length) throw new Error('Sem rota'); const distKm=j.routes[0].distance/1000; const coords=j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]); return {km:distKm,line:coords};}
+function haversineKm(a,b){ const R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon); const s1=Math.sin(dLat/2), s2=Math.sin(dLon/2); const q=s1*s1 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*s2*s2; return R*2*Math.asin(Math.min(1,Math.sqrt(q))); }
 function rad(d){ return d*Math.PI/180; }
 let debTimer; function debounce(fn,ms){ return (...args)=>{ clearTimeout(debTimer); debTimer=setTimeout(()=>fn(...args),ms); }; }
-
 let map, markerO, markerD, routeLayer;
-function ensureMap(){ if(map) return map; map = L.map('map',{zoomControl:true}).setView([-5.794, -35.211], 12); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{ maxZoom:19, attribution:'&copy; OpenStreetMap'}).addTo(map); setTimeout(()=> map.invalidateSize(), 60); return map; }
+function ensureMap(){ if(map) return map; map = L.map('map',{zoomControl:true}).setView([-5.794,-35.211], 12); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map); setTimeout(()=> map.invalidateSize(), 60); return map; }
 function fixMapSize(){ if(map){ setTimeout(()=> map.invalidateSize(), 60); } }
-function setMarker(which, lat, lon){
-  ensureMap();
-  const color = which==='O' ? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim() || '#10b981' : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim() || '#ef4444';
-  const icon = L.divIcon({html:`<div style="width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,iconSize:[14,14],className:''});
-  if(which==='O'){ if(markerO) markerO.remove(); markerO = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Origem').openPopup(); }
-  else { if(markerD) markerD.remove(); markerD = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Destino').openPopup(); }
-}
-function drawRoute(latlngs){
-  ensureMap();
-  if(routeLayer) routeLayer.remove();
-  const color = getComputedStyle(document.documentElement).getPropertyValue('--map-stroke').trim() || '#1f77b4';
-  routeLayer = L.polyline(latlngs,{weight:6, opacity:.98, color}).addTo(map);
-  const group = new L.featureGroup([markerO, markerD, routeLayer].filter(Boolean));
-  map.fitBounds(group.getBounds().pad(0.25));
-  fixMapSize();
-}
+function setMarker(which, lat, lon){ ensureMap(); const color = which==='O'? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim()||'#10b981' : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim()||'#ef4444'; const icon = L.divIcon({html:`<div style="width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,iconSize:[14,14],className:''}); if(which==='O'){ if(markerO) markerO.remove(); markerO = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Origem').openPopup(); } else { if(markerD) markerD.remove(); markerD = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Destino').openPopup(); } }
+function drawRoute(latlngs){ ensureMap(); if(routeLayer) routeLayer.remove(); const color = getComputedStyle(document.documentElement).getPropertyValue('--map-stroke').trim()||'#1f77b4'; routeLayer = L.polyline(latlngs,{weight:6,opacity:.98,color}).addTo(map); const group = new L.featureGroup([markerO, markerD, routeLayer].filter(Boolean)); map.fitBounds(group.getBounds().pad(0.25)); fixMapSize(); }
+async function sugestionar(inputEl, holderId){ const q=(inputEl.value||'').trim(); const holder=$$(holderId); if(!q || q.length<3){ holder.style.display='none'; holder.innerHTML=''; return; } holder.style.display='block'; holder.textContent='Buscando…'; try{ const items=await geocode(q); holder.innerHTML = items.map(it=>`<button class="btn" style="width:100%;text-align:left" onclick='selSug("${holderId}", ${JSON.stringify(it).replace(/'/g,"&apos;")})'>${it.label}</button>`).join(''); }catch(e){ holder.textContent='Sem sugestões.'; } }
+function selSug(holderId, obj){ const holder=$$(holderId); holder.style.display='none'; holder.innerHTML=''; const input = holderId.includes('Origem')? $$('#endOrigem') : $$('#endDestino'); input.value=obj.label; input.dataset.lat=obj.lat; input.dataset.lon=obj.lon; setMarker(holderId.includes('Origem')?'O':'D', obj.lat, obj.lon); }
+async function preencherPorCEP(cepEl, endEl, sugId){ const j=await viaCEP(cepEl.value); if(!j){ return; } const texto = `${j.logradouro||''}, ${j.bairro||''}, ${j.localidade||''} - ${j.uf}`.replace(/^[,\s]+|[,\s]+$/g,''); endEl.value=texto; debounce(()=>sugestionar(endEl, sugId), 60)(); }
+async function calcularRota(){ const o={lat:Number($$('#endOrigem').dataset.lat), lon:Number($$('#endOrigem').dataset.lon)}; const d={lat:Number($$('#endDestino').dataset.lat), lon:Number($$('#endDestino').dataset.lon)}; if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão para origem e destino.'); return; } ensureMap(); fixMapSize(); try{ const {km,line}=await osrmRouteKm(o,d); $$('#outKm').value=km.toFixed(2); const pk=parseValor($$('#outPerKm').value || perKm || 0); $$('#outPreco').value=(Math.round(km*pk*100)/100).toFixed(2); drawRoute(line); }catch(e){ const km=haversineKm(o,d); $$('#outKm').value=km.toFixed(2); const pk=parseValor($$('#outPerKm').value || perKm || 0); $$('#outPreco').value=(Math.round(km*pk*100)/100).toFixed(2); drawRoute([[o.lat,o.lon],[d.lat,d.lon]]); } }
+function inverterEnd(){ const eo=$$('#endOrigem'), ed=$$('#endDestino'); const vo=eo.value, vd=ed.value, lo=eo.dataset.lat, ln=eo.dataset.lon; eo.value=vd; ed.value=vo; eo.dataset.lat=ed.dataset.lat; eo.dataset.lon=ed.dataset.lon; ed.dataset.lat=lo; ed.dataset.lon=ln; if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon)); if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon)); }
 
-/* ========= Navegação (abas) ========= */
-function goTab(id){
-  $$$('.nav a').forEach(x=>x.classList.remove('active'));
-  const link = $$$('.nav a').find(a=>a.getAttribute('href')===id);
-  if(link) link.classList.add('active');
-  $$$('.section').forEach(s=> s.classList.remove('active'));
-  const el = $$(id);
-  if(el){ el.classList.add('active'); if(id==='#tab-endereco'){ ensureMap(); setTimeout(fixMapSize, 120); } }
-}
-$$$('.nav a').forEach(a=> a.addEventListener('click', e=>{
-  e.preventDefault();
-  goTab(a.getAttribute('href'));
-}));
-
-/* ========= Eventos ========= */
+/* ======== Eventos ======== */
 $$('#btnConsultar').addEventListener('click', consultar);
 $$('#btnExportar').addEventListener('click', exportarJSON);
-$$('#fileImport').addEventListener('change', e=> e.target.files[0] && importarJSON(e.target.files[0]));
 $$('#btnDump').addEventListener('click', dumpJSON);
-$$('#btnLimparTudo').addEventListener('click', clearAll);
 $$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
 $$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
-$$('#savePerKm').addEventListener('click',()=>{
-  const v = parseValor($$('#perKm').value||0);
-  if(Number.isNaN(v)) return alert('Valor km inválido.');
-  DB.perKm = v; saveStore(DB); if($$('#outPerKm')) $$('#outPerKm').value = DB.perKm.toFixed(2);
-  toast('Preço por km salvo');
-});
-$$('#btnSalvar').addEventListener('click',()=> upsertComb($$('#cOrigem').value,$$('#cDestino').value,$$('#cValor').value));
+$$('#savePerKm').addEventListener('click', salvarPerKm);
+$$('#btnSalvar').addEventListener('click', upsertComb);
 $$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
 $$('#filtroTabela').addEventListener('input', renderTabela);
+$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ upsertComb(); }});
+
 $$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
 $$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
 $$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
 $$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
-$$('#btnCalcularKm').addEventListener('click', async ()=>{
-  const o = { lat: Number($$('#endOrigem').dataset.lat), lon: Number($$('#endOrigem').dataset.lon) };
-  const d = { lat: Number($$('#endDestino').dataset.lat), lon: Number($$('#endDestino').dataset.lon) };
-  if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão de endereço para origem e destino.'); return; }
-  ensureMap(); fixMapSize();
-  try{
-    const {km, line} = await osrmRouteKm(o,d);
-    $$('#outKm').value = km.toFixed(2);
-    const perKm = parseValor($$('#outPerKm').value || DB.perKm || 0);
-    $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2);
-    drawRoute(line);
-  }catch(e){
-    const km = haversineKm(o,d);
-    $$('#outKm').value = km.toFixed(2);
-    const perKm = parseValor($$('#outPerKm').value || DB.perKm || 0);
-    $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2);
-    drawRoute([[o.lat,o.lon],[d.lat,d.lon]]);
-  }
-});
-$$('#btnInverter').addEventListener('click', ()=>{
-  const eo = $$('#endOrigem'), ed=$$('#endDestino');
-  const vo = eo.value, vd = ed.value, lo = eo.dataset.lat, ln = eo.dataset.lon;
-  eo.value = vd; ed.value = vo; eo.dataset.lat = ed.dataset.lat; eo.dataset.lon = ed.dataset.lon; ed.dataset.lat = lo; ed.dataset.lon = ln;
-  if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon));
-  if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon));
-});
-$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); $$('#btnSalvar').click(); } });
+$$('#btnCalcularKm').addEventListener('click', calcularRota);
+$$('#btnInverter').addEventListener('click', inverterEnd);
 
-/* ========= Testes ========= */
-function runTests(){
-  const out = $$('#testsOut'); const logs = []; const log = (ok,msg)=> logs.push(`${ok?'✅':'❌'} ${msg}`);
-  const assert = (c,m)=>{ if(!c) throw new Error(m); };
-  const backup = localStorage.getItem(LS_KEY);
+/* ======== Teste rápido contra API ======== */
+async function runTests(){
+  const out = $$('#testsOut'); const logs=[];
   try{
-    localStorage.removeItem(LS_KEY);
-    let tmp = loadStore(); assert(tmp && typeof tmp==='object','loadStore objeto'); assert(tmp.perKm===3,'perKm padrão = 3'); log(true,'Bootstrap OK');
-    DB = loadStore();
-    upsertComb('Lagoa Nova','Lagoa Nova','12,00');
-    upsertComb('Lagoa Nova','Tirol','13.25');
-    $$('#qOrigem').value='Lagoa Nova'; $$('#qDestino').value='Tirol'; consultar(); assert($$('#consultaResultado').textContent.length>1,'Consulta exibiu valor'); log(true,'Upsert/Consulta OK');
-    const before = DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')];
-    $$('#ajGlobal').value='0,50'; aplicarGlobal();
-    assert(DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')]===round2(before+0.50),'Global +0,50'); log(true,'Ajuste global OK');
+    logs.push('🔄 Recarregando lista...');
+    await reloadLista();
+    logs.push('✅ GET /api/precos OK ('+LISTA.length+' itens)');
+    // upsert de teste
+    const tOrigem='Teste Bairro A', tDestino='Teste Bairro B', tValor=12.34;
+    const r = await fetch(END_UPSERT, {method:'POST', headers:{'Content-Type':'application/json'}, credentials:'same-origin', body: JSON.stringify({origem:tOrigem,destino:tDestino,valor:tValor})});
+    const j = await r.json(); if(!r.ok||j.error) throw new Error(j.error||'POST falhou');
+    logs.push('✅ POST /api/precos OK');
+    await reloadLista();
+    if(!LISTA.find(x=> x.origem===tOrigem && x.destino===tDestino)) throw new Error('Registro não apareceu');
+    logs.push('✅ Registro apareceu na listagem');
     out.textContent = logs.join('\n');
-  }catch(e){ logs.push('❌ Falha: '+e.message); out.textContent = logs.join('\n'); }
-  finally{
-    if(backup==null) localStorage.removeItem(LS_KEY); else localStorage.setItem(LS_KEY, backup);
-    DB = loadStore(); refreshUI();
+  }catch(e){
+    logs.push('❌ Falha: '+e.message);
+    out.textContent = logs.join('\n');
   }
 }
 $$('#btnRunTests').addEventListener('click', runTests);
 
-/* ========= Init ========= */
-(function init(){
-  refreshUI();
-  const outPerKm = $$('#outPerKm'); if(outPerKm) outPerKm.value = DB.perKm.toFixed(2);
+/* ======== Init ======== */
+(async function init(){
+  await reloadLista();
+  $$('#outPerKm').value = Number(perKm||3).toFixed(2);
 })();
 </script>
 </body>
