@@ -31,7 +31,7 @@
         --shadow:0 12px 28px rgba(0,0,0,.45);
       }
     }
-    body.dark :root, :root[data-theme-forced="dark"]{
+    body.dark :root, :root[data-theme-forced="dark"]){
       --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
       --ink:#e7edf9; --muted:#8aa0c7; --table-head:#0b1320; --table-head-text:#b9ccff;
       --shadow:0 12px 28px rgba(0,0,0,.45);
@@ -92,7 +92,7 @@
     }
     .toast.show{opacity:1;transform:translateY(0)}
 
-    /* Badges de status */
+    /* Badges */
     .badge-ok{background:#16a34a1a;color:#16a34a}
     .badge-warn{background:#f59e0b1a;color:#b45309}
     .badge-danger{background:#ef44441a;color:#b91c1c}
@@ -118,7 +118,7 @@
 
       <div class="pill" aria-label="Ajuste de valor por km">
         <span style="opacity:.95">R$ por km</span>
-        <!-- força texto preto em qualquer tema -->
+        <!-- texto preto em qualquer tema -->
         <input id="perKm" type="text" inputmode="decimal"
                style="width:110px;background:#fff;color:#111;border:0;border-radius:10px;padding:6px 8px"
                value="{{ '%.2f' % per_km }}"/>
@@ -302,7 +302,6 @@
         <pre id="dump" class="card" style="white-space:pre-wrap"></pre>
       </section>
 
-      <!-- TESTES -->
       <section id="tab-testes" class="card section">
         <h2 style="margin:0 0 8px">Testes</h2>
         <div style="display:flex;gap:10px;align-items:center">
@@ -373,18 +372,36 @@ function toast(msg){
 }
 function alpha(a,b){ return a.localeCompare(b,'pt-BR',{sensitivity:'base'}); }
 function moeda(n){ if(Number.isNaN(n)) return '—'; return Number(n).toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
+
+/* >>>>>>> PARSER CORRIGIDO (BR + EN) <<<<<<< */
 function parseValor(s){
   if(s==null) return NaN;
   if(typeof s === 'number') return s;
-  s = String(s).trim().replace(/\./g,'').replace(',','.');
-  const v = Number(s);
+  let str = String(s).trim();
+
+  const hasComma = str.includes(',');
+  const hasDot   = str.includes('.');
+
+  if (hasComma && hasDot){
+    // Formato brasileiro 1.234,56 -> remove milhares e troca vírgula por ponto
+    str = str.replace(/\./g,'').replace(',', '.');
+  }else if (hasComma && !hasDot){
+    // 12,50 -> 12.50
+    str = str.replace(',', '.');
+  } else {
+    // 12.50 -> mantém; 1250 -> mantém
+    // nada
+  }
+  const v = Number(str);
   return Number.isFinite(v) ? v : NaN;
 }
+
 function uniq(arr){ return Array.from(new Set(arr)); }
+function norm(s){ return (s||'').toString().trim().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase(); }
 
 /* ======== Estado ======== */
 let LISTA = [];      // {id, origem, destino, valor}
-let Bairros = [];    // datalist vindo do servidor (não é usado na contagem do badge)
+let Bairros = [];    // datalist vindo do servidor (não usado para contagem)
 let perKm  = parseFloat("{{ '%.2f' % per_km }}");
 
 /* ======== Abas ======== */
@@ -417,9 +434,9 @@ function renderTabela(){
   }
   rows = rows.slice().sort((a,b)=> alpha(a.origem,b.origem) || alpha(a.destino,b.destino));
 
-  // Estatísticas
+  // Estatísticas com base na tabela real
   $$('#statTotal').textContent = LISTA.length;
-  const uniqBairros = uniq(LISTA.flatMap(x=>[x.origem,x.destino]).map(s=>s?.trim()?.toLowerCase()).filter(Boolean));
+  const uniqBairros = uniq(LISTA.flatMap(x=>[x.origem,x.destino]).map(s=>s?.trim()).filter(Boolean));
   $$('#statBairros').textContent = uniqBairros.length;
 
   tbody.innerHTML = rows.map(r=>`
@@ -433,9 +450,16 @@ function renderTabela(){
       </td>
     </tr>
   `).join('') || `<tr><td colspan="4" style="color:var(--muted)">Nenhum registro ainda.</td></tr>`;
+
+  // Atualiza o datalist com o que existe nos itens
+  const dl = $$('#dl-bairros');
+  dl.innerHTML = uniqBairros
+    .slice().sort((a,b)=>alpha(a,b))
+    .map(b=>`<option value="${b.replace(/"/g,'&quot;')}"></option>`).join('');
 }
 
 function fillDatalist(){
+  // fallback para quando não há itens ainda
   const dl = $$('#dl-bairros');
   dl.innerHTML = Bairros.map(b=>`<option value="${b.replace(/"/g,"&quot;")}"></option>`).join('');
 }
@@ -450,8 +474,7 @@ async function reloadLista(){
   Bairros = j.bairros||[];
   perKm = j.per_km ?? perKm;
   $$('#outPerKm').value = Number(perKm).toFixed(2);
-  fillDatalist();
-  renderTabela();
+  if(LISTA.length){ renderTabela(); } else { fillDatalist(); renderTabela(); }
 }
 
 /* ======== CRUD ======== */
@@ -493,10 +516,10 @@ async function delComb(id){
 
 /* ======== Consulta de preço ======== */
 function consultar(){
-  const o = ($$('#qOrigem').value||'').trim().toLowerCase();
-  const d = ($$('#qDestino').value||'').trim().toLowerCase();
+  const o = norm($$('#qOrigem').value);
+  const d = norm($$('#qDestino').value);
   if(!o || !d){ setConsulta('—','preencha origem e destino','warn'); return; }
-  const it = LISTA.find(x=> x.origem?.toLowerCase()===o && x.destino?.toLowerCase()===d);
+  const it = LISTA.find(x=> norm(x.origem)===o && norm(x.destino)===d);
   if(!it){ setConsulta('Sem cadastro','use Endereço/CEP (rotas)','danger'); }
   else { setConsulta(moeda(Number(it.valor)), 'preço cadastrado','ok'); }
 }
@@ -598,7 +621,7 @@ async function calcularRota(){
     $$('#outKm').value=km.toFixed(2);
     const pk=parseValor($$('#outPerKm').value || perKm || 0);
     const preco = Math.round(km*pk*100)/100;
-    $$('#outPreco').value = moeda(preco);          // <<< formatado como R$
+    $$('#outPreco').value = moeda(preco);
     drawRoute(line);
   }catch(e){
     const km=haversineKm(o,d);
@@ -625,36 +648,20 @@ const openExternal = $$('#openExternal');
 const btnStreet = $$('#btnStreet');
 
 function openStreetAt(lat, lon){
-  // URL pública do Mapillary; funciona sem chave para navegação básica
   const url = `https://www.mapillary.com/app/?lat=${lat}&lng=${lon}&z=17&focus=photo`;
   iframe.src = url;
   openExternal.href = url;
   panel.style.display = 'block';
 }
-
 btnStreet.addEventListener('click', ()=>{
   streetEnabled = !streetEnabled;
   btnStreet.textContent = streetEnabled ? 'Street: clique no mapa (Ativo)' : 'Explorar rua (clique no mapa)';
-  toast(streetEnabled ? 'Clique em um ponto do mapa para abrir o Street View (Mapillary).' : 'Street desativado.');
+  toast(streetEnabled ? 'Clique no mapa para abrir o Street View (Mapillary).' : 'Street desativado.');
 });
-
-$$('#closeStreet').addEventListener('click', ()=>{
-  panel.style.display = 'none';
-  iframe.src = 'about:blank';
-});
-
-function onMapClick(e){
-  if(!streetEnabled) return;
-  openStreetAt(e.latlng.lat, e.latlng.lng);
-}
+$$('#closeStreet').addEventListener('click', ()=>{ panel.style.display = 'none'; iframe.src = 'about:blank'; });
+function onMapClick(e){ if(!streetEnabled) return; openStreetAt(e.latlng.lat, e.latlng.lng); }
 (function attachMapClickLater(){
-  // garante que o listener seja registrado quando o mapa existir
-  const iv = setInterval(()=>{
-    if(map){
-      map.on('click', onMapClick);
-      clearInterval(iv);
-    }
-  }, 200);
+  const iv = setInterval(()=>{ if(map){ map.on('click', onMapClick); clearInterval(iv);} }, 200);
 })();
 
 /* ======== Eventos ======== */
