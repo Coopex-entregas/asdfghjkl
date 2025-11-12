@@ -790,8 +790,39 @@ def admin():
 def precos_rotas():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    # Se já tem templates/precos_rotas.html, basta renderizar:
-    return render_template('precos_rotas.html')
+
+    base_padrao = 12.0
+    try:
+        bairros_rows = (Cliente.query
+                        .filter(Cliente.bairro_origem.isnot(None))
+                        .with_entities(Cliente.bairro_origem)
+                        .all())
+        bairros = sorted({(b[0] or '').strip() for b in bairros_rows if (b[0] or '').strip()})
+    except Exception:
+        bairros = []
+
+    regras = [
+        {"origem": "Mesmo bairro", "destino": "Mesmo bairro", "preco": base_padrao,     "obs": "Base"},
+        {"origem": "Centro",       "destino": "Grande Natal", "preco": base_padrao + 3, "obs": "+3 anéis"},
+    ]
+    atualizado_em = datetime.now(BRAZIL_TZ)
+
+    # Se tiver templates/precos_rotas.html, ele será usado; senão renderiza o HTML mínimo abaixo
+    return render_or_string("precos_rotas.html", """
+    <!doctype html><meta charset="utf-8">
+    <h1>Tabela de Preços & Rotas</h1>
+    <p>Base: R$ {{ '%.2f'|format(base_padrao) }}</p>
+    <p>Atualizado em: {{ atualizado_em.strftime('%d/%m/%Y %H:%M') }}</p>
+    <h3>Regras</h3>
+    <ul>
+      {% for r in regras %}
+        <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>: R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})</li>
+      {% endfor %}
+    </ul>
+    <h3>Bairros (a partir dos clientes)</h3>
+    <p>{{ bairros|join(', ') if bairros else '—' }}</p>
+    """,
+    regras=regras, bairros=bairros, base_padrao=base_padrao, atualizado_em=atualizado_em)
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
