@@ -9,7 +9,6 @@
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
   <style>
-    /* ================= Tema base (Claro) ================= */
     :root{
       --royal:#4169E1; --royal-700:#3158d7; --royal-900:#1f3ea6;
       --ink:#0b1220; --muted:#5b677a; --bg:#f7f9ff;
@@ -20,7 +19,6 @@
       --chip:#fff; --chip-text:#334155; --table-head:#eef4ff; --table-head-text:#1f2a44;
       --map-stroke:#1f77b4; --origin:#10b981; --dest:#ef4444;
     }
-    /* ================= Tema Escuro ================= */
     @media (prefers-color-scheme: dark){
       :root:not([data-theme-forced="light"]){
         --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
@@ -38,9 +36,7 @@
     html,body{height:100%}
     body{margin:0;background:var(--bg);color:var(--ink);font:14.5px/1.5 Inter,system-ui,-apple-system,Segoe UI,Roboto,Ubuntu,"Helvetica Neue",Arial}
     a{color:var(--royal);text-decoration:none}
-    .muted{color:var(--muted)}
 
-    /* Header minimal */
     header{position:sticky;top:0;background:linear-gradient(90deg,var(--royal), #6ea1ff);color:#fff;z-index:30;box-shadow:var(--shadow)}
     .wrap{max-width:1240px;margin:0 auto;padding:12px 16px;display:flex;gap:12px;align-items:center}
     .logo{width:34px;height:34px;border-radius:10px;background:conic-gradient(from 210deg at 50% 50%, var(--royal), #6ea1ff, var(--royal));box-shadow:0 6px 16px rgba(65,105,225,.25)}
@@ -48,8 +44,8 @@
     .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--chip);color:var(--chip-text)}
     .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#f6f9ff);cursor:pointer;box-shadow:var(--shadow-soft)}
     .btn.primary{background:linear-gradient(180deg,var(--royal),var(--royal-700));border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(65,105,225,.35)}
+    .btn[disabled]{opacity:.6;cursor:not-allowed}
 
-    /* Layout */
     .layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 64px)}
     @media (max-width:1100px){.layout{grid-template-columns:1fr}}
     .sidebar{position:sticky;top:64px;height:calc(100vh - 64px);background:var(--panel);border-right:1px solid var(--border);overflow:auto}
@@ -69,14 +65,15 @@
     .table th,.table td{padding:12px;border-bottom:1px solid var(--border);text-align:left}
     .table th{background:var(--table-head);color:var(--table-head-text);font-weight:700}
 
-    /* Tabs: esconder as inativas */
-    .section{display:none}
-    .section.active{display:block}
-
-    /* Mapa */
     #map{width:100%;min-height:420px;height:52vh;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow)}
     .legend{display:flex;gap:10px;align-items:center}
     .legend .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+
+    .muted{color:var(--muted)}
+    .grow{flex:1}
+    .section{display:none}
+    .section.active{display:block}
+    .toast{position:fixed;right:16px;bottom:16px;background:var(--panel);border:1px solid var(--border);box-shadow:var(--shadow);padding:10px 12px;border-radius:12px}
   </style>
 </head>
 <body>
@@ -90,7 +87,9 @@
       </div>
       <span class="chip">Registros: <strong id="statTotal">0</strong></span>
       <span class="chip">Bairros: <strong id="statBairros">0</strong></span>
-      <div style="margin-left:auto"></div>
+      <div style="margin-left:auto;display:flex;gap:8px;align-items:center"></div>
+      <!-- BOTÃO VOLTAR AO ADMIN -->
+      <a class="btn" href="{{ url_for('admin') }}" title="Voltar ao painel do administrador">← Voltar ao Admin</a>
       <button id="btnTheme" class="btn" title="Alternar tema">Tema: auto</button>
     </div>
   </header>
@@ -127,7 +126,7 @@
         <div class="card" style="margin-top:8px;background:var(--panel-2)">
           <div style="display:flex;gap:10px;align-items:center">
             <div class="grow">
-              <div style="color:var(--muted)">Resultado</div>
+              <div class="muted">Resultado</div>
               <div id="consultaResultado" style="font-size:28px;font-weight:800">—</div>
             </div>
             <span class="chip" id="consultaStatus">sem consulta</span>
@@ -155,8 +154,7 @@
         </div>
 
         <div id="map" class="card" style="margin:10px 0"></div>
-        <div class="legend">
-          <span class="dot" style="background:var(--map-stroke)"></span><span class="muted">Rota OSRM</span>
+        <div class="legend"><span class="dot" style="background:var(--map-stroke)"></span><span class="muted">Rota OSRM</span>
           <span class="dot" style="background:var(--origin)"></span><span class="muted">Origem</span>
           <span class="dot" style="background:var(--dest)"></span><span class="muted">Destino</span>
         </div>
@@ -194,7 +192,7 @@
           </div>
           <div>
             <label>Valor (R$)</label>
-            <input id="cValor" type="number" step="0.01" min="0" placeholder="Ex.: 12,00">
+            <input id="cValor" type="text" inputmode="decimal" placeholder="Ex.: 12.00">
           </div>
         </div>
         <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
@@ -225,12 +223,12 @@
             <label>Bairro alvo</label>
             <input list="dl-bairros" id="ajBairro" placeholder="Ex.: Lagoa Nova">
             <label style="margin-top:8px">Acrescentar (R$) — use negativo para reduzir</label>
-            <input id="ajValor" type="number" step="0.01" value="1.00">
+            <input id="ajValor" type="text" inputmode="decimal" value="1.00">
             <div style="margin-top:10px"><button class="btn" id="btnAplicarBairro">Aplicar nos ligados ao bairro</button></div>
           </div>
           <div class="card" style="box-shadow:none">
             <label>Acrescentar a todos (R$)</label>
-            <input id="ajGlobal" type="number" step="0.01" value="0.50">
+            <input id="ajGlobal" type="text" inputmode="decimal" value="0.50">
             <div style="margin-top:10px"><button class="btn" id="btnAplicarGlobal">Aplicar em todas as combinações</button></div>
           </div>
         </div>
@@ -248,7 +246,7 @@
             </div>
           </div>
           <div>
-            <ul style="margin:0" class="muted">
+            <ul class="muted" style="margin:0">
               <li>Consulte por bairros; se não existir, calcule rota por ruas (OSRM).</li>
               <li>Edite/Exclua combinações e faça ajustes em massa por bairro ou global.</li>
             </ul>
@@ -270,17 +268,15 @@
     </main>
   </div>
 
+<div id="toast" class="toast" style="display:none"></div>
+
 <script>
-/* =======================
-   Tema auto
-======================= */
+/* ========= Tema ========= */
 (function themeInit(){
   try{
-    const pref = localStorage.getItem('coopex_theme'); // 'light' | 'dark' | null
+    const pref = localStorage.getItem('coopex_theme');
     const btn = document.getElementById('btnTheme');
-
     function apply(mode){
-      // mode: 'light' | 'dark' | 'auto'
       document.documentElement.removeAttribute('data-theme-forced');
       document.body.classList.remove('dark');
       if(mode==='dark'){ document.body.classList.add('dark'); document.documentElement.setAttribute('data-theme-forced','dark'); btn.textContent='Tema: escuro'; }
@@ -288,25 +284,17 @@
       else { btn.textContent='Tema: auto'; }
       localStorage.setItem('coopex_theme_subpage', mode);
     }
-
     if(pref==='dark'){ apply('dark'); }
     else if(pref==='light'){ apply('light'); }
-    else {
-      const saved = localStorage.getItem('coopex_theme_subpage');
-      apply(saved||'auto');
-    }
-
+    else { apply(localStorage.getItem('coopex_theme_subpage')||'auto'); }
     btn.addEventListener('click', ()=>{
       const cur = localStorage.getItem('coopex_theme_subpage')||'auto';
-      const next = cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
-      apply(next);
+      apply(cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto');
     });
   }catch(e){}
 })();
 
-/* =======================
-   Util & Persistência
-======================= */
+/* ========= Utils & Store ========= */
 const LS_KEY = 'tabelaPrecos';
 const $$ = sel => document.querySelector(sel);
 const $$$ = sel => Array.from(document.querySelectorAll(sel));
@@ -315,8 +303,19 @@ function keyFor(a,b){ return `${norm(a)}|${norm(b)}`; }
 function norm(s){ return String(s||'').trim(); }
 function moeda(n){ if(Number.isNaN(n)) return '—'; return n.toLocaleString('pt-BR',{style:'currency',currency:'BRL'}); }
 function round2(n){ return Math.round(n*100)/100; }
-function escapeHtml(s){ return String(s).replace(/[&<>\"]+/g, m=>({"&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;"}[m])); }
+function escapeHtml(s){ return String(s).replace(/[&<>"]/g, m=>({"&":"&amp;","<":"&lt;","&gt;":">","\"":"&quot;"}[m])); }
 function escapeAttr(s){ return String(s).replace(/["'\\]/g, m=>({"\"":"&quot;","'":"&#39;","\\":"\\\\"}[m])); }
+function parseValor(v){
+  if(v==null) return NaN;
+  const s = String(v).replace(/\s/g,'').replace(/^R\$\s?/,'').replace(/\./g,'').replace(',','.');
+  const n = Number(s);
+  return Number.isFinite(n) ? n : NaN;
+}
+function toast(msg){
+  const t = $$('#toast'); if(!t) return;
+  t.textContent = msg; t.style.display='block'; t.style.opacity='1';
+  setTimeout(()=>{ t.style.transition='opacity .3s'; t.style.opacity='0'; setTimeout(()=>{ t.style.display='none'; t.style.transition=''; }, 300); }, 1200);
+}
 
 function loadStore(){
   const fallback = { perKm: 3.00, bairros: [], combinacoes: {} };
@@ -362,9 +361,10 @@ function renderTabela(){
   tbody.innerHTML = rows.join('') || `<tr><td colspan="4" class="muted">Nenhum registro ainda.</td></tr>`;
 }
 
-function upsertComb(origem,destino,valor){
-  origem = norm(origem); destino = norm(destino); valor = Number(valor);
-  if(!origem || !destino || Number.isNaN(valor)) return alert('Preencha origem, destino e valor válido.');
+function upsertComb(origem,destino,valorStr){
+  origem = norm(origem); destino = norm(destino);
+  const valor = parseValor(valorStr);
+  if(!origem || !destino || Number.isNaN(valor)) { alert('Preencha origem, destino e um valor válido (use vírgula ou ponto).'); return; }
   const k = keyFor(origem,destino);
   DB.combinacoes[k] = round2(valor);
   if(!DB.bairros.includes(origem)) DB.bairros.push(origem);
@@ -372,6 +372,7 @@ function upsertComb(origem,destino,valor){
   DB.bairros.sort(alpha);
   saveStore(DB);
   $$('#cOrigem').value = origem; $$('#cDestino').value = destino; $$('#cValor').value = valor.toFixed(2);
+  toast('Salvo!');
 }
 function editComb(origem,destino){
   goTab('#tab-cadastro');
@@ -384,6 +385,7 @@ function delComb(origem,destino){
   const k = keyFor(origem,destino);
   delete DB.combinacoes[k];
   saveStore(DB);
+  toast('Excluído');
 }
 
 function consultar(){
@@ -400,9 +402,11 @@ function setConsulta(text,status,badge){
   $$('#consultaStatus').style.background = badge==='ok'? '#dcfce7' : badge==='warn' ? '#fef3c7' : '#fee2e2';
 }
 
+/* ========= Ajustes ========= */
 function aplicarPorBairro(){
-  const alvo = norm($$('#ajBairro').value); const inc = Number($$('#ajValor').value||0);
+  const alvo = norm($$('#ajBairro').value); const inc = parseValor($$('#ajValor').value||0);
   if(!alvo) return alert('Informe o bairro alvo.');
+  if(Number.isNaN(inc)) return alert('Valor inválido nos ajustes.');
   let count = 0;
   for(const k of Object.keys(DB.combinacoes)){
     const [o,d] = k.split('|');
@@ -410,17 +414,21 @@ function aplicarPorBairro(){
   }
   saveStore(DB);
   $$('#ajFeedback').textContent = `Ajustadas ${count} combinações ligadas a "${alvo}" em R$ ${inc.toFixed(2)}.`;
+  toast('Ajuste aplicado');
 }
 function aplicarGlobal(){
-  const inc = Number($$('#ajGlobal').value||0);
+  const inc = parseValor($$('#ajGlobal').value||0);
+  if(Number.isNaN(inc)) return alert('Valor inválido no ajuste global.');
   let count = 0;
   for(const k of Object.keys(DB.combinacoes)){
     DB.combinacoes[k] = round2(Number(DB.combinacoes[k])+inc); count++;
   }
   saveStore(DB);
   $$('#ajFeedback').textContent = `Ajustadas ${count} combinações em R$ ${inc.toFixed(2)} (global).`;
+  toast('Ajuste global aplicado');
 }
 
+/* ========= Export/Import ========= */
 function exportarJSON(){
   const blob = new Blob([JSON.stringify(DB,null,2)],{type:'application/json'});
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tabela-precos.json'; a.click(); URL.revokeObjectURL(a.href);
@@ -441,9 +449,7 @@ async function importarJSON(file){
 function dumpJSON(){ $$('#dump').textContent = JSON.stringify(DB,null,2); }
 function clearAll(){ if(confirm('Apagar todos os dados?')) { localStorage.removeItem(LS_KEY); refreshUI(); $$('#dump').textContent=''; } }
 
-/* =======================
-   Geocodificação e Rotas
-======================= */
+/* ========= Geocodificação & Rotas ========= */
 async function viaCEP(cep){ cep = (cep||'').replace(/\D/g,''); if(cep.length!==8) return null; const r = await fetch(`https://viacep.com.br/ws/${cep}/json/`); if(!r.ok) return null; const j = await r.json(); if(j.erro) return null; return j; }
 async function geocode(q){ const url = `https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`; const r = await fetch(url,{headers:{'Accept-Language':'pt-BR'}}); if(!r.ok) throw new Error('Falha ao geocodificar'); const j = await r.json(); return j.map(it=>({ label: it.display_name, lat: Number(it.lat), lon: Number(it.lon) })); }
 async function osrmRouteKm(a,b){ const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`; const r = await fetch(url); if(!r.ok) throw new Error('OSRM indisponível'); const j = await r.json(); if(!j.routes || !j.routes.length) throw new Error('Sem rota'); const distKm = j.routes[0].distance/1000; const coords = j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]); return {km: distKm, line: coords}; }
@@ -456,9 +462,7 @@ function ensureMap(){ if(map) return map; map = L.map('map',{zoomControl:true}).
 function fixMapSize(){ if(map){ setTimeout(()=> map.invalidateSize(), 60); } }
 function setMarker(which, lat, lon){
   ensureMap();
-  const color = which==='O'
-    ? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim() || '#10b981'
-    : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim() || '#ef4444';
+  const color = which==='O' ? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim() || '#10b981' : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim() || '#ef4444';
   const icon = L.divIcon({html:`<div style="width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,iconSize:[14,14],className:''});
   if(which==='O'){ if(markerO) markerO.remove(); markerO = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Origem').openPopup(); }
   else { if(markerD) markerD.remove(); markerD = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Destino').openPopup(); }
@@ -473,81 +477,21 @@ function drawRoute(latlngs){
   fixMapSize();
 }
 
-async function sugestionar(inputEl, holderId){
-  const q = norm(inputEl.value);
-  const holder = $$(holderId);
-  if(!q || q.length<3){ holder.style.display='none'; holder.innerHTML=''; return; }
-  holder.style.display='block'; holder.textContent='Buscando…';
-  try{
-    const items = await geocode(q);
-    holder.innerHTML = items.map(it=>`<button class="btn" style="width:100%;text-align:left" onclick='selSug("${holderId}", ${JSON.stringify(it).replace(/'/g,"&apos;")})'>${escapeHtml(it.label)}</button>`).join('');
-  }catch(e){ holder.textContent='Sem sugestões.'; }
-}
-function selSug(holderId, obj){
-  const holder = $$(holderId);
-  holder.style.display='none'; holder.innerHTML='';
-  const input = holderId.includes('Origem') ? $$('#endOrigem') : $$('#endDestino');
-  input.value = obj.label; input.dataset.lat = obj.lat; input.dataset.lon = obj.lon;
-  setMarker(holderId.includes('Origem')?'O':'D', obj.lat, obj.lon);
-}
-async function preencherPorCEP(cepEl, endEl, sugId){
-  const j = await viaCEP(cepEl.value);
-  if(!j){ return; }
-  const texto = `${j.logradouro || ''}, ${j.bairro || ''}, ${j.localidade || ''} - ${j.uf}`.replace(/^[,\s]+|[,\s]+$/g,'');
-  endEl.value = texto;
-  debounce(()=>sugestionar(endEl, sugId), 60)();
-}
-
-async function calcularRota(){
-  const o = { lat: Number($$('#endOrigem').dataset.lat), lon: Number($$('#endOrigem').dataset.lon) };
-  const d = { lat: Number($$('#endDestino').dataset.lat), lon: Number($$('#endDestino').dataset.lon) };
-  if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão de endereço para origem e destino.'); return; }
-  ensureMap(); fixMapSize();
-  try{
-    const {km, line} = await osrmRouteKm(o,d);
-    $$('#outKm').value = km.toFixed(2);
-    const perKm = Number($$('#outPerKm').value || DB.perKm || 0);
-    $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2);
-    drawRoute(line);
-  }catch(e){
-    const km = haversineKm(o,d);
-    $$('#outKm').value = km.toFixed(2);
-    const perKm = Number($$('#outPerKm').value || DB.perKm || 0);
-    $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2);
-    drawRoute([[o.lat,o.lon],[d.lat,d.lon]]);
-  }
-}
-function inverterEnd(){
-  const eo = $$('#endOrigem'), ed=$$('#endDestino');
-  const vo = eo.value, vd = ed.value, lo = eo.dataset.lat, ln = eo.dataset.lon;
-  eo.value = vd; ed.value = vo;
-  eo.dataset.lat = ed.dataset.lat; eo.dataset.lon = ed.dataset.lon;
-  ed.dataset.lat = lo; ed.dataset.lon = ln;
-  if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon));
-  if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon));
-}
-
-/* =======================
-   Tabs (Navegação)
-======================= */
+/* ========= Navegação (abas) ========= */
 function goTab(id){
-  // desmarca menu
-  $$$('.nav a').forEach(x=> x.classList.toggle('active', x.getAttribute('href')===id));
-  // alterna seções
-  $$$('.section').forEach(s=> s.classList.toggle('active', '#'+s.id === id));
-  if(id==='#tab-endereco'){ ensureMap(); setTimeout(fixMapSize, 120); }
+  $$$('.nav a').forEach(x=>x.classList.remove('active'));
+  const link = $$$('.nav a').find(a=>a.getAttribute('href')===id);
+  if(link) link.classList.add('active');
+  $$$('.section').forEach(s=> s.classList.remove('active'));
+  const el = $$(id);
+  if(el){ el.classList.add('active'); if(id==='#tab-endereco'){ ensureMap(); setTimeout(fixMapSize, 120); } }
 }
-
-// Clique nos itens do menu lateral
 $$$('.nav a').forEach(a=> a.addEventListener('click', e=>{
   e.preventDefault();
-  const id=a.getAttribute('href');
-  goTab(id);
+  goTab(a.getAttribute('href'));
 }));
 
-/* =======================
-   Eventos
-======================= */
+/* ========= Eventos ========= */
 $$('#btnConsultar').addEventListener('click', consultar);
 $$('#btnExportar').addEventListener('click', exportarJSON);
 $$('#fileImport').addEventListener('change', e=> e.target.files[0] && importarJSON(e.target.files[0]));
@@ -555,7 +499,12 @@ $$('#btnDump').addEventListener('click', dumpJSON);
 $$('#btnLimparTudo').addEventListener('click', clearAll);
 $$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
 $$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
-$$('#savePerKm').addEventListener('click',()=>{ DB.perKm = Number($$('#perKm').value||0); saveStore(DB); $$('#outPerKm').value = DB.perKm.toFixed(2); });
+$$('#savePerKm').addEventListener('click',()=>{
+  const v = parseValor($$('#perKm').value||0);
+  if(Number.isNaN(v)) return alert('Valor km inválido.');
+  DB.perKm = v; saveStore(DB); if($$('#outPerKm')) $$('#outPerKm').value = DB.perKm.toFixed(2);
+  toast('Preço por km salvo');
+});
 $$('#btnSalvar').addEventListener('click',()=> upsertComb($$('#cOrigem').value,$$('#cDestino').value,$$('#cValor').value));
 $$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
 $$('#filtroTabela').addEventListener('input', renderTabela);
@@ -563,61 +512,59 @@ $$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), 
 $$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
 $$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
 $$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
-$$('#btnCalcularKm').addEventListener('click', calcularRota);
-$$('#btnInverter').addEventListener('click', inverterEnd);
+$$('#btnCalcularKm').addEventListener('click', async ()=>{
+  const o = { lat: Number($$('#endOrigem').dataset.lat), lon: Number($$('#endOrigem').dataset.lon) };
+  const d = { lat: Number($$('#endDestino').dataset.lat), lon: Number($$('#endDestino').dataset.lon) };
+  if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão de endereço para origem e destino.'); return; }
+  ensureMap(); fixMapSize();
+  try{
+    const {km, line} = await osrmRouteKm(o,d);
+    $$('#outKm').value = km.toFixed(2);
+    const perKm = parseValor($$('#outPerKm').value || DB.perKm || 0);
+    $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2);
+    drawRoute(line);
+  }catch(e){
+    const km = haversineKm(o,d);
+    $$('#outKm').value = km.toFixed(2);
+    const perKm = parseValor($$('#outPerKm').value || DB.perKm || 0);
+    $$('#outPreco').value = (Math.round(km*perKm*100)/100).toFixed(2);
+    drawRoute([[o.lat,o.lon],[d.lat,d.lon]]);
+  }
+});
+$$('#btnInverter').addEventListener('click', ()=>{
+  const eo = $$('#endOrigem'), ed=$$('#endDestino');
+  const vo = eo.value, vd = ed.value, lo = eo.dataset.lat, ln = eo.dataset.lon;
+  eo.value = vd; ed.value = vo; eo.dataset.lat = ed.dataset.lat; eo.dataset.lon = ed.dataset.lon; ed.dataset.lat = lo; ed.dataset.lon = ln;
+  if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon));
+  if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon));
+});
+$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ e.preventDefault(); $$('#btnSalvar').click(); } });
 
-/* =======================
-   Testes
-======================= */
+/* ========= Testes ========= */
 function runTests(){
-  const out = $$('#testsOut');
-  const logs = [];
-  const log = (ok,msg)=> logs.push(`${ok?'✅':'❌'} ${msg}`);
+  const out = $$('#testsOut'); const logs = []; const log = (ok,msg)=> logs.push(`${ok?'✅':'❌'} ${msg}`);
   const assert = (c,m)=>{ if(!c) throw new Error(m); };
   const backup = localStorage.getItem(LS_KEY);
   try{
     localStorage.removeItem(LS_KEY);
-    let tmp = loadStore();
-    assert(tmp && typeof tmp==='object','loadStore objeto');
-    assert(tmp.perKm===3,'perKm padrão = 3');
-    log(true,'Bootstrap OK');
-
+    let tmp = loadStore(); assert(tmp && typeof tmp==='object','loadStore objeto'); assert(tmp.perKm===3,'perKm padrão = 3'); log(true,'Bootstrap OK');
     DB = loadStore();
-    upsertComb('Lagoa Nova','Lagoa Nova',12);
-    upsertComb('Lagoa Nova','Tirol',13);
-
-    $$('#qOrigem').value='Lagoa Nova';
-    $$('#qDestino').value='Tirol';
-    consultar();
-    assert($$('#consultaResultado').textContent.length>1,'Consulta exibiu valor');
-    log(true,'Upsert/Consulta OK');
-
+    upsertComb('Lagoa Nova','Lagoa Nova','12,00');
+    upsertComb('Lagoa Nova','Tirol','13.25');
+    $$('#qOrigem').value='Lagoa Nova'; $$('#qDestino').value='Tirol'; consultar(); assert($$('#consultaResultado').textContent.length>1,'Consulta exibiu valor'); log(true,'Upsert/Consulta OK');
     const before = DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')];
-    $$('#ajGlobal').value='0.50';
-    aplicarGlobal();
-    assert(DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')]===round2(before+0.50),'Global +0,50');
-    log(true,'Ajuste global OK');
-
-    // Teste de navegação
-    goTab('#tab-endereco');
-    assert($$('#tab-endereco').classList.contains('active'),'Tab rotas ativa');
-    log(true,'Tabs OK');
-
+    $$('#ajGlobal').value='0,50'; aplicarGlobal();
+    assert(DB.combinacoes[keyFor('Lagoa Nova','Lagoa Nova')]===round2(before+0.50),'Global +0,50'); log(true,'Ajuste global OK');
     out.textContent = logs.join('\n');
-  }catch(e){
-    logs.push('❌ Falha: '+e.message);
-    out.textContent = logs.join('\n');
-  } finally{
+  }catch(e){ logs.push('❌ Falha: '+e.message); out.textContent = logs.join('\n'); }
+  finally{
     if(backup==null) localStorage.removeItem(LS_KEY); else localStorage.setItem(LS_KEY, backup);
-    DB = loadStore();
-    refreshUI();
+    DB = loadStore(); refreshUI();
   }
 }
 $$('#btnRunTests').addEventListener('click', runTests);
 
-/* =======================
-   Init
-======================= */
+/* ========= Init ========= */
 (function init(){
   refreshUI();
   const outPerKm = $$('#outPerKm'); if(outPerKm) outPerKm.value = DB.perKm.toFixed(2);
