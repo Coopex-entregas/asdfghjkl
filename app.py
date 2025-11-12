@@ -1430,6 +1430,41 @@ def periodo_legivel_str(di_str, df_str):
         return f"até {df}"
     return "todo o período"
 
+def _per_km_safe_default():
+    # tenta vir de env; senao 1.00
+    import os
+    try:
+        return float(os.getenv("PER_KM", "1.00"))
+    except Exception:
+        return 1.00
+
+def get_per_km_safe():
+    """
+    1) Se já existir get_per_km() no projeto, usa.
+    2) Tenta buscar em ParametroSistema (se existir).
+    3) Cai para variável de ambiente PER_KM ou 1.00.
+    """
+    # 1) usa get_per_km se já tiver no projeto
+    try:
+        if "get_per_km" in globals() and callable(get_per_km):
+            return float(get_per_km())
+    except Exception:
+        pass
+
+    # 2) tenta ParametroSistema (se sua app tiver esse model)
+    try:
+        # evita import top-level pra não gerar import circular
+        ParametroSistema = globals().get("ParametroSistema")
+        if ParametroSistema is not None:
+            row = ParametroSistema.query.filter_by(chave="per_km").first()
+            if row and getattr(row, "valor", None):
+                return float(row.valor)
+    except Exception:
+        pass
+
+    # 3) fallback
+    return _per_km_safe_default()
+
 # ====== Preservar filtros do /admin ======
 @app.before_request
 def remember_admin_filters():
@@ -1611,9 +1646,7 @@ def precos_rotas():
         return redirect(url_for('login'))
 
     base_padrao = 12.0
-
-    # per_km salvo nos parâmetros do sistema (usado pelo template)
-    per_km_val = get_per_km()
+    per_km_val = get_per_km_safe()   # <<<<<<<<<< essencial pro template
 
     # tenta puxar a lista de bairros a partir dos clientes
     try:
@@ -1633,19 +1666,21 @@ def precos_rotas():
     ]
     atualizado_em = datetime.now(BRAZIL_TZ)
 
-    # Se existir templates/precos_rotas.html, ele será usado; senão cai no fallback abaixo
+    # Se tiver templates/precos_rotas.html, ele será usado; senão renderiza o HTML mínimo abaixo
     return render_or_string(
         "precos_rotas.html",
         """
         <!doctype html><meta charset="utf-8">
         <h1>Tabela de Preços & Rotas</h1>
         <p>Base: R$ {{ '%.2f'|format(base_padrao) }}</p>
-        <p>Valor por km (per_km): R$ {{ '%.2f'|format(per_km) }}</p>
+        <p>Valor por km: R$ {{ '%.2f'|format(per_km) }}</p>
         <p>Atualizado em: {{ atualizado_em.strftime('%d/%m/%Y %H:%M') }}</p>
         <h3>Regras</h3>
         <ul>
           {% for r in regras %}
-            <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>: R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})</li>
+            <li><b>{{ r.origem }}</b> → <b>{{ r.destino }}</b>:
+                R$ {{ '%.2f'|format(r.preco) }} ({{ r.obs }})
+            </li>
           {% endfor %}
         </ul>
         <h3>Bairros (a partir dos clientes)</h3>
@@ -1655,7 +1690,7 @@ def precos_rotas():
         bairros=bairros,
         base_padrao=base_padrao,
         atualizado_em=atualizado_em,
-        per_km=per_km_val,  # << ESSENCIAL pro template não estourar
+        per_km=per_km_val,  # <<<<<<<<<< passa pro template (corrige o 500)
     )
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
