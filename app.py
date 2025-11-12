@@ -785,6 +785,16 @@ def admin():
         lista_espera=lista_espera, cooperados_disponiveis=cooperados_disponiveis
     )
 
+@app.route('/precos-rotas')
+def precos_rotas():
+    # só admins podem abrir
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    # usa seu template (ou o fallback se preferir)
+    return render_template('precos_rotas.html')
+    # se quiser fallback automático quando o arquivo não existir:
+    # return render_or_string('precos_rotas.html', "<h2>Tabela de Preços & Rotas</h2>")
+
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
     if not session.get('is_admin'):
