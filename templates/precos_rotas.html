@@ -1,38 +1,40 @@
 <!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta charset="utf-8"/>
+  <meta name="viewport" content="width=device-width,initial-scale=1"/>
   <title>COOPEX — Tabela de Preços & Rotas</title>
 
   <!-- Leaflet -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+
+  <!-- Fonte -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
 
   <style>
     :root{
-      --royal:#4169E1; --royal-700:#3158d7; --royal-600:#3a5be0;
-      --ink:#0b1220; --muted:#5b677a; --bg:#f5f7fd;
+      --royal:#4169E1; --royal-700:#3158d7;
+      --ink:#0b1220; --muted:#5b677a; --bg:#f6f8ff;
       --panel:#ffffff; --panel-2:#f1f5ff; --border:#e6edff;
       --ok:#16a34a; --warn:#f59e0b; --danger:#ef4444;
       --shadow:0 16px 40px rgba(49,88,215,.14), 0 6px 14px rgba(49,88,215,.08);
       --shadow-soft:0 10px 28px rgba(0,0,0,.06);
-      --chip:#fff; --chip-text:#334155; --table-head:#eef4ff; --table-head-text:#1f2a44;
+      --table-head:#eef4ff; --table-head-text:#1f2a44;
       --map-stroke:#1f77b4; --origin:#10b981; --dest:#ef4444;
       --radius:16px;
     }
     @media (prefers-color-scheme: dark){
       :root:not([data-theme-forced="light"]){
         --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
-        --ink:#e7edf9; --muted:#8aa0c7; --chip:#0f1623; --chip-text:#d8e3ff;
-        --table-head:#0b1320; --table-head-text:#b9ccff; --shadow:0 12px 28px rgba(0,0,0,.45);
+        --ink:#e7edf9; --muted:#8aa0c7; --table-head:#0b1320; --table-head-text:#b9ccff;
+        --shadow:0 12px 28px rgba(0,0,0,.45);
       }
     }
     body.dark :root, :root[data-theme-forced="dark"]{
       --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
-      --ink:#e7edf9; --muted:#8aa0c7; --chip:#0f1623; --chip-text:#d8e3ff;
-      --table-head:#0b1320; --table-head-text:#b9ccff; --shadow:0 12px 28px rgba(0,0,0,.45);
+      --ink:#e7edf9; --muted:#8aa0c7; --table-head:#0b1320; --table-head-text:#b9ccff;
+      --shadow:0 12px 28px rgba(0,0,0,.45);
     }
 
     *{box-sizing:border-box}
@@ -42,19 +44,20 @@
 
     /* Header */
     header{
-      position:sticky;top:0;z-index:40;
+      position:sticky; top:0; z-index:40;
       background:linear-gradient(90deg,var(--royal), #6ea1ff);
-      color:#fff;box-shadow:var(--shadow);
+      color:#fff; box-shadow:var(--shadow);
       border-bottom:1px solid rgba(255,255,255,.12)
     }
     .wrap{max-width:1240px;margin:0 auto;padding:10px 16px;display:flex;gap:12px;align-items:center}
-    .logo{width:34px;height:34px;border-radius:12px;background:conic-gradient(from 210deg at 50% 50%, var(--royal), #6ea1ff, var(--royal));box-shadow:0 6px 16px rgba(65,105,225,.25)}
-    .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#f6f9ff);cursor:pointer;box-shadow:var(--shadow-soft);transition:transform .04s ease}
+    .logo{width:34px;height:34px;border-radius:12px;background:conic-gradient(from 210deg,var(--royal),#6ea1ff,var(--royal));box-shadow:0 6px 16px rgba(65,105,225,.25)}
+
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--border);background:linear-gradient(180deg,#fff,#f6f9ff);cursor:pointer;box-shadow:var(--shadow-soft);transition:transform .04s}
     .btn:active{transform:translateY(1px)}
     .btn.primary{background:linear-gradient(180deg,var(--royal),var(--royal-700));border-color:transparent;color:#fff;box-shadow:0 10px 24px rgba(65,105,225,.35)}
     .btn.link{background:transparent;border-color:rgba(255,255,255,.35);color:#fff}
     .pill{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);backdrop-filter:blur(6px)}
-    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--chip);color:var(--chip-text)}
+    .chip{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:#0f172a;color:#fff}
 
     /* Layout */
     .layout{display:grid;grid-template-columns:280px 1fr;min-height:calc(100vh - 64px)}
@@ -89,10 +92,21 @@
     }
     .toast.show{opacity:1;transform:translateY(0)}
 
-    /* Mini badges coloridos */
-    .badge-ok{background:#dcfce7;color:#065f46}
-    .badge-warn{background:#fef3c7;color:#92400e}
-    .badge-danger{background:#fee2e2;color:#991b1b}
+    /* Badges de status */
+    .badge-ok{background:#16a34a1a;color:#16a34a}
+    .badge-warn{background:#f59e0b1a;color:#b45309}
+    .badge-danger{background:#ef44441a;color:#b91c1c}
+
+    /* Painel Street View (Mapillary) */
+    .street-panel{
+      position:fixed; top:64px; right:12px; width:420px; max-width:95vw; height:60vh; z-index:50;
+      background:var(--panel); border:1px solid var(--border); border-radius:16px; box-shadow:var(--shadow); display:none;
+      overflow:hidden;
+    }
+    .street-panel header{background:var(--panel-2); color:inherit; box-shadow:none; border-bottom:1px solid var(--border);}
+    .street-panel .bar{display:flex; align-items:center; gap:8px; padding:8px 10px;}
+    .street-panel button{border-radius:10px}
+    .street-iframe{width:100%; height:calc(60vh - 50px); border:0}
   </style>
 </head>
 <body>
@@ -103,28 +117,32 @@
       <a class="btn link" href="{{ url_for('admin') }}">← Voltar ao Admin</a>
 
       <div class="pill" aria-label="Ajuste de valor por km">
-        <span style="opacity:.9">R$ por km</span>
-        <input id="perKm" type="text" inputmode="decimal" style="width:110px;background:#fff;border:0;border-radius:10px;padding:6px 8px" value="{{ '%.2f' % per_km }}"/>
+        <span style="opacity:.95">R$ por km</span>
+        <!-- força texto preto em qualquer tema -->
+        <input id="perKm" type="text" inputmode="decimal"
+               style="width:110px;background:#fff;color:#111;border:0;border-radius:10px;padding:6px 8px"
+               value="{{ '%.2f' % per_km }}"/>
         <button class="btn primary" id="savePerKm" title="Salvar valor por km">Salvar</button>
       </div>
 
       <span class="chip" title="Total de registros cadastrados">Registros: <strong id="statTotal">0</strong></span>
-      <span class="chip" title="Quantidade de bairros detectados">Bairros: <strong id="statBairros">0</strong></span>
+      <span class="chip" title="Bairros presentes nos registros">Bairros: <strong id="statBairros">0</strong></span>
 
       <div style="margin-left:auto"></div>
       <button id="btnTheme" class="btn" title="Alternar tema">Tema: auto</button>
     </div>
   </header>
 
-  <!-- IMPORTANTE: sem comentários HTML dentro desta tag -->
+  <!-- IMPORTANTE: não colocar comentários HTML dentro desta tag -->
   <div class="layout"
        data-end-list="{{ url_for('api_list_precos') }}"
        data-end-upsert="{{ url_for('api_upsert_preco') }}"
        data-end-delete="{{ url_for('api_delete_preco', item_id=0)[:-1] }}"
        data-end-ajustes="{{ url_for('api_ajustes') }}"
        data-end-perkm="{{ url_for('api_per_km') }}">
+
     <aside class="sidebar">
-      <nav class="nav" aria-label="Navegação da página">
+      <nav class="nav" aria-label="Navegação">
         <a href="#tab-consulta" data-gotab class="active">Consultar por Bairros</a>
         <a href="#tab-endereco" data-gotab>Endereço/CEP (Rotas)</a>
         <a href="#tab-cadastro" data-gotab>Cadastrar/Editar</a>
@@ -136,23 +154,23 @@
 
     <main class="content">
       <!-- CONSULTA -->
-      <section id="tab-consulta" class="card section active" aria-labelledby="h-consulta">
-        <h2 id="h-consulta" style="margin:0 0 8px">Consultar preço cadastrado</h2>
+      <section id="tab-consulta" class="card section active">
+        <h2 style="margin:0 0 8px">Consultar preço cadastrado</h2>
         <div class="grid cols-3">
           <div>
             <label>Origem (bairro)</label>
-            <input list="dl-bairros" id="qOrigem" placeholder="Ex.: Lagoa Nova" />
+            <input list="dl-bairros" id="qOrigem" placeholder="Ex.: Lagoa Nova"/>
           </div>
           <div>
             <label>Destino (bairro)</label>
-            <input list="dl-bairros" id="qDestino" placeholder="Ex.: Tirol" />
+            <input list="dl-bairros" id="qDestino" placeholder="Ex.: Tirol"/>
           </div>
           <div>
             <label>&nbsp;</label>
             <button class="btn primary" id="btnConsultar">Consultar</button>
           </div>
         </div>
-        <div class="card" style="margin-top:8px;background:var(--panel-2);border-radius:var(--radius);">
+        <div class="card" style="margin-top:8px;background:var(--panel-2)">
           <div style="display:flex;gap:10px;align-items:center">
             <div class="grow">
               <div style="color:var(--muted)">Resultado</div>
@@ -164,36 +182,34 @@
       </section>
 
       <!-- ROTAS -->
-      <section id="tab-endereco" class="card section" aria-labelledby="h-rotas">
-        <h2 id="h-rotas" style="margin:0 0 8px">Cálculo por Endereço/CEP (rota)</h2>
+      <section id="tab-endereco" class="card section">
+        <h2 style="margin:0 0 8px">Cálculo por Endereço/CEP (rota)</h2>
         <div class="grid cols-2">
           <div class="card" style="box-shadow:none">
             <label>CEP</label>
-            <input id="cepOrigem" placeholder="Ex.: 59064-050" inputmode="numeric" />
+            <input id="cepOrigem" placeholder="Ex.: 59064-050" inputmode="numeric"/>
             <label style="margin-top:8px">Origem (auto-completar)</label>
-            <input id="endOrigem" placeholder="Rua, número, bairro, cidade" />
+            <input id="endOrigem" placeholder="Rua, número, bairro, cidade"/>
             <div id="sugOrigem" class="card" style="display:none;margin-top:8px"></div>
           </div>
           <div class="card" style="box-shadow:none">
             <label>CEP</label>
-            <input id="cepDestino" placeholder="Ex.: 59020-000" inputmode="numeric" />
+            <input id="cepDestino" placeholder="Ex.: 59020-000" inputmode="numeric"/>
             <label style="margin-top:8px">Destino (auto-completar)</label>
-            <input id="endDestino" placeholder="Rua, número, bairro, cidade" />
+            <input id="endDestino" placeholder="Rua, número, bairro, cidade"/>
             <div id="sugDestino" class="card" style="display:none;margin-top:8px"></div>
           </div>
         </div>
 
-        <div id="map" class="card" style="margin:10px 0"></div>
-        <div class="legend"><span class="dot" style="background:var(--map-stroke)"></span><span class="muted">Rota OSRM</span>
-          <span class="dot" style="background:var(--origin)"></span><span class="muted">Origem</span>
-          <span class="dot" style="background:var(--dest)"></span><span class="muted">Destino</span>
-        </div>
-        <div style="display:flex;gap:10px;margin-top:10px;flex-wrap:wrap">
+        <div id="map" class="card" style="margin:10px 0; position:relative"></div>
+
+        <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:8px">
           <button class="btn primary" id="btnCalcularKm">Calcular rota</button>
           <button class="btn" id="btnInverter">Inverter endereços</button>
+          <button class="btn" id="btnStreet">Explorar rua (clique no mapa)</button>
         </div>
 
-        <div class="grid cols-3" style="margin-top:10px">
+        <div class="grid cols-3">
           <div class="card" style="box-shadow:none">
             <label>Distância (km)</label>
             <input id="outKm" readonly>
@@ -210,8 +226,8 @@
       </section>
 
       <!-- CADASTRAR / EDITAR -->
-      <section id="tab-cadastro" class="card section" aria-labelledby="h-cadastro">
-        <h2 id="h-cadastro" style="margin:0 0 8px">Cadastrar/editar combinação</h2>
+      <section id="tab-cadastro" class="card section">
+        <h2 style="margin:0 0 8px">Cadastrar/editar combinação</h2>
         <div class="grid cols-3">
           <div>
             <label>Origem (bairro)</label>
@@ -247,8 +263,8 @@
       </section>
 
       <!-- AJUSTES -->
-      <section id="tab-ajustes" class="card section" aria-labelledby="h-ajustes">
-        <h2 id="h-ajustes" style="margin:0 0 8px">Ajustes em massa</h2>
+      <section id="tab-ajustes" class="card section">
+        <h2 style="margin:0 0 8px">Ajustes em massa</h2>
         <div class="grid cols-2">
           <div class="card" style="box-shadow:none">
             <label>Bairro alvo</label>
@@ -267,8 +283,8 @@
       </section>
 
       <!-- DADOS -->
-      <section id="tab-dados" class="card section" aria-labelledby="h-dados">
-        <h2 id="h-dados" style="margin:0 0 8px">Dados</h2>
+      <section id="tab-dados" class="card section">
+        <h2 style="margin:0 0 8px">Dados</h2>
         <div class="grid cols-2">
           <div>
             <p>Agora os dados ficam no <strong>banco de dados</strong>. O botão abaixo exporta um JSON do que está no servidor.</p>
@@ -287,8 +303,8 @@
       </section>
 
       <!-- TESTES -->
-      <section id="tab-testes" class="card section" aria-labelledby="h-testes">
-        <h2 id="h-testes" style="margin:0 0 8px">Testes</h2>
+      <section id="tab-testes" class="card section">
+        <h2 style="margin:0 0 8px">Testes</h2>
         <div style="display:flex;gap:10px;align-items:center">
           <div class="grow"><strong>Auto-teste (contra API)</strong></div>
           <button class="btn" id="btnRunTests">Rodar Testes</button>
@@ -304,11 +320,21 @@
     </main>
   </div>
 
+  <!-- Painel Street View -->
+  <div id="streetPanel" class="street-panel" aria-live="polite">
+    <header class="bar">
+      <strong style="flex:1">Explorar rua (Mapillary)</strong>
+      <button class="btn" id="closeStreet">Fechar</button>
+      <a class="btn" id="openExternal" target="_blank" rel="noopener">Abrir em nova aba</a>
+    </header>
+    <iframe id="streetIframe" class="street-iframe" title="Street View (Mapillary)"></iframe>
+  </div>
+
   <div id="toast" class="toast"></div>
 
 <script>
 /* ======== Tema ======== */
-(function themeInit(){
+(function(){
   try{
     const pref = localStorage.getItem('coopex_theme');
     const btn = document.getElementById('btnTheme');
@@ -320,18 +346,18 @@
       else { btn.textContent='Tema: auto'; }
       localStorage.setItem('coopex_theme_subpage', mode);
     }
-    if(pref==='dark'){ apply('dark'); }
-    else if(pref==='light'){ apply('light'); }
-    else { apply(localStorage.getItem('coopex_theme_subpage')||'auto'); }
+    if(pref==='dark') apply('dark');
+    else if(pref==='light') apply('light');
+    else apply(localStorage.getItem('coopex_theme_subpage')||'auto');
     btn.addEventListener('click', ()=>{
       const cur = localStorage.getItem('coopex_theme_subpage')||'auto';
       const next = cur==='auto' ? 'dark' : cur==='dark' ? 'light' : 'auto';
       apply(next);
     });
-  }catch(e){}
+  }catch(_){}
 })();
 
-/* ======== Utils ======== */
+/* ======== Helpers ======== */
 const $$  = sel => document.querySelector(sel);
 const $$$ = sel => Array.from(document.querySelectorAll(sel));
 const ROOT = document.querySelector('.layout');
@@ -354,10 +380,11 @@ function parseValor(s){
   const v = Number(s);
   return Number.isFinite(v) ? v : NaN;
 }
+function uniq(arr){ return Array.from(new Set(arr)); }
 
-/* ======== Estado carregado do servidor ======== */
+/* ======== Estado ======== */
 let LISTA = [];      // {id, origem, destino, valor}
-let Bairros = [];    // datalist
+let Bairros = [];    // datalist vindo do servidor (não é usado na contagem do badge)
 let perKm  = parseFloat("{{ '%.2f' % per_km }}");
 
 /* ======== Abas ======== */
@@ -379,6 +406,7 @@ $$$('.nav a[data-gotab]').forEach(a=>{
 function renderTabela(){
   const tbody = $$('#tabela tbody'); if(!tbody) return;
   const q = ($$('#filtroTabela')?.value||'').trim().toLowerCase();
+
   let rows = LISTA;
   if(q){
     rows = rows.filter(r =>
@@ -388,8 +416,11 @@ function renderTabela(){
     );
   }
   rows = rows.slice().sort((a,b)=> alpha(a.origem,b.origem) || alpha(a.destino,b.destino));
+
+  // Estatísticas
   $$('#statTotal').textContent = LISTA.length;
-  $$('#statBairros').textContent = Bairros.length;
+  const uniqBairros = uniq(LISTA.flatMap(x=>[x.origem,x.destino]).map(s=>s?.trim()?.toLowerCase()).filter(Boolean));
+  $$('#statBairros').textContent = uniqBairros.length;
 
   tbody.innerHTML = rows.map(r=>`
     <tr>
@@ -460,12 +491,12 @@ async function delComb(id){
   await reloadLista();
 }
 
-/* ======== Consulta ======== */
+/* ======== Consulta de preço ======== */
 function consultar(){
   const o = ($$('#qOrigem').value||'').trim().toLowerCase();
   const d = ($$('#qDestino').value||'').trim().toLowerCase();
   if(!o || !d){ setConsulta('—','preencha origem e destino','warn'); return; }
-  const it = LISTA.find(x=> x.origem.toLowerCase()===o && x.destino.toLowerCase()===d);
+  const it = LISTA.find(x=> x.origem?.toLowerCase()===o && x.destino?.toLowerCase()===d);
   if(!it){ setConsulta('Sem cadastro','use Endereço/CEP (rotas)','danger'); }
   else { setConsulta(moeda(Number(it.valor)), 'preço cadastrado','ok'); }
 }
@@ -504,6 +535,147 @@ async function aplicarGlobal(){
   await reloadLista();
 }
 
+/* ======== Rotas & preço estimado ======== */
+async function viaCEP(cep){ cep=(cep||'').replace(/\D/g,''); if(cep.length!==8) return null;
+  const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); if(!r.ok) return null; const j=await r.json(); if(j.erro) return null; return j;}
+async function geocode(q){ const url=`https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`; const r=await fetch(url,{headers:{'Accept-Language':'pt-BR'}}); if(!r.ok) throw new Error('Falha ao geocodificar'); const j=await r.json(); return j.map(it=>({label:it.display_name, lat:+it.lat, lon:+it.lon}));}
+async function osrmRouteKm(a,b){ const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`; const r=await fetch(url); if(!r.ok) throw new Error('OSRM indisponível'); const j=await r.json(); if(!j.routes?.length) throw new Error('Sem rota'); const distKm=j.routes[0].distance/1000; const coords=j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]); return {km:distKm,line:coords};}
+function haversineKm(a,b){ const R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon); const s1=Math.sin(dLat/2), s2=Math.sin(dLon/2); const q=s1*s1 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*s2*s2; return R*2*Math.asin(Math.min(1,Math.sqrt(q))); }
+function rad(d){ return d*Math.PI/180; }
+
+let map, markerO, markerD, routeLayer;
+function ensureMap(){ if(map) return map; map = L.map('map',{zoomControl:true}).setView([-5.794,-35.211], 12); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map); setTimeout(()=> map.invalidateSize(), 60); return map; }
+function fixMapSize(){ if(map){ setTimeout(()=> map.invalidateSize(), 60); } }
+function setMarker(which, lat, lon){
+  ensureMap();
+  const color = which==='O'? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim()||'#10b981' : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim()||'#ef4444';
+  const icon = L.divIcon({html:`<div style="width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,iconSize:[14,14],className:''});
+  if(which==='O'){ if(markerO) markerO.remove(); markerO = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Origem').openPopup(); }
+  else { if(markerD) markerD.remove(); markerD = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Destino').openPopup(); }
+}
+function drawRoute(latlngs){
+  ensureMap();
+  if(routeLayer) routeLayer.remove();
+  const color = getComputedStyle(document.documentElement).getPropertyValue('--map-stroke').trim()||'#1f77b4';
+  routeLayer = L.polyline(latlngs,{weight:6,opacity:.98,color}).addTo(map);
+  const group = new L.featureGroup([markerO, markerD, routeLayer].filter(Boolean));
+  map.fitBounds(group.getBounds().pad(0.25));
+  fixMapSize();
+}
+
+/* Sugestões & CEP */
+let debTimer; function debounce(fn,ms){ return (...args)=>{ clearTimeout(debTimer); debTimer=setTimeout(()=>fn(...args),ms); }; }
+async function sugestionar(inputEl, holderId){
+  const q=(inputEl.value||'').trim();
+  const holder=$$(holderId);
+  if(!q || q.length<3){ holder.style.display='none'; holder.innerHTML=''; return; }
+  holder.style.display='block'; holder.textContent='Buscando…';
+  try{
+    const items=await geocode(q);
+    holder.innerHTML = items.map(it=>`<button class="btn" style="width:100%;text-align:left" onclick='selSug("${holderId}", ${JSON.stringify(it).replace(/'/g,"&apos;")})'>${it.label}</button>`).join('');
+  }catch(e){ holder.textContent='Sem sugestões.'; }
+}
+function selSug(holderId, obj){
+  const holder=$$(holderId); holder.style.display='none'; holder.innerHTML='';
+  const input = holderId.includes('Origem')? $$('#endOrigem') : $$('#endDestino');
+  input.value=obj.label; input.dataset.lat=obj.lat; input.dataset.lon=obj.lon;
+  setMarker(holderId.includes('Origem')?'O':'D', obj.lat, obj.lon);
+}
+async function preencherPorCEP(cepEl, endEl, sugId){
+  const j=await viaCEP(cepEl.value); if(!j) return;
+  const texto = `${j.logradouro||''}, ${j.bairro||''}, ${j.localidade||''} - ${j.uf}`.replace(/^[,\s]+|[,\s]+$/g,'');
+  endEl.value=texto; debounce(()=>sugestionar(endEl, sugId), 60)();
+}
+
+/* Rota + preço */
+async function calcularRota(){
+  const o={lat:Number($$('#endOrigem').dataset.lat), lon:Number($$('#endOrigem').dataset.lon)};
+  const d={lat:Number($$('#endDestino').dataset.lat), lon:Number($$('#endDestino').dataset.lon)};
+  if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão para origem e destino.'); return; }
+  ensureMap(); fixMapSize();
+  try{
+    const {km,line}=await osrmRouteKm(o,d);
+    $$('#outKm').value=km.toFixed(2);
+    const pk=parseValor($$('#outPerKm').value || perKm || 0);
+    const preco = Math.round(km*pk*100)/100;
+    $$('#outPreco').value = moeda(preco);          // <<< formatado como R$
+    drawRoute(line);
+  }catch(e){
+    const km=haversineKm(o,d);
+    $$('#outKm').value=km.toFixed(2);
+    const pk=parseValor($$('#outPerKm').value || perKm || 0);
+    const preco = Math.round(km*pk*100)/100;
+    $$('#outPreco').value = moeda(preco);
+    drawRoute([[o.lat,o.lon],[d.lat,d.lon]]);
+  }
+}
+function inverterEnd(){
+  const eo=$$('#endOrigem'), ed=$$('#endDestino');
+  const vo=eo.value, vd=ed.value, lo=eo.dataset.lat, ln=eo.dataset.lon;
+  eo.value=vd; ed.value=vo; eo.dataset.lat=ed.dataset.lat; eo.dataset.lon=ed.dataset.lon; ed.dataset.lat=lo; ed.dataset.lon=ln;
+  if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon));
+  if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon));
+}
+
+/* ======== Street View gratuito (Mapillary em iframe) ======== */
+let streetEnabled = false;
+const panel = $$('#streetPanel');
+const iframe = $$('#streetIframe');
+const openExternal = $$('#openExternal');
+const btnStreet = $$('#btnStreet');
+
+function openStreetAt(lat, lon){
+  // URL pública do Mapillary; funciona sem chave para navegação básica
+  const url = `https://www.mapillary.com/app/?lat=${lat}&lng=${lon}&z=17&focus=photo`;
+  iframe.src = url;
+  openExternal.href = url;
+  panel.style.display = 'block';
+}
+
+btnStreet.addEventListener('click', ()=>{
+  streetEnabled = !streetEnabled;
+  btnStreet.textContent = streetEnabled ? 'Street: clique no mapa (Ativo)' : 'Explorar rua (clique no mapa)';
+  toast(streetEnabled ? 'Clique em um ponto do mapa para abrir o Street View (Mapillary).' : 'Street desativado.');
+});
+
+$$('#closeStreet').addEventListener('click', ()=>{
+  panel.style.display = 'none';
+  iframe.src = 'about:blank';
+});
+
+function onMapClick(e){
+  if(!streetEnabled) return;
+  openStreetAt(e.latlng.lat, e.latlng.lng);
+}
+(function attachMapClickLater(){
+  // garante que o listener seja registrado quando o mapa existir
+  const iv = setInterval(()=>{
+    if(map){
+      map.on('click', onMapClick);
+      clearInterval(iv);
+    }
+  }, 200);
+})();
+
+/* ======== Eventos ======== */
+$$('#btnConsultar').addEventListener('click', consultar);
+$$('#btnExportar').addEventListener('click', exportarJSON);
+$$('#btnDump').addEventListener('click', dumpJSON);
+$$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
+$$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
+$$('#savePerKm').addEventListener('click', salvarPerKm);
+$$('#btnSalvar').addEventListener('click', upsertComb);
+$$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
+$$('#filtroTabela').addEventListener('input', renderTabela);
+$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ upsertComb(); }});
+
+$$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
+$$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
+$$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
+$$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
+$$('#btnCalcularKm').addEventListener('click', calcularRota);
+$$('#btnInverter').addEventListener('click', inverterEnd);
+
 /* ======== Per Km ======== */
 async function salvarPerKm(){
   const v = parseValor($$('#perKm').value);
@@ -531,88 +703,6 @@ async function dumpJSON(){
   const blob = JSON.stringify(j, null, 2);
   $$('#dump').textContent = blob;
 }
-
-/* ======== Geocodificação e Rotas ======== */
-async function viaCEP(cep){ cep=(cep||'').replace(/\D/g,''); if(cep.length!==8) return null;
-  const r=await fetch(`https://viacep.com.br/ws/${cep}/json/`); if(!r.ok) return null; const j=await r.json(); if(j.erro) return null; return j;}
-async function geocode(q){ const url=`https://nominatim.openstreetmap.org/search?format=json&countrycodes=br&limit=5&addressdetails=1&q=${encodeURIComponent(q)}`; const r=await fetch(url,{headers:{'Accept-Language':'pt-BR'}}); if(!r.ok) throw new Error('Falha ao geocodificar'); const j=await r.json(); return j.map(it=>({label:it.display_name, lat:+it.lat, lon:+it.lon}));}
-async function osrmRouteKm(a,b){ const url = `https://router.project-osrm.org/route/v1/driving/${a.lon},${a.lat};${b.lon},${b.lat}?overview=full&geometries=geojson`; const r=await fetch(url); if(!r.ok) throw new Error('OSRM indisponível'); const j=await r.json(); if(!j.routes?.length) throw new Error('Sem rota'); const distKm=j.routes[0].distance/1000; const coords=j.routes[0].geometry.coordinates.map(([x,y])=>[y,x]); return {km:distKm,line:coords};}
-function haversineKm(a,b){ const R=6371,dLat=rad(b.lat-a.lat),dLon=rad(b.lon-a.lon); const s1=Math.sin(dLat/2), s2=Math.sin(dLon/2); const q=s1*s1 + Math.cos(rad(a.lat))*Math.cos(rad(b.lat))*s2*s2; return R*2*Math.asin(Math.min(1,Math.sqrt(q))); }
-function rad(d){ return d*Math.PI/180; }
-let debTimer; function debounce(fn,ms){ return (...args)=>{ clearTimeout(debTimer); debTimer=setTimeout(()=>fn(...args),ms); }; }
-let map, markerO, markerD, routeLayer;
-function ensureMap(){ if(map) return map; map = L.map('map',{zoomControl:true}).setView([-5.794,-35.211], 12); L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'&copy; OpenStreetMap'}).addTo(map); setTimeout(()=> map.invalidateSize(), 60); return map; }
-function fixMapSize(){ if(map){ setTimeout(()=> map.invalidateSize(), 60); } }
-function setMarker(which, lat, lon){ ensureMap(); const color = which==='O'? getComputedStyle(document.documentElement).getPropertyValue('--origin').trim()||'#10b981' : getComputedStyle(document.documentElement).getPropertyValue('--dest').trim()||'#ef4444'; const icon = L.divIcon({html:`<div style="width:14px;height:14px;border-radius:999px;background:${color};border:2px solid #fff;box-shadow:0 0 0 2px rgba(0,0,0,.15)"></div>`,iconSize:[14,14],className:''}); if(which==='O'){ if(markerO) markerO.remove(); markerO = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Origem').openPopup(); } else { if(markerD) markerD.remove(); markerD = L.marker([lat,lon],{icon}).addTo(map).bindPopup('Destino').openPopup(); } }
-function drawRoute(latlngs){ ensureMap(); if(routeLayer) routeLayer.remove(); const color = getComputedStyle(document.documentElement).getPropertyValue('--map-stroke').trim()||'#1f77b4'; routeLayer = L.polyline(latlngs,{weight:6,opacity:.98,color}).addTo(map); const group = new L.featureGroup([markerO, markerD, routeLayer].filter(Boolean)); map.fitBounds(group.getBounds().pad(0.25)); fixMapSize(); }
-
-/* ======== Sugestões & CEP ======== */
-async function sugestionar(inputEl, holderId){
-  const q=(inputEl.value||'').trim();
-  const holder=$$(holderId);
-  if(!q || q.length<3){ holder.style.display='none'; holder.innerHTML=''; return; }
-  holder.style.display='block'; holder.textContent='Buscando…';
-  try{
-    const items=await geocode(q);
-    holder.innerHTML = items.map(it=>`<button class="btn" style="width:100%;text-align:left" onclick='selSug("${holderId}", ${JSON.stringify(it).replace(/'/g,"&apos;")})'>${it.label}</button>`).join('');
-  }catch(e){ holder.textContent='Sem sugestões.'; }
-}
-function selSug(holderId, obj){
-  const holder=$$(holderId); holder.style.display='none'; holder.innerHTML='';
-  const input = holderId.includes('Origem')? $$('#endOrigem') : $$('#endDestino');
-  input.value=obj.label; input.dataset.lat=obj.lat; input.dataset.lon=obj.lon;
-  setMarker(holderId.includes('Origem')?'O':'D', obj.lat, obj.lon);
-}
-async function preencherPorCEP(cepEl, endEl, sugId){
-  const j=await viaCEP(cepEl.value); if(!j){ return; }
-  const texto = `${j.logradouro||''}, ${j.bairro||''}, ${j.localidade||''} - ${j.uf}`.replace(/^[,\s]+|[,\s]+$/g,'');
-  endEl.value=texto; debounce(()=>sugestionar(endEl, sugId), 60)();
-}
-
-/* ======== Rota e preço estimado ======== */
-async function calcularRota(){
-  const o={lat:Number($$('#endOrigem').dataset.lat), lon:Number($$('#endOrigem').dataset.lon)};
-  const d={lat:Number($$('#endDestino').dataset.lat), lon:Number($$('#endDestino').dataset.lon)};
-  if([o.lat,o.lon,d.lat,d.lon].some(x=>Number.isNaN(x))){ alert('Selecione uma sugestão para origem e destino.'); return; }
-  ensureMap(); fixMapSize();
-  try{
-    const {km,line}=await osrmRouteKm(o,d); $$('#outKm').value=km.toFixed(2);
-    const pk=parseValor($$('#outPerKm').value || perKm || 0);
-    $$('#outPreco').value=(Math.round(km*pk*100)/100).toFixed(2);
-    drawRoute(line);
-  }catch(e){
-    const km=haversineKm(o,d); $$('#outKm').value=km.toFixed(2);
-    const pk=parseValor($$('#outPerKm').value || perKm || 0);
-    $$('#outPreco').value=(Math.round(km*pk*100)/100).toFixed(2);
-    drawRoute([[o.lat,o.lon],[d.lat,d.lon]]);
-  }
-}
-function inverterEnd(){
-  const eo=$$('#endOrigem'), ed=$$('#endDestino');
-  const vo=eo.value, vd=ed.value, lo=eo.dataset.lat, ln=eo.dataset.lon;
-  eo.value=vd; ed.value=vo; eo.dataset.lat=ed.dataset.lat; eo.dataset.lon=ed.dataset.lon; ed.dataset.lat=lo; ed.dataset.lon=ln;
-  if(eo.dataset.lat && eo.dataset.lon) setMarker('O', Number(eo.dataset.lat), Number(eo.dataset.lon));
-  if(ed.dataset.lat && ed.dataset.lon) setMarker('D', Number(ed.dataset.lat), Number(ed.dataset.lon));
-}
-
-/* ======== Eventos ======== */
-$$('#btnConsultar').addEventListener('click', consultar);
-$$('#btnExportar').addEventListener('click', exportarJSON);
-$$('#btnDump').addEventListener('click', dumpJSON);
-$$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
-$$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
-$$('#savePerKm').addEventListener('click', salvarPerKm);
-$$('#btnSalvar').addEventListener('click', upsertComb);
-$$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
-$$('#filtroTabela').addEventListener('input', renderTabela);
-$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ upsertComb(); }});
-
-$$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
-$$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
-$$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
-$$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
-$$('#btnCalcularKm').addEventListener('click', calcularRota);
-$$('#btnInverter').addEventListener('click', inverterEnd);
 
 /* ======== Teste rápido contra API ======== */
 async function runTests(){
