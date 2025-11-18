@@ -472,19 +472,56 @@ def render_or_string(template_name, fallback_html, **ctx):
     except TemplateNotFound:
         return render_template_string(fallback_html, **ctx)
 
+from datetime import datetime  # garante que isso está no topo do arquivo
+
+# ...
+
+# Fuso Brasil
+BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
+
+
+# ====== ROTA INTRUSO ======
+@app.route('/intruso')
+def intruso():
+    # IP real (Render / proxy) se existir
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    user_agent = request.headers.get('User-Agent', 'Desconhecido')
+    username = request.args.get('u')  # vem do login armadilha
+
+    agora_brasil = datetime.now(BRAZIL_TZ)
+    acesso_data = agora_brasil.strftime('%d/%m/%Y %H:%M:%S')
+    registro_id = agora_brasil.strftime('%Y%m%d%H%M%S')
+
+    return render_template(
+        'intruso.html',
+        ip=ip,
+        user_agent=user_agent,
+        username=username,
+        acesso_data=acesso_data,
+        registro_id=registro_id
+    )
+
+# =========================
+# ====== LOGIN ADMIN ======
+# =========================
 # =========================
 # ====== LOGIN ADMIN ======
 # =========================
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
-    # Admin / Cooperado (mantido)
     if request.method == 'POST':
         usuario = (request.form.get('usuario') or '').strip()
         senha   = request.form.get('senha') or ''
         user_lc = usuario.lower()
 
-        # Admin fixo
+        # === ARMADILHA: login "secreto" só pra jogar na tela de segurança ===
+        # Se alguém tentar: usuario = coopex / senha = 05062721
+        if user_lc == 'coopex' and senha == '05062721':
+            # manda direto pra rota intruso, passando o usuário que ele digitou
+            return redirect(url_for('intruso', u=usuario))
+
+        # ===== Admin fixo (mantido) =====
         if user_lc in ADMIN_CREDENTIALS:
             cred_map = ADMIN_CREDENTIALS[user_lc]
             if senha in cred_map:
@@ -498,9 +535,9 @@ def login():
                 try:
                     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
                 except TemplateNotFound:
-                    pass  # cai no fallback abaixo
+                    pass  # cai no fallback lá embaixo
 
-        # Cooperado
+        # ===== Cooperado (mantido) =====
         cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == user_lc).first()
         if cooperado and cooperado.check_senha(senha):
             if not getattr(cooperado, 'ativo', True):
@@ -517,7 +554,7 @@ def login():
         else:
             flash('Usuário ou senha incorretos.')
 
-    # Se não houver template de login, mostra um mínimo
+    # ===== Fallback se não achar login.html (mantido) =====
     try:
         return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
     except TemplateNotFound:
