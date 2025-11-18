@@ -31,7 +31,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 ADMIN_CREDENTIALS = {
     'coopex': {
         os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'coopex05289'): {'is_master': True},
-        os.environ.get('ADMIN_PWD_COOPEX',        '05062721'):     {'is_master': False},
+        os.environ.get('ADMIN_PWD_COOPEX',        '84253700'):     {'is_master': False},
     }
 }
 
@@ -1104,7 +1104,7 @@ app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
 ADMIN_CREDENTIALS = {
     'coopex': {
         os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'coopex05289'): {'is_master': True},
-        os.environ.get('ADMIN_PWD_COOPEX',        '05062721'):     {'is_master': False},
+        os.environ.get('ADMIN_PWD_COOPEX',        '84253700'):     {'is_master': False},
     }
 }
 
