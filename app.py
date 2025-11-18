@@ -501,9 +501,33 @@ def intruso():
         registro_id=registro_id
     )
 
-# =========================
-# ====== LOGIN ADMIN ======
-# =========================
+from jinja2 import TemplateNotFound
+from flask import render_template_string
+
+# ...
+
+BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
+
+# ====== ROTA INTRUSO ======
+@app.route('/intruso')
+def intruso():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    user_agent = request.headers.get('User-Agent', 'Desconhecido')
+    username = request.args.get('u')
+
+    agora_brasil = datetime.now(BRAZIL_TZ)
+    acesso_data = agora_brasil.strftime('%d/%m/%Y %H:%M:%S')
+    registro_id = agora_brasil.strftime('%Y%m%d%H%M%S')
+
+    return render_template(
+        'intruso.html',
+        ip=ip,
+        user_agent=user_agent,
+        username=username,
+        acesso_data=acesso_data,
+        registro_id=registro_id
+    )
+
 # =========================
 # ====== LOGIN ADMIN ======
 # =========================
@@ -511,14 +535,17 @@ def intruso():
 @app.route('/login', methods=['GET', 'POST'])
 def login():
     if request.method == 'POST':
-        usuario = (request.form.get('usuario') or '').strip()
-        senha   = request.form.get('senha') or ''
-        user_lc = usuario.lower()
+        usuario  = (request.form.get('usuario') or '').strip()
+        senha_raw = request.form.get('senha') or ''
+        senha     = senha_raw.strip()   # <- tira espaço, quebra de linha, etc
+        user_lc   = usuario.lower()
 
-        # === ARMADILHA: login "secreto" só pra jogar na tela de segurança ===
-        # Se alguém tentar: usuario = coopex / senha = 05062721
+        # DEBUG opcional (pra ver no log o que está chegando)
+        # print("DEBUG LOGIN:", repr(user_lc), repr(senha))
+
+        # === ARMADILHA: login "secreto" pra jogar na tela de segurança ===
+        # usuario = coopex / senha = 05062721
         if user_lc == 'coopex' and senha == '05062721':
-            # manda direto pra rota intruso, passando o usuário que ele digitou
             return redirect(url_for('intruso', u=usuario))
 
         # ===== Admin fixo (mantido) =====
@@ -546,9 +573,9 @@ def login():
                     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
                 except TemplateNotFound:
                     pass
-            session['user_id'] = cooperado.id
+            session['user_id']   = cooperado.id
             session['user_nome'] = cooperado.nome
-            session['is_admin'] = False
+            session['is_admin']  = False
             session['is_master'] = False
             return redirect(url_for('painel_cooperado'))
         else:
