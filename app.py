@@ -50,6 +50,25 @@ db = SQLAlchemy(app)
 # Fuso Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
+@app.route('/intruso')
+def intruso():
+    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
+    user_agent = request.headers.get('User-Agent', 'Desconhecido')
+    username = request.args.get('u')
+
+    agora_brasil = datetime.now(BRAZIL_TZ)
+    acesso_data = agora_brasil.strftime('%d/%m/%Y %H:%M:%S')
+    registro_id = agora_brasil.strftime('%Y%m%d%H%M%S')
+
+    return render_template(
+        'intruso.html',
+        ip=ip,
+        user_agent=user_agent,
+        username=username,
+        acesso_data=acesso_data,
+        registro_id=registro_id
+    )
+
 # ====== MODELS ======
 class Cooperado(db.Model):
     id = db.Column(db.Integer, primary_key=True)
@@ -479,54 +498,6 @@ from datetime import datetime  # garante que isso está no topo do arquivo
 # Fuso Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
-
-# ====== ROTA INTRUSO ======
-@app.route('/intruso')
-def intruso():
-    # IP real (Render / proxy) se existir
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    user_agent = request.headers.get('User-Agent', 'Desconhecido')
-    username = request.args.get('u')  # vem do login armadilha
-
-    agora_brasil = datetime.now(BRAZIL_TZ)
-    acesso_data = agora_brasil.strftime('%d/%m/%Y %H:%M:%S')
-    registro_id = agora_brasil.strftime('%Y%m%d%H%M%S')
-
-    return render_template(
-        'intruso.html',
-        ip=ip,
-        user_agent=user_agent,
-        username=username,
-        acesso_data=acesso_data,
-        registro_id=registro_id
-    )
-
-from jinja2 import TemplateNotFound
-from flask import render_template_string
-
-# ...
-
-BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
-
-# ====== ROTA INTRUSO ======
-@app.route('/intruso')
-def intruso():
-    ip = request.headers.get('X-Forwarded-For', request.remote_addr)
-    user_agent = request.headers.get('User-Agent', 'Desconhecido')
-    username = request.args.get('u')
-
-    agora_brasil = datetime.now(BRAZIL_TZ)
-    acesso_data = agora_brasil.strftime('%d/%m/%Y %H:%M:%S')
-    registro_id = agora_brasil.strftime('%Y%m%d%H%M%S')
-
-    return render_template(
-        'intruso.html',
-        ip=ip,
-        user_agent=user_agent,
-        username=username,
-        acesso_data=acesso_data,
-        registro_id=registro_id
-    )
 
 # =========================
 # ====== LOGIN ADMIN ======
@@ -1119,73 +1090,6 @@ def excluir_cliente(id):
         return ("", 204)
     flash('Cliente excluído.')
     return redirect(url_for('clientes'))
-
-# ====== ENTREGAS ======
-@app.route('/cadastrar_entrega', methods=['GET', 'POST'])
-def cadastrar_entrega():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
-
-    if request.method == 'POST':
-        cliente = request.form.get('cliente')
-        bairro = request.form.get('bairro')
-        valor = float(request.form.get('valor'))
-        cooperado_id = request.form.get('cooperado_id')
-        pagamento = request.form.get('pagamento')
-
-        import os
-import io
-import re
-import unicodedata
-from datetime import datetime, timedelta, time, date
-from collections import Counter, defaultdict
-from urllib.parse import urlparse, parse_qs
-from functools import wraps
-from decimal import Decimal  # <-- IMPORT NECESSÁRIO
-
-from flask import (
-    Flask, render_template, request, redirect, url_for,
-    flash, session, send_file, jsonify, abort
-)
-from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
-from sqlalchemy.orm import joinedload
-from sqlalchemy.sql import text
-from werkzeug.security import generate_password_hash, check_password_hash
-
-import pandas as pd
-import holidays
-import pytz
-
-# ====== Configuração ======
-app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
-
-# --- Admins fixos (usuario: coopex, 2 senhas) ---
-ADMIN_CREDENTIALS = {
-    'coopex': {
-        os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'coopex05289'): {'is_master': True},
-        os.environ.get('ADMIN_PWD_COOPEX',        '84253700'):     {'is_master': False},
-    }
-}
-
-# Banco
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
-app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
-    "pool_pre_ping": True,
-    "pool_recycle": 300,
-    "pool_size": 5,
-    "max_overflow": 10,
-}
-
-db = SQLAlchemy(app)
-
-# Fuso Brasil
-BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
 # ====== MODELS ======
 class Cooperado(db.Model):
