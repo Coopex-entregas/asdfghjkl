@@ -351,7 +351,6 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
             db.session.add(e)
 
     if not cli:
-        # não achou cliente, não tem como consumir
         return Decimal("0.00")
 
     valor = _as_decimal(e.valor or 0)
@@ -935,6 +934,8 @@ table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
 th,td{padding:8px;border-bottom:1px solid #1c2a4a}
 th{background:#102053;position:sticky;top:0}
 .money{font-weight:900}
+.tag-credito{color:#4ade80;font-weight:700}
+.tag-debito{color:#fb7185;font-weight:700}
 </style>
 </head><body>
   <div class="wrap">
@@ -945,22 +946,45 @@ th{background:#102053;position:sticky;top:0}
           R$ {{ '%.2f'|format(cli.saldo_atual)|replace('.', ',') }}
         </span>
       </div>
-      <p style="opacity:.8;margin-top:8px">Abaixo, seu histórico de créditos (entradas) e usos (débitos).</p>
-      <div style="overflow:auto;border:1px solid #1c2a4a;border-radius:12px">
+      <p style="opacity:.8;margin-top:8px">
+        Abaixo, seu histórico de créditos (entradas) e usos (débitos) em ordem recente.
+      </p>
+      <div style="overflow:auto;border:1px solid #1c2a4a;border-radius:12px;max-height:420px">
         <table>
-          <thead><tr><th>Data</th><th>Tipo</th><th>Descrição</th><th>Valor</th></tr></thead>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Descrição</th>
+              <th>Valor</th>
+            </tr>
+          </thead>
           <tbody>
             {% for m in movs %}
               <tr>
-                <td>{{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}</td>
-                <td>{{ 'Crédito' if m.tipo=='credito' else 'Débito' }}</td>
+                <td>
+                  {% if m.criado_em %}
+                    {{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  {% if m.tipo == 'credito' %}
+                    <span class="tag-credito">Crédito</span>
+                  {% else %}
+                    <span class="tag-debito">Débito</span>
+                  {% endif %}
+                </td>
                 <td>{{ m.referencia or '-' }}</td>
-                <td class="money">R$ {{ '%.2f'|format(m.valor) | replace('.', ',') }}</td>
+                <td class="money">
+                  R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
+                </td>
               </tr>
             {% endfor %}
             {% if movs|length == 0 %}
               <tr><td colspan="4" style="text-align:center;opacity:.7;padding:16px">
-                Nenhuma movimentação.
+                Nenhuma movimentação encontrada.
               </td></tr>
             {% endif %}
           </tbody>
@@ -973,6 +997,7 @@ th{background:#102053;position:sticky;top:0}
   </div>
 </body></html>
     """, cli=cli, movs=movs, to_brasilia=to_brasilia)
+
 
 # =========================================================
 # ADMIN: DASHBOARD PRINCIPAL
@@ -2173,24 +2198,124 @@ def cliente_credito(cliente_id):
         .all()
     )
 
-    movimentos = []
-    for m in movs:
-        movimentos.append({
-            "tipo": m.tipo,
-            "titulo": "Crédito" if m.tipo == "credito" else "Atribuição/Débito",
-            "descricao": m.referencia or "",
-            "valor": float(m.valor or 0),
-            "data": m.criado_em,
-            "referencia": m.referencia or ""
-        })
+    total_creditos = sum(float(m.valor or 0) for m in movs if m.tipo == 'credito')
+    total_debitos = sum(float(m.valor or 0) for m in movs if m.tipo == 'debito')
+    saldo_atual = float(cli.saldo_atual or 0)
 
-    return render_template(
-        'credito_cliente.html',
-        cliente=cli,
-        movimentos=movimentos,
-        to_brasilia=to_brasilia,
-        now=lambda: datetime.now(BRAZIL_TZ)
-    )
+    return render_or_string("credito_cliente.html", """
+<!doctype html>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Extrato de Crédito — {{ cliente.nome }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f3f4ff;color:#0f172a}
+.wrap{max-width:1100px;margin:0 auto;padding:18px}
+.card{background:#ffffff;border:1px solid #d0ddff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
+h1{margin:0 0 6px;font-size:1.4rem}
+.sub{font-size:.9rem;color:#64748b;margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.chip{border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;border:1px solid #d0ddff;background:#e5edff;color:#1e3a8a}
+.chip.good{background:#dcfce7;border-color:#bbf7d0;color:#166534}
+.chip.bad{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
+.table-wrap{overflow:auto;border-radius:12px;border:1px solid #d0ddff;max-height:520px;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:8px;border-bottom:1px solid #e2e8f0}
+th{position:sticky;top:0;background:#1e3a8a;color:#e5edff;text-align:left;z-index:1}
+tbody tr:nth-child(even) td{background:#f8fafc}
+.money{font-weight:900}
+.tag-credito{color:#16a34a;font-weight:700}
+.tag-debito{color:#dc2626;font-weight:700}
+.actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;font-size:.85rem;font-weight:800;border-radius:999px;text-decoration:none;border:1px solid #1d4ed8;color:#1d4ed8;background:#e0ebff}
+.btn.primary{background:#1d4ed8;color:#e5edff}
+</style>
+</head><body>
+  <div class="wrap">
+    <div class="card">
+      <h1>Extrato de crédito — {{ cliente.nome }}</h1>
+      <div class="sub">
+        Telefone:
+        {% if cliente.telefone %}
+          {{ cliente.telefone }}
+        {% else %}
+          <span style="opacity:.6">não informado</span>
+        {% endif %}
+      </div>
+
+      <div class="chips">
+        <span class="chip">Saldo atual: <span class="money" style="margin-left:6px">
+          R$ {{ '%.2f'|format(saldo_atual)|replace('.', ',') }}</span>
+        </span>
+        <span class="chip good">Total créditos: R$ {{ '%.2f'|format(total_creditos)|replace('.', ',') }}</span>
+        <span class="chip bad">Total débitos: R$ {{ '%.2f'|format(total_debitos)|replace('.', ',') }}</span>
+        <span class="chip">Movimentos: {{ movs|length }}</span>
+      </div>
+
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Data</th>
+              <th>Tipo</th>
+              <th>Descrição</th>
+              <th>Valor</th>
+              <th>Ref.</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for m in movs %}
+              <tr>
+                <td>
+                  {% if m.criado_em %}
+                    {{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}
+                  {% else %}
+                    -
+                  {% endif %}
+                </td>
+                <td>
+                  {% if m.tipo == 'credito' %}
+                    <span class="tag-credito">Crédito</span>
+                  {% else %}
+                    <span class="tag-debito">Débito</span>
+                  {% endif %}
+                </td>
+                <td>{{ m.referencia or '-' }}</td>
+                <td class="money">
+                  R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
+                </td>
+                <td>
+                  {% if m.entrega_id %}
+                    Entrega #{{ m.entrega_id }}
+                  {% elif m.credito_id %}
+                    Crédito #{{ m.credito_id }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+              </tr>
+            {% endfor %}
+            {% if movs|length == 0 %}
+              <tr>
+                <td colspan="5" style="text-align:center;opacity:.7;padding:16px">
+                  Nenhuma movimentação de crédito para este cliente.
+                </td>
+              </tr>
+            {% endif %}
+          </tbody>
+        </table>
+      </div>
+
+      <div class="actions">
+        <a class="btn primary" href="{{ url_for('creditos', cliente_id=cliente.id) }}">↩ Voltar para créditos</a>
+        <a class="btn" href="{{ url_for('precos_rotas') }}">Tabela de preços & rotas</a>
+      </div>
+    </div>
+  </div>
+</body></html>
+    """, cliente=cli, movs=movs, saldo_atual=saldo_atual,
+       total_creditos=total_creditos, total_debitos=total_debitos,
+       to_brasilia=to_brasilia)
 
 
 @app.route('/creditos/movimento/novo', methods=['POST'])
