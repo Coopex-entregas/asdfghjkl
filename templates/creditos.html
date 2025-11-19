@@ -264,6 +264,17 @@
       border-color:#273b7a;
       color:#c5d5ff;
     }
+
+    .pill-consumido{
+      background:#fee2e2;
+      border:1px solid #fecaca;
+      color:#b91c1c;
+    }
+    .pill-saldo{
+      background:#dcfce7;
+      border:1px solid #bbf7d0;
+      color:#166534;
+    }
   </style>
 </head>
 <body>
@@ -297,7 +308,7 @@
           </span>
         </div>
 
-        <!-- IMPORTANTE: POST vai para creditos_cadastrar -->
+        <!-- POST vai para creditos_cadastrar -->
         <form class="grid-2" action="{{ url_for('creditos_cadastrar') }}" method="POST" id="form-credito">
           <div class="column">
             <label for="cliente_id">Cliente</label>
@@ -343,7 +354,6 @@
 
           <div class="column">
             <label for="criado_em">Data do crédito</label>
-            <!-- valor padrão via JS, sem usar now() -->
             <input type="date" id="criado_em" name="criado_em" value="">
           </div>
 
@@ -367,6 +377,27 @@
         {% set filtro_cliente = request.args.get('cliente_id','') %}
         {% set filtro_di = request.args.get('data_inicio','') %}
         {% set filtro_df = request.args.get('data_fim','') %}
+
+        <!-- Totais gerais (do filtro atual) -->
+        {% set tot_registros = creditos|length %}
+        {% set tot_bruto = 0 %}
+        {% set tot_final = 0 %}
+        {% for c in creditos %}
+          {% set tot_bruto = tot_bruto + (c.valor_bruto or 0) %}
+          {% set tot_final = tot_final + (c.valor_final or 0) %}
+        {% endfor %}
+
+        <!-- Se tiver cliente filtrado, calcula consumo = total créditos - saldo atual -->
+        {% if filtro_cliente %}
+          {% set cli_filtro = (clientes | selectattr('id','equalto',filtro_cliente|int) | first) %}
+          {% if cli_filtro %}
+            {% set saldo_atual = cli_filtro.saldo_atual or 0 %}
+            {% set consumido = tot_final - saldo_atual %}
+            {% if consumido < 0 %}
+              {% set consumido = 0 %}
+            {% endif %}
+          {% endif %}
+        {% endif %}
 
         <form class="row" method="GET" action="{{ url_for('creditos') }}" style="margin-bottom:10px">
           <div class="column" style="min-width:220px">
@@ -401,8 +432,7 @@
               Exportar XLSX
             </a>
 
-            {% if filtro_cliente %}
-              <!-- Link rápido para extrato detalhado -->
+            {% if filtro_cliente and cli_filtro %}
               <a class="btn alt"
                  href="{{ url_for('cliente_credito', cliente_id=filtro_cliente) }}">
                 Ver extrato detalhado
@@ -411,10 +441,24 @@
           </div>
         </form>
 
-        <div class="totais" id="totaisBar" style="margin:8px 0 12px"></div>
+        <!-- Barra de totais: já mostra o consumo abatido -->
+        <div class="totais" style="margin:8px 0 12px">
+          <span class="pill">Registros: {{ tot_registros }}</span>
+          <span class="pill">Soma bruta: R$ {{ '%.2f'|format(tot_bruto)|replace('.',',') }}</span>
+          <span class="pill">Soma final (créditos): R$ {{ '%.2f'|format(tot_final)|replace('.',',') }}</span>
+
+          {% if filtro_cliente and cli_filtro %}
+            <span class="pill pill-consumido">
+              Já consumido: R$ {{ '%.2f'|format(consumido)|replace('.',',') }}
+            </span>
+            <span class="pill pill-saldo">
+              Saldo atual do cliente: R$ {{ '%.2f'|format(saldo_atual)|replace('.',',') }}
+            </span>
+          {% endif %}
+        </div>
 
         <div class="table-wrap">
-          <table id="tabelaCreditos">
+          <table>
             <thead>
               <tr>
                 <th>ID</th>
@@ -429,14 +473,14 @@
                 <th>Ações</th>
               </tr>
             </thead>
-            <tbody id="hist-body">
+            <tbody>
               {% for c in creditos %}
                 {% set cli_obj = (clientes | selectattr('id','equalto',c.cliente_id) | first) %}
                 {% set cli_nome = cli_obj.nome if cli_obj else ('ID ' ~ c.cliente_id) %}
               <tr>
                 <td>#{{ c.id }}</td>
                 <td>{{ cli_nome }}</td>
-                <td>R{{' '}}{{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
+                <td>R {{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
                 <td>
                   {% if c.desconto_tipo == 'percentual' %}
                     {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}%
@@ -463,15 +507,12 @@
                 <td>{{ c.criado_por or '-' }}</td>
                 <td>
                   <div class="actions-cell">
-                    <!-- EDITAR: usa rota creditos_editar -->
                     <a class="btn small alt"
                        href="{{ url_for('creditos_editar', credito_id=c.id) }}">
                       Editar
                     </a>
 
-                    <!-- EXCLUIR: usa rota creditos_excluir -->
                     <form action="{{ url_for('creditos_excluir', credito_id=c.id) }}"
-
                           method="POST"
                           onsubmit="return confirm('Confirma excluir este crédito? Esta ação não poderá ser desfeita.');">
                       <button type="submit" class="btn small danger">Excluir</button>
@@ -502,7 +543,9 @@
           • Se quiser aplicar desconto, escolha o tipo (% ou R$) e informe o valor.<br>
           • O <strong>valor final</strong> é calculado automaticamente e somado ao saldo do cliente.<br>
           • Quando lançar uma entrega no admin para um cliente com crédito, o sistema já desconta automaticamente,
-            gerando um movimento de <strong>Débito</strong> no extrato do cliente.
+            gerando um movimento de <strong>Débito</strong> no extrato do cliente.<br>
+          • Ao filtrar por um cliente no histórico, você verá quanto já foi
+            <strong>consumido</strong> e qual é o <strong>saldo atual</strong>.
         </p>
 
         <hr class="div">
@@ -539,7 +582,7 @@
       }catch(e){}
     })();
 
-    // data padrão hoje (sem Jinja now)
+    // data padrão hoje
     (function(){
       const input = document.getElementById('criado_em');
       if(input && !input.value){
@@ -593,46 +636,6 @@
     });
     calcFinal();
 
-    // barra de totais
-    (function(){
-      try{
-        const rows = Array.from(document.querySelectorAll('#hist-body tr'));
-        let totalReg=0, somaBruto=0, somaFinal=0;
-
-        rows.forEach(tr=>{
-          const tds = tr.querySelectorAll('td');
-          if(!tds.length) return;
-          const brutoTxt = (tds[2]?.innerText || '0')
-            .replace(/[^\d,.-]/g,'')
-            .replace('.','')
-            .replace(',','.');
-          const finalTxt = (tds[4]?.innerText || '0')
-            .replace(/[^\d,.-]/g,'')
-            .replace('.','')
-            .replace(',','.');
-          const bruto = parseFloat(brutoTxt) || 0;
-          const final = parseFloat(finalTxt) || 0;
-          totalReg++;
-          somaBruto += bruto;
-          somaFinal += final;
-        });
-
-        const bar = document.getElementById('totaisBar');
-        if(bar){
-          bar.innerHTML = '';
-          const pill = (t)=>{
-            const el = document.createElement('span');
-            el.className = 'pill';
-            el.textContent = t;
-            return el;
-          };
-          bar.appendChild(pill(`Registros: ${totalReg}`));
-          bar.appendChild(pill(`Soma bruta: ${fmtBRL(somaBruto)}`));
-          bar.appendChild(pill(`Soma final: ${fmtBRL(somaFinal)}`));
-        }
-      }catch(e){}
-    })();
-
     // Exibir saldo atual do cliente selecionado no formulário de crédito
     (function(){
       const sel = document.getElementById('cliente_id');
@@ -652,7 +655,7 @@
       }
 
       sel.addEventListener('change', updateSaldo);
-      updateSaldo(); // roda no carregamento
+      updateSaldo();
     })();
   </script>
 </body>
