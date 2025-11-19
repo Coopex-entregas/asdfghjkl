@@ -245,6 +245,25 @@
       border-top:1px solid var(--line);
       margin:12px 0;
     }
+
+    .saldo-badge{
+      margin-top:4px;
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      padding:4px 10px;
+      border-radius:999px;
+      background:#edf3ff;
+      border:1px solid #cfdbff;
+      font-size:.8rem;
+      font-weight:800;
+      color:#2347c7;
+    }
+    body.dark .saldo-badge{
+      background:#0b1635;
+      border-color:#273b7a;
+      color:#c5d5ff;
+    }
   </style>
 </head>
 <body>
@@ -270,6 +289,14 @@
 
         {% set selected_cliente = (cliente_id|string) if cliente_id is not none else request.args.get('cliente_id','') %}
 
+        <!-- Saldo atual do cliente selecionado -->
+        <div id="saldoClienteBox" style="margin-bottom:10px;display:none;">
+          <span class="saldo-badge">
+            Saldo atual do cliente:
+            <span id="saldoClienteValor">R$ 0,00</span>
+          </span>
+        </div>
+
         <!-- IMPORTANTE: POST vai para creditos_cadastrar -->
         <form class="grid-2" action="{{ url_for('creditos_cadastrar') }}" method="POST" id="form-credito">
           <div class="column">
@@ -278,6 +305,7 @@
               <option value="" disabled {% if not selected_cliente %}selected{% endif %}>Selecione…</option>
               {% for cli in clientes %}
                 <option value="{{ cli.id }}"
+                        data-saldo="{{ '%.2f'|format(cli.saldo_atual or 0) }}"
                         {% if selected_cliente and selected_cliente|string == cli.id|string %}selected{% endif %}>
                   {{ cli.nome }}
                 </option>
@@ -361,7 +389,7 @@
             <label for="f_ate">Até</label>
             <input type="date" id="f_ate" name="data_fim" value="{{ filtro_df }}">
           </div>
-          <div style="display:flex;gap:10px;align-items:flex-end">
+          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
             <button class="btn" type="submit">Filtrar</button>
 
             <!-- usa tua rota /creditos/exportar -->
@@ -372,6 +400,14 @@
                                 data_fim=filtro_df or None) }}">
               Exportar XLSX
             </a>
+
+            {% if filtro_cliente %}
+              <!-- Link rápido para extrato detalhado -->
+              <a class="btn alt"
+                 href="{{ url_for('cliente_credito', cliente_id=filtro_cliente) }}">
+                Ver extrato detalhado
+              </a>
+            {% endif %}
           </div>
         </form>
 
@@ -417,8 +453,13 @@
                   <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong>
                 </td>
                 <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
-                <!-- assume que c.criado_em já vem formatado / ou string -->
-                <td>{{ c.criado_em }}</td>
+                <td>
+                  {% if c.criado_em %}
+                    {{ c.criado_em }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
                 <td>{{ c.criado_por or '-' }}</td>
                 <td>
                   <div class="actions-cell">
@@ -430,6 +471,7 @@
 
                     <!-- EXCLUIR: usa rota creditos_excluir -->
                     <form action="{{ url_for('creditos_excluir', credito_id=c.id) }}"
+
                           method="POST"
                           onsubmit="return confirm('Confirma excluir este crédito? Esta ação não poderá ser desfeita.');">
                       <button type="submit" class="btn small danger">Excluir</button>
@@ -459,7 +501,8 @@
           • Preencha o valor do crédito e escolha o cliente.<br>
           • Se quiser aplicar desconto, escolha o tipo (% ou R$) e informe o valor.<br>
           • O <strong>valor final</strong> é calculado automaticamente e somado ao saldo do cliente.<br>
-          • Quando lançar uma entrega no admin para um cliente com crédito, o sistema já desconta automaticamente.
+          • Quando lançar uma entrega no admin para um cliente com crédito, o sistema já desconta automaticamente,
+            gerando um movimento de <strong>Débito</strong> no extrato do cliente.
         </p>
 
         <hr class="div">
@@ -588,6 +631,28 @@
           bar.appendChild(pill(`Soma final: ${fmtBRL(somaFinal)}`));
         }
       }catch(e){}
+    })();
+
+    // Exibir saldo atual do cliente selecionado no formulário de crédito
+    (function(){
+      const sel = document.getElementById('cliente_id');
+      const box = document.getElementById('saldoClienteBox');
+      const val = document.getElementById('saldoClienteValor');
+      if(!sel || !box || !val) return;
+
+      function updateSaldo(){
+        const opt = sel.options[sel.selectedIndex];
+        if(!opt || !opt.value){
+          box.style.display = 'none';
+          return;
+        }
+        const saldo = parseFloat(opt.getAttribute('data-saldo') || '0');
+        val.textContent = fmtBRL(saldo);
+        box.style.display = 'inline-flex';
+      }
+
+      sel.addEventListener('change', updateSaldo);
+      updateSaldo(); // roda no carregamento
     })();
   </script>
 </body>
