@@ -334,26 +334,24 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
 
 
 def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
-    """
-    Consome crédito do cliente SEM depender da forma de pagamento.
-    Sempre que houver saldo, usa para abater o valor da entrega.
-
-    - Debita do saldo_atual do cliente
-    - Atualiza entrega.credito_usado
-    - Cria um CreditoMovimento(tipo='debito')
-    - Se cobrir 100% do valor, marca status_pagamento='pago'
-    """
     e = Entrega.query.get(entrega_id)
     if not e:
         return Decimal("0.00")
 
-    # Acha o cliente (cliente_id tem prioridade)
     cli = None
+    # 1) tenta pelo cliente_id
     if getattr(e, "cliente_id", None):
         cli = Cliente.query.get(e.cliente_id)
+
+    # 2) tenta pelo nome e JÁ VINCULA o cliente_id se achar
     if not cli:
         cli = _find_cliente_by_nome(e.cliente)
+        if cli and not getattr(e, "cliente_id", None):
+            e.cliente_id = cli.id  # garante vínculo
+            db.session.add(e)
+
     if not cli:
+        # não achou cliente, não tem como consumir
         return Decimal("0.00")
 
     valor = _as_decimal(e.valor or 0)
@@ -384,13 +382,10 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
     db.session.flush()
     e.credito_mov_id = mov.id
 
-    # Se o crédito cobriu tudo → marca pago
     if novo_usado >= valor:
         e.status_pagamento = "pago"
-
         if not (e.pagamento or "").strip():
             e.pagamento = "Crédito"
-
         if not (e.recebido_por or "").strip():
             e.recebido_por = "Crédito automático"
     else:
@@ -2043,13 +2038,8 @@ def creditos_excluir(credito_id):
 
     cred = Credito.query.get_or_404(credito_id)
 
-    total_consumo = consumo_total_do_credito(cred.id)
-    if total_consumo > 0.0:
-        flash('Não é possível excluir: este crédito possui consumo vinculado. '
-              'Estorne/exclua os consumos primeiro.', 'warning')
-        return redirect(url_for('creditos', cliente_id=cred.cliente_id))
-
     try:
+        # Ajusta o saldo tirando o valor final do crédito
         delta = -float(cred.valor_final or 0.0)
         if abs(delta) > 1e-7:
             atualizar_saldo_cliente(cred.cliente_id, delta)
@@ -2061,7 +2051,12 @@ def creditos_excluir(credito_id):
                 credito_id=cred.id
             )
 
-        db.session.execute(text("DELETE FROM credito_movimento WHERE credito_id = :cid"), {"cid": cred.id})
+        # Apaga todos os movimentos ligados a esse crédito
+        db.session.execute(
+            text("DELETE FROM credito_movimento WHERE credito_id = :cid"),
+            {"cid": cred.id}
+        )
+
         db.session.delete(cred)
         db.session.commit()
         flash('Crédito excluído.', 'success')
