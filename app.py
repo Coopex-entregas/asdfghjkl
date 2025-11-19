@@ -1710,12 +1710,26 @@ def cadastrar_entrega():
 
         db.session.commit()
 
+        # Tenta consumir crédito e mostra o resultado na tela
         try:
-            consumir_credito_em_entrega(entrega.id)
+            valor_consumido = consumir_credito_em_entrega(entrega.id)
+            if valor_consumido > 0:
+                flash(
+                    f'Entrega cadastrada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
+                    'success'
+                )
+            else:
+                flash(
+                    'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).',
+                    'info'
+                )
         except Exception as ex:
             app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
+            flash(
+                'Entrega cadastrada, mas houve erro ao tentar consumir crédito automaticamente.',
+                'warning'
+            )
 
-        flash('Entrega cadastrada!')
         return redirect_back_to_admin()
 
     return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
@@ -1769,12 +1783,26 @@ def agendar_entrega():
 
         db.session.commit()
 
+        # Tenta consumir crédito e mostra o resultado na tela
         try:
-            consumir_credito_em_entrega(entrega.id)
+            valor_consumido = consumir_credito_em_entrega(entrega.id)
+            if valor_consumido > 0:
+                flash(
+                    f'Entrega agendada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
+                    'success'
+                )
+            else:
+                flash(
+                    'Entrega agendada! (nenhum crédito foi consumido para este cliente).',
+                    'info'
+                )
         except Exception as ex:
             app.logger.exception("Falha ao consumir crédito (agendada) na entrega %s: %s", entrega.id, ex)
+            flash(
+                'Entrega agendada, mas houve erro ao tentar consumir crédito automaticamente.',
+                'warning'
+            )
 
-        flash('Entrega agendada!')
         return redirect_back_to_admin()
 
     return render_template('agendar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
