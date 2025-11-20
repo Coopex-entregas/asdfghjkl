@@ -1712,12 +1712,13 @@ def cadastrar_entrega():
 
         # Tenta consumir crédito e mostra o resultado na tela
         try:
-            valor_consumido = consumir_credito_em_entrega(entrega.id)
-            if valor_consumido > 0:
-                flash(
-                    f'Entrega cadastrada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
-                    'success'
-                )
+            if pagamento_usa_credito(entrega.pagamento):
+                valor_consumido = consumir_credito_em_entrega(entrega.id)
+                if valor_consumido > 0:
+                 flash(
+                        f'Entrega cadastrada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
+                        'success'
+                    )
             else:
                 flash(
                     'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).',
@@ -1733,7 +1734,6 @@ def cadastrar_entrega():
         return redirect_back_to_admin()
 
     return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
-
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
 def agendar_entrega():
@@ -1785,12 +1785,13 @@ def agendar_entrega():
 
         # Tenta consumir crédito e mostra o resultado na tela
         try:
-            valor_consumido = consumir_credito_em_entrega(entrega.id)
-            if valor_consumido > 0:
-                flash(
-                    f'Entrega agendada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
-                    'success'
-                )
+            if pagamento_usa_credito(entrega.pagamento):
+                valor_consumido = consumir_credito_em_entrega(entrega.id)
+                if valor_consumido > 0:
+                    flash(
+                        f'Entrega agendada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
+                        'success'
+                    )
             else:
                 flash(
                     'Entrega agendada! (nenhum crédito foi consumido para este cliente).',
@@ -1806,7 +1807,6 @@ def agendar_entrega():
         return redirect_back_to_admin()
 
     return render_template('agendar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
-
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
