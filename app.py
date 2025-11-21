@@ -2095,7 +2095,6 @@ def creditos_excluir(credito_id):
     cred = Credito.query.get_or_404(credito_id)
 
     try:
-        # Ajusta o saldo tirando o valor final do crédito
         delta = -float(cred.valor_final or 0.0)
         if abs(delta) > 1e-7:
             atualizar_saldo_cliente(cred.cliente_id, delta)
@@ -2107,7 +2106,6 @@ def creditos_excluir(credito_id):
                 credito_id=cred.id
             )
 
-        # Apaga todos os movimentos ligados a esse crédito
         db.session.execute(
             text("DELETE FROM credito_movimento WHERE credito_id = :cid"),
             {"cid": cred.id}
@@ -2122,7 +2120,6 @@ def creditos_excluir(credito_id):
         flash(f'Erro ao excluir crédito: {e.__class__.__name__}', 'danger')
 
     return redirect(url_for('creditos', cliente_id=cred.cliente_id))
-
 
 @app.route('/creditos/exportar')
 def creditos_exportar():
