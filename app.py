@@ -2087,17 +2087,16 @@ def creditos_editar(credito_id):
 
 
 @app.route('/creditos/<int:id>/excluir', methods=['POST'])
-@login_required  # se você usar login_required, mantém
 def creditos_excluir(id):
     credito = Credito.query.get_or_404(id)
     cliente_id = credito.cliente_id
 
     try:
-        # 1º apaga TODOS os movimentos ligados a esse crédito
+        # apaga TODOS os movimentos desse crédito (para não quebrar a FK)
         for mov in list(credito.movimentos):
             db.session.delete(mov)
 
-        # 2º agora pode apagar o crédito
+        # agora apaga o crédito
         db.session.delete(credito)
 
         db.session.commit()
