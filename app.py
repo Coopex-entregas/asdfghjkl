@@ -118,6 +118,7 @@ class Entrega(db.Model):
 # models.py
 
 from sqlalchemy import text
+from datetime import datetime
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -156,6 +157,8 @@ class CreditoMovimento(db.Model):
 
 
 class ListaEspera(db.Model):
+    __tablename__ = 'lista_espera'
+
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)  # legado
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
@@ -164,29 +167,45 @@ class ListaEspera(db.Model):
     cooperado = db.relationship('Cooperado', lazy='joined')
 
 
-def criar_coluna_valor_em_credito():
+def garantir_colunas_credito():
     """
-    Cria a coluna 'valor' na tabela 'credito' se ela não existir.
+    Garante que as colunas 'valor' e 'saldo_atual' existam na tabela 'credito'
+    e preenche saldo_atual com o valor original quando estiver nulo.
     """
     try:
+        # cria coluna 'valor' se não existir
         db.session.execute(text("""
             ALTER TABLE credito
             ADD COLUMN IF NOT EXISTS valor DOUBLE PRECISION DEFAULT 0
         """))
+
+        # cria coluna 'saldo_atual' se não existir
+        db.session.execute(text("""
+            ALTER TABLE credito
+            ADD COLUMN IF NOT EXISTS saldo_atual DOUBLE PRECISION DEFAULT 0
+        """))
+
+        # garante que saldo_atual tenha algum valor (igual ao valor original, se estiver nulo)
+        db.session.execute(text("""
+            UPDATE credito
+            SET saldo_atual = COALESCE(saldo_atual, valor, 0)
+        """))
+
         db.session.commit()
     except Exception as e:
-        app.logger.error(f'Erro ao criar coluna valor em credito: {e}')
+        app.logger.error(f'Erro ao garantir colunas em credito: {e}')
         db.session.rollback()
 
 
-# inicializa tabelas e garante a coluna ao subir o app
+# roda na subida do app (no carregamento, SEM decorator before_first_request)
 with app.app_context():
     try:
         db.create_all()
     except Exception as e:
         app.logger.error(f'Erro ao criar tabelas: {e}')
 
-    criar_coluna_valor_em_credito()
+    garantir_colunas_credito()
+
 
 # =========================================================
 # HELPERS DE DATA / FUSO
