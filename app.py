@@ -2086,39 +2086,29 @@ def creditos_editar(credito_id):
     return render_template('credito_form.html', credito=cred)
 
 
-@app.route('/creditos/<int:credito_id>/excluir', methods=['POST'])
-def creditos_excluir(credito_id):
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    cred = Credito.query.get_or_404(credito_id)
+@app.route('/creditos/<int:id>/excluir', methods=['POST'])
+@login_required  # se você usar login_required, mantém
+def creditos_excluir(id):
+    credito = Credito.query.get_or_404(id)
+    cliente_id = credito.cliente_id
 
     try:
-        delta = -float(cred.valor_final or 0.0)
-        if abs(delta) > 1e-7:
-            atualizar_saldo_cliente(cred.cliente_id, delta)
-            registrar_movimento(
-                cred.cliente_id,
-                TIPO_CONSUMO,
-                abs(delta),
-                referencia=f'Exclusão do crédito #{cred.id}',
-                credito_id=cred.id
-            )
+        # 1º apaga TODOS os movimentos ligados a esse crédito
+        for mov in list(credito.movimentos):
+            db.session.delete(mov)
 
-        db.session.execute(
-            text("DELETE FROM credito_movimento WHERE credito_id = :cid"),
-            {"cid": cred.id}
-        )
+        # 2º agora pode apagar o crédito
+        db.session.delete(credito)
 
-        db.session.delete(cred)
         db.session.commit()
-        flash('Crédito excluído.', 'success')
+        flash('Crédito e movimentos relacionados excluídos com sucesso.', 'success')
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('Erro ao excluir crédito')
-        flash(f'Erro ao excluir crédito: {e.__class__.__name__}', 'danger')
+        app.logger.error(f'Erro ao excluir crédito: {e}')
+        flash('Erro ao excluir crédito. Já existe movimentação ligada a ele.', 'danger')
 
-    return redirect(url_for('creditos', cliente_id=cred.cliente_id))
+    return redirect(url_for('creditos', cliente_id=cliente_id))
+
 
 @app.route('/creditos/exportar')
 def creditos_exportar():
