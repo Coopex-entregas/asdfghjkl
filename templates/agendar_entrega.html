@@ -75,7 +75,8 @@
       {% if clientes %}
         {% for cl in clientes %}
           <option
-            value="{{ cl.nome }}"
+            value="{{ cl.id }}"
+            data-nome="{{ cl.nome|e }}"
             data-bairro="{{ cl.bairro_origem or '' }}"
             data-telefone="{{ cl.telefone or '' }}"
           >
@@ -84,7 +85,12 @@
         {% endfor %}
       {% endif %}
     </select>
-    <small class="hint">Se selecionar acima, o nome e o bairro serão preenchidos. Você ainda pode ajustar manualmente.</small>
+    <small class="hint">
+      Se selecionar acima, o nome e o bairro serão preenchidos. Você ainda pode ajustar manualmente.
+    </small>
+
+    <!-- HIDDEN QUE VAI PRO BACKEND COM O ID DO CLIENTE -->
+    <input type="hidden" id="cliente_id" name="cliente_id" />
 
     <!-- 2) Campo manual (este é o que vai no POST como 'cliente') -->
     <label>Nome do Cliente (manual):</label>
@@ -127,22 +133,30 @@
       const sel = document.getElementById('cliente-select');
       const inpNome = document.getElementById('cliente-input');
       const inpBairro = document.getElementById('bairro');
+      const hiddenId = document.getElementById('cliente_id');
 
-      // Ao escolher um cliente cadastrado, preenche os campos manuais
+      // Ao escolher um cliente cadastrado, preenche os campos manuais e o ID
       sel.addEventListener('change', function () {
         const opt = sel.options[sel.selectedIndex];
-        if (!opt || !opt.value) return;
-        const nome = opt.value || '';
+        if (!opt || !opt.value) {
+          // limpou a seleção
+          hiddenId.value = '';
+          return;
+        }
+
+        const id = opt.value || '';
+        const nome = opt.getAttribute('data-nome') || opt.textContent || '';
         const bairro = opt.getAttribute('data-bairro') || '';
 
-        // Preenche (mas você ainda pode editar manualmente)
         if (nome) inpNome.value = nome;
         if (bairro && !inpBairro.value) inpBairro.value = bairro;
+        hiddenId.value = id;
       });
 
-      // Se o usuário digitar manualmente, "desvincula" a seleção
+      // Se o usuário digitar manualmente, "desvincula" a seleção e limpa o ID
       inpNome.addEventListener('input', function () {
         if (sel.value) sel.value = '';
+        if (hiddenId.value) hiddenId.value = '';
       });
     })();
   </script>
