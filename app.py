@@ -123,13 +123,12 @@ class Credito(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
 
-    # <-- ESTA É A COLUNA QUE ESTÁ FALTANDO NO BANCO
+    # valor total desse crédito (crédito original)
     valor = db.Column(db.Float, default=0.0)
 
-    # saldo atual do cliente nesse crédito
+    # saldo atual ainda disponível
     saldo_atual = db.Column(db.Float, default=0.0)
 
-    # movimentos ligados ao crédito (créditos e débitos)
     movimentos = db.relationship(
         'CreditoMovimento',
         backref='credito',
@@ -161,6 +160,22 @@ class ListaEspera(db.Model):
     pos = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     cooperado = db.relationship('Cooperado', lazy='joined')
+
+
+def criar_coluna_valor_em_credito():
+    """
+    Cria a coluna 'valor' na tabela 'credito' se ela não existir.
+    """
+    try:
+        db.session.execute(text("""
+            ALTER TABLE credito
+            ADD COLUMN IF NOT EXISTS valor DOUBLE PRECISION DEFAULT 0
+        """))
+        db.session.commit()
+    except Exception as e:
+        app.logger.error(f'Erro ao criar coluna valor em credito: {e}')
+        db.session.rollback()
+
 
 
 # =========================================================
