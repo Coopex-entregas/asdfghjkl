@@ -65,25 +65,25 @@
       </div>
       <div class="saldo" style="margin-top:10px">
         <div class="muted">Saldo disponível</div>
-        <div class="valor">R$ {{ '%.2f'|format(cliente.saldo_atual) | replace('.', ',') }}</div>
+        <div class="valor">R$ {{ '%.2f'|format(cliente.saldo_atual or 0) | replace('.', ',') }}</div>
       </div>
 
-      <!-- Pequeno resumo de créditos x consumos (se view quiser, pode passar prontos) -->
-      {% set total_credito = 0 %}
-      {% set total_debito = 0 %}
+      {# RESUMO DE CRÉDITOS X CONSUMOS COM NAMESPACE (ACÚMULO FUNCIONANDO) #}
+      {% set ns = namespace(total_credito=0, total_debito=0) %}
       {% for m in movimentos %}
         {% if m.tipo == 'credito' %}
-          {% set total_credito = total_credito + (m.valor or 0) %}
+          {% set ns.total_credito = ns.total_credito + (m.valor or 0) %}
         {% elif m.tipo == 'debito' %}
-          {% set total_debito = total_debito + (m.valor or 0) %}
+          {% set ns.total_debito = ns.total_debito + (m.valor or 0) %}
         {% endif %}
       {% endfor %}
+
       <div style="margin-top:12px;display:flex;gap:8px;flex-wrap:wrap">
         <span class="pill credito">
-          Total creditado: R$ {{ '%.2f'|format(total_credito) | replace('.', ',') }}
+          Total creditado: R$ {{ '%.2f'|format(ns.total_credito) | replace('.', ',') }}
         </span>
         <span class="pill debito">
-          Já consumido: R$ {{ '%.2f'|format(total_debito) | replace('.', ',') }}
+          Já consumido: R$ {{ '%.2f'|format(ns.total_debito) | replace('.', ',') }}
         </span>
       </div>
     </section>
@@ -109,7 +109,7 @@
                 </div>
               </div>
               <div class="valor {{ 'plus' if m.tipo=='credito' else 'minus' }}">
-                {{ '+' if m.tipo=='credito' else '-' }} R$ {{ '%.2f'|format(m.valor) | replace('.', ',') }}
+                {{ '+' if m.tipo=='credito' else '-' }} R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
               </div>
             </div>
           {% endfor %}
