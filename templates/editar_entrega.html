@@ -95,23 +95,37 @@
     {% set credito_usado = entrega.credito_usado or 0 %}
     {% set valor_liquido = valor_entrega - credito_usado if valor_entrega and credito_usado else valor_entrega %}
 
+    <!-- CAMPOS OCULTOS PARA O BACKEND SABER SE PRECISA RECALCULAR O CRÉDITO -->
+    <input type="hidden" name="valor_original" id="valor_original"
+           value="{{ '%.2f'|format(valor_entrega) }}">
+    <input type="hidden" name="credito_usado_original" id="credito_usado_original"
+           value="{{ '%.2f'|format(credito_usado) }}">
+    <input type="hidden" name="recalcular_credito" id="recalcular_credito" value="0">
+
     <div class="info-box">
       <div>
-        Valor da entrega: <span class="money">R$ {{ '%.2f'|format(valor_entrega) | replace('.', ',') }}</span>
+        Valor da entrega:
+        <span class="money" id="info_valor_entrega">
+          R$ {{ '%.2f'|format(valor_entrega) | replace('.', ',') }}
+        </span>
       </div>
       <div>
         Crédito já consumido nesta entrega:
-        <span class="money">R$ {{ '%.2f'|format(credito_usado) | replace('.', ',') }}</span>
+        <span class="money" id="info_credito_usado">
+          R$ {{ '%.2f'|format(credito_usado) | replace('.', ',') }}
+        </span>
       </div>
       <div>
         Valor em aberto após abatimento:
-        <span class="money">R$ {{ '%.2f'|format(valor_liquido) | replace('.', ',') }}</span>
+        <span class="money" id="info_valor_liquido">
+          R$ {{ '%.2f'|format(valor_liquido) | replace('.', ',') }}
+        </span>
       </div>
       <hr style="border:none;border-top:1px solid #d2ddff;margin:6px 0;">
       <div>
         <strong>Atenção:</strong> se você escolher
         <strong>Pix (Cooperativa)</strong> ou
-        <strong>Crédito (Saldo Cliente)</strong> na forma de pagamento,
+        <strong>Crédito automático (saldo cliente)</strong> na forma de pagamento,
         o sistema tenta abater automaticamente do crédito do cliente
         (caso haja saldo e a entrega esteja vinculada a um cliente).
       </div>
@@ -140,24 +154,24 @@
 
       <label for="status_pagamento">Status Pagamento:</label>
       <select name="status_pagamento" id="status_pagamento">
-        <option value="pendente"
-          {% if (entrega.status_pagamento or 'pendente')|lower != 'pago' %}selected{% endif %}>
+        <option value="Pendente"
+          {% if (entrega.status_pagamento or 'Pendente')|lower != 'pago' %}selected{% endif %}>
           Pendente
         </option>
-        <option value="pago"
+        <option value="Pago"
           {% if (entrega.status_pagamento or '')|lower == 'pago' %}selected{% endif %}>
           Pago
         </option>
       </select>
 
-      <label for="status">Status Entrega:</label>
-      <select name="status" id="status">
+      <label for="status_entrega">Status Entrega:</label>
+      <select name="status_entrega" id="status_entrega">
         <option value="pendente"
-          {% if (entrega.status or 'pendente') != 'entregue' %}selected{% endif %}>
+          {% if (entrega.status_entrega or 'pendente') != 'entregue' %}selected{% endif %}>
           Pendente
         </option>
         <option value="entregue"
-          {% if entrega.status == 'entregue' %}selected{% endif %}>
+          {% if entrega.status_entrega == 'entregue' %}selected{% endif %}>
           Entregue
         </option>
       </select>
@@ -181,12 +195,12 @@
           {% if (entrega.pagamento or '')|lower in ['pix (cooperativa)', 'pix cooperativa'] %}selected{% endif %}>
           Pix (Cooperativa)
         </option>
-        <!-- Crédito puro via saldo do cliente -->
-        <option value="Crédito (Saldo Cliente)"
-          {% if (entrega.pagamento or '')|lower in ['crédito (saldo cliente)', 'credito (saldo cliente)', 'credito'] %}
+        <!-- Crédito automático (saldo cliente) – compatível com o CREDITO_AUTO do cadastro -->
+        <option value="CREDITO_AUTO"
+          {% if (entrega.pagamento or '') in ['CREDITO_AUTO', 'Crédito (Saldo Cliente)', 'Credito (Saldo Cliente)', 'credito', 'crédito'] %}
             selected
           {% endif %}>
-          Crédito (Saldo Cliente)
+          Crédito automático (saldo cliente)
         </option>
       </select>
 
@@ -197,5 +211,64 @@
       <button type="submit">Salvar</button>
     </form>
   </div>
+
+  <script>
+    (function () {
+      const valorInput = document.getElementById('valor');
+      const pagamentoSelect = document.getElementById('pagamento');
+      const infoValorEntrega = document.getElementById('info_valor_entrega');
+      const infoValorLiquido = document.getElementById('info_valor_liquido');
+      const infoCreditoUsado = document.getElementById('info_credito_usado');
+      const hiddenRecalc = document.getElementById('recalcular_credito');
+      const hiddenValorOriginal = document.getElementById('valor_original');
+      const hiddenCreditoOriginal = document.getElementById('credito_usado_original');
+
+      function parseBRFloat(str) {
+        if (!str) return 0;
+        return parseFloat(String(str).replace('.', '').replace(',', '.')) || 0;
+      }
+
+      const creditoOriginal = parseBRFloat(hiddenCreditoOriginal.value);
+
+      function isPagamentoCredito(valorSel) {
+        if (!valorSel) return false;
+        const v = valorSel.toLowerCase();
+        return (
+          v === 'credito_auto' ||
+          v === 'crédito (saldo cliente)' ||
+          v === 'credito (saldo cliente)' ||
+          v === 'pix (cooperativa)' ||
+          v === 'pix cooperativa'
+        );
+      }
+
+      function atualizarInfoBox() {
+        const valorNovo = parseFloat(valorInput.value.replace(',', '.')) || 0;
+        const creditoUsado = creditoOriginal;
+
+        // Atualiza textos da caixinha
+        infoValorEntrega.textContent = 'R$ ' + valorNovo.toFixed(2).replace('.', ',');
+        infoCreditoUsado.textContent = 'R$ ' + creditoUsado.toFixed(2).replace('.', ',');
+
+        const valorLiquido = valorNovo - creditoUsado;
+        infoValorLiquido.textContent = 'R$ ' + valorLiquido.toFixed(2).replace('.', ',');
+
+        // Se for um pagamento em crédito, marca para o backend recalcular
+        if (isPagamentoCredito(pagamentoSelect.value)) {
+          hiddenRecalc.value = '1';
+        } else {
+          hiddenRecalc.value = '0';
+        }
+      }
+
+      if (valorInput && pagamentoSelect) {
+        valorInput.addEventListener('input', atualizarInfoBox);
+        pagamentoSelect.addEventListener('change', atualizarInfoBox);
+
+        // chamada inicial
+        atualizarInfoBox();
+      }
+    })();
+  </script>
 </body>
 </html>
