@@ -1710,6 +1710,9 @@ def cadastrar_entrega():
 
         db.session.commit()
 
+        # DEBUG AQUI
+        print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
+
         # Tenta consumir crédito e mostra o resultado na tela
         try:
             if pagamento_usa_credito(entrega.pagamento):
