@@ -81,19 +81,22 @@
   </div>
 
   <form method="POST" action="{{ url_for('cadastrar_entrega') }}">
-    <!-- 1) PUXAR CLIENTE DA LISTA -->
+    <!-- 1) PUXAR CLIENTE DA LISTA (AGORA COM ID) -->
     <label for="cliente_select">Cliente (cadastrado):</label>
     <select id="cliente_select">
       <option value="">-- Selecione um cliente (opcional) --</option>
       {% if clientes %}
         {% for cl in clientes %}
-          <option value="{{ cl.nome }}">{{ cl.nome }}</option>
+          <option value="{{ cl.id }}" data-nome="{{ cl.nome|e }}">{{ cl.nome }}</option>
         {% endfor %}
       {% endif %}
     </select>
     <small class="hint">Se não encontrar o cliente, digite abaixo.</small>
 
-    <!-- 2) DIGITAR MANUALMENTE (este campo é o que será enviado) -->
+    <!-- HIDDEN QUE VAI PARA O BACKEND -->
+    <input type="hidden" id="cliente_id" name="cliente_id" />
+
+    <!-- 2) DIGITAR MANUALMENTE (este campo é o que será exibido na entrega) -->
     <label for="cliente_manual">Ou digite o nome do cliente (manual):</label>
     <input
       id="cliente_manual"
@@ -123,9 +126,7 @@
 
     <label for="pagamento">Forma de Pagamento:</label>
     <select id="pagamento" name="pagamento" required>
-      <!-- NOVA OPÇÃO AUTOMÁTICA (primeira) -->
       <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
-      <!-- SUAS OPÇÕES ORIGINAIS, MANTIDAS -->
       <option value="Dinheiro">Dinheiro</option>
       <option value="Pix">Pix</option>
       <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
@@ -147,11 +148,15 @@
     <button type="submit">Cadastrar</button>
   </form>
 
-  <!-- Dump seguro dos clientes como JSON (nome/telefone) -->
+  <!-- Dump seguro dos clientes como JSON (id/nome/telefone) -->
   <script id="clientes-json" type="application/json">
     [
       {% for cl in clientes %}
-        {"nome": {{ cl.nome|tojson }}, "telefone": {{ (cl.telefone if cl.telefone is defined and cl.telefone else '')|tojson }} }{{ ',' if not loop.last }}
+        {
+          "id": {{ cl.id }},
+          "nome": {{ cl.nome|tojson }},
+          "telefone": {{ (cl.telefone if cl.telefone is defined and cl.telefone else '')|tojson }}
+        }{{ ',' if not loop.last }}
       {% endfor %}
     ]
   </script>
@@ -178,6 +183,7 @@
     try{
       const raw = document.getElementById('clientes-json')?.textContent || '[]';
       CLIENTES = JSON.parse(raw).map((c) => ({
+        id: c?.id ?? null,
         nome: c?.nome ?? '',
         telefone: String(c?.telefone ?? '').trim()
       }));
@@ -189,14 +195,28 @@
     const sel = document.getElementById('cliente_select');
     const manual = document.getElementById('cliente_manual');
     const resultados = document.getElementById('resultados');
+    const hiddenId = document.getElementById('cliente_id');
 
-    // Sincroniza select -> manual (não sobrescreve se já digitou)
-    if (sel && manual) {
+    // Sincroniza select -> manual + hidden
+    if (sel && manual && hiddenId) {
       sel.addEventListener('change', () => {
-        const nome = sel.value || '';
-        if (!manual.value && nome) manual.value = nome;
-        // ao escolher no select, também força os resultados mostrarem apenas esse
-        if (nome) renderResultados(nome);
+        const id = sel.value || '';
+        const opt = sel.selectedOptions[0];
+        const nome = opt ? (opt.getAttribute('data-nome') || opt.textContent || '') : '';
+
+        if (nome) {
+          manual.value = nome;
+        }
+        hiddenId.value = id || '';
+        if (!id) {
+          // se limpar o select, limpa hidden
+          hiddenId.value = '';
+        }
+        if (nome) {
+          renderResultados(nome);
+        } else {
+          renderResultados(manual.value);
+        }
       });
     }
 
@@ -207,9 +227,6 @@
       const qDigits = onlyDigits(q);
       const qName = norm(q.replace(/\d+/g, '')); // parte textual
 
-      // Estratégia de filtro:
-      // - se só dígitos: prioriza telefone terminando com qDigits; inclui "contém"
-      // - se texto: nome inclui qName (deaccent, insensitive) OU telefone contém dígitos presentes
       const filtrados = CLIENTES
         .map((c) => {
           const nomeN = norm(c.nome);
@@ -218,7 +235,6 @@
           let score = 999;
 
           if (q && !qName && qDigits) {
-            // consulta só por dígitos
             if (foneD.endsWith(qDigits)) { match = true; score = 0; }
             else if (foneD.includes(qDigits)) { match = true; score = 1; }
           } else if (qName) {
@@ -228,7 +244,7 @@
               else if (foneD.includes(qDigits)) { match = true; score = Math.min(score, 1); }
             }
           } else if (!q) {
-            match = true; score = 50; // sem filtro, mostra os primeiros
+            match = true; score = 50;
           }
 
           return { ...c, match, score };
@@ -242,6 +258,7 @@
 
       if (filtrados.length === 0) {
         resultados.innerHTML = `<div class="empty">Nenhum resultado. Tente digitar o <strong>nome</strong> ou os <strong>últimos dígitos</strong> do telefone.</div>`;
+        resultados._items = [];
         return;
       }
 
@@ -267,7 +284,6 @@
         resultados.appendChild(li);
       });
 
-      // guarda os itens atuais para Enter/teclas
       resultados._items = filtrados;
     }
 
@@ -283,22 +299,38 @@
     }
 
     function escolher(cliente){
-      // Preenche o campo manual
+      if (!cliente) return;
       manual.value = cliente?.nome || '';
-      // Se existir a opção no select, seleciona também
-      if (sel) {
-        const opt = Array.from(sel.options).find(o => o.value === cliente.nome);
-        if (opt) sel.value = opt.value;
+      if (hiddenId) {
+        hiddenId.value = cliente?.id != null ? String(cliente.id) : '';
       }
-      // Re-renderiza para manter apenas o selecionado no topo (opcional)
+
+      if (sel) {
+        let matched = false;
+        const opts = Array.from(sel.options);
+        for (const o of opts) {
+          if (cliente.id != null && String(o.value) === String(cliente.id)) {
+            sel.value = o.value;
+            matched = true;
+            break;
+          }
+        }
+        if (!matched) {
+          sel.value = '';
+        }
+      }
+
       renderResultados(cliente?.nome || '');
-      // foca no próximo campo (bairro) para agilizar o cadastro
       document.getElementById('bairro')?.focus();
     }
 
-    // Eventos de entrada e teclado no campo manual
     if (manual) {
-      manual.addEventListener('input', (e) => renderResultados(e.target.value));
+      manual.addEventListener('input', (e) => {
+        // se digitar manualmente, limpa o id e o select
+        if (hiddenId) hiddenId.value = '';
+        if (sel) sel.value = '';
+        renderResultados(e.target.value);
+      });
 
       manual.addEventListener('keydown', (e) => {
         const items = Array.from(resultados.querySelectorAll('.result-item'));
@@ -317,17 +349,17 @@
         } else if (e.key === 'Enter') {
           if (activeIndex >= 0) {
             e.preventDefault();
-            const escolha = resultados._items?.[activeIndex];
-            if (escolha) escolher(escolha);
+            const escolhaItem = resultados._items?.[activeIndex];
+            if (escolhaItem) escolher(escolhaItem);
           }
         } else if (e.key === 'Escape') {
           e.preventDefault();
           resultados.innerHTML = '';
+          resultados._items = [];
           activeIndex = -1;
         }
       });
 
-      // Inicial: mostra os primeiros clientes (até 12)
       renderResultados('');
     }
 
@@ -339,18 +371,17 @@
       if (eb.top < cb.top) c.scrollTop -= (cb.top - eb.top);
     }
 
-    // Sincroniza a digitação com o select (filtra opções visualmente quando abrir)
+    // Sincroniza a digitação com o select (apenas visual)
     if (sel && manual) {
       manual.addEventListener('input', () => {
         const q = norm(manual.value);
         const qDigits = onlyDigits(manual.value);
         Array.from(sel.options).forEach((opt, idx) => {
-          if (idx === 0) return; // mantém o placeholder
-          const nomeN = norm(opt.value);
+          if (idx === 0) return;
+          const nomeN = norm(opt.getAttribute('data-nome') || opt.textContent || '');
           const matchTxt = q ? nomeN.includes(q) : true;
           let match = matchTxt;
           if (qDigits) {
-            // tenta casar também por números (se estiverem no nome)
             match = match || nomeN.includes(qDigits);
           }
           opt.hidden = !match;
