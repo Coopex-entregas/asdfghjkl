@@ -177,6 +177,16 @@ def criar_coluna_valor_em_credito():
         db.session.rollback()
 
 
+@app.before_first_request
+def init_credito():
+    # garante tabelas e coluna
+    try:
+        db.create_all()
+    except Exception as e:
+        app.logger.error(f'Erro ao criar tabelas: {e}')
+
+    criar_coluna_valor_em_credito()
+
 
 # =========================================================
 # HELPERS DE DATA / FUSO
