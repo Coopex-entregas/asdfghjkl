@@ -122,10 +122,14 @@ class Credito(db.Model):
 
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
-    valor = db.Column(db.Float, nullable=False)
-    saldo_atual = db.Column(db.Float, nullable=False, default=0)
 
-    # RELACIONAMENTO IMPORTANTE AQUI
+    # <-- ESTA É A COLUNA QUE ESTÁ FALTANDO NO BANCO
+    valor = db.Column(db.Float, default=0.0)
+
+    # saldo atual do cliente nesse crédito
+    saldo_atual = db.Column(db.Float, default=0.0)
+
+    # movimentos ligados ao crédito (créditos e débitos)
     movimentos = db.relationship(
         'CreditoMovimento',
         backref='credito',
