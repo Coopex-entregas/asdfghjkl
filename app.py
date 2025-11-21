@@ -115,40 +115,39 @@ class Entrega(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
 
 
+# models.py
+
 class Credito(db.Model):
-    __tablename__ = "credito"
+    __tablename__ = 'credito'
+
     id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    saldo_atual = db.Column(db.Float, nullable=False, default=0)
 
-    valor_bruto = db.Column(db.Float, nullable=False)
-    desconto_tipo = db.Column(db.String(20), nullable=False, default="nenhum")  # 'nenhum'|'percentual'|'real'
-    desconto_valor = db.Column(db.Float, nullable=False, default=0.0)
-    valor_final = db.Column(db.Float, nullable=False)
-
-    motivo = db.Column(db.String(180))
-    saldo_antes = db.Column(db.Float, nullable=False, default=0.0)
-    saldo_depois = db.Column(db.Float, nullable=False, default=0.0)
-
-    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    criado_por = db.Column(db.String(80))
+    # RELACIONAMENTO IMPORTANTE AQUI
+    movimentos = db.relationship(
+        'CreditoMovimento',
+        backref='credito',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
 
 
 class CreditoMovimento(db.Model):
-    """
-    tipo='credito'  (entrada: quando a supervisão concede crédito)
-    tipo='debito'   (saída: quando o crédito é usado numa entrega)
-    """
-    __tablename__ = "credito_movimento"
+    __tablename__ = 'credito_movimento'
+
     id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey("cliente.id"), nullable=False)
-
-    tipo = db.Column(db.String(10), nullable=False)  # 'credito' | 'debito'
+    credito_id = db.Column(
+        db.Integer,
+        db.ForeignKey('credito.id', ondelete='CASCADE'),
+        nullable=True
+    )
+    tipo = db.Column(db.String(20), nullable=False)   # 'credito' ou 'debito'
     valor = db.Column(db.Float, nullable=False)
-    referencia = db.Column(db.String(120))
-    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-
-    credito_id = db.Column(db.Integer, db.ForeignKey("credito.id"), nullable=True)
-    entrega_id = db.Column(db.Integer, db.ForeignKey("entrega.id"), nullable=True)
+    data = db.Column(db.DateTime, default=datetime.utcnow)
+    descricao = db.Column(db.String(255))
+    referencia = db.Column(db.String(255))
 
 
 class ListaEspera(db.Model):
