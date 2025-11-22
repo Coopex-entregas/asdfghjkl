@@ -167,6 +167,13 @@ class CreditoMovimento(db.Model):
         nullable=True
     )
 
+    # NOVO CAMPO: ligação opcional com entrega (para rastrear consumo)
+    entrega_id = db.Column(
+        db.Integer,
+        db.ForeignKey('entrega.id'),
+        nullable=True
+    )
+
     tipo = db.Column(db.String(20), nullable=False)   # 'credito' ou 'debito'
     valor = db.Column(db.Float, nullable=False)
 
@@ -274,6 +281,52 @@ def pagamento_usa_credito(pagamento: str) -> bool:
     txt = re.sub(r'\s+', ' ', txt)
     return txt.startswith('credito')
 
+
+# =========================================================
+# CRÉDITO: CÁLCULO DE SALDO (RECALCULA A PARTIR DOS MOVIMENTOS)
+# =========================================================
+def atualizar_saldo_credito_cliente(cliente_id):
+    """
+    Recalcula o saldo de crédito do cliente somando TODOS os movimentos
+    de CreditoMovimento (credito - debito) para esse cliente_id.
+
+    Use essa função sempre que:
+      - criar novo crédito
+      - editar valor de crédito
+      - consumir crédito em entrega
+      - desfazer consumo
+    """
+    from app import CreditoMovimento, Cliente  # mesma app
+
+    total_creditos = (
+        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+        .filter(
+            CreditoMovimento.cliente_id == cliente_id,
+            CreditoMovimento.tipo == 'credito'
+        )
+        .scalar()
+        or 0.0
+    )
+
+    total_debitos = (
+        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+        .filter(
+            CreditoMovimento.cliente_id == cliente_id,
+            CreditoMovimento.tipo == 'debito'
+        )
+        .scalar()
+        or 0.0
+    )
+
+    saldo = float(total_creditos - total_debitos)
+
+    cliente = Cliente.query.get(cliente_id)
+    if cliente:
+        cliente.saldo_atual = saldo
+        db.session.commit()
+
+    return Decimal(str(saldo)).quantize(Decimal("0.01"))
+
 # =========================================================
 # CRÉDITO: HELPERS E REGRAS
 # =========================================================
@@ -324,14 +377,18 @@ def _find_cliente_by_nome(nome: str):
 
 def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
                       desconto_valor, motivo: str = "", criado_por: str = ""):
-    """Cria um crédito, atualiza saldo do cliente e registra um movimento 'credito'."""
+    """
+    Cria um crédito, registra movimento 'credito' e recalcula saldo do cliente.
+
+    ➜ Quando você usar essa função, o saldo do cliente será atualizado
+      com base em TODOS os movimentos de crédito/débito.
+    """
     cli = Cliente.query.get(cliente_id)
     if not cli:
         raise ValueError("Cliente não encontrado")
 
     valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
     saldo_antes = _as_decimal(cli.saldo_atual)
-    cli.saldo_atual = float(saldo_antes + valor_final)
 
     c = Credito(
         cliente_id=cli.id,
@@ -341,7 +398,7 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         valor_final=float(valor_final),
         motivo=motivo or "",
         saldo_antes=float(saldo_antes),
-        saldo_depois=float(_as_decimal(cli.saldo_atual)),
+        # saldo_depois será ajustado após recálculo
         criado_por=criado_por or "Supervisor"
     )
     db.session.add(c)
@@ -356,10 +413,80 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
     )
     db.session.add(mov)
     db.session.commit()
+
+    # Recalcula saldo a partir de TODOS os movimentos
+    novo_saldo = atualizar_saldo_credito_cliente(cli.id)
+
+    c.saldo_depois = float(novo_saldo)
+    cli.saldo_atual = float(novo_saldo)
+
+    db.session.add(c)
+    db.session.add(cli)
+    db.session.commit()
     return c
 
 
-def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
+def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
+                   desconto_valor, motivo: str = ""):
+    """
+    Ajusta um crédito EXISTENTE, recalcula o valor_final, atualiza o movimento
+    de crédito correspondente e recalcula o saldo do cliente.
+
+    Use essa função na rota de edição de crédito.
+    """
+    c = Credito.query.get_or_404(credito_id)
+    cli = Cliente.query.get(c.cliente_id)
+    if not cli:
+        raise ValueError("Cliente não encontrado para esse crédito")
+
+    valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
+
+    c.valor_bruto = float(_as_decimal(valor_bruto))
+    c.desconto_tipo = desconto_tipo or "nenhum"
+    c.desconto_valor = float(_as_decimal(desconto_valor or 0))
+    c.valor_final = float(valor_final)
+    if motivo is not None:
+        c.motivo = motivo
+
+    # Atualiza o movimento principal desse crédito
+    mov = (
+        CreditoMovimento.query
+        .filter_by(credito_id=c.id, tipo='credito')
+        .order_by(CreditoMovimento.id.asc())
+        .first()
+    )
+    if mov:
+        mov.valor = float(valor_final)
+        mov.referencia = f"Crédito #{c.id} (ajustado)"
+
+    db.session.commit()
+
+    # Recalcula saldo do cliente com base em TODOS os movimentos
+    novo_saldo = atualizar_saldo_credito_cliente(cli.id)
+    c.saldo_depois = float(novo_saldo)
+    cli.saldo_atual = float(novo_saldo)
+
+    db.session.add(c)
+    db.session.add(cli)
+    db.session.commit()
+    return c
+
+
+def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True) -> Decimal:
+    """
+    Consome crédito na entrega.
+
+    - Se exigir_saldo_total=True (default):
+        * Só consome se o saldo do cliente cobrir TODO o valor que falta pagar.
+        * Se o saldo for menor que o valor da entrega, NÃO consome nada
+          e retorna Decimal("0.00") -> a rota deve pedir outra forma de pagamento.
+
+    - Atualiza:
+        * Cliente.saldo_atual (via movimentos + recálculo)
+        * Entrega.credito_usado
+        * Cria CreditoMovimento tipo='debito'
+        * Marca status_pagamento='pago' se cobrir o valor total.
+    """
     e = Entrega.query.get(entrega_id)
     if not e:
         return Decimal("0.00")
@@ -386,6 +513,12 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
         return Decimal("0.00")
 
     saldo = _as_decimal(cli.saldo_atual or 0)
+
+    # Se exigimos saldo total e o saldo é menor que o valor faltante,
+    # NÃO consome nada. A rota deve tratar isso como "crédito insuficiente".
+    if exigir_saldo_total and saldo < faltante:
+        return Decimal("0.00")
+
     consumir_val = min(saldo, faltante)
     if consumir_val <= 0:
         return Decimal("0.00")
@@ -418,6 +551,10 @@ def consumir_credito_em_entrega(entrega_id: int) -> Decimal:
             e.status_pagamento = "pendente"
 
     db.session.commit()
+
+    # Recalcula saldo com base em TODOS os movimentos (garante consistência)
+    atualizar_saldo_credito_cliente(cli.id)
+
     return consumir_val
 
 
@@ -443,6 +580,7 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     if not cli:
         return Decimal("0.00")
 
+    # devolve para o saldo
     cli.saldo_atual = float(_as_decimal(cli.saldo_atual) + usado)
 
     mov_estorno = CreditoMovimento(
@@ -450,6 +588,7 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
         tipo="credito",
         valor=float(usado),
         referencia=f"Estorno Entrega #{e.id}",
+        entrega_id=e.id
     )
     db.session.add(mov_estorno)
 
@@ -457,14 +596,16 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     e.credito_mov_id = None
 
     db.session.commit()
+
+    # Recalcula saldo com base em TODOS os movimentos
+    atualizar_saldo_credito_cliente(cli.id)
+
     return usado
 
 
 def consumo_total_do_credito(credito_id: int) -> float:
     """
     Soma quanto já foi CONSUMIDO (tipo='debito') vinculado a este crédito.
-    No modelo atual quase sempre será 0, porque os débitos não usam credito_id,
-    mas a função existe para compatibilidade.
     """
     total = (
         db.session.query(func.sum(CreditoMovimento.valor))
@@ -540,6 +681,7 @@ def br_date_ymd(dt_utc_naive: datetime) -> str:
     if not dt_utc_naive:
         return ''
     return to_brasilia(dt_utc_naive).date().isoformat()
+
 
 # =========================================================
 # FERIADOS / PERÍODO LEGÍVEL
