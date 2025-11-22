@@ -378,23 +378,16 @@
         {% set filtro_di = request.args.get('data_inicio','') %}
         {% set filtro_df = request.args.get('data_fim','') %}
 
-        {# Totais gerais (do filtro atual) #}
+        <!-- Totais gerais (do filtro atual) -->
         {% set tot_registros = creditos|length %}
         {% set tot_bruto = 0 %}
         {% set tot_final = 0 %}
         {% for c in creditos %}
-          {# usa c.valor como base; se um dia tiver valor_bruto/valor_final no modelo, a lógica pode ser refinada #}
-          {% set bruto_loop = c.valor or 0 %}
-          {% if c.valor_final is defined and c.valor_final is not none %}
-            {% set final_loop = c.valor_final %}
-          {% else %}
-            {% set final_loop = c.valor or 0 %}
-          {% endif %}
-          {% set tot_bruto = tot_bruto + bruto_loop %}
-          {% set tot_final = tot_final + final_loop %}
+          {% set tot_bruto = tot_bruto + (c.valor_bruto or 0) %}
+          {% set tot_final = tot_final + (c.valor_final or 0) %}
         {% endfor %}
 
-        {# Se tiver cliente filtrado, calcula consumo = total créditos - saldo atual #}
+        <!-- Se tiver cliente filtrado, calcula consumo = total créditos - saldo atual -->
         {% if filtro_cliente %}
           {% set cli_filtro = (clientes | selectattr('id','equalto',filtro_cliente|int) | first) %}
           {% if cli_filtro %}
@@ -430,6 +423,7 @@
           <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
             <button class="btn" type="submit">Filtrar</button>
 
+            <!-- usa tua rota /creditos/exportar -->
             <a class="btn alt"
                href="{{ url_for('creditos_exportar',
                                 cliente_id=filtro_cliente or None,
@@ -447,7 +441,7 @@
           </div>
         </form>
 
-        <!-- Barra de totais -->
+        <!-- Barra de totais: já mostra o consumo abatido -->
         <div class="totais" style="margin:8px 0 12px">
           <span class="pill">Registros: {{ tot_registros }}</span>
           <span class="pill">Soma bruta: R$ {{ '%.2f'|format(tot_bruto)|replace('.',',') }}</span>
@@ -483,84 +477,50 @@
               {% for c in creditos %}
                 {% set cli_obj = (clientes | selectattr('id','equalto',c.cliente_id) | first) %}
                 {% set cli_nome = cli_obj.nome if cli_obj else ('ID ' ~ c.cliente_id) %}
-                <tr>
-                  <td>#{{ c.id }}</td>
-                  <td>{{ cli_nome }}</td>
+              <tr>
+                <td>#{{ c.id }}</td>
+                <td>{{ cli_nome }}</td>
+                <td>R$ {{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
+                <td>
+                  {% if c.desconto_tipo == 'percentual' %}
+                    {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}%
+                  {% elif c.desconto_tipo == 'real' %}
+                    R$ {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td><strong>R$ {{ '%.2f'|format(c.valor_final) | replace('.', ',') }}</strong></td>
+                <td>
+                  R$ {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }}
+                  →
+                  <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong>
+                </td>
+                <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
+                <td>
+                  {% if c.criado_em %}
+                    {{ c.criado_em }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+                <td>{{ c.criado_por or '-' }}</td>
+                <td>
+                  <div class="actions-cell">
+                    <a class="btn small alt"
+                       href="{{ url_for('creditos_editar', credito_id=c.id) }}">
+                      Editar
+                    </a>
 
-                  {# usa c.valor como "bruto" #}
-                  <td>R$ {{ '%.2f'|format(c.valor or 0) | replace('.', ',') }}</td>
-
-                  <td>
-                    {% if c.desconto_tipo is defined and c.desconto_tipo == 'percentual'
-                          and c.desconto_valor is defined and c.desconto_valor is not none %}
-                      {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}%
-                    {% elif c.desconto_tipo is defined and c.desconto_tipo == 'real'
-                          and c.desconto_valor is defined and c.desconto_valor is not none %}
-                      R$ {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}
-                    {% else %}
-                      —
-                    {% endif %}
-                  </td>
-
-                  <td>
-                    {% if c.valor_final is defined and c.valor_final is not none %}
-                      {% set v_final = c.valor_final %}
-                    {% else %}
-                      {% set v_final = c.valor or 0 %}
-                    {% endif %}
-                    <strong>R$ {{ '%.2f'|format(v_final) | replace('.', ',') }}</strong>
-                  </td>
-
-                  <td>
-                    {% if c.saldo_antes is defined and c.saldo_depois is defined
-                          and c.saldo_antes is not none and c.saldo_depois is not none %}
-                      R$ {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }}
-                      →
-                      <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong>
-                    {% else %}
-                      —
-                    {% endif %}
-                  </td>
-
-                  <td>
-                    {% if c.motivo is defined and c.motivo %}
-                      <span title="{{ c.motivo }}">{{ c.motivo }}</span>
-                    {% else %}
-                      —
-                    {% endif %}
-                  </td>
-
-                  <td>
-                    {% if c.criado_em is defined and c.criado_em %}
-                      {{ c.criado_em }}
-                    {% else %}
-                      —
-                    {% endif %}
-                  </td>
-
-                  <td>
-                    {% if c.criado_por is defined and c.criado_por %}
-                      {{ c.criado_por }}
-                    {% else %}
-                      -
-                    {% endif %}
-                  </td>
-
-                  <td>
-                    <div class="actions-cell">
-                      <a class="btn small alt"
-                         href="{{ url_for('creditos_editar', credito_id=c.id) }}">
-                        Editar
-                      </a>
-
-                      <form action="{{ url_for('creditos_excluir', credito_id=c.id) }}"
-                            method="POST"
-                            onsubmit="return confirm('Confirma excluir este crédito? Esta ação não poderá ser desfeita.');">
-                        <button type="submit" class="btn small danger">Excluir</button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
+                    <!-- AQUI ESTÁ O AJUSTE: credito_id -> id -->
+                    <form action="{{ url_for('creditos_excluir', id=c.id) }}"
+                          method="POST"
+                          onsubmit="return confirm('Confirma excluir este crédito? Esta ação não poderá ser desfeita.');">
+                      <button type="submit" class="btn small danger">Excluir</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
               {% endfor %}
               {% if creditos|length == 0 %}
                 <tr>
