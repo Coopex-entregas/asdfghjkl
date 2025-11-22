@@ -315,6 +315,11 @@
             <select id="cliente_id" name="cliente_id" required>
               <option value="" disabled {% if not selected_cliente %}selected{% endif %}>Selecione…</option>
               {% for cli in clientes %}
+
+Here's the rest (continuação) — substitui tudo a partir daqui no teu `creditos.html`:
+
+```html
+              {% for cli in clientes %}
                 <option value="{{ cli.id }}"
                         data-saldo="{{ '%.2f'|format(cli.saldo_atual or 0) }}"
                         {% if selected_cliente and selected_cliente|string == cli.id|string %}selected{% endif %}>
@@ -383,8 +388,9 @@
         {% set tot_bruto = 0 %}
         {% set tot_final = 0 %}
         {% for c in creditos %}
-          {% set tot_bruto = tot_bruto + (c.valor_bruto or 0) %}
-          {% set tot_final = tot_final + (c.valor_final or 0) %}
+          {# Usa c.valor, que com certeza existe no modelo novo #}
+          {% set tot_bruto = tot_bruto + (c.valor or 0) %}
+          {% set tot_final = tot_final + (c.valor or 0) %}
         {% endfor %}
 
         <!-- Se tiver cliente filtrado, calcula consumo = total créditos - saldo atual -->
@@ -441,7 +447,7 @@
           </div>
         </form>
 
-        <!-- Barra de totais: já mostra o consumo abatido -->
+        <!-- Barra de totais -->
         <div class="totais" style="margin:8px 0 12px">
           <span class="pill">Registros: {{ tot_registros }}</span>
           <span class="pill">Soma bruta: R$ {{ '%.2f'|format(tot_bruto)|replace('.',',') }}</span>
@@ -480,31 +486,61 @@
               <tr>
                 <td>#{{ c.id }}</td>
                 <td>{{ cli_nome }}</td>
-                <td>R {{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
+
+                {# Usa c.valor no lugar de valor_bruto #}
+                <td>R$ {{ '%.2f'|format(c.valor or 0) | replace('.', ',') }}</td>
+
                 <td>
-                  {% if c.desconto_tipo == 'percentual' %}
-                    {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}%
-                  {% elif c.desconto_tipo == 'real' %}
-                    R$ {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}
+                  {# Desconto usando attr() para não quebrar se o campo não existir #}
+                  {% set dtipo = c|attr('desconto_tipo') %}
+                  {% set dvalor = c|attr('desconto_valor') %}
+                  {% if dtipo == 'percentual' and dvalor %}
+                    {{ '%.2f'|format(dvalor) | replace('.', ',') }}%
+                  {% elif dtipo == 'real' and dvalor %}
+                    R$ {{ '%.2f'|format(dvalor) | replace('.', ',') }}
                   {% else %}
                     —
                   {% endif %}
                 </td>
-                <td><strong>R$ {{ '%.2f'|format(c.valor_final) | replace('.', ',') }}</strong></td>
+
                 <td>
-                  R$ {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }}
-                  →
-                  <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong>
+                  {% set v_final = (c|attr('valor_final')) or c.valor or 0 %}
+                  <strong>R$ {{ '%.2f'|format(v_final) | replace('.', ',') }}</strong>
                 </td>
-                <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
+
                 <td>
-                  {% if c.criado_em %}
-                    {{ c.criado_em }}
+                  {% set s_antes = c|attr('saldo_antes') %}
+                  {% set s_depois = c|attr('saldo_depois') %}
+                  {% if s_antes is not undefined and s_depois is not undefined %}
+                    R$ {{ '%.2f'|format(s_antes) | replace('.', ',') }}
+                    →
+                    <strong>R$ {{ '%.2f'|format(s_depois) | replace('.', ',') }}</strong>
                   {% else %}
                     —
                   {% endif %}
                 </td>
-                <td>{{ c.criado_por or '-' }}</td>
+
+                <td>
+                  {% set motivo = c|attr('motivo') %}
+                  <span title="{{ motivo if motivo is not undefined else '' }}">
+                    {{ motivo if motivo is not undefined else '—' }}
+                  </span>
+                </td>
+
+                <td>
+                  {% set criado_em = c|attr('criado_em') %}
+                  {% if criado_em is not undefined and criado_em %}
+                    {{ criado_em }}
+                  {% else %}
+                    —
+                  {% endif %}
+                </td>
+
+                <td>
+                  {% set criado_por = c|attr('criado_por') %}
+                  {{ criado_por if criado_por is not undefined and criado_por else '-' }}
+                </td>
+
                 <td>
                   <div class="actions-cell">
                     <a class="btn small alt"
