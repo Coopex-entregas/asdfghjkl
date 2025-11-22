@@ -339,6 +339,10 @@ def _as_decimal(x) -> Decimal:
 
 
 def calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor) -> Decimal:
+    """
+    Mantido por compatibilidade, mas na prática vamos usar SEM desconto.
+    No formulário novo, desconto_tipo='nenhum' e desconto_valor=0.
+    """
     bruto = _as_decimal(valor_bruto)
     d = _as_decimal(desconto_valor)
     if desconto_tipo == "percentual":
@@ -377,14 +381,11 @@ def _find_cliente_by_nome(nome: str):
 
 def atualizar_saldo_credito_cliente(cliente_id):
     """
-    Recalcula o saldo de crédito do cliente somando TODOS os movimentos
-    de CreditoMovimento (credito - debito) para esse cliente_id.
+    Recalcula o saldo do cliente SOMENTE pelos movimentos em CreditoMovimento.
 
-    Use essa função sempre que:
-      - criar novo crédito
-      - editar valor de crédito
-      - consumir crédito em entrega
-      - desfazer consumo
+    Isso garante:
+      - Se você excluir um crédito, remover seus movimentos e chamar esta função,
+        o saldo volta a ser o que sobrar dos outros movimentos.
     """
     total_creditos = (
         db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
@@ -411,6 +412,7 @@ def atualizar_saldo_credito_cliente(cliente_id):
     cliente = Cliente.query.get(cliente_id)
     if cliente:
         cliente.saldo_atual = saldo
+        db.session.add(cliente)
         db.session.commit()
 
     return Decimal(str(saldo)).quantize(Decimal("0.01"))
@@ -421,15 +423,18 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
     """
     Cria um crédito, registra movimento 'credito' e recalcula saldo do cliente.
 
-    ➜ Quando você usar essa função, o saldo do cliente será atualizado
-      com base em TODOS os movimentos de crédito/débito.
+    No novo design:
+      - desconto_tipo virá sempre como 'nenhum'
+      - desconto_valor = 0
     """
     cli = Cliente.query.get(cliente_id)
     if not cli:
         raise ValueError("Cliente não encontrado")
 
     valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
-    saldo_antes = _as_decimal(cli.saldo_atual)
+
+    # saldo_antes vai ser o saldo recalculado pelos movimentos atuais
+    saldo_antes = atualizar_saldo_credito_cliente(cli.id)
 
     c = Credito(
         cliente_id=cli.id,
@@ -439,7 +444,6 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         valor_final=float(valor_final),
         motivo=motivo or "",
         saldo_antes=float(saldo_antes),
-        # saldo_depois será ajustado após recálculo
         criado_por=criado_por or "Supervisor"
     )
     db.session.add(c)
@@ -459,10 +463,7 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
     novo_saldo = atualizar_saldo_credito_cliente(cli.id)
 
     c.saldo_depois = float(novo_saldo)
-    cli.saldo_atual = float(novo_saldo)
-
     db.session.add(c)
-    db.session.add(cli)
     db.session.commit()
     return c
 
@@ -470,10 +471,8 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
 def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
                    desconto_valor, motivo: str = ""):
     """
-    Ajusta um crédito EXISTENTE, recalcula o valor_final, atualiza o movimento
-    de crédito correspondente e recalcula o saldo do cliente.
-
-    Use essa função na rota de edição de crédito.
+    Ajusta um crédito EXISTENTE, atualiza o movimento de crédito correspondente
+    e recalcula o saldo do cliente.
     """
     c = Credito.query.get_or_404(credito_id)
     cli = Cliente.query.get(c.cliente_id)
@@ -505,10 +504,8 @@ def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
     # Recalcula saldo do cliente com base em TODOS os movimentos
     novo_saldo = atualizar_saldo_credito_cliente(cli.id)
     c.saldo_depois = float(novo_saldo)
-    cli.saldo_atual = float(novo_saldo)
 
     db.session.add(c)
-    db.session.add(cli)
     db.session.commit()
     return c
 
@@ -523,10 +520,10 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
           e retorna Decimal("0.00") -> a rota deve pedir outra forma de pagamento.
 
     - Atualiza:
-        * Cliente.saldo_atual (via movimentos + recálculo)
-        * Entrega.credito_usado
-        * Cria CreditoMovimento tipo='debito'
-        * Marca status_pagamento='pago' se cobrir o valor total.
+        * saldo_atual do cliente (via movimentos + recálculo)
+        * entrega.credito_usado
+        * cria CreditoMovimento tipo='debito'
+        * marca status_pagamento='pago' se cobrir o valor total.
     """
     e = Entrega.query.get(entrega_id)
     if not e:
@@ -570,15 +567,12 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
     e.credito_usado = float(novo_usado)
 
     mov = CreditoMovimento(
-        cliente_id=cli.id,
-        tipo="debito",
-        valor=float(consumir_val),
-        referencia=f"Entrega #{e.id}",
-        entrega_id=e.id,
+      cliente_id=cli.id,
+      tipo="debito",
+      valor=float(consumir_val),
+      referencia=f"Entrega #{e.id}",
     )
     db.session.add(mov)
-    db.session.flush()
-    e.credito_mov_id = mov.id
     db.session.commit()
 
     # Atualiza saldo do cliente DEPOIS do débito
@@ -594,6 +588,7 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
         if not (e.status_pagamento or "").strip():
             e.status_pagamento = "pendente"
 
+    db.session.add(e)
     db.session.commit()
     return consumir_val
 
@@ -601,7 +596,7 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
 def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     """
     Estorna TODO crédito usado nesta entrega, devolvendo para o saldo do cliente
-    e zerando entrega.credito_usado / entrega.credito_mov_id.
+    e zerando entrega.credito_usado.
     NÃO mexe em pagamento/status_pagamento.
     """
     e = Entrega.query.get(entrega_id)
@@ -620,18 +615,15 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     if not cli:
         return Decimal("0.00")
 
-    # devolve para o saldo via movimento de crédito
     mov_estorno = CreditoMovimento(
         cliente_id=cli.id,
         tipo="credito",
         valor=float(usado),
         referencia=f"Estorno Entrega #{e.id}",
-        entrega_id=e.id
     )
     db.session.add(mov_estorno)
 
     e.credito_usado = 0.0
-    e.credito_mov_id = None
     db.session.commit()
 
     # Recalcula saldo com base em TODOS os movimentos
@@ -642,7 +634,8 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
 
 def consumo_total_do_credito(credito_id: int) -> float:
     """
-    Soma quanto já foi CONSUMIDO (tipo='debito') vinculado a este crédito.
+    Mantido por compatibilidade. Se você quiser, pode ignorar essa função
+    e sempre olhar apenas os movimentos por cliente.
     """
     total = (
         db.session.query(func.sum(CreditoMovimento.valor))
@@ -679,7 +672,12 @@ def atualizar_saldo_cliente(cliente_id, delta):
     db.session.add(cli)
 
 
-def registrar_movimento(cliente_id, tipo, valor, referencia='', credito_id=None, entrega_id=None):
+def registrar_movimento(cliente_id, tipo, valor, referencia='', credito_id=None):
+    """
+    Também legado. Hoje o normal é:
+      - criar movimentos diretamente nas funções novas
+      - depois chamar atualizar_saldo_credito_cliente(cliente_id)
+    """
     tipo_up = (tipo or '').upper()
     if tipo_up in (TIPO_ENTRADA, TIPO_AJUSTE, 'CREDITO'):
         tm = 'credito'
@@ -693,28 +691,18 @@ def registrar_movimento(cliente_id, tipo, valor, referencia='', credito_id=None,
         valor=float(_as_decimal(valor)),
         referencia=(referencia or '')[:120],
         credito_id=credito_id,
-        entrega_id=entrega_id
     )
     db.session.add(mov)
     return mov
 
 
 def _delta_saldo_tipo_mov(tipo_raw, valor) -> float:
-    """
-    Converte o tipo semântico ('ENTRADA', 'CONSUMO', 'AJUSTE', 'credito', 'debito')
-    no delta de saldo do cliente.
-
-    - Entrada / Ajuste / Crédito  => +valor
-    - Consumo / Débito            => -valor
-    """
     t = (tipo_raw or '').upper()
     v = float(valor or 0)
-
     if t in (TIPO_ENTRADA, TIPO_AJUSTE, 'CREDITO'):
         return v
     if t in (TIPO_CONSUMO, 'DEBITO', 'DÉBITO'):
         return -v
-    # Qualquer coisa estranha: neutro
     return 0.0
 
 
@@ -2298,24 +2286,15 @@ def creditos_editar(credito_id):
 
 @app.route('/creditos/<int:id>/excluir', methods=['POST'])
 def creditos_excluir(id):
-    credito = Credito.query.get_or_404(id)
-    cliente_id = credito.cliente_id
+    c = Credito.query.get_or_404(id)
+    cliente_id = c.cliente_id
+    # remove movimentos ligados a este crédito
+    CreditoMovimento.query.filter_by(credito_id=c.id).delete()
+    db.session.delete(c)
+    db.session.commit()
 
-    try:
-        # apaga TODOS os movimentos desse crédito (para não quebrar a FK)
-        for mov in list(credito.movimentos):
-            db.session.delete(mov)
-
-        # agora apaga o crédito
-        db.session.delete(credito)
-
-        db.session.commit()
-        flash('Crédito e movimentos relacionados excluídos com sucesso.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f'Erro ao excluir crédito: {e}')
-        flash('Erro ao excluir crédito. Já existe movimentação ligada a ele.', 'danger')
-
+    atualizar_saldo_credito_cliente(cliente_id)
+    flash('Crédito excluído e saldo recalculado.', 'success')
     return redirect(url_for('creditos', cliente_id=cliente_id))
 
 
