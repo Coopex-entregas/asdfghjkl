@@ -153,14 +153,26 @@ class CreditoMovimento(db.Model):
     __tablename__ = 'credito_movimento'
 
     id = db.Column(db.Integer, primary_key=True)
+
     credito_id = db.Column(
         db.Integer,
         db.ForeignKey('credito.id', ondelete='CASCADE'),
         nullable=True
     )
+
+    # NOVO CAMPO: para não dar mais erro no cliente_id=...
+    cliente_id = db.Column(
+        db.Integer,
+        db.ForeignKey('cliente.id'),
+        nullable=True
+    )
+
     tipo = db.Column(db.String(20), nullable=False)   # 'credito' ou 'debito'
     valor = db.Column(db.Float, nullable=False)
+
+    # Já existia
     data = db.Column(db.DateTime, default=datetime.utcnow)
+
     descricao = db.Column(db.String(255))
     referencia = db.Column(db.String(255))
 
