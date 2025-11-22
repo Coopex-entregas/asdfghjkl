@@ -2194,25 +2194,21 @@ def marcar_entregue(id):
 # =========================================================
 @app.route('/creditos')
 def creditos():
-    # Se tiver controle de admin, mantém
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # usado só pra pré-selecionar no combo do formulário
+    # só pra pré-selecionar no select do formulário
     cliente_id = request.args.get('cliente_id', type=int)
 
-    # Carrega todos os clientes (vamos filtrar depois pelos que têm movimento)
+    # todos os clientes
     clientes = Cliente.query.order_by(Cliente.nome.asc()).all()
 
     movimentos_por_cliente = {}
     saldos_por_cliente = {}
 
-    # Totais gerais (para mostrar no topo do lado direito)
     total_saldo_geral = 0.0
     total_creditos_geral = 0.0
     total_debitos_geral = 0.0
-
-    clientes_com_credito = []
 
     for cli in clientes:
         movs = (
@@ -2221,10 +2217,6 @@ def creditos():
             .order_by(CreditoMovimento.data.asc(), CreditoMovimento.id.asc())
             .all()
         )
-
-        # Se não tem nenhum movimento, nem entra no acordeão
-        if not movs:
-            continue
 
         saldo = 0.0
         rows = []
@@ -2256,11 +2248,9 @@ def creditos():
         saldos_por_cliente[cli.id] = saldo
         total_saldo_geral += saldo
 
-        clientes_com_credito.append(cli)
-
     return render_template(
         'creditos.html',
-        clientes=clientes_com_credito,          # só quem tem movimento
+        clientes=clientes,
         cliente_id=cliente_id,
         movimentos_por_cliente=movimentos_por_cliente,
         saldos_por_cliente=saldos_por_cliente,
@@ -2427,6 +2417,39 @@ def creditos_exportar():
 
     output.seek(0)
     return send_file(output, download_name='creditos.xlsx', as_attachment=True)
+
+
+@app.route('/creditos/cliente/<int:cliente_id>/limpar', methods=['POST'])
+def creditos_limpar_cliente(cliente_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cli = Cliente.query.get_or_404(cliente_id)
+
+    try:
+        # Zera campos de crédito nas entregas deste cliente
+        entregas = Entrega.query.filter_by(cliente_id=cliente_id).all()
+        for e in entregas:
+            e.credito_usado = 0.0
+            e.credito_mov_id = None
+
+        # Remove todos os movimentos (créditos, débitos, estornos) do cliente
+        CreditoMovimento.query.filter_by(cliente_id=cliente_id).delete()
+
+        # Remove todos os registros de Crédito do cliente
+        Credito.query.filter_by(cliente_id=cliente_id).delete()
+
+        # Zera o saldo
+        cli.saldo_atual = 0.0
+
+        db.session.commit()
+        flash('Histórico de crédito do cliente apagado e saldo zerado.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        app.logger.error(f"Erro ao limpar créditos do cliente {cliente_id}: {e}")
+        flash('Erro ao limpar créditos do cliente.', 'danger')
+
+    return redirect(url_for('creditos', cliente_id=cliente_id))
 
 
 @app.route('/creditos/cadastrar', methods=['POST'])
