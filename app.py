@@ -296,7 +296,6 @@ def atualizar_saldo_credito_cliente(cliente_id):
       - consumir crédito em entrega
       - desfazer consumo
     """
-    from app import CreditoMovimento, Cliente  # mesma app
 
     total_creditos = (
         db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
@@ -326,6 +325,7 @@ def atualizar_saldo_credito_cliente(cliente_id):
         db.session.commit()
 
     return Decimal(str(saldo)).quantize(Decimal("0.01"))
+
 
 # =========================================================
 # CRÉDITO: HELPERS E REGRAS
@@ -373,6 +373,47 @@ def _find_cliente_by_nome(nome: str):
         if normalize_first_token(c.nome or '') == tok:
             return c
     return None
+
+
+def atualizar_saldo_credito_cliente(cliente_id):
+    """
+    Recalcula o saldo de crédito do cliente somando TODOS os movimentos
+    de CreditoMovimento (credito - debito) para esse cliente_id.
+
+    Use essa função sempre que:
+      - criar novo crédito
+      - editar valor de crédito
+      - consumir crédito em entrega
+      - desfazer consumo
+    """
+    total_creditos = (
+        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+        .filter(
+            CreditoMovimento.cliente_id == cliente_id,
+            CreditoMovimento.tipo == 'credito'
+        )
+        .scalar()
+        or 0.0
+    )
+
+    total_debitos = (
+        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+        .filter(
+            CreditoMovimento.cliente_id == cliente_id,
+            CreditoMovimento.tipo == 'debito'
+        )
+        .scalar()
+        or 0.0
+    )
+
+    saldo = float(total_creditos - total_debitos)
+
+    cliente = Cliente.query.get(cliente_id)
+    if cliente:
+        cliente.saldo_atual = saldo
+        db.session.commit()
+
+    return Decimal(str(saldo)).quantize(Decimal("0.01"))
 
 
 def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
@@ -512,7 +553,9 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
     if faltante <= 0:
         return Decimal("0.00")
 
-    saldo = _as_decimal(cli.saldo_atual or 0)
+    # saldo atual sempre recalculado pelos movimentos
+    saldo_atual = atualizar_saldo_credito_cliente(cli.id)
+    saldo = _as_decimal(saldo_atual)
 
     # Se exigimos saldo total e o saldo é menor que o valor faltante,
     # NÃO consome nada. A rota deve tratar isso como "crédito insuficiente".
@@ -523,10 +566,7 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
     if consumir_val <= 0:
         return Decimal("0.00")
 
-    novo_saldo = saldo - consumir_val
     novo_usado = usado_antes + consumir_val
-
-    cli.saldo_atual = float(novo_saldo)
     e.credito_usado = float(novo_usado)
 
     mov = CreditoMovimento(
@@ -539,6 +579,10 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
     db.session.add(mov)
     db.session.flush()
     e.credito_mov_id = mov.id
+    db.session.commit()
+
+    # Atualiza saldo do cliente DEPOIS do débito
+    atualizar_saldo_credito_cliente(cli.id)
 
     if novo_usado >= valor:
         e.status_pagamento = "pago"
@@ -551,10 +595,6 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
             e.status_pagamento = "pendente"
 
     db.session.commit()
-
-    # Recalcula saldo com base em TODOS os movimentos (garante consistência)
-    atualizar_saldo_credito_cliente(cli.id)
-
     return consumir_val
 
 
@@ -580,9 +620,7 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     if not cli:
         return Decimal("0.00")
 
-    # devolve para o saldo
-    cli.saldo_atual = float(_as_decimal(cli.saldo_atual) + usado)
-
+    # devolve para o saldo via movimento de crédito
     mov_estorno = CreditoMovimento(
         cliente_id=cli.id,
         tipo="credito",
@@ -594,7 +632,6 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
 
     e.credito_usado = 0.0
     e.credito_mov_id = None
-
     db.session.commit()
 
     # Recalcula saldo com base em TODOS os movimentos
@@ -631,6 +668,10 @@ def calc_valor_final(valor, desconto_tipo, desconto_valor):
 
 
 def atualizar_saldo_cliente(cliente_id, delta):
+    """
+    Função LEGADA. Hoje o saldo oficial é calculado por atualizar_saldo_credito_cliente.
+    Se ainda tiver uso em algum lugar antigo, ela só ajusta o saldo_atual direto.
+    """
     cli = Cliente.query.get(cliente_id)
     if not cli:
         return
