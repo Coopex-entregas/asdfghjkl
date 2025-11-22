@@ -115,10 +115,8 @@ class Entrega(db.Model):
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
 
 
-# models.py
-
-from sqlalchemy import text
 from datetime import datetime
+from sqlalchemy import text
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -126,11 +124,22 @@ class Credito(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False)
 
-    # valor total desse crédito (crédito original)
-    valor = db.Column(db.Float, default=0.0)
+    # CAMPOS ANTIGOS (mantidos pra compatibilidade)
+    valor = db.Column(db.Float, default=0.0)          # pode ser o mesmo que valor_final
+    saldo_atual = db.Column(db.Float, default=0.0)    # saldo do cliente após este crédito (opcional)
 
-    # saldo atual ainda disponível
-    saldo_atual = db.Column(db.Float, default=0.0)
+    # CAMPOS NOVOS – são exatamente os usados no creditos.html
+    valor_bruto = db.Column(db.Float, default=0.0)    # valor original do crédito
+    desconto_tipo = db.Column(db.String(20))          # 'nenhum', 'percentual', 'real'
+    desconto_valor = db.Column(db.Float, default=0.0) # número usado no desconto
+    valor_final = db.Column(db.Float, default=0.0)    # valor_bruto - desconto aplicado
+
+    saldo_antes = db.Column(db.Float, default=0.0)    # saldo do cliente ANTES deste crédito
+    saldo_depois = db.Column(db.Float, default=0.0)   # saldo do cliente DEPOIS deste crédito
+
+    motivo = db.Column(db.String(180))                # observação
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    criado_por = db.Column(db.String(80))
 
     movimentos = db.relationship(
         'CreditoMovimento',
@@ -157,8 +166,6 @@ class CreditoMovimento(db.Model):
 
 
 class ListaEspera(db.Model):
-    __tablename__ = 'lista_espera'
-
     id = db.Column(db.Integer, primary_key=True)
     nome = db.Column(db.String(100), nullable=False)  # legado
     cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
@@ -167,44 +174,82 @@ class ListaEspera(db.Model):
     cooperado = db.relationship('Cooperado', lazy='joined')
 
 
-def garantir_colunas_credito():
+def ajustar_tabela_credito():
     """
-    Garante que as colunas 'valor' e 'saldo_atual' existam na tabela 'credito'
-    e preenche saldo_atual com o valor original quando estiver nulo.
+    Garante que TODAS as colunas usadas no template creditos.html existam na tabela 'credito'.
+    Isso evita erro de coluna inexistente no PostgreSQL.
     """
-    try:
-        # cria coluna 'valor' se não existir
-        db.session.execute(text("""
-            ALTER TABLE credito
-            ADD COLUMN IF NOT EXISTS valor DOUBLE PRECISION DEFAULT 0
-        """))
+    comandos = [
+        # antigos
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS valor DOUBLE PRECISION DEFAULT 0
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS saldo_atual DOUBLE PRECISION DEFAULT 0
+        """,
 
-        # cria coluna 'saldo_atual' se não existir
-        db.session.execute(text("""
-            ALTER TABLE credito
-            ADD COLUMN IF NOT EXISTS saldo_atual DOUBLE PRECISION DEFAULT 0
-        """))
+        # novos - exatamente os do HTML
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS valor_bruto DOUBLE PRECISION DEFAULT 0
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS desconto_tipo VARCHAR(20)
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS desconto_valor DOUBLE PRECISION DEFAULT 0
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS valor_final DOUBLE PRECISION DEFAULT 0
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS saldo_antes DOUBLE PRECISION DEFAULT 0
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS saldo_depois DOUBLE PRECISION DEFAULT 0
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS motivo VARCHAR(180)
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS criado_em TIMESTAMP
+        """,
+        """
+        ALTER TABLE credito
+        ADD COLUMN IF NOT EXISTS criado_por VARCHAR(80)
+        """
+    ]
 
-        # garante que saldo_atual tenha algum valor (igual ao valor original, se estiver nulo)
-        db.session.execute(text("""
-            UPDATE credito
-            SET saldo_atual = COALESCE(saldo_atual, valor, 0)
-        """))
-
-        db.session.commit()
-    except Exception as e:
-        app.logger.error(f'Erro ao garantir colunas em credito: {e}')
-        db.session.rollback()
+    for sql in comandos:
+        try:
+            db.session.execute(text(sql))
+            db.session.commit()
+        except Exception as e:
+            app.logger.error(f'Erro ao ajustar tabela credito: {e}')
+            db.session.rollback()
 
 
-# roda na subida do app (no carregamento, SEM decorator before_first_request)
-with app.app_context():
+@app.before_first_request
+def init_credito():
+    """
+    Chamado na primeira requisição: cria tabelas (se não existirem)
+    e garante que a tabela 'credito' tenha TODAS as colunas esperadas.
+    """
     try:
         db.create_all()
     except Exception as e:
         app.logger.error(f'Erro ao criar tabelas: {e}')
 
-    garantir_colunas_credito()
+    ajustar_tabela_credito()
 
 
 # =========================================================
