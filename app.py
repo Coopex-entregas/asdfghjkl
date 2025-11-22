@@ -2194,16 +2194,26 @@ def marcar_entregue(id):
 # =========================================================
 @app.route('/creditos')
 def creditos():
-    # se vier cliente_id na querystring, só usamos pra pré-selecionar no <select>
+    # Se tiver controle de admin, mantém
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    # usado só pra pré-selecionar no combo do formulário
     cliente_id = request.args.get('cliente_id', type=int)
 
-    # Carrega todos os clientes (para o formulário e para o acordeão)
+    # Carrega todos os clientes (vamos filtrar depois pelos que têm movimento)
     clientes = Cliente.query.order_by(Cliente.nome.asc()).all()
 
     movimentos_por_cliente = {}
     saldos_por_cliente = {}
 
-    # Para cada cliente, montamos o extrato ordenado e o saldo corrente
+    # Totais gerais (para mostrar no topo do lado direito)
+    total_saldo_geral = 0.0
+    total_creditos_geral = 0.0
+    total_debitos_geral = 0.0
+
+    clientes_com_credito = []
+
     for cli in clientes:
         movs = (
             CreditoMovimento.query
@@ -2212,15 +2222,22 @@ def creditos():
             .all()
         )
 
+        # Se não tem nenhum movimento, nem entra no acordeão
+        if not movs:
+            continue
+
         saldo = 0.0
         rows = []
 
         for mov in movs:
-            # crédito soma, débito subtrai
+            valor = float(mov.valor or 0.0)
+
             if mov.tipo == 'credito':
-                delta = float(mov.valor or 0.0)
+                delta = valor
+                total_creditos_geral += valor
             elif mov.tipo == 'debito':
-                delta = -float(mov.valor or 0.0)
+                delta = -valor
+                total_debitos_geral += valor
             else:
                 delta = 0.0
 
@@ -2237,13 +2254,19 @@ def creditos():
 
         movimentos_por_cliente[cli.id] = rows
         saldos_por_cliente[cli.id] = saldo
+        total_saldo_geral += saldo
+
+        clientes_com_credito.append(cli)
 
     return render_template(
         'creditos.html',
-        clientes=clientes,
+        clientes=clientes_com_credito,          # só quem tem movimento
         cliente_id=cliente_id,
         movimentos_por_cliente=movimentos_por_cliente,
         saldos_por_cliente=saldos_por_cliente,
+        total_saldo_geral=total_saldo_geral,
+        total_creditos_geral=total_creditos_geral,
+        total_debitos_geral=total_debitos_geral,
         request=request
     )
 
