@@ -2194,23 +2194,56 @@ def marcar_entregue(id):
 # =========================================================
 @app.route('/creditos')
 def creditos():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
+    # se vier cliente_id na querystring, só usamos pra pré-selecionar no <select>
     cliente_id = request.args.get('cliente_id', type=int)
 
-    q = Credito.query
-    if cliente_id:
-        q = q.filter(Credito.cliente_id == cliente_id)
+    # Carrega todos os clientes (para o formulário e para o acordeão)
+    clientes = Cliente.query.order_by(Cliente.nome.asc()).all()
 
-    lista = q.order_by(Credito.id.desc()).limit(500).all()
-    clientes = Cliente.query.order_by(Cliente.nome).all()
+    movimentos_por_cliente = {}
+    saldos_por_cliente = {}
+
+    # Para cada cliente, montamos o extrato ordenado e o saldo corrente
+    for cli in clientes:
+        movs = (
+            CreditoMovimento.query
+            .filter(CreditoMovimento.cliente_id == cli.id)
+            .order_by(CreditoMovimento.data.asc(), CreditoMovimento.id.asc())
+            .all()
+        )
+
+        saldo = 0.0
+        rows = []
+
+        for mov in movs:
+            # crédito soma, débito subtrai
+            if mov.tipo == 'credito':
+                delta = float(mov.valor or 0.0)
+            elif mov.tipo == 'debito':
+                delta = -float(mov.valor or 0.0)
+            else:
+                delta = 0.0
+
+            saldo_antes = saldo
+            saldo_depois = saldo_antes + delta
+
+            rows.append({
+                "mov": mov,
+                "saldo_antes": saldo_antes,
+                "saldo_depois": saldo_depois,
+            })
+
+            saldo = saldo_depois
+
+        movimentos_por_cliente[cli.id] = rows
+        saldos_por_cliente[cli.id] = saldo
 
     return render_template(
         'creditos.html',
-        creditos=lista,
-        cliente_id=cliente_id,
         clientes=clientes,
+        cliente_id=cliente_id,
+        movimentos_por_cliente=movimentos_por_cliente,
+        saldos_por_cliente=saldos_por_cliente,
         request=request
     )
 
