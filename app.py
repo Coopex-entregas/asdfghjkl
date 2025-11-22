@@ -2197,20 +2197,20 @@ def creditos():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # só pra pré-selecionar no select do formulário
+    # usado só pra pré-selecionar no select
     cliente_id = request.args.get('cliente_id', type=int)
 
-    # todos os clientes
-    clientes = Cliente.query.order_by(Cliente.nome.asc()).all()
+    # todos os clientes para o formulário de lançamento
+    clientes_form = Cliente.query.order_by(Cliente.nome.asc()).all()
 
     movimentos_por_cliente = {}
     saldos_por_cliente = {}
+    creditos_originais_por_cliente = {}
+    consumos_por_cliente = {}
 
-    total_saldo_geral = 0.0
-    total_creditos_geral = 0.0
-    total_debitos_geral = 0.0
+    clientes_lista = []  # apenas os que terão histórico no acordeão
 
-    for cli in clientes:
+    for cli in clientes_form:
         movs = (
             CreditoMovimento.query
             .filter(CreditoMovimento.cliente_id == cli.id)
@@ -2218,18 +2218,25 @@ def creditos():
             .all()
         )
 
+        # se não tem movimento e saldo_atual é zero/nulo, não aparece no histórico
+        if not movs and not (cli.saldo_atual or 0):
+            continue
+
         saldo = 0.0
         rows = []
+        total_creditos_originais = 0.0  # só créditos "Crédito #...", sem estorno
 
         for mov in movs:
             valor = float(mov.valor or 0.0)
+            ref = (mov.referencia or '').lower()
 
             if mov.tipo == 'credito':
                 delta = valor
-                total_creditos_geral += valor
+                # conta como "crédito lançado" só se NÃO for estorno
+                if 'estorno' not in ref:
+                    total_creditos_originais += valor
             elif mov.tipo == 'debito':
                 delta = -valor
-                total_debitos_geral += valor
             else:
                 delta = 0.0
 
@@ -2246,19 +2253,55 @@ def creditos():
 
         movimentos_por_cliente[cli.id] = rows
         saldos_por_cliente[cli.id] = saldo
-        total_saldo_geral += saldo
+        creditos_originais_por_cliente[cli.id] = total_creditos_originais
+        consumos_por_cliente[cli.id] = total_creditos_originais - saldo
+
+        clientes_lista.append(cli)
+
+    # totais globais (apenas clientes que aparecem no histórico)
+    total_saldo = sum(saldos_por_cliente.values()) if saldos_por_cliente else 0.0
+    total_creditos = sum(creditos_originais_por_cliente.values()) if creditos_originais_por_cliente else 0.0
+    total_consumos = total_creditos - total_saldo
 
     return render_template(
         'creditos.html',
-        clientes=clientes,
+        # formulário de lançamento
+        clientes_form=clientes_form,
+        # clientes que aparecem no histórico
+        clientes_lista=clientes_lista,
         cliente_id=cliente_id,
         movimentos_por_cliente=movimentos_por_cliente,
         saldos_por_cliente=saldos_por_cliente,
-        total_saldo_geral=total_saldo_geral,
-        total_creditos_geral=total_creditos_geral,
-        total_debitos_geral=total_debitos_geral,
+        creditos_originais_por_cliente=creditos_originais_por_cliente,
+        consumos_por_cliente=consumos_por_cliente,
+        total_saldo=total_saldo,
+        total_creditos=total_creditos,
+        total_consumos=total_consumos,
         request=request
     )
+
+
+@app.route('/creditos/<int:cliente_id>/limpar', methods=['POST'])
+def creditos_limpar_cliente(cliente_id):
+    """
+    Apaga TODOS os créditos e movimentos de um cliente
+    e zera o saldo (mesmo que hoje esteja 0 ou diferente de 0).
+    """
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cli = Cliente.query.get_or_404(cliente_id)
+
+    # apaga todos os movimentos e créditos do cliente
+    CreditoMovimento.query.filter_by(cliente_id=cliente_id).delete()
+    Credito.query.filter_by(cliente_id=cliente_id).delete()
+
+    cli.saldo_atual = 0.0
+    db.session.add(cli)
+    db.session.commit()
+
+    flash('Histórico de créditos deste cliente foi totalmente limpo e saldo zerado.', 'success')
+    return redirect(url_for('creditos'))
 
 
 @app.route('/creditos/novo', methods=['GET', 'POST'])
@@ -2417,39 +2460,6 @@ def creditos_exportar():
 
     output.seek(0)
     return send_file(output, download_name='creditos.xlsx', as_attachment=True)
-
-
-@app.route('/creditos/cliente/<int:cliente_id>/limpar', methods=['POST'])
-def creditos_limpar_cliente(cliente_id):
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    cli = Cliente.query.get_or_404(cliente_id)
-
-    try:
-        # Zera campos de crédito nas entregas deste cliente
-        entregas = Entrega.query.filter_by(cliente_id=cliente_id).all()
-        for e in entregas:
-            e.credito_usado = 0.0
-            e.credito_mov_id = None
-
-        # Remove todos os movimentos (créditos, débitos, estornos) do cliente
-        CreditoMovimento.query.filter_by(cliente_id=cliente_id).delete()
-
-        # Remove todos os registros de Crédito do cliente
-        Credito.query.filter_by(cliente_id=cliente_id).delete()
-
-        # Zera o saldo
-        cli.saldo_atual = 0.0
-
-        db.session.commit()
-        flash('Histórico de crédito do cliente apagado e saldo zerado.', 'success')
-    except Exception as e:
-        db.session.rollback()
-        app.logger.error(f"Erro ao limpar créditos do cliente {cliente_id}: {e}")
-        flash('Erro ao limpar créditos do cliente.', 'danger')
-
-    return redirect(url_for('creditos', cliente_id=cliente_id))
 
 
 @app.route('/creditos/cadastrar', methods=['POST'])
