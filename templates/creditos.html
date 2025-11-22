@@ -15,7 +15,7 @@
       --primary-border:#2f4de6;
     }
     body.dark{
-      --bg:#0b0f17; --card:#0f1623; --ink:#e7edf9; --line:#1d2636; --line-dark:#2b3b59;
+      --bg:#050814; --card:#0c1222; --ink:#e7edf9; --line:#1d2636; --line-dark:#2b3b59;
       --muted:#2b3b59;
     }
     *{box-sizing:border-box}
@@ -24,7 +24,7 @@
       margin:0;
       font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:var(--bg);
-      color:var(--ink)
+      color:var(--ink);
     }
 
     header{
@@ -75,14 +75,16 @@
     }
 
     .wrap{
-      max-width:1150px;
-      margin:16px auto;
-      padding:0 14px 24px;
+      max-width:1160px;
+      margin:16px auto 24px;
+      padding:0 14px;
       display:grid;
-      grid-template-columns:1fr 340px;
-      gap:14px;
+      grid-template-columns:340px 1fr;
+      gap:18px;
     }
-    @media (max-width:1100px){ .wrap{grid-template-columns:1fr} }
+    @media (max-width:1000px){
+      .wrap{grid-template-columns:1fr}
+    }
 
     .card{
       background:var(--card);
@@ -116,16 +118,16 @@
       border:1.5px solid var(--primary-border);
       box-shadow:none;
     }
-    .btn.block{width:100%}
     .btn.small{
-      padding:6px 10px;
-      font-size:.8rem;
+      padding:5px 9px;
+      font-size:.78rem;
       border-radius:10px;
       box-shadow:none;
     }
     .btn.danger{
       background:linear-gradient(90deg,#b91c1c,#ef4444);
     }
+    .btn.block{width:100%}
 
     label{
       font-size:.86rem;
@@ -156,95 +158,9 @@
       box-shadow:0 0 0 2px rgba(47,77,230,.25);
     }
 
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .column{display:flex;flex-direction:column;gap:6px}
-    .grid-2{
-      display:grid;
-      grid-template-columns:1.1fr 1.1fr;
-      gap:10px;
-    }
-    @media (max-width:880px){ .grid-2{grid-template-columns:1fr} }
-
+    .column{display:flex;flex-direction:column;gap:6px;margin-bottom:10px}
     .muted{color:#5771d6;font-weight:700;font-size:.86rem}
     body.dark .muted{color:#93b4ff}
-
-    .table-wrap{
-      overflow:auto;
-      border-radius:12px;
-      border:1px solid var(--line);
-      max-height:480px;
-    }
-    table{
-      width:100%;
-      border-collapse:collapse;
-      font-size:13.5px;
-    }
-    thead th{
-      position:sticky;
-      top:0;
-      background:#031a66;
-      color:#fff;
-      padding:8px;
-      border-bottom:1px solid var(--line);
-      text-align:left;
-      z-index:1;
-    }
-    tbody td{
-      padding:8px;
-      border-bottom:1px solid var(--line);
-      vertical-align:middle;
-    }
-    tbody tr:nth-child(even) td{background:rgba(0,0,0,.02)}
-    body.dark tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}
-
-    .money{font-weight:900}
-    .help{font-size:.86rem;opacity:.95;line-height:1.5}
-    .totais{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    .totais .pill{
-      background:#edf3ff;
-      border:1px solid #cfdbff;
-      color:#2347c7;
-      border-radius:999px;
-      padding:6px 10px;
-      font-weight:900;
-      font-size:.8rem;
-    }
-    body.dark .totais .pill{
-      background:#0b1635;
-      border-color:#273b7a;
-      color:#c5d5ff;
-    }
-    .hint{font-size:.8rem;color:#5b6ea8}
-    body.dark .hint{color:#9fb0ff}
-
-    .sticky-actions{
-      position:sticky;
-      bottom:0;
-      padding-top:12px;
-      margin-top:4px;
-      background:linear-gradient(180deg, rgba(246,248,255,0), var(--bg));
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-    }
-
-    .actions-cell{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      align-items:center;
-    }
-    .actions-cell form{display:inline}
-
-    hr.div{
-      border:none;
-      border-top:1px solid var(--line);
-      margin:12px 0;
-    }
 
     .saldo-badge{
       margin-top:4px;
@@ -265,399 +181,382 @@
       color:#c5d5ff;
     }
 
-    .pill-consumido{
-      background:#fee2e2;
-      border:1px solid #fecaca;
-      color:#b91c1c;
+    .hint{font-size:.78rem;color:#5b6ea8}
+    body.dark .hint{color:#9fb0ff}
+
+    .sticky-actions{
+      margin-top:4px;
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
     }
-    .pill-saldo{
-      background:#dcfce7;
-      border:1px solid #bbf7d0;
-      color:#166534;
+
+    /* LISTA DE CLIENTES / ACORDEÃO */
+    .clientes-list{
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      margin-top:6px;
+    }
+    .cliente-item{
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,0.9);
+      overflow:hidden;
+    }
+    body.dark .cliente-item{
+      background:rgba(8,13,28,0.95);
+    }
+    .cliente-head{
+      display:flex;
+      align-items:center;
+      padding:8px 10px;
+      gap:10px;
+      cursor:pointer;
+    }
+    .cliente-head:hover{
+      background:rgba(0,51,204,0.06);
+    }
+    .cliente-name{
+      font-weight:800;
+      font-size:.9rem;
+      flex:1;
+    }
+    .pill{
+      border-radius:999px;
+      padding:4px 8px;
+      font-size:.76rem;
+      font-weight:800;
+      border:1px solid var(--line-dark);
+      background:#edf3ff;
+      color:#2347c7;
+    }
+    body.dark .pill{
+      background:#0b1635;
+      border-color:#273b7a;
+      color:#c5d5ff;
+    }
+    .pill.neg{background:#fee2e2;border-color:#fecaca;color:#b91c1c;}
+    .pill.pos{background:#dcfce7;border-color:#bbf7d0;color:#166534;}
+    .chevron{
+      width:18px;height:18px;border-radius:999px;
+      border:1px solid var(--line-dark);
+      display:flex;align-items:center;justify-content:center;
+      font-size:.7rem;
+      transform:rotate(0deg);
+      transition:transform .2s;
+    }
+    .cliente-item.open .chevron{transform:rotate(90deg);}
+
+    .cliente-body{
+      max-height:0;
+      overflow:hidden;
+      transition:max-height .25s ease;
+      border-top:1px solid var(--line);
+    }
+    .cliente-item.open .cliente-body{
+      max-height:360px;
+    }
+    .mov-table-wrap{
+      overflow:auto;
+      max-height:320px;
+    }
+    table{
+      width:100%;
+      border-collapse:collapse;
+      font-size:12.5px;
+    }
+    thead th{
+      position:sticky;
+      top:0;
+      background:#031a66;
+      color:#fff;
+      padding:6px 8px;
+      border-bottom:1px solid var(--line);
+      text-align:left;
+      z-index:1;
+    }
+    tbody td{
+      padding:6px 8px;
+      border-bottom:1px solid var(--line);
+      vertical-align:middle;
+    }
+    tbody tr:nth-child(even) td{background:rgba(0,0,0,.02)}
+    body.dark tbody tr:nth-child(even) td{background:rgba(255,255,255,.02)}
+    .money{font-weight:800}
+
+    .no-data{
+      text-align:center;
+      font-size:.82rem;
+      opacity:.75;
+      padding:10px 4px;
     }
   </style>
 </head>
 <body>
-  <header>
-    <div class="topbar">
-      <div class="brand">
-        <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo"
-             onerror="this.onerror=null;this.src='https://via.placeholder.com/80x36?text=LOGO'">
-        <span>Crédito de Clientes — Supervisão</span>
-      </div>
-      <div class="spacer"></div>
-      <a class="back-admin" href="/admin?cooperado_id=todos&status_pagamento=todos">← Admin</a>
-      <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
-      <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+<header>
+  <div class="topbar">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo"
+           onerror="this.onerror=null;this.src='https://via.placeholder.com/80x36?text=LOGO'">
+      <span>Crédito de Clientes — Supervisão</span>
     </div>
-  </header>
+    <div class="spacer"></div>
+    <a class="back-admin" href="/admin?cooperado_id=todos&status_pagamento=todos">← Admin</a>
+    <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
+    <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+  </div>
+</header>
 
-  <main class="wrap">
-    <!-- ESQUERDA: FORM + HISTÓRICO -->
-    <section class="card">
-      <div class="body">
-        <h2>Registrar crédito</h2>
+<main class="wrap">
+  <!-- LADO ESQUERDO: LANÇAR CRÉDITO -->
+  <section class="card">
+    <div class="body">
+      <h2>Registrar crédito</h2>
 
-        {% set selected_cliente = (cliente_id|string) if cliente_id is not none else request.args.get('cliente_id','') %}
+      {% set selected_cliente = (cliente_id|string) if cliente_id is not none else request.args.get('cliente_id','') %}
 
-        <!-- Saldo atual do cliente selecionado -->
-        <div id="saldoClienteBox" style="margin-bottom:10px;display:none;">
-          <span class="saldo-badge">
-            Saldo atual do cliente:
-            <span id="saldoClienteValor">R$ 0,00</span>
-          </span>
-        </div>
-
-        <!-- POST vai para creditos_cadastrar -->
-        <form class="grid-2" action="{{ url_for('creditos_cadastrar') }}" method="POST" id="form-credito">
-          <div class="column">
-            <label for="cliente_id">Cliente</label>
-            <select id="cliente_id" name="cliente_id" required>
-              <option value="" disabled {% if not selected_cliente %}selected{% endif %}>Selecione…</option>
-              {% for cli in clientes %}
-                <option value="{{ cli.id }}"
-                        data-saldo="{{ '%.2f'|format(cli.saldo_atual or 0) }}"
-                        {% if selected_cliente and selected_cliente|string == cli.id|string %}selected{% endif %}>
-                  {{ cli.nome }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-
-          <div class="column">
-            <label for="valor_bruto">Valor do crédito (R$)</label>
-            <input type="number" id="valor_bruto" name="valor_bruto"
-                   step="0.01" min="0" placeholder="0,00" required>
-          </div>
-
-          <div class="column">
-            <label for="desconto_tipo">Desconto</label>
-            <select id="desconto_tipo" name="desconto_tipo">
-              <option value="nenhum">Sem desconto</option>
-              <option value="percentual">Percentual (%)</option>
-              <option value="real">Valor (R$)</option>
-            </select>
-          </div>
-
-          <div class="column">
-            <label for="desconto_valor">Valor do desconto</label>
-            <input type="number" id="desconto_valor" name="desconto_valor"
-                   step="0.01" min="0" placeholder="0,00" value="0">
-            <span class="hint" id="hint-desconto">Informe % quando for percentual.</span>
-          </div>
-
-          <div class="column">
-            <label for="motivo">Observação / motivo (opcional)</label>
-            <input type="text" id="motivo" name="motivo" maxlength="180"
-                   placeholder="Ex.: bônus fidelidade, ajuste, etc.">
-          </div>
-
-          <div class="column">
-            <label for="criado_em">Data do crédito</label>
-            <input type="date" id="criado_em" name="criado_em" value="">
-          </div>
-
-          <div class="column">
-            <div class="muted">Valor final do crédito</div>
-            <div class="money" id="valor_final_view">R$ 0,00</div>
-          </div>
-
-          <input type="hidden" name="valor_final" id="valor_final_hidden" value="0.00">
-
-          <div class="sticky-actions">
-            <button class="btn" type="submit">Salvar crédito</button>
-            <a class="btn alt" href="{{ url_for('creditos') }}">Limpar</a>
-          </div>
-        </form>
+      <div id="saldoClienteBox" style="margin-bottom:10px;display:none;">
+        <span class="saldo-badge">
+          Saldo atual do cliente:
+          <span id="saldoClienteValor">R$ 0,00</span>
+        </span>
       </div>
 
-      <div class="body" style="border-top:1px solid var(--line)">
-        <h3>Histórico de créditos</h3>
-
-        {% set filtro_cliente = request.args.get('cliente_id','') %}
-        {% set filtro_di = request.args.get('data_inicio','') %}
-        {% set filtro_df = request.args.get('data_fim','') %}
-
-        <!-- Totais gerais (do filtro atual) -->
-        {% set tot_registros = creditos|length %}
-        {% set tot_bruto = 0 %}
-        {% set tot_final = 0 %}
-        {% for c in creditos %}
-          {% set tot_bruto = tot_bruto + (c.valor_bruto or 0) %}
-          {% set tot_final = tot_final + (c.valor_final or 0) %}
-        {% endfor %}
-
-        <!-- Se tiver cliente filtrado, calcula consumo = total créditos - saldo atual -->
-        {% if filtro_cliente %}
-          {% set cli_filtro = (clientes | selectattr('id','equalto',filtro_cliente|int) | first) %}
-          {% if cli_filtro %}
-            {% set saldo_atual = cli_filtro.saldo_atual or 0 %}
-            {% set consumido = tot_final - saldo_atual %}
-            {% if consumido < 0 %}
-              {% set consumido = 0 %}
-            {% endif %}
-          {% endif %}
-        {% endif %}
-
-        <form class="row" method="GET" action="{{ url_for('creditos') }}" style="margin-bottom:10px">
-          <div class="column" style="min-width:220px">
-            <label for="f_cliente">Cliente</label>
-            <select id="f_cliente" name="cliente_id">
-              <option value="">Todos</option>
-              {% for cli in clientes %}
-                <option value="{{ cli.id }}"
-                        {% if filtro_cliente and filtro_cliente|string == cli.id|string %}selected{% endif %}>
-                  {{ cli.nome }}
-                </option>
-              {% endfor %}
-            </select>
-          </div>
-          <div class="column">
-            <label for="f_de">De</label>
-            <input type="date" id="f_de" name="data_inicio" value="{{ filtro_di }}">
-          </div>
-          <div class="column">
-            <label for="f_ate">Até</label>
-            <input type="date" id="f_ate" name="data_fim" value="{{ filtro_df }}">
-          </div>
-          <div style="display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap">
-            <button class="btn" type="submit">Filtrar</button>
-
-            <!-- usa tua rota /creditos/exportar -->
-            <a class="btn alt"
-               href="{{ url_for('creditos_exportar',
-                                cliente_id=filtro_cliente or None,
-                                data_inicio=filtro_di or None,
-                                data_fim=filtro_df or None) }}">
-              Exportar XLSX
-            </a>
-
-            {% if filtro_cliente and cli_filtro %}
-              <a class="btn alt"
-                 href="{{ url_for('cliente_credito', cliente_id=filtro_cliente) }}">
-                Ver extrato detalhado
-              </a>
-            {% endif %}
-          </div>
-        </form>
-
-        <!-- Barra de totais: já mostra o consumo abatido -->
-        <div class="totais" style="margin:8px 0 12px">
-          <span class="pill">Registros: {{ tot_registros }}</span>
-          <span class="pill">Soma bruta: R$ {{ '%.2f'|format(tot_bruto)|replace('.',',') }}</span>
-          <span class="pill">Soma final (créditos): R$ {{ '%.2f'|format(tot_final)|replace('.',',') }}</span>
-
-          {% if filtro_cliente and cli_filtro %}
-            <span class="pill pill-consumido">
-              Já consumido: R$ {{ '%.2f'|format(consumido)|replace('.',',') }}
-            </span>
-            <span class="pill pill-saldo">
-              Saldo atual do cliente: R$ {{ '%.2f'|format(saldo_atual)|replace('.',',') }}
-            </span>
-          {% endif %}
-        </div>
-
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Cliente</th>
-                <th>Valor bruto</th>
-                <th>Desconto</th>
-                <th>Valor final</th>
-                <th>Saldo (antes → depois)</th>
-                <th>Motivo</th>
-                <th>Criado em</th>
-                <th>Por</th>
-                <th>Ações</th>
-              </tr>
-            </thead>
-            <tbody>
-              {% for c in creditos %}
-                {% set cli_obj = (clientes | selectattr('id','equalto',c.cliente_id) | first) %}
-                {% set cli_nome = cli_obj.nome if cli_obj else ('ID ' ~ c.cliente_id) %}
-              <tr>
-                <td>#{{ c.id }}</td>
-                <td>{{ cli_nome }}</td>
-                <td>R$ {{ '%.2f'|format(c.valor_bruto) | replace('.', ',') }}</td>
-                <td>
-                  {% if c.desconto_tipo == 'percentual' %}
-                    {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}%
-                  {% elif c.desconto_tipo == 'real' %}
-                    R$ {{ '%.2f'|format(c.desconto_valor) | replace('.', ',') }}
-                  {% else %}
-                    —
-                  {% endif %}
-                </td>
-                <td><strong>R$ {{ '%.2f'|format(c.valor_final) | replace('.', ',') }}</strong></td>
-                <td>
-                  R$ {{ '%.2f'|format(c.saldo_antes) | replace('.', ',') }}
-                  →
-                  <strong>R$ {{ '%.2f'|format(c.saldo_depois) | replace('.', ',') }}</strong>
-                </td>
-                <td title="{{ c.motivo or '' }}">{{ c.motivo or '—' }}</td>
-                <td>
-                  {% if c.criado_em %}
-                    {{ c.criado_em }}
-                  {% else %}
-                    —
-                  {% endif %}
-                </td>
-                <td>{{ c.criado_por or '-' }}</td>
-                <td>
-                  <div class="actions-cell">
-                    <a class="btn small alt"
-                       href="{{ url_for('creditos_editar', credito_id=c.id) }}">
-                      Editar
-                    </a>
-
-                    <!-- AQUI ESTÁ O AJUSTE: credito_id -> id -->
-                    <form action="{{ url_for('creditos_excluir', id=c.id) }}"
-                          method="POST"
-                          onsubmit="return confirm('Confirma excluir este crédito? Esta ação não poderá ser desfeita.');">
-                      <button type="submit" class="btn small danger">Excluir</button>
-                    </form>
-                  </div>
-                </td>
-              </tr>
-              {% endfor %}
-              {% if creditos|length == 0 %}
-                <tr>
-                  <td colspan="10" style="text-align:center;opacity:.7;padding:16px">
-                    Nenhum crédito encontrado.
-                  </td>
-                </tr>
-              {% endif %}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </section>
-
-    <!-- DIREITA: AJUDA / RESUMO -->
-    <aside class="card">
-      <div class="body">
-        <h3>Como funciona</h3>
-        <p class="help">
-          • Preencha o valor do crédito e escolha o cliente.<br>
-          • Se quiser aplicar desconto, escolha o tipo (% ou R$) e informe o valor.<br>
-          • O <strong>valor final</strong> é calculado automaticamente e somado ao saldo do cliente.<br>
-          • Quando lançar uma entrega no admin para um cliente com crédito, o sistema já desconta automaticamente,
-            gerando um movimento de <strong>Débito</strong> no extrato do cliente.<br>
-          • Ao filtrar por um cliente no histórico, você verá quanto já foi
-            <strong>consumido</strong> e qual é o <strong>saldo atual</strong>.
-        </p>
-
-        <hr class="div">
-
-        <h3>Simulador</h3>
+      <form action="{{ url_for('creditos_cadastrar') }}" method="POST" id="form-credito">
         <div class="column">
-          <label>Resultado</label>
-          <div class="money" id="simulador_view">R$ 0,00</div>
-          <div class="hint">O simulador usa os mesmos valores do formulário de crédito.</div>
+          <label for="cliente_id">Cliente</label>
+          <select id="cliente_id" name="cliente_id" required>
+            <option value="" disabled {% if not selected_cliente %}selected{% endif %}>Selecione…</option>
+            {% for cli in clientes %}
+              <option value="{{ cli.id }}"
+                      data-saldo="{{ '%.2f'|format(saldos_por_cliente.get(cli.id, cli.saldo_atual or 0)) }}"
+                      {% if selected_cliente and selected_cliente|string == cli.id|string %}selected{% endif %}>
+                {{ cli.nome }}
+              </option>
+            {% endfor %}
+          </select>
         </div>
+
+        <div class="column">
+          <label for="valor_bruto">Valor do crédito (R$)</label>
+          <input type="number" id="valor_bruto" name="valor_bruto"
+                 step="0.01" min="0" placeholder="0,00" required>
+        </div>
+
+        <div class="column">
+          <label for="motivo">Observação / motivo (opcional)</label>
+          <input type="text" id="motivo" name="motivo" maxlength="180"
+                 placeholder="Ex.: bônus fidelidade, adiantamento, ajuste, etc.">
+        </div>
+
+        <div class="column">
+          <label for="criado_em">Data do crédito</label>
+          <input type="date" id="criado_em" name="criado_em" value="">
+          <span class="hint">Se não preencher, será considerada a data de hoje.</span>
+        </div>
+
+        <!-- Mantidos apenas para compatibilidade com o backend (sempre sem desconto) -->
+        <input type="hidden" name="desconto_tipo" value="nenhum">
+        <input type="hidden" name="desconto_valor" value="0">
+
+        <div class="column">
+          <span class="muted">Resumo</span>
+          <div class="money" id="preview_valor_final">Crédito: R$ 0,00</div>
+        </div>
+
+        <div class="sticky-actions">
+          <button class="btn" type="submit">Salvar crédito</button>
+          <a class="btn alt" href="{{ url_for('creditos') }}">Limpar</a>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- LADO DIREITO: HISTÓRICO POR CLIENTE (ACORDEÃO) -->
+  <section class="card">
+    <div class="body">
+      <h3>Histórico por cliente</h3>
+      <p class="hint">
+        Clique no nome do cliente para ver o histórico completo de<br>
+        <strong>créditos, consumos em entregas e estornos</strong>, na ordem que aconteceram.
+      </p>
+
+      <div class="clientes-list">
+        {% if clientes|length == 0 %}
+          <div class="no-data">Nenhum cliente cadastrado.</div>
+        {% else %}
+          {% for cli in clientes %}
+            {% set movs_cli = movimentos_por_cliente.get(cli.id, []) %}
+            {% set saldo_cli = saldos_por_cliente.get(cli.id, cli.saldo_atual or 0) %}
+            {% set total_creditos = 0 %}
+            {% set total_debitos = 0 %}
+            {% for row in movs_cli %}
+              {% if row.mov.tipo == 'credito' %}
+                {% set total_creditos = total_creditos + (row.mov.valor or 0) %}
+              {% else %}
+                {% set total_debitos = total_debitos + (row.mov.valor or 0) %}
+              {% endif %}
+            {% endfor %}
+
+            <div class="cliente-item" data-cliente-id="{{ cli.id }}">
+              <div class="cliente-head">
+                <div class="cliente-name">{{ cli.nome }}</div>
+                <span class="pill pos">
+                  Saldo: R$ {{ '%.2f'|format(saldo_cli)|replace('.',',') }}
+                </span>
+                <span class="pill">
+                  + R$ {{ '%.2f'|format(total_creditos)|replace('.',',') }}
+                </span>
+                <span class="pill neg">
+                  − R$ {{ '%.2f'|format(total_debitos)|replace('.',',') }}
+                </span>
+                <div class="chevron">▶</div>
+              </div>
+              <div class="cliente-body">
+                <div class="mov-table-wrap">
+                  {% if movs_cli|length == 0 %}
+                    <div class="no-data">Nenhum movimento de crédito ainda para este cliente.</div>
+                  {% else %}
+                    <table>
+                      <thead>
+                      <tr>
+                        <th>Data</th>
+                        <th>Tipo</th>
+                        <th>Valor</th>
+                        <th>Saldo antes</th>
+                        <th>Saldo depois</th>
+                        <th>Referência</th>
+                      </tr>
+                      </thead>
+                      <tbody>
+                      {% for row in movs_cli %}
+                        {% set mov = row.mov %}
+                        <tr>
+                          <td>
+                            {% if mov.data %}
+                              {{ mov.data }}
+                            {% else %}
+                              —
+                            {% endif %}
+                          </td>
+                          <td>
+                            {% if mov.tipo == 'credito' %}
+                              Crédito
+                            {% elif mov.tipo == 'debito' %}
+                              Consumo
+                            {% else %}
+                              {{ mov.tipo }}
+                            {% endif %}
+                          </td>
+                          <td class="money">
+                            {% if mov.tipo == 'debito' %}-{% else %}+{% endif %}
+                            R$ {{ '%.2f'|format(mov.valor or 0)|replace('.',',') }}
+                          </td>
+                          <td>R$ {{ '%.2f'|format(row.saldo_antes)|replace('.',',') }}</td>
+                          <td class="money">R$ {{ '%.2f'|format(row.saldo_depois)|replace('.',',') }}</td>
+                          <td>{{ mov.referencia or '—' }}</td>
+                        </tr>
+                      {% endfor %}
+                      </tbody>
+                    </table>
+                  {% endif %}
+                </div>
+              </div>
+            </div>
+          {% endfor %}
+        {% endif %}
       </div>
-    </aside>
-  </main>
+    </div>
+  </section>
+</main>
 
-  <script>
-    // tema claro/escuro
-    (function(){
-      try{
-        const saved = localStorage.getItem('coopex_theme') || 'light';
-        if(saved === 'dark') document.body.classList.add('dark');
-        const btn = document.getElementById('btnTheme');
-        const sync = () => {
-          btn.textContent = document.body.classList.contains('dark')
-            ? 'Modo claro'
-            : 'Modo escuro';
-        };
+<script>
+  // tema claro/escuro
+  (function(){
+    try{
+      const saved = localStorage.getItem('coopex_theme') || 'light';
+      if(saved === 'dark') document.body.classList.add('dark');
+      const btn = document.getElementById('btnTheme');
+      const sync = () => {
+        btn.textContent = document.body.classList.contains('dark')
+          ? 'Modo claro'
+          : 'Modo escuro';
+      };
+      sync();
+      btn.addEventListener('click', () => {
+        document.body.classList.toggle('dark');
+        localStorage.setItem('coopex_theme',
+          document.body.classList.contains('dark') ? 'dark' : 'light');
         sync();
-        btn.addEventListener('click', () => {
-          document.body.classList.toggle('dark');
-          localStorage.setItem('coopex_theme',
-            document.body.classList.contains('dark') ? 'dark' : 'light');
-          sync();
-        });
-      }catch(e){}
-    })();
+      });
+    }catch(e){}
+  })();
 
-    // data padrão hoje
-    (function(){
-      const input = document.getElementById('criado_em');
-      if(input && !input.value){
-        const d = new Date();
-        const yyyy = d.getFullYear();
-        const mm = String(d.getMonth()+1).padStart(2,'0');
-        const dd = String(d.getDate()).padStart(2,'0');
-        input.value = `${yyyy}-${mm}-${dd}`;
+  // data padrão hoje
+  (function(){
+    const input = document.getElementById('criado_em');
+    if(input && !input.value){
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth()+1).padStart(2,'0');
+      const dd = String(d.getDate()).padStart(2,'0');
+      input.value = `${yyyy}-${mm}-${dd}`;
+    }
+  })();
+
+  const fmtBRL = (v)=> (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(+v||0));
+
+  // preview valor do crédito
+  (function(){
+    const bruto = document.getElementById('valor_bruto');
+    const preview = document.getElementById('preview_valor_final');
+    if(!bruto || !preview) return;
+    function update(){
+      const v = parseFloat(bruto.value || '0');
+      preview.textContent = 'Crédito: ' + fmtBRL(v);
+    }
+    bruto.addEventListener('input', update);
+    bruto.addEventListener('blur', update);
+    update();
+  })();
+
+  // Exibir saldo atual do cliente selecionado
+  (function(){
+    const sel = document.getElementById('cliente_id');
+    const box = document.getElementById('saldoClienteBox');
+    const val = document.getElementById('saldoClienteValor');
+    if(!sel || !box || !val) return;
+
+    function updateSaldo(){
+      const opt = sel.options[sel.selectedIndex];
+      if(!opt || !opt.value){
+        box.style.display = 'none';
+        return;
       }
-    })();
-
-    const fmtBRL = (v)=> (new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(+v||0));
-
-    const $bruto = document.getElementById('valor_bruto');
-    const $tipo  = document.getElementById('desconto_tipo');
-    const $desc  = document.getElementById('desconto_valor');
-    const $finalV = document.getElementById('valor_final_view');
-    const $finalH = document.getElementById('valor_final_hidden');
-    const $simu = document.getElementById('simulador_view');
-    const $hint = document.getElementById('hint-desconto');
-
-    function calcFinal(){
-      const bruto = Math.max(0, parseFloat($bruto.value || '0'));
-      const tipo  = $tipo.value;
-      const d     = Math.max(0, parseFloat($desc.value || '0'));
-      let desconto = 0;
-
-      if(tipo === 'percentual'){
-        desconto = (bruto * d)/100;
-        $hint.textContent = 'Desconto em percentual (%)';
-      }else if(tipo === 'real'){
-        desconto = d;
-        $hint.textContent = 'Desconto em reais (R$)';
-      }else{
-        desconto = 0;
-        $hint.textContent = 'Sem desconto aplicado';
-      }
-
-      desconto = Math.min(desconto, bruto);
-      const final = bruto - desconto;
-
-      $finalV.textContent = fmtBRL(final);
-      $finalH.value = final.toFixed(2);
-      $simu.textContent = fmtBRL(final);
+      const saldo = parseFloat(opt.getAttribute('data-saldo') || '0');
+      val.textContent = fmtBRL(saldo);
+      box.style.display = 'inline-flex';
     }
 
-    ['input','change','blur'].forEach(evt=>{
-      $bruto.addEventListener(evt, calcFinal);
-      $tipo.addEventListener(evt, calcFinal);
-      $desc.addEventListener(evt, calcFinal);
-    });
-    calcFinal();
+    sel.addEventListener('change', updateSaldo);
+    updateSaldo();
+  })();
 
-    // Exibir saldo atual do cliente selecionado no formulário de crédito
-    (function(){
-      const sel = document.getElementById('cliente_id');
-      const box = document.getElementById('saldoClienteBox');
-      const val = document.getElementById('saldoClienteValor');
-      if(!sel || !box || !val) return;
-
-      function updateSaldo(){
-        const opt = sel.options[sel.selectedIndex];
-        if(!opt || !opt.value){
-          box.style.display = 'none';
-          return;
+  // Acordeão por cliente
+  (function(){
+    document.querySelectorAll('.cliente-item').forEach(card => {
+      const head = card.querySelector('.cliente-head');
+      if(!head) return;
+      head.addEventListener('click', () => {
+        const open = card.classList.contains('open');
+        document.querySelectorAll('.cliente-item.open').forEach(c => c.classList.remove('open'));
+        if(!open){
+          card.classList.add('open');
         }
-        const saldo = parseFloat(opt.getAttribute('data-saldo') || '0');
-        val.textContent = fmtBRL(saldo);
-        box.style.display = 'inline-flex';
-      }
-
-      sel.addEventListener('change', updateSaldo);
-      updateSaldo();
-    })();
-  </script>
+      });
+    });
+  })();
+</script>
 </body>
 </html>
