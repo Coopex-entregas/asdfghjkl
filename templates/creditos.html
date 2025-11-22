@@ -291,6 +291,26 @@
       opacity:.75;
       padding:10px 4px;
     }
+
+    .row-actions{
+      display:flex;
+      gap:4px;
+      flex-wrap:wrap;
+      align-items:center;
+      justify-content:flex-start;
+    }
+    .row-actions form{
+      display:inline;
+      margin:0;
+    }
+
+    .totais-gerais{
+      display:flex;
+      flex-wrap:wrap;
+      gap:6px;
+      margin:6px 0 10px;
+      justify-content:flex-end; /* direita */
+    }
   </style>
 </head>
 <body>
@@ -382,9 +402,28 @@
         <strong>créditos, consumos em entregas e estornos</strong>, na ordem que aconteceram.
       </p>
 
+      <!-- Resumo geral no topo, à direita -->
+      <div class="totais-gerais">
+        <span class="pill pos">
+          Saldo total: R$ {{ '%.2f'|format(total_saldo_geral or 0)|replace('.',',') }}
+        </span>
+        <span class="pill">
+          Créditos lançados: R$ {{ '%.2f'|format(total_creditos_geral or 0)|replace('.',',') }}
+        </span>
+        <span class="pill neg">
+          Consumos: R$ {{ '%.2f'|format(total_debitos_geral or 0)|replace('.',',') }}
+        </span>
+      </div>
+
+      <!-- Filtro por nome (frontend) -->
+      <div class="column">
+        <label for="filtro_nome">Pesquisar cliente</label>
+        <input type="text" id="filtro_nome" placeholder="Digite o nome do cliente...">
+      </div>
+
       <div class="clientes-list">
         {% if clientes|length == 0 %}
-          <div class="no-data">Nenhum cliente cadastrado.</div>
+          <div class="no-data">Nenhum cliente com crédito registrado.</div>
         {% else %}
           {% for cli in clientes %}
             {% set movs_cli = movimentos_por_cliente.get(cli.id, []) %}
@@ -394,7 +433,7 @@
             {% for row in movs_cli %}
               {% if row.mov.tipo == 'credito' %}
                 {% set total_creditos = total_creditos + (row.mov.valor or 0) %}
-              {% else %}
+              {% elif row.mov.tipo == 'debito' %}
                 {% set total_debitos = total_debitos + (row.mov.valor or 0) %}
               {% endif %}
             {% endfor %}
@@ -427,6 +466,7 @@
                         <th>Saldo antes</th>
                         <th>Saldo depois</th>
                         <th>Referência</th>
+                        <th>Ações</th>
                       </tr>
                       </thead>
                       <tbody>
@@ -456,6 +496,23 @@
                           <td>R$ {{ '%.2f'|format(row.saldo_antes)|replace('.',',') }}</td>
                           <td class="money">R$ {{ '%.2f'|format(row.saldo_depois)|replace('.',',') }}</td>
                           <td>{{ mov.referencia or '—' }}</td>
+                          <td>
+                            {% if mov.tipo == 'credito' and mov.credito_id %}
+                              <div class="row-actions">
+                                <a class="btn small alt"
+                                   href="{{ url_for('creditos_editar', credito_id=mov.credito_id) }}">
+                                  Editar
+                                </a>
+                                <form action="{{ url_for('creditos_excluir', id=mov.credito_id) }}"
+                                      method="POST"
+                                      onsubmit="return confirm('Confirma excluir este crédito? O saldo será recalculado.');">
+                                  <button type="submit" class="btn small danger">Excluir</button>
+                                </form>
+                              </div>
+                            {% else %}
+                              <!-- sem ações para débitos/consumos -->
+                            {% endif %}
+                          </td>
                         </tr>
                       {% endfor %}
                       </tbody>
@@ -553,6 +610,25 @@
         document.querySelectorAll('.cliente-item.open').forEach(c => c.classList.remove('open'));
         if(!open){
           card.classList.add('open');
+        }
+      });
+    });
+  })();
+
+  // Filtro por nome de cliente
+  (function(){
+    const input = document.getElementById('filtro_nome');
+    if(!input) return;
+    const cards = document.querySelectorAll('.cliente-item');
+    input.addEventListener('input', () => {
+      const termo = input.value.toLowerCase().trim();
+      cards.forEach(card => {
+        const nameEl = card.querySelector('.cliente-name');
+        const nome = (nameEl ? nameEl.textContent : '').toLowerCase();
+        if(!termo || nome.includes(termo)){
+          card.style.display = '';
+        }else{
+          card.style.display = 'none';
         }
       });
     });
