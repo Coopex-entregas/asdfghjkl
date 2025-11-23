@@ -97,27 +97,6 @@ class Entrega(db.Model):
     destino_json = db.Column(db.Text, nullable=True)
 
 
-class Entrega(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    cliente = db.Column(db.String(100), nullable=False)
-    bairro = db.Column(db.String(50), nullable=False)
-    valor = db.Column(db.Float, nullable=False)
-    data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # UTC naive
-    data_atribuida = db.Column(db.DateTime, nullable=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    status_pagamento = db.Column(db.String(20), nullable=True)
-    status = db.Column(db.String(20), nullable=True)
-    pagamento = db.Column(db.String(50), nullable=False)
-    recebido_por = db.Column(db.String(100), nullable=True)
-    cooperado = db.relationship('Cooperado', backref='entregas')
-
-    # Controle de crédito usado nesta entrega
-    credito_usado = db.Column(db.Float, nullable=False, default=0.0)
-    credito_mov_id = db.Column(db.Integer, nullable=True)
-
-    # Link explícito com Cliente
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
-
 
 from datetime import datetime
 from sqlalchemy import text
