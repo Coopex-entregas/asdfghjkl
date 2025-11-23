@@ -1300,7 +1300,8 @@ def cliente_logout():
     for k in ['cliente_id', 'cliente_username', 'cliente_nome', 'is_cliente']:
         session.pop(k, None)
     flash('Você saiu da área do cliente.')
-    return redirect(url_for('cliente_login'))
+    # volta para o login principal (admin / cooperado / cliente)
+    return redirect(url_for('login'))
 
 
 def cliente_required(view_func):
