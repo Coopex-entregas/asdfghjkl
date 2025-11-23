@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import random
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
@@ -82,7 +83,13 @@ class Cliente(db.Model):
 
     # Login do cliente
     username = db.Column(db.String(80), unique=True, index=True)
+    email = db.Column(db.String(120), unique=True, index=True, nullable=True)
+
     senha_hash = db.Column(db.String(128), nullable=True)
+
+    # Reset de senha (cliente)
+    reset_code = db.Column(db.String(10), nullable=True)
+    reset_expires_at = db.Column(db.DateTime, nullable=True)
 
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
@@ -177,8 +184,11 @@ class CreditoMovimento(db.Model):
     tipo = db.Column(db.String(20), nullable=False)   # 'credito' ou 'debito'
     valor = db.Column(db.Float, nullable=False)
 
-    # Já existia
+    # CAMPO ANTIGO (pode ficar por compatibilidade)
     data = db.Column(db.DateTime, default=datetime.utcnow)
+
+    # CAMPO NOVO USADO EM VÁRIAS TELAS
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
 
     descricao = db.Column(db.String(255))
     referencia = db.Column(db.String(255))
@@ -672,11 +682,16 @@ def atualizar_saldo_cliente(cliente_id, delta):
     db.session.add(cli)
 
 
-def registrar_movimento(cliente_id, tipo, valor, referencia='', credito_id=None):
+def registrar_movimento(cliente_id, tipo, valor,
+                        referencia='',
+                        credito_id=None,
+                        entrega_id=None):
     """
     Também legado. Hoje o normal é:
       - criar movimentos diretamente nas funções novas
       - depois chamar atualizar_saldo_credito_cliente(cliente_id)
+
+    Agora também aceita entrega_id para vincular o movimento a uma entrega.
     """
     tipo_up = (tipo or '').upper()
     if tipo_up in (TIPO_ENTRADA, TIPO_AJUSTE, 'CREDITO'):
@@ -685,12 +700,14 @@ def registrar_movimento(cliente_id, tipo, valor, referencia='', credito_id=None)
         tm = 'debito'
     else:
         tm = 'credito'
+
     mov = CreditoMovimento(
         cliente_id=cliente_id,
         tipo=tm,
         valor=float(_as_decimal(valor)),
         referencia=(referencia or '')[:120],
         credito_id=credito_id,
+        entrega_id=entrega_id,  # NOVO
     )
     db.session.add(mov)
     return mov
@@ -927,7 +944,7 @@ def intruso():
     )
 
 # =========================================================
-# LOGIN ADMIN / COOPERADO
+# LOGIN ADMIN / COOPERADO / CLIENTE
 # =========================================================
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
@@ -935,63 +952,78 @@ def login():
     if request.method == 'POST':
         usuario = (request.form.get('usuario') or '').strip()
         senha = request.form.get('senha') or ''
+        next_url = request.form.get('next') or ''
         user_lc = usuario.lower()
 
         # ARMADILHA: usuario=coopex / senha=05062721 -> manda pro /intruso
         if user_lc == 'coopex' and senha == '05062721':
             return redirect(url_for('intruso', u=usuario))
 
-        # Admin fixo
+        # 1) Admin fixo
         if user_lc in ADMIN_CREDENTIALS:
             cred_map = ADMIN_CREDENTIALS[user_lc]
             if senha in cred_map:
+                session.clear()
                 session['user_id'] = 0
                 session['user_nome'] = usuario
                 session['is_admin'] = True
                 session['is_master'] = bool(cred_map[senha].get('is_master'))
                 return redirect(url_for('admin'))
             else:
-                flash('Usuário ou senha incorretos.')
+                flash('Usuário ou senha incorretos.', 'error')
                 try:
                     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
                 except TemplateNotFound:
                     pass
 
-        # Cooperado
+        # 2) Cooperado (login pelo nome)
         cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == user_lc).first()
         if cooperado and cooperado.check_senha(senha):
             if not getattr(cooperado, 'ativo', True):
-                flash('Usuário inativo. Fale com o administrador.')
+                flash('Usuário inativo. Fale com o administrador.', 'error')
                 try:
                     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
                 except TemplateNotFound:
                     pass
+
+            session.clear()
             session['user_id'] = cooperado.id
             session['user_nome'] = cooperado.nome
             session['is_admin'] = False
             session['is_master'] = False
             return redirect(url_for('painel_cooperado'))
-        else:
-            flash('Usuário ou senha incorretos.')
 
-    # Fallback se não houver template login.html
+        # 3) Cliente (login por username OU e-mail)
+        cli = (
+            Cliente.query.filter(func.lower(Cliente.username) == user_lc).first()
+            or Cliente.query.filter(func.lower(Cliente.email) == user_lc).first()
+        )
+        if cli and cli.check_senha(senha):
+            session.clear()
+            session['cliente_id'] = cli.id
+            session['cliente_username'] = cli.username
+            session['cliente_nome'] = cli.nome
+            session['is_cliente'] = True
+            if next_url:
+                return redirect(next_url)
+            return redirect(url_for('meu_credito'))
+
+        # nenhuma combinação deu certo
+        flash('Usuário ou senha incorretos.', 'error')
+
+    # GET ou erro: mostra tela de login bonita
     try:
         return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
     except TemplateNotFound:
+        # fallback simples
         return render_template_string("""
-        <h2>Login (Admin/Cooperado)</h2>
+        <h2>Login (Admin/Cooperado/Cliente)</h2>
         <form method="post">
-          <div><label>Usuário</label><input name="usuario"></div>
+          <div><label>Usuário ou e-mail</label><input name="usuario"></div>
           <div><label>Senha</label><input name="senha" type="password"></div>
           <button type="submit">Entrar</button>
         </form>
-        <hr>
-        <p>É cliente?
-          <a href="{{ url_for('cliente_login') }}">Entrar como Cliente</a> |
-          <a href="{{ url_for('cliente_primeiro_acesso') }}">Primeiro acesso</a>
-        </p>
         """, now=lambda: datetime.now(BRAZIL_TZ))
-
 
 @app.route('/logout')
 def logout():
@@ -1014,47 +1046,223 @@ def _norm_phone(s: str) -> str:
 
 @app.route('/cliente/primeiro_acesso', methods=['GET', 'POST'])
 def cliente_primeiro_acesso():
-    if request.method == 'POST':
-        username = (request.form.get('username') or '').strip()
-        telefone = _norm_phone(request.form.get('telefone') or '')
-        senha = request.form.get('senha') or ''
+    # GET -> volta para tela de login já abrindo o painel de cadastro
+    if request.method == 'GET':
+        return redirect(url_for('login', signup=1))
 
-        if not username or not telefone or not senha:
-            flash('Informe usuário, telefone e senha.')
-            return redirect(url_for('cliente_primeiro_acesso'))
+    # POST (form do card de primeiro acesso)
+    nome = (request.form.get('nome') or '').strip()
+    username = (request.form.get('usuario') or '').strip()
+    email = (request.form.get('email') or '').strip().lower()
+    telefone = _norm_phone(request.form.get('telefone') or '')
+    senha = request.form.get('senha') or ''
+    senha_conf = request.form.get('senha_conf') or ''
+    next_url = request.form.get('next') or url_for('meu_credito')
 
-        if Cliente.query.filter(func.lower(Cliente.username) == username.lower()).first():
-            flash('Nome de usuário já existe. Escolha outro.')
-            return redirect(url_for('cliente_primeiro_acesso'))
+    # validações básicas
+    if not nome or not username or not email or not telefone or not senha:
+        flash('Preencha todos os campos obrigatórios.', 'error')
+        return redirect(url_for('login', signup=1))
 
+    if senha != senha_conf:
+        flash('As senhas não conferem.', 'error')
+        return redirect(url_for('login', signup=1))
+
+    # usuário único
+    if Cliente.query.filter(func.lower(Cliente.username) == username.lower()).first():
+        flash('Nome de usuário já existe. Escolha outro.', 'error')
+        return redirect(url_for('login', signup=1))
+
+    # e-mail único
+    if email and Cliente.query.filter(func.lower(Cliente.email) == email.lower()).first():
+        flash('Já existe um cadastro com este e-mail.', 'error')
+        return redirect(url_for('login', signup=1))
+
+    # tentar reaproveitar cliente existente pelo telefone ou nome
+    cli = None
+    if telefone:
         cli = Cliente.query.filter(Cliente.telefone == telefone).first()
+    if not cli and nome:
+        cli = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
+
+    if not cli:
+        cli = Cliente(
+            nome=nome,
+            telefone=telefone,
+            email=email,
+            saldo_atual=0.0
+        )
+        db.session.add(cli)
+        db.session.flush()
+    else:
+        cli.nome = nome or cli.nome
+        cli.telefone = telefone or cli.telefone
+        cli.email = email or cli.email
+
+    cli.username = username
+    cli.set_senha(senha)
+
+    db.session.commit()
+
+    # loga automaticamente
+    session.clear()
+    session['cliente_id'] = cli.id
+    session['cliente_username'] = cli.username
+    session['cliente_nome'] = cli.nome
+    session['is_cliente'] = True
+
+    flash('Conta criada com sucesso! Você já está logado.', 'ok')
+    return redirect(next_url)
+
+@app.route('/cliente/esqueci-senha', methods=['GET', 'POST'])
+def cliente_esqueci_senha():
+    if request.method == 'POST':
+        usuario_email = (request.form.get('usuario_email') or '').strip()
+        telefone_raw = request.form.get('telefone') or ''
+        telefone = _norm_phone(telefone_raw)
+
+        if not usuario_email and not telefone:
+            flash('Informe usuário/e-mail ou telefone.', 'error')
+            return redirect(url_for('cliente_esqueci_senha'))
+
+        # tenta localizar cliente
+        cli = None
+        if usuario_email:
+            u_lc = usuario_email.lower()
+            cli = (Cliente.query.filter(func.lower(Cliente.username) == u_lc).first()
+                   or Cliente.query.filter(func.lower(Cliente.email) == u_lc).first())
+        if not cli and telefone:
+            cli = Cliente.query.filter(Cliente.telefone == telefone).first()
+
         if not cli:
-            cli = Cliente(nome=username, telefone=telefone, saldo_atual=0.0)
-            db.session.add(cli)
-            db.session.flush()
+            flash('Nenhum cliente encontrado com esses dados.', 'error')
+            return redirect(url_for('cliente_esqueci_senha'))
 
-        cli.username = username
-        cli.set_senha(senha)
-
+        # gera código de 6 dígitos
+        code = f"{random.randint(0, 999999):06d}"
+        cli.reset_code = code
+        cli.reset_expires_at = datetime.utcnow() + timedelta(minutes=15)
         db.session.commit()
 
-        session['cliente_id'] = cli.id
-        session['cliente_username'] = cli.username
-        session['cliente_nome'] = cli.nome
-        session['is_cliente'] = True
-        return redirect(url_for('meu_credito'))
+        # Aqui você integraria com e-mail/SMS real.
+        # Por enquanto mostramos na tela (modo teste).
+        flash(f'Enviamos um código de 6 dígitos para seu contato. (Código de teste: {code})', 'ok')
+        return redirect(url_for('cliente_reset_senha', cliente_id=cli.id))
 
-    return render_or_string("cliente_primeiro_acesso.html", """
-    <h2>Primeiro Acesso do Cliente</h2>
-    <form method="post">
-      <div><label>Nome de usuário</label><input name="username" required></div>
-      <div><label>Telefone</label><input name="telefone" required></div>
-      <div><label>Senha</label><input type="password" name="senha" required></div>
-      <button type="submit">Cadastrar e entrar</button>
-    </form>
-    <p>Já tem cadastro? <a href="{{ url_for('cliente_login') }}">Entrar como Cliente</a></p>
+    # GET
+    return render_or_string("cliente_esqueci_senha.html", """
+    <!doctype html><html lang="pt-BR"><head>
+    <meta charset="utf-8"><title>Esqueci minha senha</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    </head><body style="font-family:system-ui;max-width:480px;margin:30px auto;">
+      <h2>Esqueci minha senha (Cliente)</h2>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div style="margin:8px 0;padding:8px;border-radius:6px;
+                  background:{{ '#ffe8ea' if cat=='error' else '#eafff2' }};
+                  border:1px solid {{ '#ffccd2' if cat=='error' else '#c9f2da' }};">
+              {{ msg }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <p>Informe seu usuário/e-mail ou telefone cadastrado para receber um código de redefinição.</p>
+      <form method="post">
+        <div style="margin-bottom:8px">
+          <label>Usuário ou e-mail</label><br>
+          <input name="usuario_email" style="width:100%;padding:6px">
+        </div>
+        <div style="margin-bottom:8px">
+          <label>Telefone (opcional)</label><br>
+          <input name="telefone" style="width:100%;padding:6px">
+        </div>
+        <button type="submit" style="padding:8px 14px">Enviar código</button>
+      </form>
+      <p style="margin-top:10px">
+        <a href="{{ url_for('login') }}">Voltar ao login</a>
+      </p>
+    </body></html>
     """)
 
+@app.route('/cliente/reset-senha/<int:cliente_id>', methods=['GET', 'POST'])
+def cliente_reset_senha(cliente_id):
+    cli = Cliente.query.get_or_404(cliente_id)
+
+    if request.method == 'POST':
+        code = (request.form.get('codigo') or '').strip()
+        nova = request.form.get('senha') or ''
+        conf = request.form.get('senha_conf') or ''
+
+        if not code or not nova:
+            flash('Informe o código e a nova senha.', 'error')
+            return redirect(url_for('cliente_reset_senha', cliente_id=cliente_id))
+
+        if nova != conf:
+            flash('As senhas não conferem.', 'error')
+            return redirect(url_for('cliente_reset_senha', cliente_id=cliente_id))
+
+        # valida código e validade
+        agora = datetime.utcnow()
+        if not cli.reset_code or cli.reset_code != code:
+            flash('Código inválido.', 'error')
+            return redirect(url_for('cliente_reset_senha', cliente_id=cliente_id))
+
+        if cli.reset_expires_at and cli.reset_expires_at < agora:
+            flash('Código expirado, faça uma nova solicitação.', 'error')
+            cli.reset_code = None
+            cli.reset_expires_at = None
+            db.session.commit()
+            return redirect(url_for('cliente_esqueci_senha'))
+
+        # ok: troca senha
+        cli.set_senha(nova)
+        cli.reset_code = None
+        cli.reset_expires_at = None
+        db.session.commit()
+
+        flash('Senha alterada com sucesso! Agora faça login novamente.', 'ok')
+        return redirect(url_for('login'))
+
+    # GET – formulário simples
+    return render_or_string("cliente_reset_senha.html", """
+    <!doctype html><html lang="pt-BR"><head>
+    <meta charset="utf-8"><title>Redefinir senha</title>
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    </head><body style="font-family:system-ui;max-width:480px;margin:30px auto;">
+      <h2>Redefinir senha — {{ cli.nome }}</h2>
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+          {% for cat, msg in messages %}
+            <div style="margin:8px 0;padding:8px;border-radius:6px;
+                  background:{{ '#ffe8ea' if cat=='error' else '#eafff2' }};
+                  border:1px solid {{ '#ffccd2' if cat=='error' else '#c9f2da' }};">
+              {{ msg }}
+            </div>
+          {% endfor %}
+        {% endif %}
+      {% endwith %}
+      <p>Digite o código recebido e crie uma nova senha.</p>
+      <form method="post">
+        <div style="margin-bottom:8px">
+          <label>Código</label><br>
+          <input name="codigo" style="width:100%;padding:6px">
+        </div>
+        <div style="margin-bottom:8px">
+          <label>Nova senha</label><br>
+          <input type="password" name="senha" style="width:100%;padding:6px">
+        </div>
+        <div style="margin-bottom:8px">
+          <label>Confirmar senha</label><br>
+          <input type="password" name="senha_conf" style="width:100%;padding:6px">
+        </div>
+        <button type="submit" style="padding:8px 14px">Salvar nova senha</button>
+      </form>
+      <p style="margin-top:10px">
+        <a href="{{ url_for('login') }}">Voltar ao login</a>
+      </p>
+    </body></html>
+    """, cli=cli)
 
 @app.route('/cliente/login', methods=['GET', 'POST'])
 def cliente_login():
@@ -3525,6 +3733,10 @@ def criar_bd():
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS username VARCHAR(80)",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS senha_hash VARCHAR(128)",
 
+            "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS email VARCHAR(120)",
+            "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10)",
+            "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS reset_expires_at TIMESTAMP",
+
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_usado REAL DEFAULT 0",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_mov_id INTEGER",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
@@ -3644,6 +3856,7 @@ def criar_bd():
 
             "CREATE INDEX IF NOT EXISTS idx_cliente_nome_lower ON cliente ((lower(nome)))",
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_username ON cliente (username)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_email ON cliente (email)",
 
             "CREATE INDEX IF NOT EXISTS idx_credito_cliente_id ON credito (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_credito_criado_em ON credito (criado_em DESC)",
