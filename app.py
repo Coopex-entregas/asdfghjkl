@@ -70,6 +70,32 @@ class Cooperado(db.Model):
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
+class Cliente(db.Model):
+    __tablename__ = 'cliente'
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(100), nullable=False)
+    telefone = db.Column(db.String(20), nullable=True)
+    bairro_origem = db.Column(db.String(80), nullable=True)
+    endereco = db.Column(db.String(255), nullable=True)
+
+    saldo_atual = db.Column(db.Float, default=0.0)
+
+    username = db.Column(db.String(80), unique=True, nullable=True)
+    senha_hash = db.Column(db.String(128), nullable=True)
+
+    email = db.Column(db.String(120), unique=True, nullable=True)
+    reset_code = db.Column(db.String(10), nullable=True)
+    reset_expires_at = db.Column(db.DateTime, nullable=True)
+
+    def set_senha(self, senha):
+        self.senha_hash = generate_password_hash(senha)
+
+    def check_senha(self, senha):
+        if not self.senha_hash:
+            return False
+        return check_password_hash(self.senha_hash, senha)
+
 
 class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
