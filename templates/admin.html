@@ -197,7 +197,12 @@
     }
 
     .filters-bar{position:sticky;top:0;z-index:5;background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);border-bottom:1px solid var(--pane-line);padding:10px 12px}
-    .filters-form{display:grid;grid-template-columns: repeat(5, minmax(160px, 1fr)) auto; gap:10px; align-items:end}
+    .filters-form{
+      display:grid;
+      grid-template-columns: repeat(6, minmax(160px, 1fr)) auto; /* +1 campo: endereço */
+      gap:10px;
+      align-items:end;
+    }
     .filters-form .field{display:flex;flex-direction:column;gap:6px}
     .filters-form label{font-size:.82rem;color:#dfe8ff;font-weight:800}
     .filters-form select,.filters-form input{background:#0a1f7e;border:1px solid #2f4de6;color:#fff;border-radius:10px;padding:8px 10px;font-weight:700}
@@ -357,14 +362,16 @@
                    data_fim=data_fim or '',
                    cooperado_id=request.args.get('cooperado_id','todos'),
                    status_pagamento=request.args.get('status_pagamento','todos'),
-                   cliente=request.args.get('cliente','')) }}">Exportar</a>
+                   cliente=request.args.get('cliente',''),
+                   endereco=request.args.get('endereco','')) }}">Exportar</a>
 
                 <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
                    data_inicio=data_inicio or '',
                    data_fim=data_fim or '',
                    cooperado_id=request.args.get('cooperado_id','todos'),
                    status_pagamento=request.args.get('status_pagamento','todos'),
-                   cliente=request.args.get('cliente','')) }}">Imprimir Relatório</a>
+                   cliente=request.args.get('cliente',''),
+                   endereco=request.args.get('endereco','')) }}">Imprimir Relatório</a>
               </div>
               <!-- NOVO BOTÃO PARA PÁGINA DE TRAJETOS -->
               <div class="row">
@@ -429,6 +436,11 @@
               <label for="cliente">Cliente</label>
               <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
             </div>
+            <!-- NOVO FILTRO: ENDEREÇO -->
+            <div class="field">
+              <label for="endereco">Endereço</label>
+              <input type="text" name="endereco" id="endereco" placeholder="Rua, nº, ponto de ref." value="{{ request.args.get('endereco','') }}" />
+            </div>
             <button class="btn" type="submit">Filtrar</button>
           </form>
         </div>
@@ -439,9 +451,21 @@
             <table class="tabela">
               <thead>
                 <tr>
-                  <th>ID</th><th>Cliente</th><th>Bairro</th><th>Valor</th>
-                  <th>Data<br>e<br>Dia</th><th>Hora<br>Pedido</th><th>Hora<br>Atribuída</th>
-                  <th>Cooperado</th><th>Forma Pgto</th><th>Status</th><th>Pagamento</th><th>Recebido por</th><th>Ações</th>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Bairro</th>
+                  <th>Endereço</th>
+                  <th>Valor</th>
+                  <th>Data<br>e<br>Dia</th>
+                  <th>Hora<br>Pedido</th>
+                  <th>Hora<br>Atribuída</th>
+                  <th>Cooperado</th>
+                  <th>Forma Pgto</th>
+                  <th>Status</th>
+                  <th>Pagamento</th>
+                  <th>Recebido por</th>
+                  <th>Rastreio</th>
+                  <th>Ações</th>
                 </tr>
               </thead>
               <tbody>
@@ -465,6 +489,7 @@
 
                   <td>{{ e.cliente }}</td>
                   <td>{{ e.bairro }}</td>
+                  <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
                   <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
                   <td>
                     {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
@@ -513,6 +538,28 @@
 
                   <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
 
+                  <!-- COLUNA RASTREIO -->
+                  <td>
+                    <!-- Abre o rastreio em nova aba -->
+                    <a href="{{ url_for('rastreamento', codigo=e.id, _external=True) }}"
+                       target="_blank"
+                       class="btn alt"
+                       style="padding:4px 8px;font-size:11px;border-radius:8px;box-shadow:none;">
+                      Abrir
+                    </a>
+
+                    <!-- Copiar link pra mandar no WhatsApp -->
+                    <button type="button"
+                            class="btn"
+                            style="padding:4px 8px;font-size:11px;border-radius:8px;box-shadow:none;margin-top:3px;"
+                            onclick="navigator.clipboard.writeText('{{ url_for('rastreamento', codigo=e.id, _external=True) }}')
+                                     .then(()=>alert('Link de rastreio copiado!'))
+                                     .catch(()=>alert('Não foi possível copiar o link.'));">
+                      Copiar
+                    </button>
+                  </td>
+
+                  <!-- AÇÕES -->
                   <td>
                     <a title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" class="icon-btn" aria-label="Editar">
                       <svg viewBox="0 0 24 24" fill="#9fc0ff"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
@@ -521,7 +568,7 @@
                     <!-- CLONAR -->
                     <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
                       <button title="Clonar" type="submit" class="icon-btn">
-                        <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
+                        <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1.9 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
                       </button>
                     </form>
 
@@ -568,6 +615,9 @@
                 <div class="row small">
                   <div><strong>Cliente:</strong> {{ e.cliente }}</div>
                   <div style="margin-left:auto"><strong>Bairro:</strong> {{ e.bairro }}</div>
+                </div>
+                <div class="row small">
+                  <div><strong>Endereço:</strong> {{ e.endereco if e.endereco is defined and e.endereco else '-' }}</div>
                 </div>
                 <div class="row small">
                   <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
@@ -855,11 +905,29 @@
       sel.addEventListener('blur', salvar, {once:true});
     });
 
-    // ===== IMPRESSÃO DE CUPOM =====
+    // ===== IMPRESSÃO DE CUPOM (agora com ENDEREÇO) =====
     function imprimirCupom(idEntrega, botao) {
       const tr = botao.closest('tr');
       const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
-      const dataDiaBruto = (tr?.children[4]?.innerText || '-').replace(/\s+/g,' ').trim();
+
+      // ATENÇÃO: índices da tabela:
+      // 0 ID
+      // 1 Cliente
+      // 2 Bairro
+      // 3 Endereço
+      // 4 Valor
+      // 5 Data/Dia
+      // 6 HoraPedido
+      // 7 HoraAtribuída
+      // 8 Cooperado
+      // 9 FormaPgto
+      // 10 Status
+      // 11 Pagamento
+      // 12 RecebidoPor
+      // 13 Rastreio
+      // 14 Ações
+
+      const dataDiaBruto = (tr?.children[5]?.innerText || '-').replace(/\s+/g,' ').trim();
       const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
 
       const rawId = get(0);
@@ -870,12 +938,13 @@
         idPad: String(numId).padStart(6,'0'),
         cliente: get(1),
         bairro: get(2),
-        valor: get(3).replace(/^R\$\s*/,'').trim(),
+        endereco: get(3),
+        valor: get(4).replace(/^R\$\s*/,'').trim(),
         data: dataSo,
-        horaPedido: get(5),
-        cooperado: botao?.dataset?.cooperado || get(7) || '-',
-        formaPgto: get(8),
-        recebidoPor: get(11)
+        horaPedido: get(6),
+        cooperado: botao?.dataset?.cooperado || get(8) || '-',
+        formaPgto: get(9),
+        recebidoPor: get(12)
       };
 
       const cacheBust = Date.now();
@@ -887,7 +956,7 @@
 <title>Cupom #${dados.id}</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-  @page { size: 80mm 100mm; margin: 3mm; }
+  @page { size: 80mm 110mm; margin: 3mm; }
   *{box-sizing:border-box}
   body{font-family: Arial, 'Segoe UI', Roboto, system-ui, sans-serif; margin:0; color:#000; background:#fff; -webkit-print-color-adjust:exact; print-color-adjust:exact;}
   .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
@@ -927,6 +996,7 @@
       <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
       <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
       <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
+      <div class="line"><span>Endereço:</span><span class="mono">${dados.endereco}</span></div>
       <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
       <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
       <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
@@ -1103,7 +1173,7 @@
     // 2) Balão de pagamentos pendentes (a cada 60 min), bloqueante
     function existePagamentoPendenteNaTabela() {
       return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
-        const cel = tr.children[10]; // coluna "Pagamento"
+        const cel = tr.children[11]; // coluna "Pagamento" (índice 11 após adicionar Endereço e Rastreio)
         return cel && cel.textContent.trim().toLowerCase().includes('pendente');
       });
     }
