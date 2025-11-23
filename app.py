@@ -260,6 +260,64 @@ def diasemana(data):
 app.jinja_env.filters['diasemana'] = diasemana
 
 # =========================================================
+# RASTREAMENTO - HELPER DE LINHA DO TEMPO
+# =========================================================
+def montar_eventos_rastreamento(entrega: Entrega):
+    """
+    Gera uma listinha de eventos para exibir a linha do tempo do rastreio.
+    Usa os dados que já existem na tabela entrega (data_envio, data_atribuida,
+    status, recebido_por, cooperado etc.).
+    """
+    eventos = []
+
+    # 1) Pedido criado
+    dt_criacao = to_brasilia(entrega.data_envio)
+    if dt_criacao:
+        eventos.append({
+            "titulo": "Pedido criado",
+            "descricao": f"Entrega registrada para o cliente {entrega.cliente or '---'}",
+            "quando": dt_criacao,
+            "icone": "📦"
+        })
+
+    # 2) Motoboy atribuído
+    if entrega.cooperado_id and entrega.cooperado:
+        dt_att = to_brasilia(entrega.data_atribuida or entrega.data_envio)
+        eventos.append({
+            "titulo": "Motoboy atribuído",
+            "descricao": f"Cooperado: {entrega.cooperado.nome}",
+            "quando": dt_att,
+            "icone": "🏍️"
+        })
+
+    # 3) Saiu para entrega (se tiver cooperado e status diferente de pendente)
+    st = (entrega.status or '').strip().lower()
+    if entrega.cooperado_id and st not in ('', 'pendente', 'aguardando'):
+        dt_envio = to_brasilia(entrega.data_atribuida or entrega.data_envio)
+        eventos.append({
+            "titulo": "Saiu para entrega",
+            "descricao": "Pedido está em rota de entrega.",
+            "quando": dt_envio,
+            "icone": "🚚"
+        })
+
+    # 4) Entrega concluída
+    if st in ('entregue', 'recebido'):
+        eventos.append({
+            "titulo": "Entrega concluída",
+            "descricao": f"Recebido por: {entrega.recebido_por or 'destinatário'}",
+            # não temos hora exata do recebimento, então reaproveito data_atribuida/envio
+            "quando": to_brasilia(entrega.data_atribuida or entrega.data_envio),
+            "icone": "✅"
+        })
+
+    # Garante ordenação por data (quando não for None)
+    eventos.sort(key=lambda ev: ev["quando"] or datetime.min)
+
+    return eventos
+
+
+# =========================================================
 # NORMALIZAÇÃO DE TEXTO / NOME / PAGAMENTO
 # =========================================================
 def _strip_accents(s: str) -> str:
@@ -1637,6 +1695,357 @@ def cliente_comprovante(entrega_id):
         movs=movs,
         to_brasilia=to_brasilia
     )
+
+# =========================================================
+# RASTREAMENTO (PÚBLICO / CLIENTE)
+# =========================================================
+@app.route('/rastreamento', methods=['GET'])
+def rastreamento():
+    """
+    Tela simples para o cliente digitar o código da entrega (ID)
+    e acompanhar o status.
+    """
+    codigo = (request.args.get('codigo') or '').strip()
+    entrega = None
+    eventos = []
+
+    if codigo.isdigit():
+        entrega = Entrega.query.get(int(codigo))
+        if entrega:
+            eventos = montar_eventos_rastreamento(entrega)
+        else:
+            flash('Nenhuma entrega encontrada com esse código.', 'error')
+    elif codigo:
+        flash('Código inválido. Use apenas números.', 'error')
+
+    return render_or_string(
+        "rastreamento.html",
+        """
+        <!doctype html>
+        <html lang="pt-BR">
+        <head>
+          <meta charset="utf-8">
+          <title>Rastreamento de Entrega - Coopex</title>
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            body{
+              font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+              margin:0;
+              background:#0f172a;
+              color:#e5e7eb;
+            }
+            .wrap{
+              max-width:640px;
+              margin:0 auto;
+              padding:24px 16px 32px;
+            }
+            .card{
+              background:#020617;
+              border-radius:18px;
+              padding:18px 16px;
+              border:1px solid #1f2937;
+              box-shadow:0 20px 45px rgba(0,0,0,.55);
+            }
+            h1{
+              font-size:1.4rem;
+              margin:0 0 10px;
+              color:#f9fafb;
+            }
+            .sub{
+              font-size:.85rem;
+              color:#9ca3af;
+              margin-bottom:14px;
+            }
+            form{
+              display:flex;
+              gap:8px;
+              margin-bottom:16px;
+              flex-wrap:wrap;
+            }
+            input[type=text]{
+              flex:1;
+              min-width:130px;
+              padding:10px 12px;
+              border-radius:999px;
+              border:1px solid #374151;
+              background:#020617;
+              color:#e5e7eb;
+              font-size:.9rem;
+              outline:none;
+            }
+            input[type=text]::placeholder{
+              color:#6b7280;
+            }
+            button{
+              padding:10px 16px;
+              border-radius:999px;
+              border:none;
+              background:#2563eb;
+              color:#eef2ff;
+              font-weight:700;
+              font-size:.9rem;
+              cursor:pointer;
+              white-space:nowrap;
+            }
+            button:hover{background:#1d4ed8;}
+            .msg{
+              margin:6px 0 10px;
+              padding:8px 10px;
+              border-radius:10px;
+              font-size:.8rem;
+            }
+            .msg-error{
+              background:#7f1d1d;
+              color:#fee2e2;
+            }
+            .msg-ok{
+              background:#064e3b;
+              color:#bbf7d0;
+            }
+            .entrega-card{
+              margin-top:6px;
+              padding:10px 12px;
+              border-radius:12px;
+              background:#020617;
+              border:1px solid #1f2937;
+            }
+            .entrega-head{
+              display:flex;
+              justify-content:space-between;
+              gap:10px;
+              align-items:center;
+              margin-bottom:6px;
+              font-size:.86rem;
+            }
+            .chip{
+              display:inline-flex;
+              align-items:center;
+              padding:2px 10px;
+              border-radius:999px;
+              font-size:.7rem;
+              font-weight:700;
+            }
+            .chip-status{
+              background:#0f172a;
+              color:#e5e7eb;
+              border:1px solid #4b5563;
+            }
+            .chip-pago{
+              background:#022c22;
+              color:#6ee7b7;
+              border:1px solid #059669;
+            }
+            .chip-pendente{
+              background:#3b0764;
+              color:#f9a8d4;
+              border:1px solid #db2777;
+            }
+            .linha-tempo{
+              margin-top:10px;
+              padding-left:6px;
+              border-left:2px solid #1f2937;
+            }
+            .evento{
+              padding-left:12px;
+              margin-bottom:10px;
+              position:relative;
+            }
+            .evento::before{
+              content:"";
+              width:10px;
+              height:10px;
+              border-radius:999px;
+              background:#2563eb;
+              border:2px solid #0f172a;
+              position:absolute;
+              left:-7px;
+              top:4px;
+            }
+            .evento-titulo{
+              font-size:.86rem;
+              font-weight:700;
+              display:flex;
+              align-items:center;
+              gap:6px;
+              margin-bottom:2px;
+            }
+            .evento-texto{
+              font-size:.8rem;
+              color:#d1d5db;
+            }
+            .evento-when{
+              font-size:.75rem;
+              color:#9ca3af;
+              margin-top:2px;
+            }
+            footer{
+              margin-top:14px;
+              font-size:.75rem;
+              color:#6b7280;
+              text-align:center;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="wrap">
+            <div class="card">
+              <h1>Rastreamento de Entrega</h1>
+              <div class="sub">
+                Digite o <strong>código da entrega</strong> (número que a Coopex te informar, ex: 1234)
+                para acompanhar o status em tempo real.
+              </div>
+
+              <form method="get">
+                <input type="text" name="codigo"
+                       placeholder="Ex: 1234"
+                       value="{{ codigo or '' }}">
+                <button type="submit">Rastrear</button>
+              </form>
+
+              {% with messages = get_flashed_messages(with_categories=true) %}
+                {% if messages %}
+                  {% for cat, msg in messages %}
+                    <div class="msg {{ 'msg-error' if cat=='error' else 'msg-ok' }}">{{ msg }}</div>
+                  {% endfor %}
+                {% endif %}
+              {% endwith %}
+
+              {% if entrega %}
+                <div class="entrega-card">
+                  <div class="entrega-head">
+                    <div>
+                      <div style="font-size:.8rem;color:#9ca3af;">Entrega #{{ entrega.id }}</div>
+                      <div style="font-size:.95rem;font-weight:600;">
+                        {{ entrega.cliente or 'Cliente não informado' }}
+                      </div>
+                      <div style="font-size:.8rem;color:#9ca3af;">
+                        Bairro destino: {{ entrega.bairro or '---' }}
+                      </div>
+                    </div>
+                    <div style="text-align:right">
+                      <div class="chip chip-status">
+                        {{ (entrega.status or 'pendente')|capitalize }}
+                      </div>
+                      <div style="margin-top:4px">
+                        {% set stpg = (entrega.status_pagamento or 'pendente')|lower %}
+                        {% if stpg == 'pago' %}
+                          <span class="chip chip-pago">Pagamento: Pago</span>
+                        {% else %}
+                          <span class="chip chip-pendente">Pagamento: Pendente</span>
+                        {% endif %}
+                      </div>
+                    </div>
+                  </div>
+
+                  <div style="font-size:.8rem;color:#9ca3af;margin-bottom:6px;">
+                    Registrado em:
+                    {% if entrega.data_envio %}
+                      {{ to_brasilia(entrega.data_envio).strftime('%d/%m/%Y %H:%M') }}
+                    {% else %}
+                      -
+                    {% endif %}
+
+                    {% if entrega.cooperado %}
+                      <br>Cooperado: {{ entrega.cooperado.nome }}
+                    {% endif %}
+                  </div>
+
+                  <div class="linha-tempo">
+                    {% if eventos %}
+                      {% for ev in eventos %}
+                        <div class="evento">
+                          <div class="evento-titulo">
+                            {% if ev.icone %}<span>{{ ev.icone }}</span>{% endif %}
+                            <span>{{ ev.titulo }}</span>
+                          </div>
+                          <div class="evento-texto">{{ ev.descricao }}</div>
+                          <div class="evento-when">
+                            {% if ev.quando %}
+                              {{ ev.quando.strftime('%d/%m/%Y %H:%M') }}
+                            {% else %}
+                              Horário não registrado
+                            {% endif %}
+                          </div>
+                        </div>
+                      {% endfor %}
+                    {% else %}
+                      <div class="evento">
+                        <div class="evento-texto">
+                          Nenhum evento de rastreio disponível ainda para esta entrega.
+                        </div>
+                      </div>
+                    {% endif %}
+                  </div>
+                </div>
+              {% endif %}
+            </div>
+
+            <footer>
+              Coopex Entregas — sistema de rastreio interno.  
+              Em caso de dúvidas, fale com a supervisão.
+            </footer>
+          </div>
+        </body></html>
+        """,
+        codigo=codigo,
+        entrega=entrega,
+        eventos=eventos,
+        to_brasilia=to_brasilia
+    )
+
+
+@app.get('/api/rastreamento/<codigo>')
+def api_rastreamento(codigo):
+    """
+    API JSON para apps externos / site do cliente.
+    Usa o ID da entrega como código de rastreio.
+    """
+    if not codigo.isdigit():
+        return jsonify(ok=False, erro="Código inválido. Use apenas números."), 400
+
+    entrega = Entrega.query.get(int(codigo))
+    if not entrega:
+        return jsonify(ok=False, erro="Entrega não encontrada."), 404
+
+    eventos = montar_eventos_rastreamento(entrega)
+
+    def _dt(dt):
+        return to_brasilia(dt).isoformat() if dt else None
+
+    try:
+        origem_extra = json.loads(entrega.origem_json) if entrega.origem_json else None
+    except Exception:
+        origem_extra = None
+
+    try:
+        destino_extra = json.loads(entrega.destino_json) if entrega.destino_json else None
+    except Exception:
+        destino_extra = None
+
+    return jsonify({
+        "ok": True,
+        "entrega_id": entrega.id,
+        "cliente": entrega.cliente,
+        "bairro": entrega.bairro,
+        "valor": float(entrega.valor or 0),
+        "status": entrega.status,
+        "status_pagamento": entrega.status_pagamento,
+        "pagamento": entrega.pagamento,
+        "cooperado": (entrega.cooperado.nome if entrega.cooperado else None),
+        "data_envio": _dt(entrega.data_envio),
+        "data_atribuida": _dt(entrega.data_atribuida),
+        "origem_extra": origem_extra,
+        "destino_extra": destino_extra,
+        "eventos": [
+            {
+                "titulo": ev["titulo"],
+                "descricao": ev["descricao"],
+                "quando": ev["quando"].isoformat() if ev["quando"] else None,
+                "icone": ev.get("icone")
+            }
+            for ev in eventos
+        ]
+    })
 
 
 # =========================================================
