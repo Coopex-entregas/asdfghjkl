@@ -70,7 +70,7 @@
         <span class="vault-icon"><i class="bi bi-shield-lock-fill"></i></span>
         <span class="vault-text">
           Acesso Seguro
-          <span class="vault-mini">Suas credenciais estão protegidas</span>
+          <span class="vault-mini">Admin, Cooperado e Cliente</span>
         </span>
       </div>
     </div>
@@ -89,15 +89,19 @@
       {% endwith %}
     </div>
 
-    <!-- LOGIN -->
+    <!-- LOGIN (Admin / Cooperado / Cliente) -->
     <div class="card-body" id="paneLogin">
-      <h5 class="mb-3 fw-bold">Entrar</h5>
+      <h5 class="mb-1 fw-bold">Entrar</h5>
+      <p class="text-muted mb-3" style="font-size:.9rem">
+        Use seu <strong>usuário</strong> (admin / cooperado) ou seu
+        <strong>usuário / e-mail de cliente</strong>.
+      </p>
       <form method="POST" action="{{ url_for('login') }}" class="needs-validation" novalidate autocomplete="off">
-        <input type="hidden" name="next" value="/meu_credito">
+        <input type="hidden" name="next" value="{{ url_for('meu_credito') }}">
         <div class="mb-3">
-          <label class="form-label" for="usuario">Usuário</label>
-          <input class="form-control form-control-lg" id="usuario" name="usuario" required autocomplete="username" placeholder="Digite seu usuário">
-          <div class="invalid-feedback">Informe seu usuário.</div>
+          <label class="form-label" for="usuario">Usuário ou e-mail</label>
+          <input class="form-control form-control-lg" id="usuario" name="usuario" required autocomplete="username" placeholder="Digite seu usuário ou e-mail">
+          <div class="invalid-feedback">Informe seu usuário ou e-mail.</div>
         </div>
         <div class="mb-2">
           <label class="form-label" for="senha">Senha</label>
@@ -110,34 +114,49 @@
           </div>
         </div>
 
+        <div class="d-flex justify-content-between align-items-center mt-1">
+          <a href="{{ url_for('cliente_esqueci_senha') }}" style="font-size:.86rem;color:#2747d9;text-decoration:none">
+            <i class="bi bi-question-circle me-1"></i>Esqueceu a senha?
+          </a>
+        </div>
+
         <button class="btn btn-royal w-100 btn-lg mt-4" type="submit">
           <i class="bi bi-box-arrow-in-right me-1"></i> Entrar
         </button>
       </form>
 
-      <a href="#primeiro" class="link-swap" id="goSignup"><i class="bi bi-person-plus me-1"></i> Primeiro acesso? Cadastre-se</a>
+      <a href="#primeiro" class="link-swap" id="goSignup"><i class="bi bi-person-plus me-1"></i> Primeiro acesso do cliente? Cadastre-se</a>
       <div class="marca-sistema">© <span id="ano"></span> Criado por — Kratos System</div>
     </div>
 
     <!-- PRIMEIRO ACESSO (CLIENTE) -->
     <div class="card-body hidden" id="paneSignup">
       <h5 class="mb-3 fw-bold">Primeiro acesso do Cliente</h5>
-      <form method="POST" action="/cliente/primeiro_acesso" class="needs-validation" novalidate autocomplete="off" id="formSignup">
+      <form method="POST" action="{{ url_for('cliente_primeiro_acesso') }}" class="needs-validation" novalidate autocomplete="off" id="formSignup">
         <input type="hidden" name="perfil" value="cliente">
-        <input type="hidden" name="next" value="/meu_credito">
+        <input type="hidden" name="next" value="{{ url_for('meu_credito') }}">
+
         <div class="mb-3">
-          <label class="form-label" for="nome">Nome do cliente</label>
+          <label class="form-label" for="nome">Nome completo</label>
           <input class="form-control form-control-lg" id="nome" name="nome" required placeholder="Ex.: Maria Silva">
           <div class="invalid-feedback">Informe seu nome.</div>
         </div>
+
+        <div class="mb-3">
+          <label class="form-label" for="email">E-mail</label>
+          <input class="form-control form-control-lg" id="email" name="email" required placeholder="Seu e-mail (Gmail, Outlook, etc.)" inputmode="email">
+          <div class="invalid-feedback">Informe um e-mail válido.</div>
+        </div>
+
         <div class="mb-3">
           <label class="form-label" for="telefone">Telefone (WhatsApp)</label>
           <input class="form-control form-control-lg" id="telefone" name="telefone" required placeholder="(84) 9 9999-9999" inputmode="tel">
           <div class="invalid-feedback">Informe um telefone válido.</div>
         </div>
+
         <div class="mb-3">
-          <label class="form-label" for="usuario_cad">Usuário</label>
-          <input class="form-control form-control-lg" id="usuario_cad" name="usuario" required placeholder="Crie seu usuário">
+          <label class="form-label" for="usuario_cad">Nome de usuário</label>
+          <input class="form-control form-control-lg" id="usuario_cad" name="usuario" required placeholder="Crie seu usuário de acesso">
           <div class="invalid-feedback">Crie um usuário.</div>
         </div>
 
@@ -240,7 +259,7 @@
       .replace(/(\d{5})(\d{4})$/, '$1-$2');
     tel.addEventListener('input', ()=>{ tel.value = maskBR(tel.value); });
 
-    // ver/ocultar senhas (usa event corretamente)
+    // ver/ocultar senhas
     const toggle = (btnId, inputId)=>{
       byId(btnId).addEventListener('click', (ev)=>{
         const i = byId(inputId);
@@ -254,7 +273,7 @@
     toggle('togglePassSignup1','senha_cad');
     toggle('togglePassSignup2','senha_conf');
 
-    // força da senha (corrigido)
+    // força da senha
     const meterBar = byId('meterBar');
     const meterTxt = byId('meterTxt');
     const senhaCad = byId('senha_cad');
@@ -264,7 +283,7 @@
       if (v.length >= 6) score++;
       if (/[A-Z]/.test(v)) score++;
       if (/[a-z]/.test(v)) score++;
-      if (/\d/.test(v)) score++;           // <<< CORRIGIDO
+      if (/\d/.test(v)) score++;
       if (/[^A-Za-z0-9]/.test(v)) score++;
       const pct = [0,20,40,60,80,100][score];
       meterBar.style.width = (pct||0) + '%';
