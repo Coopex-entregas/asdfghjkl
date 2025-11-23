@@ -2686,6 +2686,20 @@ def api_per_km():
     novo = set_per_km(v)
     return jsonify({"ok": True, "per_km": float(novo)})
 
+@app.route('/trajetos')
+def trajetos():
+    """
+    Rota provisória para o botão 'Trajetos (histórico)' no admin.
+    No momento só redireciona para a tabela de preços & rotas.
+    Se quiser depois a gente transforma em uma página própria de histórico.
+    """
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    # por enquanto manda para a tela de preços/rotas
+    return redirect(url_for('precos_rotas'))
+
+
 # =========================================================
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
 # =========================================================
