@@ -1,6 +1,7 @@
 import os
 import io
 import re
+import json
 import random
 import unicodedata
 from datetime import datetime, timedelta, time, date
@@ -70,34 +71,30 @@ class Cooperado(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
 
-class Cliente(db.Model):
+class Entrega(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    # Dados gerais
-    nome = db.Column(db.String(100), nullable=False)
-    telefone = db.Column(db.String(30), nullable=True)
-    bairro_origem = db.Column(db.String(50), nullable=True)
-    endereco = db.Column(db.String(255), nullable=True)
+    cliente = db.Column(db.String(100), nullable=False)
+    bairro = db.Column(db.String(50), nullable=False)
+    valor = db.Column(db.Float, nullable=False)
+    data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # UTC naive
+    data_atribuida = db.Column(db.DateTime, nullable=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
+    status_pagamento = db.Column(db.String(20), nullable=True)
+    status = db.Column(db.String(20), nullable=True)
+    pagamento = db.Column(db.String(50), nullable=False)
+    recebido_por = db.Column(db.String(100), nullable=True)
+    cooperado = db.relationship('Cooperado', backref='entregas')
 
-    # Saldo de crédito do cliente
-    saldo_atual = db.Column(db.Float, nullable=False, default=0.0)
+    # Controle de crédito usado nesta entrega
+    credito_usado = db.Column(db.Float, nullable=False, default=0.0)
+    credito_mov_id = db.Column(db.Integer, nullable=True)
 
-    # Login do cliente
-    username = db.Column(db.String(80), unique=True, index=True)
-    email = db.Column(db.String(120), unique=True, index=True, nullable=True)
+    # Link explícito com Cliente
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
 
-    senha_hash = db.Column(db.String(128), nullable=True)
-
-    # Reset de senha (cliente)
-    reset_code = db.Column(db.String(10), nullable=True)
-    reset_expires_at = db.Column(db.DateTime, nullable=True)
-
-    def set_senha(self, senha):
-        self.senha_hash = generate_password_hash(senha)
-
-    def check_senha(self, senha):
-        if not self.senha_hash:
-            return False
-        return check_password_hash(self.senha_hash, senha)
+    # NOVO: JSON com dados de origem/destino (endereço, ponto de referência etc.)
+    origem_json = db.Column(db.Text, nullable=True)
+    destino_json = db.Column(db.Text, nullable=True)
 
 
 class Entrega(db.Model):
@@ -707,7 +704,7 @@ def registrar_movimento(cliente_id, tipo, valor,
         valor=float(_as_decimal(valor)),
         referencia=(referencia or '')[:120],
         credito_id=credito_id,
-        entrega_id=entrega_id,  # NOVO
+        entrega_id=entrega_id,
     )
     db.session.add(mov)
     return mov
@@ -830,6 +827,9 @@ def get_per_km():
 def set_per_km(novo_valor: float):
     _set_param("per_km", f"{float(novo_valor):.2f}")
     return get_per_km()
+
+def get_pix_chave():
+    return _get_param("pix_chave", "") or ""
 
 
 class PrecoRota(db.Model):
@@ -1318,91 +1318,320 @@ def cliente_required(view_func):
 def meu_credito():
     cid = session['cliente_id']
     cli = Cliente.query.get_or_404(cid)
+
+    # Movimentações de crédito do cliente
     movs = (
         CreditoMovimento.query
         .filter(CreditoMovimento.cliente_id == cid)
-        .order_by(CreditoMovimento.criado_em.desc())
+        .order_by(CreditoMovimento.id.desc())
         .all()
     )
-    return render_or_string("meu_credito.html", """
-<!doctype html>
-<html lang="pt-BR"><head>
-<meta charset="utf-8">
-<title>Meu Crédito</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#0b1220;color:#e6efff}
-.wrap{max-width:960px;margin:0 auto;padding:24px}
-.card{background:#0f1629;border:1px solid #1c2a4a;border-radius:16px;padding:16px}
-h1{margin:0 0 6px}
-.badge{display:inline-block;font-weight:800;border:1px solid #3557d6;border-radius:999px;padding:4px 10px;background:#0d1b3d;color:#bcd0ff}
-table{width:100%;border-collapse:collapse;margin-top:10px;font-size:14px}
-th,td{padding:8px;border-bottom:1px solid #1c2a4a}
-th{background:#102053;position:sticky;top:0}
-.money{font-weight:900}
-.tag-credito{color:#4ade80;font-weight:700}
-.tag-debito{color:#fb7185;font-weight:700}
-</style>
-</head><body>
-  <div class="wrap">
-    <div class="card">
-      <h1>Olá, {{ cli.nome or cli.username }}!</h1>
-      <div class="badge">Saldo atual:
-        <span class="money" style="margin-left:6px">
-          R$ {{ '%.2f'|format(cli.saldo_atual)|replace('.', ',') }}
-        </span>
-      </div>
-      <p style="opacity:.8;margin-top:8px">
-        Abaixo, seu histórico de créditos (entradas) e usos (débitos) em ordem recente.
-      </p>
-      <div style="overflow:auto;border:1px solid #1c2a4a;border-radius:12px;max-height:420px">
-        <table>
-          <thead>
-            <tr>
-              <th>Data</th>
-              <th>Tipo</th>
-              <th>Descrição</th>
-              <th>Valor</th>
-            </tr>
-          </thead>
-          <tbody>
-            {% for m in movs %}
-              <tr>
-                <td>
-                  {% if m.criado_em %}
-                    {{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}
-                  {% else %}
-                    -
-                  {% endif %}
-                </td>
-                <td>
-                  {% if m.tipo == 'credito' %}
-                    <span class="tag-credito">Crédito</span>
-                  {% else %}
-                    <span class="tag-debito">Débito</span>
-                  {% endif %}
-                </td>
-                <td>{{ m.referencia or '-' }}</td>
-                <td class="money">
-                  R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
-                </td>
-              </tr>
-            {% endfor %}
-            {% if movs|length == 0 %}
-              <tr><td colspan="4" style="text-align:center;opacity:.7;padding:16px">
-                Nenhuma movimentação encontrada.
-              </td></tr>
-            {% endif %}
-          </tbody>
-        </table>
-      </div>
-      <p style="margin-top:12px">
-        <a href="{{ url_for('cliente_logout') }}" style="color:#bcd0ff">Sair</a>
-      </p>
-    </div>
-  </div>
-</body></html>
-    """, cli=cli, movs=movs, to_brasilia=to_brasilia)
+
+    # Últimas entregas do cliente (para "comprovante")
+    entregas = (
+        Entrega.query
+        .filter(Entrega.cliente_id == cid)
+        .order_by(Entrega.data_envio.desc())
+        .limit(20)
+        .all()
+    )
+
+    # Bairros disponíveis (a partir da tabela de preços)
+    rotas = PrecoRota.query.all()
+    bairros = sorted({
+        _norm(r.origem) for r in rotas if _norm(r.origem)
+    } | {
+        _norm(r.destino) for r in rotas if _norm(r.destino)
+    })
+
+    pix_chave = get_pix_chave()
+
+    return render_template(
+        "meu_credito.html",
+        cli=cli,
+        movs=movs,
+        entregas=entregas,
+        bairros=bairros,
+        pix_chave=pix_chave,
+        to_brasilia=to_brasilia
+    )
+
+
+# =========================================================
+# 6) APIS JSON PARA COTAÇÃO E PEDIDO DE ENTREGA DO CLIENTE
+# =========================================================
+
+def _cliente_atual():
+    """Obtém o cliente logado a partir da sessão."""
+    cid = session.get('cliente_id')
+    if not cid:
+        abort(401)
+    cli = Cliente.query.get(cid)
+    if not cli:
+        abort(401)
+    return cli
+
+
+def _calcular_preco_bairros(bairro_origem, bairro_destino):
+    """
+    Calcula o preço da rota usando a tabela PrecoRota.
+    Usa origem/destino normalizados (_norm).
+    """
+    if not bairro_origem or not bairro_destino:
+        raise ValueError('Bairros de coleta e entrega são obrigatórios.')
+
+    bo = _norm(bairro_origem)
+    bd = _norm(bairro_destino)
+
+    rota = (
+        PrecoRota.query
+        .filter(func.lower(PrecoRota.origem) == bo.lower(),
+                func.lower(PrecoRota.destino) == bd.lower())
+        .first()
+    )
+
+    if not rota:
+        raise ValueError('Não existe preço configurado para essa rota.')
+
+    # Tenta descobrir o campo de valor na tabela
+    preco = None
+    for campo in ('valor', 'preco', 'preco_total'):
+        if hasattr(rota, campo):
+            preco = getattr(rota, campo)
+            break
+
+    if preco is None:
+        raise RuntimeError('Campo de preço não encontrado na tabela de preços.')
+
+    return float(preco)
+
+
+@app.route('/api/cliente/cotar-entrega', methods=['POST'])
+@cliente_required
+def api_cliente_cotar_entrega():
+    """
+    Recebe JSON com:
+    {
+      "coleta":  {"bairro": "...", "endereco": "...", ...},
+      "entrega": {"bairro": "...", "endereco": "...", ...}
+    }
+    e devolve o preço e meios de pagamento disponíveis.
+    """
+    cli = _cliente_atual()
+    data = request.get_json(silent=True) or {}
+
+    coleta = data.get('coleta') or {}
+    entrega = data.get('entrega') or {}
+
+    bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
+    bairro_entrega = entrega.get('bairro') or entrega.get('bairro_destino')
+
+    try:
+        preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)}), 400
+
+    meios = []
+    if cli.saldo_atual is not None and cli.saldo_atual >= preco:
+        meios.append('CREDITO')  # prioridade se tiver saldo
+    meios.extend(['PIX', 'DINHEIRO'])
+
+    return jsonify({
+        'ok': True,
+        'preco': preco,
+        'moeda': 'BRL',
+        'cliente_saldo_atual': float(cli.saldo_atual or 0),
+        'pode_usar_credito': 'CREDITO' in meios,
+        'meios_pagamento': meios,
+    })
+
+
+@app.route('/api/cliente/solicitar-entrega', methods=['POST'])
+@cliente_required
+def api_cliente_solicitar_entrega():
+    """
+    Recebe JSON com:
+    {
+      "coleta": {...},
+      "entrega": {...},
+      "meio_pagamento": "CREDITO" | "PIX" | "DINHEIRO",
+      "apenas_simular": false   # opcional
+    }
+
+    - Recalcula o preço pela tabela de preços.
+    - Se apenas_simular = true, só devolve a simulação.
+    - Se meio_pagamento não vier e o cliente tiver saldo, assume CREDITO.
+    - Se usar crédito, já debita e registra movimento vinculado à entrega.
+    """
+    cli = _cliente_atual()
+    data = request.get_json(silent=True) or {}
+
+    coleta = data.get('coleta') or {}
+    entrega = data.get('entrega') or {}
+
+    meio_pagamento = (data.get('meio_pagamento') or '').upper()
+    apenas_simular = bool(data.get('apenas_simular'))
+
+    bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
+    bairro_entrega = entrega.get('bairro') or entrega.get('bairro_destino')
+
+    try:
+        preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
+    except Exception as e:
+        return jsonify({'ok': False, 'erro': str(e)}), 400
+
+    # Apenas simulação (não cria entrega)
+    if apenas_simular:
+        meios = []
+        if cli.saldo_atual is not None and cli.saldo_atual >= preco:
+            meios.append('CREDITO')
+        meios.extend(['PIX', 'DINHEIRO'])
+
+        return jsonify({
+            'ok': True,
+            'simulacao': True,
+            'preco': preco,
+            'meios_pagamento': meios,
+        })
+
+    # Define meio de pagamento padrão
+    if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
+        if cli.saldo_atual is not None and cli.saldo_atual >= preco:
+            meio_pagamento = 'CREDITO'
+        else:
+            meio_pagamento = 'PIX'
+
+    # Valida crédito, se escolhido
+    if meio_pagamento == 'CREDITO':
+        if cli.saldo_atual is None or cli.saldo_atual < preco:
+            return jsonify({
+                'ok': False,
+                'erro': 'Crédito insuficiente para essa entrega.'
+            }), 400
+
+    try:
+        agora = to_brasilia(datetime.utcnow())
+
+        # Monta um dicionário compacto com os dados para guardar como JSON
+        detalhes_json = {
+            'coleta': coleta,
+            'entrega': entrega,
+            'bairro_coleta': bairro_coleta,
+            'bairro_entrega': bairro_entrega,
+        }
+
+        # Monta dinamicamente os campos existentes na model Entrega
+        campos = {
+            'cliente_id': cli.id,
+        }
+
+        # Valor
+        if hasattr(Entrega, 'valor_total'):
+            campos['valor_total'] = preco
+        elif hasattr(Entrega, 'valor'):
+            campos['valor'] = preco
+
+        # Datas
+        if hasattr(Entrega, 'data_envio'):
+            campos['data_envio'] = agora
+
+        # Bairros e endereços, se existirem na tabela
+        if hasattr(Entrega, 'bairro_origem'):
+            campos['bairro_origem'] = bairro_coleta
+        if hasattr(Entrega, 'bairro_destino'):
+            campos['bairro_destino'] = bairro_entrega
+        if hasattr(Entrega, 'endereco_coleta'):
+            campos['endereco_coleta'] = coleta.get('endereco')
+        if hasattr(Entrega, 'endereco_entrega'):
+            campos['endereco_entrega'] = entrega.get('endereco')
+
+        # Forma e status de pagamento
+        if hasattr(Entrega, 'forma_pagamento'):
+            campos['forma_pagamento'] = meio_pagamento
+        if hasattr(Entrega, 'status_pagamento'):
+            campos['status_pagamento'] = 'PAGO' if meio_pagamento == 'CREDITO' else 'PENDENTE'
+        if hasattr(Entrega, 'status_entrega'):
+            campos['status_entrega'] = 'AGUARDANDO'
+
+        # Campo JSON genérico, se existir
+        if hasattr(Entrega, 'detalhes_json'):
+            campos['detalhes_json'] = json.dumps(detalhes_json, ensure_ascii=False)
+
+        entrega_obj = Entrega(**campos)
+        db.session.add(entrega_obj)
+        db.session.flush()  # garante entrega_obj.id
+
+        # Se pagou com crédito: debita e registra movimento
+        if meio_pagamento == 'CREDITO':
+            atualizar_saldo_cliente(cli.id, -preco)
+            registrar_movimento(
+                cli.id,
+                TIPO_CONSUMO,
+                preco,
+                referencia=f'Entrega #{entrega_obj.id} - consumo de crédito',
+                entrega_id=entrega_obj.id
+            )
+
+        # Aqui depois você pode encaixar:
+        # - chamada à API do Sicoob (PIX)
+        # - criação de QR Code, etc.
+
+        db.session.commit()
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao solicitar entrega')
+        return jsonify({
+            'ok': False,
+            'erro': f'Erro ao solicitar entrega: {e.__class__.__name__}'
+        }), 500
+
+    return jsonify({
+        'ok': True,
+        'entrega_id': entrega_obj.id,
+        'preco': preco,
+        'meio_pagamento': meio_pagamento,
+        'status_pagamento': getattr(entrega_obj, 'status_pagamento', None),
+        'comprovante_url': url_for('cliente_comprovante', entrega_id=entrega_obj.id),
+    })
+
+
+# =========================================================
+# 7) COMPROVANTE DA ENTREGA PARA O CLIENTE
+# =========================================================
+
+@app.route('/cliente/comprovante/<int:entrega_id>')
+@cliente_required
+def cliente_comprovante(entrega_id):
+    """
+    Mostra o comprovante de uma entrega específica para o cliente.
+    Só deixa ver se a entrega for do próprio cliente.
+    """
+    cli = _cliente_atual()
+
+    entrega = (
+        Entrega.query
+        .filter(Entrega.id == entrega_id, Entrega.cliente_id == cli.id)
+        .first_or_404()
+    )
+
+    movs = (
+        CreditoMovimento.query
+        .filter(
+            CreditoMovimento.cliente_id == cli.id,
+            CreditoMovimento.entrega_id == entrega.id
+        )
+        .order_by(CreditoMovimento.id.desc())
+        .all()
+    )
+
+    return render_template(
+        'cliente_comprovante.html',
+        cli=cli,
+        entrega=entrega,
+        movs=movs,
+        to_brasilia=to_brasilia
+    )
 
 
 # =========================================================
@@ -3742,6 +3971,9 @@ def criar_bd():
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_mov_id INTEGER",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
 
+            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS origem_json TEXT",
+            "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS destino_json TEXT",
+            
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_tipo VARCHAR(20) DEFAULT 'nenhum'",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_valor REAL DEFAULT 0",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS valor_final REAL",
