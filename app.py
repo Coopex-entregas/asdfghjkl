@@ -204,6 +204,36 @@ class ListaEspera(db.Model):
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     cooperado = db.relationship('Cooperado', lazy='joined')
 
+class Trajeto(db.Model):
+    __tablename__ = 'trajeto'
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    # Quem fez o trajeto
+    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=False)
+    cooperado = db.relationship('Cooperado', backref='trajetos')
+
+    # Horários em UTC naive (igual ao resto do sistema)
+    inicio = db.Column(db.DateTime, nullable=False)   # quando começou o trajeto
+    fim = db.Column(db.DateTime, nullable=True)       # quando terminou (se tiver)
+
+    # Métricas principais
+    distancia_m = db.Column(db.Float, nullable=True)          # em metros
+    duracao_s = db.Column(db.Integer, nullable=True)          # em segundos
+    velocidade_media_kmh = db.Column(db.Float, nullable=True) # km/h
+
+    # Coordenadas (opcionais)
+    origem_lat = db.Column(db.Float, nullable=True)
+    origem_lng = db.Column(db.Float, nullable=True)
+    destino_lat = db.Column(db.Float, nullable=True)
+    destino_lng = db.Column(db.Float, nullable=True)
+
+    # JSON com pontos do trajeto (lista de lat/lng/hora) – para futuro "vídeo" no mapa
+    pontos_json = db.Column(db.Text, nullable=True)
+
+    # Quando foi gravado no sistema
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+
 
 # =========================================================
 # HELPERS DE DATA / FUSO
@@ -2686,18 +2716,162 @@ def api_per_km():
     novo = set_per_km(v)
     return jsonify({"ok": True, "per_km": float(novo)})
 
+# =========================================================
+# TRAJETOS (HISTÓRICO POR COOPERADO / PERÍODO)
+# =========================================================
 @app.route('/trajetos')
 def trajetos():
-    """
-    Rota provisória para o botão 'Trajetos (histórico)' no admin.
-    No momento só redireciona para a tabela de preços & rotas.
-    Se quiser depois a gente transforma em uma página própria de histórico.
-    """
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # por enquanto manda para a tela de preços/rotas
-    return redirect(url_for('precos_rotas'))
+    # Limpa automaticamente trajetos com mais de 31 dias (sempre mantém último mês)
+    try:
+        limite_utc = datetime.utcnow() - timedelta(days=31)
+        (
+            Trajeto.query
+            .filter(Trajeto.inicio < limite_utc)
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
+
+    # Período padrão: últimos 30 dias em horário de Brasília
+    hoje_brt = datetime.now(BRAZIL_TZ).date()
+    if not data_inicio and not data_fim:
+        di_default = hoje_brt - timedelta(days=29)
+        di_utc, _ = local_date_window_to_utc_range(di_default)
+        _, df_utc = local_date_window_to_utc_range(hoje_brt)
+        q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
+
+        data_inicio = di_default.isoformat()
+        data_fim = hoje_brt.isoformat()
+    else:
+        if data_inicio:
+            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+            di_utc, _ = local_date_window_to_utc_range(di)
+            q = q.filter(Trajeto.inicio >= di_utc)
+        if data_fim:
+            df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+            _, df_utc = local_date_window_to_utc_range(df)
+            q = q.filter(Trajeto.inicio <= df_utc)
+
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
+        except ValueError:
+            pass
+
+    trajetos_list = q.order_by(Trajeto.inicio.desc()).limit(2000).all()
+
+    # KPIs gerais
+    total_km = sum((t.distancia_m or 0.0) for t in trajetos_list) / 1000.0
+    total_horas = sum((t.duracao_s or 0) for t in trajetos_list) / 3600.0
+    vel_media_geral = (total_km / total_horas) if total_horas > 0 else 0.0
+
+    return render_template(
+        'trajetos.html',
+        trajetos=trajetos_list,
+        cooperados=cooperados,
+        cooperado_id=cooperado_id,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_km=total_km,
+        total_horas=total_horas,
+        vel_media_geral=vel_media_geral,
+        to_brasilia=to_brasilia,
+        now=lambda: datetime.now(BRAZIL_TZ),
+    )
+
+@app.route('/trajetos/exportar')
+def trajetos_exportar():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
+
+    hoje_brt = datetime.now(BRAZIL_TZ).date()
+    if not data_inicio and not data_fim:
+        di_default = hoje_brt - timedelta(days=29)
+        di_utc, _ = local_date_window_to_utc_range(di_default)
+        _, df_utc = local_date_window_to_utc_range(hoje_brt)
+        q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
+    else:
+        if data_inicio:
+            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+            di_utc, _ = local_date_window_to_utc_range(di)
+            q = q.filter(Trajeto.inicio >= di_utc)
+        if data_fim:
+            df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+            _, df_utc = local_date_window_to_utc_range(df)
+            q = q.filter(Trajeto.inicio <= df_utc)
+
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
+        except ValueError:
+            pass
+
+    trajetos_list = q.order_by(Trajeto.inicio.asc()).all()
+
+    rows = []
+    for t in trajetos_list:
+        ini_local = to_brasilia(t.inicio) if t.inicio else None
+        fim_local = to_brasilia(t.fim) if t.fim else None
+        rows.append({
+            'Cooperado': t.cooperado.nome if t.cooperado else '',
+            'Início (Brasília)': ini_local.strftime('%d/%m/%Y %H:%M:%S') if ini_local else '',
+            'Fim (Brasília)': fim_local.strftime('%d/%m/%Y %H:%M:%S') if fim_local else '',
+            'Duração (min)': round((t.duracao_s or 0) / 60.0, 1),
+            'Distância (km)': round((t.distancia_m or 0.0) / 1000.0, 3),
+            'Velocidade média (km/h)': round(t.velocidade_media_kmh or 0.0, 1),
+            'Origem (lat,lng)': (
+                f"{t.origem_lat:.6f},{t.origem_lng:.6f}"
+                if t.origem_lat is not None and t.origem_lng is not None
+                else ''
+            ),
+            'Destino (lat,lng)': (
+                f"{t.destino_lat:.6f},{t.destino_lng:.6f}"
+                if t.destino_lat is not None and t.destino_lng is not None
+                else ''
+            ),
+        })
+
+    df_out = pd.DataFrame(rows)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Trajetos'
+        df_out.to_excel(writer, index=False, sheet_name=sheet)
+        ws = writer.sheets[sheet]
+
+        widths = [26, 22, 22, 14, 16, 22, 20, 20]
+        for i, w in enumerate(widths[:len(df_out.columns)]):
+            ws.set_column(i, i, w)
+
+        money_fmt = writer.book.add_format({'num_format': '#,##0.000'})
+        vel_fmt = writer.book.add_format({'num_format': '#,##0.0'})
+        cols = list(df_out.columns)
+        if 'Distância (km)' in cols:
+            idx = cols.index('Distância (km)')
+            ws.set_column(idx, idx, 16, money_fmt)
+        if 'Velocidade média (km/h)' in cols:
+            idx = cols.index('Velocidade média (km/h)')
+            ws.set_column(idx, idx, 22, vel_fmt)
+
+    output.seek(0)
+    return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
 
 # =========================================================
@@ -4526,6 +4700,9 @@ def criar_bd():
             "CREATE INDEX IF NOT EXISTS idx_credmov_entrega_id ON credito_movimento (entrega_id)",
             "CREATE INDEX IF NOT EXISTS idx_credmov_criado_em ON credito_movimento (criado_em DESC)",
             "CREATE INDEX IF NOT EXISTS idx_credmov_tipo ON credito_movimento (tipo)",
+
+            "CREATE INDEX IF NOT EXISTS idx_trajeto_cooperado_id ON trajeto (cooperado_id)",
+            "CREATE INDEX IF NOT EXISTS idx_trajeto_inicio ON trajeto (inicio DESC)",
         ]
         for s in idx_cmds:
             try:
