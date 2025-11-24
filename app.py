@@ -70,6 +70,7 @@ class Cooperado(db.Model):
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
 
+
 class Cliente(db.Model):
     __tablename__ = 'cliente'
 
@@ -88,40 +89,98 @@ class Cliente(db.Model):
     reset_code = db.Column(db.String(10), nullable=True)
     reset_expires_at = db.Column(db.DateTime, nullable=True)
 
-    def set_senha(self, senha):
+    def set_senha(self, senha: str) -> None:
         self.senha_hash = generate_password_hash(senha)
 
-    def check_senha(self, senha):
+    def check_senha(self, senha: str) -> bool:
         if not self.senha_hash:
             return False
         return check_password_hash(self.senha_hash, senha)
 
 
+
 class Entrega(db.Model):
+    __tablename__ = 'entrega'
+
     id = db.Column(db.Integer, primary_key=True)
+
+    # Informações básicas da entrega
     cliente = db.Column(db.String(100), nullable=False)
     bairro = db.Column(db.String(50), nullable=False)
     valor = db.Column(db.Float, nullable=False)
-    data_envio = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)  # UTC naive
+
+    # Datas/horas (UTC no banco; você converte para America/Sao_Paulo na view)
+    data_envio = db.Column(
+        db.DateTime,
+        nullable=False,
+        default=datetime.utcnow,  # UTC naive; converter na view
+    )
     data_atribuida = db.Column(db.DateTime, nullable=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=True)
-    status_pagamento = db.Column(db.String(20), nullable=True)
-    status = db.Column(db.String(20), nullable=True)
-    pagamento = db.Column(db.String(50), nullable=False)
-    recebido_por = db.Column(db.String(100), nullable=True)
+
+    # Relação com cooperado
+    cooperado_id = db.Column(
+        db.Integer,
+        db.ForeignKey('cooperado.id'),
+        nullable=True
+    )
     cooperado = db.relationship('Cooperado', backref='entregas')
+
+    # Pagamento / status geral
+    status_pagamento = db.Column(db.String(20), nullable=True)  # pago/pendente
+    status = db.Column(db.String(20), nullable=True)            # entregue/pendente/etc.
+    pagamento = db.Column(db.String(50), nullable=False)        # PIX, dinheiro, etc.
+    recebido_por = db.Column(db.String(100), nullable=True)
 
     # Controle de crédito usado nesta entrega
     credito_usado = db.Column(db.Float, nullable=False, default=0.0)
     credito_mov_id = db.Column(db.Integer, nullable=True)
 
-    # Link explícito com Cliente
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=True)
+    # Link explícito com Cliente (tabela cliente)
+    cliente_id = db.Column(
+        db.Integer,
+        db.ForeignKey('cliente.id'),
+        nullable=True
+    )
 
-    # NOVO: JSON com dados de origem/destino (endereço, ponto de referência etc.)
+    # JSON com dados de origem/destino (endereço, referência, coords, etc.)
+    # Exemplo de estrutura:
+    #  origem_json = {
+    #    "endereco": "Rua X, 123",
+    #    "bairro": "Lagoa Nova",
+    #    "ref": "Portaria azul",
+    #    "lat": -5.79,
+    #    "lng": -35.21
+    #  }
     origem_json = db.Column(db.Text, nullable=True)
+
+    # destino_json = {
+    #   "endereco": "Av. Y, 999",
+    #   "bairro": "Tirol",
+    #   "ref": "Em frente ao hospital",
+    #   "lat": -5.80,
+    #   "lng": -35.20
+    # }
     destino_json = db.Column(db.Text, nullable=True)
 
+    # NOVO: paradas intermediárias (todas as paradas no meio do caminho)
+    # Exemplo:
+    #  paradas_json = {
+    #    "stops": [
+    #      "Rua A, 12 - Barro Vermelho",
+    #      "Av. B, 456 - Petrópolis"
+    #    ]
+    #  }
+    paradas_json = db.Column(db.Text, nullable=True)
+
+    # NOVO: status da corrida na visão do cooperado
+    # pendente  -> tocando "chamada.mp3", aguardando aceite
+    # aceita    -> cooperado aceitou, em andamento
+    # recusada  -> cooperado recusou
+    status_corrida = db.Column(
+        db.String(20),
+        nullable=False,
+        default='pendente'
+    )
 
 
 from datetime import datetime
@@ -381,50 +440,6 @@ def pagamento_usa_credito(pagamento: str) -> bool:
     txt = re.sub(r'\s+', ' ', txt)
     return txt.startswith('credito')
 
-
-# =========================================================
-# CRÉDITO: CÁLCULO DE SALDO (RECALCULA A PARTIR DOS MOVIMENTOS)
-# =========================================================
-def atualizar_saldo_credito_cliente(cliente_id):
-    """
-    Recalcula o saldo de crédito do cliente somando TODOS os movimentos
-    de CreditoMovimento (credito - debito) para esse cliente_id.
-
-    Use essa função sempre que:
-      - criar novo crédito
-      - editar valor de crédito
-      - consumir crédito em entrega
-      - desfazer consumo
-    """
-
-    total_creditos = (
-        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-        .filter(
-            CreditoMovimento.cliente_id == cliente_id,
-            CreditoMovimento.tipo == 'credito'
-        )
-        .scalar()
-        or 0.0
-    )
-
-    total_debitos = (
-        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-        .filter(
-            CreditoMovimento.cliente_id == cliente_id,
-            CreditoMovimento.tipo == 'debito'
-        )
-        .scalar()
-        or 0.0
-    )
-
-    saldo = float(total_creditos - total_debitos)
-
-    cliente = Cliente.query.get(cliente_id)
-    if cliente:
-        cliente.saldo_atual = saldo
-        db.session.commit()
-
-    return Decimal(str(saldo)).quantize(Decimal("0.01"))
 
 
 # =========================================================
@@ -1543,37 +1558,44 @@ def api_cliente_cotar_entrega():
 @cliente_required
 def api_cliente_solicitar_entrega():
     """
-    Recebe JSON com:
+    Cliente faz o pedido de entrega.
+
+    JSON esperado:
     {
-      "coleta": {...},
+      "coleta":  {...},
       "entrega": {...},
+      "paradas": ["Rua X - Bairro Y", ...],     # opcional
       "meio_pagamento": "CREDITO" | "PIX" | "DINHEIRO",
-      "apenas_simular": false   # opcional
+      "apenas_simular": false
     }
 
-    - Recalcula o preço pela tabela de preços.
-    - Se apenas_simular = true, só devolve a simulação.
-    - Se meio_pagamento não vier e o cliente tiver saldo, assume CREDITO.
-    - Se usar crédito, já debita e registra movimento vinculado à entrega.
+    Regras:
+    - Recalcula o preço pela tabela PrecoRota (coleta.bairro -> entrega.bairro).
+    - Se apenas_simular = true, NÃO cria entrega, só devolve preço e formas de pgto.
+    - Se meio_pagamento == CREDITO e saldo < preço => erro 400 (cliente escolhe outra forma).
+    - Se meio_pagamento == CREDITO e saldo suficiente => cria entrega + consome crédito
+      usando consumir_credito_em_entrega (vinculado à entrega).
     """
     cli = _cliente_atual()
     data = request.get_json(silent=True) or {}
 
     coleta = data.get('coleta') or {}
-    entrega = data.get('entrega') or {}
+    entrega_dest = data.get('entrega') or {}
+    paradas_lista = data.get('paradas') or []
 
     meio_pagamento = (data.get('meio_pagamento') or '').upper()
     apenas_simular = bool(data.get('apenas_simular'))
 
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
-    bairro_entrega = entrega.get('bairro') or entrega.get('bairro_destino')
+    bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
 
+    # 1) Calcula preço
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
     except Exception as e:
         return jsonify({'ok': False, 'erro': str(e)}), 400
 
-    # Apenas simulação (não cria entrega)
+    # 2) Simulação apenas (não cria nada no banco)
     if apenas_simular:
         meios = []
         if cli.saldo_atual is not None and cli.saldo_atual >= preco:
@@ -1584,90 +1606,82 @@ def api_cliente_solicitar_entrega():
             'ok': True,
             'simulacao': True,
             'preco': preco,
+            'cliente_saldo_atual': float(cli.saldo_atual or 0),
             'meios_pagamento': meios,
         })
 
-    # Define meio de pagamento padrão
+    # 3) Define meio de pagamento padrão
     if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
         if cli.saldo_atual is not None and cli.saldo_atual >= preco:
             meio_pagamento = 'CREDITO'
         else:
             meio_pagamento = 'PIX'
 
-    # Valida crédito, se escolhido
+    # 4) Se for CREDITO, exige saldo total
     if meio_pagamento == 'CREDITO':
         if cli.saldo_atual is None or cli.saldo_atual < preco:
             return jsonify({
                 'ok': False,
-                'erro': 'Crédito insuficiente para essa entrega.'
+                'erro': 'Crédito insuficiente para essa entrega. Escolha outra forma de pagamento.'
             }), 400
 
     try:
-        agora = to_brasilia(datetime.utcnow())
+        # Sempre salva data_envio como UTC naive (padrão do sistema)
+        data_envio_utc = datetime.utcnow()
 
-        # Monta um dicionário compacto com os dados para guardar como JSON
-        detalhes_json = {
-            'coleta': coleta,
-            'entrega': entrega,
-            'bairro_coleta': bairro_coleta,
-            'bairro_entrega': bairro_entrega,
+        # JSONs com origem / destino / paradas
+        origem_json_dict = {
+            "endereco": coleta.get('endereco'),
+            "bairro": bairro_coleta,
+            "ref": coleta.get('referencia') or coleta.get('ref'),
+            "lat": coleta.get('lat'),
+            "lng": coleta.get('lng'),
+        }
+        destino_json_dict = {
+            "endereco": entrega_dest.get('endereco'),
+            "bairro": bairro_entrega,
+            "ref": entrega_dest.get('referencia') or entrega_dest.get('ref'),
+            "lat": entrega_dest.get('lat'),
+            "lng": entrega_dest.get('lng'),
+        }
+        paradas_json_dict = {
+            "stops": paradas_lista
         }
 
-        # Monta dinamicamente os campos existentes na model Entrega
+        # Campos da Entrega compatíveis com o seu model atual
         campos = {
             'cliente_id': cli.id,
+            'cliente': cli.nome,          # texto para o admin enxergar
+            'bairro': bairro_entrega,     # você só tem 1 campo de bairro na Entrega
+            'valor': preco,
+            'data_envio': data_envio_utc,
+            'status': 'pendente',
+            'status_pagamento': 'pago' if meio_pagamento == 'CREDITO' else 'pendente',
+            'pagamento': meio_pagamento.capitalize(),  # "Credito", "Pix", "Dinheiro"
+            'origem_json': json.dumps(origem_json_dict, ensure_ascii=False),
+            'destino_json': json.dumps(destino_json_dict, ensure_ascii=False),
+            'paradas_json': json.dumps(paradas_json_dict, ensure_ascii=False),
+            # status_corrida fica com default 'pendente'
         }
-
-        # Valor
-        if hasattr(Entrega, 'valor_total'):
-            campos['valor_total'] = preco
-        elif hasattr(Entrega, 'valor'):
-            campos['valor'] = preco
-
-        # Datas
-        if hasattr(Entrega, 'data_envio'):
-            campos['data_envio'] = agora
-
-        # Bairros e endereços, se existirem na tabela
-        if hasattr(Entrega, 'bairro_origem'):
-            campos['bairro_origem'] = bairro_coleta
-        if hasattr(Entrega, 'bairro_destino'):
-            campos['bairro_destino'] = bairro_entrega
-        if hasattr(Entrega, 'endereco_coleta'):
-            campos['endereco_coleta'] = coleta.get('endereco')
-        if hasattr(Entrega, 'endereco_entrega'):
-            campos['endereco_entrega'] = entrega.get('endereco')
-
-        # Forma e status de pagamento
-        if hasattr(Entrega, 'forma_pagamento'):
-            campos['forma_pagamento'] = meio_pagamento
-        if hasattr(Entrega, 'status_pagamento'):
-            campos['status_pagamento'] = 'PAGO' if meio_pagamento == 'CREDITO' else 'PENDENTE'
-        if hasattr(Entrega, 'status_entrega'):
-            campos['status_entrega'] = 'AGUARDANDO'
-
-        # Campo JSON genérico, se existir
-        if hasattr(Entrega, 'detalhes_json'):
-            campos['detalhes_json'] = json.dumps(detalhes_json, ensure_ascii=False)
 
         entrega_obj = Entrega(**campos)
         db.session.add(entrega_obj)
         db.session.flush()  # garante entrega_obj.id
 
-        # Se pagou com crédito: debita e registra movimento
+        # 5) Se pagamento for CREDITO, consome o crédito de forma oficial
         if meio_pagamento == 'CREDITO':
-            atualizar_saldo_cliente(cli.id, -preco)
-            registrar_movimento(
-                cli.id,
-                TIPO_CONSUMO,
-                preco,
-                referencia=f'Entrega #{entrega_obj.id} - consumo de crédito',
-                entrega_id=entrega_obj.id
-            )
-
-        # Aqui depois você pode encaixar:
-        # - chamada à API do Sicoob (PIX)
-        # - criação de QR Code, etc.
+            # Aqui usamos sua função nova, que:
+            # - cria CreditoMovimento debito
+            # - atualiza saldo do cliente via atualizar_saldo_credito_cliente
+            # - preenche entrega.credito_usado, status_pagamento, pagamento, etc.
+            valor_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
+            if valor_consumido <= 0:
+                # Se por algum motivo não conseguiu consumir, aborta com erro
+                db.session.rollback()
+                return jsonify({
+                    'ok': False,
+                    'erro': 'Falha ao consumir crédito. Tente novamente ou escolha outra forma de pagamento.'
+                }), 500
 
         db.session.commit()
 
@@ -1684,9 +1698,10 @@ def api_cliente_solicitar_entrega():
         'entrega_id': entrega_obj.id,
         'preco': preco,
         'meio_pagamento': meio_pagamento,
-        'status_pagamento': getattr(entrega_obj, 'status_pagamento', None),
+        'status_pagamento': entrega_obj.status_pagamento,
         'comprovante_url': url_for('cliente_comprovante', entrega_id=entrega_obj.id),
     })
+
 
 
 # =========================================================
@@ -2184,34 +2199,91 @@ def admin():
         cooperados_disponiveis=cooperados_disponiveis
     )
 
-# =========================================================
-# PAINEL COOPERADO + CRUD COOPERADOS
-# =========================================================
+# ================================
+# PAINEL DO COOPERADO (ESTILO UBER)
+# ================================
 @app.route('/painel_cooperado')
 def painel_cooperado():
+    # Cooperado logado = precisa ter user_id na sessão E NÃO ser admin
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
 
     user_id = session['user_id']
+
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
+    todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
 
-    query = Entrega.query.filter(Entrega.cooperado_id == user_id)
+    # Base de consultas: entregas desse cooperado
+    base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
-    hoje_brasil = datetime.now(BRAZIL_TZ).date()
-    if not inicio and not fim:
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
-        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
-    if inicio:
-        di = datetime.strptime(inicio, "%Y-%m-%d").date()
-        inicio_utc, _ = local_date_window_to_utc_range(di)
-        query = query.filter(Entrega.data_envio >= inicio_utc)
-    if fim:
-        df_ = datetime.strptime(fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df_)
-        query = query.filter(Entrega.data_envio <= fim_utc)
+    # ========== CORRIDAS EM ABERTO / EM ANDAMENTO ==========
+    # Aqui não filtramos por data: queremos qualquer corrida
+    # que ainda não esteja finalizada (status != entregue/recebido)
+    # e status_corrida pendente/aceita ou nulo.
+    corridas_query = base_q.filter(
+        (Entrega.status_corrida == None) |
+        (Entrega.status_corrida.in_(['pendente', 'aceita']))
+    ).filter(
+        (Entrega.status == None) |
+        (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+    ).order_by(Entrega.data_envio.desc())
 
+    corridas_raw = corridas_query.all()
+
+    def _parse_json_field(raw):
+        """Tenta fazer json.loads, se vier string; se der erro, devolve {}."""
+        if not raw:
+            return {}
+        if isinstance(raw, dict):
+            return raw
+        try:
+            return json.loads(raw)
+        except Exception:
+            return {}
+
+    corridas = []
+    for e in corridas_raw:
+        origem = _parse_json_field(e.origem_json)
+        destino = _parse_json_field(e.destino_json)
+        paradas = _parse_json_field(e.paradas_json)
+
+        origem_endereco = (
+            origem.get('endereco')
+            or origem.get('address')
+            or (origem.get('rua') and f"{origem.get('rua')} {origem.get('numero', '')}".strip())
+            or e.bairro
+            or 'Origem não informada'
+        )
+
+        destino_endereco = (
+            destino.get('endereco')
+            or destino.get('address')
+            or (destino.get('rua') and f"{destino.get('rua')} {destino.get('numero', '')}".strip())
+            or 'Destino não informado'
+        )
+
+        origem_bairro = origem.get('bairro') or ''
+        destino_bairro = destino.get('bairro') or ''
+
+        # Lista simples de paradas intermediárias
+        # pode vir como {"stops": [...]} ou {"paradas": [...]}
+        waypoints = paradas.get('stops') or paradas.get('paradas') or []
+
+        corridas.append({
+            "obj": e,
+            "origem_endereco": origem_endereco,
+            "destino_endereco": destino_endereco,
+            "origem_bairro": origem_bairro,
+            "destino_bairro": destino_bairro,
+            "waypoints": waypoints,
+        })
+
+    # ========== HISTÓRICO (TABELA) ==========
+    query = base_q
+
+    # Filtro por status de pagamento
     if status_pgto == 'pago':
         query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
     elif status_pgto == 'pendente':
@@ -2220,15 +2292,54 @@ def painel_cooperado():
             (func.lower(Entrega.status_pagamento) == 'pendente')
         )
 
-    entregas = query.options(joinedload(Entrega.cooperado)).order_by(Entrega.data_envio.desc()).all()
+    # Filtros de data:
+    # - Se todas_datas_flag == True: não filtra por data (lista tudo)
+    # - Senão, usa sua lógica antiga: se nada informado, filtra pelo dia atual;
+    #   se inicio/fim informados, usa local_date_window_to_utc_range.
+    if not todas_datas_flag:
+        hoje_brasil = datetime.now(BRAZIL_TZ).date()
 
+        # Nenhuma data informada -> dia atual
+        if not inicio and not fim:
+            inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
+            query = query.filter(
+                Entrega.data_envio >= inicio_utc,
+                Entrega.data_envio <= fim_utc
+            )
+
+        # Data inicial
+        if inicio:
+            di = datetime.strptime(inicio, "%Y-%m-%d").date()
+            inicio_utc, _ = local_date_window_to_utc_range(di)
+            query = query.filter(Entrega.data_envio >= inicio_utc)
+
+        # Data final
+        if fim:
+            df_ = datetime.strptime(fim, "%Y-%m-%d").date()
+            _, fim_utc = local_date_window_to_utc_range(df_)
+            query = query.filter(Entrega.data_envio <= fim_utc)
+
+    # Ordenação e carregamento do cooperado (se precisar no template)
+    entregas = (
+        query
+        .options(joinedload(Entrega.cooperado))
+        .order_by(Entrega.data_envio.desc())
+        .all()
+    )
+
+    # Totais
     total_geral = sum(float(e.valor or 0) for e in entregas)
-    total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
+    total_pago = sum(
+        float(e.valor or 0)
+        for e in entregas
+        if (e.status_pagamento or '').lower() == 'pago'
+    )
     total_pendente = max(0.0, total_geral - total_pago)
 
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
+        corridas=corridas,
         total_geral=total_geral,
         total_pago=total_pago,
         total_pendente=total_pendente,
@@ -2238,6 +2349,85 @@ def painel_cooperado():
     )
 
 
+# ================================
+# APIs do COOPERADO (Aceitar / Recusar / Novas corridas)
+# ================================
+@app.route('/cooperado/api/aceitar', methods=['POST'])
+def cooperado_aceitar_corrida():
+    # Mesmo critério de segurança do painel_cooperado
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    entrega_id = data.get('entrega_id')
+
+    if not entrega_id:
+        return jsonify(ok=False, error='entrega_id obrigatório'), 400
+
+    entrega = Entrega.query.get_or_404(entrega_id)
+
+    if entrega.cooperado_id != user_id:
+        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
+
+    entrega.status_corrida = 'aceita'
+    # Se ainda não tinha horário de atribuição, marca agora (horário Brasil)
+    if not entrega.data_atribuida:
+        entrega.data_atribuida = datetime.now(BRAZIL_TZ)
+
+    db.session.commit()
+    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+
+@app.route('/cooperado/api/recusar', methods=['POST'])
+def cooperado_recusar_corrida():
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    user_id = session['user_id']
+    data = request.get_json() or {}
+    entrega_id = data.get('entrega_id')
+
+    if not entrega_id:
+        return jsonify(ok=False, error='entrega_id obrigatório'), 400
+
+    entrega = Entrega.query.get_or_404(entrega_id)
+
+    if entrega.cooperado_id != user_id:
+        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
+
+    entrega.status_corrida = 'recusada'
+    db.session.commit()
+
+    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+
+@app.route('/cooperado/api/novas', methods=['GET'])
+def cooperado_novas_corridas():
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    user_id = session['user_id']
+
+    q = (
+        Entrega.query
+        .filter(Entrega.cooperado_id == user_id)
+        .filter(
+            (Entrega.status_corrida == None) |
+            (Entrega.status_corrida == 'pendente')
+        )
+        .filter(
+            (Entrega.status == None) |
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+        )
+    )
+    novas = q.count()
+    return jsonify(ok=True, novas=novas)
+
+
+# ================================
+# CRUD de COOPERADO (mantidos)
+# ================================
 @app.route('/cooperados/cadastrar', methods=['GET', 'POST'])
 def cadastrar_cooperado():
     if not session.get('is_admin'):
@@ -2310,6 +2500,7 @@ def mudar_status_cooperado(coop_id):
     db.session.commit()
     flash(f"Status de {cooperado.nome} alterado para {'Ativo' if cooperado.ativo else 'Inativo'}!")
     return redirect(url_for('cadastrar_cooperado'))
+
 
 # =========================================================
 # CLIENTES (CRUD BÁSICO)
