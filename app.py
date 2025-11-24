@@ -2352,6 +2352,25 @@ def painel_cooperado():
 # ================================
 # APIs do COOPERADO (Aceitar / Recusar / Novas corridas)
 # ================================
+@app.route('/cooperado/aceitar_entrega/<int:id>', methods=['POST'])
+def cooperado_aceitar_entrega(id):
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    user_id = session['user_id']
+    entrega = Entrega.query.get_or_404(id)
+
+    if entrega.cooperado_id != user_id:
+        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
+
+    entrega.status_corrida = 'aceita'
+    if not entrega.data_atribuida:
+        entrega.data_atribuida = datetime.now(BRAZIL_TZ)
+
+    db.session.commit()
+    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+
 @app.route('/cooperado/api/aceitar', methods=['POST'])
 def cooperado_aceitar_corrida():
     # Mesmo critério de segurança do painel_cooperado
