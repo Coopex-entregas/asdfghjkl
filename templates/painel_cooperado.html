@@ -33,6 +33,37 @@
 
     .wrap{max-width:1100px;margin:12px auto 18px;padding:0 3.5vw}
 
+    /* ===== ABAS ===== */
+    .tabs{
+      display:flex;
+      gap:6px;
+      margin:6px 0 10px;
+      border-bottom:1px solid var(--line);
+    }
+    .tab-btn{
+      flex:1;
+      padding:8px 10px;
+      border:none;
+      background:transparent;
+      font-weight:700;
+      font-size:.9rem;
+      color:var(--muted);
+      border-radius:10px 10px 0 0;
+      cursor:pointer;
+    }
+    .tab-btn.active{
+      background:var(--card);
+      color:var(--royal);
+      box-shadow:0 -2px 10px rgba(0,51,204,.12);
+    }
+    .tab-panel{
+      display:none;
+      margin-top:6px;
+    }
+    .tab-panel.active{
+      display:block;
+    }
+
     /* ===== CARDS: 2 em cima (Pago, Pendente) e Total embaixo pegando toda a largura ===== */
     .stats{display:grid;grid-template-columns:repeat(2, minmax(250px,1fr));gap:10px;margin:10px 0 14px}
     .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:space-between;min-height:64px}
@@ -72,6 +103,52 @@
 
     .cliente-btn{all:unset;color:var(--royal);font-weight:800;cursor:pointer}
 
+    /* ===== BOTÕES CHAMADAS ===== */
+    .btn-aceitar, .btn-recusar{
+      border:none;
+      border-radius:999px;
+      padding:6px 10px;
+      font-size:.8rem;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn-aceitar{
+      background:var(--good);
+      color:#fff;
+    }
+    .btn-recusar{
+      background:#fff2f2;
+      color:var(--bad);
+      border:1px solid #ffb3b3;
+    }
+
+    /* ===== SEÇÃO AJUDA ===== */
+    #tab-ajuda h2{
+      margin:4px 0 8px;
+      font-size:1.1rem;
+      color:#0f2a80;
+    }
+    #tab-ajuda p{
+      margin:0 0 10px;
+      font-size:.92rem;
+    }
+    #tab-ajuda label{
+      display:block;
+      margin-bottom:6px;
+      font-size:.92rem;
+    }
+    #tab-ajuda .btn{
+      background:var(--royal);
+      color:#fff;
+      border:none;
+      border-radius:10px;
+      padding:8px 14px;
+      font-weight:800;
+      cursor:pointer;
+      box-shadow:0 4px 12px rgba(0,51,204,.22);
+    }
+    .hint{font-size:.85rem;color:var(--muted);}
+
     /* ===== MODAL “Recebido por” (amplo e confortável) ===== */
     .overlay{position:fixed;inset:0;background:rgba(8,16,48,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:clamp(10px,2vw,24px)}
     .overlay.open{display:flex}
@@ -79,7 +156,6 @@
     .modal h3{margin:0;font-size:1.08rem;color:#0f2a80}
     .modal .row{display:flex;gap:10px;align-items:center}
     .modal input[type=text]{flex:1;min-width:0;width:100%;border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:1.06rem;letter-spacing:.2px}
-    .modal .hint{font-size:.85rem;color:var(--muted)}
     .modal .actions{display:flex;gap:10px;justify-content:flex-end}
     .btn-primary{background:var(--royal);color:#fff;border:none;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
     .btn-ghost{background:#fff;color:#0f2a80;border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
@@ -106,94 +182,184 @@
   </header>
 
   <div class="wrap">
-    <!-- CARDS: Pago (azul), Pendente (vermelho) em cima; Total (verde) embaixo ocupando 100% -->
-    <section class="stats" aria-label="Estatísticas de valores">
-      <div class="stat stat--pago" aria-label="Valor pago"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
-      <div class="stat stat--pendente" aria-label="Valor pendente"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
-      <div class="stat stat--total" aria-label="Total geral"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
+    <!-- ABAS -->
+    <nav class="tabs">
+      <button class="tab-btn active" data-tab="tab-chamadas">Chamadas</button>
+      <button class="tab-btn" data-tab="tab-minhas">Minhas entregas</button>
+      <button class="tab-btn" data-tab="tab-ajuda">Ajuda</button>
+    </nav>
+
+    <!-- ABA 1: CHAMADAS (ACEITAR / RECUSAR) -->
+    <section id="tab-chamadas" class="tab-panel active" aria-label="Chamadas disponíveis">
+      <section class="card-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Bairro</th>
+              <th>Valor</th>
+              <th>Distância</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in chamadas %}
+            <tr data-id="{{ c.id }}">
+              <td data-label="Cliente">{{ c.cliente }}</td>
+              <td data-label="Bairro">{{ c.bairro or '-' }}</td>
+              <td data-label="Valor">R$ {{ '%.2f'|format(c.valor) }}</td>
+              <td data-label="Distância">{{ c.distancia or '-' }}</td>
+              <td data-label="Ações">
+                <button type="button" class="btn-aceitar" onclick="aceitarEntrega({{ c.id }})">Aceitar</button>
+                <button type="button" class="btn-recusar" onclick="recusarEntrega({{ c.id }})">Recusar</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center">Nenhuma chamada disponível.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
     </section>
 
-    <!-- FILTROS (pendente = TODAS sem data) -->
-    <section class="filters" aria-label="Filtros">
-      <form id="form-filtros" method="get">
-        <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
-        <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
-        <select name="status_pgto" id="status_pgto">
-          <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
-          <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
-          <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
-        </select>
-        <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
-        <button class="btn" type="submit">Filtrar</button>
+    <!-- ABA 2: MINHAS ENTREGAS (SEU PAINEL ORIGINAL COMPLETO) -->
+    <section id="tab-minhas" class="tab-panel" aria-label="Minhas entregas">
+      <!-- CARDS: Pago (azul), Pendente (vermelho) em cima; Total (verde) embaixo ocupando 100% -->
+      <section class="stats" aria-label="Estatísticas de valores">
+        <div class="stat stat--pago" aria-label="Valor pago"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
+        <div class="stat stat--pendente" aria-label="Valor pendente"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
+        <div class="stat stat--total" aria-label="Total geral"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
+      </section>
+
+      <!-- FILTROS (pendente = TODAS sem data) -->
+      <section class="filters" aria-label="Filtros">
+        <form id="form-filtros" method="get">
+          <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
+          <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
+          <select name="status_pgto" id="status_pgto">
+            <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
+            <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
+            <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
+          </select>
+          <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
+          <button class="btn" type="submit">Filtrar</button>
+        </form>
+        <div id="escopo" class="scope"></div>
+      </section>
+
+      <!-- TABELA DE ENTREGAS (markup mantido) -->
+      <section class="card-table" aria-label="Minhas entregas">
+        <table id="tabela-entregas">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Forma Pgto</th>
+              <th>Valor</th>
+              <th>Data</th>
+              <th>Hora Pedido</th>
+              <th>Hora Entrega</th>
+              <th>Pagamento</th>
+              <th>Entrega</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in entregas %}
+            <tr id="row-{{ e.id }}">
+              <td data-label="Cliente">
+                <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
+              </td>
+              <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
+              <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+              <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
+              <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+              <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+              <td data-label="Pagamento">
+                <span
+                  class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
+                  data-id="{{ e.id }}"
+                  data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
+                  onclick="togglePagamento(event,this)"
+                  role="button" aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
+                >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
+              </td>
+              <td data-label="Entrega">
+                {% set entregue = (e.status in ['recebido','entregue']) %}
+                <span
+                  class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
+                  data-id="{{ e.id }}"
+                  data-entregue="{{ '1' if entregue else '0' }}"
+                  onclick="handleEntregaClick(this)"
+                >{{ 'Entregue' if entregue else 'Pendente' }}</span>
+              </td>
+            </tr>
+            <tr class="row-details" id="details-{{ e.id }}">
+              <td colspan="8" style="text-align:left;padding:10px 14px">
+                <div><strong>Cliente:</strong> {{ e.cliente }}</div>
+                <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
+                <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
+                <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
+                <div><strong>Data/Hora Pedido:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</div>
+                <div><strong>Hora Entrega:</strong> {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</div>
+                <div><strong>Recebido por:</strong> {{ e.recebido_por or '-' }}</div>
+              </td>
+            </tr>
+            {% else %}
+            <tr class="no-rows"><td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
+    </section>
+
+    <!-- ABA 3: AJUDA / SOCORRO -->
+    <section id="tab-ajuda" class="tab-panel" aria-label="Ajuda / Socorro">
+      <h2>Ajuda / Socorro</h2>
+      <p>Use este painel somente em situações reais de emergência. A supervisão será avisada imediatamente.</p>
+
+      <form id="form-socorro" onsubmit="enviarSocorro(event)">
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="acidente_com_pedido" required>
+            Me envolvi em um acidente e estou com o pedido do cliente
+          </label>
+        </div>
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="acidente_sem_pedido">
+            Me envolvi em um acidente sem pedido de cliente
+          </label>
+        </div>
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="pneu_furou">
+            Pneu furou
+          </label>
+        </div>
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="outros">
+            Outros (descreva abaixo)
+          </label>
+        </div>
+
+        <div id="socorro-outros-box" style="margin-top:8px; display:none;">
+          <textarea id="socorro-outros-text" name="detalhes" rows="4"
+            placeholder="Descreva o que aconteceu para a supervisão"
+            style="width:100%;border-radius:10px;border:1px solid var(--line);padding:8px;"></textarea>
+        </div>
+
+        <button type="submit" class="btn" style="margin-top:10px;">
+          Enviar pedido de socorro
+        </button>
       </form>
-      <div id="escopo" class="scope"></div>
-    </section>
 
-    <!-- TABELA DE ENTREGAS (markup mantido) -->
-    <section class="card-table" aria-label="Minhas entregas">
-      <table id="tabela-entregas">
-        <thead>
-          <tr>
-            <th>Cliente</th>
-            <th>Forma Pgto</th>
-            <th>Valor</th>
-            <th>Data</th>
-            <th>Hora Pedido</th>
-            <th>Hora Entrega</th>
-            <th>Pagamento</th>
-            <th>Entrega</th>
-          </tr>
-        </thead>
-        <tbody>
-          {% for e in entregas %}
-          <tr id="row-{{ e.id }}">
-            <td data-label="Cliente">
-              <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
-            </td>
-            <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
-            <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-            <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
-            <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-            <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-            <td data-label="Pagamento">
-              <span
-                class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
-                data-id="{{ e.id }}"
-                data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
-                onclick="togglePagamento(event,this)"
-                role="button" aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
-              >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
-            </td>
-            <td data-label="Entrega">
-              {% set entregue = (e.status in ['recebido','entregue']) %}
-              <span
-                class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
-                data-id="{{ e.id }}"
-                data-entregue="{{ '1' if entregue else '0' }}"
-                onclick="handleEntregaClick(this)"
-              >{{ 'Entregue' if entregue else 'Pendente' }}</span>
-            </td>
-          </tr>
-          <tr class="row-details" id="details-{{ e.id }}">
-            <td colspan="8" style="text-align:left;padding:10px 14px">
-              <div><strong>Cliente:</strong> {{ e.cliente }}</div>
-              <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
-              <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
-              <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
-              <div><strong>Data/Hora Pedido:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</div>
-              <div><strong>Hora Entrega:</strong> {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</div>
-              <div><strong>Recebido por:</strong> {{ e.recebido_por or '-' }}</div>
-            </td>
-          </tr>
-          {% else %}
-          <tr class="no-rows"><td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td></tr>
-          {% endfor %}
-        </tbody>
-      </table>
+      <p class="hint" style="margin-top:8px;">
+        Ao enviar, a supervisão será notificada e um alerta sonoro tocará automaticamente no painel do administrador.
+      </p>
     </section>
   </div>
 
-  <!-- MODAL GLOBAL Recebido por -->
+  <!-- MODAL GLOBAL Recebido por (MANTIDO) -->
   <div class="overlay" id="rcb-overlay" role="dialog" aria-modal="true" aria-labelledby="rcb-title">
     <div class="modal">
       <h3 id="rcb-title">Confirmar recebimento</h3>
@@ -208,9 +374,12 @@
     </div>
   </div>
 
+  <!-- SOM de nova entrega atribuída ao cooperado -->
+  <audio id="som-nova-entrega" src="{{ url_for('static', filename='sons/nova_corrida.mp3') }}" preload="auto"></audio>
+
   <script>
     // =============================
-    // Lógica: pendentes = TODAS sem data + não remover linha ao pagar + modal amplo
+    // Lógica original: pendentes = TODAS sem data + não remover linha ao pagar + modal amplo
     // =============================
     let lastScrollY = window.scrollY;
     const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
@@ -257,20 +426,26 @@
 
     // SUBMIT: se "pendente" => todas_datas=1 e limpa datas
     const form=document.getElementById('form-filtros');
-    form.addEventListener('submit',()=>{
-      const status=document.getElementById('status_pgto').value;
-      const hidden=document.getElementById('todas_datas');
-      if(status==='pendente'){
-        hidden.value='1';
-        document.getElementById('f-inicio').value='';
-        document.getElementById('f-fim').value='';
-      }else{ hidden.value=''; }
-    });
+    if(form){
+      form.addEventListener('submit',()=>{
+        const status=document.getElementById('status_pgto').value;
+        const hidden=document.getElementById('todas_datas');
+        if(status==='pendente'){
+          hidden.value='1';
+          document.getElementById('f-inicio').value='';
+          document.getElementById('f-fim').value='';
+        }else{ hidden.value=''; }
+      });
+    }
 
     function updateScope(){
       const url=new URL(location.href);
-      const status=url.searchParams.get('status_pgto')||document.getElementById('status_pgto').value||'todas';
-      document.getElementById('escopo').textContent = (status==='pendente') ? 'Exibindo TODAS as entregas PENDENTES (sem filtrar por data).' : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
+      const status=url.searchParams.get('status_pgto')||document.getElementById('status_pgto')?.value||'todas';
+      const el = document.getElementById('escopo');
+      if(!el) return;
+      el.textContent = (status==='pendente')
+        ? 'Exibindo TODAS as entregas PENDENTES (sem filtrar por data).'
+        : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
     }
 
     // PAGAMENTO: não remove linha nem mexe no scroll
@@ -350,7 +525,129 @@
     }
 
     window.addEventListener('beforeunload',()=>{lastScrollY=window.scrollY;});
-    window.addEventListener('load',()=>{updateScope();recalcTotals();setTimeout(preserveScroll,0);});
+    window.addEventListener('load',()=>{
+      updateScope();
+      recalcTotals();
+      setTimeout(preserveScroll,0);
+    });
+
+    // ===== ABAS =====
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+        btn.classList.add('active');
+        document.getElementById(btn.dataset.tab).classList.add('active');
+      });
+    });
+
+    // ===== ACEITAR / RECUSAR ENTREGA =====
+    async function aceitarEntrega(id){
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_aceitar_entrega', id=0) }}`.replace('0', id), {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({})
+        });
+        const data = await resp.json();
+        if(!resp.ok || data.ok===false){
+          alert(data.error || 'Falha ao aceitar entrega.');
+          return;
+        }
+        // Atualiza a página para mostrar a entrega em "Minhas entregas"
+        location.reload();
+      }catch(e){
+        alert('Erro ao aceitar: '+e.message);
+      }
+    }
+
+    async function recusarEntrega(id){
+      if(!confirm('Tem certeza que deseja recusar esta entrega?')) return;
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_recusar_entrega', id=0) }}`.replace('0', id), {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({})
+        });
+        const data = await resp.json();
+        if(!resp.ok || data.ok===false){
+          alert(data.error || 'Falha ao recusar entrega.');
+          return;
+        }
+        // Remove a linha da tabela de chamadas
+        const tr = document.querySelector(`#tab-chamadas tr[data-id="${id}"]`);
+        if(tr) tr.remove();
+      }catch(e){
+        alert('Erro ao recusar: '+e.message);
+      }
+    }
+
+    // ===== SOM QUANDO UMA ENTREGA FOR ATRIBUÍDA =====
+    async function checarNovasEntregas(){
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_novas_atribuicoes') }}`);
+        const data = await resp.json();
+        // Backend deve retornar algo como: { "nova": true/false }
+        if(data.nova){
+          const audio = document.getElementById('som-nova-entrega');
+          if(audio) audio.play().catch(()=>{ /* se o navegador bloquear o autoplay, ignora */ });
+        }
+      }catch(e){
+        console.log('Erro ao checar novas entregas:', e);
+      }
+    }
+    // checa a cada 10 segundos
+    setInterval(checarNovasEntregas, 10000);
+
+    // ===== AJUDA / SOCORRO =====
+    const radiosSocorro = document.querySelectorAll('input[name="tipo"]');
+    const outrosBox = document.getElementById('socorro-outros-box');
+    if(radiosSocorro.length && outrosBox){
+      radiosSocorro.forEach(r=>{
+        r.addEventListener('change', ()=>{
+          if(r.value === 'outros' && r.checked){
+            outrosBox.style.display = 'block';
+          }else if(r.checked){
+            outrosBox.style.display = 'none';
+          }
+        });
+      });
+    }
+
+    async function enviarSocorro(e){
+      e.preventDefault();
+      const tipoEl = document.querySelector('input[name="tipo"]:checked');
+      const tipo = tipoEl ? tipoEl.value : null;
+      const detalhes = (document.getElementById('socorro-outros-text')?.value || '').trim();
+
+      if(!tipo){
+        alert('Selecione uma opção de socorro.');
+        return;
+      }
+      if(tipo === 'outros' && !detalhes){
+        alert('Descreva o que aconteceu em "Outros".');
+        return;
+      }
+
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_socorro') }}`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ tipo, detalhes })
+        });
+        const data = await resp.json();
+        if(!resp.ok || data.ok===false){
+          alert(data.error || 'Falha ao enviar pedido de socorro.');
+          return;
+        }
+        alert('Pedido de socorro enviado para a supervisão.');
+        const form = document.getElementById('form-socorro');
+        if(form) form.reset();
+        if(outrosBox) outrosBox.style.display = 'none';
+      }catch(err){
+        alert('Erro ao enviar socorro: '+err.message);
+      }
+    }
   </script>
 </body>
 </html>
