@@ -2219,16 +2219,19 @@ def painel_cooperado():
     base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
     # ========== CORRIDAS EM ABERTO / EM ANDAMENTO ==========
-    # Aqui não filtramos por data: queremos qualquer corrida
-    # que ainda não esteja finalizada (status != entregue/recebido)
-    # e status_corrida pendente/aceita ou nulo.
-    corridas_query = base_q.filter(
-        (Entrega.status_corrida == None) |
-        (Entrega.status_corrida.in_(['pendente', 'aceita']))
-    ).filter(
-        (Entrega.status == None) |
-        (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
-    ).order_by(Entrega.data_envio.desc())
+    # Qualquer corrida que ainda não esteja finalizada
+    corridas_query = (
+        base_q
+        .filter(
+            (Entrega.status_corrida == None) |
+            (Entrega.status_corrida.in_(['pendente', 'aceita']))
+        )
+        .filter(
+            (Entrega.status == None) |
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+        )
+        .order_by(Entrega.data_envio.desc())
+    )
 
     corridas_raw = corridas_query.all()
 
@@ -2268,7 +2271,6 @@ def painel_cooperado():
         destino_bairro = destino.get('bairro') or ''
 
         # Lista simples de paradas intermediárias
-        # pode vir como {"stops": [...]} ou {"paradas": [...]}
         waypoints = paradas.get('stops') or paradas.get('paradas') or []
 
         corridas.append({
@@ -2280,24 +2282,6 @@ def painel_cooperado():
             "waypoints": waypoints,
         })
 
-
-    @app.route('/cooperado/recusar_entrega/<int:id>', methods=['POST'])
-def cooperado_recusar_entrega(id):
-    if session.get('user_id') is None or session.get('is_admin'):
-        return jsonify(ok=False, error='Não autorizado'), 401
-
-    user_id = session['user_id']
-    entrega = Entrega.query.get_or_404(id)
-
-    if entrega.cooperado_id != user_id:
-        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
-
-    entrega.status_corrida = 'recusada'
-    db.session.commit()
-
-    return jsonify(ok=True, status_corrida=entrega.status_corrida)
-
-    
     # ========== HISTÓRICO (TABELA) ==========
     query = base_q
 
@@ -2310,10 +2294,7 @@ def cooperado_recusar_entrega(id):
             (func.lower(Entrega.status_pagamento) == 'pendente')
         )
 
-    # Filtros de data:
-    # - Se todas_datas_flag == True: não filtra por data (lista tudo)
-    # - Senão, usa sua lógica antiga: se nada informado, filtra pelo dia atual;
-    #   se inicio/fim informados, usa local_date_window_to_utc_range.
+    # Filtros de data
     if not todas_datas_flag:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
 
@@ -2450,7 +2431,6 @@ def cooperado_recusar_corrida():
 
     entrega.status_corrida = 'recusada'
     db.session.commit()
-
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 
