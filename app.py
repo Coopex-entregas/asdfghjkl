@@ -2201,25 +2201,85 @@ def admin():
 
 from flask import abort
 
+# ================= SOCORRO / PANICO =================
+# guarda o último pedido de socorro em memória
+ULTIMO_SOCORRO = None
+
+
+@app.route("/socorro", methods=["POST"])
+def socorro():
+    """
+    Rota chamada pelo COOPERADO quando aperta o botão de SOCORRO.
+    Não tem HTML, só grava o alerta em memória.
+    """
+
+    # aqui você pode colocar o mesmo controle de login do painel do cooperado
+    # por exemplo: se não tiver usuário logado, bloqueia
+    if not session.get("user_id"):
+        abort(401)
+
+    user_id = session.get("user_id")
+    cooperado = Usuario.query.get(user_id)
+    if not cooperado:
+        abort(400)
+
+    # pega texto opcional da mensagem (campo "mensagem" ou "texto")
+    if request.is_json:
+        data = request.get_json(silent=True) or {}
+        texto = (data.get("mensagem") or data.get("texto") or "").strip()
+    else:
+        texto = (
+            request.form.get("mensagem")
+            or request.form.get("texto")
+            or request.args.get("mensagem")
+            or request.args.get("texto")
+            or ""
+        ).strip()
+
+    agora = datetime.utcnow()
+    momento = to_brasilia(agora).strftime("%d/%m/%Y %H:%M")
+
+    global ULTIMO_SOCORRO
+    ULTIMO_SOCORRO = {
+        "cooperado_id": cooperado.id,
+        "cooperado_nome": cooperado.nome,
+        "mensagem": texto,
+        "timestamp": time.time(),
+        "momento": momento,
+        "lido": False,   # só libera 1 vez pro admin
+    }
+
+    # resposta simples pro app do cooperado
+    return jsonify({"ok": True, "mensagem": "Socorro enviado para a supervisão!"}), 200
+
+
 @app.route("/admin_novo_socorro")
 def admin_novo_socorro():
     """
-    Endpoint polled pelo painel do ADMIN para saber se chegou um novo pedido de socorro.
-    Se tiver, devolve { nova: true, alerta: {...} } e zera o alerta.
+    Rota que o PAINEL DA SUPERVISÃO (admin) fica consultando de tempos em tempos.
+    Se tiver um socorro não lido, devolve os dados.
+    Não tem HTML, só JSON.
     """
-    global ULTIMO_SOCORRO
 
-    # verifica se é admin (ajusta conforme seu controle de sessão)
-    if session.get("user_tipo") != "admin":
+    # MESMA regra de permissão que você usa no /admin
+    # (se no seu app for outro campo, troque "is_admin" por ele)
+    if not session.get("is_admin") and not session.get("is_master"):
         abort(403)
 
-    if not ULTIMO_SOCORRO:
-        return jsonify({"nova": False})
+    global ULTIMO_SOCORRO
+    if not ULTIMO_SOCORRO or ULTIMO_SOCORRO.get("lido"):
+        # não tem socorro novo
+        return jsonify({"novo": False}), 200
 
-    alerta = ULTIMO_SOCORRO
-    ULTIMO_SOCORRO = None   # zera pra não tocar infinitamente
+    # marca como lido (só dispara uma vez)
+    ULTIMO_SOCORRO["lido"] = True
 
-    return jsonify({"nova": True, "alerta": alerta})
+    return jsonify({
+        "novo": True,
+        "cooperado": ULTIMO_SOCORRO["cooperado_nome"],
+        "mensagem": ULTIMO_SOCORRO["mensagem"] or "",
+        "momento": ULTIMO_SOCORRO["momento"],
+    }), 200
 
 # ================================
 # PAINEL DO COOPERADO (ESTILO UBER)
