@@ -2387,7 +2387,7 @@ def cooperado_aceitar_entrega(id):
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 
-# Recusar entrega (via URL com <id>) - FALTAVA ESSA
+# Recusar entrega (via URL com <id>)
 @app.route('/cooperado/recusar_entrega/<int:id>', methods=['POST'])
 def cooperado_recusar_entrega(id):
     if session.get('user_id') is None or session.get('is_admin'):
