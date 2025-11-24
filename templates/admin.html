@@ -109,9 +109,13 @@
     body.dark .badge.bad{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
 
     /* Layout: sidebar + painel (com mapa dentro) */
-    .viewport{height:calc(100vh - 64px - 54px); padding:16px 18px}
+    /* >>> AQUI: não fixa mais a altura exata da viewport, só mínimo */
+    .viewport{
+      min-height:calc(100vh - 64px - 54px);
+      padding:16px 18px;
+    }
     .grid{
-      height:100%;
+      /* REMOVIDO height:100% para deixar crescer conforme o conteúdo */
       display:grid;
       grid-template-columns:1fr 360px;  /* ENTREGAS (com mapa) / SIDEBAR */
       gap:16px;
@@ -208,8 +212,16 @@
     .filters-form select,.filters-form input{background:#0a1f7e;border:1px solid #2f4de6;color:#fff;border-radius:10px;padding:8px 10px;font-weight:700}
     .filters-form .btn{height:40px}
 
-    .content{min-height:0;overflow:hidden}
-    .scrollable{height:100%;overflow:auto}
+    /* >>> AQUI: deixa o conteúdo crescer e não cortar nada */
+    .content{min-height:0;overflow:visible}
+
+    /* >>> AQUI: rolagem "infinita": altura automática, sem limite */
+    .scrollable{
+      height:auto;
+      max-height:none;
+      overflow-x:auto;
+      overflow-y:visible;
+    }
 
     /* Tabela */
     table{width:100%;border-collapse:collapse;color:var(--pane-text);font-size:13.6px;background:transparent}
@@ -471,7 +483,6 @@
               <tbody>
                 {% for e in entregas %}
                 {% set tem_coop = (e.cooperado is not none) %}
-                {# ONLINE = cooperado.online se existir; senão, considera offline #}
                 {% set is_online = tem_coop and (e.cooperado.online if e.cooperado.online is defined else False) %}
                 <tr
                   data-id="{{ e.id }}"
@@ -540,7 +551,6 @@
 
                   <!-- COLUNA RASTREIO -->
                   <td>
-                    <!-- Abre o rastreio em nova aba -->
                     <a href="{{ url_for('rastreamento', codigo=e.id, _external=True) }}"
                        target="_blank"
                        class="btn alt"
@@ -548,13 +558,13 @@
                       Abrir
                     </a>
 
-                    <!-- Copiar link pra mandar no WhatsApp -->
                     <button type="button"
                             class="btn"
                             style="padding:4px 8px;font-size:11px;border-radius:8px;box-shadow:none;margin-top:3px;"
                             onclick="navigator.clipboard.writeText('{{ url_for('rastreamento', codigo=e.id, _external=True) }}')
                                      .then(()=>alert('Link de rastreio copiado!'))
-                                     .catch(()=>alert('Não foi possível copiar o link.'));">
+                                     .catch(()=>alert('Não foi possível copiar o link.'));"
+                    >
                       Copiar
                     </button>
                   </td>
@@ -895,7 +905,6 @@
         const nome = tem ? (window.COOPERADOS.find(x=>String(x.id)===String(sel.value))?.nome || '-') : 'Sem Cooperado';
         span.textContent = nome;
         sel.replaceWith(span);
-        // Atualiza também o dot da primeira coluna (ID)
         const tr = span.closest('tr');
         const dot = tr?.querySelector('.id-with-dot .status-dot');
         if(dot){
@@ -912,23 +921,6 @@
     function imprimirCupom(idEntrega, botao) {
       const tr = botao.closest('tr');
       const get = (idx)=> (tr?.children[idx]?.innerText || '').trim() || '-';
-
-      // ATENÇÃO: índices da tabela:
-      // 0 ID
-      // 1 Cliente
-      // 2 Bairro
-      // 3 Endereço
-      // 4 Valor
-      // 5 Data/Dia
-      // 6 HoraPedido
-      // 7 HoraAtribuída
-      // 8 Cooperado
-      // 9 FormaPgto
-      // 10 Status
-      // 11 Pagamento
-      // 12 RecebidoPor
-      // 13 Rastreio
-      // 14 Ações
 
       const dataDiaBruto = (tr?.children[5]?.innerText || '-').replace(/\s+/g,' ').trim();
       const dataSo = (dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/) || ['-'])[0];
@@ -1029,7 +1021,6 @@
 </body>
 </html>`;
 
-      // abre nova aba; se falhar, usa overlay
       let win = null;
       try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
       if (win && !win.closed) {
@@ -1040,7 +1031,6 @@
       criarOverlayPreview(html);
     }
 
-    // Overlay de preview (fallback se popup bloquear)
     function criarOverlayPreview(html){
       const wrap = document.createElement('div');
       wrap.id = 'print-preview-overlay';
@@ -1108,8 +1098,8 @@
       const AUDIO = document.getElementById('som-pendente');
       if (!AUDIO) return;
 
-      const LIMIAR_MS   = 2 * 60 * 60 * 1000; // 2 horas
-      const STORAGE_KEY = 'pendente_alertados_v2_ts'; // salva timestamp do último alerta por entrega
+      const LIMIAR_MS   = 2 * 60 * 60 * 1000;
+      const STORAGE_KEY = 'pendente_alertados_v2_ts';
       let tocados = {};
       try { tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {}; } catch(e){ tocados = {}; }
 
@@ -1135,7 +1125,6 @@
         const agora = Date.now();
         const ids = pendentesAtrasados();
 
-        // Seleciona apenas os que precisam de novo alerta (passaram 2h desde o último alerta daquele ID)
         const precisaAlertar = ids.filter(id => {
           const last = +(tocados[id] || 0);
           return (agora - last) >= LIMIAR_MS;
@@ -1146,20 +1135,16 @@
           await abrirModal(
             'Entregas pendentes (2h+)',
             '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.',
-            true // tocarSom = true (balão + som)
+            true
           );
-
-          // marca timestamp do alerta para cada ID alertado
           precisaAlertar.forEach(id => tocados[id] = agora);
           try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
         }
       }
 
-      // checa ao carregar e depois a cada 2 horas
       checar2h();
-      setInterval(checar2h, 2 * 60 * 60 * 1000); // 7.200.000 ms (2h)
+      setInterval(checar2h, 2 * 60 * 60 * 1000);
 
-      // quando marcar ENTREGUE, remove do controle
       document.addEventListener('click', (ev)=>{
         const st = ev.target.closest('.js-toggle-entrega');
         if (!st) return;
@@ -1176,7 +1161,7 @@
     // 2) Balão de pagamentos pendentes (a cada 60 min), bloqueante
     function existePagamentoPendenteNaTabela() {
       return [...document.querySelectorAll('.tabela tbody tr')].some(tr => {
-        const cel = tr.children[11]; // coluna "Pagamento" (índice 11 após adicionar Endereço e Rastreio)
+        const cel = tr.children[11];
         return cel && cel.textContent.trim().toLowerCase().includes('pendente');
       });
     }
@@ -1186,8 +1171,7 @@
         const agora = new Date();
         const hora = agora.getHours(), minutos = agora.getMinutes();
 
-        // Alerta de pagamentos pendentes a cada 60min
-        const PAG_ALERT_KEY = 'coopex_pend_pag_last_ts'; // timestamp do último alerta (ms)
+        const PAG_ALERT_KEY = 'coopex_pend_pag_last_ts';
         if (existePagamentoPendenteNaTabela()) {
           const now = Date.now();
           const last = +(localStorage.getItem(PAG_ALERT_KEY) || 0);
@@ -1203,7 +1187,6 @@
           }
         }
 
-        // Boa noite às 21:59 (uma vez por dia)
         if (hora === 21 && minutos === 59) {
           const keyBoaNoite = `coopex_boa_noite_${agora.getFullYear()}_${agora.getMonth()}_${agora.getDate()}`;
           if (!localStorage.getItem(keyBoaNoite)) {
@@ -1219,9 +1202,6 @@
       setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000);
     });
 
-
-    // =============== MAPA EM TEMPO REAL (Leaflet + OSM) ====================
-    // Mostra todos os motoboys com lat/lng; clique na linha da tabela foca o motoboy
   </script>
 
   <script
@@ -1234,7 +1214,6 @@
       const mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
 
-      // Centro padrão em Natal/RN (pode ajustar depois)
       const map = L.map(mapEl).setView([-5.7945, -35.211], 13);
 
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
@@ -1255,17 +1234,14 @@
         markersByCoop[String(m.id)] = marker;
       });
 
-      // Se tiver pelo menos 1 marker, ajusta o bounds
       const ids = Object.keys(markersByCoop);
       if (ids.length > 0) {
         const group = L.featureGroup(ids.map(id => markersByCoop[id]));
         map.fitBounds(group.getBounds().pad(0.25));
       }
 
-      // Clique na linha da tabela → centraliza no cooperado da entrega
       document.querySelectorAll('.tabela tbody tr').forEach(tr => {
         tr.addEventListener('click', (ev) => {
-          // Evita conflito com clique em botão de ação
           if (ev.target.closest('button, a, form, svg, path')) return;
 
           const coopSpan = tr.querySelector('.coop-editable, .coop-dot');
