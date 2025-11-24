@@ -2280,6 +2280,24 @@ def painel_cooperado():
             "waypoints": waypoints,
         })
 
+
+    @app.route('/cooperado/recusar_entrega/<int:id>', methods=['POST'])
+def cooperado_recusar_entrega(id):
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    user_id = session['user_id']
+    entrega = Entrega.query.get_or_404(id)
+
+    if entrega.cooperado_id != user_id:
+        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
+
+    entrega.status_corrida = 'recusada'
+    db.session.commit()
+
+    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+    
     # ========== HISTÓRICO (TABELA) ==========
     query = base_q
 
