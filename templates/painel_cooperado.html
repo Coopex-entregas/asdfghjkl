@@ -585,7 +585,7 @@
     // ===== SOM QUANDO UMA ENTREGA FOR ATRIBUÍDA =====
     async function checarNovasEntregas(){
       try{
-        const resp = await fetch(`{{ url_for('cooperado_novas_atribuicoes') }}`);
+        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`);
         const data = await resp.json();
         // Backend deve retornar algo como: { "nova": true/false }
         if(data.nova){
