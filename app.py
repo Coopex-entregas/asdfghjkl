@@ -2199,6 +2199,28 @@ def admin():
         cooperados_disponiveis=cooperados_disponiveis
     )
 
+from flask import abort
+
+@app.route("/admin_novo_socorro")
+def admin_novo_socorro():
+    """
+    Endpoint polled pelo painel do ADMIN para saber se chegou um novo pedido de socorro.
+    Se tiver, devolve { nova: true, alerta: {...} } e zera o alerta.
+    """
+    global ULTIMO_SOCORRO
+
+    # verifica se é admin (ajusta conforme seu controle de sessão)
+    if session.get("user_tipo") != "admin":
+        abort(403)
+
+    if not ULTIMO_SOCORRO:
+        return jsonify({"nova": False})
+
+    alerta = ULTIMO_SOCORRO
+    ULTIMO_SOCORRO = None   # zera pra não tocar infinitamente
+
+    return jsonify({"nova": True, "alerta": alerta})
+
 # ================================
 # PAINEL DO COOPERADO (ESTILO UBER)
 # ================================
@@ -2456,6 +2478,39 @@ def cooperado_novas_corridas():
     novas = q.count()
     return jsonify(ok=True, novas=novas)
 
+# variável global bem simples pra sinalizar um novo socorro
+ULTIMO_SOCORRO = None
+
+@app.route("/cooperado_socorro", methods=["POST"])
+def cooperado_socorro():
+    """
+    Endpoint chamado pelo formulário de socorro do painel do cooperado.
+    """
+    global ULTIMO_SOCORRO
+
+    data = request.get_json() or {}
+    tipo = data.get("tipo")
+    detalhes = (data.get("detalhes") or "").strip()
+
+    if not tipo:
+        return jsonify({"ok": False, "error": "Tipo de socorro não informado."}), 400
+
+    # pega info básica do cooperado logado (ajusta conforme seu sistema)
+    cooperado_id = session.get("user_id")
+    cooperado_nome = session.get("user_nome", "Cooperado")
+
+    # guarda em memória um "alerta" para o painel admin buscar
+    ULTIMO_SOCORRO = {
+        "cooperado_id": cooperado_id,
+        "cooperado_nome": cooperado_nome,
+        "tipo": tipo,
+        "detalhes": detalhes,
+        "timestamp": datetime.utcnow().isoformat()
+    }
+
+    # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
+
+    return jsonify({"ok": True})
 
 # ================================
 # CRUD de COOPERADO (mantidos)
