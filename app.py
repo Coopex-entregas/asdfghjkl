@@ -2493,7 +2493,6 @@ def cooperado_aceitar_corrida():
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
-@login_required  # use o mesmo decorator que você já usa para proteger o painel do cooperado
 def cooperado_atualizar_localizacao():
     """
     Atualiza last_lat, last_lng, last_ping e marca o cooperado como online.
