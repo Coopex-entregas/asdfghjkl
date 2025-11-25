@@ -839,7 +839,6 @@
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({ lat, lng, accuracy, heading, speed })
         });
-        // Não precisa tratar resposta; só garantir que não quebre
       }catch(e){
         console.log('Falha ao enviar localização:', e);
       }
@@ -883,13 +882,24 @@
       );
     }
 
-    function pararRastreamento(){
+    async function pararRastreamento(){
       if(gpsWatchId !== null && navigator.geolocation){
         navigator.geolocation.clearWatch(gpsWatchId);
       }
       gpsWatchId = null;
       gpsAtivo   = false;
       atualizarBadgeGPS('off');
+
+      // avisa o back-end que o cooperado ficou OFF
+      try{
+        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ offline:true })
+        });
+      }catch(e){
+        console.log('Falha ao enviar offline:', e);
+      }
     }
 
     if(gpsStatusEl){
@@ -912,8 +922,7 @@
       recalcTotals();
       ensureEmpty();
       setTimeout(preserveScroll,0);
-
-      // Se quiser já iniciar o rastreamento automaticamente ao abrir:
+      // se quiser já iniciar o rastreamento automaticamente:
       // iniciarRastreamento();
     });
   </script>
