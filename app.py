@@ -2492,6 +2492,44 @@ def cooperado_aceitar_corrida():
     db.session.commit()
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
+@app.route('/cooperado/atualizar_localizacao', methods=['POST'])
+@login_required  # use o mesmo decorator que você já usa para proteger o painel do cooperado
+def cooperado_atualizar_localizacao():
+    """
+    Atualiza last_lat, last_lng, last_ping e marca o cooperado como online.
+    Endpoint usado pelo painel_cooperado via fetch().
+    """
+    # garante que é cooperado
+    if session.get('tipo') != 'cooperado':
+        return jsonify({'error': 'Não autorizado'}), 403
+
+    data = request.get_json() or {}
+    lat = data.get('lat')
+    lng = data.get('lng')
+
+    if lat is None or lng is None:
+        return jsonify({'error': 'Lat/Lng obrigatórios'}), 400
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except ValueError:
+        return jsonify({'error': 'Lat/Lng inválidos'}), 400
+
+    cooperado_id = session.get('user_id')
+    cooperado = Cooperado.query.get(cooperado_id)
+
+    if not cooperado:
+        return jsonify({'error': 'Cooperado não encontrado'}), 404
+
+    cooperado.last_lat = lat
+    cooperado.last_lng = lng
+    cooperado.last_ping = datetime.utcnow()  # se quiser em São Paulo, pode converter depois
+    cooperado.online = True
+
+    db.session.commit()
+
+    return jsonify({'status': 'ok'})
 
 # Recusar via API (AJAX/Fetch com JSON)
 @app.route('/cooperado/api/recusar', methods=['POST'])
