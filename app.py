@@ -2206,6 +2206,8 @@ from flask import abort
 ULTIMO_SOCORRO = None
 
 
+from flask import abort  # você já importou, então pode manter
+
 @app.route("/socorro", methods=["POST"])
 def socorro():
     """
@@ -2213,13 +2215,12 @@ def socorro():
     Não tem HTML, só grava o alerta em memória.
     """
 
-    # aqui você pode colocar o mesmo controle de login do painel do cooperado
-    # por exemplo: se não tiver usuário logado, bloqueia
     if not session.get("user_id"):
         abort(401)
 
     user_id = session.get("user_id")
-    cooperado = Usuario.query.get(user_id)
+    # troque Usuario -> Cooperado
+    cooperado = Cooperado.query.get(user_id)
     if not cooperado:
         abort(400)
 
@@ -2249,9 +2250,7 @@ def socorro():
         "lido": False,   # só libera 1 vez pro admin
     }
 
-    # resposta simples pro app do cooperado
     return jsonify({"ok": True, "mensagem": "Socorro enviado para a supervisão!"}), 200
-
 
 @app.route("/admin_novo_socorro")
 def admin_novo_socorro():
@@ -4455,19 +4454,27 @@ def exportar_xlsx():
 
     entregas = query.order_by(Entrega.data_envio.asc()).all()
 
+    # monta linhas para o DataFrame
     rows = []
     for e in entregas:
-        dt_local = to_brasilia(e.data_envio)
+        dt_local = to_brasilia(e.data_envio) if e.data_envio else None
+        dt_atr_local = to_brasilia(e.data_atribuida) if e.data_atribuida else None
+
         rows.append({
-            'Data': dt_local.strftime('%d/%m/%Y') if dt_local else '',
-            'Cliente': e.cliente,
-            'Bairro': e.bairro,
-            'Valor': e.valor,
-            'Status Pagamento': e.status_pagamento,
-            'Status Entrega': e.status,
-            'Forma Pagamento': e.pagamento,
-            'Cooperado': (e.cooperado.nome if e.cooperado else 'Sem Cooperado'),
-            'Recebido Por': e.recebido_por or ''
+            "ID Entrega": e.id,
+            "Data envio (Brasília)": dt_local.strftime('%d/%m/%Y %H:%M:%S') if dt_local else '',
+            "Data atribuída (Brasília)": dt_atr_local.strftime('%d/%m/%Y %H:%M:%S') if dt_atr_local else '',
+            "Cliente (texto)": e.cliente or '',
+            "Cliente ID": e.cliente_id or '',
+            "Bairro": e.bairro or '',
+            "Valor (R$)": float(e.valor or 0),
+            "Status pagamento": (e.status_pagamento or '').lower(),
+            "Status entrega": e.status or '',
+            "Pagamento": e.pagamento or '',
+            "Recebido por": e.recebido_por or '',
+            "Cooperado": e.cooperado.nome if e.cooperado else '',
+            "Cooperado ID": e.cooperado_id or '',
+            "Crédito usado (R$)": float(e.credito_usado or 0),
         })
 
     df_out = pd.DataFrame(rows)
@@ -4477,11 +4484,25 @@ def exportar_xlsx():
         sheet = 'Entregas'
         df_out.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
-        col_widths = [12, 28, 18, 10, 18, 16, 16, 22, 18]
-        for i, w in enumerate(col_widths[:len(df_out.columns)]):
+
+        # larguras básicas de coluna
+        widths = [
+            10, 22, 22, 28, 10, 18, 14,
+            16, 16, 14, 20, 24, 10, 18
+        ]
+        for i, w in enumerate(widths[:len(df_out.columns)]):
             ws.set_column(i, i, w)
+
+        # formatação de moeda para colunas de valor
+        money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
+        cols = list(df_out.columns)
+        for col_name in ["Valor (R$)", "Crédito usado (R$)"]:
+            if col_name in cols:
+                idx = cols.index(col_name)
+                ws.set_column(idx, idx, None, money_fmt)
+
     output.seek(0)
-    return send_file(output, download_name="entregas.xlsx", as_attachment=True)
+    return send_file(output, download_name='entregas.xlsx', as_attachment=True)
 
 # =========================================================
 # EXPORTAR / IMPORTAR CLIENTES
