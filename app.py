@@ -3,6 +3,7 @@ import io
 import re
 import json
 import random
+import time as time_module
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
@@ -63,6 +64,12 @@ class Cooperado(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     senha_hash = db.Column(db.String(128), nullable=False)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
+
+    # === NOVOS CAMPOS: ONLINE / LOCALIZAÇÃO ===
+    online = db.Column(db.Boolean, nullable=False, default=False)
+    last_lat = db.Column(db.Float, nullable=True)
+    last_lng = db.Column(db.Float, nullable=True)
+    last_ping = db.Column(db.DateTime, nullable=True)
 
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
@@ -1479,6 +1486,17 @@ def _cliente_atual():
         abort(401)
     return cli
 
+def _cooperado_atual():
+    """
+    Retorna o cooperado logado (painel do cooperado), ou aborta 401.
+    """
+    if session.get('user_id') is None or session.get('is_admin'):
+        abort(401)
+    coop = Cooperado.query.get(session['user_id'])
+    if not coop:
+        abort(401)
+    return coop
+
 
 def _calcular_preco_bairros(bairro_origem, bairro_destino):
     """
@@ -2245,7 +2263,7 @@ def socorro():
         "cooperado_id": cooperado.id,
         "cooperado_nome": cooperado.nome,
         "mensagem": texto,
-        "timestamp": time.time(),
+        "timestamp": time_module.time(),
         "momento": momento,
         "lido": False,   # só libera 1 vez pro admin
     }
@@ -2280,6 +2298,11 @@ def admin_novo_socorro():
         "momento": ULTIMO_SOCORRO["momento"],
     }), 200
 
+# imports (se já existirem no arquivo, pode ignorar)
+from datetime import datetime, date
+import json
+from sqlalchemy import func
+
 # ================================
 # PAINEL DO COOPERADO (ESTILO UBER)
 # ================================
@@ -2291,18 +2314,78 @@ def painel_cooperado():
 
     user_id = session['user_id']
 
-    inicio = request.args.get('inicio')
-    fim = request.args.get('fim')
+    # ---------------------------
+    # PARÂMETROS DE FILTRO (GET)
+    # ---------------------------
+    inicio_str = request.args.get('inicio') or ''
+    fim_str = request.args.get('fim') or ''
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
     todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
 
-    # Base de consultas: entregas desse cooperado
+    def _parse_date(s: str):
+        """
+        Tenta converter string em date.
+        Aceita 'YYYY-MM-DD' (input type=date) ou 'DD/MM/YYYY'.
+        """
+        s = (s or '').strip()
+        if not s:
+            return None
+
+        for fmt in ('%Y-%m-%d', '%d/%m/%Y'):
+            try:
+                return datetime.strptime(s, fmt).date()
+            except ValueError:
+                continue
+        return None
+
+    inicio = _parse_date(inicio_str)
+    fim = _parse_date(fim_str)
+
+    # Base de consultas: entregas desse cooperado (HISTÓRICO / CORRIDAS FINALIZADAS)
     base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
-    # ========== CORRIDAS EM ABERTO / EM ANDAMENTO ==========
+    # -------------------------
+    # FILTRO POR DATA (HISTÓRICO)
+    # -------------------------
+    # Regra:
+    # - Se NÃO marcar "todas as datas" e NÃO enviar início/fim -> mostra apenas o dia atual.
+    # - Se marcar "todas as datas" -> não filtra por data.
+    if not todas_datas_flag:
+        if not inicio and not fim:
+            hoje = date.today()
+            inicio = hoje
+            fim = hoje
+
+    if inicio:
+        base_q = base_q.filter(
+            Entrega.data_envio >= datetime.combine(inicio, datetime.min.time())
+        )
+    if fim:
+        base_q = base_q.filter(
+            Entrega.data_envio <= datetime.combine(fim, datetime.max.time())
+        )
+
+    # ------------------------------
+    # FILTRO POR STATUS PAGAMENTO
+    # ------------------------------
+    # status_pgto pode ser: 'todas', 'pago', 'pendente'
+    if status_pgto in ['pago', 'pendente']:
+        if status_pgto == 'pago':
+            base_q = base_q.filter(func.lower(Entrega.status_pagamento) == 'pago')
+        else:
+            # pendente = tudo que não é 'pago'
+            base_q = base_q.filter(
+                (Entrega.status_pagamento == None) |
+                (func.lower(Entrega.status_pagamento) != 'pago')
+            )
+
+    # ======================================================
+    # CORRIDAS EM ABERTO / EM ANDAMENTO (ESTILO UBER)
+    # ======================================================
     # Qualquer corrida que ainda não esteja finalizada
     corridas_query = (
-        base_q
+        Entrega.query
+        .filter(Entrega.cooperado_id == user_id)
         .filter(
             (Entrega.status_corrida == None) |
             (Entrega.status_corrida.in_(['pendente', 'aceita']))
@@ -2363,59 +2446,36 @@ def painel_cooperado():
             "waypoints": waypoints,
         })
 
-    # ========== HISTÓRICO (TABELA) ==========
-    query = base_q
-
-    # Filtro por status de pagamento
-    if status_pgto == 'pago':
-        query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
-    elif status_pgto == 'pendente':
-        query = query.filter(
-            (Entrega.status_pagamento == None) |
-            (func.lower(Entrega.status_pagamento) == 'pendente')
-        )
-
-    # Filtros de data
-    if not todas_datas_flag:
-        hoje_brasil = datetime.now(BRAZIL_TZ).date()
-
-        # Nenhuma data informada -> dia atual
-        if not inicio and not fim:
-            inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
-            query = query.filter(
-                Entrega.data_envio >= inicio_utc,
-                Entrega.data_envio <= fim_utc
-            )
-
-        # Data inicial
-        if inicio:
-            di = datetime.strptime(inicio, "%Y-%m-%d").date()
-            inicio_utc, _ = local_date_window_to_utc_range(di)
-            query = query.filter(Entrega.data_envio >= inicio_utc)
-
-        # Data final
-        if fim:
-            df_ = datetime.strptime(fim, "%Y-%m-%d").date()
-            _, fim_utc = local_date_window_to_utc_range(df_)
-            query = query.filter(Entrega.data_envio <= fim_utc)
-
-    # Ordenação e carregamento do cooperado (se precisar no template)
+    # ================================
+    # HISTÓRICO / ENTREGAS FINALIZADAS
+    # ================================
     entregas = (
-        query
-        .options(joinedload(Entrega.cooperado))
+        base_q
         .order_by(Entrega.data_envio.desc())
         .all()
     )
 
-    # Totais
-    total_geral = sum(float(e.valor or 0) for e in entregas)
-    total_pago = sum(
-        float(e.valor or 0)
-        for e in entregas
-        if (e.status_pagamento or '').lower() == 'pago'
-    )
-    total_pendente = max(0.0, total_geral - total_pago)
+    # --------------
+    # CÁLCULO TOTAIS
+    # --------------
+    total_geral = 0
+    total_pago = 0
 
+    for e in entregas:
+        valor = e.valor or 0
+        total_geral += valor
+        status_e = (e.status_pagamento or '').lower()
+        if status_e == 'pago':
+            total_pago += valor
+
+    total_pendente = total_geral - total_pago
+
+    # Cooperado logado (para exibir nome, foto, etc. no painel)
+    cooperado = Cooperado.query.get(user_id)
+
+    # -------------------------
+    # RENDER DO TEMPLATE
+    # -------------------------
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
@@ -2425,7 +2485,8 @@ def painel_cooperado():
         total_pendente=total_pendente,
         request=request,
         to_brasilia=to_brasilia,
-        status_pgto=status_pgto
+        status_pgto=status_pgto,
+        cooperado=cooperado   # para mostrar dados do cooperado no topo
     )
 
 
@@ -2435,15 +2496,21 @@ def cooperado_aceitar_entrega(id):
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 401
 
-    user_id = session['user_id']
+    coop = Cooperado.query.get(session['user_id'])
+    if not coop:
+        return jsonify(ok=False, error='Cooperado não encontrado'), 404
+
+    if not coop.online:
+        return jsonify(ok=False, error='Você está offline. Fique ONLINE para aceitar corridas.'), 400
+
     entrega = Entrega.query.get_or_404(id)
 
-    if entrega.cooperado_id != user_id:
+    if entrega.cooperado_id != coop.id:
         return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
 
     entrega.status_corrida = 'aceita'
     if not entrega.data_atribuida:
-        entrega.data_atribuida = datetime.now(BRAZIL_TZ)
+        entrega.data_atribuida = datetime.utcnow()  # mantém padrão UTC no banco
 
     db.session.commit()
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
@@ -2520,11 +2587,17 @@ def cooperado_novas_corridas():
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 401
 
-    user_id = session['user_id']
+    coop = Cooperado.query.get(session['user_id'])
+    if not coop:
+        return jsonify(ok=False, error='Cooperado não encontrado'), 404
+
+    # Se estiver offline, não “toca” corrida nova
+    if not coop.online:
+        return jsonify(ok=True, novas=0)
 
     q = (
         Entrega.query
-        .filter(Entrega.cooperado_id == user_id)
+        .filter(Entrega.cooperado_id == coop.id)
         .filter(
             (Entrega.status_corrida == None) |
             (Entrega.status_corrida == 'pendente')
@@ -2536,9 +2609,6 @@ def cooperado_novas_corridas():
     )
     novas = q.count()
     return jsonify(ok=True, novas=novas)
-
-# variável global bem simples pra sinalizar um novo socorro
-ULTIMO_SOCORRO = None
 
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
@@ -2570,6 +2640,53 @@ def cooperado_socorro():
     # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
 
     return jsonify({"ok": True})
+
+@app.route('/cooperado/api/status_localizacao', methods=['POST'])
+def cooperado_status_localizacao():
+    """
+    Cooperado liga/desliga o modo ONLINE e envia (opcionalmente) a posição atual.
+
+    JSON esperado:
+    {
+      "online": true/false,   # obrigatório pra ligar/desligar
+      "lat": -5.79,           # opcional
+      "lng": -35.21           # opcional
+    }
+    """
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    coop = Cooperado.query.get(session['user_id'])
+    if not coop:
+        return jsonify(ok=False, error='Cooperado não encontrado'), 404
+
+    data = request.get_json(silent=True) or {}
+    online = data.get('online')
+    lat = data.get('lat')
+    lng = data.get('lng')
+
+    # Atualiza status online só se veio booleano
+    if isinstance(online, bool):
+        coop.online = online
+
+    # Atualiza localização, se veio
+    try:
+        if lat is not None and lng is not None:
+            coop.last_lat = float(lat)
+            coop.last_lng = float(lng)
+    except (TypeError, ValueError):
+        # se vier lixo, ignora
+        pass
+
+    coop.last_ping = datetime.utcnow()
+    db.session.commit()
+
+    return jsonify({
+        "ok": True,
+        "online": coop.online,
+        "last_lat": coop.last_lat,
+        "last_lng": coop.last_lng,
+    })
 
 # ================================
 # CRUD de COOPERADO (mantidos)
@@ -3210,6 +3327,54 @@ def trajetos_exportar():
     output.seek(0)
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
+@app.route('/admin/api/cooperados_online')
+def admin_cooperados_online():
+    """
+    Retorna os cooperados ONLINE + última posição, para o mapa da supervisão.
+    A supervisão pode chamar isso a cada X segundos via JS.
+    """
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    agora = datetime.utcnow()
+    # Se não pingar há mais de 5 minutos, consideramos "offline" pro mapa
+    limite = agora - timedelta(minutes=5)
+
+    cooperados = (
+        Cooperado.query
+        .filter(Cooperado.online == True)
+        .filter(
+            (Cooperado.last_ping == None) |
+            (Cooperado.last_ping >= limite)
+        )
+        .all()
+    )
+
+    resultado = []
+    for c in cooperados:
+        # Está em corrida (tem entrega aceita e não finalizada)?
+        em_corrida = (
+            Entrega.query
+            .filter(
+                Entrega.cooperado_id == c.id,
+                Entrega.status_corrida.in_(['aceita']),
+                (Entrega.status == None) |
+                (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+            )
+            .count() > 0
+        )
+
+        resultado.append({
+            "id": c.id,
+            "nome": c.nome,
+            "online": c.online,
+            "lat": c.last_lat,
+            "lng": c.last_lng,
+            "last_ping": c.last_ping.isoformat() if c.last_ping else None,
+            "em_corrida": em_corrida,
+        })
+
+    return jsonify(ok=True, cooperados=resultado)
 
 # =========================================================
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
