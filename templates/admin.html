@@ -542,7 +542,6 @@
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
-          <button id="toggleView" class="toggle" type="button">Alternar: Tabela/Cartões</button>
         </div>
 
         <!-- MAPA DE RASTREIO -->
@@ -834,20 +833,20 @@
     </div>
   </div>
 
-  <!-- áudio do aviso -->
+   <!-- áudio do aviso -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <!-- áudio de socorro -->
   <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
-   <!-- JS PRINCIPAL -->
+  <!-- JS PRINCIPAL -->
   <script>
     // === Lista de cooperados para edição rápida ===
     window.COOPERADOS = [
       {% for c in cooperados %}{ id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
     ];
 
-    // === Dados de motoboys para o MAPA (usa last_lat/last_lng/online/last_ping) ===
+    // === Dados de motoboys para o MAPA ===
     window.MOTOBOYS = [
       {% for c in cooperados if c.last_lat is not none and c.last_lng is not none %}
       {
@@ -1145,7 +1144,6 @@
 
       function salvar(){
         var coopId = sel.value || '';
-        // chama backend
         try{
           var url = '/atribuir_cooperado/' + idEntrega;
           var fd = new FormData();
@@ -1196,7 +1194,10 @@
         salvar();
       }, { once: true });
     });
+  </script>
 
+  <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
+  <script>
     // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
     function imprimirCupom(idEntrega, botao) {
       var tr = botao.closest ? botao.closest('tr') : null;
@@ -1207,7 +1208,6 @@
         return txt || '-';
       }
 
-      // coluna 5 tem "data\n dia da semana"
       var dataDiaBruto = (get(5) || '-').replace(/\s+/g,' ').trim();
       var matchData = dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/);
       var dataSo = matchData ? matchData[0] : '-';
@@ -1401,7 +1401,7 @@
       document.body.appendChild(wrap);
     }
 
-    // 1) Entregas pendentes >= 2 horas: som + balão (a cada 2 horas)
+    // 1) Entregas pendentes >= 2 horas
     (function(){
       var AUDIO = document.getElementById('som-pendente');
       if (!AUDIO) return;
@@ -1543,121 +1543,92 @@
       });
     });
 
-    // ===== MAPA EM TELA CHEIA (overlay na mesma janela) =====
+    // ===== MAPA EM TELA CHEIA =====
     function abrirMapaTelaCheia() {
       try {
         var dados = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
 
-        // remove overlay anterior, se existir
-        var old = document.getElementById('map-full-overlay');
-        if (old) old.remove();
-
-        if (typeof L === 'undefined') {
-          alert('Mapa indisponível no momento (biblioteca não carregada).');
+        var w = window.open('', '_blank', 'noopener,noreferrer');
+        if (!w || w.closed) {
+          alert('Seu navegador bloqueou a nova janela do mapa.');
           return;
         }
 
-        var overlay = document.createElement('div');
-        overlay.id = 'map-full-overlay';
-        Object.assign(overlay.style, {
-          position:'fixed',
-          inset:'0',
-          background:'rgba(15,23,42,.96)',
-          zIndex:'12000',
-          display:'flex',
-          flexDirection:'column'
-        });
+        w.document.open();
+        w.document.write(
+          '<!DOCTYPE html>'
+         +' <html lang="pt-br">'
+         +' <head>'
+         +'   <meta charset="utf-8">'
+         +'   <title>Mapa – Coopex</title>'
+         +'   <meta name="viewport" content="width=device-width,initial-scale=1.0">'
+         +'   <style>'
+         +'     html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#020617;color:#e5e7eb}'
+         +'     #mapFull{width:100%;height:100%;}'
+         +'     .leaflet-container{background:#020617;}'
+         +'   </style>'
+         +' </head>'
+         +' <body>'
+         +'   <div id="mapFull"></div>'
+         +' </body>'
+         +' </html>'
+        );
+        w.document.close();
 
-        var topBar = document.createElement('div');
-        Object.assign(topBar.style, {
-          padding:'8px 14px',
-          display:'flex',
-          alignItems:'center',
-          justifyContent:'space-between',
-          color:'#e5e7eb',
-          fontFamily:'system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif',
-          fontSize:'14px',
-          borderBottom:'1px solid rgba(148,163,184,.5)'
-        });
-        topBar.innerHTML =
-          '<strong>Mapa em tela cheia – Coopex</strong>'+
-          '<button type="button" id="mapFullCloseBtn" '+
-          'style="padding:6px 12px;border-radius:8px;border:1px solid #4b5563;background:#111827;color:#e5e7eb;font-weight:700;cursor:pointer;">Fechar</button>';
+        var sLeaf = w.document.createElement('script');
+        sLeaf.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        sLeaf.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        sLeaf.crossOrigin = '';
 
-        var mapBox = document.createElement('div');
-        mapBox.id = 'map-full-container';
-        Object.assign(mapBox.style, {
-          flex:'1 1 auto',
-          width:'100%',
-          height:'100%'
-        });
+        sLeaf.onload = function() {
+          var L2 = w.L;
+          if (!L2) return;
 
-        overlay.appendChild(topBar);
-        overlay.appendChild(mapBox);
-        document.body.appendChild(overlay);
-        document.body.classList.add('locked');
-
-        var map = L.map('map-full-container').setView([-5.7945, -35.211], 13);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          maxZoom: 19,
-          attribution: '&copy; OpenStreetMap'
-        }).addTo(map);
-
-        var markers = [];
-        dados.forEach(function(m){
-          if (!m.lat || !m.lng) return;
-
-          var corBorda  = m.online ? '#10b981' : '#ef4444';
-          var corFill   = m.online ? '#10b981' : '#ef4444';
-
-          var marker = L.circleMarker([m.lat, m.lng], {
-            radius: 8,
-            color: corBorda,
-            weight: 2,
-            fillColor: corFill,
-            fillOpacity: 0.9
+          var map = L2.map('mapFull').setView([-5.7945, -35.211], 13);
+          L2.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '&copy; OpenStreetMap'
           }).addTo(map);
 
-          var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
-          var vel = m.velocidade || 0;
-          var ultima = m.ultima_atualizacao
-            ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>'
-            : '';
+          var markers = [];
 
-          marker.bindPopup(
-            '<strong>'+m.nome+'</strong><br>'+
-            'Velocidade: '+vel+' km/h<br>'+
-            'Status: '+statusTxt+ultima
-          );
+          dados.forEach(function(m){
+            if (!m.lat || !m.lng) return;
 
-          markers.push(marker);
-        });
+            var corBorda  = m.online ? '#10b981' : '#ef4444';
+            var corFill   = m.online ? '#10b981' : '#ef4444';
 
-        if (markers.length) {
-          var group = L.featureGroup(markers);
-          map.fitBounds(group.getBounds().pad(0.25));
-        }
+            var marker = L2.circleMarker([m.lat, m.lng], {
+              radius: 8,
+              color: corBorda,
+              weight: 2,
+              fillColor: corFill,
+              fillOpacity: 0.9
+            }).addTo(map);
 
-        setTimeout(function(){ map.invalidateSize(); }, 80);
+            var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
+            var vel = m.velocidade || 0;
+            var ultima = m.ultima_atualizacao
+              ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>'
+              : '';
 
-        function fechar(){
-          document.body.classList.remove('locked');
-          overlay.remove();
-        }
+            marker.bindPopup(
+              '<strong>'+m.nome+'</strong><br>'+
+              'Velocidade: '+vel+' km/h<br>'+
+              'Status: '+statusTxt+ultima
+            );
 
-        var btClose = document.getElementById('mapFullCloseBtn');
-        if (btClose) btClose.addEventListener('click', fechar);
+            markers.push(marker);
+          });
 
-        overlay.addEventListener('click', function(ev){
-          if (ev.target === overlay) fechar();
-        });
-
-        document.addEventListener('keydown', function escHandler(ev){
-          if (ev.key === 'Escape') {
-            fechar();
-            document.removeEventListener('keydown', escHandler);
+          if (markers.length) {
+            var group = L2.featureGroup(markers);
+            map.fitBounds(group.getBounds().pad(0.25));
           }
-        });
+        };
+
+        w.document.head.appendChild(sLeaf);
+
       } catch(e) {
         console.error(e);
         alert('Não foi possível abrir o mapa em tela cheia agora.');
@@ -1733,4 +1704,3 @@
   </script>
 </body>
 </html>
-
