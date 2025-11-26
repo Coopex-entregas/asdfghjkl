@@ -542,10 +542,6 @@
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
-          <!-- Botão de alternar Tabela / Cartões (igual modelo antigo, mantido) -->
-          <button id="toggleView" class="toggle" type="button">
-            Alternar: Tabela/Cartões
-          </button>
         </div>
 
         <!-- MAPA DE RASTREIO -->
@@ -669,7 +665,7 @@
                           data-id="{{ e.id }}"
                           data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
                           title="Clique para trocar o cooperado">
-                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
+                                            {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
                     </span>
                   </td>
 
@@ -786,7 +782,7 @@
                 <div class="row" style="align-items:center">
                   {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
                   {% if is_ok %}
-                    <span class="badge.table good">Entregue</span>
+                    <span class="badge table good">Entregue</span>
                   {% else %}
                     <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST">
                       <input type="hidden" name="status" value="entregue">
@@ -1478,7 +1474,7 @@
     function existePagamentoPendenteNaTabela() {
       var linhas = document.querySelectorAll('.tabela tbody tr');
       return [].some.call(linhas, function(tr){
-        var cel = tr.children[11]; // coluna "Pagamento"
+        var cel = tr.children[11];
         return cel && cel.textContent.trim().toLowerCase().indexOf('pendente') !== -1;
       });
     }
@@ -1654,7 +1650,7 @@
     crossorigin=""></script>
 
   <script>
-    // ===== MAPA EMBUTIDO (div #map-coopex) + foco ao clicar na linha =====
+    // ===== MAPA EMBUTIDO (div #map-coopex) =====
     window.addEventListener('DOMContentLoaded', function(){
       var mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
@@ -1670,7 +1666,6 @@
 
       var dados = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
       var layers = [];
-      var markersByCoop = {};
 
       dados.forEach(function(m){
         if (!m.lat || !m.lng) return;
@@ -1699,34 +1694,12 @@
         );
 
         layers.push(marker);
-        markersByCoop[String(m.id)] = marker;
       });
 
       if (layers.length) {
         var group = L.featureGroup(layers);
         map.fitBounds(group.getBounds().pad(0.25));
       }
-
-      // >>> Clique na linha da tabela centraliza no cooperado da entrega (funcionalidade antiga mantida)
-      var linhas = document.querySelectorAll('.tabela tbody tr');
-      linhas.forEach(function(tr){
-        tr.addEventListener('click', function(ev){
-          // Ignora cliques em botões/links/ícones
-          if (ev.target.closest('button, a, form, svg, path')) return;
-
-          var coopSpan = tr.querySelector('.coop-editable, .coop-dot');
-          if (!coopSpan || !coopSpan.dataset) return;
-          var coopId = coopSpan.dataset.cooperadoId || '';
-          if (!coopId) return;
-
-          var marker = markersByCoop[String(coopId)];
-          if (!marker) return;
-
-          var latlng = marker.getLatLng();
-          map.setView(latlng, 15, { animate:true });
-          marker.openPopup();
-        });
-      });
     });
   </script>
 </body>
