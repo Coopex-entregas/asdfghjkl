@@ -841,25 +841,10 @@
 
   <!-- JS PRINCIPAL -->
   <script>
-    // === Lista de cooperados para edição rápida ===
-    window.COOPERADOS = [
-      {% for c in cooperados %}{ id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
-    ];
+   window.COOPERADOS = {{ cooperados_js | tojson | safe }};
 
-    // === Dados de motoboys para o MAPA ===
-    window.MOTOBOYS = [
-      {% for c in cooperados if c.last_lat is not none and c.last_lng is not none %}
-      {
-        id: {{ c.id }},
-        nome: {{ c.nome|tojson }},
-        lat: {{ c.last_lat }},
-        lng: {{ c.last_lng }},
-        online: {{ 'true' if (c.online if c.online is defined else False) else 'false' }},
-        velocidade: 0,
-        ultima_atualizacao: {{ (to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else '')|tojson }}
-      }{% if not loop.last %},{% endif %}
-      {% endfor %}
-    ];
+// === Dados de motoboys para o MAPA (via JSON seguro) ===
+window.MOTOBOYS = {{ motoboys_js | tojson | safe }};
 
     // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
     function contarSemCooperado(){
