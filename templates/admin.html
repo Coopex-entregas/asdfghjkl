@@ -833,13 +833,13 @@
     </div>
   </div>
 
-   <!-- áudio do aviso -->
+    <!-- áudio do aviso -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <!-- áudio de socorro -->
   <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
-    <!-- JS PRINCIPAL -->
+  <!-- JS PRINCIPAL -->
   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
     // === Dados de motoboys para o MAPA (via JSON seguro) ===
@@ -871,14 +871,11 @@
       badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
     }
 
-    // (…todo o restante do JS principal que você já tem…)
-    // Tema, MutationObserver, drag & drop, abrirModal, clique nos status, edição rápida do cooperado etc.
-
     // ===== Modal/Balão bloqueante =====
-    var overlayEl = document.getElementById('overlay');
-    var modalTitle = document.getElementById('modal-title');
-    var modalMsg = document.getElementById('modal-msg');
-    var modalOk = document.getElementById('modal-ok');
+    var overlayEl   = document.getElementById('overlay');
+    var modalTitle  = document.getElementById('modal-title');
+    var modalMsg    = document.getElementById('modal-msg');
+    var modalOk     = document.getElementById('modal-ok');
     var somPendente = document.getElementById('som-pendente');
     var _modalResolve = null;
 
@@ -892,7 +889,7 @@
         try {
           somPendente.currentTime = 0;
           var p = somPendente.play();
-          if (p && p.catch) p.catch(function() {});
+          if (p && p.catch) p.catch(function(){});
         } catch(e){}
       }
       return new Promise(function(resolve){
@@ -900,13 +897,13 @@
       });
     }
 
-    function atualizarBadgeAbertas(){
-      var badge = document.getElementById('abertasBadge');
-      if(!badge) return;
-      var n = contarSemCooperado();
-      badge.textContent = n + ' em aberto';
-      badge.style.display = 'inline-flex';
-      badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
+    if (modalOk){
+      modalOk.addEventListener('click', function(){
+        if(overlayEl) overlayEl.style.display = 'none';
+        document.body.classList.remove('locked');
+        if (_modalResolve) _modalResolve(true);
+        _modalResolve = null;
+      });
     }
 
     // Tema (escuro/claro) – aplica salvo no localStorage
@@ -953,27 +950,27 @@
 
     // Alternar Tabela/Cartões
     (function(){
-      var btToggle = document.getElementById('toggleView');
-      var tbl = document.getElementById('tbl');
+      var btToggle  = document.getElementById('toggleView');
+      var tbl       = document.getElementById('tbl');
       var cardsWrap = document.getElementById('cardsWrap');
       if (btToggle && tbl && cardsWrap){
         btToggle.addEventListener('click', function(){
           var showingCards = cardsWrap.style.display !== 'none';
           cardsWrap.style.display = showingCards ? 'none' : 'block';
-          tbl.style.display = showingCards ? 'block' : 'none';
+          tbl.style.display       = showingCards ? 'block' : 'none';
         });
       }
     })();
 
     // Preencher "nome" da fila a partir do select
     (function(){
-      var selCoop = document.getElementById('cooperado-espera');
-      var inpNome = document.getElementById('nome-espera');
+      var selCoop    = document.getElementById('cooperado-espera');
+      var inpNome    = document.getElementById('nome-espera');
       var formEspera = document.getElementById('form-espera');
 
       if (selCoop && inpNome){
         selCoop.addEventListener('change', function(){
-          var opt = selCoop.options[selCoop.selectedIndex];
+          var opt  = selCoop.options[selCoop.selectedIndex];
           var nome = opt ? (opt.text || '') : '';
           if (!inpNome.value) inpNome.value = nome;
         });
@@ -981,7 +978,7 @@
       if (formEspera && selCoop && inpNome){
         formEspera.addEventListener('submit', function(){
           if (!inpNome.value) {
-            var opt = selCoop.options[selCoop.selectedIndex];
+            var opt  = selCoop.options[selCoop.selectedIndex];
             var nome = opt ? (opt.text || '') : '';
             inpNome.value = nome;
           }
@@ -1029,47 +1026,13 @@
           e.preventDefault();
           var li = e.target.closest('.espera-chip');
           if(!li || li === dragEl) return;
-          var r = li.getBoundingClientRect();
+          var r     = li.getBoundingClientRect();
           var after = (e.clientY - r.top) > (r.height / 2);
           if(after) li.after(dragEl); else li.before(dragEl);
           renumerar();
         });
       }
     })();
-
-    // ===== Modal/Balão bloqueante =====
-    var overlayEl = document.getElementById('overlay');
-    var modalTitle = document.getElementById('modal-title');
-    var modalMsg = document.getElementById('modal-msg');
-    var modalOk = document.getElementById('modal-ok');
-    var somPendente = document.getElementById('som-pendente');
-    var _modalResolve = null;
-
-    function abrirModal(titulo, mensagem, tocarSom) {
-      if(typeof tocarSom === 'undefined') tocarSom = false;
-      if(modalTitle) modalTitle.textContent = titulo;
-      if(modalMsg) modalMsg.textContent = mensagem;
-      if(overlayEl) overlayEl.style.display = 'flex';
-      document.body.classList.add('locked');
-      if (tocarSom && somPendente) {
-        try {
-          somPendente.currentTime = 0;
-          somPendente.play();
-        } catch(e){}
-      }
-      return new Promise(function(resolve){
-        _modalResolve = resolve;
-      });
-    }
-
-    if (modalOk){
-      modalOk.addEventListener('click', function(){
-        if(overlayEl) overlayEl.style.display = 'none';
-        document.body.classList.remove('locked');
-        if (_modalResolve) _modalResolve(true);
-        _modalResolve = null;
-      });
-    }
 
     // Clique nos status (AJAX: pagamento / entrega)
     document.addEventListener('click', function(ev){
@@ -1114,7 +1077,7 @@
 
     // Preservar scroll da tabela / cards
     (function(){
-      var tblArea = document.getElementById('tbl');
+      var tblArea   = document.getElementById('tbl');
       var cardsArea = document.getElementById('cardsWrap');
       var KEY_T='scroll_tbl', KEY_C='scroll_cards';
       if(tblArea){
@@ -1139,22 +1102,22 @@
       if(!el) return;
 
       var idEntrega = el.dataset ? el.dataset.id : '';
-      var atual = (el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
+      var atual     = (el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
 
       var sel = document.createElement('select');
-      sel.style.background='#0a1f7e';
-      sel.style.color='#fff';
-      sel.style.border='1px solid #2f4de6';
-      sel.style.borderRadius='8px';
-      sel.style.padding='4px 6px';
-      sel.style.fontWeight='800';
+      sel.style.background   ='#0a1f7e';
+      sel.style.color        ='#fff';
+      sel.style.border       ='1px solid #2f4de6';
+      sel.style.borderRadius ='8px';
+      sel.style.padding      ='4px 6px';
+      sel.style.fontWeight   ='800';
 
       var opt0 = document.createElement('option');
       opt0.value=''; opt0.textContent='Sem Cooperado';
       sel.appendChild(opt0);
 
       (window.COOPERADOS || []).forEach(function(c){
-        var o=document.createElement('option');
+        var o  = document.createElement('option');
         o.value=c.id;
         o.textContent=c.nome;
         if(String(c.id)===String(atual)) o.selected=true;
@@ -1168,7 +1131,7 @@
         var coopId = sel.value || '';
         try{
           var url = '/atribuir_cooperado/' + idEntrega;
-          var fd = new FormData();
+          var fd  = new FormData();
           fd.append('cooperado_id', coopId);
           fetch(url,{
             method:'POST',
@@ -1180,11 +1143,11 @@
         }
 
         var span = document.createElement('span');
-        var tem = !!sel.value;
-        span.className = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
-        span.dataset.id = idEntrega;
-        span.dataset.cooperadoId = sel.value;
-        span.title = tem? 'Atribuído':'Sem cooperado';
+        var tem  = !!sel.value;
+        span.className          = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
+        span.dataset.id         = idEntrega;
+        span.dataset.cooperadoId= sel.value;
+        span.title              = tem? 'Atribuído':'Sem cooperado';
 
         var nome = 'Sem Cooperado';
         if(tem){
@@ -1197,7 +1160,7 @@
 
         sel.parentNode.replaceChild(span, sel);
 
-        var tr = span.closest ? span.closest('tr') : null;
+        var tr  = span.closest ? span.closest('tr') : null;
         var dot = tr ? tr.querySelector('.id-with-dot .status-dot') : null;
         if(dot){
           if(tem){
