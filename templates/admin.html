@@ -1183,6 +1183,8 @@
 
   <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
   <script>
+     <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
+  <script>
     // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
     function imprimirCupom(idEntrega, botao) {
       var tr = botao.closest ? botao.closest('tr') : null;
@@ -1263,6 +1265,7 @@
 +'    @media print { .actions{display:none} body{background:#fff} }'
 +'  </style>'
 +'</head>'
++'</html>'
 +'<body>'
 +'  <div class="wrap">'
 +'    <div class="cupom">'
@@ -1509,7 +1512,7 @@
 
     // ===== MENU SANDUÍCHE (abre/fecha painel lateral) =====
     window.addEventListener('DOMContentLoaded', function(){
-      var btnMenu = document.getElementById('btnMenu');
+      var btnMenu   = document.getElementById('btnMenu');
       var sidePanel = document.getElementById('sidePanel');
       if (!btnMenu || !sidePanel) return;
 
@@ -1527,13 +1530,14 @@
         btnMenu.classList.remove('open');
       });
     });
+  </script>
 
-      <!-- ===== MAPA EM TELA CHEIA (OUTRA ABA) ===== -->
+  <!-- ===== MAPA EM TELA CHEIA (OUTRA ABA) ===== -->
   <script>
     function abrirMapaTelaCheia() {
       try {
         // Rota que vai exibir o mapa em tela cheia + informações do motoboy
-        // Crie no Flask algo como: @app.route('/mapa_motoboys')
+        // Certifique-se de ter @app.route('/mapa_motoboys') no Flask
         var url = "{{ url_for('mapa_motoboys') }}";
 
         // Cria um <a> real e dispara o clique — navegador trata como clique normal
@@ -1618,5 +1622,8 @@
       }
     });
   </script>
+</body>
+</html>
+
 </body>
 </html>
