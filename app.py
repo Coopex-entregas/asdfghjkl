@@ -64,6 +64,12 @@ class Cooperado(db.Model):
     senha_hash = db.Column(db.String(128), nullable=False)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
 
+    # NOVOS CAMPOS PARA RASTREIO EM TEMPO REAL
+    last_lat = db.Column(db.Float, nullable=True)
+    last_lng = db.Column(db.Float, nullable=True)
+    last_ping = db.Column(db.DateTime, nullable=True)
+    online = db.Column(db.Boolean, nullable=False, default=False)
+
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
 
@@ -1099,6 +1105,7 @@ def login():
             session['user_nome'] = cooperado.nome
             session['is_admin'] = False
             session['is_master'] = False
+            session['tipo'] = 'cooperado'   # 👈 ESSENCIAL PARA /cooperado/atualizar_localizacao
             return redirect(url_for('painel_cooperado'))
 
         # 3) Cliente (login por username OU e-mail)
@@ -2524,7 +2531,7 @@ def cooperado_atualizar_localizacao():
     Endpoint usado pelo painel_cooperado via fetch().
     """
     # garante que é cooperado
-    if session.get('tipo') != 'cooperado':
+    if session.get('user_id') is None or session.get('is_admin'):
         return jsonify({'error': 'Não autorizado'}), 403
 
     data = request.get_json() or {}
@@ -3275,12 +3282,23 @@ def trajetos_exportar():
 
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
-    """
-    Tela só com o mapa em tela cheia e informações dos motoboys.
-    Por enquanto manda lista vazia. Depois você copia aqui
-    a mesma lógica que usa na rota /admin para montar motoboys_js.
-    """
-    motoboys_js = []  # TODO: preencher com seus dados reais
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    motoboys_js = []
+    for c in cooperados:
+        if c.last_lat is not None and c.last_lng is not None:
+            motoboys_js.append({
+                "id": c.id,
+                "nome": c.nome,
+                "lat": c.last_lat,
+                "lng": c.last_lng,
+                "online": bool(c.online),
+                "velocidade": 0,
+                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+            })
+
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
 
 
