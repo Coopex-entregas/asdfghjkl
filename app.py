@@ -3273,6 +3273,16 @@ def trajetos_exportar():
     output.seek(0)
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
+@app.route('/mapa_motoboys')
+def mapa_motoboys():
+    """
+    Tela só com o mapa em tela cheia e informações dos motoboys.
+    Por enquanto manda lista vazia. Depois você copia aqui
+    a mesma lógica que usa na rota /admin para montar motoboys_js.
+    """
+    motoboys_js = []  # TODO: preencher com seus dados reais
+    return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
+
 
 # =========================================================
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
