@@ -839,15 +839,11 @@
   <!-- áudio de socorro -->
   <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
-  <!-- JS PRINCIPAL -->
+    <!-- JS PRINCIPAL -->
   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
-</script>
-  
-</script>
-  
-// === Dados de motoboys para o MAPA (via JSON seguro) ===
-window.MOTOBOYS = {{ motoboys_js | tojson | safe }};
+    // === Dados de motoboys para o MAPA (via JSON seguro) ===
+    window.MOTOBOYS = {{ motoboys_js | default([]) | tojson | safe }};
 
     // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
     function contarSemCooperado(){
@@ -864,6 +860,44 @@ window.MOTOBOYS = {{ motoboys_js | tojson | safe }};
         console.error(e);
         return 0;
       }
+    }
+
+    function atualizarBadgeAbertas(){
+      var badge = document.getElementById('abertasBadge');
+      if(!badge) return;
+      var n = contarSemCooperado();
+      badge.textContent = n + ' em aberto';
+      badge.style.display = 'inline-flex';
+      badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
+    }
+
+    // (…todo o restante do JS principal que você já tem…)
+    // Tema, MutationObserver, drag & drop, abrirModal, clique nos status, edição rápida do cooperado etc.
+
+    // ===== Modal/Balão bloqueante =====
+    var overlayEl = document.getElementById('overlay');
+    var modalTitle = document.getElementById('modal-title');
+    var modalMsg = document.getElementById('modal-msg');
+    var modalOk = document.getElementById('modal-ok');
+    var somPendente = document.getElementById('som-pendente');
+    var _modalResolve = null;
+
+    function abrirModal(titulo, mensagem, tocarSom) {
+      if(typeof tocarSom === 'undefined') tocarSom = false;
+      if(modalTitle) modalTitle.textContent = titulo;
+      if(modalMsg) modalMsg.textContent = mensagem;
+      if(overlayEl) overlayEl.style.display = 'flex';
+      document.body.classList.add('locked');
+      if (tocarSom && somPendente) {
+        try {
+          somPendente.currentTime = 0;
+          var p = somPendente.play();
+          if (p && p.catch) p.catch(function() {});
+        } catch(e){}
+      }
+      return new Promise(function(resolve){
+        _modalResolve = resolve;
+      });
     }
 
     function atualizarBadgeAbertas(){
