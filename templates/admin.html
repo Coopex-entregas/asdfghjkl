@@ -843,7 +843,9 @@
   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
 </script>
-
+  
+</script>
+  
 // === Dados de motoboys para o MAPA (via JSON seguro) ===
 window.MOTOBOYS = {{ motoboys_js | tojson | safe }};
 
