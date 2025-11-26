@@ -1197,9 +1197,9 @@
       }, { once: true });
     });
 
-      <!-- JS PRINCIPAL -->
+        <!-- JS PRINCIPAL -->
   <script>
-    // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) – VERSÃO CORRIGIDA =====
+    // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
     function imprimirCupom(idEntrega, botao) {
       var tr = botao.closest ? botao.closest('tr') : null;
 
@@ -1209,7 +1209,7 @@
         return txt || '-';
       }
 
-      // coluna 5 tem "data\ndia da semana"
+      // coluna 5 tem "data\n dia da semana"
       var dataDiaBruto = (get(5) || '-').replace(/\s+/g,' ').trim();
       var matchData = dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/);
       var dataSo = matchData ? matchData[0] : '-';
@@ -1241,92 +1241,87 @@
 
       var agora = new Date();
       var logoUrl = "{{ url_for('static', filename='logo_coopex.png') }}";
+      var cacheBust = Date.now();
 
-      const html = `<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <title>Cupom #${dados.id}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <style>
-    @page { size: 80mm 110mm; margin: 3mm; }
-    *{box-sizing:border-box}
-    body{
-      font-family: Arial, "Segoe UI", Roboto, system-ui, sans-serif;
-      margin:0;
-      color:#000;
-      background:#fff;
-      -webkit-print-color-adjust:exact;
-      print-color-adjust:exact;
-    }
-    .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}
-    .center{text-align:center}
-    .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}
-    .big{font-weight:900; font-size:18px}
-    hr{border:none; border-top:1px dotted #000; margin:8px 0}
-    .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}
-    .footer{font-size:11px; text-align:center; margin-top:6px}
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}
-    .tiny{font-size:10.5px}
-    .sign{ text-align:center; margin-top:8px; }
-    .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }
-    .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}
-    .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}
-    .btn-print{border:1px solid #000; background:#000; color:#fff}
-    .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}
-    .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}
-    @media print { .actions{display:none} body{background:#fff} }
-  </style>
-</head>
-<body>
-  <div class="wrap">
-    <div class="cupom">
-      <img src="${logoUrl}?v=${Date.now()}"
-           alt="Logo Coopex"
-           class="logo"
-           onerror="this.onerror=null;this.src='https://via.placeholder.com/200x60?text=COOPEX';">
-
-      <div class="center tiny">
-        CNPJ: 05.289.938/0001-97<br>
-        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>
-        Fone/WhatsApp: (84) 98111-0706
-      </div>
-      <hr>
-      <div class="center" style="font-weight:800">
-        CUPOM NÃO FISCAL Nº: <span class="mono">${dados.idPad}</span>
-      </div>
-      <div class="line"><span>Data:</span><span class="mono">${dados.data}</span></div>
-      <div class="line"><span>Hora:</span><span class="mono">${dados.horaPedido}</span></div>
-      <div class="line"><span>Cliente:</span><span class="mono">${dados.cliente}</span></div>
-      <div class="line"><span>Endereço:</span><span class="mono">${dados.endereco}</span></div>
-      <div class="line"><span>Bairro:</span><span class="mono">${dados.bairro}</span></div>
-      <div class="line"><span>Cooperado:</span><span class="mono">${dados.cooperado}</span></div>
-      <div class="line"><span>Forma Pgto:</span><span class="mono">${dados.formaPgto}</span></div>
-      <hr>
-      <div class="line"><span>Valor do serviço:</span><span class="mono">${dados.valor}</span></div>
-      <div class="line big"><span>TOTAL:</span><span class="mono">${dados.valor}</span></div>
-      <hr>
-
-      <div class="sign">
-        <div class="sign-line"></div>
-        <div class="tiny">Supervisor</div>
-      </div>
-
-      <hr>
-      <div class="footer">
-        Emitido em <span class="mono">${agora.toLocaleDateString("pt-BR")}</span>
-        às <span class="mono">${agora.toLocaleTimeString("pt-BR")}</span><br>
-        Recebido por: <span class="mono">${dados.recebidoPor}</span>
-      </div>
-    </div>
-
-    <div class="actions">
-      <button class="btn btn-print" onclick="window.print()">Imprimir</button>
-      <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>
-    </div>
-  </div>
-</body>
-</html>`;
+      var html = ''
++'<!DOCTYPE html>'
++'<html lang="pt-br">'
++'<head>'
++'  <meta charset="utf-8">'
++'  <title>Cupom #'+dados.id+'</title>'
++'  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
++'  <style>'
++'    @page { size: 80mm 110mm; margin: 3mm; }'
++'    *{box-sizing:border-box}'
++'    body{'
++'      font-family: Arial, "Segoe UI", Roboto, system-ui, sans-serif;'
++'      margin:0;'
++'      color:#000;'
++'      background:#fff;'
++'      -webkit-print-color-adjust:exact;'
++'      print-color-adjust:exact;'
++'    }'
++'    .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}'
++'    .center{text-align:center}'
++'    .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}'
++'    .big{font-weight:900; font-size:18px}'
++'    hr{border:none; border-top:1px dotted #000; margin:8px 0}'
++'    .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}'
++'    .footer{font-size:11px; text-align:center; margin-top:6px}'
++'    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}'
++'    .tiny{font-size:10.5px}'
++'    .sign{ text-align:center; margin-top:8px; }'
++'    .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }'
++'    .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}'
++'    .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}'
++'    .btn-print{border:1px solid #000; background:#000; color:#fff}'
++'    .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}'
++'    .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}'
++'    @media print { .actions{display:none} body{background:#fff} }'
++'  </style>'
++'</head>'
++'<body>'
++'  <div class="wrap">'
++'    <div class="cupom">'
++'      <img src="'+logoUrl+'?v='+cacheBust+'"'
++'           alt="Logo Coopex" class="logo"'
++'           onerror="this.onerror=null;this.src=\'https://via.placeholder.com/200x60?text=COOPEX\';">'
++'      <div class="center tiny">'
++'        CNPJ: 05.289.938/0001-97<br>'
++'        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>'
++'        Fone/WhatsApp: (84) 98111-0706'
++'      </div>'
++'      <hr>'
++'      <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">'+dados.idPad+'</span></div>'
++'      <div class="line"><span>Data:</span><span class="mono">'+dados.data+'</span></div>'
++'      <div class="line"><span>Hora:</span><span class="mono">'+dados.horaPedido+'</span></div>'
++'      <div class="line"><span>Cliente:</span><span class="mono">'+dados.cliente+'</span></div>'
++'      <div class="line"><span>Endereço:</span><span class="mono">'+dados.endereco+'</span></div>'
++'      <div class="line"><span>Bairro:</span><span class="mono">'+dados.bairro+'</span></div>'
++'      <div class="line"><span>Cooperado:</span><span class="mono">'+dados.cooperado+'</span></div>'
++'      <div class="line"><span>Forma Pgto:</span><span class="mono">'+dados.formaPgto+'</span></div>'
++'      <hr>'
++'      <div class="line"><span>Valor do serviço:</span><span class="mono">'+dados.valor+'</span></div>'
++'      <div class="line big"><span>TOTAL:</span><span class="mono">'+dados.valor+'</span></div>'
++'      <hr>'
++'      <div class="sign">'
++'        <div class="sign-line"></div>'
++'        <div class="tiny">Supervisor</div>'
++'      </div>'
++'      <hr>'
++'      <div class="footer">'
++'        Emitido em <span class="mono">'+agora.toLocaleDateString("pt-BR")+'</span> às '
++'        <span class="mono">'+agora.toLocaleTimeString("pt-BR")+'</span><br>'
++'        Recebido por: <span class="mono">'+dados.recebidoPor+'</span>'
++'      </div>'
++'    </div>'
++'    <div class="actions">'
++'      <button class="btn btn-print" onclick="window.print()">Imprimir</button>'
++'      <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>'
++'    </div>'
++'  </div>'
++'</body>'
++'</html>';
 
       var win = null;
       try {
@@ -1550,7 +1545,7 @@
       });
     });
 
-    // ===== MAPA EM TELA CHEIA (abre em outra aba, maior) – VERSÃO CORRIGIDA =====
+    // ===== MAPA EM TELA CHEIA (abre em outra aba, maior) =====
     function abrirMapaTelaCheia() {
       try {
         var dados = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
@@ -1561,33 +1556,33 @@
           return;
         }
 
-        // HTML básico da nova aba (sem <script> dentro de string)
         w.document.open();
-        w.document.write(`<!DOCTYPE html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <title>Mapa – Coopex</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1.0">
-  <style>
-    html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#020617;color:#e5e7eb}
-    #mapFull{width:100%;height:100%;}
-    .leaflet-container{background:#020617;}
-  </style>
-</head>
-<body>
-  <div id="mapFull"></div>
-</body>
-</html>`);
+        w.document.write(
+          '<!DOCTYPE html>'
+         +' <html lang="pt-br">'
+         +' <head>'
+         +'   <meta charset="utf-8">'
+         +'   <title>Mapa – Coopex</title>'
+         +'   <meta name="viewport" content="width=device-width,initial-scale=1.0">'
+         +'   <style>'
+         +'     html,body{height:100%;margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:#020617;color:#e5e7eb}'
+         +'     #mapFull{width:100%;height:100%;}'
+         +'     .leaflet-container{background:#020617;}'
+         +'   </style>'
+         +' </head>'
+         +' <body>'
+         +'   <div id="mapFull"></div>'
+         +' </body>'
+         +' </html>'
+        );
         w.document.close();
 
-        // Carrega Leaflet na nova janela
-        var s = w.document.createElement('script');
-        s.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-        s.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
-        s.crossOrigin = '';
+        var sLeaf = w.document.createElement('script');
+        sLeaf.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
+        sLeaf.integrity = 'sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=';
+        sLeaf.crossOrigin = '';
 
-        s.onload = function() {
+        sLeaf.onload = function() {
           var L2 = w.L;
           if (!L2) return;
 
@@ -1634,7 +1629,7 @@
           }
         };
 
-        w.document.head.appendChild(s);
+        w.document.head.appendChild(sLeaf);
 
       } catch(e) {
         console.error(e);
