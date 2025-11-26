@@ -834,7 +834,7 @@
     </div>
   </div>
 
-  <!-- áudio do aviso -->
+   <!-- áudio do aviso -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
   <!-- áudio de socorro -->
@@ -847,7 +847,7 @@
       {% for c in cooperados %}{ id: {{ c.id }}, nome: {{ c.nome|tojson }} }{% if not loop.last %},{% endif %}{% endfor %}
     ];
 
-    // === Dados de motoboys para o MAPA (usa last_lat/last_lng/online/last_ping) ===
+    // === Dados de motoboys para o MAPA ===
     window.MOTOBOYS = [
       {% for c in cooperados if c.last_lat is not none and c.last_lng is not none %}
       {
@@ -1145,7 +1145,6 @@
 
       function salvar(){
         var coopId = sel.value || '';
-        // chama backend
         try{
           var url = '/atribuir_cooperado/' + idEntrega;
           var fd = new FormData();
@@ -1196,8 +1195,9 @@
         salvar();
       }, { once: true });
     });
+  </script>
 
-        <!-- JS PRINCIPAL -->
+  <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
   <script>
     // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
     function imprimirCupom(idEntrega, botao) {
@@ -1209,7 +1209,6 @@
         return txt || '-';
       }
 
-      // coluna 5 tem "data\n dia da semana"
       var dataDiaBruto = (get(5) || '-').replace(/\s+/g,' ').trim();
       var matchData = dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/);
       var dataSo = matchData ? matchData[0] : '-';
@@ -1403,7 +1402,7 @@
       document.body.appendChild(wrap);
     }
 
-    // 1) Entregas pendentes >= 2 horas: som + balão (a cada 2 horas)
+    // 1) Entregas pendentes >= 2 horas
     (function(){
       var AUDIO = document.getElementById('som-pendente');
       if (!AUDIO) return;
@@ -1545,7 +1544,7 @@
       });
     });
 
-    // ===== MAPA EM TELA CHEIA (abre em outra aba, maior) =====
+    // ===== MAPA EM TELA CHEIA =====
     function abrirMapaTelaCheia() {
       try {
         var dados = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
