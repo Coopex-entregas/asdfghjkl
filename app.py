@@ -2150,6 +2150,7 @@ def admin():
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = nao_atribuidos + atribuidos
 
+    # AQUI você já tinha isso:
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
     hoje = datetime.now(BRAZIL_TZ).date()
@@ -2183,6 +2184,29 @@ def admin():
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
+    # >>> NOVO: listas seguras para o JavaScript <<<
+    cooperados_js = [
+        {
+            "id": c.id,
+            "nome": c.nome
+        }
+        for c in cooperados
+    ]
+
+    motoboys_js = []
+    for c in cooperados:
+        # se o modelo Cooperado tiver last_lat/last_lng:
+        if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
+            motoboys_js.append({
+                "id": c.id,
+                "nome": c.nome,
+                "lat": c.last_lat,
+                "lng": c.last_lng,
+                "online": bool(getattr(c, "online", False)),
+                "velocidade": 0,
+                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if getattr(c, "last_ping", None) else ""
+            })
+
     return render_template(
         'admin.html',
         entregas=entregas,
@@ -2196,10 +2220,11 @@ def admin():
         feriado_hoje=feriado_hoje,
         tem_pendente=tem_pendente,
         lista_espera=lista_espera,
-        cooperados_disponiveis=cooperados_disponiveis
+        cooperados_disponiveis=cooperados_disponiveis,
+        # >>> VARIÁVEIS NOVAS PARA O JS <<<
+        cooperados_js=cooperados_js,
+        motoboys_js=motoboys_js,
     )
-
-from flask import abort
 
 # ================= SOCORRO / PANICO =================
 # guarda o último pedido de socorro em memória
