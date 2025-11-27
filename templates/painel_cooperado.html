@@ -42,10 +42,11 @@
       background: var(--bg2);
       color: var(--text);
       overflow: hidden;
+      font-size: 16px; /* base maior */
     }
 
     .topbar {
-      padding: 8px 14px;
+      padding: 10px 16px;
       background: #020617;
       border-bottom: 1px solid var(--border);
       display: flex;
@@ -58,46 +59,46 @@
     .top-left {
       display: flex;
       flex-direction: column;
-      gap: 2px;
+      gap: 4px;
     }
 
     .top-title {
-      font-size: 0.9rem;
+      font-size: 1.05rem;
       font-weight: 600;
     }
 
     .top-subtitle {
-      font-size: 0.72rem;
+      font-size: 0.9rem;
       color: var(--muted);
     }
 
     .status-pill {
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
       border-radius: 999px;
-      padding: 2px 8px;
-      font-size: 0.7rem;
+      padding: 3px 10px;
+      font-size: 0.85rem;
       background: var(--accent-soft);
       color: #c7d2ff;
       border: 1px solid rgba(65, 105, 225, 0.9);
     }
 
     .status-dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
       background: var(--accent);
       box-shadow: 0 0 0 5px rgba(65,105,225,.35);
     }
 
     .btn-minimal {
-      padding: 6px 10px;
+      padding: 7px 12px;
       border-radius: 999px;
       border: 1px solid rgba(148, 163, 184, 0.4);
       background: #020617;
       color: #cbd5f5;
-      font-size: .75rem;
+      font-size: .85rem;
       font-weight: 500;
       text-decoration: none;
       display: inline-flex;
@@ -107,15 +108,24 @@
     }
 
     .btn-minimal span.icon {
-      font-size: 0.9rem;
+      font-size: 1rem;
+    }
+
+    /* WRAPPER DO MAPA PRA FICAR ENQUADRADO */
+    .map-wrapper {
+      padding: 8px 8px 0;
+      background: #020617;
     }
 
     #map {
       width: 100%;
-      height: calc(100vh - 48px);
+      height: calc(100vh - 190px); /* deixa espaço pras abas + overlay */
       background: #020617;
       position: relative;
       z-index: 1;
+      border-radius: 18px 18px 0 0;
+      border: 1px solid #111827;
+      overflow: hidden;
     }
 
     .overlay {
@@ -124,7 +134,7 @@
       right: 0;
       bottom: 0;
       z-index: 30;
-      padding: 4px 6px 10px;
+      padding: 6px 8px 12px;
       pointer-events: none;
     }
 
@@ -134,7 +144,7 @@
       border-radius: var(--radius-xl);
       border: 1px solid #111827;
       box-shadow: 0 -14px 30px rgba(0, 0, 0, 0.85);
-      padding: 8px 11px 11px;
+      padding: 10px 14px 14px;
       max-width: 540px;
       margin: 0 auto;
     }
@@ -142,54 +152,55 @@
     .hidden { display: none !important; }
 
     .card-header-line {
-      width: 32px;
-      height: 3px;
+      width: 40px;
+      height: 4px;
       background: #111827;
       border-radius: 999px;
-      margin: 0 auto 6px;
+      margin: 0 auto 8px;
     }
 
     .card-title {
-      font-size: 0.85rem;
+      font-size: 1rem;
       font-weight: 600;
     }
 
     .card-subtitle {
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       color: var(--muted);
+      margin-top: 2px;
     }
 
     .dados-row {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-top: 6px;
-      gap: 8px;
+      margin-top: 8px;
+      gap: 10px;
     }
 
     .etapas {
       display: flex;
       flex-direction: column;
-      gap: 6px;
-      margin-top: 8px;
+      gap: 8px;
+      margin-top: 10px;
     }
 
     .etapa {
       display: flex;
-      gap: 8px;
+      gap: 10px;
     }
 
     .etapa-bullets {
       display: flex;
       flex-direction: column;
       align-items: center;
-      width: 12px;
-      margin-top: 2px;
+      width: 14px;
+      margin-top: 3px;
     }
 
     .etapa-bullet {
-      width: 6px;
-      height: 6px;
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
       border: 2px solid var(--accent);
       background: transparent;
@@ -208,50 +219,51 @@
     .etapa-dados { flex: 1; }
 
     .etapa-title {
-      font-size: 0.73rem;
+      font-size: 0.9rem;
       font-weight: 600;
     }
 
     .etapa-text {
-      font-size: 0.73rem;
+      font-size: 0.9rem;
       color: var(--muted);
+      margin-top: 2px;
     }
 
     .chip-row {
       display: flex;
-      gap: 6px;
-      margin-top: 8px;
+      gap: 8px;
+      margin-top: 10px;
       flex-wrap: wrap;
     }
 
     .chip {
-      font-size: 0.7rem;
-      padding: 4px 8px;
+      font-size: 0.85rem;
+      padding: 5px 10px;
       border-radius: 999px;
       border: 1px solid #111827;
       background: #020617;
       color: var(--muted);
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
     }
 
     .chip strong { color: var(--text); }
-    .chip-icon { font-size: 0.85rem; }
+    .chip-icon { font-size: 1rem; }
 
     .btn-row {
       display: grid;
       grid-template-columns: 1.1fr 1.2fr;
-      gap: 8px;
-      margin-top: 10px;
+      gap: 10px;
+      margin-top: 12px;
     }
 
     .btn {
       border-radius: 999px;
       border: none;
-      font-size: 0.78rem;
+      font-size: 0.9rem;
       font-weight: 600;
-      padding: 9px 10px;
+      padding: 10px 12px;
       cursor: pointer;
       display: inline-flex;
       align-items: center;
@@ -280,8 +292,8 @@
     .btn-full { width: 100%; margin-top: 8px; }
 
     .countdown-pill {
-      font-size: 0.72rem;
-      padding: 3px 8px;
+      font-size: 0.85rem;
+      padding: 4px 10px;
       border-radius: 999px;
       background: rgba(251, 191, 36, 0.08);
       color: #facc15;
@@ -298,8 +310,8 @@
     .mt-2 { margin-top: 8px; }
 
     .pill-small {
-      font-size: 0.68rem;
-      padding: 2px 8px;
+      font-size: 0.82rem;
+      padding: 3px 10px;
       border-radius: 999px;
       background: #020617;
       border: 1px solid #1f2937;
@@ -318,16 +330,16 @@
     .linha-sep {
       height: 1px;
       background: #111827;
-      margin: 8px -11px 8px;
+      margin: 10px -14px 10px;
     }
 
     .small-label {
-      font-size: 0.7rem;
+      font-size: 0.85rem;
       color: var(--muted);
     }
 
     .small-value {
-      font-size: 0.8rem;
+      font-size: 0.95rem;
       font-weight: 600;
     }
 
@@ -335,13 +347,13 @@
 
     /* Estado sem entrega */
     #card-sem-entrega .empty-title {
-      font-size: 0.84rem;
+      font-size: 1rem;
       font-weight: 600;
       text-align: center;
     }
 
     #card-sem-entrega .empty-sub {
-      font-size: 0.74rem;
+      font-size: 0.9rem;
       color: var(--muted);
       text-align: center;
       margin-top: 4px;
@@ -350,47 +362,50 @@
     #card-sem-entrega .info-row {
       display: flex;
       justify-content: center;
-      gap: 8px;
-      margin-top: 8px;
-      font-size: 0.7rem;
+      gap: 10px;
+      margin-top: 10px;
+      font-size: 0.9rem;
+      flex-wrap: wrap;
     }
 
     #card-sem-entrega .info-pill {
       border-radius: 999px;
-      padding: 3px 10px;
+      padding: 4px 12px;
       border: 1px solid #111827;
       background: #020617;
       display: inline-flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       color: #cbd5f5;
     }
 
     #card-sem-entrega .info-pill .dot {
-      width: 7px;
-      height: 7px;
+      width: 8px;
+      height: 8px;
       border-radius: 999px;
       background: var(--accent);
     }
 
     #card-sem-entrega .bottom-row {
-      margin-top: 6px;
+      margin-top: 8px;
       display: flex;
       justify-content: space-between;
-      font-size: 0.7rem;
+      font-size: 0.85rem;
       color: var(--muted);
+      gap: 10px;
+      flex-wrap: wrap;
     }
 
     /* Tabs */
     .tab-switcher {
       pointer-events: auto;
       max-width: 540px;
-      margin: 0 auto 4px;
+      margin: 0 auto 6px;
       display: flex;
       background: #020617;
       border-radius: 999px;
       border: 1px solid #1f2937;
-      padding: 2px;
+      padding: 3px;
       box-shadow: 0 10px 28px rgba(0,0,0,0.85);
     }
 
@@ -399,8 +414,8 @@
       border: none;
       background: transparent;
       color: var(--muted);
-      font-size: 0.74rem;
-      padding: 6px 0;
+      font-size: 0.9rem;
+      padding: 7px 0;
       border-radius: 999px;
       cursor: pointer;
     }
@@ -412,7 +427,7 @@
     }
 
     .tab-btn span.icon {
-      font-size: 0.85rem;
+      font-size: 1rem;
       margin-right: 4px;
     }
 
@@ -425,12 +440,12 @@
     .input-text,
     .select-text {
       width: 100%;
-      padding: 7px 9px;
+      padding: 8px 12px;
       border-radius: 999px;
       border: 1px solid #1f2937;
       background: #020617;
       color: var(--text);
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       outline: none;
     }
 
@@ -441,8 +456,8 @@
       -webkit-appearance: none;
       -moz-appearance: none;
       background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%), linear-gradient(135deg, #6b7280 50%, transparent 50%);
-      background-position: calc(100% - 10px) 8px, calc(100% - 6px) 8px;
-      background-size: 4px 4px, 4px 4px;
+      background-position: calc(100% - 12px) 10px, calc(100% - 7px) 10px;
+      background-size: 5px 5px, 5px 5px;
       background-repeat: no-repeat;
     }
 
@@ -456,77 +471,83 @@
     .hist-filtros-row {
       display: grid;
       grid-template-columns: 1.05fr 1.05fr 0.9fr;
-      gap: 6px;
+      gap: 8px;
+      margin-top: 12px;
+    }
+
+    .hist-search-row { margin-top: 10px; }
+
+    .hist-filter-actions {
       margin-top: 10px;
     }
 
-    .hist-search-row { margin-top: 8px; }
-
     .hist-list {
-      margin-top: 10px;
+      margin-top: 12px;
       max-height: 260px;
       overflow-y: auto;
       padding-right: 4px;
     }
 
     .hist-item {
-      padding: 7px 8px;
-      border-radius: 14px;
+      padding: 8px 10px;
+      border-radius: 16px;
       border: 1px solid #111827;
       background: #020617;
-      margin-bottom: 6px;
-      font-size: 0.75rem;
+      margin-bottom: 8px;
+      font-size: 0.95rem;
     }
 
     .hist-top {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
-    .hist-cliente { font-weight: 600; font-size: 0.78rem; }
-    .hist-valor { font-weight: 600; font-size: 0.78rem; }
+    .hist-cliente { font-weight: 600; font-size: 0.98rem; }
+    .hist-valor { font-weight: 600; font-size: 0.98rem; }
 
     .hist-middle {
       margin-top: 4px;
       color: var(--muted);
+      font-size: 0.9rem;
     }
 
     .hist-bottom {
-      margin-top: 5px;
+      margin-top: 6px;
       display: flex;
       justify-content: space-between;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
       flex-wrap: wrap;
     }
 
     .hist-bottom-left {
       display: flex;
       flex-direction: column;
-      gap: 1px;
+      gap: 2px;
     }
 
     .hist-data {
-      font-size: 0.7rem;
+      font-size: 0.85rem;
       color: var(--muted);
     }
 
     .hist-recebida {
-      font-size: 0.7rem;
+      font-size: 0.9rem;
       color: #e5e7eb;
     }
 
     .status-badge {
-      font-size: 0.7rem;
-      padding: 4px 8px;
+      font-size: 0.9rem;
+      padding: 5px 10px;
       border-radius: 999px;
       cursor: pointer;
       border: 1px solid transparent;
       display: inline-flex;
       align-items: center;
-      gap: 4px;
+      gap: 6px;
+      white-space: nowrap;
     }
 
     .status-pago {
@@ -543,7 +564,7 @@
 
     .status-pendente::after {
       content: " (clicar p/ marcar pago)";
-      font-size: 0.64rem;
+      font-size: 0.78rem;
       color: #fca5a5;
     }
 
@@ -569,12 +590,12 @@
     }
 
     .menu-title {
-      font-size: 0.84rem;
+      font-size: 0.95rem;
       font-weight: 600;
     }
 
     .menu-sub {
-      font-size: 0.73rem;
+      font-size: 0.85rem;
       color: var(--muted);
       margin-top: 2px;
     }
@@ -588,11 +609,11 @@
 
     .menu-item {
       border-radius: 999px;
-      padding: 7px 10px;
+      padding: 8px 12px;
       border: 1px solid #1f2937;
       background: #020617;
       color: #e5e7eb;
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -602,23 +623,23 @@
     .menu-item-left {
       display: flex;
       align-items: center;
-      gap: 6px;
+      gap: 8px;
     }
 
     .menu-item-icon {
-      width: 22px;
-      height: 22px;
+      width: 26px;
+      height: 26px;
       border-radius: 999px;
       background: var(--accent-soft);
       display: inline-flex;
       align-items: center;
       justify-content: center;
-      font-size: 0.9rem;
+      font-size: 1.1rem;
       color: #c7d2ff;
     }
 
     .menu-close {
-      margin-top: 10px;
+      margin-top: 12px;
       text-align: center;
     }
 
@@ -626,9 +647,56 @@
       border: none;
       background: transparent;
       color: var(--muted);
-      font-size: 0.75rem;
+      font-size: 0.9rem;
       cursor: pointer;
     }
+
+    /* TELA DE FICAR ONLINE ANTES DO MAPA */
+    .online-overlay {
+      position: fixed;
+      inset: 0;
+      z-index: 35;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: radial-gradient(circle at top, rgba(15,23,42,0.98), #020617);
+      padding: 16px;
+    }
+
+    .online-card {
+      max-width: 480px;
+      width: 100%;
+      text-align: center;
+    }
+
+    .online-title {
+      font-size: 1.1rem;
+      font-weight: 600;
+      margin-bottom: 6px;
+    }
+
+    .online-sub {
+      font-size: 0.95rem;
+      color: var(--muted);
+    }
+
+    .online-pill {
+      margin-top: 10px;
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 5px 12px;
+      border-radius: 999px;
+      border: 1px solid #1f2937;
+      background: #020617;
+      font-size: 0.9rem;
+      color: #cbd5f5;
+    }
+
+    .online-icon {
+      font-size: 1.1rem;
+    }
+
   </style>
 </head>
 <body>
@@ -677,7 +745,7 @@
     <div class="top-left">
       <div class="top-title">Olá, {{ cooperado_nome|default('Cooperado', true) }}</div>
       <div class="top-subtitle">
-        <span class="status-pill">
+        <span class="status-pill" id="status-online-pill">
           <span class="status-dot"></span> Online para receber entregas
         </span>
       </div>
@@ -688,8 +756,31 @@
     </button>
   </div>
 
-  <!-- MAPA -->
-  <div id="map"></div>
+  <!-- MAPA ENQUADRADO -->
+  <div class="map-wrapper">
+    <div id="map"></div>
+  </div>
+
+  <!-- TELA PARA FICAR ONLINE ANTES DE VER O MAPA -->
+  <div id="online-overlay" class="online-overlay">
+    <div class="card-base online-card">
+      <div class="card-header-line"></div>
+      <div class="online-title">Ficar online para receber corridas</div>
+      <div class="online-sub">
+        Ao ficar online, o app vai usar sua localização em tempo real para os restaurantes te enxergarem no mapa.
+      </div>
+      <div class="online-pill">
+        <span class="online-icon">📍</span>
+        <span>Localização em tempo real ativada enquanto estiver online.</span>
+      </div>
+      <button type="button" class="btn btn-primary btn-full mt-3" id="btn-ficar-online">
+        <span class="icon">✔</span> Ficar online e iniciar mapa
+      </button>
+      <div class="small-label text-center mt-2">
+        Você poderá fechar o app a qualquer momento para sair do modo online.
+      </div>
+    </div>
+  </div>
 
   <!-- OVERLAY -->
   <div class="overlay">
@@ -904,6 +995,12 @@
           >
         </div>
 
+        <div class="hist-filter-actions">
+          <button type="button" class="btn btn-secondary btn-full" id="btn-aplicar-filtro">
+            <span class="icon">🔍</span> Filtrar entregas
+          </button>
+        </div>
+
         <div class="hist-list" id="historico-lista">
           <!-- itens via JS -->
         </div>
@@ -934,6 +1031,8 @@
     let entregaAtual = null;
     let countdownInterval = null;
     let countdownRestante = TEMPO_EXPIRACAO_SEG;
+
+    let onlineAtivo = false;
 
     const audioEntrega = document.getElementById("som-entrega");
     const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
@@ -974,10 +1073,15 @@
     const filtroDataFim = document.getElementById("filtro-data-fim");
     const filtroStatus = document.getElementById("filtro-status");
     const filtroBusca = document.getElementById("filtro-busca");
+    const btnAplicarFiltro = document.getElementById("btn-aplicar-filtro");
 
     const btnMenu = document.getElementById("btn-menu");
     const menuBackdrop = document.getElementById("menu-backdrop");
     const menuFechar = document.getElementById("menu-fechar");
+
+    const onlineOverlay = document.getElementById("online-overlay");
+    const btnFicarOnline = document.getElementById("btn-ficar-online");
+    const statusOnlinePill = document.getElementById("status-online-pill");
 
     const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
 
@@ -1012,6 +1116,7 @@
     }
 
     function initMap() {
+      if (map) return;
       const centerLatLng = [-5.814, -35.214]; // Natal
       map = L.map("map").setView(centerLatLng, 13);
 
@@ -1025,7 +1130,7 @@
       if (!map) return;
       if (!motoboyMarker) {
         motoboyMarker = L.circleMarker([lat, lng], {
-          radius: 7,
+          radius: 9,
           color: "#4169e1",
           fillColor: "#4169e1",
           fillOpacity: 0.9
@@ -1044,7 +1149,7 @@
 
     function desenharRotaSeTiverCoords(entrega) {
       limparRota();
-      if (!entrega) return;
+      if (!entrega || !map) return;
 
       const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
       const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
@@ -1204,6 +1309,7 @@
     }
 
     function buscarNovaEntrega() {
+      if (!onlineAtivo) return; // só busca se estiver online
       fetch("/cooperado/verificar_nova_entrega")
         .then(resp => resp.json())
         .then(data => {
@@ -1463,13 +1569,22 @@
         tabBtnHistorico.classList.add("active");
         tabCorridas.classList.add("hidden");
         tabHistorico.classList.remove("hidden");
+        renderHistorico();
+      }
+    }
+
+    function atualizarPillOnline() {
+      if (onlineAtivo) {
+        statusOnlinePill.innerHTML = '<span class="status-dot"></span> Online para receber entregas';
+      } else {
+        statusOnlinePill.innerHTML = '<span class="status-dot" style="background:#6b7280;box-shadow:none;"></span> Offline';
       }
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-      initMap();
-      iniciarRastreamentoGPS();
+      // NÃO inicia mapa nem GPS aqui. Só depois do botão "Ficar online".
       mostrarEstadoSemEntrega();
+      atualizarPillOnline();
 
       btnAceitar.addEventListener("click", aceitarEntrega);
       btnRecusar.addEventListener("click", recusarEntrega);
@@ -1477,13 +1592,13 @@
       btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
 
       tabBtnCorridas.addEventListener("click", () => ativarTab("corridas"));
-      tabBtnHistorico.addEventListener("click", () => {
-        ativarTab("historico");
-        renderHistorico();
-      });
+      tabBtnHistorico.addEventListener("click", () => ativarTab("historico"));
 
+      // Botão de FILTRAR explícito
+      btnAplicarFiltro.addEventListener("click", renderHistorico);
+
+      // Ainda deixa reagir "ao vivo" se quiser
       [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
-        el.addEventListener("input", renderHistorico);
         el.addEventListener("change", renderHistorico);
       });
 
@@ -1496,19 +1611,7 @@
         }
       });
 
-      setInterval(() => {
-        if (motoboyMarker) {
-          const pos = motoboyMarker.getLatLng();
-          enviarLocalizacao(pos.lat, pos.lng);
-        }
-      }, INTERVALO_PING_MS);
-
-      setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
-      buscarNovaEntrega();
-
-      renderHistorico();
-
-      /* MENU SANDUÍCHE */
+      // MENU SANDUÍCHE
       btnMenu.addEventListener("click", () => {
         menuBackdrop.classList.remove("hidden");
       });
@@ -1520,6 +1623,34 @@
           menuBackdrop.classList.add("hidden");
         }
       });
+
+      // BOTÃO FICAR ONLINE: aqui é onde começa mapa + GPS + busca de entrega
+      btnFicarOnline.addEventListener("click", () => {
+        if (onlineAtivo) return;
+        onlineAtivo = true;
+        atualizarPillOnline();
+
+        // Some com a tela inicial
+        onlineOverlay.classList.add("hidden");
+
+        // Agora sim inicia o mapa e a localização
+        initMap();
+        iniciarRastreamentoGPS();
+
+        // Pings periódicos pro backend com última posição
+        setInterval(() => {
+          if (!onlineAtivo || !motoboyMarker) return;
+          const pos = motoboyMarker.getLatLng();
+          enviarLocalizacao(pos.lat, pos.lng);
+        }, INTERVALO_PING_MS);
+
+        // Busca periódica de novas entregas
+        setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+        buscarNovaEntrega();
+      });
+
+      // Render inicial do histórico (caso venha ENTREGAS do servidor)
+      renderHistorico();
     });
   </script>
 </body>
