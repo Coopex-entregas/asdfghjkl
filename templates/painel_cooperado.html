@@ -834,7 +834,7 @@
         <div class="card-header-line"></div>
         <div class="empty-title">Aguardando entrega</div>
         <div class="empty-sub">
-          Deixe o app aberto. Quando algum restaurante te atribuir uma corrida, o som vai tocar.
+          Deixe o app aberto. Quando algum restaurante ou o admin te atribuir uma corrida, o som vai tocar.
         </div>
         <div class="info-row">
           <div class="info-pill">
@@ -1072,6 +1072,7 @@
     const INTERVALO_BUSCA_ENTREGA_MS = 7000;
     const TEMPO_EXPIRACAO_SEG = 20;
     const STORAGE_ONLINE_KEY = "coopex_online_session";
+    const URL_ENTREGA_ATRIBUIDA = "{{ url_for('api_entrega_atribuida') }}"; // rota que o admin alimenta
 
     let map;
     let motoboyMarker = null;
@@ -1084,6 +1085,7 @@
     let countdownRestante = TEMPO_EXPIRACAO_SEG;
 
     let onlineAtivo = false;
+    let checandoEntregaAdmin = false; // evita chamadas duplicadas
 
     const audioEntrega = document.getElementById("som-entrega");
     const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
@@ -1368,8 +1370,57 @@
       }, 1000);
     }
 
+    // 🔔 NOVA FUNÇÃO: buscar entrega atribuída pelo ADMIN primeiro
+    function buscarEntregaAtribuidaPeloAdmin() {
+      if (!onlineAtivo) return Promise.resolve(false);
+      if (!URL_ENTREGA_ATRIBUIDA) return Promise.resolve(false);
+      if (checandoEntregaAdmin) return Promise.resolve(false);
+
+      checandoEntregaAdmin = true;
+
+      return fetch(URL_ENTREGA_ATRIBUIDA)
+        .then(resp => {
+          if (!resp.ok) return false;
+          return resp.json();
+        })
+        .then(data => {
+          if (!data || !data.tem) return false;
+
+          // aceita tanto { tem: true, entrega: {...} } quanto { tem: true, id:..., ... }
+          const e = data.entrega || data;
+
+          const entrega = {
+            id: e.id,
+            cliente: e.cliente || e.restaurante || "",
+            restaurante: e.restaurante || e.cliente || "",
+            valor: e.valor,
+            origem_endereco: e.origem_endereco || e.origem || e.endereco_coleta || "",
+            origem_bairro: e.origem_bairro || e.bairro_origem || "",
+            destino_endereco: e.destino_endereco || e.endereco || e.destino || "",
+            destino_bairro: e.destino_bairro || e.bairro_destino || e.bairro || "",
+            tempo_estimado: e.tempo_estimado,
+            distancia: e.distancia,
+            lat_origem: e.lat_origem,
+            lng_origem: e.lng_origem,
+            lat_destino: e.lat_destino,
+            lng_destino: e.lng_destino
+          };
+
+          mostrarEstadoNovaEntrega(entrega);
+          return true;
+        })
+        .catch(err => {
+          console.log("Erro entrega atribuída pelo admin:", err);
+          return false;
+        })
+        .finally(() => {
+          checandoEntregaAdmin = false;
+        });
+    }
+
+    // Continuação: busca normal (corrida livre / restaurantes)
     function buscarNovaEntrega() {
-      if (!onlineAtivo) return; // só busca se estiver online
+      if (!onlineAtivo) return;
       fetch("/cooperado/verificar_nova_entrega")
         .then(resp => resp.json())
         .then(data => {
@@ -1382,6 +1433,17 @@
           mostrarEstadoNovaEntrega(entrega);
         })
         .catch(err => console.log("Erro nova entrega:", err));
+    }
+
+    // Loop geral: primeiro admin, depois normal
+    function loopBuscarEntregas() {
+      if (!onlineAtivo) return;
+      buscarEntregaAtribuidaPeloAdmin()
+        .then(encontrou => {
+          if (!encontrou) {
+            buscarNovaEntrega();
+          }
+        });
     }
 
     function aceitarEntrega() {
@@ -1692,8 +1754,8 @@
         onlineOverlay.classList.add("hidden");
         initMap();
         iniciarRastreamentoGPS();
-        setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
-        buscarNovaEntrega();
+        setInterval(loopBuscarEntregas, INTERVALO_BUSCA_ENTREGA_MS);
+        loopBuscarEntregas();
       }
 
       btnAceitar.addEventListener("click", aceitarEntrega);
@@ -1762,8 +1824,8 @@
         initMap();
         iniciarRastreamentoGPS();
 
-        setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
-        buscarNovaEntrega();
+        setInterval(loopBuscarEntregas, INTERVALO_BUSCA_ENTREGA_MS);
+        loopBuscarEntregas();
       });
 
       // histórico inicial (se já vier ENTREGAS do servidor)
