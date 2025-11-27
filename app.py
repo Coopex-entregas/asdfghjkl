@@ -104,7 +104,6 @@ class Cliente(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
 
-
 class Entrega(db.Model):
     __tablename__ = 'entrega'
 
@@ -112,7 +111,7 @@ class Entrega(db.Model):
 
     # Informações básicas da entrega
     cliente = db.Column(db.String(100), nullable=False)
-    bairro = db.Column(db.String(50), nullable=False)
+    bairro = db.Column(db.String(50), nullable=False)   # bairro principal da corrida (pode ser o final)
     valor = db.Column(db.Float, nullable=False)
 
     # Datas/horas (UTC no banco; você converte para America/Sao_Paulo na view)
@@ -132,8 +131,8 @@ class Entrega(db.Model):
     cooperado = db.relationship('Cooperado', backref='entregas')
 
     # Pagamento / status geral
-    status_pagamento = db.Column(db.String(20), nullable=True)  # pago/pendente
-    status = db.Column(db.String(20), nullable=True)            # entregue/pendente/etc.
+    status_pagamento = db.Column(db.String(20), nullable=True)  # pago / pendente
+    status = db.Column(db.String(20), nullable=True)            # entregue / pendente / etc.
     pagamento = db.Column(db.String(50), nullable=False)        # PIX, dinheiro, etc.
     recebido_por = db.Column(db.String(100), nullable=True)
 
@@ -148,37 +147,44 @@ class Entrega(db.Model):
         nullable=True
     )
 
-    # JSON com dados de origem/destino (endereço, referência, coords, etc.)
-    # Exemplo de estrutura:
-    #  origem_json = {
-    #    "endereco": "Rua X, 123",
-    #    "bairro": "Lagoa Nova",
-    #    "ref": "Portaria azul",
-    #    "lat": -5.79,
-    #    "lng": -35.21
-    #  }
+    # JSON com dados de ORIGEM (coleta)
+    # Pode conter endereço completo OU apenas o bairro.
+    # Exemplos:
+    #   {"endereco": "Rua X, 123", "bairro": "Lagoa Nova", "ref": "Portaria azul",
+    #    "lat": -5.79, "lng": -35.21}
+    #   {"bairro": "Lagoa Nova"}
     origem_json = db.Column(db.Text, nullable=True)
 
-    # destino_json = {
-    #   "endereco": "Av. Y, 999",
-    #   "bairro": "Tirol",
-    #   "ref": "Em frente ao hospital",
-    #   "lat": -5.80,
-    #   "lng": -35.20
-    # }
+    # JSON com dados de DESTINO FINAL (entrega)
+    # Pode conter endereço de entrega completo OU só o bairro de destino final.
+    # Exemplos:
+    #   {"endereco": "Av. Y, 999", "bairro": "Tirol", "ref": "Em frente ao hospital",
+    #    "lat": -5.80, "lng": -35.20}
+    #   {"bairro": "Tirol"}
     destino_json = db.Column(db.Text, nullable=True)
 
-    # NOVO: paradas intermediárias (todas as paradas no meio do caminho)
+    # JSON com PARADAS INTERMEDIÁRIAS
+    # Pode ser usado para:
+    #   - 1 parada somente
+    #   - várias paradas
+    # Cada parada pode ter endereço completo ou só bairro.
     # Exemplo:
-    #  paradas_json = {
-    #    "stops": [
-    #      "Rua A, 12 - Barro Vermelho",
-    #      "Av. B, 456 - Petrópolis"
-    #    ]
-    #  }
+    #   {
+    #     "stops": [
+    #       {"endereco": "Rua A, 12", "bairro": "Barro Vermelho"},
+    #       {"endereco": "Av. B, 456", "bairro": "Petrópolis", "ref": "Padaria tal"}
+    #     ]
+    #   }
+    # Ou apenas bairros:
+    #   {
+    #     "stops": [
+    #       {"bairro": "Barro Vermelho"},
+    #       {"bairro": "Petrópolis"}
+    #     ]
+    #   }
     paradas_json = db.Column(db.Text, nullable=True)
 
-    # NOVO: status da corrida na visão do cooperado
+    # Status da corrida na visão do cooperado
     # pendente  -> tocando "chamada.mp3", aguardando aceite
     # aceita    -> cooperado aceitou, em andamento
     # recusada  -> cooperado recusou
@@ -188,9 +194,185 @@ class Entrega(db.Model):
         default='pendente'
     )
 
+    # =========================
+    #   HELPERS DE ORIGEM
+    # =========================
 
-from datetime import datetime
-from sqlalchemy import text
+    def set_origem(self, endereco=None, bairro=None, ref=None, lat=None, lng=None, extra=None):
+        """
+        Seta o JSON de origem.
+
+        Pode chamar só com bairro:
+            set_origem(bairro="Lagoa Nova")
+
+        Ou com endereço completo:
+            set_origem(
+                endereco="Rua X, 123",
+                bairro="Lagoa Nova",
+                ref="Portaria azul",
+                lat=-5.79,
+                lng=-35.21
+            )
+        """
+        data = {}
+        if endereco:
+            data["endereco"] = endereco
+        if bairro:
+            data["bairro"] = bairro
+        if ref:
+            data["ref"] = ref
+        if lat is not None:
+            data["lat"] = lat
+        if lng is not None:
+            data["lng"] = lng
+        if extra and isinstance(extra, dict):
+            data.update(extra)
+
+        self.origem_json = json.dumps(data, ensure_ascii=False) if data else None
+
+    def get_origem(self):
+        if not self.origem_json:
+            return {}
+        try:
+            return json.loads(self.origem_json)
+        except Exception:
+            return {}
+
+    # =========================
+    #   HELPERS DE DESTINO
+    # =========================
+
+    def set_destino(self, endereco=None, bairro=None, ref=None, lat=None, lng=None, extra=None):
+        """
+        Seta o JSON de destino final.
+
+        Pode chamar só com bairro:
+            set_destino(bairro="Tirol")
+
+        Ou com endereço completo:
+            set_destino(
+                endereco="Av. Y, 999",
+                bairro="Tirol",
+                ref="Em frente ao hospital",
+                lat=-5.80,
+                lng=-35.20
+            )
+        """
+        data = {}
+        if endereco:
+            data["endereco"] = endereco
+        if bairro:
+            data["bairro"] = bairro
+        if ref:
+            data["ref"] = ref
+        if lat is not None:
+            data["lat"] = lat
+        if lng is not None:
+            data["lng"] = lng
+        if extra and isinstance(extra, dict):
+            data.update(extra)
+
+        self.destino_json = json.dumps(data, ensure_ascii=False) if data else None
+
+    def get_destino(self):
+        if not self.destino_json:
+            return {}
+        try:
+            return json.loads(self.destino_json)
+        except Exception:
+            return {}
+
+    # =========================
+    #   HELPERS DE PARADAS
+    # =========================
+
+    def _get_paradas_dict(self):
+        if not self.paradas_json:
+            return {"stops": []}
+        try:
+            data = json.loads(self.paradas_json)
+            if "stops" not in data or not isinstance(data["stops"], list):
+                data["stops"] = []
+            return data
+        except Exception:
+            return {"stops": []}
+
+    def get_paradas(self):
+        """
+        Retorna uma lista de paradas.
+
+        Cada item é um dict, ex:
+          {"endereco": "...", "bairro": "...", "ref": "..."}
+        ou
+          {"bairro": "Tirol"}
+        """
+        data = self._get_paradas_dict()
+        return data.get("stops", [])
+
+    def set_paradas(self, lista_paradas):
+        """
+        Seta TODAS as paradas de uma vez.
+
+        Exemplo de lista_paradas:
+          [
+            {"endereco": "Rua A, 12", "bairro": "Barro Vermelho"},
+            {"bairro": "Petrópolis"}
+          ]
+        """
+        if not lista_paradas:
+            self.paradas_json = None
+            return
+
+        # Garante que seja sempre lista de dicts
+        stops = []
+        for parada in lista_paradas:
+            if isinstance(parada, dict):
+                stops.append(parada)
+
+        data = {"stops": stops}
+        self.paradas_json = json.dumps(data, ensure_ascii=False)
+
+    def add_parada(self, endereco=None, bairro=None, ref=None, lat=None, lng=None, extra=None):
+        """
+        Adiciona UMA parada à lista de paradas.
+
+        Pode ser só bairro:
+            add_parada(bairro="Petrópolis")
+
+        Ou com endereço completo:
+            add_parada(
+                endereco="Rua A, 12",
+                bairro="Barro Vermelho",
+                ref="Ao lado do mercado"
+            )
+        """
+        data = self._get_paradas_dict()
+        parada = {}
+        if endereco:
+            parada["endereco"] = endereco
+        if bairro:
+            parada["bairro"] = bairro
+        if ref:
+            parada["ref"] = ref
+        if lat is not None:
+            parada["lat"] = lat
+        if lng is not None:
+            parada["lng"] = lng
+        if extra and isinstance(extra, dict):
+            parada.update(extra)
+
+        if parada:
+            data["stops"].append(parada)
+
+        self.paradas_json = json.dumps(data, ensure_ascii=False)
+
+    # =========================
+    #   UTIL
+    # =========================
+
+    def __repr__(self):
+        return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
+
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -221,6 +403,9 @@ class Credito(db.Model):
         lazy=True,
         cascade='all, delete-orphan'
     )
+
+    def __repr__(self):
+        return f'<Credito {self.id} - Cliente {self.cliente_id} - R${self.valor_final:.2f}>'
 
 
 class CreditoMovimento(db.Model):
@@ -2409,6 +2594,52 @@ def painel_cooperado():
         to_brasilia=to_brasilia,
         status_pgto=status_pgto
     )
+
+@app.route("/cooperado/verificar_nova_entrega")
+def cooperado_verificar_nova_entrega():
+    cooperado_id = session.get("user_id")  # <<< TROCAR AQUI
+    if not cooperado_id or session.get('is_admin'):
+        return jsonify({"tem_entrega": False})
+
+    # BUSCAR UMA ENTREGA "NOVA" ATRIBUÍDA A ESSE COOPERADO
+    entrega = (
+        Entrega.query
+        .filter_by(cooperado_id=cooperado_id)
+        .filter(Entrega.status == "nova")   # defina "nova" quando atribuir na supervisão
+        .order_by(Entrega.data_envio.asc())
+        .first()
+    )
+
+    if not entrega:
+        return jsonify({"tem_entrega": False})
+
+    # MONTAR O JSON DO JEITO QUE O JS DO MOTOBOY USA
+    payload = {
+        "id": entrega.id,
+        "cliente": entrega.cliente,                 # ou restaurante
+        "valor": float(entrega.valor or 0),
+
+        # se você só tem um endereço (destino), usa ele aqui:
+        "origem_endereco": None,
+        "origem_bairro": None,
+
+        "destino_endereco": entrega.endereco,
+        "destino_bairro": entrega.bairro,
+
+        # se ainda não tem coluna de lat/lng, deixa como None
+        "lat_origem": None,
+        "lng_origem": None,
+        "lat_destino": None,
+        "lng_destino": None,
+
+        "tempo_estimado": "aprox.",
+        "distancia": 0,
+        "status_pagamento": (entrega.status_pagamento or "").lower(),
+        "data_entrega": entrega.data_envio.strftime("%Y-%m-%d") if entrega.data_envio else None,
+        "recebida_por": entrega.recebido_por or "",
+    }
+
+    return jsonify({"tem_entrega": True, "entrega": payload})
 
 
 # Aceitar entrega (via URL com <id>)
