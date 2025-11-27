@@ -1308,21 +1308,46 @@
     }
 
     function buscarNovaEntrega() {
-      if (!onlineAtivo) return; // só busca se estiver online
-      fetch("/cooperado/verificar_nova_entrega")
-        .then(resp => resp.json())
-        .then(data => {
-          if (!data || !data.tem_entrega) {
-            if (!entregaAtual) mostrarEstadoSemEntrega();
-            return;
-          }
-          const entrega = data.entrega;
-          if (entregaAtual && entregaAtual.id === entrega.id) return;
-          mostrarEstadoNovaEntrega(entrega);
-        })
-        .catch(err => console.log("Erro nova entrega:", err));
-    }
+  if (!onlineAtivo) {
+    console.log("buscarNovaEntrega: offline, não vou buscar.");
+    return;
+  }
 
+  console.log("buscarNovaEntrega: chamando /cooperado/verificar_nova_entrega...");
+
+  fetch("/cooperado/verificar_nova_entrega")
+    .then(resp => {
+      console.log("Status HTTP verificar_nova_entrega:", resp.status);
+      return resp.json().catch(err => {
+        console.log("Erro ao fazer resp.json():", err);
+        throw err;
+      });
+    })
+    .then(data => {
+      console.log("Resposta verificar_nova_entrega:", data);
+
+      // Se não vier nada ou vier tem_entrega = false
+      if (!data || !data.tem_entrega) {
+        if (!entregaAtual) {
+          mostrarEstadoSemEntrega();
+        }
+        return;
+      }
+
+      const entrega = data.entrega;
+      if (!entrega) {
+        console.log("Data.tem_entrega = true mas sem objeto entrega.");
+        return;
+      }
+
+      // Aqui força exibir a nova entrega
+      mostrarEstadoNovaEntrega(entrega);
+    })
+    .catch(err => {
+      console.log("Erro nova entrega:", err);
+    });
+}
+    
     function aceitarEntrega() {
   if (!entregaAtual) return;
 
