@@ -875,10 +875,12 @@
 
         <div class="btn-row">
           <button type="button" class="btn btn-danger" id="btn-recusar-entrega">
-            <span class="icon">✕</span> Recusar
+            <span class="icon">✕</span>
+            Recusar
           </button>
           <button type="button" class="btn btn-primary" id="btn-aceitar-entrega">
-            <span class="icon">✔</span> Aceitar
+            <span class="icon">✔</span>
+            Aceitar
           </button>
         </div>
       </div>
@@ -1027,7 +1029,6 @@
     let destinoMarker = null;
     let rotaLayer = null;
 
-    let watchId = null;
     let entregaAtual = null;
     let countdownInterval = null;
     let countdownRestante = TEMPO_EXPIRACAO_SEG;
@@ -1195,31 +1196,30 @@
       }).catch(err => console.log("Erro ao atualizar localização:", err));
     }
 
+    // >>> AQUI: GPS EM LOOP, SEM watchPosition <<<
     function iniciarRastreamentoGPS() {
       if (!("geolocation" in navigator)) {
         console.log("Geolocalização não suportada.");
         return;
       }
 
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          enviarLocalizacao(latitude, longitude);
-        },
-        (err) => console.log("Erro getCurrentPosition:", err),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-      );
-
-      if (watchId === null) {
-        watchId = navigator.geolocation.watchPosition(
+      function capturarPosicao() {
+        navigator.geolocation.getCurrentPosition(
           (pos) => {
             const { latitude, longitude } = pos.coords;
             enviarLocalizacao(latitude, longitude);
           },
-          (err) => console.log("Erro watchPosition:", err),
+          (err) => {
+            console.log("Erro getCurrentPosition:", err);
+          },
           { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
         );
       }
+
+      // primeira captura imediata
+      capturarPosicao();
+      // depois, de X em X segundos, mesmo parado
+      setInterval(capturarPosicao, INTERVALO_PING_MS);
     }
 
     function tocarSomEntrega() {
@@ -1582,7 +1582,7 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-      // NÃO inicia mapa nem GPS aqui. Só depois do botão "Ficar online".
+      // ainda não inicia mapa nem GPS; só depois de clicar em "Ficar online"
       mostrarEstadoSemEntrega();
       atualizarPillOnline();
 
@@ -1596,8 +1596,6 @@
 
       // Botão de FILTRAR explícito
       btnAplicarFiltro.addEventListener("click", renderHistorico);
-
-      // Ainda deixa reagir "ao vivo" se quiser
       [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
         el.addEventListener("change", renderHistorico);
       });
@@ -1624,7 +1622,7 @@
         }
       });
 
-      // BOTÃO FICAR ONLINE: aqui é onde começa mapa + GPS + busca de entrega
+      // BOTÃO FICAR ONLINE: aqui começa tudo (mapa + GPS + corridas)
       btnFicarOnline.addEventListener("click", () => {
         if (onlineAtivo) return;
         onlineAtivo = true;
@@ -1633,23 +1631,16 @@
         // Some com a tela inicial
         onlineOverlay.classList.add("hidden");
 
-        // Agora sim inicia o mapa e a localização
+        // inicia o mapa e o rastreamento em LOOP
         initMap();
         iniciarRastreamentoGPS();
-
-        // Pings periódicos pro backend com última posição
-        setInterval(() => {
-          if (!onlineAtivo || !motoboyMarker) return;
-          const pos = motoboyMarker.getLatLng();
-          enviarLocalizacao(pos.lat, pos.lng);
-        }, INTERVALO_PING_MS);
 
         // Busca periódica de novas entregas
         setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
         buscarNovaEntrega();
       });
 
-      // Render inicial do histórico (caso venha ENTREGAS do servidor)
+      // histórico inicial (se já vier ENTREGAS do servidor)
       renderHistorico();
     });
   </script>
