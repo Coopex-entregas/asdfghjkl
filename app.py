@@ -12,8 +12,9 @@ from decimal import Decimal
 
 from flask import (
     Flask, render_template, render_template_string, request, redirect, url_for,
-    flash, session, send_file, jsonify, abort, current_app
+    flash, session, send_file, jsonify, abort, current_app, 
 )
+from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
 from sqlalchemy.orm import joinedload
@@ -2671,7 +2672,6 @@ def cooperado_verificar_nova_entrega():
 @app.route("/cooperado/aceitar_entrega", methods=["POST"])
 @login_required
 def cooperado_aceitar_entrega():
-    # Garante que é cooperado (se você tiver esse atributo)
     if not getattr(current_user, "is_cooperado", False):
         return jsonify({"status": "erro", "mensagem": "Acesso não permitido."}), 403
 
