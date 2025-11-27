@@ -1355,13 +1355,44 @@
 
   fetch("/cooperado/aceitar_entrega", {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Requested-With": "XMLHttpRequest"
+    },
     body: JSON.stringify(corpo)
   })
-    .then(resp => resp.json())
-    .then(data => {
+    .then(async (resp) => {
+      // Se o HTTP já veio errado (500, 404 etc)
+      if (!resp.ok) {
+        const texto = await resp.text().catch(() => "");
+        console.error("Erro HTTP em /cooperado/aceitar_entrega:", resp.status, texto);
+        throw new Error("HTTP " + resp.status);
+      }
+
+      let data;
+      const ct = resp.headers.get("Content-Type") || "";
+
+      // Se for JSON de verdade, tenta parsear
+      if (ct.includes("application/json")) {
+        try {
+          data = await resp.json();
+        } catch (e) {
+          console.error("Erro ao fazer resp.json() em aceitar_entrega:", e);
+          throw e;
+        }
+      } else {
+        // Backend respondeu HTML / outra coisa: trata como erro também
+        const texto = await resp.text().catch(() => "");
+        console.error("Conteúdo não JSON em aceitar_entrega:", ct, texto);
+        throw new Error("Resposta não é JSON");
+      }
+
+      // Se chegou aqui, deu tudo certo em nível de rede
       pararSomEntrega();
-      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      if (countdownInterval) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+      }
 
       if (data && data.status === "ok") {
         // Se o backend devolver a entrega atualizada, usa ela
@@ -1371,15 +1402,15 @@
         mostrarEstadoEntregaAceita(entregaAtual);
         abrirNavegador(entregaAtual);
       } else {
-        console.log("Erro ao aceitar entrega:", data);
-        alert("Não foi possível aceitar a entrega.");
+        console.log("Erro lógico ao aceitar entrega:", data);
+        alert(data && data.mensagem ? data.mensagem : "Não foi possível aceitar a entrega.");
         mostrarEstadoSemEntrega();
       }
     })
-    .catch(err => {
+    .catch((err) => {
       pararSomEntrega();
-      console.log("Erro fetch aceitar_entrega:", err);
-      alert("Erro de comunicação ao aceitar a entrega.");
+      console.error("Erro de comunicação em aceitar_entrega:", err);
+      alert("Erro de comunicação ao aceitar a entrega. Verifique a internet ou se o login expirou.");
       mostrarEstadoSemEntrega();
     });
 }
