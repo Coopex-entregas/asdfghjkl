@@ -2597,40 +2597,65 @@ def painel_cooperado():
 
 @app.route("/cooperado/verificar_nova_entrega")
 def cooperado_verificar_nova_entrega():
-    cooperado_id = session.get("user_id")  # <<< TROCAR AQUI
+    cooperado_id = session.get("user_id")
     if not cooperado_id or session.get('is_admin'):
         return jsonify({"tem_entrega": False})
 
-    # BUSCAR UMA ENTREGA "NOVA" ATRIBUÍDA A ESSE COOPERADO
+    # Busca uma entrega ATRIBUÍDA para esse cooperado,
+    # ainda não concluída e ainda "pendente" na visão da corrida.
     entrega = (
         Entrega.query
-        .filter_by(cooperado_id=cooperado_id)
-        .filter(Entrega.status == "nova")   # defina "nova" quando atribuir na supervisão
-        .order_by(Entrega.data_envio.asc())
+        .filter(
+            Entrega.cooperado_id == cooperado_id,
+            # ainda em aberto para o cooperado
+            (Entrega.status_corrida == None) |
+            (Entrega.status_corrida.in_(['pendente', 'aceita'])),
+            # não concluída
+            (Entrega.status == None) |
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+        )
+        .order_by(Entrega.data_atribuida.desc(), Entrega.data_envio.desc())
         .first()
     )
 
     if not entrega:
         return jsonify({"tem_entrega": False})
 
-    # MONTAR O JSON DO JEITO QUE O JS DO MOTOBOY USA
+    # Usa os helpers do model Entrega para pegar origem/destino:
+    origem = entrega.get_origem() or {}
+    destino = entrega.get_destino() or {}
+
+    origem_endereco = (
+        origem.get('endereco')
+        or origem.get('address')
+        or origem.get('bairro')
+        or None
+    )
+    origem_bairro = origem.get('bairro') or None
+
+    destino_endereco = (
+        destino.get('endereco')
+        or destino.get('address')
+        or destino.get('bairro')
+        or entrega.bairro
+    )
+    destino_bairro = destino.get('bairro') or entrega.bairro
+
     payload = {
         "id": entrega.id,
-        "cliente": entrega.cliente,                 # ou restaurante
+        "cliente": entrega.cliente,
         "valor": float(entrega.valor or 0),
 
-        # se você só tem um endereço (destino), usa ele aqui:
-        "origem_endereco": None,
-        "origem_bairro": None,
+        "origem_endereco": origem_endereco,
+        "origem_bairro": origem_bairro,
 
-        "destino_endereco": entrega.endereco,
-        "destino_bairro": entrega.bairro,
+        "destino_endereco": destino_endereco,
+        "destino_bairro": destino_bairro,
 
-        # se ainda não tem coluna de lat/lng, deixa como None
-        "lat_origem": None,
-        "lng_origem": None,
-        "lat_destino": None,
-        "lng_destino": None,
+        "lat_origem": origem.get('lat'),
+        "lng_origem": origem.get('lng'),
+        "lat_destino": destino.get('lat'),
+        "lng_destino": destino.get('lng'),
 
         "tempo_estimado": "aprox.",
         "distancia": 0,
@@ -3754,9 +3779,7 @@ def atribuir_cooperado(id):
 
             # chave do fluxo: entrega atribuída, aguardando aceite do cooperado
             entrega.status_corrida = 'pendente'
-
         else:
-            # se tirar o cooperado, limpa a info
             entrega.cooperado_id = None
             entrega.data_atribuida = None
             entrega.status_corrida = None
@@ -3767,7 +3790,6 @@ def atribuir_cooperado(id):
         db.session.rollback()
         flash('Erro ao atribuir entrega', 'danger')
 
-    # 'painel_admin' não existe; sua rota do admin é 'admin'
     return redirect(request.referrer or url_for('admin'))
     
 
