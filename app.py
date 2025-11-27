@@ -2668,23 +2668,61 @@ def cooperado_verificar_nova_entrega():
 
 
 # Aceitar entrega (via URL com <id>)
-@app.route('/cooperado/aceitar_entrega/<int:id>', methods=['POST'])
-def cooperado_aceitar_entrega(id):
-    if session.get('user_id') is None or session.get('is_admin'):
-        return jsonify(ok=False, error='Não autorizado'), 401
+@app.route("/cooperado/aceitar_entrega", methods=["POST"])
+@login_required
+def cooperado_aceitar_entrega():
+    # Garante que é cooperado (se você tiver esse atributo)
+    if not getattr(current_user, "is_cooperado", False):
+        return jsonify({"status": "erro", "mensagem": "Acesso não permitido."}), 403
 
-    user_id = session['user_id']
-    entrega = Entrega.query.get_or_404(id)
+    data = request.get_json(silent=True) or {}
+    entrega_id = data.get("entrega_id")
 
-    if entrega.cooperado_id != user_id:
-        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
+    if not entrega_id:
+        return jsonify({"status": "erro", "mensagem": "ID da entrega não informado."}), 400
 
-    entrega.status_corrida = 'aceita'
-    if not entrega.data_atribuida:
-        entrega.data_atribuida = datetime.now(BRAZIL_TZ)
+    entrega = Entrega.query.get(entrega_id)
+    if not entrega:
+        return jsonify({"status": "erro", "mensagem": "Entrega não encontrada."}), 404
 
+    # Se já tiver outro cooperado atribuído
+    if entrega.cooperado_id and entrega.cooperado_id != current_user.id:
+        return jsonify({
+            "status": "erro",
+            "mensagem": "Essa entrega já foi aceita por outro cooperado."
+        }), 400
+
+    # Marca como atribuída para este cooperado
+    entrega.cooperado_id = current_user.id
+    entrega.data_atribuida = datetime.now(tz_br)
     db.session.commit()
-    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+    # Monta o JSON EXATAMENTE com os campos que o JS usa no painel do motoboy
+    entrega_js = {
+        "id": entrega.id,
+        "cliente": entrega.cliente,
+        "restaurante": getattr(entrega, "restaurante", None),
+        "valor": float(entrega.valor) if entrega.valor is not None else 0.0,
+
+        "origem_endereco": getattr(entrega, "origem_endereco", None),
+        "origem_bairro": getattr(entrega, "origem_bairro", None),
+        "destino_endereco": getattr(entrega, "destino_endereco", entrega.endereco if hasattr(entrega, "endereco") else None),
+        "destino_bairro": getattr(entrega, "destino_bairro", entrega.bairro if hasattr(entrega, "bairro") else None),
+
+        "lat_origem": getattr(entrega, "lat_origem", None),
+        "lng_origem": getattr(entrega, "lng_origem", None),
+        "lat_destino": getattr(entrega, "lat_destino", None),
+        "lng_destino": getattr(entrega, "lng_destino", None),
+
+        "distancia": getattr(entrega, "distancia_metros", None),
+        "tempo_estimado": getattr(entrega, "tempo_estimado", None),
+
+        "status_pagamento": (entrega.status_pagamento or "pendente"),
+        "data_entrega": entrega.data_envio.date().isoformat() if entrega.data_envio else None,
+        "recebida_por": entrega.recebido_por or ""
+    }
+
+    return jsonify({"status": "ok", "entrega": entrega_js}), 200
 
 
 # Recusar entrega (via URL com <id>)
