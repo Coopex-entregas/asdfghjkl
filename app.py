@@ -2240,18 +2240,11 @@ ULTIMO_SOCORRO = None
 
 @app.route("/socorro", methods=["POST"])
 def socorro():
-    """
-    Rota chamada pelo COOPERADO quando aperta o botão de SOCORRO.
-    Não tem HTML, só grava o alerta em memória.
-    """
-
-    # aqui você pode colocar o mesmo controle de login do painel do cooperado
-    # por exemplo: se não tiver usuário logado, bloqueia
     if not session.get("user_id"):
         abort(401)
 
     user_id = session.get("user_id")
-    cooperado = Usuario.query.get(user_id)
+    cooperado = Cooperado.query.get(user_id)  # 👈 troquei Usuario por Cooperado
     if not cooperado:
         abort(400)
 
@@ -2278,10 +2271,9 @@ def socorro():
         "mensagem": texto,
         "timestamp": time.time(),
         "momento": momento,
-        "lido": False,   # só libera 1 vez pro admin
+        "lido": False,
     }
 
-    # resposta simples pro app do cooperado
     return jsonify({"ok": True, "mensagem": "Socorro enviado para a supervisão!"}), 200
 
 
@@ -4223,16 +4215,20 @@ from flask import jsonify
 
 @app.get('/cooperado/api/entrega_atribuida')
 def api_entrega_atribuida():
-    # ajuste conforme seu login (id do cooperado na sessão)
-    if not session.get('is_cooperado'):
+    # mesmo padrão do restante do painel do cooperado
+    if session.get('user_id') is None or session.get('is_admin'):
         return jsonify({'tem': False}), 401
 
     cooperado_id = session.get('user_id')
 
+    # Busca a entrega atribuída para esse cooperado que ainda não foi iniciada
     entrega = (
         Entrega.query
-        .filter_by(cooperado_id=cooperado_id, status_corrida='aguardando_resposta')
-        .order_by(Entrega.data_atribuida.desc())
+        .filter(
+            Entrega.cooperado_id == cooperado_id,
+            Entrega.status_entrega == 'EM_ESPERA'  # <-- ajuste esse texto pro status que você usa
+        )
+        .order_by(Entrega.hora_atribuida.desc())
         .first()
     )
 
@@ -4242,12 +4238,11 @@ def api_entrega_atribuida():
     return jsonify({
         'tem': True,
         'id': entrega.id,
-        'cliente': getattr(entrega, 'cliente', ''),
-        'bairro': getattr(entrega, 'bairro', ''),
-        'endereco': getattr(entrega, 'endereco', ''),
+        'descricao': entrega.descricao,
         'valor': float(entrega.valor or 0),
-        'data_envio': entrega.data_envio.strftime('%d/%m/%Y %H:%M') if entrega.data_envio else '',
-        'observacoes': getattr(entrega, 'observacoes', ''),
+        'hora_pedido': entrega.hora_pedido.strftime('%H:%M') if entrega.hora_pedido else None,
+        'hora_atribuida': entrega.hora_atribuida.strftime('%H:%M') if entrega.hora_atribuida else None,
+        'status_entrega': entrega.status_entrega,
     })
 
 
