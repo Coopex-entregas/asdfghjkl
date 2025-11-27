@@ -4250,37 +4250,6 @@ def api_entrega_atribuida():
         'observacoes': getattr(entrega, 'observacoes', ''),
     })
 
-from flask import jsonify
-
-@app.get('/cooperado/api/entrega_atribuida')
-def api_entrega_atribuida():
-    # ajuste conforme seu login (id do cooperado na sessão)
-    if not session.get('is_cooperado'):
-        return jsonify({'tem': False}), 401
-
-    cooperado_id = session.get('user_id')
-
-    entrega = (
-        Entrega.query
-        .filter_by(cooperado_id=cooperado_id, status_corrida='aguardando_resposta')
-        .order_by(Entrega.data_atribuida.desc())
-        .first()
-    )
-
-    if not entrega:
-        return jsonify({'tem': False})
-
-    return jsonify({
-        'tem': True,
-        'id': entrega.id,
-        'cliente': getattr(entrega, 'cliente', ''),
-        'bairro': getattr(entrega, 'bairro', ''),
-        'endereco': getattr(entrega, 'endereco', ''),
-        'valor': float(entrega.valor or 0),
-        'data_envio': entrega.data_envio.strftime('%d/%m/%Y %H:%M') if entrega.data_envio else '',
-        'observacoes': getattr(entrega, 'observacoes', ''),
-    })
-
 
 # =========================================================
 # ESTATÍSTICAS (ADMIN MASTER)
