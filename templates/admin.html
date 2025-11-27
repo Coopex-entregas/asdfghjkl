@@ -948,7 +948,7 @@
       });
     });
 
-    // Alternar Tabela/Cartões
+    // Alternar Tabela/Cartões (botão pode ser adicionado se quiser)
     (function(){
       var btToggle  = document.getElementById('toggleView');
       var tbl       = document.getElementById('tbl');
@@ -1097,6 +1097,8 @@
     })();
 
     // ===== Edição rápida do cooperado (click no nome) =====
+    // Ao salvar, o backend recebe a entrega na rota /atribuir_cooperado/<id>
+    // e o painel do cooperado passa a enxergar essa entrega (filtrando por cooperado_id).
     document.addEventListener('click', function(ev){
       var el = ev.target.closest ? ev.target.closest('.coop-editable') : null;
       if(!el) return;
@@ -1133,6 +1135,9 @@
           var url = '/atribuir_cooperado/' + idEntrega;
           var fd  = new FormData();
           fd.append('cooperado_id', coopId);
+          // Campo extra caso queira usar no Flask para acionar lógica específica
+          fd.append('notificar_painel', '1');
+
           fetch(url,{
             method:'POST',
             body:fd,
@@ -1567,7 +1572,7 @@
     crossorigin=""></script>
 
   <script>
-    // ===== MAPA EMBUTIDO (div #map-coopex) =====
+    // ===== MAPA EMBUTIDO (div #map-coopex) COM ATUALIZAÇÃO A CADA 5s =====
     window.addEventListener('DOMContentLoaded', function(){
       var mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
@@ -1581,44 +1586,99 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      var dados = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
-      var layers = [];
+      // Marcadores por ID do motoboy (evita recriar tudo)
+      var motoboyMarkers = {};
+      var boundsGroup = L.featureGroup().addTo(map);
+      var firstFitDone = false;
 
-      dados.forEach(function(m){
-        if (!m.lat || !m.lng) return;
-
-        var corBorda  = m.online ? '#10b981' : '#ef4444';
-        var corFill   = m.online ? '#10b981' : '#ef4444';
-
-        var marker = L.circleMarker([m.lat, m.lng], {
-          radius: 8,
-          color: corBorda,
-          weight: 2,
-          fillColor: corFill,
-          fillOpacity: 0.9
-        }).addTo(map);
-
+      function popupHtml(m){
         var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
         var vel = m.velocidade || 0;
         var ultima = m.ultima_atualizacao
           ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>'
           : '';
-
-        marker.bindPopup(
+        return (
           '<strong>'+m.nome+'</strong><br>'+
           'Velocidade: '+vel+' km/h<br>'+
           'Status: '+statusTxt+ultima
         );
-
-        layers.push(marker);
-      });
-
-      if (layers.length) {
-        var group = L.featureGroup(layers);
-        map.fitBounds(group.getBounds().pad(0.25));
       }
+
+      function atualizarMarcadores(lista){
+        if (!Array.isArray(lista)) lista = [];
+
+        var ativos = {};
+        lista.forEach(function(m){
+          if (!m || !m.id || !m.lat || !m.lng) return;
+          ativos[m.id] = true;
+
+          var corBorda  = m.online ? '#10b981' : '#ef4444';
+          var corFill   = m.online ? '#10b981' : '#ef4444';
+          var marker = motoboyMarkers[m.id];
+
+          if (!marker) {
+            marker = L.circleMarker([m.lat, m.lng], {
+              radius: 8,
+              color: corBorda,
+              weight: 2,
+              fillColor: corFill,
+              fillOpacity: 0.9
+            });
+            marker.addTo(boundsGroup);
+            marker.bindPopup(popupHtml(m));
+            motoboyMarkers[m.id] = marker;
+          } else {
+            marker.setLatLng([m.lat, m.lng]);
+            marker.setStyle({
+              color: corBorda,
+              fillColor: corFill
+            });
+            if (marker.isPopupOpen()) {
+              marker.setPopupContent(popupHtml(m));
+            }
+          }
+        });
+
+        // Remove marcadores que não vieram mais no JSON
+        Object.keys(motoboyMarkers).forEach(function(id){
+          if (!ativos[id]) {
+            boundsGroup.removeLayer(motoboyMarkers[id]);
+            delete motoboyMarkers[id];
+          }
+        });
+
+        // Ajusta o mapa para caber os marcadores (apenas no primeiro carregamento)
+        var layers = Object.values(motoboyMarkers);
+        if (layers.length && !firstFitDone) {
+          var group = L.featureGroup(layers);
+          map.fitBounds(group.getBounds().pad(0.25));
+          firstFitDone = true;
+        }
+      }
+
+      // 1) Primeiro desenha usando os dados injetados pelo Jinja
+      var dadosIniciais = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
+      atualizarMarcadores(dadosIniciais);
+
+      // 2) Atualiza do backend a cada 5 segundos (precisa da rota motoboys_json)
+      function atualizarDoServidor(){
+        fetch("{{ url_for('motoboys_json') }}", {
+          headers: { 'X-Requested-With': 'fetch' }
+        })
+        .then(function(res){
+          if (!res.ok) throw new Error('Falha ao carregar motoboys_json');
+          return res.json();
+        })
+        .then(function(data){
+          atualizarMarcadores(data);
+        })
+        .catch(function(err){
+          console.error('Erro ao atualizar motoboys:', err);
+        });
+      }
+
+      setInterval(atualizarDoServidor, 5000);
     });
   </script>
 </body>
 </html>
-
