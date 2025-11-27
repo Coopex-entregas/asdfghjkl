@@ -2233,49 +2233,6 @@ def admin():
         motoboys_js=motoboys_js,
     )
 
-# ================= SOCORRO / PANICO =================
-# guarda o último pedido de socorro em memória
-ULTIMO_SOCORRO = None
-
-
-@app.route("/socorro", methods=["POST"])
-def socorro():
-    if not session.get("user_id"):
-        abort(401)
-
-    user_id = session.get("user_id")
-    cooperado = Cooperado.query.get(user_id)  # 👈 troquei Usuario por Cooperado
-    if not cooperado:
-        abort(400)
-
-    # pega texto opcional da mensagem (campo "mensagem" ou "texto")
-    if request.is_json:
-        data = request.get_json(silent=True) or {}
-        texto = (data.get("mensagem") or data.get("texto") or "").strip()
-    else:
-        texto = (
-            request.form.get("mensagem")
-            or request.form.get("texto")
-            or request.args.get("mensagem")
-            or request.args.get("texto")
-            or ""
-        ).strip()
-
-    agora = datetime.utcnow()
-    momento = to_brasilia(agora).strftime("%d/%m/%Y %H:%M")
-
-    global ULTIMO_SOCORRO
-    ULTIMO_SOCORRO = {
-        "cooperado_id": cooperado.id,
-        "cooperado_nome": cooperado.nome,
-        "mensagem": texto,
-        "timestamp": time.time(),
-        "momento": momento,
-        "lido": False,
-    }
-
-    return jsonify({"ok": True, "mensagem": "Socorro enviado para a supervisão!"}), 200
-
 
 @app.route("/admin_novo_socorro")
 def admin_novo_socorro():
@@ -3564,8 +3521,8 @@ def atribuir_cooperado(id):
             entrega.cooperado_id = coop.id
             entrega.data_atribuida = datetime.utcnow()
 
-            # 👇 chave do fluxo: entrega atribuída, aguardando aceite do cooperado
-            entrega.status_corrida = 'aguardando_resposta'
+            # chave do fluxo: entrega atribuída, aguardando aceite do cooperado
+            entrega.status_corrida = 'pendente'
 
         else:
             # se tirar o cooperado, limpa a info
@@ -3579,8 +3536,9 @@ def atribuir_cooperado(id):
         db.session.rollback()
         flash('Erro ao atribuir entrega', 'danger')
 
-    return redirect(request.referrer or url_for('painel_admin'))
-
+    # 'painel_admin' não existe; sua rota do admin é 'admin'
+    return redirect(request.referrer or url_for('admin'))
+    
 
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
@@ -4215,36 +4173,44 @@ from flask import jsonify
 
 @app.get('/cooperado/api/entrega_atribuida')
 def api_entrega_atribuida():
-    # mesmo padrão do restante do painel do cooperado
+    # Mesmo padrão do restante do painel do cooperado
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify({'tem': False}), 401
 
     cooperado_id = session.get('user_id')
 
-    # Busca a entrega atribuída para esse cooperado que ainda não foi iniciada
+    # Entrega atribuída para esse cooperado que ainda não foi concluída
     entrega = (
         Entrega.query
         .filter(
             Entrega.cooperado_id == cooperado_id,
-            Entrega.status_entrega == 'EM_ESPERA'  # <-- ajuste esse texto pro status que você usa
+            # ainda não concluída (status != recebido/entregue)
+            (Entrega.status == None) |
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
         )
-        .order_by(Entrega.hora_atribuida.desc())
+        .order_by(Entrega.data_atribuida.desc(), Entrega.data_envio.desc())
         .first()
     )
 
     if not entrega:
         return jsonify({'tem': False})
 
+    dt_pedido = to_brasilia(entrega.data_envio) if entrega.data_envio else None
+    dt_atr    = to_brasilia(entrega.data_atribuida) if entrega.data_atribuida else None
+
+    descricao = f"{(entrega.cliente or 'Cliente')} - {(entrega.bairro or '').strip()}"
+    descricao = descricao.strip(' -')
+
     return jsonify({
         'tem': True,
         'id': entrega.id,
-        'descricao': entrega.descricao,
+        'descricao': descricao,
         'valor': float(entrega.valor or 0),
-        'hora_pedido': entrega.hora_pedido.strftime('%H:%M') if entrega.hora_pedido else None,
-        'hora_atribuida': entrega.hora_atribuida.strftime('%H:%M') if entrega.hora_atribuida else None,
-        'status_entrega': entrega.status_entrega,
+        'hora_pedido': dt_pedido.strftime('%H:%M') if dt_pedido else None,
+        'hora_atribuida': dt_atr.strftime('%H:%M') if dt_atr else None,
+        'status_entrega': entrega.status or 'pendente',
+        'status_corrida': entrega.status_corrida or 'pendente',
     })
-
 
 # =========================================================
 # ESTATÍSTICAS (ADMIN MASTER)
