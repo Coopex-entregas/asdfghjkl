@@ -4173,20 +4173,21 @@ from flask import jsonify
 
 @app.get('/cooperado/api/entrega_atribuida')
 def api_entrega_atribuida():
-    # Mesmo padrão do restante do painel do cooperado
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify({'tem': False}), 401
 
     cooperado_id = session.get('user_id')
 
-    # Entrega atribuída para esse cooperado que ainda não foi concluída
     entrega = (
         Entrega.query
         .filter(
             Entrega.cooperado_id == cooperado_id,
-            # ainda não concluída (status != recebido/entregue)
+            # só entregas que ainda não foram concluídas
             (Entrega.status == None) |
-            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue'])),
+            # e que ainda estão pendentes ou recém aceitas
+            (Entrega.status_corrida == None) |
+            (Entrega.status_corrida.in_(['pendente', 'aceita']))
         )
         .order_by(Entrega.data_atribuida.desc(), Entrega.data_envio.desc())
         .first()
@@ -4211,6 +4212,7 @@ def api_entrega_atribuida():
         'status_entrega': entrega.status or 'pendente',
         'status_corrida': entrega.status_corrida or 'pendente',
     })
+
 
 # =========================================================
 # ESTATÍSTICAS (ADMIN MASTER)
