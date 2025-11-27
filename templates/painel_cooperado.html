@@ -42,7 +42,7 @@
       background: var(--bg2);
       color: var(--text);
       overflow: hidden;
-      font-size: 16px; /* base maior */
+      font-size: 17px; /* letras um pouco maiores */
     }
 
     .topbar {
@@ -63,12 +63,12 @@
     }
 
     .top-title {
-      font-size: 1.05rem;
+      font-size: 1.1rem;
       font-weight: 600;
     }
 
     .top-subtitle {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       color: var(--muted);
     }
 
@@ -78,7 +78,7 @@
       gap: 6px;
       border-radius: 999px;
       padding: 3px 10px;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       background: var(--accent-soft);
       color: #c7d2ff;
       border: 1px solid rgba(65, 105, 225, 0.9);
@@ -98,7 +98,7 @@
       border: 1px solid rgba(148, 163, 184, 0.4);
       background: #020617;
       color: #cbd5f5;
-      font-size: .85rem;
+      font-size: .9rem;
       font-weight: 500;
       text-decoration: none;
       display: inline-flex;
@@ -160,12 +160,12 @@
     }
 
     .card-title {
-      font-size: 1rem;
+      font-size: 1.02rem;
       font-weight: 600;
     }
 
     .card-subtitle {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       color: var(--muted);
       margin-top: 2px;
     }
@@ -237,7 +237,7 @@
     }
 
     .chip {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       padding: 5px 10px;
       border-radius: 999px;
       border: 1px solid #111827;
@@ -261,7 +261,7 @@
     .btn {
       border-radius: 999px;
       border: none;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       font-weight: 600;
       padding: 10px 12px;
       cursor: pointer;
@@ -292,7 +292,7 @@
     .btn-full { width: 100%; margin-top: 8px; }
 
     .countdown-pill {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       padding: 4px 10px;
       border-radius: 999px;
       background: rgba(251, 191, 36, 0.08);
@@ -310,7 +310,7 @@
     .mt-2 { margin-top: 8px; }
 
     .pill-small {
-      font-size: 0.82rem;
+      font-size: 0.9rem;
       padding: 3px 10px;
       border-radius: 999px;
       background: #020617;
@@ -334,12 +334,12 @@
     }
 
     .small-label {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--muted);
     }
 
     .small-value {
-      font-size: 0.95rem;
+      font-size: 1rem;
       font-weight: 600;
     }
 
@@ -353,7 +353,7 @@
     }
 
     #card-sem-entrega .empty-sub {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       color: var(--muted);
       text-align: center;
       margin-top: 4px;
@@ -390,7 +390,7 @@
       margin-top: 8px;
       display: flex;
       justify-content: space-between;
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--muted);
       gap: 10px;
       flex-wrap: wrap;
@@ -414,7 +414,7 @@
       border: none;
       background: transparent;
       color: var(--muted);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       padding: 7px 0;
       border-radius: 999px;
       cursor: pointer;
@@ -445,7 +445,7 @@
       border: 1px solid #1f2937;
       background: #020617;
       color: var(--text);
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       outline: none;
     }
 
@@ -504,8 +504,8 @@
       gap: 8px;
     }
 
-    .hist-cliente { font-weight: 600; font-size: 0.98rem; }
-    .hist-valor { font-weight: 600; font-size: 0.98rem; }
+    .hist-cliente { font-weight: 600; font-size: 1rem; }
+    .hist-valor { font-weight: 600; font-size: 1rem; }
 
     .hist-middle {
       margin-top: 4px;
@@ -529,12 +529,12 @@
     }
 
     .hist-data {
-      font-size: 0.85rem;
+      font-size: 0.9rem;
       color: var(--muted);
     }
 
     .hist-recebida {
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       color: #e5e7eb;
     }
 
@@ -566,6 +566,27 @@
       content: " (clicar p/ marcar pago)";
       font-size: 0.78rem;
       color: #fca5a5;
+    }
+
+    /* Totais na aba Minhas entregas */
+    .hist-totais-row {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .hist-total-card {
+      border-radius: 14px;
+      padding: 8px 10px;
+      border: 1px solid #111827;
+      background: #020617;
+    }
+
+    .hist-total-value {
+      font-size: 1rem;
+      font-weight: 600;
+      margin-top: 2px;
     }
 
     /* MENU SANDUÍCHE */
@@ -613,7 +634,7 @@
       border: 1px solid #1f2937;
       background: #020617;
       color: #e5e7eb;
-      font-size: 0.9rem;
+      font-size: 0.95rem;
       display: flex;
       align-items: center;
       justify-content: space-between;
@@ -670,7 +691,7 @@
     }
 
     .online-title {
-      font-size: 1.1rem;
+      font-size: 1.15rem;
       font-weight: 600;
       margin-bottom: 6px;
     }
@@ -722,6 +743,18 @@
           <span class="icon">›</span>
         </a>
 
+        <!-- NOVA OPÇÃO: MINHAS FINANÇAS -->
+        <a href="/cooperado/financas" class="menu-item">
+          <div class="menu-item-left">
+            <div class="menu-item-icon">💰</div>
+            <div>
+              <div>Minhas finanças</div>
+              <div class="small-label">Ver saldo, repasses e pendências</div>
+            </div>
+          </div>
+          <span class="icon">›</span>
+        </a>
+
         <a href="https://wa.me/{{ whatsapp_coopex or '' }}" target="_blank" class="menu-item">
           <div class="menu-item-left">
             <div class="menu-item-icon">🆘</div>
@@ -746,7 +779,7 @@
       <div class="top-title">Olá, {{ cooperado_nome|default('Cooperado', true) }}</div>
       <div class="top-subtitle">
         <span class="status-pill" id="status-online-pill">
-          <span class="status-dot"></span> Online para receber entregas
+          <span class="status-dot"></span> Offline
         </span>
       </div>
     </div>
@@ -782,7 +815,7 @@
     </div>
   </div>
 
-  <!-- OVERLAY -->
+  <!-- OVERLAY TABS + CARDS -->
   <div class="overlay">
     <!-- TABS -->
     <div class="tab-switcher">
@@ -953,7 +986,7 @@
       </div>
     </div>
 
-    <!-- ABA HISTÓRICO -->
+    <!-- ABA HISTÓRICO / MINHAS ENTREGAS -->
     <div id="tab-historico" class="tab-pane hidden">
       <div id="card-historico" class="card-base">
         <div class="card-header-line"></div>
@@ -965,7 +998,23 @@
           </span>
         </div>
         <div class="card-subtitle">
-          Filtros rápidos para ver suas corridas e marcar pagamento.
+          Veja suas corridas, marque pagamento e acompanhe os valores.
+        </div>
+
+        <!-- TOTAIS -->
+        <div class="hist-totais-row">
+          <div class="hist-total-card">
+            <div class="small-label">Pago</div>
+            <div class="hist-total-value" id="hist-total-pago">R$ 0,00</div>
+          </div>
+          <div class="hist-total-card">
+            <div class="small-label">Pendente</div>
+            <div class="hist-total-value" id="hist-total-pendente">R$ 0,00</div>
+          </div>
+          <div class="hist-total-card">
+            <div class="small-label">Total</div>
+            <div class="hist-total-value" id="hist-total-geral">R$ 0,00</div>
+          </div>
         </div>
 
         <div class="hist-filtros-row">
@@ -1022,6 +1071,7 @@
     const INTERVALO_PING_MS = 10000;
     const INTERVALO_BUSCA_ENTREGA_MS = 7000;
     const TEMPO_EXPIRACAO_SEG = 20;
+    const STORAGE_ONLINE_KEY = "coopex_online_session";
 
     let map;
     let motoboyMarker = null;
@@ -1046,6 +1096,7 @@
     const tabBtnHistorico = document.getElementById("tab-btn-historico");
     const tabCorridas = document.getElementById("tab-corridas");
     const tabHistorico = document.getElementById("tab-historico");
+    const mapWrapper = document.querySelector(".map-wrapper");
 
     const novaTitulo = document.getElementById("nova-entrega-titulo");
     const novaRestaurante = document.getElementById("nova-entrega-restaurante");
@@ -1070,6 +1121,10 @@
 
     const historicoLista = document.getElementById("historico-lista");
     const histTotal = document.getElementById("hist-total");
+    const histTotalPago = document.getElementById("hist-total-pago");
+    const histTotalPendente = document.getElementById("hist-total-pendente");
+    const histTotalGeral = document.getElementById("hist-total-geral");
+
     const filtroDataInicio = document.getElementById("filtro-data-inicio");
     const filtroDataFim = document.getElementById("filtro-data-fim");
     const filtroStatus = document.getElementById("filtro-status");
@@ -1114,6 +1169,11 @@
         if (partes.length >= 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
       }
       return strData;
+    }
+
+    function hojeISO() {
+      const d = new Date();
+      return d.toISOString().slice(0, 10);
     }
 
     function initMap() {
@@ -1184,8 +1244,10 @@
 
     function enviarLocalizacao(lat, lng) {
       const agora = new Date();
-      textoUltimaLoc.textContent = "Última posição: " +
-        agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      if (textoUltimaLoc) {
+        textoUltimaLoc.textContent = "Última posição: " +
+          agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+      }
 
       atualizarMarkerMotoboy(lat, lng);
 
@@ -1196,7 +1258,7 @@
       }).catch(err => console.log("Erro ao atualizar localização:", err));
     }
 
-    // >>> AQUI: GPS EM LOOP, SEM watchPosition <<<
+    // GPS em loop (getCurrentPosition em intervalo)
     function iniciarRastreamentoGPS() {
       if (!("geolocation" in navigator)) {
         console.log("Geolocalização não suportada.");
@@ -1216,9 +1278,7 @@
         );
       }
 
-      // primeira captura imediata
       capturarPosicao();
-      // depois, de X em X segundos, mesmo parado
       setInterval(capturarPosicao, INTERVALO_PING_MS);
     }
 
@@ -1242,7 +1302,7 @@
       cardEntregaAceita.classList.add("hidden");
       limparRota();
       entregaAtual = null;
-      inputRecebidaPor.value = "";
+      if (inputRecebidaPor) inputRecebidaPor.value = "";
     }
 
     function mostrarEstadoNovaEntrega(entrega) {
@@ -1449,6 +1509,7 @@
         });
     }
 
+    // FILTRO DAS ENTREGAS (com regra especial para pendente)
     function filtrarEntregas() {
       let lista = ENTREGAS.slice();
 
@@ -1459,8 +1520,12 @@
 
       lista = lista.filter(e => {
         const dataStr = e.data || e.data_entrega || "";
-        if (di && dataStr && dataStr < di) return false;
-        if (df && dataStr && dataStr > df) return false;
+
+        // Se status for "pendente", ignora datas (todas as datas)
+        if (status !== "pendente") {
+          if (di && dataStr && dataStr < di) return false;
+          if (df && dataStr && dataStr > df) return false;
+        }
 
         const st = normalizarStatusPagamento(e.status_pagamento);
         if (status !== "todos" && st !== status) return false;
@@ -1479,10 +1544,31 @@
       return lista;
     }
 
+    function calcularTotais(lista) {
+      let total = 0;
+      let pago = 0;
+
+      lista.forEach(e => {
+        const val = Number(e.valor) || 0;
+        total += val;
+        if (normalizarStatusPagamento(e.status_pagamento) === "pago") {
+          pago += val;
+        }
+      });
+
+      const pendente = Math.max(0, total - pago);
+
+      histTotalGeral.textContent = formatarValor(total);
+      histTotalPago.textContent = formatarValor(pago);
+      histTotalPendente.textContent = formatarValor(pendente);
+    }
+
     function renderHistorico() {
       const lista = filtrarEntregas();
       histTotal.textContent = lista.length + (lista.length === 1 ? " entrega" : " entregas");
       historicoLista.innerHTML = "";
+
+      calcularTotais(lista);
 
       if (lista.length === 0) {
         const vazio = document.createElement("div");
@@ -1534,7 +1620,10 @@
       });
     }
 
+    // marcar pago SEM recarregar página, mantendo posição
     function marcarEntregaComoPaga(entregaId) {
+      const scrollPos = historicoLista.scrollTop;
+
       const corpo = { entrega_id: entregaId };
 
       fetch("/cooperado/marcar_pago", {
@@ -1548,6 +1637,7 @@
             const idx = ENTREGAS.findIndex(e => e.id === entregaId);
             if (idx >= 0) ENTREGAS[idx].status_pagamento = "pago";
             renderHistorico();
+            historicoLista.scrollTop = scrollPos;
           } else {
             alert("Não foi possível marcar como pago.");
           }
@@ -1564,11 +1654,13 @@
         tabBtnHistorico.classList.remove("active");
         tabCorridas.classList.remove("hidden");
         tabHistorico.classList.add("hidden");
+        if (mapWrapper) mapWrapper.classList.remove("hidden"); // mostra mapa
       } else {
         tabBtnCorridas.classList.remove("active");
         tabBtnHistorico.classList.add("active");
         tabCorridas.classList.add("hidden");
         tabHistorico.classList.remove("hidden");
+        if (mapWrapper) mapWrapper.classList.add("hidden"); // esconde mapa para a aba de entregas
         renderHistorico();
       }
     }
@@ -1582,9 +1674,27 @@
     }
 
     document.addEventListener("DOMContentLoaded", function () {
-      // ainda não inicia mapa nem GPS; só depois de clicar em "Ficar online"
       mostrarEstadoSemEntrega();
       atualizarPillOnline();
+
+      // datas padrão = hoje (De / Até), se ainda estiverem vazias
+      const hoje = hojeISO();
+      if (!filtroDataInicio.value && !filtroDataFim.value) {
+        filtroDataInicio.value = hoje;
+        filtroDataFim.value = hoje;
+      }
+
+      // Se sessão já estava online nessa aba (sessionStorage), já entra online sem pedir de novo
+      const onlineJaEstavaAtivo = sessionStorage.getItem(STORAGE_ONLINE_KEY) === "1";
+      if (onlineJaEstavaAtivo) {
+        onlineAtivo = true;
+        atualizarPillOnline();
+        onlineOverlay.classList.add("hidden");
+        initMap();
+        iniciarRastreamentoGPS();
+        setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+        buscarNovaEntrega();
+      }
 
       btnAceitar.addEventListener("click", aceitarEntrega);
       btnRecusar.addEventListener("click", recusarEntrega);
@@ -1597,7 +1707,24 @@
       // Botão de FILTRAR explícito
       btnAplicarFiltro.addEventListener("click", renderHistorico);
       [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
-        el.addEventListener("change", renderHistorico);
+        el.addEventListener("change", () => {
+          // regra de datas x pendente
+          if (el === filtroStatus) {
+            if (filtroStatus.value === "pendente") {
+              // quando pendente, ignora datas -> limpa campos
+              filtroDataInicio.value = "";
+              filtroDataFim.value = "";
+            } else {
+              // se voltar para outro status e datas vazias, volta padrão hoje
+              if (!filtroDataInicio.value && !filtroDataFim.value) {
+                const hj = hojeISO();
+                filtroDataInicio.value = hj;
+                filtroDataFim.value = hj;
+              }
+            }
+          }
+          renderHistorico();
+        });
       });
 
       historicoLista.addEventListener("click", (ev) => {
@@ -1628,14 +1755,13 @@
         onlineAtivo = true;
         atualizarPillOnline();
 
-        // Some com a tela inicial
+        sessionStorage.setItem(STORAGE_ONLINE_KEY, "1"); // mantém online enquanto não fechar o navegador/aba
+
         onlineOverlay.classList.add("hidden");
 
-        // inicia o mapa e o rastreamento em LOOP
         initMap();
         iniciarRastreamentoGPS();
 
-        // Busca periódica de novas entregas
         setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
         buscarNovaEntrega();
       });
