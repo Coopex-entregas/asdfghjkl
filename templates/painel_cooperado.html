@@ -1359,62 +1359,62 @@
       "Content-Type": "application/json",
       "X-Requested-With": "XMLHttpRequest"
     },
-    body: JSON.stringify(corpo)
+    credentials: "same-origin"  // garante envio do cookie de sessão
   })
     .then(async (resp) => {
-      // Se o HTTP já veio errado (500, 404 etc)
-      if (!resp.ok) {
-        const texto = await resp.text().catch(() => "");
-        console.error("Erro HTTP em /cooperado/aceitar_entrega:", resp.status, texto);
-        throw new Error("HTTP " + resp.status);
+      console.log("Resposta HTTP /cooperado/aceitar_entrega:", resp.status);
+
+      // Se vier 401/403, provavelmente sessão expirada
+      if (resp.status === 401 || resp.status === 403) {
+        const txt = await resp.text().catch(() => "");
+        console.error("Não autorizado ao aceitar entrega:", txt);
+        alert("Seu login pode ter expirado. Faça login de novo e tente aceitar a entrega.");
+        mostrarEstadoSemEntrega();
+        throw new Error("Não autorizado");
       }
 
-      let data;
-      const ct = resp.headers.get("Content-Type") || "";
-
-      // Se for JSON de verdade, tenta parsear
-      if (ct.includes("application/json")) {
-        try {
-          data = await resp.json();
-        } catch (e) {
-          console.error("Erro ao fazer resp.json() em aceitar_entrega:", e);
-          throw e;
-        }
-      } else {
-        // Backend respondeu HTML / outra coisa: trata como erro também
-        const texto = await resp.text().catch(() => "");
-        console.error("Conteúdo não JSON em aceitar_entrega:", ct, texto);
-        throw new Error("Resposta não é JSON");
+      const contentType = resp.headers.get("Content-Type") || "";
+      if (!contentType.includes("application/json")) {
+        const txt = await resp.text().catch(() => "");
+        console.error("Resposta NÃO-JSON do backend:", resp.status, txt);
+        alert("Erro no servidor ao aceitar a entrega (resposta inválida).");
+        mostrarEstadoSemEntrega();
+        throw new Error("Resposta não JSON");
       }
 
-      // Se chegou aqui, deu tudo certo em nível de rede
+      const data = await resp.json();
+      console.log("JSON aceitar_entrega:", data);
+
       pararSomEntrega();
       if (countdownInterval) {
         clearInterval(countdownInterval);
         countdownInterval = null;
       }
 
-      if (data && data.status === "ok") {
-        // Se o backend devolver a entrega atualizada, usa ela
-        if (data.entrega) {
-          entregaAtual = data.entrega;
-        }
-        mostrarEstadoEntregaAceita(entregaAtual);
-        abrirNavegador(entregaAtual);
-      } else {
-        console.log("Erro lógico ao aceitar entrega:", data);
-        alert(data && data.mensagem ? data.mensagem : "Não foi possível aceitar a entrega.");
+      if (!resp.ok || !data || data.status !== "ok") {
+        console.error("Backend retornou erro em aceitar_entrega:", data);
+        alert(data && data.msg
+          ? data.msg
+          : "Não foi possível aceitar a entrega (erro no servidor).");
         mostrarEstadoSemEntrega();
+        return;
       }
+
+      if (data.entrega) {
+        entregaAtual = data.entrega;
+      }
+
+      // Mostra card de entrega aceita + abre navegação
+      mostrarEstadoEntregaAceita(entregaAtual);
+      abrirNavegador(entregaAtual);
     })
-    .catch((err) => {
-      pararSomEntrega();
-      console.error("Erro de comunicação em aceitar_entrega:", err);
-      alert("Erro de comunicação ao aceitar a entrega. Verifique a internet ou se o login expirou.");
+    .catch(err => {
+      console.error("Falha fetch /cooperado/aceitar_entrega:", err);
+      alert("Erro de comunicação ao aceitar a entrega.\nVerifique a internet ou se o login expirou.");
       mostrarEstadoSemEntrega();
     });
 }
-
+    
     function recusarEntrega() {
       if (!entregaAtual) return;
       const corpo = { entrega_id: entregaAtual.id };
