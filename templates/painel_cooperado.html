@@ -776,7 +776,11 @@
       <button type="button" class="btn btn-primary btn-full mt-3" id="btn-ficar-online">
         <span class="icon">✔</span> Ficar online e iniciar mapa
       </button>
+      <button type="button" class="btn btn-secondary btn-full mt-2" id="btn-ficar-online-sem-mapa">
+        <span class="icon">👀</span> Ficar online sem abrir mapa
+      </button>
       <div class="small-label text-center mt-2">
+        Você pode aceitar e finalizar entregas mesmo sem abrir o mapa.
       </div>
     </div>
   </div>
@@ -809,7 +813,7 @@
           </div>
           <div class="info-pill">
             <span>🔊</span>
-            <span>Ative: <strong>o Audio</strong></span>
+            <span>Ative: <strong>o Áudio</strong></span>
           </div>
         </div>
         <div class="bottom-row">
@@ -1028,10 +1032,14 @@
 
     let watchId = null;
     let entregaAtual = null;
+    let entregaEmAndamento = false;
     let countdownInterval = null;
     let countdownRestante = TEMPO_EXPIRACAO_SEG;
-
     let onlineAtivo = false;
+
+    // última posição conhecida (pra mandar pro admin de 10 em 10s mesmo sem mapa)
+    let ultimaLat = null;
+    let ultimaLng = null;
 
     const audioEntrega = document.getElementById("som-entrega");
     const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
@@ -1080,6 +1088,7 @@
 
     const onlineOverlay = document.getElementById("online-overlay");
     const btnFicarOnline = document.getElementById("btn-ficar-online");
+    const btnFicarOnlineSemMapa = document.getElementById("btn-ficar-online-sem-mapa");
     const statusOnlinePill = document.getElementById("status-online-pill");
 
     const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
@@ -1104,14 +1113,34 @@
       return "pendente";
     }
 
-    function formatarDataSimples(strData) {
+    // transforma "2025-02-01", "2025-02-01 10:00", "01/02/2025" => "2025-02-01"
+    function extrairDataISODeString(strData) {
       if (!strData) return "";
-      if (strData.includes("/") && strData.length <= 10) return strData;
-      if (strData.includes("-")) {
-        const partes = strData.split("-");
-        if (partes.length >= 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
+      let d = String(strData).trim();
+
+      if (d.includes("T")) d = d.split("T")[0];
+      if (d.includes(" ")) d = d.split(" ")[0];
+
+      if (d.includes("/")) {
+        const partes = d.split("/");
+        if (partes.length >= 3) {
+          const dia = partes[0].padStart(2, "0");
+          const mes = partes[1].padStart(2, "0");
+          let ano = partes[2];
+          if (ano.length === 2) ano = "20" + ano;
+          return `${ano}-${mes}-${dia}`;
+        }
       }
-      return strData;
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(d)) return d;
+      return d;
+    }
+
+    function formatarDataSimples(strData) {
+      const iso = extrairDataISODeString(strData);
+      if (!iso) return "";
+      const [ano, mes, dia] = iso.split("-");
+      return `${dia}/${mes}/${ano}`;
     }
 
     function initMap() {
@@ -1141,9 +1170,9 @@
     }
 
     function limparRota() {
-      if (origemMarker) { map.removeLayer(origemMarker); origemMarker = null; }
-      if (destinoMarker) { map.removeLayer(destinoMarker); destinoMarker = null; }
-      if (rotaLayer) { map.removeLayer(rotaLayer); rotaLayer = null; }
+      if (origemMarker) { map && map.removeLayer(origemMarker); origemMarker = null; }
+      if (destinoMarker) { map && map.removeLayer(destinoMarker); destinoMarker = null; }
+      if (rotaLayer) { map && map.removeLayer(rotaLayer); rotaLayer = null; }
     }
 
     function desenharRotaSeTiverCoords(entrega) {
@@ -1182,10 +1211,16 @@
 
     function enviarLocalizacao(lat, lng) {
       const agora = new Date();
-      textoUltimaLoc.textContent = "Última posição: " +
+      textoUltimaLoc.textContent =
+        "Última posição: " +
         agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
 
-      atualizarMarkerMotoboy(lat, lng);
+      ultimaLat = lat;
+      ultimaLng = lng;
+
+      if (map) {
+        atualizarMarkerMotoboy(lat, lng);
+      }
 
       fetch("/cooperado/atualizar_localizacao", {
         method: "POST",
@@ -1241,7 +1276,9 @@
       cardEntregaAceita.classList.add("hidden");
       limparRota();
       entregaAtual = null;
+      entregaEmAndamento = false;
       inputRecebidaPor.value = "";
+      pararSomEntrega();
     }
 
     function mostrarEstadoNovaEntrega(entrega) {
@@ -1250,18 +1287,25 @@
       cardEntregaAceita.classList.add("hidden");
 
       entregaAtual = entrega;
+      entregaEmAndamento = false;
 
       novaTitulo.textContent = "Nova entrega para você";
-      novaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
+      novaRestaurante.textContent =
+        entrega.cliente || entrega.restaurante || "Restaurante parceiro";
       novaValor.textContent = formatarValor(entrega.valor);
       novaOrigemText.textContent =
         entrega.origem_endereco ||
-        (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+        (entrega.origem_bairro
+          ? entrega.origem_bairro + " · " + CIDADE_PADRAO
+          : "Origem não informada");
       novaDestinoText.textContent =
         entrega.destino_endereco ||
-        (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+        (entrega.destino_bairro
+          ? entrega.destino_bairro + " · " + CIDADE_PADRAO
+          : "Destino não informada");
 
-      novaEstTempo.textContent = "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
+      novaEstTempo.textContent =
+        "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
       novaDistancia.textContent = formatarDistancia(entrega.distancia);
 
       desenharRotaSeTiverCoords(entrega);
@@ -1275,15 +1319,22 @@
       cardEntregaAceita.classList.remove("hidden");
 
       entregaAtual = entrega;
+      entregaEmAndamento = true;
+      pararSomEntrega();
 
-      aceitaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
+      aceitaRestaurante.textContent =
+        entrega.cliente || entrega.restaurante || "Restaurante parceiro";
       aceitaValor.textContent = formatarValor(entrega.valor);
       aceitaOrigemText.textContent =
         entrega.origem_endereco ||
-        (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+        (entrega.origem_bairro
+          ? entrega.origem_bairro + " · " + CIDADE_PADRAO
+          : "Origem não informada");
       aceitaDestinoText.textContent =
         entrega.destino_endereco ||
-        (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+        (entrega.destino_bairro
+          ? entrega.destino_bairro + " · " + CIDADE_PADRAO
+          : "Destino não informada");
       aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
 
       desenharRotaSeTiverCoords(entrega);
@@ -1308,114 +1359,126 @@
     }
 
     function buscarNovaEntrega() {
-  if (!onlineAtivo) {
-    console.log("buscarNovaEntrega: offline, não vou buscar.");
-    return;
-  }
-
-  console.log("buscarNovaEntrega: chamando /cooperado/verificar_nova_entrega...");
-
-  fetch("/cooperado/verificar_nova_entrega")
-    .then(resp => {
-      console.log("Status HTTP verificar_nova_entrega:", resp.status);
-      return resp.json().catch(err => {
-        console.log("Erro ao fazer resp.json():", err);
-        throw err;
-      });
-    })
-    .then(data => {
-      console.log("Resposta verificar_nova_entrega:", data);
-
-      // Se não vier nada ou vier tem_entrega = false
-      if (!data || !data.tem_entrega) {
-        if (!entregaAtual) {
-          mostrarEstadoSemEntrega();
-        }
+      if (!onlineAtivo) {
+        console.log("buscarNovaEntrega: offline, não vou buscar.");
         return;
       }
 
-      const entrega = data.entrega;
-      if (!entrega) {
-        console.log("Data.tem_entrega = true mas sem objeto entrega.");
+      if (entregaEmAndamento) {
+        console.log("Já existe entrega em andamento, não vou buscar nova.");
         return;
       }
 
-      // Aqui força exibir a nova entrega
-      mostrarEstadoNovaEntrega(entrega);
-    })
-    .catch(err => {
-      console.log("Erro nova entrega:", err);
-    });
-}
-    
+      console.log("buscarNovaEntrega: chamando /cooperado/verificar_nova_entrega...");
+
+      fetch("/cooperado/verificar_nova_entrega")
+        .then(resp => {
+          console.log("Status HTTP verificar_nova_entrega:", resp.status);
+          return resp.json().catch(err => {
+            console.log("Erro ao fazer resp.json():", err);
+            throw err;
+          });
+        })
+        .then(data => {
+          console.log("Resposta verificar_nova_entrega:", data);
+
+          if (!data || !data.tem_entrega) {
+            if (!entregaAtual) {
+              mostrarEstadoSemEntrega();
+            }
+            return;
+          }
+
+          const entrega = data.entrega;
+          if (!entrega) {
+            console.log("Data.tem_entrega = true mas sem objeto entrega.");
+            return;
+          }
+
+          if (entregaAtual && entregaEmAndamento && entrega.id === entregaAtual.id) {
+            console.log("Mesma entrega já em andamento, ignorando.");
+            return;
+          }
+
+          mostrarEstadoNovaEntrega(entrega);
+        })
+        .catch(err => {
+          console.log("Erro nova entrega:", err);
+        });
+    }
+
     function aceitarEntrega() {
-  if (!entregaAtual) return;
-
-  const corpo = { entrega_id: entregaAtual.id };
-
-  fetch("/cooperado/aceitar_entrega", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "X-Requested-With": "XMLHttpRequest"
-    },
-    credentials: "same-origin",
-    body: JSON.stringify(corpo)   // 👈 FALTAVA ISSO
-  })
-    .then(async (resp) => {
-      console.log("Resposta HTTP /cooperado/aceitar_entrega:", resp.status);
-
-      if (resp.status === 401 || resp.status === 403) {
-        const txt = await resp.text().catch(() => "");
-        console.error("Não autorizado ao aceitar entrega:", txt);
-        alert("Seu login pode ter expirado. Faça login de novo e tente aceitar a entrega.");
-        mostrarEstadoSemEntrega();
-        throw new Error("Não autorizado");
-      }
-
-      const contentType = resp.headers.get("Content-Type") || "";
-      if (!contentType.includes("application/json")) {
-        const txt = await resp.text().catch(() => "");
-        console.error("Resposta NÃO-JSON do backend:", resp.status, txt);
-        alert("Erro no servidor ao aceitar a entrega (resposta inválida).");
-        mostrarEstadoSemEntrega();
-        throw new Error("Resposta não JSON");
-      }
-
-      const data = await resp.json();
-      console.log("JSON aceitar_entrega:", data);
+      if (!entregaAtual) return;
 
       pararSomEntrega();
-      if (countdownInterval) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
-      }
+      entregaEmAndamento = true; // evita corrida enquanto o backend responde
 
-      if (!resp.ok || !data || data.status !== "ok") {
-        console.error("Backend retornou erro em aceitar_entrega:", data);
-        alert(data && data.msg
-          ? data.msg
-          : "Não foi possível aceitar a entrega (erro no servidor).");
-        mostrarEstadoSemEntrega();
-        return;
-      }
+      const corpo = { entrega_id: entregaAtual.id };
 
-      if (data.entrega) {
-        entregaAtual = data.entrega;
-      }
+      fetch("/cooperado/aceitar_entrega", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "X-Requested-With": "XMLHttpRequest"
+        },
+        credentials: "same-origin",
+        body: JSON.stringify(corpo)
+      })
+        .then(async (resp) => {
+          console.log("Resposta HTTP /cooperado/aceitar_entrega:", resp.status);
 
-      mostrarEstadoEntregaAceita(entregaAtual);
-      abrirNavegador(entregaAtual);
-    })
-    .catch(err => {
-      console.error("Falha fetch /cooperado/aceitar_entrega:", err);
-      alert("Erro de comunicação ao aceitar a entrega.\nVerifique a internet ou se o login expirou.");
-      mostrarEstadoSemEntrega();
-    });
-}
-    
+          if (resp.status === 401 || resp.status === 403) {
+            const txt = await resp.text().catch(() => "");
+            console.error("Não autorizado ao aceitar entrega:", txt);
+            alert("Seu login pode ter expirado. Faça login de novo e tente aceitar a entrega.");
+            mostrarEstadoSemEntrega();
+            throw new Error("Não autorizado");
+          }
+
+          const contentType = resp.headers.get("Content-Type") || "";
+          if (!contentType.includes("application/json")) {
+            const txt = await resp.text().catch(() => "");
+            console.error("Resposta NÃO-JSON do backend:", resp.status, txt);
+            alert("Erro no servidor ao aceitar a entrega (resposta inválida).");
+            mostrarEstadoSemEntrega();
+            throw new Error("Resposta não JSON");
+          }
+
+          const data = await resp.json();
+          console.log("JSON aceitar_entrega:", data);
+
+          pararSomEntrega();
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
+
+          if (!resp.ok || !data || data.status !== "ok") {
+            console.error("Backend retornou erro em aceitar_entrega:", data);
+            alert(data && data.msg
+              ? data.msg
+              : "Não foi possível aceitar a entrega (erro no servidor).");
+            mostrarEstadoSemEntrega();
+            return;
+          }
+
+          if (data.entrega) {
+            entregaAtual = data.entrega;
+          }
+
+          mostrarEstadoEntregaAceita(entregaAtual);
+          abrirNavegador(entregaAtual);
+        })
+        .catch(err => {
+          console.error("Falha fetch /cooperado/aceitar_entrega:", err);
+          alert("Erro de comunicação ao aceitar a entrega.\nVerifique a internet ou se o login expirou.");
+          mostrarEstadoSemEntrega();
+        });
+    }
+
     function recusarEntrega() {
       if (!entregaAtual) return;
+
       const corpo = { entrega_id: entregaAtual.id };
 
       fetch("/cooperado/recusar_entrega", {
@@ -1426,10 +1489,14 @@
         .then(resp => resp.json())
         .then(_ => {
           pararSomEntrega();
-          if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+          if (countdownInterval) {
+            clearInterval(countdownInterval);
+            countdownInterval = null;
+          }
           mostrarEstadoSemEntrega();
         })
         .catch(err => {
+          console.log("Erro ao recusar entrega:", err);
           pararSomEntrega();
           mostrarEstadoSemEntrega();
         });
@@ -1463,11 +1530,13 @@
           "&travelmode=driving&dir_action=navigate";
       }
 
+      pararSomEntrega();
       if (url) window.location.href = url;
     }
 
     function finalizarEntrega() {
       if (!entregaAtual) return;
+
       const recebidaPor = inputRecebidaPor.value.trim();
       if (!recebidaPor) {
         alert("Informe o nome de quem recebeu.");
@@ -1484,16 +1553,25 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(corpo)
       })
-        .then(resp => resp.json())
+        .then(async (resp) => {
+          const contentType = resp.headers.get("Content-Type") || "";
+          if (!contentType.includes("application/json")) {
+            const txt = await resp.text().catch(() => "");
+            console.error("Resposta não JSON em finalizar_entrega:", resp.status, txt);
+            throw new Error("Resposta não JSON");
+          }
+          return resp.json();
+        })
         .then(data => {
           if (data && data.status === "ok") {
             let novaEntrega = data.entrega || Object.assign({}, entregaAtual);
             novaEntrega.recebida_por = recebidaPor;
-            novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
+            novaEntrega.status_pagamento =
+              normalizarStatusPagamento(novaEntrega.status_pagamento);
 
             if (!novaEntrega.data && !novaEntrega.data_entrega) {
-              const hoje = new Date().toISOString().slice(0, 10);
-              novaEntrega.data = hoje;
+              const hojeIso = new Date().toISOString().slice(0, 10);
+              novaEntrega.data = hojeIso;
             }
 
             const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
@@ -1503,7 +1581,10 @@
             renderHistorico();
             mostrarEstadoSemEntrega();
           } else {
-            alert("Não foi possível finalizar a entrega.");
+            console.error("Erro ao finalizar entrega:", data);
+            alert(data && data.msg
+              ? data.msg
+              : "Não foi possível finalizar a entrega.");
           }
         })
         .catch(err => {
@@ -1521,9 +1602,9 @@
       const busca = filtroBusca.value.trim().toLowerCase();
 
       lista = lista.filter(e => {
-        const dataStr = e.data || e.data_entrega || "";
-        if (di && dataStr && dataStr < di) return false;
-        if (df && dataStr && dataStr > df) return false;
+        const dataIso = extrairDataISODeString(e.data || e.data_entrega || "");
+        if (di && dataIso && dataIso < di) return false;
+        if (df && dataIso && dataIso > df) return false;
 
         const st = normalizarStatusPagamento(e.status_pagamento);
         if (status !== "todos" && st !== status) return false;
@@ -1544,7 +1625,8 @@
 
     function renderHistorico() {
       const lista = filtrarEntregas();
-      histTotal.textContent = lista.length + (lista.length === 1 ? " entrega" : " entregas");
+      histTotal.textContent =
+        lista.length + (lista.length === 1 ? " entrega" : " entregas");
       historicoLista.innerHTML = "";
 
       if (lista.length === 0) {
@@ -1563,12 +1645,18 @@
         const nomeCliente = e.cliente || e.restaurante || "Cliente não informado";
         const origemTexto =
           e.origem_endereco ||
-          (e.origem_bairro ? e.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+          (e.origem_bairro
+            ? e.origem_bairro + " · " + CIDADE_PADRAO
+            : "Origem não informada");
         const destinoTexto =
           e.destino_endereco ||
-          (e.destino_bairro ? e.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+          (e.destino_bairro
+            ? e.destino_bairro + " · " + CIDADE_PADRAO
+            : "Destino não informada");
         const dataStr = formatarDataSimples(e.data || e.data_entrega);
-        const recebida = e.recebida_por ? `Recebida por ${e.recebida_por}` : "Recebida por -";
+        const recebida = e.recebida_por
+          ? `Recebida por ${e.recebida_por}`
+          : "Recebida por -";
 
         const st = normalizarStatusPagamento(e.status_pagamento);
         const statusClass = st === "pago" ? "status-pago" : "status-pendente";
@@ -1638,16 +1726,41 @@
 
     function atualizarPillOnline() {
       if (onlineAtivo) {
-        statusOnlinePill.innerHTML = '<span class="status-dot"></span> Online para receber entregas';
+        statusOnlinePill.innerHTML =
+          '<span class="status-dot"></span> Online para receber entregas';
       } else {
-        statusOnlinePill.innerHTML = '<span class="status-dot" style="background:#6b7280;box-shadow:none;"></span> Offline';
+        statusOnlinePill.innerHTML =
+          '<span class="status-dot" style="background:#6b7280;box-shadow:none;"></span> Offline';
       }
     }
 
+    function ativarOnline(comMapa) {
+      if (onlineAtivo) return;
+      onlineAtivo = true;
+      atualizarPillOnline();
+      onlineOverlay.classList.add("hidden");
+
+      if (comMapa) {
+        initMap();
+      }
+
+      iniciarRastreamentoGPS();
+
+      // Pings periódicos com a última posição conhecida (mesmo sem mapa)
+      setInterval(() => {
+        if (!onlineAtivo) return;
+        if (ultimaLat === null || ultimaLng === null) return;
+        enviarLocalizacao(ultimaLat, ultimaLng);
+      }, INTERVALO_PING_MS);
+
+      setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+      buscarNovaEntrega();
+    }
+
     document.addEventListener("DOMContentLoaded", function () {
-      // NÃO inicia mapa nem GPS aqui. Só depois do botão "Ficar online".
       mostrarEstadoSemEntrega();
       atualizarPillOnline();
+      renderHistorico();
 
       btnAceitar.addEventListener("click", aceitarEntrega);
       btnRecusar.addEventListener("click", recusarEntrega);
@@ -1657,10 +1770,7 @@
       tabBtnCorridas.addEventListener("click", () => ativarTab("corridas"));
       tabBtnHistorico.addEventListener("click", () => ativarTab("historico"));
 
-      // Botão de FILTRAR explícito
       btnAplicarFiltro.addEventListener("click", renderHistorico);
-
-      // Ainda deixa reagir "ao vivo" se quiser
       [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
         el.addEventListener("change", renderHistorico);
       });
@@ -1687,33 +1797,9 @@
         }
       });
 
-      // BOTÃO FICAR ONLINE: aqui é onde começa mapa + GPS + busca de entrega
-      btnFicarOnline.addEventListener("click", () => {
-        if (onlineAtivo) return;
-        onlineAtivo = true;
-        atualizarPillOnline();
-
-        // Some com a tela inicial
-        onlineOverlay.classList.add("hidden");
-
-        // Agora sim inicia o mapa e a localização
-        initMap();
-        iniciarRastreamentoGPS();
-
-        // Pings periódicos pro backend com última posição
-        setInterval(() => {
-          if (!onlineAtivo || !motoboyMarker) return;
-          const pos = motoboyMarker.getLatLng();
-          enviarLocalizacao(pos.lat, pos.lng);
-        }, INTERVALO_PING_MS);
-
-        // Busca periódica de novas entregas
-        setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
-        buscarNovaEntrega();
-      });
-
-      // Render inicial do histórico (caso venha ENTREGAS do servidor)
-      renderHistorico();
+      // BOTÕES PARA FICAR ONLINE (COM OU SEM MAPA)
+      btnFicarOnline.addEventListener("click", () => ativarOnline(true));
+      btnFicarOnlineSemMapa.addEventListener("click", () => ativarOnline(false));
     });
   </script>
 </body>
