@@ -1662,7 +1662,7 @@
 
       // 2) Atualiza do backend a cada 5 segundos (precisa da rota motoboys_json)
       function atualizarDoServidor(){
-        fetch("{{ url_for('motoboys_json') }}", {
+        fetch("{{ url_for('mapa_motoboys') }}", {
           headers: { 'X-Requested-With': 'fetch' }
         })
         .then(function(res){
