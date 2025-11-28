@@ -2682,11 +2682,19 @@ def cooperado_aceitar_entrega():
 
     cooperado_id = session["user_id"]
 
+    # 🔴 AQUI é a parte que estava pegando só JSON
+    # Agora tenta JSON OU form
     dados = request.get_json(silent=True) or {}
-    entrega_id = dados.get("entrega_id")
+    entrega_id_raw = dados.get("entrega_id") or request.form.get("entrega_id")
 
-    if not entrega_id:
-        return jsonify({"status": "erro", "msg": "ID da entrega não informado."}), 400
+    if not entrega_id_raw:
+        return jsonify({"status": "erro", "msg": "id de entrega nao informado"}), 400
+
+    # tenta converter pra int (segurança extra)
+    try:
+        entrega_id = int(entrega_id_raw)
+    except ValueError:
+        return jsonify({"status": "erro", "msg": "id de entrega inválido"}), 400
 
     entrega = Entrega.query.get(entrega_id)
     if not entrega:
@@ -2701,7 +2709,7 @@ def cooperado_aceitar_entrega():
 
     # Marca entrega como atribuída para esse cooperado
     entrega.cooperado_id = cooperado_id
-    entrega.status = "em_andamento"   # ou o status que você usa
+    entrega.status = "em_andamento"   # usa o mesmo campo que você já usa no sistema
     entrega.status_corrida = "aceita"
     entrega.data_atribuida = datetime.utcnow()
 
