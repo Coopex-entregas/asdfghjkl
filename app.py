@@ -2672,57 +2672,66 @@ def cooperado_verificar_nova_entrega():
 @app.route("/cooperado/aceitar_entrega", methods=["POST"])
 @login_required
 def cooperado_aceitar_entrega():
-    if not getattr(current_user, "is_cooperado", False):
-        return jsonify({"status": "erro", "mensagem": "Acesso não permitido."}), 403
+    """
+    Motoboy aceita uma entrega enviada pela supervisão.
+    Deve SEMPRE devolver JSON.
+    """
+    # Garante que é um cooperado (ajuste conforme seu modelo de usuário)
+    if not getattr(current_user, "is_cooperado", True) and not getattr(current_user, "tipo", "") == "cooperado":
+        return jsonify({"status": "erro", "msg": "Apenas cooperados podem aceitar entregas."}), 403
 
-    data = request.get_json(silent=True) or {}
-    entrega_id = data.get("entrega_id")
+    dados = request.get_json(silent=True) or {}
+    entrega_id = dados.get("entrega_id")
 
     if not entrega_id:
-        return jsonify({"status": "erro", "mensagem": "ID da entrega não informado."}), 400
+        return jsonify({"status": "erro", "msg": "ID da entrega não informado."}), 400
+
+    from models import Entrega, db  # ajuste import conforme sua estrutura
 
     entrega = Entrega.query.get(entrega_id)
     if not entrega:
-        return jsonify({"status": "erro", "mensagem": "Entrega não encontrada."}), 404
+        return jsonify({"status": "erro", "msg": "Entrega não encontrada."}), 404
 
-    # Se já tiver outro cooperado atribuído
+    # Se já tiver cooperado diferente, não deixa "roubar"
     if entrega.cooperado_id and entrega.cooperado_id != current_user.id:
         return jsonify({
             "status": "erro",
-            "mensagem": "Essa entrega já foi aceita por outro cooperado."
-        }), 400
+            "msg": "Essa entrega já foi aceita por outro motoboy."
+        }), 409
 
-    # Marca como atribuída para este cooperado
+    # Marca entrega como atribuída pra esse cooperado
     entrega.cooperado_id = current_user.id
-    entrega.data_atribuida = datetime.now(tz_br)
+    entrega.status = "em_andamento"  # ou o campo que você usa (status_entrega, etc.)
+    entrega.data_atribuida = datetime.utcnow()
+
     db.session.commit()
 
-    # Monta o JSON EXATAMENTE com os campos que o JS usa no painel do motoboy
-    entrega_js = {
+    # Monta o JSON no formato que o painel espera
+    entrega_json = {
         "id": entrega.id,
-        "cliente": entrega.cliente,
-        "restaurante": getattr(entrega, "restaurante", None),
-        "valor": float(entrega.valor) if entrega.valor is not None else 0.0,
-
-        "origem_endereco": getattr(entrega, "origem_endereco", None),
-        "origem_bairro": getattr(entrega, "origem_bairro", None),
-        "destino_endereco": getattr(entrega, "destino_endereco", entrega.endereco if hasattr(entrega, "endereco") else None),
-        "destino_bairro": getattr(entrega, "destino_bairro", entrega.bairro if hasattr(entrega, "bairro") else None),
-
+        "cliente": getattr(entrega, "cliente", None),
+        "restaurante": getattr(entrega, "cliente", None),
+        "valor": float(entrega.valor or 0),
+        # origem/destino – ajuste conforme seus campos reais
+        "origem_endereco": getattr(entrega, "endereco_coleta", None) or getattr(entrega, "endereco", None),
+        "origem_bairro": getattr(entrega, "bairro_coleta", None) or getattr(entrega, "bairro", None),
+        "destino_endereco": getattr(entrega, "endereco_entrega", None) or getattr(entrega, "endereco", None),
+        "destino_bairro": getattr(entrega, "bairro_entrega", None) or getattr(entrega, "bairro", None),
+        # coordenadas se você tiver
         "lat_origem": getattr(entrega, "lat_origem", None),
         "lng_origem": getattr(entrega, "lng_origem", None),
         "lat_destino": getattr(entrega, "lat_destino", None),
         "lng_destino": getattr(entrega, "lng_destino", None),
-
+        # extras usados no front
         "distancia": getattr(entrega, "distancia_metros", None),
         "tempo_estimado": getattr(entrega, "tempo_estimado", None),
-
-        "status_pagamento": (entrega.status_pagamento or "pendente"),
-        "data_entrega": entrega.data_envio.date().isoformat() if entrega.data_envio else None,
-        "recebida_por": entrega.recebido_por or ""
+        "status_pagamento": getattr(entrega, "status_pagamento", "pendente"),
+        "recebida_por": getattr(entrega, "recebido_por", None),
+        "data": (entrega.data_envio.date().isoformat()
+                 if getattr(entrega, "data_envio", None) else None),
     }
 
-    return jsonify({"status": "ok", "entrega": entrega_js}), 200
+    return jsonify({"status": "ok", "entrega": entrega_json}), 200
 
 
 # Recusar entrega (via URL com <id>)
