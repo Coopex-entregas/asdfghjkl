@@ -2742,20 +2742,39 @@ def cooperado_aceitar_entrega():
 
 
 # Recusar entrega (via URL com <id>)
-@app.route('/cooperado/recusar_entrega/<int:id>', methods=['POST'])
-def cooperado_recusar_entrega(id):
-    if session.get('user_id') is None or session.get('is_admin'):
-        return jsonify(ok=False, error='Não autorizado'), 401
+from flask import request, jsonify, session
 
-    user_id = session['user_id']
-    entrega = Entrega.query.get_or_404(id)
+@app.route("/cooperado/recusar_entrega", methods=["POST"])
+def cooperado_recusar_entrega():
+    # mesmo esquema de autorização que você já usava
+    if session.get("user_id") is None or session.get("is_admin"):
+        return jsonify(status="erro", msg="Não autorizado"), 401
 
+    data = request.get_json() or {}
+    entrega_id = data.get("entrega_id")
+
+    if not entrega_id:
+        return jsonify(status="erro", msg="ID de entrega não informado"), 400
+
+    entrega = Entrega.query.get(entrega_id)
+    if not entrega:
+        return jsonify(status="erro", msg="Entrega não encontrada"), 404
+
+    user_id = session["user_id"]
     if entrega.cooperado_id != user_id:
-        return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
+        return jsonify(status="erro", msg="Entrega não pertence a este cooperado"), 403
 
-    entrega.status_corrida = 'recusada'
+    # 🔥 Aqui desatribui pro admin poder passar pra outro
+    entrega.cooperado_id = None           # volta a ficar sem dono
+    # Ajuste esses campos de acordo com o que você usa:
+    # se tiver status_entrega:
+    # entrega.status_entrega = "pendente"
+    # se usar status_corrida para fila:
+    # entrega.status_corrida = "pendente"
+
     db.session.commit()
-    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+    return jsonify(status="ok")
 
 
 # Aceitar via API (AJAX/Fetch com JSON)
