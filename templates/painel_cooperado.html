@@ -1359,12 +1359,12 @@
       "Content-Type": "application/json",
       "X-Requested-With": "XMLHttpRequest"
     },
-    credentials: "same-origin"  // garante envio do cookie de sessão
+    credentials: "same-origin",
+    body: JSON.stringify(corpo)   // 👈 FALTAVA ISSO
   })
     .then(async (resp) => {
       console.log("Resposta HTTP /cooperado/aceitar_entrega:", resp.status);
 
-      // Se vier 401/403, provavelmente sessão expirada
       if (resp.status === 401 || resp.status === 403) {
         const txt = await resp.text().catch(() => "");
         console.error("Não autorizado ao aceitar entrega:", txt);
@@ -1404,7 +1404,6 @@
         entregaAtual = data.entrega;
       }
 
-      // Mostra card de entrega aceita + abre navegação
       mostrarEstadoEntregaAceita(entregaAtual);
       abrirNavegador(entregaAtual);
     })
