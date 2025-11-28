@@ -54,22 +54,33 @@
       align-items: center;
       z-index: 20;
       position: relative;
+      gap: 8px;
     }
 
     .top-left {
       display: flex;
       flex-direction: column;
       gap: 4px;
+      min-width: 0;
     }
 
     .top-title {
       font-size: 1.05rem;
       font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .top-subtitle {
       font-size: 0.9rem;
       color: var(--muted);
+    }
+
+    .top-right {
+      display: flex;
+      gap: 6px;
+      align-items: center;
     }
 
     .status-pill {
@@ -105,21 +116,23 @@
       align-items: center;
       gap: 6px;
       cursor: pointer;
+      white-space: nowrap;
     }
 
     .btn-minimal span.icon {
       font-size: 1rem;
     }
 
-    /* WRAPPER DO MAPA PRA FICAR ENQUADRADO */
+    /* WRAPPER DO MAPA (oculto por padrão, só aparece quando abrir) */
     .map-wrapper {
       padding: 8px 8px 0;
       background: #020617;
+      display: none; /* começa escondido */
     }
 
     #map {
       width: 100%;
-      height: calc(100vh - 190px); /* deixa espaço pras abas + overlay */
+      height: calc(100vh - 190px);
       background: #020617;
       position: relative;
       z-index: 1;
@@ -651,7 +664,7 @@
       cursor: pointer;
     }
 
-    /* TELA DE FICAR ONLINE ANTES DO MAPA */
+    /* TELA DE FICAR ONLINE ANTES DE VER O MAPA */
     .online-overlay {
       position: fixed;
       inset: 0;
@@ -746,18 +759,24 @@
       <div class="top-title">Olá, {{ cooperado_nome|default('Cooperado', true) }}</div>
       <div class="top-subtitle">
         <span class="status-pill" id="status-online-pill">
-          <span class="status-dot"></span> Online para receber entregas
+          <span class="status-dot"></span> Offline
         </span>
       </div>
     </div>
-    <button type="button" class="btn-minimal" id="btn-menu">
-      <span class="icon">☰</span>
-      Menu
-    </button>
+    <div class="top-right">
+      <button type="button" class="btn-minimal" id="btn-toggle-mapa">
+        <span class="icon">🗺</span>
+        Abrir mapa
+      </button>
+      <button type="button" class="btn-minimal" id="btn-menu">
+        <span class="icon">☰</span>
+        Menu
+      </button>
+    </div>
   </div>
 
-  <!-- MAPA ENQUADRADO -->
-  <div class="map-wrapper">
+  <!-- MAPA ENQUADRADO (opcional) -->
+  <div class="map-wrapper" id="map-wrapper">
     <div id="map"></div>
   </div>
 
@@ -774,7 +793,7 @@
         <span>Localização em tempo real ativada enquanto estiver online.</span>
       </div>
       <button type="button" class="btn btn-primary btn-full mt-3" id="btn-ficar-online">
-        <span class="icon">✔</span> Ficar online e iniciar mapa
+        <span class="icon">✔</span> Ficar online e iniciar com mapa aberto
       </button>
       <button type="button" class="btn btn-secondary btn-full mt-2" id="btn-ficar-online-sem-mapa">
         <span class="icon">👀</span> Ficar online sem abrir mapa
@@ -872,7 +891,7 @@
             Expira em <span id="nova-entrega-countdown">20</span>s
           </div>
           <div class="small-label text-right">
-            Aceite para abrir a navegação automática.
+            Aceite para ver os detalhes da rota.
           </div>
         </div>
 
@@ -920,7 +939,7 @@
         <div class="chip-row">
           <div class="chip pill-blue">
             <span class="chip-icon">🧭</span>
-            <span>Rota ativa no mapa</span>
+            <span>Use o botão abaixo se quiser abrir o Maps.</span>
           </div>
           <div class="chip">
             <span class="chip-icon">📍</span>
@@ -1041,6 +1060,9 @@
     let ultimaLat = null;
     let ultimaLng = null;
 
+    // ids de entregas finalizadas nesse front (pra não tocar de novo se o back mandar)
+    const ENTREGAS_FINALIZADAS_LOCAL = new Set();
+
     const audioEntrega = document.getElementById("som-entrega");
     const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
 
@@ -1091,6 +1113,9 @@
     const btnFicarOnlineSemMapa = document.getElementById("btn-ficar-online-sem-mapa");
     const statusOnlinePill = document.getElementById("status-online-pill");
 
+    const mapWrapper = document.getElementById("map-wrapper");
+    const btnToggleMapa = document.getElementById("btn-toggle-mapa");
+
     const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
 
     function formatarValor(v) {
@@ -1113,7 +1138,7 @@
       return "pendente";
     }
 
-    // transforma "2025-02-01", "2025-02-01 10:00", "01/02/2025" => "2025-02-01"
+    // "2025-02-01", "2025-02-01 10:00", "01/02/2025" => "2025-02-01"
     function extrairDataISODeString(strData) {
       if (!strData) return "";
       let d = String(strData).trim();
@@ -1152,6 +1177,20 @@
         maxZoom: 19,
         attribution: "&copy; OpenStreetMap"
       }).addTo(map);
+
+      if (mapWrapper) {
+        mapWrapper.style.display = "block";
+      }
+      atualizarTextoBotaoMapa();
+    }
+
+    function atualizarTextoBotaoMapa() {
+      if (!btnToggleMapa) return;
+      if (!mapWrapper || mapWrapper.style.display === "none") {
+        btnToggleMapa.innerHTML = '<span class="icon">🗺</span> Abrir mapa';
+      } else {
+        btnToggleMapa.innerHTML = '<span class="icon">🗺</span> Fechar mapa';
+      }
     }
 
     function atualizarMarkerMotoboy(lat, lng) {
@@ -1170,9 +1209,12 @@
     }
 
     function limparRota() {
-      if (origemMarker) { map && map.removeLayer(origemMarker); origemMarker = null; }
-      if (destinoMarker) { map && map.removeLayer(destinoMarker); destinoMarker = null; }
-      if (rotaLayer) { map && map.removeLayer(rotaLayer); rotaLayer = null; }
+      if (origemMarker && map) { map.removeLayer(origemMarker); }
+      if (destinoMarker && map) { map.removeLayer(destinoMarker); }
+      if (rotaLayer && map) { map.removeLayer(rotaLayer); }
+      origemMarker = null;
+      destinoMarker = null;
+      rotaLayer = null;
     }
 
     function desenharRotaSeTiverCoords(entrega) {
@@ -1308,7 +1350,10 @@
         "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
       novaDistancia.textContent = formatarDistancia(entrega.distancia);
 
-      desenharRotaSeTiverCoords(entrega);
+      if (map) {
+        desenharRotaSeTiverCoords(entrega);
+      }
+
       iniciarCountdown();
       tocarSomEntrega();
     }
@@ -1319,6 +1364,7 @@
       cardEntregaAceita.classList.remove("hidden");
 
       entregaAtual = entrega;
+      entregaEnmAndamento = true;
       entregaEmAndamento = true;
       pararSomEntrega();
 
@@ -1337,7 +1383,9 @@
           : "Destino não informada");
       aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
 
-      desenharRotaSeTiverCoords(entrega);
+      if (map) {
+        desenharRotaSeTiverCoords(entrega);
+      }
     }
 
     function iniciarCountdown() {
@@ -1392,6 +1440,20 @@
           const entrega = data.entrega;
           if (!entrega) {
             console.log("Data.tem_entrega = true mas sem objeto entrega.");
+            return;
+          }
+
+          // se essa entrega já foi finalizada nesse front, ignora
+          if (ENTREGAS_FINALIZADAS_LOCAL.has(entrega.id)) {
+            console.log("Ignorando entrega já finalizada localmente:", entrega.id);
+            return;
+          }
+
+          // se o back mandar status_entrega, evita tocar entrega já finalizada
+          if (entrega.status_entrega &&
+              entrega.status_entrega !== "nova" &&
+              entrega.status_entrega !== "em_andamento") {
+            console.log("Entrega com status_entrega diferente de nova/em_andamento, ignorando.");
             return;
           }
 
@@ -1466,8 +1528,8 @@
             entregaAtual = data.entrega;
           }
 
+          // AGORA NÃO ABRE MAIS O MAPS AUTOMÁTICO
           mostrarEstadoEntregaAceita(entregaAtual);
-          abrirNavegador(entregaAtual);
         })
         .catch(err => {
           console.error("Falha fetch /cooperado/aceitar_entrega:", err);
@@ -1555,12 +1617,25 @@
       })
         .then(async (resp) => {
           const contentType = resp.headers.get("Content-Type") || "";
-          if (!contentType.includes("application/json")) {
+          let data = null;
+
+          if (contentType.includes("application/json")) {
+            data = await resp.json().catch(() => null);
+          } else {
             const txt = await resp.text().catch(() => "");
-            console.error("Resposta não JSON em finalizar_entrega:", resp.status, txt);
-            throw new Error("Resposta não JSON");
+            if (resp.ok) {
+              data = { status: "ok", entrega: null, msg: txt };
+            } else {
+              data = { status: "erro", msg: txt || "Erro ao finalizar entrega." };
+            }
           }
-          return resp.json();
+
+          if (!resp.ok) {
+            console.error("HTTP erro em finalizar_entrega:", data);
+            throw new Error(data && data.msg ? data.msg : "Erro HTTP em finalizar_entrega");
+          }
+
+          return data;
         })
         .then(data => {
           if (data && data.status === "ok") {
@@ -1574,9 +1649,14 @@
               novaEntrega.data = hojeIso;
             }
 
+            ENTREGAS_FINALIZADAS_LOCAL.add(novaEntrega.id);
+
             const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
-            if (idx >= 0) ENTREGAS[idx] = novaEntrega;
-            else ENTREGAS.unshift(novaEntrega);
+            if (idx >= 0) {
+              ENTREGAS[idx] = novaEntrega;
+            } else {
+              ENTREGAS.unshift(novaEntrega);
+            }
 
             renderHistorico();
             mostrarEstadoSemEntrega();
@@ -1693,14 +1773,34 @@
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(corpo)
       })
-        .then(resp => resp.json())
+        .then(async (resp) => {
+          const contentType = resp.headers.get("Content-Type") || "";
+          let data = null;
+
+          if (contentType.includes("application/json")) {
+            data = await resp.json().catch(() => null);
+          } else {
+            const txt = await resp.text().catch(() => "");
+            if (resp.ok) {
+              data = { status: "ok", msg: txt };
+            } else {
+              data = { status: "erro", msg: txt || "Erro ao marcar como pago." };
+            }
+          }
+
+          if (!resp.ok) {
+            throw new Error(data && data.msg ? data.msg : "Erro HTTP marcar_pago");
+          }
+
+          return data;
+        })
         .then(data => {
           if (data && data.status === "ok") {
             const idx = ENTREGAS.findIndex(e => e.id === entregaId);
             if (idx >= 0) ENTREGAS[idx].status_pagamento = "pago";
             renderHistorico();
           } else {
-            alert("Não foi possível marcar como pago.");
+            alert(data && data.msg ? data.msg : "Não foi possível marcar como pago.");
           }
         })
         .catch(err => {
@@ -1742,7 +1842,12 @@
 
       if (comMapa) {
         initMap();
+      } else {
+        if (mapWrapper) {
+          mapWrapper.style.display = "none";
+        }
       }
+      atualizarTextoBotaoMapa();
 
       iniciarRastreamentoGPS();
 
@@ -1760,6 +1865,15 @@
     document.addEventListener("DOMContentLoaded", function () {
       mostrarEstadoSemEntrega();
       atualizarPillOnline();
+      atualizarTextoBotaoMapa();
+
+      // ordena ENTREGAS por data desc no histórico (se vier mais de um dia)
+      ENTREGAS.sort((a, b) => {
+        const da = extrairDataISODeString(a.data || a.data_entrega || "");
+        const db = extrairDataISODeString(b.data || b.data_entrega || "");
+        if (da === db) return 0;
+        return da > db ? -1 : 1;
+      });
       renderHistorico();
 
       btnAceitar.addEventListener("click", aceitarEntrega);
@@ -1800,6 +1914,21 @@
       // BOTÕES PARA FICAR ONLINE (COM OU SEM MAPA)
       btnFicarOnline.addEventListener("click", () => ativarOnline(true));
       btnFicarOnlineSemMapa.addEventListener("click", () => ativarOnline(false));
+
+      // Botão de abrir/fechar mapa no topo
+      btnToggleMapa.addEventListener("click", () => {
+        // se ainda não existe mapa e o usuário quer abrir, cria
+        if (!map) {
+          initMap();
+        } else {
+          if (mapWrapper.style.display === "none") {
+            mapWrapper.style.display = "block";
+          } else {
+            mapWrapper.style.display = "none";
+          }
+        }
+        atualizarTextoBotaoMapa();
+      });
     });
   </script>
 </body>
