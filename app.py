@@ -2746,7 +2746,6 @@ from flask import request, jsonify, session
 
 @app.route("/cooperado/recusar_entrega", methods=["POST"])
 def cooperado_recusar_entrega():
-    # mesmo esquema de autorização que você já usava
     if session.get("user_id") is None or session.get("is_admin"):
         return jsonify(status="erro", msg="Não autorizado"), 401
 
@@ -2762,19 +2761,70 @@ def cooperado_recusar_entrega():
 
     user_id = session["user_id"]
     if entrega.cooperado_id != user_id:
+        # se quiser permitir recusa mesmo antes de atribuir, pode tirar esse if
         return jsonify(status="erro", msg="Entrega não pertence a este cooperado"), 403
 
-    # 🔥 Aqui desatribui pro admin poder passar pra outro
-    entrega.cooperado_id = None           # volta a ficar sem dono
-    # Ajuste esses campos de acordo com o que você usa:
-    # se tiver status_entrega:
-    # entrega.status_entrega = "pendente"
-    # se usar status_corrida para fila:
-    # entrega.status_corrida = "pendente"
+    # volta pra fila do admin
+    entrega.cooperado_id = None
+    if hasattr(entrega, "status_entrega"):
+        entrega.status_entrega = "pendente"
+    if hasattr(entrega, "hora_atribuida"):
+        entrega.hora_atribuida = None
 
     db.session.commit()
-
     return jsonify(status="ok")
+
+@app.route("/cooperado/finalizar_entrega", methods=["POST"])
+def cooperado_finalizar_entrega():
+    if session.get("user_id") is None or session.get("is_admin"):
+        return jsonify(status="erro", msg="Não autorizado"), 401
+
+    data = request.get_json() or {}
+    entrega_id = data.get("entrega_id")
+    recebida_por = (data.get("recebida_por") or "").strip()
+
+    if not entrega_id:
+        return jsonify(status="erro", msg="ID de entrega não informado"), 400
+
+    if not recebida_por:
+        return jsonify(status="erro", msg="Nome de quem recebeu é obrigatório"), 400
+
+    entrega = Entrega.query.get(entrega_id)
+    if not entrega:
+        return jsonify(status="erro", msg="Entrega não encontrada"), 404
+
+    user_id = session["user_id"]
+    if entrega.cooperado_id != user_id:
+        return jsonify(status="erro", msg="Entrega não pertence a este cooperado"), 403
+
+    # 👉 aqui NÃO tem checagem de localização, pode finalizar de qualquer lugar
+    entrega.recebida_por = recebida_por
+
+    if hasattr(entrega, "status_entrega"):
+        entrega.status_entrega = "finalizada"  # isso vai aparecer como entregue no painel admin
+
+    from datetime import datetime
+    if hasattr(entrega, "hora_finalizada"):
+        entrega.hora_finalizada = datetime.utcnow()
+
+    # status_pagamento continua pendente, motoboy marca depois
+    db.session.commit()
+
+    entrega_dict = {
+      "id": entrega.id,
+      "cliente": getattr(entrega, "cliente", None),
+      "restaurante": getattr(entrega, "restaurante", None),
+      "origem_bairro": getattr(entrega, "origem_bairro", None),
+      "destino_bairro": getattr(entrega, "destino_bairro", None),
+      "origem_endereco": getattr(entrega, "origem_endereco", None),
+      "destino_endereco": getattr(entrega, "destino_endereco", None),
+      "valor": float(getattr(entrega, "valor", 0) or 0),
+      "data": getattr(entrega, "data_entrega", None) or "",
+      "recebida_por": entrega.recebida_por,
+      "status_pagamento": getattr(entrega, "status_pagamento", "pendente"),
+    }
+
+    return jsonify(status="ok", entrega=entrega_dict)
 
 
 # Aceitar via API (AJAX/Fetch com JSON)
@@ -4112,6 +4162,9 @@ def creditos_editar(credito_id):
 
 @app.route('/creditos/<int:id>/excluir', methods=['POST'])
 def creditos_excluir(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
     c = Credito.query.get_or_404(id)
     cliente_id = c.cliente_id
     # remove movimentos ligados a este crédito
