@@ -27,9 +27,6 @@ import holidays
 import pytz
 from jinja2 import TemplateNotFound
 
-# 🔽 IMPORTE DO SOCKET.IO (NOVO, APENAS UMA VEZ)
-from flask_socketio import SocketIO, emit, join_room, leave_room
-
 # =========================================================
 # CONFIGURAÇÃO BÁSICA
 # =========================================================
