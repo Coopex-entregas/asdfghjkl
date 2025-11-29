@@ -3,7 +3,6 @@ import io
 import re
 import json
 import random
-from app import socketio
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
