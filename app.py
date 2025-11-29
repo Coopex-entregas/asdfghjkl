@@ -3,6 +3,7 @@ import io
 import re
 import json
 import random
+from app import socketio
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
@@ -27,11 +28,23 @@ import holidays
 import pytz
 from jinja2 import TemplateNotFound
 
+# 🔽 IMPORTE DO SOCKET.IO (NOVO, APENAS UMA VEZ)
+from flask_socketio import SocketIO, emit, join_room, leave_room
+
 # =========================================================
 # CONFIGURAÇÃO BÁSICA
 # =========================================================
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'COOPEX_ULTRA_SEGURA_2024_FIXA')
+
+# Usa a mesma chave que você já tinha, só mudando para config
+app.config['SECRET_KEY'] = os.environ.get(
+    'SECRET_KEY',
+    'COOPEX_ULTRA_SEGURA_2024_FIXA'
+)
+
+# 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
+socketio = SocketIO(app, cors_allowed_origins="*")
+
 
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
 ADMIN_CREDENTIALS = {
@@ -374,6 +387,39 @@ class Entrega(db.Model):
     def __repr__(self):
         return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
 
+
+# =========================================================
+# HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
+# =========================================================
+def emitir_atualizacao_entrega(entrega, acao: str):
+    """
+    Emite para todos os painéis (admin, cooperado, rastreamento) que
+    uma entrega foi criada / editada / excluída / status alterado.
+    """
+    if not entrega:
+        return
+
+    try:
+        socketio.emit(
+            'entrega_atualizada',
+            {
+                'acao': acao,                     # 'criada', 'editada', 'excluida', 'status'
+                'id': entrega.id,
+                'cliente': entrega.cliente,
+                'bairro': entrega.bairro,
+                'valor': float(entrega.valor or 0),
+                'cooperado_id': entrega.cooperado_id,
+                'status': entrega.status,
+                'status_pagamento': entrega.status_pagamento,
+            },
+            broadcast=True
+        )
+    except Exception as e:
+        # não quebra o fluxo se der problema no websocket
+        try:
+            current_app.logger.warning(f'Falha ao emitir entrega_atualizada: {e}')
+        except Exception:
+            pass
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -2854,39 +2900,48 @@ def cooperado_aceitar_corrida():
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
 def cooperado_atualizar_localizacao():
-    """
-    Atualiza last_lat, last_lng, last_ping e marca o cooperado como online.
-    Endpoint usado pelo painel_cooperado via fetch().
-    """
-    # garante que é cooperado
+    # Só cooperado logado, não admin
     if session.get('user_id') is None or session.get('is_admin'):
-        return jsonify({'error': 'Não autorizado'}), 403
+        return jsonify({'status': 'erro', 'msg': 'Não autorizado'}), 403
 
-    data = request.get_json() or {}
-    lat = data.get('lat')
-    lng = data.get('lng')
-
-    if lat is None or lng is None:
-        return jsonify({'error': 'Lat/Lng obrigatórios'}), 400
-
-    try:
-        lat = float(lat)
-        lng = float(lng)
-    except ValueError:
-        return jsonify({'error': 'Lat/Lng inválidos'}), 400
-
-    cooperado_id = session.get('user_id')
+    cooperado_id = session['user_id']
     cooperado = Cooperado.query.get(cooperado_id)
-
     if not cooperado:
-        return jsonify({'error': 'Cooperado não encontrado'}), 404
+        return jsonify({'status': 'erro', 'msg': 'Cooperado não encontrado'}), 404
+
+    data = request.get_json(silent=True) or {}
+    try:
+        lat = float(data.get('lat'))
+        lng = float(data.get('lng'))
+    except (TypeError, ValueError):
+        return jsonify({'status': 'erro', 'msg': 'Lat/Lng inválidos'}), 400
+
+    # Velocidade é opcional
+    velocidade = data.get('velocidade')
+    try:
+        velocidade = float(velocidade) if velocidade is not None else None
+    except (TypeError, ValueError):
+        velocidade = None
 
     cooperado.last_lat = lat
     cooperado.last_lng = lng
-    cooperado.last_ping = datetime.utcnow()  # se quiser em São Paulo, pode converter depois
+    cooperado.last_ping = datetime.utcnow()
     cooperado.online = True
-
     db.session.commit()
+
+    socketio.emit(
+        'posicao_motoboy_atualizada',
+        {
+            'id': cooperado.id,
+            'nome': cooperado.nome,
+            'lat': cooperado.last_lat,
+            'lng': cooperado.last_lng,
+            'online': cooperado.online,
+            'velocidade': velocidade,
+            'ultima_atualizacao': to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
+        },
+        broadcast=True
+    )
 
     return jsonify({'status': 'ok'})
 
@@ -2938,6 +2993,9 @@ def cooperado_novas_corridas():
 # variável global bem simples pra sinalizar um novo socorro
 ULTIMO_SOCORRO = None
 
+# no topo do arquivo (garante que a variável exista)
+ULTIMO_SOCORRO = None
+
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
     """
@@ -2956,7 +3014,7 @@ def cooperado_socorro():
     cooperado_id = session.get("user_id")
     cooperado_nome = session.get("user_nome", "Cooperado")
 
-    # guarda em memória um "alerta" para o painel admin buscar
+    # monta o objeto do socorro
     ULTIMO_SOCORRO = {
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
@@ -2964,6 +3022,13 @@ def cooperado_socorro():
         "detalhes": detalhes,
         "timestamp": datetime.utcnow().isoformat()
     }
+
+    # dispara para todos os admins conectados via Socket.IO
+    socketio.emit(
+        "socorro_novo",
+        ULTIMO_SOCORRO,
+        broadcast=True  # ou para um room específico, se você usar salas
+    )
 
     # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
 
@@ -3633,6 +3698,30 @@ def mapa_motoboys():
 # =========================================================
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
 # =========================================================
+from flask import jsonify
+
+def _wants_json():
+    """
+    Decide se a resposta deve ser JSON (para AJAX / fetch).
+    - ?format=json
+    - request.is_json
+    - Accept: application/json
+    """
+    try:
+        if request.args.get('format') == 'json':
+            return True
+    except RuntimeError:
+        pass
+
+    try:
+        if request.is_json:
+            return True
+        best = request.accept_mimetypes.best
+        return best == 'application/json'
+    except Exception:
+        return False
+
+
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
     if not session.get('is_admin'):
@@ -3653,7 +3742,25 @@ def clonar_entrega(id):
     )
     db.session.add(nova)
     db.session.commit()
-    flash(f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.')
+
+    msg = f'Entrega #{e.id} clonada em #{nova.id}. Edite para atribuir um cooperado.'
+    flash(msg)
+
+    if _wants_json():
+        return jsonify(
+            ok=True,
+            message=msg,
+            entrega={
+                'id': nova.id,
+                'origem_id': e.id,
+                'cliente': nova.cliente,
+                'bairro': nova.bairro,
+                'valor': float(nova.valor or 0),
+                'status': nova.status,
+                'status_pagamento': nova.status_pagamento,
+            }
+        )
+
     return redirect_back_to_admin()
 
 
@@ -3706,30 +3813,63 @@ def cadastrar_entrega():
         # DEBUG AQUI
         print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
 
-        # Tenta consumir crédito e mostra o resultado na tela
+        credito_consumido = 0.0
+        erro_credito = False
+        msg = 'Entrega cadastrada!'
+        msg_category = 'info'
+
+        # Tenta consumir crédito e mostra o resultado
         try:
             if pagamento_usa_credito(entrega.pagamento):
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
-                if valor_consumido > 0:
-                 flash(
-                        f'Entrega cadastrada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
-                        'success'
+                credito_consumido = float(valor_consumido or 0.0)
+                if credito_consumido > 0:
+                    msg = (
+                        f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} '
+                        f'de crédito do cliente.'
                     )
+                    msg_category = 'success'
+                else:
+                    msg = (
+                        'Entrega cadastrada! (nenhum crédito foi consumido para '
+                        'este cliente).'
+                    )
+                    msg_category = 'info'
             else:
-                flash(
-                    'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).',
-                    'info'
+                msg = (
+                    'Entrega cadastrada! (nenhum crédito foi consumido para '
+                    'este cliente).'
                 )
+                msg_category = 'info'
         except Exception as ex:
-            app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
-            flash(
-                'Entrega cadastrada, mas houve erro ao tentar consumir crédito automaticamente.',
-                'warning'
+            app.logger.exception(
+                "Falha ao consumir crédito na entrega %s: %s", entrega.id, ex
+            )
+            erro_credito = True
+            msg = (
+                'Entrega cadastrada, mas houve erro ao tentar consumir crédito '
+                'automaticamente.'
+            )
+            msg_category = 'warning'
+
+        flash(msg, msg_category)
+
+        if _wants_json():
+            return jsonify(
+                ok=True,
+                message=msg,
+                erro_credito=erro_credito,
+                credito_consumido=credito_consumido,
+                entrega_id=entrega.id,
+                status=entrega.status,
+                status_pagamento=entrega.status_pagamento,
+                cooperado_id=entrega.cooperado_id,
             )
 
         return redirect_back_to_admin()
 
     return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
 def agendar_entrega():
@@ -3779,30 +3919,64 @@ def agendar_entrega():
 
         db.session.commit()
 
-        # Tenta consumir crédito e mostra o resultado na tela
+        credito_consumido = 0.0
+        erro_credito = False
+        msg = 'Entrega agendada!'
+        msg_category = 'info'
+
+        # Tenta consumir crédito e mostra o resultado
         try:
             if pagamento_usa_credito(entrega.pagamento):
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
-                if valor_consumido > 0:
-                    flash(
-                        f'Entrega agendada! Consumiu R$ {float(valor_consumido):.2f} de crédito do cliente.',
-                        'success'
+                credito_consumido = float(valor_consumido or 0.0)
+                if credito_consumido > 0:
+                    msg = (
+                        f'Entrega agendada! Consumiu R$ {credito_consumido:.2f} '
+                        f'de crédito do cliente.'
                     )
+                    msg_category = 'success'
+                else:
+                    msg = (
+                        'Entrega agendada! (nenhum crédito foi consumido para '
+                        'este cliente).'
+                    )
+                    msg_category = 'info'
             else:
-                flash(
-                    'Entrega agendada! (nenhum crédito foi consumido para este cliente).',
-                    'info'
+                msg = (
+                    'Entrega agendada! (nenhum crédito foi consumido para '
+                    'este cliente).'
                 )
+                msg_category = 'info'
         except Exception as ex:
-            app.logger.exception("Falha ao consumir crédito (agendada) na entrega %s: %s", entrega.id, ex)
-            flash(
-                'Entrega agendada, mas houve erro ao tentar consumir crédito automaticamente.',
-                'warning'
+            app.logger.exception(
+                "Falha ao consumir crédito (agendada) na entrega %s: %s",
+                entrega.id, ex
+            )
+            erro_credito = True
+            msg = (
+                'Entrega agendada, mas houve erro ao tentar consumir crédito '
+                'automaticamente.'
+            )
+            msg_category = 'warning'
+
+        flash(msg, msg_category)
+
+        if _wants_json():
+            return jsonify(
+                ok=True,
+                message=msg,
+                erro_credito=erro_credito,
+                credito_consumido=credito_consumido,
+                entrega_id=entrega.id,
+                status=entrega.status,
+                status_pagamento=entrega.status_pagamento,
+                cooperado_id=entrega.cooperado_id,
             )
 
         return redirect_back_to_admin()
 
     return render_template('agendar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+
 
 @app.route('/editar_entrega/<int:id>', methods=['GET', 'POST'])
 def editar_entrega(id):
@@ -3850,7 +4024,9 @@ def editar_entrega(id):
             ).lower()
             entrega.status = request.form.get('status') or entrega.status
             entrega.recebido_por = request.form.get('recebido_por')
-            entrega.pagamento = (request.form.get('pagamento') or entrega.pagamento or '').strip()
+            entrega.pagamento = (
+                request.form.get('pagamento') or entrega.pagamento or ''
+            ).strip()
 
             db.session.commit()
 
@@ -3863,9 +4039,26 @@ def editar_entrega(id):
                         desfazer_consumo_credito_da_entrega(entrega.id)
 
             except Exception as ex:
-                app.logger.exception("Falha ao recalcular crédito na entrega %s: %s", entrega.id, ex)
+                app.logger.exception(
+                    "Falha ao recalcular crédito na entrega %s: %s",
+                    entrega.id, ex
+                )
 
             flash('Entrega atualizada!')
+
+            if _wants_json():
+                return jsonify(
+                    ok=True,
+                    message='Entrega atualizada!',
+                    entrega_id=entrega.id,
+                    status=entrega.status,
+                    status_pagamento=entrega.status_pagamento,
+                    cooperado_id=entrega.cooperado_id,
+                    cliente=entrega.cliente,
+                    bairro=entrega.bairro,
+                    valor=float(entrega.valor or 0),
+                )
+
             return redirect_back_to_admin()
 
         else:
@@ -3878,6 +4071,17 @@ def editar_entrega(id):
             entrega.recebido_por = request.form.get('recebido_por')
             db.session.commit()
             flash('Entrega atualizada!')
+
+            if _wants_json():
+                return jsonify(
+                    ok=True,
+                    message='Entrega atualizada!',
+                    entrega_id=entrega.id,
+                    status=entrega.status,
+                    status_pagamento=entrega.status_pagamento,
+                    recebido_por=entrega.recebido_por,
+                )
+
             return redirect(url_for('painel_cooperado'))
 
     if is_admin:
@@ -3908,13 +4112,28 @@ def atribuir_cooperado(id):
             entrega.status_corrida = None
 
         db.session.commit()
-        flash('Entrega atribuída com sucesso!', 'success')
+        msg = 'Entrega atribuída com sucesso!'
+        flash(msg, 'success')
+
+        if _wants_json():
+            return jsonify(
+                ok=True,
+                message=msg,
+                entrega_id=entrega.id,
+                cooperado_id=entrega.cooperado_id,
+                status_corrida=entrega.status_corrida,
+            )
+
     except Exception as e:
         db.session.rollback()
-        flash('Erro ao atribuir entrega', 'danger')
+        msg = 'Erro ao atribuir entrega'
+        flash(msg, 'danger')
+
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 500
 
     return redirect(request.referrer or url_for('admin'))
-    
+
 
 @app.route('/excluir_entrega/<int:id>', methods=['POST'])
 def excluir_entrega(id):
@@ -3926,7 +4145,9 @@ def excluir_entrega(id):
     try:
         desfazer_consumo_credito_da_entrega(entrega.id)
     except Exception as ex:
-        current_app.logger.exception("Falha ao estornar crédito da entrega %s: %s", entrega.id, ex)
+        current_app.logger.exception(
+            "Falha ao estornar crédito da entrega %s: %s", entrega.id, ex
+        )
 
     try:
         db.session.execute(
@@ -3940,17 +4161,33 @@ def excluir_entrega(id):
 
         db.session.delete(entrega)
         db.session.commit()
-        flash('Entrega excluída com sucesso.', 'success')
+        msg = 'Entrega excluída com sucesso.'
+        flash(msg, 'success')
+
+        if _wants_json():
+            return jsonify(ok=True, message=msg, entrega_id=id)
 
     except IntegrityError:
         db.session.rollback()
-        flash('Não foi possível excluir: há vínculos de crédito ativos.', 'danger')
+        msg = 'Não foi possível excluir: há vínculos de crédito ativos.'
+        flash(msg, 'danger')
         current_app.logger.exception("IntegrityError ao excluir entrega %s", id)
+
+        if _wants_json():
+            return jsonify(
+                ok=False,
+                message=msg,
+                motivo='integrity'
+            ), 400
 
     except Exception as e:
         db.session.rollback()
-        flash(f'Erro ao excluir entrega: {e.__class__.__name__}', 'danger')
+        msg = f'Erro ao excluir entrega: {e.__class__.__name__}'
+        flash(msg, 'danger')
         current_app.logger.exception("Erro ao excluir entrega %s", id)
+
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 500
 
     return redirect_back_to_admin()
 
@@ -3963,6 +4200,14 @@ def marcar_pagamento(id):
     e = Entrega.query.get_or_404(id)
     e.status_pagamento = "pago"
     db.session.commit()
+
+    if _wants_json():
+        return jsonify(
+            ok=True,
+            entrega_id=e.id,
+            status_pagamento=e.status_pagamento,
+        )
+
     return redirect_back_to_admin()
 
 
@@ -3974,6 +4219,14 @@ def marcar_entregue(id):
     e = Entrega.query.get_or_404(id)
     e.status = "entregue"
     db.session.commit()
+
+    if _wants_json():
+        return jsonify(
+            ok=True,
+            entrega_id=e.id,
+            status=e.status,
+        )
+
     return redirect_back_to_admin()
 
 # =========================================================
@@ -4050,6 +4303,24 @@ def creditos():
     total_creditos = sum(creditos_originais_por_cliente.values()) if creditos_originais_por_cliente else 0.0
     total_consumos = total_creditos - total_saldo
 
+    if _wants_json():
+        return jsonify(
+            ok=True,
+            total_saldo=total_saldo,
+            total_creditos=total_creditos,
+            total_consumos=total_consumos,
+            clientes=[
+                {
+                    'id': cli.id,
+                    'nome': cli.nome,
+                    'saldo': float(saldos_por_cliente.get(cli.id, 0.0)),
+                    'total_creditos': float(creditos_originais_por_cliente.get(cli.id, 0.0)),
+                    'total_consumos': float(consumos_por_cliente.get(cli.id, 0.0)),
+                }
+                for cli in clientes_lista
+            ]
+        )
+
     return render_template(
         'creditos.html',
         # formulário de lançamento
@@ -4087,7 +4358,12 @@ def creditos_limpar_cliente(cliente_id):
     db.session.add(cli)
     db.session.commit()
 
-    flash('Histórico de créditos deste cliente foi totalmente limpo e saldo zerado.', 'success')
+    msg = 'Histórico de créditos deste cliente foi totalmente limpo e saldo zerado.'
+    flash(msg, 'success')
+
+    if _wants_json():
+        return jsonify(ok=True, message=msg, cliente_id=cliente_id)
+
     return redirect(url_for('creditos'))
 
 
@@ -4105,13 +4381,29 @@ def creditos_novo():
         criado_por = session.get('user_nome', 'Supervisor')
 
         try:
-            registrar_credito(cliente_id, valor_bruto, desconto_tipo, desconto_valor, motivo, criado_por)
-            flash('Crédito criado com sucesso.', 'success')
+            registrar_credito(
+                cliente_id,
+                valor_bruto,
+                desconto_tipo,
+                desconto_valor,
+                motivo,
+                criado_por
+            )
+            msg = 'Crédito criado com sucesso.'
+            flash(msg, 'success')
+
+            if _wants_json():
+                return jsonify(ok=True, message=msg, cliente_id=cliente_id)
+
             return redirect(url_for('creditos', cliente_id=cliente_id))
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('Erro ao criar crédito')
-            flash(f'Erro ao criar crédito: {e.__class__.__name__}', 'danger')
+            msg = f'Erro ao criar crédito: {e.__class__.__name__}'
+            flash(msg, 'danger')
+
+            if _wants_json():
+                return jsonify(ok=False, message=msg), 500
 
     return render_template('credito_form.html')
 
@@ -4128,13 +4420,19 @@ def creditos_editar(credito_id):
 
         novo_valor_bruto = request.form.get('valor', type=float, default=cred.valor_bruto)
         cred.valor_bruto = novo_valor_bruto
-        cred.desconto_tipo = request.form.get('desconto_tipo', default=cred.desconto_tipo or 'nenhum')
+        cred.desconto_tipo = request.form.get(
+            'desconto_tipo', default=cred.desconto_tipo or 'nenhum'
+        )
         cred.desconto_valor = request.form.get(
             'desconto_valor', type=float, default=cred.desconto_valor or 0.0
         )
         cred.motivo = request.form.get('motivo', default=cred.motivo or '')
 
-        new_final = float(calcular_valor_final(cred.valor_bruto, cred.desconto_tipo, cred.desconto_valor))
+        new_final = float(
+            calcular_valor_final(
+                cred.valor_bruto, cred.desconto_tipo, cred.desconto_valor
+            )
+        )
         cred.valor_final = new_final
         delta = new_final - old_final
 
@@ -4150,12 +4448,27 @@ def creditos_editar(credito_id):
                     credito_id=cred.id
                 )
             db.session.commit()
-            flash('Crédito atualizado.', 'success')
+            msg = 'Crédito atualizado.'
+            flash(msg, 'success')
+
+            if _wants_json():
+                return jsonify(
+                    ok=True,
+                    message=msg,
+                    credito_id=cred.id,
+                    cliente_id=cred.cliente_id,
+                    valor_final=float(cred.valor_final or 0.0),
+                )
+
             return redirect(url_for('creditos', cliente_id=cred.cliente_id))
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('Erro ao editar crédito')
-            flash(f'Erro ao editar crédito: {e.__class__.__name__}', 'danger')
+            msg = f'Erro ao editar crédito: {e.__class__.__name__}'
+            flash(msg, 'danger')
+
+            if _wants_json():
+                return jsonify(ok=False, message=msg), 500
 
     return render_template('credito_form.html', credito=cred)
 
@@ -4173,7 +4486,12 @@ def creditos_excluir(id):
     db.session.commit()
 
     atualizar_saldo_credito_cliente(cliente_id)
-    flash('Crédito excluído e saldo recalculado.', 'success')
+    msg = 'Crédito excluído e saldo recalculado.'
+    flash(msg, 'success')
+
+    if _wants_json():
+        return jsonify(ok=True, message=msg, credito_id=id, cliente_id=cliente_id)
+
     return redirect(url_for('creditos', cliente_id=cliente_id))
 
 
@@ -4264,8 +4582,29 @@ def creditos_cadastrar():
     motivo = request.form.get('motivo', '')
     criado_por = session.get('user_nome', 'Supervisor')
 
-    registrar_credito(cliente_id, valor_bruto, desconto_tipo, desconto_valor, motivo, criado_por)
-    flash('Crédito registrado com sucesso!')
+    try:
+        registrar_credito(
+            cliente_id,
+            valor_bruto,
+            desconto_tipo,
+            desconto_valor,
+            motivo,
+            criado_por
+        )
+        msg = 'Crédito registrado com sucesso!'
+        flash(msg)
+
+        if _wants_json():
+            return jsonify(ok=True, message=msg, cliente_id=cliente_id)
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao registrar crédito')
+        msg = f'Erro ao registrar crédito: {e.__class__.__name__}'
+        flash(msg, 'danger')
+
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 500
+
     return redirect(url_for('creditos'))
 
 
@@ -4285,6 +4624,32 @@ def cliente_credito(cliente_id):
     total_creditos = sum(float(m.valor or 0) for m in movs if m.tipo == 'credito')
     total_debitos = sum(float(m.valor or 0) for m in movs if m.tipo == 'debito')
     saldo_atual = float(cli.saldo_atual or 0)
+
+    if _wants_json():
+        return jsonify(
+            ok=True,
+            cliente={
+                'id': cli.id,
+                'nome': cli.nome,
+                'telefone': cli.telefone,
+            },
+            saldo_atual=saldo_atual,
+            total_creditos=total_creditos,
+            total_debitos=total_debitos,
+            movimentos=[
+                {
+                    'id': m.id,
+                    'tipo': m.tipo,
+                    'valor': float(m.valor or 0.0),
+                    'referencia': m.referencia,
+                    'entrega_id': m.entrega_id,
+                    'credito_id': m.credito_id,
+                    'criado_em': to_brasilia(m.criado_em).isoformat()
+                    if m.criado_em else None,
+                }
+                for m in movs
+            ]
+        )
 
     return render_or_string("credito_cliente.html", """
 <!doctype html>
@@ -4428,11 +4793,24 @@ def credmov_novo():
             entrega_id=entrega_id
         )
         db.session.commit()
-        flash('Movimento registrado.', 'success')
+        msg = 'Movimento registrado.'
+        flash(msg, 'success')
+
+        if _wants_json():
+            return jsonify(
+                ok=True,
+                message=msg,
+                cliente_id=cliente_id,
+            )
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Erro ao criar movimento')
-        flash(f'Erro ao criar movimento: {e.__class__.__name__}', 'danger')
+        msg = f'Erro ao criar movimento: {e.__class__.__name__}'
+        flash(msg, 'danger')
+
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 500
 
     return redirect(url_for('creditos', cliente_id=cliente_id))
 
@@ -4475,11 +4853,25 @@ def credmov_editar(mov_id):
             mov.referencia = (nova_ref or '')[:120]
             db.session.add(mov)
             db.session.commit()
-            flash('Movimento atualizado.', 'success')
+            msg = 'Movimento atualizado.'
+            flash(msg, 'success')
+
+            if _wants_json():
+                return jsonify(
+                    ok=True,
+                    message=msg,
+                    movimento_id=mov.id,
+                    cliente_id=mov.cliente_id,
+                )
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('Erro ao editar movimento')
-            flash(f'Erro ao editar movimento: {e.__class__.__name__}', 'danger')
+            msg = f'Erro ao editar movimento: {e.__class__.__name__}'
+            flash(msg, 'danger')
+
+            if _wants_json():
+                return jsonify(ok=False, message=msg), 500
 
         return redirect(url_for('creditos', cliente_id=mov.cliente_id))
 
@@ -4508,16 +4900,31 @@ def credmov_excluir(mov_id):
             except Exception:
                 pass
 
+        cliente_id = mov.cliente_id
         db.session.delete(mov)
         db.session.commit()
-        flash('Movimento excluído.', 'success')
+        msg = 'Movimento excluído.'
+        flash(msg, 'success')
+
+        if _wants_json():
+            return jsonify(ok=True, message=msg, cliente_id=cliente_id)
+
     except IntegrityError:
         db.session.rollback()
-        flash('Não é possível excluir o movimento (vínculos).', 'danger')
+        msg = 'Não é possível excluir o movimento (vínculos).'
+        flash(msg, 'danger')
+
+        if _wants_json():
+            return jsonify(ok=False, message=msg, motivo='integrity'), 400
+
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Erro ao excluir movimento')
-        flash(f'Erro ao excluir movimento: {e.__class__.__name__}', 'danger')
+        msg = f'Erro ao excluir movimento: {e.__class__.__name__}'
+        flash(msg, 'danger')
+
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 500
 
     return redirect(url_for('creditos', cliente_id=mov.cliente_id))
 
@@ -4548,7 +4955,6 @@ def cooperado_marcar_entregue(id):
     db.session.commit()
     return jsonify(ok=True)
 
-from flask import jsonify
 
 @app.get('/cooperado/api/entrega_atribuida')
 def api_entrega_atribuida():
@@ -4575,21 +4981,12 @@ def api_entrega_atribuida():
     if not entrega:
         return jsonify({'tem': False})
 
-    dt_pedido = to_brasilia(entrega.data_envio) if entrega.data_envio else None
-    dt_atr    = to_brasilia(entrega.data_atribuida) if entrega.data_atribuida else None
-
-    descricao = f"{(entrega.cliente or 'Cliente')} - {(entrega.bairro or '').strip()}"
-    descricao = descricao.strip(' -')
-
     return jsonify({
         'tem': True,
         'id': entrega.id,
-        'descricao': descricao,
+        'cliente': entrega.cliente,
         'valor': float(entrega.valor or 0),
-        'hora_pedido': dt_pedido.strftime('%H:%M') if dt_pedido else None,
-        'hora_atribuida': dt_atr.strftime('%H:%M') if dt_atr else None,
-        'status_entrega': entrega.status or 'pendente',
-        'status_corrida': entrega.status_corrida or 'pendente',
+        'status_corrida': entrega.status_corrida,
     })
 
 
@@ -5538,5 +5935,138 @@ def criar_bd():
 
 criar_bd()
 
-if __name__ == '__main__':
-    app.run(debug=True)
+# =========================================================
+# EVENTOS SOCKET.IO (TEMPO REAL)
+# =========================================================
+
+@socketio.on("connect")
+def handle_connect():
+    if current_user.is_authenticated:
+        print(f"Usuário conectado via Socket.IO: {current_user.id}")
+    else:
+        print("Cliente anônimo conectado via Socket.IO")
+
+
+@socketio.on("disconnect")
+def handle_disconnect():
+    if current_user.is_authenticated:
+        print(f"Usuário desconectado do Socket.IO: {current_user.id}")
+    else:
+        print("Cliente anônimo desconectado do Socket.IO")
+
+
+@socketio.on("entrar_sala")
+def handle_entrar_sala(data):
+    """
+    data esperado:
+    {
+        "sala": "entrega_123" ou "chat_456"
+    }
+    """
+    sala = data.get("sala")
+    if not sala:
+        return
+
+    join_room(sala)
+
+    # avisa todo mundo da sala que alguém entrou
+    emit(
+        "status",
+        {
+            "tipo": "entrada",
+            "sala": sala,
+            "usuario": getattr(current_user, "id", None),
+        },
+        room=sala,
+    )
+
+
+@socketio.on("sair_sala")
+def handle_sair_sala(data):
+    """
+    data esperado:
+    {
+        "sala": "entrega_123" ou "chat_456"
+    }
+    """
+    sala = data.get("sala")
+    if not sala:
+        return
+
+    leave_room(sala)
+
+    emit(
+        "status",
+        {
+            "tipo": "saida",
+            "sala": sala,
+            "usuario": getattr(current_user, "id", None),
+        },
+        room=sala,
+    )
+
+
+@socketio.on("nova_mensagem")
+def handle_nova_mensagem(data):
+    """
+    data esperado (exemplo):
+    {
+        "sala": "entrega_123",
+        "remetente_id": 1,
+        "remetente_tipo": "cliente" / "admin" / "motoboy",
+        "texto": "Olá, estou a caminho",
+        "extra": {...}   # opcional
+    }
+    """
+    sala = data.get("sala")
+    texto = data.get("texto")
+
+    if not sala or not texto:
+        return
+
+    payload = {
+        "sala": sala,
+        "texto": texto,
+        "remetente_id": data.get("remetente_id", getattr(current_user, "id", None)),
+        "remetente_tipo": data.get("remetente_tipo"),
+        "timestamp": datetime.now().isoformat(timespec="seconds"),
+        "extra": data.get("extra") or {},
+    }
+
+    # Envia a mensagem para todo mundo que está na sala (cliente, motoboy, admin)
+    emit("mensagem_recebida", payload, room=sala)
+
+
+@socketio.on("atualizar_entrega")
+def handle_atualizar_entrega(data):
+    """
+    data esperado (exemplo):
+    {
+        "entrega_id": 123,
+        "campos": {
+            "status_entrega": "em_andamento",
+            "status_pagamento": "pago"
+        }
+    }
+
+    Aqui NÃO estamos mexendo no banco,
+    só avisando em tempo real pros navegadores atualizarem a tela.
+    """
+    entrega_id = data.get("entrega_id")
+    if not entrega_id:
+        return
+
+    emit(
+        "entrega_atualizada",
+        {
+            "entrega_id": entrega_id,
+            "campos": data.get("campos") or {},
+        },
+        room=f"entrega_{entrega_id}",
+    )
+
+if __name__ == "__main__":
+    port = int(os.environ.get("PORT", 5000))
+    socketio.run(app, host="0.0.0.0", port=port, debug=True)
+
+
