@@ -3701,6 +3701,8 @@ def trajetos_exportar():
 
 from flask import request, jsonify  # garante que isso está importado
 
+from flask import request, jsonify  # garante isso no topo
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
@@ -3723,13 +3725,14 @@ def mapa_motoboys():
                 )
             })
 
-    # 🔁 CHAMADA DO PAINEL (fetch) → devolve JSON para o mapa embutido atualizar
+    # 🔁 CHAMADA VIA fetch DO PAINEL → devolve JSON
     if request.headers.get('X-Requested-With') == 'fetch':
         resp = jsonify(motoboys_js)
+        # pra não cachear e ficar sempre “ao vivo”
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
 
-    # 🌐 ACESSO NORMAL (botão "Mapa em tela cheia") → renderiza HTML
+    # 🌐 ACESSO NORMAL (botão "Mapa em tela cheia") → HTML
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
 
 
