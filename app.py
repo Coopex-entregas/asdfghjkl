@@ -3699,6 +3699,8 @@ def trajetos_exportar():
     output.seek(0)
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
+from flask import request, jsonify  # garante que isso está importado
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
@@ -3711,13 +3713,23 @@ def mapa_motoboys():
             motoboys_js.append({
                 "id": c.id,
                 "nome": c.nome,
-                "lat": c.last_lat,
-                "lng": c.last_lng,
-                "online": bool(c.online),
+                "lat": float(c.last_lat),
+                "lng": float(c.last_lng),
+                "online": bool(getattr(c, "online", False)),
                 "velocidade": 0,
-                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+                "ultima_atualizacao": (
+                    to_brasilia(c.last_ping).strftime('%d/%m %H:%M')
+                    if c.last_ping else ""
+                )
             })
 
+    # 🔁 CHAMADA DO PAINEL (fetch) → devolve JSON para o mapa embutido atualizar
+    if request.headers.get('X-Requested-With') == 'fetch':
+        resp = jsonify(motoboys_js)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp
+
+    # 🌐 ACESSO NORMAL (botão "Mapa em tela cheia") → renderiza HTML
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
 
 
