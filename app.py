@@ -4756,12 +4756,23 @@ tbody tr:nth-child(even) td{background:#f8fafc}
       </div>
 
       <div class="chips">
-        <span class="chip">Saldo atual: <span class="money" style="margin-left:6px">
-          R$ {{ '%.2f'|format(saldo_atual)|replace('.', ',') }}</span>
+        <span class="chip">
+          Saldo atual:
+          <span class="money" style="margin-left:6px">
+            R$ {{ '%.2f'|format(saldo_atual)|replace('.', ',') }}
+          </span>
         </span>
-        <span class="chip good">Total créditos: R$ {{ '%.2f'|format(total_creditos)|replace('.', ',') }}</span>
-        <span class="chip bad">Total débitos: R$ {{ '%.2f'|format(total_debitos)|replace('.', ',') }}</span>
-        <span class="chip">Movimentos: {{ movs|length }}</span>
+        <span class="chip good">
+          Total créditos:
+          R$ {{ '%.2f'|format(total_creditos)|replace('.', ',') }}
+        </span>
+        <span class="chip bad">
+          Total débitos:
+          R$ {{ '%.2f'|format(total_debitos)|replace('.', ',') }}
+        </span>
+        <span class="chip">
+          Movimentos: {{ movs|length }}
+        </span>
       </div>
 
       <div class="table-wrap">
@@ -4819,15 +4830,25 @@ tbody tr:nth-child(even) td{background:#f8fafc}
       </div>
 
       <div class="actions">
-        <a class="btn primary" href="{{ url_for('creditos', cliente_id=cliente.id) }}">↩ Voltar para créditos</a>
-        <a class="btn" href="{{ url_for('precos_rotas') }}">Tabela de preços & rotas</a>
+        <a class="btn" href="{{ url_for('creditos', cliente_id=cliente.id) }}">
+          Voltar para créditos
+        </a>
+        <a class="btn primary"
+           href="{{ url_for('creditos_exportar', cliente_id=cliente.id) }}">
+          Exportar créditos em Excel
+        </a>
       </div>
     </div>
   </div>
 </body></html>
-    """, cliente=cli, movs=movs, saldo_atual=saldo_atual,
-       total_creditos=total_creditos, total_debitos=total_debitos,
-       to_brasilia=to_brasilia)
+""",
+        cliente=cli,
+        movs=movs,
+        saldo_atual=saldo_atual,
+        total_creditos=total_creditos,
+        total_debitos=total_debitos,
+        to_brasilia=to_brasilia
+    )
 
 
 @app.route('/creditos/movimento/novo', methods=['POST'])
