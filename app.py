@@ -498,6 +498,38 @@ class ListaEspera(db.Model):
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     cooperado = db.relationship('Cooperado', lazy='joined')
 
+def emitir_lista_espera():
+    """
+    Emite para todos os painéis a situação atual da fila de espera.
+    """
+    try:
+        itens = (
+            ListaEspera.query
+            .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+            .all()
+        )
+        payload = []
+        for item in itens:
+            payload.append({
+                "id": item.id,
+                "cooperado_id": item.cooperado_id,
+                "nome": item.cooperado.nome if item.cooperado else item.nome,
+                "pos": item.pos,
+                "created_at": to_brasilia(item.created_at).strftime('%d/%m %H:%M')
+                              if item.created_at else "",
+            })
+
+        socketio.emit(
+            "fila_espera_atualizada",
+            {"itens": payload},
+            broadcast=True
+        )
+    except Exception as e:
+        try:
+            current_app.logger.warning(f"Falha ao emitir fila_espera_atualizada: {e}")
+        except Exception:
+            pass
+
 class Trajeto(db.Model):
     __tablename__ = 'trajeto'
 
@@ -2990,9 +3022,6 @@ def cooperado_novas_corridas():
 # variável global bem simples pra sinalizar um novo socorro
 ULTIMO_SOCORRO = None
 
-# no topo do arquivo (garante que a variável exista)
-ULTIMO_SOCORRO = None
-
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
     """
@@ -3695,8 +3724,6 @@ def mapa_motoboys():
 # =========================================================
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
 # =========================================================
-from flask import jsonify
-
 def _wants_json():
     """
     Decide se a resposta deve ser JSON (para AJAX / fetch).
@@ -3851,6 +3878,9 @@ def cadastrar_entrega():
 
         flash(msg, msg_category)
 
+         # 🔴 EMITE PARA O PAINEL EM TEMPO REAL
+        emitir_atualizacao_entrega(entrega, 'criada')
+
         if _wants_json():
             return jsonify(
                 ok=True,
@@ -3958,6 +3988,9 @@ def agendar_entrega():
 
         flash(msg, msg_category)
 
+        # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (entrega agendada)
+        emitir_atualizacao_entrega(entrega, 'criada')
+
         if _wants_json():
             return jsonify(
                 ok=True,
@@ -4040,6 +4073,9 @@ def editar_entrega(id):
                     "Falha ao recalcular crédito na entrega %s: %s",
                     entrega.id, ex
                 )
+
+             # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (edição)
+            emitir_atualizacao_entrega(entrega, 'editada')
 
             flash('Entrega atualizada!')
 
@@ -6062,7 +6098,10 @@ def handle_atualizar_entrega(data):
         room=f"entrega_{entrega_id}",
     )
 
-if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+if __name__ == '__main__':
+    with app.app_context():
+        db.create_all()
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+
 
 
