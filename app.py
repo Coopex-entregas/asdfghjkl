@@ -3699,9 +3699,7 @@ def trajetos_exportar():
     output.seek(0)
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
-from flask import request, jsonify  # garante que isso está importado
-
-from flask import request, jsonify  # garante isso no topo
+from flask import request, jsonify
 
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
@@ -3710,29 +3708,46 @@ def mapa_motoboys():
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
+
     for c in cooperados:
         if c.last_lat is not None and c.last_lng is not None:
+            # ---- MONTA STATUS PRO MAPA ----
+            # ajusta esses campos conforme o teu modelo:
+            #   c.online -> app ligado?
+            #   c.em_corrida ou c.ocupado -> está em entrega?
+            online = bool(getattr(c, "online", False))
+            em_corrida = bool(getattr(c, "em_corrida", False) or getattr(c, "ocupado", False))
+
+            if not online:
+                status = "offline"
+            elif em_corrida:
+                status = "em_corrida"
+            else:
+                status = "livre"
+
             motoboys_js.append({
                 "id": c.id,
                 "nome": c.nome,
                 "lat": float(c.last_lat),
                 "lng": float(c.last_lng),
-                "online": bool(getattr(c, "online", False)),
-                "velocidade": 0,
+                "online": online,
+                "status": status,  # 👈 ESSENCIAL PRO MAPA/CARD
+                "velocidade": 0,   # se tiver campo real, troca aqui
                 "ultima_atualizacao": (
-                    to_brasilia(c.last_ping).strftime('%d/%m %H:%M')
-                    if c.last_ping else ""
-                )
+                    to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+                ),
+                # Opcional (o HTML usa m.endereco e m.observacao)
+                "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
+                "observacao": getattr(c, "observacao", "") or ""
             })
 
-    # 🔁 CHAMADA VIA fetch DO PAINEL → devolve JSON
+    # 👇 Se for chamada via fetch (admin embutido) → JSON
     if request.headers.get('X-Requested-With') == 'fetch':
         resp = jsonify(motoboys_js)
-        # pra não cachear e ficar sempre “ao vivo”
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
 
-    # 🌐 ACESSO NORMAL (botão "Mapa em tela cheia") → HTML
+    # 👇 Se for acesso normal (mapa em tela cheia) → HTML usando esse mesmo motoboys_js
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
 
 
