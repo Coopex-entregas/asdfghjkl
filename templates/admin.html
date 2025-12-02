@@ -839,6 +839,14 @@
   <!-- áudio de socorro -->
   <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
+  <!-- Socket.IO para tempo real -->
+<script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+<script>
+  // Conexão WebSocket (ajuste namespace se usar, ex: io('/supervisao', {...}))
+  const socket = io({
+    transports: ['websocket']
+  });
+</script>
   <!-- JS PRINCIPAL -->
   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
@@ -1184,10 +1192,83 @@
         salvar();
       }, { once: true });
     });
+
+    // ========================
+    // TEMPO REAL (SOCKET.IO)
+    // ========================
+
+    // Atualiza/insere uma linha de entrega com HTML vindo do backend
+    function atualizarOuInserirLinhaEntrega(dados){
+      if (!dados || !dados.id || !dados.linha_html) return;
+      var tbody = document.querySelector('.tabela tbody');
+      if (!tbody) return;
+
+      var temp = document.createElement('tbody');
+      temp.innerHTML = dados.linha_html.trim();
+      var novaTr = temp.querySelector('tr');
+      if (!novaTr) return;
+
+      var trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
+      if (trExistente){
+        tbody.replaceChild(novaTr, trExistente);
+      } else {
+        tbody.prepend(novaTr); // nova entrega entra no topo
+      }
+
+      if (typeof atualizarBadgeAbertas === 'function') {
+        atualizarBadgeAbertas();
+      }
+    }
+
+    // Remove linha de entrega pelo ID (quando excluída em outro painel)
+    function removerLinhaEntrega(id){
+      var tbody = document.querySelector('.tabela tbody');
+      if (!tbody || !id) return;
+      var tr = tbody.querySelector('tr[data-id="' + id + '"]');
+      if (tr) {
+        tr.remove();
+        if (typeof atualizarBadgeAbertas === 'function') {
+          atualizarBadgeAbertas();
+        }
+      }
+    }
+
+    // Atualiza lista de espera com HTML vindo do backend
+    function atualizarFilaEsperaTempoReal(htmlLista){
+      var ulFila = document.getElementById('espera-lista');
+      if (!ulFila || !htmlLista) return;
+      ulFila.innerHTML = htmlLista;
+    }
+
+    // Ouvintes Socket.IO (entregas + fila de espera)
+    if (typeof socket !== 'undefined') {
+      // Nova entrega ou atualização de entrega (linha completa em HTML)
+      socket.on('entrega_criada', function(dados){
+        atualizarOuInserirLinhaEntrega(dados);
+      });
+
+      socket.on('entrega_atualizada', function(dados){
+        atualizarOuInserirLinhaEntrega(dados);
+      });
+
+      // Exclusão de entrega
+      socket.on('entrega_excluida', function(dados){
+        if (dados && dados.id){
+          removerLinhaEntrega(dados.id);
+        }
+      });
+
+      // Lista de espera (HTML <li> gerado no backend)
+      socket.on('fila_espera_atualizada', function(dados){
+        if (dados && dados.html_lista){
+          atualizarFilaEsperaTempoReal(dados.html_lista);
+        }
+      });
+    }
   </script>
 
       <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
-  <script>
+ <script>
     // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
     function imprimirCupom(idEntrega, botao) {
       var tr = botao.closest ? botao.closest('tr') : null;
@@ -1534,7 +1615,6 @@
     });
   </script>
 
-  <!-- ===== MAPA EM TELA CHEIA (OUTRA ABA) ===== -->
   <script>
     function abrirMapaTelaCheia() {
       try {
@@ -1572,7 +1652,7 @@
     crossorigin=""></script>
 
   <script>
-    // ===== MAPA EMBUTIDO (div #map-coopex) COM ATUALIZAÇÃO A CADA 5s =====
+    // ===== MAPA EMBUTIDO (div #map-coopex) COM TEMPO REAL + FALLBACK 5s =====
     window.addEventListener('DOMContentLoaded', function(){
       var mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
@@ -1590,6 +1670,7 @@
       var motoboyMarkers = {};
       var boundsGroup = L.featureGroup().addTo(map);
       var firstFitDone = false;
+      var usandoSocketTempoReal = false; // se chegar evento socket, paramos de depender do polling
 
       function popupHtml(m){
         var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
@@ -1660,8 +1741,19 @@
       var dadosIniciais = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
       atualizarMarcadores(dadosIniciais);
 
-      // 2) Atualiza do backend a cada 5 segundos (precisa da rota motoboys_json)
+      // 2) Atualização por Socket.IO em tempo real (back-end deve emitir 'motoboys_update')
+      if (typeof socket !== 'undefined') {
+        socket.on('motoboys_update', function(lista){
+          usandoSocketTempoReal = true;
+          atualizarMarcadores(lista);
+        });
+      }
+
+      // 3) Fallback: caso o socket não esteja funcionando, mantém polling a cada 5s
       function atualizarDoServidor(){
+        // se já estamos recebendo via socket com frequência, não precisa bater no servidor
+        if (usandoSocketTempoReal) return;
+
         fetch("{{ url_for('mapa_motoboys') }}", {
           headers: { 'X-Requested-With': 'fetch' }
         })
@@ -1677,6 +1769,7 @@
         });
       }
 
+      // Continua existindo, mas só atua se o socket não estiver atualizando
       setInterval(atualizarDoServidor, 5000);
     });
   </script>
