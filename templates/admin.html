@@ -840,11 +840,24 @@
   <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
   <!-- Socket.IO para tempo real -->
+<!-- Socket.IO para tempo real -->
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
 <script>
-  // Conexão WebSocket (ajuste namespace se usar, ex: io('/supervisao', {...}))
-  const socket = io({
-    transports: ['websocket']
+  // Conexão Socket.IO em modo POLLING (compatível com o Gunicorn/Render)
+  const socket = io("{{ request.host_url.rstrip('/') }}", {
+    transports: ["polling"],        // 👈 não tenta mais websocket
+    path: "/socket.io/",
+    reconnection: true,
+    reconnectionAttempts: Infinity,
+    reconnectionDelay: 1000
+  });
+
+  socket.on("connect", () => {
+    console.log("Socket conectado (polling), id:", socket.id);
+  });
+
+  socket.on("connect_error", (err) => {
+    console.error("Erro na conexão Socket.IO:", err);
   });
 </script>
   <!-- JS PRINCIPAL -->
