@@ -2959,18 +2959,18 @@ def cooperado_atualizar_localizacao():
     db.session.commit()
 
     socketio.emit(
-        'posicao_motoboy_atualizada',
-        {
-            'id': cooperado.id,
-            'nome': cooperado.nome,
-            'lat': cooperado.last_lat,
-            'lng': cooperado.last_lng,
-            'online': cooperado.online,
-            'velocidade': velocidade,
-            'ultima_atualizacao': to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
-        },
-        broadcast=True
-    )
+    'posicao_motoboy_atualizada',
+    {
+        'id': cooperado.id,
+        'nome': cooperado.nome,
+        'lat': lat,
+        'lng': lng,
+        'online': True,
+        'velocidade': velocidade,
+        'ultima_atualizacao': ultima_str,
+    }
+    # sem broadcast: por padrão ele já manda pra todos os clientes
+)
 
     return jsonify({'status': 'ok'})
 
