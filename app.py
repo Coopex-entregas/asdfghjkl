@@ -398,19 +398,18 @@ def emitir_atualizacao_entrega(entrega, acao: str):
 
     try:
         socketio.emit(
-            'entrega_atualizada',
-            {
-                'acao': acao,                     # 'criada', 'editada', 'excluida', 'status'
-                'id': entrega.id,
-                'cliente': entrega.cliente,
-                'bairro': entrega.bairro,
-                'valor': float(entrega.valor or 0),
-                'cooperado_id': entrega.cooperado_id,
-                'status': entrega.status,
-                'status_pagamento': entrega.status_pagamento,
-            },
-            broadcast=True
-        )
+    'posicao_motoboy_atualizada',
+    {
+        'id': cooperado.id,
+        'nome': cooperado.nome,
+        'lat': lat,
+        'lng': lng,
+        'online': True,
+        'velocidade': velocidade,
+        'ultima_atualizacao': ultima_str,
+    }
+    # sem broadcast: por padrão o Socket.IO já manda pra todos
+)
     except Exception as e:
         # não quebra o fluxo se der problema no websocket
         try:
