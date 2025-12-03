@@ -6076,16 +6076,26 @@ criar_bd()
 @socketio.on('connect')
 def handle_connect(auth=None):
     # só como exemplo de log
-       print(f"Socket conectado: sid={request.sid}, auth={auth}")
-   else:
-       print("Cliente anônimo conectado via Socket.IO")
+    try:
+        # se estiver usando flask-login, current_user pode existir
+        if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
+            print(f"Socket conectado: sid={request.sid}, user_id={current_user.id}, auth={auth}")
+        else:
+            print(f"Cliente anônimo conectado via Socket.IO: sid={request.sid}, auth={auth}")
+    except Exception as e:
+        # fallback pra não quebrar o servidor se current_user não existir
+        print(f"Socket conectado (sem current_user): sid={request.sid}, auth={auth}, erro={e}")
 
 
 @socketio.on('disconnect')
 def handle_disconnect(reason=None):
-        print(f"Socket desconectado: sid={request.sid}, reason={reason}")
-   else:
-        print("Cliente anônimo desconectado do Socket.IO")
+    try:
+        if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
+            print(f"Socket desconectado: sid={request.sid}, user_id={current_user.id}, reason={reason}")
+        else:
+            print(f"Cliente anônimo desconectado do Socket.IO: sid={request.sid}, reason={reason}")
+    except Exception as e:
+        print(f"Socket desconectado (sem current_user): sid={request.sid}, reason={reason}, erro={e}")
 
 
 @socketio.on("entrar_sala")
@@ -6202,6 +6212,3 @@ if __name__ == '__main__':
     with app.app_context():
         db.create_all()
     socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
-
-
-
