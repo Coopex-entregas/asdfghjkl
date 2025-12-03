@@ -42,6 +42,7 @@ app.config['SECRET_KEY'] = os.environ.get(
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
 socketio = SocketIO(app, cors_allowed_origins="*")
 
+
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
 ADMIN_CREDENTIALS = {
     'coopex': {
@@ -50,22 +51,12 @@ ADMIN_CREDENTIALS = {
     }
 }
 
-# ------------------------
-# Configuração do Banco
-# ------------------------
-database_url = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
-
-# Render (e outros serviços) costumam vir com "postgres://"
-# O SQLAlchemy precisa de "postgresql+psycopg2://"
-if database_url.startswith("postgres://"):
-    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
-
-app.config['SQLALCHEMY_DATABASE_URI'] = database_url
+# Banco
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
-
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
-    "pool_recycle": 300,  # 5 minutos
+    "pool_recycle": 300,
     "pool_size": 5,
     "max_overflow": 10,
 }
@@ -4540,34 +4531,51 @@ def creditos_editar(credito_id):
     cred = Credito.query.get_or_404(credito_id)
 
     if request.method == 'POST':
-        valor_bruto = request.form.get('valor', type=float, default=cred.valor_bruto)
-        desconto_tipo = request.form.get('desconto_tipo', default=cred.desconto_tipo or 'nenhum')
-        desconto_valor = request.form.get('desconto_valor', type=float, default=cred.desconto_valor or 0.0)
-        motivo = request.form.get('motivo', default=cred.motivo or '')
+        old_final = float(cred.valor_final or 0.0)
+
+        novo_valor_bruto = request.form.get('valor', type=float, default=cred.valor_bruto)
+        cred.valor_bruto = novo_valor_bruto
+        cred.desconto_tipo = request.form.get(
+            'desconto_tipo', default=cred.desconto_tipo or 'nenhum'
+        )
+        cred.desconto_valor = request.form.get(
+            'desconto_valor', type=float, default=cred.desconto_valor or 0.0
+        )
+        cred.motivo = request.form.get('motivo', default=cred.motivo or '')
+
+        new_final = float(
+            calcular_valor_final(
+                cred.valor_bruto, cred.desconto_tipo, cred.desconto_valor
+            )
+        )
+        cred.valor_final = new_final
+        delta = new_final - old_final
 
         try:
-            editar_credito(
-                credito_id=credito_id,
-                valor_bruto=valor_bruto,
-                desconto_tipo=desconto_tipo,
-                desconto_valor=desconto_valor,
-                motivo=motivo,
-            )
+            if abs(delta) > 1e-7:
+                atualizar_saldo_cliente(cred.cliente_id, delta)
+                ref = f'Ajuste do crédito #{cred.id}'
+                registrar_movimento(
+                    cred.cliente_id,
+                    (TIPO_ENTRADA if delta > 0 else TIPO_CONSUMO),
+                    abs(delta),
+                    referencia=ref,
+                    credito_id=cred.id
+                )
+            db.session.commit()
             msg = 'Crédito atualizado.'
             flash(msg, 'success')
 
             if _wants_json():
-                cred_atual = Credito.query.get(credito_id)
                 return jsonify(
                     ok=True,
                     message=msg,
-                    credito_id=cred_atual.id,
-                    cliente_id=cred_atual.cliente_id,
-                    valor_final=float(cred_atual.valor_final or 0.0),
+                    credito_id=cred.id,
+                    cliente_id=cred.cliente_id,
+                    valor_final=float(cred.valor_final or 0.0),
                 )
 
             return redirect(url_for('creditos', cliente_id=cred.cliente_id))
-
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('Erro ao editar crédito')
@@ -4679,75 +4687,41 @@ def creditos_exportar():
 
 @app.route('/creditos/cadastrar', methods=['POST'])
 def creditos_cadastrar():
-    """
-    Atalho mais simples para lançar um crédito via POST.
-
-    Espera no formulário (ou JSON):
-      - cliente_id
-      - valor
-      - desconto_tipo  (opcional, default 'nenhum')
-      - desconto_valor (opcional, default 0)
-      - motivo         (opcional)
-
-    Usa a mesma lógica de registrar_credito() e depois redireciona
-    para a tela /creditos já focada no cliente.
-    """
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # Pode vir via form ou JSON
-    data = request.form or (request.get_json(silent=True) or {})
-
-    cliente_id = data.get('cliente_id', type=int) if hasattr(data, 'get') else int(data.get('cliente_id') or 0)
-    valor_bruto = data.get('valor') or data.get('valor_bruto') or 0
-    desconto_tipo = (data.get('desconto_tipo') or 'nenhum').strip()
-    desconto_valor = data.get('desconto_valor') or 0
-    motivo = (data.get('motivo') or '').strip()
+    cliente_id = int(request.form['cliente_id'])
+    valor_bruto = request.form['valor_bruto']
+    desconto_tipo = request.form.get('desconto_tipo', 'nenhum')
+    desconto_valor = request.form.get('desconto_valor', 0)
+    motivo = request.form.get('motivo', '')
     criado_por = session.get('user_nome', 'Supervisor')
 
     try:
-        valor_bruto = float(valor_bruto)
-    except Exception:
-        valor_bruto = 0.0
-
-    try:
-        desconto_valor = float(desconto_valor)
-    except Exception:
-        desconto_valor = 0.0
-
-    if not cliente_id or valor_bruto <= 0:
-        msg = 'Informe cliente e um valor de crédito maior que zero.'
-        if _wants_json():
-            return jsonify(ok=False, message=msg), 400
-        flash(msg, 'danger')
-        return redirect(url_for('creditos'))
-
-    try:
         registrar_credito(
-            cliente_id=cliente_id,
-            valor_bruto=valor_bruto,
-            desconto_tipo=desconto_tipo,
-            desconto_valor=desconto_valor,
-            motivo=motivo,
-            criado_por=criado_por
+            cliente_id,
+            valor_bruto,
+            desconto_tipo,
+            desconto_valor,
+            motivo,
+            criado_por
         )
-        msg = 'Crédito cadastrado com sucesso.'
+        msg = 'Crédito registrado com sucesso!'
+        flash(msg)
+
         if _wants_json():
             return jsonify(ok=True, message=msg, cliente_id=cliente_id)
-
-        flash(msg, 'success')
-        return redirect(url_for('creditos', cliente_id=cliente_id))
-
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('Erro ao cadastrar crédito')
-        msg = f'Erro ao cadastrar crédito: {e.__class__.__name__}'
+        current_app.logger.exception('Erro ao registrar crédito')
+        msg = f'Erro ao registrar crédito: {e.__class__.__name__}'
+        flash(msg, 'danger')
+
         if _wants_json():
             return jsonify(ok=False, message=msg), 500
 
-        flash(msg, 'danger')
-        return redirect(url_for('creditos'))
-        
+    return redirect(url_for('creditos'))
+
 
 @app.route('/cliente/<int:cliente_id>/credito')
 def cliente_credito(cliente_id):
@@ -4794,32 +4768,33 @@ def cliente_credito(cliente_id):
 
     return render_or_string("credito_cliente.html", """
 <!doctype html>
-<html lang="pt-BR">
-<head>
-  <meta charset="utf-8">
-  <title>Extrato de Crédito — {{ cliente.nome }}</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <style>
-    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f3f4ff;color:#0f172a}
-    .wrap{max-width:1100px;margin:0 auto;padding:18px}
-    .card{background:#ffffff;border:1px solid #d0ddff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
-    h1{margin:0 0 6px;font-size:1.4rem}
-    .sub{font-size:.9rem;color:#64748b;margin-bottom:10px}
-    .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
-    .chip{border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;border:1px solid #d0ddff;background:#e5edff;color:#1e3a8a}
-    .chip.good{background:#dcfce7;border-color:#bbf7d0;color:#166534}
-    .chip.bad{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
-    .table-wrap{overflow:auto;border-radius:12px;border:1px solid #d0ddff;max-height:520px;background:#fff}
-    table{width:100%;border-collapse:collapse;font-size:13.5px}
-    th,td{padding:8px;border-bottom:1px solid #e2e8f0}
-    th{position:sticky;top:0;background:#1e3a8a;color:#e5edff;text-align:left;z-index:1}
-    tbody tr:nth-child(even) td{background:#f8fafc}
-    .money{font-weight:900}
-    .tag-credito{color:#16a34a;font-weight:700}
-    .tag-debito{color:#dc2626;font-weight:700}
-  </style>
-</head>
-<body>
+<html lang="pt-BR"><head>
+<meta charset="utf-8">
+<title>Extrato de Crédito — {{ cliente.nome }}</title>
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<style>
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f3f4ff;color:#0f172a}
+.wrap{max-width:1100px;margin:0 auto;padding:18px}
+.card{background:#ffffff;border:1px solid #d0ddff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
+h1{margin:0 0 6px;font-size:1.4rem}
+.sub{font-size:.9rem;color:#64748b;margin-bottom:10px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+.chip{border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;border:1px solid #d0ddff;background:#e5edff;color:#1e3a8a}
+.chip.good{background:#dcfce7;border-color:#bbf7d0;color:#166534}
+.chip.bad{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
+.table-wrap{overflow:auto;border-radius:12px;border:1px solid #d0ddff;max-height:520px;background:#fff}
+table{width:100%;border-collapse:collapse;font-size:13.5px}
+th,td{padding:8px;border-bottom:1px solid #e2e8f0}
+th{position:sticky;top:0;background:#1e3a8a;color:#e5edff;text-align:left;z-index:1}
+tbody tr:nth-child(even) td{background:#f8fafc}
+.money{font-weight:900}
+.tag-credito{color:#16a34a;font-weight:700}
+.tag-debito{color:#dc2626;font-weight:700}
+.actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
+.btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;font-size:.85rem;font-weight:800;border-radius:999px;text-decoration:none;border:1px solid #1d4ed8;color:#1d4ed8;background:#e0ebff}
+.btn.primary{background:#1d4ed8;color:#e5edff}
+</style>
+</head><body>
   <div class="wrap">
     <div class="card">
       <h1>Extrato de crédito — {{ cliente.nome }}</h1>
@@ -4875,16 +4850,14 @@ def cliente_credito(cliente_id):
                 </td>
                 <td>
                   {% if m.tipo == 'credito' %}
-                    <span class="tag-credito">CRÉDITO</span>
-                  {% elif m.tipo == 'debito' %}
-                    <span class="tag-debito">DÉBITO</span>
+                    <span class="tag-credito">Crédito</span>
                   {% else %}
-                    {{ m.tipo }}
+                    <span class="tag-debito">Débito</span>
                   {% endif %}
                 </td>
                 <td>{{ m.referencia or '-' }}</td>
-                <td>
-                  R$ {{ '%.2f'|format(m.valor or 0.0)|replace('.', ',') }}
+                <td class="money">
+                  R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
                 </td>
                 <td>
                   {% if m.entrega_id %}
@@ -4892,33 +4865,43 @@ def cliente_credito(cliente_id):
                   {% elif m.credito_id %}
                     Crédito #{{ m.credito_id }}
                   {% else %}
-                    -
+                    —
                   {% endif %}
                 </td>
               </tr>
-            {% else %}
+            {% endfor %}
+            {% if movs|length == 0 %}
               <tr>
-                <td colspan="5" style="text-align:center;padding:12px;color:#6b7280;">
-                  Nenhuma movimentação encontrada.
+                <td colspan="5" style="text-align:center;opacity:.7;padding:16px">
+                  Nenhuma movimentação de crédito para este cliente.
                 </td>
               </tr>
-            {% endfor %}
+            {% endif %}
           </tbody>
         </table>
       </div>
 
-      <div style="margin-top:10px;font-size:.8rem;color:#6b7280;">
-        <a href="{{ url_for('creditos', cliente_id=cliente.id) }}">&larr; Voltar à tela de créditos</a>
+      <div class="actions">
+        <a class="btn" href="{{ url_for('creditos', cliente_id=cliente.id) }}">
+          Voltar para créditos
+        </a>
+        <a class="btn primary"
+           href="{{ url_for('creditos_exportar', cliente_id=cliente.id) }}">
+          Exportar créditos em Excel
+        </a>
       </div>
     </div>
   </div>
-</body>
-</html>
-""", cliente=cli, movs=movs,
-           saldo_atual=saldo_atual,
-           total_creditos=total_creditos,
-           total_debitos=total_debitos,
-           to_brasilia=to_brasilia)
+</body></html>
+""",
+        cliente=cli,
+        movs=movs,
+        saldo_atual=saldo_atual,
+        total_creditos=total_creditos,
+        total_debitos=total_debitos,
+        to_brasilia=to_brasilia
+    )
+
 
 @app.route('/creditos/movimento/novo', methods=['POST'])
 def credmov_novo():
