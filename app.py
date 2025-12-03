@@ -40,7 +40,15 @@ app.config['SECRET_KEY'] = os.environ.get(
 )
 
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
-socketio = SocketIO(app, cors_allowed_origins="*")
+from flask_socketio import SocketIO
+
+socketio = SocketIO(
+    app,
+    async_mode="threading",   # (opcional, mas bom deixar explícito)
+    logger=False,
+    engineio_logger=False
+)
+
 
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
 ADMIN_CREDENTIALS = {
