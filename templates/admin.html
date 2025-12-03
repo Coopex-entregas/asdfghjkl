@@ -13,7 +13,7 @@
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
-
+  
   <style>
     :root{
       --royal:#0033cc;        /* azul royal */
@@ -288,10 +288,82 @@
       gap:4px;
     }
     .map-header strong{font-size:.9rem}
-    .map-legend{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:.8rem}
-    .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.5)}
-    .legend-dot.on{background:#10b981}
-    .legend-dot.off{background:#ef4444}
+
+    .map-header-actions{
+      display:flex;
+      gap:8px;
+      align-items:center;
+      flex-wrap:wrap;
+    }
+
+    .map-legend{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      flex-wrap:wrap;
+      font-size:.8rem
+    }
+    .legend-dot{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      display:inline-block;
+      border:1px solid rgba(255,255,255,.5)
+    }
+    /* 3 estados da motinha no mapa */
+    .legend-dot.on{      /* online */
+      background:#10b981;
+    }
+    .legend-dot.gps{     /* app ligado, mas sem atualizar há 30s+ */
+      background:#facc15;
+    }
+    .legend-dot.off{     /* offline */
+      background:#ef4444;
+    }
+
+    .map-search{
+      min-width:190px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,.7);
+      padding:6px 8px;
+      background:rgba(0,0,0,.25);
+      color:#fff;
+      font-size:.8rem;
+      font-weight:700;
+    }
+    .map-search option{
+      color:#000;
+    }
+
+    /* Ícones de motoboy no mapa (motinha) */
+    .moto-marker{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius:50%;
+      box-shadow:0 0 0 2px rgba(0,0,0,.35);
+    }
+    .moto-marker-inner{
+      width:26px;
+      height:26px;
+      border-radius:50%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-size:17px;
+    }
+    .moto-marker.online .moto-marker-inner{
+      background:#10b981;       /* verde */
+      color:#ffffff;
+    }
+    .moto-marker.gps .moto-marker-inner{
+      background:#facc15;       /* amarelo */
+      color:#111827;
+    }
+    .moto-marker.offline .moto-marker-inner{
+      background:#ef4444;       /* vermelho */
+      color:#ffffff;
+    }
 
     .map-full-btn{
       background:rgba(0,0,0,.18);
@@ -544,18 +616,33 @@
           </h2>
         </div>
 
-        <!-- MAPA DE RASTREIO -->
+                <!-- MAPA DE RASTREIO -->
         <div class="map-wrapper">
           <div class="map-header">
             <div class="map-header-main">
               <strong>Mapa em tempo real</strong>
               <div class="map-legend">
-                <span><span class="legend-dot on"></span> Motoboy online (app ligado)</span>
-                <span><span class="legend-dot off"></span> Offline / não conectado</span>
+                <span><span class="legend-dot on"></span> Online (app ligado)</span>
+                <span><span class="legend-dot gps"></span> Sem atualização &gt; 30s / GPS ocioso</span>
+                <span><span class="legend-dot off"></span> Offline / desconectado</span>
               </div>
             </div>
-            <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
+
+            <div class="map-header-actions">
+              <!-- Busca rápida por cooperado no mapa -->
+              <select id="mapSearch" class="map-search">
+                <option value="">🔍 Localizar cooperado…</option>
+                {% for c in cooperados %}
+                  <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+
+              <button id="btnFullMap" class="map-full-btn" type="button">
+                Mapa em tela cheia
+              </button>
+            </div>
           </div>
+
           <div id="map-coopex"></div>
         </div>
 
@@ -861,7 +948,7 @@
   });
 </script>
   <!-- JS PRINCIPAL -->
-  <script>
+   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
     // === Dados de motoboys para o MAPA (via JSON seguro) ===
     window.MOTOBOYS = {{ motoboys_js | default([]) | tojson | safe }};
@@ -1279,7 +1366,6 @@
       });
     }
   </script>
-
       <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
  <script>
     // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
