@@ -6073,29 +6073,20 @@ criar_bd()
 # EVENTOS SOCKET.IO (TEMPO REAL)
 # =========================================================
 
-@socketio.on('connect')
+from flask import request
+
+# Conexão do cliente
+@socketio.on("connect")
 def handle_connect(auth=None):
-    # só como exemplo de log
-    try:
-        # se estiver usando flask-login, current_user pode existir
-        if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
-            print(f"Socket conectado: sid={request.sid}, user_id={current_user.id}, auth={auth}")
-        else:
-            print(f"Cliente anônimo conectado via Socket.IO: sid={request.sid}, auth={auth}")
-    except Exception as e:
-        # fallback pra não quebrar o servidor se current_user não existir
-        print(f"Socket conectado (sem current_user): sid={request.sid}, auth={auth}, erro={e}")
+    # Aqui você pode receber infos de auth se mandar pelo front
+    print(f"Cliente conectado via Socket.IO: sid={request.sid}, auth={auth}")
 
 
-@socketio.on('disconnect')
+# Desconexão do cliente
+@socketio.on("disconnect")
 def handle_disconnect(reason=None):
-    try:
-        if hasattr(current_user, "is_authenticated") and current_user.is_authenticated:
-            print(f"Socket desconectado: sid={request.sid}, user_id={current_user.id}, reason={reason}")
-        else:
-            print(f"Cliente anônimo desconectado do Socket.IO: sid={request.sid}, reason={reason}")
-    except Exception as e:
-        print(f"Socket desconectado (sem current_user): sid={request.sid}, reason={reason}, erro={e}")
+    # O Socket.IO passa 1 argumento (normalmente o 'reason'), por isso reason=None
+    print(f"Cliente desconectado do Socket.IO: sid={request.sid}, reason={reason}")
 
 
 @socketio.on("entrar_sala")
@@ -6103,12 +6094,15 @@ def handle_entrar_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456"
+        "sala": "entrega_123" ou "chat_456",
+        "usuario_id": 123  # opcional, se você quiser identificar quem entrou
     }
     """
     sala = data.get("sala")
     if not sala:
         return
+
+    usuario_id = data.get("usuario_id")
 
     join_room(sala)
 
@@ -6118,7 +6112,7 @@ def handle_entrar_sala(data):
         {
             "tipo": "entrada",
             "sala": sala,
-            "usuario": getattr(current_user, "id", None),
+            "usuario": usuario_id,
         },
         room=sala,
     )
@@ -6129,12 +6123,15 @@ def handle_sair_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456"
+        "sala": "entrega_123" ou "chat_456",
+        "usuario_id": 123  # opcional
     }
     """
     sala = data.get("sala")
     if not sala:
         return
+
+    usuario_id = data.get("usuario_id")
 
     leave_room(sala)
 
@@ -6143,7 +6140,7 @@ def handle_sair_sala(data):
         {
             "tipo": "saida",
             "sala": sala,
-            "usuario": getattr(current_user, "id", None),
+            "usuario": usuario_id,
         },
         room=sala,
     )
@@ -6155,8 +6152,8 @@ def handle_nova_mensagem(data):
     data esperado (exemplo):
     {
         "sala": "entrega_123",
-        "remetente_id": 1,
-        "remetente_tipo": "cliente" / "admin" / "motoboy",
+        "remetente_id": 1,                    # id de quem mandou
+        "remetente_tipo": "cliente"/"admin"/"motoboy",
         "texto": "Olá, estou a caminho",
         "extra": {...}   # opcional
     }
@@ -6170,7 +6167,7 @@ def handle_nova_mensagem(data):
     payload = {
         "sala": sala,
         "texto": texto,
-        "remetente_id": data.get("remetente_id", getattr(current_user, "id", None)),
+        "remetente_id": data.get("remetente_id"),
         "remetente_tipo": data.get("remetente_tipo"),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "extra": data.get("extra") or {},
@@ -6208,7 +6205,12 @@ def handle_atualizar_entrega(data):
         room=f"entrega_{entrega_id}",
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
+
+
