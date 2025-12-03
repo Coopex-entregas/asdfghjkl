@@ -900,26 +900,26 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         criado_por=criado_por or "Supervisor"
     )
     db.session.add(c)
-    db.session.flush()
+    db.session.flush()  # garante c.id
 
+    # 👇 AQUI SIM: movimento de CRÉDITO correspondente a esse lançamento
     mov = CreditoMovimento(
-    cliente_id=cli.id,
-    tipo="debito",
-    valor=float(consumir_val),
-    referencia=f"Entrega #{e.id}",
-    entrega_id=e.id,   # 👈 ESSENCIAL pro comprovante
-)
+        credito_id=c.id,
+        cliente_id=cli.id,
+        tipo="credito",
+        valor=float(valor_final),
+        referencia=f"Crédito #{c.id}",
+    )
     db.session.add(mov)
     db.session.commit()
 
-    # Recalcula saldo a partir de TODOS os movimentos
+    # Recalcula saldo a partir de TODOS os movimentos (incluindo este crédito)
     novo_saldo = atualizar_saldo_credito_cliente(cli.id)
 
     c.saldo_depois = float(novo_saldo)
     db.session.add(c)
     db.session.commit()
     return c
-
 
 def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
                    desconto_valor, motivo: str = ""):
@@ -1024,6 +1024,7 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
       tipo="debito",
       valor=float(consumir_val),
       referencia=f"Entrega #{e.id}",
+      entrega_id=e.id,   # 👈 AQUI SIM: vínculo da movimentação com a entrega
     )
     db.session.add(mov)
     db.session.commit()
