@@ -63,6 +63,30 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
+# =========================================================
+# FLASK-LOGIN / LOGIN MANAGER
+# =========================================================
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# nome da view/rota que mostra a tela de login
+# (ajuste se sua função de login tiver outro endpoint, tipo 'login_admin')
+login_manager.login_view = 'login'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Função usada pelo Flask-Login para carregar o usuário
+    a partir do ID salvo na sessão.
+    Importa o modelo aqui dentro para evitar problemas de import circular.
+    """
+    from models import Usuario  # importa só quando necessário
+    try:
+        return Usuario.query.get(int(user_id))
+    except (ValueError, TypeError):
+        return None
+
 # Fuso Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
@@ -388,33 +412,80 @@ class Entrega(db.Model):
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
 # =========================================================
-def emitir_atualizacao_entrega(entrega, acao: str):
+def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
     """
     Emite para todos os painéis (admin, cooperado, rastreamento) que
     uma entrega foi criada / editada / excluída / status alterado.
+
+    Evento Socket.IO: 'entrega_atualizada'
     """
     if not entrega:
         return
 
     try:
+        payload = {
+            "id": entrega.id,
+            "acao": acao,  # 'criada', 'editada', 'excluida', etc.
+            "cliente": entrega.cliente,
+            "bairro": entrega.bairro,
+            "valor": float(entrega.valor or 0),
+            "status": entrega.status,
+            "status_pagamento": entrega.status_pagamento,
+            "pagamento": entrega.pagamento,
+            "cooperado_id": entrega.cooperado_id,
+            "cooperado_nome": entrega.cooperado.nome if entrega.cooperado else None,
+            "data_envio": (
+                to_brasilia(entrega.data_envio).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_envio else None
+            ),
+            "data_atribuida": (
+                to_brasilia(entrega.data_atribuida).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_atribuida else None
+            ),
+        }
+
+        # Evento específico para os painéis de entregas
         socketio.emit(
-            'entrega_atualizada',
-            {
-                'acao': acao,                     # 'criada', 'editada', 'excluida', 'status'
-                'id': entrega.id,
-                'cliente': entrega.cliente,
-                'bairro': entrega.bairro,
-                'valor': float(entrega.valor or 0),
-                'cooperado_id': entrega.cooperado_id,
-                'status': entrega.status,
-                'status_pagamento': entrega.status_pagamento,
-            },
+            "entrega_atualizada",
+            payload,
             broadcast=True
         )
+
     except Exception as e:
         # não quebra o fluxo se der problema no websocket
         try:
             current_app.logger.warning(f'Falha ao emitir entrega_atualizada: {e}')
+        except Exception:
+            pass
+
+def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocidade=None):
+    """
+    Emite a posição atual do motoboy para os painéis (mapa, cards, etc).
+    Evento: 'posicao_motoboy_atualizada'
+    """
+    try:
+        ultima_str = ""
+        if cooperado.last_ping:
+            ultima_str = to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
+
+        payload = {
+            'id': cooperado.id,
+            'nome': cooperado.nome,
+            'lat': float(lat),
+            'lng': float(lng),
+            'online': bool(getattr(cooperado, "online", True)),
+            'velocidade': float(velocidade) if velocidade is not None else None,
+            'ultima_atualizacao': ultima_str,
+        }
+
+        socketio.emit(
+            'posicao_motoboy_atualizada',
+            payload,
+            broadcast=True
+        )
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha ao emitir posicao_motoboy_atualizada: {e}')
         except Exception:
             pass
 
@@ -497,6 +568,38 @@ class ListaEspera(db.Model):
     pos = db.Column(db.Integer, nullable=True)
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     cooperado = db.relationship('Cooperado', lazy='joined')
+
+def emitir_lista_espera():
+    """
+    Emite para todos os painéis a situação atual da fila de espera.
+    """
+    try:
+        itens = (
+            ListaEspera.query
+            .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+            .all()
+        )
+        payload = []
+        for item in itens:
+            payload.append({
+                "id": item.id,
+                "cooperado_id": item.cooperado_id,
+                "nome": item.cooperado.nome if item.cooperado else item.nome,
+                "pos": item.pos,
+                "created_at": to_brasilia(item.created_at).strftime('%d/%m %H:%M')
+                              if item.created_at else "",
+            })
+
+        socketio.emit(
+            "fila_espera_atualizada",
+            {"itens": payload},
+            broadcast=True
+        )
+    except Exception as e:
+        try:
+            current_app.logger.warning(f"Falha ao emitir fila_espera_atualizada: {e}")
+        except Exception:
+            pass
 
 class Trajeto(db.Model):
     __tablename__ = 'trajeto'
@@ -800,12 +903,12 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
     db.session.flush()
 
     mov = CreditoMovimento(
-        cliente_id=cli.id,
-        tipo="credito",
-        valor=float(valor_final),
-        referencia=f"Crédito #{c.id}",
-        credito_id=c.id
-    )
+    cliente_id=cli.id,
+    tipo="debito",
+    valor=float(consumir_val),
+    referencia=f"Entrega #{e.id}",
+    entrega_id=e.id,   # 👈 ESSENCIAL pro comprovante
+)
     db.session.add(mov)
     db.session.commit()
 
@@ -2785,8 +2888,6 @@ def cooperado_aceitar_entrega():
 
 
 # Recusar entrega (via URL com <id>)
-from flask import request, jsonify, session
-
 @app.route("/cooperado/recusar_entrega", methods=["POST"])
 def cooperado_recusar_entrega():
     if session.get("user_id") is None or session.get("is_admin"):
@@ -2920,25 +3021,15 @@ def cooperado_atualizar_localizacao():
     except (TypeError, ValueError):
         velocidade = None
 
+    # Atualiza no banco
     cooperado.last_lat = lat
     cooperado.last_lng = lng
     cooperado.last_ping = datetime.utcnow()
     cooperado.online = True
     db.session.commit()
 
-    socketio.emit(
-        'posicao_motoboy_atualizada',
-        {
-            'id': cooperado.id,
-            'nome': cooperado.nome,
-            'lat': cooperado.last_lat,
-            'lng': cooperado.last_lng,
-            'online': cooperado.online,
-            'velocidade': velocidade,
-            'ultima_atualizacao': to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
-        },
-        broadcast=True
-    )
+    # Emite evento em tempo real
+    emitir_posicao_motoboy(cooperado, lat, lng, velocidade)
 
     return jsonify({'status': 'ok'})
 
@@ -2990,14 +3081,8 @@ def cooperado_novas_corridas():
 # variável global bem simples pra sinalizar um novo socorro
 ULTIMO_SOCORRO = None
 
-# no topo do arquivo (garante que a variável exista)
-ULTIMO_SOCORRO = None
-
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
-    """
-    Endpoint chamado pelo formulário de socorro do painel do cooperado.
-    """
     global ULTIMO_SOCORRO
 
     data = request.get_json() or {}
@@ -3007,27 +3092,22 @@ def cooperado_socorro():
     if not tipo:
         return jsonify({"ok": False, "error": "Tipo de socorro não informado."}), 400
 
-    # pega info básica do cooperado logado (ajusta conforme seu sistema)
     cooperado_id = session.get("user_id")
     cooperado_nome = session.get("user_nome", "Cooperado")
 
-    # monta o objeto do socorro
+    agora_brt = datetime.now(BRAZIL_TZ)
+
     ULTIMO_SOCORRO = {
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
-        "tipo": tipo,
-        "detalhes": detalhes,
-        "timestamp": datetime.utcnow().isoformat()
+        # o que o admin_novo_socorro espera:
+        "mensagem": f"{tipo}: {detalhes}" if detalhes else tipo,
+        "momento": agora_brt.strftime("%d/%m/%Y %H:%M"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "lido": False,
     }
 
-    # dispara para todos os admins conectados via Socket.IO
-    socketio.emit(
-        "socorro_novo",
-        ULTIMO_SOCORRO,
-        broadcast=True  # ou para um room específico, se você usar salas
-    )
-
-    # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
+    socketio.emit("socorro_novo", ULTIMO_SOCORRO, broadcast=True)
 
     return jsonify({"ok": True})
 
@@ -3670,6 +3750,8 @@ def trajetos_exportar():
     output.seek(0)
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
+from flask import request, jsonify
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
@@ -3677,26 +3759,52 @@ def mapa_motoboys():
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
+
     for c in cooperados:
         if c.last_lat is not None and c.last_lng is not None:
+            # ---- MONTA STATUS PRO MAPA ----
+            # ajusta esses campos conforme o teu modelo:
+            #   c.online -> app ligado?
+            #   c.em_corrida ou c.ocupado -> está em entrega?
+            online = bool(getattr(c, "online", False))
+            em_corrida = bool(getattr(c, "em_corrida", False) or getattr(c, "ocupado", False))
+
+            if not online:
+                status = "offline"
+            elif em_corrida:
+                status = "em_corrida"
+            else:
+                status = "livre"
+
             motoboys_js.append({
                 "id": c.id,
                 "nome": c.nome,
-                "lat": c.last_lat,
-                "lng": c.last_lng,
-                "online": bool(c.online),
-                "velocidade": 0,
-                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+                "lat": float(c.last_lat),
+                "lng": float(c.last_lng),
+                "online": online,
+                "status": status,  # 👈 ESSENCIAL PRO MAPA/CARD
+                "velocidade": 0,   # se tiver campo real, troca aqui
+                "ultima_atualizacao": (
+                    to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+                ),
+                # Opcional (o HTML usa m.endereco e m.observacao)
+                "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
+                "observacao": getattr(c, "observacao", "") or ""
             })
 
+    # 👇 Se for chamada via fetch (admin embutido) → JSON
+    if request.headers.get('X-Requested-With') == 'fetch':
+        resp = jsonify(motoboys_js)
+        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        return resp
+
+    # 👇 Se for acesso normal (mapa em tela cheia) → HTML usando esse mesmo motoboys_js
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
 
 
 # =========================================================
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
 # =========================================================
-from flask import jsonify
-
 def _wants_json():
     """
     Decide se a resposta deve ser JSON (para AJAX / fetch).
@@ -3851,6 +3959,9 @@ def cadastrar_entrega():
 
         flash(msg, msg_category)
 
+         # 🔴 EMITE PARA O PAINEL EM TEMPO REAL
+        emitir_atualizacao_entrega(entrega, 'criada')
+
         if _wants_json():
             return jsonify(
                 ok=True,
@@ -3958,6 +4069,9 @@ def agendar_entrega():
 
         flash(msg, msg_category)
 
+        # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (entrega agendada)
+        emitir_atualizacao_entrega(entrega, 'criada')
+
         if _wants_json():
             return jsonify(
                 ok=True,
@@ -4040,6 +4154,9 @@ def editar_entrega(id):
                     "Falha ao recalcular crédito na entrega %s: %s",
                     entrega.id, ex
                 )
+
+             # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (edição)
+            emitir_atualizacao_entrega(entrega, 'editada')
 
             flash('Entrega atualizada!')
 
@@ -4690,12 +4807,23 @@ tbody tr:nth-child(even) td{background:#f8fafc}
       </div>
 
       <div class="chips">
-        <span class="chip">Saldo atual: <span class="money" style="margin-left:6px">
-          R$ {{ '%.2f'|format(saldo_atual)|replace('.', ',') }}</span>
+        <span class="chip">
+          Saldo atual:
+          <span class="money" style="margin-left:6px">
+            R$ {{ '%.2f'|format(saldo_atual)|replace('.', ',') }}
+          </span>
         </span>
-        <span class="chip good">Total créditos: R$ {{ '%.2f'|format(total_creditos)|replace('.', ',') }}</span>
-        <span class="chip bad">Total débitos: R$ {{ '%.2f'|format(total_debitos)|replace('.', ',') }}</span>
-        <span class="chip">Movimentos: {{ movs|length }}</span>
+        <span class="chip good">
+          Total créditos:
+          R$ {{ '%.2f'|format(total_creditos)|replace('.', ',') }}
+        </span>
+        <span class="chip bad">
+          Total débitos:
+          R$ {{ '%.2f'|format(total_debitos)|replace('.', ',') }}
+        </span>
+        <span class="chip">
+          Movimentos: {{ movs|length }}
+        </span>
       </div>
 
       <div class="table-wrap">
@@ -4753,15 +4881,25 @@ tbody tr:nth-child(even) td{background:#f8fafc}
       </div>
 
       <div class="actions">
-        <a class="btn primary" href="{{ url_for('creditos', cliente_id=cliente.id) }}">↩ Voltar para créditos</a>
-        <a class="btn" href="{{ url_for('precos_rotas') }}">Tabela de preços & rotas</a>
+        <a class="btn" href="{{ url_for('creditos', cliente_id=cliente.id) }}">
+          Voltar para créditos
+        </a>
+        <a class="btn primary"
+           href="{{ url_for('creditos_exportar', cliente_id=cliente.id) }}">
+          Exportar créditos em Excel
+        </a>
       </div>
     </div>
   </div>
 </body></html>
-    """, cliente=cli, movs=movs, saldo_atual=saldo_atual,
-       total_creditos=total_creditos, total_debitos=total_debitos,
-       to_brasilia=to_brasilia)
+""",
+        cliente=cli,
+        movs=movs,
+        saldo_atual=saldo_atual,
+        total_creditos=total_creditos,
+        total_debitos=total_debitos,
+        to_brasilia=to_brasilia
+    )
 
 
 @app.route('/creditos/movimento/novo', methods=['POST'])
@@ -5929,27 +6067,26 @@ def criar_bd():
 
         db.session.commit()
 
-
 criar_bd()
 
 # =========================================================
 # EVENTOS SOCKET.IO (TEMPO REAL)
 # =========================================================
 
+from flask import request
+
+# Conexão do cliente
 @socketio.on("connect")
-def handle_connect():
-    if current_user.is_authenticated:
-        print(f"Usuário conectado via Socket.IO: {current_user.id}")
-    else:
-        print("Cliente anônimo conectado via Socket.IO")
+def handle_connect(auth=None):
+    # Aqui você pode receber infos de auth se mandar pelo front
+    print(f"Cliente conectado via Socket.IO: sid={request.sid}, auth={auth}")
 
 
+# Desconexão do cliente
 @socketio.on("disconnect")
-def handle_disconnect():
-    if current_user.is_authenticated:
-        print(f"Usuário desconectado do Socket.IO: {current_user.id}")
-    else:
-        print("Cliente anônimo desconectado do Socket.IO")
+def handle_disconnect(reason=None):
+    # O Socket.IO passa 1 argumento (normalmente o 'reason'), por isso reason=None
+    print(f"Cliente desconectado do Socket.IO: sid={request.sid}, reason={reason}")
 
 
 @socketio.on("entrar_sala")
@@ -5957,12 +6094,15 @@ def handle_entrar_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456"
+        "sala": "entrega_123" ou "chat_456",
+        "usuario_id": 123  # opcional, se você quiser identificar quem entrou
     }
     """
     sala = data.get("sala")
     if not sala:
         return
+
+    usuario_id = data.get("usuario_id")
 
     join_room(sala)
 
@@ -5972,7 +6112,7 @@ def handle_entrar_sala(data):
         {
             "tipo": "entrada",
             "sala": sala,
-            "usuario": getattr(current_user, "id", None),
+            "usuario": usuario_id,
         },
         room=sala,
     )
@@ -5983,12 +6123,15 @@ def handle_sair_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456"
+        "sala": "entrega_123" ou "chat_456",
+        "usuario_id": 123  # opcional
     }
     """
     sala = data.get("sala")
     if not sala:
         return
+
+    usuario_id = data.get("usuario_id")
 
     leave_room(sala)
 
@@ -5997,7 +6140,7 @@ def handle_sair_sala(data):
         {
             "tipo": "saida",
             "sala": sala,
-            "usuario": getattr(current_user, "id", None),
+            "usuario": usuario_id,
         },
         room=sala,
     )
@@ -6009,8 +6152,8 @@ def handle_nova_mensagem(data):
     data esperado (exemplo):
     {
         "sala": "entrega_123",
-        "remetente_id": 1,
-        "remetente_tipo": "cliente" / "admin" / "motoboy",
+        "remetente_id": 1,                    # id de quem mandou
+        "remetente_tipo": "cliente"/"admin"/"motoboy",
         "texto": "Olá, estou a caminho",
         "extra": {...}   # opcional
     }
@@ -6024,7 +6167,7 @@ def handle_nova_mensagem(data):
     payload = {
         "sala": sala,
         "texto": texto,
-        "remetente_id": data.get("remetente_id", getattr(current_user, "id", None)),
+        "remetente_id": data.get("remetente_id"),
         "remetente_tipo": data.get("remetente_tipo"),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "extra": data.get("extra") or {},
@@ -6062,7 +6205,12 @@ def handle_atualizar_entrega(data):
         room=f"entrega_{entrega_id}",
     )
 
+
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5000, debug=True)
+    with app.app_context():
+        db.create_all()
+    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
+
 
 
