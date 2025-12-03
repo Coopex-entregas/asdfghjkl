@@ -63,6 +63,30 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
+# =========================================================
+# FLASK-LOGIN / LOGIN MANAGER
+# =========================================================
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# nome da view/rota que mostra a tela de login
+# (ajuste se sua função de login tiver outro endpoint, tipo 'login_admin')
+login_manager.login_view = 'login'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Função usada pelo Flask-Login para carregar o usuário
+    a partir do ID salvo na sessão.
+    Importa o modelo aqui dentro para evitar problemas de import circular.
+    """
+    from models import Usuario  # importa só quando necessário
+    try:
+        return Usuario.query.get(int(user_id))
+    except (ValueError, TypeError):
+        return None
+
 # Fuso Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
@@ -879,12 +903,12 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
     db.session.flush()
 
     mov = CreditoMovimento(
-        cliente_id=cli.id,
-        tipo="credito",
-        valor=float(valor_final),
-        referencia=f"Crédito #{c.id}",
-        credito_id=c.id
-    )
+    cliente_id=cli.id,
+    tipo="debito",
+    valor=float(consumir_val),
+    referencia=f"Entrega #{e.id}",
+    entrega_id=e.id,   # 👈 ESSENCIAL pro comprovante
+)
     db.session.add(mov)
     db.session.commit()
 
@@ -2864,8 +2888,6 @@ def cooperado_aceitar_entrega():
 
 
 # Recusar entrega (via URL com <id>)
-from flask import request, jsonify, session
-
 @app.route("/cooperado/recusar_entrega", methods=["POST"])
 def cooperado_recusar_entrega():
     if session.get("user_id") is None or session.get("is_admin"):
@@ -3061,9 +3083,6 @@ ULTIMO_SOCORRO = None
 
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
-    """
-    Endpoint chamado pelo formulário de socorro do painel do cooperado.
-    """
     global ULTIMO_SOCORRO
 
     data = request.get_json() or {}
@@ -3073,27 +3092,22 @@ def cooperado_socorro():
     if not tipo:
         return jsonify({"ok": False, "error": "Tipo de socorro não informado."}), 400
 
-    # pega info básica do cooperado logado (ajusta conforme seu sistema)
     cooperado_id = session.get("user_id")
     cooperado_nome = session.get("user_nome", "Cooperado")
 
-    # monta o objeto do socorro
+    agora_brt = datetime.now(BRAZIL_TZ)
+
     ULTIMO_SOCORRO = {
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
-        "tipo": tipo,
-        "detalhes": detalhes,
-        "timestamp": datetime.utcnow().isoformat()
+        # o que o admin_novo_socorro espera:
+        "mensagem": f"{tipo}: {detalhes}" if detalhes else tipo,
+        "momento": agora_brt.strftime("%d/%m/%Y %H:%M"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "lido": False,
     }
 
-    # dispara para todos os admins conectados via Socket.IO
-    socketio.emit(
-        "socorro_novo",
-        ULTIMO_SOCORRO,
-        broadcast=True  # ou para um room específico, se você usar salas
-    )
-
-    # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
+    socketio.emit("socorro_novo", ULTIMO_SOCORRO, broadcast=True)
 
     return jsonify({"ok": True})
 
@@ -6060,18 +6074,17 @@ criar_bd()
 # EVENTOS SOCKET.IO (TEMPO REAL)
 # =========================================================
 
-@socketio.on("connect")
-def handle_connect():
-    if current_user.is_authenticated:
-        print(f"Usuário conectado via Socket.IO: {current_user.id}")
+@socketio.on('connect')
+def handle_connect(auth=None):
+    # só como exemplo de log
+    print(f"Socket conectado: sid={request.sid}, auth={auth}")
     else:
         print("Cliente anônimo conectado via Socket.IO")
 
 
-@socketio.on("disconnect")
-def handle_disconnect():
-    if current_user.is_authenticated:
-        print(f"Usuário desconectado do Socket.IO: {current_user.id}")
+@socketio.on('disconnect')
+def handle_disconnect(reason=None):
+    print(f"Socket desconectado: sid={request.sid}, reason={reason}")
     else:
         print("Cliente anônimo desconectado do Socket.IO")
 
