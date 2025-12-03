@@ -42,7 +42,6 @@ app.config['SECRET_KEY'] = os.environ.get(
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
 socketio = SocketIO(app, cors_allowed_origins="*")
 
-
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
 ADMIN_CREDENTIALS = {
     'coopex': {
@@ -51,17 +50,51 @@ ADMIN_CREDENTIALS = {
     }
 }
 
-# Banco
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('DATABASE_URL') or 'sqlite:///db.sqlite3'
+# ------------------------
+# Configuração do Banco
+# ------------------------
+database_url = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
+
+# Render (e outros serviços) costumam vir com "postgres://"
+# O SQLAlchemy precisa de "postgresql+psycopg2://"
+if database_url.startswith("postgres://"):
+    database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+
+app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
+
 app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "pool_pre_ping": True,
-    "pool_recycle": 300,
+    "pool_recycle": 300,  # 5 minutos
     "pool_size": 5,
     "max_overflow": 10,
 }
 
 db = SQLAlchemy(app)
+
+# =========================================================
+# FLASK-LOGIN / LOGIN MANAGER
+# =========================================================
+login_manager = LoginManager()
+login_manager.init_app(app)
+
+# nome da view/rota que mostra a tela de login
+# (ajuste se sua função de login tiver outro endpoint, tipo 'login_admin')
+login_manager.login_view = 'login'
+
+
+@login_manager.user_loader
+def load_user(user_id):
+    """
+    Função usada pelo Flask-Login para carregar o usuário
+    a partir do ID salvo na sessão.
+    Importa o modelo aqui dentro para evitar problemas de import circular.
+    """
+    from models import Usuario  # importa só quando necessário
+    try:
+        return Usuario.query.get(int(user_id))
+    except (ValueError, TypeError):
+        return None
 
 # Fuso Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
@@ -876,26 +909,26 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         criado_por=criado_por or "Supervisor"
     )
     db.session.add(c)
-    db.session.flush()
+    db.session.flush()  # garante c.id
 
+    # 👇 AQUI SIM: movimento de CRÉDITO correspondente a esse lançamento
     mov = CreditoMovimento(
+        credito_id=c.id,
         cliente_id=cli.id,
         tipo="credito",
         valor=float(valor_final),
         referencia=f"Crédito #{c.id}",
-        credito_id=c.id
     )
     db.session.add(mov)
     db.session.commit()
 
-    # Recalcula saldo a partir de TODOS os movimentos
+    # Recalcula saldo a partir de TODOS os movimentos (incluindo este crédito)
     novo_saldo = atualizar_saldo_credito_cliente(cli.id)
 
     c.saldo_depois = float(novo_saldo)
     db.session.add(c)
     db.session.commit()
     return c
-
 
 def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
                    desconto_valor, motivo: str = ""):
@@ -1000,6 +1033,7 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
       tipo="debito",
       valor=float(consumir_val),
       referencia=f"Entrega #{e.id}",
+      entrega_id=e.id,   # 👈 AQUI SIM: vínculo da movimentação com a entrega
     )
     db.session.add(mov)
     db.session.commit()
@@ -2864,8 +2898,6 @@ def cooperado_aceitar_entrega():
 
 
 # Recusar entrega (via URL com <id>)
-from flask import request, jsonify, session
-
 @app.route("/cooperado/recusar_entrega", methods=["POST"])
 def cooperado_recusar_entrega():
     if session.get("user_id") is None or session.get("is_admin"):
@@ -3061,9 +3093,6 @@ ULTIMO_SOCORRO = None
 
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
-    """
-    Endpoint chamado pelo formulário de socorro do painel do cooperado.
-    """
     global ULTIMO_SOCORRO
 
     data = request.get_json() or {}
@@ -3073,27 +3102,22 @@ def cooperado_socorro():
     if not tipo:
         return jsonify({"ok": False, "error": "Tipo de socorro não informado."}), 400
 
-    # pega info básica do cooperado logado (ajusta conforme seu sistema)
     cooperado_id = session.get("user_id")
     cooperado_nome = session.get("user_nome", "Cooperado")
 
-    # monta o objeto do socorro
+    agora_brt = datetime.now(BRAZIL_TZ)
+
     ULTIMO_SOCORRO = {
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
-        "tipo": tipo,
-        "detalhes": detalhes,
-        "timestamp": datetime.utcnow().isoformat()
+        # o que o admin_novo_socorro espera:
+        "mensagem": f"{tipo}: {detalhes}" if detalhes else tipo,
+        "momento": agora_brt.strftime("%d/%m/%Y %H:%M"),
+        "timestamp": datetime.utcnow().isoformat(),
+        "lido": False,
     }
 
-    # dispara para todos os admins conectados via Socket.IO
-    socketio.emit(
-        "socorro_novo",
-        ULTIMO_SOCORRO,
-        broadcast=True  # ou para um room específico, se você usar salas
-    )
-
-    # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
+    socketio.emit("socorro_novo", ULTIMO_SOCORRO, broadcast=True)
 
     return jsonify({"ok": True})
 
@@ -4516,51 +4540,34 @@ def creditos_editar(credito_id):
     cred = Credito.query.get_or_404(credito_id)
 
     if request.method == 'POST':
-        old_final = float(cred.valor_final or 0.0)
-
-        novo_valor_bruto = request.form.get('valor', type=float, default=cred.valor_bruto)
-        cred.valor_bruto = novo_valor_bruto
-        cred.desconto_tipo = request.form.get(
-            'desconto_tipo', default=cred.desconto_tipo or 'nenhum'
-        )
-        cred.desconto_valor = request.form.get(
-            'desconto_valor', type=float, default=cred.desconto_valor or 0.0
-        )
-        cred.motivo = request.form.get('motivo', default=cred.motivo or '')
-
-        new_final = float(
-            calcular_valor_final(
-                cred.valor_bruto, cred.desconto_tipo, cred.desconto_valor
-            )
-        )
-        cred.valor_final = new_final
-        delta = new_final - old_final
+        valor_bruto = request.form.get('valor', type=float, default=cred.valor_bruto)
+        desconto_tipo = request.form.get('desconto_tipo', default=cred.desconto_tipo or 'nenhum')
+        desconto_valor = request.form.get('desconto_valor', type=float, default=cred.desconto_valor or 0.0)
+        motivo = request.form.get('motivo', default=cred.motivo or '')
 
         try:
-            if abs(delta) > 1e-7:
-                atualizar_saldo_cliente(cred.cliente_id, delta)
-                ref = f'Ajuste do crédito #{cred.id}'
-                registrar_movimento(
-                    cred.cliente_id,
-                    (TIPO_ENTRADA if delta > 0 else TIPO_CONSUMO),
-                    abs(delta),
-                    referencia=ref,
-                    credito_id=cred.id
-                )
-            db.session.commit()
+            editar_credito(
+                credito_id=credito_id,
+                valor_bruto=valor_bruto,
+                desconto_tipo=desconto_tipo,
+                desconto_valor=desconto_valor,
+                motivo=motivo,
+            )
             msg = 'Crédito atualizado.'
             flash(msg, 'success')
 
             if _wants_json():
+                cred_atual = Credito.query.get(credito_id)
                 return jsonify(
                     ok=True,
                     message=msg,
-                    credito_id=cred.id,
-                    cliente_id=cred.cliente_id,
-                    valor_final=float(cred.valor_final or 0.0),
+                    credito_id=cred_atual.id,
+                    cliente_id=cred_atual.cliente_id,
+                    valor_final=float(cred_atual.valor_final or 0.0),
                 )
 
             return redirect(url_for('creditos', cliente_id=cred.cliente_id))
+
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('Erro ao editar crédito')
@@ -4672,41 +4679,75 @@ def creditos_exportar():
 
 @app.route('/creditos/cadastrar', methods=['POST'])
 def creditos_cadastrar():
+    """
+    Atalho mais simples para lançar um crédito via POST.
+
+    Espera no formulário (ou JSON):
+      - cliente_id
+      - valor
+      - desconto_tipo  (opcional, default 'nenhum')
+      - desconto_valor (opcional, default 0)
+      - motivo         (opcional)
+
+    Usa a mesma lógica de registrar_credito() e depois redireciona
+    para a tela /creditos já focada no cliente.
+    """
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cliente_id = int(request.form['cliente_id'])
-    valor_bruto = request.form['valor_bruto']
-    desconto_tipo = request.form.get('desconto_tipo', 'nenhum')
-    desconto_valor = request.form.get('desconto_valor', 0)
-    motivo = request.form.get('motivo', '')
+    # Pode vir via form ou JSON
+    data = request.form or (request.get_json(silent=True) or {})
+
+    cliente_id = data.get('cliente_id', type=int) if hasattr(data, 'get') else int(data.get('cliente_id') or 0)
+    valor_bruto = data.get('valor') or data.get('valor_bruto') or 0
+    desconto_tipo = (data.get('desconto_tipo') or 'nenhum').strip()
+    desconto_valor = data.get('desconto_valor') or 0
+    motivo = (data.get('motivo') or '').strip()
     criado_por = session.get('user_nome', 'Supervisor')
 
     try:
-        registrar_credito(
-            cliente_id,
-            valor_bruto,
-            desconto_tipo,
-            desconto_valor,
-            motivo,
-            criado_por
-        )
-        msg = 'Crédito registrado com sucesso!'
-        flash(msg)
+        valor_bruto = float(valor_bruto)
+    except Exception:
+        valor_bruto = 0.0
 
+    try:
+        desconto_valor = float(desconto_valor)
+    except Exception:
+        desconto_valor = 0.0
+
+    if not cliente_id or valor_bruto <= 0:
+        msg = 'Informe cliente e um valor de crédito maior que zero.'
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 400
+        flash(msg, 'danger')
+        return redirect(url_for('creditos'))
+
+    try:
+        registrar_credito(
+            cliente_id=cliente_id,
+            valor_bruto=valor_bruto,
+            desconto_tipo=desconto_tipo,
+            desconto_valor=desconto_valor,
+            motivo=motivo,
+            criado_por=criado_por
+        )
+        msg = 'Crédito cadastrado com sucesso.'
         if _wants_json():
             return jsonify(ok=True, message=msg, cliente_id=cliente_id)
+
+        flash(msg, 'success')
+        return redirect(url_for('creditos', cliente_id=cliente_id))
+
     except Exception as e:
         db.session.rollback()
-        current_app.logger.exception('Erro ao registrar crédito')
-        msg = f'Erro ao registrar crédito: {e.__class__.__name__}'
-        flash(msg, 'danger')
-
+        current_app.logger.exception('Erro ao cadastrar crédito')
+        msg = f'Erro ao cadastrar crédito: {e.__class__.__name__}'
         if _wants_json():
             return jsonify(ok=False, message=msg), 500
 
-    return redirect(url_for('creditos'))
-
+        flash(msg, 'danger')
+        return redirect(url_for('creditos'))
+        
 
 @app.route('/cliente/<int:cliente_id>/credito')
 def cliente_credito(cliente_id):
@@ -4753,33 +4794,32 @@ def cliente_credito(cliente_id):
 
     return render_or_string("credito_cliente.html", """
 <!doctype html>
-<html lang="pt-BR"><head>
-<meta charset="utf-8">
-<title>Extrato de Crédito — {{ cliente.nome }}</title>
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<style>
-body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f3f4ff;color:#0f172a}
-.wrap{max-width:1100px;margin:0 auto;padding:18px}
-.card{background:#ffffff;border:1px solid #d0ddff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
-h1{margin:0 0 6px;font-size:1.4rem}
-.sub{font-size:.9rem;color:#64748b;margin-bottom:10px}
-.chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
-.chip{border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;border:1px solid #d0ddff;background:#e5edff;color:#1e3a8a}
-.chip.good{background:#dcfce7;border-color:#bbf7d0;color:#166534}
-.chip.bad{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
-.table-wrap{overflow:auto;border-radius:12px;border:1px solid #d0ddff;max-height:520px;background:#fff}
-table{width:100%;border-collapse:collapse;font-size:13.5px}
-th,td{padding:8px;border-bottom:1px solid #e2e8f0}
-th{position:sticky;top:0;background:#1e3a8a;color:#e5edff;text-align:left;z-index:1}
-tbody tr:nth-child(even) td{background:#f8fafc}
-.money{font-weight:900}
-.tag-credito{color:#16a34a;font-weight:700}
-.tag-debito{color:#dc2626;font-weight:700}
-.actions{margin-top:10px;display:flex;gap:8px;flex-wrap:wrap}
-.btn{display:inline-flex;align-items:center;justify-content:center;padding:8px 12px;font-size:.85rem;font-weight:800;border-radius:999px;text-decoration:none;border:1px solid #1d4ed8;color:#1d4ed8;background:#e0ebff}
-.btn.primary{background:#1d4ed8;color:#e5edff}
-</style>
-</head><body>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Extrato de Crédito — {{ cliente.nome }}</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;margin:0;background:#f3f4ff;color:#0f172a}
+    .wrap{max-width:1100px;margin:0 auto;padding:18px}
+    .card{background:#ffffff;border:1px solid #d0ddff;border-radius:14px;padding:14px 16px;box-shadow:0 6px 20px rgba(15,23,42,.08)}
+    h1{margin:0 0 6px;font-size:1.4rem}
+    .sub{font-size:.9rem;color:#64748b;margin-bottom:10px}
+    .chips{display:flex;flex-wrap:wrap;gap:8px;margin:8px 0 14px}
+    .chip{border-radius:999px;padding:6px 10px;font-size:.8rem;font-weight:800;border:1px solid #d0ddff;background:#e5edff;color:#1e3a8a}
+    .chip.good{background:#dcfce7;border-color:#bbf7d0;color:#166534}
+    .chip.bad{background:#fee2e2;border-color:#fecaca;color:#b91c1c}
+    .table-wrap{overflow:auto;border-radius:12px;border:1px solid #d0ddff;max-height:520px;background:#fff}
+    table{width:100%;border-collapse:collapse;font-size:13.5px}
+    th,td{padding:8px;border-bottom:1px solid #e2e8f0}
+    th{position:sticky;top:0;background:#1e3a8a;color:#e5edff;text-align:left;z-index:1}
+    tbody tr:nth-child(even) td{background:#f8fafc}
+    .money{font-weight:900}
+    .tag-credito{color:#16a34a;font-weight:700}
+    .tag-debito{color:#dc2626;font-weight:700}
+  </style>
+</head>
+<body>
   <div class="wrap">
     <div class="card">
       <h1>Extrato de crédito — {{ cliente.nome }}</h1>
@@ -4835,14 +4875,16 @@ tbody tr:nth-child(even) td{background:#f8fafc}
                 </td>
                 <td>
                   {% if m.tipo == 'credito' %}
-                    <span class="tag-credito">Crédito</span>
+                    <span class="tag-credito">CRÉDITO</span>
+                  {% elif m.tipo == 'debito' %}
+                    <span class="tag-debito">DÉBITO</span>
                   {% else %}
-                    <span class="tag-debito">Débito</span>
+                    {{ m.tipo }}
                   {% endif %}
                 </td>
                 <td>{{ m.referencia or '-' }}</td>
-                <td class="money">
-                  R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
+                <td>
+                  R$ {{ '%.2f'|format(m.valor or 0.0)|replace('.', ',') }}
                 </td>
                 <td>
                   {% if m.entrega_id %}
@@ -4850,43 +4892,33 @@ tbody tr:nth-child(even) td{background:#f8fafc}
                   {% elif m.credito_id %}
                     Crédito #{{ m.credito_id }}
                   {% else %}
-                    —
+                    -
                   {% endif %}
                 </td>
               </tr>
-            {% endfor %}
-            {% if movs|length == 0 %}
+            {% else %}
               <tr>
-                <td colspan="5" style="text-align:center;opacity:.7;padding:16px">
-                  Nenhuma movimentação de crédito para este cliente.
+                <td colspan="5" style="text-align:center;padding:12px;color:#6b7280;">
+                  Nenhuma movimentação encontrada.
                 </td>
               </tr>
-            {% endif %}
+            {% endfor %}
           </tbody>
         </table>
       </div>
 
-      <div class="actions">
-        <a class="btn" href="{{ url_for('creditos', cliente_id=cliente.id) }}">
-          Voltar para créditos
-        </a>
-        <a class="btn primary"
-           href="{{ url_for('creditos_exportar', cliente_id=cliente.id) }}">
-          Exportar créditos em Excel
-        </a>
+      <div style="margin-top:10px;font-size:.8rem;color:#6b7280;">
+        <a href="{{ url_for('creditos', cliente_id=cliente.id) }}">&larr; Voltar à tela de créditos</a>
       </div>
     </div>
   </div>
-</body></html>
-""",
-        cliente=cli,
-        movs=movs,
-        saldo_atual=saldo_atual,
-        total_creditos=total_creditos,
-        total_debitos=total_debitos,
-        to_brasilia=to_brasilia
-    )
-
+</body>
+</html>
+""", cliente=cli, movs=movs,
+           saldo_atual=saldo_atual,
+           total_creditos=total_creditos,
+           total_debitos=total_debitos,
+           to_brasilia=to_brasilia)
 
 @app.route('/creditos/movimento/novo', methods=['POST'])
 def credmov_novo():
@@ -6053,27 +6085,26 @@ def criar_bd():
 
         db.session.commit()
 
-
 criar_bd()
 
 # =========================================================
 # EVENTOS SOCKET.IO (TEMPO REAL)
 # =========================================================
 
+from flask import request
+
+# Conexão do cliente
 @socketio.on("connect")
-def handle_connect():
-    if current_user.is_authenticated:
-        print(f"Usuário conectado via Socket.IO: {current_user.id}")
-    else:
-        print("Cliente anônimo conectado via Socket.IO")
+def handle_connect(auth=None):
+    # Aqui você pode receber infos de auth se mandar pelo front
+    print(f"Cliente conectado via Socket.IO: sid={request.sid}, auth={auth}")
 
 
+# Desconexão do cliente
 @socketio.on("disconnect")
-def handle_disconnect():
-    if current_user.is_authenticated:
-        print(f"Usuário desconectado do Socket.IO: {current_user.id}")
-    else:
-        print("Cliente anônimo desconectado do Socket.IO")
+def handle_disconnect(reason=None):
+    # O Socket.IO passa 1 argumento (normalmente o 'reason'), por isso reason=None
+    print(f"Cliente desconectado do Socket.IO: sid={request.sid}, reason={reason}")
 
 
 @socketio.on("entrar_sala")
@@ -6081,12 +6112,15 @@ def handle_entrar_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456"
+        "sala": "entrega_123" ou "chat_456",
+        "usuario_id": 123  # opcional, se você quiser identificar quem entrou
     }
     """
     sala = data.get("sala")
     if not sala:
         return
+
+    usuario_id = data.get("usuario_id")
 
     join_room(sala)
 
@@ -6096,7 +6130,7 @@ def handle_entrar_sala(data):
         {
             "tipo": "entrada",
             "sala": sala,
-            "usuario": getattr(current_user, "id", None),
+            "usuario": usuario_id,
         },
         room=sala,
     )
@@ -6107,12 +6141,15 @@ def handle_sair_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456"
+        "sala": "entrega_123" ou "chat_456",
+        "usuario_id": 123  # opcional
     }
     """
     sala = data.get("sala")
     if not sala:
         return
+
+    usuario_id = data.get("usuario_id")
 
     leave_room(sala)
 
@@ -6121,7 +6158,7 @@ def handle_sair_sala(data):
         {
             "tipo": "saida",
             "sala": sala,
-            "usuario": getattr(current_user, "id", None),
+            "usuario": usuario_id,
         },
         room=sala,
     )
@@ -6133,8 +6170,8 @@ def handle_nova_mensagem(data):
     data esperado (exemplo):
     {
         "sala": "entrega_123",
-        "remetente_id": 1,
-        "remetente_tipo": "cliente" / "admin" / "motoboy",
+        "remetente_id": 1,                    # id de quem mandou
+        "remetente_tipo": "cliente"/"admin"/"motoboy",
         "texto": "Olá, estou a caminho",
         "extra": {...}   # opcional
     }
@@ -6148,7 +6185,7 @@ def handle_nova_mensagem(data):
     payload = {
         "sala": sala,
         "texto": texto,
-        "remetente_id": data.get("remetente_id", getattr(current_user, "id", None)),
+        "remetente_id": data.get("remetente_id"),
         "remetente_tipo": data.get("remetente_tipo"),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "extra": data.get("extra") or {},
@@ -6186,10 +6223,12 @@ def handle_atualizar_entrega(data):
         room=f"entrega_{entrega_id}",
     )
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     with app.app_context():
         db.create_all()
-    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
+    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
+
 
 
 
