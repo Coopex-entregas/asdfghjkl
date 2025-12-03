@@ -63,30 +63,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 
 db = SQLAlchemy(app)
 
-# =========================================================
-# FLASK-LOGIN / LOGIN MANAGER
-# =========================================================
-login_manager = LoginManager()
-login_manager.init_app(app)
-
-# nome da view/rota que mostra a tela de login
-# (ajuste se sua função de login tiver outro endpoint, tipo 'login_admin')
-login_manager.login_view = 'login'
-
-
-@login_manager.user_loader
-def load_user(user_id):
-    """
-    Função usada pelo Flask-Login para carregar o usuário
-    a partir do ID salvo na sessão.
-    Importa o modelo aqui dentro para evitar problemas de import circular.
-    """
-    from models import Usuario  # importa só quando necessário
-    try:
-        return Usuario.query.get(int(user_id))
-    except (ValueError, TypeError):
-        return None
-
 # Fuso Brasil
 BRAZIL_TZ = pytz.timezone('America/Sao_Paulo')
 
@@ -900,26 +876,26 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         criado_por=criado_por or "Supervisor"
     )
     db.session.add(c)
-    db.session.flush()  # garante c.id
+    db.session.flush()
 
-    # 👇 AQUI SIM: movimento de CRÉDITO correspondente a esse lançamento
     mov = CreditoMovimento(
-        credito_id=c.id,
         cliente_id=cli.id,
         tipo="credito",
         valor=float(valor_final),
         referencia=f"Crédito #{c.id}",
+        credito_id=c.id
     )
     db.session.add(mov)
     db.session.commit()
 
-    # Recalcula saldo a partir de TODOS os movimentos (incluindo este crédito)
+    # Recalcula saldo a partir de TODOS os movimentos
     novo_saldo = atualizar_saldo_credito_cliente(cli.id)
 
     c.saldo_depois = float(novo_saldo)
     db.session.add(c)
     db.session.commit()
     return c
+
 
 def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
                    desconto_valor, motivo: str = ""):
@@ -1024,7 +1000,6 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
       tipo="debito",
       valor=float(consumir_val),
       referencia=f"Entrega #{e.id}",
-      entrega_id=e.id,   # 👈 AQUI SIM: vínculo da movimentação com a entrega
     )
     db.session.add(mov)
     db.session.commit()
@@ -2889,6 +2864,8 @@ def cooperado_aceitar_entrega():
 
 
 # Recusar entrega (via URL com <id>)
+from flask import request, jsonify, session
+
 @app.route("/cooperado/recusar_entrega", methods=["POST"])
 def cooperado_recusar_entrega():
     if session.get("user_id") is None or session.get("is_admin"):
@@ -3084,6 +3061,9 @@ ULTIMO_SOCORRO = None
 
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
+    """
+    Endpoint chamado pelo formulário de socorro do painel do cooperado.
+    """
     global ULTIMO_SOCORRO
 
     data = request.get_json() or {}
@@ -3093,22 +3073,27 @@ def cooperado_socorro():
     if not tipo:
         return jsonify({"ok": False, "error": "Tipo de socorro não informado."}), 400
 
+    # pega info básica do cooperado logado (ajusta conforme seu sistema)
     cooperado_id = session.get("user_id")
     cooperado_nome = session.get("user_nome", "Cooperado")
 
-    agora_brt = datetime.now(BRAZIL_TZ)
-
+    # monta o objeto do socorro
     ULTIMO_SOCORRO = {
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
-        # o que o admin_novo_socorro espera:
-        "mensagem": f"{tipo}: {detalhes}" if detalhes else tipo,
-        "momento": agora_brt.strftime("%d/%m/%Y %H:%M"),
-        "timestamp": datetime.utcnow().isoformat(),
-        "lido": False,
+        "tipo": tipo,
+        "detalhes": detalhes,
+        "timestamp": datetime.utcnow().isoformat()
     }
 
-    socketio.emit("socorro_novo", ULTIMO_SOCORRO, broadcast=True)
+    # dispara para todos os admins conectados via Socket.IO
+    socketio.emit(
+        "socorro_novo",
+        ULTIMO_SOCORRO,
+        broadcast=True  # ou para um room específico, se você usar salas
+    )
+
+    # aqui, se quiser, você também pode salvar isso em uma tabela Socorro no banco
 
     return jsonify({"ok": True})
 
@@ -6068,26 +6053,27 @@ def criar_bd():
 
         db.session.commit()
 
+
 criar_bd()
 
 # =========================================================
 # EVENTOS SOCKET.IO (TEMPO REAL)
 # =========================================================
 
-from flask import request
-
-# Conexão do cliente
 @socketio.on("connect")
-def handle_connect(auth=None):
-    # Aqui você pode receber infos de auth se mandar pelo front
-    print(f"Cliente conectado via Socket.IO: sid={request.sid}, auth={auth}")
+def handle_connect():
+    if current_user.is_authenticated:
+        print(f"Usuário conectado via Socket.IO: {current_user.id}")
+    else:
+        print("Cliente anônimo conectado via Socket.IO")
 
 
-# Desconexão do cliente
 @socketio.on("disconnect")
-def handle_disconnect(reason=None):
-    # O Socket.IO passa 1 argumento (normalmente o 'reason'), por isso reason=None
-    print(f"Cliente desconectado do Socket.IO: sid={request.sid}, reason={reason}")
+def handle_disconnect():
+    if current_user.is_authenticated:
+        print(f"Usuário desconectado do Socket.IO: {current_user.id}")
+    else:
+        print("Cliente anônimo desconectado do Socket.IO")
 
 
 @socketio.on("entrar_sala")
@@ -6095,15 +6081,12 @@ def handle_entrar_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456",
-        "usuario_id": 123  # opcional, se você quiser identificar quem entrou
+        "sala": "entrega_123" ou "chat_456"
     }
     """
     sala = data.get("sala")
     if not sala:
         return
-
-    usuario_id = data.get("usuario_id")
 
     join_room(sala)
 
@@ -6113,7 +6096,7 @@ def handle_entrar_sala(data):
         {
             "tipo": "entrada",
             "sala": sala,
-            "usuario": usuario_id,
+            "usuario": getattr(current_user, "id", None),
         },
         room=sala,
     )
@@ -6124,15 +6107,12 @@ def handle_sair_sala(data):
     """
     data esperado:
     {
-        "sala": "entrega_123" ou "chat_456",
-        "usuario_id": 123  # opcional
+        "sala": "entrega_123" ou "chat_456"
     }
     """
     sala = data.get("sala")
     if not sala:
         return
-
-    usuario_id = data.get("usuario_id")
 
     leave_room(sala)
 
@@ -6141,7 +6121,7 @@ def handle_sair_sala(data):
         {
             "tipo": "saida",
             "sala": sala,
-            "usuario": usuario_id,
+            "usuario": getattr(current_user, "id", None),
         },
         room=sala,
     )
@@ -6153,8 +6133,8 @@ def handle_nova_mensagem(data):
     data esperado (exemplo):
     {
         "sala": "entrega_123",
-        "remetente_id": 1,                    # id de quem mandou
-        "remetente_tipo": "cliente"/"admin"/"motoboy",
+        "remetente_id": 1,
+        "remetente_tipo": "cliente" / "admin" / "motoboy",
         "texto": "Olá, estou a caminho",
         "extra": {...}   # opcional
     }
@@ -6168,7 +6148,7 @@ def handle_nova_mensagem(data):
     payload = {
         "sala": sala,
         "texto": texto,
-        "remetente_id": data.get("remetente_id"),
+        "remetente_id": data.get("remetente_id", getattr(current_user, "id", None)),
         "remetente_tipo": data.get("remetente_tipo"),
         "timestamp": datetime.now().isoformat(timespec="seconds"),
         "extra": data.get("extra") or {},
@@ -6206,12 +6186,10 @@ def handle_atualizar_entrega(data):
         room=f"entrega_{entrega_id}",
     )
 
-
-if __name__ == "__main__":
+if __name__ == '__main__':
     with app.app_context():
         db.create_all()
-    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
+    socketio.run(app, host='0.0.0.0', port=int(os.environ.get("PORT", 5000)))
 
 
 
