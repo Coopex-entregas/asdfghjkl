@@ -6067,7 +6067,6 @@ def criar_bd():
 
         db.session.commit()
 
-
 criar_bd()
 
 # =========================================================
@@ -6079,7 +6078,7 @@ def handle_connect(auth=None):
     # só como exemplo de log
     print(f"Socket conectado: sid={request.sid}, auth={auth}")
     else:
-        print("Cliente anônimo conectado via Socket.IO")
+    print("Cliente anônimo conectado via Socket.IO")
 
 
 @socketio.on('disconnect')
