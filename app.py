@@ -388,32 +388,80 @@ class Entrega(db.Model):
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
 # =========================================================
-def emitir_atualizacao_entrega(entrega, acao: str):
+def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
     """
     Emite para todos os painéis (admin, cooperado, rastreamento) que
     uma entrega foi criada / editada / excluída / status alterado.
+
+    Evento Socket.IO: 'entrega_atualizada'
     """
     if not entrega:
         return
 
     try:
+        payload = {
+            "id": entrega.id,
+            "acao": acao,  # 'criada', 'editada', 'excluida', etc.
+            "cliente": entrega.cliente,
+            "bairro": entrega.bairro,
+            "valor": float(entrega.valor or 0),
+            "status": entrega.status,
+            "status_pagamento": entrega.status_pagamento,
+            "pagamento": entrega.pagamento,
+            "cooperado_id": entrega.cooperado_id,
+            "cooperado_nome": entrega.cooperado.nome if entrega.cooperado else None,
+            "data_envio": (
+                to_brasilia(entrega.data_envio).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_envio else None
+            ),
+            "data_atribuida": (
+                to_brasilia(entrega.data_atribuida).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_atribuida else None
+            ),
+        }
+
+        # Evento específico para os painéis de entregas
         socketio.emit(
-    'posicao_motoboy_atualizada',
-    {
-        'id': cooperado.id,
-        'nome': cooperado.nome,
-        'lat': lat,
-        'lng': lng,
-        'online': True,
-        'velocidade': velocidade,
-        'ultima_atualizacao': ultima_str,
-    }
-    # sem broadcast: por padrão o Socket.IO já manda pra todos
-)
+            "entrega_atualizada",
+            payload,
+            broadcast=True
+        )
+
     except Exception as e:
         # não quebra o fluxo se der problema no websocket
         try:
             current_app.logger.warning(f'Falha ao emitir entrega_atualizada: {e}')
+        except Exception:
+            pass
+
+def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocidade=None):
+    """
+    Emite a posição atual do motoboy para os painéis (mapa, cards, etc).
+    Evento: 'posicao_motoboy_atualizada'
+    """
+    try:
+        ultima_str = ""
+        if cooperado.last_ping:
+            ultima_str = to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
+
+        payload = {
+            'id': cooperado.id,
+            'nome': cooperado.nome,
+            'lat': float(lat),
+            'lng': float(lng),
+            'online': bool(getattr(cooperado, "online", True)),
+            'velocidade': float(velocidade) if velocidade is not None else None,
+            'ultima_atualizacao': ultima_str,
+        }
+
+        socketio.emit(
+            'posicao_motoboy_atualizada',
+            payload,
+            broadcast=True
+        )
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha ao emitir posicao_motoboy_atualizada: {e}')
         except Exception:
             pass
 
@@ -2951,25 +2999,15 @@ def cooperado_atualizar_localizacao():
     except (TypeError, ValueError):
         velocidade = None
 
+    # Atualiza no banco
     cooperado.last_lat = lat
     cooperado.last_lng = lng
     cooperado.last_ping = datetime.utcnow()
     cooperado.online = True
     db.session.commit()
 
-    socketio.emit(
-    'posicao_motoboy_atualizada',
-    {
-        'id': cooperado.id,
-        'nome': cooperado.nome,
-        'lat': lat,
-        'lng': lng,
-        'online': True,
-        'velocidade': velocidade,
-        'ultima_atualizacao': ultima_str,
-    }
-    # sem broadcast: por padrão ele já manda pra todos os clientes
-)
+    # Emite evento em tempo real
+    emitir_posicao_motoboy(cooperado, lat, lng, velocidade)
 
     return jsonify({'status': 'ok'})
 
