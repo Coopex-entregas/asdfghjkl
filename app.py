@@ -40,8 +40,11 @@ app.config['SECRET_KEY'] = os.environ.get(
 )
 
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
-socketio = SocketIO(app, cors_allowed_origins="*")
-
+socketio = SocketIO(
+    app,
+    cors_allowed_origins="*",
+    async_mode="threading"  # força modo threading, sem eventlet
+)
 
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
 ADMIN_CREDENTIALS = {
