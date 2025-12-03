@@ -6076,15 +6076,15 @@ criar_bd()
 @socketio.on('connect')
 def handle_connect(auth=None):
     # só como exemplo de log
-    print(f"Socket conectado: sid={request.sid}, auth={auth}")
-    else:
-    print("Cliente anônimo conectado via Socket.IO")
+       print(f"Socket conectado: sid={request.sid}, auth={auth}")
+   else:
+       print("Cliente anônimo conectado via Socket.IO")
 
 
 @socketio.on('disconnect')
 def handle_disconnect(reason=None):
-    print(f"Socket desconectado: sid={request.sid}, reason={reason}")
-    else:
+        print(f"Socket desconectado: sid={request.sid}, reason={reason}")
+   else:
         print("Cliente anônimo desconectado do Socket.IO")
 
 
