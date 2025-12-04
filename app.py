@@ -1490,6 +1490,55 @@ def login():
         </form>
         """, now=lambda: datetime.now(BRAZIL_TZ))
 
+@app.post('/api/mobile/login_cooperado')
+def api_mobile_login_cooperado():
+    """
+    Login específico para o APP NATIVO do cooperado.
+
+    Espera JSON:
+    {
+      "usuario": "nome do cooperado (mesmo do painel)",
+      "senha": "1234"
+    }
+
+    Responde JSON:
+    {
+      "ok": true/false,
+      "msg": "...",
+      "cooperado": {...}  # se ok
+    }
+    """
+    data = request.get_json(silent=True) or {}
+    usuario = (data.get('usuario') or '').strip().lower()
+    senha = data.get('senha') or ''
+
+    # mesmo critério do login web: cooperado loga pelo NOME
+    coop = Cooperado.query.filter(func.lower(Cooperado.nome) == usuario).first()
+    if not coop or not coop.check_senha(senha):
+        return jsonify(ok=False, msg='Usuário ou senha inválidos'), 401
+
+    if not getattr(coop, 'ativo', True):
+        return jsonify(ok=False, msg='Usuário inativo. Fale com a supervisão.'), 403
+
+    # usa a mesma sessão do site (cookie), assim o app pode reaproveitar
+    session.clear()
+    session['user_id'] = coop.id
+    session['user_nome'] = coop.nome
+    session['is_admin'] = False
+    session['is_master'] = False
+    session['tipo'] = 'cooperado'
+
+    return jsonify(
+        ok=True,
+        msg='Login efetuado com sucesso.',
+        cooperado={
+            "id": coop.id,
+            "nome": coop.nome,
+            "ativo": bool(coop.ativo),
+        }
+    )
+
+
 @app.route('/logout')
 def logout():
     session.clear()
@@ -3095,6 +3144,97 @@ def cooperado_novas_corridas():
     )
     novas = q.count()
     return jsonify(ok=True, novas=novas)
+
+@app.get('/api/mobile/cooperado/corridas')
+def api_mobile_cooperado_corridas():
+    """
+    Lista as corridas em aberto / em andamento para o cooperado logado.
+    Usado pela tela principal do app nativo.
+
+    Responde JSON:
+    {
+      "ok": true,
+      "corridas": [
+        {
+          "id": ...,
+          "cliente": "...",
+          "valor": 12.34,
+          "origem_endereco": "...",
+          "origem_bairro": "...",
+          "destino_endereco": "...",
+          "destino_bairro": "...",
+          "status_corrida": "pendente"/"aceita",
+          "status": "pendente"/"em_andamento"/"entregue",
+          "status_pagamento": "pago"/"pendente"
+        },
+        ...
+      ]
+    }
+    """
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+
+    user_id = session['user_id']
+
+    base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
+
+    q = (
+        base_q
+        .filter(
+            (Entrega.status_corrida == None) |
+            (Entrega.status_corrida.in_(['pendente', 'aceita']))
+        )
+        .filter(
+            (Entrega.status == None) |
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+        )
+        .order_by(Entrega.data_envio.desc())
+    )
+
+    def _parse_json_field(raw):
+        if not raw:
+            return {}
+        if isinstance(raw, dict):
+            return raw
+        try:
+            return json.loads(raw)
+        except Exception:
+            return {}
+
+    corridas = []
+    for e in q.all():
+        origem = _parse_json_field(e.origem_json)
+        destino = _parse_json_field(e.destino_json)
+
+        origem_endereco = (
+            origem.get('endereco')
+            or origem.get('address')
+            or origem.get('bairro')
+            or e.bairro
+            or 'Origem não informada'
+        )
+        destino_endereco = (
+            destino.get('endereco')
+            or destino.get('address')
+            or destino.get('bairro')
+            or e.bairro
+            or 'Destino não informado'
+        )
+
+        corridas.append({
+            "id": e.id,
+            "cliente": e.cliente,
+            "valor": float(e.valor or 0),
+            "origem_endereco": origem_endereco,
+            "origem_bairro": origem.get('bairro') or '',
+            "destino_endereco": destino_endereco,
+            "destino_bairro": destino.get('bairro') or e.bairro,
+            "status_corrida": e.status_corrida,
+            "status": e.status,
+            "status_pagamento": e.status_pagamento,
+        })
+
+    return jsonify(ok=True, corridas=corridas)
 
 # variável global bem simples pra sinalizar um novo socorro
 ULTIMO_SOCORRO = None
@@ -6232,11 +6372,10 @@ def handle_atualizar_entrega(data):
     )
 
 
-if __name__ == "__main__":
-    with app.app_context():
-        db.create_all()
-    socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
-
+if __name__ == '__main__':
+    port = int(os.environ.get('PORT', 5000))
+    # importante rodar pelo socketio, não pelo app.run
+    socketio.run(app, host='0.0.0.0', port=port)
 
 
 
