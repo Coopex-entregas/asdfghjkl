@@ -12,7 +12,7 @@ openpyxl>=3.1
 
 Flask-SocketIO==5.3.6
 python-socketio==5.11.2
+python-engineio==4.12.3
+simple-websocket==1.1.0
 
 gunicorn==21.2.0
-
-
