@@ -928,954 +928,461 @@
 
   <!-- Socket.IO para tempo real -->
 <!-- Socket.IO para tempo real -->
+<!-- Socket.IO CLIENT (CDN) -->
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+
 <script>
-  // Socket.IO (Render + gunicorn gthread): polling é o mais estável
-  const socket = io({
-    path: "/socket.io/",
-    transports: ["polling"],
-    withCredentials: true,
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000
-  });
+  /**
+   * Socket.IO (Render + gunicorn gthread):
+   * - polling é o mais estável
+   * - withCredentials ajuda a manter sessão/cookies
+   * - guarda em window.socket para não criar 2 conexões na mesma página
+   */
+  (function () {
+    try {
+      if (window.socket && window.socket.connected !== undefined) {
+        // Já existe socket nesta página (evita duplicar)
+        return;
+      }
 
-  socket.on("connect", () => {
-    console.log("Socket conectado (polling), id:", socket.id);
-  });
+      window.socket = io({
+        path: "/socket.io/",
+        transports: ["polling"],
+        withCredentials: true,
+        reconnection: true,
+        reconnectionAttempts: Infinity,
+        reconnectionDelay: 1000
+      });
 
-  socket.on("disconnect", (reason) => {
-    console.log("Socket desconectado:", reason);
-  });
+      window.socket.on("connect", () => {
+        console.log("Socket conectado (polling), id:", window.socket.id);
+      });
 
-  socket.on("connect_error", (err) => {
-    console.error("Erro na conexão Socket.IO:", err);
-  });
+      window.socket.on("disconnect", (reason) => {
+        console.log("Socket desconectado:", reason);
+      });
+
+      window.socket.on("connect_error", (err) => {
+        console.error("Erro na conexão Socket.IO:", err);
+      });
+    } catch (e) {
+      console.error("Falha ao inicializar Socket.IO:", e);
+      window.socket = null;
+    }
+  })();
 </script>
-  <!-- JS PRINCIPAL -->
-   <script>
-    window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
-    // === Dados de motoboys para o MAPA (via JSON seguro) ===
-    window.MOTOBOYS = {{ motoboys_js | default([]) | tojson | safe }};
 
-    // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
-    function contarSemCooperado(){
-      try{
-        var rows = document.querySelectorAll('.tabela tbody tr');
-        var n = 0;
-        rows.forEach(function(tr){
-          var el = tr.querySelector('.coop-editable, .coop-dot');
-          var cid = (el && el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
-          if(!cid) n++;
-        });
-        return n;
-      }catch(e){
-        console.error(e);
-        return 0;
-      }
-    }
+<!-- JS PRINCIPAL -->
+<script>
+  // Usa o socket global (ou null)
+  const socket = window.socket || null;
 
-    function atualizarBadgeAbertas(){
-      var badge = document.getElementById('abertasBadge');
-      if(!badge) return;
-      var n = contarSemCooperado();
-      badge.textContent = n + ' em aberto';
-      badge.style.display = 'inline-flex';
-      badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
-    }
+  window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
+  // === Dados de motoboys para o MAPA (via JSON seguro) ===
+  window.MOTOBOYS = {{ motoboys_js | default([]) | tojson | safe }};
 
-    // ===== Modal/Balão bloqueante =====
-    var overlayEl   = document.getElementById('overlay');
-    var modalTitle  = document.getElementById('modal-title');
-    var modalMsg    = document.getElementById('modal-msg');
-    var modalOk     = document.getElementById('modal-ok');
-    var somPendente = document.getElementById('som-pendente');
-    var _modalResolve = null;
-
-    function abrirModal(titulo, mensagem, tocarSom) {
-      if(typeof tocarSom === 'undefined') tocarSom = false;
-      if(modalTitle) modalTitle.textContent = titulo;
-      if(modalMsg) modalMsg.textContent = mensagem;
-      if(overlayEl) overlayEl.style.display = 'flex';
-      document.body.classList.add('locked');
-      if (tocarSom && somPendente) {
-        try {
-          somPendente.currentTime = 0;
-          var p = somPendente.play();
-          if (p && p.catch) p.catch(function(){});
-        } catch(e){}
-      }
-      return new Promise(function(resolve){
-        _modalResolve = resolve;
+  // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
+  function contarSemCooperado(){
+    try{
+      var rows = document.querySelectorAll('.tabela tbody tr');
+      var n = 0;
+      rows.forEach(function(tr){
+        var el = tr.querySelector('.coop-editable, .coop-dot');
+        var cid = (el && el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
+        if(!cid) n++;
       });
+      return n;
+    }catch(e){
+      console.error(e);
+      return 0;
     }
+  }
 
-    if (modalOk){
-      modalOk.addEventListener('click', function(){
-        if(overlayEl) overlayEl.style.display = 'none';
-        document.body.classList.remove('locked');
-        if (_modalResolve) _modalResolve(true);
-        _modalResolve = null;
-      });
+  function atualizarBadgeAbertas(){
+    var badge = document.getElementById('abertasBadge');
+    if(!badge) return;
+    var n = contarSemCooperado();
+    badge.textContent = n + ' em aberto';
+    badge.style.display = 'inline-flex';
+    badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
+  }
+
+  // ===== Modal/Balão bloqueante =====
+  var overlayEl   = document.getElementById('overlay');
+  var modalTitle  = document.getElementById('modal-title');
+  var modalMsg    = document.getElementById('modal-msg');
+  var modalOk     = document.getElementById('modal-ok');
+  var somPendente = document.getElementById('som-pendente');
+  var _modalResolve = null;
+
+  function abrirModal(titulo, mensagem, tocarSom) {
+    if(typeof tocarSom === 'undefined') tocarSom = false;
+    if(modalTitle) modalTitle.textContent = titulo;
+    if(modalMsg) modalMsg.textContent = mensagem;
+    if(overlayEl) overlayEl.style.display = 'flex';
+    document.body.classList.add('locked');
+    if (tocarSom && somPendente) {
+      try {
+        somPendente.currentTime = 0;
+        var p = somPendente.play();
+        if (p && p.catch) p.catch(function(){});
+      } catch(e){}
     }
-
-    // Tema (escuro/claro) – aplica salvo no localStorage
-    (function(){
-      try{
-        var saved = localStorage.getItem('coopex_theme') || 'light';
-        if(saved === 'dark') document.body.classList.add('dark');
-        var btn = document.getElementById('btnTheme');
-        var sync = function(){
-          if(!btn) return;
-          btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro';
-        };
-        if(btn){
-          sync();
-          btn.addEventListener('click', function(){
-            document.body.classList.toggle('dark');
-            localStorage.setItem(
-              'coopex_theme',
-              document.body.classList.contains('dark') ? 'dark' : 'light'
-            );
-            sync();
-          });
-        }
-      }catch(e){}
-    })();
-
-    // Atualiza badge "X em aberto" ao carregar
-    window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
-
-    // Observa mudanças na tabela (para atualizar badge)
-    window.addEventListener('DOMContentLoaded', function(){
-      var tbody = document.querySelector('.tabela tbody');
-      if (!tbody) return;
-      var obs = new MutationObserver(function(){
-        atualizarBadgeAbertas();
-      });
-      obs.observe(tbody, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['data-cooperado-id']
-      });
+    return new Promise(function(resolve){
+      _modalResolve = resolve;
     });
+  }
 
-    // Alternar Tabela/Cartões (botão pode ser adicionado se quiser)
-    (function(){
-      var btToggle  = document.getElementById('toggleView');
-      var tbl       = document.getElementById('tbl');
-      var cardsWrap = document.getElementById('cardsWrap');
-      if (btToggle && tbl && cardsWrap){
-        btToggle.addEventListener('click', function(){
-          var showingCards = cardsWrap.style.display !== 'none';
-          cardsWrap.style.display = showingCards ? 'none' : 'block';
-          tbl.style.display       = showingCards ? 'block' : 'none';
+  if (modalOk){
+    modalOk.addEventListener('click', function(){
+      if(overlayEl) overlayEl.style.display = 'none';
+      document.body.classList.remove('locked');
+      if (_modalResolve) _modalResolve(true);
+      _modalResolve = null;
+    });
+  }
+
+  // Tema (escuro/claro) – aplica salvo no localStorage
+  (function(){
+    try{
+      var saved = localStorage.getItem('coopex_theme') || 'light';
+      if(saved === 'dark') document.body.classList.add('dark');
+      var btn = document.getElementById('btnTheme');
+      var sync = function(){
+        if(!btn) return;
+        btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro';
+      };
+      if(btn){
+        sync();
+        btn.addEventListener('click', function(){
+          document.body.classList.toggle('dark');
+          localStorage.setItem(
+            'coopex_theme',
+            document.body.classList.contains('dark') ? 'dark' : 'light'
+          );
+          sync();
         });
       }
-    })();
+    }catch(e){}
+  })();
 
-    // Preencher "nome" da fila a partir do select
-    (function(){
-      var selCoop    = document.getElementById('cooperado-espera');
-      var inpNome    = document.getElementById('nome-espera');
-      var formEspera = document.getElementById('form-espera');
+  // Atualiza badge "X em aberto" ao carregar
+  window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
 
-      if (selCoop && inpNome){
-        selCoop.addEventListener('change', function(){
+  // Observa mudanças na tabela (para atualizar badge)
+  window.addEventListener('DOMContentLoaded', function(){
+    var tbody = document.querySelector('.tabela tbody');
+    if (!tbody) return;
+    var obs = new MutationObserver(function(){
+      atualizarBadgeAbertas();
+    });
+    obs.observe(tbody, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['data-cooperado-id']
+    });
+  });
+
+  // Alternar Tabela/Cartões (botão pode ser adicionado se quiser)
+  (function(){
+    var btToggle  = document.getElementById('toggleView');
+    var tbl       = document.getElementById('tbl');
+    var cardsWrap = document.getElementById('cardsWrap');
+    if (btToggle && tbl && cardsWrap){
+      btToggle.addEventListener('click', function(){
+        var showingCards = cardsWrap.style.display !== 'none';
+        cardsWrap.style.display = showingCards ? 'none' : 'block';
+        tbl.style.display       = showingCards ? 'block' : 'none';
+      });
+    }
+  })();
+
+  // Preencher "nome" da fila a partir do select
+  (function(){
+    var selCoop    = document.getElementById('cooperado-espera');
+    var inpNome    = document.getElementById('nome-espera');
+    var formEspera = document.getElementById('form-espera');
+
+    if (selCoop && inpNome){
+      selCoop.addEventListener('change', function(){
+        var opt  = selCoop.options[selCoop.selectedIndex];
+        var nome = opt ? (opt.text || '') : '';
+        if (!inpNome.value) inpNome.value = nome;
+      });
+    }
+    if (formEspera && selCoop && inpNome){
+      formEspera.addEventListener('submit', function(){
+        if (!inpNome.value) {
           var opt  = selCoop.options[selCoop.selectedIndex];
           var nome = opt ? (opt.text || '') : '';
-          if (!inpNome.value) inpNome.value = nome;
-        });
-      }
-      if (formEspera && selCoop && inpNome){
-        formEspera.addEventListener('submit', function(){
-          if (!inpNome.value) {
-            var opt  = selCoop.options[selCoop.selectedIndex];
-            var nome = opt ? (opt.text || '') : '';
-            inpNome.value = nome;
-          }
-        });
-      }
-    })();
+          inpNome.value = nome;
+        }
+      });
+    }
+  })();
 
-    // Drag & drop da fila de espera
-    (function(){
-      var ulFila = document.getElementById('espera-lista');
-      var dragEl = null;
+  // Drag & drop da fila de espera
+  (function(){
+    var ulFila = document.getElementById('espera-lista');
+    var dragEl = null;
 
-      function renumerar(){
-        var nums = ulFila ? ulFila.querySelectorAll('.espera-chip-num') : [];
-        nums.forEach(function(el, i){ el.textContent = i+1; });
-      }
-      function salvarOrdem(){
-        if(!ulFila) return;
-        var ids = [].map.call(
-          ulFila.querySelectorAll('.espera-chip'),
-          function(li){ return li.dataset.id; }
-        );
-        fetch('/lista_espera/reordenar',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ordem:ids})
-        }).catch(function(){});
-      }
+    function renumerar(){
+      var nums = ulFila ? ulFila.querySelectorAll('.espera-chip-num') : [];
+      nums.forEach(function(el, i){ el.textContent = i+1; });
+    }
+    function salvarOrdem(){
+      if(!ulFila) return;
+      var ids = [].map.call(
+        ulFila.querySelectorAll('.espera-chip'),
+        function(li){ return li.dataset.id; }
+      );
+      fetch('/lista_espera/reordenar',{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({ordem:ids})
+      }).catch(function(){});
+    }
 
-      if(ulFila){
-        ulFila.addEventListener('dragstart', function(e){
-          var li = e.target.closest('.espera-chip');
-          if(!li) return;
-          dragEl = li;
-          li.style.opacity = 0.6;
-        });
-        ulFila.addEventListener('dragend', function(e){
-          var li = e.target.closest('.espera-chip');
-          if(!li) return;
-          li.style.opacity = 1;
-          dragEl = null;
-          salvarOrdem();
-        });
-        ulFila.addEventListener('dragover', function(e){
-          e.preventDefault();
-          var li = e.target.closest('.espera-chip');
-          if(!li || li === dragEl) return;
-          var r     = li.getBoundingClientRect();
-          var after = (e.clientY - r.top) > (r.height / 2);
-          if(after) li.after(dragEl); else li.before(dragEl);
-          renumerar();
-        });
-      }
-    })();
+    if(ulFila){
+      ulFila.addEventListener('dragstart', function(e){
+        var li = e.target.closest('.espera-chip');
+        if(!li) return;
+        dragEl = li;
+        li.style.opacity = 0.6;
+      });
+      ulFila.addEventListener('dragend', function(e){
+        var li = e.target.closest('.espera-chip');
+        if(!li) return;
+        li.style.opacity = 1;
+        dragEl = null;
+        salvarOrdem();
+      });
+      ulFila.addEventListener('dragover', function(e){
+        e.preventDefault();
+        var li = e.target.closest('.espera-chip');
+        if(!li || li === dragEl) return;
+        var r     = li.getBoundingClientRect();
+        var after = (e.clientY - r.top) > (r.height / 2);
+        if(after) li.after(dragEl); else li.before(dragEl);
+        renumerar();
+      });
+    }
+  })();
 
-    // Clique nos status (AJAX: pagamento / entrega)
-    document.addEventListener('click', function(ev){
-      var st = ev.target.closest
-        ? ev.target.closest('.js-toggle-pagto, .js-toggle-entrega')
-        : null;
-      if(!st) return;
+  // Clique nos status (AJAX: pagamento / entrega)
+  document.addEventListener('click', function(ev){
+    var st = ev.target.closest
+      ? ev.target.closest('.js-toggle-pagto, .js-toggle-entrega')
+      : null;
+    if(!st) return;
 
-      var form = st.closest ? st.closest('form') : null;
-      if(!form) return;
+    var form = st.closest ? st.closest('form') : null;
+    if(!form) return;
 
-      var confirmar = st.classList.contains('js-toggle-pagto')
-        ? 'Confirmar pagamento como PAGO?'
-        : 'Confirmar entrega como ENTREGUE?';
-      if(!confirm(confirmar)) return;
+    var confirmar = st.classList.contains('js-toggle-pagto')
+      ? 'Confirmar pagamento como PAGO?'
+      : 'Confirmar entrega como ENTREGUE?';
+    if(!confirm(confirmar)) return;
 
-      ev.preventDefault();
+    ev.preventDefault();
+    try{
+      var fd = new FormData(form);
+      fetch(form.action, {
+        method:'POST',
+        body:fd,
+        headers:{'X-Requested-With':'fetch'}
+      }).then(function(res){
+        if(!res.ok) throw new Error('Falha ao atualizar.');
+        if(st.classList.contains('js-toggle-pagto')){
+          st.classList.remove('bad'); st.classList.add('good');
+          st.textContent='Pago'; st.title='Pagamento quitado';
+        }else{
+          st.classList.remove('bad'); st.classList.add('good');
+          st.textContent='Entregue'; st.title='Entrega finalizada';
+        }
+      }).catch(function(e){
+        console.error(e);
+        alert('Não foi possível atualizar agora.');
+      });
+    }catch(e){
+      console.error(e);
+      alert('Não foi possível atualizar agora.');
+    }
+  });
+
+  // Preservar scroll da tabela / cards
+  (function(){
+    var tblArea   = document.getElementById('tbl');
+    var cardsArea = document.getElementById('cardsWrap');
+    var KEY_T='scroll_tbl', KEY_C='scroll_cards';
+    if(tblArea){
+      var s = sessionStorage.getItem(KEY_T);
+      if(s) tblArea.scrollTop = +s || 0;
+      tblArea.addEventListener('scroll', function(){
+        sessionStorage.setItem(KEY_T, tblArea.scrollTop);
+      });
+    }
+    if(cardsArea){
+      var s2 = sessionStorage.getItem(KEY_C);
+      if(s2) cardsArea.scrollTop = +s2 || 0;
+      cardsArea.addEventListener('scroll', function(){
+        sessionStorage.setItem(KEY_C, cardsArea.scrollTop);
+      });
+    }
+  })();
+
+  // ===== Edição rápida do cooperado (click no nome) =====
+  document.addEventListener('click', function(ev){
+    var el = ev.target.closest ? ev.target.closest('.coop-editable') : null;
+    if(!el) return;
+
+    var idEntrega = el.dataset ? el.dataset.id : '';
+    var atual     = (el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
+
+    var sel = document.createElement('select');
+    sel.style.background   ='#0a1f7e';
+    sel.style.color        ='#fff';
+    sel.style.border       ='1px solid #2f4de6';
+    sel.style.borderRadius ='8px';
+    sel.style.padding      ='4px 6px';
+    sel.style.fontWeight   ='800';
+
+    var opt0 = document.createElement('option');
+    opt0.value=''; opt0.textContent='Sem Cooperado';
+    sel.appendChild(opt0);
+
+    (window.COOPERADOS || []).forEach(function(c){
+      var o  = document.createElement('option');
+      o.value=c.id;
+      o.textContent=c.nome;
+      if(String(c.id)===String(atual)) o.selected=true;
+      sel.appendChild(o);
+    });
+
+    el.parentNode.replaceChild(sel, el);
+    sel.focus();
+
+    function salvar(){
+      var coopId = sel.value || '';
       try{
-        var fd = new FormData(form);
-        fetch(form.action, {
+        var url = '/atribuir_cooperado/' + idEntrega;
+        var fd  = new FormData();
+        fd.append('cooperado_id', coopId);
+        fd.append('notificar_painel', '1');
+
+        fetch(url,{
           method:'POST',
           body:fd,
           headers:{'X-Requested-With':'fetch'}
-        }).then(function(res){
-          if(!res.ok) throw new Error('Falha ao atualizar.');
-          if(st.classList.contains('js-toggle-pagto')){
-            st.classList.remove('bad'); st.classList.add('good');
-            st.textContent='Pago'; st.title='Pagamento quitado';
-          }else{
-            st.classList.remove('bad'); st.classList.add('good');
-            st.textContent='Entregue'; st.title='Entrega finalizada';
-          }
-        }).catch(function(e){
-          console.error(e);
-          alert('Não foi possível atualizar agora.');
-        });
+        }).catch(function(e){ console.error(e); });
       }catch(e){
         console.error(e);
-        alert('Não foi possível atualizar agora.');
       }
-    });
 
-    // Preservar scroll da tabela / cards
-    (function(){
-      var tblArea   = document.getElementById('tbl');
-      var cardsArea = document.getElementById('cardsWrap');
-      var KEY_T='scroll_tbl', KEY_C='scroll_cards';
-      if(tblArea){
-        var s = sessionStorage.getItem(KEY_T);
-        if(s) tblArea.scrollTop = +s || 0;
-        tblArea.addEventListener('scroll', function(){
-          sessionStorage.setItem(KEY_T, tblArea.scrollTop);
+      var span = document.createElement('span');
+      var tem  = !!sel.value;
+      span.className          = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
+      span.dataset.id         = idEntrega;
+      span.dataset.cooperadoId= sel.value;
+      span.title              = tem? 'Atribuído':'Sem cooperado';
+
+      var nome = 'Sem Cooperado';
+      if(tem){
+        var found = (window.COOPERADOS || []).find(function(x){
+          return String(x.id)===String(sel.value);
         });
+        if(found && found.nome) nome = found.nome;
       }
-      if(cardsArea){
-        var s2 = sessionStorage.getItem(KEY_C);
-        if(s2) cardsArea.scrollTop = +s2 || 0;
-        cardsArea.addEventListener('scroll', function(){
-          sessionStorage.setItem(KEY_C, cardsArea.scrollTop);
-        });
-      }
-    })();
+      span.textContent = nome;
 
-    // ===== Edição rápida do cooperado (click no nome) =====
-    // Ao salvar, o backend recebe a entrega na rota /atribuir_cooperado/<id>
-    // e o painel do cooperado passa a enxergar essa entrega (filtrando por cooperado_id).
-    document.addEventListener('click', function(ev){
-      var el = ev.target.closest ? ev.target.closest('.coop-editable') : null;
-      if(!el) return;
+      sel.parentNode.replaceChild(span, sel);
 
-      var idEntrega = el.dataset ? el.dataset.id : '';
-      var atual     = (el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
-
-      var sel = document.createElement('select');
-      sel.style.background   ='#0a1f7e';
-      sel.style.color        ='#fff';
-      sel.style.border       ='1px solid #2f4de6';
-      sel.style.borderRadius ='8px';
-      sel.style.padding      ='4px 6px';
-      sel.style.fontWeight   ='800';
-
-      var opt0 = document.createElement('option');
-      opt0.value=''; opt0.textContent='Sem Cooperado';
-      sel.appendChild(opt0);
-
-      (window.COOPERADOS || []).forEach(function(c){
-        var o  = document.createElement('option');
-        o.value=c.id;
-        o.textContent=c.nome;
-        if(String(c.id)===String(atual)) o.selected=true;
-        sel.appendChild(o);
-      });
-
-      el.parentNode.replaceChild(sel, el);
-      sel.focus();
-
-      function salvar(){
-        var coopId = sel.value || '';
-        try{
-          var url = '/atribuir_cooperado/' + idEntrega;
-          var fd  = new FormData();
-          fd.append('cooperado_id', coopId);
-          // Campo extra caso queira usar no Flask para acionar lógica específica
-          fd.append('notificar_painel', '1');
-
-          fetch(url,{
-            method:'POST',
-            body:fd,
-            headers:{'X-Requested-With':'fetch'}
-          }).catch(function(e){ console.error(e); });
-        }catch(e){
-          console.error(e);
-        }
-
-        var span = document.createElement('span');
-        var tem  = !!sel.value;
-        span.className          = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
-        span.dataset.id         = idEntrega;
-        span.dataset.cooperadoId= sel.value;
-        span.title              = tem? 'Atribuído':'Sem cooperado';
-
-        var nome = 'Sem Cooperado';
+      var tr  = span.closest ? span.closest('tr') : null;
+      var dot = tr ? tr.querySelector('.id-with-dot .status-dot') : null;
+      if(dot){
         if(tem){
-          var found = (window.COOPERADOS || []).find(function(x){
-            return String(x.id)===String(sel.value);
-          });
-          if(found && found.nome) nome = found.nome;
+          dot.classList.add('ok');
+          dot.classList.remove('no');
+        }else{
+          dot.classList.add('no');
+          dot.classList.remove('ok');
         }
-        span.textContent = nome;
-
-        sel.parentNode.replaceChild(span, sel);
-
-        var tr  = span.closest ? span.closest('tr') : null;
-        var dot = tr ? tr.querySelector('.id-with-dot .status-dot') : null;
-        if(dot){
-          if(tem){
-            dot.classList.add('ok');
-            dot.classList.remove('no');
-          }else{
-            dot.classList.add('no');
-            dot.classList.remove('ok');
-          }
-        }
-        if (typeof atualizarBadgeAbertas === 'function') atualizarBadgeAbertas();
       }
+      if (typeof atualizarBadgeAbertas === 'function') atualizarBadgeAbertas();
+    }
 
-      sel.addEventListener('change', salvar);
-      sel.addEventListener('blur', function(){
-        salvar();
-      }, { once: true });
-    });
+    sel.addEventListener('change', salvar);
+    sel.addEventListener('blur', function(){
+      salvar();
+    }, { once: true });
+  });
 
-    // ========================
-    // TEMPO REAL (SOCKET.IO)
-    // ========================
+  // ========================
+  // TEMPO REAL (SOCKET.IO)
+  // ========================
 
-    // Atualiza/insere uma linha de entrega com HTML vindo do backend
-    function atualizarOuInserirLinhaEntrega(dados){
-      if (!dados || !dados.id || !dados.linha_html) return;
-      var tbody = document.querySelector('.tabela tbody');
-      if (!tbody) return;
+  function atualizarOuInserirLinhaEntrega(dados){
+    if (!dados || !dados.id || !dados.linha_html) return;
+    var tbody = document.querySelector('.tabela tbody');
+    if (!tbody) return;
 
-      var temp = document.createElement('tbody');
-      temp.innerHTML = dados.linha_html.trim();
-      var novaTr = temp.querySelector('tr');
-      if (!novaTr) return;
+    var temp = document.createElement('tbody');
+    temp.innerHTML = dados.linha_html.trim();
+    var novaTr = temp.querySelector('tr');
+    if (!novaTr) return;
 
-      var trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
-      if (trExistente){
-        tbody.replaceChild(novaTr, trExistente);
-      } else {
-        tbody.prepend(novaTr); // nova entrega entra no topo
-      }
+    var trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
+    if (trExistente){
+      tbody.replaceChild(novaTr, trExistente);
+    } else {
+      tbody.prepend(novaTr);
+    }
 
+    if (typeof atualizarBadgeAbertas === 'function') {
+      atualizarBadgeAbertas();
+    }
+  }
+
+  function removerLinhaEntrega(id){
+    var tbody = document.querySelector('.tabela tbody');
+    if (!tbody || !id) return;
+    var tr = tbody.querySelector('tr[data-id="' + id + '"]');
+    if (tr) {
+      tr.remove();
       if (typeof atualizarBadgeAbertas === 'function') {
         atualizarBadgeAbertas();
       }
     }
+  }
 
-    // Remove linha de entrega pelo ID (quando excluída em outro painel)
-    function removerLinhaEntrega(id){
-      var tbody = document.querySelector('.tabela tbody');
-      if (!tbody || !id) return;
-      var tr = tbody.querySelector('tr[data-id="' + id + '"]');
-      if (tr) {
-        tr.remove();
-        if (typeof atualizarBadgeAbertas === 'function') {
-          atualizarBadgeAbertas();
-        }
-      }
-    }
+  function atualizarFilaEsperaTempoReal(htmlLista){
+    var ulFila = document.getElementById('espera-lista');
+    if (!ulFila || !htmlLista) return;
+    ulFila.innerHTML = htmlLista;
+  }
 
-    // Atualiza lista de espera com HTML vindo do backend
-    function atualizarFilaEsperaTempoReal(htmlLista){
-      var ulFila = document.getElementById('espera-lista');
-      if (!ulFila || !htmlLista) return;
-      ulFila.innerHTML = htmlLista;
-    }
-
-    // Ouvintes Socket.IO (entregas + fila de espera)
-    if (typeof socket !== 'undefined') {
-      // Nova entrega ou atualização de entrega (linha completa em HTML)
-      socket.on('entrega_criada', function(dados){
-        atualizarOuInserirLinhaEntrega(dados);
-      });
-
-      socket.on('entrega_atualizada', function(dados){
-        atualizarOuInserirLinhaEntrega(dados);
-      });
-
-      // Exclusão de entrega
-      socket.on('entrega_excluida', function(dados){
-        if (dados && dados.id){
-          removerLinhaEntrega(dados.id);
-        }
-      });
-
-      // Lista de espera (HTML <li> gerado no backend)
-      socket.on('fila_espera_atualizada', function(dados){
-        if (dados && dados.html_lista){
-          atualizarFilaEsperaTempoReal(dados.html_lista);
-        }
-      });
-    }
-  </script>
-      <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
- <script>
-    // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
-    function imprimirCupom(idEntrega, botao) {
-      var tr = botao.closest ? botao.closest('tr') : null;
-
-      function get(idx){
-        if(!tr || !tr.children || !tr.children[idx]) return '-';
-        var txt = (tr.children[idx].innerText || '').trim();
-        return txt || '-';
-      }
-
-      var dataDiaBruto = (get(5) || '-').replace(/\s+/g,' ').trim();
-      var matchData = dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/);
-      var dataSo = matchData ? matchData[0] : '-';
-
-      var rawId = get(0);
-      var numMatch = rawId.match(/\d+/);
-      var numId = numMatch ? numMatch[0] : rawId;
-
-      var cooperadoCupom = '-';
-      if (botao && botao.dataset && botao.dataset.cooperado){
-        cooperadoCupom = botao.dataset.cooperado;
-      } else {
-        cooperadoCupom = get(8) || '-';
-      }
-
-      var dados = {
-        id: numId,
-        idPad: String(numId).padStart(6,'0'),
-        cliente: get(1),
-        bairro: get(2),
-        endereco: get(3),
-        valor: get(4).replace(/^R\$\s*/,'').trim(),
-        data: dataSo,
-        horaPedido: get(6),
-        cooperado: cooperadoCupom,
-        formaPgto: get(9),
-        recebidoPor: get(12)
-      };
-
-      var agora = new Date();
-      var logoUrl = "{{ url_for('static', filename='logo_coopex.png') }}";
-      var cacheBust = Date.now();
-
-      var html = ''
-+'<!DOCTYPE html>'
-+'<html lang="pt-br">'
-+'<head>'
-+'  <meta charset="utf-8">'
-+'  <title>Cupom #'+dados.id+'</title>'
-+'  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
-+'  <style>'
-+'    @page { size: 80mm 110mm; margin: 3mm; }'
-+'    *{box-sizing:border-box}'
-+'    body{'
-+'      font-family: Arial, "Segoe UI", Roboto, system-ui, sans-serif;'
-+'      margin:0;'
-+'      color:#000;'
-+'      background:#fff;'
-+'      -webkit-print-color-adjust:exact;'
-+'      print-color-adjust:exact;'
-+'    }'
-+'    .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}'
-+'    .center{text-align:center}'
-+'    .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}'
-+'    .big{font-weight:900; font-size:18px}'
-+'    hr{border:none; border-top:1px dotted #000; margin:8px 0}'
-+'    .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}'
-+'    .footer{font-size:11px; text-align:center; margin-top:6px}'
-+'    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}'
-+'    .tiny{font-size:10.5px}'
-+'    .sign{ text-align:center; margin-top:8px; }'
-+'    .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }'
-+'    .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}'
-+'    .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}'
-+'    .btn-print{border:1px solid #000; background:#000; color:#fff}'
-+'    .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}'
-+'    .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}'
-+'    @media print { .actions{display:none} body{background:#fff} }'
-+'  </style>'
-+'</head>'
-+'<body>'
-+'  <div class="wrap">'
-+'    <div class="cupom">'
-+'      <img src="'+logoUrl+'?v='+cacheBust+'"'
-+'           alt="Logo Coopex" class="logo"'
-+'           onerror="this.onerror=null;this.src=\'https://via.placeholder.com/200x60?text=COOPEX\';">'
-+'      <div class="center tiny">'
-+'        CNPJ: 05.289.938/0001-97<br>'
-+'        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>'
-+'        Fone/WhatsApp: (84) 98111-0706'
-+'      </div>'
-+'      <hr>'
-+'      <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">'+dados.idPad+'</span></div>'
-+'      <div class="line"><span>Data:</span><span class="mono">'+dados.data+'</span></div>'
-+'      <div class="line"><span>Hora:</span><span class="mono">'+dados.horaPedido+'</span></div>'
-+'      <div class="line"><span>Cliente:</span><span class="mono">'+dados.cliente+'</span></div>'
-+'      <div class="line"><span>Endereço:</span><span class="mono">'+dados.endereco+'</span></div>'
-+'      <div class="line"><span>Bairro:</span><span class="mono">'+dados.bairro+'</span></div>'
-+'      <div class="line"><span>Cooperado:</span><span class="mono">'+dados.cooperado+'</span></div>'
-+'      <div class="line"><span>Forma Pgto:</span><span class="mono">'+dados.formaPgto+'</span></div>'
-+'      <hr>'
-+'      <div class="line"><span>Valor do serviço:</span><span class="mono">'+dados.valor+'</span></div>'
-+'      <div class="line big"><span>TOTAL:</span><span class="mono">'+dados.valor+'</span></div>'
-+'      <hr>'
-+'      <div class="sign">'
-+'        <div class="sign-line"></div>'
-+'        <div class="tiny">Supervisor</div>'
-+'      </div>'
-+'      <hr>'
-+'      <div class="footer">'
-+'        Emitido em <span class="mono">'+agora.toLocaleDateString("pt-BR")+'</span> às '
-+'        <span class="mono">'+agora.toLocaleTimeString("pt-BR")+'</span><br>'
-+'        Recebido por: <span class="mono">'+dados.recebidoPor+'</span>'
-+'      </div>'
-+'    </div>'
-+'    <div class="actions">'
-+'      <button class="btn btn-print" onclick="window.print()">Imprimir</button>'
-+'      <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>'
-+'    </div>'
-+'  </div>'
-+'</body>'
-+'</html>';
-
-      var win = null;
-      try {
-        win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800');
-      } catch(e){}
-
-      if (win && !win.closed) {
-        try { win.opener = null; } catch(e){}
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-        return;
-      }
-      criarOverlayPreview(html);
-    }
-
-    function criarOverlayPreview(html){
-      var wrap = document.createElement('div');
-      wrap.id = 'print-preview-overlay';
-      Object.assign(wrap.style, {
-        position:'fixed', inset:'0', background:'rgba(10,16,28,0.75)', zIndex:'10000',
-        display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'
-      });
-
-      var box = document.createElement('div');
-      Object.assign(box.style, {
-        background:'#fff', borderRadius:'14px', width:'min(720px, 96vw)', height:'min(90vh, 900px)',
-        boxShadow:'0 10px 40px rgba(0,0,0,.35)', display:'flex', flexDirection:'column', overflow:'hidden'
-      });
-
-      var header = document.createElement('div');
-      header.textContent = 'Visualização do Cupom';
-      Object.assign(header.style, {
-        padding:'10px 14px', fontWeight:'800', color:'#003399', borderBottom:'1px solid #e6ebff'
-      });
-
-      var iframe = document.createElement('iframe');
-      iframe.setAttribute('title','Pré-visualização do cupom');
-      Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
-      if ('srcdoc' in iframe) {
-        iframe.srcdoc = html;
-      } else {
-        var doc = iframe.contentWindow || iframe.contentDocument;
-        var iDoc = doc.document || doc;
-        iDoc.open(); iDoc.write(html); iDoc.close();
-      }
-
-      var footer = document.createElement('div');
-      Object.assign(footer.style, {
-        padding:'10px', borderTop:'1px solid #e6ebff', display:'flex', gap:'10px',
-        justifyContent:'center', background:'#f8faff'
-      });
-
-      var btImprimir = document.createElement('button');
-      btImprimir.textContent = 'Imprimir';
-      Object.assign(btImprimir.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #003399',
-        background:'#003399', color:'#fff', fontWeight:'800', cursor:'pointer'
-      });
-      btImprimir.onclick = function(){
-        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){}
-      };
-
-      var btFechar = document.createElement('button');
-      btFechar.textContent = 'Fechar';
-      Object.assign(btFechar.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #c3c8d5',
-        background:'#fff', color:'#003399', fontWeight:'800', cursor:'pointer'
-      });
-      btFechar.onclick = function(){ wrap.remove(); };
-
-      footer.appendChild(btImprimir);
-      footer.appendChild(btFechar);
-
-      box.appendChild(header);
-      box.appendChild(iframe);
-      box.appendChild(footer);
-      wrap.appendChild(box);
-      document.body.appendChild(wrap);
-    }
-
-    // 1) Entregas pendentes >= 2 horas
-    (function(){
-      var AUDIO = document.getElementById('som-pendente');
-      if (!AUDIO) return;
-
-      var LIMIAR_MS   = 2 * 60 * 60 * 1000;
-      var STORAGE_KEY = 'pendente_alertados_v2_ts';
-      var tocados = {};
-      try {
-        tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
-      } catch(e){
-        tocados = {};
-      }
-
-      function pendentesAtrasados() {
-        var agora = Date.now();
-        var rows = document.querySelectorAll('tbody tr');
-        var atrasados = [];
-        rows.forEach(function(tr){
-          var badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
-          if (!badgePendente) return;
-          var epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
-          if (!epoch) return;
-          var ms = (agora/1000 - epoch) * 1000;
-          if (ms >= LIMIAR_MS) {
-            var id = tr.getAttribute('data-id') || '';
-            if (id) atrasados.push(id);
-          }
-        });
-        return atrasados;
-      }
-
-      function checar2h() {
-        var agora = Date.now();
-        var ids = pendentesAtrasados();
-
-        var precisaAlertar = ids.filter(function(id){
-          var last = +(tocados[id] || 0);
-          return (agora - last) >= LIMIAR_MS;
-        });
-
-        if (precisaAlertar.length > 0) {
-          try { AUDIO.currentTime = 0; AUDIO.play(); } catch(e){}
-          abrirModal(
-            'Entregas pendentes (2h+)',
-            '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.',
-            true
-          ).then(function(){});
-          precisaAlertar.forEach(function(id){ tocados[id] = agora; });
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-      }
-
-      checar2h();
-      setInterval(checar2h, 2 * 60 * 60 * 1000);
-
-      document.addEventListener('click', function(ev){
-        var st = ev.target.closest ? ev.target.closest('.js-toggle-entrega') : null;
-        if (!st) return;
-        var tr = st.closest ? st.closest('tr') : null;
-        var id = tr ? (tr.getAttribute('data-id') || '') : '';
-        if (id && tocados[id]) {
-          delete tocados[id];
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-        setTimeout(checar2h, 1500);
-      });
-    })();
-
-    // 2) Balão de pagamentos pendentes (a cada 60 min) + boa noite
-    function existePagamentoPendenteNaTabela() {
-      var linhas = document.querySelectorAll('.tabela tbody tr');
-      return [].some.call(linhas, function(tr){
-        var cel = tr.children[11];
-        return cel && cel.textContent.trim().toLowerCase().indexOf('pendente') !== -1;
-      });
-    }
-
-    function checaAvisosPagamentoEBoaNoite() {
-      try {
-        var agora = new Date();
-        var hora = agora.getHours(), minutos = agora.getMinutes();
-
-        var PAG_ALERT_KEY = 'coopex_pend_pag_last_ts';
-        if (existePagamentoPendenteNaTabela()) {
-          var now = Date.now();
-          var last = +(localStorage.getItem(PAG_ALERT_KEY) || 0);
-          var SIXTY_MIN = 60 * 60 * 1000;
-
-          if (now - last >= SIXTY_MIN) {
-            abrirModal(
-              'Cobrança de Pagamento',
-              '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',
-              true
-            ).then(function(){});
-            localStorage.setItem(PAG_ALERT_KEY, String(now));
-          }
-        }
-
-        if (hora === 21 && minutos === 59) {
-          var keyBoaNoite = 'coopex_boa_noite_' +
-            agora.getFullYear() + '_' + agora.getMonth() + '_' + agora.getDate();
-          if (!localStorage.getItem(keyBoaNoite)) {
-            abrirModal(
-              'Boa noite!',
-              '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.',
-              false
-            ).then(function(){});
-            localStorage.setItem(keyBoaNoite, '1');
-          }
-        }
-      } catch(e) {
-        console.error(e);
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', function(){
-      checaAvisosPagamentoEBoaNoite();
-      setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000);
+  if (socket) {
+    socket.on('entrega_criada', function(dados){
+      atualizarOuInserirLinhaEntrega(dados);
     });
 
-    // ===== MENU SANDUÍCHE (abre/fecha painel lateral) =====
-    window.addEventListener('DOMContentLoaded', function(){
-      var btnMenu   = document.getElementById('btnMenu');
-      var sidePanel = document.getElementById('sidePanel');
-      if (!btnMenu || !sidePanel) return;
-
-      btnMenu.addEventListener('click', function(e){
-        e.stopPropagation();
-        var isOpen = sidePanel.classList.toggle('open');
-        if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
-      });
-
-      document.addEventListener('click', function(ev){
-        if (!sidePanel.classList.contains('open')) return;
-        if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
-        if (sidePanel.contains(ev.target)) return;
-        sidePanel.classList.remove('open');
-        btnMenu.classList.remove('open');
-      });
+    socket.on('entrega_atualizada', function(dados){
+      atualizarOuInserirLinhaEntrega(dados);
     });
-  </script>
 
-  <script>
-    function abrirMapaTelaCheia() {
-      try {
-        // Rota que vai exibir o mapa em tela cheia + informações do motoboy
-        // Certifique-se de ter @app.route('/mapa_motoboys') no Flask
-        var url = "{{ url_for('mapa_motoboys') }}";
-
-        // Cria um <a> real e dispara o clique — navegador trata como clique normal
-        var a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (e) {
-        console.error(e);
-        alert('Não foi possível abrir o mapa agora.');
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', function(){
-      var btnFull = document.getElementById('btnFullMap');
-      if (btnFull) {
-        btnFull.addEventListener('click', abrirMapaTelaCheia);
+    socket.on('entrega_excluida', function(dados){
+      if (dados && dados.id){
+        removerLinhaEntrega(dados.id);
       }
     });
-  </script>
 
-  <!-- Leaflet core + mapa embutido na tela principal -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
-
-  <script>
-    // ===== MAPA EMBUTIDO (div #map-coopex) COM TEMPO REAL + FALLBACK 5s =====
-    window.addEventListener('DOMContentLoaded', function(){
-      var mapEl = document.getElementById('map-coopex');
-      if (!mapEl || typeof L === 'undefined') return;
-
-      var map = L.map('map-coopex', {
-        zoomControl: true
-      }).setView([-5.7945, -35.211], 13);
-
-      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        maxZoom: 19,
-        attribution: '&copy; OpenStreetMap'
-      }).addTo(map);
-
-      // Marcadores por ID do motoboy (evita recriar tudo)
-      var motoboyMarkers = {};
-      var boundsGroup = L.featureGroup().addTo(map);
-      var firstFitDone = false;
-      var usandoSocketTempoReal = false; // se chegar evento socket, paramos de depender do polling
-
-      function popupHtml(m){
-        var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
-        var vel = m.velocidade || 0;
-        var ultima = m.ultima_atualizacao
-          ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>'
-          : '';
-        return (
-          '<strong>'+m.nome+'</strong><br>'+
-          'Velocidade: '+vel+' km/h<br>'+
-          'Status: '+statusTxt+ultima
-        );
+    socket.on('fila_espera_atualizada', function(dados){
+      if (dados && dados.html_lista){
+        atualizarFilaEsperaTempoReal(dados.html_lista);
       }
-
-      function atualizarMarcadores(lista){
-        if (!Array.isArray(lista)) lista = [];
-
-        var ativos = {};
-        lista.forEach(function(m){
-          if (!m || !m.id || !m.lat || !m.lng) return;
-          ativos[m.id] = true;
-
-          var corBorda  = m.online ? '#10b981' : '#ef4444';
-          var corFill   = m.online ? '#10b981' : '#ef4444';
-          var marker = motoboyMarkers[m.id];
-
-          if (!marker) {
-            marker = L.circleMarker([m.lat, m.lng], {
-              radius: 8,
-              color: corBorda,
-              weight: 2,
-              fillColor: corFill,
-              fillOpacity: 0.9
-            });
-            marker.addTo(boundsGroup);
-            marker.bindPopup(popupHtml(m));
-            motoboyMarkers[m.id] = marker;
-          } else {
-            marker.setLatLng([m.lat, m.lng]);
-            marker.setStyle({
-              color: corBorda,
-              fillColor: corFill
-            });
-            if (marker.isPopupOpen()) {
-              marker.setPopupContent(popupHtml(m));
-            }
-          }
-        });
-
-        // Remove marcadores que não vieram mais no JSON
-        Object.keys(motoboyMarkers).forEach(function(id){
-          if (!ativos[id]) {
-            boundsGroup.removeLayer(motoboyMarkers[id]);
-            delete motoboyMarkers[id];
-          }
-        });
-
-        // Ajusta o mapa para caber os marcadores (apenas no primeiro carregamento)
-        var layers = Object.values(motoboyMarkers);
-        if (layers.length && !firstFitDone) {
-          var group = L.featureGroup(layers);
-          map.fitBounds(group.getBounds().pad(0.25));
-          firstFitDone = true;
-        }
-      }
-
-      // 1) Primeiro desenha usando os dados injetados pelo Jinja
-      var dadosIniciais = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
-      atualizarMarcadores(dadosIniciais);
-
-      // 2) Atualização por Socket.IO em tempo real (back-end deve emitir 'motoboys_update')
-      if (typeof socket !== 'undefined') {
-        socket.on('motoboys_update', function(lista){
-          usandoSocketTempoReal = true;
-          atualizarMarcadores(lista);
-        });
-      }
-
-      // 3) Fallback: caso o socket não esteja funcionando, mantém polling a cada 5s
-      function atualizarDoServidor(){
-        // se já estamos recebendo via socket com frequência, não precisa bater no servidor
-        if (usandoSocketTempoReal) return;
-
-        fetch("{{ url_for('mapa_motoboys') }}", {
-          headers: { 'X-Requested-With': 'fetch' }
-        })
-        .then(function(res){
-          if (!res.ok) throw new Error('Falha ao carregar motoboys_json');
-          return res.json();
-        })
-        .then(function(data){
-          atualizarMarcadores(data);
-        })
-        .catch(function(err){
-          console.error('Erro ao atualizar motoboys:', err);
-        });
-      }
-
-      // Continua existindo, mas só atua se o socket não estiver atualizando
-      setInterval(atualizarDoServidor, 5000);
     });
-  </script>
+  }
+</script>
 </body>
 </html>
