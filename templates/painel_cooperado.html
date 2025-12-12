@@ -1008,7 +1008,7 @@
     </div>
   </div>
 
- <!-- JS do Leaflet -->
+<!-- JS do Leaflet -->
 <script
   src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
   integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
@@ -1035,6 +1035,10 @@
   // Entregas aceitas/em andamento (para permitir mais de uma)
   let entregasAtivas = [];
   let entregaAtivaAtual = null;
+
+  // Para não repetir oferta (quando backend insiste/retorna a mesma)
+  const ofertasIgnoradas = new Set(); // ids recusados/expirados (front)
+  const ofertasVistasRecentemente = new Map(); // id -> timestamp
 
   let countdownInterval = null;
   let countdownRestante = TEMPO_EXPIRACAO_SEG;
@@ -1099,11 +1103,8 @@
   function desbloquearAudioUmaVez() {
     if (audioDesbloqueado || !audioEntrega) return;
 
-    // Força carregar
     try { audioEntrega.load(); } catch (e) {}
 
-    // Alguns browsers só liberam play se for dentro do clique.
-    // Fazemos um play "mudo" e pausamos na sequência.
     audioEntrega.muted = true;
     const p = audioEntrega.play();
     if (p && typeof p.then === "function") {
@@ -1116,7 +1117,6 @@
         audioEntrega.muted = false;
       });
     } else {
-      // fallback
       try {
         audioEntrega.pause();
         audioEntrega.currentTime = 0;
@@ -1128,7 +1128,7 @@
 
   function tocarSomEntrega() {
     if (!audioEntrega) return;
-    if (!audioDesbloqueado) return; // evita falha silenciosa
+    if (!audioDesbloqueado) return;
 
     audioEntrega.loop = true;
     audioEntrega.currentTime = 0;
@@ -1165,9 +1165,7 @@
 
   function toISODate(value) {
     if (!value) return "";
-    // se vier "YYYY-MM-DD"
     if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-    // se vier "DD/MM/YYYY"
     if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
       const [dd, mm, yyyy] = value.split("/");
       return `${yyyy}-${mm}-${dd}`;
@@ -1318,6 +1316,18 @@
     }
   }
 
+  // ======= CONTROLE DE OVERLAY (não deixar “recolher” virar bug de oferta) =======
+  // Sempre que houver entrega ativa, mantém o card de “entrega em andamento” como prioridade.
+  function garantirCardPrioritario() {
+    if (entregasAtivas.length > 0 && entregaAtivaAtual) {
+      // se o usuário abriu/fechou o overlay, não deixa a oferta reaparecer por cima
+      entregaOferta = null;
+      pararSomEntrega();
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      setEntregaAtivaAtual(entregaAtivaAtual);
+    }
+  }
+
   // ======= ESTADOS UI =======
   function mostrarEstadoSemEntrega() {
     cardSemEntrega.classList.remove("hidden");
@@ -1327,7 +1337,6 @@
     entregaOferta = null;
 
     if (entregasAtivas.length > 0) {
-      // se tem entrega ativa, volta para ela
       setEntregaAtivaAtual(entregasAtivas[0]);
       return;
     }
@@ -1337,16 +1346,20 @@
   }
 
   function mostrarEstadoNovaEntrega(entrega) {
+    // Se já tem entrega em andamento, NÃO mostra oferta (evita tocar de novo)
+    if (entregasAtivas.length > 0) {
+      // marca como vista para não “insistir”
+      if (entrega && entrega.id) ofertasVistasRecentemente.set(entrega.id, Date.now());
+      return;
+    }
+
     cardSemEntrega.classList.add("hidden");
     cardNovaEntrega.classList.remove("hidden");
     cardEntregaAceita.classList.add("hidden");
 
     entregaOferta = entrega;
 
-    novaTitulo.textContent = entregasAtivas.length > 0
-      ? `Nova entrega (você já tem ${entregasAtivas.length} em andamento)`
-      : "Nova entrega para você";
-
+    novaTitulo.textContent = "Nova entrega para você";
     novaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
     novaValor.textContent = formatarValor(entrega.valor);
 
@@ -1363,6 +1376,7 @@
 
     desenharRotaSeTiverCoords(entrega);
     iniciarCountdown();
+
     tocarSomEntrega();
   }
 
@@ -1386,7 +1400,13 @@
 
     aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
 
+    // Navegação dentro do mapa: desenha rota e foca nela
     desenharRotaSeTiverCoords(entrega);
+
+    // Garantia: não pode tocar som com entrega ativa
+    pararSomEntrega();
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    entregaOferta = null;
   }
 
   function iniciarCountdown() {
@@ -1399,8 +1419,13 @@
       if (countdownRestante <= 0) {
         clearInterval(countdownInterval);
         countdownInterval = null;
+
+        // expiração: para som + ignora essa oferta por um tempo (front)
+        if (entregaOferta && entregaOferta.id) ofertasIgnoradas.add(entregaOferta.id);
+
         pararSomEntrega();
-        // se expirar, volta para entrega ativa (se tiver) ou sem entrega
+        entregaOferta = null;
+
         if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
         else mostrarEstadoSemEntrega();
       } else {
@@ -1410,10 +1435,25 @@
   }
 
   // ======= BUSCA / AÇÕES =======
+  function limparOfertasVistasAntigas() {
+    const agora = Date.now();
+    for (const [id, ts] of ofertasVistasRecentemente.entries()) {
+      if (agora - ts > 60_000) ofertasVistasRecentemente.delete(id); // 60s
+    }
+    // ofertas ignoradas (recusadas/expiradas) mantém por mais tempo
+    // se quiser limpar depois de 10 min:
+    // (não tem timestamp, então mantemos até recarregar a página)
+  }
+
   async function buscarNovaEntrega() {
     if (!onlineAtivo) return;
 
-    // Se já tem uma oferta na tela, não substitui por outra até aceitar/recusar
+    limparOfertasVistasAntigas();
+
+    // Se já tem entrega ativa, não mostra oferta e não toca som
+    if (entregasAtivas.length > 0) return;
+
+    // Se já tem uma oferta na tela, não substitui
     if (entregaOferta) return;
 
     try {
@@ -1424,108 +1464,123 @@
       }
 
       const entrega = data.entrega;
+      if (!entrega || !entrega.id) return;
+
+      // se recusou/expirou no front, ignora
+      if (ofertasIgnoradas.has(entrega.id)) return;
+
       // se já está nas ativas, ignora
       if (entregasAtivas.some(e => e.id === entrega.id)) return;
 
+      // se foi vista muito recentemente (anti repetição)
+      const vistoTs = ofertasVistasRecentemente.get(entrega.id);
+      if (vistoTs && (Date.now() - vistoTs) < 15_000) return; // 15s
+
+      ofertasVistasRecentemente.set(entrega.id, Date.now());
       mostrarEstadoNovaEntrega(entrega);
+
     } catch (err) {
       console.log("Erro nova entrega:", err);
     }
   }
 
   async function aceitarEntrega() {
-  if (!entregaOferta) return;
-
-  try {
-    pararSomEntrega();
-    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-
-    const payload = await fetchJSON("/cooperado/aceitar_entrega", {
-      method: "POST",
-      body: JSON.stringify({ entrega_id: entregaOferta.id })
-    });
-
-    if (payload && payload.status === "ok") {
-      // pega a entrega atualizada do backend se vier, senão usa a oferta
-      const entregaAceita = (payload.entrega || payload.data?.entrega || null) ? (payload.entrega || payload.data?.entrega) : { ...entregaOferta };
-
-      // marca status da entrega como "em andamento" (para aparecer no histórico já)
-      entregaAceita.status_entrega = entregaAceita.status_entrega || "andamento";
-
-      // normaliza pagamento
-      entregaAceita.status_pagamento = normalizarStatusPagamento(entregaAceita.status_pagamento);
-
-      // garante data (ISO) para filtros (se não vier do banco)
-      if (!entregaAceita.data && !entregaAceita.data_entrega) {
-        entregaAceita.data = new Date().toISOString().slice(0, 10);
-      } else {
-        entregaAceita.data = toISODate(entregaAceita.data || entregaAceita.data_entrega);
-      }
-
-      // garante recebida_por existir (pode ficar vazio até finalizar)
-      if (!entregaAceita.recebida_por) entregaAceita.recebida_por = "";
-
-      // adiciona nas ativas (multiplas)
-      if (!entregasAtivas.some(e => e.id === entregaAceita.id)) {
-        entregasAtivas.unshift(entregaAceita);
-      }
-
-      // >>> AQUI: adiciona/atualiza no histórico NA HORA do aceite <<<
-      const idx = ENTREGAS.findIndex(e => e.id === entregaAceita.id);
-      if (idx >= 0) ENTREGAS[idx] = entregaAceita;
-      else ENTREGAS.unshift(entregaAceita);
-
-      // atualiza a aba entregas imediatamente
-      renderHistorico();
-
-      // mostra essa como a entrega atual no card de andamento
-      setEntregaAtivaAtual(entregaAceita);
-
-      // limpa oferta
-      entregaOferta = null;
-
-    } else {
-      entregaOferta = null;
-      if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-      else mostrarEstadoSemEntrega();
-    }
-
-  } catch (err) {
-    pararSomEntrega();
-    console.log("Erro aceitar entrega:", err);
-    entregaOferta = null;
-    if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-    else mostrarEstadoSemEntrega();
-  }
-}
-
-  async function recusarEntrega() {
     if (!entregaOferta) return;
 
     try {
       pararSomEntrega();
       if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 
-      await fetchJSON("/cooperado/recusar_entrega", {
+      const payload = await fetchJSON("/cooperado/aceitar_entrega", {
         method: "POST",
         body: JSON.stringify({ entrega_id: entregaOferta.id })
       });
 
+      if (payload && payload.status === "ok") {
+        const entregaAceita = payload.entrega ? payload.entrega : { ...entregaOferta };
+
+        entregaAceita.status_entrega = entregaAceita.status_entrega || "andamento";
+        entregaAceita.status_pagamento = normalizarStatusPagamento(entregaAceita.status_pagamento);
+
+        if (!entregaAceita.data && !entregaAceita.data_entrega) {
+          entregaAceita.data = new Date().toISOString().slice(0, 10);
+        } else {
+          entregaAceita.data = toISODate(entregaAceita.data || entregaAceita.data_entrega);
+        }
+
+        if (!entregaAceita.recebida_por) entregaAceita.recebida_por = "";
+
+        // adiciona nas ativas (permite mais de uma, mas o card mostra a atual)
+        if (!entregasAtivas.some(e => e.id === entregaAceita.id)) {
+          entregasAtivas.unshift(entregaAceita);
+        }
+
+        // aparece na aba “Minhas entregas” na hora
+        const idx = ENTREGAS.findIndex(e => e.id === entregaAceita.id);
+        if (idx >= 0) ENTREGAS[idx] = entregaAceita;
+        else ENTREGAS.unshift(entregaAceita);
+
+        renderHistorico();
+
+        // prioridade: card de entrega em andamento + navegação no mapa
+        setEntregaAtivaAtual(entregaAceita);
+
+        // limpa oferta
+        entregaOferta = null;
+
+      } else {
+        entregaOferta = null;
+        mostrarEstadoSemEntrega();
+      }
+
+    } catch (err) {
+      pararSomEntrega();
+      console.log("Erro aceitar entrega:", err);
       entregaOferta = null;
+      mostrarEstadoSemEntrega();
+    }
+  }
+
+  async function recusarEntrega() {
+    if (!entregaOferta) return;
+
+    const idRecusado = entregaOferta.id;
+
+    try {
+      // garante parar tudo
+      pararSomEntrega();
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+      await fetchJSON("/cooperado/recusar_entrega", {
+        method: "POST",
+        body: JSON.stringify({ entrega_id: idRecusado })
+      });
+
+      // evita a mesma tocar de novo no front
+      if (idRecusado) ofertasIgnoradas.add(idRecusado);
+
+      entregaOferta = null;
+
+      // volta ao estado correto
       if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
       else mostrarEstadoSemEntrega();
+
     } catch (err) {
       pararSomEntrega();
       console.log("Erro recusar entrega:", err);
+
+      if (idRecusado) ofertasIgnoradas.add(idRecusado);
       entregaOferta = null;
+
       if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
       else mostrarEstadoSemEntrega();
     }
   }
 
+  // Botão “Abrir rota no Maps/Waze” (agora é opcional, não automático)
+  // Se você NÃO quer mais externo, deixe o botão escondido no HTML/CSS.
   function montarUrlNavegacao(entrega) {
     if (!entrega) return null;
-
     const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
     const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
 
@@ -1553,12 +1608,16 @@
   function abrirNavegador(entrega) {
     const url = montarUrlNavegacao(entrega);
     if (!url) return;
-    // abre somente quando o usuário clicar no botão
     window.open(url, "_blank");
   }
 
   async function finalizarEntrega() {
     if (!entregaAtivaAtual) return;
+
+    // garantia: finalizar nunca pode ficar tocando som
+    pararSomEntrega();
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    entregaOferta = null;
 
     const recebidaPor = inputRecebidaPor.value.trim();
     if (!recebidaPor) {
@@ -1576,19 +1635,17 @@
       });
 
       if (data && data.status === "ok") {
-        // monta entrega finalizada para histórico
         const novaEntrega = data.entrega || { ...entregaAtivaAtual };
         novaEntrega.recebida_por = recebidaPor;
         novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
 
-        // garante data em ISO para filtros
         if (!novaEntrega.data && !novaEntrega.data_entrega) {
           novaEntrega.data = new Date().toISOString().slice(0, 10);
         } else {
           novaEntrega.data = toISODate(novaEntrega.data || novaEntrega.data_entrega);
         }
 
-        // joga no histórico (ENTREGAS)
+        // histórico
         const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
         if (idx >= 0) ENTREGAS[idx] = novaEntrega;
         else ENTREGAS.unshift(novaEntrega);
@@ -1598,10 +1655,9 @@
         entregaAtivaAtual = null;
         inputRecebidaPor.value = "";
 
-        // atualiza histórico
         renderHistorico();
 
-        // volta para outra ativa (se tiver) ou fica aguardando
+        // mostra próxima ativa ou sem entrega
         if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
         else mostrarEstadoSemEntrega();
       } else {
@@ -1727,6 +1783,7 @@
       tabBtnHistorico.classList.remove("active");
       tabCorridas.classList.remove("hidden");
       tabHistorico.classList.add("hidden");
+      garantirCardPrioritario();
     } else {
       tabBtnCorridas.classList.remove("active");
       tabBtnHistorico.classList.add("active");
@@ -1752,7 +1809,8 @@
     btnAceitar.addEventListener("click", aceitarEntrega);
     btnRecusar.addEventListener("click", recusarEntrega);
 
-    // Agora só abre externo quando o usuário clicar
+    // NÃO abre externo automaticamente.
+    // Se quiser remover externo de vez, esconda esse botão no HTML.
     btnAbrirMaps.addEventListener("click", () => entregaAtivaAtual && abrirNavegador(entregaAtivaAtual));
 
     btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
@@ -1787,7 +1845,6 @@
     btnFicarOnline.addEventListener("click", () => {
       if (onlineAtivo) return;
 
-      // desbloqueia som com gesto do usuário
       desbloquearAudioUmaVez();
 
       onlineAtivo = true;
