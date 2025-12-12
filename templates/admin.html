@@ -930,10 +930,11 @@
 <!-- Socket.IO para tempo real -->
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
 <script>
-  // Conexão Socket.IO em modo POLLING (compatível com o Gunicorn/Render)
-  const socket = io("{{ request.host_url.rstrip('/') }}", {
-    transports: ["polling"],        // 👈 não tenta mais websocket
+  // Socket.IO (Render + gunicorn gthread): polling é o mais estável
+  const socket = io({
     path: "/socket.io/",
+    transports: ["polling"],
+    withCredentials: true,
     reconnection: true,
     reconnectionAttempts: Infinity,
     reconnectionDelay: 1000
@@ -941,6 +942,10 @@
 
   socket.on("connect", () => {
     console.log("Socket conectado (polling), id:", socket.id);
+  });
+
+  socket.on("disconnect", (reason) => {
+    console.log("Socket desconectado:", reason);
   });
 
   socket.on("connect_error", (err) => {
