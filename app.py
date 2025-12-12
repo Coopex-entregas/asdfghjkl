@@ -427,51 +427,7 @@ class Entrega(db.Model):
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
 # =========================================================
-def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
-    """
-    Emite para todos os painéis (admin, cooperado, rastreamento) que
-    uma entrega foi criada / editada / excluída / status alterado.
-
-    Evento Socket.IO: 'entrega_atualizada'
-    """
-    if not entrega:
-        return
-
-    try:
-        payload = {
-            "id": entrega.id,
-            "acao": acao,  # 'criada', 'editada', 'excluida', etc.
-            "cliente": entrega.cliente,
-            "bairro": entrega.bairro,
-            "valor": float(entrega.valor or 0),
-            "status": entrega.status,
-            "status_pagamento": entrega.status_pagamento,
-            "pagamento": entrega.pagamento,
-            "cooperado_id": entrega.cooperado_id,
-            "cooperado_nome": entrega.cooperado.nome if entrega.cooperado else None,
-            "data_envio": (
-                to_brasilia(entrega.data_envio).strftime('%Y-%m-%d %H:%M')
-                if entrega.data_envio else None
-            ),
-            "data_atribuida": (
-                to_brasilia(entrega.data_atribuida).strftime('%Y-%m-%d %H:%M')
-                if entrega.data_atribuida else None
-            ),
-        }
-
-        # Evento específico para os painéis de entregas
-        socketio.emit(
-            "entrega_atualizada",
-            payload,
-            broadcast=True
-        )
-
-    except Exception as e:
-        # não quebra o fluxo se der problema no websocket
-        try:
-            current_app.logger.warning(f'Falha ao emitir entrega_atualizada: {e}')
-        except Exception:
-            pass
+from flask import current_app
 
 def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocidade=None):
     """
@@ -484,25 +440,24 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
             ultima_str = to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
 
         payload = {
-            'id': cooperado.id,
-            'nome': cooperado.nome,
-            'lat': float(lat),
-            'lng': float(lng),
-            'online': bool(getattr(cooperado, "online", True)),
-            'velocidade': float(velocidade) if velocidade is not None else None,
-            'ultima_atualizacao': ultima_str,
+            "id": cooperado.id,
+            "nome": cooperado.nome,
+            "lat": float(lat),
+            "lng": float(lng),
+            "online": bool(getattr(cooperado, "online", True)),
+            "velocidade": float(velocidade) if velocidade is not None else None,
+            "ultima_atualizacao": ultima_str,
         }
 
-        socketio.emit(
-            'posicao_motoboy_atualizada',
-            payload,
-            broadcast=True
-        )
+        # Emite para todos os clientes conectados (admins, mapa, etc.)
+        socketio.emit("posicao_motoboy_atualizada", payload)
+
     except Exception as e:
         try:
-            current_app.logger.warning(f'Falha ao emitir posicao_motoboy_atualizada: {e}')
+            current_app.logger.warning(f"Falha ao emitir posicao_motoboy_atualizada: {e}")
         except Exception:
             pass
+
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -2972,7 +2927,6 @@ def cooperado_finalizar_entrega():
 
     if not entrega_id:
         return jsonify(status="erro", msg="ID de entrega não informado"), 400
-
     if not recebida_por:
         return jsonify(status="erro", msg="Nome de quem recebeu é obrigatório"), 400
 
@@ -2984,31 +2938,40 @@ def cooperado_finalizar_entrega():
     if entrega.cooperado_id != user_id:
         return jsonify(status="erro", msg="Entrega não pertence a este cooperado"), 403
 
-    # 👉 aqui NÃO tem checagem de localização, pode finalizar de qualquer lugar
-    entrega.recebido_por = recebida_por
+    # Padronize o campo:
+    if hasattr(entrega, "recebida_por"):
+        entrega.recebida_por = recebida_por
+    else:
+        # fallback: caso seu model seja "recebido_por"
+        entrega.recebido_por = recebida_por
 
     if hasattr(entrega, "status_entrega"):
-        entrega.status_entrega = "finalizada"  # isso vai aparecer como entregue no painel admin
+        entrega.status_entrega = "finalizada"
 
-    from datetime import datetime
     if hasattr(entrega, "hora_finalizada"):
         entrega.hora_finalizada = datetime.utcnow()
 
-    # status_pagamento continua pendente, motoboy marca depois
     db.session.commit()
 
+    # data em ISO (YYYY-MM-DD) para o filtro do JS funcionar
+    data_entrega = getattr(entrega, "data_entrega", None)
+    if isinstance(data_entrega, (datetime, date)):
+        data_iso = data_entrega.strftime("%Y-%m-%d")
+    else:
+        data_iso = str(data_entrega or "")
+
     entrega_dict = {
-      "id": entrega.id,
-      "cliente": getattr(entrega, "cliente", None),
-      "restaurante": getattr(entrega, "restaurante", None),
-      "origem_bairro": getattr(entrega, "origem_bairro", None),
-      "destino_bairro": getattr(entrega, "destino_bairro", None),
-      "origem_endereco": getattr(entrega, "origem_endereco", None),
-      "destino_endereco": getattr(entrega, "destino_endereco", None),
-      "valor": float(getattr(entrega, "valor", 0) or 0),
-      "data": getattr(entrega, "data_entrega", None) or "",
-      "recebida_por": entrega.recebida_por,
-      "status_pagamento": getattr(entrega, "status_pagamento", "pendente"),
+        "id": entrega.id,
+        "cliente": getattr(entrega, "cliente", None),
+        "restaurante": getattr(entrega, "restaurante", None),
+        "origem_bairro": getattr(entrega, "origem_bairro", None),
+        "destino_bairro": getattr(entrega, "destino_bairro", None),
+        "origem_endereco": getattr(entrega, "origem_endereco", None),
+        "destino_endereco": getattr(entrega, "destino_endereco", None),
+        "valor": float(getattr(entrega, "valor", 0) or 0),
+        "data": data_iso,
+        "recebida_por": recebida_por,
+        "status_pagamento": getattr(entrega, "status_pagamento", "pendente"),
     }
 
     return jsonify(status="ok", entrega=entrega_dict)
