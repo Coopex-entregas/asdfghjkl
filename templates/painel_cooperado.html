@@ -1028,13 +1028,18 @@
   let rotaLayer = null;
 
   let watchId = null;
-  let entregaAtual = null;
+
+  // Oferta atual (quando chega nova entrega)
+  let entregaOferta = null;
+
+  // Entregas aceitas/em andamento (para permitir mais de uma)
+  let entregasAtivas = [];
+  let entregaAtivaAtual = null;
+
   let countdownInterval = null;
   let countdownRestante = TEMPO_EXPIRACAO_SEG;
 
   let onlineAtivo = false;
-  let pingIntervalId = null;
-  let buscaIntervalId = null;
 
   const audioEntrega = document.getElementById("som-entrega");
   const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
@@ -1085,19 +1090,69 @@
   const btnFicarOnline = document.getElementById("btn-ficar-online");
   const statusOnlinePill = document.getElementById("status-online-pill");
 
-  // Lista inicial vinda do servidor
+  // Histórico vindo do servidor
   const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
 
+  // ======= AUDIO (desbloqueio por gesto) =======
+  let audioDesbloqueado = false;
+
+  function desbloquearAudioUmaVez() {
+    if (audioDesbloqueado || !audioEntrega) return;
+
+    // Força carregar
+    try { audioEntrega.load(); } catch (e) {}
+
+    // Alguns browsers só liberam play se for dentro do clique.
+    // Fazemos um play "mudo" e pausamos na sequência.
+    audioEntrega.muted = true;
+    const p = audioEntrega.play();
+    if (p && typeof p.then === "function") {
+      p.then(() => {
+        audioEntrega.pause();
+        audioEntrega.currentTime = 0;
+        audioEntrega.muted = false;
+        audioDesbloqueado = true;
+      }).catch(() => {
+        audioEntrega.muted = false;
+      });
+    } else {
+      // fallback
+      try {
+        audioEntrega.pause();
+        audioEntrega.currentTime = 0;
+        audioEntrega.muted = false;
+        audioDesbloqueado = true;
+      } catch (e) {}
+    }
+  }
+
+  function tocarSomEntrega() {
+    if (!audioEntrega) return;
+    if (!audioDesbloqueado) return; // evita falha silenciosa
+
+    audioEntrega.loop = true;
+    audioEntrega.currentTime = 0;
+    audioEntrega.play().catch(() => {});
+  }
+
+  function pararSomEntrega() {
+    if (!audioEntrega) return;
+    audioEntrega.pause();
+    audioEntrega.currentTime = 0;
+    audioEntrega.loop = false;
+  }
+
+  // ======= UTIL =======
   function formatarValor(v) {
     if (v === null || v === undefined) return "R$ 0,00";
-    let num = Number(v);
+    const num = Number(v);
     if (Number.isNaN(num)) return String(v);
     return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
   }
 
   function formatarDistancia(dist) {
     if (!dist && dist !== 0) return "Distância não informada";
-    let d = Number(dist);
+    const d = Number(dist);
     if (Number.isNaN(d)) return String(dist);
     if (d > 1000) return (d / 1000).toFixed(1) + " km";
     return d.toFixed(0) + " m";
@@ -1108,39 +1163,50 @@
     return "pendente";
   }
 
+  function toISODate(value) {
+    if (!value) return "";
+    // se vier "YYYY-MM-DD"
+    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
+    // se vier "DD/MM/YYYY"
+    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
+      const [dd, mm, yyyy] = value.split("/");
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    return String(value).slice(0, 10);
+  }
+
   function formatarDataSimples(strData) {
     if (!strData) return "";
-    if (strData.includes("/") && strData.length <= 10) return strData;
-    if (strData.includes("-")) {
-      const partes = strData.split("-");
-      if (partes.length >= 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
+    if (typeof strData === "string" && strData.includes("/") && strData.length <= 10) return strData;
+    const iso = toISODate(strData);
+    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
+      const [yyyy, mm, dd] = iso.split("-");
+      return `${dd}/${mm}/${yyyy}`;
     }
-    return strData;
+    return String(strData);
   }
 
-  function lerJsonSeguro(resp) {
-    const ct = (resp.headers.get("content-type") || "").toLowerCase();
-    if (!ct.includes("application/json")) {
-      return resp.text().then(t => ({ _nao_json: true, texto: t, status_http: resp.status }));
+  async function fetchJSON(url, options = {}) {
+    const resp = await fetch(url, {
+      credentials: "same-origin",
+      ...options,
+      headers: {
+        "Content-Type": "application/json",
+        ...(options.headers || {})
+      }
+    });
+
+    let payload = null;
+    try { payload = await resp.json(); } catch (e) {}
+
+    if (!resp.ok) {
+      const msg = (payload && (payload.msg || payload.message)) ? (payload.msg || payload.message) : `HTTP ${resp.status}`;
+      throw new Error(msg);
     }
-    return resp.json();
+    return payload;
   }
 
-  function destravarAudio() {
-    if (!audioEntrega) return;
-    // Desbloqueia autoplay em mobile: precisa acontecer dentro de um clique do usuário
-    audioEntrega.muted = true;
-    audioEntrega.play()
-      .then(() => {
-        audioEntrega.pause();
-        audioEntrega.currentTime = 0;
-        audioEntrega.muted = false;
-      })
-      .catch(() => {
-        // se falhar, ainda pode tocar depois em novo clique
-      });
-  }
-
+  // ======= MAPA =======
   function initMap() {
     if (map) return;
     const centerLatLng = [-5.814, -35.214]; // Natal
@@ -1178,8 +1244,8 @@
     limparRota();
     if (!entrega || !map) return;
 
-    const temCoordsOrigem = !!(entrega.lat_origem && entrega.lng_origem);
-    const temCoordsDestino = !!(entrega.lat_destino && entrega.lng_destino);
+    const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
+    const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
 
     if (temCoordsOrigem) {
       origemMarker = L.marker([entrega.lat_origem, entrega.lng_origem]).addTo(map);
@@ -1208,10 +1274,13 @@
     }
   }
 
+  // ======= GPS =======
   function enviarLocalizacao(lat, lng) {
     const agora = new Date();
-    textoUltimaLoc.textContent = "Última posição: " +
-      agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    if (textoUltimaLoc) {
+      textoUltimaLoc.textContent =
+        "Última posição: " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+    }
 
     atualizarMarkerMotoboy(lat, lng);
 
@@ -1249,26 +1318,21 @@
     }
   }
 
-  function tocarSomEntrega() {
-    if (!audioEntrega) return;
-    audioEntrega.loop = true;
-    audioEntrega.currentTime = 0;
-    audioEntrega.play().catch(() => {});
-  }
-
-  function pararSomEntrega() {
-    if (!audioEntrega) return;
-    audioEntrega.pause();
-    audioEntrega.currentTime = 0;
-    audioEntrega.loop = false;
-  }
-
+  // ======= ESTADOS UI =======
   function mostrarEstadoSemEntrega() {
     cardSemEntrega.classList.remove("hidden");
     cardNovaEntrega.classList.add("hidden");
     cardEntregaAceita.classList.add("hidden");
     limparRota();
-    entregaAtual = null;
+    entregaOferta = null;
+
+    if (entregasAtivas.length > 0) {
+      // se tem entrega ativa, volta para ela
+      setEntregaAtivaAtual(entregasAtivas[0]);
+      return;
+    }
+
+    entregaAtivaAtual = null;
     inputRecebidaPor.value = "";
   }
 
@@ -1277,17 +1341,22 @@
     cardNovaEntrega.classList.remove("hidden");
     cardEntregaAceita.classList.add("hidden");
 
-    entregaAtual = entrega;
+    entregaOferta = entrega;
 
-    novaTitulo.textContent = "Nova entrega para você";
+    novaTitulo.textContent = entregasAtivas.length > 0
+      ? `Nova entrega (você já tem ${entregasAtivas.length} em andamento)`
+      : "Nova entrega para você";
+
     novaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
     novaValor.textContent = formatarValor(entrega.valor);
+
     novaOrigemText.textContent =
       entrega.origem_endereco ||
       (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+
     novaDestinoText.textContent =
       entrega.destino_endereco ||
-      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informado");
 
     novaEstTempo.textContent = "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
     novaDistancia.textContent = formatarDistancia(entrega.distancia);
@@ -1297,21 +1366,24 @@
     tocarSomEntrega();
   }
 
-  function mostrarEstadoEntregaAceita(entrega) {
+  function setEntregaAtivaAtual(entrega) {
+    entregaAtivaAtual = entrega;
+
     cardSemEntrega.classList.add("hidden");
     cardNovaEntrega.classList.add("hidden");
     cardEntregaAceita.classList.remove("hidden");
 
-    entregaAtual = entrega;
-
     aceitaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
     aceitaValor.textContent = formatarValor(entrega.valor);
+
     aceitaOrigemText.textContent =
       entrega.origem_endereco ||
       (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+
     aceitaDestinoText.textContent =
       entrega.destino_endereco ||
-      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informado");
+
     aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
 
     desenharRotaSeTiverCoords(entrega);
@@ -1328,139 +1400,136 @@
         clearInterval(countdownInterval);
         countdownInterval = null;
         pararSomEntrega();
-        mostrarEstadoSemEntrega();
+        // se expirar, volta para entrega ativa (se tiver) ou sem entrega
+        if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+        else mostrarEstadoSemEntrega();
       } else {
         novaCountdown.textContent = countdownRestante;
       }
     }, 1000);
   }
 
-  function buscarNovaEntrega() {
+  // ======= BUSCA / AÇÕES =======
+  async function buscarNovaEntrega() {
     if (!onlineAtivo) return;
 
-    // Se já tem uma entrega aceita/em andamento, não busca outra (regra 1 por vez)
-    if (entregaAtual && !cardNovaEntrega.classList.contains("hidden")) {
-      // está em tela de NOVA ENTREGA, pode continuar
-    } else if (entregaAtual && !cardEntregaAceita.classList.contains("hidden")) {
-      // está com entrega aceita
-      return;
+    // Se já tem uma oferta na tela, não substitui por outra até aceitar/recusar
+    if (entregaOferta) return;
+
+    try {
+      const data = await fetchJSON("/cooperado/verificar_nova_entrega", { method: "GET" });
+      if (!data || !data.tem_entrega) {
+        if (!entregaAtivaAtual && entregasAtivas.length === 0) mostrarEstadoSemEntrega();
+        return;
+      }
+
+      const entrega = data.entrega;
+      // se já está nas ativas, ignora
+      if (entregasAtivas.some(e => e.id === entrega.id)) return;
+
+      mostrarEstadoNovaEntrega(entrega);
+    } catch (err) {
+      console.log("Erro nova entrega:", err);
     }
-
-    fetch("/cooperado/verificar_nova_entrega", { cache: "no-store" })
-      .then(resp => lerJsonSeguro(resp))
-      .then(data => {
-        if (!data || data._nao_json) {
-          console.log("verificar_nova_entrega não retornou JSON:", data);
-          return;
-        }
-
-        if (!data.tem_entrega) {
-          if (!entregaAtual) mostrarEstadoSemEntrega();
-          return;
-        }
-
-        const entrega = data.entrega;
-        if (!entrega) return;
-
-        if (entregaAtual && entregaAtual.id === entrega.id) return;
-        mostrarEstadoNovaEntrega(entrega);
-      })
-      .catch(err => console.log("Erro nova entrega:", err));
   }
 
-  function aceitarEntrega() {
-    if (!entregaAtual) return;
+  async function aceitarEntrega() {
+    if (!entregaOferta) return;
 
-    fetch("/cooperado/aceitar_entrega", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entrega_id: entregaAtual.id })
-    })
-      .then(resp => lerJsonSeguro(resp))
-      .then(data => {
-        pararSomEntrega();
-        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    try {
+      pararSomEntrega();
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 
-        if (data && data._nao_json) {
-          console.log("aceitar_entrega não retornou JSON:", data);
-          alert("Sessão expirada ou erro no servidor ao aceitar. Faça login novamente.");
-          mostrarEstadoSemEntrega();
-          return;
-        }
-
-        if (data && data.status === "ok") {
-          // NÃO abre o Maps automaticamente (não sai do app)
-          mostrarEstadoEntregaAceita(entregaAtual);
-        } else {
-          alert((data && data.mensagem) ? data.mensagem : "Não foi possível aceitar.");
-          mostrarEstadoSemEntrega();
-        }
-      })
-      .catch(err => {
-        console.log("Erro aceitar_entrega:", err);
-        pararSomEntrega();
-        mostrarEstadoSemEntrega();
+      const payload = await fetchJSON("/cooperado/aceitar_entrega", {
+        method: "POST",
+        body: JSON.stringify({ entrega_id: entregaOferta.id })
       });
+
+      if (payload && payload.status === "ok") {
+        // adiciona nas ativas
+        if (!entregasAtivas.some(e => e.id === entregaOferta.id)) {
+          entregasAtivas.unshift(entregaOferta);
+        }
+        // seleciona essa como atual
+        setEntregaAtivaAtual(entregaOferta);
+
+        // IMPORTANTE: NÃO abre o Maps automaticamente.
+        // O usuário abre manualmente no botão "Abrir rota no Maps/Waze".
+        entregaOferta = null;
+      } else {
+        entregaOferta = null;
+        if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+        else mostrarEstadoSemEntrega();
+      }
+    } catch (err) {
+      pararSomEntrega();
+      console.log("Erro aceitar entrega:", err);
+      entregaOferta = null;
+      if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+      else mostrarEstadoSemEntrega();
+    }
   }
 
-  function recusarEntrega() {
-    if (!entregaAtual) return;
+  async function recusarEntrega() {
+    if (!entregaOferta) return;
 
-    fetch("/cooperado/recusar_entrega", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entrega_id: entregaAtual.id })
-    })
-      .then(resp => lerJsonSeguro(resp))
-      .then(_ => {
-        pararSomEntrega();
-        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-        mostrarEstadoSemEntrega();
-      })
-      .catch(err => {
-        console.log("Erro recusar_entrega:", err);
-        pararSomEntrega();
-        mostrarEstadoSemEntrega();
+    try {
+      pararSomEntrega();
+      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+
+      await fetchJSON("/cooperado/recusar_entrega", {
+        method: "POST",
+        body: JSON.stringify({ entrega_id: entregaOferta.id })
       });
+
+      entregaOferta = null;
+      if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+      else mostrarEstadoSemEntrega();
+    } catch (err) {
+      pararSomEntrega();
+      console.log("Erro recusar entrega:", err);
+      entregaOferta = null;
+      if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+      else mostrarEstadoSemEntrega();
+    }
   }
 
   function montarUrlNavegacao(entrega) {
     if (!entrega) return null;
 
-    const temCoordsOrigem = !!(entrega.lat_origem && entrega.lng_origem);
-    const temCoordsDestino = !!(entrega.lat_destino && entrega.lng_destino);
+    const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
+    const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
 
     if (temCoordsOrigem && temCoordsDestino) {
-      return (
-        "https://www.google.com/maps/dir/?api=1" +
+      return "https://www.google.com/maps/dir/?api=1" +
         "&origin=" + encodeURIComponent(entrega.lat_origem + "," + entrega.lng_origem) +
         "&destination=" + encodeURIComponent(entrega.lat_destino + "," + entrega.lng_destino) +
-        "&travelmode=driving&dir_action=navigate"
-      );
+        "&travelmode=driving&dir_action=navigate";
     }
 
     const origemTexto =
       entrega.origem_endereco ||
       (entrega.origem_bairro ? entrega.origem_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
+
     const destinoTexto =
       entrega.destino_endereco ||
       (entrega.destino_bairro ? entrega.destino_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
 
-    return (
-      "https://www.google.com/maps/dir/?api=1" +
+    return "https://www.google.com/maps/dir/?api=1" +
       "&origin=" + encodeURIComponent(origemTexto) +
       "&destination=" + encodeURIComponent(destinoTexto) +
-      "&travelmode=driving&dir_action=navigate"
-    );
+      "&travelmode=driving&dir_action=navigate";
   }
 
   function abrirNavegador(entrega) {
     const url = montarUrlNavegacao(entrega);
-    if (url) window.open(url, "_blank"); // não sai do app
+    if (!url) return;
+    // abre somente quando o usuário clicar no botão
+    window.open(url, "_blank");
   }
 
-  function finalizarEntrega() {
-    if (!entregaAtual) return;
+  async function finalizarEntrega() {
+    if (!entregaAtivaAtual) return;
 
     const recebidaPor = inputRecebidaPor.value.trim();
     if (!recebidaPor) {
@@ -1468,48 +1537,54 @@
       return;
     }
 
-    fetch("/cooperado/finalizar_entrega", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ entrega_id: entregaAtual.id, recebida_por: recebidaPor })
-    })
-      .then(resp => lerJsonSeguro(resp))
-      .then(data => {
-        if (data && data._nao_json) {
-          console.log("finalizar_entrega não retornou JSON:", data);
-          alert("Sessão expirada ou erro no servidor ao finalizar. Faça login novamente.");
-          return;
-        }
-
-        if (data && data.status === "ok") {
-          let novaEntrega = data.entrega || Object.assign({}, entregaAtual);
-          novaEntrega.recebida_por = recebidaPor;
-
-          // Se vier boolean/variação, normaliza
-          novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
-
-          // Garantir data ISO para filtros (YYYY-MM-DD)
-          if (!novaEntrega.data && !novaEntrega.data_entrega) {
-            novaEntrega.data = new Date().toISOString().slice(0, 10);
-          }
-
-          const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
-          if (idx >= 0) ENTREGAS[idx] = novaEntrega;
-          else ENTREGAS.unshift(novaEntrega);
-
-          renderHistorico();
-          mostrarEstadoSemEntrega();
-          ativarTab("historico");
-        } else {
-          alert((data && data.mensagem) ? data.mensagem : "Não foi possível finalizar a entrega.");
-        }
-      })
-      .catch(err => {
-        console.log("Erro ao finalizar entrega:", err);
-        alert("Erro ao finalizar entrega.");
+    try {
+      const data = await fetchJSON("/cooperado/finalizar_entrega", {
+        method: "POST",
+        body: JSON.stringify({
+          entrega_id: entregaAtivaAtual.id,
+          recebida_por: recebidaPor
+        })
       });
+
+      if (data && data.status === "ok") {
+        // monta entrega finalizada para histórico
+        const novaEntrega = data.entrega || { ...entregaAtivaAtual };
+        novaEntrega.recebida_por = recebidaPor;
+        novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
+
+        // garante data em ISO para filtros
+        if (!novaEntrega.data && !novaEntrega.data_entrega) {
+          novaEntrega.data = new Date().toISOString().slice(0, 10);
+        } else {
+          novaEntrega.data = toISODate(novaEntrega.data || novaEntrega.data_entrega);
+        }
+
+        // joga no histórico (ENTREGAS)
+        const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
+        if (idx >= 0) ENTREGAS[idx] = novaEntrega;
+        else ENTREGAS.unshift(novaEntrega);
+
+        // remove das ativas
+        entregasAtivas = entregasAtivas.filter(e => e.id !== entregaAtivaAtual.id);
+        entregaAtivaAtual = null;
+        inputRecebidaPor.value = "";
+
+        // atualiza histórico
+        renderHistorico();
+
+        // volta para outra ativa (se tiver) ou fica aguardando
+        if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+        else mostrarEstadoSemEntrega();
+      } else {
+        alert("Não foi possível finalizar a entrega.");
+      }
+    } catch (err) {
+      console.log("Erro ao finalizar entrega:", err);
+      alert("Erro ao finalizar entrega: " + err.message);
+    }
   }
 
+  // ======= HISTÓRICO =======
   function filtrarEntregas() {
     let lista = ENTREGAS.slice();
 
@@ -1519,7 +1594,7 @@
     const busca = filtroBusca.value.trim().toLowerCase();
 
     lista = lista.filter(e => {
-      const dataStr = e.data || e.data_entrega || "";
+      const dataStr = toISODate(e.data || e.data_entrega || "");
       if (di && dataStr && dataStr < di) return false;
       if (df && dataStr && dataStr > df) return false;
 
@@ -1564,7 +1639,8 @@
         (e.origem_bairro ? e.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
       const destinoTexto =
         e.destino_endereco ||
-        (e.destino_bairro ? e.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+        (e.destino_bairro ? e.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informado");
+
       const dataStr = formatarDataSimples(e.data || e.data_entrega);
       const recebida = e.recebida_por ? `Recebida por ${e.recebida_por}` : "Recebida por -";
 
@@ -1572,7 +1648,6 @@
       const statusClass = st === "pago" ? "status-pago" : "status-pendente";
       const statusTexto = st === "pago" ? "Pago" : "Pagamento pendente";
 
-      // OBS: sem clique para marcar como pago (admin resolve)
       item.innerHTML = `
         <div class="hist-top">
           <span class="hist-cliente">${nomeCliente}</span>
@@ -1586,7 +1661,7 @@
             <span class="hist-data">${dataStr}</span>
             <span class="hist-recebida">${recebida}</span>
           </div>
-          <span class="status-badge ${statusClass}">
+          <span class="status-badge ${statusClass}" data-id="${e.id}">
             <span class="icon">💰</span>${statusTexto}
           </span>
         </div>
@@ -1596,6 +1671,27 @@
     });
   }
 
+  async function marcarEntregaComoPaga(entregaId) {
+    try {
+      const data = await fetchJSON("/cooperado/marcar_pago", {
+        method: "POST",
+        body: JSON.stringify({ entrega_id: entregaId })
+      });
+
+      if (data && data.status === "ok") {
+        const idx = ENTREGAS.findIndex(e => e.id === entregaId);
+        if (idx >= 0) ENTREGAS[idx].status_pagamento = "pago";
+        renderHistorico();
+      } else {
+        alert("Não foi possível marcar como pago.");
+      }
+    } catch (err) {
+      console.log("Erro marcar pago:", err);
+      alert("Erro ao marcar como pago: " + err.message);
+    }
+  }
+
+  // ======= TABS / MENU =======
   function ativarTab(nome) {
     if (nome === "corridas") {
       tabBtnCorridas.classList.add("active");
@@ -1622,12 +1718,14 @@
   document.addEventListener("DOMContentLoaded", function () {
     mostrarEstadoSemEntrega();
     atualizarPillOnline();
+    renderHistorico();
 
     btnAceitar.addEventListener("click", aceitarEntrega);
     btnRecusar.addEventListener("click", recusarEntrega);
 
-    // botão abre em NOVA ABA (não sai do app)
-    btnAbrirMaps.addEventListener("click", () => entregaAtual && abrirNavegador(entregaAtual));
+    // Agora só abre externo quando o usuário clicar
+    btnAbrirMaps.addEventListener("click", () => entregaAtivaAtual && abrirNavegador(entregaAtivaAtual));
+
     btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
 
     tabBtnCorridas.addEventListener("click", () => ativarTab("corridas"));
@@ -1640,44 +1738,50 @@
       el.addEventListener("keyup", renderHistorico);
     });
 
+    historicoLista.addEventListener("click", (ev) => {
+      const badge = ev.target.closest(".status-badge");
+      if (!badge) return;
+      if (badge.classList.contains("status-pendente")) {
+        const id = badge.getAttribute("data-id");
+        if (id) marcarEntregaComoPaga(Number(id));
+      }
+    });
+
     // MENU
-    btnMenu.addEventListener("click", () => {
-      menuBackdrop.classList.remove("hidden");
-    });
-    menuFechar.addEventListener("click", () => {
-      menuBackdrop.classList.add("hidden");
-    });
+    btnMenu.addEventListener("click", () => menuBackdrop.classList.remove("hidden"));
+    menuFechar.addEventListener("click", () => menuBackdrop.classList.add("hidden"));
     menuBackdrop.addEventListener("click", (e) => {
       if (e.target === menuBackdrop) menuBackdrop.classList.add("hidden");
     });
 
-    // BOTÃO FICAR ONLINE: inicia mapa + GPS + timers, e destrava áudio
+    // BOTÃO FICAR ONLINE: inicia mapa + GPS + timers
     btnFicarOnline.addEventListener("click", () => {
       if (onlineAtivo) return;
 
-      destravarAudio();
+      // desbloqueia som com gesto do usuário
+      desbloquearAudioUmaVez();
 
       onlineAtivo = true;
       atualizarPillOnline();
+
       onlineOverlay.classList.add("hidden");
 
       initMap();
       iniciarRastreamentoGPS();
 
-      if (pingIntervalId) clearInterval(pingIntervalId);
-      pingIntervalId = setInterval(() => {
+      setInterval(() => {
         if (!onlineAtivo || !motoboyMarker) return;
         const pos = motoboyMarker.getLatLng();
         enviarLocalizacao(pos.lat, pos.lng);
       }, INTERVALO_PING_MS);
 
-      if (buscaIntervalId) clearInterval(buscaIntervalId);
-      buscaIntervalId = setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
-
+      setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
       buscarNovaEntrega();
     });
 
-    renderHistorico();
+    // Segurança extra: qualquer toque/click também tenta desbloquear áudio uma vez
+    window.addEventListener("touchstart", desbloquearAudioUmaVez, { once: true, passive: true });
+    window.addEventListener("click", desbloquearAudioUmaVez, { once: true });
   });
 </script>
 </body>
