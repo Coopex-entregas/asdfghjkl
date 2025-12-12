@@ -15,5 +15,4 @@ python-socketio==5.11.2
 
 gunicorn==21.2.0
 
-eventlet==0.36.1
 
