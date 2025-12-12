@@ -1434,41 +1434,70 @@
   }
 
   async function aceitarEntrega() {
-    if (!entregaOferta) return;
+  if (!entregaOferta) return;
 
-    try {
-      pararSomEntrega();
-      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+  try {
+    pararSomEntrega();
+    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 
-      const payload = await fetchJSON("/cooperado/aceitar_entrega", {
-        method: "POST",
-        body: JSON.stringify({ entrega_id: entregaOferta.id })
-      });
+    const payload = await fetchJSON("/cooperado/aceitar_entrega", {
+      method: "POST",
+      body: JSON.stringify({ entrega_id: entregaOferta.id })
+    });
 
-      if (payload && payload.status === "ok") {
-        // adiciona nas ativas
-        if (!entregasAtivas.some(e => e.id === entregaOferta.id)) {
-          entregasAtivas.unshift(entregaOferta);
-        }
-        // seleciona essa como atual
-        setEntregaAtivaAtual(entregaOferta);
+    if (payload && payload.status === "ok") {
+      // pega a entrega atualizada do backend se vier, senão usa a oferta
+      const entregaAceita = (payload.entrega || payload.data?.entrega || null) ? (payload.entrega || payload.data?.entrega) : { ...entregaOferta };
 
-        // IMPORTANTE: NÃO abre o Maps automaticamente.
-        // O usuário abre manualmente no botão "Abrir rota no Maps/Waze".
-        entregaOferta = null;
+      // marca status da entrega como "em andamento" (para aparecer no histórico já)
+      entregaAceita.status_entrega = entregaAceita.status_entrega || "andamento";
+
+      // normaliza pagamento
+      entregaAceita.status_pagamento = normalizarStatusPagamento(entregaAceita.status_pagamento);
+
+      // garante data (ISO) para filtros (se não vier do banco)
+      if (!entregaAceita.data && !entregaAceita.data_entrega) {
+        entregaAceita.data = new Date().toISOString().slice(0, 10);
       } else {
-        entregaOferta = null;
-        if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-        else mostrarEstadoSemEntrega();
+        entregaAceita.data = toISODate(entregaAceita.data || entregaAceita.data_entrega);
       }
-    } catch (err) {
-      pararSomEntrega();
-      console.log("Erro aceitar entrega:", err);
+
+      // garante recebida_por existir (pode ficar vazio até finalizar)
+      if (!entregaAceita.recebida_por) entregaAceita.recebida_por = "";
+
+      // adiciona nas ativas (multiplas)
+      if (!entregasAtivas.some(e => e.id === entregaAceita.id)) {
+        entregasAtivas.unshift(entregaAceita);
+      }
+
+      // >>> AQUI: adiciona/atualiza no histórico NA HORA do aceite <<<
+      const idx = ENTREGAS.findIndex(e => e.id === entregaAceita.id);
+      if (idx >= 0) ENTREGAS[idx] = entregaAceita;
+      else ENTREGAS.unshift(entregaAceita);
+
+      // atualiza a aba entregas imediatamente
+      renderHistorico();
+
+      // mostra essa como a entrega atual no card de andamento
+      setEntregaAtivaAtual(entregaAceita);
+
+      // limpa oferta
+      entregaOferta = null;
+
+    } else {
       entregaOferta = null;
       if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
       else mostrarEstadoSemEntrega();
     }
+
+  } catch (err) {
+    pararSomEntrega();
+    console.log("Erro aceitar entrega:", err);
+    entregaOferta = null;
+    if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
+    else mostrarEstadoSemEntrega();
   }
+}
 
   async function recusarEntrega() {
     if (!entregaOferta) return;
