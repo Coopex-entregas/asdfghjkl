@@ -423,6 +423,74 @@ class Entrega(db.Model):
     def __repr__(self):
         return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
 
+def emitir_atualizacao_entrega(entrega: Entrega, acao: str = "atualizada"):
+    try:
+        payload = {
+            "acao": acao,
+            "id": entrega.id,
+            "cliente": entrega.cliente,
+            "cliente_id": entrega.cliente_id,
+            "bairro": entrega.bairro,
+            "valor": float(entrega.valor or 0),
+            "status": (entrega.status or ""),
+            "status_corrida": (entrega.status_corrida or ""),
+            "status_pagamento": (entrega.status_pagamento or ""),
+            "pagamento": (entrega.pagamento or ""),
+            "cooperado_id": entrega.cooperado_id,
+            "cooperado_nome": (entrega.cooperado.nome if entrega.cooperado else None),
+            "recebido_por": (entrega.recebido_por or ""),
+            "motivo_recusa": (entrega.motivo_recusa or ""),
+            "recusada_por": (entrega.recusada_por or ""),
+            "recusada_em": (to_brasilia(entrega.recusada_em).strftime("%d/%m %H:%M") if entrega.recusada_em else None),
+            "data_envio": (to_brasilia(entrega.data_envio).strftime("%d/%m %H:%M") if entrega.data_envio else None),
+            "data_atribuida": (to_brasilia(entrega.data_atribuida).strftime("%d/%m %H:%M") if entrega.data_atribuida else None),
+        }
+
+        # Admin sempre recebe
+        socketio.emit("entrega_atualizada", payload, room="admins")
+
+        # Cooperado (se tiver)
+        if entrega.cooperado_id:
+            socketio.emit("entrega_atualizada", payload, room=f"coop_{entrega.cooperado_id}")
+
+        # Cliente (se tiver)
+        if entrega.cliente_id:
+            socketio.emit("entrega_atualizada", payload, room=f"cliente_{entrega.cliente_id}")
+
+        # Opcional: broadcast geral (se você usa em telas públicas)
+        socketio.emit("entrega_atualizada_publico", payload)
+
+    except Exception as e:
+        try:
+            current_app.logger.warning(f"Falha ao emitir entrega_atualizada: {e}")
+        except Exception:
+            pass
+
+def _marcar_entrega_como_recusada(entrega: Entrega, cooperado_id: int, cooperado_nome: str, motivo: str):
+    entrega.status_corrida = "recusada"
+    entrega.motivo_recusa = (motivo or "").strip()[:255]
+    entrega.recusada_em = datetime.utcnow()
+    entrega.recusada_por = (cooperado_nome or "").strip()[:100]
+
+    # volta para o admin (desatribui)
+    entrega.cooperado_id = None
+    entrega.data_atribuida = None
+
+    # muito importante: volta o status geral para "pendente"
+    entrega.status = "pendente"
+
+    db.session.commit()
+    emitir_atualizacao_entrega(entrega, "recusada")
+
+def _marcar_entrega_como_entregue(entrega: Entrega, recebido_por: str):
+    entrega.status = "entregue"
+    entrega.status_corrida = "finalizada"  # valor novo (pode ser "entregue" se preferir)
+
+    entrega.recebido_por = (recebido_por or "").strip()[:100]
+
+    db.session.commit()
+    emitir_atualizacao_entrega(entrega, "entregue")
+
 
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
@@ -2881,7 +2949,6 @@ def cooperado_recusar_entrega():
         entrega_id = int(entrega_id_raw)
     except ValueError:
         return jsonify(status="erro", msg="ID de entrega inválido"), 400
-
     if not motivo:
         return jsonify(status="erro", msg="Motivo da recusa é obrigatório."), 400
 
@@ -2889,30 +2956,10 @@ def cooperado_recusar_entrega():
     if not entrega:
         return jsonify(status="erro", msg="Entrega não encontrada"), 404
 
-    # Só recusa se ela estiver atribuída a ele
     if entrega.cooperado_id != cooperado_id:
         return jsonify(status="erro", msg="Entrega não pertence a este cooperado"), 403
 
-    # Auditoria da recusa
-    entrega.status_corrida = "recusada"
-    entrega.motivo_recusa = motivo[:255]
-    entrega.recusada_em = datetime.utcnow()
-    entrega.recusada_por = cooperado_nome
-
-    # Volta para a fila do admin
-    entrega.cooperado_id = None
-    entrega.data_atribuida = None
-
-    db.session.commit()
-
-    # Atualiza admin em tempo real (opcional)
-    socketio.emit("entrega_recusada", {
-        "id": entrega.id,
-        "motivo": entrega.motivo_recusa,
-        "por": entrega.recusada_por,
-        "quando": to_brasilia(entrega.recusada_em).strftime("%d/%m %H:%M") if entrega.recusada_em else None,
-    }, room="admins")
-
+    _marcar_entrega_como_recusada(entrega, cooperado_id, cooperado_nome, motivo)
     return jsonify(status="ok")
 
 
@@ -2921,12 +2968,17 @@ def cooperado_finalizar_entrega():
     if session.get("user_id") is None or session.get("is_admin"):
         return jsonify(status="erro", msg="Não autorizado"), 401
 
-    data = request.get_json() or {}
-    entrega_id = data.get("entrega_id")
-    recebida_por = (data.get("recebida_por") or "").strip()
+    data = request.get_json(silent=True) or {}
+    entrega_id_raw = data.get("entrega_id") or request.form.get("entrega_id")
+    recebida_por = (data.get("recebida_por") or request.form.get("recebida_por") or "").strip()
 
-    if not entrega_id:
+    if not entrega_id_raw:
         return jsonify(status="erro", msg="ID de entrega não informado"), 400
+    try:
+        entrega_id = int(entrega_id_raw)
+    except ValueError:
+        return jsonify(status="erro", msg="ID de entrega inválido"), 400
+
     if not recebida_por:
         return jsonify(status="erro", msg="Nome de quem recebeu é obrigatório"), 400
 
@@ -2941,8 +2993,7 @@ def cooperado_finalizar_entrega():
     # Padronize o campo:
     if hasattr(entrega, "recebida_por"):
         entrega.recebida_por = recebida_por
-    else:
-        # fallback: caso seu model seja "recebido_por"
+    elif hasattr(entrega, "recebido_por"):
         entrega.recebido_por = recebida_por
 
     if hasattr(entrega, "status_entrega"):
@@ -2953,7 +3004,6 @@ def cooperado_finalizar_entrega():
 
     db.session.commit()
 
-    # data em ISO (YYYY-MM-DD) para o filtro do JS funcionar
     data_entrega = getattr(entrega, "data_entrega", None)
     if isinstance(data_entrega, (datetime, date)):
         data_iso = data_entrega.strftime("%Y-%m-%d")
@@ -2975,6 +3025,7 @@ def cooperado_finalizar_entrega():
     }
 
     return jsonify(status="ok", entrega=entrega_dict)
+
 
 
 # Aceitar via API (AJAX/Fetch com JSON)
@@ -3045,21 +3096,23 @@ def cooperado_recusar_corrida():
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 401
 
-    user_id = session['user_id']
-    data = request.get_json() or {}
+    cooperado_id = session['user_id']
+    cooperado_nome = session.get("user_nome", "Cooperado")
+
+    data = request.get_json(silent=True) or {}
     entrega_id = data.get('entrega_id')
+    motivo = (data.get("motivo") or "Recusada no app").strip()
 
     if not entrega_id:
         return jsonify(ok=False, error='entrega_id obrigatório'), 400
 
     entrega = Entrega.query.get_or_404(entrega_id)
 
-    if entrega.cooperado_id != user_id:
+    if entrega.cooperado_id != cooperado_id:
         return jsonify(ok=False, error='Entrega não pertence a este cooperado'), 403
 
-    entrega.status_corrida = 'recusada'
-    db.session.commit()
-    return jsonify(ok=True, status_corrida=entrega.status_corrida)
+    _marcar_entrega_como_recusada(entrega, cooperado_id, cooperado_nome, motivo)
+    return jsonify(ok=True, status_corrida="recusada")
 
 
 @app.route('/cooperado/api/novas', methods=['GET'])
@@ -4507,17 +4560,22 @@ def marcar_entregue(id):
         return redirect(url_for('login'))
 
     e = Entrega.query.get_or_404(id)
+
+    recebido_por = (request.form.get("recebido_por") or "").strip()
+    if recebido_por:
+        e.recebido_por = recebido_por[:100]
+
     e.status = "entregue"
+    e.status_corrida = "finalizada"
+
     db.session.commit()
+    emitir_atualizacao_entrega(e, "entregue")
 
     if _wants_json():
-        return jsonify(
-            ok=True,
-            entrega_id=e.id,
-            status=e.status,
-        )
+        return jsonify(ok=True, entrega_id=e.id, status=e.status, recebido_por=e.recebido_por)
 
     return redirect_back_to_admin()
+
 
 # =========================================================
 # CRÉDITOS (SUPERVISOR)
@@ -6253,21 +6311,25 @@ def criar_bd():
 
 criar_bd()
 
-# =========================================================
-# EVENTOS SOCKET.IO (TEMPO REAL)
-# =========================================================
-
+# =========================
+# Socket.IO (eventos)
+# =========================
 from datetime import datetime
-from zoneinfo import ZoneInfo
+from flask import request, session, jsonify
+from flask_socketio import join_room, leave_room, emit, disconnect
 
-from flask import request, session
-from flask_socketio import emit, join_room, leave_room, disconnect
-
-TZ_BR = ZoneInfo("America/Sao_Paulo")
+try:
+    import pytz
+    _TZ = pytz.timezone("America/Sao_Paulo")
+except Exception:
+    _TZ = None
 
 
 def now_iso():
-    return datetime.now(TZ_BR).isoformat(timespec="seconds")
+    """Timestamp ISO em horário de Brasília (se pytz estiver disponível)."""
+    if _TZ:
+        return datetime.now(_TZ).isoformat()
+    return datetime.utcnow().isoformat() + "Z"
 
 
 # Conexão do cliente (APENAS UM connect)
@@ -6311,7 +6373,6 @@ def handle_entrar_sala(data=None):
         return
 
     sala = sala.strip()
-
     join_room(sala)
 
     # NÃO confie em usuario_id vindo do front
@@ -6341,7 +6402,6 @@ def handle_sair_sala(data=None):
         return
 
     sala = sala.strip()
-
     leave_room(sala)
 
     usuario_id = session.get("user_id")
@@ -6407,6 +6467,11 @@ def handle_atualizar_entrega(data=None):
     if not entrega_id:
         return
 
+    try:
+        entrega_id = int(entrega_id)
+    except Exception:
+        return
+
     emit(
         "entrega_atualizada",
         {
@@ -6416,7 +6481,7 @@ def handle_atualizar_entrega(data=None):
         },
         room=f"entrega_{entrega_id}",
     )
-                         
+         
 
 if __name__ == '__main__':
     socketio.run(app, host="0.0.0.0", port=int(os.environ.get("PORT", 5000)))
