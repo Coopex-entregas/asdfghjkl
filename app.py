@@ -41,11 +41,16 @@ app.config['SECRET_KEY'] = os.environ.get(
 )
 
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
+# IMPORTANTE: eventlet tem que vir ANTES de importar coisas que usam rede/threads
+import eventlet
+eventlet.monkey_patch()
+
 from flask_socketio import SocketIO
 
 socketio = SocketIO(
     app,
-    async_mode="threading",   # (opcional, mas bom deixar explícito)
+    cors_allowed_origins="*",
+    async_mode="eventlet",
     logger=False,
     engineio_logger=False
 )
