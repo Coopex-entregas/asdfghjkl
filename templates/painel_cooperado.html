@@ -1021,30 +1021,41 @@
   const INTERVALO_BUSCA_ENTREGA_MS = 7000;
   const TEMPO_EXPIRACAO_SEG = 20;
 
+  // ======= MAPA / LEAFLET =======
   let map;
   let motoboyMarker = null;
   let origemMarker = null;
   let destinoMarker = null;
   let rotaLayer = null;
 
+  // rota “navegação” (do motoboy -> origem -> destino)
+  let navLayer = null;
+  let followAtivo = true; // seguir motoboy no mapa
+  let lastNavFetchAt = 0;
+  let lastNavFrom = null;
+
+  // ======= GPS =======
   let watchId = null;
 
-  // Oferta atual (quando chega nova entrega)
-  let entregaOferta = null;
+  // ======= ENTREGA (estado) =======
+  let entregaOferta = null;         // oferta na tela (aceitar/recusar)
+  let entregaAtivaAtual = null;     // entrega em andamento na tela
+  let entregasAtivas = [];          // se quiser permitir +1, mantém aqui
 
-  // Entregas aceitas/em andamento (para permitir mais de uma)
-  let entregasAtivas = [];
-  let entregaAtivaAtual = null;
+  // anti-repetição / cooldown por ID
+  const cooldownEntrega = new Map(); // id -> expiresAtMs
 
-  // Para não repetir oferta (quando backend insiste/retorna a mesma)
-  const ofertasIgnoradas = new Set(); // ids recusados/expirados (front)
-  const ofertasVistasRecentemente = new Map(); // id -> timestamp
-
+  // countdown oferta
   let countdownInterval = null;
   let countdownRestante = TEMPO_EXPIRACAO_SEG;
 
+  // timers (para não duplicar setInterval)
+  let pingTimerId = null;
+  let buscaTimerId = null;
+
   let onlineAtivo = false;
 
+  // ======= ELEMENTOS =======
   const audioEntrega = document.getElementById("som-entrega");
   const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
 
@@ -1074,7 +1085,10 @@
   const aceitaOrigemText = document.getElementById("aceita-origem-text");
   const aceitaDestinoText = document.getElementById("aceita-destino-text");
   const aceitaDistancia = document.getElementById("aceita-entrega-distancia");
+
+  // ESTE BOTÃO AGORA VIRA “Seguir no mapa” (não abre externo)
   const btnAbrirMaps = document.getElementById("btn-abrir-maps");
+
   const inputRecebidaPor = document.getElementById("input-recebida-por");
   const btnFinalizarEntrega = document.getElementById("btn-finalizar-entrega");
 
@@ -1099,6 +1113,8 @@
 
   // ======= AUDIO (desbloqueio por gesto) =======
   let audioDesbloqueado = false;
+
+  function nowMs() { return Date.now(); }
 
   function desbloquearAudioUmaVez() {
     if (audioDesbloqueado || !audioEntrega) return;
@@ -1129,7 +1145,6 @@
   function tocarSomEntrega() {
     if (!audioEntrega) return;
     if (!audioDesbloqueado) return;
-
     audioEntrega.loop = true;
     audioEntrega.currentTime = 0;
     audioEntrega.play().catch(() => {});
@@ -1198,22 +1213,54 @@
     try { payload = await resp.json(); } catch (e) {}
 
     if (!resp.ok) {
-      const msg = (payload && (payload.msg || payload.message)) ? (payload.msg || payload.message) : `HTTP ${resp.status}`;
+      const msg = (payload && (payload.msg || payload.message))
+        ? (payload.msg || payload.message)
+        : `HTTP ${resp.status}`;
       throw new Error(msg);
     }
     return payload;
   }
 
+  function setCooldownEntrega(entregaId, segundos) {
+    if (!entregaId) return;
+    cooldownEntrega.set(Number(entregaId), nowMs() + (segundos * 1000));
+  }
+
+  function emCooldown(entregaId) {
+    const id = Number(entregaId);
+    const exp = cooldownEntrega.get(id);
+    if (!exp) return false;
+    if (nowMs() > exp) { cooldownEntrega.delete(id); return false; }
+    return true;
+  }
+
   // ======= MAPA =======
   function initMap() {
     if (map) return;
+
     const centerLatLng = [-5.814, -35.214]; // Natal
-    map = L.map("map").setView(centerLatLng, 13);
+    map = L.map("map", {
+      zoomControl: true,
+      tap: true
+    }).setView(centerLatLng, 13);
 
     L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
       maxZoom: 19,
       attribution: "&copy; OpenStreetMap"
     }).addTo(map);
+
+    // se o usuário arrastar o mapa, desliga follow (pra ele conseguir navegar)
+    map.on("dragstart", () => {
+      followAtivo = false;
+      atualizarBotaoSeguirNoMapa();
+    });
+
+    // força recalcular tamanho em mobile (evita mapa “travado”)
+    setTimeout(() => map.invalidateSize(), 200);
+    window.addEventListener("resize", () => {
+      if (!map) return;
+      setTimeout(() => map.invalidateSize(), 150);
+    });
   }
 
   function atualizarMarkerMotoboy(lat, lng) {
@@ -1225,9 +1272,14 @@
         fillColor: "#4169e1",
         fillOpacity: 0.9
       }).addTo(map);
-      map.setView([lat, lng], 15);
+      map.setView([lat, lng], 16);
     } else {
       motoboyMarker.setLatLng([lat, lng]);
+    }
+
+    // modo seguir
+    if (followAtivo) {
+      map.panTo([lat, lng], { animate: true, duration: 0.35 });
     }
   }
 
@@ -1236,39 +1288,74 @@
     if (origemMarker) { map.removeLayer(origemMarker); origemMarker = null; }
     if (destinoMarker) { map.removeLayer(destinoMarker); destinoMarker = null; }
     if (rotaLayer) { map.removeLayer(rotaLayer); rotaLayer = null; }
+    if (navLayer) { map.removeLayer(navLayer); navLayer = null; }
   }
 
-  function desenharRotaSeTiverCoords(entrega) {
-    limparRota();
-    if (!entrega || !map) return;
+  function temCoords(entrega) {
+    return !!(entrega && entrega.lat_origem && entrega.lng_origem && entrega.lat_destino && entrega.lng_destino);
+  }
 
-    const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
-    const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
+  function desenharMarkersOrigemDestino(entrega) {
+    if (!map || !entrega) return;
 
-    if (temCoordsOrigem) {
+    if (entrega.lat_origem && entrega.lng_origem) {
       origemMarker = L.marker([entrega.lat_origem, entrega.lng_origem]).addTo(map);
       origemMarker.bindPopup("Coleta");
     }
-    if (temCoordsDestino) {
+    if (entrega.lat_destino && entrega.lng_destino) {
       destinoMarker = L.marker([entrega.lat_destino, entrega.lng_destino]).addTo(map);
       destinoMarker.bindPopup("Destino");
     }
+  }
 
-    if (temCoordsOrigem && temCoordsDestino) {
-      const url = `https://router.project-osrm.org/route/v1/driving/${entrega.lng_origem},${entrega.lat_origem};${entrega.lng_destino},${entrega.lat_destino}?overview=full&geometries=geojson`;
+  async function desenharRotaOSRM(coords, estilo) {
+    // coords: array de [lng,lat] (OSRM)
+    const coordsStr = coords.map(c => `${c[0]},${c[1]}`).join(";");
+    const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
 
-      fetch(url)
-        .then(r => r.json())
-        .then(data => {
-          if (data.routes && data.routes.length > 0) {
-            const route = data.routes[0];
-            rotaLayer = L.geoJSON(route.geometry, {
-              style: { weight: 4, opacity: 0.95, color: "#4169e1" }
-            }).addTo(map);
-            map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
-          }
-        })
-        .catch(err => console.log("Erro rota OSRM:", err));
+    const data = await fetch(url).then(r => r.json());
+    if (!data.routes || !data.routes.length) return null;
+
+    const route = data.routes[0];
+    return L.geoJSON(route.geometry, { style: estilo });
+  }
+
+  async function ativarNavegacaoNoMapa(entrega) {
+    if (!map || !entrega || !temCoords(entrega)) return;
+
+    // não refaz rota toda hora
+    const agora = nowMs();
+    const posAtual = motoboyMarker ? motoboyMarker.getLatLng() : null;
+
+    if (agora - lastNavFetchAt < 20000 && lastNavFrom && posAtual) {
+      const dist = map.distance(lastNavFrom, posAtual);
+      if (dist < 200) return; // não recalcula se moveu pouco
+    }
+
+    lastNavFetchAt = agora;
+    lastNavFrom = posAtual ? L.latLng(posAtual.lat, posAtual.lng) : null;
+
+    // remove navLayer anterior
+    if (navLayer) { map.removeLayer(navLayer); navLayer = null; }
+
+    // monta rota: motoboy -> origem -> destino (se tiver motoboyMarker)
+    const coords = [];
+    if (posAtual) coords.push([posAtual.lng, posAtual.lat]);
+    coords.push([Number(entrega.lng_origem), Number(entrega.lat_origem)]);
+    coords.push([Number(entrega.lng_destino), Number(entrega.lat_destino)]);
+
+    try {
+      const layer = await desenharRotaOSRM(coords, {
+        weight: 5,
+        opacity: 0.95,
+        color: "#38bdf8"
+      });
+      if (!layer) return;
+
+      navLayer = layer.addTo(map);
+      map.fitBounds(navLayer.getBounds(), { padding: [40, 40] });
+    } catch (e) {
+      console.log("Erro navegação OSRM:", e);
     }
   }
 
@@ -1281,6 +1368,11 @@
     }
 
     atualizarMarkerMotoboy(lat, lng);
+
+    // se tem entrega ativa com coords, mantém nav atualizada com parcimônia
+    if (entregaAtivaAtual && temCoords(entregaAtivaAtual)) {
+      ativarNavegacaoNoMapa(entregaAtivaAtual);
+    }
 
     fetch("/cooperado/atualizar_localizacao", {
       method: "POST",
@@ -1316,25 +1408,146 @@
     }
   }
 
-  // ======= CONTROLE DE OVERLAY (não deixar “recolher” virar bug de oferta) =======
-  // Sempre que houver entrega ativa, mantém o card de “entrega em andamento” como prioridade.
-  function garantirCardPrioritario() {
-    if (entregasAtivas.length > 0 && entregaAtivaAtual) {
-      // se o usuário abriu/fechou o overlay, não deixa a oferta reaparecer por cima
-      entregaOferta = null;
-      pararSomEntrega();
-      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-      setEntregaAtivaAtual(entregaAtivaAtual);
+  // ======= “MAPA GRANDE” (barra compacta) =======
+  const overlayEl = document.querySelector(".overlay");
+  let sheetCompacto = false;
+  let barraCompacta = null;
+
+  function criarBarraCompactaSePrecisar() {
+    if (barraCompacta) return;
+
+    barraCompacta = document.createElement("div");
+    barraCompacta.id = "barra-compacta";
+    barraCompacta.style.cssText = `
+      pointer-events:auto;
+      max-width:540px;
+      margin:0 auto 8px;
+      background: rgba(2,6,23,0.92);
+      border:1px solid #111827;
+      border-radius: 999px;
+      padding: 8px 12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      box-shadow: 0 10px 28px rgba(0,0,0,0.85);
+    `;
+
+    const left = document.createElement("div");
+    left.id = "barra-compacta-left";
+    left.style.cssText = `display:flex;flex-direction:column;gap:2px;min-width:0;`;
+
+    const title = document.createElement("div");
+    title.id = "barra-compacta-title";
+    title.style.cssText = `font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+    title.textContent = "Mapa";
+
+    const sub = document.createElement("div");
+    sub.id = "barra-compacta-sub";
+    sub.style.cssText = `font-size:.82rem;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
+    sub.textContent = "Toque para abrir detalhes";
+
+    left.appendChild(title);
+    left.appendChild(sub);
+
+    const btn = document.createElement("button");
+    btn.type = "button";
+    btn.id = "barra-compacta-btn";
+    btn.textContent = "Abrir";
+    btn.style.cssText = `
+      border:none;
+      background: linear-gradient(90deg, #4169e1, #1d4ed8);
+      color:#e5edff;
+      border-radius:999px;
+      padding:8px 14px;
+      font-weight:700;
+      cursor:pointer;
+      white-space:nowrap;
+    `;
+    btn.addEventListener("click", () => setSheetCompacto(false));
+
+    barraCompacta.addEventListener("click", (e) => {
+      // não duplicar clique do botão
+      if (e.target && e.target.id === "barra-compacta-btn") return;
+      setSheetCompacto(false);
+    });
+
+    barraCompacta.appendChild(left);
+    barraCompacta.appendChild(btn);
+
+    // insere acima das tabs
+    overlayEl.insertBefore(barraCompacta, overlayEl.firstChild);
+  }
+
+  function atualizarBarraCompacta() {
+    if (!barraCompacta) return;
+    const title = document.getElementById("barra-compacta-title");
+    const sub = document.getElementById("barra-compacta-sub");
+
+    if (entregaOferta) {
+      title.textContent = "Nova entrega";
+      sub.textContent = "Abra para aceitar/recusar";
+      return;
     }
+    if (entregaAtivaAtual) {
+      const nome = entregaAtivaAtual.cliente || entregaAtivaAtual.restaurante || "Entrega em andamento";
+      title.textContent = nome;
+      sub.textContent = "Toque para ver detalhes / finalizar";
+      return;
+    }
+    title.textContent = "Mapa";
+    sub.textContent = "Toque para abrir detalhes";
+  }
+
+  function setSheetCompacto(compacto) {
+    criarBarraCompactaSePrecisar();
+    sheetCompacto = !!compacto;
+
+    // quando compacta, escondemos os cards (mas deixamos a barra)
+    if (sheetCompacto) {
+      // tabs e panes somem (mapa fica “livre”)
+      const tabSwitcher = document.querySelector(".tab-switcher");
+      if (tabSwitcher) tabSwitcher.classList.add("hidden");
+      tabCorridas.classList.add("hidden");
+      tabHistorico.classList.add("hidden");
+      barraCompacta.classList.remove("hidden");
+    } else {
+      const tabSwitcher = document.querySelector(".tab-switcher");
+      if (tabSwitcher) tabSwitcher.classList.remove("hidden");
+
+      // volta para tab atual
+      if (tabBtnHistorico.classList.contains("active")) {
+        tabCorridas.classList.add("hidden");
+        tabHistorico.classList.remove("hidden");
+      } else {
+        tabHistorico.classList.add("hidden");
+        tabCorridas.classList.remove("hidden");
+      }
+      barraCompacta.classList.add("hidden");
+    }
+
+    atualizarBarraCompacta();
+    if (map) setTimeout(() => map.invalidateSize(), 200);
   }
 
   // ======= ESTADOS UI =======
+  function limparCountdown() {
+    if (countdownInterval) {
+      clearInterval(countdownInterval);
+      countdownInterval = null;
+    }
+  }
+
   function mostrarEstadoSemEntrega() {
+    pararSomEntrega();
+    limparCountdown();
+    entregaOferta = null;
+
     cardSemEntrega.classList.remove("hidden");
     cardNovaEntrega.classList.add("hidden");
     cardEntregaAceita.classList.add("hidden");
+
     limparRota();
-    entregaOferta = null;
 
     if (entregasAtivas.length > 0) {
       setEntregaAtivaAtual(entregasAtivas[0]);
@@ -1342,16 +1555,15 @@
     }
 
     entregaAtivaAtual = null;
-    inputRecebidaPor.value = "";
+    if (inputRecebidaPor) inputRecebidaPor.value = "";
+
+    // se não tem nada, deixa em compacto para ver mapa
+    setSheetCompacto(true);
   }
 
   function mostrarEstadoNovaEntrega(entrega) {
-    // Se já tem entrega em andamento, NÃO mostra oferta (evita tocar de novo)
-    if (entregasAtivas.length > 0) {
-      // marca como vista para não “insistir”
-      if (entrega && entrega.id) ofertasVistasRecentemente.set(entrega.id, Date.now());
-      return;
-    }
+    // se já tem entrega ativa, não mostra oferta (evita tocar novamente)
+    if (entregasAtivas.length > 0 || entregaAtivaAtual) return;
 
     cardSemEntrega.classList.add("hidden");
     cardNovaEntrega.classList.remove("hidden");
@@ -1374,13 +1586,36 @@
     novaEstTempo.textContent = "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
     novaDistancia.textContent = formatarDistancia(entrega.distancia);
 
-    desenharRotaSeTiverCoords(entrega);
-    iniciarCountdown();
+    // rota simples origem->dest (visual)
+    limparRota();
+    desenharMarkersOrigemDestino(entrega);
+    if (temCoords(entrega)) {
+      desenharRotaOSRM(
+        [
+          [Number(entrega.lng_origem), Number(entrega.lat_origem)],
+          [Number(entrega.lng_destino), Number(entrega.lat_destino)]
+        ],
+        { weight: 4, opacity: 0.95, color: "#4169e1" }
+      ).then(layer => {
+        if (!layer) return;
+        rotaLayer = layer.addTo(map);
+        map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
+      }).catch(() => {});
+    }
 
+    iniciarCountdown();
     tocarSomEntrega();
+
+    // abre detalhes automaticamente pra aceitar/recusar
+    setSheetCompacto(false);
+    atualizarBarraCompacta();
   }
 
   function setEntregaAtivaAtual(entrega) {
+    pararSomEntrega();
+    limparCountdown();
+    entregaOferta = null;
+
     entregaAtivaAtual = entrega;
 
     cardSemEntrega.classList.add("hidden");
@@ -1400,85 +1635,87 @@
 
     aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
 
-    // Navegação dentro do mapa: desenha rota e foca nela
-    desenharRotaSeTiverCoords(entrega);
+    // limpa e ativa navegação no mapa
+    limparRota();
+    desenharMarkersOrigemDestino(entrega);
+    if (temCoords(entrega)) {
+      // rota visual (origem->dest)
+      desenharRotaOSRM(
+        [
+          [Number(entrega.lng_origem), Number(entrega.lat_origem)],
+          [Number(entrega.lng_destino), Number(entrega.lat_destino)]
+        ],
+        { weight: 4, opacity: 0.95, color: "#4169e1" }
+      ).then(layer => {
+        if (!layer) return;
+        rotaLayer = layer.addTo(map);
+        map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
+      }).catch(() => {});
+    }
 
-    // Garantia: não pode tocar som com entrega ativa
-    pararSomEntrega();
-    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-    entregaOferta = null;
+    // botão vira navegação interna
+    atualizarBotaoSeguirNoMapa();
+
+    // deixa mapa grande por padrão (pra você navegar nele)
+    setSheetCompacto(true);
+    atualizarBarraCompacta();
+
+    // se tiver coords, desenha rota “nav” incluindo motoboy->origem->dest
+    if (temCoords(entrega)) ativarNavegacaoNoMapa(entrega);
   }
 
   function iniciarCountdown() {
-    if (countdownInterval) clearInterval(countdownInterval);
+    limparCountdown();
     countdownRestante = TEMPO_EXPIRACAO_SEG;
-    novaCountdown.textContent = countdownRestante;
+    if (novaCountdown) novaCountdown.textContent = countdownRestante;
 
     countdownInterval = setInterval(() => {
       countdownRestante -= 1;
       if (countdownRestante <= 0) {
-        clearInterval(countdownInterval);
-        countdownInterval = null;
+        limparCountdown();
 
-        // expiração: para som + ignora essa oferta por um tempo (front)
-        if (entregaOferta && entregaOferta.id) ofertasIgnoradas.add(entregaOferta.id);
+        // expirou: para som e coloca cooldown (não tocar de novo)
+        if (entregaOferta && entregaOferta.id) setCooldownEntrega(entregaOferta.id, 180);
 
         pararSomEntrega();
         entregaOferta = null;
 
-        if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-        else mostrarEstadoSemEntrega();
+        mostrarEstadoSemEntrega();
       } else {
-        novaCountdown.textContent = countdownRestante;
+        if (novaCountdown) novaCountdown.textContent = countdownRestante;
       }
     }, 1000);
   }
 
   // ======= BUSCA / AÇÕES =======
-  function limparOfertasVistasAntigas() {
-    const agora = Date.now();
-    for (const [id, ts] of ofertasVistasRecentemente.entries()) {
-      if (agora - ts > 60_000) ofertasVistasRecentemente.delete(id); // 60s
-    }
-    // ofertas ignoradas (recusadas/expiradas) mantém por mais tempo
-    // se quiser limpar depois de 10 min:
-    // (não tem timestamp, então mantemos até recarregar a página)
+  function entregaJaEstaNoHistorico(entregaId) {
+    const id = Number(entregaId);
+    return ENTREGAS.some(e => Number(e.id) === id);
   }
 
   async function buscarNovaEntrega() {
     if (!onlineAtivo) return;
 
-    limparOfertasVistasAntigas();
+    // se já tem entrega ativa, não busca oferta (evita som/bug)
+    if (entregaAtivaAtual || entregasAtivas.length > 0) return;
 
-    // Se já tem entrega ativa, não mostra oferta e não toca som
-    if (entregasAtivas.length > 0) return;
-
-    // Se já tem uma oferta na tela, não substitui
+    // se já tem oferta na tela, não troca
     if (entregaOferta) return;
 
     try {
       const data = await fetchJSON("/cooperado/verificar_nova_entrega", { method: "GET" });
-      if (!data || !data.tem_entrega) {
-        if (!entregaAtivaAtual && entregasAtivas.length === 0) mostrarEstadoSemEntrega();
-        return;
-      }
+      if (!data || !data.tem_entrega) return;
 
       const entrega = data.entrega;
       if (!entrega || !entrega.id) return;
 
-      // se recusou/expirou no front, ignora
-      if (ofertasIgnoradas.has(entrega.id)) return;
+      // cooldown evita tocar de novo após recusar/finalizar/expirar
+      if (emCooldown(entrega.id)) return;
 
-      // se já está nas ativas, ignora
-      if (entregasAtivas.some(e => e.id === entrega.id)) return;
+      // se já está no histórico, também não toca (protege contra backend repetindo a mesma)
+      if (entregaJaEstaNoHistorico(entrega.id)) return;
 
-      // se foi vista muito recentemente (anti repetição)
-      const vistoTs = ofertasVistasRecentemente.get(entrega.id);
-      if (vistoTs && (Date.now() - vistoTs) < 15_000) return; // 15s
-
-      ofertasVistasRecentemente.set(entrega.id, Date.now());
       mostrarEstadoNovaEntrega(entrega);
-
     } catch (err) {
       console.log("Erro nova entrega:", err);
     }
@@ -1487,13 +1724,15 @@
   async function aceitarEntrega() {
     if (!entregaOferta) return;
 
+    const idAceita = entregaOferta.id;
+
     try {
       pararSomEntrega();
-      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      limparCountdown();
 
       const payload = await fetchJSON("/cooperado/aceitar_entrega", {
         method: "POST",
-        body: JSON.stringify({ entrega_id: entregaOferta.id })
+        body: JSON.stringify({ entrega_id: idAceita })
       });
 
       if (payload && payload.status === "ok") {
@@ -1507,35 +1746,36 @@
         } else {
           entregaAceita.data = toISODate(entregaAceita.data || entregaAceita.data_entrega);
         }
-
         if (!entregaAceita.recebida_por) entregaAceita.recebida_por = "";
 
-        // adiciona nas ativas (permite mais de uma, mas o card mostra a atual)
-        if (!entregasAtivas.some(e => e.id === entregaAceita.id)) {
+        // entrega ativa
+        if (!entregasAtivas.some(e => Number(e.id) === Number(entregaAceita.id))) {
           entregasAtivas.unshift(entregaAceita);
         }
 
-        // aparece na aba “Minhas entregas” na hora
-        const idx = ENTREGAS.findIndex(e => e.id === entregaAceita.id);
+        // já aparece em “Minhas entregas”
+        const idx = ENTREGAS.findIndex(e => Number(e.id) === Number(entregaAceita.id));
         if (idx >= 0) ENTREGAS[idx] = entregaAceita;
         else ENTREGAS.unshift(entregaAceita);
 
         renderHistorico();
 
-        // prioridade: card de entrega em andamento + navegação no mapa
-        setEntregaAtivaAtual(entregaAceita);
+        // trava cooldown pro ID (seguro extra contra backend insistindo)
+        setCooldownEntrega(entregaAceita.id, 300);
 
-        // limpa oferta
         entregaOferta = null;
-
+        setEntregaAtivaAtual(entregaAceita);
       } else {
+        // se falhar, coloca cooldown curto para não “pipocar”
+        setCooldownEntrega(idAceita, 30);
         entregaOferta = null;
         mostrarEstadoSemEntrega();
       }
 
     } catch (err) {
-      pararSomEntrega();
       console.log("Erro aceitar entrega:", err);
+      setCooldownEntrega(idAceita, 30);
+      pararSomEntrega();
       entregaOferta = null;
       mostrarEstadoSemEntrega();
     }
@@ -1547,95 +1787,53 @@
     const idRecusado = entregaOferta.id;
 
     try {
-      // garante parar tudo
       pararSomEntrega();
-      if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+      limparCountdown();
 
       await fetchJSON("/cooperado/recusar_entrega", {
         method: "POST",
         body: JSON.stringify({ entrega_id: idRecusado })
       });
 
-      // evita a mesma tocar de novo no front
-      if (idRecusado) ofertasIgnoradas.add(idRecusado);
+      // cooldown forte: não tocar de novo a mesma
+      setCooldownEntrega(idRecusado, 600);
 
       entregaOferta = null;
-
-      // volta ao estado correto
-      if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-      else mostrarEstadoSemEntrega();
+      mostrarEstadoSemEntrega();
 
     } catch (err) {
-      pararSomEntrega();
       console.log("Erro recusar entrega:", err);
-
-      if (idRecusado) ofertasIgnoradas.add(idRecusado);
+      setCooldownEntrega(idRecusado, 600);
+      pararSomEntrega();
       entregaOferta = null;
-
-      if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-      else mostrarEstadoSemEntrega();
+      mostrarEstadoSemEntrega();
     }
-  }
-
-  // Botão “Abrir rota no Maps/Waze” (agora é opcional, não automático)
-  // Se você NÃO quer mais externo, deixe o botão escondido no HTML/CSS.
-  function montarUrlNavegacao(entrega) {
-    if (!entrega) return null;
-    const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
-    const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
-
-    if (temCoordsOrigem && temCoordsDestino) {
-      return "https://www.google.com/maps/dir/?api=1" +
-        "&origin=" + encodeURIComponent(entrega.lat_origem + "," + entrega.lng_origem) +
-        "&destination=" + encodeURIComponent(entrega.lat_destino + "," + entrega.lng_destino) +
-        "&travelmode=driving&dir_action=navigate";
-    }
-
-    const origemTexto =
-      entrega.origem_endereco ||
-      (entrega.origem_bairro ? entrega.origem_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
-
-    const destinoTexto =
-      entrega.destino_endereco ||
-      (entrega.destino_bairro ? entrega.destino_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
-
-    return "https://www.google.com/maps/dir/?api=1" +
-      "&origin=" + encodeURIComponent(origemTexto) +
-      "&destination=" + encodeURIComponent(destinoTexto) +
-      "&travelmode=driving&dir_action=navigate";
-  }
-
-  function abrirNavegador(entrega) {
-    const url = montarUrlNavegacao(entrega);
-    if (!url) return;
-    window.open(url, "_blank");
   }
 
   async function finalizarEntrega() {
     if (!entregaAtivaAtual) return;
 
-    // garantia: finalizar nunca pode ficar tocando som
+    // finalizar nunca pode deixar som
     pararSomEntrega();
-    if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+    limparCountdown();
     entregaOferta = null;
 
-    const recebidaPor = inputRecebidaPor.value.trim();
+    const recebidaPor = (inputRecebidaPor?.value || "").trim();
     if (!recebidaPor) {
       alert("Informe o nome de quem recebeu.");
       return;
     }
 
+    const idFinaliza = entregaAtivaAtual.id;
+
     try {
       const data = await fetchJSON("/cooperado/finalizar_entrega", {
         method: "POST",
-        body: JSON.stringify({
-          entrega_id: entregaAtivaAtual.id,
-          recebida_por: recebidaPor
-        })
+        body: JSON.stringify({ entrega_id: idFinaliza, recebida_por: recebidaPor })
       });
 
       if (data && data.status === "ok") {
-        const novaEntrega = data.entrega || { ...entregaAtivaAtual };
+        const novaEntrega = data.entrega ? data.entrega : { ...entregaAtivaAtual };
         novaEntrega.recebida_por = recebidaPor;
         novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
 
@@ -1645,21 +1843,24 @@
           novaEntrega.data = toISODate(novaEntrega.data || novaEntrega.data_entrega);
         }
 
-        // histórico
-        const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
+        // atualiza histórico
+        const idx = ENTREGAS.findIndex(e => Number(e.id) === Number(novaEntrega.id));
         if (idx >= 0) ENTREGAS[idx] = novaEntrega;
         else ENTREGAS.unshift(novaEntrega);
 
-        // remove das ativas
-        entregasAtivas = entregasAtivas.filter(e => e.id !== entregaAtivaAtual.id);
-        entregaAtivaAtual = null;
-        inputRecebidaPor.value = "";
-
         renderHistorico();
 
-        // mostra próxima ativa ou sem entrega
-        if (entregasAtivas.length > 0) setEntregaAtivaAtual(entregasAtivas[0]);
-        else mostrarEstadoSemEntrega();
+        // remove das ativas
+        entregasAtivas = entregasAtivas.filter(e => Number(e.id) !== Number(idFinaliza));
+        entregaAtivaAtual = null;
+        if (inputRecebidaPor) inputRecebidaPor.value = "";
+
+        // cooldown pra não “voltar a tocar”
+        setCooldownEntrega(idFinaliza, 900);
+
+        // limpa rota e volta a aguardar
+        limparRota();
+        mostrarEstadoSemEntrega();
       } else {
         alert("Não foi possível finalizar a entrega.");
       }
@@ -1764,7 +1965,7 @@
       });
 
       if (data && data.status === "ok") {
-        const idx = ENTREGAS.findIndex(e => e.id === entregaId);
+        const idx = ENTREGAS.findIndex(e => Number(e.id) === Number(entregaId));
         if (idx >= 0) ENTREGAS[idx].status_pagamento = "pago";
         renderHistorico();
       } else {
@@ -1783,7 +1984,8 @@
       tabBtnHistorico.classList.remove("active");
       tabCorridas.classList.remove("hidden");
       tabHistorico.classList.add("hidden");
-      garantirCardPrioritario();
+      // se estiver compacto, só abre se o usuário quiser
+      if (!sheetCompacto) atualizarBarraCompacta();
     } else {
       tabBtnCorridas.classList.remove("active");
       tabBtnHistorico.classList.add("active");
@@ -1801,17 +2003,45 @@
     }
   }
 
+  function atualizarBotaoSeguirNoMapa() {
+    if (!btnAbrirMaps) return;
+    btnAbrirMaps.innerHTML = followAtivo
+      ? '<span class="icon">🧭</span> Seguindo no mapa (toque p/ soltar)'
+      : '<span class="icon">🧭</span> Seguir no mapa';
+  }
+
+  function toggleFollow() {
+    followAtivo = !followAtivo;
+    atualizarBotaoSeguirNoMapa();
+    if (followAtivo && motoboyMarker && map) {
+      const pos = motoboyMarker.getLatLng();
+      map.setView([pos.lat, pos.lng], Math.max(map.getZoom(), 16), { animate: true });
+    }
+  }
+
+  // ======= START =======
   document.addEventListener("DOMContentLoaded", function () {
-    mostrarEstadoSemEntrega();
+    criarBarraCompactaSePrecisar();
+    atualizarBarraCompacta();
+
+    // inicia em “mapa grande”
+    setSheetCompacto(true);
+
     atualizarPillOnline();
     renderHistorico();
 
     btnAceitar.addEventListener("click", aceitarEntrega);
     btnRecusar.addEventListener("click", recusarEntrega);
 
-    // NÃO abre externo automaticamente.
-    // Se quiser remover externo de vez, esconda esse botão no HTML.
-    btnAbrirMaps.addEventListener("click", () => entregaAtivaAtual && abrirNavegador(entregaAtivaAtual));
+    // Agora o botão NÃO abre externo: ele controla “seguir no mapa”
+    if (btnAbrirMaps) {
+      btnAbrirMaps.addEventListener("click", () => {
+        if (!map) return;
+        toggleFollow();
+        if (entregaAtivaAtual && temCoords(entregaAtivaAtual)) ativarNavegacaoNoMapa(entregaAtivaAtual);
+      });
+      atualizarBotaoSeguirNoMapa();
+    }
 
     btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
 
@@ -1841,7 +2071,7 @@
       if (e.target === menuBackdrop) menuBackdrop.classList.add("hidden");
     });
 
-    // BOTÃO FICAR ONLINE: inicia mapa + GPS + timers
+    // BOTÃO FICAR ONLINE
     btnFicarOnline.addEventListener("click", () => {
       if (onlineAtivo) return;
 
@@ -1849,25 +2079,33 @@
 
       onlineAtivo = true;
       atualizarPillOnline();
-
       onlineOverlay.classList.add("hidden");
 
       initMap();
       iniciarRastreamentoGPS();
 
-      setInterval(() => {
-        if (!onlineAtivo || !motoboyMarker) return;
-        const pos = motoboyMarker.getLatLng();
-        enviarLocalizacao(pos.lat, pos.lng);
-      }, INTERVALO_PING_MS);
+      // ping periódico (sem duplicar)
+      if (!pingTimerId) {
+        pingTimerId = setInterval(() => {
+          if (!onlineAtivo || !motoboyMarker) return;
+          const pos = motoboyMarker.getLatLng();
+          enviarLocalizacao(pos.lat, pos.lng);
+        }, INTERVALO_PING_MS);
+      }
 
-      setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+      // busca oferta (sem duplicar)
+      if (!buscaTimerId) {
+        buscaTimerId = setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+      }
       buscarNovaEntrega();
     });
 
-    // Segurança extra: qualquer toque/click também tenta desbloquear áudio uma vez
+    // desbloqueio extra
     window.addEventListener("touchstart", desbloquearAudioUmaVez, { once: true, passive: true });
     window.addEventListener("click", desbloquearAudioUmaVez, { once: true });
+
+    // estado inicial
+    mostrarEstadoSemEntrega();
   });
 </script>
 </body>
