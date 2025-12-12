@@ -1008,650 +1008,677 @@
     </div>
   </div>
 
-  <!-- JS do Leaflet -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""
-  ></script>
+ <!-- JS do Leaflet -->
+<script
+  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+  crossorigin=""
+></script>
 
-  <script>
-    const CIDADE_PADRAO = "{{ cidade_padrao|default('Natal - RN', true) }}";
-    const INTERVALO_PING_MS = 10000;
-    const INTERVALO_BUSCA_ENTREGA_MS = 7000;
-    const TEMPO_EXPIRACAO_SEG = 20;
+<script>
+  const CIDADE_PADRAO = "{{ cidade_padrao|default('Natal - RN', true) }}";
+  const INTERVALO_PING_MS = 10000;
+  const INTERVALO_BUSCA_ENTREGA_MS = 7000;
+  const TEMPO_EXPIRACAO_SEG = 20;
 
-    let map;
-    let motoboyMarker = null;
-    let origemMarker = null;
-    let destinoMarker = null;
-    let rotaLayer = null;
+  let map;
+  let motoboyMarker = null;
+  let origemMarker = null;
+  let destinoMarker = null;
+  let rotaLayer = null;
 
-    let watchId = null;
-    let entregaAtual = null;
-    let countdownInterval = null;
-    let countdownRestante = TEMPO_EXPIRACAO_SEG;
+  let watchId = null;
+  let entregaAtual = null;
+  let countdownInterval = null;
+  let countdownRestante = TEMPO_EXPIRACAO_SEG;
 
-    let onlineAtivo = false;
+  let onlineAtivo = false;
+  let pingIntervalId = null;
+  let buscaIntervalId = null;
 
-    const audioEntrega = document.getElementById("som-entrega");
-    const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
+  const audioEntrega = document.getElementById("som-entrega");
+  const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
 
-    const cardSemEntrega = document.getElementById("card-sem-entrega");
-    const cardNovaEntrega = document.getElementById("card-nova-entrega");
-    const cardEntregaAceita = document.getElementById("card-entrega-aceita");
+  const cardSemEntrega = document.getElementById("card-sem-entrega");
+  const cardNovaEntrega = document.getElementById("card-nova-entrega");
+  const cardEntregaAceita = document.getElementById("card-entrega-aceita");
 
-    const tabBtnCorridas = document.getElementById("tab-btn-corridas");
-    const tabBtnHistorico = document.getElementById("tab-btn-historico");
-    const tabCorridas = document.getElementById("tab-corridas");
-    const tabHistorico = document.getElementById("tab-historico");
+  const tabBtnCorridas = document.getElementById("tab-btn-corridas");
+  const tabBtnHistorico = document.getElementById("tab-btn-historico");
+  const tabCorridas = document.getElementById("tab-corridas");
+  const tabHistorico = document.getElementById("tab-historico");
 
-    const novaTitulo = document.getElementById("nova-entrega-titulo");
-    const novaRestaurante = document.getElementById("nova-entrega-restaurante");
-    const novaValor = document.getElementById("nova-entrega-valor");
-    const novaOrigemText = document.getElementById("nova-origem-text");
-    const novaDestinoText = document.getElementById("nova-destino-text");
-    const novaEstTempo = document.getElementById("nova-estimativa-tempo");
-    const novaDistancia = document.getElementById("nova-entrega-distancia");
-    const novaCountdown = document.getElementById("nova-entrega-countdown");
+  const novaTitulo = document.getElementById("nova-entrega-titulo");
+  const novaRestaurante = document.getElementById("nova-entrega-restaurante");
+  const novaValor = document.getElementById("nova-entrega-valor");
+  const novaOrigemText = document.getElementById("nova-origem-text");
+  const novaDestinoText = document.getElementById("nova-destino-text");
+  const novaEstTempo = document.getElementById("nova-estimativa-tempo");
+  const novaDistancia = document.getElementById("nova-entrega-distancia");
+  const novaCountdown = document.getElementById("nova-entrega-countdown");
 
-    const btnRecusar = document.getElementById("btn-recusar-entrega");
-    const btnAceitar = document.getElementById("btn-aceitar-entrega");
+  const btnRecusar = document.getElementById("btn-recusar-entrega");
+  const btnAceitar = document.getElementById("btn-aceitar-entrega");
 
-    const aceitaRestaurante = document.getElementById("aceita-entrega-restaurante");
-    const aceitaValor = document.getElementById("aceita-entrega-valor");
-    const aceitaOrigemText = document.getElementById("aceita-origem-text");
-    const aceitaDestinoText = document.getElementById("aceita-destino-text");
-    const aceitaDistancia = document.getElementById("aceita-entrega-distancia");
-    const btnAbrirMaps = document.getElementById("btn-abrir-maps");
-    const inputRecebidaPor = document.getElementById("input-recebida-por");
-    const btnFinalizarEntrega = document.getElementById("btn-finalizar-entrega");
+  const aceitaRestaurante = document.getElementById("aceita-entrega-restaurante");
+  const aceitaValor = document.getElementById("aceita-entrega-valor");
+  const aceitaOrigemText = document.getElementById("aceita-origem-text");
+  const aceitaDestinoText = document.getElementById("aceita-destino-text");
+  const aceitaDistancia = document.getElementById("aceita-entrega-distancia");
+  const btnAbrirMaps = document.getElementById("btn-abrir-maps");
+  const inputRecebidaPor = document.getElementById("input-recebida-por");
+  const btnFinalizarEntrega = document.getElementById("btn-finalizar-entrega");
 
-    const historicoLista = document.getElementById("historico-lista");
-    const histTotal = document.getElementById("hist-total");
-    const filtroDataInicio = document.getElementById("filtro-data-inicio");
-    const filtroDataFim = document.getElementById("filtro-data-fim");
-    const filtroStatus = document.getElementById("filtro-status");
-    const filtroBusca = document.getElementById("filtro-busca");
-    const btnAplicarFiltro = document.getElementById("btn-aplicar-filtro");
+  const historicoLista = document.getElementById("historico-lista");
+  const histTotal = document.getElementById("hist-total");
+  const filtroDataInicio = document.getElementById("filtro-data-inicio");
+  const filtroDataFim = document.getElementById("filtro-data-fim");
+  const filtroStatus = document.getElementById("filtro-status");
+  const filtroBusca = document.getElementById("filtro-busca");
+  const btnAplicarFiltro = document.getElementById("btn-aplicar-filtro");
 
-    const btnMenu = document.getElementById("btn-menu");
-    const menuBackdrop = document.getElementById("menu-backdrop");
-    const menuFechar = document.getElementById("menu-fechar");
+  const btnMenu = document.getElementById("btn-menu");
+  const menuBackdrop = document.getElementById("menu-backdrop");
+  const menuFechar = document.getElementById("menu-fechar");
 
-    const onlineOverlay = document.getElementById("online-overlay");
-    const btnFicarOnline = document.getElementById("btn-ficar-online");
-    const statusOnlinePill = document.getElementById("status-online-pill");
+  const onlineOverlay = document.getElementById("online-overlay");
+  const btnFicarOnline = document.getElementById("btn-ficar-online");
+  const statusOnlinePill = document.getElementById("status-online-pill");
 
-    const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
+  // Lista inicial vinda do servidor
+  const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
 
-    function formatarValor(v) {
-      if (v === null || v === undefined) return "R$ 0,00";
-      let num = Number(v);
-      if (Number.isNaN(num)) return String(v);
-      return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  function formatarValor(v) {
+    if (v === null || v === undefined) return "R$ 0,00";
+    let num = Number(v);
+    if (Number.isNaN(num)) return String(v);
+    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  }
+
+  function formatarDistancia(dist) {
+    if (!dist && dist !== 0) return "Distância não informada";
+    let d = Number(dist);
+    if (Number.isNaN(d)) return String(dist);
+    if (d > 1000) return (d / 1000).toFixed(1) + " km";
+    return d.toFixed(0) + " m";
+  }
+
+  function normalizarStatusPagamento(v) {
+    if (v === true || v === "pago" || v === "Pago") return "pago";
+    return "pendente";
+  }
+
+  function formatarDataSimples(strData) {
+    if (!strData) return "";
+    if (strData.includes("/") && strData.length <= 10) return strData;
+    if (strData.includes("-")) {
+      const partes = strData.split("-");
+      if (partes.length >= 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
     }
+    return strData;
+  }
 
-    function formatarDistancia(dist) {
-      if (!dist && dist !== 0) return "Distância não informada";
-      let d = Number(dist);
-      if (Number.isNaN(d)) return String(dist);
-      if (d > 1000) return (d / 1000).toFixed(1) + " km";
-      return d.toFixed(0) + " m";
+  function lerJsonSeguro(resp) {
+    const ct = (resp.headers.get("content-type") || "").toLowerCase();
+    if (!ct.includes("application/json")) {
+      return resp.text().then(t => ({ _nao_json: true, texto: t, status_http: resp.status }));
     }
+    return resp.json();
+  }
 
-    function normalizarStatusPagamento(v) {
-      if (v === true || v === "pago" || v === "Pago") return "pago";
-      return "pendente";
-    }
+  function destravarAudio() {
+    if (!audioEntrega) return;
+    // Desbloqueia autoplay em mobile: precisa acontecer dentro de um clique do usuário
+    audioEntrega.muted = true;
+    audioEntrega.play()
+      .then(() => {
+        audioEntrega.pause();
+        audioEntrega.currentTime = 0;
+        audioEntrega.muted = false;
+      })
+      .catch(() => {
+        // se falhar, ainda pode tocar depois em novo clique
+      });
+  }
 
-    function formatarDataSimples(strData) {
-      if (!strData) return "";
-      if (strData.includes("/") && strData.length <= 10) return strData;
-      if (strData.includes("-")) {
-        const partes = strData.split("-");
-        if (partes.length >= 3) return partes[2] + "/" + partes[1] + "/" + partes[0];
-      }
-      return strData;
-    }
+  function initMap() {
+    if (map) return;
+    const centerLatLng = [-5.814, -35.214]; // Natal
+    map = L.map("map").setView(centerLatLng, 13);
 
-    function initMap() {
-      if (map) return;
-      const centerLatLng = [-5.814, -35.214]; // Natal
-      map = L.map("map").setView(centerLatLng, 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap"
+    }).addTo(map);
+  }
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap"
+  function atualizarMarkerMotoboy(lat, lng) {
+    if (!map) return;
+    if (!motoboyMarker) {
+      motoboyMarker = L.circleMarker([lat, lng], {
+        radius: 9,
+        color: "#4169e1",
+        fillColor: "#4169e1",
+        fillOpacity: 0.9
       }).addTo(map);
+      map.setView([lat, lng], 15);
+    } else {
+      motoboyMarker.setLatLng([lat, lng]);
+    }
+  }
+
+  function limparRota() {
+    if (!map) return;
+    if (origemMarker) { map.removeLayer(origemMarker); origemMarker = null; }
+    if (destinoMarker) { map.removeLayer(destinoMarker); destinoMarker = null; }
+    if (rotaLayer) { map.removeLayer(rotaLayer); rotaLayer = null; }
+  }
+
+  function desenharRotaSeTiverCoords(entrega) {
+    limparRota();
+    if (!entrega || !map) return;
+
+    const temCoordsOrigem = !!(entrega.lat_origem && entrega.lng_origem);
+    const temCoordsDestino = !!(entrega.lat_destino && entrega.lng_destino);
+
+    if (temCoordsOrigem) {
+      origemMarker = L.marker([entrega.lat_origem, entrega.lng_origem]).addTo(map);
+      origemMarker.bindPopup("Coleta");
+    }
+    if (temCoordsDestino) {
+      destinoMarker = L.marker([entrega.lat_destino, entrega.lng_destino]).addTo(map);
+      destinoMarker.bindPopup("Destino");
     }
 
-    function atualizarMarkerMotoboy(lat, lng) {
-      if (!map) return;
-      if (!motoboyMarker) {
-        motoboyMarker = L.circleMarker([lat, lng], {
-          radius: 9,
-          color: "#4169e1",
-          fillColor: "#4169e1",
-          fillOpacity: 0.9
-        }).addTo(map);
-        map.setView([lat, lng], 15);
-      } else {
-        motoboyMarker.setLatLng([lat, lng]);
-      }
+    if (temCoordsOrigem && temCoordsDestino) {
+      const url = `https://router.project-osrm.org/route/v1/driving/${entrega.lng_origem},${entrega.lat_origem};${entrega.lng_destino},${entrega.lat_destino}?overview=full&geometries=geojson`;
+
+      fetch(url)
+        .then(r => r.json())
+        .then(data => {
+          if (data.routes && data.routes.length > 0) {
+            const route = data.routes[0];
+            rotaLayer = L.geoJSON(route.geometry, {
+              style: { weight: 4, opacity: 0.95, color: "#4169e1" }
+            }).addTo(map);
+            map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
+          }
+        })
+        .catch(err => console.log("Erro rota OSRM:", err));
+    }
+  }
+
+  function enviarLocalizacao(lat, lng) {
+    const agora = new Date();
+    textoUltimaLoc.textContent = "Última posição: " +
+      agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
+
+    atualizarMarkerMotoboy(lat, lng);
+
+    fetch("/cooperado/atualizar_localizacao", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ lat, lng })
+    }).catch(err => console.log("Erro ao atualizar localização:", err));
+  }
+
+  function iniciarRastreamentoGPS() {
+    if (!("geolocation" in navigator)) {
+      console.log("Geolocalização não suportada.");
+      return;
     }
 
-    function limparRota() {
-      if (origemMarker) { map.removeLayer(origemMarker); origemMarker = null; }
-      if (destinoMarker) { map.removeLayer(destinoMarker); destinoMarker = null; }
-      if (rotaLayer) { map.removeLayer(rotaLayer); rotaLayer = null; }
-    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const { latitude, longitude } = pos.coords;
+        enviarLocalizacao(latitude, longitude);
+      },
+      (err) => console.log("Erro getCurrentPosition:", err),
+      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
+    );
 
-    function desenharRotaSeTiverCoords(entrega) {
-      limparRota();
-      if (!entrega || !map) return;
-
-      const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
-      const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
-
-      if (temCoordsOrigem) {
-        origemMarker = L.marker([entrega.lat_origem, entrega.lng_origem]).addTo(map);
-        origemMarker.bindPopup("Coleta");
-      }
-      if (temCoordsDestino) {
-        destinoMarker = L.marker([entrega.lat_destino, entrega.lng_destino]).addTo(map);
-        destinoMarker.bindPopup("Destino");
-      }
-
-      if (temCoordsOrigem && temCoordsDestino) {
-        const url = `https://router.project-osrm.org/route/v1/driving/${entrega.lng_origem},${entrega.lat_origem};${entrega.lng_destino},${entrega.lat_destino}?overview=full&geometries=geojson`;
-
-        fetch(url)
-          .then(r => r.json())
-          .then(data => {
-            if (data.routes && data.routes.length > 0) {
-              const route = data.routes[0];
-              rotaLayer = L.geoJSON(route.geometry, {
-                style: { weight: 4, opacity: 0.95, color: "#4169e1" }
-              }).addTo(map);
-              map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
-            }
-          })
-          .catch(err => console.log("Erro rota OSRM:", err));
-      }
-    }
-
-    function enviarLocalizacao(lat, lng) {
-      const agora = new Date();
-      textoUltimaLoc.textContent = "Última posição: " +
-        agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-
-      atualizarMarkerMotoboy(lat, lng);
-
-      fetch("/cooperado/atualizar_localizacao", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ lat, lng })
-      }).catch(err => console.log("Erro ao atualizar localização:", err));
-    }
-
-    function iniciarRastreamentoGPS() {
-      if (!("geolocation" in navigator)) {
-        console.log("Geolocalização não suportada.");
-        return;
-      }
-
-      navigator.geolocation.getCurrentPosition(
+    if (watchId === null) {
+      watchId = navigator.geolocation.watchPosition(
         (pos) => {
           const { latitude, longitude } = pos.coords;
           enviarLocalizacao(latitude, longitude);
         },
-        (err) => console.log("Erro getCurrentPosition:", err),
+        (err) => console.log("Erro watchPosition:", err),
         { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
       );
+    }
+  }
 
-      if (watchId === null) {
-        watchId = navigator.geolocation.watchPosition(
-          (pos) => {
-            const { latitude, longitude } = pos.coords;
-            enviarLocalizacao(latitude, longitude);
-          },
-          (err) => console.log("Erro watchPosition:", err),
-          { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-        );
+  function tocarSomEntrega() {
+    if (!audioEntrega) return;
+    audioEntrega.loop = true;
+    audioEntrega.currentTime = 0;
+    audioEntrega.play().catch(() => {});
+  }
+
+  function pararSomEntrega() {
+    if (!audioEntrega) return;
+    audioEntrega.pause();
+    audioEntrega.currentTime = 0;
+    audioEntrega.loop = false;
+  }
+
+  function mostrarEstadoSemEntrega() {
+    cardSemEntrega.classList.remove("hidden");
+    cardNovaEntrega.classList.add("hidden");
+    cardEntregaAceita.classList.add("hidden");
+    limparRota();
+    entregaAtual = null;
+    inputRecebidaPor.value = "";
+  }
+
+  function mostrarEstadoNovaEntrega(entrega) {
+    cardSemEntrega.classList.add("hidden");
+    cardNovaEntrega.classList.remove("hidden");
+    cardEntregaAceita.classList.add("hidden");
+
+    entregaAtual = entrega;
+
+    novaTitulo.textContent = "Nova entrega para você";
+    novaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
+    novaValor.textContent = formatarValor(entrega.valor);
+    novaOrigemText.textContent =
+      entrega.origem_endereco ||
+      (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+    novaDestinoText.textContent =
+      entrega.destino_endereco ||
+      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+
+    novaEstTempo.textContent = "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
+    novaDistancia.textContent = formatarDistancia(entrega.distancia);
+
+    desenharRotaSeTiverCoords(entrega);
+    iniciarCountdown();
+    tocarSomEntrega();
+  }
+
+  function mostrarEstadoEntregaAceita(entrega) {
+    cardSemEntrega.classList.add("hidden");
+    cardNovaEntrega.classList.add("hidden");
+    cardEntregaAceita.classList.remove("hidden");
+
+    entregaAtual = entrega;
+
+    aceitaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
+    aceitaValor.textContent = formatarValor(entrega.valor);
+    aceitaOrigemText.textContent =
+      entrega.origem_endereco ||
+      (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+    aceitaDestinoText.textContent =
+      entrega.destino_endereco ||
+      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+    aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
+
+    desenharRotaSeTiverCoords(entrega);
+  }
+
+  function iniciarCountdown() {
+    if (countdownInterval) clearInterval(countdownInterval);
+    countdownRestante = TEMPO_EXPIRACAO_SEG;
+    novaCountdown.textContent = countdownRestante;
+
+    countdownInterval = setInterval(() => {
+      countdownRestante -= 1;
+      if (countdownRestante <= 0) {
+        clearInterval(countdownInterval);
+        countdownInterval = null;
+        pararSomEntrega();
+        mostrarEstadoSemEntrega();
+      } else {
+        novaCountdown.textContent = countdownRestante;
       }
+    }, 1000);
+  }
+
+  function buscarNovaEntrega() {
+    if (!onlineAtivo) return;
+
+    // Se já tem uma entrega aceita/em andamento, não busca outra (regra 1 por vez)
+    if (entregaAtual && !cardNovaEntrega.classList.contains("hidden")) {
+      // está em tela de NOVA ENTREGA, pode continuar
+    } else if (entregaAtual && !cardEntregaAceita.classList.contains("hidden")) {
+      // está com entrega aceita
+      return;
     }
 
-    function tocarSomEntrega() {
-      if (!audioEntrega) return;
-      audioEntrega.loop = true;
-      audioEntrega.currentTime = 0;
-      audioEntrega.play().catch(() => {});
-    }
+    fetch("/cooperado/verificar_nova_entrega", { cache: "no-store" })
+      .then(resp => lerJsonSeguro(resp))
+      .then(data => {
+        if (!data || data._nao_json) {
+          console.log("verificar_nova_entrega não retornou JSON:", data);
+          return;
+        }
 
-    function pararSomEntrega() {
-      if (!audioEntrega) return;
-      audioEntrega.pause();
-      audioEntrega.currentTime = 0;
-      audioEntrega.loop = false;
-    }
+        if (!data.tem_entrega) {
+          if (!entregaAtual) mostrarEstadoSemEntrega();
+          return;
+        }
 
-    function mostrarEstadoSemEntrega() {
-      cardSemEntrega.classList.remove("hidden");
-      cardNovaEntrega.classList.add("hidden");
-      cardEntregaAceita.classList.add("hidden");
-      limparRota();
-      entregaAtual = null;
-      inputRecebidaPor.value = "";
-    }
+        const entrega = data.entrega;
+        if (!entrega) return;
 
-    function mostrarEstadoNovaEntrega(entrega) {
-      cardSemEntrega.classList.add("hidden");
-      cardNovaEntrega.classList.remove("hidden");
-      cardEntregaAceita.classList.add("hidden");
+        if (entregaAtual && entregaAtual.id === entrega.id) return;
+        mostrarEstadoNovaEntrega(entrega);
+      })
+      .catch(err => console.log("Erro nova entrega:", err));
+  }
 
-      entregaAtual = entrega;
+  function aceitarEntrega() {
+    if (!entregaAtual) return;
 
-      novaTitulo.textContent = "Nova entrega para você";
-      novaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
-      novaValor.textContent = formatarValor(entrega.valor);
-      novaOrigemText.textContent =
-        entrega.origem_endereco ||
-        (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
-      novaDestinoText.textContent =
-        entrega.destino_endereco ||
-        (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+    fetch("/cooperado/aceitar_entrega", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entrega_id: entregaAtual.id })
+    })
+      .then(resp => lerJsonSeguro(resp))
+      .then(data => {
+        pararSomEntrega();
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
 
-      novaEstTempo.textContent = "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
-      novaDistancia.textContent = formatarDistancia(entrega.distancia);
-
-      desenharRotaSeTiverCoords(entrega);
-      iniciarCountdown();
-      tocarSomEntrega();
-    }
-
-    function mostrarEstadoEntregaAceita(entrega) {
-      cardSemEntrega.classList.add("hidden");
-      cardNovaEntrega.classList.add("hidden");
-      cardEntregaAceita.classList.remove("hidden");
-
-      entregaAtual = entrega;
-
-      aceitaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
-      aceitaValor.textContent = formatarValor(entrega.valor);
-      aceitaOrigemText.textContent =
-        entrega.origem_endereco ||
-        (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
-      aceitaDestinoText.textContent =
-        entrega.destino_endereco ||
-        (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
-      aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
-
-      desenharRotaSeTiverCoords(entrega);
-    }
-
-    function iniciarCountdown() {
-      if (countdownInterval) clearInterval(countdownInterval);
-      countdownRestante = TEMPO_EXPIRACAO_SEG;
-      novaCountdown.textContent = countdownRestante;
-
-      countdownInterval = setInterval(() => {
-        countdownRestante -= 1;
-        if (countdownRestante <= 0) {
-          clearInterval(countdownInterval);
-          countdownInterval = null;
-          pararSomEntrega();
+        if (data && data._nao_json) {
+          console.log("aceitar_entrega não retornou JSON:", data);
+          alert("Sessão expirada ou erro no servidor ao aceitar. Faça login novamente.");
           mostrarEstadoSemEntrega();
+          return;
+        }
+
+        if (data && data.status === "ok") {
+          // NÃO abre o Maps automaticamente (não sai do app)
+          mostrarEstadoEntregaAceita(entregaAtual);
         } else {
-          novaCountdown.textContent = countdownRestante;
-        }
-      }, 1000);
-    }
-
-    function buscarNovaEntrega() {
-      if (!onlineAtivo) return; // só busca se estiver online
-      fetch("/cooperado/verificar_nova_entrega")
-        .then(resp => resp.json())
-        .then(data => {
-          if (!data || !data.tem_entrega) {
-            if (!entregaAtual) mostrarEstadoSemEntrega();
-            return;
-          }
-          const entrega = data.entrega;
-          if (entregaAtual && entregaAtual.id === entrega.id) return;
-          mostrarEstadoNovaEntrega(entrega);
-        })
-        .catch(err => console.log("Erro nova entrega:", err));
-    }
-
-    function aceitarEntrega() {
-      if (!entregaAtual) return;
-      const corpo = { entrega_id: entregaAtual.id };
-
-      fetch("/cooperado/aceitar_entrega", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(corpo)
-      })
-        .then(resp => resp.json())
-        .then(data => {
-          pararSomEntrega();
-          if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-
-          if (data && data.status === "ok") {
-            mostrarEstadoEntregaAceita(entregaAtual);
-            abrirNavegador(entregaAtual);
-          } else {
-            mostrarEstadoSemEntrega();
-          }
-        })
-        .catch(err => {
-          pararSomEntrega();
+          alert((data && data.mensagem) ? data.mensagem : "Não foi possível aceitar.");
           mostrarEstadoSemEntrega();
-        });
-    }
-
-    function recusarEntrega() {
-      if (!entregaAtual) return;
-      const corpo = { entrega_id: entregaAtual.id };
-
-      fetch("/cooperado/recusar_entrega", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(corpo)
+        }
       })
-        .then(resp => resp.json())
-        .then(_ => {
-          pararSomEntrega();
-          if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
-          mostrarEstadoSemEntrega();
-        })
-        .catch(err => {
-          pararSomEntrega();
-          mostrarEstadoSemEntrega();
-        });
-    }
+      .catch(err => {
+        console.log("Erro aceitar_entrega:", err);
+        pararSomEntrega();
+        mostrarEstadoSemEntrega();
+      });
+  }
 
-    function abrirNavegador(entrega) {
-      if (!entrega) return;
-      let url = null;
+  function recusarEntrega() {
+    if (!entregaAtual) return;
 
-      const temCoordsOrigem = entrega.lat_origem && entrega.lng_origem;
-      const temCoordsDestino = entrega.lat_destino && entrega.lng_destino;
-
-      if (temCoordsOrigem && temCoordsDestino) {
-        url =
-          "https://www.google.com/maps/dir/?api=1" +
-          "&origin=" + encodeURIComponent(entrega.lat_origem + "," + entrega.lng_origem) +
-          "&destination=" + encodeURIComponent(entrega.lat_destino + "," + entrega.lng_destino) +
-          "&travelmode=driving&dir_action=navigate";
-      } else {
-        const origemTexto =
-          entrega.origem_endereco ||
-          (entrega.origem_bairro ? entrega.origem_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
-        const destinoTexto =
-          entrega.destino_endereco ||
-          (entrega.destino_bairro ? entrega.destino_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
-
-        url =
-          "https://www.google.com/maps/dir/?api=1" +
-          "&origin=" + encodeURIComponent(origemTexto) +
-          "&destination=" + encodeURIComponent(destinoTexto) +
-          "&travelmode=driving&dir_action=navigate";
-      }
-
-      if (url) window.location.href = url;
-    }
-
-    function finalizarEntrega() {
-      if (!entregaAtual) return;
-      const recebidaPor = inputRecebidaPor.value.trim();
-      if (!recebidaPor) {
-        alert("Informe o nome de quem recebeu.");
-        return;
-      }
-
-      const corpo = {
-        entrega_id: entregaAtual.id,
-        recebida_por: recebidaPor
-      };
-
-      fetch("/cooperado/finalizar_entrega", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(corpo)
+    fetch("/cooperado/recusar_entrega", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entrega_id: entregaAtual.id })
+    })
+      .then(resp => lerJsonSeguro(resp))
+      .then(_ => {
+        pararSomEntrega();
+        if (countdownInterval) { clearInterval(countdownInterval); countdownInterval = null; }
+        mostrarEstadoSemEntrega();
       })
-        .then(resp => resp.json())
-        .then(data => {
-          if (data && data.status === "ok") {
-            let novaEntrega = data.entrega || Object.assign({}, entregaAtual);
-            novaEntrega.recebida_por = recebidaPor;
-            novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
+      .catch(err => {
+        console.log("Erro recusar_entrega:", err);
+        pararSomEntrega();
+        mostrarEstadoSemEntrega();
+      });
+  }
 
-            if (!novaEntrega.data && !novaEntrega.data_entrega) {
-              const hoje = new Date().toISOString().slice(0, 10);
-              novaEntrega.data = hoje;
-            }
+  function montarUrlNavegacao(entrega) {
+    if (!entrega) return null;
 
-            const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
-            if (idx >= 0) ENTREGAS[idx] = novaEntrega;
-            else ENTREGAS.unshift(novaEntrega);
+    const temCoordsOrigem = !!(entrega.lat_origem && entrega.lng_origem);
+    const temCoordsDestino = !!(entrega.lat_destino && entrega.lng_destino);
 
-            renderHistorico();
-            mostrarEstadoSemEntrega();
-          } else {
-            alert("Não foi possível finalizar a entrega.");
+    if (temCoordsOrigem && temCoordsDestino) {
+      return (
+        "https://www.google.com/maps/dir/?api=1" +
+        "&origin=" + encodeURIComponent(entrega.lat_origem + "," + entrega.lng_origem) +
+        "&destination=" + encodeURIComponent(entrega.lat_destino + "," + entrega.lng_destino) +
+        "&travelmode=driving&dir_action=navigate"
+      );
+    }
+
+    const origemTexto =
+      entrega.origem_endereco ||
+      (entrega.origem_bairro ? entrega.origem_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
+    const destinoTexto =
+      entrega.destino_endereco ||
+      (entrega.destino_bairro ? entrega.destino_bairro + " " + CIDADE_PADRAO : CIDADE_PADRAO);
+
+    return (
+      "https://www.google.com/maps/dir/?api=1" +
+      "&origin=" + encodeURIComponent(origemTexto) +
+      "&destination=" + encodeURIComponent(destinoTexto) +
+      "&travelmode=driving&dir_action=navigate"
+    );
+  }
+
+  function abrirNavegador(entrega) {
+    const url = montarUrlNavegacao(entrega);
+    if (url) window.open(url, "_blank"); // não sai do app
+  }
+
+  function finalizarEntrega() {
+    if (!entregaAtual) return;
+
+    const recebidaPor = inputRecebidaPor.value.trim();
+    if (!recebidaPor) {
+      alert("Informe o nome de quem recebeu.");
+      return;
+    }
+
+    fetch("/cooperado/finalizar_entrega", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ entrega_id: entregaAtual.id, recebida_por: recebidaPor })
+    })
+      .then(resp => lerJsonSeguro(resp))
+      .then(data => {
+        if (data && data._nao_json) {
+          console.log("finalizar_entrega não retornou JSON:", data);
+          alert("Sessão expirada ou erro no servidor ao finalizar. Faça login novamente.");
+          return;
+        }
+
+        if (data && data.status === "ok") {
+          let novaEntrega = data.entrega || Object.assign({}, entregaAtual);
+          novaEntrega.recebida_por = recebidaPor;
+
+          // Se vier boolean/variação, normaliza
+          novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
+
+          // Garantir data ISO para filtros (YYYY-MM-DD)
+          if (!novaEntrega.data && !novaEntrega.data_entrega) {
+            novaEntrega.data = new Date().toISOString().slice(0, 10);
           }
-        })
-        .catch(err => {
-          console.log("Erro ao finalizar entrega:", err);
-          alert("Erro ao finalizar entrega.");
-        });
-    }
 
-    function filtrarEntregas() {
-      let lista = ENTREGAS.slice();
+          const idx = ENTREGAS.findIndex(e => e.id === novaEntrega.id);
+          if (idx >= 0) ENTREGAS[idx] = novaEntrega;
+          else ENTREGAS.unshift(novaEntrega);
 
-      const di = filtroDataInicio.value || null;
-      const df = filtroDataFim.value || null;
-      const status = filtroStatus.value;
-      const busca = filtroBusca.value.trim().toLowerCase();
-
-      lista = lista.filter(e => {
-        const dataStr = e.data || e.data_entrega || "";
-        if (di && dataStr && dataStr < di) return false;
-        if (df && dataStr && dataStr > df) return false;
-
-        const st = normalizarStatusPagamento(e.status_pagamento);
-        if (status !== "todos" && st !== status) return false;
-
-        if (busca) {
-          const texto =
-            (e.cliente || e.restaurante || "") + " " +
-            (e.origem_bairro || "") + " " +
-            (e.destino_bairro || "") + " " +
-            (e.recebida_por || "");
-          if (!texto.toLowerCase().includes(busca)) return false;
+          renderHistorico();
+          mostrarEstadoSemEntrega();
+          ativarTab("historico");
+        } else {
+          alert((data && data.mensagem) ? data.mensagem : "Não foi possível finalizar a entrega.");
         }
-        return true;
-      });
-
-      return lista;
-    }
-
-    function renderHistorico() {
-      const lista = filtrarEntregas();
-      histTotal.textContent = lista.length + (lista.length === 1 ? " entrega" : " entregas");
-      historicoLista.innerHTML = "";
-
-      if (lista.length === 0) {
-        const vazio = document.createElement("div");
-        vazio.className = "small-label";
-        vazio.style.marginTop = "8px";
-        vazio.textContent = "Nenhuma entrega encontrada.";
-        historicoLista.appendChild(vazio);
-        return;
-      }
-
-      lista.forEach(e => {
-        const item = document.createElement("div");
-        item.className = "hist-item";
-
-        const nomeCliente = e.cliente || e.restaurante || "Cliente não informado";
-        const origemTexto =
-          e.origem_endereco ||
-          (e.origem_bairro ? e.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
-        const destinoTexto =
-          e.destino_endereco ||
-          (e.destino_bairro ? e.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
-        const dataStr = formatarDataSimples(e.data || e.data_entrega);
-        const recebida = e.recebida_por ? `Recebida por ${e.recebida_por}` : "Recebida por -";
-
-        const st = normalizarStatusPagamento(e.status_pagamento);
-        const statusClass = st === "pago" ? "status-pago" : "status-pendente";
-        const statusTexto = st === "pago" ? "Pago" : "Pagamento pendente";
-
-        item.innerHTML = `
-          <div class="hist-top">
-            <span class="hist-cliente">${nomeCliente}</span>
-            <span class="hist-valor">${formatarValor(e.valor)}</span>
-          </div>
-          <div class="hist-middle">
-            <span>${origemTexto} → ${destinoTexto}</span>
-          </div>
-          <div class="hist-bottom">
-            <div class="hist-bottom-left">
-              <span class="hist-data">${dataStr}</span>
-              <span class="hist-recebida">${recebida}</span>
-            </div>
-            <span class="status-badge ${statusClass}" data-id="${e.id}">
-              <span class="icon">💰</span>${statusTexto}
-            </span>
-          </div>
-        `;
-
-        historicoLista.appendChild(item);
-      });
-    }
-
-    function marcarEntregaComoPaga(entregaId) {
-      const corpo = { entrega_id: entregaId };
-
-      fetch("/cooperado/marcar_pago", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(corpo)
       })
-        .then(resp => resp.json())
-        .then(data => {
-          if (data && data.status === "ok") {
-            const idx = ENTREGAS.findIndex(e => e.id === entregaId);
-            if (idx >= 0) ENTREGAS[idx].status_pagamento = "pago";
-            renderHistorico();
-          } else {
-            alert("Não foi possível marcar como pago.");
-          }
-        })
-        .catch(err => {
-          console.log("Erro marcar pago:", err);
-          alert("Erro ao marcar como pago.");
-        });
-    }
+      .catch(err => {
+        console.log("Erro ao finalizar entrega:", err);
+        alert("Erro ao finalizar entrega.");
+      });
+  }
 
-    function ativarTab(nome) {
-      if (nome === "corridas") {
-        tabBtnCorridas.classList.add("active");
-        tabBtnHistorico.classList.remove("active");
-        tabCorridas.classList.remove("hidden");
-        tabHistorico.classList.add("hidden");
-      } else {
-        tabBtnCorridas.classList.remove("active");
-        tabBtnHistorico.classList.add("active");
-        tabCorridas.classList.add("hidden");
-        tabHistorico.classList.remove("hidden");
-        renderHistorico();
+  function filtrarEntregas() {
+    let lista = ENTREGAS.slice();
+
+    const di = filtroDataInicio.value || null;
+    const df = filtroDataFim.value || null;
+    const status = filtroStatus.value;
+    const busca = filtroBusca.value.trim().toLowerCase();
+
+    lista = lista.filter(e => {
+      const dataStr = e.data || e.data_entrega || "";
+      if (di && dataStr && dataStr < di) return false;
+      if (df && dataStr && dataStr > df) return false;
+
+      const st = normalizarStatusPagamento(e.status_pagamento);
+      if (status !== "todos" && st !== status) return false;
+
+      if (busca) {
+        const texto =
+          (e.cliente || e.restaurante || "") + " " +
+          (e.origem_bairro || "") + " " +
+          (e.destino_bairro || "") + " " +
+          (e.recebida_por || "");
+        if (!texto.toLowerCase().includes(busca)) return false;
       }
-    }
-
-    function atualizarPillOnline() {
-      if (onlineAtivo) {
-        statusOnlinePill.innerHTML = '<span class="status-dot"></span> Online para receber entregas';
-      } else {
-        statusOnlinePill.innerHTML = '<span class="status-dot" style="background:#6b7280;box-shadow:none;"></span> Offline';
-      }
-    }
-
-    document.addEventListener("DOMContentLoaded", function () {
-      // NÃO inicia mapa nem GPS aqui. Só depois do botão "Ficar online".
-      mostrarEstadoSemEntrega();
-      atualizarPillOnline();
-
-      btnAceitar.addEventListener("click", aceitarEntrega);
-      btnRecusar.addEventListener("click", recusarEntrega);
-      btnAbrirMaps.addEventListener("click", () => entregaAtual && abrirNavegador(entregaAtual));
-      btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
-
-      tabBtnCorridas.addEventListener("click", () => ativarTab("corridas"));
-      tabBtnHistorico.addEventListener("click", () => ativarTab("historico"));
-
-      // Botão de FILTRAR explícito
-      btnAplicarFiltro.addEventListener("click", renderHistorico);
-
-      // Ainda deixa reagir "ao vivo" se quiser
-      [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
-        el.addEventListener("change", renderHistorico);
-      });
-
-      historicoLista.addEventListener("click", (ev) => {
-        const badge = ev.target.closest(".status-badge");
-        if (!badge) return;
-        if (badge.classList.contains("status-pendente")) {
-          const id = badge.getAttribute("data-id");
-          if (id) marcarEntregaComoPaga(Number(id));
-        }
-      });
-
-      // MENU SANDUÍCHE
-      btnMenu.addEventListener("click", () => {
-        menuBackdrop.classList.remove("hidden");
-      });
-      menuFechar.addEventListener("click", () => {
-        menuBackdrop.classList.add("hidden");
-      });
-      menuBackdrop.addEventListener("click", (e) => {
-        if (e.target === menuBackdrop) {
-          menuBackdrop.classList.add("hidden");
-        }
-      });
-
-      // BOTÃO FICAR ONLINE: aqui é onde começa mapa + GPS + busca de entrega
-      btnFicarOnline.addEventListener("click", () => {
-        if (onlineAtivo) return;
-        onlineAtivo = true;
-        atualizarPillOnline();
-
-        // Some com a tela inicial
-        onlineOverlay.classList.add("hidden");
-
-        // Agora sim inicia o mapa e a localização
-        initMap();
-        iniciarRastreamentoGPS();
-
-        // Pings periódicos pro backend com última posição
-        setInterval(() => {
-          if (!onlineAtivo || !motoboyMarker) return;
-          const pos = motoboyMarker.getLatLng();
-          enviarLocalizacao(pos.lat, pos.lng);
-        }, INTERVALO_PING_MS);
-
-        // Busca periódica de novas entregas
-        setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
-        buscarNovaEntrega();
-      });
-
-      // Render inicial do histórico (caso venha ENTREGAS do servidor)
-      renderHistorico();
+      return true;
     });
-  </script>
+
+    return lista;
+  }
+
+  function renderHistorico() {
+    const lista = filtrarEntregas();
+    histTotal.textContent = lista.length + (lista.length === 1 ? " entrega" : " entregas");
+    historicoLista.innerHTML = "";
+
+    if (lista.length === 0) {
+      const vazio = document.createElement("div");
+      vazio.className = "small-label";
+      vazio.style.marginTop = "8px";
+      vazio.textContent = "Nenhuma entrega encontrada.";
+      historicoLista.appendChild(vazio);
+      return;
+    }
+
+    lista.forEach(e => {
+      const item = document.createElement("div");
+      item.className = "hist-item";
+
+      const nomeCliente = e.cliente || e.restaurante || "Cliente não informado";
+      const origemTexto =
+        e.origem_endereco ||
+        (e.origem_bairro ? e.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
+      const destinoTexto =
+        e.destino_endereco ||
+        (e.destino_bairro ? e.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informada");
+      const dataStr = formatarDataSimples(e.data || e.data_entrega);
+      const recebida = e.recebida_por ? `Recebida por ${e.recebida_por}` : "Recebida por -";
+
+      const st = normalizarStatusPagamento(e.status_pagamento);
+      const statusClass = st === "pago" ? "status-pago" : "status-pendente";
+      const statusTexto = st === "pago" ? "Pago" : "Pagamento pendente";
+
+      // OBS: sem clique para marcar como pago (admin resolve)
+      item.innerHTML = `
+        <div class="hist-top">
+          <span class="hist-cliente">${nomeCliente}</span>
+          <span class="hist-valor">${formatarValor(e.valor)}</span>
+        </div>
+        <div class="hist-middle">
+          <span>${origemTexto} → ${destinoTexto}</span>
+        </div>
+        <div class="hist-bottom">
+          <div class="hist-bottom-left">
+            <span class="hist-data">${dataStr}</span>
+            <span class="hist-recebida">${recebida}</span>
+          </div>
+          <span class="status-badge ${statusClass}">
+            <span class="icon">💰</span>${statusTexto}
+          </span>
+        </div>
+      `;
+
+      historicoLista.appendChild(item);
+    });
+  }
+
+  function ativarTab(nome) {
+    if (nome === "corridas") {
+      tabBtnCorridas.classList.add("active");
+      tabBtnHistorico.classList.remove("active");
+      tabCorridas.classList.remove("hidden");
+      tabHistorico.classList.add("hidden");
+    } else {
+      tabBtnCorridas.classList.remove("active");
+      tabBtnHistorico.classList.add("active");
+      tabCorridas.classList.add("hidden");
+      tabHistorico.classList.remove("hidden");
+      renderHistorico();
+    }
+  }
+
+  function atualizarPillOnline() {
+    if (onlineAtivo) {
+      statusOnlinePill.innerHTML = '<span class="status-dot"></span> Online para receber entregas';
+    } else {
+      statusOnlinePill.innerHTML = '<span class="status-dot" style="background:#6b7280;box-shadow:none;"></span> Offline';
+    }
+  }
+
+  document.addEventListener("DOMContentLoaded", function () {
+    mostrarEstadoSemEntrega();
+    atualizarPillOnline();
+
+    btnAceitar.addEventListener("click", aceitarEntrega);
+    btnRecusar.addEventListener("click", recusarEntrega);
+
+    // botão abre em NOVA ABA (não sai do app)
+    btnAbrirMaps.addEventListener("click", () => entregaAtual && abrirNavegador(entregaAtual));
+    btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
+
+    tabBtnCorridas.addEventListener("click", () => ativarTab("corridas"));
+    tabBtnHistorico.addEventListener("click", () => ativarTab("historico"));
+
+    btnAplicarFiltro.addEventListener("click", renderHistorico);
+
+    [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
+      el.addEventListener("change", renderHistorico);
+      el.addEventListener("keyup", renderHistorico);
+    });
+
+    // MENU
+    btnMenu.addEventListener("click", () => {
+      menuBackdrop.classList.remove("hidden");
+    });
+    menuFechar.addEventListener("click", () => {
+      menuBackdrop.classList.add("hidden");
+    });
+    menuBackdrop.addEventListener("click", (e) => {
+      if (e.target === menuBackdrop) menuBackdrop.classList.add("hidden");
+    });
+
+    // BOTÃO FICAR ONLINE: inicia mapa + GPS + timers, e destrava áudio
+    btnFicarOnline.addEventListener("click", () => {
+      if (onlineAtivo) return;
+
+      destravarAudio();
+
+      onlineAtivo = true;
+      atualizarPillOnline();
+      onlineOverlay.classList.add("hidden");
+
+      initMap();
+      iniciarRastreamentoGPS();
+
+      if (pingIntervalId) clearInterval(pingIntervalId);
+      pingIntervalId = setInterval(() => {
+        if (!onlineAtivo || !motoboyMarker) return;
+        const pos = motoboyMarker.getLatLng();
+        enviarLocalizacao(pos.lat, pos.lng);
+      }, INTERVALO_PING_MS);
+
+      if (buscaIntervalId) clearInterval(buscaIntervalId);
+      buscaIntervalId = setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+
+      buscarNovaEntrega();
+    });
+
+    renderHistorico();
+  });
+</script>
 </body>
 </html>
