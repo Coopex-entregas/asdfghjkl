@@ -39,15 +39,15 @@ app.config['SECRET_KEY'] = os.environ.get(
     'SECRET_KEY',
     'COOPEX_ULTRA_SEGURA_2024_FIXA'
 )
-
+#so para não ficar junto
 from flask_socketio import SocketIO
 
 socketio = SocketIO(
     app,
     cors_allowed_origins="*",
-    async_mode="eventlet",
+    async_mode="threading",
     logger=False,
-    engineio_logger=False
+    engineio_logger=False,
 )
 
 
