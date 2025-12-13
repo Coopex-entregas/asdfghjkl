@@ -1,2112 +1,1403 @@
-<!doctype html>
-<html lang="pt-BR">
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <title>Painel do Motoboy - Coopex</title>
-  <meta name="viewport" content="width=device-width,initial-scale=1">
-
-  <!-- CSS do Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <title>Painel do Cooperado</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
   <style>
-    :root {
-      --bg: #020617;
-      --bg2: #020617;
-      --accent: #4169e1; /* AZUL ROYAL */
-      --accent-soft: rgba(65, 105, 225, 0.18);
-      --danger: #ef4444;
-      --text: #e5e7eb;
-      --muted: #9ca3af;
-      --border: #1f2937;
-      --card-bg: #020617f2;
-      --radius-xl: 22px;
-    }
-
-    * {
-      box-sizing: border-box;
-    }
-
-    html, body {
-      margin: 0;
-      padding: 0;
-      height: 100%;
-    }
-
-    body {
-      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background: var(--bg2);
-      color: var(--text);
-      overflow: hidden;
-      font-size: 16px; /* base maior */
-    }
-
-    .topbar {
-      padding: 10px 16px;
-      background: #020617;
-      border-bottom: 1px solid var(--border);
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      z-index: 20;
-      position: relative;
-    }
-
-    .top-left {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .top-title {
-      font-size: 1.05rem;
-      font-weight: 600;
-    }
-
-    .top-subtitle {
-      font-size: 0.9rem;
-      color: var(--muted);
-    }
-
-    .status-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      border-radius: 999px;
-      padding: 3px 10px;
-      font-size: 0.85rem;
-      background: var(--accent-soft);
-      color: #c7d2ff;
-      border: 1px solid rgba(65, 105, 225, 0.9);
-    }
-
-    .status-dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-      box-shadow: 0 0 0 5px rgba(65,105,225,.35);
-    }
-
-    .btn-minimal {
-      padding: 7px 12px;
-      border-radius: 999px;
-      border: 1px solid rgba(148, 163, 184, 0.4);
-      background: #020617;
-      color: #cbd5f5;
-      font-size: .85rem;
-      font-weight: 500;
-      text-decoration: none;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      cursor: pointer;
-    }
-
-    .btn-minimal span.icon {
-      font-size: 1rem;
-    }
-
-    /* WRAPPER DO MAPA PRA FICAR ENQUADRADO */
-    .map-wrapper {
-      padding: 8px 8px 0;
-      background: #020617;
-    }
-
-    #map {
-      width: 100%;
-      height: calc(100vh - 190px); /* deixa espaço pras abas + overlay */
-      background: #020617;
-      position: relative;
-      z-index: 1;
-      border-radius: 18px 18px 0 0;
-      border: 1px solid #111827;
-      overflow: hidden;
-    }
-
-    .overlay {
-      position: fixed;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      z-index: 30;
-      padding: 6px 8px 12px;
-      pointer-events: none;
-    }
-
-    .card-base {
-      pointer-events: auto;
-      background: var(--card-bg);
-      border-radius: var(--radius-xl);
-      border: 1px solid #111827;
-      box-shadow: 0 -14px 30px rgba(0, 0, 0, 0.85);
-      padding: 10px 14px 14px;
-      max-width: 540px;
-      margin: 0 auto;
-    }
-
-    .hidden { display: none !important; }
-
-    .card-header-line {
-      width: 40px;
-      height: 4px;
-      background: #111827;
-      border-radius: 999px;
-      margin: 0 auto 8px;
-    }
-
-    .card-title {
-      font-size: 1rem;
-      font-weight: 600;
-    }
-
-    .card-subtitle {
-      font-size: 0.9rem;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .dados-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-top: 8px;
-      gap: 10px;
-    }
-
-    .etapas {
-      display: flex;
-      flex-direction: column;
-      gap: 8px;
-      margin-top: 10px;
-    }
-
-    .etapa {
-      display: flex;
-      gap: 10px;
-    }
-
-    .etapa-bullets {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      width: 14px;
-      margin-top: 3px;
-    }
-
-    .etapa-bullet {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      border: 2px solid var(--accent);
-      background: transparent;
-    }
-
-    .etapa-bullet-bottom { border-color: #38bdf8; }
-
-    .etapa-line {
-      flex: 1;
-      width: 2px;
-      background: linear-gradient(to bottom, var(--accent) 0%, #38bdf8 100%);
-      opacity: 0.5;
-      margin: 2px 0;
-    }
-
-    .etapa-dados { flex: 1; }
-
-    .etapa-title {
-      font-size: 0.9rem;
-      font-weight: 600;
-    }
-
-    .etapa-text {
-      font-size: 0.9rem;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .chip-row {
-      display: flex;
-      gap: 8px;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-
-    .chip {
-      font-size: 0.85rem;
-      padding: 5px 10px;
-      border-radius: 999px;
-      border: 1px solid #111827;
-      background: #020617;
-      color: var(--muted);
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-    }
-
-    .chip strong { color: var(--text); }
-    .chip-icon { font-size: 1rem; }
-
-    .btn-row {
-      display: grid;
-      grid-template-columns: 1.1fr 1.2fr;
-      gap: 10px;
-      margin-top: 12px;
-    }
-
-    .btn {
-      border-radius: 999px;
-      border: none;
-      font-size: 0.9rem;
-      font-weight: 600;
-      padding: 10px 12px;
-      cursor: pointer;
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-    }
-
-    .btn-secondary {
-      background: #0b1220;
-      color: #e5edff;
-      border: 1px solid #334155;
-    }
-
-    .btn-danger {
-      background: rgba(239, 68, 68, 0.16);
-      color: #fecaca;
-      border: 1px solid rgba(239, 68, 68, 0.7);
-    }
-
-    .btn-primary {
-      background: linear-gradient(90deg, var(--accent), #1d4ed8);
-      color: #e5edff;
-      box-shadow: 0 9px 26px rgba(65, 105, 225, 0.7);
-    }
-
-    .btn-full { width: 100%; margin-top: 8px; }
-
-    .countdown-pill {
-      font-size: 0.85rem;
-      padding: 4px 10px;
-      border-radius: 999px;
-      background: rgba(251, 191, 36, 0.08);
-      color: #facc15;
-      border: 1px solid rgba(250, 204, 21, 0.6);
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-    }
-
-    .text-center { text-align: center; }
-    .text-right { text-align: right; }
-
-    .mt-3 { margin-top: 12px; }
-    .mt-2 { margin-top: 8px; }
-
-    .pill-small {
-      font-size: 0.82rem;
-      padding: 3px 10px;
-      border-radius: 999px;
-      background: #020617;
-      border: 1px solid #1f2937;
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      color: var(--muted);
-    }
-
-    .pill-blue {
-      background: var(--accent-soft);
-      border-color: var(--accent);
-      color: #c7d2ff;
-    }
-
-    .linha-sep {
-      height: 1px;
-      background: #111827;
-      margin: 10px -14px 10px;
-    }
-
-    .small-label {
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-
-    .small-value {
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-
-    .icon { font-style: normal; }
-
-    /* Estado sem entrega */
-    #card-sem-entrega .empty-title {
-      font-size: 1rem;
-      font-weight: 600;
-      text-align: center;
-    }
-
-    #card-sem-entrega .empty-sub {
-      font-size: 0.9rem;
-      color: var(--muted);
-      text-align: center;
-      margin-top: 4px;
-    }
-
-    #card-sem-entrega .info-row {
-      display: flex;
-      justify-content: center;
-      gap: 10px;
-      margin-top: 10px;
-      font-size: 0.9rem;
-      flex-wrap: wrap;
-    }
-
-    #card-sem-entrega .info-pill {
-      border-radius: 999px;
-      padding: 4px 12px;
-      border: 1px solid #111827;
-      background: #020617;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      color: #cbd5f5;
-    }
-
-    #card-sem-entrega .info-pill .dot {
-      width: 8px;
-      height: 8px;
-      border-radius: 999px;
-      background: var(--accent);
-    }
-
-    #card-sem-entrega .bottom-row {
-      margin-top: 8px;
-      display: flex;
-      justify-content: space-between;
-      font-size: 0.85rem;
-      color: var(--muted);
-      gap: 10px;
-      flex-wrap: wrap;
-    }
-
-    /* Tabs */
-    .tab-switcher {
-      pointer-events: auto;
-      max-width: 540px;
-      margin: 0 auto 6px;
-      display: flex;
-      background: #020617;
-      border-radius: 999px;
-      border: 1px solid #1f2937;
-      padding: 3px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.85);
-    }
-
-    .tab-btn {
-      flex: 1;
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 0.9rem;
-      padding: 7px 0;
-      border-radius: 999px;
-      cursor: pointer;
-    }
-
-    .tab-btn.active {
-      background: #0b1220;
-      color: #e5e7eb;
-      box-shadow: 0 0 0 1px #1d4ed8;
-    }
-
-    .tab-btn span.icon {
-      font-size: 1rem;
-      margin-right: 4px;
-    }
-
-    .tab-pane {
-      max-width: 540px;
-      margin: 0 auto;
-    }
-
-    /* Inputs / selects */
-    .input-text,
-    .select-text {
-      width: 100%;
-      padding: 8px 12px;
-      border-radius: 999px;
-      border: 1px solid #1f2937;
-      background: #020617;
-      color: var(--text);
-      font-size: 0.9rem;
-      outline: none;
-    }
-
-    .input-text::placeholder { color: #4b5563; }
-
-    .select-text {
-      appearance: none;
-      -webkit-appearance: none;
-      -moz-appearance: none;
-      background-image: linear-gradient(45deg, transparent 50%, #6b7280 50%), linear-gradient(135deg, #6b7280 50%, transparent 50%);
-      background-position: calc(100% - 12px) 10px, calc(100% - 7px) 10px;
-      background-size: 5px 5px, 5px 5px;
-      background-repeat: no-repeat;
-    }
-
-    /* Histórico */
-    #card-historico .card-title {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-    }
-
-    .hist-filtros-row {
-      display: grid;
-      grid-template-columns: 1.05fr 1.05fr 0.9fr;
-      gap: 8px;
-      margin-top: 12px;
-    }
-
-    .hist-search-row { margin-top: 10px; }
-
-    .hist-filter-actions {
-      margin-top: 10px;
-    }
-
-    .hist-list {
-      margin-top: 12px;
-      max-height: 260px;
-      overflow-y: auto;
-      padding-right: 4px;
-    }
-
-    .hist-item {
-      padding: 8px 10px;
-      border-radius: 16px;
-      border: 1px solid #111827;
-      background: #020617;
-      margin-bottom: 8px;
-      font-size: 0.95rem;
-    }
-
-    .hist-top {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .hist-cliente { font-weight: 600; font-size: 0.98rem; }
-    .hist-valor { font-weight: 600; font-size: 0.98rem; }
-
-    .hist-middle {
-      margin-top: 4px;
-      color: var(--muted);
-      font-size: 0.9rem;
-    }
-
-    .hist-bottom {
-      margin-top: 6px;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 8px;
-      flex-wrap: wrap;
-    }
-
-    .hist-bottom-left {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-    }
-
-    .hist-data {
-      font-size: 0.85rem;
-      color: var(--muted);
-    }
-
-    .hist-recebida {
-      font-size: 0.9rem;
-      color: #e5e7eb;
-    }
-
-    .status-badge {
-      font-size: 0.9rem;
-      padding: 5px 10px;
-      border-radius: 999px;
-      cursor: pointer;
-      border: 1px solid transparent;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      white-space: nowrap;
-    }
-
-    .status-pago {
-      background: rgba(22, 163, 74, 0.15);
-      color: #bbf7d0;
-      border-color: rgba(22, 163, 74, 0.5);
-    }
-
-    .status-pendente {
-      background: rgba(15, 23, 42, 0.9);
-      color: #fecaca;
-      border-color: rgba(248, 113, 113, 0.6);
-    }
-
-    .status-pendente::after {
-      content: " (clicar p/ marcar pago)";
-      font-size: 0.78rem;
-      color: #fca5a5;
-    }
-
-    /* MENU SANDUÍCHE */
-    .menu-sheet-backdrop {
-      position: fixed;
-      inset: 0;
-      background: rgba(15,23,42,0.55);
-      z-index: 40;
-      display: flex;
-      align-items: flex-end;
-      justify-content: center;
-    }
-
-    .menu-sheet {
-      width: 100%;
-      max-width: 520px;
-      background: #020617;
-      border-radius: 22px 22px 0 0;
-      border: 1px solid #111827;
-      padding: 10px 14px 16px;
-      box-shadow: 0 -18px 40px rgba(0,0,0,0.9);
-    }
-
-    .menu-title {
-      font-size: 0.95rem;
-      font-weight: 600;
-    }
-
-    .menu-sub {
-      font-size: 0.85rem;
-      color: var(--muted);
-      margin-top: 2px;
-    }
-
-    .menu-item-list {
-      margin-top: 10px;
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-    }
-
-    .menu-item {
-      border-radius: 999px;
-      padding: 8px 12px;
-      border: 1px solid #1f2937;
-      background: #020617;
-      color: #e5e7eb;
-      font-size: 0.9rem;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      text-decoration: none;
-    }
-
-    .menu-item-left {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    .menu-item-icon {
-      width: 26px;
-      height: 26px;
-      border-radius: 999px;
-      background: var(--accent-soft);
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      font-size: 1.1rem;
-      color: #c7d2ff;
-    }
-
-    .menu-close {
-      margin-top: 12px;
-      text-align: center;
-    }
-
-    .menu-close button {
-      border: none;
-      background: transparent;
-      color: var(--muted);
-      font-size: 0.9rem;
-      cursor: pointer;
-    }
-
-    /* TELA DE FICAR ONLINE ANTES DO MAPA */
-    .online-overlay {
-      position: fixed;
-      inset: 0;
-      z-index: 35;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      background: radial-gradient(circle at top, rgba(15,23,42,0.98), #020617);
-      padding: 16px;
-    }
-
-    .online-card {
-      max-width: 480px;
-      width: 100%;
-      text-align: center;
-    }
-
-    .online-title {
-      font-size: 1.1rem;
-      font-weight: 600;
-      margin-bottom: 6px;
-    }
-
-    .online-sub {
-      font-size: 0.95rem;
-      color: var(--muted);
-    }
-
-    .online-pill {
-      margin-top: 10px;
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 5px 12px;
-      border-radius: 999px;
-      border: 1px solid #1f2937;
-      background: #020617;
-      font-size: 0.9rem;
-      color: #cbd5f5;
-    }
-
-    .online-icon {
-      font-size: 1.1rem;
-    }
-
-  </style>
-</head>
-<body>
-  <!-- SOM DA ENTREGA -->
-  <audio id="som-entrega" src="{{ url_for('static', filename='entregas.mp3') }}" preload="auto"></audio>
-
-  <!-- MENU SANDUÍCHE (ESCONDIDO POR PADRÃO) -->
-  <div id="menu-backdrop" class="menu-sheet-backdrop hidden">
-    <div class="menu-sheet">
-      <div class="card-header-line"></div>
-      <div class="menu-title">Opções do motoboy</div>
-      <div class="menu-sub">Ações rápidas sem sair do mapa.</div>
-
-      <div class="menu-item-list">
-        <a href="{{ url_for('painel_cooperado') }}" class="menu-item">
-          <div class="menu-item-left">
-            <div class="menu-item-icon">📊</div>
-            <div>
-              <div>Painel completo</div>
-              <div class="small-label">Ver extrato, ganhos, benefícios…</div>
-            </div>
-          </div>
-          <span class="icon">›</span>
-        </a>
-
-        <a href="https://wa.me/{{ whatsapp_coopex or '' }}" target="_blank" class="menu-item">
-          <div class="menu-item-left">
-            <div class="menu-item-icon">🆘</div>
-            <div>
-              <div>Socorro Coopex</div>
-              <div class="small-label">Falar com a supervisão no WhatsApp</div>
-            </div>
-          </div>
-          <span class="icon">›</span>
-        </a>
-      </div>
-
-      <div class="menu-close">
-        <button type="button" id="menu-fechar">Fechar</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- TOPO -->
-  <div class="topbar">
-    <div class="top-left">
-      <div class="top-title">Olá, {{ cooperado_nome|default('Cooperado', true) }}</div>
-      <div class="top-subtitle">
-        <span class="status-pill" id="status-online-pill">
-          <span class="status-dot"></span> Online para receber entregas
-        </span>
-      </div>
-    </div>
-    <button type="button" class="btn-minimal" id="btn-menu">
-      <span class="icon">☰</span>
-      Menu
-    </button>
-  </div>
-
-  <!-- MAPA ENQUADRADO -->
-  <div class="map-wrapper">
-    <div id="map"></div>
-  </div>
-
-  <!-- TELA PARA FICAR ONLINE ANTES DE VER O MAPA -->
-  <div id="online-overlay" class="online-overlay">
-    <div class="card-base online-card">
-      <div class="card-header-line"></div>
-      <div class="online-title">Ficar online para receber corridas</div>
-      <div class="online-sub">
-        Ao ficar online, o app vai usar sua localização em tempo real para os restaurantes te enxergarem no mapa.
-      </div>
-      <div class="online-pill">
-        <span class="online-icon">📍</span>
-        <span>Localização em tempo real ativada enquanto estiver online.</span>
-      </div>
-      <button type="button" class="btn btn-primary btn-full mt-3" id="btn-ficar-online">
-        <span class="icon">✔</span> Ficar online e iniciar mapa
-      </button>
-      <div class="small-label text-center mt-2">
-        Você poderá fechar o app a qualquer momento para sair do modo online.
-      </div>
-    </div>
-  </div>
-
-  <!-- OVERLAY -->
-  <div class="overlay">
-    <!-- TABS -->
-    <div class="tab-switcher">
-      <button type="button" class="tab-btn active" id="tab-btn-corridas">
-        <span class="icon">📡</span> Corridas
-      </button>
-      <button type="button" class="tab-btn" id="tab-btn-historico">
-        <span class="icon">📜</span> Minhas entregas
-      </button>
-    </div>
-
-    <!-- ABA CORRIDAS -->
-    <div id="tab-corridas" class="tab-pane">
-      <!-- Sem entrega -->
-      <div id="card-sem-entrega" class="card-base">
-        <div class="card-header-line"></div>
-        <div class="empty-title">Aguardando entrega</div>
-        <div class="empty-sub">
-          Deixe o app aberto. Quando algum restaurante te atribuir uma corrida, o som vai tocar.
-        </div>
-        <div class="info-row">
-          <div class="info-pill">
-            <span class="dot"></span>
-            <span>GPS ligado</span>
-          </div>
-          <div class="info-pill">
-            <span>🔊</span>
-            <span>Som: <strong>entregas.mp3</strong></span>
-          </div>
-        </div>
-        <div class="bottom-row">
-          <span>Permita o acesso ao GPS do aparelho.</span>
-          <span id="texto-ultima-localizacao">Sem posição ainda</span>
-        </div>
-      </div>
-
-      <!-- Nova entrega (aceitar) -->
-      <div id="card-nova-entrega" class="card-base hidden">
-        <div class="card-header-line"></div>
-
-        <div class="dados-row">
-          <div>
-            <div class="card-title" id="nova-entrega-titulo">Nova entrega</div>
-            <div class="card-subtitle" id="nova-entrega-restaurante"></div>
-          </div>
-          <div class="text-right">
-            <div class="small-label">Valor</div>
-            <div class="small-value" id="nova-entrega-valor">R$ 0,00</div>
-          </div>
-        </div>
-
-        <div class="etapas">
-          <div class="etapa">
-            <div class="etapa-bullets">
-              <div class="etapa-bullet"></div>
-              <div class="etapa-line"></div>
-              <div class="etapa-bullet etapa-bullet-bottom"></div>
-            </div>
-            <div class="etapa-dados">
-              <div class="etapa-title">Coleta</div>
-              <div class="etapa-text" id="nova-origem-text"></div>
-              <div class="etapa-title mt-2">Destino</div>
-              <div class="etapa-text" id="nova-destino-text"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chip-row">
-          <div class="chip pill-blue">
-            <span class="chip-icon">⏱</span>
-            <span id="nova-estimativa-tempo">Tempo estimado ~</span>
-          </div>
-          <div class="chip">
-            <span class="chip-icon">📍</span>
-            <span id="nova-entrega-distancia">Distância ~</span>
-          </div>
-        </div>
-
-        <div class="linha-sep"></div>
-
-        <div class="dados-row">
-          <div class="countdown-pill">
-            <span class="icon">⚡</span>
-            Expira em <span id="nova-entrega-countdown">20</span>s
-          </div>
-          <div class="small-label text-right">
-            Aceite para abrir a navegação automática.
-          </div>
-        </div>
-
-        <div class="btn-row">
-          <button type="button" class="btn btn-danger" id="btn-recusar-entrega">
-            <span class="icon">✕</span> Recusar
-          </button>
-          <button type="button" class="btn btn-primary" id="btn-aceitar-entrega">
-            <span class="icon">✔</span> Aceitar
-          </button>
-        </div>
-      </div>
-
-      <!-- Entrega aceita -->
-      <div id="card-entrega-aceita" class="card-base hidden">
-        <div class="card-header-line"></div>
-
-        <div class="dados-row">
-          <div>
-            <div class="card-title">Entrega em andamento</div>
-            <div class="card-subtitle" id="aceita-entrega-restaurante"></div>
-          </div>
-          <div class="text-right">
-            <div class="small-label">Valor</div>
-            <div class="small-value" id="aceita-entrega-valor">R$ 0,00</div>
-          </div>
-        </div>
-
-        <div class="etapas">
-          <div class="etapa">
-            <div class="etapa-bullets">
-              <div class="etapa-bullet"></div>
-              <div class="etapa-line"></div>
-              <div class="etapa-bullet etapa-bullet-bottom"></div>
-            </div>
-            <div class="etapa-dados">
-              <div class="etapa-title">Coleta</div>
-              <div class="etapa-text" id="aceita-origem-text"></div>
-              <div class="etapa-title mt-2">Destino</div>
-              <div class="etapa-text" id="aceita-destino-text"></div>
-            </div>
-          </div>
-        </div>
-
-        <div class="chip-row">
-          <div class="chip pill-blue">
-            <span class="chip-icon">🧭</span>
-            <span>Rota ativa no mapa</span>
-          </div>
-          <div class="chip">
-            <span class="chip-icon">📍</span>
-            <span id="aceita-entrega-distancia">Distância ~</span>
-          </div>
-        </div>
-
-        <button type="button" class="btn btn-secondary btn-full" id="btn-abrir-maps">
-          <span class="icon">📱</span> Abrir rota no Maps/Waze
-        </button>
-
-        <div class="linha-sep"></div>
-
-        <div class="mt-3">
-          <div class="small-label">Recebida por</div>
-          <input
-            id="input-recebida-por"
-            type="text"
-            class="input-text"
-            placeholder="Nome de quem recebeu"
-          />
-        </div>
-
-        <button type="button" class="btn btn-primary btn-full mt-2" id="btn-finalizar-entrega">
-          <span class="icon">✅</span> Finalizar entrega
-        </button>
-
-        <div class="small-label text-center mt-2">
-          Depois de finalizar, ela vai para "Minhas entregas". Se estiver pendente, lá você marca como pago.
-        </div>
-      </div>
-    </div>
-
-    <!-- ABA HISTÓRICO -->
-    <div id="tab-historico" class="tab-pane hidden">
-      <div id="card-historico" class="card-base">
-        <div class="card-header-line"></div>
-        <div class="card-title">
-          <span>Minhas entregas</span>
-          <span class="pill-small pill-blue">
-            <span class="icon">📦</span>
-            <span id="hist-total">0 entregas</span>
-          </span>
-        </div>
-        <div class="card-subtitle">
-          Filtros rápidos para ver suas corridas e marcar pagamento.
-        </div>
-
-        <div class="hist-filtros-row">
-          <div>
-            <div class="small-label">De</div>
-            <input type="date" id="filtro-data-inicio" class="input-text">
-          </div>
-          <div>
-            <div class="small-label">Até</div>
-            <input type="date" id="filtro-data-fim" class="input-text">
-          </div>
-          <div>
-            <div class="small-label">Status</div>
-            <select id="filtro-status" class="select-text">
-              <option value="todos">Todos</option>
-              <option value="pago">Pago</option>
-              <option value="pendente">Pendente</option>
-            </select>
-          </div>
-        </div>
-
-        <div class="hist-search-row">
-          <div class="small-label">Buscar (cliente, bairro, recebida por)</div>
-          <input
-            type="text"
-            id="filtro-busca"
-            class="input-text"
-            placeholder="Digite parte do nome ou bairro"
-          >
-        </div>
-
-        <div class="hist-filter-actions">
-          <button type="button" class="btn btn-secondary btn-full" id="btn-aplicar-filtro">
-            <span class="icon">🔍</span> Filtrar entregas
-          </button>
-        </div>
-
-        <div class="hist-list" id="historico-lista">
-          <!-- itens via JS -->
-        </div>
-      </div>
-    </div>
-  </div>
-
-<!-- JS do Leaflet -->
-<script
-  src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-  integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-  crossorigin=""
-></script>
-
-<script>
-  const CIDADE_PADRAO = "{{ cidade_padrao|default('Natal - RN', true) }}";
-  const INTERVALO_PING_MS = 10000;
-  const INTERVALO_BUSCA_ENTREGA_MS = 7000;
-  const TEMPO_EXPIRACAO_SEG = 20;
-
-  // ======= MAPA / LEAFLET =======
-  let map;
-  let motoboyMarker = null;
-  let origemMarker = null;
-  let destinoMarker = null;
-  let rotaLayer = null;
-
-  // rota “navegação” (do motoboy -> origem -> destino)
-  let navLayer = null;
-  let followAtivo = true; // seguir motoboy no mapa
-  let lastNavFetchAt = 0;
-  let lastNavFrom = null;
-
-  // ======= GPS =======
-  let watchId = null;
-
-  // ======= ENTREGA (estado) =======
-  let entregaOferta = null;         // oferta na tela (aceitar/recusar)
-  let entregaAtivaAtual = null;     // entrega em andamento na tela
-  let entregasAtivas = [];          // se quiser permitir +1, mantém aqui
-
-  // anti-repetição / cooldown por ID
-  const cooldownEntrega = new Map(); // id -> expiresAtMs
-
-  // countdown oferta
-  let countdownInterval = null;
-  let countdownRestante = TEMPO_EXPIRACAO_SEG;
-
-  // timers (para não duplicar setInterval)
-  let pingTimerId = null;
-  let buscaTimerId = null;
-
-  let onlineAtivo = false;
-
-  // ======= ELEMENTOS =======
-  const audioEntrega = document.getElementById("som-entrega");
-  const textoUltimaLoc = document.getElementById("texto-ultima-localizacao");
-
-  const cardSemEntrega = document.getElementById("card-sem-entrega");
-  const cardNovaEntrega = document.getElementById("card-nova-entrega");
-  const cardEntregaAceita = document.getElementById("card-entrega-aceita");
-
-  const tabBtnCorridas = document.getElementById("tab-btn-corridas");
-  const tabBtnHistorico = document.getElementById("tab-btn-historico");
-  const tabCorridas = document.getElementById("tab-corridas");
-  const tabHistorico = document.getElementById("tab-historico");
-
-  const novaTitulo = document.getElementById("nova-entrega-titulo");
-  const novaRestaurante = document.getElementById("nova-entrega-restaurante");
-  const novaValor = document.getElementById("nova-entrega-valor");
-  const novaOrigemText = document.getElementById("nova-origem-text");
-  const novaDestinoText = document.getElementById("nova-destino-text");
-  const novaEstTempo = document.getElementById("nova-estimativa-tempo");
-  const novaDistancia = document.getElementById("nova-entrega-distancia");
-  const novaCountdown = document.getElementById("nova-entrega-countdown");
-
-  const btnRecusar = document.getElementById("btn-recusar-entrega");
-  const btnAceitar = document.getElementById("btn-aceitar-entrega");
-
-  const aceitaRestaurante = document.getElementById("aceita-entrega-restaurante");
-  const aceitaValor = document.getElementById("aceita-entrega-valor");
-  const aceitaOrigemText = document.getElementById("aceita-origem-text");
-  const aceitaDestinoText = document.getElementById("aceita-destino-text");
-  const aceitaDistancia = document.getElementById("aceita-entrega-distancia");
-
-  // ESTE BOTÃO AGORA VIRA “Seguir no mapa” (não abre externo)
-  const btnAbrirMaps = document.getElementById("btn-abrir-maps");
-
-  const inputRecebidaPor = document.getElementById("input-recebida-por");
-  const btnFinalizarEntrega = document.getElementById("btn-finalizar-entrega");
-
-  const historicoLista = document.getElementById("historico-lista");
-  const histTotal = document.getElementById("hist-total");
-  const filtroDataInicio = document.getElementById("filtro-data-inicio");
-  const filtroDataFim = document.getElementById("filtro-data-fim");
-  const filtroStatus = document.getElementById("filtro-status");
-  const filtroBusca = document.getElementById("filtro-busca");
-  const btnAplicarFiltro = document.getElementById("btn-aplicar-filtro");
-
-  const btnMenu = document.getElementById("btn-menu");
-  const menuBackdrop = document.getElementById("menu-backdrop");
-  const menuFechar = document.getElementById("menu-fechar");
-
-  const onlineOverlay = document.getElementById("online-overlay");
-  const btnFicarOnline = document.getElementById("btn-ficar-online");
-  const statusOnlinePill = document.getElementById("status-online-pill");
-
-  // Histórico vindo do servidor
-  const ENTREGAS = {{ entregas_js|default([], true)|tojson }};
-
-  // ======= AUDIO (desbloqueio por gesto) =======
-  let audioDesbloqueado = false;
-
-  function nowMs() { return Date.now(); }
-
-  function desbloquearAudioUmaVez() {
-    if (audioDesbloqueado || !audioEntrega) return;
-
-    try { audioEntrega.load(); } catch (e) {}
-
-    audioEntrega.muted = true;
-    const p = audioEntrega.play();
-    if (p && typeof p.then === "function") {
-      p.then(() => {
-        audioEntrega.pause();
-        audioEntrega.currentTime = 0;
-        audioEntrega.muted = false;
-        audioDesbloqueado = true;
-      }).catch(() => {
-        audioEntrega.muted = false;
-      });
-    } else {
-      try {
-        audioEntrega.pause();
-        audioEntrega.currentTime = 0;
-        audioEntrega.muted = false;
-        audioDesbloqueado = true;
-      } catch (e) {}
-    }
-  }
-
-  function tocarSomEntrega() {
-    if (!audioEntrega) return;
-    if (!audioDesbloqueado) return;
-    audioEntrega.loop = true;
-    audioEntrega.currentTime = 0;
-    audioEntrega.play().catch(() => {});
-  }
-
-  function pararSomEntrega() {
-    if (!audioEntrega) return;
-    audioEntrega.pause();
-    audioEntrega.currentTime = 0;
-    audioEntrega.loop = false;
-  }
-
-  // ======= UTIL =======
-  function formatarValor(v) {
-    if (v === null || v === undefined) return "R$ 0,00";
-    const num = Number(v);
-    if (Number.isNaN(num)) return String(v);
-    return num.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  }
-
-  function formatarDistancia(dist) {
-    if (!dist && dist !== 0) return "Distância não informada";
-    const d = Number(dist);
-    if (Number.isNaN(d)) return String(dist);
-    if (d > 1000) return (d / 1000).toFixed(1) + " km";
-    return d.toFixed(0) + " m";
-  }
-
-  function normalizarStatusPagamento(v) {
-    if (v === true || v === "pago" || v === "Pago") return "pago";
-    return "pendente";
-  }
-
-  function toISODate(value) {
-    if (!value) return "";
-    if (typeof value === "string" && /^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10);
-    if (typeof value === "string" && /^\d{2}\/\d{2}\/\d{4}$/.test(value)) {
-      const [dd, mm, yyyy] = value.split("/");
-      return `${yyyy}-${mm}-${dd}`;
-    }
-    return String(value).slice(0, 10);
-  }
-
-  function formatarDataSimples(strData) {
-    if (!strData) return "";
-    if (typeof strData === "string" && strData.includes("/") && strData.length <= 10) return strData;
-    const iso = toISODate(strData);
-    if (/^\d{4}-\d{2}-\d{2}$/.test(iso)) {
-      const [yyyy, mm, dd] = iso.split("-");
-      return `${dd}/${mm}/${yyyy}`;
-    }
-    return String(strData);
-  }
-
-  async function fetchJSON(url, options = {}) {
-    const resp = await fetch(url, {
-      credentials: "same-origin",
-      ...options,
-      headers: {
-        "Content-Type": "application/json",
-        ...(options.headers || {})
-      }
-    });
-
-    let payload = null;
-    try { payload = await resp.json(); } catch (e) {}
-
-    if (!resp.ok) {
-      const msg = (payload && (payload.msg || payload.message))
-        ? (payload.msg || payload.message)
-        : `HTTP ${resp.status}`;
-      throw new Error(msg);
-    }
-    return payload;
-  }
-
-  function setCooldownEntrega(entregaId, segundos) {
-    if (!entregaId) return;
-    cooldownEntrega.set(Number(entregaId), nowMs() + (segundos * 1000));
-  }
-
-  function emCooldown(entregaId) {
-    const id = Number(entregaId);
-    const exp = cooldownEntrega.get(id);
-    if (!exp) return false;
-    if (nowMs() > exp) { cooldownEntrega.delete(id); return false; }
-    return true;
-  }
-
-  // ======= MAPA =======
-  function initMap() {
-    if (map) return;
-
-    const centerLatLng = [-5.814, -35.214]; // Natal
-    map = L.map("map", {
-      zoomControl: true,
-      tap: true
-    }).setView(centerLatLng, 13);
-
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap"
-    }).addTo(map);
-
-    // se o usuário arrastar o mapa, desliga follow (pra ele conseguir navegar)
-    map.on("dragstart", () => {
-      followAtivo = false;
-      atualizarBotaoSeguirNoMapa();
-    });
-
-    // força recalcular tamanho em mobile (evita mapa “travado”)
-    setTimeout(() => map.invalidateSize(), 200);
-    window.addEventListener("resize", () => {
-      if (!map) return;
-      setTimeout(() => map.invalidateSize(), 150);
-    });
-  }
-
-  function atualizarMarkerMotoboy(lat, lng) {
-    if (!map) return;
-    if (!motoboyMarker) {
-      motoboyMarker = L.circleMarker([lat, lng], {
-        radius: 9,
-        color: "#4169e1",
-        fillColor: "#4169e1",
-        fillOpacity: 0.9
-      }).addTo(map);
-      map.setView([lat, lng], 16);
-    } else {
-      motoboyMarker.setLatLng([lat, lng]);
-    }
-
-    // modo seguir
-    if (followAtivo) {
-      map.panTo([lat, lng], { animate: true, duration: 0.35 });
-    }
-  }
-
-  function limparRota() {
-    if (!map) return;
-    if (origemMarker) { map.removeLayer(origemMarker); origemMarker = null; }
-    if (destinoMarker) { map.removeLayer(destinoMarker); destinoMarker = null; }
-    if (rotaLayer) { map.removeLayer(rotaLayer); rotaLayer = null; }
-    if (navLayer) { map.removeLayer(navLayer); navLayer = null; }
-  }
-
-  function temCoords(entrega) {
-    return !!(entrega && entrega.lat_origem && entrega.lng_origem && entrega.lat_destino && entrega.lng_destino);
-  }
-
-  function desenharMarkersOrigemDestino(entrega) {
-    if (!map || !entrega) return;
-
-    if (entrega.lat_origem && entrega.lng_origem) {
-      origemMarker = L.marker([entrega.lat_origem, entrega.lng_origem]).addTo(map);
-      origemMarker.bindPopup("Coleta");
-    }
-    if (entrega.lat_destino && entrega.lng_destino) {
-      destinoMarker = L.marker([entrega.lat_destino, entrega.lng_destino]).addTo(map);
-      destinoMarker.bindPopup("Destino");
-    }
-  }
-
-  async function desenharRotaOSRM(coords, estilo) {
-    // coords: array de [lng,lat] (OSRM)
-    const coordsStr = coords.map(c => `${c[0]},${c[1]}`).join(";");
-    const url = `https://router.project-osrm.org/route/v1/driving/${coordsStr}?overview=full&geometries=geojson`;
-
-    const data = await fetch(url).then(r => r.json());
-    if (!data.routes || !data.routes.length) return null;
-
-    const route = data.routes[0];
-    return L.geoJSON(route.geometry, { style: estilo });
-  }
-
-  async function ativarNavegacaoNoMapa(entrega) {
-    if (!map || !entrega || !temCoords(entrega)) return;
-
-    // não refaz rota toda hora
-    const agora = nowMs();
-    const posAtual = motoboyMarker ? motoboyMarker.getLatLng() : null;
-
-    if (agora - lastNavFetchAt < 20000 && lastNavFrom && posAtual) {
-      const dist = map.distance(lastNavFrom, posAtual);
-      if (dist < 200) return; // não recalcula se moveu pouco
-    }
-
-    lastNavFetchAt = agora;
-    lastNavFrom = posAtual ? L.latLng(posAtual.lat, posAtual.lng) : null;
-
-    // remove navLayer anterior
-    if (navLayer) { map.removeLayer(navLayer); navLayer = null; }
-
-    // monta rota: motoboy -> origem -> destino (se tiver motoboyMarker)
-    const coords = [];
-    if (posAtual) coords.push([posAtual.lng, posAtual.lat]);
-    coords.push([Number(entrega.lng_origem), Number(entrega.lat_origem)]);
-    coords.push([Number(entrega.lng_destino), Number(entrega.lat_destino)]);
-
-    try {
-      const layer = await desenharRotaOSRM(coords, {
-        weight: 5,
-        opacity: 0.95,
-        color: "#38bdf8"
-      });
-      if (!layer) return;
-
-      navLayer = layer.addTo(map);
-      map.fitBounds(navLayer.getBounds(), { padding: [40, 40] });
-    } catch (e) {
-      console.log("Erro navegação OSRM:", e);
-    }
-  }
-
-  // ======= GPS =======
-  function enviarLocalizacao(lat, lng) {
-    const agora = new Date();
-    if (textoUltimaLoc) {
-      textoUltimaLoc.textContent =
-        "Última posição: " + agora.toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-    }
-
-    atualizarMarkerMotoboy(lat, lng);
-
-    // se tem entrega ativa com coords, mantém nav atualizada com parcimônia
-    if (entregaAtivaAtual && temCoords(entregaAtivaAtual)) {
-      ativarNavegacaoNoMapa(entregaAtivaAtual);
-    }
-
-    fetch("/cooperado/atualizar_localizacao", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ lat, lng })
-    }).catch(err => console.log("Erro ao atualizar localização:", err));
-  }
-
-  function iniciarRastreamentoGPS() {
-    if (!("geolocation" in navigator)) {
-      console.log("Geolocalização não suportada.");
-      return;
-    }
-
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const { latitude, longitude } = pos.coords;
-        enviarLocalizacao(latitude, longitude);
-      },
-      (err) => console.log("Erro getCurrentPosition:", err),
-      { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-    );
-
-    if (watchId === null) {
-      watchId = navigator.geolocation.watchPosition(
-        (pos) => {
-          const { latitude, longitude } = pos.coords;
-          enviarLocalizacao(latitude, longitude);
-        },
-        (err) => console.log("Erro watchPosition:", err),
-        { enableHighAccuracy: true, maximumAge: 5000, timeout: 15000 }
-      );
-    }
-  }
-
-  // ======= “MAPA GRANDE” (barra compacta) =======
-  const overlayEl = document.querySelector(".overlay");
-  let sheetCompacto = false;
-  let barraCompacta = null;
-
-  function criarBarraCompactaSePrecisar() {
-    if (barraCompacta) return;
-
-    barraCompacta = document.createElement("div");
-    barraCompacta.id = "barra-compacta";
-    barraCompacta.style.cssText = `
-      pointer-events:auto;
-      max-width:540px;
-      margin:0 auto 8px;
-      background: rgba(2,6,23,0.92);
-      border:1px solid #111827;
-      border-radius: 999px;
-      padding: 8px 12px;
+    /* ============================================================
+       DESIGN PRO — Coopex (Royal/White) | SEM REMOVER FUNÇÕES
+       ============================================================ */
+    :root{
+      --royal:#0033cc;
+      --royal-2:#2750ff;
+      --ink:#071534;
+      --muted:#6b7aa8;
+      --bg:#eef2ff;
+      --card:#ffffff;
+      --line:#e3e9ff;
+
+      --good:#12b886;
+      --bad:#e03131;
+      --warn:#ffd43b;
+
+      --r:16px;
+      --shadow:0 10px 28px rgba(0,51,204,.12);
+      --shadow-sm:0 8px 18px rgba(0,51,204,.10);
+      --shadow-xs:0 6px 14px rgba(0,51,204,.08);
+    }
+
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--ink);
+      background:
+        radial-gradient(1100px 520px at 10% -10%, rgba(39,80,255,.14), transparent 60%),
+        radial-gradient(1100px 520px at 110% -10%, rgba(0,51,204,.10), transparent 60%),
+        var(--bg);
+    }
+
+    /* ===== TOPBAR PRO ===== */
+    header{
+      position:sticky; top:0; z-index:60;
+      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff;
+      padding:.75rem 3.5vw;
+      box-shadow:0 10px 25px rgba(0,40,130,.22);
+      border-bottom:1px solid rgba(255,255,255,.18);
+    }
+    .topbar{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      max-width:1200px; margin:0 auto;
+    }
+    .brand{
+      display:flex; flex-direction:column; gap:2px; min-width:0;
+    }
+    .brand .title{
+      font-weight:900; letter-spacing:.3px; font-size:1.05rem; line-height:1.1;
+    }
+    .brand .subtitle{
+      font-weight:600; opacity:.92; font-size:.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
+    }
+    .top-actions{
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;
+    }
+
+    /* ===== STATUS GPS ===== */
+    .gps-status{
+      display:inline-flex; align-items:center; gap:8px;
+      padding:6px 12px;
+      border-radius:999px;
+      font-size:.78rem;
+      font-weight:800;
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.38);
+      cursor:pointer;
+      white-space:nowrap;
+      user-select:none;
+      transition:transform .12s ease, background .2s ease;
+    }
+    .gps-status:hover{ transform:translateY(-1px) }
+    .gps-status::before{
+      content:"";
+      width:10px;height:10px;border-radius:999px;
+      background:var(--warn);
+      box-shadow:none;
+      transition:background .2s ease, box-shadow .2s ease;
+    }
+    .gps-status.gps-status--on::before{
+      background:#69db7c;
+      box-shadow:0 0 0 6px rgba(105,219,124,.28);
+    }
+    .gps-status.gps-status--off::before{ background:var(--warn); box-shadow:none }
+    .gps-status.gps-status--error::before{
+      background:#ff6b6b;
+      box-shadow:0 0 0 6px rgba(255,107,107,.25);
+    }
+
+    /* ===== LAYOUT ===== */
+    .wrap{max-width:1200px;margin:14px auto 18px;padding:0 3.5vw}
+    .grid{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+
+    /* ===== ABAS ===== */
+    .tabs{
+      display:flex;
+      gap:8px;
+      padding:8px;
+      background:rgba(255,255,255,.55);
+      border:1px solid rgba(227,233,255,.95);
+      border-radius:16px;
+      box-shadow:var(--shadow-xs);
+      backdrop-filter: blur(8px);
+    }
+    .tab-btn{
+      flex:1;
+      padding:10px 12px;
+      border:none;
+      background:transparent;
+      font-weight:900;
+      font-size:.92rem;
+      color:rgba(255,255,255,.0);
+      cursor:pointer;
+      border-radius:14px;
+      color:var(--muted);
+      transition:background .2s ease, transform .12s ease, color .2s ease, box-shadow .2s ease;
+      white-space:nowrap;
+    }
+    .tab-btn:hover{ transform:translateY(-1px); background:rgba(0,51,204,.06) }
+    .tab-btn.active{
+      background:var(--card);
+      color:var(--royal);
+      box-shadow:var(--shadow-sm);
+      border:1px solid var(--line);
+    }
+    .tab-panel{display:none}
+    .tab-panel.active{display:block}
+
+    /* ===== CARDS / CONTEÚDO ===== */
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:var(--r);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card-head{
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      padding:12px 14px;
+      border-bottom:1px solid var(--line);
+      background:linear-gradient(180deg,#ffffff,#f7f9ff);
+    }
+    .card-head h3{
+      margin:0;
+      font-size:1rem;
+      font-weight:900;
+      color:#0f2a80;
+      letter-spacing:.2px;
+    }
+    .card-body{ padding:12px 14px }
+
+    /* ===== STATS ===== */
+    .stats{
+      display:grid;
+      grid-template-columns:repeat(2, minmax(250px,1fr));
+      gap:10px;
+    }
+    .stat{
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:12px 14px;
+      box-shadow:var(--shadow-xs);
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:10px;
-      box-shadow: 0 10px 28px rgba(0,0,0,0.85);
-    `;
+      min-height:70px;
+      background:#fff;
+    }
+    .stat h4{margin:0;font-size:.86rem;font-weight:900;color:var(--muted)}
+    .stat strong{margin:0;font-size:1.22rem;line-height:1}
+    .stat--pago{border-color:#d6e2ff;background:linear-gradient(180deg,#f4f7ff,#eef2ff)}
+    .stat--pago h4{color:#1b3cff}
+    .stat--pago strong{color:#0f2a80}
+    .stat--pendente{background:#fff2f2;border-color:#ffd6d6}
+    .stat--pendente h4,.stat--pendente strong{color:var(--bad)}
+    .stat--total{background:#e9fbf5;border-color:#b3f0dc;grid-column:1/-1}
+    .stat--total h4,.stat--total strong{color:var(--good)}
 
-    const left = document.createElement("div");
-    left.id = "barra-compacta-left";
-    left.style.cssText = `display:flex;flex-direction:column;gap:2px;min-width:0;`;
-
-    const title = document.createElement("div");
-    title.id = "barra-compacta-title";
-    title.style.cssText = `font-weight:600;font-size:.92rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
-    title.textContent = "Mapa";
-
-    const sub = document.createElement("div");
-    sub.id = "barra-compacta-sub";
-    sub.style.cssText = `font-size:.82rem;color:#9ca3af;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;`;
-    sub.textContent = "Toque para abrir detalhes";
-
-    left.appendChild(title);
-    left.appendChild(sub);
-
-    const btn = document.createElement("button");
-    btn.type = "button";
-    btn.id = "barra-compacta-btn";
-    btn.textContent = "Abrir";
-    btn.style.cssText = `
+    /* ===== FILTROS ===== */
+    .filters form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
+    .filters input[type=date], .filters select, .filters button{
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:10px 12px;
+      font-size:.95rem;
+      background:#fff;
+      outline:none;
+    }
+    .filters .btn{
+      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff;
       border:none;
-      background: linear-gradient(90deg, #4169e1, #1d4ed8);
-      color:#e5edff;
-      border-radius:999px;
-      padding:8px 14px;
-      font-weight:700;
+      font-weight:900;
       cursor:pointer;
-      white-space:nowrap;
-    `;
-    btn.addEventListener("click", () => setSheetCompacto(false));
-
-    barraCompacta.addEventListener("click", (e) => {
-      // não duplicar clique do botão
-      if (e.target && e.target.id === "barra-compacta-btn") return;
-      setSheetCompacto(false);
-    });
-
-    barraCompacta.appendChild(left);
-    barraCompacta.appendChild(btn);
-
-    // insere acima das tabs
-    overlayEl.insertBefore(barraCompacta, overlayEl.firstChild);
-  }
-
-  function atualizarBarraCompacta() {
-    if (!barraCompacta) return;
-    const title = document.getElementById("barra-compacta-title");
-    const sub = document.getElementById("barra-compacta-sub");
-
-    if (entregaOferta) {
-      title.textContent = "Nova entrega";
-      sub.textContent = "Abra para aceitar/recusar";
-      return;
+      box-shadow:0 8px 16px rgba(0,51,204,.22);
     }
-    if (entregaAtivaAtual) {
-      const nome = entregaAtivaAtual.cliente || entregaAtivaAtual.restaurante || "Entrega em andamento";
-      title.textContent = nome;
-      sub.textContent = "Toque para ver detalhes / finalizar";
-      return;
-    }
-    title.textContent = "Mapa";
-    sub.textContent = "Toque para abrir detalhes";
-  }
-
-  function setSheetCompacto(compacto) {
-    criarBarraCompactaSePrecisar();
-    sheetCompacto = !!compacto;
-
-    // quando compacta, escondemos os cards (mas deixamos a barra)
-    if (sheetCompacto) {
-      // tabs e panes somem (mapa fica “livre”)
-      const tabSwitcher = document.querySelector(".tab-switcher");
-      if (tabSwitcher) tabSwitcher.classList.add("hidden");
-      tabCorridas.classList.add("hidden");
-      tabHistorico.classList.add("hidden");
-      barraCompacta.classList.remove("hidden");
-    } else {
-      const tabSwitcher = document.querySelector(".tab-switcher");
-      if (tabSwitcher) tabSwitcher.classList.remove("hidden");
-
-      // volta para tab atual
-      if (tabBtnHistorico.classList.contains("active")) {
-        tabCorridas.classList.add("hidden");
-        tabHistorico.classList.remove("hidden");
-      } else {
-        tabHistorico.classList.add("hidden");
-        tabCorridas.classList.remove("hidden");
-      }
-      barraCompacta.classList.add("hidden");
+    .scope{
+      margin:8px 0 0;
+      text-align:center;
+      color:#0f2a80;
+      font-weight:900;
+      font-size:.9rem;
     }
 
-    atualizarBarraCompacta();
-    if (map) setTimeout(() => map.invalidateSize(), 200);
-  }
-
-  // ======= ESTADOS UI =======
-  function limparCountdown() {
-    if (countdownInterval) {
-      clearInterval(countdownInterval);
-      countdownInterval = null;
+    /* ===== TABELA (mantida, refinada) ===== */
+    .card-table{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+    table{width:100%;border-collapse:collapse}
+    thead th{
+      background:#0f2a80;
+      color:#fff;
+      text-align:center;
+      padding:11px 8px;
+      font-size:.88rem;
+      font-weight:900;
+      letter-spacing:.2px;
     }
-  }
-
-  function mostrarEstadoSemEntrega() {
-    pararSomEntrega();
-    limparCountdown();
-    entregaOferta = null;
-
-    cardSemEntrega.classList.remove("hidden");
-    cardNovaEntrega.classList.add("hidden");
-    cardEntregaAceita.classList.add("hidden");
-
-    limparRota();
-
-    if (entregasAtivas.length > 0) {
-      setEntregaAtivaAtual(entregasAtivas[0]);
-      return;
+    tbody td{
+      padding:11px 10px;
+      text-align:center;
+      border-bottom:1px solid var(--line);
+      font-size:.95rem;
+      background:#fff;
     }
+    tbody tr:hover td{ background:#f8faff }
 
-    entregaAtivaAtual = null;
-    if (inputRecebidaPor) inputRecebidaPor.value = "";
+    .chip{
+      display:inline-block;
+      padding:7px 11px;
+      border-radius:999px;
+      font-weight:900;
+      font-size:.82rem;
+      cursor:pointer;
+      user-select:none;
+    }
+    .chip.pgto-pago{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
+    .chip.pgto-pendente{background:#fff2f2;color:var(--bad);border:1px solid #ffd6d6}
+    .chip.entregue{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
 
-    // se não tem nada, deixa em compacto para ver mapa
-    setSheetCompacto(true);
-  }
+    .row-details{display:none;background:#f8faff}
+    .row-open + .row-details{display:table-row}
+    .cliente-btn{all:unset;color:var(--royal);font-weight:900;cursor:pointer}
 
-  function mostrarEstadoNovaEntrega(entrega) {
-    // se já tem entrega ativa, não mostra oferta (evita tocar novamente)
-    if (entregasAtivas.length > 0 || entregaAtivaAtual) return;
-
-    cardSemEntrega.classList.add("hidden");
-    cardNovaEntrega.classList.remove("hidden");
-    cardEntregaAceita.classList.add("hidden");
-
-    entregaOferta = entrega;
-
-    novaTitulo.textContent = "Nova entrega para você";
-    novaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
-    novaValor.textContent = formatarValor(entrega.valor);
-
-    novaOrigemText.textContent =
-      entrega.origem_endereco ||
-      (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
-
-    novaDestinoText.textContent =
-      entrega.destino_endereco ||
-      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informado");
-
-    novaEstTempo.textContent = "Tempo estimado ~ " + (entrega.tempo_estimado || "aprox.");
-    novaDistancia.textContent = formatarDistancia(entrega.distancia);
-
-    // rota simples origem->dest (visual)
-    limparRota();
-    desenharMarkersOrigemDestino(entrega);
-    if (temCoords(entrega)) {
-      desenharRotaOSRM(
-        [
-          [Number(entrega.lng_origem), Number(entrega.lat_origem)],
-          [Number(entrega.lng_destino), Number(entrega.lat_destino)]
-        ],
-        { weight: 4, opacity: 0.95, color: "#4169e1" }
-      ).then(layer => {
-        if (!layer) return;
-        rotaLayer = layer.addTo(map);
-        map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
-      }).catch(() => {});
+    .btn-aceitar, .btn-recusar{
+      border:none;
+      border-radius:999px;
+      padding:7px 11px;
+      font-size:.82rem;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 6px 12px rgba(0,0,0,.07);
+    }
+    .btn-aceitar{ background:var(--good); color:#fff; }
+    .btn-recusar{
+      background:#fff2f2; color:var(--bad);
+      border:1px solid #ffb3b3;
     }
 
-    iniciarCountdown();
-    tocarSomEntrega();
+    /* ===== AJUDA ===== */
+    #tab-ajuda h2{margin:0 0 8px;font-size:1.1rem;color:#0f2a80;font-weight:900}
+    #tab-ajuda p{margin:0 0 10px;font-size:.94rem}
+    #tab-ajuda label{display:block;margin-bottom:8px;font-size:.94rem}
+    #tab-ajuda .btn{
+      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff;
+      border:none;
+      border-radius:12px;
+      padding:10px 14px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 8px 16px rgba(0,51,204,.22);
+    }
+    .hint{font-size:.86rem;color:var(--muted);line-height:1.35}
 
-    // abre detalhes automaticamente pra aceitar/recusar
-    setSheetCompacto(false);
-    atualizarBarraCompacta();
-  }
-
-  function setEntregaAtivaAtual(entrega) {
-    pararSomEntrega();
-    limparCountdown();
-    entregaOferta = null;
-
-    entregaAtivaAtual = entrega;
-
-    cardSemEntrega.classList.add("hidden");
-    cardNovaEntrega.classList.add("hidden");
-    cardEntregaAceita.classList.remove("hidden");
-
-    aceitaRestaurante.textContent = entrega.cliente || entrega.restaurante || "Restaurante parceiro";
-    aceitaValor.textContent = formatarValor(entrega.valor);
-
-    aceitaOrigemText.textContent =
-      entrega.origem_endereco ||
-      (entrega.origem_bairro ? entrega.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
-
-    aceitaDestinoText.textContent =
-      entrega.destino_endereco ||
-      (entrega.destino_bairro ? entrega.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informado");
-
-    aceitaDistancia.textContent = formatarDistancia(entrega.distancia);
-
-    // limpa e ativa navegação no mapa
-    limparRota();
-    desenharMarkersOrigemDestino(entrega);
-    if (temCoords(entrega)) {
-      // rota visual (origem->dest)
-      desenharRotaOSRM(
-        [
-          [Number(entrega.lng_origem), Number(entrega.lat_origem)],
-          [Number(entrega.lng_destino), Number(entrega.lat_destino)]
-        ],
-        { weight: 4, opacity: 0.95, color: "#4169e1" }
-      ).then(layer => {
-        if (!layer) return;
-        rotaLayer = layer.addTo(map);
-        map.fitBounds(rotaLayer.getBounds(), { padding: [40, 40] });
-      }).catch(() => {});
+    /* ===== MODAL Recebido por ===== */
+    .overlay{
+      position:fixed; inset:0;
+      background:rgba(8,16,48,.55);
+      display:none; align-items:center; justify-content:center;
+      z-index:1000;
+      padding:clamp(10px,2vw,24px)
+    }
+    .overlay.open{display:flex}
+    .modal{
+      width:min(1100px, 98vw);
+      max-height:92vh;
+      overflow:auto;
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 24px 60px rgba(0,0,0,.25);
+      padding:18px 16px;
+      display:grid;
+      gap:14px
+    }
+    .modal h3{margin:0;font-size:1.08rem;color:#0f2a80;font-weight:900}
+    .modal .row{display:flex;gap:10px;align-items:center}
+    .modal input[type=text]{
+      flex:1; min-width:0; width:100%;
+      border:1px solid var(--line);
+      border-radius:14px;
+      padding:16px 18px;
+      font-size:1.06rem;
+      letter-spacing:.2px;
+      outline:none;
+    }
+    .modal .actions{display:flex;gap:10px;justify-content:flex-end}
+    .btn-primary{
+      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff;border:none;border-radius:14px;
+      padding:12px 16px;font-weight:900;cursor:pointer;
+      box-shadow:0 10px 18px rgba(0,51,204,.22);
+    }
+    .btn-ghost{
+      background:#fff;color:#0f2a80;border:1px solid var(--line);
+      border-radius:14px;padding:12px 16px;font-weight:900;cursor:pointer
     }
 
-    // botão vira navegação interna
-    atualizarBotaoSeguirNoMapa();
-
-    // deixa mapa grande por padrão (pra você navegar nele)
-    setSheetCompacto(true);
-    atualizarBarraCompacta();
-
-    // se tiver coords, desenha rota “nav” incluindo motoboy->origem->dest
-    if (temCoords(entrega)) ativarNavegacaoNoMapa(entrega);
-  }
-
-  function iniciarCountdown() {
-    limparCountdown();
-    countdownRestante = TEMPO_EXPIRACAO_SEG;
-    if (novaCountdown) novaCountdown.textContent = countdownRestante;
-
-    countdownInterval = setInterval(() => {
-      countdownRestante -= 1;
-      if (countdownRestante <= 0) {
-        limparCountdown();
-
-        // expirou: para som e coloca cooldown (não tocar de novo)
-        if (entregaOferta && entregaOferta.id) setCooldownEntrega(entregaOferta.id, 180);
-
-        pararSomEntrega();
-        entregaOferta = null;
-
-        mostrarEstadoSemEntrega();
-      } else {
-        if (novaCountdown) novaCountdown.textContent = countdownRestante;
-      }
-    }, 1000);
-  }
-
-  // ======= BUSCA / AÇÕES =======
-  function entregaJaEstaNoHistorico(entregaId) {
-    const id = Number(entregaId);
-    return ENTREGAS.some(e => Number(e.id) === id);
-  }
-
-  async function buscarNovaEntrega() {
-    if (!onlineAtivo) return;
-
-    // se já tem entrega ativa, não busca oferta (evita som/bug)
-    if (entregaAtivaAtual || entregasAtivas.length > 0) return;
-
-    // se já tem oferta na tela, não troca
-    if (entregaOferta) return;
-
-    try {
-      const data = await fetchJSON("/cooperado/verificar_nova_entrega", { method: "GET" });
-      if (!data || !data.tem_entrega) return;
-
-      const entrega = data.entrega;
-      if (!entrega || !entrega.id) return;
-
-      // cooldown evita tocar de novo após recusar/finalizar/expirar
-      if (emCooldown(entrega.id)) return;
-
-      // se já está no histórico, também não toca (protege contra backend repetindo a mesma)
-      if (entregaJaEstaNoHistorico(entrega.id)) return;
-
-      mostrarEstadoNovaEntrega(entrega);
-    } catch (err) {
-      console.log("Erro nova entrega:", err);
+    /* ===== MAPA ===== */
+    .map-grid{
+      display:grid;
+      grid-template-columns: 1.05fr .95fr;
+      gap:12px;
+      align-items:start;
     }
-  }
-
-  async function aceitarEntrega() {
-    if (!entregaOferta) return;
-
-    const idAceita = entregaOferta.id;
-
-    try {
-      pararSomEntrega();
-      limparCountdown();
-
-      const payload = await fetchJSON("/cooperado/aceitar_entrega", {
-        method: "POST",
-        body: JSON.stringify({ entrega_id: idAceita })
-      });
-
-      if (payload && payload.status === "ok") {
-        const entregaAceita = payload.entrega ? payload.entrega : { ...entregaOferta };
-
-        entregaAceita.status_entrega = entregaAceita.status_entrega || "andamento";
-        entregaAceita.status_pagamento = normalizarStatusPagamento(entregaAceita.status_pagamento);
-
-        if (!entregaAceita.data && !entregaAceita.data_entrega) {
-          entregaAceita.data = new Date().toISOString().slice(0, 10);
-        } else {
-          entregaAceita.data = toISODate(entregaAceita.data || entregaAceita.data_entrega);
-        }
-        if (!entregaAceita.recebida_por) entregaAceita.recebida_por = "";
-
-        // entrega ativa
-        if (!entregasAtivas.some(e => Number(e.id) === Number(entregaAceita.id))) {
-          entregasAtivas.unshift(entregaAceita);
-        }
-
-        // já aparece em “Minhas entregas”
-        const idx = ENTREGAS.findIndex(e => Number(e.id) === Number(entregaAceita.id));
-        if (idx >= 0) ENTREGAS[idx] = entregaAceita;
-        else ENTREGAS.unshift(entregaAceita);
-
-        renderHistorico();
-
-        // trava cooldown pro ID (seguro extra contra backend insistindo)
-        setCooldownEntrega(entregaAceita.id, 300);
-
-        entregaOferta = null;
-        setEntregaAtivaAtual(entregaAceita);
-      } else {
-        // se falhar, coloca cooldown curto para não “pipocar”
-        setCooldownEntrega(idAceita, 30);
-        entregaOferta = null;
-        mostrarEstadoSemEntrega();
-      }
-
-    } catch (err) {
-      console.log("Erro aceitar entrega:", err);
-      setCooldownEntrega(idAceita, 30);
-      pararSomEntrega();
-      entregaOferta = null;
-      mostrarEstadoSemEntrega();
+    .map-box{
+      border:1px solid var(--line);
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow:var(--shadow-sm);
+      background:#fff;
+      min-height:420px;
     }
-  }
-
-  async function recusarEntrega() {
-    if (!entregaOferta) return;
-
-    const idRecusado = entregaOferta.id;
-
-    try {
-      pararSomEntrega();
-      limparCountdown();
-
-      await fetchJSON("/cooperado/recusar_entrega", {
-        method: "POST",
-        body: JSON.stringify({ entrega_id: idRecusado })
-      });
-
-      // cooldown forte: não tocar de novo a mesma
-      setCooldownEntrega(idRecusado, 600);
-
-      entregaOferta = null;
-      mostrarEstadoSemEntrega();
-
-    } catch (err) {
-      console.log("Erro recusar entrega:", err);
-      setCooldownEntrega(idRecusado, 600);
-      pararSomEntrega();
-      entregaOferta = null;
-      mostrarEstadoSemEntrega();
+    #map{
+      width:100%;
+      height:420px;
     }
-  }
-
-  async function finalizarEntrega() {
-    if (!entregaAtivaAtual) return;
-
-    // finalizar nunca pode deixar som
-    pararSomEntrega();
-    limparCountdown();
-    entregaOferta = null;
-
-    const recebidaPor = (inputRecebidaPor?.value || "").trim();
-    if (!recebidaPor) {
-      alert("Informe o nome de quem recebeu.");
-      return;
+    .map-controls{
+      display:grid;
+      gap:10px;
+    }
+    .field{
+      display:grid;
+      gap:6px;
+    }
+    .field label{
+      font-size:.86rem;
+      color:#0f2a80;
+      font-weight:900;
+    }
+    .field input{
+      width:100%;
+      border:1px solid var(--line);
+      border-radius:12px;
+      padding:11px 12px;
+      font-size:.95rem;
+      outline:none;
+    }
+    .btn-row{
+      display:flex; gap:10px; flex-wrap:wrap;
+    }
+    .btn-soft{
+      border:1px solid var(--line);
+      background:#fff;
+      color:#0f2a80;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:var(--shadow-xs);
+    }
+    .btn-main{
+      border:none;
+      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff;
+      border-radius:12px;
+      padding:10px 12px;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:0 10px 18px rgba(0,51,204,.22);
+    }
+    .pill{
+      display:inline-flex; gap:8px; align-items:center;
+      padding:8px 10px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      font-size:.86rem;
+      font-weight:900;
+      color:#0f2a80;
+      box-shadow:var(--shadow-xs);
     }
 
-    const idFinaliza = entregaAtivaAtual.id;
-
-    try {
-      const data = await fetchJSON("/cooperado/finalizar_entrega", {
-        method: "POST",
-        body: JSON.stringify({ entrega_id: idFinaliza, recebida_por: recebidaPor })
-      });
-
-      if (data && data.status === "ok") {
-        const novaEntrega = data.entrega ? data.entrega : { ...entregaAtivaAtual };
-        novaEntrega.recebida_por = recebidaPor;
-        novaEntrega.status_pagamento = normalizarStatusPagamento(novaEntrega.status_pagamento);
-
-        if (!novaEntrega.data && !novaEntrega.data_entrega) {
-          novaEntrega.data = new Date().toISOString().slice(0, 10);
-        } else {
-          novaEntrega.data = toISODate(novaEntrega.data || novaEntrega.data_entrega);
-        }
-
-        // atualiza histórico
-        const idx = ENTREGAS.findIndex(e => Number(e.id) === Number(novaEntrega.id));
-        if (idx >= 0) ENTREGAS[idx] = novaEntrega;
-        else ENTREGAS.unshift(novaEntrega);
-
-        renderHistorico();
-
-        // remove das ativas
-        entregasAtivas = entregasAtivas.filter(e => Number(e.id) !== Number(idFinaliza));
-        entregaAtivaAtual = null;
-        if (inputRecebidaPor) inputRecebidaPor.value = "";
-
-        // cooldown pra não “voltar a tocar”
-        setCooldownEntrega(idFinaliza, 900);
-
-        // limpa rota e volta a aguardar
-        limparRota();
-        mostrarEstadoSemEntrega();
-      } else {
-        alert("Não foi possível finalizar a entrega.");
-      }
-    } catch (err) {
-      console.log("Erro ao finalizar entrega:", err);
-      alert("Erro ao finalizar entrega: " + err.message);
+    /* ===== MOBILE ===== */
+    @media (max-width:920px){
+      .map-grid{ grid-template-columns: 1fr; }
+      #map{ height:380px; }
+      .map-box{ min-height:380px; }
     }
-  }
-
-  // ======= HISTÓRICO =======
-  function filtrarEntregas() {
-    let lista = ENTREGAS.slice();
-
-    const di = filtroDataInicio.value || null;
-    const df = filtroDataFim.value || null;
-    const status = filtroStatus.value;
-    const busca = filtroBusca.value.trim().toLowerCase();
-
-    lista = lista.filter(e => {
-      const dataStr = toISODate(e.data || e.data_entrega || "");
-      if (di && dataStr && dataStr < di) return false;
-      if (df && dataStr && dataStr > df) return false;
-
-      const st = normalizarStatusPagamento(e.status_pagamento);
-      if (status !== "todos" && st !== status) return false;
-
-      if (busca) {
-        const texto =
-          (e.cliente || e.restaurante || "") + " " +
-          (e.origem_bairro || "") + " " +
-          (e.destino_bairro || "") + " " +
-          (e.recebida_por || "");
-        if (!texto.toLowerCase().includes(busca)) return false;
-      }
-      return true;
-    });
-
-    return lista;
-  }
-
-  function renderHistorico() {
-    const lista = filtrarEntregas();
-    histTotal.textContent = lista.length + (lista.length === 1 ? " entrega" : " entregas");
-    historicoLista.innerHTML = "";
-
-    if (lista.length === 0) {
-      const vazio = document.createElement("div");
-      vazio.className = "small-label";
-      vazio.style.marginTop = "8px";
-      vazio.textContent = "Nenhuma entrega encontrada.";
-      historicoLista.appendChild(vazio);
-      return;
+    @media (max-width:760px){
+      .wrap{margin:10px auto 14px}
+      .stats{grid-template-columns:1fr 1fr}
+      thead{display:none}
+      table,tbody,tr,td{display:block;width:100%}
+      .card-table{padding:6px;border-radius:14px;box-shadow:var(--shadow-sm)}
+      tbody tr{background:#fff;margin:8px 0;border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,.05);border:1px solid var(--line)}
+      tbody td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:10px 10px;font-size:.95rem}
+      tbody td::before{content:attr(data-label);font-weight:900;color:#0f2a80;padding-right:8px;font-size:.88rem}
+      .row-open + .row-details{display:block}
     }
+  </style>
+</head>
 
-    lista.forEach(e => {
-      const item = document.createElement("div");
-      item.className = "hist-item";
+<body>
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <div class="title">Painel do Cooperado</div>
+        <div class="subtitle">{{ session['user_nome'] }}</div>
+      </div>
 
-      const nomeCliente = e.cliente || e.restaurante || "Cliente não informado";
-      const origemTexto =
-        e.origem_endereco ||
-        (e.origem_bairro ? e.origem_bairro + " · " + CIDADE_PADRAO : "Origem não informada");
-      const destinoTexto =
-        e.destino_endereco ||
-        (e.destino_bairro ? e.destino_bairro + " · " + CIDADE_PADRAO : "Destino não informado");
-
-      const dataStr = formatarDataSimples(e.data || e.data_entrega);
-      const recebida = e.recebida_por ? `Recebida por ${e.recebida_por}` : "Recebida por -";
-
-      const st = normalizarStatusPagamento(e.status_pagamento);
-      const statusClass = st === "pago" ? "status-pago" : "status-pendente";
-      const statusTexto = st === "pago" ? "Pago" : "Pagamento pendente";
-
-      item.innerHTML = `
-        <div class="hist-top">
-          <span class="hist-cliente">${nomeCliente}</span>
-          <span class="hist-valor">${formatarValor(e.valor)}</span>
+      <div class="top-actions">
+        <div class="gps-status gps-status--off" id="gps-status" title="Clique para ligar/desligar rastreamento">
+          Localização: OFF
         </div>
-        <div class="hist-middle">
-          <span>${origemTexto} → ${destinoTexto}</span>
+      </div>
+    </div>
+  </header>
+
+  <div class="wrap">
+    <!-- ABAS (mantidas) + NOVA ABA MAPA -->
+    <nav class="tabs" aria-label="Navegação de abas">
+      <button class="tab-btn active" data-tab="tab-chamadas">Chamadas</button>
+      <button class="tab-btn" data-tab="tab-minhas">Minhas entregas</button>
+      <button class="tab-btn" data-tab="tab-mapa">Mapa</button>
+      <button class="tab-btn" data-tab="tab-ajuda">Ajuda</button>
+    </nav>
+
+    <!-- ABA 1: CHAMADAS (ACEITAR / RECUSAR) -->
+    <section id="tab-chamadas" class="tab-panel active" aria-label="Chamadas disponíveis">
+      <div class="card">
+        <div class="card-head">
+          <h3>Chamadas disponíveis</h3>
+          <span class="pill" title="Atualiza quando você aceita/recusa">Ações rápidas</span>
         </div>
-        <div class="hist-bottom">
-          <div class="hist-bottom-left">
-            <span class="hist-data">${dataStr}</span>
-            <span class="hist-recebida">${recebida}</span>
+        <div class="card-body" style="padding:0">
+          <section class="card-table" style="border:none; border-radius:0; box-shadow:none">
+            <table>
+              <thead>
+                <tr>
+                  <th>Cliente</th>
+                  <th>Bairro</th>
+                  <th>Valor</th>
+                  <th>Distância</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for c in chamadas %}
+                <tr data-id="{{ c.id }}">
+                  <td data-label="Cliente">{{ c.cliente }}</td>
+                  <td data-label="Bairro">{{ c.bairro or '-' }}</td>
+                  <td data-label="Valor">R$ {{ '%.2f'|format(c.valor) }}</td>
+                  <td data-label="Distância">{{ c.distancia or '-' }}</td>
+                  <td data-label="Ações">
+                    <button type="button" class="btn-aceitar" onclick="aceitarEntrega({{ c.id }})">Aceitar</button>
+                    <button type="button" class="btn-recusar" onclick="recusarEntrega({{ c.id }})">Recusar</button>
+                  </td>
+                </tr>
+                {% else %}
+                <tr><td colspan="5" style="text-align:center;padding:14px">Nenhuma chamada disponível.</td></tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </section>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 2: MINHAS ENTREGAS -->
+    <section id="tab-minhas" class="tab-panel" aria-label="Minhas entregas">
+      <div class="grid">
+        <!-- STATS -->
+        <section class="stats" aria-label="Estatísticas de valores">
+          <div class="stat stat--pago"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
+          <div class="stat stat--pendente"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
+          <div class="stat stat--total"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
+        </section>
+
+        <!-- FILTROS -->
+        <div class="card filters" aria-label="Filtros">
+          <div class="card-head">
+            <h3>Filtros</h3>
+            <span class="pill" title="Pendente ignora datas">Dica: Pendente mostra todas</span>
           </div>
-          <span class="status-badge ${statusClass}" data-id="${e.id}">
-            <span class="icon">💰</span>${statusTexto}
-          </span>
+          <div class="card-body">
+            <form id="form-filtros" method="get">
+              <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
+              <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
+              <select name="status_pgto" id="status_pgto">
+                <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
+                <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
+                <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
+              </select>
+              <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
+              <button class="btn" type="submit">Filtrar</button>
+            </form>
+            <div id="escopo" class="scope"></div>
+          </div>
         </div>
-      `;
 
-      historicoLista.appendChild(item);
+        <!-- TABELA DE ENTREGAS -->
+        <div class="card" aria-label="Tabela de entregas">
+          <div class="card-head">
+            <h3>Minhas entregas</h3>
+            <span class="pill" title="Clique no cliente para abrir detalhes">Detalhes por linha</span>
+          </div>
+          <div class="card-body" style="padding:0">
+            <section class="card-table" aria-label="Minhas entregas" style="border:none;border-radius:0;box-shadow:none">
+              <table id="tabela-entregas">
+                <thead>
+                  <tr>
+                    <th>Cliente</th>
+                    <th>Forma Pgto</th>
+                    <th>Valor</th>
+                    <th>Data</th>
+                    <th>Hora Pedido</th>
+                    <th>Hora Entrega</th>
+                    <th>Pagamento</th>
+                    <th>Entrega</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {% for e in entregas %}
+                  <tr id="row-{{ e.id }}">
+                    <td data-label="Cliente">
+                      <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
+                    </td>
+                    <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
+                    <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+                    <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
+                    <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+                    <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+                    <td data-label="Pagamento">
+                      <span
+                        class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
+                        data-id="{{ e.id }}"
+                        data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
+                        onclick="togglePagamento(event,this)"
+                        role="button"
+                        aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
+                      >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
+                    </td>
+                    <td data-label="Entrega">
+                      {% set entregue = (e.status in ['recebido','entregue']) %}
+                      <span
+                        class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
+                        data-id="{{ e.id }}"
+                        data-entregue="{{ '1' if entregue else '0' }}"
+                        onclick="handleEntregaClick(this)"
+                      >{{ 'Entregue' if entregue else 'Pendente' }}</span>
+                    </td>
+                  </tr>
+
+                  <tr class="row-details" id="details-{{ e.id }}">
+                    <td colspan="8" style="text-align:left;padding:12px 14px">
+                      <div><strong>Cliente:</strong> {{ e.cliente }}</div>
+                      <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
+                      <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
+                      <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
+                      <div><strong>Data/Hora Pedido:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</div>
+                      <div><strong>Hora Entrega:</strong> {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</div>
+                      <div><strong>Recebido por:</strong> {{ e.recebido_por or '-' }}</div>
+                    </td>
+                  </tr>
+                  {% else %}
+                  <tr class="no-rows"><td colspan="8" style="text-align:center;padding:14px">Nenhuma entrega encontrada.</td></tr>
+                  {% endfor %}
+                </tbody>
+              </table>
+            </section>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 3: MAPA (Google Maps dentro) -->
+    <section id="tab-mapa" class="tab-panel" aria-label="Mapa e rotas">
+      <div class="card">
+        <div class="card-head">
+          <h3>Mapa e rota (Google Maps)</h3>
+          <span class="pill" id="map-status">Pronto para traçar rota</span>
+        </div>
+        <div class="card-body">
+          <div class="map-grid">
+            <div class="map-box" aria-label="Mapa">
+              <div id="map"></div>
+            </div>
+
+            <div class="map-controls">
+              <div class="field">
+                <label for="map-origem">Origem</label>
+                <input id="map-origem" type="text" placeholder="Digite a origem (ex.: Rua..., Natal/RN)" autocomplete="off" />
+              </div>
+
+              <div class="field">
+                <label for="map-destino">Destino</label>
+                <input id="map-destino" type="text" placeholder="Digite o destino (ex.: Av..., Natal/RN)" autocomplete="off" />
+              </div>
+
+              <div class="btn-row">
+                <button type="button" class="btn-soft" onclick="usarMinhaLocalizacaoComoOrigem()">
+                  Usar minha localização como origem
+                </button>
+                <button type="button" class="btn-main" onclick="tracarRota()">
+                  Traçar rota
+                </button>
+              </div>
+
+              <div class="btn-row">
+                <button type="button" class="btn-soft" onclick="abrirNoGoogleMaps()">
+                  Abrir no Google Maps
+                </button>
+                <button type="button" class="btn-soft" onclick="limparRota()">
+                  Limpar
+                </button>
+              </div>
+
+              <p class="hint" style="margin:0">
+                Observação: em celulares, alguns navegadores reduzem o envio de localização quando o app está minimizado
+                ou com a tela apagada. Este painel maximiza o que é possível em web com “heartbeat” e watchPosition.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ABA 4: AJUDA / SOCORRO -->
+    <section id="tab-ajuda" class="tab-panel" aria-label="Ajuda / Socorro">
+      <div class="card">
+        <div class="card-head">
+          <h3>Ajuda / Socorro</h3>
+          <span class="pill">Notifica a supervisão</span>
+        </div>
+        <div class="card-body">
+          <h2 style="display:none">Ajuda / Socorro</h2>
+          <p>Use este painel somente em situações reais de emergência. A supervisão será avisada imediatamente.</p>
+
+          <form id="form-socorro" onsubmit="enviarSocorro(event)">
+            <div>
+              <label><input type="radio" name="tipo" value="acidente_com_pedido" required> Me envolvi em um acidente e estou com o pedido do cliente</label>
+            </div>
+            <div>
+              <label><input type="radio" name="tipo" value="acidente_sem_pedido"> Me envolvi em um acidente sem pedido de cliente</label>
+            </div>
+            <div>
+              <label><input type="radio" name="tipo" value="pneu_furou"> Pneu furou</label>
+            </div>
+            <div>
+              <label><input type="radio" name="tipo" value="outros"> Outros (descreva abaixo)</label>
+            </div>
+
+            <div id="socorro-outros-box" style="margin-top:10px; display:none;">
+              <textarea id="socorro-outros-text" name="detalhes" rows="4"
+                placeholder="Descreva o que aconteceu para a supervisão"
+                style="width:100%;border-radius:12px;border:1px solid var(--line);padding:10px;outline:none;"></textarea>
+            </div>
+
+            <button type="submit" class="btn" style="margin-top:10px;">
+              Enviar pedido de socorro
+            </button>
+          </form>
+
+          <p class="hint" style="margin-top:10px;">
+            Ao enviar, a supervisão será notificada e um alerta sonoro tocará automaticamente no painel do administrador.
+          </p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <!-- MODAL GLOBAL Recebido por -->
+  <div class="overlay" id="rcb-overlay" role="dialog" aria-modal="true" aria-labelledby="rcb-title">
+    <div class="modal">
+      <h3 id="rcb-title">Confirmar recebimento</h3>
+      <div class="row">
+        <input type="text" id="rcb-input-global" placeholder="Recebido por (ex.: porteiro fulano de tal)" maxlength="100" inputmode="text" autocomplete="name" />
+      </div>
+      <div class="hint">Pressione <strong>Enter</strong> para confirmar ou <strong>Esc</strong> para cancelar.</div>
+      <div class="actions">
+        <button type="button" class="btn-ghost" id="rcb-cancel">Cancelar</button>
+        <button type="button" class="btn-primary" id="rcb-ok">OK</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- SOM de nova entrega atribuída ao cooperado -->
+  <audio id="som-nova-entrega" src="{{ url_for('static', filename='sons/nova_corrida.mp3') }}" preload="auto"></audio>
+
+  <script>
+    // =============================
+    // VARIÁVEIS GERAIS
+    // =============================
+    let lastScrollY = window.scrollY;
+    const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
+
+    // =============================
+    // EXPANSÃO DE LINHA
+    // =============================
+    function toggleRow(id){
+      const tr = document.getElementById('row-'+id);
+      const d  = document.getElementById('details-'+id);
+      if(!tr || !d) return;
+      const open = tr.classList.toggle('row-open');
+      const isMobile = window.matchMedia('(max-width:760px)').matches;
+      d.style.display = open ? (isMobile ? 'block' : 'table-row') : 'none';
+    }
+
+    // =============================
+    // TOTALIZAÇÃO
+    // =============================
+    function recalcTotals(){
+      const rows=document.querySelectorAll('#tabela-entregas tbody tr[id^="row-"]');
+      let total=0,pago=0;
+      rows.forEach(r=>{
+        const vtd=r.querySelector('[data-valor]');
+        if(!vtd) return;
+        const v=parseFloat(vtd.dataset.valor||'0')||0;
+        total+=v;
+        const chip=r.querySelector('td[data-label="Pagamento"] .chip');
+        if(chip && (chip.dataset.status||'').toLowerCase()==='pago'){ pago+=v; }
+      });
+      const pendente=Math.max(0,total-pago);
+      const fmt=(n)=>'R$ '+n.toFixed(2).replace('.',',');
+
+      const elTotal   = document.getElementById('tot-geral');
+      const elPago    = document.getElementById('tot-pago');
+      const elPendente= document.getElementById('tot-pendente');
+
+      if(elTotal)    elTotal.textContent   = fmt(total);
+      if(elPago)     elPago.textContent    = fmt(pago);
+      if(elPendente) elPendente.textContent= fmt(pendente);
+    }
+
+    function ensureEmpty(){
+      const tbody=document.querySelector('#tabela-entregas tbody');
+      if(!tbody) return;
+      const any=tbody.querySelector('tr[id^="row-"]');
+      let msg=tbody.querySelector('.no-rows');
+      if(!any){
+        if(!msg){
+          msg=document.createElement('tr');
+          msg.className='no-rows';
+          msg.innerHTML='<td colspan="8" style="text-align:center;padding:14px">Nenhuma entrega encontrada.</td>';
+          tbody.appendChild(msg);
+        }
+      }else if(msg){
+        msg.remove();
+      }
+    }
+
+    // =============================
+    // FILTROS
+    // =============================
+    const form=document.getElementById('form-filtros');
+    if(form){
+      form.addEventListener('submit',()=>{
+        const status=document.getElementById('status_pgto')?.value;
+        const hidden=document.getElementById('todas_datas');
+        if(status==='pendente'){
+          hidden.value='1';
+          document.getElementById('f-inicio').value='';
+          document.getElementById('f-fim').value='';
+        }else{
+          hidden.value='';
+        }
+      });
+    }
+    function updateScope(){
+      const url=new URL(location.href);
+      const status=url.searchParams.get('status_pgto')||
+                    document.getElementById('status_pgto')?.value||
+                    'todas';
+      const el = document.getElementById('escopo');
+      if(!el) return;
+      el.textContent = (status==='pendente')
+        ? 'Exibindo TODAS as entregas PENDENTES (sem filtrar por data).'
+        : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
+    }
+
+    // =============================
+    // PAGAMENTO (não remove linha)
+    // =============================
+    async function togglePagamento(evt,el){
+      evt.preventDefault();
+      lastScrollY=window.scrollY;
+      const id=el.dataset.id;
+      try{
+        const resp=await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0',id),{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({})
+        });
+        let data=null; try{ data=await resp.json(); }catch{}
+        if(!resp.ok){
+          alert((data&&data.error)||'Falha ao alterar pagamento.');
+          return;
+        }
+        const novo=(data.status_pagamento||'pendente').toLowerCase();
+        el.dataset.status=novo;
+        el.textContent=(novo==='pago')?'Pago':'Pendente';
+        el.classList.toggle('pgto-pago',novo==='pago');
+        el.classList.toggle('pgto-pendente',novo!=='pago');
+        el.setAttribute('aria-pressed',String(novo==='pago'));
+        recalcTotals();
+      }catch(err){
+        alert('Erro: '+err.message);
+      }
+      setTimeout(preserveScroll,0);
+    }
+
+    // =============================
+    // MODAL "Recebido por"
+    // =============================
+    let CURRENT_ENTREGA_ID=null;
+
+    function openRecebidoModal(id){
+      CURRENT_ENTREGA_ID=id;
+      lastScrollY=window.scrollY;
+      const ov=document.getElementById('rcb-overlay');
+      if(!ov) return;
+      ov.classList.add('open');
+      document.body.style.overflow='hidden';
+      const input=document.getElementById('rcb-input-global');
+      if(input){
+        input.value='';
+        setTimeout(()=>input.focus(),0);
+      }
+    }
+    function closeRecebidoModal(){
+      const ov=document.getElementById('rcb-overlay');
+      if(!ov) return;
+      ov.classList.remove('open');
+      document.body.style.overflow='';
+      setTimeout(preserveScroll,0);
+    }
+    (function initModal(){
+      const btnCancel=document.getElementById('rcb-cancel');
+      const overlay=document.getElementById('rcb-overlay');
+      const btnOk=document.getElementById('rcb-ok');
+
+      if(btnCancel) btnCancel.addEventListener('click', closeRecebidoModal);
+      if(overlay){
+        overlay.addEventListener('click', (e)=>{
+          if(e.target.id==='rcb-overlay') closeRecebidoModal();
+        });
+      }
+      if(btnOk){
+        btnOk.addEventListener('click', ()=>{
+          if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID,false);
+        });
+      }
+      document.addEventListener('keydown', (e)=>{
+        if(e.key==='Escape') closeRecebidoModal();
+        if(e.key==='Enter' && overlay && overlay.classList.contains('open')){
+          e.preventDefault();
+          if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID,false);
+        }
+      });
+    })();
+
+    function handleEntregaClick(el){
+      const id=el.dataset.id;
+      const entregue=el.dataset.entregue==='1';
+      if(!entregue){
+        openRecebidoModal(id);
+      }else if(confirm('Marcar como PENDENTE novamente?')){
+        confirmarRecebido(id,true);
+      }
+    }
+
+    async function confirmarRecebido(id,desfazer=false){
+      lastScrollY=window.scrollY;
+
+      if(desfazer){
+        const fd = new FormData();
+        fd.append('status','pendente');
+        fd.append('recebido_por','');
+        try{
+          const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0',id),{
+            method:'POST',
+            body: fd
+          });
+          if(!resp.ok){
+            alert('Falha ao desfazer recebido.');
+            return;
+          }
+          const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
+          if(chip){
+            chip.dataset.entregue='0';
+            chip.textContent='Pendente';
+            chip.classList.remove('entregue');
+            chip.classList.add('pgto-pendente');
+          }
+        }catch(err){
+          alert('Erro: '+err.message);
+        }
+        setTimeout(preserveScroll,0);
+        return;
+      }
+
+      const input=document.getElementById('rcb-input-global');
+      const nome=(input && input.value ? input.value : '').trim();
+      if(!nome){
+        alert('Informe o nome de quem recebeu.');
+        return;
+      }
+
+      try{
+        const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({recebido_por:nome})
+        });
+        let data=null; try{ data=await resp.json(); }catch{}
+
+        if(!resp.ok || (data && data.ok===false)){
+          alert((data&&data.error)||'Falha ao atualizar entrega.');
+          return;
+        }
+        const chip=document.querySelector(`.chip[data-id="${id}"][data-entregue]`);
+        if(chip){
+          chip.dataset.entregue='1';
+          chip.textContent='Entregue';
+          chip.classList.add('entregue');
+          chip.classList.remove('pgto-pendente');
+        }
+        closeRecebidoModal();
+      }catch(err){
+        alert('Erro: '+err.message);
+      }
+      setTimeout(preserveScroll,0);
+    }
+
+    window.addEventListener('beforeunload',()=>{lastScrollY=window.scrollY;});
+
+    // =============================
+    // ABAS
+    // =============================
+    document.querySelectorAll('.tab-btn').forEach(btn=>{
+      btn.addEventListener('click', ()=>{
+        document.querySelectorAll('.tab-btn').forEach(b=>b.classList.remove('active'));
+        document.querySelectorAll('.tab-panel').forEach(p=>p.classList.remove('active'));
+        btn.classList.add('active');
+        const tab = document.getElementById(btn.dataset.tab);
+        if(tab) tab.classList.add('active');
+
+        // Garante resize do mapa ao abrir a aba
+        if(btn.dataset.tab === 'tab-mapa'){
+          setTimeout(()=>{ if(window.__gm_map) google.maps.event.trigger(window.__gm_map, 'resize'); }, 120);
+        }
+      });
     });
-  }
 
-  async function marcarEntregaComoPaga(entregaId) {
-    try {
-      const data = await fetchJSON("/cooperado/marcar_pago", {
-        method: "POST",
-        body: JSON.stringify({ entrega_id: entregaId })
+    // =============================
+    // ACEITAR / RECUSAR ENTREGA
+    // =============================
+    async function aceitarEntrega(id){
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_aceitar_entrega', id=0) }}`.replace('0', id), {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({})
+        });
+        const data = await resp.json();
+        if(!resp.ok || data.ok===false){
+          alert(data.error || 'Falha ao aceitar entrega.');
+          return;
+        }
+        location.reload();
+      }catch(e){
+        alert('Erro ao aceitar: '+e.message);
+      }
+    }
+
+    async function recusarEntrega(id){
+      if(!confirm('Tem certeza que deseja recusar esta entrega?')) return;
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_recusar_entrega', id=0) }}`.replace('0', id), {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({})
+        });
+        const data = await resp.json();
+        if(!resp.ok || data.ok===false){
+          alert(data.error || 'Falha ao recusar entrega.');
+          return;
+        }
+        const tr = document.querySelector(`#tab-chamadas tr[data-id="${id}"]`);
+        if(tr) tr.remove();
+      }catch(e){
+        alert('Erro ao recusar: '+e.message);
+      }
+    }
+
+    // =============================
+    // SOM QUANDO UMA ENTREGA FOR ATRIBUÍDA
+    // =============================
+    async function checarNovasEntregas(){
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`, { cache:'no-store' });
+        const data = await resp.json();
+        if(data.nova){
+          const audio = document.getElementById('som-nova-entrega');
+          if(audio) audio.play().catch(()=>{});
+        }
+      }catch(e){
+        console.log('Erro ao checar novas entregas:', e);
+      }
+    }
+    setInterval(checarNovasEntregas, 10000);
+
+    // =============================
+    // AJUDA / SOCORRO
+    // =============================
+    const radiosSocorro = document.querySelectorAll('input[name="tipo"]');
+    const outrosBox = document.getElementById('socorro-outros-box');
+    if(radiosSocorro.length && outrosBox){
+      radiosSocorro.forEach(r=>{
+        r.addEventListener('change', ()=>{
+          if(r.value === 'outros' && r.checked) outrosBox.style.display = 'block';
+          else if(r.checked) outrosBox.style.display = 'none';
+        });
+      });
+    }
+
+    async function enviarSocorro(e){
+      e.preventDefault();
+      const tipoEl = document.querySelector('input[name="tipo"]:checked');
+      const tipo = tipoEl ? tipoEl.value : null;
+      const detalhesEl = document.getElementById('socorro-outros-text');
+      const detalhes = (detalhesEl && detalhesEl.value ? detalhesEl.value : '').trim();
+
+      if(!tipo){ alert('Selecione uma opção de socorro.'); return; }
+      if(tipo === 'outros' && !detalhes){ alert('Descreva o que aconteceu em "Outros".'); return; }
+
+      try{
+        const resp = await fetch(`{{ url_for('cooperado_socorro') }}`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ tipo, detalhes })
+        });
+        const data = await resp.json();
+        if(!resp.ok || data.ok===false){
+          alert(data.error || 'Falha ao enviar pedido de socorro.');
+          return;
+        }
+        alert('Pedido de socorro enviado para a supervisão.');
+        const form = document.getElementById('form-socorro');
+        if(form) form.reset();
+        if(outrosBox) outrosBox.style.display = 'none';
+      }catch(err){
+        alert('Erro ao enviar socorro: '+err.message);
+      }
+    }
+
+    // =============================
+    // RASTREAMENTO / GPS (robusto + heartbeat)
+    // =============================
+    let gpsWatchId = null;
+    let gpsAtivo   = false;
+    let lastFix    = null;   // {lat,lng,acc,heading,speed,ts}
+    let lastSendAt = 0;
+    let heartbeatTimer = null;
+
+    const gpsStatusEl = document.getElementById('gps-status');
+
+    function atualizarBadgeGPS(status, textoExtra){
+      if(!gpsStatusEl) return;
+      gpsStatusEl.classList.remove('gps-status--on','gps-status--off','gps-status--error');
+
+      if(status === 'on'){
+        gpsStatusEl.classList.add('gps-status--on');
+        gpsStatusEl.textContent = 'Localização: ON' + (textoExtra ? ' · ' + textoExtra : '');
+      }else if(status === 'error'){
+        gpsStatusEl.classList.add('gps-status--error');
+        gpsStatusEl.textContent = 'Localização: ERRO';
+      }else{
+        gpsStatusEl.classList.add('gps-status--off');
+        gpsStatusEl.textContent = 'Localização: OFF';
+      }
+    }
+
+    async function enviarPosicao(lat,lng,accuracy,heading,speed,forced=false){
+      const now = Date.now();
+      const MIN_INTERVAL_MS = 4500; // controle para não spammar
+      if(!forced && (now - lastSendAt) < MIN_INTERVAL_MS) return;
+      lastSendAt = now;
+
+      try{
+        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ lat, lng, accuracy, heading, speed, ts: new Date().toISOString() })
+        });
+      }catch(e){
+        console.log('Falha ao enviar localização:', e);
+      }
+    }
+
+    function startHeartbeat(){
+      stopHeartbeat();
+      // Mantém "online": reenvia a última posição de tempos em tempos
+      heartbeatTimer = setInterval(()=>{
+        if(!gpsAtivo || !lastFix) return;
+        enviarPosicao(lastFix.lat,lastFix.lng,lastFix.acc,lastFix.heading,lastFix.speed,true);
+      }, 20000); // 20s
+    }
+    function stopHeartbeat(){
+      if(heartbeatTimer) clearInterval(heartbeatTimer);
+      heartbeatTimer = null;
+    }
+
+    function iniciarRastreamento(auto=false){
+      if(!navigator.geolocation){
+        if(!auto) alert('Seu navegador não suporta geolocalização.');
+        atualizarBadgeGPS('error');
+        return;
+      }
+      if(gpsWatchId !== null) return;
+
+      atualizarBadgeGPS('on', 'Buscando...');
+      startHeartbeat();
+
+      gpsWatchId = navigator.geolocation.watchPosition(
+        pos=>{
+          gpsAtivo = true;
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          const acc = pos.coords.accuracy;
+          const heading = pos.coords.heading;
+          const speed   = pos.coords.speed;
+
+          lastFix = { lat, lng, acc, heading, speed, ts: Date.now() };
+
+          atualizarBadgeGPS('on', 'OK');
+          enviarPosicao(lat,lng,acc,heading,speed,false);
+
+          // Atualiza “Origem” do mapa se estiver vazio e a aba mapa já abriu
+          if(window.__gm_map && !document.getElementById('map-origem').value){
+            window.__gm_userLatLng = {lat, lng};
+          }
+        },
+        err=>{
+          console.log('Erro GPS:', err);
+          gpsAtivo = false;
+          atualizarBadgeGPS('error');
+        },
+        {
+          enableHighAccuracy:true,
+          maximumAge:5000,
+          timeout:15000
+        }
+      );
+    }
+
+    async function pararRastreamento(){
+      if(gpsWatchId !== null && navigator.geolocation){
+        navigator.geolocation.clearWatch(gpsWatchId);
+      }
+      gpsWatchId = null;
+      gpsAtivo   = false;
+      lastFix    = null;
+      atualizarBadgeGPS('off');
+      stopHeartbeat();
+
+      try{
+        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ offline:true, ts: new Date().toISOString() })
+        });
+      }catch(e){
+        console.log('Falha ao enviar offline:', e);
+      }
+    }
+
+    if(gpsStatusEl){
+      gpsStatusEl.addEventListener('click', ()=>{
+        if(gpsAtivo || gpsWatchId !== null){
+          if(confirm('Deseja desligar o rastreamento da localização?')){
+            pararRastreamento();
+          }
+        }else{
+          iniciarRastreamento(false);
+        }
+      });
+    }
+
+    // Ao sair/fechar: tenta marcar offline sem travar navegação
+    function beaconOffline(){
+      try{
+        const url = `{{ url_for('cooperado_atualizar_localizacao') }}`;
+        const payload = JSON.stringify({ offline:true, ts: new Date().toISOString() });
+        const blob = new Blob([payload], {type:'application/json'});
+        if(navigator.sendBeacon) navigator.sendBeacon(url, blob);
+      }catch(e){}
+    }
+    window.addEventListener('pagehide', beaconOffline);
+    window.addEventListener('beforeunload', beaconOffline);
+
+    // =============================
+    // GOOGLE MAPS (autocomplete + rota)
+    // =============================
+    let map, markerMe, directionsService, directionsRenderer, originPlace=null, destPlace=null;
+
+    function setMapStatus(txt){
+      const el = document.getElementById('map-status');
+      if(el) el.textContent = txt;
+    }
+
+    function initMap(){
+      // Centro padrão (Natal/RN) — ajustável
+      const defaultCenter = { lat: -5.79448, lng: -35.2110 };
+
+      map = new google.maps.Map(document.getElementById("map"), {
+        center: defaultCenter,
+        zoom: 13,
+        mapTypeControl: false,
+        streetViewControl: false,
+        fullscreenControl: true
+      });
+      window.__gm_map = map;
+
+      directionsService = new google.maps.DirectionsService();
+      directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false });
+
+      // Autocomplete
+      const inputOrigem = document.getElementById('map-origem');
+      const inputDestino = document.getElementById('map-destino');
+
+      const opts = { fields: ["place_id","geometry","name","formatted_address"], componentRestrictions: { country: ["br"] } };
+
+      const acOrigem = new google.maps.places.Autocomplete(inputOrigem, opts);
+      const acDestino = new google.maps.places.Autocomplete(inputDestino, opts);
+
+      acOrigem.addListener("place_changed", ()=>{
+        originPlace = acOrigem.getPlace();
+        setMapStatus('Origem definida');
+        if(originPlace?.geometry?.location) map.panTo(originPlace.geometry.location);
       });
 
-      if (data && data.status === "ok") {
-        const idx = ENTREGAS.findIndex(e => Number(e.id) === Number(entregaId));
-        if (idx >= 0) ENTREGAS[idx].status_pagamento = "pago";
-        renderHistorico();
-      } else {
-        alert("Não foi possível marcar como pago.");
-      }
-    } catch (err) {
-      console.log("Erro marcar pago:", err);
-      alert("Erro ao marcar como pago: " + err.message);
-    }
-  }
-
-  // ======= TABS / MENU =======
-  function ativarTab(nome) {
-    if (nome === "corridas") {
-      tabBtnCorridas.classList.add("active");
-      tabBtnHistorico.classList.remove("active");
-      tabCorridas.classList.remove("hidden");
-      tabHistorico.classList.add("hidden");
-      // se estiver compacto, só abre se o usuário quiser
-      if (!sheetCompacto) atualizarBarraCompacta();
-    } else {
-      tabBtnCorridas.classList.remove("active");
-      tabBtnHistorico.classList.add("active");
-      tabCorridas.classList.add("hidden");
-      tabHistorico.classList.remove("hidden");
-      renderHistorico();
-    }
-  }
-
-  function atualizarPillOnline() {
-    if (onlineAtivo) {
-      statusOnlinePill.innerHTML = '<span class="status-dot"></span> Online para receber entregas';
-    } else {
-      statusOnlinePill.innerHTML = '<span class="status-dot" style="background:#6b7280;box-shadow:none;"></span> Offline';
-    }
-  }
-
-  function atualizarBotaoSeguirNoMapa() {
-    if (!btnAbrirMaps) return;
-    btnAbrirMaps.innerHTML = followAtivo
-      ? '<span class="icon">🧭</span> Seguindo no mapa (toque p/ soltar)'
-      : '<span class="icon">🧭</span> Seguir no mapa';
-  }
-
-  function toggleFollow() {
-    followAtivo = !followAtivo;
-    atualizarBotaoSeguirNoMapa();
-    if (followAtivo && motoboyMarker && map) {
-      const pos = motoboyMarker.getLatLng();
-      map.setView([pos.lat, pos.lng], Math.max(map.getZoom(), 16), { animate: true });
-    }
-  }
-
-  // ======= START =======
-  document.addEventListener("DOMContentLoaded", function () {
-    criarBarraCompactaSePrecisar();
-    atualizarBarraCompacta();
-
-    // inicia em “mapa grande”
-    setSheetCompacto(true);
-
-    atualizarPillOnline();
-    renderHistorico();
-
-    btnAceitar.addEventListener("click", aceitarEntrega);
-    btnRecusar.addEventListener("click", recusarEntrega);
-
-    // Agora o botão NÃO abre externo: ele controla “seguir no mapa”
-    if (btnAbrirMaps) {
-      btnAbrirMaps.addEventListener("click", () => {
-        if (!map) return;
-        toggleFollow();
-        if (entregaAtivaAtual && temCoords(entregaAtivaAtual)) ativarNavegacaoNoMapa(entregaAtivaAtual);
+      acDestino.addListener("place_changed", ()=>{
+        destPlace = acDestino.getPlace();
+        setMapStatus('Destino definido');
+        if(destPlace?.geometry?.location) map.panTo(destPlace.geometry.location);
       });
-      atualizarBotaoSeguirNoMapa();
+
+      setMapStatus('Mapa pronto');
     }
 
-    btnFinalizarEntrega.addEventListener("click", finalizarEntrega);
-
-    tabBtnCorridas.addEventListener("click", () => ativarTab("corridas"));
-    tabBtnHistorico.addEventListener("click", () => ativarTab("historico"));
-
-    btnAplicarFiltro.addEventListener("click", renderHistorico);
-
-    [filtroDataInicio, filtroDataFim, filtroStatus, filtroBusca].forEach(el => {
-      el.addEventListener("change", renderHistorico);
-      el.addEventListener("keyup", renderHistorico);
-    });
-
-    historicoLista.addEventListener("click", (ev) => {
-      const badge = ev.target.closest(".status-badge");
-      if (!badge) return;
-      if (badge.classList.contains("status-pendente")) {
-        const id = badge.getAttribute("data-id");
-        if (id) marcarEntregaComoPaga(Number(id));
+    function usarMinhaLocalizacaoComoOrigem(){
+      if(!lastFix){
+        alert('Ligue o rastreamento para usar sua localização como origem.');
+        return;
       }
-    });
+      const latlng = { lat: lastFix.lat, lng: lastFix.lng };
+      window.__gm_userLatLng = latlng;
 
-    // MENU
-    btnMenu.addEventListener("click", () => menuBackdrop.classList.remove("hidden"));
-    menuFechar.addEventListener("click", () => menuBackdrop.classList.add("hidden"));
-    menuBackdrop.addEventListener("click", (e) => {
-      if (e.target === menuBackdrop) menuBackdrop.classList.add("hidden");
-    });
-
-    // BOTÃO FICAR ONLINE
-    btnFicarOnline.addEventListener("click", () => {
-      if (onlineAtivo) return;
-
-      desbloquearAudioUmaVez();
-
-      onlineAtivo = true;
-      atualizarPillOnline();
-      onlineOverlay.classList.add("hidden");
-
-      initMap();
-      iniciarRastreamentoGPS();
-
-      // ping periódico (sem duplicar)
-      if (!pingTimerId) {
-        pingTimerId = setInterval(() => {
-          if (!onlineAtivo || !motoboyMarker) return;
-          const pos = motoboyMarker.getLatLng();
-          enviarLocalizacao(pos.lat, pos.lng);
-        }, INTERVALO_PING_MS);
+      // Marca no mapa
+      if(map){
+        if(!markerMe){
+          markerMe = new google.maps.Marker({ map, position: latlng, title: 'Minha localização' });
+        }else{
+          markerMe.setPosition(latlng);
+        }
+        map.panTo(latlng);
       }
 
-      // busca oferta (sem duplicar)
-      if (!buscaTimerId) {
-        buscaTimerId = setInterval(buscarNovaEntrega, INTERVALO_BUSCA_ENTREGA_MS);
+      // Preenche o campo (texto) e guarda origem “por coordenada”
+      document.getElementById('map-origem').value = 'Minha localização';
+      originPlace = { geometry: { location: latlng } };
+      setMapStatus('Origem: minha localização');
+    }
+
+    function tracarRota(){
+      if(!directionsService || !directionsRenderer){
+        alert('Mapa ainda não carregou.');
+        return;
       }
-      buscarNovaEntrega();
+
+      const origemTxt = document.getElementById('map-origem').value.trim();
+      const destinoTxt = document.getElementById('map-destino').value.trim();
+
+      if(!origemTxt){
+        alert('Informe a origem.');
+        return;
+      }
+      if(!destinoTxt){
+        alert('Informe o destino.');
+        return;
+      }
+
+      const origin = (originPlace && originPlace.geometry && originPlace.geometry.location)
+        ? originPlace.geometry.location
+        : origemTxt;
+
+      const destination = (destPlace && destPlace.geometry && destPlace.geometry.location)
+        ? destPlace.geometry.location
+        : destinoTxt;
+
+      setMapStatus('Calculando rota...');
+
+      directionsService.route(
+        {
+          origin,
+          destination,
+          travelMode: google.maps.TravelMode.DRIVING
+        },
+        (result, status)=>{
+          if(status !== "OK"){
+            console.log(status, result);
+            alert('Não foi possível traçar a rota. Verifique os endereços.');
+            setMapStatus('Falha ao traçar rota');
+            return;
+          }
+          directionsRenderer.setDirections(result);
+          const leg = result.routes?.[0]?.legs?.[0];
+          if(leg){
+            setMapStatus(`Rota: ${leg.distance?.text || '-'} · ${leg.duration?.text || '-'}`);
+          }else{
+            setMapStatus('Rota traçada');
+          }
+        }
+      );
+    }
+
+    function limparRota(){
+      try{
+        if(directionsRenderer) directionsRenderer.setDirections({ routes: [] });
+      }catch(e){}
+      originPlace = null;
+      destPlace = null;
+      document.getElementById('map-origem').value = '';
+      document.getElementById('map-destino').value = '';
+      setMapStatus('Rota limpa');
+    }
+
+    function abrirNoGoogleMaps(){
+      const origemTxt = document.getElementById('map-origem').value.trim();
+      const destinoTxt = document.getElementById('map-destino').value.trim();
+      if(!destinoTxt){
+        alert('Informe o destino.');
+        return;
+      }
+      const base = 'https://www.google.com/maps/dir/?api=1';
+      const origin = encodeURIComponent(origemTxt || '');
+      const destination = encodeURIComponent(destinoTxt);
+
+      const url = origemTxt
+        ? `${base}&origin=${origin}&destination=${destination}&travelmode=driving`
+        : `${base}&destination=${destination}&travelmode=driving`;
+
+      window.open(url, '_blank');
+    }
+
+    // =============================
+    // ON LOAD
+    // =============================
+    window.addEventListener('load', ()=>{
+      updateScope();
+      recalcTotals();
+      ensureEmpty();
+      setTimeout(preserveScroll,0);
+
+      // Liga automaticamente o rastreamento (para ficar online enviando sempre)
+      // Se você preferir pedir clique do usuário, comente a linha abaixo.
+      iniciarRastreamento(true);
     });
+  </script>
 
-    // desbloqueio extra
-    window.addEventListener("touchstart", desbloquearAudioUmaVez, { once: true, passive: true });
-    window.addEventListener("click", desbloquearAudioUmaVez, { once: true });
-
-    // estado inicial
-    mostrarEstadoSemEntrega();
-  });
-</script>
+  <!-- Google Maps JS API (Maps + Places) -->
+  <script
+    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_KEY }}&libraries=places&callback=initMap"
+    async defer></script>
 </body>
 </html>
