@@ -5,693 +5,407 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
   <title>Painel do Cooperado</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
-
   <style>
-    /* ============================================================
-       DESIGN PRO — Coopex (Royal/White) | SEM REMOVER FUNÇÕES
-       ============================================================ */
+    /* =========================================
+       TEMA PROFISSIONAL — ROYAL + BRANCO
+       Mantém o visual da TABELA/CHIPS
+       ========================================= */
     :root{
-      --royal:#0033cc;
-      --royal-2:#2750ff;
-      --ink:#071534;
-      --muted:#6b7aa8;
-      --bg:#eef2ff;
-      --card:#ffffff;
-      --line:#e3e9ff;
-
-      --good:#12b886;
-      --bad:#e03131;
-      --warn:#ffd43b;
-
-      --r:16px;
-      --shadow:0 10px 28px rgba(0,51,204,.12);
-      --shadow-sm:0 8px 18px rgba(0,51,204,.10);
-      --shadow-xs:0 6px 14px rgba(0,51,204,.08);
+      --royal:#0033cc; --royal-2:#2750ff; --ink:#0b1b3a; --muted:#6f7fb0;
+      --bg:#eef2ff; --card:#ffffff; --line:#e0e7ff;
+      --good:#12b886; --bad:#e03131; --blue:#2750ff;
+      --r:14px; --shadow:0 8px 24px rgba(0,51,204,.10); --shadow-sm:0 6px 16px rgba(0,51,204,.08);
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
-      margin:0;
-      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
+      margin:0; font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif; color:var(--ink);
       background:
-        radial-gradient(1100px 520px at 10% -10%, rgba(39,80,255,.14), transparent 60%),
+        radial-gradient(1100px 520px at 10% -10%, rgba(39,80,255,.12), transparent 60%),
         radial-gradient(1100px 520px at 110% -10%, rgba(0,51,204,.10), transparent 60%),
         var(--bg);
     }
 
-    /* ===== TOPBAR PRO ===== */
+    /* ===== TOPBAR ENXUTO ===== */
     header{
-      position:sticky; top:0; z-index:60;
+      position:sticky;top:0;z-index:40;
       background:linear-gradient(90deg,var(--royal),var(--royal-2));
-      color:#fff;
-      padding:.75rem 3.5vw;
-      box-shadow:0 10px 25px rgba(0,40,130,.22);
-      border-bottom:1px solid rgba(255,255,255,.18);
+      color:#fff;padding:.65rem 3.5vw;
+      display:flex;align-items:center;justify-content:space-between;
+      font-weight:800;letter-spacing:.3px;
+      box-shadow:0 6px 18px rgba(0,40,130,.18)
     }
-    .topbar{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      max-width:1200px; margin:0 auto;
-    }
-    .brand{
-      display:flex; flex-direction:column; gap:2px; min-width:0;
-    }
-    .brand .title{
-      font-weight:900; letter-spacing:.3px; font-size:1.05rem; line-height:1.1;
-    }
-    .brand .subtitle{
-      font-weight:600; opacity:.92; font-size:.88rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
-    }
-    .top-actions{
-      display:flex; align-items:center; gap:10px; flex-wrap:wrap; justify-content:flex-end;
-    }
+    header .sub{font-weight:600;font-size:.9rem;opacity:.95}
+    header .right{display:flex;align-items:center;gap:10px}
+
+    .wrap{max-width:1100px;margin:12px auto 18px;padding:0 3.5vw}
 
     /* ===== STATUS GPS ===== */
     .gps-status{
-      display:inline-flex; align-items:center; gap:8px;
-      padding:6px 12px;
+      display:inline-flex;align-items:center;gap:6px;
+      padding:4px 10px;
       border-radius:999px;
       font-size:.78rem;
-      font-weight:800;
-      background:rgba(255,255,255,.14);
-      border:1px solid rgba(255,255,255,.38);
+      font-weight:700;
+      background:rgba(255,255,255,.16);
+      border:1px solid rgba(255,255,255,.4);
       cursor:pointer;
       white-space:nowrap;
-      user-select:none;
-      transition:transform .12s ease, background .2s ease;
+      transition:background .2s ease, border-color .2s ease, transform .1s ease;
     }
-    .gps-status:hover{ transform:translateY(-1px) }
+    .gps-status:hover{
+      transform:translateY(-1px);
+    }
     .gps-status::before{
       content:"";
-      width:10px;height:10px;border-radius:999px;
-      background:var(--warn);
-      box-shadow:none;
+      width:9px;height:9px;border-radius:999px;
+      background:#ffd43b;
+      box-shadow:0 0 0 0 rgba(255,212,59,.0);
       transition:background .2s ease, box-shadow .2s ease;
     }
     .gps-status.gps-status--on::before{
       background:#69db7c;
-      box-shadow:0 0 0 6px rgba(105,219,124,.28);
+      box-shadow:0 0 0 6px rgba(105,219,124,.35);
     }
-    .gps-status.gps-status--off::before{ background:var(--warn); box-shadow:none }
+    .gps-status.gps-status--off::before{
+      background:#ffd43b;
+      box-shadow:none;
+    }
     .gps-status.gps-status--error::before{
       background:#ff6b6b;
-      box-shadow:0 0 0 6px rgba(255,107,107,.25);
-    }
-
-    /* ===== LAYOUT ===== */
-    .wrap{max-width:1200px;margin:14px auto 18px;padding:0 3.5vw}
-    .grid{
-      display:grid;
-      grid-template-columns: 1fr;
-      gap:12px;
+      box-shadow:0 0 0 6px rgba(255,107,107,.3);
     }
 
     /* ===== ABAS ===== */
     .tabs{
       display:flex;
-      gap:8px;
-      padding:8px;
-      background:rgba(255,255,255,.55);
-      border:1px solid rgba(227,233,255,.95);
-      border-radius:16px;
-      box-shadow:var(--shadow-xs);
-      backdrop-filter: blur(8px);
+      gap:6px;
+      margin:6px 0 10px;
+      border-bottom:1px solid var(--line);
     }
     .tab-btn{
       flex:1;
-      padding:10px 12px;
+      padding:8px 10px;
       border:none;
       background:transparent;
-      font-weight:900;
-      font-size:.92rem;
-      color:rgba(255,255,255,.0);
-      cursor:pointer;
-      border-radius:14px;
+      font-weight:700;
+      font-size:.9rem;
       color:var(--muted);
-      transition:background .2s ease, transform .12s ease, color .2s ease, box-shadow .2s ease;
-      white-space:nowrap;
+      border-radius:10px 10px 0 0;
+      cursor:pointer;
     }
-    .tab-btn:hover{ transform:translateY(-1px); background:rgba(0,51,204,.06) }
     .tab-btn.active{
       background:var(--card);
       color:var(--royal);
-      box-shadow:var(--shadow-sm);
-      border:1px solid var(--line);
+      box-shadow:0 -2px 10px rgba(0,51,204,.12);
     }
-    .tab-panel{display:none}
-    .tab-panel.active{display:block}
+    .tab-panel{
+      display:none;
+      margin-top:6px;
+    }
+    .tab-panel.active{
+      display:block;
+    }
 
-    /* ===== CARDS / CONTEÚDO ===== */
-    .card{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:var(--r);
-      box-shadow:var(--shadow);
-      overflow:hidden;
-    }
-    .card-head{
-      display:flex; align-items:center; justify-content:space-between; gap:10px;
-      padding:12px 14px;
-      border-bottom:1px solid var(--line);
-      background:linear-gradient(180deg,#ffffff,#f7f9ff);
-    }
-    .card-head h3{
-      margin:0;
-      font-size:1rem;
-      font-weight:900;
-      color:#0f2a80;
-      letter-spacing:.2px;
-    }
-    .card-body{ padding:12px 14px }
+    /* ===== CARDS: 2 em cima (Pago, Pendente) e Total embaixo pegando toda a largura ===== */
+    .stats{display:grid;grid-template-columns:repeat(2, minmax(250px,1fr));gap:10px;margin:10px 0 14px}
+    .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:var(--shadow-sm);display:flex;align-items:center;justify-content:space-between;min-height:64px}
+    .stat h4{margin:0;font-size:.85rem;font-weight:800;color:var(--muted)}
+    .stat strong{margin:0;font-size:1.18rem;line-height:1}
 
-    /* ===== STATS ===== */
-    .stats{
-      display:grid;
-      grid-template-columns:repeat(2, minmax(250px,1fr));
-      gap:10px;
-    }
-    .stat{
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:12px 14px;
-      box-shadow:var(--shadow-xs);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      min-height:70px;
-      background:#fff;
-    }
-    .stat h4{margin:0;font-size:.86rem;font-weight:900;color:var(--muted)}
-    .stat strong{margin:0;font-size:1.22rem;line-height:1}
     .stat--pago{border-color:#d6e2ff;background:linear-gradient(180deg,#f4f7ff,#eef2ff)}
-    .stat--pago h4{color:#1b3cff}
+    .stat--pago h4{color:var(--blue)}
     .stat--pago strong{color:#0f2a80}
+
     .stat--pendente{background:#fff2f2;border-color:#ffd6d6}
     .stat--pendente h4,.stat--pendente strong{color:var(--bad)}
+
     .stat--total{background:#e9fbf5;border-color:#b3f0dc;grid-column:1/-1}
     .stat--total h4,.stat--total strong{color:var(--good)}
 
     /* ===== FILTROS ===== */
+    .filters{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px;box-shadow:var(--shadow-sm)}
     .filters form{display:flex;flex-wrap:wrap;align-items:center;gap:8px}
-    .filters input[type=date], .filters select, .filters button{
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:10px 12px;
-      font-size:.95rem;
-      background:#fff;
-      outline:none;
-    }
-    .filters .btn{
-      background:linear-gradient(90deg,var(--royal),var(--royal-2));
-      color:#fff;
-      border:none;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:0 8px 16px rgba(0,51,204,.22);
-    }
-    .scope{
-      margin:8px 0 0;
-      text-align:center;
-      color:#0f2a80;
-      font-weight:900;
-      font-size:.9rem;
-    }
+    .filters input[type=date], .filters select, .filters button{border:1px solid var(--line);border-radius:10px;padding:8px 10px;font-size:.94rem;background:#fff}
+    .filters .btn{background:var(--royal);color:#fff;border:none;font-weight:800;cursor:pointer;box-shadow:0 4px 12px rgba(0,51,204,.22)}
+    .scope{margin:6px 0 0;text-align:center;color:#0f2a80;font-weight:800;font-size:.9rem}
 
-    /* ===== TABELA (mantida, refinada) ===== */
-    .card-table{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:var(--shadow);overflow:hidden}
+    /* ===== TABELA (mantida) ===== */
+    .card-table{background:var(--card);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);overflow:hidden}
     table{width:100%;border-collapse:collapse}
-    thead th{
-      background:#0f2a80;
-      color:#fff;
-      text-align:center;
-      padding:11px 8px;
-      font-size:.88rem;
-      font-weight:900;
-      letter-spacing:.2px;
-    }
-    tbody td{
-      padding:11px 10px;
-      text-align:center;
-      border-bottom:1px solid var(--line);
-      font-size:.95rem;
-      background:#fff;
-    }
-    tbody tr:hover td{ background:#f8faff }
+    thead th{background:#0f2a80;color:#fff;text-align:center;padding:10px 6px;font-size:.88rem}
+    tbody td{padding:10px 8px;text-align:center;border-bottom:1px solid var(--line);font-size:.95rem}
 
-    .chip{
-      display:inline-block;
-      padding:7px 11px;
-      border-radius:999px;
-      font-weight:900;
-      font-size:.82rem;
-      cursor:pointer;
-      user-select:none;
-    }
+    .chip{display:inline-block;padding:6px 10px;border-radius:999px;font-weight:800;font-size:.82rem;cursor:pointer;user-select:none}
     .chip.pgto-pago{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
     .chip.pgto-pendente{background:#fff2f2;color:var(--bad);border:1px solid #ffd6d6}
     .chip.entregue{background:#e9fbf5;color:var(--good);border:1px solid #b3f0dc}
 
     .row-details{display:none;background:#f8faff}
     .row-open + .row-details{display:table-row}
-    .cliente-btn{all:unset;color:var(--royal);font-weight:900;cursor:pointer}
 
+    .cliente-btn{all:unset;color:var(--royal);font-weight:800;cursor:pointer}
+
+    /* ===== BOTÕES CHAMADAS ===== */
     .btn-aceitar, .btn-recusar{
       border:none;
       border-radius:999px;
-      padding:7px 11px;
-      font-size:.82rem;
-      font-weight:900;
+      padding:6px 10px;
+      font-size:.8rem;
+      font-weight:700;
       cursor:pointer;
-      box-shadow:0 6px 12px rgba(0,0,0,.07);
     }
-    .btn-aceitar{ background:var(--good); color:#fff; }
+    .btn-aceitar{
+      background:var(--good);
+      color:#fff;
+    }
     .btn-recusar{
-      background:#fff2f2; color:var(--bad);
+      background:#fff2f2;
+      color:var(--bad);
       border:1px solid #ffb3b3;
     }
 
-    /* ===== AJUDA ===== */
-    #tab-ajuda h2{margin:0 0 8px;font-size:1.1rem;color:#0f2a80;font-weight:900}
-    #tab-ajuda p{margin:0 0 10px;font-size:.94rem}
-    #tab-ajuda label{display:block;margin-bottom:8px;font-size:.94rem}
+    /* ===== SEÇÃO AJUDA ===== */
+    #tab-ajuda h2{
+      margin:4px 0 8px;
+      font-size:1.1rem;
+      color:#0f2a80;
+    }
+    #tab-ajuda p{
+      margin:0 0 10px;
+      font-size:.92rem;
+    }
+    #tab-ajuda label{
+      display:block;
+      margin-bottom:6px;
+      font-size:.92rem;
+    }
     #tab-ajuda .btn{
-      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      background:var(--royal);
       color:#fff;
       border:none;
-      border-radius:12px;
-      padding:10px 14px;
-      font-weight:900;
+      border-radius:10px;
+      padding:8px 14px;
+      font-weight:800;
       cursor:pointer;
-      box-shadow:0 8px 16px rgba(0,51,204,.22);
+      box-shadow:0 4px 12px rgba(0,51,204,.22);
     }
-    .hint{font-size:.86rem;color:var(--muted);line-height:1.35}
+    .hint{font-size:.85rem;color:var(--muted);}
 
-    /* ===== MODAL Recebido por ===== */
-    .overlay{
-      position:fixed; inset:0;
-      background:rgba(8,16,48,.55);
-      display:none; align-items:center; justify-content:center;
-      z-index:1000;
-      padding:clamp(10px,2vw,24px)
-    }
+    /* ===== MODAL “Recebido por” (amplo e confortável) ===== */
+    .overlay{position:fixed;inset:0;background:rgba(8,16,48,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:clamp(10px,2vw,24px)}
     .overlay.open{display:flex}
-    .modal{
-      width:min(1100px, 98vw);
-      max-height:92vh;
-      overflow:auto;
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:18px;
-      box-shadow:0 24px 60px rgba(0,0,0,.25);
-      padding:18px 16px;
-      display:grid;
-      gap:14px
-    }
-    .modal h3{margin:0;font-size:1.08rem;color:#0f2a80;font-weight:900}
+    .modal{width:min(1100px, 98vw);max-height:92vh;overflow:auto;background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 20px 50px rgba(0,0,0,.25);padding:18px 16px;display:grid;gap:14px}
+    .modal h3{margin:0;font-size:1.08rem;color:#0f2a80}
     .modal .row{display:flex;gap:10px;align-items:center}
-    .modal input[type=text]{
-      flex:1; min-width:0; width:100%;
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:16px 18px;
-      font-size:1.06rem;
-      letter-spacing:.2px;
-      outline:none;
-    }
+    .modal input[type=text]{flex:1;min-width:0;width:100%;border:1px solid var(--line);border-radius:12px;padding:16px 18px;font-size:1.06rem;letter-spacing:.2px}
     .modal .actions{display:flex;gap:10px;justify-content:flex-end}
-    .btn-primary{
-      background:linear-gradient(90deg,var(--royal),var(--royal-2));
-      color:#fff;border:none;border-radius:14px;
-      padding:12px 16px;font-weight:900;cursor:pointer;
-      box-shadow:0 10px 18px rgba(0,51,204,.22);
-    }
-    .btn-ghost{
-      background:#fff;color:#0f2a80;border:1px solid var(--line);
-      border-radius:14px;padding:12px 16px;font-weight:900;cursor:pointer
-    }
-
-    /* ===== MAPA ===== */
-    .map-grid{
-      display:grid;
-      grid-template-columns: 1.05fr .95fr;
-      gap:12px;
-      align-items:start;
-    }
-    .map-box{
-      border:1px solid var(--line);
-      border-radius:16px;
-      overflow:hidden;
-      box-shadow:var(--shadow-sm);
-      background:#fff;
-      min-height:420px;
-    }
-    #map{
-      width:100%;
-      height:420px;
-    }
-    .map-controls{
-      display:grid;
-      gap:10px;
-    }
-    .field{
-      display:grid;
-      gap:6px;
-    }
-    .field label{
-      font-size:.86rem;
-      color:#0f2a80;
-      font-weight:900;
-    }
-    .field input{
-      width:100%;
-      border:1px solid var(--line);
-      border-radius:12px;
-      padding:11px 12px;
-      font-size:.95rem;
-      outline:none;
-    }
-    .btn-row{
-      display:flex; gap:10px; flex-wrap:wrap;
-    }
-    .btn-soft{
-      border:1px solid var(--line);
-      background:#fff;
-      color:#0f2a80;
-      border-radius:12px;
-      padding:10px 12px;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:var(--shadow-xs);
-    }
-    .btn-main{
-      border:none;
-      background:linear-gradient(90deg,var(--royal),var(--royal-2));
-      color:#fff;
-      border-radius:12px;
-      padding:10px 12px;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:0 10px 18px rgba(0,51,204,.22);
-    }
-    .pill{
-      display:inline-flex; gap:8px; align-items:center;
-      padding:8px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#fff;
-      font-size:.86rem;
-      font-weight:900;
-      color:#0f2a80;
-      box-shadow:var(--shadow-xs);
-    }
+    .btn-primary{background:var(--royal);color:#fff;border:none;border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
+    .btn-ghost{background:#fff;color:#0f2a80;border:1px solid var(--line);border-radius:12px;padding:12px 16px;font-weight:800;cursor:pointer}
 
     /* ===== MOBILE ===== */
-    @media (max-width:920px){
-      .map-grid{ grid-template-columns: 1fr; }
-      #map{ height:380px; }
-      .map-box{ min-height:380px; }
-    }
     @media (max-width:760px){
-      .wrap{margin:10px auto 14px}
+      header{padding:.55rem 3.5vw}
+      .wrap{margin:8px auto 14px}
       .stats{grid-template-columns:1fr 1fr}
       thead{display:none}
       table,tbody,tr,td{display:block;width:100%}
-      .card-table{padding:6px;border-radius:14px;box-shadow:var(--shadow-sm)}
-      tbody tr{background:#fff;margin:8px 0;border-radius:14px;box-shadow:0 6px 14px rgba(0,0,0,.05);border:1px solid var(--line)}
-      tbody td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:10px 10px;font-size:.95rem}
-      tbody td::before{content:attr(data-label);font-weight:900;color:#0f2a80;padding-right:8px;font-size:.88rem}
+      .card-table{padding:6px;border-radius:12px;box-shadow:var(--shadow-sm)}
+      tbody tr{background:#fff;margin:8px 0;border-radius:12px;box-shadow:0 4px 10px rgba(0,0,0,.04);border:1px solid var(--line)}
+      tbody td{display:grid;grid-template-columns:42% 58%;text-align:left;border:none;padding:9px 10px;font-size:.95rem}
+      tbody td::before{content:attr(data-label);font-weight:800;color:#0f2a80;padding-right:8px;font-size:.88rem}
       .row-open + .row-details{display:block}
     }
   </style>
 </head>
-
 <body>
   <header>
-    <div class="topbar">
-      <div class="brand">
-        <div class="title">Painel do Cooperado</div>
-        <div class="subtitle">{{ session['user_nome'] }}</div>
+    <div>Painel do Cooperado</div>
+    <div class="right">
+      <!-- Status do GPS / Rastreamento -->
+      <div class="gps-status gps-status--off" id="gps-status" title="Status do rastreamento">
+        Localização: OFF
       </div>
-
-      <div class="top-actions">
-        <div class="gps-status gps-status--off" id="gps-status" title="Clique para ligar/desligar rastreamento">
-          Localização: OFF
-        </div>
-      </div>
+      <div class="sub">{{ session['user_nome'] }}</div>
     </div>
   </header>
 
   <div class="wrap">
-    <!-- ABAS (mantidas) + NOVA ABA MAPA -->
-    <nav class="tabs" aria-label="Navegação de abas">
+    <!-- ABAS -->
+    <nav class="tabs">
       <button class="tab-btn active" data-tab="tab-chamadas">Chamadas</button>
       <button class="tab-btn" data-tab="tab-minhas">Minhas entregas</button>
-      <button class="tab-btn" data-tab="tab-mapa">Mapa</button>
       <button class="tab-btn" data-tab="tab-ajuda">Ajuda</button>
     </nav>
 
     <!-- ABA 1: CHAMADAS (ACEITAR / RECUSAR) -->
     <section id="tab-chamadas" class="tab-panel active" aria-label="Chamadas disponíveis">
-      <div class="card">
-        <div class="card-head">
-          <h3>Chamadas disponíveis</h3>
-          <span class="pill" title="Atualiza quando você aceita/recusa">Ações rápidas</span>
-        </div>
-        <div class="card-body" style="padding:0">
-          <section class="card-table" style="border:none; border-radius:0; box-shadow:none">
-            <table>
-              <thead>
-                <tr>
-                  <th>Cliente</th>
-                  <th>Bairro</th>
-                  <th>Valor</th>
-                  <th>Distância</th>
-                  <th>Ações</th>
-                </tr>
-              </thead>
-              <tbody>
-                {% for c in chamadas %}
-                <tr data-id="{{ c.id }}">
-                  <td data-label="Cliente">{{ c.cliente }}</td>
-                  <td data-label="Bairro">{{ c.bairro or '-' }}</td>
-                  <td data-label="Valor">R$ {{ '%.2f'|format(c.valor) }}</td>
-                  <td data-label="Distância">{{ c.distancia or '-' }}</td>
-                  <td data-label="Ações">
-                    <button type="button" class="btn-aceitar" onclick="aceitarEntrega({{ c.id }})">Aceitar</button>
-                    <button type="button" class="btn-recusar" onclick="recusarEntrega({{ c.id }})">Recusar</button>
-                  </td>
-                </tr>
-                {% else %}
-                <tr><td colspan="5" style="text-align:center;padding:14px">Nenhuma chamada disponível.</td></tr>
-                {% endfor %}
-              </tbody>
-            </table>
-          </section>
-        </div>
-      </div>
+      <section class="card-table">
+        <table>
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Bairro</th>
+              <th>Valor</th>
+              <th>Distância</th>
+              <th>Ações</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for c in chamadas %}
+            <tr data-id="{{ c.id }}">
+              <td data-label="Cliente">{{ c.cliente }}</td>
+              <td data-label="Bairro">{{ c.bairro or '-' }}</td>
+              <td data-label="Valor">R$ {{ '%.2f'|format(c.valor) }}</td>
+              <td data-label="Distância">{{ c.distancia or '-' }}</td>
+              <td data-label="Ações">
+                <button type="button" class="btn-aceitar" onclick="aceitarEntrega({{ c.id }})">Aceitar</button>
+                <button type="button" class="btn-recusar" onclick="recusarEntrega({{ c.id }})">Recusar</button>
+              </td>
+            </tr>
+            {% else %}
+            <tr><td colspan="5" style="text-align:center">Nenhuma chamada disponível.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
     </section>
 
     <!-- ABA 2: MINHAS ENTREGAS -->
     <section id="tab-minhas" class="tab-panel" aria-label="Minhas entregas">
-      <div class="grid">
-        <!-- STATS -->
-        <section class="stats" aria-label="Estatísticas de valores">
-          <div class="stat stat--pago"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
-          <div class="stat stat--pendente"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
-          <div class="stat stat--total"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
-        </section>
+      <!-- CARDS -->
+      <section class="stats" aria-label="Estatísticas de valores">
+        <div class="stat stat--pago" aria-label="Valor pago"><h4>Pago</h4><strong id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</strong></div>
+        <div class="stat stat--pendente" aria-label="Valor pendente"><h4>Pendente</h4><strong id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</strong></div>
+        <div class="stat stat--total" aria-label="Total geral"><h4>Total</h4><strong id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</strong></div>
+      </section>
 
-        <!-- FILTROS -->
-        <div class="card filters" aria-label="Filtros">
-          <div class="card-head">
-            <h3>Filtros</h3>
-            <span class="pill" title="Pendente ignora datas">Dica: Pendente mostra todas</span>
-          </div>
-          <div class="card-body">
-            <form id="form-filtros" method="get">
-              <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
-              <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
-              <select name="status_pgto" id="status_pgto">
-                <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
-                <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
-                <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
-              </select>
-              <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
-              <button class="btn" type="submit">Filtrar</button>
-            </form>
-            <div id="escopo" class="scope"></div>
-          </div>
-        </div>
+      <!-- FILTROS -->
+      <section class="filters" aria-label="Filtros">
+        <form id="form-filtros" method="get">
+          <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
+          <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
+          <select name="status_pgto" id="status_pgto">
+            <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
+            <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
+            <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
+          </select>
+          <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
+          <button class="btn" type="submit">Filtrar</button>
+        </form>
+        <div id="escopo" class="scope"></div>
+      </section>
 
-        <!-- TABELA DE ENTREGAS -->
-        <div class="card" aria-label="Tabela de entregas">
-          <div class="card-head">
-            <h3>Minhas entregas</h3>
-            <span class="pill" title="Clique no cliente para abrir detalhes">Detalhes por linha</span>
-          </div>
-          <div class="card-body" style="padding:0">
-            <section class="card-table" aria-label="Minhas entregas" style="border:none;border-radius:0;box-shadow:none">
-              <table id="tabela-entregas">
-                <thead>
-                  <tr>
-                    <th>Cliente</th>
-                    <th>Forma Pgto</th>
-                    <th>Valor</th>
-                    <th>Data</th>
-                    <th>Hora Pedido</th>
-                    <th>Hora Entrega</th>
-                    <th>Pagamento</th>
-                    <th>Entrega</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for e in entregas %}
-                  <tr id="row-{{ e.id }}">
-                    <td data-label="Cliente">
-                      <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
-                    </td>
-                    <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
-                    <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
-                    <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
-                    <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-                    <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-                    <td data-label="Pagamento">
-                      <span
-                        class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
-                        data-id="{{ e.id }}"
-                        data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
-                        onclick="togglePagamento(event,this)"
-                        role="button"
-                        aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
-                      >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
-                    </td>
-                    <td data-label="Entrega">
-                      {% set entregue = (e.status in ['recebido','entregue']) %}
-                      <span
-                        class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
-                        data-id="{{ e.id }}"
-                        data-entregue="{{ '1' if entregue else '0' }}"
-                        onclick="handleEntregaClick(this)"
-                      >{{ 'Entregue' if entregue else 'Pendente' }}</span>
-                    </td>
-                  </tr>
-
-                  <tr class="row-details" id="details-{{ e.id }}">
-                    <td colspan="8" style="text-align:left;padding:12px 14px">
-                      <div><strong>Cliente:</strong> {{ e.cliente }}</div>
-                      <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
-                      <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
-                      <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
-                      <div><strong>Data/Hora Pedido:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</div>
-                      <div><strong>Hora Entrega:</strong> {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</div>
-                      <div><strong>Recebido por:</strong> {{ e.recebido_por or '-' }}</div>
-                    </td>
-                  </tr>
-                  {% else %}
-                  <tr class="no-rows"><td colspan="8" style="text-align:center;padding:14px">Nenhuma entrega encontrada.</td></tr>
-                  {% endfor %}
-                </tbody>
-              </table>
-            </section>
-          </div>
-        </div>
-      </div>
+      <!-- TABELA DE ENTREGAS -->
+      <section class="card-table" aria-label="Minhas entregas">
+        <table id="tabela-entregas">
+          <thead>
+            <tr>
+              <th>Cliente</th>
+              <th>Forma Pgto</th>
+              <th>Valor</th>
+              <th>Data</th>
+              <th>Hora Pedido</th>
+              <th>Hora Entrega</th>
+              <th>Pagamento</th>
+              <th>Entrega</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for e in entregas %}
+            <tr id="row-{{ e.id }}">
+              <td data-label="Cliente">
+                <button class="cliente-btn" type="button" onclick="toggleRow({{ e.id }})">{{ e.cliente }}</button>
+              </td>
+              <td data-label="Forma Pgto">{{ e.pagamento or '-' }}</td>
+              <td data-label="Valor" data-valor="{{ '%.2f'|format(e.valor) }}">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+              <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m') if e.data_envio else '-' }}</td>
+              <td data-label="Hora Pedido">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+              <td data-label="Hora Entrega">{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+              <td data-label="Pagamento">
+                <span
+                  class="chip {{ 'pgto-pago' if e.status_pagamento and e.status_pagamento|lower=='pago' else 'pgto-pendente' }}"
+                  data-id="{{ e.id }}"
+                  data-status="{{ (e.status_pagamento or 'pendente')|lower }}"
+                  onclick="togglePagamento(event,this)"
+                  role="button" aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
+                >{{ (e.status_pagamento|capitalize) if e.status_pagamento else 'Pendente' }}</span>
+              </td>
+              <td data-label="Entrega">
+                {% set entregue = (e.status in ['recebido','entregue']) %}
+                <span
+                  class="chip {{ 'entregue' if entregue else 'pgto-pendente' }}"
+                  data-id="{{ e.id }}"
+                  data-entregue="{{ '1' if entregue else '0' }}"
+                  onclick="handleEntregaClick(this)"
+                >{{ 'Entregue' if entregue else 'Pendente' }}</span>
+              </td>
+            </tr>
+            <tr class="row-details" id="details-{{ e.id }}">
+              <td colspan="8" style="text-align:left;padding:10px 14px">
+                <div><strong>Cliente:</strong> {{ e.cliente }}</div>
+                <div><strong>Bairro:</strong> {{ e.bairro or '-' }}</div>
+                <div><strong>Forma de Pagamento:</strong> {{ e.pagamento or '-' }}</div>
+                <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
+                <div><strong>Data/Hora Pedido:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</div>
+                <div><strong>Hora Entrega:</strong> {{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</div>
+                <div><strong>Recebido por:</strong> {{ e.recebido_por or '-' }}</div>
+              </td>
+            </tr>
+            {% else %}
+            <tr class="no-rows"><td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td></tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </section>
     </section>
 
-    <!-- ABA 3: MAPA (Google Maps dentro) -->
-    <section id="tab-mapa" class="tab-panel" aria-label="Mapa e rotas">
-      <div class="card">
-        <div class="card-head">
-          <h3>Mapa e rota (Google Maps)</h3>
-          <span class="pill" id="map-status">Pronto para traçar rota</span>
-        </div>
-        <div class="card-body">
-          <div class="map-grid">
-            <div class="map-box" aria-label="Mapa">
-              <div id="map"></div>
-            </div>
-
-            <div class="map-controls">
-              <div class="field">
-                <label for="map-origem">Origem</label>
-                <input id="map-origem" type="text" placeholder="Digite a origem (ex.: Rua..., Natal/RN)" autocomplete="off" />
-              </div>
-
-              <div class="field">
-                <label for="map-destino">Destino</label>
-                <input id="map-destino" type="text" placeholder="Digite o destino (ex.: Av..., Natal/RN)" autocomplete="off" />
-              </div>
-
-              <div class="btn-row">
-                <button type="button" class="btn-soft" onclick="usarMinhaLocalizacaoComoOrigem()">
-                  Usar minha localização como origem
-                </button>
-                <button type="button" class="btn-main" onclick="tracarRota()">
-                  Traçar rota
-                </button>
-              </div>
-
-              <div class="btn-row">
-                <button type="button" class="btn-soft" onclick="abrirNoGoogleMaps()">
-                  Abrir no Google Maps
-                </button>
-                <button type="button" class="btn-soft" onclick="limparRota()">
-                  Limpar
-                </button>
-              </div>
-
-              <p class="hint" style="margin:0">
-                Observação: em celulares, alguns navegadores reduzem o envio de localização quando o app está minimizado
-                ou com a tela apagada. Este painel maximiza o que é possível em web com “heartbeat” e watchPosition.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- ABA 4: AJUDA / SOCORRO -->
+    <!-- ABA 3: AJUDA / SOCORRO -->
     <section id="tab-ajuda" class="tab-panel" aria-label="Ajuda / Socorro">
-      <div class="card">
-        <div class="card-head">
-          <h3>Ajuda / Socorro</h3>
-          <span class="pill">Notifica a supervisão</span>
+      <h2>Ajuda / Socorro</h2>
+      <p>Use este painel somente em situações reais de emergência. A supervisão será avisada imediatamente.</p>
+
+      <form id="form-socorro" onsubmit="enviarSocorro(event)">
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="acidente_com_pedido" required>
+            Me envolvi em um acidente e estou com o pedido do cliente
+          </label>
         </div>
-        <div class="card-body">
-          <h2 style="display:none">Ajuda / Socorro</h2>
-          <p>Use este painel somente em situações reais de emergência. A supervisão será avisada imediatamente.</p>
-
-          <form id="form-socorro" onsubmit="enviarSocorro(event)">
-            <div>
-              <label><input type="radio" name="tipo" value="acidente_com_pedido" required> Me envolvi em um acidente e estou com o pedido do cliente</label>
-            </div>
-            <div>
-              <label><input type="radio" name="tipo" value="acidente_sem_pedido"> Me envolvi em um acidente sem pedido de cliente</label>
-            </div>
-            <div>
-              <label><input type="radio" name="tipo" value="pneu_furou"> Pneu furou</label>
-            </div>
-            <div>
-              <label><input type="radio" name="tipo" value="outros"> Outros (descreva abaixo)</label>
-            </div>
-
-            <div id="socorro-outros-box" style="margin-top:10px; display:none;">
-              <textarea id="socorro-outros-text" name="detalhes" rows="4"
-                placeholder="Descreva o que aconteceu para a supervisão"
-                style="width:100%;border-radius:12px;border:1px solid var(--line);padding:10px;outline:none;"></textarea>
-            </div>
-
-            <button type="submit" class="btn" style="margin-top:10px;">
-              Enviar pedido de socorro
-            </button>
-          </form>
-
-          <p class="hint" style="margin-top:10px;">
-            Ao enviar, a supervisão será notificada e um alerta sonoro tocará automaticamente no painel do administrador.
-          </p>
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="acidente_sem_pedido">
+            Me envolvi em um acidente sem pedido de cliente
+          </label>
         </div>
-      </div>
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="pneu_furou">
+            Pneu furou
+          </label>
+        </div>
+        <div>
+          <label>
+            <input type="radio" name="tipo" value="outros">
+            Outros (descreva abaixo)
+          </label>
+        </div>
+
+        <div id="socorro-outros-box" style="margin-top:8px; display:none;">
+          <textarea id="socorro-outros-text" name="detalhes" rows="4"
+            placeholder="Descreva o que aconteceu para a supervisão"
+            style="width:100%;border-radius:10px;border:1px solid var(--line);padding:8px;"></textarea>
+        </div>
+
+        <button type="submit" class="btn" style="margin-top:10px;">
+          Enviar pedido de socorro
+        </button>
+      </form>
+
+      <p class="hint" style="margin-top:8px;">
+        Ao enviar, a supervisão será notificada e um alerta sonoro tocará automaticamente no painel do administrador.
+      </p>
     </section>
   </div>
 
@@ -718,7 +432,8 @@
     // VARIÁVEIS GERAIS
     // =============================
     let lastScrollY = window.scrollY;
-    const preserveScroll = () => requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
+    const preserveScroll = () =>
+      requestAnimationFrame(()=>window.scrollTo({top:lastScrollY, behavior:'instant'}));
 
     // =============================
     // EXPANSÃO DE LINHA
@@ -736,7 +451,7 @@
     // TOTALIZAÇÃO
     // =============================
     function recalcTotals(){
-      const rows=document.querySelectorAll('#tabela-entregas tbody tr[id^="row-"]');
+      const rows=document.querySelectorAll('tbody tr[id^="row-"]');
       let total=0,pago=0;
       rows.forEach(r=>{
         const vtd=r.querySelector('[data-valor]');
@@ -744,7 +459,9 @@
         const v=parseFloat(vtd.dataset.valor||'0')||0;
         total+=v;
         const chip=r.querySelector('td[data-label="Pagamento"] .chip');
-        if(chip && (chip.dataset.status||'').toLowerCase()==='pago'){ pago+=v; }
+        if(chip && (chip.dataset.status||'').toLowerCase()==='pago'){
+          pago+=v;
+        }
       });
       const pendente=Math.max(0,total-pago);
       const fmt=(n)=>'R$ '+n.toFixed(2).replace('.',',');
@@ -767,7 +484,7 @@
         if(!msg){
           msg=document.createElement('tr');
           msg.className='no-rows';
-          msg.innerHTML='<td colspan="8" style="text-align:center;padding:14px">Nenhuma entrega encontrada.</td>';
+          msg.innerHTML='<td colspan="8" style="text-align:center">Nenhuma entrega encontrada.</td>';
           tbody.appendChild(msg);
         }
       }else if(msg){
@@ -781,7 +498,7 @@
     const form=document.getElementById('form-filtros');
     if(form){
       form.addEventListener('submit',()=>{
-        const status=document.getElementById('status_pgto')?.value;
+        const status=document.getElementById('status_pgto').value;
         const hidden=document.getElementById('todas_datas');
         if(status==='pendente'){
           hidden.value='1';
@@ -792,6 +509,7 @@
         }
       });
     }
+
     function updateScope(){
       const url=new URL(location.href);
       const status=url.searchParams.get('status_pgto')||
@@ -817,7 +535,9 @@
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({})
         });
-        let data=null; try{ data=await resp.json(); }catch{}
+        let data=null;
+        try{ data=await resp.json(); }catch{}
+
         if(!resp.ok){
           alert((data&&data.error)||'Falha ao alterar pagamento.');
           return;
@@ -853,6 +573,7 @@
         setTimeout(()=>input.focus(),0);
       }
     }
+
     function closeRecebidoModal(){
       const ov=document.getElementById('rcb-overlay');
       if(!ov) return;
@@ -860,12 +581,15 @@
       document.body.style.overflow='';
       setTimeout(preserveScroll,0);
     }
+
     (function initModal(){
       const btnCancel=document.getElementById('rcb-cancel');
       const overlay=document.getElementById('rcb-overlay');
       const btnOk=document.getElementById('rcb-ok');
 
-      if(btnCancel) btnCancel.addEventListener('click', closeRecebidoModal);
+      if(btnCancel){
+        btnCancel.addEventListener('click', closeRecebidoModal);
+      }
       if(overlay){
         overlay.addEventListener('click', (e)=>{
           if(e.target.id==='rcb-overlay') closeRecebidoModal();
@@ -897,7 +621,6 @@
 
     async function confirmarRecebido(id,desfazer=false){
       lastScrollY=window.scrollY;
-
       if(desfazer){
         const fd = new FormData();
         fd.append('status','pendente');
@@ -931,14 +654,14 @@
         alert('Informe o nome de quem recebeu.');
         return;
       }
-
       try{
         const resp=await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0',id),{
           method:'POST',
           headers:{'Content-Type':'application/json'},
           body:JSON.stringify({recebido_por:nome})
         });
-        let data=null; try{ data=await resp.json(); }catch{}
+        let data=null;
+        try{ data=await resp.json(); }catch{}
 
         if(!resp.ok || (data && data.ok===false)){
           alert((data&&data.error)||'Falha ao atualizar entrega.');
@@ -970,11 +693,6 @@
         btn.classList.add('active');
         const tab = document.getElementById(btn.dataset.tab);
         if(tab) tab.classList.add('active');
-
-        // Garante resize do mapa ao abrir a aba
-        if(btn.dataset.tab === 'tab-mapa'){
-          setTimeout(()=>{ if(window.__gm_map) google.maps.event.trigger(window.__gm_map, 'resize'); }, 120);
-        }
       });
     });
 
@@ -993,6 +711,7 @@
           alert(data.error || 'Falha ao aceitar entrega.');
           return;
         }
+        // Recarrega para mostrar em "Minhas entregas"
         location.reload();
       }catch(e){
         alert('Erro ao aceitar: '+e.message);
@@ -1024,7 +743,7 @@
     // =============================
     async function checarNovasEntregas(){
       try{
-        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`, { cache:'no-store' });
+        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`);
         const data = await resp.json();
         if(data.nova){
           const audio = document.getElementById('som-nova-entrega');
@@ -1044,8 +763,11 @@
     if(radiosSocorro.length && outrosBox){
       radiosSocorro.forEach(r=>{
         r.addEventListener('change', ()=>{
-          if(r.value === 'outros' && r.checked) outrosBox.style.display = 'block';
-          else if(r.checked) outrosBox.style.display = 'none';
+          if(r.value === 'outros' && r.checked){
+            outrosBox.style.display = 'block';
+          }else if(r.checked){
+            outrosBox.style.display = 'none';
+          }
         });
       });
     }
@@ -1057,8 +779,14 @@
       const detalhesEl = document.getElementById('socorro-outros-text');
       const detalhes = (detalhesEl && detalhesEl.value ? detalhesEl.value : '').trim();
 
-      if(!tipo){ alert('Selecione uma opção de socorro.'); return; }
-      if(tipo === 'outros' && !detalhes){ alert('Descreva o que aconteceu em "Outros".'); return; }
+      if(!tipo){
+        alert('Selecione uma opção de socorro.');
+        return;
+      }
+      if(tipo === 'outros' && !detalhes){
+        alert('Descreva o que aconteceu em "Outros".');
+        return;
+      }
 
       try{
         const resp = await fetch(`{{ url_for('cooperado_socorro') }}`, {
@@ -1081,13 +809,10 @@
     }
 
     // =============================
-    // RASTREAMENTO / GPS (robusto + heartbeat)
+    // RASTREAMENTO / GPS
     // =============================
     let gpsWatchId = null;
     let gpsAtivo   = false;
-    let lastFix    = null;   // {lat,lng,acc,heading,speed,ts}
-    let lastSendAt = 0;
-    let heartbeatTimer = null;
 
     const gpsStatusEl = document.getElementById('gps-status');
 
@@ -1107,46 +832,30 @@
       }
     }
 
-    async function enviarPosicao(lat,lng,accuracy,heading,speed,forced=false){
-      const now = Date.now();
-      const MIN_INTERVAL_MS = 4500; // controle para não spammar
-      if(!forced && (now - lastSendAt) < MIN_INTERVAL_MS) return;
-      lastSendAt = now;
-
+    async function enviarPosicao(lat,lng,accuracy,heading,speed){
       try{
         await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ lat, lng, accuracy, heading, speed, ts: new Date().toISOString() })
+          body:JSON.stringify({ lat, lng, accuracy, heading, speed })
         });
       }catch(e){
         console.log('Falha ao enviar localização:', e);
       }
     }
 
-    function startHeartbeat(){
-      stopHeartbeat();
-      // Mantém "online": reenvia a última posição de tempos em tempos
-      heartbeatTimer = setInterval(()=>{
-        if(!gpsAtivo || !lastFix) return;
-        enviarPosicao(lastFix.lat,lastFix.lng,lastFix.acc,lastFix.heading,lastFix.speed,true);
-      }, 20000); // 20s
-    }
-    function stopHeartbeat(){
-      if(heartbeatTimer) clearInterval(heartbeatTimer);
-      heartbeatTimer = null;
-    }
-
-    function iniciarRastreamento(auto=false){
+    function iniciarRastreamento(){
       if(!navigator.geolocation){
-        if(!auto) alert('Seu navegador não suporta geolocalização.');
+        alert('Seu navegador não suporta geolocalização.');
         atualizarBadgeGPS('error');
         return;
       }
-      if(gpsWatchId !== null) return;
+      if(gpsWatchId !== null){
+        // Já está rastreando
+        return;
+      }
 
       atualizarBadgeGPS('on', 'Buscando...');
-      startHeartbeat();
 
       gpsWatchId = navigator.geolocation.watchPosition(
         pos=>{
@@ -1157,15 +866,8 @@
           const heading = pos.coords.heading;
           const speed   = pos.coords.speed;
 
-          lastFix = { lat, lng, acc, heading, speed, ts: Date.now() };
-
           atualizarBadgeGPS('on', 'OK');
-          enviarPosicao(lat,lng,acc,heading,speed,false);
-
-          // Atualiza “Origem” do mapa se estiver vazio e a aba mapa já abriu
-          if(window.__gm_map && !document.getElementById('map-origem').value){
-            window.__gm_userLatLng = {lat, lng};
-          }
+          enviarPosicao(lat,lng,acc,heading,speed);
         },
         err=>{
           console.log('Erro GPS:', err);
@@ -1186,15 +888,14 @@
       }
       gpsWatchId = null;
       gpsAtivo   = false;
-      lastFix    = null;
       atualizarBadgeGPS('off');
-      stopHeartbeat();
 
+      // avisa o back-end que o cooperado ficou OFF
       try{
         await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ offline:true, ts: new Date().toISOString() })
+          body:JSON.stringify({ offline:true })
         });
       }catch(e){
         console.log('Falha ao enviar offline:', e);
@@ -1208,176 +909,9 @@
             pararRastreamento();
           }
         }else{
-          iniciarRastreamento(false);
+          iniciarRastreamento();
         }
       });
-    }
-
-    // Ao sair/fechar: tenta marcar offline sem travar navegação
-    function beaconOffline(){
-      try{
-        const url = `{{ url_for('cooperado_atualizar_localizacao') }}`;
-        const payload = JSON.stringify({ offline:true, ts: new Date().toISOString() });
-        const blob = new Blob([payload], {type:'application/json'});
-        if(navigator.sendBeacon) navigator.sendBeacon(url, blob);
-      }catch(e){}
-    }
-    window.addEventListener('pagehide', beaconOffline);
-    window.addEventListener('beforeunload', beaconOffline);
-
-    // =============================
-    // GOOGLE MAPS (autocomplete + rota)
-    // =============================
-    let map, markerMe, directionsService, directionsRenderer, originPlace=null, destPlace=null;
-
-    function setMapStatus(txt){
-      const el = document.getElementById('map-status');
-      if(el) el.textContent = txt;
-    }
-
-    function initMap(){
-      // Centro padrão (Natal/RN) — ajustável
-      const defaultCenter = { lat: -5.79448, lng: -35.2110 };
-
-      map = new google.maps.Map(document.getElementById("map"), {
-        center: defaultCenter,
-        zoom: 13,
-        mapTypeControl: false,
-        streetViewControl: false,
-        fullscreenControl: true
-      });
-      window.__gm_map = map;
-
-      directionsService = new google.maps.DirectionsService();
-      directionsRenderer = new google.maps.DirectionsRenderer({ map, suppressMarkers:false });
-
-      // Autocomplete
-      const inputOrigem = document.getElementById('map-origem');
-      const inputDestino = document.getElementById('map-destino');
-
-      const opts = { fields: ["place_id","geometry","name","formatted_address"], componentRestrictions: { country: ["br"] } };
-
-      const acOrigem = new google.maps.places.Autocomplete(inputOrigem, opts);
-      const acDestino = new google.maps.places.Autocomplete(inputDestino, opts);
-
-      acOrigem.addListener("place_changed", ()=>{
-        originPlace = acOrigem.getPlace();
-        setMapStatus('Origem definida');
-        if(originPlace?.geometry?.location) map.panTo(originPlace.geometry.location);
-      });
-
-      acDestino.addListener("place_changed", ()=>{
-        destPlace = acDestino.getPlace();
-        setMapStatus('Destino definido');
-        if(destPlace?.geometry?.location) map.panTo(destPlace.geometry.location);
-      });
-
-      setMapStatus('Mapa pronto');
-    }
-
-    function usarMinhaLocalizacaoComoOrigem(){
-      if(!lastFix){
-        alert('Ligue o rastreamento para usar sua localização como origem.');
-        return;
-      }
-      const latlng = { lat: lastFix.lat, lng: lastFix.lng };
-      window.__gm_userLatLng = latlng;
-
-      // Marca no mapa
-      if(map){
-        if(!markerMe){
-          markerMe = new google.maps.Marker({ map, position: latlng, title: 'Minha localização' });
-        }else{
-          markerMe.setPosition(latlng);
-        }
-        map.panTo(latlng);
-      }
-
-      // Preenche o campo (texto) e guarda origem “por coordenada”
-      document.getElementById('map-origem').value = 'Minha localização';
-      originPlace = { geometry: { location: latlng } };
-      setMapStatus('Origem: minha localização');
-    }
-
-    function tracarRota(){
-      if(!directionsService || !directionsRenderer){
-        alert('Mapa ainda não carregou.');
-        return;
-      }
-
-      const origemTxt = document.getElementById('map-origem').value.trim();
-      const destinoTxt = document.getElementById('map-destino').value.trim();
-
-      if(!origemTxt){
-        alert('Informe a origem.');
-        return;
-      }
-      if(!destinoTxt){
-        alert('Informe o destino.');
-        return;
-      }
-
-      const origin = (originPlace && originPlace.geometry && originPlace.geometry.location)
-        ? originPlace.geometry.location
-        : origemTxt;
-
-      const destination = (destPlace && destPlace.geometry && destPlace.geometry.location)
-        ? destPlace.geometry.location
-        : destinoTxt;
-
-      setMapStatus('Calculando rota...');
-
-      directionsService.route(
-        {
-          origin,
-          destination,
-          travelMode: google.maps.TravelMode.DRIVING
-        },
-        (result, status)=>{
-          if(status !== "OK"){
-            console.log(status, result);
-            alert('Não foi possível traçar a rota. Verifique os endereços.');
-            setMapStatus('Falha ao traçar rota');
-            return;
-          }
-          directionsRenderer.setDirections(result);
-          const leg = result.routes?.[0]?.legs?.[0];
-          if(leg){
-            setMapStatus(`Rota: ${leg.distance?.text || '-'} · ${leg.duration?.text || '-'}`);
-          }else{
-            setMapStatus('Rota traçada');
-          }
-        }
-      );
-    }
-
-    function limparRota(){
-      try{
-        if(directionsRenderer) directionsRenderer.setDirections({ routes: [] });
-      }catch(e){}
-      originPlace = null;
-      destPlace = null;
-      document.getElementById('map-origem').value = '';
-      document.getElementById('map-destino').value = '';
-      setMapStatus('Rota limpa');
-    }
-
-    function abrirNoGoogleMaps(){
-      const origemTxt = document.getElementById('map-origem').value.trim();
-      const destinoTxt = document.getElementById('map-destino').value.trim();
-      if(!destinoTxt){
-        alert('Informe o destino.');
-        return;
-      }
-      const base = 'https://www.google.com/maps/dir/?api=1';
-      const origin = encodeURIComponent(origemTxt || '');
-      const destination = encodeURIComponent(destinoTxt);
-
-      const url = origemTxt
-        ? `${base}&origin=${origin}&destination=${destination}&travelmode=driving`
-        : `${base}&destination=${destination}&travelmode=driving`;
-
-      window.open(url, '_blank');
     }
 
     // =============================
@@ -1388,16 +922,9 @@
       recalcTotals();
       ensureEmpty();
       setTimeout(preserveScroll,0);
-
-      // Liga automaticamente o rastreamento (para ficar online enviando sempre)
-      // Se você preferir pedir clique do usuário, comente a linha abaixo.
-      iniciarRastreamento(true);
+      // se quiser já iniciar o rastreamento automaticamente:
+      // iniciarRastreamento();
     });
   </script>
-
-  <!-- Google Maps JS API (Maps + Places) -->
-  <script
-    src="https://maps.googleapis.com/maps/api/js?key={{ GOOGLE_MAPS_KEY }}&libraries=places&callback=initMap"
-    async defer></script>
 </body>
 </html>
