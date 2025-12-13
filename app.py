@@ -464,9 +464,7 @@ def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
         # Evento específico para os painéis de entregas
         socketio.emit(
             "entrega_atualizada",
-            payload,
-            broadcast=True
-        )
+            payload)
 
     except Exception as e:
         # não quebra o fluxo se der problema no websocket
@@ -6244,8 +6242,11 @@ from flask import request
 # Conexão do cliente
 @socketio.on("connect")
 def handle_connect(auth=None):
-    # Aqui você pode receber infos de auth se mandar pelo front
-    print(f"Cliente conectado via Socket.IO: sid={request.sid}, auth={auth}")
+    try:
+        if current_user.is_authenticated and getattr(current_user, "tipo", "") == "admin":
+            join_room("admins")
+    except Exception:
+        pass
 
 
 # Desconexão do cliente
