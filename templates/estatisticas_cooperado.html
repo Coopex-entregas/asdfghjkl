@@ -292,15 +292,41 @@ svg{display:block}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:1100px){ .grid2{grid-template-columns:1fr} .grid3{grid-template-columns:1fr} }
 
-/* ====== CRESCIMENTO (cards um abaixo do outro) ====== */
+/* ====== CRESCIMENTO (cards um abaixo do outro + KPIs sem cortar) ====== */
 .stack{display:grid;gap:12px}
 .chartbox{
   position:relative;
   width:100%;
-  height:340px;  /* altura real => valores não somem */
+  height:340px;
 }
 @media (max-width:1100px){ .chartbox{height:300px} }
 @media (max-width:680px){ .chartbox{height:260px} }
+
+/* só no Crescimento: KPIs viram auto-fit e nunca ficam apertados */
+#sec-crescimento .kpis{
+  display:grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap:10px;
+}
+#sec-crescimento .kpi{
+  grid-column:auto !important;
+  min-width:200px;
+}
+#sec-crescimento .kpi .value{
+  white-space:normal !important;
+  overflow:visible !important;
+  text-overflow:clip !important;
+}
+#sec-crescimento .kpi .label,
+#sec-crescimento .kpi .hint{
+  white-space:normal;
+  overflow:visible;
+  text-overflow:clip;
+}
+@media (max-width:680px){
+  #sec-crescimento .kpis{ grid-template-columns:1fr; }
+  #sec-crescimento .kpi{ min-width:0; }
+}
 
 /* ====== QUICK BAR ====== */
 .quickbar{
@@ -878,9 +904,7 @@ tbody tr:hover{background:#f6f9ff}
               <button class="btn" type="button" data-save="chartDia">PNG</button>
             </div>
             {% if chart_entregas_labels and chart_entregas_labels|length %}
-              <div class="chartbox" style="height:220px">
-                <canvas id="chartDia"></canvas>
-              </div>
+              <canvas id="chartDia" height="150"></canvas>
             {% else %}
               <div class="no-data">Sem dados</div>
             {% endif %}
@@ -891,9 +915,7 @@ tbody tr:hover{background:#f6f9ff}
               <h2>Status</h2>
               <button class="btn" type="button" data-save="chartStatus">PNG</button>
             </div>
-            <div class="chartbox" style="height:220px">
-              <canvas id="chartStatus"></canvas>
-            </div>
+            <canvas id="chartStatus" height="150"></canvas>
           </div>
 
           <div class="card">
@@ -901,9 +923,7 @@ tbody tr:hover{background:#f6f9ff}
               <h2>Faturamento por cooperado</h2>
               <button class="btn" type="button" data-save="chartCoop">PNG</button>
             </div>
-            <div class="chartbox" style="height:220px">
-              <canvas id="chartCoop"></canvas>
-            </div>
+            <canvas id="chartCoop" height="150"></canvas>
           </div>
         </div>
       </section>
@@ -999,18 +1019,19 @@ tbody tr:hover{background:#f6f9ff}
         </div>
       </section>
 
-      <!-- ====== SECTION: CRESCIMENTO (UM CARD ABAIXO DO OUTRO) ====== -->
+      <!-- ====== SECTION: CRESCIMENTO (CORRIGIDO) ====== -->
       <section class="section" id="sec-crescimento">
         {% if chart_ano_labels and chart_ano_labels|length and chart_ano_totais and chart_ano_totais|length %}
 
         <div class="stack">
-          <!-- Card 1: Controles -->
+          <!-- Card 1: Cabeçalho + Controles -->
           <div class="card">
             <div class="card-title">
               <h2>Crescimento anual</h2>
               <div class="chips" style="align-items:center">
                 <span class="chip">Métrica</span>
-                <select id="selMetrica" style="border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;border-radius:12px;padding:9px 10px;font-weight:850;min-height:40px;font-size:12px">
+                <select id="selMetrica"
+                  style="border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;border-radius:12px;padding:9px 10px;font-weight:850;min-height:40px;font-size:12px">
                   <option value="faturamento" selected>Faturamento (R$)</option>
                   <option value="entregas">Entregas</option>
                   <option value="ticket">Ticket (R$)</option>
@@ -1021,22 +1042,22 @@ tbody tr:hover{background:#f6f9ff}
             <div class="subtle">Barra = Valor • Linha = YoY (%)</div>
           </div>
 
-          <!-- Card 2: Gráfico -->
+          <!-- Card 2: Gráfico (largura total) -->
           <div class="card">
             <div class="card-title">
               <h2>Gráfico anual</h2>
-              <div class="subtle">Valores sempre visíveis (sem corte)</div>
+              <div class="subtle">Visualização completa</div>
             </div>
             <div class="chartbox">
               <canvas id="chartAno"></canvas>
             </div>
           </div>
 
-          <!-- Card 3: KPIs -->
+          <!-- Card 3: KPIs (abaixo do gráfico, sem corte) -->
           <div class="card">
             <div class="card-title">
               <h2>Indicadores do período</h2>
-              <div class="subtle">Resumo por métrica</div>
+              <div class="subtle">Sem cortar números</div>
             </div>
 
             <div class="kpis">
@@ -1171,7 +1192,6 @@ tbody tr:hover{background:#f6f9ff}
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2"></script>
 
 <script>
 /* =========================
@@ -1300,16 +1320,17 @@ btnCloseModal?.addEventListener('click', closeModal);
 modalBg?.addEventListener('click', closeModal);
 
 /* =========================
-   KPIs DERIVADAS + ALERTAS
+   KPIs DERIVADAS
    ========================= */
 (function(){
   const pct = estat.total ? (estat.pagas/estat.total)*100 : 0;
-  const el = document.getElementById('kpiPctPagas');
-  if(el){
-    el.textContent = (pct||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%';
-  }
+  document.getElementById('kpiPctPagas').textContent =
+    (pct||0).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%';
 })();
 
+/* =========================
+   ALERTAS
+   ========================= */
 function renderAlertas(rows){
   const chips = document.getElementById('chipsAlertas');
   const sub = document.getElementById('subAlertas');
@@ -1485,6 +1506,7 @@ document.getElementById('btnClearQuick')?.addEventListener('click', ()=>{
   toast('Instantâneo limpo');
 });
 
+/* Busca global (topbar) */
 document.getElementById('qGlobal')?.addEventListener('input', (e)=>{
   instant.qText = (e.target.value || '').trim();
   recomputeAll();
@@ -1626,8 +1648,7 @@ document.getElementById('btnCopy')?.addEventListener('click', copyTable);
    KPIs EXTRAS
    ========================= */
 function renderExtraKPIs(rows){
-  const el = document.getElementById('kpiCoops');
-  if(el) el.textContent = fmtInt(rows.length);
+  document.getElementById('kpiCoops').textContent = fmtInt(rows.length);
 
   if(!rows.length){
     document.getElementById('kpiMaxTicket').textContent='—';
@@ -1668,6 +1689,7 @@ function makeGradient(ctx, c1, c2){
 }
 
 function buildCharts(rows){
+  // Dia
   const elDia = document.getElementById('chartDia');
   if(elDia && chartEntregasLabels.length){
     const ctx = elDia.getContext('2d');
@@ -1686,15 +1708,11 @@ function buildCharts(rows){
           tension:.35
         }]
       },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{y:{beginAtZero:true,grid:{color:'#eef2ff'}},x:{grid:{display:false}}}
-      }
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#eef2ff'}},x:{grid:{display:false}}}}
     });
   }
 
+  // Status
   const elS = document.getElementById('chartStatus');
   if(elS){
     const ctx = elS.getContext('2d');
@@ -1710,15 +1728,11 @@ function buildCharts(rows){
           borderWidth:2
         }]
       },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{legend:{position:'bottom'}},
-        cutout:'62%'
-      }
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},cutout:'62%'}
     });
   }
 
+  // Coop
   const elC = document.getElementById('chartCoop');
   if(elC){
     const ctx = elC.getContext('2d');
@@ -1736,41 +1750,32 @@ function buildCharts(rows){
           borderWidth:1.6
         }]
       },
-      options:{
-        responsive:true,
-        maintainAspectRatio:false,
-        plugins:{legend:{display:false}},
-        scales:{y:{beginAtZero:true,grid:{color:'#eef2ff'}},x:{grid:{display:false}}}
-      }
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#eef2ff'}},x:{grid:{display:false}}}}
     });
   }
 }
 
+/* Crescimento anual */
 function computeYoY(arr){
   return arr.map((v,i)=> i ? (arr[i-1] ? ((v-arr[i-1])/arr[i-1])*100 : null) : null);
 }
 
-/* ===== Crescimento anual (profissional + sem cortar) ===== */
 function buildChartAno(){
   const el = document.getElementById('chartAno');
   if(!el || !chartAnoLabelsRaw.length || !chartAnoTotaisRaw.length) return;
 
-  try{
-    if(window.ChartDataLabels) Chart.register(window.ChartDataLabels);
-  }catch(e){}
+  const anosNum = chartAnoLabelsRaw.map(y=>parseInt(y,10));
+  const mask = anosNum.map(y=>y>=2025);
+  const anos = chartAnoLabelsRaw.filter((_,i)=>mask[i]);
+  const totR$ = chartAnoTotaisRaw.filter((_,i)=>mask[i]);
+  const qtd   = (chartAnoQtdRaw||[]).length ? chartAnoQtdRaw.filter((_,i)=>mask[i]) : Array(anos.length).fill(null);
+  const tkt   = (chartAnoTicketRaw||[]).length ? chartAnoTicketRaw.filter((_,i)=>mask[i]) : Array(anos.length).fill(null);
 
-  const anos = chartAnoLabelsRaw.slice();
-  const totR$ = chartAnoTotaisRaw.slice();
-  const qtd   = (chartAnoQtdRaw||[]).length ? chartAnoQtdRaw.slice() : Array(anos.length).fill(null);
-  const tkt   = (chartAnoTicketRaw||[]).length ? chartAnoTicketRaw.slice() : Array(anos.length).fill(null);
+  if(!anos.length) return;
 
   const sel = document.getElementById('selMetrica');
   let metric = sel?.value || 'faturamento';
   const seriesByMetric = ()=> (metric==='faturamento'? totR$ : (metric==='entregas'? qtd : tkt));
-
-  const fmtMoney = (v)=> Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2});
-  const fmtInt2  = (v)=> Number(v||0).toLocaleString('pt-BR');
-  const fmtPct   = (v)=> (v==null ? '' : Number(v).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%');
 
   const ctx = el.getContext('2d');
   if(chartAno) chartAno.destroy();
@@ -1786,8 +1791,7 @@ function buildChartAno(){
           backgroundColor: makeGradient(ctx,'rgba(79,140,255,0.22)','rgba(79,140,255,0.05)'),
           borderColor:'#003399',
           borderWidth:1.6,
-          yAxisID:'y',
-          order:2
+          yAxisID:'y'
         },
         {
           type:'line',
@@ -1799,94 +1803,44 @@ function buildChartAno(){
           pointRadius:3,
           tension:.35,
           spanGaps:true,
-          yAxisID:'y1',
-          order:1
+          yAxisID:'y1'
         }
       ]
     },
     options:{
       responsive:true,
       maintainAspectRatio:false,
-      devicePixelRatio: Math.min(window.devicePixelRatio || 1, 2),
-      layout:{ padding:{left:14,right:20,top:10,bottom:0} },
-      plugins:{
-        legend:{ display:true },
-        tooltip:{
-          callbacks:{
-            label:(ctx)=>{
-              const v = ctx.raw;
-              if(ctx.dataset.yAxisID === 'y1') return ` ${ctx.dataset.label}: ${fmtPct(v)}`;
-              if(metric==='entregas') return ` ${ctx.dataset.label}: ${fmtInt2(v)}`;
-              return ` ${ctx.dataset.label}: R$ ${fmtMoney(v)}`;
-            }
-          }
-        },
-        datalabels: window.ChartDataLabels ? {
-          display:(ctx)=>{
-            if(ctx.dataset.type === 'line') return true;
-            const count = ctx.chart.data.labels.length;
-            return count <= 8; // barras só quando poucos anos
-          },
-          align:(ctx)=> ctx.dataset.type==='line' ? 'top' : 'end',
-          anchor:(ctx)=> ctx.dataset.type==='line' ? 'end' : 'end',
-          offset:2,
-          clamp:true,
-          formatter:(v, ctx)=>{
-            if(ctx.dataset.yAxisID === 'y1') return fmtPct(v);
-            if(metric==='entregas') return fmtInt2(v);
-            return fmtMoney(v);
-          },
-          color:'#0b2c6f',
-          font:{ weight:'900', size:11 }
-        } : undefined
-      },
+      plugins:{legend:{display:true}},
       scales:{
-        x:{
-          grid:{ display:false },
-          ticks:{
-            autoSkip:true,
-            maxTicksLimit: 10,
-            maxRotation:0,
-            font:{ weight:'900' }
-          }
-        },
-        y:{
-          beginAtZero:true,
-          grid:{ color:'#eef2ff' },
-          ticks:{
-            callback:(v)=>{
-              if(metric==='entregas') return fmtInt2(v);
-              return 'R$ ' + Number(v).toLocaleString('pt-BR');
-            }
-          },
-          title:{ display:true, text:(metric==='entregas' ? 'Entregas' : 'Valor') }
-        },
-        y1:{
-          beginAtZero:false,
-          position:'right',
-          grid:{ drawOnChartArea:false },
-          ticks:{ callback:(v)=> fmtPct(v) },
-          title:{ display:true, text:'% YoY' }
-        }
+        y:{beginAtZero:true,grid:{color:'#eef2ff'},title:{display:true,text:'Valor'}},
+        y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'% YoY'}},
+        x:{grid:{display:false}}
       }
     }
   });
 
+  function fmtMetric(v){
+    if(v==null) return '—';
+    if(metric==='entregas') return fmtInt(v);
+    return fmtBR(v);
+  }
+
   function refreshAnoKPIs(){
-    const s = seriesByMetric().map(v=>Number(v||0));
+    const s = seriesByMetric();
     const n = s.length;
     const lastYear = anos[n-1];
-    const lastVal  = s[n-1];
-    const prevVal  = n>1 ? s[n-2] : null;
+    const lastVal = s[n-1];
+    const prevVal = n>1 ? s[n-2] : null;
 
     document.getElementById('kpiUltAno').textContent = lastYear ?? '—';
-    document.getElementById('kpiUltVal').textContent = (metric==='entregas' ? fmtInt2(lastVal) : fmtMoney(lastVal));
+    document.getElementById('kpiUltVal').textContent = fmtMetric(lastVal);
 
-    const total = s.reduce((a,b)=>a+b,0);
-    const media = n ? total/n : 0;
+    const valid = s.filter(v=>v!=null).map(v=>Number(v||0));
+    const total = valid.reduce((a,b)=>a+b,0);
+    const media = valid.length ? total/valid.length : 0;
 
     let yoyTxt='—';
-    if(prevVal != null && prevVal !== 0){
+    if(prevVal && prevVal!==0){
       const p=((lastVal-prevVal)/prevVal)*100;
       yoyTxt=(p>=0?'+':'') + p.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%';
     }
@@ -1905,30 +1859,26 @@ function buildChartAno(){
       lblUltVal.textContent='Entregas';
       lblMedia.textContent='Média (qtd)';
       lblTotPeriodo.textContent='Total (qtd)';
-      document.getElementById('kpiMedia').textContent = fmtInt2(media);
-      document.getElementById('kpiTotPeriodo').textContent = fmtInt2(total);
+      document.getElementById('kpiMedia').textContent = fmtInt(media);
+      document.getElementById('kpiTotPeriodo').textContent = fmtInt(total);
     }else{
       lblUltVal.textContent = (metric==='ticket'?'Ticket':'Faturamento');
       lblMedia.textContent = 'Média';
       lblTotPeriodo.textContent = 'Total';
-      document.getElementById('kpiMedia').textContent = fmtMoney(media);
-      document.getElementById('kpiTotPeriodo').textContent = fmtMoney(total);
+      document.getElementById('kpiMedia').textContent = fmtBR(media);
+      document.getElementById('kpiTotPeriodo').textContent = fmtBR(total);
     }
   }
-
   refreshAnoKPIs();
 
-  if(sel && !sel.dataset.bound){
-    sel.dataset.bound = '1';
-    sel.addEventListener('change', ()=>{
-      metric = sel.value;
-      chartAno.data.datasets[0].data = seriesByMetric();
-      chartAno.data.datasets[1].data = computeYoY(seriesByMetric());
-      chartAno.options.scales.y.title.text = (metric==='entregas' ? 'Entregas' : 'Valor');
-      chartAno.update();
-      refreshAnoKPIs();
-    });
-  }
+  sel?.addEventListener('change', ()=>{
+    metric = sel.value;
+    chartAno.data.datasets[0].data = seriesByMetric();
+    chartAno.data.datasets[1].data = computeYoY(seriesByMetric());
+    chartAno.options.scales.y.title.text = (metric==='entregas' ? 'Entregas' : 'Valor');
+    chartAno.update();
+    refreshAnoKPIs();
+  });
 }
 
 /* =========================
