@@ -8,21 +8,25 @@
 
 <style>
 :root{
+  /* Coopex (azul + toque verde) */
   --brand:#003399;
   --brand2:#4f8cff;
   --green:#12b981;
 
-  --text:#111827;
-  --muted:#6b7280;
+  --text:#0f172a;
+  --muted:#64748b;
 
   --bg:#f3f6ff;
   --card:#ffffff;
   --line:#dbe6ff;
 
-  --shadow:0 10px 26px rgba(9,15,40,.07);
-  --shadow2:0 6px 18px rgba(9,15,40,.06);
+  --shadow:0 18px 50px rgba(9,15,40,.10);
+  --shadow2:0 10px 28px rgba(9,15,40,.08);
 
-  --r:16px;
+  --r:20px;
+  --r2:16px;
+
+  --ring:0 0 0 4px rgba(79,140,255,.18);
 
   --acc-blue:#2563eb;
   --acc-green:#16a34a;
@@ -32,18 +36,18 @@
   --acc-rose:#e11d48;
   --acc-slate:#64748b;
 
-  --ring:0 0 0 4px rgba(79,140,255,.20);
+  --chip:#eef3ff;
 }
 
 *{box-sizing:border-box}
 html,body{
   margin:0;
-  background:
-    radial-gradient(1200px 650px at 12% -10%, rgba(79,140,255,.14), transparent 55%),
-    radial-gradient(900px 540px at 95% 0%, rgba(18,185,129,.10), transparent 60%),
-    var(--bg);
   font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;
   color:var(--text);
+  background:
+    radial-gradient(900px 520px at 12% -10%, rgba(79,140,255,.18), transparent 58%),
+    radial-gradient(900px 520px at 92% 0%, rgba(18,185,129,.14), transparent 55%),
+    linear-gradient(180deg, #f6f8ff 0%, #f1f5ff 100%);
   font-size:13px;
   line-height:1.25;
 }
@@ -53,327 +57,273 @@ svg{display:block}
 
 .container{max-width:1560px;margin:0 auto;padding:0 18px}
 
-/* ====== LAYOUT ====== */
-.layout{display:grid;grid-template-columns:272px 1fr;min-height:100vh}
-@media (max-width:980px){ .layout{grid-template-columns:1fr} }
-
-/* ====== SIDEBAR ====== */
-.sidebar{
-  position:sticky; top:0; height:100vh;
-  padding:14px 12px;
-  border-right:1px solid rgba(219,230,255,.9);
-  background:rgba(255,255,255,.78);
-  backdrop-filter: blur(10px);
+/* ====== TOP HEADER (sem menu lateral) ====== */
+.top{
+  position:sticky; top:0; z-index:60;
+  background:linear-gradient(180deg, rgba(255,255,255,.84), rgba(255,255,255,.64));
+  backdrop-filter: blur(12px);
+  border-bottom:1px solid rgba(219,230,255,.9);
 }
-@media (max-width:980px){
-  .sidebar{
-    position:fixed; inset:0 auto 0 0; width:318px; max-width:88vw;
-    transform:translateX(-110%);
-    transition:transform .20s ease;
-    z-index:80; box-shadow:var(--shadow);
-  }
-  .sidebar.show{transform:translateX(0)}
+.top-inner{
+  padding:14px 0 10px;
+  display:grid;
+  grid-template-columns: 340px 1fr auto;
+  gap:12px;
+  align-items:center;
+}
+@media (max-width:1050px){
+  .top-inner{grid-template-columns:1fr; gap:10px;}
 }
 
-.sb-head{
-  display:flex;align-items:center;gap:10px;
-  padding:10px 10px 12px;
+.brand{
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  border-radius:18px;
   border:1px solid rgba(219,230,255,.9);
-  border-radius:14px;
-  background:#fff;
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
+  background:rgba(255,255,255,.86);
+  box-shadow:0 10px 28px rgba(9,15,40,.06);
 }
-.logo{
-  width:42px;height:42px;border-radius:12px;background:#fff;object-fit:contain;
-  padding:6px;border:1px solid rgba(219,230,255,.9);
-}
-.sb-title{min-width:0}
-.sb-title b{
-  display:block;font-weight:900;color:#0b2c6f;
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  font-size:13px;
-}
-.sb-title small{
-  display:block;margin-top:2px;font-weight:800;color:var(--muted);
-  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
-  font-size:11px;
-}
-
-.nav{padding:12px 2px;display:flex;flex-direction:column;gap:10px}
-.nav button{
-  width:100%;
-  display:flex;align-items:center;gap:10px;
+.brand img{
+  width:44px;height:44px;border-radius:14px;
   border:1px solid rgba(219,230,255,.95);
-  background:#fff;
-  border-radius:14px;
-  padding:11px 12px;
-  cursor:pointer;
-  font-weight:900;
+  padding:6px;background:#fff;object-fit:contain;
+}
+.brand .t{min-width:0}
+.brand .t b{
+  display:block;
+  font-weight:950;
   color:#0b2c6f;
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
+  font-size:13px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.nav button:hover{background:#f6f9ff}
-.nav button.active{
-  border-color:#c9dbff;
-  background:linear-gradient(180deg,#ffffff 0%, #f2f7ff 100%);
-  box-shadow:var(--shadow2);
-}
-.nav .meta{font-size:11px;color:var(--muted);font-weight:800}
-.nav .right{margin-left:auto;color:#94a3b8;font-weight:950}
-
-.sb-foot{
-  margin-top:auto;
-  padding:10px 2px 0;
-}
-.sb-foot .mini{
-  border:1px solid rgba(219,230,255,.9);
-  border-radius:14px;
-  background:#fff;
-  padding:10px;
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
-}
-.sb-foot .row{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  padding:8px 6px;border-bottom:1px dashed #e8eeff;
-}
-.sb-foot .row:last-child{border-bottom:0}
-.sb-foot .k{color:var(--muted);font-weight:900;font-size:11px}
-.sb-foot .v{font-weight:950;color:#0b2c6f}
-
-/* Overlay mobile */
-.overlay{
-  position:fixed; inset:0;
-  background:rgba(10,15,40,.45);
-  backdrop-filter: blur(3px);
-  display:none; z-index:70;
-}
-.overlay.show{display:block}
-
-/* ====== TOPBAR ====== */
-.content{padding:14px 0 22px}
-.topbar{
-  position:sticky; top:0; z-index:50;
-  padding:12px 0;
-  background:linear-gradient(90deg, rgba(255,255,255,.78), rgba(255,255,255,.62));
-  backdrop-filter: blur(10px);
-  border-bottom:1px solid rgba(219,230,255,.8);
-}
-.topbar-inner{
-  display:grid;grid-template-columns:auto 1fr auto;
-  gap:10px;align-items:center;
-}
-@media (max-width:980px){
-  .topbar-inner{grid-template-columns:auto 1fr;row-gap:10px}
+.brand .t small{
+  display:block; margin-top:2px;
+  color:var(--muted);
+  font-weight:850;
+  font-size:11px;
+  white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
 
-.hamb{
-  width:44px;height:44px;border-radius:14px;cursor:pointer;
-  background:#fff;border:1px solid rgba(219,230,255,.95);
-  display:inline-flex;align-items:center;justify-content:center;
-  box-shadow:0 6px 18px rgba(9,15,40,.05);
+.controls{
+  display:flex; gap:10px; align-items:center; justify-content:flex-end; flex-wrap:wrap;
 }
-.hamb:focus{outline:none;box-shadow:var(--ring)}
-
 .search{
-  display:flex;align-items:center;gap:10px;
-  background:#fff;border:1px solid rgba(219,230,255,.95);
-  border-radius:16px;padding:10px 12px;
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
+  flex:1;
+  min-width:260px;
+  display:flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  border-radius:999px;
+  border:1px solid rgba(219,230,255,.95);
+  background:rgba(255,255,255,.92);
+  box-shadow:0 10px 28px rgba(9,15,40,.05);
 }
 .search input{
-  border:none;outline:none;width:100%;
-  font-weight:800;color:#0b2c6f;background:transparent;
+  border:none; outline:none; width:100%;
+  background:transparent;
+  font-weight:850; color:#0b2c6f;
   font-size:12px;
 }
-.pills{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap}
 .pill{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:10px 12px;border-radius:999px;
-  background:#fff;border:1px solid rgba(219,230,255,.95);
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
-  font-weight:900;color:#0b2c6f;
+  display:inline-flex; align-items:center; gap:8px;
+  padding:10px 12px;
+  border-radius:999px;
+  border:1px solid rgba(219,230,255,.95);
+  background:rgba(255,255,255,.92);
+  box-shadow:0 10px 28px rgba(9,15,40,.05);
+  font-weight:900; color:#0b2c6f;
   font-size:12px;
 }
 .btn{
-  display:inline-flex;align-items:center;gap:10px;
-  padding:10px 12px;border-radius:14px;
-  font-weight:900;cursor:pointer;
+  display:inline-flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  border-radius:999px;
   border:1px solid rgba(219,230,255,.95);
-  background:#fff;color:#003399;
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
-  font-size:12px;
-}
-.btn.primary{
-  background:linear-gradient(90deg,var(--brand),var(--brand2));
-  border-color:transparent;color:#fff;
+  background:rgba(255,255,255,.92);
+  box-shadow:0 10px 28px rgba(9,15,40,.05);
+  font-weight:900; cursor:pointer;
+  color:#0b2c6f; font-size:12px;
 }
 .btn:focus{outline:none;box-shadow:var(--ring)}
+.btn.primary{
+  background:linear-gradient(90deg,var(--brand),var(--brand2));
+  border-color:transparent;
+  color:#fff;
+}
+
+/* Tabs */
+.tabs{
+  padding:0 0 14px;
+}
+.tabs-row{
+  display:flex; gap:10px; flex-wrap:wrap;
+}
+.tab{
+  display:inline-flex; align-items:center; gap:10px;
+  padding:10px 12px;
+  border-radius:14px;
+  border:1px solid rgba(219,230,255,.95);
+  background:rgba(255,255,255,.74);
+  box-shadow:0 10px 26px rgba(9,15,40,.04);
+  font-weight:950;
+  color:#0b2c6f;
+  cursor:pointer;
+  user-select:none;
+}
+.tab small{color:var(--muted); font-weight:850}
+.tab.active{
+  background:linear-gradient(180deg, rgba(255,255,255,.95), rgba(244,248,255,.92));
+  border-color:#c9dbff;
+  box-shadow:var(--shadow2);
+}
+.tab:focus{outline:none;box-shadow:var(--ring)}
 
 /* ====== SECTIONS ====== */
-.section{display:none}
+.section{display:none;padding:16px 0 22px}
 .section.active{display:block}
 
-/* ====== CARDS ====== */
+/* ====== CARDS (novo estilo “inovador”) ====== */
 .card{
   background:rgba(255,255,255,.92);
-  border:1px solid rgba(219,230,255,.95);
+  border:1px solid rgba(219,230,255,.9);
   border-radius:var(--r);
   box-shadow:var(--shadow2);
-  padding:14px;
+  padding:16px;
   backdrop-filter: blur(10px);
 }
+.card.soft{
+  background:rgba(255,255,255,.86);
+  box-shadow:0 12px 30px rgba(9,15,40,.06);
+}
 .card-title{
-  display:flex;align-items:center;justify-content:space-between;gap:10px;
-  margin-bottom:10px;
+  display:flex; align-items:flex-start; justify-content:space-between; gap:12px;
+  margin-bottom:12px;
 }
 .card-title h2{
   margin:0;
   font-size:13px;
-  color:#0b2c6f;
-  letter-spacing:.15px;
   font-weight:950;
+  color:#0b2c6f;
+  letter-spacing:.12px;
 }
-.subtle{color:var(--muted);font-weight:800;font-size:11px}
-.hr{height:1px;background:#e9efff;border:0;margin:12px 0}
+.subtle{color:var(--muted);font-weight:850;font-size:11px}
+.hr{height:1px;background:#e9efff;border:0;margin:14px 0}
 
-/* KPI GRID */
-.kpis{display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:10px}
-.kpi{
-  grid-column:span 2;
-  background:#fff;
-  border:1px solid rgba(219,230,255,.95);
-  border-left:6px solid var(--accent, var(--acc-slate));
-  border-radius:14px;
-  padding:12px 12px 10px;
-  box-shadow:0 8px 22px rgba(9,15,40,.05);
-  min-height:92px;
-  display:flex;flex-direction:column;justify-content:space-between;
-  overflow:hidden; /* garante que texto NÃO escape */
+/* KPI cards (estilo da imagem) */
+.kpis{
+  display:grid;
+  grid-template-columns: repeat(12, minmax(0,1fr));
+  gap:12px;
 }
-.kpi .top{
-  display:flex;align-items:center;justify-content:space-between;gap:8px;
+.kpiCard{
+  grid-column: span 3;
+  position:relative;
+  border-radius:18px;
+  background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(247,250,255,.92));
+  border:1px solid rgba(219,230,255,.95);
+  box-shadow:0 10px 24px rgba(9,15,40,.06);
+  padding:14px 14px 12px;
+  overflow:hidden;
+}
+.kpiCard:before{
+  content:"";
+  position:absolute; inset:0;
+  background:
+    radial-gradient(420px 160px at 20% 0%, rgba(79,140,255,.14), transparent 60%),
+    radial-gradient(380px 140px at 90% 10%, rgba(18,185,129,.10), transparent 55%);
+  pointer-events:none;
+}
+.kpiInner{position:relative; z-index:1; display:grid; grid-template-columns:1fr auto; gap:12px; align-items:start;}
+.kpiTop{
+  display:flex; flex-direction:column; gap:6px;
   min-width:0;
 }
-.kpi .label{
+.kpiTop .ttl{
   font-size:11px;
-  font-weight:900;
-  color:#1f2937;
+  letter-spacing:.10em;
+  text-transform:uppercase;
+  color:var(--muted);
+  font-weight:950;
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-.kpi .ico{
-  width:32px;height:32px;border-radius:12px;
-  background:rgba(79,140,255,.10);
-  border:1px solid rgba(219,230,255,.95);
-  display:flex;align-items:center;justify-content:center;
-  color:#0b2c6f;
-  flex:0 0 auto;
-}
-.kpi .value{
+.kpiTop .val{
+  font-size:18px;
   font-weight:950;
-  font-size:clamp(14px, 1.3vw, 18px);
-  line-height:1.08;
-  color:#111827;
+  color:#0f172a;
   font-variant-numeric: tabular-nums;
-  word-break:break-word;     /* número grande fica dentro do card */
+  line-height:1.15;
+  word-break:break-word;
 }
-.kpi .hint{
-  margin-top:6px;
+.kpiTop .hint{
   font-size:11px;
   font-weight:850;
   color:var(--muted);
   white-space:nowrap; overflow:hidden; text-overflow:ellipsis;
 }
-@media (max-width:1280px){ .kpi{grid-column:span 3} }
-@media (max-width:980px){ .kpi{grid-column:span 4} }
-@media (max-width:680px){ .kpi{grid-column:span 12} }
+.kpiIcon{
+  width:40px;height:40px;border-radius:14px;
+  border:1px solid rgba(219,230,255,.95);
+  background:rgba(255,255,255,.9);
+  box-shadow:0 8px 18px rgba(9,15,40,.06);
+  display:flex; align-items:center; justify-content:center;
+  color:#0b2c6f;
+}
+.kpiBar{
+  position:absolute; left:0; top:0; bottom:0; width:6px;
+  background:var(--accent, var(--acc-blue));
+  opacity:.95;
+}
 
-/* ====== GRIDS ====== */
-.grid2{display:grid;grid-template-columns:1.12fr .88fr;gap:12px}
+@media (max-width:1280px){ .kpiCard{grid-column:span 4;} }
+@media (max-width:980px){ .kpiCard{grid-column:span 6;} }
+@media (max-width:680px){ .kpiCard{grid-column:span 12;} }
+
+/* Grids */
+.grid2{display:grid;grid-template-columns:1.05fr .95fr;gap:12px}
 .grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
 @media (max-width:1100px){ .grid2{grid-template-columns:1fr} .grid3{grid-template-columns:1fr} }
 
-/* ====== CRESCIMENTO (cards um abaixo do outro + KPIs sem cortar) ====== */
-.stack{display:grid;gap:12px}
-.chartbox{
+/* Charts */
+.chartWrap{
   position:relative;
-  width:100%;
-  height:340px;
+  height:280px;
+  border-radius:16px;
 }
-@media (max-width:1100px){ .chartbox{height:300px} }
-@media (max-width:680px){ .chartbox{height:260px} }
-
-/* só no Crescimento: KPIs viram auto-fit e nunca ficam apertados */
-#sec-crescimento .kpis{
-  display:grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap:10px;
-}
-#sec-crescimento .kpi{
-  grid-column:auto !important;
-  min-width:200px;
-}
-#sec-crescimento .kpi .value{
-  white-space:normal !important;
-  overflow:visible !important;
-  text-overflow:clip !important;
-}
-#sec-crescimento .kpi .label,
-#sec-crescimento .kpi .hint{
-  white-space:normal;
-  overflow:visible;
-  text-overflow:clip;
-}
+.chartWrap.tall{height:340px}
 @media (max-width:680px){
-  #sec-crescimento .kpis{ grid-template-columns:1fr; }
-  #sec-crescimento .kpi{ min-width:0; }
+  .chartWrap{height:240px}
+  .chartWrap.tall{height:280px}
 }
+canvas{width:100% !important; height:100% !important}
 
-/* ====== QUICK BAR ====== */
-.quickbar{
-  display:grid;grid-template-columns:1fr 1fr 1fr auto auto auto;gap:8px;
-  align-items:end;
-}
-@media (max-width:1100px){
-  .quickbar{grid-template-columns:1fr 1fr 1fr; }
-}
-.qfield label{display:block;font-size:11px;font-weight:950;color:#0b2c6f;margin-bottom:6px}
-.qfield input,.qfield select{
-  width:100%;
-  border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;
-  border-radius:12px;padding:9px 10px;font-weight:850;min-height:40px;
-  font-size:12px;
-}
-.qfield input:focus,.qfield select:focus{outline:none;box-shadow:var(--ring);border-color:#9fb7ff}
-.toggles{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-.tgl{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:9px 10px;border-radius:999px;
-  background:#fff;border:1px solid rgba(219,230,255,.95);
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
-  cursor:pointer;
-  font-weight:900;color:#0b2c6f;
-  user-select:none;
-  font-size:12px;
-}
-.tgl.on{border-color:#c9dbff;background:#f4f8ff}
-.tgl svg{opacity:.9}
-
-/* ====== TABLE ====== */
+/* Table */
 .table-wrap{
-  overflow:auto;border-radius:14px;background:#fff;
+  overflow:auto;
+  border-radius:16px;
+  background:#fff;
   border:1px solid rgba(219,230,255,.95);
-  box-shadow:0 10px 26px rgba(9,15,40,.05);
+  box-shadow:0 12px 30px rgba(9,15,40,.06);
 }
-table{width:100%;border-collapse:collapse;min-width:780px}
+table{width:100%;border-collapse:collapse;min-width:820px}
 th,td{padding:11px 10px;border-bottom:1px solid #edf2ff;text-align:left;white-space:nowrap}
 th{
   background:#f5f7ff;color:#0b2c6f;font-weight:950;
-  position:sticky;top:0;cursor:pointer;user-select:none;
-  font-size:12px;
+  position:sticky;top:0;cursor:pointer;user-select:none;font-size:12px;
 }
 tbody tr:hover{background:#f6f9ff}
 .t-right{text-align:right}
 .t-center{text-align:center}
+
+/* Chips */
+.chips{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.chip{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:8px 10px;border-radius:999px;
+  background:var(--chip); border:1px solid #cfe0ff;
+  color:#0b2c6f; font-weight:900; font-size:12px;
+}
+.chip.ok{background:#e9fff3;border-color:#bfead7;color:#0a7a3a}
+.chip.warn{background:#fff6e8;border-color:#ffe2b5;color:#8a4b00}
+.chip.danger{background:#ffeef1;border-color:#ffc6d0;color:#a1122a}
 
 .badge{
   display:inline-flex;align-items:center;gap:8px;
@@ -382,24 +332,53 @@ tbody tr:hover{background:#f6f9ff}
   background:#fff;font-weight:900;color:#0b2c6f;
   font-size:12px;
 }
-.chips{display:flex;gap:8px;flex-wrap:wrap}
-.chip{
-  display:inline-flex;align-items:center;gap:8px;
-  padding:8px 10px;border-radius:999px;
-  background:#eef3ff;border:1px solid #cfe0ff;color:#003399;font-weight:900;
-  font-size:12px;
-}
-.chip.ok{background:#e9fff3;border-color:#bfead7;color:#0a7a3a}
-.chip.warn{background:#fff6e8;border-color:#ffe2b5;color:#8a4b00}
-.chip.danger{background:#ffeef1;border-color:#ffc6d0;color:#a1122a}
 
 .no-data{
   display:flex;align-items:center;justify-content:center;
-  min-height:140px;border:2px dashed #e0e8ff;border-radius:14px;
-  color:var(--muted);font-weight:900;background:rgba(255,255,255,.55);
+  min-height:160px;
+  border:2px dashed #e0e8ff;
+  border-radius:16px;
+  color:var(--muted);
+  font-weight:900;
+  background:rgba(255,255,255,.55);
 }
 
-/* ====== RANK LIST ====== */
+/* Quick filters */
+.quickbar{
+  display:grid;
+  grid-template-columns: 170px 220px 220px 1fr;
+  gap:10px;
+  align-items:end;
+  margin-bottom:12px;
+}
+@media (max-width:1100px){
+  .quickbar{grid-template-columns:1fr 1fr; }
+}
+@media (max-width:680px){
+  .quickbar{grid-template-columns:1fr; }
+}
+.qfield label{display:block;font-size:11px;font-weight:950;color:#0b2c6f;margin-bottom:6px}
+.qfield input,.qfield select{
+  width:100%;
+  border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;
+  border-radius:14px;padding:10px 12px;font-weight:850;min-height:42px;
+  font-size:12px;
+}
+.qfield input:focus,.qfield select:focus{outline:none;box-shadow:var(--ring);border-color:#9fb7ff}
+.toggles{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
+.tgl{
+  display:inline-flex;align-items:center;gap:8px;
+  padding:10px 12px;border-radius:999px;
+  background:#fff;border:1px solid rgba(219,230,255,.95);
+  box-shadow:0 10px 28px rgba(9,15,40,.05);
+  cursor:pointer;
+  font-weight:900;color:#0b2c6f;
+  user-select:none;
+  font-size:12px;
+}
+.tgl.on{border-color:#c9dbff;background:#f4f8ff}
+
+/* Ranking list */
 .rank{list-style:none;margin:0;padding:0}
 .rank li{
   display:flex;align-items:center;gap:10px;
@@ -409,14 +388,13 @@ tbody tr:hover{background:#f6f9ff}
 .medal{
   width:28px;height:28px;border-radius:999px;
   display:flex;align-items:center;justify-content:center;
-  font-weight:950;color:#fff;
-  flex:0 0 auto;
+  font-weight:950;color:#fff; flex:0 0 auto;
 }
 .m1{background:#f59e0b}.m2{background:#94a3b8}.m3{background:#d97706}.mX{background:#4f8cff}
 .rLabel{flex:1;font-weight:950;color:#0b2c6f;overflow:hidden;text-overflow:ellipsis}
 .rVal{font-weight:950;color:#111827;opacity:.95;white-space:nowrap}
 
-/* ====== MODAL ====== */
+/* Modal filtros */
 .modal{
   position:fixed; inset:0; z-index:90;
   display:none; align-items:center; justify-content:center;
@@ -424,17 +402,19 @@ tbody tr:hover{background:#f6f9ff}
 }
 .modal.show{display:flex}
 .modal-bg{
-  position:absolute; inset:0; background:rgba(10,15,40,.48); backdrop-filter: blur(3px);
+  position:absolute; inset:0;
+  background:rgba(10,15,40,.50);
+  backdrop-filter: blur(4px);
 }
 .modal-card{
   position:relative;
   width:1100px; max-width:96vw; max-height:90vh; overflow:auto;
   background:rgba(255,255,255,.94);
   border:1px solid rgba(219,230,255,.95);
-  border-radius:18px;
+  border-radius:22px;
   box-shadow:var(--shadow);
-  padding:12px;
-  backdrop-filter: blur(10px);
+  padding:14px;
+  backdrop-filter: blur(12px);
 }
 .modal-head{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -445,7 +425,7 @@ tbody tr:hover{background:#f6f9ff}
   width:44px;height:44px;border-radius:14px;cursor:pointer;
   background:#fff;border:1px solid rgba(219,230,255,.95);
   display:inline-flex;align-items:center;justify-content:center;
-  box-shadow:0 6px 18px rgba(9,15,40,.04);
+  box-shadow:0 10px 28px rgba(9,15,40,.05);
 }
 .iconbtn:focus{outline:none;box-shadow:var(--ring)}
 .formgrid{
@@ -459,13 +439,13 @@ tbody tr:hover{background:#f6f9ff}
 .field input,.field select{
   width:100%;
   border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;
-  border-radius:12px;padding:9px 10px;font-weight:850;min-height:40px;
+  border-radius:14px;padding:10px 12px;font-weight:850;min-height:42px;
   font-size:12px;
 }
 .field input:focus,.field select:focus{outline:none;box-shadow:var(--ring);border-color:#9fb7ff}
 .modal-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end;padding:12px 6px}
 .btn2{
-  border-radius:14px;padding:10px 12px;font-weight:950;cursor:pointer;
+  border-radius:999px;padding:10px 12px;font-weight:950;cursor:pointer;
   border:1px solid rgba(219,230,255,.95);
   background:#fff;color:#003399;
   font-size:12px;
@@ -473,7 +453,7 @@ tbody tr:hover{background:#f6f9ff}
 .btn2.primary{background:linear-gradient(90deg,var(--brand),var(--brand2));border-color:transparent;color:#fff}
 .btn2:focus{outline:none;box-shadow:var(--ring)}
 
-/* ====== TOAST ====== */
+/* Toast */
 .toast{
   position:fixed; right:14px; bottom:14px; z-index:95;
   display:flex;flex-direction:column;gap:10px;
@@ -481,17 +461,17 @@ tbody tr:hover{background:#f6f9ff}
 .toast .t{
   background:#fff;border:1px solid rgba(219,230,255,.95);
   border-left:6px solid var(--acc-blue);
-  border-radius:14px;
+  border-radius:16px;
   box-shadow:var(--shadow);
   padding:10px 12px;
-  min-width:240px; max-width:340px;
+  min-width:240px; max-width:360px;
   font-weight:900;color:#0b2c6f;
 }
-.toast .t small{display:block;color:var(--muted);font-weight:800;margin-top:4px}
+.toast .t small{display:block;color:var(--muted);font-weight:850;margin-top:4px}
 
-/* PRINT */
+/* Print */
 @media print{
-  .sidebar,.topbar,.modal,.overlay,.toast{display:none !important}
+  .top,.modal,.toast{display:none !important}
   body{background:#fff}
   .card{box-shadow:none}
 }
@@ -500,637 +480,688 @@ tbody tr:hover{background:#f6f9ff}
 
 <body>
 
-<div class="overlay" id="overlay"></div>
 <div class="toast" id="toast"></div>
 
-<div class="layout">
-  <!-- ====== SIDEBAR ====== -->
-  <aside class="sidebar" id="sidebar" aria-hidden="false">
-    <div class="sb-head">
-      <img class="logo" src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Coopex"
-           onerror="this.onerror=null;this.src='https://via.placeholder.com/44?text=LOGO';">
-      <div class="sb-title">
-        <b>Painel Analítico</b>
-        <small>{{ periodo_legivel or 'todo o período' }}</small>
-      </div>
-    </div>
-
-    <div class="nav">
-      <button class="active" data-sec="sec-resumo">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-          <span>Resumo</span>
-          <span class="meta">KPIs • Alertas</span>
-        </div>
-        <span class="right">›</span>
-      </button>
-
-      <button data-sec="sec-cooperados">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-          <span>Cooperados</span>
-          <span class="meta">Tabela • Ranking</span>
-        </div>
-        <span class="right">›</span>
-      </button>
-
-      <button data-sec="sec-graficos">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-          <span>Gráficos</span>
-          <span class="meta">Dia • Status • Coop</span>
-        </div>
-        <span class="right">›</span>
-      </button>
-
-      <button data-sec="sec-rankings">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-          <span>Rankings</span>
-          <span class="meta">Bairros • Clientes</span>
-        </div>
-        <span class="right">›</span>
-      </button>
-
-      <button data-sec="sec-crescimento">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-          <span>Crescimento</span>
-          <span class="meta">Anual • YoY</span>
-        </div>
-        <span class="right">›</span>
-      </button>
-
-      <button data-sec="sec-export">
-        <div style="display:flex;flex-direction:column;gap:2px;min-width:0">
-          <span>Exportar</span>
-          <span class="meta">Excel • CSV • PNG</span>
-        </div>
-        <span class="right">›</span>
-      </button>
-    </div>
-
-    <div class="sb-foot">
-      <div class="mini">
-        <div class="row">
-          <span class="k">Entregas</span><span class="v">{{ estatisticas.total or 0 }}</span>
-        </div>
-        <div class="row">
-          <span class="k">Pagas</span><span class="v">{{ estatisticas.pagas or 0 }}</span>
-        </div>
-        <div class="row">
-          <span class="k">Pendentes</span><span class="v">{{ estatisticas.pendentes or 0 }}</span>
-        </div>
-        <div class="row">
-          <span class="k">R$ total</span><span class="v">{{ '%.2f'|format(estatisticas.total_valor or 0) }}</span>
+<!-- ====== HEADER (sem sidebar) ====== -->
+<header class="top">
+  <div class="container">
+    <div class="top-inner">
+      <div class="brand">
+        <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Coopex"
+             onerror="this.onerror=null;this.src='https://via.placeholder.com/44?text=LOGO';">
+        <div class="t">
+          <b>Painel Analítico</b>
+          <small>{{ periodo_legivel or 'todo o período' }}</small>
         </div>
       </div>
-    </div>
-  </aside>
 
-  <!-- ====== CONTENT ====== -->
-  <div class="content">
-    <!-- TOPBAR -->
-    <div class="topbar">
-      <div class="container topbar-inner">
-        <button class="hamb" id="btnHamb" type="button" aria-label="Abrir menu">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M4 7h16M4 12h16M4 17h16" stroke="#003399" stroke-width="2.3" stroke-linecap="round"/>
+      <div class="search" title="Busca rápida (cooperados)">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
+          <path d="M21 21l-4.3-4.3" stroke="#4f8cff" stroke-width="2.2" stroke-linecap="round"/>
+          <circle cx="11" cy="11" r="6.5" stroke="#003399" stroke-width="2.2"/>
+        </svg>
+        <input id="qGlobal" type="search" placeholder="Buscar cooperado..." />
+      </div>
+
+      <div class="controls">
+        <span class="pill" id="pillPeriodo" title="Período (servidor)">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M7 3v3M17 3v3" stroke="#003399" stroke-width="2.2" stroke-linecap="round"/>
+            <path d="M4 9h16" stroke="#4f8cff" stroke-width="2.2" stroke-linecap="round"/>
+            <rect x="4.5" y="6.5" width="15" height="14" rx="3" stroke="#003399" stroke-width="2.2"/>
           </svg>
+          {{ periodo_legivel or 'todo o período' }}
+        </span>
+
+        <button class="btn" id="btnOpenFilters" type="button" title="Filtros do servidor">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M4 6h16M7 12h10M10 18h4" stroke="#003399" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          Filtros
         </button>
 
-        <div class="search" title="Busca rápida (cooperados)">
-          <svg width="22" height="22" viewBox="0 0 24 24" fill="none">
-            <path d="M21 21l-4.3-4.3" stroke="#4f8cff" stroke-width="2.2" stroke-linecap="round"/>
-            <circle cx="11" cy="11" r="6.5" stroke="#003399" stroke-width="2.2"/>
+        <a class="btn" href="{{ url_for('admin') }}" title="Voltar">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M15 18l-6-6 6-6" stroke="#003399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
           </svg>
-          <input id="qGlobal" type="search" placeholder="Buscar cooperado..." />
-        </div>
+          Voltar
+        </a>
 
-        <div class="pills">
-          <span class="pill" id="pillPeriodo" title="Período (servidor)">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M7 3v3M17 3v3" stroke="#003399" stroke-width="2.2" stroke-linecap="round"/>
-              <path d="M4 9h16" stroke="#4f8cff" stroke-width="2.2" stroke-linecap="round"/>
-              <rect x="4.5" y="6.5" width="15" height="14" rx="3" stroke="#003399" stroke-width="2.2"/>
-            </svg>
-            {{ periodo_legivel or 'todo o período' }}
-          </span>
-
-          <button class="btn" id="btnOpenFilters" type="button" title="Filtros do servidor">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M4 6h16M7 12h10M10 18h4" stroke="#003399" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
-            Filtros
-          </button>
-
-          <a class="btn" href="{{ url_for('admin') }}" title="Voltar">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M15 18l-6-6 6-6" stroke="#003399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-            </svg>
-            Voltar
-          </a>
-
-          <button class="btn primary" id="btnPrint" type="button" title="Imprimir">
-            <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-              <path d="M7 9V4h10v5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-              <rect x="6" y="13" width="12" height="7" rx="2" stroke="#fff" stroke-width="2.2"/>
-              <path d="M6 12H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-            </svg>
-            Imprimir
-          </button>
-        </div>
+        <button class="btn primary" id="btnPrint" type="button" title="Imprimir">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+            <path d="M7 9V4h10v5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+            <rect x="6" y="13" width="12" height="7" rx="2" stroke="#fff" stroke-width="2.2"/>
+            <path d="M6 12H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
+          </svg>
+          Imprimir
+        </button>
       </div>
     </div>
 
-    <div class="container">
-
-      <!-- ====== SECTION: RESUMO ====== -->
-      <section class="section active" id="sec-resumo">
-        <div class="card">
-          <div class="card-title">
-            <h2>Resumo</h2>
-            <div class="subtle" id="subResumo">—</div>
+    <div class="tabs">
+      <div class="tabs-row" role="tablist" aria-label="Seções do painel">
+        <button class="tab active" data-sec="sec-resumo" type="button">
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+            <span>Resumo</span><small>KPIs • Alertas</small>
           </div>
+        </button>
 
-          <div class="kpis">
-            <div class="kpi" style="--accent:var(--acc-blue)">
-              <div class="top">
-                <div class="label">Total de entregas</div>
-                <div class="ico" title="Entregas">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M4 7h16M7 12h10M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiTotal">{{ estatisticas.total or 0 }}</div>
-              <div class="hint">Período</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-green)">
-              <div class="top">
-                <div class="label">Pagas</div>
-                <div class="ico" title="Pagas">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M20 7L10 17l-5-5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiPagas">{{ estatisticas.pagas or 0 }}</div>
-              <div class="hint">Status</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-amber)">
-              <div class="top">
-                <div class="label">Pendentes</div>
-                <div class="ico" title="Pendentes">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 9v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M12 18.2h.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
-                    <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiPend">{{ estatisticas.pendentes or 0 }}</div>
-              <div class="hint">Financeiro</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-indigo)">
-              <div class="top">
-                <div class="label">Faturamento (R$)</div>
-                <div class="ico" title="Faturamento">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M7 10V7a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <rect x="5" y="10" width="14" height="11" rx="3" stroke="currentColor" stroke-width="2.2"/>
-                    <path d="M12 15v2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiTotalValor">{{ '%.2f'|format(estatisticas.total_valor or 0) }}</div>
-              <div class="hint">Período</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-green)">
-              <div class="top">
-                <div class="label">% pagas</div>
-                <div class="ico" title="% Pagas">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M7 17l4-4 3 3 5-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-                    <path d="M4 19h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiPctPagas">—</div>
-              <div class="hint">Pagas / total</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-indigo)">
-              <div class="top">
-                <div class="label">Ticket médio (R$)</div>
-                <div class="ico" title="Ticket médio">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M7 7h10v4a2 2 0 0 0 2 2v4a2 2 0 0 0-2 2H7a2 2 0 0 0-2-2v-4a2 2 0 0 0 2-2V7z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
-                    <path d="M10 11h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiTicket">{{ '%.2f'|format(estatisticas.ticket_medio or 0) }}</div>
-              <div class="hint">R$ / entrega</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-cyan)">
-              <div class="top">
-                <div class="label">Cooperados</div>
-                <div class="ico" title="Cooperados (após filtros instantâneos)">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M16 11a4 4 0 1 0-8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiCoops">—</div>
-              <div class="hint">Filtrados</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-indigo)">
-              <div class="top">
-                <div class="label">Maior ticket (R$)</div>
-                <div class="ico" title="Maior ticket por cooperado">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M12 3l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-6.8L2 10h7l3-7z" stroke="currentColor" stroke-width="2.0" stroke-linejoin="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiMaxTicket">—</div>
-              <div class="hint" id="kpiMaxTicketNome">—</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-indigo)">
-              <div class="top">
-                <div class="label">Menor ticket (R$)</div>
-                <div class="ico" title="Menor ticket por cooperado">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M4 10h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M12 4v16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".35"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiMinTicket">—</div>
-              <div class="hint" id="kpiMinTicketNome">—</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-rose)">
-              <div class="top">
-                <div class="label">Concentração TOP 3</div>
-                <div class="ico" title="% do faturamento nos 3 primeiros">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M4 20V9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M10 20V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M16 20v-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M22 20v-11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiTop3">—</div>
-              <div class="hint">Participação</div>
-            </div>
-
-            <div class="kpi" style="--accent:var(--acc-blue)">
-              <div class="top">
-                <div class="label">Dia top</div>
-                <div class="ico" title="Dia com mais entregas (servidor)">
-                  <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-                    <path d="M7 3v3M17 3v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <path d="M4 9h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                    <rect x="4.5" y="6.5" width="15" height="14" rx="3" stroke="currentColor" stroke-width="2.2"/>
-                    <path d="M8 13h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
-                  </svg>
-                </div>
-              </div>
-              <div class="value" id="kpiDiaTop">{{ estatisticas.dia_top.nome or '-' }}</div>
-              <div class="hint">Mais entregas</div>
-            </div>
+        <button class="tab" data-sec="sec-cooperados" type="button">
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+            <span>Cooperados</span><small>Tabela • Ranking</small>
           </div>
+        </button>
 
-          <div class="hr"></div>
+        <button class="tab" data-sec="sec-graficos" type="button">
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+            <span>Gráficos</span><small>Dia • Status • Coop</small>
+          </div>
+        </button>
 
-          <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;justify-content:space-between">
-            <div class="chips" id="chipsResumo"></div>
-            <div class="chips" id="chipsPico"></div>
+        <button class="tab" data-sec="sec-rankings" type="button">
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+            <span>Rankings</span><small>Bairros • Clientes</small>
+          </div>
+        </button>
+
+        <button class="tab" data-sec="sec-crescimento" type="button">
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+            <span>Crescimento</span><small>Anual • YoY</small>
+          </div>
+        </button>
+
+        <button class="tab" data-sec="sec-export" type="button">
+          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
+            <span>Exportar</span><small>Excel • CSV • PNG</small>
+          </div>
+        </button>
+      </div>
+    </div>
+  </div>
+</header>
+
+<main class="container">
+
+  <!-- ====== SECTION: RESUMO ====== -->
+  <section class="section active" id="sec-resumo">
+    <div class="card">
+      <div class="card-title">
+        <div>
+          <h2>Resumo</h2>
+          <div class="subtle" id="subResumo">Servidor</div>
+        </div>
+        <div class="chips">
+          <span class="chip">Entregas <b>{{ estatisticas.total or 0 }}</b></span>
+          <span class="chip ok">Pagas <b>{{ estatisticas.pagas or 0 }}</b></span>
+          <span class="chip warn">Pendentes <b>{{ estatisticas.pendentes or 0 }}</b></span>
+          <span class="chip">R$ <b>{{ '%.2f'|format(estatisticas.total_valor or 0) }}</b></span>
+        </div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpiCard" style="--accent:var(--acc-blue)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">TOTAL PRODUÇÕES</div>
+              <div class="val" id="kpiTotal">{{ estatisticas.total or 0 }}</div>
+              <div class="hint">Bruto no período</div>
+            </div>
+            <div class="kpiIcon" title="Entregas">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M4 7h16M7 12h10M9 17h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
           </div>
         </div>
 
-        <div style="margin-top:12px" class="card">
-          <div class="card-title">
+        <div class="kpiCard" style="--accent:var(--acc-indigo)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">FATURAMENTO (R$)</div>
+              <div class="val" id="kpiTotalValor">{{ '%.2f'|format(estatisticas.total_valor or 0) }}</div>
+              <div class="hint">Bruto no período</div>
+            </div>
+            <div class="kpiIcon" title="Faturamento">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M7 10V7a5 5 0 0 1 10 0v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <rect x="5" y="10" width="14" height="11" rx="3" stroke="currentColor" stroke-width="2.2"/>
+                <path d="M12 15v2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-green)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">% PAGAS</div>
+              <div class="val" id="kpiPctPagas">—</div>
+              <div class="hint">Pagas / total</div>
+            </div>
+            <div class="kpiIcon" title="% Pagas">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M7 17l4-4 3 3 5-6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <path d="M4 19h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-amber)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">TICKET MÉDIO (R$)</div>
+              <div class="val" id="kpiTicket">{{ '%.2f'|format(estatisticas.ticket_medio or 0) }}</div>
+              <div class="hint">R$ / entrega</div>
+            </div>
+            <div class="kpiIcon" title="Ticket">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M7 7h10v4a2 2 0 0 0 2 2v4a2 2 0 0 0-2 2H7a2 2 0 0 0-2-2v-4a2 2 0 0 0 2-2V7z" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/>
+                <path d="M10 11h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-cyan)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">COOPERADOS</div>
+              <div class="val" id="kpiCoops">—</div>
+              <div class="hint">Filtrados</div>
+            </div>
+            <div class="kpiIcon" title="Cooperados">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M16 11a4 4 0 1 0-8 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M4 20a8 8 0 0 1 16 0" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-rose)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">CONCENTRAÇÃO TOP 3</div>
+              <div class="val" id="kpiTop3">—</div>
+              <div class="hint">Participação no total</div>
+            </div>
+            <div class="kpiIcon" title="Concentração">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M4 20V9" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M10 20V4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M16 20v-7" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M22 20v-11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".55"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-indigo)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">MAIOR TICKET (R$)</div>
+              <div class="val" id="kpiMaxTicket">—</div>
+              <div class="hint" id="kpiMaxTicketNome">—</div>
+            </div>
+            <div class="kpiIcon" title="Maior ticket">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3l3 7h7l-5.5 4.2L18 21l-6-4-6 4 1.5-6.8L2 10h7l3-7z" stroke="currentColor" stroke-width="2.0" stroke-linejoin="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-slate)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">MENOR TICKET (R$)</div>
+              <div class="val" id="kpiMinTicket">—</div>
+              <div class="hint" id="kpiMinTicketNome">—</div>
+            </div>
+            <div class="kpiIcon" title="Menor ticket">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M4 10h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M12 4v16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" opacity=".35"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-blue)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">DIA TOP</div>
+              <div class="val" id="kpiDiaTop">{{ estatisticas.dia_top.nome or '-' }}</div>
+              <div class="hint">Mais entregas (servidor)</div>
+            </div>
+            <div class="kpiIcon" title="Dia top">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M7 3v3M17 3v3" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M4 9h16" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <rect x="4.5" y="6.5" width="15" height="14" rx="3" stroke="currentColor" stroke-width="2.2"/>
+                <path d="M8 13h4" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-amber)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">ALERTAS</div>
+              <div class="val" id="kpiAlertasCount">—</div>
+              <div class="hint">Sinais no recorte</div>
+            </div>
+            <div class="kpiIcon" title="Alertas">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 9v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/>
+                <path d="M12 18.2h.01" stroke="currentColor" stroke-width="2.8" stroke-linecap="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+
+        <div class="kpiCard" style="--accent:var(--acc-green)">
+          <span class="kpiBar"></span>
+          <div class="kpiInner">
+            <div class="kpiTop">
+              <div class="ttl">PICO</div>
+              <div class="val" id="kpiPico">—</div>
+              <div class="hint">Top horário</div>
+            </div>
+            <div class="kpiIcon" title="Pico">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
+                <path d="M12 3v9l4 2" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+                <circle cx="12" cy="12" r="9" stroke="currentColor" stroke-width="2.2" opacity=".35"/>
+              </svg>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="hr"></div>
+
+      <div class="card soft">
+        <div class="card-title">
+          <div>
             <h2>Alertas</h2>
             <div class="subtle" id="subAlertas">—</div>
           </div>
-          <div class="chips" id="chipsAlertas"></div>
+          <div class="chips" id="chipsPico"></div>
         </div>
-      </section>
+        <div class="chips" id="chipsAlertas"></div>
+      </div>
+    </div>
+  </section>
 
-      <!-- ====== SECTION: COOPERADOS ====== -->
-      <section class="section" id="sec-cooperados">
-        <div class="card">
-          <div class="card-title">
-            <h2>Cooperados</h2>
-            <div class="chips">
-              <span class="badge" id="badgeInstant">—</span>
-              <button class="btn" id="btnCopy" type="button" title="Copiar tabela">Copiar</button>
-              <button class="btn" id="btnCSV" type="button" title="Baixar CSV">CSV</button>
-            </div>
-          </div>
-
-          <div class="quickbar" style="margin-bottom:10px">
-            <div class="qfield">
-              <label for="qTopN">Top N</label>
-              <select id="qTopN">
-                <option value="10">10</option>
-                <option value="20" selected>20</option>
-                <option value="30">30</option>
-                <option value="50">50</option>
-                <option value="99999">Todos</option>
-              </select>
-            </div>
-
-            <div class="qfield">
-              <label for="qTicket">Ticket (min–max)</label>
-              <input id="qTicket" type="text" inputmode="decimal" placeholder="ex: 6.00-25.00">
-            </div>
-
-            <div class="qfield">
-              <label for="qValor">Valor total (min–max)</label>
-              <input id="qValor" type="text" inputmode="decimal" placeholder="ex: 200-3500">
-            </div>
-
-            <div class="toggles">
-              <div class="tgl" id="tglZeros" title="Ocultar cooperados com 0 entregas">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M3 12s3.5-7 9-7 9 7 9 7-3.5 7-9 7-9-7-9-7Z" stroke="#003399" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                  <path d="M15 12a3 3 0 1 1-6 0 3 3 0 0 1 6 0Z" stroke="#4f8cff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-                Zeros
-              </div>
-
-              <div class="tgl" id="tglDense" title="Densidade da tabela">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none">
-                  <path d="M4 7h16M4 12h16M4 17h16" stroke="#003399" stroke-width="2" stroke-linecap="round"/>
-                </svg>
-                Denso
-              </div>
-
-              <button class="btn" id="btnClearQuick" type="button" title="Limpar instantâneos">Limpar</button>
-            </div>
-          </div>
-
-          <div class="table-wrap">
-            <table id="tblCooperados">
-              <thead>
-                <tr>
-                  <th data-k="nome">Cooperado</th>
-                  <th class="t-center" data-k="qtd">Qtd</th>
-                  <th class="t-right" data-k="total_valor">R$ total</th>
-                  <th class="t-right" data-k="ticket">R$ ticket</th>
-                  <th class="t-right" data-k="percent">% total</th>
-                </tr>
-              </thead>
-              <tbody id="tbodyCoops"></tbody>
-            </table>
-          </div>
+  <!-- ====== SECTION: COOPERADOS ====== -->
+  <section class="section" id="sec-cooperados">
+    <div class="card">
+      <div class="card-title">
+        <div>
+          <h2>Cooperados</h2>
+          <div class="subtle">Ordene clicando nos títulos da tabela</div>
         </div>
-      </section>
-
-      <!-- ====== SECTION: GRÁFICOS ====== -->
-      <section class="section" id="sec-graficos">
-        <div class="grid3">
-          <div class="card">
-            <div class="card-title">
-              <h2>Entregas por dia</h2>
-              <button class="btn" type="button" data-save="chartDia">PNG</button>
-            </div>
-            {% if chart_entregas_labels and chart_entregas_labels|length %}
-              <canvas id="chartDia" height="150"></canvas>
-            {% else %}
-              <div class="no-data">Sem dados</div>
-            {% endif %}
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              <h2>Status</h2>
-              <button class="btn" type="button" data-save="chartStatus">PNG</button>
-            </div>
-            <canvas id="chartStatus" height="150"></canvas>
-          </div>
-
-          <div class="card">
-            <div class="card-title">
-              <h2>Faturamento por cooperado</h2>
-              <button class="btn" type="button" data-save="chartCoop">PNG</button>
-            </div>
-            <canvas id="chartCoop" height="150"></canvas>
-          </div>
+        <div class="chips">
+          <span class="badge" id="badgeInstant">—</span>
+          <button class="btn" id="btnCopy" type="button" title="Copiar tabela">Copiar</button>
+          <button class="btn" id="btnCSV" type="button" title="Baixar CSV">CSV</button>
         </div>
-      </section>
+      </div>
 
-      <!-- ====== SECTION: RANKINGS ====== -->
-      <section class="section" id="sec-rankings">
-        <div class="grid2">
-          <div class="card">
-            <div class="card-title">
-              <h2>TOP cooperados</h2>
-              <div class="subtle" id="subTopCoops">—</div>
-            </div>
-            <ul class="rank" id="rankCoops"></ul>
+      <div class="quickbar">
+        <div class="qfield">
+          <label for="qTopN">Top N</label>
+          <select id="qTopN">
+            <option value="10">10</option>
+            <option value="20" selected>20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="99999">Todos</option>
+          </select>
+        </div>
+
+        <div class="qfield">
+          <label for="qTicket">Ticket (min–max)</label>
+          <input id="qTicket" type="text" inputmode="decimal" placeholder="ex: 6.00-25.00">
+        </div>
+
+        <div class="qfield">
+          <label for="qValor">Valor total (min–max)</label>
+          <input id="qValor" type="text" inputmode="decimal" placeholder="ex: 200-3500">
+        </div>
+
+        <div class="toggles" style="align-self:end">
+          <div class="tgl" id="tglZeros" title="Ocultar cooperados com 0 entregas">Zeros</div>
+          <div class="tgl" id="tglDense" title="Densidade da tabela">Denso</div>
+          <button class="btn" id="btnClearQuick" type="button" title="Limpar instantâneos">Limpar</button>
+        </div>
+      </div>
+
+      <div class="table-wrap">
+        <table id="tblCooperados">
+          <thead>
+            <tr>
+              <th data-k="nome">Cooperado</th>
+              <th class="t-center" data-k="qtd">Qtd</th>
+              <th class="t-right" data-k="total_valor">R$ total</th>
+              <th class="t-right" data-k="ticket">R$ ticket</th>
+              <th class="t-right" data-k="percent">% total</th>
+            </tr>
+          </thead>
+          <tbody id="tbodyCoops"></tbody>
+        </table>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION: GRÁFICOS (aba só de gráficos) ====== -->
+  <section class="section" id="sec-graficos">
+    <div class="grid3">
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Entregas por dia</h2>
+            <div class="subtle">Linha (período)</div>
           </div>
+          <button class="btn" type="button" data-save="chartDia">Baixar PNG</button>
+        </div>
+        {% if chart_entregas_labels and chart_entregas_labels|length %}
+          <div class="chartWrap"><canvas id="chartDia"></canvas></div>
+        {% else %}
+          <div class="no-data">Sem dados</div>
+        {% endif %}
+      </div>
 
-          <div class="card">
-            <div class="card-title">
-              <h2>Horários de pico</h2>
-              <div class="subtle">Top 3</div>
-            </div>
-            <div class="chips" id="chipsPico2"></div>
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Status</h2>
+            <div class="subtle">Pagas x Pendentes</div>
+          </div>
+          <button class="btn" type="button" data-save="chartStatus">Baixar PNG</button>
+        </div>
+        <div class="chartWrap"><canvas id="chartStatus"></canvas></div>
+      </div>
 
-            <div class="hr"></div>
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Faturamento por cooperado</h2>
+            <div class="subtle">Barras (top filtrado)</div>
+          </div>
+          <button class="btn" type="button" data-save="chartCoop">Baixar PNG</button>
+        </div>
+        <div class="chartWrap"><canvas id="chartCoop"></canvas></div>
+      </div>
+    </div>
+  </section>
 
-            <div class="chips">
-              <span class="chip ok">Pgto top: {{ estatisticas.pgto_top or '-' }}</span>
-              <span class="chip">Cliente: {{ cliente or '—' }}</span>
-              <span class="chip">Pagamento: {{ status_pagamento or 'todos' }}</span>
-            </div>
+  <!-- ====== SECTION: RANKINGS ====== -->
+  <section class="section" id="sec-rankings">
+    <div class="grid2">
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>TOP cooperados</h2>
+            <div class="subtle" id="subTopCoops">Servidor</div>
           </div>
         </div>
+        <ul class="rank" id="rankCoops"></ul>
+      </div>
+
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Horários de pico</h2>
+            <div class="subtle">Top 3</div>
+          </div>
+        </div>
+        <div class="chips" id="chipsPico2"></div>
 
         <div class="hr"></div>
 
-        <div class="grid3">
-          <div class="card">
-            <div class="card-title">
-              <h2>Bairros (ENTREGA)</h2>
-              <div class="subtle">Top 10</div>
-            </div>
-            <ul class="rank">
-              {% for r in ranking_bairros[:10] %}
-              <li>
-                <span class="medal {{ 'm1' if loop.index==1 else ('m2' if loop.index==2 else ('m3' if loop.index==3 else 'mX')) }}">{{ loop.index }}</span>
-                <span class="rLabel">{{ r.bairro }}</span>
-                <span class="rVal">{{ r.qtd }}</span>
-              </li>
-              {% endfor %}
-              {% if ranking_bairros|length == 0 %}
-              <li><span class="rLabel">Sem dados</span></li>
-              {% endif %}
-            </ul>
-          </div>
+        <div class="chips">
+          <span class="chip ok">Pgto top: {{ estatisticas.pgto_top or '-' }}</span>
+          <span class="chip">Cliente: {{ cliente or '—' }}</span>
+          <span class="chip">Pagamento: {{ status_pagamento or 'todos' }}</span>
+        </div>
+      </div>
+    </div>
 
-          {% set rb_origem = ranking_bairros_origem | default([]) %}
-          <div class="card">
-            <div class="card-title">
-              <h2>Bairros (ORIGEM)</h2>
-              <div class="subtle">Top 10</div>
-            </div>
-            <ul class="rank">
-              {% for r in rb_origem[:10] %}
-              <li>
-                <span class="medal {{ 'm1' if loop.index==1 else ('m2' if loop.index==2 else ('m3' if loop.index==3 else 'mX')) }}">{{ loop.index }}</span>
-                <span class="rLabel">{{ r.bairro }}</span>
-                <span class="rVal">{{ r.qtd }}</span>
-              </li>
-              {% endfor %}
-              {% if rb_origem|length == 0 %}
-              <li><span class="rLabel">Sem dados</span></li>
-              {% endif %}
-            </ul>
-          </div>
+    <div class="hr"></div>
 
-          <div class="card">
-            <div class="card-title">
-              <h2>Clientes</h2>
-              <div class="subtle">Top 10</div>
-            </div>
-            <ul class="rank">
-              {% for r in ranking_clientes[:10] %}
-              <li>
-                <span class="medal {{ 'm1' if loop.index==1 else ('m2' if loop.index==2 else ('m3' if loop.index==3 else 'mX')) }}">{{ loop.index }}</span>
-                <span class="rLabel">{{ r.cliente }}</span>
-                <span class="rVal">R$ {{ '%.2f'|format(r.total or 0) }} • {{ r.qtd }}</span>
-              </li>
-              {% endfor %}
-              {% if ranking_clientes|length == 0 %}
-              <li><span class="rLabel">Sem dados</span></li>
-              {% endif %}
-            </ul>
+    <div class="grid3">
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Bairros (ENTREGA)</h2>
+            <div class="subtle">Top 10</div>
           </div>
         </div>
-      </section>
+        <ul class="rank">
+          {% for r in ranking_bairros[:10] %}
+          <li>
+            <span class="medal {{ 'm1' if loop.index==1 else ('m2' if loop.index==2 else ('m3' if loop.index==3 else 'mX')) }}">{{ loop.index }}</span>
+            <span class="rLabel">{{ r.bairro }}</span>
+            <span class="rVal">{{ r.qtd }}</span>
+          </li>
+          {% endfor %}
+          {% if ranking_bairros|length == 0 %}
+          <li><span class="rLabel">Sem dados</span></li>
+          {% endif %}
+        </ul>
+      </div>
 
-      <!-- ====== SECTION: CRESCIMENTO (CORRIGIDO) ====== -->
-      <section class="section" id="sec-crescimento">
-        {% if chart_ano_labels and chart_ano_labels|length and chart_ano_totais and chart_ano_totais|length %}
+      {% set rb_origem = ranking_bairros_origem | default([]) %}
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Bairros (ORIGEM)</h2>
+            <div class="subtle">Top 10</div>
+          </div>
+        </div>
+        <ul class="rank">
+          {% for r in rb_origem[:10] %}
+          <li>
+            <span class="medal {{ 'm1' if loop.index==1 else ('m2' if loop.index==2 else ('m3' if loop.index==3 else 'mX')) }}">{{ loop.index }}</span>
+            <span class="rLabel">{{ r.bairro }}</span>
+            <span class="rVal">{{ r.qtd }}</span>
+          </li>
+          {% endfor %}
+          {% if rb_origem|length == 0 %}
+          <li><span class="rLabel">Sem dados</span></li>
+          {% endif %}
+        </ul>
+      </div>
 
-        <div class="stack">
-          <!-- Card 1: Cabeçalho + Controles -->
-          <div class="card">
-            <div class="card-title">
-              <h2>Crescimento anual</h2>
-              <div class="chips" style="align-items:center">
-                <span class="chip">Métrica</span>
-                <select id="selMetrica"
-                  style="border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;border-radius:12px;padding:9px 10px;font-weight:850;min-height:40px;font-size:12px">
-                  <option value="faturamento" selected>Faturamento (R$)</option>
-                  <option value="entregas">Entregas</option>
-                  <option value="ticket">Ticket (R$)</option>
-                </select>
-                <button class="btn" type="button" data-save="chartAno">PNG</button>
-              </div>
-            </div>
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Clientes</h2>
+            <div class="subtle">Top 10</div>
+          </div>
+        </div>
+        <ul class="rank">
+          {% for r in ranking_clientes[:10] %}
+          <li>
+            <span class="medal {{ 'm1' if loop.index==1 else ('m2' if loop.index==2 else ('m3' if loop.index==3 else 'mX')) }}">{{ loop.index }}</span>
+            <span class="rLabel">{{ r.cliente }}</span>
+            <span class="rVal">R$ {{ '%.2f'|format(r.total or 0) }} • {{ r.qtd }}</span>
+          </li>
+          {% endfor %}
+          {% if ranking_clientes|length == 0 %}
+          <li><span class="rLabel">Sem dados</span></li>
+          {% endif %}
+        </ul>
+      </div>
+    </div>
+  </section>
+
+  <!-- ====== SECTION: CRESCIMENTO (cards um abaixo do outro + números não cortam) ====== -->
+  <section class="section" id="sec-crescimento">
+    {% if chart_ano_labels and chart_ano_labels|length and chart_ano_totais and chart_ano_totais|length %}
+
+    <div style="display:grid; gap:12px">
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Crescimento anual</h2>
             <div class="subtle">Barra = Valor • Linha = YoY (%)</div>
           </div>
-
-          <!-- Card 2: Gráfico (largura total) -->
-          <div class="card">
-            <div class="card-title">
-              <h2>Gráfico anual</h2>
-              <div class="subtle">Visualização completa</div>
-            </div>
-            <div class="chartbox">
-              <canvas id="chartAno"></canvas>
-            </div>
+          <div class="chips">
+            <span class="chip">Métrica</span>
+            <select id="selMetrica"
+              style="border:1px solid #b8c7ff;background:#f7f9ff;color:#0b2c6f;border-radius:14px;padding:10px 12px;font-weight:850;min-height:42px;font-size:12px">
+              <option value="faturamento" selected>Faturamento (R$)</option>
+              <option value="entregas">Entregas</option>
+              <option value="ticket">Ticket (R$)</option>
+            </select>
+            <button class="btn" type="button" data-save="chartAno">Baixar PNG</button>
           </div>
+        </div>
+      </div>
 
-          <!-- Card 3: KPIs (abaixo do gráfico, sem corte) -->
-          <div class="card">
-            <div class="card-title">
-              <h2>Indicadores do período</h2>
-              <div class="subtle">Sem cortar números</div>
-            </div>
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Gráfico anual</h2>
+            <div class="subtle">Visualização completa</div>
+          </div>
+        </div>
+        <div class="chartWrap tall">
+          <canvas id="chartAno"></canvas>
+        </div>
+      </div>
 
-            <div class="kpis">
-              <div class="kpi" style="--accent:var(--acc-blue)">
-                <div class="top"><div class="label">Último ano</div><div class="ico">A</div></div>
-                <div class="value" id="kpiUltAno">—</div>
+      <div class="card">
+        <div class="card-title">
+          <div>
+            <h2>Indicadores do período</h2>
+            <div class="subtle">Sem cortar números</div>
+          </div>
+        </div>
+
+        <div class="kpis" id="kpisCrescimento" style="grid-template-columns:repeat(auto-fit, minmax(240px, 1fr));">
+          <div class="kpiCard" style="--accent:var(--acc-blue); grid-column:auto">
+            <span class="kpiBar"></span>
+            <div class="kpiInner">
+              <div class="kpiTop">
+                <div class="ttl">ÚLTIMO ANO</div>
+                <div class="val" id="kpiUltAno">—</div>
                 <div class="hint">Ano mais recente</div>
               </div>
+              <div class="kpiIcon">A</div>
+            </div>
+          </div>
 
-              <div class="kpi" style="--accent:var(--acc-indigo)">
-                <div class="top"><div class="label">Último valor</div><div class="ico">$</div></div>
-                <div class="value" id="kpiUltVal">—</div>
+          <div class="kpiCard" style="--accent:var(--acc-indigo); grid-column:auto">
+            <span class="kpiBar"></span>
+            <div class="kpiInner">
+              <div class="kpiTop">
+                <div class="ttl">ÚLTIMO VALOR</div>
+                <div class="val" id="kpiUltVal">—</div>
                 <div class="hint" id="lblUltVal">—</div>
               </div>
+              <div class="kpiIcon">$</div>
+            </div>
+          </div>
 
-              <div class="kpi" style="--accent:var(--acc-green)">
-                <div class="top"><div class="label">YoY</div><div class="ico">%</div></div>
-                <div class="value" id="kpiYoY">—</div>
+          <div class="kpiCard" style="--accent:var(--acc-green); grid-column:auto">
+            <span class="kpiBar"></span>
+            <div class="kpiInner">
+              <div class="kpiTop">
+                <div class="ttl">YOY</div>
+                <div class="val" id="kpiYoY">—</div>
                 <div class="hint">Vs. anterior</div>
               </div>
+              <div class="kpiIcon">%</div>
+            </div>
+          </div>
 
-              <div class="kpi" style="--accent:var(--acc-slate)">
-                <div class="top"><div class="label">Média</div><div class="ico">Ø</div></div>
-                <div class="value" id="kpiMedia">—</div>
+          <div class="kpiCard" style="--accent:var(--acc-slate); grid-column:auto">
+            <span class="kpiBar"></span>
+            <div class="kpiInner">
+              <div class="kpiTop">
+                <div class="ttl">MÉDIA</div>
+                <div class="val" id="kpiMedia">—</div>
                 <div class="hint" id="lblMedia">—</div>
               </div>
+              <div class="kpiIcon">Ø</div>
+            </div>
+          </div>
 
-              <div class="kpi" style="--accent:var(--acc-indigo)">
-                <div class="top"><div class="label">Total</div><div class="ico">Σ</div></div>
-                <div class="value" id="kpiTotPeriodo">—</div>
+          <div class="kpiCard" style="--accent:var(--acc-indigo); grid-column:auto">
+            <span class="kpiBar"></span>
+            <div class="kpiInner">
+              <div class="kpiTop">
+                <div class="ttl">TOTAL</div>
+                <div class="val" id="kpiTotPeriodo">—</div>
                 <div class="hint" id="lblTotPeriodo">—</div>
               </div>
+              <div class="kpiIcon">Σ</div>
+            </div>
+          </div>
 
-              <div class="kpi" style="--accent:var(--acc-rose)">
-                <div class="top"><div class="label">YoY médio</div><div class="ico">↕</div></div>
-                <div class="value" id="kpiYoYAvg">—</div>
+          <div class="kpiCard" style="--accent:var(--acc-rose); grid-column:auto">
+            <span class="kpiBar"></span>
+            <div class="kpiInner">
+              <div class="kpiTop">
+                <div class="ttl">YOY MÉDIO</div>
+                <div class="val" id="kpiYoYAvg">—</div>
                 <div class="hint">Média</div>
               </div>
+              <div class="kpiIcon">↕</div>
             </div>
           </div>
         </div>
-
-        {% else %}
-          <div class="card"><div class="no-data">Sem dados</div></div>
-        {% endif %}
-      </section>
-
-      <!-- ====== SECTION: EXPORT ====== -->
-      <section class="section" id="sec-export">
-        <div class="card">
-          <div class="card-title">
-            <h2>Exportar</h2>
-            <div class="subtle">—</div>
-          </div>
-
-          <div style="display:flex;gap:10px;flex-wrap:wrap">
-            <a class="btn"
-               href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}&cliente={{ cliente|urlencode if cliente }}">
-              Excel
-            </a>
-
-            <button class="btn" type="button" id="btnCSV2">CSV</button>
-            <button class="btn" type="button" data-save="chartDia">PNG • Dia</button>
-            <button class="btn" type="button" data-save="chartCoop">PNG • Coop</button>
-            <button class="btn" type="button" data-save="chartStatus">PNG • Status</button>
-            <button class="btn" type="button" data-save="chartAno">PNG • Anual</button>
-          </div>
-        </div>
-      </section>
-
+      </div>
     </div>
-  </div>
-</div>
+
+    {% else %}
+      <div class="card"><div class="no-data">Sem dados</div></div>
+    {% endif %}
+  </section>
+
+  <!-- ====== SECTION: EXPORT ====== -->
+  <section class="section" id="sec-export">
+    <div class="card">
+      <div class="card-title">
+        <div>
+          <h2>Exportar</h2>
+          <div class="subtle">Excel, CSV e imagens (PNG) dos gráficos</div>
+        </div>
+      </div>
+
+      <div class="chips">
+        <a class="btn"
+           href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}&cliente={{ cliente|urlencode if cliente }}">
+          Excel
+        </a>
+
+        <button class="btn" type="button" id="btnCSV2">CSV</button>
+
+        <button class="btn" type="button" data-save="chartDia">PNG • Dia</button>
+        <button class="btn" type="button" data-save="chartCoop">PNG • Coop</button>
+        <button class="btn" type="button" data-save="chartStatus">PNG • Status</button>
+        <button class="btn" type="button" data-save="chartAno">PNG • Anual</button>
+      </div>
+    </div>
+  </section>
+
+</main>
 
 <!-- ====== MODAL FILTROS (SERVIDOR) ====== -->
 <div class="modal" id="modal">
@@ -1206,6 +1237,7 @@ const chartAnoQtdRaw     = {{ (chart_ano_qtd     or [])|tojson }};
 const chartAnoTicketRaw  = {{ (chart_ano_ticket  or [])|tojson }};
 
 const horasPicoTop3      = {{ (horas_pico_top3 or [])|tojson }};
+const rankingCooperadosRaw = {{ (ranking_cooperados or [])|tojson }};
 
 const estat = {
   total: {{ estatisticas.total or 0 }},
@@ -1214,8 +1246,6 @@ const estat = {
   total_valor: {{ estatisticas.total_valor or 0 }},
   ticket_medio: {{ estatisticas.ticket_medio or 0 }},
 };
-
-const rankingCooperadosRaw = {{ (ranking_cooperados or [])|tojson }};
 
 /* =========================
    UTILS
@@ -1231,14 +1261,6 @@ function fmtInt(v){
 function norm(t){
   return (t||'').toString().toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
 }
-function saveCanvasPNG(id){
-  const el=document.getElementById(id);
-  if(!el) return;
-  const a=document.createElement('a');
-  a.download = `${id}.png`;
-  a.href = el.toDataURL('image/png');
-  a.click();
-}
 function toast(title, subtitle=''){
   const wrap = document.getElementById('toast');
   if(!wrap) return;
@@ -1246,8 +1268,8 @@ function toast(title, subtitle=''){
   t.className = 't';
   t.innerHTML = `${title}${subtitle?`<small>${subtitle}</small>`:''}`;
   wrap.appendChild(t);
-  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(6px)'; }, 2800);
-  setTimeout(()=>{ t.remove(); }, 3400);
+  setTimeout(()=>{ t.style.opacity='0'; t.style.transform='translateY(6px)'; }, 2600);
+  setTimeout(()=>{ t.remove(); }, 3200);
 }
 function parseRange(txt){
   const s = (txt||'').toString().replace(/\s/g,'').replace(',', '.');
@@ -1261,63 +1283,62 @@ function parseRange(txt){
   return [Number.isFinite(a)?a:null, Number.isFinite(b)?b:null];
 }
 
+/* Export PNG (com fundo branco) */
+function exportCanvasPNG(canvasId, filename){
+  const c = document.getElementById(canvasId);
+  if(!c) return toast('Canvas não encontrado', canvasId);
+
+  // cria canvas temporário com fundo branco
+  const tmp = document.createElement('canvas');
+  tmp.width = c.width; tmp.height = c.height;
+  const tctx = tmp.getContext('2d');
+  tctx.fillStyle = '#ffffff';
+  tctx.fillRect(0,0,tmp.width,tmp.height);
+  tctx.drawImage(c, 0, 0);
+
+  const a = document.createElement('a');
+  a.download = filename || `${canvasId}.png`;
+  a.href = tmp.toDataURL('image/png');
+  a.click();
+  toast('PNG gerado', a.download);
+}
+
 /* =========================
-   MENU + SEÇÕES
+   TABS / SEÇÕES
    ========================= */
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('overlay');
-const btnHamb = document.getElementById('btnHamb');
+function activateSection(id){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
 
-function openSidebar(){
-  if(window.matchMedia('(max-width: 980px)').matches){
-    sidebar.classList.add('show');
-    overlay.classList.add('show');
-  }
-}
-function closeSidebar(){
-  sidebar.classList.remove('show');
-  overlay.classList.remove('show');
-}
-btnHamb?.addEventListener('click', openSidebar);
-overlay?.addEventListener('click', ()=>{ closeSidebar(); closeModal(); });
+  document.querySelector(`.tab[data-sec="${id}"]`)?.classList.add('active');
+  document.getElementById(id)?.classList.add('active');
 
-document.querySelectorAll('.nav button[data-sec]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    const id = btn.getAttribute('data-sec');
-    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-    document.getElementById(id)?.classList.add('active');
-    localStorage.setItem('coopex_sec', id);
-    closeSidebar();
+  localStorage.setItem('coopex_sec', id);
+
+  // IMPORTANTE: quando muda de aba, força resize/update nos gráficos (resolve canvas “apertado/zerado”)
+  requestAnimationFrame(()=>{
+    [chartDia, chartStatus, chartCoop, chartAno].forEach(ch=>{
+      if(ch){ ch.resize(); ch.update('none'); }
+    });
   });
+}
+document.querySelectorAll('.tab[data-sec]').forEach(btn=>{
+  btn.addEventListener('click', ()=> activateSection(btn.getAttribute('data-sec')));
 });
 (function restoreSection(){
   const id = localStorage.getItem('coopex_sec');
-  if(!id) return;
-  const btn = document.querySelector(`.nav button[data-sec="${id}"]`);
-  const sec = document.getElementById(id);
-  if(btn && sec){
-    document.querySelectorAll('.nav button').forEach(b=>b.classList.remove('active'));
-    btn.classList.add('active');
-    document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
-    sec.classList.add('active');
-  }
+  if(id && document.getElementById(id)) activateSection(id);
 })();
 
 /* =========================
-   MODAL FILTROS (servidor)
+   MODAL FILTROS
    ========================= */
 const modal = document.getElementById('modal');
 const modalBg = document.getElementById('modalBg');
-const btnOpenFilters = document.getElementById('btnOpenFilters');
-const btnCloseModal = document.getElementById('btnCloseModal');
-
-function openModal(){ modal.classList.add('show'); }
-function closeModal(){ modal.classList.remove('show'); }
-btnOpenFilters?.addEventListener('click', openModal);
-btnCloseModal?.addEventListener('click', closeModal);
-modalBg?.addEventListener('click', closeModal);
+document.getElementById('btnOpenFilters')?.addEventListener('click', ()=> modal.classList.add('show'));
+document.getElementById('btnCloseModal')?.addEventListener('click', ()=> modal.classList.remove('show'));
+modalBg?.addEventListener('click', ()=> modal.classList.remove('show'));
+window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') modal.classList.remove('show'); });
 
 /* =========================
    KPIs DERIVADAS
@@ -1329,75 +1350,44 @@ modalBg?.addEventListener('click', closeModal);
 })();
 
 /* =========================
-   ALERTAS
+   PICO (Top 1 + chips)
    ========================= */
-function renderAlertas(rows){
-  const chips = document.getElementById('chipsAlertas');
-  const sub = document.getElementById('subAlertas');
-  if(!chips) return;
-  chips.innerHTML='';
+(function(){
+  const kpiPico = document.getElementById('kpiPico');
+  const chipsPico = document.getElementById('chipsPico');
+  const chipsPico2 = document.getElementById('chipsPico2');
 
-  const out = [];
-  const pctPend = estat.total ? (estat.pend/estat.total)*100 : 0;
-
-  if(estat.total === 0) out.push({cls:'danger', t:'Sem entregas no período'});
-  if(pctPend >= 25) out.push({cls:'warn', t:`Pendentes ${pctPend.toFixed(1)}%`});
-  if(rows.length && rows.length <= 3) out.push({cls:'warn', t:'Poucos cooperados no recorte'});
-  if(rows.length){
-    const total = rows.reduce((a,b)=>a+(Number(b.total_valor||0)),0);
-    const top3 = rows.slice().sort((a,b)=>Number(b.total_valor||0)-Number(a.total_valor||0)).slice(0,3);
-    const top3sum = top3.reduce((a,b)=>a+(Number(b.total_valor||0)),0);
-    const pctTop3 = total ? (top3sum/total)*100 : 0;
-    if(pctTop3 >= 65) out.push({cls:'danger', t:`Concentração TOP 3 ${pctTop3.toFixed(1)}%`});
-  }
-
-  if(Array.isArray(horasPicoTop3) && horasPicoTop3.length){
-    out.push({cls:'ok', t:`Pico: ${horasPicoTop3.slice(0,1).join(', ')}`});
-  }
-
-  if(!out.length) out.push({cls:'ok', t:'Sem alertas'});
-
-  out.forEach(x=>{
-    const s=document.createElement('span');
-    s.className = `chip ${x.cls}`;
-    s.textContent = x.t;
-    chips.appendChild(s);
-  });
-
-  if(sub) sub.textContent = `${out.length} sinal(is)`;
-}
-
-/* =========================
-   HORÁRIOS DE PICO
-   ========================= */
-function renderPicos(){
-  const els = [document.getElementById('chipsPico'), document.getElementById('chipsPico2')].filter(Boolean);
-  els.forEach(el=>{
-    el.innerHTML='';
+  const addChips = (host)=>{
+    if(!host) return;
+    host.innerHTML='';
     if(Array.isArray(horasPicoTop3) && horasPicoTop3.length){
       horasPicoTop3.slice(0,3).forEach((h,i)=>{
         const span = document.createElement('span');
         span.className = 'chip ok';
         span.textContent = `${i+1}º ${h}`;
-        el.appendChild(span);
+        host.appendChild(span);
       });
     }else{
       const span = document.createElement('span');
-      span.className='chip';
-      span.textContent='Sem pico';
-      el.appendChild(span);
+      span.className = 'chip';
+      span.textContent = 'Sem pico';
+      host.appendChild(span);
     }
-  });
-}
-renderPicos();
+  };
+
+  if(kpiPico){
+    kpiPico.textContent = (Array.isArray(horasPicoTop3) && horasPicoTop3.length) ? horasPicoTop3[0] : '—';
+  }
+  addChips(chipsPico);
+  addChips(chipsPico2);
+})();
 
 /* =========================
-   INSTANTÂNEO
+   INSTANTÂNEO (filtros rápidos)
    ========================= */
 let instant = {
   ticketMin: null, ticketMax: null,
   valorMin: null,  valorMax: null,
-  qtdMin: null,    qtdMax: null,
   qText: '',
   topN: 20,
   hideZeros: false,
@@ -1409,7 +1399,6 @@ function computeTicket(item){
   const tot = Number(item.total_valor || 0);
   return qtd ? (tot / qtd) : 0;
 }
-
 function applyInstantFilter(arr){
   return (arr||[]).map(x=>({
     ...x,
@@ -1422,50 +1411,8 @@ function applyInstantFilter(arr){
     if(instant.ticketMax != null && x.ticket > instant.ticketMax) return false;
     if(instant.valorMin  != null && Number(x.total_valor||0) < instant.valorMin) return false;
     if(instant.valorMax  != null && Number(x.total_valor||0) > instant.valorMax) return false;
-    if(instant.qtdMin    != null && Number(x.qtd||0) < instant.qtdMin) return false;
-    if(instant.qtdMax    != null && Number(x.qtd||0) > instant.qtdMax) return false;
     return true;
   });
-}
-
-function renderInstantChips(){
-  const chipsResumo = document.getElementById('chipsResumo');
-  const badge = document.getElementById('badgeInstant');
-  const subResumo = document.getElementById('subResumo');
-  const subTop = document.getElementById('subTopCoops');
-
-  const parts = [];
-  const add = (k,v)=>parts.push(`${k} ${v}`);
-
-  if(instant.qText) add('Busca', instant.qText);
-  if(instant.ticketMin != null) add('Ticket≥', fmtBR(instant.ticketMin));
-  if(instant.ticketMax != null) add('Ticket≤', fmtBR(instant.ticketMax));
-  if(instant.valorMin  != null) add('Valor≥', fmtBR(instant.valorMin));
-  if(instant.valorMax  != null) add('Valor≤', fmtBR(instant.valorMax));
-  if(instant.hideZeros) add('Zeros', 'off');
-  add('Top', instant.topN>=99999?'Todos':instant.topN);
-
-  const on = parts.length > 1 || !!instant.qText || instant.hideZeros;
-  if(badge) badge.textContent = on ? `Instantâneo ON` : `Instantâneo OFF`;
-  if(subResumo) subResumo.textContent = on ? 'Servidor + instantâneo' : 'Servidor';
-  if(subTop) subTop.textContent = on ? 'Filtrado' : 'Servidor';
-
-  if(chipsResumo){
-    chipsResumo.innerHTML='';
-    if(!on){
-      const c=document.createElement('span');
-      c.className='chip';
-      c.textContent='Instantâneo OFF';
-      chipsResumo.appendChild(c);
-      return;
-    }
-    parts.forEach(p=>{
-      const c=document.createElement('span');
-      c.className='chip warn';
-      c.textContent=p;
-      chipsResumo.appendChild(c);
-    });
-  }
 }
 
 /* Quickbar bindings */
@@ -1497,7 +1444,7 @@ document.getElementById('tglDense')?.addEventListener('click', ()=>{
   }
 });
 document.getElementById('btnClearQuick')?.addEventListener('click', ()=>{
-  instant.ticketMin = instant.ticketMax = instant.valorMin = instant.valorMax = instant.qtdMin = instant.qtdMax = null;
+  instant.ticketMin = instant.ticketMax = instant.valorMin = instant.valorMax = null;
   instant.hideZeros = false;
   document.getElementById('tglZeros')?.classList.remove('on');
   const qT = document.getElementById('qTicket'); if(qT) qT.value='';
@@ -1505,8 +1452,6 @@ document.getElementById('btnClearQuick')?.addEventListener('click', ()=>{
   recomputeAll();
   toast('Instantâneo limpo');
 });
-
-/* Busca global (topbar) */
 document.getElementById('qGlobal')?.addEventListener('input', (e)=>{
   instant.qText = (e.target.value || '').trim();
   recomputeAll();
@@ -1534,24 +1479,21 @@ function sortRows(rows){
     return asc ? String(va).localeCompare(String(vb)) : String(vb).localeCompare(String(va));
   });
 }
-
 function renderTable(rows){
   const tbody = document.getElementById('tbodyCoops');
   if(!tbody) return;
   tbody.innerHTML='';
-
   if(!rows.length){
     const tr=document.createElement('tr');
     tr.innerHTML = `<td colspan="5" style="padding:14px;font-weight:900;color:#6b7280">Sem dados</td>`;
     tbody.appendChild(tr);
     return;
   }
-
   const frag = document.createDocumentFragment();
   rows.forEach(r=>{
     const tr=document.createElement('tr');
     tr.innerHTML = `
-      <td style="font-weight:950;color:#0b2c6f;max-width:360px;overflow:hidden;text-overflow:ellipsis">${r.nome ?? ''}</td>
+      <td style="font-weight:950;color:#0b2c6f;max-width:420px;overflow:hidden;text-overflow:ellipsis">${r.nome ?? ''}</td>
       <td class="t-center">${fmtInt(r.qtd||0)}</td>
       <td class="t-right">R$ ${fmtBR(r.total_valor||0)}</td>
       <td class="t-right">R$ ${fmtBR(r.ticket||0)}</td>
@@ -1561,20 +1503,17 @@ function renderTable(rows){
   });
   tbody.appendChild(frag);
 }
-
 function renderRank(rows){
   const ul = document.getElementById('rankCoops');
   if(!ul) return;
   ul.innerHTML='';
   const top = rows.slice(0, Math.min(10, rows.length));
-
   if(!top.length){
     const li=document.createElement('li');
     li.innerHTML = `<span class="rLabel">Sem dados</span>`;
     ul.appendChild(li);
     return;
   }
-
   top.forEach((r,i)=>{
     const li=document.createElement('li');
     const medal = i===0?'m1':(i===1?'m2':(i===2?'m3':'mX'));
@@ -1586,7 +1525,6 @@ function renderRank(rows){
     ul.appendChild(li);
   });
 }
-
 document.querySelectorAll('#tblCooperados thead th[data-k]').forEach(th=>{
   th.addEventListener('click', ()=>{
     const key = th.getAttribute('data-k');
@@ -1645,11 +1583,12 @@ async function copyTable(){
 document.getElementById('btnCopy')?.addEventListener('click', copyTable);
 
 /* =========================
-   KPIs EXTRAS
+   KPIs EXTRAS + ALERTAS
    ========================= */
 function renderExtraKPIs(rows){
   document.getElementById('kpiCoops').textContent = fmtInt(rows.length);
 
+  // maior/menor ticket
   if(!rows.length){
     document.getElementById('kpiMaxTicket').textContent='—';
     document.getElementById('kpiMaxTicketNome').textContent='—';
@@ -1658,17 +1597,15 @@ function renderExtraKPIs(rows){
     document.getElementById('kpiTop3').textContent='—';
     return;
   }
-
   const byTicketAsc = rows.slice().sort((a,b)=> (a.ticket||0) - (b.ticket||0));
   const minT = byTicketAsc[0];
   const maxT = byTicketAsc[byTicketAsc.length-1];
-
   document.getElementById('kpiMinTicket').textContent = fmtBR(minT.ticket||0);
   document.getElementById('kpiMinTicketNome').textContent = minT.nome || '—';
-
   document.getElementById('kpiMaxTicket').textContent = fmtBR(maxT.ticket||0);
   document.getElementById('kpiMaxTicketNome').textContent = maxT.nome || '—';
 
+  // concentração top3
   const total = rows.reduce((a,b)=>a+(Number(b.total_valor||0)),0);
   const top3 = rows.slice().sort((a,b)=>Number(b.total_valor||0)-Number(a.total_valor||0)).slice(0,3);
   const top3sum = top3.reduce((a,b)=>a+(Number(b.total_valor||0)),0);
@@ -1677,13 +1614,51 @@ function renderExtraKPIs(rows){
     pct.toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + '%';
 }
 
+function renderAlertas(rows){
+  const chips = document.getElementById('chipsAlertas');
+  const sub = document.getElementById('subAlertas');
+  const kpiAlertasCount = document.getElementById('kpiAlertasCount');
+  if(!chips) return;
+  chips.innerHTML='';
+
+  const out = [];
+  const pctPend = estat.total ? (estat.pend/estat.total)*100 : 0;
+
+  if(estat.total === 0) out.push({cls:'danger', t:'Sem entregas no período'});
+  if(pctPend >= 25) out.push({cls:'warn', t:`Pendentes ${pctPend.toFixed(1)}%`});
+
+  if(rows.length){
+    const total = rows.reduce((a,b)=>a+(Number(b.total_valor||0)),0);
+    const top3 = rows.slice().sort((a,b)=>Number(b.total_valor||0)-Number(a.total_valor||0)).slice(0,3);
+    const top3sum = top3.reduce((a,b)=>a+(Number(b.total_valor||0)),0);
+    const pctTop3 = total ? (top3sum/total)*100 : 0;
+    if(pctTop3 >= 65) out.push({cls:'danger', t:`Concentração TOP 3 ${pctTop3.toFixed(1)}%`});
+  }
+
+  if(Array.isArray(horasPicoTop3) && horasPicoTop3.length){
+    out.push({cls:'ok', t:`Pico: ${horasPicoTop3[0]}`});
+  }
+
+  if(!out.length) out.push({cls:'ok', t:'Sem alertas'});
+
+  out.forEach(x=>{
+    const s=document.createElement('span');
+    s.className = `chip ${x.cls}`;
+    s.textContent = x.t;
+    chips.appendChild(s);
+  });
+
+  if(sub) sub.textContent = `${out.length} sinal(is)`;
+  if(kpiAlertasCount) kpiAlertasCount.textContent = fmtInt(out.length);
+}
+
 /* =========================
-   GRÁFICOS
+   GRÁFICOS (Chart.js)
    ========================= */
 let chartDia = null, chartStatus = null, chartCoop = null, chartAno = null;
 
 function makeGradient(ctx, c1, c2){
-  const g=ctx.createLinearGradient(0,0,0,240);
+  const g=ctx.createLinearGradient(0,0,0,260);
   g.addColorStop(0,c1); g.addColorStop(1,c2);
   return g;
 }
@@ -1701,14 +1676,22 @@ function buildCharts(rows){
         datasets:[{
           data:chartEntregasValues,
           fill:true,
-          backgroundColor: makeGradient(ctx, 'rgba(79,140,255,0.24)','rgba(79,140,255,0.03)'),
+          backgroundColor: makeGradient(ctx, 'rgba(79,140,255,0.22)','rgba(79,140,255,0.02)'),
           borderColor:'#003399',
-          borderWidth:2.1,
+          borderWidth:2.2,
           pointRadius:3,
           tension:.35
         }]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#eef2ff'}},x:{grid:{display:false}}}}
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          y:{beginAtZero:true,grid:{color:'#eef2ff'}},
+          x:{grid:{display:false}}
+        }
+      }
     });
   }
 
@@ -1728,7 +1711,12 @@ function buildCharts(rows){
           borderWidth:2
         }]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom'}},cutout:'62%'}
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{position:'bottom'}},
+        cutout:'62%'
+      }
     });
   }
 
@@ -1745,12 +1733,21 @@ function buildCharts(rows){
         labels,
         datasets:[{
           data:vals,
-          backgroundColor: makeGradient(ctx,'rgba(0,51,153,0.24)','rgba(0,51,153,0.05)'),
+          backgroundColor: makeGradient(ctx,'rgba(0,51,153,0.22)','rgba(0,51,153,0.04)'),
           borderColor:'#003399',
-          borderWidth:1.6
+          borderWidth:1.6,
+          borderRadius:10
         }]
       },
-      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'#eef2ff'}},x:{grid:{display:false}}}}
+      options:{
+        responsive:true,
+        maintainAspectRatio:false,
+        plugins:{legend:{display:false}},
+        scales:{
+          y:{beginAtZero:true,grid:{color:'#eef2ff'}},
+          x:{grid:{display:false}}
+        }
+      }
     });
   }
 }
@@ -1791,6 +1788,7 @@ function buildChartAno(){
           backgroundColor: makeGradient(ctx,'rgba(79,140,255,0.22)','rgba(79,140,255,0.05)'),
           borderColor:'#003399',
           borderWidth:1.6,
+          borderRadius:12,
           yAxisID:'y'
         },
         {
@@ -1799,7 +1797,7 @@ function buildChartAno(){
           data:computeYoY(seriesByMetric()),
           borderColor:'#003399',
           backgroundColor:'rgba(0,51,153,0.10)',
-          borderWidth:2.1,
+          borderWidth:2.2,
           pointRadius:3,
           tension:.35,
           spanGaps:true,
@@ -1882,6 +1880,35 @@ function buildChartAno(){
 }
 
 /* =========================
+   BOTÕES PNG
+   ========================= */
+document.querySelectorAll('[data-save]').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    const id = btn.getAttribute('data-save');
+    if(!id) return;
+    exportCanvasPNG(id, `${id}.png`);
+  });
+});
+
+/* =========================
+   BADGES / CHIPS
+   ========================= */
+function renderInstantBadge(){
+  const badge = document.getElementById('badgeInstant');
+  const subResumo = document.getElementById('subResumo');
+  const subTop = document.getElementById('subTopCoops');
+
+  const on = !!instant.qText || instant.hideZeros ||
+    instant.ticketMin!=null || instant.ticketMax!=null ||
+    instant.valorMin!=null || instant.valorMax!=null ||
+    (instant.topN && instant.topN < 99999);
+
+  if(badge) badge.textContent = on ? 'Instantâneo ON' : 'Instantâneo OFF';
+  if(subResumo) subResumo.textContent = on ? 'Servidor + instantâneo' : 'Servidor';
+  if(subTop) subTop.textContent = on ? 'Filtrado' : 'Servidor';
+}
+
+/* =========================
    RECOMPUTE
    ========================= */
 function recomputeAll(){
@@ -1898,17 +1925,15 @@ function recomputeAll(){
   renderExtraKPIs(sorted);
   buildCharts(sorted);
   renderAlertas(sorted);
-  renderInstantChips();
-}
+  renderInstantBadge();
 
-/* PNG */
-document.querySelectorAll('[data-save]').forEach(btn=>{
-  btn.addEventListener('click', ()=>{
-    const id = btn.getAttribute('data-save');
-    if(id) saveCanvasPNG(id);
-    toast('PNG gerado', id);
+  // “fix” de resize quando estiver na aba de gráficos/crescimento
+  requestAnimationFrame(()=>{
+    [chartDia, chartStatus, chartCoop, chartAno].forEach(ch=>{
+      if(ch){ ch.resize(); ch.update('none'); }
+    });
   });
-});
+}
 
 /* imprime */
 document.getElementById('btnPrint')?.addEventListener('click', ()=>window.print());
@@ -1917,13 +1942,11 @@ document.getElementById('btnPrint')?.addEventListener('click', ()=>window.print(
 recomputeAll();
 buildChartAno();
 
-/* ESC */
-window.addEventListener('keydown', (e)=>{
-  if(e.key === 'Escape'){
-    closeSidebar();
-    closeModal();
-  }
-});
+/* =========================
+   Clique para exportar no Export (CSV)
+   ========================= */
+document.getElementById('btnCSV2')?.addEventListener('click', exportCSV);
 </script>
+
 </body>
 </html>
