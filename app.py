@@ -122,6 +122,13 @@ class Cooperado(db.Model):
     last_ping = db.Column(db.DateTime, nullable=True)
     online = db.Column(db.Boolean, nullable=False, default=False)
 
+    # NOVOS CAMPOS (tempo real)
+    last_speed_kmh = db.Column(db.Float, nullable=True)
+    last_heading = db.Column(db.Float, nullable=True)
+    last_accuracy_m = db.Column(db.Float, nullable=True)
+
+    last_moving_at = db.Column(db.DateTime, nullable=True)  # última vez que estava se movendo
+
     def set_senha(self, senha):
         self.senha_hash = generate_password_hash(senha)
 
@@ -474,35 +481,38 @@ def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
             pass
 
 def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocidade=None):
-    """
-    Emite a posição atual do motoboy para os painéis (mapa, cards, etc).
-    Evento: 'posicao_motoboy_atualizada'
-    """
     try:
         ultima_str = ""
         if cooperado.last_ping:
-            ultima_str = to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M')
+            ultima_str = to_brasilia(cooperado.last_ping).strftime('%d/%m %H:%M:%S')
+
+        is_online, idle_s, status_str = calc_status_cooperado(cooperado)
 
         payload = {
             'id': cooperado.id,
             'nome': cooperado.nome,
             'lat': float(lat),
             'lng': float(lng),
-            'online': bool(getattr(cooperado, "online", True)),
-            'velocidade': float(velocidade) if velocidade is not None else None,
+
+            'online': bool(is_online),
+            'status': status_str,                 # offline | ocioso | livre | em_corrida
+            'idle_seconds': idle_s,               # tempo ocioso em segundos (se online)
+
+            'velocidade_kmh': float(velocidade) if velocidade is not None else None,
+            'heading': cooperado.last_heading,
+            'accuracy_m': cooperado.last_accuracy_m,
+
             'ultima_atualizacao': ultima_str,
         }
 
-        socketio.emit(
-            'posicao_motoboy_atualizada',
-            payload,
-            broadcast=True
-        )
+        socketio.emit('posicao_motoboy_atualizada', payload, broadcast=True)
+
     except Exception as e:
         try:
             current_app.logger.warning(f'Falha ao emitir posicao_motoboy_atualizada: {e}')
         except Exception:
             pass
+
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -656,6 +666,41 @@ def to_brasilia(dt):
     if dt.tzinfo is None:
         dt = pytz.utc.localize(dt)
     return dt.astimezone(BRAZIL_TZ)
+
+def calc_status_cooperado(c: Cooperado):
+    """
+    Retorna: (is_online, idle_seconds, status_str)
+    status_str: offline | ocioso | livre | em_corrida (se você tiver esse campo)
+    """
+    now_utc = datetime.utcnow()
+
+    # ONLINE “REAL” = ping recente
+    is_online = bool(getattr(c, "online", False)) and c.last_ping is not None
+    if is_online:
+        delta = (now_utc - c.last_ping).total_seconds()
+        if delta > OFFLINE_AFTER_SEC:
+            is_online = False
+
+    if not is_online:
+        return (False, None, "offline")
+
+    # Ocioso = online, mas sem movimento por tempo
+    idle_seconds = None
+    if c.last_moving_at:
+        idle_seconds = int((now_utc - c.last_moving_at).total_seconds())
+    else:
+        # se nunca marcou movimento, usa last_ping como referência
+        idle_seconds = int((now_utc - c.last_ping).total_seconds()) if c.last_ping else 0
+
+    # Se você tem “em_corrida/ocupado” no cooperado, priorize isso:
+    em_corrida = bool(getattr(c, "em_corrida", False) or getattr(c, "ocupado", False))
+    if em_corrida:
+        return (True, idle_seconds, "em_corrida")
+
+    if idle_seconds >= IDLE_AFTER_SEC:
+        return (True, idle_seconds, "ocioso")
+
+    return (True, idle_seconds, "livre")
 
 
 def local_date_window_to_utc_range(local_date: date):
@@ -1539,8 +1584,19 @@ def api_mobile_login_cooperado():
 
 @app.route('/logout')
 def logout():
+    # se for cooperado logado, marca offline
+    uid = session.get('user_id')
+    is_admin = session.get('is_admin')
+
+    if uid and not is_admin:
+        coop = Cooperado.query.get(uid)
+        if coop:
+            coop.online = False
+            db.session.commit()
+
     session.clear()
     return redirect(url_for('login'))
+
 
 # =========================================================
 # CLIENTE: LOGIN / PRIMEIRO ACESSO / MEU CRÉDITO
@@ -2599,16 +2655,19 @@ def admin():
 
     motoboys_js = []
     for c in cooperados:
-        # se o modelo Cooperado tiver last_lat/last_lng:
         if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
+            is_online, idle_s, status_str = calc_status_cooperado(c)
+
             motoboys_js.append({
                 "id": c.id,
                 "nome": c.nome,
                 "lat": c.last_lat,
                 "lng": c.last_lng,
-                "online": bool(getattr(c, "online", False)),
-                "velocidade": 0,
-                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if getattr(c, "last_ping", None) else ""
+                "online": bool(is_online),
+                "status": status_str,
+                "idle_seconds": idle_s,
+                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
+                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
 
     return render_template(
@@ -3063,7 +3122,6 @@ def cooperado_aceitar_corrida():
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
 def cooperado_atualizar_localizacao():
-    # Só cooperado logado, não admin
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify({'status': 'erro', 'msg': 'Não autorizado'}), 403
 
@@ -3073,30 +3131,59 @@ def cooperado_atualizar_localizacao():
         return jsonify({'status': 'erro', 'msg': 'Cooperado não encontrado'}), 404
 
     data = request.get_json(silent=True) or {}
+
+    # lat/lng obrigatórios
     try:
         lat = float(data.get('lat'))
         lng = float(data.get('lng'))
     except (TypeError, ValueError):
         return jsonify({'status': 'erro', 'msg': 'Lat/Lng inválidos'}), 400
 
-    # Velocidade é opcional
-    velocidade = data.get('velocidade')
-    try:
-        velocidade = float(velocidade) if velocidade is not None else None
-    except (TypeError, ValueError):
-        velocidade = None
+    # speed pode vir em m/s (Geolocation API) OU km/h (se você mandar assim)
+    speed_mps = data.get('speed_mps', None)
+    speed_kmh = data.get('velocidade', None)  # compatível com seu campo atual
 
-    # Atualiza no banco
+    # heading/accuracy opcionais
+    heading = data.get('heading', None)
+    accuracy = data.get('accuracy', None)
+
+    # normaliza velocidade
+    v_kmh = None
+    try:
+        if speed_mps is not None:
+            v_kmh = float(speed_mps) * 3.6
+        elif speed_kmh is not None:
+            v_kmh = float(speed_kmh)
+    except (TypeError, ValueError):
+        v_kmh = None
+
+    # salva no banco
     cooperado.last_lat = lat
     cooperado.last_lng = lng
     cooperado.last_ping = datetime.utcnow()
     cooperado.online = True
+
+    cooperado.last_speed_kmh = v_kmh
+    try:
+        cooperado.last_heading = float(heading) if heading is not None else None
+    except (TypeError, ValueError):
+        cooperado.last_heading = None
+    try:
+        cooperado.last_accuracy_m = float(accuracy) if accuracy is not None else None
+    except (TypeError, ValueError):
+        cooperado.last_accuracy_m = None
+
+    # marca “último movimento”
+    if v_kmh is not None and v_kmh >= MOVING_SPEED_KMH:
+        cooperado.last_moving_at = datetime.utcnow()
+
     db.session.commit()
 
-    # Emite evento em tempo real
-    emitir_posicao_motoboy(cooperado, lat, lng, velocidade)
+    # emite para o painel em tempo real (adicione campos no payload, item 4)
+    emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
 
     return jsonify({'status': 'ok'})
+
 
 # Recusar via API (AJAX/Fetch com JSON)
 @app.route('/cooperado/api/recusar', methods=['POST'])
@@ -3932,18 +4019,18 @@ def mapa_motoboys():
             else:
                 status = "livre"
 
+            is_online, idle_s, status_str = calc_status_cooperado(c)
+
             motoboys_js.append({
                 "id": c.id,
                 "nome": c.nome,
                 "lat": float(c.last_lat),
                 "lng": float(c.last_lng),
-                "online": online,
-                "status": status,  # 👈 ESSENCIAL PRO MAPA/CARD
-                "velocidade": 0,   # se tiver campo real, troca aqui
-                "ultima_atualizacao": (
-                    to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
-                ),
-                # Opcional (o HTML usa m.endereco e m.observacao)
+                "online": bool(is_online),
+                "status": status_str,
+                "idle_seconds": idle_s,
+                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
+                "ultima_atualizacao": (to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""),
                 "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
                 "observacao": getattr(c, "observacao", "") or ""
             })
