@@ -3982,6 +3982,64 @@ def _wants_json():
     except Exception:
         return False
 
+def _parse_money_to_float(v) -> float:
+    """
+    Aceita:
+      12.34
+      "12,34"
+      "R$ 12,34"
+      "  12,34  "
+    """
+    if v is None:
+        raise ValueError("valor ausente")
+
+    if isinstance(v, (int, float)):
+        return float(v)
+
+    s = str(v).strip()
+    if not s:
+        raise ValueError("valor vazio")
+
+    # remove R$, espaços e tudo que não for número, vírgula, ponto ou menos
+    s = re.sub(r"[^\d,.\-]", "", s)
+
+    # pt-BR: vírgula decimal
+    # se vier "1.234,56" -> remove milhares e troca decimal
+    if "," in s and "." in s:
+        s = s.replace(".", "").replace(",", ".")
+    else:
+        # se vier só vírgula: troca por ponto
+        if "," in s:
+            s = s.replace(",", ".")
+
+    val = float(s)
+    return val
+
+
+@app.route("/api/entregas/<int:entrega_id>/valor", methods=["PATCH"])
+def api_update_entrega_valor(entrega_id):
+    if not session.get("is_admin"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    e = Entrega.query.get_or_404(entrega_id)
+    data = request.get_json(silent=True) or {}
+
+    try:
+        novo_valor = _parse_money_to_float(data.get("valor"))
+    except Exception:
+        return jsonify({"ok": False, "error": "Valor inválido."}), 400
+
+    if novo_valor < 0:
+        return jsonify({"ok": False, "error": "Valor não pode ser negativo."}), 400
+
+    e.valor = float(novo_valor)
+    db.session.commit()
+
+    # Atualiza painéis em tempo real (se você usa isso)
+    emitir_atualizacao_entrega(e, "editada")
+
+    return jsonify({"ok": True, "id": e.id, "valor": float(e.valor)}), 200
+
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
@@ -5549,6 +5607,8 @@ def estatisticas_cooperado():
         chart_ano_qtd=chart_ano_qtd,
         chart_ano_ticket=chart_ano_ticket,
     )
+
+
 
 # =========================================================
 # EXPORTAÇÃO ESTATÍSTICAS (MASTER)
