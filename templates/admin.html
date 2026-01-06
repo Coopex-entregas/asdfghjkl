@@ -14,9 +14,17 @@
     crossorigin=""
   />
 
-  <!-- MarkerCluster (resolve sobreposição) -->
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+  <!-- MarkerCluster (AGRUPAMENTO) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    crossorigin=""
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    crossorigin=""
+  />
 
   <style>
     :root{
@@ -73,7 +81,7 @@
     a{color:inherit}
     a:focus,button:focus,select:focus,input:focus{ outline:2px solid rgba(47,77,230,.75);outline-offset:2px }
 
-    /* ===== HEADER (igual a imagem) ===== */
+    /* ===== HEADER ===== */
     header{
       position:sticky; top:0; z-index:100;
       background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 60%, var(--royal-3) 125%);
@@ -162,7 +170,7 @@
     }
     .theme-toggle:hover{filter:brightness(1.06)}
 
-    /* ===== BAR DA DATA (igual a imagem) ===== */
+    /* ===== BAR DA DATA ===== */
     .banner{
       display:flex;align-items:center;gap:14px;justify-content:space-between;
       background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.90));
@@ -222,7 +230,7 @@
     }
     .btn.disabled, .btn:disabled{opacity:.55; cursor:not-allowed; filter:saturate(.6); transform:none}
 
-    /* ===== SIDEBAR (menu) ===== */
+    /* ===== SIDEBAR ===== */
     .left{
       position:fixed;
       top:96px;
@@ -306,7 +314,7 @@
     }
     body.dark .espera-chip-remove{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
 
-    /* ===== CONTEÚDO PRINCIPAL (estilo da imagem: CARD grande branco) ===== */
+    /* ===== CONTEÚDO PRINCIPAL ===== */
     .panel{
       margin-top:10px;
       background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
@@ -334,7 +342,7 @@
       display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     }
 
-    /* ===== MAPA (dentro do card) ===== */
+    /* ===== MAPA ===== */
     .map-wrapper{
       padding:12px 12px 6px;
       border-bottom:1px solid var(--line);
@@ -348,7 +356,6 @@
     .map-header-main{display:flex;flex-direction:column;gap:6px}
     .map-header-main strong{font-weight:900}
 
-    /* legenda em cima do mapa, igual a imagem (em faixa azul) */
     .map-legend-bar{
       margin-top:8px;
       display:flex;gap:12px;flex-wrap:wrap;
@@ -366,10 +373,8 @@
     .legend-item{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;opacity:.96}
 
     .map-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-
-    /* campo de busca (com datalist) */
     .map-search{
-      min-width:260px;
+      min-width:240px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,.45);
       padding:9px 10px;
@@ -379,6 +384,7 @@
       font-weight:800;
       outline:none;
     }
+    .map-search option{ color:#000; }
     .map-full-btn{
       background:rgba(255,255,255,.14);
       border:1px solid rgba(255,255,255,.45);
@@ -402,47 +408,6 @@
       border:1px solid rgba(255,255,255,.10);
     }
     @media (min-height:900px){ #map-coopex{height:390px;} }
-
-    /* ===== ÍCONE MOTO (substitui bolinha) ===== */
-    .moto-pin{
-      width:34px; height:34px;
-      display:flex; align-items:center; justify-content:center;
-      border-radius:14px;
-      box-shadow:0 10px 24px rgba(0,0,0,.22);
-      border:1px solid rgba(255,255,255,.55);
-      backdrop-filter: blur(2px);
-      transform: translate3d(0,0,0);
-      position: relative;
-    }
-    .moto-pin svg{ width:20px; height:20px; display:block; }
-    .moto-pin .cap{
-      position:absolute;
-      bottom:-6px; left:50%;
-      transform:translateX(-50%);
-      width:10px;height:10px;
-      background:inherit;
-      border-left:1px solid rgba(255,255,255,.55);
-      border-bottom:1px solid rgba(255,255,255,.55);
-      transform-origin:center;
-      transform:translateX(-50%) rotate(45deg);
-      border-radius:2px;
-      box-shadow:0 10px 18px rgba(0,0,0,.12);
-    }
-
-    /* destaque quando buscar */
-    .moto-pulse::after{
-      content:"";
-      position:absolute;
-      inset:-6px;
-      border-radius:18px;
-      border:2px solid rgba(255,255,255,.85);
-      animation:pulse 1.1s ease-out infinite;
-      pointer-events:none;
-    }
-    @keyframes pulse{
-      0%{ transform:scale(.88); opacity:.95; }
-      100%{ transform:scale(1.35); opacity:0; }
-    }
 
     /* ===== FILTROS ===== */
     .filters-bar{
@@ -524,9 +489,7 @@
     }
 
     /* ===== TABELA ===== */
-    .table-shell{
-      padding:12px;
-    }
+    .table-shell{padding:12px;}
     .table-wrap{
       overflow:auto;
       border-radius:16px;
@@ -535,7 +498,6 @@
       box-shadow:var(--shadow);
     }
     body.dark .table-wrap{border-color:var(--line)}
-
     table{
       width:100%;
       border-collapse:separate;
@@ -546,7 +508,6 @@
       min-width:1100px;
     }
     body.dark table{color:#e7edf9}
-
     thead th{
       position:sticky;
       top:0;
@@ -560,7 +521,6 @@
     }
     thead th:first-child{border-top-left-radius:14px}
     thead th:last-child{border-top-right-radius:14px}
-
     tbody td{
       padding:10px 10px;
       text-align:center;
@@ -572,10 +532,10 @@
     tbody tr:nth-child(even) td{background:rgba(238,243,255,.55)}
     body.dark tbody tr:nth-child(even) td{background:rgba(15,23,42,.55)}
     tbody tr:hover td{background:rgba(110,141,255,.12)}
-
     .small{font-size:.84rem;color:var(--muted)}
     body.dark .small{color:var(--muted)}
 
+    /* Pills */
     .pill{
       display:inline-flex;
       align-items:center;
@@ -596,12 +556,14 @@
     body.dark .pill.yellow{background:#2a2110;color:#ffe4b0;border-color:#5a4520}
     body.dark .pill.blue{background:#1b2750;color:#cfe0ff;border-color:#2b3b59}
 
+    /* ID com bolinha */
     .id-with-dot{display:inline-flex;align-items:center;gap:8px;justify-content:flex-start}
     .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(10,27,63,.25)}
     body.dark .status-dot{border-color:rgba(255,255,255,.25)}
     .status-dot.ok{background:#10b981}
     .status-dot.no{background:#ef4444}
 
+    /* Editáveis */
     .coop-editable, .value-editable{
       cursor:pointer;
       font-weight:900;
@@ -630,50 +592,26 @@
       border-color:#2b3b59;
     }
 
-    .actions{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      justify-content:center;
-    }
+    /* Ações */
+    .actions{display:flex; gap:8px; align-items:center; justify-content:center;}
     .act-open{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:6px 12px;
-      border-radius:12px;
-      font-weight:900;
-      text-decoration:none;
-      color:#fff;
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 12px; border-radius:12px; font-weight:900; text-decoration:none; color:#fff;
       background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
-      border:1px solid rgba(15,53,181,.25);
-      box-shadow:none;
+      border:1px solid rgba(15,53,181,.25); box-shadow:none;
     }
     .act-open:hover{filter:brightness(1.06)}
     .act-ico{
-      width:34px;height:34px;
-      border-radius:12px;
+      width:34px;height:34px; border-radius:12px;
       border:1px solid rgba(15,53,181,.18);
       background:rgba(15,53,181,.06);
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      cursor:pointer;
-      padding:0;
+      display:inline-flex; align-items:center; justify-content:center;
+      cursor:pointer; padding:0;
     }
-    body.dark .act-ico{
-      border-color:rgba(255,255,255,.14);
-      background:rgba(255,255,255,.08);
-    }
+    body.dark .act-ico{ border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.08); }
     .act-ico:hover{filter:brightness(1.06)}
-    .act-ico.danger{
-      background:#fee2e2;
-      border-color:#fecaca;
-    }
-    body.dark .act-ico.danger{
-      background:#2e1313;
-      border-color:#5b2828;
-    }
+    .act-ico.danger{ background:#fee2e2; border-color:#fecaca; }
+    body.dark .act-ico.danger{ background:#2e1313; border-color:#5b2828; }
     .act-ico svg{width:18px;height:18px}
 
     /* ===== Modal ===== */
@@ -683,7 +621,7 @@
       backdrop-filter: blur(3px);
     }
     .modal{
-      width:min(520px, 92vw);
+      width:min(560px, 92vw);
       background:#fff; color:#0a1b3f;
       border-radius:16px; box-shadow:0 14px 44px rgba(0,0,0,.38);
       border:1px solid #e6ebff; overflow:hidden;
@@ -737,6 +675,88 @@
       font-weight:900;
     }
     #toast .x:hover{filter:brightness(1.08)}
+
+    /* ===== ÍCONE MOTO (marcador) ===== */
+    .moto-pin{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:34px;
+      height:34px;
+      border-radius:14px;
+      background:rgba(255,255,255,.92);
+      border:2px solid rgba(255,255,255,.85);
+      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      transform: translate3d(0,0,0);
+    }
+    .moto-pin svg{
+      width:22px;
+      height:22px;
+      display:block;
+    }
+    .moto-pin.online svg{ fill: var(--good); }
+    .moto-pin.gps svg{ fill: var(--warn); }
+    .moto-pin.offline svg{ fill: var(--bad); }
+
+    /* realce quando localizar (sobrepor / destacar) */
+    .moto-highlight{
+      outline: 3px solid rgba(250,204,21,.65);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 8px rgba(250,204,21,.18), 0 18px 32px rgba(0,0,0,.22);
+      animation: pulse 1.1s ease-in-out 2;
+    }
+    @keyframes pulse{
+      0%{ transform: scale(1); }
+      50%{ transform: scale(1.06); }
+      100%{ transform: scale(1); }
+    }
+
+    /* ===== CLUSTER (cor por regra: verde se tem online, amarelo se tem gps, senão vermelho) ===== */
+    .cluster-badge{
+      width:42px;height:42px;border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;
+      font-weight:900;
+      border:2px solid rgba(255,255,255,.75);
+      box-shadow:0 10px 22px rgba(0,0,0,.20);
+      background:#64748b;
+    }
+    .cluster-badge.online{ background: #10b981; }
+    .cluster-badge.gps{ background: #f59e0b; color:#111827; border-color: rgba(255,255,255,.85); }
+    .cluster-badge.offline{ background: #ef4444; }
+
+    /* lista no modal (cluster) */
+    .cluster-list{display:flex; flex-direction:column; gap:10px; margin-top:10px}
+    .cluster-item{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:10px 12px;
+      border-radius:14px;
+      border:1px solid #e6ebff;
+      background:#f7f9ff;
+      cursor:pointer;
+      font-weight:900;
+    }
+    body.dark .cluster-item{
+      background:#0b1320;
+      border-color:#1d2636;
+    }
+    .cluster-item .meta{display:flex; flex-direction:column; gap:4px; font-weight:900}
+    .cluster-item .meta small{font-weight:800; opacity:.85}
+    .cluster-pill{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 10px;
+      border-radius:999px;
+      font-size:.82rem;
+      border:1px solid transparent;
+      font-weight:900;
+      white-space:nowrap;
+    }
+    .cluster-pill.online{ background:#dcfce7; color:#166534; border-color:#bbf7d0;}
+    .cluster-pill.gps{ background:#fef3c7; color:#92400e; border-color:#fde68a;}
+    .cluster-pill.offline{ background:#fee2e2; color:#991b1b; border-color:#fecaca;}
+    body.dark .cluster-pill.online{background:#0f2b22;color:#72f0c7;border-color:#1c614d}
+    body.dark .cluster-pill.gps{background:#2a2110;color:#ffe4b0;border-color:#5a4520}
+    body.dark .cluster-pill.offline{background:#2e1313;color:#ffb4b4;border-color:#5b2828}
   </style>
 </head>
 
@@ -877,9 +897,10 @@
             </div>
 
             <div class="map-header-actions">
-              <!-- Busca por nome: datalist -->
-              <input id="mapSearchInput" class="map-search" list="dlMotoboys" placeholder="🔍 Pesquisar motoboy e localizar...">
-              <datalist id="dlMotoboys"></datalist>
+              <select id="mapSearch" class="map-search">
+                <option value="">🔍 Localizar motoboy…</option>
+                <!-- opções serão preenchidas via JS com window.MOTOBOYS (evita desencontro) -->
+              </select>
 
               <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
             </div>
@@ -1143,6 +1164,7 @@
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
     window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
 
+    // ========= helpers =========
     function formatBRLFromNumberLike(v){
       const n = Number(String(v).replace(",", "."));
       if (Number.isFinite(n)) return "R$ " + n.toFixed(2).replace(".", ",");
@@ -1157,6 +1179,7 @@
       return Number.isFinite(n) ? n : 0;
     }
 
+    // ========= Toast =========
     let _toastTimer = null;
     function showToast(msg){
       const el = document.getElementById('toast');
@@ -1175,6 +1198,33 @@
       _toastTimer = null;
     }
 
+    // ========= Modal (uso também para lista do agrupamento) =========
+    function showModal(title, html){
+      const ov = document.getElementById('overlay');
+      const tt = document.getElementById('modal-title');
+      const msg = document.getElementById('modal-msg');
+      if(!ov || !tt || !msg) return;
+      tt.textContent = title || 'Aviso';
+      msg.innerHTML = html || '';
+      ov.style.display = 'flex';
+      document.body.classList.add('locked');
+    }
+    function hideModal(){
+      const ov = document.getElementById('overlay');
+      if(!ov) return;
+      ov.style.display = 'none';
+      document.body.classList.remove('locked');
+    }
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const ok = document.getElementById('modal-ok');
+      const ov = document.getElementById('overlay');
+      if(ok) ok.addEventListener('click', hideModal);
+      if(ov) ov.addEventListener('click', (e)=>{
+        if(e.target === ov) hideModal();
+      });
+    });
+
+    // ========= Contar entregas sem cooperado =========
     function contarSemCooperado(){
       try{
         const rows = document.querySelectorAll('.tabela tbody tr');
@@ -1195,6 +1245,7 @@
       badge.style.display = 'inline-flex';
     }
 
+    // ========= Tema =========
     (function(){
       try{
         const saved = localStorage.getItem('coopex_theme') || 'light';
@@ -1214,6 +1265,7 @@
 
     window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
 
+    // ========= Clique nos status (AJAX) =========
     document.addEventListener('click', (ev)=>{
       const st = ev.target.closest?.('.js-toggle-pagto, .js-toggle-entrega');
       if(!st) return;
@@ -1240,6 +1292,7 @@
       }
     });
 
+    // ========= Remover da fila por nome =========
     function removerDaFilaPorNome(nome){
       try{
         if(!nome) return;
@@ -1272,6 +1325,7 @@
       }catch(e){}
     }
 
+    // ========= Edição rápida do cooperado =========
     document.addEventListener('click', (ev)=>{
       const el = ev.target.closest?.('.coop-editable');
       if(!el) return;
@@ -1341,6 +1395,7 @@
       sel.addEventListener('blur', ()=> salvar(), { once:true });
     });
 
+    // ========= EDIÇÃO INLINE DO VALOR =========
     async function salvarValorEntrega(idEntrega, novo){
       try{
         const r1 = await fetch(`/api/entregas/${idEntrega}/valor`, {
@@ -1423,6 +1478,7 @@
       input.addEventListener('blur', ()=> finalizar(true), { once:true });
     });
 
+    // ========= MENU SANDUÍCHE =========
     window.addEventListener('DOMContentLoaded', ()=>{
       const btnMenu   = document.getElementById('btnMenu');
       const sidePanel = document.getElementById('sidePanel');
@@ -1443,6 +1499,7 @@
       });
     });
 
+    // ========= fila: preencher nome =========
     (function(){
       const selCoop    = document.getElementById('cooperado-espera');
       const inpNome    = document.getElementById('nome-espera');
@@ -1466,6 +1523,7 @@
       }
     })();
 
+    // ========= drag & drop da fila =========
     (function(){
       const ulFila = document.getElementById('espera-lista');
       let dragEl = null;
@@ -1510,6 +1568,7 @@
       }
     })();
 
+    // ========= tempo real (tabela) =========
     function atualizarOuInserirLinhaEntrega(dados){
       if (!dados?.id || !dados?.linha_html) return;
       const tbody = document.querySelector('.tabela tbody');
@@ -1587,7 +1646,10 @@
       };
 
       var agora = new Date();
-      var logoUrl = "{{ url_for('static', filename='logo_coopex.png') }}";
+
+      // LOGO ABSOLUTA (corrige sumiço no cupom / tela branca)
+      var logoUrl = "{{ url_for('static', filename='logo_coopex.png', _external=True) }}";
+      var baseHref = "{{ request.host_url }}";
       var cacheBust = Date.now();
 
       var html = ''
@@ -1597,6 +1659,7 @@
 +'  <meta charset="utf-8">'
 +'  <title>Cupom #'+dados.id+'</title>'
 +'  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
++'  <base href="'+baseHref+'">'
 +'  <style>'
 +'    @page { size: 80mm 110mm; margin: 3mm; }'
 +'    *{box-sizing:border-box}'
@@ -1658,39 +1721,32 @@
 +'</body>'
 +'</html>';
 
-      // ✅ Mais confiável: abrir por Blob URL (evita tela branca / write bloqueado)
+      // ABERTURA ROBUSTA (evita tela branca e mantém logo)
       try{
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url  = URL.createObjectURL(blob);
-        const win  = window.open(url, '_blank', 'width=480,height=800');
-        if(win && !win.closed){
-          setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 60000);
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var w = window.open(url, '_blank'); // sem noopener/noreferrer para evitar perder base
+        if(w && !w.closed){
+          setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 15000);
           return;
         }
+        try{ URL.revokeObjectURL(url); }catch(e){}
       }catch(e){}
 
-      // Fallback: iframe invisível (se popup bloqueado)
-      try{
-        const ifr = document.createElement('iframe');
-        ifr.style.position='fixed';
-        ifr.style.right='-9999px';
-        ifr.style.bottom='-9999px';
-        ifr.style.width='0';
-        ifr.style.height='0';
-        ifr.srcdoc = html;
-        document.body.appendChild(ifr);
-
-        ifr.onload = function(){
-          try{
-            ifr.contentWindow.focus();
-            ifr.contentWindow.print();
-          }catch(e){}
-          setTimeout(()=>{ try{ ifr.remove(); }catch(e){} }, 1500);
-        };
-        showToast('<strong>Pop-up bloqueado.</strong> Imprimindo pelo modo alternativo...');
-      }catch(e){
-        showToast('<strong>Pop-up bloqueado.</strong> Libere pop-ups para imprimir.');
+      // fallback final
+      var win = null;
+      try { win = window.open('about:blank', '_blank', 'width=480,height=800'); } catch(e){}
+      if (win && !win.closed) {
+        try { win.opener = null; } catch(e){}
+        try{
+          win.document.open();
+          win.document.write(html);
+          win.document.close();
+          return;
+        }catch(e){}
       }
+
+      showToast('<strong>Pop-up bloqueado.</strong> Libere pop-ups para imprimir.');
     }
 
     function abrirMapaTelaCheia() {
@@ -1699,7 +1755,7 @@
         var a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
-        a.rel = 'noopener';
+        a.rel = 'noopener noreferrer';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1722,10 +1778,10 @@
     crossorigin=""></script>
 
   <!-- MarkerCluster -->
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <script>
-    // ===== MAPA =====
+    // ===== MAPA (com agrupamento + moto ícone + status correto) =====
     window.addEventListener('DOMContentLoaded', function(){
       var mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
@@ -1736,12 +1792,37 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // ✅ Cluster group (resolve sobreposição + spiderfy)
+      // grupo com cluster
       var cluster = L.markerClusterGroup({
-        showCoverageOnHover: false,
+        chunkedLoading: true,
+        maxClusterRadius: 55,
         spiderfyOnMaxZoom: true,
-        disableClusteringAtZoom: 18,
-        maxClusterRadius: 55
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        iconCreateFunction: function (cl) {
+          var children = cl.getAllChildMarkers();
+          // regra de cor do agrupamento:
+          // verde se tem algum online
+          // amarelo se NÃO tem online, mas tem algum gps/ocioso
+          // vermelho se todos offline
+          var hasOnline = false;
+          var hasGps = false;
+
+          for (var i=0;i<children.length;i++){
+            var st = children[i].__status || 'offline';
+            if(st === 'online') { hasOnline = true; break; }
+            if(st === 'gps') hasGps = true;
+          }
+
+          var cls = hasOnline ? 'online' : (hasGps ? 'gps' : 'offline');
+          var count = cl.getChildCount();
+
+          return L.divIcon({
+            html: '<div class="cluster-badge '+cls+'"><span>'+count+'</span></div>',
+            className: 'cluster-wrap',
+            iconSize: L.point(42, 42)
+          });
+        }
       });
       map.addLayer(cluster);
 
@@ -1753,135 +1834,135 @@
       window.__motoboyMarkers = motoboyMarkers;
       window.__motoboyCluster = cluster;
 
-      function parseUltima(ultima){
-        // aceita ISO, "dd/mm/yyyy hh:mm", ou timestamp (ms)
-        if(!ultima) return null;
-        if(typeof ultima === 'number'){
-          var d = new Date(ultima);
-          return isNaN(d.getTime()) ? null : d;
-        }
-        var s = String(ultima).trim();
-        // ISO
-        var dIso = new Date(s);
-        if(!isNaN(dIso.getTime())) return dIso;
+      // ---------- status ----------
+      // define "tempo real":
+      // online: m.online true E última atualização recente
+      // gps: m.online true mas parou de atualizar (tempo > LIMITE)
+      // offline: m.online false
+      var LIMITE_MS = 3 * 60 * 1000; // 3 minutos
 
-        // dd/mm/yyyy hh:mm(:ss)
-        var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
-        if(m){
-          var dd = Number(m[1]), mm = Number(m[2]) - 1, yy = Number(m[3]);
-          var hh = Number(m[4]||0), mi = Number(m[5]||0), ss = Number(m[6]||0);
-          var d = new Date(yy, mm, dd, hh, mi, ss);
-          return isNaN(d.getTime()) ? null : d;
+      function parseUltima(m){
+        // tenta campos comuns (se existir no JSON)
+        if(m.ultima_epoch) return new Date(Number(m.ultima_epoch) * 1000);
+        if(m.ultima_ts) {
+          var d1 = new Date(m.ultima_ts);
+          if(!isNaN(d1.getTime())) return d1;
+        }
+        if(m.ultima_atualizacao){
+          var d2 = new Date(m.ultima_atualizacao);
+          if(!isNaN(d2.getTime())) return d2;
+          // fallback: "dd/mm/yyyy hh:mm:ss" (se vier assim)
+          var s = String(m.ultima_atualizacao);
+          var mm = s.match(/(\d{2})\/(\d{2})\/(\d{4}).*?(\d{2}):(\d{2})(?::(\d{2}))?/);
+          if(mm){
+            var dd = Number(mm[1]), mo = Number(mm[2])-1, yy = Number(mm[3]);
+            var hh = Number(mm[4]), mi = Number(mm[5]), ss = Number(mm[6]||0);
+            var d3 = new Date(yy, mo, dd, hh, mi, ss);
+            if(!isNaN(d3.getTime())) return d3;
+          }
         }
         return null;
       }
 
-      function normalizarOnline(v){
-        if (v === true) return true;
-        if (v === false) return false;
-        var s = String(v).toLowerCase().trim();
-        return (s === 'true' || s === '1' || s === 'online' || s === 'on' || s === 'sim');
-      }
+      function getStatus(m){
+        // se servidor já manda status, respeita
+        if(m && typeof m.status === 'string'){
+          var st = m.status.toLowerCase();
+          if(st.includes('online')) return 'online';
+          if(st.includes('gps') || st.includes('ocioso') || st.includes('sem')) return 'gps';
+          if(st.includes('off')) return 'offline';
+        }
 
-      function calcEstado(m){
-        // estado: 'online' | 'gps' | 'off'
-        var online = normalizarOnline(m.online);
-        if(!online) return 'off';
+        var online = !!m.online;
+        if(!online) return 'offline';
 
-        // se online, mas sem atualização recente => gps ocioso
-        var dt = parseUltima(m.ultima_atualizacao);
-        if(!dt) return 'online';
-
-        var diffSec = (Date.now() - dt.getTime()) / 1000;
-        if(diffSec >= 180) return 'gps'; // 3 minutos sem update => amarelo
+        var u = parseUltima(m);
+        if(!u) return 'online'; // se não tem hora, assume online (evita ficar "sem atualização" errado)
+        var age = Date.now() - u.getTime();
+        if(age > LIMITE_MS) return 'gps';
         return 'online';
       }
 
-      function corEstado(estado){
-        if(estado === 'online') return '#10b981';
-        if(estado === 'gps') return '#facc15';
-        return '#ef4444';
+      function statusTexto(st){
+        if(st === 'online') return 'Online (app ligado)';
+        if(st === 'gps') return 'Sem atualização / GPS ocioso';
+        return 'Offline / desconectado';
       }
 
-      function iconMoto(cor, pulse){
-        // moto simples em SVG (branco) com fundo colorido
-        var svg = `
-          <svg viewBox="0 0 24 24" aria-hidden="true">
-            <path fill="#fff" d="M5.5 16.5a2.5 2.5 0 1 1 0 .001Zm13 0a2.5 2.5 0 1 1 0 .001ZM5 11h4.2l1.3-2.6c.2-.4.6-.7 1.1-.7h2.1l1.2 2.3h1.6l1.3-2.3h2.2v2h-1l-1.8 3.2c-.2.3-.5.6-.9.6h-2.9c-.4 0-.7-.2-.9-.6l-1.2-2.3h-1.2l-1 2h2.2v2H9.9a4.5 4.5 0 0 0-8.9 1.5h2a2.5 2.5 0 1 0 .7-1.8A2.5 2.5 0 0 0 5.5 19a4.5 4.5 0 0 0 4.4-3.5h4.1A4.5 4.5 0 0 0 23 16.5h-2a2.5 2.5 0 1 1-4.5-1.5h-3.3l-1.1-2H5v-2Z"/>
-          </svg>
-        `;
-        var cls = 'moto-pin' + (pulse ? ' moto-pulse' : '');
-        var html = `<div class="${cls}" style="background:${cor};">${svg}<span class="cap"></span></div>`;
+      function motoSvg(){
+        // ícone simples de moto (preenchimento vem por CSS via classe online/gps/offline)
+        return '' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path d="M5.5 15.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm13 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7 6h4l1.2 3H9.5c-.6 0-1 .4-1 1s.4 1 1 1h3.5l.8 2H11a1 1 0 0 0-.9.6l-.7 1.4H7.9A4.5 4.5 0 0 0 3 18h2a2.5 2.5 0 0 1 5 0h6a2.5 2.5 0 0 1 5 0h2a4.5 4.5 0 0 0-4.5-4.5h-1.7l-1.9-4.7a1.5 1.5 0 0 0-1.4-.9H12l-.7-1.7A1.5 1.5 0 0 0 9.9 5H7a1 1 0 0 0 0 2Z"/>' +
+          '</svg>';
+      }
+
+      function buildIcon(status){
         return L.divIcon({
-          html: html,
-          className: '', // não usa o padrão do Leaflet
-          iconSize: [34,34],
-          iconAnchor: [17,34], // ponta em baixo
-          popupAnchor: [0,-34]
+          className: '',
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+          popupAnchor: [0, -16],
+          html: '<div class="moto-pin '+status+'">'+motoSvg()+'</div>'
         });
       }
 
-      function popupHtml(m){
-        var estado = calcEstado(m);
-        var statusTxt = (estado === 'online') ? 'Online (app ligado)'
-                      : (estado === 'gps') ? 'GPS ocioso / sem atualização'
-                      : 'Offline / não conectado';
-        var vel = (m.velocidade || 0);
-        var ultima = m.ultima_atualizacao ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>' : '';
+      function popupHtml(m, st){
+        var vel = (m.velocidade != null) ? (Number(m.velocidade) || 0) : 0;
+        var u = parseUltima(m);
+        var ultima = u ? ('<br><small>Atualizado: '+u.toLocaleString("pt-BR")+'</small>') : '';
         return (
-          '<strong>'+ (m.nome || '-') +'</strong><br>'+
-          'Velocidade: '+ vel +' km/h<br>'+
-          'Status: '+ statusTxt + ultima
+          '<div style="min-width:220px">' +
+          '<strong>'+ (m.nome || 'Motoboy') +'</strong><br>' +
+          'Velocidade: '+ vel +' km/h<br>' +
+          'Status: '+ statusTexto(st) + ultima +
+          '</div>'
         );
       }
 
-      function atualizarDatalist(lista){
-        var dl = document.getElementById('dlMotoboys');
-        if(!dl) return;
-        dl.innerHTML = '';
-        var safe = Array.isArray(lista) ? lista.slice() : [];
-        safe.sort(function(a,b){
-          return String(a?.nome||'').localeCompare(String(b?.nome||''), 'pt-BR', { sensitivity:'base' });
-        });
-        safe.forEach(function(m){
-          if(!m || !m.id) return;
-          var opt = document.createElement('option');
-          opt.value = (m.nome || '').trim();
-          opt.dataset.id = m.id;
-          dl.appendChild(opt);
-        });
-      }
-
+      // ---------- render ----------
       function atualizarMarcadores(lista){
         if (!Array.isArray(lista)) lista = [];
-        atualizarDatalist(lista);
-
         var ativos = {};
+
         lista.forEach(function(m){
-          if (!m || !m.id || !m.lat || !m.lng) return;
+          if (!m || !m.id) return;
+
+          var lat = Number(m.lat), lng = Number(m.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
           ativos[m.id] = true;
 
-          var estado = calcEstado(m);
-          var cor = corEstado(estado);
-
+          var st = getStatus(m);
           var marker = motoboyMarkers[m.id];
 
           if (!marker) {
-            marker = L.marker([m.lat, m.lng], {
-              icon: iconMoto(cor, false),
+            marker = L.marker([lat, lng], {
+              icon: buildIcon(st),
               riseOnHover: true
             });
-            marker.bindPopup(popupHtml(m));
-            motoboyMarkers[m.id] = marker;
+
+            marker.__mid = m.id;
+            marker.__status = st;
+            marker.__data = m;
+
+            marker.bindPopup(popupHtml(m, st), { closeButton:true, autoPan:true });
+
             cluster.addLayer(marker);
+            motoboyMarkers[m.id] = marker;
           } else {
-            marker.setLatLng([m.lat, m.lng]);
-            marker.setIcon(iconMoto(cor, false));
-            if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m));
+            marker.setLatLng([lat, lng]);
+            marker.__status = st;
+            marker.__data = m;
+
+            // troca ícone conforme status (verde/amarelo/vermelho)
+            marker.setIcon(buildIcon(st));
+
+            if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m, st));
           }
         });
 
-        // remove os que sumiram
+        // remove sumidos
         Object.keys(motoboyMarkers).forEach(function(id){
           if (!ativos[id]) {
             try{ cluster.removeLayer(motoboyMarkers[id]); }catch(e){}
@@ -1889,19 +1970,164 @@
           }
         });
 
-        // fit inicial
+        // fitBounds só na primeira vez
         var layers = Object.values(motoboyMarkers);
         if (layers.length && !firstFitDone) {
-          var g = L.featureGroup(layers);
-          map.fitBounds(g.getBounds().pad(0.25));
-          firstFitDone = true;
+          try{
+            var group = L.featureGroup(layers);
+            map.fitBounds(group.getBounds().pad(0.25));
+            firstFitDone = true;
+          }catch(e){}
+        }
+
+        // repopula search com lista atual
+        preencherSelectPesquisa(lista);
+      }
+
+      // ---------- search ----------
+      function preencherSelectPesquisa(lista){
+        var sel = document.getElementById('mapSearch');
+        if(!sel) return;
+
+        // guarda selecionado atual
+        var keep = sel.value;
+
+        // limpa mantendo placeholder
+        while(sel.options.length > 1) sel.remove(1);
+
+        // ordena por nome
+        var arr = (Array.isArray(lista) ? lista.slice() : []);
+        arr.sort(function(a,b){
+          var an = (a?.nome||'').toLowerCase();
+          var bn = (b?.nome||'').toLowerCase();
+          return an.localeCompare(bn);
+        });
+
+        arr.forEach(function(m){
+          if(!m || !m.id) return;
+          var opt = document.createElement('option');
+          opt.value = String(m.id);
+          opt.textContent = m.nome || ('Motoboy #' + m.id);
+          sel.appendChild(opt);
+        });
+
+        // tenta restaurar selecionado
+        if(keep){
+          var found = false;
+          for(var i=0;i<sel.options.length;i++){
+            if(sel.options[i].value === keep){ found = true; break; }
+          }
+          if(found) sel.value = keep;
         }
       }
 
-      // inicial
+      function destacarMarker(marker){
+        try{
+          marker.setZIndexOffset(10000);
+          // tenta adicionar classe no HTML do ícone
+          var el = marker.getElement ? marker.getElement() : null;
+          if(el){
+            var pin = el.querySelector('.moto-pin');
+            if(pin){
+              pin.classList.add('moto-highlight');
+              setTimeout(function(){
+                try{ pin.classList.remove('moto-highlight'); }catch(e){}
+              }, 2600);
+            }
+          }
+        }catch(e){}
+      }
+
+      function focarMotoboyPorId(id){
+        if(!id) return;
+        var mk = motoboyMarkers[id];
+        if(!mk){
+          showToast('<strong>Não localizado no mapa agora.</strong> Pode estar offline/sem GPS.');
+          return;
+        }
+
+        // isto faz “sobrepor” (spiderfy/zoom) e permite clicar no correto
+        cluster.zoomToShowLayer(mk, function(){
+          try{
+            map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
+          }catch(e){}
+          try{ mk.openPopup(); }catch(e){}
+          destacarMarker(mk);
+        });
+      }
+
+      // evento do select de pesquisa
+      var selSearch = document.getElementById('mapSearch');
+      if(selSearch){
+        selSearch.addEventListener('change', function(){
+          var id = String(selSearch.value || '');
+          if(!id) return;
+          focarMotoboyPorId(id);
+        });
+      }
+
+      // ---------- clique no cluster: mostrar lista de TODOS nomes ----------
+      function statusPill(st){
+        if(st === 'online') return '<span class="cluster-pill online">Online</span>';
+        if(st === 'gps') return '<span class="cluster-pill gps">Sem atualização</span>';
+        return '<span class="cluster-pill offline">Offline</span>';
+      }
+
+      cluster.on('clusterclick', function(e){
+        try{
+          var child = e.layer.getAllChildMarkers();
+          if(!child || !child.length) return;
+
+          // monta lista no modal
+          child.sort(function(a,b){
+            var an = (a.__data?.nome || '').toLowerCase();
+            var bn = (b.__data?.nome || '').toLowerCase();
+            return an.localeCompare(bn);
+          });
+
+          var html = '<div class="small" style="opacity:.9">Toque/clique em um nome para ver todas as informações.</div>';
+          html += '<div class="cluster-list">';
+
+          for(var i=0;i<child.length;i++){
+            var m = child[i].__data || {};
+            var st = child[i].__status || 'offline';
+            var nome = m.nome || ('Motoboy #' + (child[i].__mid || ''));
+            var vel = (m.velocidade != null) ? (Number(m.velocidade) || 0) : 0;
+
+            html += ''
+              + '<div class="cluster-item" data-mid="'+ String(child[i].__mid || '') +'">'
+              +   '<div class="meta">'
+              +     '<div>'+ nome +'</div>'
+              +     '<small>Velocidade: '+ vel +' km/h</small>'
+              +   '</div>'
+              +   statusPill(st)
+              + '</div>';
+          }
+
+          html += '</div>';
+          showModal('Motoboys neste local ('+child.length+')', html);
+
+          // click nos itens (delegado)
+          var msg = document.getElementById('modal-msg');
+          if(msg){
+            msg.onclick = function(ev){
+              var it = ev.target.closest ? ev.target.closest('.cluster-item') : null;
+              if(!it) return;
+              var id = it.getAttribute('data-mid') || '';
+              hideModal();
+              setTimeout(function(){ focarMotoboyPorId(id); }, 150);
+            };
+          }
+
+          // impede zoom automático do cluster click (a gente só mostra lista)
+          e.originalEvent && e.originalEvent.preventDefault && e.originalEvent.preventDefault();
+        }catch(err){}
+      });
+
+      // ---------- init ----------
       atualizarMarcadores(Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : []);
 
-      // socket
+      // socket tempo real do mapa
       if (typeof socket !== 'undefined') {
         socket.on('motoboys_update', function(lista){
           usandoSocketTempoReal = true;
@@ -1909,13 +2135,17 @@
         });
       }
 
-      // fallback polling
+      // polling fallback
       function atualizarDoServidor(){
-        if (usandoSocketTempoReal) return;
+        // mesmo com socket, você pode manter polling leve (garante)
         fetch("{{ url_for('mapa_motoboys') }}", { headers: { 'X-Requested-With': 'fetch' } })
           .then(function(res){
-            if (!res.ok) throw new Error('Falha ao carregar motoboys_json');
-            return res.json();
+            var ct = (res.headers.get('content-type') || '').toLowerCase();
+            if(ct.includes('application/json')) return res.json();
+            // fallback: tenta texto -> json
+            return res.text().then(function(t){
+              try{ return JSON.parse(t); }catch(e){ throw new Error('Resposta não-JSON em mapa_motoboys'); }
+            });
           })
           .then(function(data){
             atualizarMarcadores(data);
@@ -1925,69 +2155,6 @@
           });
       }
       setInterval(atualizarDoServidor, 5000);
-
-      // ✅ localizar por nome: traz pra frente + pulse + zoomToShowLayer (resolve sobreposição)
-      function localizarPorNome(nome){
-        nome = String(nome || '').trim();
-        if(!nome) return;
-
-        // acha o ID pelo nome (case-insensitive)
-        var lista = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
-        var alvo = null;
-        var nomeLower = nome.toLowerCase();
-
-        for(var i=0;i<lista.length;i++){
-          var n = String(lista[i]?.nome || '').trim();
-          if(n && n.toLowerCase() === nomeLower){
-            alvo = lista[i];
-            break;
-          }
-        }
-
-        if(!alvo || !alvo.id){
-          showToast('<strong>Não encontrado.</strong> Digite exatamente como está no sistema.');
-          return;
-        }
-
-        var mk = motoboyMarkers[String(alvo.id)];
-        if(!mk){
-          showToast('<strong>Não localizado no mapa agora.</strong> Pode estar offline/sem GPS.');
-          return;
-        }
-
-        // abre o cluster/spiderfy e mostra o marker
-        cluster.zoomToShowLayer(mk, function(){
-          try{
-            map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
-
-            // sobe ele pra frente e coloca pulse
-            mk.setZIndexOffset(10000);
-            var estado = calcEstado(alvo);
-            var cor = corEstado(estado);
-            mk.setIcon(iconMoto(cor, true));
-            mk.openPopup();
-
-            setTimeout(function(){
-              mk.setZIndexOffset(0);
-              // tira pulse
-              mk.setIcon(iconMoto(cor, false));
-            }, 5000);
-          }catch(e){}
-        });
-      }
-
-      var input = document.getElementById('mapSearchInput');
-      if(input){
-        input.addEventListener('change', function(){
-          localizarPorNome(input.value);
-        });
-        input.addEventListener('keydown', function(e){
-          if(e.key === 'Enter'){
-            e.preventDefault();
-            localizarPorNome(input.value);
-          }
-        });
-      }
     });
   </script>
 </body>
