@@ -667,17 +667,36 @@ def to_brasilia(dt):
         dt = pytz.utc.localize(dt)
     return dt.astimezone(BRAZIL_TZ)
 
-def calc_status_cooperado(c: Cooperado):
+from datetime import datetime, timezone
+
+def _to_utc_aware(dt):
+    """
+    Garante datetime timezone-aware em UTC.
+    - Se dt for None -> None
+    - Se dt for naive -> assume que está em UTC e adiciona tzinfo
+    - Se dt for aware -> converte para UTC
+    """
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt.astimezone(timezone.utc)
+
+def calc_status_cooperado(c: "Cooperado"):
     """
     Retorna: (is_online, idle_seconds, status_str)
-    status_str: offline | ocioso | livre | em_corrida (se você tiver esse campo)
+    status_str: offline | ocioso | livre | em_corrida
     """
-    now_utc = datetime.utcnow()
+    # Agora é UTC-aware (não dá erro com TIMESTAMPTZ)
+    now_utc = datetime.now(timezone.utc)
+
+    last_ping = _to_utc_aware(getattr(c, "last_ping", None))
+    last_moving_at = _to_utc_aware(getattr(c, "last_moving_at", None))
 
     # ONLINE “REAL” = ping recente
-    is_online = bool(getattr(c, "online", False)) and c.last_ping is not None
+    is_online = bool(getattr(c, "online", False)) and (last_ping is not None)
     if is_online:
-        delta = (now_utc - c.last_ping).total_seconds()
+        delta = (now_utc - last_ping).total_seconds()
         if delta > OFFLINE_AFTER_SEC:
             is_online = False
 
@@ -685,12 +704,11 @@ def calc_status_cooperado(c: Cooperado):
         return (False, None, "offline")
 
     # Ocioso = online, mas sem movimento por tempo
-    idle_seconds = None
-    if c.last_moving_at:
-        idle_seconds = int((now_utc - c.last_moving_at).total_seconds())
+    if last_moving_at:
+        idle_seconds = int((now_utc - last_moving_at).total_seconds())
     else:
         # se nunca marcou movimento, usa last_ping como referência
-        idle_seconds = int((now_utc - c.last_ping).total_seconds()) if c.last_ping else 0
+        idle_seconds = int((now_utc - last_ping).total_seconds()) if last_ping else 0
 
     # Se você tem “em_corrida/ocupado” no cooperado, priorize isso:
     em_corrida = bool(getattr(c, "em_corrida", False) or getattr(c, "ocupado", False))
