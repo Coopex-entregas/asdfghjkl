@@ -3982,64 +3982,6 @@ def _wants_json():
     except Exception:
         return False
 
-def _parse_money_to_float(v) -> float:
-    """
-    Aceita:
-      12.34
-      "12,34"
-      "R$ 12,34"
-      "  12,34  "
-    """
-    if v is None:
-        raise ValueError("valor ausente")
-
-    if isinstance(v, (int, float)):
-        return float(v)
-
-    s = str(v).strip()
-    if not s:
-        raise ValueError("valor vazio")
-
-    # remove R$, espaços e tudo que não for número, vírgula, ponto ou menos
-    s = re.sub(r"[^\d,.\-]", "", s)
-
-    # pt-BR: vírgula decimal
-    # se vier "1.234,56" -> remove milhares e troca decimal
-    if "," in s and "." in s:
-        s = s.replace(".", "").replace(",", ".")
-    else:
-        # se vier só vírgula: troca por ponto
-        if "," in s:
-            s = s.replace(",", ".")
-
-    val = float(s)
-    return val
-
-
-@app.route("/api/entregas/<int:entrega_id>/valor", methods=["PATCH"])
-def api_update_entrega_valor(entrega_id):
-    if not session.get("is_admin"):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
-
-    e = Entrega.query.get_or_404(entrega_id)
-    data = request.get_json(silent=True) or {}
-
-    try:
-        novo_valor = _parse_money_to_float(data.get("valor"))
-    except Exception:
-        return jsonify({"ok": False, "error": "Valor inválido."}), 400
-
-    if novo_valor < 0:
-        return jsonify({"ok": False, "error": "Valor não pode ser negativo."}), 400
-
-    e.valor = float(novo_valor)
-    db.session.commit()
-
-    # Atualiza painéis em tempo real (se você usa isso)
-    emitir_atualizacao_entrega(e, "editada")
-
-    return jsonify({"ok": True, "id": e.id, "valor": float(e.valor)}), 200
-
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
@@ -4556,68 +4498,6 @@ def marcar_entregue(id):
         )
 
     return redirect_back_to_admin()
-
-# ================================
-# INLINE_EDIT_VALOR_ENTREGA_ROUTE
-# ================================
-@app.post('/api/entregas/<int:id>/valor')
-def api_atualizar_valor_entrega(id):
-    if not session.get('is_admin'):
-        return jsonify(ok=False, error="unauthorized"), 401
-
-    e = Entrega.query.get_or_404(id)
-
-    data = request.get_json(silent=True) or {}
-    novo_valor_raw = data.get("valor", None)
-
-    try:
-        novo_valor = float(str(novo_valor_raw).replace(",", "."))
-        if novo_valor < 0:
-            return jsonify(ok=False, error="Valor não pode ser negativo."), 400
-    except Exception:
-        return jsonify(ok=False, error="Valor inválido."), 400
-
-    # arredonda para 2 casas para ficar consistente
-    novo_valor = round(novo_valor, 2)
-
-    # se não mudou, só devolve ok
-    atual = round(float(e.valor or 0), 2)
-    if novo_valor == atual:
-        return jsonify(ok=True, entrega_id=e.id, valor=atual, changed=False)
-
-    e.valor = novo_valor
-    db.session.add(e)
-    db.session.commit()
-
-    # Recalcula crédito se necessário (mesma lógica do editar_entrega)
-    try:
-        if pagamento_usa_credito(e.pagamento):
-            # zera consumo antigo e tenta consumir de novo no novo valor
-            desfazer_consumo_credito_da_entrega(e.id)
-            consumir_credito_em_entrega(e.id)
-        else:
-            # se não usa crédito e tinha crédito usado, estorna
-            if (e.credito_usado or 0) > 0:
-                desfazer_consumo_credito_da_entrega(e.id)
-    except Exception as ex:
-        current_app.logger.exception("Falha ao recalcular crédito na entrega %s: %s", e.id, ex)
-        # não bloqueia o update do valor, mas avisa no retorno
-        # (você pode escolher retornar 500 se preferir)
-
-    # Emite atualização em tempo real
-    try:
-        emitir_atualizacao_entrega(e, 'editada')
-    except Exception:
-        pass
-
-    return jsonify(
-        ok=True,
-        entrega_id=e.id,
-        valor=round(float(e.valor or 0), 2),
-        status_pagamento=(e.status_pagamento or "").lower(),
-        changed=True
-    )
-
 
 # =========================================================
 # CRÉDITOS (SUPERVISOR)
@@ -5608,8 +5488,6 @@ def estatisticas_cooperado():
         chart_ano_ticket=chart_ano_ticket,
     )
 
-
-
 # =========================================================
 # EXPORTAÇÃO ESTATÍSTICAS (MASTER)
 # =========================================================
@@ -6499,3 +6377,6 @@ if __name__ == '__main__':
     port = int(os.environ.get('PORT', 5000))
     # importante rodar pelo socketio, não pelo app.run
     socketio.run(app, host='0.0.0.0', port=port)
+
+
+
