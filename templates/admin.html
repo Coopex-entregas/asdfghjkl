@@ -4,52 +4,54 @@
   <meta charset="UTF-8" />
   <title>Painel da Supervisão - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Leaflet (MAPA GRÁTIS / OSM) -->
+  <!-- Leaflet -->
   <link
     rel="stylesheet"
     href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
     integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
     crossorigin=""
   />
-  
+
   <style>
     :root{
-      --royal:#0033cc;        /* azul royal */
-      --royal-2:#2750ff;
+      --royal:#0f35b5;
+      --royal-2:#395de1;
+      --royal-3:#6e8dff;
+
       --ink:#0a1b3f;
-      --muted:#cfe0ff;
-      --bg:#f6f8ff;
+      --muted:#54679a;
+
+      --bg:#eef3ff;
       --card:#ffffff;
-      --line:#e3e9ff;
-      --line-dark:#cfd9ff;
+      --line:#dbe6ff;
+      --line-2:#c6d6ff;
+
       --good:#10b981;
       --bad:#ef4444;
-      --r:14px;
-      --shadow:0 8px 30px rgba(0,30,130,.08);
-      --shadow-2:0 10px 40px rgba(0,30,130,.12);
+      --warn:#f59e0b;
+      --info:#2563eb;
 
-      /* bloco das entregas (royal escuro) */
-      --pane:#0c2aa8;             /* fundo principal */
-      --pane-2:#0a238f;           /* listras/hover */
-      --pane-header:#082070;      /* cabeçalho */
-      --pane-line:rgba(255,255,255,.14);
-      --pane-text:#ffffff;
-      --pane-text-soft:#e7efff;
+      --r:16px;
+      --shadow:0 10px 28px rgba(12, 38, 140, .10);
+      --shadow-2:0 18px 44px rgba(12, 38, 140, .18);
 
-      /* cor de borda primária */
-      --primary-border:#2f4de6;
+      --toast-bg:rgba(2, 6, 23, .88);
+      --toast-text:#fff;
     }
 
-    /* ===== MODO ESCURO: troca apenas variáveis ===== */
     body.dark{
-      --bg:#0b0f17;
-      --card:#0f1623;
+      --bg:#0b1020;
+      --card:#0f172a;
       --ink:#e7edf9;
-      --line:#1d2636;
-      --line-dark:#2b3b59;
-      --muted:#2b3b59;
+      --muted:#a7b7e7;
+      --line:#1d2a47;
+      --line-2:#2a3a62;
+      --shadow:0 12px 34px rgba(0,0,0,.28);
+      --shadow-2:0 22px 54px rgba(0,0,0,.38);
+      --toast-bg:rgba(255,255,255,.10);
+      --toast-text:#fff;
     }
 
     *{box-sizing:border-box}
@@ -57,45 +59,47 @@
     body{
       margin:0;
       font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
+      background:
+        radial-gradient(1200px 500px at 30% 0%, rgba(79,140,255,.18), transparent 55%),
+        radial-gradient(900px 420px at 80% 20%, rgba(15,53,181,.14), transparent 60%),
+        var(--bg);
       color:var(--ink);
     }
 
-    /* Header */
+    a{color:inherit}
+    a:focus,button:focus,select:focus,input:focus{ outline:2px solid rgba(47,77,230,.75);outline-offset:2px }
+
+    /* ===== HEADER (igual a imagem) ===== */
     header{
       position:sticky; top:0; z-index:100;
-      background:linear-gradient(90deg,var(--royal) 0%, #2b54ff 60%, #7ea0ff 130%);
+      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 60%, var(--royal-3) 125%);
       color:#fff;
       box-shadow:var(--shadow-2);
+      border-bottom:1px solid rgba(255,255,255,.18);
     }
     .topbar{
       width:100%;
-      padding:14px 22px;
-      display:grid; grid-template-columns:auto 1fr auto auto; gap:16px; align-items:center;
+      padding:14px 18px;
+      display:grid;
+      grid-template-columns:auto 1fr auto auto;
+      gap:14px;
+      align-items:center;
     }
-    .brand{display:flex;align-items:center;gap:12px;font-weight:900}
-    .brand span{font-size:1.02rem;text-shadow:0 2px 18px rgba(0,0,0,.2)}
-    .kpis{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
-    .kpi{min-width:150px;padding:8px 12px;border:1px solid rgba(255,255,255,.35);border-radius:12px;background:rgba(255,255,255,.14)}
-    .kpi small{display:block;opacity:.95}
-    .kpi span{display:block;font-weight:800;font-size:1.12rem}
-    .logout{color:#fff;background:#c1121f;border:none;border-radius:24px;padding:9px 16px;font-weight:800;text-decoration:none}
-    .logout:hover{filter:brightness(1.05)}
-    /* Botão modo escuro/claro */
-    .theme-toggle{
-      margin-left:6px;
-      color:#fff;background:rgba(255,255,255,.15);
-      border:1px solid rgba(255,255,255,.4);
-      border-radius:12px;padding:9px 14px;font-weight:800;cursor:pointer
+    .brand{
+      display:flex;align-items:center;gap:12px;font-weight:900;
+      letter-spacing:.01em;
     }
-    .theme-toggle:hover{filter:brightness(1.06)}
+    .brand span{
+      font-size:1.05rem;
+      text-shadow:0 2px 16px rgba(0,0,0,.22);
+      white-space:nowrap;
+    }
 
-    /* Botão menu sanduíche (no lugar da logo) */
     .menu-btn{
-      width:40px;height:40px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.7);
-      background:rgba(0,0,0,.16);
+      width:44px;height:44px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.55);
+      background:rgba(0,0,0,.14);
       display:inline-flex;
       flex-direction:column;
       align-items:center;
@@ -103,30 +107,79 @@
       gap:4px;
       cursor:pointer;
       padding:0;
+      box-shadow:0 10px 22px rgba(0,0,0,.18) inset, 0 8px 20px rgba(0,0,0,.10);
+      transition:transform .12s ease, filter .12s ease;
     }
     .menu-btn span{
-      width:20px;
-      height:2px;
-      border-radius:99px;
-      background:#fff;
-      display:block;
+      width:20px;height:2px;border-radius:99px;background:#fff;display:block;opacity:.95;
       transition:.18s;
     }
-    .menu-btn:hover{filter:brightness(1.08)}
+    .menu-btn:hover{filter:brightness(1.06)}
+    .menu-btn:active{transform:scale(.98)}
     .menu-btn.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
     .menu-btn.open span:nth-child(2){opacity:0}
     .menu-btn.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 
-    /* Banner superior (data/feriado) */
+    .kpis{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .kpi{
+      min-width:160px;
+      padding:8px 12px;
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:14px;
+      background:rgba(255,255,255,.14);
+      box-shadow:0 10px 18px rgba(0,0,0,.10) inset;
+    }
+    .kpi small{display:block;opacity:.95;font-weight:800}
+    .kpi span{display:block;font-weight:900;font-size:1.18rem;line-height:1.1}
+
+    .logout{
+      color:#fff;
+      background:linear-gradient(180deg,#d7263d 0%, #b91c1c 100%);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:14px;
+      padding:10px 16px;
+      font-weight:900;
+      text-decoration:none;
+      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      white-space:nowrap;
+    }
+    .logout:hover{filter:brightness(1.05)}
+    .theme-toggle{
+      margin-left:6px;
+      color:#fff;
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:14px;
+      padding:10px 14px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 10px 18px rgba(0,0,0,.12) inset;
+    }
+    .theme-toggle:hover{filter:brightness(1.06)}
+
+    /* ===== BAR DA DATA (igual a imagem) ===== */
     .banner{
       display:flex;align-items:center;gap:14px;justify-content:space-between;
-      background:var(--card); color:var(--ink);
+      background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.90));
+      color:var(--ink);
       border-bottom:1px solid var(--line);
-      padding:10px 22px;
+      padding:10px 18px;
       box-shadow:var(--shadow);
+      backdrop-filter: blur(6px);
     }
-    .today{font-weight:800}
-    .badge{display:inline-flex;align-items:center;justify-content:center;border-radius:999px;padding:6px 10px;font-weight:800;font-size:.84rem;border:1px solid}
+    body.dark .banner{
+      background:linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.86));
+      border-bottom:1px solid var(--line);
+    }
+    .today{font-weight:900}
+
+    .badge{
+      display:inline-flex;align-items:center;justify-content:center;
+      border-radius:999px;padding:6px 10px;
+      font-weight:900;font-size:.84rem;border:1px solid;
+      user-select:none;
+    }
     .badge.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
     .badge.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
     .badge.neu{background:#edf3ff;border-color:#cfdbff;color:#2347c7}
@@ -134,70 +187,43 @@
     body.dark .badge.good{background:#0f2b22;border-color:#1c614d;color:#72f0c7}
     body.dark .badge.bad{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
 
-    /* Barra de ações rápidas (Nova Entrega / Agendar) */
-    .quick-actions-bar{
-      display:flex;
-      gap:10px;
-      padding:10px 18px 4px;
-      flex-wrap:wrap;
-      margin-bottom:6px; /* respiro antes do painel */
-    }
-    .quick-actions-bar .qa-btn{
-      flex:1 1 180px;
-      justify-content:center;
-      font-size:.92rem;
-    }
+    /* ===== LAYOUT ===== */
+    .viewport{padding:12px 14px 18px}
+    .grid{position:relative; display:block}
 
-    /* Layout geral */
-    .viewport{
-      min-height:calc(100vh - 64px - 54px);
-      padding:6px 18px 18px;
-    }
-    .grid{
-      position:relative;
-      display:block;
-    }
-
-    /* Cartão base + containers */
-    .card{background:var(--card); border:1px solid var(--line); border-radius:var(--r); box-shadow:var(--shadow)}
-    .card .body{padding:14px}
-    .card h3{margin:0 0 10px;font-size:1rem;color:#213a99}
-    body.dark .card h3{color:#97b3ff}
-    .row{display:flex;gap:10px;flex-wrap:wrap}
-    .stack{display:flex;flex-direction:column;gap:10px}
-
-    /* BOTÕES azuis */
+    /* ===== Botões ===== */
     .btn{
-      display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
       background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff;border:none;border-radius:12px;padding:10px 14px;font-weight:800;text-decoration:none;
-      box-shadow:0 6px 16px rgba(0,50,200,.18);
+      color:#fff;border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;padding:10px 14px;font-weight:900;text-decoration:none;
+      box-shadow:0 10px 22px rgba(8, 37, 140, .22);
       cursor:pointer;
+      transition:filter .12s ease, transform .12s ease;
+      user-select:none;
+      white-space:nowrap;
     }
-    .btn.alt{background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);color:#fff;border:none}
-    .btn.block{width:100%}
-    .btn:hover{filter:brightness(1.05)}
+    .btn:hover{filter:brightness(1.06)}
+    .btn:active{transform:scale(.99)}
+    .btn.alt{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      color:#0a1b3f;
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+    }
+    body.dark .btn.alt{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      color:#e7edf9;
+      border:1px solid var(--line);
+    }
+    .btn.disabled, .btn:disabled{opacity:.55; cursor:not-allowed; filter:saturate(.6); transform:none}
 
-    /* Inputs padrão — borda azul */
-    label{font-size:.85rem;color:#28409f;font-weight:700}
-    body.dark label{color:#b9ccff}
-    select,input[type="date"],input[type="text"]{
-      width:100%;padding:9px 10px;border-radius:10px;
-      border:1.5px solid var(--primary-border);
-      background:#fff;color:var(--ink);font-weight:600
-    }
-    body.dark select, body.dark input[type="date"], body.dark input[type="text"]{
-      background:#0b1a3a; color:#e7edf9; border-color:#2f4de6;
-    }
-    a:focus,button:focus,select:focus,input:focus{ outline:2px solid var(--primary-border);outline-offset:2px }
-    #cooperado-espera,#nome-espera{border-color:var(--primary-border)}
-
-    /* Sidebar: painel deslizante (menu sanduíche + lista de espera + ações) */
+    /* ===== SIDEBAR (menu) ===== */
     .left{
       position:fixed;
       top:96px;
       right:16px;
-      width:340px;
+      width:360px;
       max-width:92vw;
       max-height:calc(100vh - 110px);
       z-index:1500;
@@ -207,172 +233,160 @@
       min-height:0;
     }
     .left.open{display:flex;}
-    .left .card{max-height:100%;overflow:auto;}
     .menu-panel{
-      background:var(--card);
-      border-radius:var(--r);
-      box-shadow:0 18px 50px rgba(15,23,42,.55);
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      border-radius:18px;
+      box-shadow:0 22px 60px rgba(15,23,42,.42);
       border:1px solid var(--line);
-      padding:10px 10px 14px;
+      padding:12px 12px 14px;
+      overflow:auto;
+      max-height:100%;
+      backdrop-filter: blur(8px);
+    }
+    body.dark .menu-panel{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      border-color:var(--line);
     }
     .menu-header{
-      display:flex;
-      align-items:center;
-      gap:10px;
-      margin-bottom:10px;
+      display:flex; align-items:center; gap:10px; margin-bottom:10px;
     }
     .menu-header img{
-      width:42px;height:42px;
-      border-radius:12px;
-      background:#fff;
-      border:2px solid #eaf0ff;
-      object-fit:contain;
+      width:46px;height:46px;border-radius:14px;background:#fff;border:2px solid #eaf0ff;object-fit:contain;
     }
-    .menu-header strong{
-      font-size:.9rem;
-      color:#213a99;
-    }
-    body.dark .menu-panel{background:#0f1623;border-color:#1d2636}
-    body.dark .menu-header strong{color:#b9ccff}
+    .menu-header strong{font-size:.92rem;color:#18308f;font-weight:900}
+    body.dark .menu-header strong{color:#cfe0ff}
 
+    .card{
+      background:var(--card);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+    }
+    .card .body{padding:14px}
+    .card h3{margin:0 0 10px;font-size:1rem;color:#213a99;font-weight:900}
+    body.dark .card h3{color:#97b3ff}
+
+    .row{display:flex;gap:10px;flex-wrap:wrap}
     .menu-section-title{
-      font-size:.8rem;
-      font-weight:800;
-      text-transform:uppercase;
-      letter-spacing:.04em;
-      color:#4b61c7;
-      margin:6px 2px 6px;
+      font-size:.8rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;
+      color:#4b61c7;margin:10px 2px 6px;
     }
     body.dark .menu-section-title{color:#9fb3ff}
+    .menu-links{display:flex;flex-direction:column;gap:8px}
+    .menu-links .btn{width:100%;justify-content:flex-start;padding:10px 12px;font-size:.88rem;border-radius:12px;box-shadow:none}
 
-    .menu-links{
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-    }
-    .menu-links .btn{
-      width:100%;
-      justify-content:flex-start;
+    /* ===== Lista de espera ===== */
+    #espera-lista{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+    .espera-chip{
+      display:flex;align-items:center;gap:10px;
       padding:8px 10px;
-      font-size:.85rem;
-      border-radius:10px;
-      box-shadow:none;
+      border:1px solid var(--line);
+      border-radius:14px;
+      background:linear-gradient(180deg,#ffffff 0%, #f2f6ff 100%);
+      cursor:grab;
+    }
+    body.dark .espera-chip{background:#0b1320;border-color:#1d2636}
+    .espera-chip-num{
+      width:26px;height:26px;border-radius:12px;
+      display:inline-flex;align-items:center;justify-content:center;
+      background:#eaf0ff;color:#1f3bb8;font-weight:900;border:1px solid #cfdbff;
+      flex:0 0 auto;
+    }
+    body.dark .espera-chip-num{background:#1b2750;color:#cfe0ff;border-color:#2b3b59}
+    .espera-chip-text{font-weight:900;color:#102a7a}
+    body.dark .espera-chip-text{color:#cfe0ff}
+    .espera-chip-remove{
+      width:30px;height:30px;border-radius:12px;
+      border:1px solid #ffd3d3;background:#ffefef;color:#b11e1e;
+      font-weight:900;cursor:pointer;
+    }
+    body.dark .espera-chip-remove{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
+
+    /* ===== CONTEÚDO PRINCIPAL (estilo da imagem: CARD grande branco) ===== */
+    .panel{
+      margin-top:10px;
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow-2);
+      overflow:hidden;
+    }
+    body.dark .panel{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      border-color:var(--line);
     }
 
-    /* Painel ENTREGAS + MAPA (ocupa toda a largura) */
-    .right{
-      grid-area:deliveries; min-height:0;display:flex;flex-direction:column;
-      background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
-      border:1px solid var(--pane-line);border-radius:var(--r);box-shadow:var(--shadow);
-      color:var(--pane-text);
-      margin-top:4px;
+    .panel-head{
+      background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));
+      color:#fff;
+      padding:12px 14px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.16);
     }
-    .right .head{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--pane-line)}
-    .right h2{margin:0;font-size:1rem;color:#fff}
-    .toggle{background:transparent;border:1px solid var(--muted);color:#fff;border-radius:10px;padding:8px 10px;font-weight:800;cursor:pointer}
+    .panel-title{
+      margin:0;
+      font-size:1.02rem;
+      font-weight:900;
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
+    }
 
-    /* MAPA NO TOPO DO PAINEL */
+    /* ===== MAPA (dentro do card) ===== */
     .map-wrapper{
-      padding:10px 12px 12px;
-      border-bottom:1px solid var(--pane-line);
-      background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
+      padding:12px 12px 6px;
+      border-bottom:1px solid var(--line);
     }
+    body.dark .map-wrapper{border-bottom:1px solid var(--line)}
     .map-header{
-      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:6px;
-      font-size:.88rem;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;
+      font-size:.9rem;
       flex-wrap:wrap;
     }
-    .map-header-main{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-    }
-    .map-header strong{font-size:.9rem}
-
-    .map-header-actions{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      flex-wrap:wrap;
-    }
-
+    .map-header-main{display:flex;flex-direction:column;gap:6px}
+    .map-header-main strong{font-weight:900}
     .map-legend{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      flex-wrap:wrap;
-      font-size:.8rem
-    }
-    .legend-dot{
-      width:10px;
-      height:10px;
-      border-radius:999px;
-      display:inline-block;
-      border:1px solid rgba(255,255,255,.5)
-    }
-    /* 3 estados da motinha no mapa */
-    .legend-dot.on{      /* online */
-      background:#10b981;
-    }
-    .legend-dot.gps{     /* app ligado, mas sem atualizar há 30s+ */
-      background:#facc15;
-    }
-    .legend-dot.off{     /* offline */
-      background:#ef4444;
+      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
+      font-size:.82rem;
+      color:rgba(255,255,255,.92);
     }
 
+    /* legenda em cima do mapa, igual a imagem (em faixa azul) */
+    .map-legend-bar{
+      margin-top:8px;
+      display:flex;gap:12px;flex-wrap:wrap;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));
+      color:#fff;
+      padding:8px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 10px 26px rgba(0,0,0,.12);
+    }
+    .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.55)}
+    .legend-dot.on{ background:#10b981; }
+    .legend-dot.gps{ background:#facc15; }
+    .legend-dot.off{ background:#ef4444; }
+    .legend-item{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;opacity:.96}
+
+    .map-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .map-search{
-      min-width:190px;
-      border-radius:10px;
-      border:1px solid rgba(255,255,255,.7);
-      padding:6px 8px;
-      background:rgba(0,0,0,.25);
+      min-width:240px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.45);
+      padding:9px 10px;
+      background:rgba(255,255,255,.14);
       color:#fff;
-      font-size:.8rem;
-      font-weight:700;
-    }
-    .map-search option{
-      color:#000;
-    }
-
-    /* Ícones de motoboy no mapa (motinha) */
-    .moto-marker{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius:50%;
-      box-shadow:0 0 0 2px rgba(0,0,0,.35);
-    }
-    .moto-marker-inner{
-      width:26px;
-      height:26px;
-      border-radius:50%;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      font-size:17px;
-    }
-    .moto-marker.online .moto-marker-inner{
-      background:#10b981;       /* verde */
-      color:#ffffff;
-    }
-    .moto-marker.gps .moto-marker-inner{
-      background:#facc15;       /* amarelo */
-      color:#111827;
-    }
-    .moto-marker.offline .moto-marker-inner{
-      background:#ef4444;       /* vermelho */
-      color:#ffffff;
-    }
-
-    .map-full-btn{
-      background:rgba(0,0,0,.18);
-      border:1px solid rgba(255,255,255,.6);
-      color:#fff;
-      border-radius:10px;
-      padding:7px 11px;
-      font-size:.8rem;
+      font-size:.86rem;
       font-weight:800;
+      outline:none;
+    }
+    .map-search option{ color:#000; }
+    .map-full-btn{
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.45);
+      color:#fff;
+      border-radius:12px;
+      padding:9px 12px;
+      font-size:.86rem;
+      font-weight:900;
       cursor:pointer;
       white-space:nowrap;
     }
@@ -380,146 +394,338 @@
 
     #map-coopex{
       width:100%;
-      height:320px;
-      border-radius:12px;
+      height:340px;
+      border-radius:16px;
       overflow:hidden;
-      box-shadow:0 8px 24px rgba(0,0,0,.4);
+      box-shadow:0 10px 26px rgba(0,0,0,.18);
       background:#020617;
+      border:1px solid rgba(255,255,255,.10);
     }
-    @media (min-height:900px){
-      #map-coopex{height:380px;}
+    @media (min-height:900px){ #map-coopex{height:390px;} }
+
+    /* ===== FILTROS (faixa branca, igual a imagem) ===== */
+    .filters-bar{
+      padding:12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.66);
+      backdrop-filter: blur(8px);
+    }
+    body.dark .filters-bar{
+      background:rgba(15,23,42,.72);
+      border-bottom:1px solid var(--line);
     }
 
-    .filters-bar{
-      position:sticky;
-      top:0;
-      z-index:5;
-      background:linear-gradient(180deg,var(--pane-header) 0%, var(--pane) 100%);
-      border-bottom:1px solid var(--pane-line);
-      padding:10px 12px 12px;
+    .filters-top{
+      display:flex;
+      gap:12px;
+      align-items:flex-end;
+      flex-wrap:wrap;
     }
+
+    .quick-left{
+      flex:0 0 auto;
+      min-width:220px;
+    }
+    .quick-left .btn{
+      width:100%;
+      justify-content:center;
+      box-shadow:none;
+      border:1px solid rgba(15,53,181,.25);
+    }
+
     .filters-form{
+      flex:1 1 760px;
       display:grid;
-      grid-template-columns: repeat(6, minmax(160px, 1fr)) auto; /* +1 campo: endereço */
+      grid-template-columns: 220px 160px 160px 200px 220px 1fr auto;
       gap:10px;
       align-items:end;
     }
-    .filters-form .field{display:flex;flex-direction:column;gap:6px}
-    .filters-form label{font-size:.82rem;color:#dfe8ff;font-weight:800}
-    .filters-form select,.filters-form input{
-      background:#0a1f7e;
-      border:1px solid #2f4de6;
-      color:#fff;
-      border-radius:10px;
-      padding:8px 10px;
-      font-weight:700
+    @media (max-width:1200px){
+      .filters-form{
+        grid-template-columns: 1fr 1fr 1fr;
+      }
     }
-    .filters-form .btn{height:40px}
 
-    /* NOVOS BOTÕES RÁPIDOS ABAIXO DOS FILTROS */
-    .filters-quick-actions{
-      margin-top:8px;
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-size:.82rem;color:#28409f;font-weight:900}
+    body.dark label{color:#cfe0ff}
+
+    select,input[type="date"],input[type="text"]{
+      width:100%;
+      padding:9px 10px;
+      border-radius:12px;
+      border:1.5px solid var(--line-2);
+      background:#fff;
+      color:var(--ink);
+      font-weight:800;
+    }
+    body.dark select, body.dark input[type="date"], body.dark input[type="text"]{
+      background:#0b1a3a; color:#e7edf9; border-color:#2b3b59;
+    }
+    .filters-form .btn{
+      height:42px;
+      box-shadow:none;
+      border:1px solid rgba(15,53,181,.25);
+    }
+
+    .filters-actions{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:space-between;
+    }
+    .filters-actions .btn{
+      flex:1 1 220px;
+      justify-content:center;
+      box-shadow:none;
+      border:1px solid rgba(15,53,181,.20);
+    }
+
+    /* ===== TABELA (clara como a imagem) ===== */
+    .table-shell{
+      padding:12px;
+    }
+    .table-wrap{
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:var(--card);
+      box-shadow:var(--shadow);
+    }
+    body.dark .table-wrap{border-color:var(--line)}
+
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      font-size:13.6px;
+      color:var(--ink);
+      background:transparent;
+      min-width:1100px;
+    }
+    body.dark table{color:#e7edf9}
+
+    thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .98), rgba(15,53,181,.95));
+      color:#fff;
+      padding:10px 10px;
+      font-weight:900;
+      white-space:nowrap;
+      border-bottom:1px solid rgba(255,255,255,.18);
+    }
+    thead th:first-child{border-top-left-radius:14px}
+    thead th:last-child{border-top-right-radius:14px}
+
+    tbody td{
+      padding:10px 10px;
+      text-align:center;
+      vertical-align:middle;
+      white-space:nowrap;
+      border-bottom:1px solid rgba(219,230,255,.85);
+    }
+    body.dark tbody td{border-bottom:1px solid rgba(42,58,98,.85)}
+    tbody tr:nth-child(even) td{background:rgba(238,243,255,.55)}
+    body.dark tbody tr:nth-child(even) td{background:rgba(15,23,42,.55)}
+    tbody tr:hover td{background:rgba(110,141,255,.12)}
+
+    .small{font-size:.84rem;color:var(--muted)}
+    body.dark .small{color:var(--muted)}
+
+    /* Pills (status) estilo da imagem */
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:92px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:900;
+      border:1px solid transparent;
+      user-select:none;
+    }
+    .pill.red{background:#fee2e2; color:#991b1b; border-color:#fecaca;}
+    .pill.green{background:#dcfce7; color:#166534; border-color:#bbf7d0;}
+    .pill.yellow{background:#fef3c7; color:#92400e; border-color:#fde68a;}
+    .pill.blue{background:#dbeafe; color:#1e40af; border-color:#bfdbfe;}
+    body.dark .pill.red{background:#2e1313;color:#ffb4b4;border-color:#5b2828}
+    body.dark .pill.green{background:#0f2b22;color:#72f0c7;border-color:#1c614d}
+    body.dark .pill.yellow{background:#2a2110;color:#ffe4b0;border-color:#5a4520}
+    body.dark .pill.blue{background:#1b2750;color:#cfe0ff;border-color:#2b3b59}
+
+    /* ID com bolinha */
+    .id-with-dot{display:inline-flex;align-items:center;gap:8px;justify-content:flex-start}
+    .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(10,27,63,.25)}
+    body.dark .status-dot{border-color:rgba(255,255,255,.25)}
+    .status-dot.ok{background:#10b981}
+    .status-dot.no{background:#ef4444}
+
+    /* Editáveis */
+    .coop-editable, .value-editable{
+      cursor:pointer;
+      font-weight:900;
+      text-decoration:underline dotted rgba(10,27,63,.45);
+      text-underline-offset:3px;
+    }
+    body.dark .coop-editable, body.dark .value-editable{
+      text-decoration-color:rgba(255,255,255,.38);
+    }
+
+    .value-input{
+      width:110px;
+      max-width:140px;
+      background:#fff;
+      color:var(--ink);
+      border:1.5px solid var(--line-2);
+      border-radius:10px;
+      padding:6px 8px;
+      font-weight:900;
+      text-align:center;
+      outline:none;
+    }
+    body.dark .value-input{
+      background:#0b1a3a;
+      color:#e7edf9;
+      border-color:#2b3b59;
+    }
+
+    /* Ações (estilo da imagem) */
+    .actions{
       display:flex;
       gap:8px;
-      flex-wrap:wrap;
-    }
-    .filters-quick-actions .btn{
-      flex:1 1 180px;
+      align-items:center;
       justify-content:center;
-      font-size:.9rem;
+    }
+    .act-open{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:6px 12px;
+      border-radius:12px;
+      font-weight:900;
+      text-decoration:none;
+      color:#fff;
+      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
+      border:1px solid rgba(15,53,181,.25);
       box-shadow:none;
     }
-
-    /* Conteúdo */
-    .content{min-height:0;overflow:visible}
-
-    .scrollable{
-      height:auto;
-      max-height:none;
-      overflow-x:auto;
-      overflow-y:visible;
+    .act-open:hover{filter:brightness(1.06)}
+    .act-ico{
+      width:34px;height:34px;
+      border-radius:12px;
+      border:1px solid rgba(15,53,181,.18);
+      background:rgba(15,53,181,.06);
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      cursor:pointer;
+      padding:0;
     }
-
-    /* Tabela */
-    table{width:100%;border-collapse:collapse;color:var(--pane-text);font-size:13.6px;background:transparent}
-    thead th{position:sticky;top:0;z-index:1;background:#031a66;color:#fff;border-bottom:1px solid var(--pane-line)}
-    th,td{border-bottom:1px solid var(--pane-line);padding:7px 6px;text-align:center;vertical-align:middle}
-    tbody tr:nth-child(even) td{background:rgba(255,255,255,.03)}
-    tbody tr:hover td{background:rgba(255,255,255,.06)}
-    .small{font-size:.84rem;color:var(--pane-text-soft)}
-    .icon-btn{border:none;background:none;cursor:pointer;padding:5px}
-    .icon-btn svg{width:18px;height:18px}
-
-    .badge.table{border-radius:8px;padding:4px 8px;font-weight:900;border:1px solid transparent}
-    .badge.table.good{background:rgba(16,185,129,.15);border-color:rgba(16,185,129,.35);color:#a7ffdf}
-    .badge.table.bad{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.36);color:#ffb4b4}
-
-    /* Cards */
-    .cards-wrap.scrollable{padding:12px}
-    .cards{display:none}
-    .cards.grid{display:grid;grid-template-columns:repeat(2,minmax(320px,1fr));gap:12px}
-    @media (max-width:1100px){ .cards.grid{grid-template-columns:1fr} }
-    .delivery{
-      background:rgba(255,255,255,.06); color:#fff; border:1px solid var(--pane-line); border-radius:12px; padding:10px; display:grid; gap:8px;
-      box-shadow:0 6px 18px rgba(0,0,0,.15)
+    body.dark .act-ico{
+      border-color:rgba(255,255,255,.14);
+      background:rgba(255,255,255,.08);
     }
-    .chip{background:rgba(255,255,255,.15);border:1px solid var(--pane-line);color:#fff;border-radius:999px;padding:5px 9px;font-weight:700}
+    .act-ico:hover{filter:brightness(1.06)}
+    .act-ico.danger{
+      background:#fee2e2;
+      border-color:#fecaca;
+    }
+    body.dark .act-ico.danger{
+      background:#2e1313;
+      border-color:#5b2828;
+    }
+    .act-ico svg{width:18px;height:18px}
 
-    /* Bolinha de status ao lado do ID (COM / SEM COOPERADO) */
-    .id-with-dot{display:inline-flex;align-items:center;gap:8px;justify-content:flex-start}
-    .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(255,255,255,.5)}
-    .status-dot.ok{background:#10b981}  /* ENTREGA COM COOPERADO ATRIBUÍDO */
-    .status-dot.no{background:#ef4444}  /* ENTREGA SEM COOPERADO */
-
-    /* Edição inline cooperado */
-    .coop-dot{display:inline-flex;align-items:center;gap:6px;font-weight:800}
-    .coop-dot::before{display:none !important;}
-    .coop-editable{cursor:pointer;text-decoration:underline dotted rgba(255,255,255,.5)}
-
-    /* ===== Modal/Balão bloqueante ===== */
+    /* ===== Modal ===== */
     #overlay{
       position:fixed; inset:0; background:rgba(8,12,24,.78);
       display:none; align-items:center; justify-content:center; z-index:2000;
-      backdrop-filter: blur(2px);
+      backdrop-filter: blur(3px);
     }
     .modal{
       width:min(520px, 92vw);
-      background:#fff; color:#0a1b3f; border-radius:14px; box-shadow:0 10px 40px rgba(0,0,0,.35);
+      background:#fff; color:#0a1b3f;
+      border-radius:16px; box-shadow:0 14px 44px rgba(0,0,0,.38);
       border:1px solid #e6ebff; overflow:hidden;
     }
-    .modal header{padding:12px 16px; font-weight:900; color:#003399; border-bottom:1px solid #e6ebff; background:#f7f9ff}
-    .modal .content{padding:14px 16px; font-weight:700}
+    .modal header{
+      padding:12px 16px; font-weight:900; color:var(--royal);
+      border-bottom:1px solid #e6ebff; background:#f7f9ff
+    }
+    .modal .content{padding:14px 16px; font-weight:800}
     .modal footer{display:flex; gap:10px; justify-content:center; padding:12px; border-top:1px solid #e6ebff; background:#f8faff}
-    .modal .ok{padding:10px 18px; border-radius:10px; border:1px solid #003399; background:#003399; color:#fff; font-weight:900; cursor:pointer}
+    .modal .ok{
+      padding:10px 18px; border-radius:12px;
+      border:1px solid var(--royal);
+      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff; font-weight:900; cursor:pointer
+    }
     body.dark .modal{background:#0f1623; color:#e7edf9; border-color:#1d2636}
     body.dark .modal header{color:#b9ccff; background:#0b1320; border-color:#1d2636}
     body.dark .modal footer{background:#0b1320; border-color:#1d2636}
     body.locked{overflow:hidden}
+
+    /* ===== Toast ===== */
+    #toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      z-index:2500;
+      min-width:min(520px, 92vw);
+      max-width:min(720px, 92vw);
+      background:var(--toast-bg);
+      color:var(--toast-text);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      border-radius:16px;
+      padding:12px 14px;
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      backdrop-filter: blur(6px);
+    }
+    #toast strong{font-weight:900}
+    #toast .x{
+      border:none;
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      width:34px;height:34px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:900;
+    }
+    #toast .x:hover{filter:brightness(1.08)}
   </style>
 </head>
+
 <body>
   <!-- HEADER -->
   <header>
     <div class="topbar">
       <div class="brand">
-        <!-- MENU SANDUÍCHE NO LUGAR DA LOGO -->
         <button id="btnMenu" class="menu-btn" type="button" aria-label="Abrir menu principal">
           <span></span><span></span><span></span>
         </button>
         <span>Kratos System – Supervisão</span>
       </div>
+
       <div class="kpis">
         <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
         <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
         <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
       </div>
-      <!-- Botão modo claro/escuro -->
+
       <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
       <a class="logout" href="{{ url_for('logout') }}">Sair</a>
     </div>
   </header>
 
-  <!-- BANNER (data + feriado) -->
+  <!-- BANNER -->
   <div class="banner">
     <div class="today">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} — {{ to_brasilia(now())|diasemana }}</div>
     <div>
@@ -531,10 +737,10 @@
     </div>
   </div>
 
-  <!-- CONTEÚDO -->
   <div class="viewport">
     <div class="grid">
-      <!-- PAINEL DESLIZANTE (MENU SANDUÍCHE + LISTA DE ESPERA + OUTRAS AÇÕES) -->
+
+      <!-- MENU LATERAL -->
       <aside class="left" id="sidePanel">
         <div class="menu-panel">
           <div class="menu-header">
@@ -576,7 +782,7 @@
             </div>
           </div>
 
-          <!-- AÇÕES RÁPIDAS (OUTRAS ABAS) -->
+          <!-- AÇÕES -->
           <div>
             <div class="menu-section-title">Outras ações</div>
             <div class="menu-links">
@@ -587,6 +793,7 @@
               {% endif %}
               <a class="btn alt" href="{{ url_for('creditos') }}">Crédito</a>
               <a class="btn alt" href="{{ url_for('precos_rotas') }}">Tabela de Preços &amp; Rotas</a>
+
               <a class="btn alt" href="{{ url_for('exportar_xlsx',
                    data_inicio=data_inicio or '',
                    data_fim=data_fim or '',
@@ -594,6 +801,7 @@
                    status_pagamento=request.args.get('status_pagamento','todos'),
                    cliente=request.args.get('cliente',''),
                    endereco=request.args.get('endereco','')) }}">Exportar</a>
+
               <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
                    data_inicio=data_inicio or '',
                    data_fim=data_fim or '',
@@ -601,35 +809,37 @@
                    status_pagamento=request.args.get('status_pagamento','todos'),
                    cliente=request.args.get('cliente',''),
                    endereco=request.args.get('endereco','')) }}">Imprimir Relatório</a>
+
               <a class="btn alt" href="{{ url_for('trajetos') }}">Trajetos (histórico)</a>
             </div>
           </div>
         </div>
       </aside>
 
-      <!-- ENTREGAS + MAPA -->
-      <section class="right">
-        <div class="head">
-          <h2>
+      <!-- CONTEÚDO PRINCIPAL -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
+          <div class="small" style="color:rgba(255,255,255,.92);font-weight:900">Ajuda não é fardado</div>
         </div>
 
-                <!-- MAPA DE RASTREIO -->
-        <div class="map-wrapper">
+        <!-- MAPA -->
+        <div class="map-wrapper" style="background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));">
           <div class="map-header">
             <div class="map-header-main">
-              <strong>Mapa em tempo real</strong>
-              <div class="map-legend">
-                <span><span class="legend-dot on"></span> Online (app ligado)</span>
-                <span><span class="legend-dot gps"></span> Sem atualização &gt; 30s / GPS ocioso</span>
-                <span><span class="legend-dot off"></span> Offline / desconectado</span>
+              <strong style="color:#fff">Mapa em tempo real</strong>
+
+              <div class="map-legend-bar">
+                <div class="legend-item"><span class="legend-dot on"></span> Online (app ligado)</div>
+                <div class="legend-item"><span class="legend-dot gps"></span> Sem atualização / GPS ocioso</div>
+                <div class="legend-item"><span class="legend-dot off"></span> Offline / desconectado</div>
               </div>
             </div>
 
             <div class="map-header-actions">
-              <!-- Busca rápida por cooperado no mapa -->
               <select id="mapSearch" class="map-search">
                 <option value="">🔍 Localizar cooperado…</option>
                 {% for c in cooperados %}
@@ -637,9 +847,7 @@
                 {% endfor %}
               </select>
 
-              <button id="btnFullMap" class="map-full-btn" type="button">
-                Mapa em tela cheia
-              </button>
+              <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
             </div>
           </div>
 
@@ -648,57 +856,70 @@
 
         <!-- FILTROS -->
         <div class="filters-bar">
-          <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
-            <div class="field">
-              <label for="cooperado">Cooperado</label>
-              <select name="cooperado_id" id="cooperado">
-                <option value="todos">Todos</option>
-                {% for c in cooperados %}
-                  <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
-                {% endfor %}
-              </select>
+          <div class="filters-top">
+            <div class="quick-left">
+              <button class="btn" type="button" onclick="window.location.href='{{ url_for('cadastrar_entrega') }}'">
+                + Nova entrega
+              </button>
             </div>
-            <div class="field">
-              <label for="data_inicio">De</label>
-              <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" />
-            </div>
-            <div class="field">
-              <label for="data_fim">Até</label>
-              <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" />
-            </div>
-            <div class="field">
-              <label for="status_pagamento">Pagamento</label>
-              <select name="status_pagamento" id="status_pagamento">
-                <option value="todos" {% if request.args.get('status_pagamento','todos')=='todos' %}selected{% endif %}>Todos</option>
-                <option value="pago" {% if request.args.get('status_pagamento')=='pago' %}selected{% endif %}>Pago</option>
-                <option value="pendente" {% if request.args.get('status_pagamento')=='pendente' %}selected{% endif %}>Pendente</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="cliente">Cliente</label>
-              <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
-            </div>
-            <div class="field">
-              <label for="endereco">Endereço</label>
-              <input type="text" name="endereco" id="endereco" placeholder="Rua, nº, ponto de ref." value="{{ request.args.get('endereco','') }}" />
-            </div>
-            <button class="btn" type="submit">Filtrar</button>
-          </form>
 
-          <!-- NOVA BARRA RÁPIDA LOGO ABAIXO DOS FILTROS -->
-          <div class="filters-quick-actions">
-            <button class="btn" type="button" onclick="window.location.href='{{ url_for('cadastrar_entrega') }}'">
-              + Nova entrega
+            <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
+              <div class="field">
+                <label for="cooperado">Cooperado</label>
+                <select name="cooperado_id" id="cooperado">
+                  <option value="todos">Todos</option>
+                  {% for c in cooperados %}
+                    <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="data_inicio">De</label>
+                <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" />
+              </div>
+
+              <div class="field">
+                <label for="data_fim">Até</label>
+                <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" />
+              </div>
+
+              <div class="field">
+                <label for="status_pagamento">Pagamento</label>
+                <select name="status_pagamento" id="status_pagamento">
+                  <option value="todos" {% if request.args.get('status_pagamento','todos')=='todos' %}selected{% endif %}>Todos</option>
+                  <option value="pago" {% if request.args.get('status_pagamento')=='pago' %}selected{% endif %}>Pago</option>
+                  <option value="pendente" {% if request.args.get('status_pagamento')=='pendente' %}selected{% endif %}>Pendente</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="cliente">Cliente</label>
+                <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
+              </div>
+
+              <div class="field">
+                <label for="endereco">Endereço</label>
+                <input type="text" name="endereco" id="endereco" placeholder="Rua, nº, ponto de ref." value="{{ request.args.get('endereco','') }}" />
+              </div>
+
+              <button class="btn" type="submit">Filtrar</button>
+            </form>
+          </div>
+
+          <div class="filters-actions">
+            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
+              + Agendar entrega
             </button>
-            <button class="btn" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
-              Agendar entrega
-            </button>
+            <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
+  Ver agenda
+</button>
           </div>
         </div>
 
-        <div class="content">
-          <!-- TABELA -->
-          <div id="tbl" class="scrollable">
+        <!-- TABELA -->
+        <div class="table-shell">
+          <div class="table-wrap" id="tbl">
             <table class="tabela">
               <thead>
                 <tr>
@@ -719,18 +940,16 @@
                   <th>Ações</th>
                 </tr>
               </thead>
+
               <tbody>
                 {% for e in entregas %}
                 {% set tem_coop = (e.cooperado is not none) %}
-                {% set is_online = tem_coop and (e.cooperado.online if e.cooperado.online is defined else False) %}
-                <tr
-                  data-id="{{ e.id }}"
-                  data-envio-epoch="{{ (to_brasilia(e.data_envio).timestamp()|int) if e.data_envio else '' }}"
-                >
+                {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+                {% set st = e.status|lower if e.status else 'pendente' %}
+                <tr data-id="{{ e.id }}">
                   <td>
                     <span class="id-with-dot">
                       <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
-                            aria-label="{{ 'Com cooperado atribuído' if tem_coop else 'Sem cooperado' }}"
                             title="{{ 'Com cooperado atribuído' if tem_coop else 'Sem cooperado' }}"></span>
                       <span>{{ e.id }}</span>
                     </span>
@@ -739,177 +958,131 @@
                   <td>{{ e.cliente }}</td>
                   <td>{{ e.bairro }}</td>
                   <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
-                  <td>R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</td>
+
+                  <!-- VALOR (editável inline) -->
+                  <td>
+                    <span class="value-editable"
+                          data-id="{{ e.id }}"
+                          data-valor="{{ '%.2f'|format(e.valor) }}"
+                          title="Clique para alterar o valor">
+                      R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}
+                    </span>
+                  </td>
+
                   <td>
                     {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
                     <span class="small">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}</span>
                   </td>
+
                   <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
                   <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
 
+                  <!-- COOPERADO (editável) -->
                   <td>
-                    <span class="coop-dot {{ 'ok' if tem_coop else 'no' }} coop-editable"
+                    <span class="coop-editable"
                           data-id="{{ e.id }}"
                           data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
                           title="Clique para trocar o cooperado">
-                                            {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
+                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
                     </span>
                   </td>
 
                   <td>{{ e.pagamento }}</td>
 
+                  <!-- STATUS ENTREGA -->
                   <td>
-                    {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
-                    {% if is_ok %}
-                      <span class="badge table good">Entregue</span>
+                    {% if st in ['entregue','recebido'] %}
+                      <span class="pill yellow">Entregue</span>
+                    {% elif st in ['agendado'] %}
+                      <span class="pill blue">Agendado</span>
+                    {% elif st in ['pix'] %}
+                      <span class="pill green">Pix</span>
                     {% else %}
                       <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST" style="display:inline">
                         <input type="hidden" name="status" value="entregue">
-                        <span class="badge table bad js-toggle-entrega" role="button" title="Clique para marcar como ENTREGUE">Pendente</span>
+                        <span class="pill red js-toggle-entrega" role="button" title="Clique para marcar como ENTREGUE">Pendente</span>
                       </form>
                     {% endif %}
                   </td>
 
+                  <!-- PAGAMENTO -->
                   <td>
-                    {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
                     {% if sp == 'pago' %}
-                      <span class="badge table good">Pago</span>
+                      <span class="pill green">Pago</span>
                     {% else %}
                       <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST" style="display:inline">
                         <input type="hidden" name="status_pagamento" value="pago">
-                        <span class="badge table bad js-toggle-pagto" role="button" title="Clique para marcar como PAGO">Pendente</span>
+                        <span class="pill red js-toggle-pagto" role="button" title="Clique para marcar como PAGO">Pendente</span>
                       </form>
                     {% endif %}
                   </td>
 
                   <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
 
-                  <!-- COLUNA RASTREIO -->
+                  <!-- RASTREIO -->
                   <td>
-                    <a href="{{ url_for('rastreamento', codigo=e.id, _external=True) }}"
-                       target="_blank"
-                       class="btn alt"
-                       style="padding:4px 8px;font-size:11px;border-radius:8px;box-shadow:none;">
-                      Abrir
-                    </a>
-
-                    <button type="button"
-                            class="btn"
-                            style="padding:4px 8px;font-size:11px;border-radius:8px;box-shadow:none;margin-top:3px;"
-                            onclick="navigator.clipboard.writeText('{{ url_for('rastreamento', codigo=e.id, _external=True) }}')
-                                     .then(()=>alert('Link de rastreio copiado!'))
-                                     .catch(()=>alert('Não foi possível copiar o link.'));"
-                    >
-                      Copiar
-                    </button>
+                    {% if tem_coop %}
+                      {% set rastreio_link = url_for('rastreamento', codigo=e.id, motoboy_id=e.cooperado.id, _external=True) %}
+                      <a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>
+                    {% else %}
+                      <span class="small">—</span>
+                    {% endif %}
                   </td>
 
-                  <!-- AÇÕES -->
+                  <!-- AÇÕES (Edita continua funcionando) -->
                   <td>
-                    <a title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" class="icon-btn" aria-label="Editar">
-                      <svg viewBox="0 0 24 24" fill="#9fc0ff"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg>
-                    </a>
+                    <div class="actions">
+                      <a class="act-ico" title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" aria-label="Editar">
+                        <svg viewBox="0 0 24 24" fill="#1e40af">
+                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                      </a>
 
-                    <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
-                      <button title="Clonar" type="submit" class="icon-btn">
-                        <svg width="18" height="18" fill="#2767e6" viewBox="0 0 24 24"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1.9 2-.9 2-2V7c-1.1-.9-2-2-2-2zm0 16H8V7h11v14z"/></svg>
+                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
+                        <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
+                          <svg viewBox="0 0 24 24" fill="#1e40af">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                          </svg>
+                        </button>
+                      </form>
+
+                      <button type="button" class="act-ico" title="Imprimir cupom"
+                        data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
+                        onclick="imprimirCupom({{ e.id }}, this)">
+                        <svg viewBox="0 0 24 24" fill="#16a34a">
+                          <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
+                        </svg>
                       </button>
-                    </form>
 
-                    <button
-                      type="button"
-                      title="Imprimir cupom"
-                      class="icon-btn"
-                      data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
-                      onclick="imprimirCupom({{ e.id }}, this)">
-                      <svg width="20" height="20" viewBox="0 0 24 24" fill="#13a038">
-                        <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
-                      </svg>
-                    </button>
-
-                    <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-                      <button title="Excluir" type="submit" class="icon-btn">
-                        <svg width="18" height="18" fill="#d11a1a" viewBox="0 0 24 24"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"></path></svg>
-                      </button>
-                    </form>
+                      <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST"
+                            style="display:inline;"
+                            onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+                        <button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir">
+                          <svg viewBox="0 0 24 24" fill="#b91c1c">
+                            <path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/>
+                          </svg>
+                        </button>
+                      </form>
+                    </div>
                   </td>
                 </tr>
                 {% endfor %}
               </tbody>
             </table>
           </div>
-
-          <!-- CARDS -->
-          <div id="cardsWrap" class="cards-wrap scrollable" style="display:none">
-            <div id="cards" class="cards grid">
-              {% for e in entregas %}
-              {% set tem_coop = (e.cooperado is not none) %}
-              {% set is_online = tem_coop and (e.cooperado.online if e.cooperado.online is defined else False) %}
-              <div class="delivery">
-                <div class="row">
-                  <strong>
-                    <span class="status-dot {{ 'ok' if tem_coop else 'no' }}" style="vertical-align:middle;margin-right:6px"
-                          title="{{ 'Com cooperado atribuído' if tem_coop else 'Sem cooperado' }}"></span>
-                    #{{ e.id }}
-                  </strong>
-                  <span class="chip">{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}</span>
-                  <span style="margin-left:auto" class="small">{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</span>
-                </div>
-                <div class="row small">
-                  <div><strong>Cliente:</strong> {{ e.cliente }}</div>
-                  <div style="margin-left:auto"><strong>Bairro:</strong> {{ e.bairro }}</div>
-                </div>
-                <div class="row small">
-                  <div><strong>Endereço:</strong> {{ e.endereco if e.endereco is defined and e.endereco else '-' }}</div>
-                </div>
-                <div class="row small">
-                  <div><strong>Valor:</strong> R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
-                  <div style="margin-left:auto"><strong>Pgto:</strong> <span class="chip">{{ e.pagamento }}</span></div>
-                </div>
-                <div class="row" style="align-items:center">
-                  {% set is_ok = (e.status and e.status.lower() in ['recebido','entregue']) %}
-                  {% if is_ok %}
-                    <span class="badge table good">Entregue</span>
-                  {% else %}
-                    <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST">
-                      <input type="hidden" name="status" value="entregue">
-                      <span class="badge table bad js-toggle-entrega">Pendente</span>
-                    </form>
-                  {% endif %}
-
-                  {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
-                  {% if sp == 'pago' %}
-                    <span class="badge table good">Pago</span>
-                  {% else %}
-                    <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST">
-                      <input type="hidden" name="status_pagamento" value="pago">
-                      <span class="badge table bad js-toggle-pagto">Pendente</span>
-                    </form>
-                  {% endif %}
-
-                  <div style="margin-left:auto" class="row">
-                    <a class="btn alt" href="{{ url_for('editar_entrega', id=e.id) }}">Editar</a>
-                    <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST">
-                      <button class="btn alt" type="submit">Clonar</button>
-                    </form>
-                    <button class="btn" type="button"
-                        data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
-                        onclick="imprimirCupom({{ e.id }}, this)">Imprimir</button>
-                    <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" onsubmit="return confirm('Excluir entrega?')">
-                      <button class="btn alt" type="submit">Excluir</button>
-                    </form>
-                  </div>
-                </div>
-              </div>
-              {% endfor %}
-            </div>
-          </div>
         </div>
+
       </section>
     </div>
   </div>
 
-  <!-- Modal bloqueante -->
+  <!-- Toast -->
+  <div id="toast" role="status" aria-live="polite">
+    <div id="toastText"><strong>Ok</strong></div>
+    <button class="x" type="button" onclick="hideToast()">×</button>
+  </div>
+
+  <!-- Modal -->
   <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal">
       <header id="modal-title">Aviso</header>
@@ -920,314 +1093,183 @@
     </div>
   </div>
 
-    <!-- áudio do aviso -->
+  <!-- áudios -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
-
-  <!-- áudio de socorro -->
   <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
-  <!-- Socket.IO para tempo real -->
-<!-- Socket.IO para tempo real -->
-<script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
-<script>
-  // Conexão Socket.IO em modo POLLING (compatível com o Gunicorn/Render)
-  const socket = io("{{ request.host_url.rstrip('/') }}", {
-    transports: ["polling"],        // 👈 não tenta mais websocket
-    path: "/socket.io/",
-    reconnection: true,
-    reconnectionAttempts: Infinity,
-    reconnectionDelay: 1000
-  });
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <script>
+    const socket = io("{{ request.host_url.rstrip('/') }}", {
+      transports: ["polling"],
+      path: "/socket.io/",
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000
+    });
+    socket.on("connect", () => console.log("Socket conectado (polling), id:", socket.id));
+    socket.on("connect_error", (err) => console.error("Erro na conexão Socket.IO:", err));
+  </script>
 
-  socket.on("connect", () => {
-    console.log("Socket conectado (polling), id:", socket.id);
-  });
-
-  socket.on("connect_error", (err) => {
-    console.error("Erro na conexão Socket.IO:", err);
-  });
-</script>
-  <!-- JS PRINCIPAL -->
-   <script>
+  <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
-    // === Dados de motoboys para o MAPA (via JSON seguro) ===
-    window.MOTOBOYS = {{ motoboys_js | default([]) | tojson | safe }};
+    window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
 
-    // ========= CONTADOR DE ENTREGAS EM ABERTO (sem cooperado) =========
+    // ========= helpers =========
+    function formatBRLFromNumberLike(v){
+      const n = Number(String(v).replace(",", "."));
+      if (Number.isFinite(n)) return "R$ " + n.toFixed(2).replace(".", ",");
+      return String(v || "").trim() || "R$ 0,00";
+    }
+    function parseNumberFromBRL(text){
+      if(!text) return 0;
+      let t = String(text).replace(/[^\d,.-]/g,'').trim();
+      t = t.replace(/\.(?=\d{3}(\D|$))/g, '');
+      t = t.replace(',', '.');
+      const n = Number(t);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    // ========= Toast =========
+    let _toastTimer = null;
+    function showToast(msg){
+      const el = document.getElementById('toast');
+      const tx = document.getElementById('toastText');
+      if(!el || !tx) return;
+      tx.innerHTML = msg;
+      el.style.display = 'flex';
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(hideToast, 2600);
+    }
+    function hideToast(){
+      const el = document.getElementById('toast');
+      if(!el) return;
+      el.style.display = 'none';
+      clearTimeout(_toastTimer);
+      _toastTimer = null;
+    }
+
+    // ========= Contar entregas sem cooperado =========
     function contarSemCooperado(){
       try{
-        var rows = document.querySelectorAll('.tabela tbody tr');
-        var n = 0;
-        rows.forEach(function(tr){
-          var el = tr.querySelector('.coop-editable, .coop-dot');
-          var cid = (el && el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
+        const rows = document.querySelectorAll('.tabela tbody tr');
+        let n = 0;
+        rows.forEach(tr=>{
+          const el = tr.querySelector('.coop-editable');
+          const cid = el?.dataset?.cooperadoId || '';
           if(!cid) n++;
         });
         return n;
-      }catch(e){
-        console.error(e);
-        return 0;
-      }
+      }catch(e){ return 0; }
     }
-
     function atualizarBadgeAbertas(){
-      var badge = document.getElementById('abertasBadge');
+      const badge = document.getElementById('abertasBadge');
       if(!badge) return;
-      var n = contarSemCooperado();
+      const n = contarSemCooperado();
       badge.textContent = n + ' em aberto';
       badge.style.display = 'inline-flex';
-      badge.title = n>0 ? 'Entregas sem cooperado' : 'Todas as entregas têm cooperado';
     }
 
-    // ===== Modal/Balão bloqueante =====
-    var overlayEl   = document.getElementById('overlay');
-    var modalTitle  = document.getElementById('modal-title');
-    var modalMsg    = document.getElementById('modal-msg');
-    var modalOk     = document.getElementById('modal-ok');
-    var somPendente = document.getElementById('som-pendente');
-    var _modalResolve = null;
-
-    function abrirModal(titulo, mensagem, tocarSom) {
-      if(typeof tocarSom === 'undefined') tocarSom = false;
-      if(modalTitle) modalTitle.textContent = titulo;
-      if(modalMsg) modalMsg.textContent = mensagem;
-      if(overlayEl) overlayEl.style.display = 'flex';
-      document.body.classList.add('locked');
-      if (tocarSom && somPendente) {
-        try {
-          somPendente.currentTime = 0;
-          var p = somPendente.play();
-          if (p && p.catch) p.catch(function(){});
-        } catch(e){}
-      }
-      return new Promise(function(resolve){
-        _modalResolve = resolve;
-      });
-    }
-
-    if (modalOk){
-      modalOk.addEventListener('click', function(){
-        if(overlayEl) overlayEl.style.display = 'none';
-        document.body.classList.remove('locked');
-        if (_modalResolve) _modalResolve(true);
-        _modalResolve = null;
-      });
-    }
-
-    // Tema (escuro/claro) – aplica salvo no localStorage
+    // ========= Tema =========
     (function(){
       try{
-        var saved = localStorage.getItem('coopex_theme') || 'light';
+        const saved = localStorage.getItem('coopex_theme') || 'light';
         if(saved === 'dark') document.body.classList.add('dark');
-        var btn = document.getElementById('btnTheme');
-        var sync = function(){
-          if(!btn) return;
-          btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro';
-        };
+        const btn = document.getElementById('btnTheme');
+        const sync = ()=> btn && (btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro');
         if(btn){
           sync();
-          btn.addEventListener('click', function(){
+          btn.addEventListener('click', ()=>{
             document.body.classList.toggle('dark');
-            localStorage.setItem(
-              'coopex_theme',
-              document.body.classList.contains('dark') ? 'dark' : 'light'
-            );
+            localStorage.setItem('coopex_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
             sync();
           });
         }
       }catch(e){}
     })();
 
-    // Atualiza badge "X em aberto" ao carregar
     window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
 
-    // Observa mudanças na tabela (para atualizar badge)
-    window.addEventListener('DOMContentLoaded', function(){
-      var tbody = document.querySelector('.tabela tbody');
-      if (!tbody) return;
-      var obs = new MutationObserver(function(){
-        atualizarBadgeAbertas();
-      });
-      obs.observe(tbody, {
-        childList: true,
-        subtree: true,
-        attributes: true,
-        attributeFilter: ['data-cooperado-id']
-      });
-    });
-
-    // Alternar Tabela/Cartões (botão pode ser adicionado se quiser)
-    (function(){
-      var btToggle  = document.getElementById('toggleView');
-      var tbl       = document.getElementById('tbl');
-      var cardsWrap = document.getElementById('cardsWrap');
-      if (btToggle && tbl && cardsWrap){
-        btToggle.addEventListener('click', function(){
-          var showingCards = cardsWrap.style.display !== 'none';
-          cardsWrap.style.display = showingCards ? 'none' : 'block';
-          tbl.style.display       = showingCards ? 'block' : 'none';
-        });
-      }
-    })();
-
-    // Preencher "nome" da fila a partir do select
-    (function(){
-      var selCoop    = document.getElementById('cooperado-espera');
-      var inpNome    = document.getElementById('nome-espera');
-      var formEspera = document.getElementById('form-espera');
-
-      if (selCoop && inpNome){
-        selCoop.addEventListener('change', function(){
-          var opt  = selCoop.options[selCoop.selectedIndex];
-          var nome = opt ? (opt.text || '') : '';
-          if (!inpNome.value) inpNome.value = nome;
-        });
-      }
-      if (formEspera && selCoop && inpNome){
-        formEspera.addEventListener('submit', function(){
-          if (!inpNome.value) {
-            var opt  = selCoop.options[selCoop.selectedIndex];
-            var nome = opt ? (opt.text || '') : '';
-            inpNome.value = nome;
-          }
-        });
-      }
-    })();
-
-    // Drag & drop da fila de espera
-    (function(){
-      var ulFila = document.getElementById('espera-lista');
-      var dragEl = null;
-
-      function renumerar(){
-        var nums = ulFila ? ulFila.querySelectorAll('.espera-chip-num') : [];
-        nums.forEach(function(el, i){ el.textContent = i+1; });
-      }
-      function salvarOrdem(){
-        if(!ulFila) return;
-        var ids = [].map.call(
-          ulFila.querySelectorAll('.espera-chip'),
-          function(li){ return li.dataset.id; }
-        );
-        fetch('/lista_espera/reordenar',{
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ordem:ids})
-        }).catch(function(){});
-      }
-
-      if(ulFila){
-        ulFila.addEventListener('dragstart', function(e){
-          var li = e.target.closest('.espera-chip');
-          if(!li) return;
-          dragEl = li;
-          li.style.opacity = 0.6;
-        });
-        ulFila.addEventListener('dragend', function(e){
-          var li = e.target.closest('.espera-chip');
-          if(!li) return;
-          li.style.opacity = 1;
-          dragEl = null;
-          salvarOrdem();
-        });
-        ulFila.addEventListener('dragover', function(e){
-          e.preventDefault();
-          var li = e.target.closest('.espera-chip');
-          if(!li || li === dragEl) return;
-          var r     = li.getBoundingClientRect();
-          var after = (e.clientY - r.top) > (r.height / 2);
-          if(after) li.after(dragEl); else li.before(dragEl);
-          renumerar();
-        });
-      }
-    })();
-
-    // Clique nos status (AJAX: pagamento / entrega)
-    document.addEventListener('click', function(ev){
-      var st = ev.target.closest
-        ? ev.target.closest('.js-toggle-pagto, .js-toggle-entrega')
-        : null;
+    // ========= Clique nos status (AJAX) =========
+    document.addEventListener('click', (ev)=>{
+      const st = ev.target.closest?.('.js-toggle-pagto, .js-toggle-entrega');
       if(!st) return;
-
-      var form = st.closest ? st.closest('form') : null;
+      const form = st.closest?.('form');
       if(!form) return;
 
-      var confirmar = st.classList.contains('js-toggle-pagto')
+      const confirmar = st.classList.contains('js-toggle-pagto')
         ? 'Confirmar pagamento como PAGO?'
         : 'Confirmar entrega como ENTREGUE?';
       if(!confirm(confirmar)) return;
 
       ev.preventDefault();
       try{
-        var fd = new FormData(form);
-        fetch(form.action, {
-          method:'POST',
-          body:fd,
-          headers:{'X-Requested-With':'fetch'}
-        }).then(function(res){
-          if(!res.ok) throw new Error('Falha ao atualizar.');
-          if(st.classList.contains('js-toggle-pagto')){
-            st.classList.remove('bad'); st.classList.add('good');
-            st.textContent='Pago'; st.title='Pagamento quitado';
-          }else{
-            st.classList.remove('bad'); st.classList.add('good');
-            st.textContent='Entregue'; st.title='Entrega finalizada';
-          }
-        }).catch(function(e){
-          console.error(e);
-          alert('Não foi possível atualizar agora.');
-        });
+        const fd = new FormData(form);
+        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+          .then(res=>{
+            if(!res.ok) throw new Error('Falha ao atualizar.');
+            showToast('<strong>Atualizado com sucesso.</strong>');
+            // reload leve: mantém compatível com suas regras/rotas
+            setTimeout(()=> location.reload(), 350);
+          })
+          .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
       }catch(e){
-        console.error(e);
-        alert('Não foi possível atualizar agora.');
+        showToast('<strong>Não foi possível atualizar agora.</strong>');
       }
     });
 
-    // Preservar scroll da tabela / cards
-    (function(){
-      var tblArea   = document.getElementById('tbl');
-      var cardsArea = document.getElementById('cardsWrap');
-      var KEY_T='scroll_tbl', KEY_C='scroll_cards';
-      if(tblArea){
-        var s = sessionStorage.getItem(KEY_T);
-        if(s) tblArea.scrollTop = +s || 0;
-        tblArea.addEventListener('scroll', function(){
-          sessionStorage.setItem(KEY_T, tblArea.scrollTop);
-        });
-      }
-      if(cardsArea){
-        var s2 = sessionStorage.getItem(KEY_C);
-        if(s2) cardsArea.scrollTop = +s2 || 0;
-        cardsArea.addEventListener('scroll', function(){
-          sessionStorage.setItem(KEY_C, cardsArea.scrollTop);
-        });
-      }
-    })();
+    // ========= Remover da fila por nome =========
+    function removerDaFilaPorNome(nome){
+      try{
+        if(!nome) return;
+        const ul = document.getElementById('espera-lista');
+        if(!ul) return;
 
-    // ===== Edição rápida do cooperado (click no nome) =====
-    // Ao salvar, o backend recebe a entrega na rota /atribuir_cooperado/<id>
-    // e o painel do cooperado passa a enxergar essa entrega (filtrando por cooperado_id).
-    document.addEventListener('click', function(ev){
-      var el = ev.target.closest ? ev.target.closest('.coop-editable') : null;
+        const itens = ul.querySelectorAll('.espera-chip');
+        let alvo = null;
+        itens.forEach(li=>{
+          const txt = (li.querySelector('.espera-chip-text')?.textContent || '').trim().toLowerCase();
+          if(txt && txt === String(nome).trim().toLowerCase()) alvo = li;
+        });
+        if(!alvo) return;
+
+        const form = alvo.querySelector('form');
+        if(form?.action){
+          fetch(form.action, { method:'POST', headers:{'X-Requested-With':'fetch'} }).catch(()=>{});
+        }
+        alvo.remove();
+
+        const restou = ul.querySelectorAll('.espera-chip').length;
+        if(restou === 0){
+          const li = document.createElement('li');
+          li.id = 'fila-vazia';
+          li.className = 'small';
+          li.style.opacity = '.85';
+          li.textContent = 'Nenhum cooperado na fila.';
+          ul.appendChild(li);
+        }
+      }catch(e){}
+    }
+
+    // ========= Edição rápida do cooperado =========
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.coop-editable');
       if(!el) return;
 
-      var idEntrega = el.dataset ? el.dataset.id : '';
-      var atual     = (el.dataset && el.dataset.cooperadoId) ? el.dataset.cooperadoId : '';
+      const idEntrega = el.dataset?.id || '';
+      const atual     = el.dataset?.cooperadoId || '';
 
-      var sel = document.createElement('select');
-      sel.style.background   ='#0a1f7e';
-      sel.style.color        ='#fff';
-      sel.style.border       ='1px solid #2f4de6';
-      sel.style.borderRadius ='8px';
-      sel.style.padding      ='4px 6px';
-      sel.style.fontWeight   ='800';
+      const sel = document.createElement('select');
+      sel.style.borderRadius='12px';
+      sel.style.padding='7px 10px';
+      sel.style.fontWeight='900';
 
-      var opt0 = document.createElement('option');
+      const opt0 = document.createElement('option');
       opt0.value=''; opt0.textContent='Sem Cooperado';
       sel.appendChild(opt0);
 
-      (window.COOPERADOS || []).forEach(function(c){
-        var o  = document.createElement('option');
+      (window.COOPERADOS || []).forEach(c=>{
+        const o = document.createElement('option');
         o.value=c.id;
         o.textContent=c.nome;
         if(String(c.id)===String(atual)) o.selected=true;
@@ -1238,140 +1280,272 @@
       sel.focus();
 
       function salvar(){
-        var coopId = sel.value || '';
+        const coopId = sel.value || '';
+        let nomeEscolhido = 'Sem Cooperado';
+        if(sel.selectedIndex >= 0) nomeEscolhido = (sel.options[sel.selectedIndex]?.textContent || 'Sem Cooperado').trim();
+
         try{
-          var url = '/atribuir_cooperado/' + idEntrega;
-          var fd  = new FormData();
+          const url = '/atribuir_cooperado/' + idEntrega;
+          const fd  = new FormData();
           fd.append('cooperado_id', coopId);
-          // Campo extra caso queira usar no Flask para acionar lógica específica
           fd.append('notificar_painel', '1');
 
-          fetch(url,{
-            method:'POST',
-            body:fd,
-            headers:{'X-Requested-With':'fetch'}
-          }).catch(function(e){ console.error(e); });
+          fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+            .then(()=>{
+              if(coopId) removerDaFilaPorNome(nomeEscolhido);
+              showToast('<strong>Cooperado atualizado.</strong>');
+            })
+            .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
         }catch(e){
-          console.error(e);
+          showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
         }
 
-        var span = document.createElement('span');
-        var tem  = !!sel.value;
-        span.className          = 'coop-dot ' + (tem? 'ok':'no') + ' coop-editable';
-        span.dataset.id         = idEntrega;
-        span.dataset.cooperadoId= sel.value;
-        span.title              = tem? 'Atribuído':'Sem cooperado';
+        const span = document.createElement('span');
+        span.className = 'coop-editable';
+        span.dataset.id = idEntrega;
+        span.dataset.cooperadoId = sel.value;
+        span.title = 'Clique para trocar o cooperado';
 
-        var nome = 'Sem Cooperado';
-        if(tem){
-          var found = (window.COOPERADOS || []).find(function(x){
-            return String(x.id)===String(sel.value);
-          });
-          if(found && found.nome) nome = found.nome;
+        let nome = 'Sem Cooperado';
+        if(sel.value){
+          const found = (window.COOPERADOS || []).find(x => String(x.id)===String(sel.value));
+          if(found?.nome) nome = found.nome;
         }
         span.textContent = nome;
-
         sel.parentNode.replaceChild(span, sel);
 
-        var tr  = span.closest ? span.closest('tr') : null;
-        var dot = tr ? tr.querySelector('.id-with-dot .status-dot') : null;
-        if(dot){
-          if(tem){
-            dot.classList.add('ok');
-            dot.classList.remove('no');
-          }else{
-            dot.classList.add('no');
-            dot.classList.remove('ok');
-          }
-        }
-        if (typeof atualizarBadgeAbertas === 'function') atualizarBadgeAbertas();
+        atualizarBadgeAbertas();
       }
 
       sel.addEventListener('change', salvar);
-      sel.addEventListener('blur', function(){
-        salvar();
-      }, { once: true });
+      sel.addEventListener('blur', ()=> salvar(), { once:true });
     });
 
-    // ========================
-    // TEMPO REAL (SOCKET.IO)
-    // ========================
+    // ========= EDIÇÃO INLINE DO VALOR (com fallback) =========
+    // 1) tenta PATCH /api/entregas/<id>/valor
+    // 2) se não existir, tenta POST /editar_entrega/<id> (seu fluxo atual)
+    // 3) se falhar, abre a tela editar
+    async function salvarValorEntrega(idEntrega, novo){
+      // tenta API nova
+      try{
+        const r1 = await fetch(`/api/entregas/${idEntrega}/valor`, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body: JSON.stringify({ valor: novo })
+        });
+        if(r1.ok){
+          return true;
+        }
+      }catch(e){}
 
-    // Atualiza/insere uma linha de entrega com HTML vindo do backend
-    function atualizarOuInserirLinhaEntrega(dados){
-      if (!dados || !dados.id || !dados.linha_html) return;
-      var tbody = document.querySelector('.tabela tbody');
-      if (!tbody) return;
+      // fallback antigo: /editar_entrega/<id>
+      try{
+        const fd = new FormData();
+        fd.append('valor', novo);
+        fd.append('valor_servico', novo);
+        fd.append('atualizar_valor', '1');
+        fd.append('notificar_painel', '1');
 
-      var temp = document.createElement('tbody');
-      temp.innerHTML = dados.linha_html.trim();
-      var novaTr = temp.querySelector('tr');
-      if (!novaTr) return;
+        const r2 = await fetch(`/editar_entrega/${idEntrega}`, {
+          method:'POST',
+          body: fd,
+          headers:{'X-Requested-With':'fetch'}
+        });
+        if(r2.ok){
+          return true;
+        }
+      }catch(e){}
 
-      var trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
-      if (trExistente){
-        tbody.replaceChild(novaTr, trExistente);
-      } else {
-        tbody.prepend(novaTr); // nova entrega entra no topo
-      }
-
-      if (typeof atualizarBadgeAbertas === 'function') {
-        atualizarBadgeAbertas();
-      }
+      return false;
     }
 
-    // Remove linha de entrega pelo ID (quando excluída em outro painel)
-    function removerLinhaEntrega(id){
-      var tbody = document.querySelector('.tabela tbody');
-      if (!tbody || !id) return;
-      var tr = tbody.querySelector('tr[data-id="' + id + '"]');
-      if (tr) {
-        tr.remove();
-        if (typeof atualizarBadgeAbertas === 'function') {
-          atualizarBadgeAbertas();
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.value-editable');
+      if(!el) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const idEntrega = el.dataset?.id || '';
+      if(!idEntrega) return;
+
+      let valorAtual = el.dataset.valor || '';
+      if(!valorAtual) valorAtual = String(parseNumberFromBRL(el.textContent || '')).toFixed(2);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'value-input';
+      input.inputMode = 'decimal';
+      input.value = String(valorAtual).replace('.', ',');
+
+      el.parentNode.replaceChild(input, el);
+      input.focus();
+      input.select();
+
+      async function finalizar(shouldSave){
+        const raw = (input.value || '').trim();
+        let num = parseNumberFromBRL(raw);
+        if(!Number.isFinite(num) || num <= 0) num = parseNumberFromBRL(valorAtual);
+        const novo = num.toFixed(2);
+
+        const span = document.createElement('span');
+        span.className = 'value-editable';
+        span.dataset.id = idEntrega;
+        span.dataset.valor = novo;
+        span.title = 'Clique para alterar o valor';
+        span.textContent = formatBRLFromNumberLike(novo);
+
+        input.parentNode.replaceChild(span, input);
+        if(!shouldSave) return;
+
+        const ok = await salvarValorEntrega(idEntrega, novo);
+        if(ok){
+          showToast('<strong>Valor atualizado.</strong>');
+        }else{
+          // garante que você ainda consegue editar do jeito antigo
+          window.location.href = `/editar_entrega/${idEntrega}`;
         }
       }
-    }
 
-    // Atualiza lista de espera com HTML vindo do backend
+      input.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){ e.preventDefault(); finalizar(true); }
+        if(e.key === 'Escape'){ e.preventDefault(); finalizar(false); }
+      });
+      input.addEventListener('blur', ()=> finalizar(true), { once:true });
+    });
+
+    // ========= MENU SANDUÍCHE =========
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const btnMenu   = document.getElementById('btnMenu');
+      const sidePanel = document.getElementById('sidePanel');
+      if (!btnMenu || !sidePanel) return;
+
+      btnMenu.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isOpen = sidePanel.classList.toggle('open');
+        if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
+      });
+
+      document.addEventListener('click', (ev)=>{
+        if (!sidePanel.classList.contains('open')) return;
+        if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
+        if (sidePanel.contains(ev.target)) return;
+        sidePanel.classList.remove('open');
+        btnMenu.classList.remove('open');
+      });
+    });
+
+    // ========= fila: preencher nome =========
+    (function(){
+      const selCoop    = document.getElementById('cooperado-espera');
+      const inpNome    = document.getElementById('nome-espera');
+      const formEspera = document.getElementById('form-espera');
+
+      if (selCoop && inpNome){
+        selCoop.addEventListener('change', ()=>{
+          const opt  = selCoop.options[selCoop.selectedIndex];
+          const nome = opt ? (opt.text || '') : '';
+          if (!inpNome.value) inpNome.value = nome;
+        });
+      }
+      if (formEspera && selCoop && inpNome){
+        formEspera.addEventListener('submit', ()=>{
+          if (!inpNome.value) {
+            const opt  = selCoop.options[selCoop.selectedIndex];
+            const nome = opt ? (opt.text || '') : '';
+            inpNome.value = nome;
+          }
+        });
+      }
+    })();
+
+    // ========= drag & drop da fila =========
+    (function(){
+      const ulFila = document.getElementById('espera-lista');
+      let dragEl = null;
+
+      function renumerar(){
+        const nums = ulFila ? ulFila.querySelectorAll('.espera-chip-num') : [];
+        nums.forEach((el,i)=> el.textContent = i+1);
+      }
+      function salvarOrdem(){
+        if(!ulFila) return;
+        const ids = [].map.call(ulFila.querySelectorAll('.espera-chip'), li => li.dataset.id);
+        fetch('/lista_espera/reordenar',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ordem:ids})
+        }).catch(()=>{});
+      }
+
+      if(ulFila){
+        ulFila.addEventListener('dragstart', (e)=>{
+          const li = e.target.closest('.espera-chip');
+          if(!li) return;
+          dragEl = li;
+          li.style.opacity = 0.6;
+        });
+        ulFila.addEventListener('dragend', (e)=>{
+          const li = e.target.closest('.espera-chip');
+          if(!li) return;
+          li.style.opacity = 1;
+          dragEl = null;
+          salvarOrdem();
+        });
+        ulFila.addEventListener('dragover', (e)=>{
+          e.preventDefault();
+          const li = e.target.closest('.espera-chip');
+          if(!li || li === dragEl) return;
+          const r = li.getBoundingClientRect();
+          const after = (e.clientY - r.top) > (r.height / 2);
+          if(after) li.after(dragEl); else li.before(dragEl);
+          renumerar();
+        });
+      }
+    })();
+
+    // ========= tempo real =========
+    function atualizarOuInserirLinhaEntrega(dados){
+      if (!dados?.id || !dados?.linha_html) return;
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody) return;
+
+      const temp = document.createElement('tbody');
+      temp.innerHTML = dados.linha_html.trim();
+      const novaTr = temp.querySelector('tr');
+      if (!novaTr) return;
+
+      const trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
+      if (trExistente) tbody.replaceChild(novaTr, trExistente);
+      else tbody.prepend(novaTr);
+
+      atualizarBadgeAbertas();
+    }
+    function removerLinhaEntrega(id){
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody || !id) return;
+      const tr = tbody.querySelector('tr[data-id="' + id + '"]');
+      if (tr) tr.remove();
+      atualizarBadgeAbertas();
+    }
     function atualizarFilaEsperaTempoReal(htmlLista){
-      var ulFila = document.getElementById('espera-lista');
+      const ulFila = document.getElementById('espera-lista');
       if (!ulFila || !htmlLista) return;
       ulFila.innerHTML = htmlLista;
     }
 
-    // Ouvintes Socket.IO (entregas + fila de espera)
     if (typeof socket !== 'undefined') {
-      // Nova entrega ou atualização de entrega (linha completa em HTML)
-      socket.on('entrega_criada', function(dados){
-        atualizarOuInserirLinhaEntrega(dados);
-      });
-
-      socket.on('entrega_atualizada', function(dados){
-        atualizarOuInserirLinhaEntrega(dados);
-      });
-
-      // Exclusão de entrega
-      socket.on('entrega_excluida', function(dados){
-        if (dados && dados.id){
-          removerLinhaEntrega(dados.id);
-        }
-      });
-
-      // Lista de espera (HTML <li> gerado no backend)
-      socket.on('fila_espera_atualizada', function(dados){
-        if (dados && dados.html_lista){
-          atualizarFilaEsperaTempoReal(dados.html_lista);
-        }
-      });
+      socket.on('entrega_criada', atualizarOuInserirLinhaEntrega);
+      socket.on('entrega_atualizada', atualizarOuInserirLinhaEntrega);
+      socket.on('entrega_excluida', (dados)=> dados?.id && removerLinhaEntrega(dados.id));
+      socket.on('fila_espera_atualizada', (dados)=> dados?.html_lista && atualizarFilaEsperaTempoReal(dados.html_lista));
     }
   </script>
-      <!-- CUPOM, ALERTAS, MENU, MAPA TELA CHEIA -->
- <script>
-    // ===== IMPRESSÃO DE CUPOM (com ENDEREÇO) =====
+
+  <!-- CUPOM / MAPA TELA CHEIA -->
+  <script>
     function imprimirCupom(idEntrega, botao) {
       var tr = botao.closest ? botao.closest('tr') : null;
-
       function get(idx){
         if(!tr || !tr.children || !tr.children[idx]) return '-';
         var txt = (tr.children[idx].innerText || '').trim();
@@ -1421,14 +1595,7 @@
 +'  <style>'
 +'    @page { size: 80mm 110mm; margin: 3mm; }'
 +'    *{box-sizing:border-box}'
-+'    body{'
-+'      font-family: Arial, "Segoe UI", Roboto, system-ui, sans-serif;'
-+'      margin:0;'
-+'      color:#000;'
-+'      background:#fff;'
-+'      -webkit-print-color-adjust:exact;'
-+'      print-color-adjust:exact;'
-+'    }'
++'    body{font-family: Arial, "Segoe UI", Roboto, system-ui, sans-serif;margin:0;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
 +'    .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}'
 +'    .center{text-align:center}'
 +'    .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}'
@@ -1451,9 +1618,7 @@
 +'<body>'
 +'  <div class="wrap">'
 +'    <div class="cupom">'
-+'      <img src="'+logoUrl+'?v='+cacheBust+'"'
-+'           alt="Logo Coopex" class="logo"'
-+'           onerror="this.onerror=null;this.src=\'https://via.placeholder.com/200x60?text=COOPEX\';">'
++'      <img src="'+logoUrl+'?v='+cacheBust+'" alt="Logo Coopex" class="logo" onerror="this.onerror=null;this.src=\'https://via.placeholder.com/200x60?text=COOPEX\';">'
 +'      <div class="center tiny">'
 +'        CNPJ: 05.289.938/0001-97<br>'
 +'        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>'
@@ -1472,10 +1637,7 @@
 +'      <div class="line"><span>Valor do serviço:</span><span class="mono">'+dados.valor+'</span></div>'
 +'      <div class="line big"><span>TOTAL:</span><span class="mono">'+dados.valor+'</span></div>'
 +'      <hr>'
-+'      <div class="sign">'
-+'        <div class="sign-line"></div>'
-+'        <div class="tiny">Supervisor</div>'
-+'      </div>'
++'      <div class="sign"><div class="sign-line"></div><div class="tiny">Supervisor</div></div>'
 +'      <hr>'
 +'      <div class="footer">'
 +'        Emitido em <span class="mono">'+agora.toLocaleDateString("pt-BR")+'</span> às '
@@ -1492,10 +1654,7 @@
 +'</html>';
 
       var win = null;
-      try {
-        win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800');
-      } catch(e){}
-
+      try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
       if (win && !win.closed) {
         try { win.opener = null; } catch(e){}
         win.document.open();
@@ -1503,280 +1662,61 @@
         win.document.close();
         return;
       }
-      criarOverlayPreview(html);
+      showToast('<strong>Pop-up bloqueado.</strong> Libere pop-ups para imprimir.');
     }
 
-    function criarOverlayPreview(html){
-      var wrap = document.createElement('div');
-      wrap.id = 'print-preview-overlay';
-      Object.assign(wrap.style, {
-        position:'fixed', inset:'0', background:'rgba(10,16,28,0.75)', zIndex:'10000',
-        display:'flex', alignItems:'center', justifyContent:'center', padding:'20px'
-      });
-
-      var box = document.createElement('div');
-      Object.assign(box.style, {
-        background:'#fff', borderRadius:'14px', width:'min(720px, 96vw)', height:'min(90vh, 900px)',
-        boxShadow:'0 10px 40px rgba(0,0,0,.35)', display:'flex', flexDirection:'column', overflow:'hidden'
-      });
-
-      var header = document.createElement('div');
-      header.textContent = 'Visualização do Cupom';
-      Object.assign(header.style, {
-        padding:'10px 14px', fontWeight:'800', color:'#003399', borderBottom:'1px solid #e6ebff'
-      });
-
-      var iframe = document.createElement('iframe');
-      iframe.setAttribute('title','Pré-visualização do cupom');
-      Object.assign(iframe.style, { flex:'1 1 auto', width:'100%', border:'0', background:'#fff' });
-      if ('srcdoc' in iframe) {
-        iframe.srcdoc = html;
-      } else {
-        var doc = iframe.contentWindow || iframe.contentDocument;
-        var iDoc = doc.document || doc;
-        iDoc.open(); iDoc.write(html); iDoc.close();
-      }
-
-      var footer = document.createElement('div');
-      Object.assign(footer.style, {
-        padding:'10px', borderTop:'1px solid #e6ebff', display:'flex', gap:'10px',
-        justifyContent:'center', background:'#f8faff'
-      });
-
-      var btImprimir = document.createElement('button');
-      btImprimir.textContent = 'Imprimir';
-      Object.assign(btImprimir.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #003399',
-        background:'#003399', color:'#fff', fontWeight:'800', cursor:'pointer'
-      });
-      btImprimir.onclick = function(){
-        try { iframe.contentWindow.focus(); iframe.contentWindow.print(); } catch(e){}
-      };
-
-      var btFechar = document.createElement('button');
-      btFechar.textContent = 'Fechar';
-      Object.assign(btFechar.style, {
-        padding:'10px 18px', borderRadius:'10px', border:'1px solid #c3c8d5',
-        background:'#fff', color:'#003399', fontWeight:'800', cursor:'pointer'
-      });
-      btFechar.onclick = function(){ wrap.remove(); };
-
-      footer.appendChild(btImprimir);
-      footer.appendChild(btFechar);
-
-      box.appendChild(header);
-      box.appendChild(iframe);
-      box.appendChild(footer);
-      wrap.appendChild(box);
-      document.body.appendChild(wrap);
-    }
-
-    // 1) Entregas pendentes >= 2 horas
-    (function(){
-      var AUDIO = document.getElementById('som-pendente');
-      if (!AUDIO) return;
-
-      var LIMIAR_MS   = 2 * 60 * 60 * 1000;
-      var STORAGE_KEY = 'pendente_alertados_v2_ts';
-      var tocados = {};
-      try {
-        tocados = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}') || {};
-      } catch(e){
-        tocados = {};
-      }
-
-      function pendentesAtrasados() {
-        var agora = Date.now();
-        var rows = document.querySelectorAll('tbody tr');
-        var atrasados = [];
-        rows.forEach(function(tr){
-          var badgePendente = tr.querySelector('td .js-toggle-entrega.bad');
-          if (!badgePendente) return;
-          var epoch = parseInt(tr.getAttribute('data-envio-epoch') || '0', 10);
-          if (!epoch) return;
-          var ms = (agora/1000 - epoch) * 1000;
-          if (ms >= LIMIAR_MS) {
-            var id = tr.getAttribute('data-id') || '';
-            if (id) atrasados.push(id);
-          }
-        });
-        return atrasados;
-      }
-
-      function checar2h() {
-        var agora = Date.now();
-        var ids = pendentesAtrasados();
-
-        var precisaAlertar = ids.filter(function(id){
-          var last = +(tocados[id] || 0);
-          return (agora - last) >= LIMIAR_MS;
-        });
-
-        if (precisaAlertar.length > 0) {
-          try { AUDIO.currentTime = 0; AUDIO.play(); } catch(e){}
-          abrirModal(
-            'Entregas pendentes (2h+)',
-            '⚠ Existem entregas PENDENTES há 2 horas ou mais. Favor priorizar agora.',
-            true
-          ).then(function(){});
-          precisaAlertar.forEach(function(id){ tocados[id] = agora; });
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-      }
-
-      checar2h();
-      setInterval(checar2h, 2 * 60 * 60 * 1000);
-
-      document.addEventListener('click', function(ev){
-        var st = ev.target.closest ? ev.target.closest('.js-toggle-entrega') : null;
-        if (!st) return;
-        var tr = st.closest ? st.closest('tr') : null;
-        var id = tr ? (tr.getAttribute('data-id') || '') : '';
-        if (id && tocados[id]) {
-          delete tocados[id];
-          try { localStorage.setItem(STORAGE_KEY, JSON.stringify(tocados)); } catch(e){}
-        }
-        setTimeout(checar2h, 1500);
-      });
-    })();
-
-    // 2) Balão de pagamentos pendentes (a cada 60 min) + boa noite
-    function existePagamentoPendenteNaTabela() {
-      var linhas = document.querySelectorAll('.tabela tbody tr');
-      return [].some.call(linhas, function(tr){
-        var cel = tr.children[11];
-        return cel && cel.textContent.trim().toLowerCase().indexOf('pendente') !== -1;
-      });
-    }
-
-    function checaAvisosPagamentoEBoaNoite() {
-      try {
-        var agora = new Date();
-        var hora = agora.getHours(), minutos = agora.getMinutes();
-
-        var PAG_ALERT_KEY = 'coopex_pend_pag_last_ts';
-        if (existePagamentoPendenteNaTabela()) {
-          var now = Date.now();
-          var last = +(localStorage.getItem(PAG_ALERT_KEY) || 0);
-          var SIXTY_MIN = 60 * 60 * 1000;
-
-          if (now - last >= SIXTY_MIN) {
-            abrirModal(
-              'Cobrança de Pagamento',
-              '⚠ Existem entregas com pagamento PENDENTE. Cobrar os PIX/valores dos clientes agora.',
-              true
-            ).then(function(){});
-            localStorage.setItem(PAG_ALERT_KEY, String(now));
-          }
-        }
-
-        if (hora === 21 && minutos === 59) {
-          var keyBoaNoite = 'coopex_boa_noite_' +
-            agora.getFullYear() + '_' + agora.getMonth() + '_' + agora.getDate();
-          if (!localStorage.getItem(keyBoaNoite)) {
-            abrirModal(
-              'Boa noite!',
-              '🌙 Boa noite! Que sua noite seja tranquila, cheia de paz e bons pensamentos. Descanse bem.',
-              false
-            ).then(function(){});
-            localStorage.setItem(keyBoaNoite, '1');
-          }
-        }
-      } catch(e) {
-        console.error(e);
-      }
-    }
-
-    window.addEventListener('DOMContentLoaded', function(){
-      checaAvisosPagamentoEBoaNoite();
-      setInterval(checaAvisosPagamentoEBoaNoite, 60 * 1000);
-    });
-
-    // ===== MENU SANDUÍCHE (abre/fecha painel lateral) =====
-    window.addEventListener('DOMContentLoaded', function(){
-      var btnMenu   = document.getElementById('btnMenu');
-      var sidePanel = document.getElementById('sidePanel');
-      if (!btnMenu || !sidePanel) return;
-
-      btnMenu.addEventListener('click', function(e){
-        e.stopPropagation();
-        var isOpen = sidePanel.classList.toggle('open');
-        if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
-      });
-
-      document.addEventListener('click', function(ev){
-        if (!sidePanel.classList.contains('open')) return;
-        if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
-        if (sidePanel.contains(ev.target)) return;
-        sidePanel.classList.remove('open');
-        btnMenu.classList.remove('open');
-      });
-    });
-  </script>
-
-  <script>
     function abrirMapaTelaCheia() {
       try {
-        // Rota que vai exibir o mapa em tela cheia + informações do motoboy
-        // Certifique-se de ter @app.route('/mapa_motoboys') no Flask
         var url = "{{ url_for('mapa_motoboys') }}";
-
-        // Cria um <a> real e dispara o clique — navegador trata como clique normal
         var a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
         a.rel = 'noopener noreferrer';
-
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
       } catch (e) {
         console.error(e);
-        alert('Não foi possível abrir o mapa agora.');
+        showToast('<strong>Não foi possível abrir o mapa agora.</strong>');
       }
     }
 
     window.addEventListener('DOMContentLoaded', function(){
       var btnFull = document.getElementById('btnFullMap');
-      if (btnFull) {
-        btnFull.addEventListener('click', abrirMapaTelaCheia);
-      }
+      if (btnFull) btnFull.addEventListener('click', abrirMapaTelaCheia);
     });
   </script>
 
-  <!-- Leaflet core + mapa embutido na tela principal -->
+  <!-- Leaflet -->
   <script
     src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""></script>
 
   <script>
-    // ===== MAPA EMBUTIDO (div #map-coopex) COM TEMPO REAL + FALLBACK 5s =====
+    // ===== MAPA =====
     window.addEventListener('DOMContentLoaded', function(){
       var mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
 
-      var map = L.map('map-coopex', {
-        zoomControl: true
-      }).setView([-5.7945, -35.211], 13);
-
+      var map = L.map('map-coopex', { zoomControl: true }).setView([-5.7945, -35.211], 13);
       L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
         maxZoom: 19,
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // Marcadores por ID do motoboy (evita recriar tudo)
       var motoboyMarkers = {};
       var boundsGroup = L.featureGroup().addTo(map);
       var firstFitDone = false;
-      var usandoSocketTempoReal = false; // se chegar evento socket, paramos de depender do polling
+      var usandoSocketTempoReal = false;
+
+      window.__mapCoopex = map;
+      window.__motoboyMarkers = motoboyMarkers;
 
       function popupHtml(m){
         var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
         var vel = m.velocidade || 0;
-        var ultima = m.ultima_atualizacao
-          ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>'
-          : '';
+        var ultima = m.ultima_atualizacao ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>' : '';
         return (
           '<strong>'+m.nome+'</strong><br>'+
           'Velocidade: '+vel+' km/h<br>'+
@@ -1786,40 +1726,32 @@
 
       function atualizarMarcadores(lista){
         if (!Array.isArray(lista)) lista = [];
-
         var ativos = {};
         lista.forEach(function(m){
           if (!m || !m.id || !m.lat || !m.lng) return;
           ativos[m.id] = true;
 
-          var corBorda  = m.online ? '#10b981' : '#ef4444';
-          var corFill   = m.online ? '#10b981' : '#ef4444';
+          var cor = m.online ? '#10b981' : '#ef4444';
           var marker = motoboyMarkers[m.id];
 
           if (!marker) {
             marker = L.circleMarker([m.lat, m.lng], {
               radius: 8,
-              color: corBorda,
+              color: cor,
               weight: 2,
-              fillColor: corFill,
-              fillOpacity: 0.9
+              fillColor: cor,
+              fillOpacity: 0.92
             });
             marker.addTo(boundsGroup);
             marker.bindPopup(popupHtml(m));
             motoboyMarkers[m.id] = marker;
           } else {
             marker.setLatLng([m.lat, m.lng]);
-            marker.setStyle({
-              color: corBorda,
-              fillColor: corFill
-            });
-            if (marker.isPopupOpen()) {
-              marker.setPopupContent(popupHtml(m));
-            }
+            marker.setStyle({ color: cor, fillColor: cor });
+            if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m));
           }
         });
 
-        // Remove marcadores que não vieram mais no JSON
         Object.keys(motoboyMarkers).forEach(function(id){
           if (!ativos[id]) {
             boundsGroup.removeLayer(motoboyMarkers[id]);
@@ -1827,7 +1759,6 @@
           }
         });
 
-        // Ajusta o mapa para caber os marcadores (apenas no primeiro carregamento)
         var layers = Object.values(motoboyMarkers);
         if (layers.length && !firstFitDone) {
           var group = L.featureGroup(layers);
@@ -1836,11 +1767,8 @@
         }
       }
 
-      // 1) Primeiro desenha usando os dados injetados pelo Jinja
-      var dadosIniciais = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
-      atualizarMarcadores(dadosIniciais);
+      atualizarMarcadores(Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : []);
 
-      // 2) Atualização por Socket.IO em tempo real (back-end deve emitir 'motoboys_update')
       if (typeof socket !== 'undefined') {
         socket.on('motoboys_update', function(lista){
           usandoSocketTempoReal = true;
@@ -1848,28 +1776,36 @@
         });
       }
 
-      // 3) Fallback: caso o socket não esteja funcionando, mantém polling a cada 5s
       function atualizarDoServidor(){
-        // se já estamos recebendo via socket com frequência, não precisa bater no servidor
         if (usandoSocketTempoReal) return;
+        fetch("{{ url_for('mapa_motoboys') }}", { headers: { 'X-Requested-With': 'fetch' } })
+          .then(function(res){
+            if (!res.ok) throw new Error('Falha ao carregar motoboys_json');
+            return res.json();
+          })
+          .then(function(data){
+            atualizarMarcadores(data);
+          })
+          .catch(function(err){
+            console.error('Erro ao atualizar motoboys:', err);
+          });
+      }
+      setInterval(atualizarDoServidor, 5000);
 
-        fetch("{{ url_for('mapa_motoboys') }}", {
-          headers: { 'X-Requested-With': 'fetch' }
-        })
-        .then(function(res){
-          if (!res.ok) throw new Error('Falha ao carregar motoboys_json');
-          return res.json();
-        })
-        .then(function(data){
-          atualizarMarcadores(data);
-        })
-        .catch(function(err){
-          console.error('Erro ao atualizar motoboys:', err);
+      var sel = document.getElementById('mapSearch');
+      if(sel){
+        sel.addEventListener('change', function(){
+          var id = sel.value;
+          if(!id) return;
+          var mk = window.__motoboyMarkers ? window.__motoboyMarkers[id] : null;
+          if(mk && window.__mapCoopex){
+            window.__mapCoopex.setView(mk.getLatLng(), Math.max(window.__mapCoopex.getZoom(), 16), { animate:true });
+            try{ mk.openPopup(); }catch(e){}
+          }else{
+            showToast('<strong>Não localizado no mapa agora.</strong> Pode estar offline/sem GPS.');
+          }
         });
       }
-
-      // Continua existindo, mas só atua se o socket não estiver atualizando
-      setInterval(atualizarDoServidor, 5000);
     });
   </script>
 </body>
