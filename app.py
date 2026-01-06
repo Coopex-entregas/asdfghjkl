@@ -668,13 +668,22 @@ def to_brasilia(dt):
     return dt.astimezone(BRAZIL_TZ)
 
 from datetime import datetime, timezone
+import os
+
+# -------------------------------------------------------------------
+# CONFIG DE TEMPOS (para NÃO dar NameError)
+# Ajuste os valores como quiser. Também aceita env vars no Render.
+# -------------------------------------------------------------------
+OFFLINE_AFTER_SEC = int(os.getenv("OFFLINE_AFTER_SEC", "120"))  # 2 min sem ping => offline
+IDLE_AFTER_SEC    = int(os.getenv("IDLE_AFTER_SEC", "300"))     # 5 min sem movimento => ocioso
+
 
 def _to_utc_aware(dt):
     """
     Garante datetime timezone-aware em UTC.
-    - Se dt for None -> None
-    - Se dt for naive -> assume que está em UTC e adiciona tzinfo
-    - Se dt for aware -> converte para UTC
+    - None -> None
+    - naive -> assume que está em UTC e adiciona tzinfo
+    - aware -> converte para UTC
     """
     if dt is None:
         return None
@@ -682,7 +691,8 @@ def _to_utc_aware(dt):
         return dt.replace(tzinfo=timezone.utc)
     return dt.astimezone(timezone.utc)
 
-def calc_status_cooperado(c: "Cooperado"):
+
+def calc_status_cooperado(c):
     """
     Retorna: (is_online, idle_seconds, status_str)
     status_str: offline | ocioso | livre | em_corrida
