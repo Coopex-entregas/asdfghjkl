@@ -14,6 +14,10 @@
     crossorigin=""
   />
 
+  <!-- MarkerCluster (resolve sobreposição) -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css">
+
   <style>
     :root{
       --royal:#0f35b5;
@@ -343,11 +347,6 @@
     }
     .map-header-main{display:flex;flex-direction:column;gap:6px}
     .map-header-main strong{font-weight:900}
-    .map-legend{
-      display:flex;align-items:center;gap:10px;flex-wrap:wrap;
-      font-size:.82rem;
-      color:rgba(255,255,255,.92);
-    }
 
     /* legenda em cima do mapa, igual a imagem (em faixa azul) */
     .map-legend-bar{
@@ -367,8 +366,10 @@
     .legend-item{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;opacity:.96}
 
     .map-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+
+    /* campo de busca (com datalist) */
     .map-search{
-      min-width:240px;
+      min-width:260px;
       border-radius:12px;
       border:1px solid rgba(255,255,255,.45);
       padding:9px 10px;
@@ -378,7 +379,6 @@
       font-weight:800;
       outline:none;
     }
-    .map-search option{ color:#000; }
     .map-full-btn{
       background:rgba(255,255,255,.14);
       border:1px solid rgba(255,255,255,.45);
@@ -403,7 +403,48 @@
     }
     @media (min-height:900px){ #map-coopex{height:390px;} }
 
-    /* ===== FILTROS (faixa branca, igual a imagem) ===== */
+    /* ===== ÍCONE MOTO (substitui bolinha) ===== */
+    .moto-pin{
+      width:34px; height:34px;
+      display:flex; align-items:center; justify-content:center;
+      border-radius:14px;
+      box-shadow:0 10px 24px rgba(0,0,0,.22);
+      border:1px solid rgba(255,255,255,.55);
+      backdrop-filter: blur(2px);
+      transform: translate3d(0,0,0);
+      position: relative;
+    }
+    .moto-pin svg{ width:20px; height:20px; display:block; }
+    .moto-pin .cap{
+      position:absolute;
+      bottom:-6px; left:50%;
+      transform:translateX(-50%);
+      width:10px;height:10px;
+      background:inherit;
+      border-left:1px solid rgba(255,255,255,.55);
+      border-bottom:1px solid rgba(255,255,255,.55);
+      transform-origin:center;
+      transform:translateX(-50%) rotate(45deg);
+      border-radius:2px;
+      box-shadow:0 10px 18px rgba(0,0,0,.12);
+    }
+
+    /* destaque quando buscar */
+    .moto-pulse::after{
+      content:"";
+      position:absolute;
+      inset:-6px;
+      border-radius:18px;
+      border:2px solid rgba(255,255,255,.85);
+      animation:pulse 1.1s ease-out infinite;
+      pointer-events:none;
+    }
+    @keyframes pulse{
+      0%{ transform:scale(.88); opacity:.95; }
+      100%{ transform:scale(1.35); opacity:0; }
+    }
+
+    /* ===== FILTROS ===== */
     .filters-bar{
       padding:12px;
       border-bottom:1px solid var(--line);
@@ -482,7 +523,7 @@
       border:1px solid rgba(15,53,181,.20);
     }
 
-    /* ===== TABELA (clara como a imagem) ===== */
+    /* ===== TABELA ===== */
     .table-shell{
       padding:12px;
     }
@@ -535,7 +576,6 @@
     .small{font-size:.84rem;color:var(--muted)}
     body.dark .small{color:var(--muted)}
 
-    /* Pills (status) estilo da imagem */
     .pill{
       display:inline-flex;
       align-items:center;
@@ -556,14 +596,12 @@
     body.dark .pill.yellow{background:#2a2110;color:#ffe4b0;border-color:#5a4520}
     body.dark .pill.blue{background:#1b2750;color:#cfe0ff;border-color:#2b3b59}
 
-    /* ID com bolinha */
     .id-with-dot{display:inline-flex;align-items:center;gap:8px;justify-content:flex-start}
     .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(10,27,63,.25)}
     body.dark .status-dot{border-color:rgba(255,255,255,.25)}
     .status-dot.ok{background:#10b981}
     .status-dot.no{background:#ef4444}
 
-    /* Editáveis */
     .coop-editable, .value-editable{
       cursor:pointer;
       font-weight:900;
@@ -592,7 +630,6 @@
       border-color:#2b3b59;
     }
 
-    /* Ações (estilo da imagem) */
     .actions{
       display:flex;
       gap:8px;
@@ -840,12 +877,9 @@
             </div>
 
             <div class="map-header-actions">
-              <select id="mapSearch" class="map-search">
-                <option value="">🔍 Localizar cooperado…</option>
-                {% for c in cooperados %}
-                  <option value="{{ c.id }}">{{ c.nome }}</option>
-                {% endfor %}
-              </select>
+              <!-- Busca por nome: datalist -->
+              <input id="mapSearchInput" class="map-search" list="dlMotoboys" placeholder="🔍 Pesquisar motoboy e localizar...">
+              <datalist id="dlMotoboys"></datalist>
 
               <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
             </div>
@@ -912,8 +946,8 @@
               + Agendar entrega
             </button>
             <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
-  Ver agenda
-</button>
+              Ver agenda
+            </button>
           </div>
         </div>
 
@@ -959,7 +993,6 @@
                   <td>{{ e.bairro }}</td>
                   <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
 
-                  <!-- VALOR (editável inline) -->
                   <td>
                     <span class="value-editable"
                           data-id="{{ e.id }}"
@@ -977,7 +1010,6 @@
                   <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
                   <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
 
-                  <!-- COOPERADO (editável) -->
                   <td>
                     <span class="coop-editable"
                           data-id="{{ e.id }}"
@@ -989,7 +1021,6 @@
 
                   <td>{{ e.pagamento }}</td>
 
-                  <!-- STATUS ENTREGA -->
                   <td>
                     {% if st in ['entregue','recebido'] %}
                       <span class="pill yellow">Entregue</span>
@@ -1005,7 +1036,6 @@
                     {% endif %}
                   </td>
 
-                  <!-- PAGAMENTO -->
                   <td>
                     {% if sp == 'pago' %}
                       <span class="pill green">Pago</span>
@@ -1019,7 +1049,6 @@
 
                   <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
 
-                  <!-- RASTREIO -->
                   <td>
                     {% if tem_coop %}
                       {% set rastreio_link = url_for('rastreamento', codigo=e.id, motoboy_id=e.cooperado.id, _external=True) %}
@@ -1029,7 +1058,6 @@
                     {% endif %}
                   </td>
 
-                  <!-- AÇÕES (Edita continua funcionando) -->
                   <td>
                     <div class="actions">
                       <a class="act-ico" title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" aria-label="Editar">
@@ -1115,7 +1143,6 @@
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
     window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
 
-    // ========= helpers =========
     function formatBRLFromNumberLike(v){
       const n = Number(String(v).replace(",", "."));
       if (Number.isFinite(n)) return "R$ " + n.toFixed(2).replace(".", ",");
@@ -1130,7 +1157,6 @@
       return Number.isFinite(n) ? n : 0;
     }
 
-    // ========= Toast =========
     let _toastTimer = null;
     function showToast(msg){
       const el = document.getElementById('toast');
@@ -1149,7 +1175,6 @@
       _toastTimer = null;
     }
 
-    // ========= Contar entregas sem cooperado =========
     function contarSemCooperado(){
       try{
         const rows = document.querySelectorAll('.tabela tbody tr');
@@ -1170,7 +1195,6 @@
       badge.style.display = 'inline-flex';
     }
 
-    // ========= Tema =========
     (function(){
       try{
         const saved = localStorage.getItem('coopex_theme') || 'light';
@@ -1190,7 +1214,6 @@
 
     window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
 
-    // ========= Clique nos status (AJAX) =========
     document.addEventListener('click', (ev)=>{
       const st = ev.target.closest?.('.js-toggle-pagto, .js-toggle-entrega');
       if(!st) return;
@@ -1209,7 +1232,6 @@
           .then(res=>{
             if(!res.ok) throw new Error('Falha ao atualizar.');
             showToast('<strong>Atualizado com sucesso.</strong>');
-            // reload leve: mantém compatível com suas regras/rotas
             setTimeout(()=> location.reload(), 350);
           })
           .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
@@ -1218,7 +1240,6 @@
       }
     });
 
-    // ========= Remover da fila por nome =========
     function removerDaFilaPorNome(nome){
       try{
         if(!nome) return;
@@ -1251,7 +1272,6 @@
       }catch(e){}
     }
 
-    // ========= Edição rápida do cooperado =========
     document.addEventListener('click', (ev)=>{
       const el = ev.target.closest?.('.coop-editable');
       if(!el) return;
@@ -1321,24 +1341,16 @@
       sel.addEventListener('blur', ()=> salvar(), { once:true });
     });
 
-    // ========= EDIÇÃO INLINE DO VALOR (com fallback) =========
-    // 1) tenta PATCH /api/entregas/<id>/valor
-    // 2) se não existir, tenta POST /editar_entrega/<id> (seu fluxo atual)
-    // 3) se falhar, abre a tela editar
     async function salvarValorEntrega(idEntrega, novo){
-      // tenta API nova
       try{
         const r1 = await fetch(`/api/entregas/${idEntrega}/valor`, {
           method:'PATCH',
           headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
           body: JSON.stringify({ valor: novo })
         });
-        if(r1.ok){
-          return true;
-        }
+        if(r1.ok) return true;
       }catch(e){}
 
-      // fallback antigo: /editar_entrega/<id>
       try{
         const fd = new FormData();
         fd.append('valor', novo);
@@ -1351,9 +1363,7 @@
           body: fd,
           headers:{'X-Requested-With':'fetch'}
         });
-        if(r2.ok){
-          return true;
-        }
+        if(r2.ok) return true;
       }catch(e){}
 
       return false;
@@ -1402,7 +1412,6 @@
         if(ok){
           showToast('<strong>Valor atualizado.</strong>');
         }else{
-          // garante que você ainda consegue editar do jeito antigo
           window.location.href = `/editar_entrega/${idEntrega}`;
         }
       }
@@ -1414,7 +1423,6 @@
       input.addEventListener('blur', ()=> finalizar(true), { once:true });
     });
 
-    // ========= MENU SANDUÍCHE =========
     window.addEventListener('DOMContentLoaded', ()=>{
       const btnMenu   = document.getElementById('btnMenu');
       const sidePanel = document.getElementById('sidePanel');
@@ -1435,7 +1443,6 @@
       });
     });
 
-    // ========= fila: preencher nome =========
     (function(){
       const selCoop    = document.getElementById('cooperado-espera');
       const inpNome    = document.getElementById('nome-espera');
@@ -1459,7 +1466,6 @@
       }
     })();
 
-    // ========= drag & drop da fila =========
     (function(){
       const ulFila = document.getElementById('espera-lista');
       let dragEl = null;
@@ -1504,7 +1510,6 @@
       }
     })();
 
-    // ========= tempo real =========
     function atualizarOuInserirLinhaEntrega(dados){
       if (!dados?.id || !dados?.linha_html) return;
       const tbody = document.querySelector('.tabela tbody');
@@ -1653,16 +1658,39 @@
 +'</body>'
 +'</html>';
 
-      var win = null;
-      try { win = window.open('', '_blank', 'noopener,noreferrer,width=480,height=800'); } catch(e){}
-      if (win && !win.closed) {
-        try { win.opener = null; } catch(e){}
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
-        return;
+      // ✅ Mais confiável: abrir por Blob URL (evita tela branca / write bloqueado)
+      try{
+        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        const url  = URL.createObjectURL(blob);
+        const win  = window.open(url, '_blank', 'width=480,height=800');
+        if(win && !win.closed){
+          setTimeout(()=>{ try{ URL.revokeObjectURL(url); }catch(e){} }, 60000);
+          return;
+        }
+      }catch(e){}
+
+      // Fallback: iframe invisível (se popup bloqueado)
+      try{
+        const ifr = document.createElement('iframe');
+        ifr.style.position='fixed';
+        ifr.style.right='-9999px';
+        ifr.style.bottom='-9999px';
+        ifr.style.width='0';
+        ifr.style.height='0';
+        ifr.srcdoc = html;
+        document.body.appendChild(ifr);
+
+        ifr.onload = function(){
+          try{
+            ifr.contentWindow.focus();
+            ifr.contentWindow.print();
+          }catch(e){}
+          setTimeout(()=>{ try{ ifr.remove(); }catch(e){} }, 1500);
+        };
+        showToast('<strong>Pop-up bloqueado.</strong> Imprimindo pelo modo alternativo...');
+      }catch(e){
+        showToast('<strong>Pop-up bloqueado.</strong> Libere pop-ups para imprimir.');
       }
-      showToast('<strong>Pop-up bloqueado.</strong> Libere pop-ups para imprimir.');
     }
 
     function abrirMapaTelaCheia() {
@@ -1671,7 +1699,7 @@
         var a = document.createElement('a');
         a.href = url;
         a.target = '_blank';
-        a.rel = 'noopener noreferrer';
+        a.rel = 'noopener';
         document.body.appendChild(a);
         a.click();
         document.body.removeChild(a);
@@ -1693,6 +1721,9 @@
     integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
     crossorigin=""></script>
 
+  <!-- MarkerCluster -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js"></script>
+
   <script>
     // ===== MAPA =====
     window.addEventListener('DOMContentLoaded', function(){
@@ -1705,70 +1736,172 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      var motoboyMarkers = {};
-      var boundsGroup = L.featureGroup().addTo(map);
+      // ✅ Cluster group (resolve sobreposição + spiderfy)
+      var cluster = L.markerClusterGroup({
+        showCoverageOnHover: false,
+        spiderfyOnMaxZoom: true,
+        disableClusteringAtZoom: 18,
+        maxClusterRadius: 55
+      });
+      map.addLayer(cluster);
+
+      var motoboyMarkers = {}; // id -> marker
       var firstFitDone = false;
       var usandoSocketTempoReal = false;
 
       window.__mapCoopex = map;
       window.__motoboyMarkers = motoboyMarkers;
+      window.__motoboyCluster = cluster;
+
+      function parseUltima(ultima){
+        // aceita ISO, "dd/mm/yyyy hh:mm", ou timestamp (ms)
+        if(!ultima) return null;
+        if(typeof ultima === 'number'){
+          var d = new Date(ultima);
+          return isNaN(d.getTime()) ? null : d;
+        }
+        var s = String(ultima).trim();
+        // ISO
+        var dIso = new Date(s);
+        if(!isNaN(dIso.getTime())) return dIso;
+
+        // dd/mm/yyyy hh:mm(:ss)
+        var m = s.match(/^(\d{2})\/(\d{2})\/(\d{4})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+        if(m){
+          var dd = Number(m[1]), mm = Number(m[2]) - 1, yy = Number(m[3]);
+          var hh = Number(m[4]||0), mi = Number(m[5]||0), ss = Number(m[6]||0);
+          var d = new Date(yy, mm, dd, hh, mi, ss);
+          return isNaN(d.getTime()) ? null : d;
+        }
+        return null;
+      }
+
+      function normalizarOnline(v){
+        if (v === true) return true;
+        if (v === false) return false;
+        var s = String(v).toLowerCase().trim();
+        return (s === 'true' || s === '1' || s === 'online' || s === 'on' || s === 'sim');
+      }
+
+      function calcEstado(m){
+        // estado: 'online' | 'gps' | 'off'
+        var online = normalizarOnline(m.online);
+        if(!online) return 'off';
+
+        // se online, mas sem atualização recente => gps ocioso
+        var dt = parseUltima(m.ultima_atualizacao);
+        if(!dt) return 'online';
+
+        var diffSec = (Date.now() - dt.getTime()) / 1000;
+        if(diffSec >= 180) return 'gps'; // 3 minutos sem update => amarelo
+        return 'online';
+      }
+
+      function corEstado(estado){
+        if(estado === 'online') return '#10b981';
+        if(estado === 'gps') return '#facc15';
+        return '#ef4444';
+      }
+
+      function iconMoto(cor, pulse){
+        // moto simples em SVG (branco) com fundo colorido
+        var svg = `
+          <svg viewBox="0 0 24 24" aria-hidden="true">
+            <path fill="#fff" d="M5.5 16.5a2.5 2.5 0 1 1 0 .001Zm13 0a2.5 2.5 0 1 1 0 .001ZM5 11h4.2l1.3-2.6c.2-.4.6-.7 1.1-.7h2.1l1.2 2.3h1.6l1.3-2.3h2.2v2h-1l-1.8 3.2c-.2.3-.5.6-.9.6h-2.9c-.4 0-.7-.2-.9-.6l-1.2-2.3h-1.2l-1 2h2.2v2H9.9a4.5 4.5 0 0 0-8.9 1.5h2a2.5 2.5 0 1 0 .7-1.8A2.5 2.5 0 0 0 5.5 19a4.5 4.5 0 0 0 4.4-3.5h4.1A4.5 4.5 0 0 0 23 16.5h-2a2.5 2.5 0 1 1-4.5-1.5h-3.3l-1.1-2H5v-2Z"/>
+          </svg>
+        `;
+        var cls = 'moto-pin' + (pulse ? ' moto-pulse' : '');
+        var html = `<div class="${cls}" style="background:${cor};">${svg}<span class="cap"></span></div>`;
+        return L.divIcon({
+          html: html,
+          className: '', // não usa o padrão do Leaflet
+          iconSize: [34,34],
+          iconAnchor: [17,34], // ponta em baixo
+          popupAnchor: [0,-34]
+        });
+      }
 
       function popupHtml(m){
-        var statusTxt = m.online ? 'Online (app ligado)' : 'Offline / não conectado';
-        var vel = m.velocidade || 0;
+        var estado = calcEstado(m);
+        var statusTxt = (estado === 'online') ? 'Online (app ligado)'
+                      : (estado === 'gps') ? 'GPS ocioso / sem atualização'
+                      : 'Offline / não conectado';
+        var vel = (m.velocidade || 0);
         var ultima = m.ultima_atualizacao ? '<br><small>Atualizado: '+m.ultima_atualizacao+'</small>' : '';
         return (
-          '<strong>'+m.nome+'</strong><br>'+
-          'Velocidade: '+vel+' km/h<br>'+
-          'Status: '+statusTxt+ultima
+          '<strong>'+ (m.nome || '-') +'</strong><br>'+
+          'Velocidade: '+ vel +' km/h<br>'+
+          'Status: '+ statusTxt + ultima
         );
+      }
+
+      function atualizarDatalist(lista){
+        var dl = document.getElementById('dlMotoboys');
+        if(!dl) return;
+        dl.innerHTML = '';
+        var safe = Array.isArray(lista) ? lista.slice() : [];
+        safe.sort(function(a,b){
+          return String(a?.nome||'').localeCompare(String(b?.nome||''), 'pt-BR', { sensitivity:'base' });
+        });
+        safe.forEach(function(m){
+          if(!m || !m.id) return;
+          var opt = document.createElement('option');
+          opt.value = (m.nome || '').trim();
+          opt.dataset.id = m.id;
+          dl.appendChild(opt);
+        });
       }
 
       function atualizarMarcadores(lista){
         if (!Array.isArray(lista)) lista = [];
+        atualizarDatalist(lista);
+
         var ativos = {};
         lista.forEach(function(m){
           if (!m || !m.id || !m.lat || !m.lng) return;
           ativos[m.id] = true;
 
-          var cor = m.online ? '#10b981' : '#ef4444';
+          var estado = calcEstado(m);
+          var cor = corEstado(estado);
+
           var marker = motoboyMarkers[m.id];
 
           if (!marker) {
-            marker = L.circleMarker([m.lat, m.lng], {
-              radius: 8,
-              color: cor,
-              weight: 2,
-              fillColor: cor,
-              fillOpacity: 0.92
+            marker = L.marker([m.lat, m.lng], {
+              icon: iconMoto(cor, false),
+              riseOnHover: true
             });
-            marker.addTo(boundsGroup);
             marker.bindPopup(popupHtml(m));
             motoboyMarkers[m.id] = marker;
+            cluster.addLayer(marker);
           } else {
             marker.setLatLng([m.lat, m.lng]);
-            marker.setStyle({ color: cor, fillColor: cor });
+            marker.setIcon(iconMoto(cor, false));
             if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m));
           }
         });
 
+        // remove os que sumiram
         Object.keys(motoboyMarkers).forEach(function(id){
           if (!ativos[id]) {
-            boundsGroup.removeLayer(motoboyMarkers[id]);
+            try{ cluster.removeLayer(motoboyMarkers[id]); }catch(e){}
             delete motoboyMarkers[id];
           }
         });
 
+        // fit inicial
         var layers = Object.values(motoboyMarkers);
         if (layers.length && !firstFitDone) {
-          var group = L.featureGroup(layers);
-          map.fitBounds(group.getBounds().pad(0.25));
+          var g = L.featureGroup(layers);
+          map.fitBounds(g.getBounds().pad(0.25));
           firstFitDone = true;
         }
       }
 
+      // inicial
       atualizarMarcadores(Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : []);
 
+      // socket
       if (typeof socket !== 'undefined') {
         socket.on('motoboys_update', function(lista){
           usandoSocketTempoReal = true;
@@ -1776,6 +1909,7 @@
         });
       }
 
+      // fallback polling
       function atualizarDoServidor(){
         if (usandoSocketTempoReal) return;
         fetch("{{ url_for('mapa_motoboys') }}", { headers: { 'X-Requested-With': 'fetch' } })
@@ -1792,17 +1926,65 @@
       }
       setInterval(atualizarDoServidor, 5000);
 
-      var sel = document.getElementById('mapSearch');
-      if(sel){
-        sel.addEventListener('change', function(){
-          var id = sel.value;
-          if(!id) return;
-          var mk = window.__motoboyMarkers ? window.__motoboyMarkers[id] : null;
-          if(mk && window.__mapCoopex){
-            window.__mapCoopex.setView(mk.getLatLng(), Math.max(window.__mapCoopex.getZoom(), 16), { animate:true });
-            try{ mk.openPopup(); }catch(e){}
-          }else{
-            showToast('<strong>Não localizado no mapa agora.</strong> Pode estar offline/sem GPS.');
+      // ✅ localizar por nome: traz pra frente + pulse + zoomToShowLayer (resolve sobreposição)
+      function localizarPorNome(nome){
+        nome = String(nome || '').trim();
+        if(!nome) return;
+
+        // acha o ID pelo nome (case-insensitive)
+        var lista = Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : [];
+        var alvo = null;
+        var nomeLower = nome.toLowerCase();
+
+        for(var i=0;i<lista.length;i++){
+          var n = String(lista[i]?.nome || '').trim();
+          if(n && n.toLowerCase() === nomeLower){
+            alvo = lista[i];
+            break;
+          }
+        }
+
+        if(!alvo || !alvo.id){
+          showToast('<strong>Não encontrado.</strong> Digite exatamente como está no sistema.');
+          return;
+        }
+
+        var mk = motoboyMarkers[String(alvo.id)];
+        if(!mk){
+          showToast('<strong>Não localizado no mapa agora.</strong> Pode estar offline/sem GPS.');
+          return;
+        }
+
+        // abre o cluster/spiderfy e mostra o marker
+        cluster.zoomToShowLayer(mk, function(){
+          try{
+            map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
+
+            // sobe ele pra frente e coloca pulse
+            mk.setZIndexOffset(10000);
+            var estado = calcEstado(alvo);
+            var cor = corEstado(estado);
+            mk.setIcon(iconMoto(cor, true));
+            mk.openPopup();
+
+            setTimeout(function(){
+              mk.setZIndexOffset(0);
+              // tira pulse
+              mk.setIcon(iconMoto(cor, false));
+            }, 5000);
+          }catch(e){}
+        });
+      }
+
+      var input = document.getElementById('mapSearchInput');
+      if(input){
+        input.addEventListener('change', function(){
+          localizarPorNome(input.value);
+        });
+        input.addEventListener('keydown', function(e){
+          if(e.key === 'Enter'){
+            e.preventDefault();
+            localizarPorNome(input.value);
           }
         });
       }
