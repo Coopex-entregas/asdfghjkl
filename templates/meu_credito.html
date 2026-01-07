@@ -569,76 +569,86 @@
   ></script>
 
   <script>
-    /***********************
-     * ENDPOINTS REAIS (Flask)
-     ***********************/
-    const API = {
-      me:         "{{ url_for('api_cliente_cotar_entrega') }}"
-      saldo:      "{{ url_for('api_credito_saldo') }}",
-      recarga:    "{{ url_for('api_credito_recarga') }}",
-      pedido:     "{{ url_for('api_pedidos_criar') }}",
-      pedidoAtivo:"{{ url_for('api_pedidos_ativo') }}",
-      cancelar:   (id) => "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}".replace("/0", `/${id}`),
-      tracking:   (id) => "{{ url_for('api_pedidos_tracking', pedido_id=0) }}".replace("/0", `/${id}`),
-    };
+  /***********************
+   * ENDPOINTS REAIS (Flask)
+   ***********************/
+  const API = {
+    me:          "{{ url_for('api_cliente_cotar_entrega') }}",
+    saldo:       "{{ url_for('api_credito_saldo') }}",
+    recarga:     "{{ url_for('api_credito_recarga') }}",
+    pedido:      "{{ url_for('api_pedidos_criar') }}",
+    pedidoAtivo: "{{ url_for('api_pedidos_ativo') }}",
 
-    const POLL_MS = 3000;
+    // Bases com placeholder "0"
+    _cancelBase: "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}",
+    _trackBase:  "{{ url_for('api_pedidos_tracking', pedido_id=0) }}",
 
-    /***********************
-     * UTIL
-     ***********************/
-    const moneyBR = (n) => (Number(n||0)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
-    const $ = (id)=>document.getElementById(id);
+    // Troca apenas o ÚLTIMO "0" do path (mais seguro)
+    cancelar: (id) => API._cancelBase.replace(/0$/, String(id)),
+    tracking: (id) => API._trackBase.replace(/0$/, String(id)),
+  };
 
-    function setOnline(flag){
-      const dot = $("onlineDot");
-      const txt = $("onlineText");
-      dot.style.background = flag ? "var(--ok)" : "var(--bad)";
-      dot.style.boxShadow = flag ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(239,68,68,.14)";
-      txt.textContent = flag ? "Online" : "Offline";
+  const POLL_MS = 3000;
+
+  /***********************
+   * UTIL
+   ***********************/
+  const moneyBR = (n) => (Number(n || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+  const $ = (id) => document.getElementById(id);
+
+  function setOnline(flag) {
+    const dot = $("onlineDot");
+    const txt = $("onlineText");
+    dot.style.background = flag ? "var(--ok)" : "var(--bad)";
+    dot.style.boxShadow = flag ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(239,68,68,.14)";
+    txt.textContent = flag ? "Online" : "Offline";
+  }
+
+  async function safeJSON(url, opts) {
+    try {
+      const r = await fetch(url, {
+        credentials: "same-origin",
+        ...opts,
+      });
+      if (!r.ok) throw new Error("HTTP " + r.status);
+      return await r.json();
+    } catch (e) {
+      return null;
     }
+  }
 
-    async function safeJSON(url, opts){
-      try{
-        const r = await fetch(url, opts);
-        if(!r.ok) throw new Error("HTTP "+r.status);
-        return await r.json();
-      }catch(e){
-        return null;
-      }
-    }
+  function parseBRL(v) {
+    const s = (v || "").trim().replace(/\./g, "").replace(",", ".");
+    const n = Number(s);
+    return Number.isFinite(n) ? n : 0;
+  }
 
-    function parseBRL(v){
-      const s = (v||"").trim().replace(/\./g,"").replace(",",".");
-      const n = Number(s);
-      return Number.isFinite(n) ? n : 0;
-    }
+  /***********************
+   * STATE
+   ***********************/
+  const state = {
+    cliente: { nome: "Cliente" },
+    saldo: 0,
+    pedido: null, // {id, origemTxt, destinoTxt, valor, status, eta_min, motoboyNome}
+    lastTracking: null,
+  };
 
-    /***********************
-     * STATE
-     ***********************/
-    const state = {
-      cliente: { nome:"Cliente" },
-      saldo: 0,
-      pedido: null, // {id, origemTxt, destinoTxt, valor, status, eta_min, motoboyNome}
-      lastTracking: null
-    };
+  /***********************
+   * MAPA
+   ***********************/
+  let map, mOrigem, mDestino, mMoto, routeLine;
 
-    /***********************
-     * MAPA
-     ***********************/
-    let map, mOrigem, mDestino, mMoto, routeLine;
+  function initMap() {
+    const natal = [-5.7945, -35.2110];
+    map = L.map("map", { zoomControl: true }).setView(natal, 13);
 
-    function initMap(){
-      const natal = [-5.7945, -35.2110];
-      map = L.map("map", { zoomControl:true }).setView(natal, 13);
+    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+      maxZoom: 19,
+      attribution: "&copy; OpenStreetMap",
+    }).addTo(map);
 
-      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-        maxZoom: 19,
-        attribution: "&copy; OpenStreetMap"
-      }).addTo(map);
-
-      const mk = (label, color) => L.divIcon({
+    const mk = (label, color) =>
+      L.divIcon({
         className: "",
         html: `
           <div style="
@@ -666,399 +676,412 @@
             ">${label}</div>
         `,
         iconSize: [120, 56],
-        iconAnchor: [22, 42]
+        iconAnchor: [22, 42],
       });
 
-      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
-      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
-      mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+    mOrigem = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
+    mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
+    mMoto = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
 
-      routeLine = L.polyline([natal, natal], { weight:5, opacity:.9 }).addTo(map);
+    routeLine = L.polyline([natal, natal], { weight: 5, opacity: 0.9 }).addTo(map);
+  }
+
+  function setRoute(orig, dest) {
+    mOrigem.setLatLng(orig);
+    mDestino.setLatLng(dest);
+    routeLine.setLatLngs([orig, dest]);
+    const b = L.latLngBounds([orig, dest]).pad(0.25);
+    map.fitBounds(b, { animate: true, duration: 0.6 });
+  }
+
+  function setMoto(pos) {
+    mMoto.setLatLng(pos);
+  }
+
+  /***********************
+   * UI
+   ***********************/
+  function setTab(tab) {
+    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    document.querySelectorAll(".navbtn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+    $("tab-pedido").classList.toggle("hide", tab !== "pedido");
+    $("tab-rastreio").classList.toggle("hide", tab !== "rastreio");
+    $("tab-credito").classList.toggle("hide", tab !== "credito");
+  }
+
+  function setSaldo(n) {
+    state.saldo = Number(n || 0);
+    $("saldoVal").textContent = moneyBR(state.saldo);
+    $("saldoHint").textContent =
+      state.saldo > 0 ? "Use seu crédito para pagar pedidos com mais rapidez." : "Saldo zerado. Faça uma recarga para pedir com crédito.";
+  }
+
+  function setEstimativa(valor, eta) {
+    $("precoTxt").textContent = valor != null ? moneyBR(valor) : "—";
+    $("etaTxt").textContent = eta != null ? `${eta} min` : "—";
+    $("chipETA").textContent = eta != null ? `ETA ${eta} min` : "ETA —";
+  }
+
+  function setBadge() {
+    const dot = $("badgeDot");
+    const txt = $("badgeTxt");
+
+    if (!state.pedido) {
+      dot.style.background = "var(--warn)";
+      dot.style.boxShadow = "0 0 0 6px rgba(245,158,11,.14)";
+      txt.textContent = "Sem pedido ativo";
+      $("statusTxt").textContent = "Sem pedido ativo";
+      $("motoTxt").textContent = "—";
+      $("pedidoRef").textContent = "—";
+      $("addrMini").textContent = "—";
+      setEstimativa(null, null);
+      return;
     }
 
-    function setRoute(orig, dest){
-      mOrigem.setLatLng(orig);
-      mDestino.setLatLng(dest);
-      routeLine.setLatLngs([orig, dest]);
-      const b = L.latLngBounds([orig, dest]).pad(0.25);
-      map.fitBounds(b, { animate:true, duration:0.6 });
-    }
+    const st = state.pedido.status || "Em andamento";
+    txt.textContent = st;
+    const ok = /entreg/i.test(st);
+    dot.style.background = ok ? "var(--ok)" : "var(--warn)";
+    dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
 
-    function setMoto(pos){
-      mMoto.setLatLng(pos);
-    }
+    $("statusTxt").textContent = st;
+    $("motoTxt").textContent = state.pedido.motoboyNome || "—";
+    $("pedidoRef").textContent = state.pedido.id || "—";
+    $("addrMini").textContent = `${state.pedido.origemTxt || "—"} → ${state.pedido.destinoTxt || "—"}`;
+    setEstimativa(state.pedido.valor, state.pedido.eta_min);
+  }
 
-    /***********************
-     * UI
-     ***********************/
-    function setTab(tab){
-      document.querySelectorAll(".tab").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
-      document.querySelectorAll(".navbtn").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
-      $("tab-pedido").classList.toggle("hide", tab!=="pedido");
-      $("tab-rastreio").classList.toggle("hide", tab!=="rastreio");
-      $("tab-credito").classList.toggle("hide", tab!=="credito");
-    }
+  function renderTimeline() {
+    const wrap = $("timeline");
+    wrap.innerHTML = "";
 
-    function setSaldo(n){
-      state.saldo = Number(n||0);
-      $("saldoVal").textContent = moneyBR(state.saldo);
-      $("saldoHint").textContent = state.saldo > 0
-        ? "Use seu crédito para pagar pedidos com mais rapidez."
-        : "Saldo zerado. Faça uma recarga para pedir com crédito.";
-    }
-
-    function setEstimativa(valor, eta){
-      $("precoTxt").textContent = valor != null ? moneyBR(valor) : "—";
-      $("etaTxt").textContent = eta != null ? `${eta} min` : "—";
-      $("chipETA").textContent = eta != null ? `ETA ${eta} min` : "ETA —";
-    }
-
-    function setBadge(){
-      const dot = $("badgeDot");
-      const txt = $("badgeTxt");
-
-      if(!state.pedido){
-        dot.style.background = "var(--warn)";
-        dot.style.boxShadow = "0 0 0 6px rgba(245,158,11,.14)";
-        txt.textContent = "Sem pedido ativo";
-        $("statusTxt").textContent = "Sem pedido ativo";
-        $("motoTxt").textContent = "—";
-        $("pedidoRef").textContent = "—";
-        $("addrMini").textContent = "—";
-        setEstimativa(null, null);
-        return;
-      }
-
-      const st = state.pedido.status || "Em andamento";
-      txt.textContent = st;
-      const ok = /entreg/i.test(st);
-      dot.style.background = ok ? "var(--ok)" : "var(--warn)";
-      dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
-
-      $("statusTxt").textContent = st;
-      $("motoTxt").textContent = state.pedido.motoboyNome || "—";
-      $("pedidoRef").textContent = state.pedido.id || "—";
-      $("addrMini").textContent = `${state.pedido.origemTxt || "—"} → ${state.pedido.destinoTxt || "—"}`;
-      setEstimativa(state.pedido.valor, state.pedido.eta_min);
-    }
-
-    function renderTimeline(){
-      const wrap = $("timeline");
-      wrap.innerHTML = "";
-
-      if(!state.pedido){
-        wrap.innerHTML = `
-          <div class="item">
-            <div class="ic">1</div>
-            <div class="tx">
-              <strong>Crie um pedido</strong>
-              <small>Quando houver pedido ativo, o rastreio abre com status e ETA.</small>
-            </div>
-            <div class="right"><span class="chip">Aguardando</span></div>
+    if (!state.pedido) {
+      wrap.innerHTML = `
+        <div class="item">
+          <div class="ic">1</div>
+          <div class="tx">
+            <strong>Crie um pedido</strong>
+            <small>Quando houver pedido ativo, o rastreio abre com status e ETA.</small>
           </div>
-        `;
-        return;
-      }
+          <div class="right"><span class="chip">Aguardando</span></div>
+        </div>
+      `;
+      return;
+    }
 
-      const steps = [
-        {k:"Criado",    d:"Pedido criado e aguardando atribuição."},
-        {k:"Atribuído", d:"Motoboy atribuído e a caminho da coleta."},
-        {k:"Coleta",    d:"Motoboy no local de coleta."},
-        {k:"Em rota",   d:"Em rota para entrega."},
-        {k:"Entregue",  d:"Entrega concluída."},
-      ];
+    const steps = [
+      { k: "Criado", d: "Pedido criado e aguardando atribuição." },
+      { k: "Atribuído", d: "Motoboy atribuído e a caminho da coleta." },
+      { k: "Coleta", d: "Motoboy no local de coleta." },
+      { k: "Em rota", d: "Em rota para entrega." },
+      { k: "Entregue", d: "Entrega concluída." },
+    ];
 
-      const status = (state.pedido.status||"Criado").toLowerCase();
-      const idx =
-        status.includes("entreg") ? 4 :
-        status.includes("rota") || status.includes("andamento") ? 3 :
-        status.includes("colet") ? 2 :
-        status.includes("atribu") ? 1 : 0;
+    const status = (state.pedido.status || "Criado").toLowerCase();
+    const idx =
+      status.includes("entreg") ? 4 :
+      status.includes("rota") || status.includes("andamento") ? 3 :
+      status.includes("colet") ? 2 :
+      status.includes("atribu") ? 1 : 0;
 
-      steps.forEach((s,i)=>{
-        const done = i < idx;
-        const cur  = i === idx;
-        const chip = done ? "Concluído" : (cur ? "Agora" : "Pendente");
-        const dot = done ? "var(--ok)" : (cur ? "var(--warn)" : "rgba(102,112,133,.28)");
+    steps.forEach((s, i) => {
+      const done = i < idx;
+      const cur = i === idx;
+      const chip = done ? "Concluído" : cur ? "Agora" : "Pendente";
+      const dot = done ? "var(--ok)" : cur ? "var(--warn)" : "rgba(102,112,133,.28)";
 
-        wrap.insertAdjacentHTML("beforeend", `
-          <div class="item">
-            <div class="ic" style="background: radial-gradient(16px 16px at 30% 30%, ${dot}55, ${dot}22);">${i+1}</div>
-            <div class="tx">
-              <strong>${s.k}</strong>
-              <small>${s.d}</small>
-            </div>
-            <div class="right"><span class="chip">${chip}</span></div>
+      wrap.insertAdjacentHTML(
+        "beforeend",
+        `
+        <div class="item">
+          <div class="ic" style="background: radial-gradient(16px 16px at 30% 30%, ${dot}55, ${dot}22);">${i + 1}</div>
+          <div class="tx">
+            <strong>${s.k}</strong>
+            <small>${s.d}</small>
           </div>
-        `);
-      });
+          <div class="right"><span class="chip">${chip}</span></div>
+        </div>
+      `
+      );
+    });
+  }
+
+  /***********************
+   * API: carregamento e polling
+   ***********************/
+  function normalizePedido(p) {
+    return {
+      id: String(p.id),
+      origemTxt: p.origem_txt || "",
+      destinoTxt: p.destino_txt || "",
+      valor: Number(p.valor || 0),
+      status: p.status || "Criado",
+      eta_min: p.eta_min != null ? Number(p.eta_min) : null,
+      motoboyNome: p.motoboy_nome || "",
+    };
+  }
+
+  async function loadInitial() {
+    const me = await safeJSON(API.me);
+    const saldo = await safeJSON(API.saldo);
+    const ativo = await safeJSON(API.pedidoAtivo);
+
+    // Online se pelo menos 1 endpoint respondeu ok
+    const ok = !!(me?.ok || saldo?.ok || ativo?.ok);
+    setOnline(ok);
+
+    if (me?.ok) {
+      state.cliente = me.cliente;
+      $("welcomeSub").textContent = `Olá, ${state.cliente.nome || "Cliente"}.`;
     }
 
-    /***********************
-     * API: carregamento e polling
-     ***********************/
-    function normalizePedido(p){
-      return {
-        id: String(p.id),
-        origemTxt: p.origem_txt || "",
-        destinoTxt: p.destino_txt || "",
-        valor: Number(p.valor || 0),
-        status: p.status || "Criado",
-        eta_min: (p.eta_min != null ? Number(p.eta_min) : null),
-        motoboyNome: p.motoboy_nome || ""
-      };
-    }
+    if (saldo?.ok) setSaldo(saldo.saldo);
 
-    async function loadInitial(){
-      const me = await safeJSON(API.me);
-      const saldo = await safeJSON(API.saldo);
-      const ativo = await safeJSON(API.pedidoAtivo);
-
-      const ok = !!(me && saldo && ativo);
-      setOnline(ok);
-
-      if(me?.ok){
-        state.cliente = me.cliente;
-        $("welcomeSub").textContent = `Olá, ${state.cliente.nome || "Cliente"}.`;
-      }
-      if(saldo?.ok) setSaldo(saldo.saldo);
-
-      if(ativo?.ok && ativo.pedido){
-        state.pedido = normalizePedido(ativo.pedido);
-        setBadge();
-        renderTimeline();
-        await applyTrackingFromAPI(state.pedido.id);
-        startPolling();
-      }else{
-        state.pedido = null;
-        setBadge();
-        renderTimeline();
-      }
-
-      $("badgeTxt").textContent = state.pedido ? (state.pedido.status || "Em andamento") : "Sem pedido ativo";
-    }
-
-    async function applyTrackingFromAPI(pedidoId){
-      const data = await safeJSON(API.tracking(pedidoId));
-      if(!data || !data.ok) return;
-
-      // Atualiza texto/status
-      if(state.pedido){
-        state.pedido.status = data.status || state.pedido.status;
-        state.pedido.eta_min = (data.eta_min != null ? data.eta_min : state.pedido.eta_min);
-        state.pedido.motoboyNome = (data.motoboy?.nome || state.pedido.motoboyNome);
-
-        if(data.origem?.txt) state.pedido.origemTxt = data.origem.txt;
-        if(data.destino?.txt) state.pedido.destinoTxt = data.destino.txt;
-        if(data.valor != null) state.pedido.valor = Number(data.valor);
-      }
-
+    if (ativo?.ok && ativo.pedido) {
+      state.pedido = normalizePedido(ativo.pedido);
       setBadge();
       renderTimeline();
-
-      // Atualiza mapa (se tiver coordenadas)
-      const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
-      const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
-      const moto = (data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
-
-      if(orig && dest) setRoute(orig, dest);
-      if(moto) setMoto(moto);
+      await applyTrackingFromAPI(state.pedido.id);
+      startPolling();
+    } else {
+      state.pedido = null;
+      setBadge();
+      renderTimeline();
+      // garante que não fica polling antigo rodando
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
     }
 
-    let pollTimer = null;
-    function startPolling(){
-      if(pollTimer) clearInterval(pollTimer);
-      pollTimer = setInterval(async ()=>{
-        if(!state.pedido){
-          const ativo = await safeJSON(API.pedidoAtivo);
-          if(ativo?.ok && ativo.pedido){
-            state.pedido = normalizePedido(ativo.pedido);
-            setBadge();
-            renderTimeline();
-          }else{
-            return;
-          }
-        }
-        await applyTrackingFromAPI(state.pedido.id);
-      }, POLL_MS);
+    $("badgeTxt").textContent = state.pedido ? state.pedido.status || "Em andamento" : "Sem pedido ativo";
+  }
+
+  async function applyTrackingFromAPI(pedidoId) {
+    const data = await safeJSON(API.tracking(pedidoId));
+    if (!data || !data.ok) return;
+
+    if (state.pedido) {
+      state.pedido.status = data.status || state.pedido.status;
+      state.pedido.eta_min = data.eta_min != null ? data.eta_min : state.pedido.eta_min;
+      state.pedido.motoboyNome = data.motoboy?.nome || state.pedido.motoboyNome;
+
+      if (data.origem?.txt) state.pedido.origemTxt = data.origem.txt;
+      if (data.destino?.txt) state.pedido.destinoTxt = data.destino.txt;
+      if (data.valor != null) state.pedido.valor = Number(data.valor);
     }
 
-    /***********************
-     * AÇÕES
-     ***********************/
-    function wireTabs(){
-      document.querySelectorAll(".tab").forEach(b=> b.addEventListener("click", ()=>setTab(b.dataset.tab)));
-      document.querySelectorAll(".navbtn").forEach(b=> b.addEventListener("click", ()=>setTab(b.dataset.tab)));
+    setBadge();
+    renderTimeline();
 
-      $("btnIrRecarga").addEventListener("click", ()=>setTab("credito"));
-      $("btnIrPedido").addEventListener("click", ()=>setTab("pedido"));
-      $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
-      $("btnNovoPedido").addEventListener("click", ()=>{
-        setTab("pedido");
-        $("origem").focus();
-      });
-    }
+    const orig = data.origem?.lat != null && data.origem?.lng != null ? [data.origem.lat, data.origem.lng] : null;
+    const dest = data.destino?.lat != null && data.destino?.lng != null ? [data.destino.lat, data.destino.lng] : null;
+    const moto = data.motoboy?.lat != null && data.motoboy?.lng != null ? [data.motoboy.lat, data.motoboy.lng] : null;
 
-    function wirePedido(){
-      $("btnUsarLocal").addEventListener("click", async ()=>{
-        if(!navigator.geolocation){
-          alert("Geolocalização não suportada neste navegador.");
+    if (orig && dest) setRoute(orig, dest);
+    if (moto) setMoto(moto);
+  }
+
+  let pollTimer = null;
+  function startPolling() {
+    if (pollTimer) clearInterval(pollTimer);
+
+    pollTimer = setInterval(async () => {
+      if (!state.pedido) {
+        const ativo = await safeJSON(API.pedidoAtivo);
+        if (ativo?.ok && ativo.pedido) {
+          state.pedido = normalizePedido(ativo.pedido);
+          setBadge();
+          renderTimeline();
+        } else {
           return;
         }
-        navigator.geolocation.getCurrentPosition((pos)=>{
+      }
+      await applyTrackingFromAPI(state.pedido.id);
+    }, POLL_MS);
+  }
+
+  /***********************
+   * AÇÕES
+   ***********************/
+  function wireTabs() {
+    document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+    document.querySelectorAll(".navbtn").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
+
+    $("btnIrRecarga").addEventListener("click", () => setTab("credito"));
+    $("btnIrPedido").addEventListener("click", () => setTab("pedido"));
+    $("btnAbrirRastreio").addEventListener("click", () => setTab("rastreio"));
+    $("btnNovoPedido").addEventListener("click", () => {
+      setTab("pedido");
+      $("origem").focus();
+    });
+  }
+
+  function wirePedido() {
+    $("btnUsarLocal").addEventListener("click", async () => {
+      if (!navigator.geolocation) {
+        alert("Geolocalização não suportada neste navegador.");
+        return;
+      }
+
+      navigator.geolocation.getCurrentPosition(
+        (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
           $("origem").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-          // Opcional: você pode mandar essas coords junto no pedido (backend aceita).
           window.__ORIG_LAT = lat;
           window.__ORIG_LNG = lng;
-        }, ()=>{
+        },
+        () => {
           alert("Não foi possível obter sua localização. Verifique permissões.");
-        }, { enableHighAccuracy:true, timeout:8000 });
+        },
+        { enableHighAccuracy: true, timeout: 8000 }
+      );
+    });
+
+    $("btnCriarPedido").addEventListener("click", async () => {
+      const origemTxt = $("origem").value.trim();
+      const destinoTxt = $("destino").value.trim();
+      const tipo = $("tipo").value;
+      const pagamento = $("pagamento").value;
+      const obs = $("obs").value.trim();
+
+      if (!origemTxt || !destinoTxt) {
+        alert("Informe os endereços de coleta e entrega.");
+        return;
+      }
+
+      const payload = {
+        origem_txt: origemTxt,
+        destino_txt: destinoTxt,
+        tipo,
+        pagamento,
+        obs,
+        origem_lat: window.__ORIG_LAT ?? null,
+        origem_lng: window.__ORIG_LNG ?? null,
+      };
+
+      const res = await safeJSON(API.pedido, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
       });
 
-      $("btnCriarPedido").addEventListener("click", async ()=>{
-        const origemTxt = $("origem").value.trim();
-        const destinoTxt = $("destino").value.trim();
-        const tipo = $("tipo").value;
-        const pagamento = $("pagamento").value;
-        const obs = $("obs").value.trim();
+      if (!res || !res.ok) {
+        alert(res?.msg || "Não foi possível criar o pedido.");
+        return;
+      }
 
-        if(!origemTxt || !destinoTxt){
-          alert("Informe os endereços de coleta e entrega.");
-          return;
-        }
+      setOnline(true);
+      state.pedido = normalizePedido(res.pedido);
+      setBadge();
+      renderTimeline();
+      setTab("rastreio");
 
-        const payload = {
-          origem_txt: origemTxt,
-          destino_txt: destinoTxt,
-          tipo,
-          pagamento,
-          obs,
-          origem_lat: (window.__ORIG_LAT ?? null),
-          origem_lng: (window.__ORIG_LNG ?? null),
-        };
+      await applyTrackingFromAPI(state.pedido.id);
+      startPolling();
+    });
+  }
 
-        const res = await safeJSON(API.pedido, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify(payload)
-        });
+  function wireRastreio() {
+    $("btnCentralizar").addEventListener("click", () => {
+      const o = mOrigem.getLatLng();
+      const d = mDestino.getLatLng();
+      const b = L.latLngBounds([o, d]).pad(0.25);
+      map.fitBounds(b, { animate: true, duration: 0.6 });
+    });
 
-        if(!res || !res.ok){
-          alert(res?.msg || "Não foi possível criar o pedido.");
-          return;
-        }
+    $("btnCancelar").addEventListener("click", async () => {
+      if (!state.pedido) {
+        alert("Não há pedido ativo para cancelar.");
+        return;
+      }
+      if (!confirm("Deseja cancelar o pedido ativo?")) return;
 
-        setOnline(true);
-        state.pedido = normalizePedido(res.pedido);
-        setBadge();
-        renderTimeline();
-        setTab("rastreio");
+      const r = await safeJSON(API.cancelar(state.pedido.id), { method: "POST" });
+      if (!r || !r.ok) {
+        alert(r?.msg || "Não foi possível cancelar.");
+        return;
+      }
 
-        await applyTrackingFromAPI(state.pedido.id);
-        startPolling();
-      });
-    }
+      state.pedido = null;
+      setBadge();
+      renderTimeline();
+      setTab("pedido");
 
-    function wireRastreio(){
-      $("btnCentralizar").addEventListener("click", ()=>{
-        const o = mOrigem.getLatLng();
-        const d = mDestino.getLatLng();
-        const b = L.latLngBounds([o,d]).pad(0.25);
-        map.fitBounds(b, { animate:true, duration:0.6 });
-      });
+      if (pollTimer) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+      }
+    });
+  }
 
-      $("btnCancelar").addEventListener("click", async ()=>{
-        if(!state.pedido){
-          alert("Não há pedido ativo para cancelar.");
-          return;
-        }
-        if(!confirm("Deseja cancelar o pedido ativo?")) return;
+  function wireCredito() {
+    $("metodoRecarga").addEventListener("change", () => {
+      $("metodoTxt").textContent = $("metodoRecarga").value === "pix" ? "Pix" : "Cartão";
+    });
 
-        const r = await safeJSON(API.cancelar(state.pedido.id), { method:"POST" });
-        if(!r || !r.ok){
-          alert(r?.msg || "Não foi possível cancelar.");
-          return;
-        }
+    document.querySelectorAll(".recargaPreset").forEach((b) => {
+      b.addEventListener("click", () => ($("valorRecarga").value = (b.dataset.v || "").replace(".", ",")));
+    });
 
-        state.pedido = null;
-        setBadge();
-        renderTimeline();
-        setTab("pedido");
-      });
-    }
+    $("btnGerarRecarga").addEventListener("click", async () => {
+      const valor = parseBRL($("valorRecarga").value);
+      const metodo = $("metodoRecarga").value;
 
-    function wireCredito(){
-      $("metodoRecarga").addEventListener("change", ()=>{
-        $("metodoTxt").textContent = $("metodoRecarga").value === "pix" ? "Pix" : "Cartão";
+      if (!valor || valor <= 0) {
+        alert("Informe um valor válido para recarga.");
+        return;
+      }
+
+      const r = await safeJSON(API.recarga, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ valor, metodo }),
       });
 
-      document.querySelectorAll(".recargaPreset").forEach(b=>{
-        b.addEventListener("click", ()=> $("valorRecarga").value = (b.dataset.v || "").replace(".", ","));
-      });
+      if (!r || !r.ok) {
+        alert(r?.msg || "Não foi possível gerar a recarga.");
+        return;
+      }
 
-      $("btnGerarRecarga").addEventListener("click", async ()=>{
-        const valor = parseBRL($("valorRecarga").value);
-        const metodo = $("metodoRecarga").value;
+      setOnline(true);
 
-        if(!valor || valor <= 0){
-          alert("Informe um valor válido para recarga.");
-          return;
-        }
+      if (metodo === "pix") {
+        $("boxCobranca").innerHTML = `
+          <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+          Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
+          <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
+          <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
+          <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || "RECARGA-" + r.recarga_id}</span><br>
+          <div style="margin-top:10px">Após o pagamento, a recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
+        `;
+      } else {
+        $("boxCobranca").innerHTML = `
+          <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+          Método: <strong>Cartão</strong>.<br>
+          <div style="margin-top:10px">
+            Integração necessária: seu backend deve retornar um <strong>checkout_url</strong> do provedor e você redireciona o cliente.
+          </div>
+          ${r.checkout_url ? `<div style="margin-top:10px"><a class="btn btn-primary" style="height:44px" href="${r.checkout_url}">Pagar agora</a></div>` : ""}
+        `;
+      }
 
-        const r = await safeJSON(API.recarga, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ valor, metodo })
-        });
+      const s = await safeJSON(API.saldo);
+      if (s?.ok) setSaldo(s.saldo);
+    });
+  }
 
-        if(!r || !r.ok){
-          alert(r?.msg || "Não foi possível gerar a recarga.");
-          return;
-        }
-
-        setOnline(true);
-
-        // Atualiza UI do box (Pix real por chave + referência; Cartão depende do provedor)
-        if(metodo === "pix"){
-          $("boxCobranca").innerHTML = `
-            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-            Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
-            <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
-            <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
-            <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || ("RECARGA-"+r.recarga_id)}</span><br>
-            <div style="margin-top:10px">Após o pagamento, a recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
-          `;
-        } else {
-          $("boxCobranca").innerHTML = `
-            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-            Método: <strong>Cartão</strong>.<br>
-            <div style="margin-top:10px">
-              Integração necessária: seu backend deve retornar um <strong>checkout_url</strong> do provedor e você redireciona o cliente.
-            </div>
-            ${r.checkout_url ? `<div style="margin-top:10px"><a class="btn btn-primary" style="height:44px" href="${r.checkout_url}">Pagar agora</a></div>` : ""}
-          `;
-        }
-
-        // Atualiza saldo (pode não mudar até aprovação; mesmo assim mostramos o saldo atual do backend)
-        const s = await safeJSON(API.saldo);
-        if(s?.ok) setSaldo(s.saldo);
-      });
-    }
-
-    /***********************
-     * BOOT
-     ***********************/
-    initMap();
-    wireTabs();
-    wirePedido();
-    wireRastreio();
-    wireCredito();
-    loadInitial();
-
-    $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
-    $("btnNovoPedido").addEventListener("click", ()=>setTab("pedido"));
-  </script>
+  /***********************
+   * BOOT
+   ***********************/
+  initMap();
+  wireTabs();
+  wirePedido();
+  wireRastreio();
+  wireCredito();
+  loadInitial();
+</script>
 </body>
 </html>
+
