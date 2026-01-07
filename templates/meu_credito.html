@@ -707,567 +707,617 @@ Av. Z, 200 - Bairro W"></textarea>
     crossorigin
   ></script>
 
-  <script>
-  /***********************
-   * ENDPOINTS REAIS (Flask) - AJUSTADOS PARA SUAS ROTAS
-   ***********************/
-  const API = {
-    cotar:     "{{ url_for('api_cliente_cotar_entrega') }}",
-    solicitar: "{{ url_for('api_cliente_solicitar_entrega') }}",
-    // API de rastreio usa o ID da entrega como <codigo>
-    _trackBase: "{{ url_for('api_rastreamento', codigo=0) }}",
-    tracking: (id) => API._trackBase.replace(/0$/, String(id)),
-    // Base de comprovante (para abrir em nova aba)
-    _compBase: "{{ url_for('cliente_comprovante', entrega_id=0) }}",
-    comprovante: (id) => API._compBase.replace(/0$/, String(id)),
-  };
+ <script>
+/***********************
+ * ENDPOINTS REAIS (Flask) - COMPATÍVEIS COM SUAS ROTAS
+ ***********************/
+const API = {
+  cotar:      "{{ url_for('api_cliente_cotar_entrega') }}",       // POST
+  solicitar:  "{{ url_for('api_cliente_solicitar_entrega') }}",   // POST
 
-  const POLL_MS = 3000;
+  // API de rastreio usa o ID da entrega como <codigo>
+  _trackBase: "{{ url_for('api_rastreamento', codigo=0) }}",
+  tracking: (id) => API._trackBase.replace(/0$/, String(id)),
 
-  /***********************
-   * UTIL
-   ***********************/
-  const moneyBR = (n) => (Number(n || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-  const $ = (id) => document.getElementById(id);
+  // Comprovante do cliente
+  _compBase: "{{ url_for('cliente_comprovante', entrega_id=0) }}",
+  comprovante: (id) => API._compBase.replace(/0$/, String(id)),
+};
 
-  function setOnline(flag) {
-    const dot = $("onlineDot");
-    const txt = $("onlineText");
-    dot.style.background = flag ? "var(--ok)" : "var(--bad)";
-    dot.style.boxShadow = flag ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(239,68,68,.14)";
-    txt.textContent = flag ? "Online" : "Offline";
-  }
+const POLL_MS = 3000;
+const PIX_CHAVE = "{{ (pix_chave or '')|e }}";
 
-  async function safeJSON(url, opts) {
-    try {
-      const r = await fetch(url, {
-        credentials: "same-origin",
-        ...opts,
-      });
-      const ct = (r.headers.get("content-type") || "").toLowerCase();
-      const isJSON = ct.includes("application/json");
-      if (!r.ok) {
-        if (isJSON) return await r.json();
-        throw new Error("HTTP " + r.status);
-      }
-      return isJSON ? await r.json() : null;
-    } catch (e) {
-      return null;
+/***********************
+ * UTIL
+ ***********************/
+const moneyBR = (n) => (Number(n || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+const $ = (id) => document.getElementById(id);
+
+function el(id){ return $(id); }
+function setText(id, txt){
+  const e = el(id);
+  if (e) e.textContent = (txt == null ? "" : String(txt));
+}
+function show(id, flag){
+  const e = el(id);
+  if (e) e.classList.toggle("hide", !flag);
+}
+
+function setOnline(flag) {
+  const dot = el("onlineDot");
+  const txt = el("onlineText");
+  if (!dot || !txt) return;
+
+  dot.style.background = flag ? "var(--ok)" : "var(--bad)";
+  dot.style.boxShadow = flag ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(239,68,68,.14)";
+  txt.textContent = flag ? "Online" : "Offline";
+}
+
+async function safeJSON(url, opts) {
+  try {
+    const r = await fetch(url, { credentials: "same-origin", ...opts });
+    const ct = (r.headers.get("content-type") || "").toLowerCase();
+    const isJSON = ct.includes("application/json");
+    if (!r.ok) {
+      if (isJSON) return await r.json();
+      throw new Error("HTTP " + r.status);
     }
+    return isJSON ? await r.json() : null;
+  } catch {
+    return null;
   }
+}
 
-  function linhasParaLista(txt) {
-    return (txt || "")
-      .split("\n")
-      .map(s => s.trim())
-      .filter(Boolean);
-  }
+function linhasParaLista(txt) {
+  return (txt || "")
+    .split("\n")
+    .map(s => s.trim())
+    .filter(Boolean);
+}
 
-  /***********************
-   * STATE
-   ***********************/
-  const state = {
-    saldo: Number({{ (cli.saldo_atual or 0) | float }}),
-    entregaAtivaId: null,
-    tracking: null,
-  };
+// Normaliza valores do select de pagamento para o que sua API espera
+function normMeioPagamento(v){
+  const up = String(v || "").trim().toUpperCase();
+  if (up === "CREDITO" || up === "CRÉDITO" || up === "CREDIT" || up === "CRED") return "CREDITO";
+  if (up === "PIX") return "PIX";
+  if (up === "DINHEIRO" || up === "CASH") return "DINHEIRO";
+  // se no HTML estiver "credito"/"pix"/"dinheiro"
+  if (up === "CREDITO".toUpperCase()) return "CREDITO";
+  if (up === "PIX".toUpperCase()) return "PIX";
+  if (up === "DINHEIRO".toUpperCase()) return "DINHEIRO";
+  return "PIX";
+}
 
-  /***********************
-   * MAPA
-   ***********************/
-  let map, mOrigem, mDestino, mMoto, routeLine;
+/***********************
+ * STATE
+ ***********************/
+const state = {
+  saldo: Number({{ (cli.saldo_atual or 0) | float }}),
+  entregaAtivaId: null,
+  tracking: null,
+};
 
-  function initMap() {
-    const natal = [-5.7945, -35.2110];
-    map = L.map("map", { zoomControl: true }).setView(natal, 13);
+/***********************
+ * MAPA (Leaflet)
+ ***********************/
+let map, mOrigem, mDestino, mMoto, routeLine;
 
-    L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
-      maxZoom: 19,
-      attribution: "&copy; OpenStreetMap",
-    }).addTo(map);
+function initMap() {
+  const natal = [-5.7945, -35.2110];
+  map = L.map("map", { zoomControl: true }).setView(natal, 13);
 
-    const mk = (label, color) =>
-      L.divIcon({
-        className: "",
-        html: `
+  L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+    maxZoom: 19,
+    attribution: "&copy; OpenStreetMap",
+  }).addTo(map);
+
+  const mk = (label, color) =>
+    L.divIcon({
+      className: "",
+      html: `
+        <div style="
+            width:42px;height:42px;border-radius:18px;
+            background:linear-gradient(180deg,#fff,#F7FAFF);
+            border:1px solid rgba(214,226,255,.95);
+            box-shadow:0 16px 30px rgba(10,25,80,.12);
+            display:grid;place-items:center;position:relative;">
+          <div style="width:12px;height:12px;border-radius:999px;background:${color};box-shadow:0 0 0 8px ${color}22;"></div>
           <div style="
-              width:42px;height:42px;border-radius:18px;
-              background:linear-gradient(180deg,#fff,#F7FAFF);
-              border:1px solid rgba(214,226,255,.95);
-              box-shadow:0 16px 30px rgba(10,25,80,.12);
-              display:grid;place-items:center;position:relative;">
-            <div style="width:12px;height:12px;border-radius:999px;background:${color};box-shadow:0 0 0 8px ${color}22;"></div>
-            <div style="
-              position:absolute;left:50%;top:100%;
-              transform:translate(-50%,-4px) rotate(45deg);
-              width:12px;height:12px;background:linear-gradient(180deg,#fff,#F7FAFF);
-              border-left:1px solid rgba(214,226,255,.95);
-              border-bottom:1px solid rgba(214,226,255,.95);
-              border-bottom-left-radius:3px;"></div>
-          </div>
-          <div style="
-              margin-top:6px;background:rgba(255,255,255,.92);
-              border:1px solid rgba(214,226,255,.9);
-              color:var(--royal);
-              padding:6px 10px;border-radius:999px;
-              font-weight:900;font-size:11px;display:inline-block;
-              box-shadow:0 10px 20px rgba(10,25,80,.08);
-            ">${label}</div>
-        `,
-        iconSize: [120, 56],
-        iconAnchor: [22, 42],
-      });
+            position:absolute;left:50%;top:100%;
+            transform:translate(-50%,-4px) rotate(45deg);
+            width:12px;height:12px;background:linear-gradient(180deg,#fff,#F7FAFF);
+            border-left:1px solid rgba(214,226,255,.95);
+            border-bottom:1px solid rgba(214,226,255,.95);
+            border-bottom-left-radius:3px;"></div>
+        </div>
+        <div style="
+            margin-top:6px;background:rgba(255,255,255,.92);
+            border:1px solid rgba(214,226,255,.9);
+            color:var(--royal);
+            padding:6px 10px;border-radius:999px;
+            font-weight:900;font-size:11px;display:inline-block;
+            box-shadow:0 10px 20px rgba(10,25,80,.08);
+          ">${label}</div>
+      `,
+      iconSize: [120, 56],
+      iconAnchor: [22, 42],
+    });
 
-    mOrigem = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
-    mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
-    mMoto = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+  mOrigem = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
+  mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
+  mMoto   = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
 
-    routeLine = L.polyline([natal, natal], { weight: 5, opacity: 0.9 }).addTo(map);
+  routeLine = L.polyline([natal, natal], { weight: 5, opacity: 0.9 }).addTo(map);
+
+  // Importantíssimo: garante render correto no carregamento
+  setTimeout(() => map.invalidateSize(), 250);
+  window.addEventListener("resize", () => setTimeout(() => map.invalidateSize(), 150));
+}
+
+function setRoute(orig, dest) {
+  if (!map) return;
+  mOrigem.setLatLng(orig);
+  mDestino.setLatLng(dest);
+  routeLine.setLatLngs([orig, dest]);
+  const b = L.latLngBounds([orig, dest]).pad(0.25);
+  map.fitBounds(b, { animate: true, duration: 0.6 });
+}
+
+function setMoto(pos) {
+  if (!map) return;
+  mMoto.setLatLng(pos);
+}
+
+/***********************
+ * UI
+ ***********************/
+function setTab(tab) {
+  document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+  document.querySelectorAll(".navbtn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
+
+  show("tab-pedido",   tab === "pedido");
+  show("tab-rastreio", tab === "rastreio");
+  show("tab-credito",  tab === "credito");
+
+  // se trocar pra uma aba que altera layout, reforça o mapa
+  if (tab === "rastreio" && map) setTimeout(() => map.invalidateSize(), 220);
+}
+
+function setSaldo(n) {
+  state.saldo = Number(n || 0);
+  setText("saldoVal", moneyBR(state.saldo));
+  // só atualiza se existir
+  if (el("saldoMini")) setText("saldoMini", moneyBR(state.saldo));
+  const hint = state.saldo > 0
+    ? "Use seu crédito para pagar pedidos com mais rapidez."
+    : "Saldo zerado. Faça uma recarga para pedir com crédito.";
+  setText("saldoHint", hint);
+}
+
+function setEstimativa(valor, eta) {
+  setText("precoTxt", valor != null ? moneyBR(valor) : "—");
+  setText("etaTxt", eta != null ? `${eta} min` : "—");
+  setText("chipETA", eta != null ? `ETA ${eta} min` : "ETA —");
+}
+
+function setBadgeStatus(txt, ok=false) {
+  const dot = el("badgeDot");
+  const t = el("badgeTxt");
+  if (!dot || !t) return;
+
+  dot.style.background = ok ? "var(--ok)" : "var(--warn)";
+  dot.style.boxShadow  = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
+  t.textContent = txt || "—";
+}
+
+function setRastreioHeader({ status, cooperado, id }) {
+  setText("statusTxt", status || "—");
+  setText("motoTxt", cooperado || "—");
+  setText("pedidoRef", id ? String(id) : "—");
+}
+
+function renderTimelineFromTracking(tr) {
+  const wrap = el("timeline");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+
+  if (!tr || !tr.ok) {
+    wrap.innerHTML = `
+      <div class="item">
+        <div class="ic">1</div>
+        <div class="tx">
+          <strong>Sem rastreio ativo</strong>
+          <small>Crie uma entrega ou digite um código para rastrear.</small>
+        </div>
+        <div class="right"><span class="chip">Aguardando</span></div>
+      </div>`;
+    return;
   }
 
-  function setRoute(orig, dest) {
-    mOrigem.setLatLng(orig);
-    mDestino.setLatLng(dest);
-    routeLine.setLatLngs([orig, dest]);
-    const b = L.latLngBounds([orig, dest]).pad(0.25);
-    map.fitBounds(b, { animate: true, duration: 0.6 });
-  }
+  const status = String(tr.status || "pendente");
+  const stpg = String(tr.status_pagamento || "pendente").toLowerCase();
+  const pago = stpg === "pago";
 
-  function setMoto(pos) {
-    mMoto.setLatLng(pos);
-  }
+  const info = [
+    { k: "Status", v: status },
+    { k: "Pagamento", v: pago ? "Pago" : "Pendente" },
+    { k: "Forma", v: tr.pagamento || "—" },
+    { k: "Valor", v: moneyBR(tr.valor || 0) },
+  ];
 
-  /***********************
-   * UI
-   ***********************/
-  function setTab(tab) {
-    document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
-    document.querySelectorAll(".navbtn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
-    $("tab-pedido").classList.toggle("hide", tab !== "pedido");
-    $("tab-rastreio").classList.toggle("hide", tab !== "rastreio");
-    $("tab-credito").classList.toggle("hide", tab !== "credito");
-  }
+  info.forEach((it, i) => {
+    wrap.insertAdjacentHTML("beforeend", `
+      <div class="item">
+        <div class="ic">${i+1}</div>
+        <div class="tx">
+          <strong>${it.k}</strong>
+          <small>${it.v}</small>
+        </div>
+        <div class="right">
+          <span class="chip">${it.k === "Pagamento" ? it.v : "Info"}</span>
+        </div>
+      </div>
+    `);
+  });
 
-  function setSaldo(n) {
-    state.saldo = Number(n || 0);
-    $("saldoVal").textContent = moneyBR(state.saldo);
-    $("saldoMini").textContent = moneyBR(state.saldo);
-    $("saldoHint").textContent =
-      state.saldo > 0 ? "Use seu crédito para pagar pedidos com mais rapidez." : "Saldo zerado. Faça uma recarga para pedir com crédito.";
-  }
-
-  function setEstimativa(valor, eta) {
-    $("precoTxt").textContent = valor != null ? moneyBR(valor) : "—";
-    $("etaTxt").textContent = eta != null ? `${eta} min` : "—";
-    $("chipETA").textContent = eta != null ? `ETA ${eta} min` : "ETA —";
-  }
-
-  function setBadgeStatus(txt, ok=false) {
-    const dot = $("badgeDot");
-    const t = $("badgeTxt");
-    dot.style.background = ok ? "var(--ok)" : "var(--warn)";
-    dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
-    t.textContent = txt || "—";
-  }
-
-  function setRastreioHeader({ status, cooperado, id }) {
-    $("statusTxt").textContent = status || "—";
-    $("motoTxt").textContent = cooperado || "—";
-    $("pedidoRef").textContent = id ? String(id) : "—";
-  }
-
-  function renderTimelineFromTracking(tr) {
-    const wrap = $("timeline");
-    wrap.innerHTML = "";
-
-    if (!tr || !tr.ok) {
-      wrap.innerHTML = `
-        <div class="item">
-          <div class="ic">1</div>
-          <div class="tx">
-            <strong>Sem rastreio ativo</strong>
-            <small>Crie uma entrega ou digite um código para rastrear.</small>
-          </div>
-          <div class="right"><span class="chip">Aguardando</span></div>
-        </div>`;
-      return;
-    }
-
-    const status = String(tr.status || "pendente");
-    const stpg = String(tr.status_pagamento || "pendente").toLowerCase();
-    const pago = stpg === "pago";
-
-    const info = [
-      { k: "Status", v: status },
-      { k: "Pagamento", v: pago ? "Pago" : "Pendente" },
-      { k: "Forma", v: tr.pagamento || "—" },
-      { k: "Valor", v: moneyBR(tr.valor || 0) },
-    ];
-
-    info.forEach((it, i) => {
+  if (Array.isArray(tr.eventos) && tr.eventos.length) {
+    tr.eventos.slice(0, 8).forEach((ev, idx) => {
+      const when = ev.quando ? new Date(ev.quando) : null;
+      const whenTxt = when ? when.toLocaleString("pt-BR") : "Horário não registrado";
       wrap.insertAdjacentHTML("beforeend", `
         <div class="item">
-          <div class="ic">${i+1}</div>
+          <div class="ic">${idx + 5}</div>
           <div class="tx">
-            <strong>${it.k}</strong>
-            <small>${it.v}</small>
+            <strong>${ev.titulo || "Evento"}</strong>
+            <small>${ev.descricao || ""}<br><span class="muted">${whenTxt}</span></small>
           </div>
-          <div class="right">
-            <span class="chip ${it.k === "Pagamento" ? (pago ? "chip-ok" : "chip-bad") : ""}">${it.k === "Pagamento" ? it.v : "Info"}</span>
-          </div>
+          <div class="right"><span class="chip">Rastreio</span></div>
         </div>
       `);
     });
+  }
+}
 
-    // Eventos (se vierem)
-    if (Array.isArray(tr.eventos) && tr.eventos.length) {
-      tr.eventos.slice(0, 8).forEach((ev, idx) => {
-        const when = ev.quando ? new Date(ev.quando) : null;
-        const whenTxt = when ? when.toLocaleString("pt-BR") : "Horário não registrado";
-        wrap.insertAdjacentHTML("beforeend", `
-          <div class="item">
-            <div class="ic">${idx + 5}</div>
-            <div class="tx">
-              <strong>${ev.titulo || "Evento"}</strong>
-              <small>${ev.descricao || ""}<br><span class="muted">${whenTxt}</span></small>
-            </div>
-            <div class="right"><span class="chip">Rastreio</span></div>
-          </div>
-        `);
-      });
-    }
+/***********************
+ * COTAÇÃO (POST /api/cliente/cotar-entrega)
+ ***********************/
+let lastQuote = null;
+
+async function cotarSePossivel() {
+  const boEl = el("bairroColeta");
+  const bdEl = el("bairroEntrega");
+  if (!boEl || !bdEl) return;
+
+  const bo = boEl.value.trim();
+  const bd = bdEl.value.trim();
+  const endO = (el("endColeta")?.value || "").trim();
+  const endD = (el("endEntrega")?.value || "").trim();
+
+  if (!bo || !bd) {
+    lastQuote = null;
+    if (el("meiosTxt")) setText("meiosTxt", "—");
+    setEstimativa(null, null);
+    setBadgeStatus("Pronto");
+    return;
   }
 
-  /***********************
-   * COTAÇÃO (usa /api/cliente/cotar-entrega)
-   ***********************/
-  let lastQuote = null;
+  setBadgeStatus("Cotando…");
 
-  async function cotarSePossivel() {
-    const bo = $("bairroColeta").value.trim();
-    const bd = $("bairroEntrega").value.trim();
-    const endO = $("endColeta").value.trim();
-    const endD = $("endEntrega").value.trim();
+  const payload = {
+    coleta:  { bairro: bo, endereco: endO || null },
+    entrega: { bairro: bd, endereco: endD || null },
+  };
 
-    if (!bo || !bd) {
-      lastQuote = null;
-      $("meiosTxt").textContent = "—";
-      setEstimativa(null, null);
-      setBadgeStatus("Pronto");
-      return;
-    }
+  const r = await safeJSON(API.cotar, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
 
-    setBadgeStatus("Cotando…");
-
-    const payload = {
-      coleta:  { bairro: bo, endereco: endO || null },
-      entrega: { bairro: bd, endereco: endD || null },
-    };
-
-    const r = await safeJSON(API.cotar, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!r || !r.ok) {
-      lastQuote = null;
-      $("meiosTxt").textContent = (r && r.erro) ? r.erro : "Não foi possível cotar.";
-      setEstimativa(null, null);
-      setOnline(false);
-      setBadgeStatus("Offline");
-      return;
-    }
-
-    setOnline(true);
-    lastQuote = r;
-
-    const meios = Array.isArray(r.meios_pagamento) ? r.meios_pagamento : [];
-    $("meiosTxt").textContent = meios.length ? meios.join(" • ") : "—";
-    setEstimativa(r.preco, null);
-
-    // Habilita/desabilita "CREDITO" conforme pode_usar_credito
-    const sel = $("pagamento");
-    const optCredito = Array.from(sel.options).find(o => o.value === "CREDITO");
-    if (optCredito) {
-      optCredito.disabled = !r.pode_usar_credito;
-      if (!r.pode_usar_credito && sel.value === "CREDITO") sel.value = "PIX";
-    }
-
-    // Atualiza saldo pelo retorno (ele devolve cliente_saldo_atual)
-    if (r.cliente_saldo_atual != null) setSaldo(r.cliente_saldo_atual);
-
-    setBadgeStatus("Cotado", true);
+  if (!r || !r.ok) {
+    lastQuote = null;
+    if (el("meiosTxt")) setText("meiosTxt", (r && r.erro) ? r.erro : "Não foi possível cotar.");
+    setEstimativa(null, null);
+    setOnline(false);
+    setBadgeStatus("Offline");
+    return;
   }
 
-  /***********************
-   * SOLICITAR ENTREGA (usa /api/cliente/solicitar-entrega)
-   ***********************/
-  function currentParadas() {
-    return linhasParaLista($("paradas").value);
-  }
+  setOnline(true);
+  lastQuote = r;
 
-  async function solicitarEntrega() {
-    const bo = $("bairroColeta").value.trim();
-    const bd = $("bairroEntrega").value.trim();
-    const endO = $("endColeta").value.trim();
-    const endD = $("endEntrega").value.trim();
-    const ref = $("ref").value.trim();
-    const meio = $("pagamento").value; // CREDITO | PIX | DINHEIRO
+  const meios = Array.isArray(r.meios_pagamento) ? r.meios_pagamento : [];
+  if (el("meiosTxt")) setText("meiosTxt", meios.length ? meios.join(" • ") : "—");
 
-    if (!bo || !bd) {
-      alert("Selecione o bairro da coleta e o bairro da entrega.");
-      return;
-    }
-    if (!endO || !endD) {
-      alert("Informe os endereços de coleta e entrega.");
-      return;
-    }
+  setEstimativa(r.preco, null);
 
-    const payload = {
-      coleta: {
-        bairro: bo,
-        endereco: endO,
-        referencia: ref || null,
-        lat: window.__ORIG_LAT ?? null,
-        lng: window.__ORIG_LNG ?? null,
-      },
-      entrega: {
-        bairro: bd,
-        endereco: endD,
-        referencia: ref || null,
-        lat: null,
-        lng: null,
-      },
-      paradas: currentParadas(),
-      meio_pagamento: meio,
-      apenas_simular: false
-    };
-
-    setBadgeStatus("Enviando…");
-    const r = await safeJSON(API.solicitar, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(payload),
-    });
-
-    if (!r || !r.ok) {
-      const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Não foi possível solicitar a entrega.";
-      alert(msg);
-      setOnline(false);
-      setBadgeStatus("Erro");
-      return;
-    }
-
-    setOnline(true);
-    setBadgeStatus("Criado", true);
-
-    // A rota retorna: entrega_id, comprovante_url, status_pagamento etc.
-    state.entregaAtivaId = r.entrega_id ? String(r.entrega_id) : null;
-
-    // Atualiza o mini painel
-    $("pedidoRef").textContent = state.entregaAtivaId || "—";
-    $("addrMini").textContent = `${endO} → ${endD}`;
-    setEstimativa(r.preco, null);
-
-    // Vai para rastreio
-    setTab("rastreio");
-
-    // Já abre tracking
-    if (state.entregaAtivaId) {
-      $("codigoManual").value = state.entregaAtivaId;
-      await carregarTracking(state.entregaAtivaId);
-      startPolling();
-    }
-
-    // Se tem comprovante_url, habilita botão
-    if (r.comprovante_url) {
-      $("btnAbrirComprovante").dataset.url = r.comprovante_url;
-    } else if (state.entregaAtivaId) {
-      $("btnAbrirComprovante").dataset.url = API.comprovante(state.entregaAtivaId);
-    }
-  }
-
-  /***********************
-   * TRACKING (usa /api/rastreamento/<id>)
-   ***********************/
-  let pollTimer = null;
-
-  async function carregarTracking(id) {
-    if (!id) return;
-
-    const tr = await safeJSON(API.tracking(id));
-    if (!tr || !tr.ok) {
-      state.tracking = null;
-      setOnline(false);
-      setBadgeStatus("Offline");
-      setRastreioHeader({ status: "—", cooperado: "—", id });
-      renderTimelineFromTracking(null);
-      return;
-    }
-
-    setOnline(true);
-    state.tracking = tr;
-
-    const coop = tr.cooperado || "—";
-    setRastreioHeader({ status: (tr.status || "pendente"), cooperado: coop, id: tr.entrega_id || id });
-
-    // Preenche ETA se vier (nem sempre existe no seu endpoint)
-    const eta = (tr.eta_min != null) ? Number(tr.eta_min) : null;
-    setEstimativa(tr.valor, eta);
-
-    // Tenta extrair coords do JSON extra (origem_extra / destino_extra)
-    const ox = tr.origem_extra || null;
-    const dx = tr.destino_extra || null;
-
-    const orig = (ox && ox.lat != null && ox.lng != null) ? [ox.lat, ox.lng] : null;
-    const dest = (dx && dx.lat != null && dx.lng != null) ? [dx.lat, dx.lng] : null;
-
-    // cooperado coords (se você salvar em algum lugar, adapte aqui)
-    // Neste endpoint atual você não retornou lat/lng do motoboy, então:
-    // - se no futuro incluir, basta ajustar para setMoto([lat,lng])
-    // Por ora, mantém o marcador.
-
-    if (orig && dest) setRoute(orig, dest);
-
-    // texto da rota
-    const ot = (ox && (ox.endereco || ox.bairro)) ? `${ox.endereco || ""}${ox.bairro ? " • " + ox.bairro : ""}`.trim() : "";
-    const dt = (dx && (dx.endereco || dx.bairro)) ? `${dx.endereco || ""}${dx.bairro ? " • " + dx.bairro : ""}`.trim() : "";
-    if (ot || dt) $("addrMini").textContent = `${ot || "—"} → ${dt || "—"}`;
-
-    // botão comprovante
-    if (id) $("btnAbrirComprovante").dataset.url = API.comprovante(id);
-
-    renderTimelineFromTracking(tr);
-    setBadgeStatus(tr.status ? String(tr.status) : "Em andamento", true);
-  }
-
-  function startPolling() {
-    if (pollTimer) clearInterval(pollTimer);
-    const id = state.entregaAtivaId || $("codigoManual").value.trim();
-    if (!id) return;
-
-    pollTimer = setInterval(async () => {
-      const cur = state.entregaAtivaId || $("codigoManual").value.trim();
-      if (!cur) return;
-      await carregarTracking(cur);
-    }, POLL_MS);
-  }
-
-  /***********************
-   * AÇÕES
-   ***********************/
-  function wireTabs() {
-    document.querySelectorAll(".tab").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
-    document.querySelectorAll(".navbtn").forEach((b) => b.addEventListener("click", () => setTab(b.dataset.tab)));
-
-    $("btnIrRecarga").addEventListener("click", () => setTab("credito"));
-    $("btnIrPedido").addEventListener("click", () => setTab("pedido"));
-    $("btnAbrirRastreio").addEventListener("click", () => setTab("rastreio"));
-    $("btnNovoPedido").addEventListener("click", () => {
-      setTab("pedido");
-      $("bairroColeta").focus();
-    });
-
-    $("btnAbrirPedidoCredito").addEventListener("click", () => setTab("pedido"));
-  }
-
-  function wirePedido() {
-    // cotação automática quando muda bairro
-    $("bairroColeta").addEventListener("change", cotarSePossivel);
-    $("bairroEntrega").addEventListener("change", cotarSePossivel);
-
-    // cotar também quando sair do campo de endereço (opcional)
-    $("endColeta").addEventListener("blur", cotarSePossivel);
-    $("endEntrega").addEventListener("blur", cotarSePossivel);
-
-    $("btnUsarLocal").addEventListener("click", async () => {
-      if (!navigator.geolocation) {
-        alert("Geolocalização não suportada neste navegador.");
-        return;
+  // Habilita/desabilita opção de crédito no select (aceita value "CREDITO" ou "credito")
+  const sel = el("pagamento");
+  if (sel) {
+    const opt = Array.from(sel.options).find(o => String(o.value || "").toUpperCase() === "CREDITO");
+    if (opt) {
+      opt.disabled = !r.pode_usar_credito;
+      if (!r.pode_usar_credito && String(sel.value || "").toUpperCase() === "CREDITO") {
+        sel.value = Array.from(sel.options).some(o => String(o.value).toUpperCase() === "PIX") ? "PIX" : sel.value;
       }
-
-      navigator.geolocation.getCurrentPosition(
-        (pos) => {
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          window.__ORIG_LAT = lat;
-          window.__ORIG_LNG = lng;
-          // só ajuda o usuário com um texto, sem quebrar o endereço
-          if (!$("endColeta").value.trim()) {
-            $("endColeta").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-          }
-          alert("Localização registrada para a coleta.");
-        },
-        () => alert("Não foi possível obter sua localização. Verifique permissões."),
-        { enableHighAccuracy: true, timeout: 8000 }
-      );
-    });
-
-    $("btnCriarPedido").addEventListener("click", solicitarEntrega);
+    }
   }
 
-  function wireRastreio() {
-    $("btnCentralizar").addEventListener("click", () => {
-      const o = mOrigem.getLatLng();
-      const d = mDestino.getLatLng();
-      const b = L.latLngBounds([o, d]).pad(0.25);
-      map.fitBounds(b, { animate: true, duration: 0.6 });
-    });
+  if (r.cliente_saldo_atual != null) setSaldo(r.cliente_saldo_atual);
 
-    $("btnAbrirComprovante").addEventListener("click", () => {
-      const url = $("btnAbrirComprovante").dataset.url;
-      if (!url) {
-        const id = state.entregaAtivaId || $("codigoManual").value.trim();
-        if (!id) {
-          alert("Informe um código (ID) da entrega para abrir o comprovante.");
-          return;
-        }
-        window.open(API.comprovante(id), "_blank", "noopener");
-        return;
-      }
+  setBadgeStatus("Cotado", true);
+}
+
+/***********************
+ * SOLICITAR ENTREGA (POST /api/cliente/solicitar-entrega)
+ ***********************/
+function currentParadas() {
+  return linhasParaLista(el("paradas")?.value || "");
+}
+
+async function solicitarEntrega() {
+  const bo = (el("bairroColeta")?.value || "").trim();
+  const bd = (el("bairroEntrega")?.value || "").trim();
+  const endO = (el("endColeta")?.value || "").trim();
+  const endD = (el("endEntrega")?.value || "").trim();
+  const ref  = (el("ref")?.value || "").trim();
+  const meio = normMeioPagamento(el("pagamento")?.value);
+
+  if (!bo || !bd) {
+    alert("Selecione o bairro da coleta e o bairro da entrega.");
+    return;
+  }
+  if (!endO || !endD) {
+    alert("Informe os endereços de coleta e entrega.");
+    return;
+  }
+
+  const payload = {
+    coleta: {
+      bairro: bo,
+      endereco: endO,
+      referencia: ref || null,
+      lat: window.__ORIG_LAT ?? null,
+      lng: window.__ORIG_LNG ?? null,
+    },
+    entrega: {
+      bairro: bd,
+      endereco: endD,
+      referencia: ref || null,
+      lat: null,
+      lng: null,
+    },
+    paradas: currentParadas(),
+    meio_pagamento: meio,     // CREDITO | PIX | DINHEIRO
+    apenas_simular: false
+  };
+
+  setBadgeStatus("Enviando…");
+  const r = await safeJSON(API.solicitar, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r || !r.ok) {
+    const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Não foi possível solicitar a entrega.";
+    alert(msg);
+    setOnline(false);
+    setBadgeStatus("Erro");
+    return;
+  }
+
+  setOnline(true);
+  setBadgeStatus("Criado", true);
+
+  state.entregaAtivaId = r.entrega_id ? String(r.entrega_id) : null;
+
+  setText("pedidoRef", state.entregaAtivaId || "—");
+  setText("addrMini", `${endO} → ${endD}`);
+  setEstimativa(r.preco, null);
+
+  setTab("rastreio");
+
+  if (state.entregaAtivaId) {
+    if (el("codigoManual")) el("codigoManual").value = state.entregaAtivaId;
+    await carregarTracking(state.entregaAtivaId);
+    startPolling();
+  }
+
+  // Botão comprovante (se existir)
+  const btnComp = el("btnAbrirComprovante");
+  if (btnComp) {
+    btnComp.dataset.url = r.comprovante_url
+      ? r.comprovante_url
+      : (state.entregaAtivaId ? API.comprovante(state.entregaAtivaId) : "");
+  }
+}
+
+/***********************
+ * TRACKING (GET /api/rastreamento/<id>)
+ ***********************/
+let pollTimer = null;
+
+async function carregarTracking(id) {
+  if (!id) return;
+
+  const tr = await safeJSON(API.tracking(id));
+  if (!tr || !tr.ok) {
+    state.tracking = null;
+    setOnline(false);
+    setBadgeStatus("Offline");
+    setRastreioHeader({ status: "—", cooperado: "—", id });
+    renderTimelineFromTracking(null);
+    return;
+  }
+
+  setOnline(true);
+  state.tracking = tr;
+
+  const coop = tr.cooperado || "—";
+  setRastreioHeader({ status: (tr.status || "pendente"), cooperado: coop, id: tr.entrega_id || id });
+
+  const eta = (tr.eta_min != null) ? Number(tr.eta_min) : null;
+  setEstimativa(tr.valor, eta);
+
+  // Coordenadas vindas do seu endpoint (origem_extra/destino_extra)
+  const ox = tr.origem_extra || null;
+  const dx = tr.destino_extra || null;
+
+  const orig = (ox && ox.lat != null && ox.lng != null) ? [ox.lat, ox.lng] : null;
+  const dest = (dx && dx.lat != null && dx.lng != null) ? [dx.lat, dx.lng] : null;
+
+  if (orig && dest) setRoute(orig, dest);
+
+  const ot = (ox && (ox.endereco || ox.bairro)) ? `${ox.endereco || ""}${ox.bairro ? " • " + ox.bairro : ""}`.trim() : "";
+  const dt = (dx && (dx.endereco || dx.bairro)) ? `${dx.endereco || ""}${dx.bairro ? " • " + dx.bairro : ""}`.trim() : "";
+  if (ot || dt) setText("addrMini", `${ot || "—"} → ${dt || "—"}`);
+
+  // Botão comprovante
+  const btnComp = el("btnAbrirComprovante");
+  if (btnComp && id) btnComp.dataset.url = API.comprovante(id);
+
+  renderTimelineFromTracking(tr);
+  setBadgeStatus(tr.status ? String(tr.status) : "Em andamento", true);
+}
+
+function startPolling() {
+  if (pollTimer) clearInterval(pollTimer);
+
+  const getId = () => state.entregaAtivaId || (el("codigoManual")?.value || "").trim();
+  const first = getId();
+  if (!first) return;
+
+  pollTimer = setInterval(async () => {
+    const cur = getId();
+    if (!cur) return;
+    await carregarTracking(cur);
+  }, POLL_MS);
+}
+
+/***********************
+ * AÇÕES
+ ***********************/
+function wireTabs() {
+  document.querySelectorAll(".tab").forEach((b) =>
+    b.addEventListener("click", () => setTab(b.dataset.tab))
+  );
+  document.querySelectorAll(".navbtn").forEach((b) =>
+    b.addEventListener("click", () => setTab(b.dataset.tab))
+  );
+
+  el("btnIrRecarga")?.addEventListener("click", () => setTab("credito"));
+  el("btnIrPedido")?.addEventListener("click", () => setTab("pedido"));
+  el("btnAbrirRastreio")?.addEventListener("click", () => setTab("rastreio"));
+  el("btnNovoPedido")?.addEventListener("click", () => {
+    setTab("pedido");
+    el("bairroColeta")?.focus();
+  });
+
+  el("btnAbrirPedidoCredito")?.addEventListener("click", () => setTab("pedido"));
+}
+
+function wirePedido() {
+  el("bairroColeta")?.addEventListener("change", cotarSePossivel);
+  el("bairroEntrega")?.addEventListener("change", cotarSePossivel);
+  el("endColeta")?.addEventListener("blur", cotarSePossivel);
+  el("endEntrega")?.addEventListener("blur", cotarSePossivel);
+
+  el("btnUsarLocal")?.addEventListener("click", () => {
+    if (!navigator.geolocation) {
+      alert("Geolocalização não suportada neste navegador.");
+      return;
+    }
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        const lat = pos.coords.latitude;
+        const lng = pos.coords.longitude;
+        window.__ORIG_LAT = lat;
+        window.__ORIG_LNG = lng;
+        const end = el("endColeta");
+        if (end && !end.value.trim()) end.value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+        alert("Localização registrada para a coleta.");
+      },
+      () => alert("Não foi possível obter sua localização. Verifique permissões."),
+      { enableHighAccuracy: true, timeout: 8000 }
+    );
+  });
+
+  el("btnCriarPedido")?.addEventListener("click", solicitarEntrega);
+}
+
+function wireRastreio() {
+  el("btnCentralizar")?.addEventListener("click", () => {
+    if (!map) return;
+    const o = mOrigem.getLatLng();
+    const d = mDestino.getLatLng();
+    const b = L.latLngBounds([o, d]).pad(0.25);
+    map.fitBounds(b, { animate: true, duration: 0.6 });
+  });
+
+  el("btnAbrirComprovante")?.addEventListener("click", () => {
+    const btn = el("btnAbrirComprovante");
+    if (!btn) return;
+
+    const url = btn.dataset.url;
+    if (url) {
       window.open(url, "_blank", "noopener");
-    });
+      return;
+    }
 
-    $("btnRastrearCodigo").addEventListener("click", async () => {
-      const id = $("codigoManual").value.trim();
-      if (!id || !/^\d+$/.test(id)) {
-        alert("Informe um código numérico válido (ID da entrega).");
-        return;
-      }
-      state.entregaAtivaId = id;
-      await carregarTracking(id);
-      startPolling();
-    });
-  }
+    const id = state.entregaAtivaId || (el("codigoManual")?.value || "").trim();
+    if (!id) {
+      alert("Informe um código (ID) da entrega para abrir o comprovante.");
+      return;
+    }
+    window.open(API.comprovante(id), "_blank", "noopener");
+  });
 
-  function wireCredito() {
-    $("btnCopiarPix").addEventListener("click", async () => {
-      const chave = String($("pixChaveTxt").textContent || "").trim();
-      if (!chave || chave === "—") {
-        alert("Chave Pix não configurada no sistema.");
-        return;
-      }
-      try {
-        await navigator.clipboard.writeText(chave);
-        alert("Chave Pix copiada.");
-      } catch (e) {
-        // fallback
-        const tmp = document.createElement("input");
-        tmp.value = chave;
-        document.body.appendChild(tmp);
-        tmp.select();
-        document.execCommand("copy");
-        tmp.remove();
-        alert("Chave Pix copiada.");
-      }
-    });
-  }
+  el("btnRastrearCodigo")?.addEventListener("click", async () => {
+    const id = (el("codigoManual")?.value || "").trim();
+    if (!id || !/^\d+$/.test(id)) {
+      alert("Informe um código numérico válido (ID da entrega).");
+      return;
+    }
+    state.entregaAtivaId = id;
+    await carregarTracking(id);
+    startPolling();
+    setTab("rastreio");
+  });
+}
 
-  /***********************
-   * BOOT
-   ***********************/
-  initMap();
+function wireCredito() {
+  // Preenche chave Pix no UI se existir
+  if (el("pixChaveTxt")) setText("pixChaveTxt", PIX_CHAVE || "—");
+
+  el("btnCopiarPix")?.addEventListener("click", async () => {
+    const chave = String(el("pixChaveTxt")?.textContent || "").trim();
+    if (!chave || chave === "—") {
+      alert("Chave Pix não configurada no sistema.");
+      return;
+    }
+    try {
+      await navigator.clipboard.writeText(chave);
+      alert("Chave Pix copiada.");
+    } catch {
+      const tmp = document.createElement("input");
+      tmp.value = chave;
+      document.body.appendChild(tmp);
+      tmp.select();
+      document.execCommand("copy");
+      tmp.remove();
+      alert("Chave Pix copiada.");
+    }
+  });
+}
+
+/***********************
+ * BOOT (garante DOM pronto)
+ ***********************/
+document.addEventListener("DOMContentLoaded", () => {
+  // Inicializa mapa (só se existir o container)
+  if (el("map") && window.L) initMap();
+
   wireTabs();
   wirePedido();
   wireRastreio();
@@ -1277,8 +1327,12 @@ Av. Z, 200 - Bairro W"></textarea>
   setSaldo(state.saldo);
   setOnline(navigator.onLine);
 
-  // se o usuário voltar aqui e quiser rastrear algo (opcional)
-  // não força chamada automática para não fazer requisições desnecessárias.
-  </script>
+  // segurança: derruba polling ao sair da página
+  window.addEventListener("beforeunload", () => {
+    if (pollTimer) clearInterval(pollTimer);
+  });
+});
+</script>
 </body>
 </html>
+
