@@ -1,848 +1,1064 @@
-<!doctype html>
-<html lang="pt-BR">
+<!-- templates/meu_credito.html (REAL)
+     Requisitos:
+     - Leaflet/OSM via CDN
+     - Endpoints Flask (abaixo)
+     - Tracking real: motoboy atualiza lat/lng no banco
+-->
+<!DOCTYPE html>
+<html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <title>Meu Crédito | Coopex</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Meu Crédito — Cliente</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin
+  />
+
   <style>
-    :root {
-      --royal:#0033cc;
-      --royal-2:#2750ff;
-      --bg:#f3f6ff;
-      --card:#ffffff;
-      --ink:#0b1320;
-      --line:#dde4ff;
-      --good:#10b981;
-      --bad:#ef4444;
-      --muted:#6b7280;
-      --r:18px;
-      --shadow:0 10px 32px rgba(0,40,160,.18);
+    :root{
+      --royal:#003399;
+      --royal-2:#255BFF;
+      --royal-3:#0B2B7A;
+
+      --bg:#F4F7FF;
+      --card:#FFFFFF;
+      --text:#0B1020;
+      --muted:#667085;
+
+      --line:#D6E2FF;
+      --ok:#12B981;
+      --warn:#F59E0B;
+      --bad:#EF4444;
+
+      --shadow: 0 16px 40px rgba(10, 25, 80, .10);
+      --shadow2: 0 10px 28px rgba(10, 25, 80, .08);
+      --radius: 18px;
+      --radius2: 26px;
+
+      --tap: 52px;
+      --max: 1180px;
     }
-    *{box-sizing:border-box;margin:0;padding:0}
-    html,body{height:100%}
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
     body{
-      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      background:var(--bg);
-      color:var(--ink);
-      -webkit-font-smoothing:antialiased;
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 520px at 10% -10%, rgba(37, 91, 255, .16), transparent 60%),
+                  radial-gradient(900px 560px at 95% 0%, rgba(0, 51, 153, .14), transparent 55%),
+                  var(--bg);
+      color:var(--text);
     }
 
-    /* HEADER / MAPA SUPERIOR */
-    .app-shell{
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-    }
-    header{
-      background:linear-gradient(145deg,var(--royal) 0%,var(--royal-2) 50%,#5f8cff 100%);
-      color:#fff;
-      box-shadow:0 10px 30px rgba(0,0,0,.35);
-      border-bottom-left-radius:24px;
-      border-bottom-right-radius:24px;
-      padding-bottom:10px;
-      position:relative;
-      overflow:hidden;
-    }
-    .topbar{
-      display:flex;
-      align-items:center;
-      padding:10px 14px 6px;
-      gap:10px;
-      z-index:2;
-      position:relative;
-    }
-    .brand{
-      display:flex;
-      align-items:center;
-      gap:10px;
-    }
-    .brand img{
-      width:34px;
-      height:34px;
-      border-radius:12px;
-      background:#fff;
-      border:2px solid rgba(255,255,255,.65);
-      object-fit:contain;
-    }
-    .brand-txt{
-      display:flex;
-      flex-direction:column;
-    }
-    .brand-txt strong{
-      font-size:.95rem;
-      letter-spacing:.02em;
-    }
-    .brand-txt span{
-      font-size:.75rem;
-      opacity:.85;
-    }
-    .spacer{flex:1}
-    .chip-btn{
-      border-radius:999px;
-      padding:7px 11px;
-      font-size:.78rem;
-      font-weight:700;
-      border:1px solid rgba(255,255,255,.45);
-      background:rgba(5,10,80,.22);
-      color:#e5edff;
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      cursor:pointer;
-    }
-    .chip-btn svg{
-      width:14px;height:14px;flex-shrink:0;
-    }
-
-    /* MAPA / RASTREIO */
-    .map-wrapper{
-      padding:0 14px 14px;
-      position:relative;
-      z-index:1;
-    }
-    .map-card{
-      border-radius:22px;
-      background:radial-gradient(circle at 10% 0%,rgba(255,255,255,.25) 0,rgba(255,255,255,.05) 35%,rgba(0,0,0,.05) 100%);
-      border:1px solid rgba(255,255,255,.4);
-      box-shadow:0 18px 40px rgba(0,0,0,.35);
-      padding:12px;
-      backdrop-filter:blur(10px);
-      color:#eef2ff;
-    }
-    .track-header{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      margin-bottom:6px;
-    }
-    .track-title{
-      font-size:.9rem;
-      font-weight:800;
-      display:flex;
-      align-items:center;
-      gap:6px;
-    }
-    .track-title .status-dot{
-      width:8px;height:8px;border-radius:999px;
-      background:#22c55e;
-      box-shadow:0 0 0 6px rgba(34,197,94,.35);
-      animation:pulseDot 1.7s infinite;
-    }
-    @keyframes pulseDot{
-      0%{transform:scale(1);opacity:1}
-      60%{transform:scale(1.7);opacity:0}
-      100%{transform:scale(1);opacity:0}
-    }
-    .track-sub{
-      font-size:.76rem;
-      opacity:.9;
-    }
-    .tag-small{
-      padding:4px 8px;
-      border-radius:999px;
-      font-size:.7rem;
-      font-weight:700;
-      background:rgba(15,23,42,.75);
-      border:1px solid rgba(148,163,184,.7);
-    }
-
-    .map-viewport{
-      margin-top:10px;
-      border-radius:18px;
-      overflow:hidden;
-      border:1px solid rgba(148,163,184,.4);
-      background:linear-gradient(135deg,#020617,#1d4ed8,#0f172a);
-      position:relative;
-      height:210px;
-    }
-    .fake-map-grid{
-      position:absolute;inset:0;
-      background-image:
-        linear-gradient(rgba(148,163,184,.25) 1px,transparent 1px),
-        linear-gradient(90deg,rgba(148,163,184,.25) 1px,transparent 1px);
-      background-size:26px 26px;
-      opacity:.8;
-    }
-    .route-line{
-      position:absolute;
-      inset:18px;
-      border-radius:999px;
-      border:2px dashed rgba(251,191,36,.75);
-      box-shadow:0 0 14px rgba(251,191,36,.45);
-      animation:routeGlow 3s ease-in-out infinite;
-    }
-    @keyframes routeGlow{
-      0%,100%{opacity:.6}
-      50%{opacity:1}
-    }
-    .pin{
-      position:absolute;
-      width:20px;height:20px;
-      border-radius:999px;
-      border:2px solid #0f172a;
-      background:#22c55e;
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      box-shadow:0 0 12px rgba(34,197,94,.9);
-    }
-    .pin::after{
-      content:'';
-      width:6px;height:6px;border-radius:999px;
-      background:#ecfdf5;
-    }
-    .pin.pickup{left:14%;top:26%}
-    .pin.dropoff{right:18%;bottom:22%;background:#0ea5e9;box-shadow:0 0 12px rgba(56,189,248,.9);}
-    .pin.rider{
-      left:52%;top:48%;
-      animation:jumpDot 1.4s ease-in-out infinite;
-      background:#f97316;
-      box-shadow:0 0 12px rgba(249,115,22,.95);
-    }
-    @keyframes jumpDot{
-      0%,100%{transform:translate(-50%,-50%) scale(1)}
-      50%{transform:translate(-50%,-55%) scale(1.12)}
-    }
-
-    .track-footer{
-      margin-top:8px;
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      font-size:.74rem;
-      align-items:center;
-      justify-content:space-between;
-    }
-    .track-footer span{
-      opacity:.92;
-    }
-
-    /* CONTEÚDO PRINCIPAL */
-    main{
-      flex:1;
-      margin-top:-12px;
-      padding:0 10px 18px;
-      position:relative;
-      z-index:2;
-    }
-    .stack{
-      max-width:880px;
+    a{ color:inherit; text-decoration:none; }
+    button, input, select, textarea{ font-family:inherit; }
+    .wrap{
+      max-width:var(--max);
       margin:0 auto;
+      padding:18px 16px 92px;
+    }
+
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      background: linear-gradient(180deg, rgba(244,247,255,.92), rgba(244,247,255,.68));
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(214,226,255,.7);
+    }
+    .topbar-inner{
+      max-width:var(--max);
+      margin:0 auto;
+      padding:14px 16px;
       display:flex;
-      flex-direction:column;
       gap:12px;
-    }
-    .card{
-      background:var(--card);
-      border-radius:var(--r);
-      border:1px solid var(--line);
-      box-shadow:var(--shadow);
-      padding:12px 12px 14px;
-    }
-    .card-header{
-      display:flex;
+      align-items:center;
       justify-content:space-between;
-      align-items:flex-start;
-      gap:8px;
     }
-    .card-title{
-      font-size:.9rem;
-      font-weight:800;
+    .brand{ display:flex; flex-direction:column; gap:2px; }
+    .brand .title{
+      font-size:15px;font-weight:900;letter-spacing:.2px;color:var(--royal);
+      line-height:1.05;text-transform:uppercase;
     }
-    .card-sub{
-      font-size:.78rem;
-      color:var(--muted);
-      margin-top:2px;
-    }
+    .brand .sub{ font-size:12px;color:var(--muted);font-weight:600; }
+
     .pill{
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      padding:6px 10px;
-      border-radius:999px;
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:999px;
+      background:linear-gradient(180deg, #fff, #F7FAFF);
       border:1px solid var(--line);
-      background:#f9fafb;
-      font-size:.75rem;
-      font-weight:700;
-      color:var(--muted);
+      box-shadow:var(--shadow2);
+      min-height:44px;
     }
-    .pill.credito{
-      background:#ecfdf5;
-      border-color:#bbf7d0;
-      color:#166534;
+    .pill .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:var(--warn);
+      box-shadow:0 0 0 6px rgba(245,158,11,.14);
     }
-    .pill.debito{
-      background:#fef2f2;
-      border-color:#fecaca;
-      color:#b91c1c;
-    }
+    .pill .meta{ display:flex; flex-direction:column; line-height:1.1; }
+    .pill .meta small{ color:var(--muted); font-weight:700; font-size:11px; }
+    .pill .meta strong{ font-size:13px; }
 
-    .saldo-val{
-      font-size:1.8rem;
-      font-weight:900;
-      letter-spacing:.02em;
+    .grid{
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:16px;
+      margin-top:16px;
     }
-    .saldo-label{
-      font-size:.75rem;
-      color:var(--muted);
-      margin-bottom:2px;
-    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
 
-    /* AÇÕES DE CRÉDITO */
-    .actions-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px;
-      margin-top:10px;
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.92));
+      border:1px solid rgba(214,226,255,.9);
+      border-radius:var(--radius2);
+      box-shadow:var(--shadow);
+      overflow:hidden;
     }
-    .btn-primary, .btn-outline{
-      border-radius:999px;
-      padding:8px 13px;
-      font-size:.8rem;
-      font-weight:800;
-      border:1px solid var(--royal-2);
-      cursor:pointer;
-      display:inline-flex;
-      align-items:center;
-      gap:6px;
-      text-decoration:none;
+    .card-h{
+      padding:16px 16px 12px;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      border-bottom:1px solid rgba(214,226,255,.7);
+      background: radial-gradient(520px 220px at 20% 0%, rgba(37, 91, 255, .12), transparent 60%);
     }
+    .card-h h2{ margin:0;font-size:15px;font-weight:900;letter-spacing:.2px;color:var(--royal); }
+    .card-h p{ margin:6px 0 0;color:var(--muted);font-size:12px;font-weight:600;line-height:1.3; }
+    .card-b{ padding:14px 16px 16px; }
+
+    .balance{
+      display:flex;gap:12px;align-items:stretch;
+    }
+    .balance .big{
+      flex:1;padding:14px;border-radius:18px;
+      border:1px solid rgba(214,226,255,.9);
+      background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
+      position:relative;overflow:hidden;
+    }
+    .balance .big:before{
+      content:"";position:absolute;inset:-70px -90px auto auto;width:220px;height:220px;
+      background: radial-gradient(circle at 30% 30%, rgba(37, 91, 255, .35), transparent 60%);
+      transform: rotate(20deg);pointer-events:none;
+    }
+    .balance .big small{ display:block;color:var(--muted);font-weight:800;font-size:12px;letter-spacing:.2px; }
+    .balance .big .val{ margin-top:8px;font-size:26px;font-weight:900;color:var(--royal);letter-spacing:-.5px; }
+    .balance .big .hint{ margin-top:8px;font-size:12px;color:var(--muted);font-weight:600; }
+    .balance .actions{ display:flex;flex-direction:column;gap:10px;min-width:150px; }
+
+    .btn{
+      height:var(--tap);border:0;border-radius:16px;padding:0 14px;
+      font-weight:900;letter-spacing:.2px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      user-select:none;-webkit-tap-highlight-color:transparent;
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); }
     .btn-primary{
-      background:linear-gradient(135deg,var(--royal) 0%,var(--royal-2) 70%,#5f8cff 100%);
-      color:#eef2ff;
-      box-shadow:0 8px 18px rgba(37,99,235,.35);
+      color:#fff;background: linear-gradient(180deg, var(--royal-2), var(--royal));
+      box-shadow: 0 16px 30px rgba(0, 51, 153, .24);
     }
-    .btn-outline{
-      background:#f9fafb;
-      color:var(--royal-2);
+    .btn-ghost{
+      color:var(--royal);background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
+      border:1px solid var(--line);box-shadow: var(--shadow2);
+    }
+    .btn-danger{
+      color:#fff;background: linear-gradient(180deg, #FF5A5A, #EF4444);
+      box-shadow: 0 16px 30px rgba(239,68,68,.20);
     }
 
-    /* SEÇÃO ADICIONAR CRÉDITO */
+    .row{ display:flex; gap:10px; }
+    .row > *{ flex:1; }
+
+    .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:10px; }
+    .field label{ font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.15px; }
+    .input, .select, .textarea{
+      height:46px;border-radius:14px;border:1px solid rgba(214,226,255,.95);
+      background: linear-gradient(180deg, #fff, #F8FBFF);
+      padding:0 12px;outline:none;font-weight:700;color:var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+      transition: box-shadow .12s ease, border-color .12s ease;
+    }
+    .textarea{ height:84px;padding:10px 12px;resize:none;line-height:1.3;font-weight:650; }
+    .input:focus, .select:focus, .textarea:focus{
+      border-color: rgba(37, 91, 255, .55);
+      box-shadow: 0 0 0 5px rgba(37, 91, 255, .12);
+    }
+
     .tabs{
-      display:flex;
-      gap:6px;
-      margin-top:10px;
-      padding:3px;
-      border-radius:999px;
-      background:#eef2ff;
+      display:flex;gap:8px;padding:10px;
+      background: rgba(244,247,255,.75);
+      border:1px solid rgba(214,226,255,.85);
+      border-radius: 999px;margin:12px 0 14px;
     }
     .tab{
-      flex:1;
-      text-align:center;
-      padding:6px 0;
-      font-size:.78rem;
-      font-weight:700;
-      border-radius:999px;
-      cursor:pointer;
-      color:#475569;
+      flex:1;height:44px;border-radius:999px;border:1px solid transparent;
+      background:transparent;cursor:pointer;font-weight:900;color:var(--royal);
+      letter-spacing:.2px;transition: .12s ease;
     }
     .tab.active{
-      background:#fff;
-      box-shadow:0 1px 6px rgba(15,23,42,.18);
-      color:var(--royal);
+      background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
+      border-color: rgba(214,226,255,.95);
+      box-shadow: var(--shadow2);
     }
 
-    .tab-panel{
-      margin-top:10px;
-      font-size:.8rem;
+    .statusbar{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:12px 14px;border:1px solid rgba(214,226,255,.92);
+      background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
+      border-radius:18px;
     }
-    .amount-row{
-      display:flex;
-      flex-wrap:wrap;
-      gap:6px;
-      margin-bottom:8px;
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;
+      font-size:12px;font-weight:900;letter-spacing:.2px;
+      border:1px solid rgba(214,226,255,.9);background:#fff;color:var(--royal);white-space:nowrap;
     }
-    .chip-amount{
-      padding:7px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#f9fafb;
-      font-size:.8rem;
-      font-weight:700;
-      cursor:pointer;
+    .badge .b-dot{
+      width:9px;height:9px;border-radius:999px;background:var(--warn);
+      box-shadow:0 0 0 6px rgba(245,158,11,.14);
     }
-    .chip-amount.active{
-      border-color:var(--royal-2);
-      background:#e0ebff;
-      color:#1d4ed8;
+    .kv{ display:flex;flex-direction:column;gap:2px;line-height:1.15; }
+    .kv small{ color:var(--muted); font-weight:800; font-size:11px; }
+    .kv strong{ font-size:13px; }
+
+    .list{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+    .item{
+      padding:12px 12px;border-radius:18px;border:1px solid rgba(214,226,255,.92);
+      background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
+      display:flex;gap:10px;align-items:flex-start;
     }
-    .input-inline{
-      display:flex;
-      align-items:center;
-      gap:4px;
-      padding:6px 10px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#f9fafb;
-      flex:1;
-      font-size:.8rem;
+    .item .ic{
+      width:38px;height:38px;border-radius:14px;
+      background: radial-gradient(16px 16px at 30% 30%, rgba(37, 91, 255, .35), rgba(37, 91, 255, .12));
+      border:1px solid rgba(214,226,255,.9);
+      display:grid;place-items:center;color:var(--royal);font-weight:900;flex:0 0 auto;
     }
-    .input-inline span{
-      color:var(--muted);
-    }
-    .input-inline input{
-      border:none;
-      outline:none;
-      background:transparent;
-      width:100px;
-      font-size:.8rem;
-    }
-    .pix-box{
-      margin-top:6px;
-      padding:8px 9px;
-      border-radius:12px;
-      border:1px dashed #bfdbfe;
-      background:#eff6ff;
-      font-size:.78rem;
-      color:#1e293b;
-    }
-    .pix-key{
-      margin-top:4px;
-      word-break:break-all;
-      font-family:monospace;
-      font-size:.78rem;
-      background:#e0edff;
-      padding:4px 6px;
-      border-radius:8px;
-    }
-    .small-muted{
-      font-size:.74rem;
-      color:var(--muted);
-      margin-top:4px;
+    .item .tx{ flex:1; }
+    .item .tx strong{ display:block; font-size:13px; }
+    .item .tx small{ color:var(--muted); font-weight:650; }
+    .item .right{ flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .chip{
+      display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
+      font-size:11px;font-weight:900;border:1px solid rgba(214,226,255,.9);
+      background:#fff;color:var(--royal);white-space:nowrap;
     }
 
-    .cash-box{
-      margin-top:6px;
-      padding:8px 9px;
-      border-radius:12px;
-      border:1px dashed #fee2e2;
-      background:#fff7f7;
-      font-size:.78rem;
-      color:#7f1d1d;
+    .map-card{ position:relative; min-height: 620px; }
+    #map{ height: 100%; min-height: 620px; width:100%; border-radius: var(--radius2); }
+
+    .overlay{
+      position:absolute;left:14px;right:14px;bottom:14px;z-index:500;
+      pointer-events:none;
+    }
+    .sheet{
+      pointer-events:auto;border-radius: 24px;border:1px solid rgba(214,226,255,.9);
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.92));
+      box-shadow: var(--shadow);overflow:hidden;
+    }
+    .sheet-h{
+      padding:12px 14px 10px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      border-bottom:1px solid rgba(214,226,255,.65);
+    }
+    .grab{ width:54px;height:6px;border-radius:999px;background: rgba(102,112,133,.25);margin:0 auto 8px; }
+    .sheet-h .left{ display:flex;flex-direction:column;gap:2px;line-height:1.15; }
+    .sheet-h .left strong{ font-size:13px; }
+    .sheet-h .left small{ font-size:11px;color:var(--muted);font-weight:700; }
+    .sheet-b{
+      padding:12px 14px 14px;
+      display:grid;grid-template-columns: 1.1fr .9fr;gap:10px;align-items:center;
+    }
+    @media (max-width: 520px){ .sheet-b{ grid-template-columns: 1fr; } }
+    .sheet-b .cta{ display:flex; gap:10px; }
+
+    .bottom-nav{
+      position:fixed;left:0;right:0;bottom:0;z-index:40;
+      background: linear-gradient(180deg, rgba(244,247,255,.62), rgba(244,247,255,.92));
+      backdrop-filter: blur(10px);
+      border-top:1px solid rgba(214,226,255,.8);
+    }
+    .bottom-nav .inner{
+      max-width:var(--max);margin:0 auto;display:flex;gap:10px;padding:10px 12px;
+    }
+    .navbtn{
+      flex:1;height:56px;border-radius:18px;border:1px solid transparent;background:transparent;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+      cursor:pointer;font-weight:900;color:var(--royal);
+    }
+    .navbtn.active{
+      background: linear-gradient(180deg, #fff, #F7FAFF);
+      border-color: rgba(214,226,255,.95);
+      box-shadow: var(--shadow2);
+    }
+    .navbtn .mini{ font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.2px; }
+
+    .hide{ display:none !important; }
+    .hr{ height:1px; background:rgba(214,226,255,.9); margin:12px 0; border-radius:999px; }
+    .note{
+      padding:10px 12px;border-radius:16px;border:1px dashed rgba(37, 91, 255, .35);
+      background: rgba(37, 91, 255, .06);
+      color: rgba(11,43,122,.95);
+      font-size:12px;font-weight:650;line-height:1.35;
     }
 
-    /* HISTÓRICO CRÉDITO */
-    .mov-list{
-      margin-top:8px;
-      display:flex;
-      flex-direction:column;
-      gap:6px;
-      max-height:260px;
-      overflow-y:auto;
-      padding-right:2px;
+    .leaflet-control-zoom a{
+      border-radius:14px !important;
+      border:1px solid rgba(214,226,255,.9) !important;
+      box-shadow: var(--shadow2) !important;
+      background: linear-gradient(180deg, #fff, #F7FAFF) !important;
+      color: var(--royal) !important;
     }
-    .mov-item{
-      display:grid;
-      grid-template-columns:auto 1fr auto;
-      gap:8px;
-      align-items:center;
-      padding:7px 8px;
-      border-radius:12px;
-      border:1px solid #e5e7eb;
-      background:#f9fafb;
-    }
-    .mov-dot{
-      width:10px;height:10px;border-radius:999px;
-    }
-    .mov-dot.credito{background:var(--good)}
-    .mov-dot.debito{background:var(--bad)}
-    .mov-main{
-      min-width:0;
-    }
-    .mov-title{
-      font-size:.8rem;
-      font-weight:750;
-    }
-    .mov-desc{
-      font-size:.74rem;
-      color:var(--muted);
-      margin-top:1px;
-      white-space:nowrap;
-      text-overflow:ellipsis;
-      overflow:hidden;
-      max-width:220px;
-    }
-    .mov-val{
-      font-size:.8rem;
-      font-weight:800;
-      text-align:right;
-    }
-    .mov-val.plus{color:var(--good)}
-    .mov-val.minus{color:var(--bad)}
-
-    .empty{
-      font-size:.78rem;
-      color:var(--muted);
-      padding-top:4px;
-    }
-
-    /* RODAPÉ */
-    .footer-help{
-      text-align:center;
-      font-size:.75rem;
-      color:var(--muted);
-      margin-top:4px;
-    }
-
-    @media (min-width:720px){
-      header{padding-bottom:16px}
-      .map-card{padding:14px 14px 12px}
-      .map-viewport{height:230px}
-      main{margin-top:-18px}
-      .stack{gap:14px}
-      .card{padding:14px 14px 16px}
-      .mov-desc{max-width:360px}
+    .leaflet-container{
+      border:1px solid rgba(214,226,255,.85);
+      box-shadow: var(--shadow);
     }
   </style>
 </head>
+
 <body>
-<div class="app-shell">
-  <header>
-    <div class="topbar">
+  <div class="topbar">
+    <div class="topbar-inner">
       <div class="brand">
-        <img src="{{ url_for('static', filename='logo_coopex.png') }}"
-             alt="Coopex"
-             onerror="this.onerror=null;this.src='https://via.placeholder.com/80x36?text=COOPEX';">
-        <div class="brand-txt">
-          <strong>Coopex Entregas</strong>
-          <span>Área do cliente</span>
+        <div class="title">Meu Crédito</div>
+        <div class="sub" id="welcomeSub">Olá, {{ cli.nome }}.</div>
+      </div>
+
+      <div class="pill" title="Status do app">
+        <span class="dot" id="onlineDot"></span>
+        <div class="meta">
+          <small>CONEXÃO</small>
+          <strong id="onlineText">Conectando…</strong>
         </div>
       </div>
-      <div class="spacer"></div>
-      <a class="chip-btn" href="{{ url_for('cliente_logout') }}">
-        <!-- ícone sair -->
-        <svg viewBox="0 0 24 24" aria-hidden="true">
-          <path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"
-                d="M15 3h-3a4 4 0 0 0-4 4v0m0 10v0a4 4 0 0 0 4 4h3m2-4 4-4m0 0-4-4m4 4H9" />
-        </svg>
-        Sair
-      </a>
     </div>
+  </div>
 
-    {# MAPA / RASTREIO #}
-    <div class="map-wrapper">
-      <div class="map-card">
-        {% set entrega_ativa = entregas[0] if entregas and entregas|length > 0 else None %}
-        <div class="track-header">
+  <div class="wrap">
+    <div class="grid">
+
+      <!-- COLUNA ESQUERDA -->
+      <div class="card">
+        <div class="card-h">
           <div>
-            <div class="track-title">
-              <span class="status-dot"></span>
-              <span>Acompanhar entrega</span>
-            </div>
-            <div class="track-sub">
-              {% if entrega_ativa %}
-                {% if entrega_ativa.cooperado %}
-                  Motoboy: <strong>{{ entrega_ativa.cooperado.nome }}</strong>
-                {% else %}
-                  Procurando o motoboy ideal para o seu pedido.
-                {% endif %}
-              {% else %}
-                Sem entregas em andamento no momento.
-              {% endif %}
-            </div>
+            <h2>Sua carteira</h2>
+            <p>Saldo, pedidos e recargas. Use o mapa para rastrear o motoboy em tempo real.</p>
           </div>
-          <div class="tag-small">
-            {% if entrega_ativa %}
-              Pedido #{{ entrega_ativa.id }}
-            {% else %}
-              Nenhum pedido ativo
-            {% endif %}
-          </div>
-        </div>
-
-        <div class="map-viewport" id="map-track">
-          <div class="fake-map-grid"></div>
-          <div class="route-line"></div>
-          <div class="pin pickup" title="Estabelecimento"></div>
-          <div class="pin dropoff" title="Seu endereço"></div>
-          <div class="pin rider" title="Motoboy"></div>
-        </div>
-
-        <div class="track-footer">
-          <span>
-            {% if entrega_ativa %}
-              {% if entrega_ativa.cooperado %}
-                O motoboy está em rota. Assim que concluir, você verá aqui.
-              {% else %}
-                No momento todos os nossos motoboys estão ocupados.
-                Verifique o tempo de espera diretamente com o estabelecimento.
-              {% endif %}
-            {% else %}
-              Peça em um estabelecimento parceiro e acompanhe tudo aqui, em tempo real.
-            {% endif %}
+          <span class="badge" id="badgePedido">
+            <span class="b-dot" id="badgeDot"></span>
+            <span id="badgeTxt">Carregando…</span>
           </span>
-          <span>Rastreamento em breve • modo beta</span>
+        </div>
+
+        <div class="card-b">
+          <div class="balance">
+            <div class="big">
+              <small>SALDO DISPONÍVEL</small>
+              <div class="val" id="saldoVal">R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}</div>
+              <div class="hint" id="saldoHint">Você pode comprar crédito ou usar no pagamento do pedido.</div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="btnIrRecarga" type="button">Comprar crédito</button>
+              <button class="btn btn-ghost" id="btnIrPedido" type="button">Fazer pedido</button>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist" aria-label="Seções do cliente">
+            <button class="tab active" data-tab="pedido" type="button">Pedido</button>
+            <button class="tab" data-tab="rastreio" type="button">Rastreio</button>
+            <button class="tab" data-tab="credito" type="button">Crédito</button>
+          </div>
+
+          <!-- TAB: PEDIDO -->
+          <section id="tab-pedido">
+            <div class="statusbar">
+              <div class="kv">
+                <small>ESTIMATIVA</small>
+                <strong id="etaTxt">—</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>VALOR</small>
+                <strong id="precoTxt">—</strong>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <div class="field">
+                <label for="origem">Coleta (endereço)</label>
+                <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="destino">Entrega (endereço)</label>
+                <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="tipo">Tipo de pedido</label>
+                <select class="select" id="tipo">
+                  <option value="entrega">Entrega padrão</option>
+                  <option value="coleta_entrega">Coletar e entregar</option>
+                  <option value="entrega_expressa">Entrega expressa</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="pagamento">Pagamento</label>
+                <select class="select" id="pagamento">
+                  <option value="credito">Usar crédito</option>
+                  <option value="pix">Pix (na hora)</option>
+                  <option value="cartao">Cartão (na hora)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="obs">Observações</label>
+              <textarea class="textarea" id="obs" placeholder="Ponto de referência, número do apto, instruções para o motoboy..."></textarea>
+            </div>
+
+            <div class="row">
+              <button class="btn btn-ghost" id="btnUsarLocal" type="button">Usar minha localização</button>
+              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar motoboy</button>
+            </div>
+
+            <div class="note" style="margin-top:12px" id="notePedido">
+              Este pedido é registrado no sistema e aparecerá para atribuição. O rastreio funciona quando o motoboy enviar posição.
+            </div>
+          </section>
+
+          <!-- TAB: RASTREIO -->
+          <section id="tab-rastreio" class="hide">
+            <div class="statusbar">
+              <div class="kv">
+                <small>STATUS</small>
+                <strong id="statusTxt">—</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>MOTOBOY</small>
+                <strong id="motoTxt">—</strong>
+              </div>
+            </div>
+
+            <div class="list" id="timeline"></div>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <button class="btn btn-ghost" id="btnCentralizar" type="button">Centralizar no mapa</button>
+              <button class="btn btn-danger" id="btnCancelar" type="button">Cancelar pedido</button>
+            </div>
+
+            <div class="note" style="margin-top:12px">
+              O mapa mostra: coleta, entrega e posição do motoboy. Atualiza por polling (tempo real do seu banco).
+            </div>
+          </section>
+
+          <!-- TAB: CRÉDITO -->
+          <section id="tab-credito" class="hide">
+            <div class="statusbar">
+              <div class="kv">
+                <small>RECARGA RÁPIDA</small>
+                <strong>Escolha um valor</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>MÉTODO</small>
+                <strong id="metodoTxt">Pix</strong>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <div class="field">
+                <label for="valorRecarga">Valor (R$)</label>
+                <input class="input" id="valorRecarga" inputmode="decimal" placeholder="Ex.: 30,00">
+              </div>
+              <div class="field">
+                <label for="metodoRecarga">Método</label>
+                <select class="select" id="metodoRecarga">
+                  <option value="pix">Pix</option>
+                  <option value="cartao">Cartão</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="margin-bottom:10px;">
+              <button class="btn btn-ghost recargaPreset" data-v="20" type="button">R$ 20</button>
+              <button class="btn btn-ghost recargaPreset" data-v="30" type="button">R$ 30</button>
+              <button class="btn btn-ghost recargaPreset" data-v="50" type="button">R$ 50</button>
+            </div>
+
+            <button class="btn btn-primary" id="btnGerarRecarga" type="button">Gerar cobrança</button>
+
+            <div class="hr"></div>
+
+            <div class="note" id="boxCobranca">
+              Ao gerar cobrança, o sistema cria uma solicitação de recarga. No Pix, será exibida a chave e referência; no Cartão, você integra o seu provedor.
+            </div>
+          </section>
         </div>
       </div>
-    </div>
-  </header>
 
-  <main>
-    <div class="stack">
+      <!-- COLUNA DIREITA: MAPA -->
+      <div class="card map-card">
+        <div id="map"></div>
 
-      {# CARD SALDO E RESUMO #}
-      <section class="card">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Olá, {{ cli.nome }}</div>
-            <div class="card-sub">
-              Seu saldo Coopex é usado para pagar entregas direto no app.
+        <div class="overlay">
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sheet-h">
+              <div class="left">
+                <strong id="sheetTitle">Mapa de rastreio</strong>
+                <small id="sheetSub">Coleta, entrega e motoboy em tempo real.</small>
+              </div>
+              <span class="chip" id="chipETA">ETA —</span>
             </div>
-          </div>
-          {% set ultimo_mov = movs[0] if movs and movs|length > 0 else None %}
-          <div class="pill">
-            {% if ultimo_mov and (ultimo_mov.criado_em or ultimo_mov.data) %}
-              {% set dtmov = ultimo_mov.criado_em or ultimo_mov.data %}
-              Atualizado até {{ to_brasilia(dtmov).strftime('%d/%m %H:%M') }}
-            {% else %}
-              Saldo em tempo real
-            {% endif %}
-          </div>
-        </div>
-
-        <div style="margin-top:10px;display:flex;justify-content:space-between;align-items:flex-end;gap:10px;flex-wrap:wrap">
-          <div>
-            <div class="saldo-label">Saldo disponível</div>
-            <div class="saldo-val">
-              R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}
-            </div>
-          </div>
-
-          {# RESUMO TOTAL CRÉDITO / DÉBITO #}
-          {% set ns = namespace(tcred=0.0, tdeb=0.0) %}
-          {% for m in movs %}
-            {% if m.tipo == 'credito' %}
-              {% set ns.tcred = ns.tcred + (m.valor or 0) %}
-            {% elif m.tipo == 'debito' %}
-              {% set ns.tdeb = ns.tdeb + (m.valor or 0) %}
-            {% endif %}
-          {% endfor %}
-          <div style="display:flex;flex-direction:column;gap:4px;align-items:flex-end">
-            <span class="pill credito">
-              + Créditos: R$ {{ '%.2f'|format(ns.tcred) | replace('.', ',') }}
-            </span>
-            <span class="pill debito">
-              − Consumos: R$ {{ '%.2f'|format(ns.tdeb) | replace('.', ',') }}
-            </span>
-          </div>
-        </div>
-
-        <div class="actions-row">
-          <button class="btn-primary" type="button" onclick="scrollToSection('add-credit')">
-            Adicionar créditos
-          </button>
-          <button class="btn-outline" type="button" onclick="scrollToSection('history')">
-            Ver histórico
-          </button>
-        </div>
-      </section>
-
-      {# CARD ADICIONAR CRÉDITO (PIX / DINHEIRO) #}
-      <section class="card" id="add-credit">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Adicionar créditos</div>
-            <div class="card-sub">
-              Escolha o valor e a forma de pagamento. Em breve isso será automático no app.
-            </div>
-          </div>
-        </div>
-
-        <div class="tabs">
-          <div class="tab active" data-tab="pix" onclick="selectTab(this)">Pix</div>
-          <div class="tab" data-tab="cash" onclick="selectTab(this)">Dinheiro</div>
-        </div>
-
-        <div class="tab-panel" data-panel="pix">
-          <div style="margin-bottom:6px;font-size:.78rem;color:var(--muted)">
-            Selecione um valor ou digite outro:
-          </div>
-          <div class="amount-row">
-            {% for v in [20,40,60,80,100] %}
-              <button class="chip-amount" type="button" data-value="{{ v }}" onclick="selectAmount(this)">
-                R$ {{ '%d'|format(v) }},00
-              </button>
-            {% endfor %}
-            <div class="input-inline">
-              <span>R$</span>
-              <input type="number" min="5" step="1" id="valorLivre" placeholder="Outro valor"
-                     oninput="customAmountChanged(this)">
-            </div>
-          </div>
-
-          <div class="pix-box">
-            <strong>Chave Pix Coopex:</strong>
-            <div class="pix-key" id="pixKey">
-              {{ pix_chave or 'em breve' }}
-            </div>
-            <div class="small-muted">
-              Valor selecionado:
-              <span id="valorSelecionado">R$ 20,00</span>
-              — envie este valor para a chave acima e envie o comprovante para a supervisão.
-              Assim que for confirmado, seu crédito aparecerá aqui.
-            </div>
-          </div>
-
-          <div style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn-primary" type="button" onclick="copyPix()">
-              Copiar chave Pix
-            </button>
-            <button class="btn-outline" type="button">
-              Enviar comprovante (WhatsApp)
-            </button>
-          </div>
-        </div>
-
-        <div class="tab-panel" data-panel="cash" style="display:none">
-          <div class="cash-box">
-            <strong>Pagar em dinheiro</strong><br>
-            Você pode combinar o valor direto com o estabelecimento ou com o motoboy.
-            Ao receber o pagamento, a supervisão libera o crédito na sua conta Coopex.
-          </div>
-          <div class="small-muted">
-            Dica: informe ao estabelecimento que deseja “crédito na Coopex”
-            para facilitar a conferência.
-          </div>
-        </div>
-      </section>
-
-      {# HISTÓRICO DE MOVIMENTAÇÕES #}
-      <section class="card" id="history">
-        <div class="card-header">
-          <div>
-            <div class="card-title">Histórico de crédito</div>
-            <div class="card-sub">
-              Entradas (crédito) e saídas (entregas pagas com crédito).
-            </div>
-          </div>
-        </div>
-
-        {% if movs|length == 0 %}
-          <p class="empty">
-            Você ainda não possui movimentações de crédito. Ao adicionar crédito ou pagar uma entrega com saldo,
-            tudo aparecerá aqui.
-          </p>
-        {% else %}
-          <div class="mov-list">
-            {% for m in movs %}
-              {% set dt = m.criado_em or m.data %}
-              <div class="mov-item">
-                <div class="mov-dot {{ m.tipo }}"></div>
-                <div class="mov-main">
-                  <div class="mov-title">
-                    {% if m.tipo == 'credito' %}
-                      Crédito adicionado
-                    {% else %}
-                      Consumo em entrega
-                    {% endif %}
-                  </div>
-                  <div class="mov-desc">
-                    {% if dt %}
-                      {{ to_brasilia(dt).strftime('%d/%m/%Y %H:%M') }} —
-                    {% endif %}
-                    {{ m.referencia or m.descricao or 'Movimentação de crédito' }}
-                  </div>
+            <div class="sheet-b">
+              <div>
+                <div class="kv">
+                  <small>PEDIDO</small>
+                  <strong id="pedidoRef">—</strong>
                 </div>
-                <div class="mov-val {{ 'plus' if m.tipo=='credito' else 'minus' }}">
-                  {{ '+' if m.tipo=='credito' else '-' }}
-                  R$ {{ '%.2f'|format(m.valor or 0) | replace('.', ',') }}
+                <div style="height:8px"></div>
+                <div class="kv">
+                  <small>ENDEREÇOS</small>
+                  <strong id="addrMini">—</strong>
                 </div>
               </div>
-            {% endfor %}
+              <div class="cta">
+                <button class="btn btn-ghost" id="btnAbrirRastreio" type="button">Abrir rastreio</button>
+                <button class="btn btn-primary" id="btnNovoPedido" type="button">Novo pedido</button>
+              </div>
+            </div>
           </div>
-        {% endif %}
-      </section>
-
-      <div class="footer-help">
-        Dúvidas sobre crédito ou entregas? Fale com a Supervisão Coopex.
+        </div>
       </div>
+
     </div>
-  </main>
-</div>
+  </div>
 
-<script>
-  // scroll suave para seções
-  function scrollToSection(id){
-    var el = document.getElementById(id);
-    if(!el) return;
-    window.scrollTo({
-      top: el.getBoundingClientRect().top + window.scrollY - 70,
-      behavior: 'smooth'
-    });
-  }
+  <div class="bottom-nav">
+    <div class="inner">
+      <button class="navbtn active" data-tab="pedido" type="button">
+        <div>Pedido</div>
+        <div class="mini">solicitar</div>
+      </button>
+      <button class="navbtn" data-tab="rastreio" type="button">
+        <div>Rastreio</div>
+        <div class="mini">mapa</div>
+      </button>
+      <button class="navbtn" data-tab="credito" type="button">
+        <div>Crédito</div>
+        <div class="mini">recarga</div>
+      </button>
+    </div>
+  </div>
 
-  // controle de abas (Pix / Dinheiro)
-  function selectTab(tabEl){
-    var tab = tabEl.getAttribute('data-tab');
-    document.querySelectorAll('.tab').forEach(function(t){
-      t.classList.toggle('active', t === tabEl);
-    });
-    document.querySelectorAll('.tab-panel').forEach(function(p){
-      var match = p.getAttribute('data-panel') === tab;
-      p.style.display = match ? 'block' : 'none';
-    });
-  }
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin
+  ></script>
 
-  // seleção de valor rápido + valor livre
-  var valorAtual = 20;
+  <script>
+    /***********************
+     * ENDPOINTS REAIS (Flask)
+     ***********************/
+    const API = {
+      me:         "{{ url_for('api_cliente_me') }}",
+      saldo:      "{{ url_for('api_credito_saldo') }}",
+      recarga:    "{{ url_for('api_credito_recarga') }}",
+      pedido:     "{{ url_for('api_pedidos_criar') }}",
+      pedidoAtivo:"{{ url_for('api_pedidos_ativo') }}",
+      cancelar:   (id) => "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}".replace("/0", `/${id}`),
+      tracking:   (id) => "{{ url_for('api_pedidos_tracking', pedido_id=0) }}".replace("/0", `/${id}`),
+    };
 
-  function updateValorLabel(){
-    var label = document.getElementById('valorSelecionado');
-    if(!label) return;
-    label.textContent = 'R$ ' + valorAtual.toFixed(2).replace('.', ',');
-  }
+    const POLL_MS = 3000;
 
-  function selectAmount(btn){
-    document.querySelectorAll('.chip-amount').forEach(function(c){
-      c.classList.remove('active');
-    });
-    btn.classList.add('active');
+    /***********************
+     * UTIL
+     ***********************/
+    const moneyBR = (n) => (Number(n||0)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    const $ = (id)=>document.getElementById(id);
 
-    var v = parseFloat(btn.getAttribute('data-value') || '0') || 0;
-    valorAtual = v;
-    var livre = document.getElementById('valorLivre');
-    if(livre){ livre.value = ''; }
-    updateValorLabel();
-  }
-
-  function customAmountChanged(inp){
-    document.querySelectorAll('.chip-amount').forEach(function(c){
-      c.classList.remove('active');
-    });
-    var v = parseFloat(inp.value || '0');
-    if(!isNaN(v) && v > 0){
-      valorAtual = v;
-    }else{
-      valorAtual = 20;
+    function setOnline(flag){
+      const dot = $("onlineDot");
+      const txt = $("onlineText");
+      dot.style.background = flag ? "var(--ok)" : "var(--bad)";
+      dot.style.boxShadow = flag ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(239,68,68,.14)";
+      txt.textContent = flag ? "Online" : "Offline";
     }
-    updateValorLabel();
-  }
 
-  function copyPix(){
-    var key = document.getElementById('pixKey');
-    if(!key) return;
-    var txt = key.textContent.trim();
-    if(!txt){ return; }
-    navigator.clipboard.writeText(txt).then(function(){
-      alert('Chave Pix copiada!');
-    }).catch(function(){
-      alert('Não foi possível copiar. Copie manualmente a chave exibida.');
-    });
-  }
-
-  // inicializar estado
-  (function(){
-    // marca primeiro valor como ativo
-    var firstChip = document.querySelector('.chip-amount');
-    if(firstChip){
-      firstChip.classList.add('active');
-      valorAtual = parseFloat(firstChip.getAttribute('data-value') || '20') || 20;
+    async function safeJSON(url, opts){
+      try{
+        const r = await fetch(url, opts);
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        return await r.json();
+      }catch(e){
+        return null;
+      }
     }
-    updateValorLabel();
-  })();
-</script>
+
+    function parseBRL(v){
+      const s = (v||"").trim().replace(/\./g,"").replace(",",".");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    /***********************
+     * STATE
+     ***********************/
+    const state = {
+      cliente: { nome:"Cliente" },
+      saldo: 0,
+      pedido: null, // {id, origemTxt, destinoTxt, valor, status, eta_min, motoboyNome}
+      lastTracking: null
+    };
+
+    /***********************
+     * MAPA
+     ***********************/
+    let map, mOrigem, mDestino, mMoto, routeLine;
+
+    function initMap(){
+      const natal = [-5.7945, -35.2110];
+      map = L.map("map", { zoomControl:true }).setView(natal, 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+
+      const mk = (label, color) => L.divIcon({
+        className: "",
+        html: `
+          <div style="
+              width:42px;height:42px;border-radius:18px;
+              background:linear-gradient(180deg,#fff,#F7FAFF);
+              border:1px solid rgba(214,226,255,.95);
+              box-shadow:0 16px 30px rgba(10,25,80,.12);
+              display:grid;place-items:center;position:relative;">
+            <div style="width:12px;height:12px;border-radius:999px;background:${color};box-shadow:0 0 0 8px ${color}22;"></div>
+            <div style="
+              position:absolute;left:50%;top:100%;
+              transform:translate(-50%,-4px) rotate(45deg);
+              width:12px;height:12px;background:linear-gradient(180deg,#fff,#F7FAFF);
+              border-left:1px solid rgba(214,226,255,.95);
+              border-bottom:1px solid rgba(214,226,255,.95);
+              border-bottom-left-radius:3px;"></div>
+          </div>
+          <div style="
+              margin-top:6px;background:rgba(255,255,255,.92);
+              border:1px solid rgba(214,226,255,.9);
+              color:var(--royal);
+              padding:6px 10px;border-radius:999px;
+              font-weight:900;font-size:11px;display:inline-block;
+              box-shadow:0 10px 20px rgba(10,25,80,.08);
+            ">${label}</div>
+        `,
+        iconSize: [120, 56],
+        iconAnchor: [22, 42]
+      });
+
+      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
+      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
+      mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+
+      routeLine = L.polyline([natal, natal], { weight:5, opacity:.9 }).addTo(map);
+    }
+
+    function setRoute(orig, dest){
+      mOrigem.setLatLng(orig);
+      mDestino.setLatLng(dest);
+      routeLine.setLatLngs([orig, dest]);
+      const b = L.latLngBounds([orig, dest]).pad(0.25);
+      map.fitBounds(b, { animate:true, duration:0.6 });
+    }
+
+    function setMoto(pos){
+      mMoto.setLatLng(pos);
+    }
+
+    /***********************
+     * UI
+     ***********************/
+    function setTab(tab){
+      document.querySelectorAll(".tab").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+      document.querySelectorAll(".navbtn").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+      $("tab-pedido").classList.toggle("hide", tab!=="pedido");
+      $("tab-rastreio").classList.toggle("hide", tab!=="rastreio");
+      $("tab-credito").classList.toggle("hide", tab!=="credito");
+    }
+
+    function setSaldo(n){
+      state.saldo = Number(n||0);
+      $("saldoVal").textContent = moneyBR(state.saldo);
+      $("saldoHint").textContent = state.saldo > 0
+        ? "Use seu crédito para pagar pedidos com mais rapidez."
+        : "Saldo zerado. Faça uma recarga para pedir com crédito.";
+    }
+
+    function setEstimativa(valor, eta){
+      $("precoTxt").textContent = valor != null ? moneyBR(valor) : "—";
+      $("etaTxt").textContent = eta != null ? `${eta} min` : "—";
+      $("chipETA").textContent = eta != null ? `ETA ${eta} min` : "ETA —";
+    }
+
+    function setBadge(){
+      const dot = $("badgeDot");
+      const txt = $("badgeTxt");
+
+      if(!state.pedido){
+        dot.style.background = "var(--warn)";
+        dot.style.boxShadow = "0 0 0 6px rgba(245,158,11,.14)";
+        txt.textContent = "Sem pedido ativo";
+        $("statusTxt").textContent = "Sem pedido ativo";
+        $("motoTxt").textContent = "—";
+        $("pedidoRef").textContent = "—";
+        $("addrMini").textContent = "—";
+        setEstimativa(null, null);
+        return;
+      }
+
+      const st = state.pedido.status || "Em andamento";
+      txt.textContent = st;
+      const ok = /entreg/i.test(st);
+      dot.style.background = ok ? "var(--ok)" : "var(--warn)";
+      dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
+
+      $("statusTxt").textContent = st;
+      $("motoTxt").textContent = state.pedido.motoboyNome || "—";
+      $("pedidoRef").textContent = state.pedido.id || "—";
+      $("addrMini").textContent = `${state.pedido.origemTxt || "—"} → ${state.pedido.destinoTxt || "—"}`;
+      setEstimativa(state.pedido.valor, state.pedido.eta_min);
+    }
+
+    function renderTimeline(){
+      const wrap = $("timeline");
+      wrap.innerHTML = "";
+
+      if(!state.pedido){
+        wrap.innerHTML = `
+          <div class="item">
+            <div class="ic">1</div>
+            <div class="tx">
+              <strong>Crie um pedido</strong>
+              <small>Quando houver pedido ativo, o rastreio abre com status e ETA.</small>
+            </div>
+            <div class="right"><span class="chip">Aguardando</span></div>
+          </div>
+        `;
+        return;
+      }
+
+      const steps = [
+        {k:"Criado",    d:"Pedido criado e aguardando atribuição."},
+        {k:"Atribuído", d:"Motoboy atribuído e a caminho da coleta."},
+        {k:"Coleta",    d:"Motoboy no local de coleta."},
+        {k:"Em rota",   d:"Em rota para entrega."},
+        {k:"Entregue",  d:"Entrega concluída."},
+      ];
+
+      const status = (state.pedido.status||"Criado").toLowerCase();
+      const idx =
+        status.includes("entreg") ? 4 :
+        status.includes("rota") || status.includes("andamento") ? 3 :
+        status.includes("colet") ? 2 :
+        status.includes("atribu") ? 1 : 0;
+
+      steps.forEach((s,i)=>{
+        const done = i < idx;
+        const cur  = i === idx;
+        const chip = done ? "Concluído" : (cur ? "Agora" : "Pendente");
+        const dot = done ? "var(--ok)" : (cur ? "var(--warn)" : "rgba(102,112,133,.28)");
+
+        wrap.insertAdjacentHTML("beforeend", `
+          <div class="item">
+            <div class="ic" style="background: radial-gradient(16px 16px at 30% 30%, ${dot}55, ${dot}22);">${i+1}</div>
+            <div class="tx">
+              <strong>${s.k}</strong>
+              <small>${s.d}</small>
+            </div>
+            <div class="right"><span class="chip">${chip}</span></div>
+          </div>
+        `);
+      });
+    }
+
+    /***********************
+     * API: carregamento e polling
+     ***********************/
+    function normalizePedido(p){
+      return {
+        id: String(p.id),
+        origemTxt: p.origem_txt || "",
+        destinoTxt: p.destino_txt || "",
+        valor: Number(p.valor || 0),
+        status: p.status || "Criado",
+        eta_min: (p.eta_min != null ? Number(p.eta_min) : null),
+        motoboyNome: p.motoboy_nome || ""
+      };
+    }
+
+    async function loadInitial(){
+      const me = await safeJSON(API.me);
+      const saldo = await safeJSON(API.saldo);
+      const ativo = await safeJSON(API.pedidoAtivo);
+
+      const ok = !!(me && saldo && ativo);
+      setOnline(ok);
+
+      if(me?.ok){
+        state.cliente = me.cliente;
+        $("welcomeSub").textContent = `Olá, ${state.cliente.nome || "Cliente"}.`;
+      }
+      if(saldo?.ok) setSaldo(saldo.saldo);
+
+      if(ativo?.ok && ativo.pedido){
+        state.pedido = normalizePedido(ativo.pedido);
+        setBadge();
+        renderTimeline();
+        await applyTrackingFromAPI(state.pedido.id);
+        startPolling();
+      }else{
+        state.pedido = null;
+        setBadge();
+        renderTimeline();
+      }
+
+      $("badgeTxt").textContent = state.pedido ? (state.pedido.status || "Em andamento") : "Sem pedido ativo";
+    }
+
+    async function applyTrackingFromAPI(pedidoId){
+      const data = await safeJSON(API.tracking(pedidoId));
+      if(!data || !data.ok) return;
+
+      // Atualiza texto/status
+      if(state.pedido){
+        state.pedido.status = data.status || state.pedido.status;
+        state.pedido.eta_min = (data.eta_min != null ? data.eta_min : state.pedido.eta_min);
+        state.pedido.motoboyNome = (data.motoboy?.nome || state.pedido.motoboyNome);
+
+        if(data.origem?.txt) state.pedido.origemTxt = data.origem.txt;
+        if(data.destino?.txt) state.pedido.destinoTxt = data.destino.txt;
+        if(data.valor != null) state.pedido.valor = Number(data.valor);
+      }
+
+      setBadge();
+      renderTimeline();
+
+      // Atualiza mapa (se tiver coordenadas)
+      const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
+      const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
+      const moto = (data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
+
+      if(orig && dest) setRoute(orig, dest);
+      if(moto) setMoto(moto);
+    }
+
+    let pollTimer = null;
+    function startPolling(){
+      if(pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async ()=>{
+        if(!state.pedido){
+          const ativo = await safeJSON(API.pedidoAtivo);
+          if(ativo?.ok && ativo.pedido){
+            state.pedido = normalizePedido(ativo.pedido);
+            setBadge();
+            renderTimeline();
+          }else{
+            return;
+          }
+        }
+        await applyTrackingFromAPI(state.pedido.id);
+      }, POLL_MS);
+    }
+
+    /***********************
+     * AÇÕES
+     ***********************/
+    function wireTabs(){
+      document.querySelectorAll(".tab").forEach(b=> b.addEventListener("click", ()=>setTab(b.dataset.tab)));
+      document.querySelectorAll(".navbtn").forEach(b=> b.addEventListener("click", ()=>setTab(b.dataset.tab)));
+
+      $("btnIrRecarga").addEventListener("click", ()=>setTab("credito"));
+      $("btnIrPedido").addEventListener("click", ()=>setTab("pedido"));
+      $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
+      $("btnNovoPedido").addEventListener("click", ()=>{
+        setTab("pedido");
+        $("origem").focus();
+      });
+    }
+
+    function wirePedido(){
+      $("btnUsarLocal").addEventListener("click", async ()=>{
+        if(!navigator.geolocation){
+          alert("Geolocalização não suportada neste navegador.");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition((pos)=>{
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          $("origem").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+          // Opcional: você pode mandar essas coords junto no pedido (backend aceita).
+          window.__ORIG_LAT = lat;
+          window.__ORIG_LNG = lng;
+        }, ()=>{
+          alert("Não foi possível obter sua localização. Verifique permissões.");
+        }, { enableHighAccuracy:true, timeout:8000 });
+      });
+
+      $("btnCriarPedido").addEventListener("click", async ()=>{
+        const origemTxt = $("origem").value.trim();
+        const destinoTxt = $("destino").value.trim();
+        const tipo = $("tipo").value;
+        const pagamento = $("pagamento").value;
+        const obs = $("obs").value.trim();
+
+        if(!origemTxt || !destinoTxt){
+          alert("Informe os endereços de coleta e entrega.");
+          return;
+        }
+
+        const payload = {
+          origem_txt: origemTxt,
+          destino_txt: destinoTxt,
+          tipo,
+          pagamento,
+          obs,
+          origem_lat: (window.__ORIG_LAT ?? null),
+          origem_lng: (window.__ORIG_LNG ?? null),
+        };
+
+        const res = await safeJSON(API.pedido, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if(!res || !res.ok){
+          alert(res?.msg || "Não foi possível criar o pedido.");
+          return;
+        }
+
+        setOnline(true);
+        state.pedido = normalizePedido(res.pedido);
+        setBadge();
+        renderTimeline();
+        setTab("rastreio");
+
+        await applyTrackingFromAPI(state.pedido.id);
+        startPolling();
+      });
+    }
+
+    function wireRastreio(){
+      $("btnCentralizar").addEventListener("click", ()=>{
+        const o = mOrigem.getLatLng();
+        const d = mDestino.getLatLng();
+        const b = L.latLngBounds([o,d]).pad(0.25);
+        map.fitBounds(b, { animate:true, duration:0.6 });
+      });
+
+      $("btnCancelar").addEventListener("click", async ()=>{
+        if(!state.pedido){
+          alert("Não há pedido ativo para cancelar.");
+          return;
+        }
+        if(!confirm("Deseja cancelar o pedido ativo?")) return;
+
+        const r = await safeJSON(API.cancelar(state.pedido.id), { method:"POST" });
+        if(!r || !r.ok){
+          alert(r?.msg || "Não foi possível cancelar.");
+          return;
+        }
+
+        state.pedido = null;
+        setBadge();
+        renderTimeline();
+        setTab("pedido");
+      });
+    }
+
+    function wireCredito(){
+      $("metodoRecarga").addEventListener("change", ()=>{
+        $("metodoTxt").textContent = $("metodoRecarga").value === "pix" ? "Pix" : "Cartão";
+      });
+
+      document.querySelectorAll(".recargaPreset").forEach(b=>{
+        b.addEventListener("click", ()=> $("valorRecarga").value = (b.dataset.v || "").replace(".", ","));
+      });
+
+      $("btnGerarRecarga").addEventListener("click", async ()=>{
+        const valor = parseBRL($("valorRecarga").value);
+        const metodo = $("metodoRecarga").value;
+
+        if(!valor || valor <= 0){
+          alert("Informe um valor válido para recarga.");
+          return;
+        }
+
+        const r = await safeJSON(API.recarga, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ valor, metodo })
+        });
+
+        if(!r || !r.ok){
+          alert(r?.msg || "Não foi possível gerar a recarga.");
+          return;
+        }
+
+        setOnline(true);
+
+        // Atualiza UI do box (Pix real por chave + referência; Cartão depende do provedor)
+        if(metodo === "pix"){
+          $("boxCobranca").innerHTML = `
+            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+            Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
+            <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
+            <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
+            <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || ("RECARGA-"+r.recarga_id)}</span><br>
+            <div style="margin-top:10px">Após o pagamento, a recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
+          `;
+        } else {
+          $("boxCobranca").innerHTML = `
+            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+            Método: <strong>Cartão</strong>.<br>
+            <div style="margin-top:10px">
+              Integração necessária: seu backend deve retornar um <strong>checkout_url</strong> do provedor e você redireciona o cliente.
+            </div>
+            ${r.checkout_url ? `<div style="margin-top:10px"><a class="btn btn-primary" style="height:44px" href="${r.checkout_url}">Pagar agora</a></div>` : ""}
+          `;
+        }
+
+        // Atualiza saldo (pode não mudar até aprovação; mesmo assim mostramos o saldo atual do backend)
+        const s = await safeJSON(API.saldo);
+        if(s?.ok) setSaldo(s.saldo);
+      });
+    }
+
+    /***********************
+     * BOOT
+     ***********************/
+    initMap();
+    wireTabs();
+    wirePedido();
+    wireRastreio();
+    wireCredito();
+    loadInitial();
+
+    $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
+    $("btnNovoPedido").addEventListener("click", ()=>setTab("pedido"));
+  </script>
 </body>
 </html>
