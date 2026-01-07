@@ -676,6 +676,8 @@ import os
 # -------------------------------------------------------------------
 OFFLINE_AFTER_SEC = int(os.getenv("OFFLINE_AFTER_SEC", "120"))  # 2 min sem ping => offline
 IDLE_AFTER_SEC    = int(os.getenv("IDLE_AFTER_SEC", "300"))     # 5 min sem movimento => ocioso
+# Se velocidade >= isso, considera "em movimento"
+MOVING_SPEED_KMH = float(os.getenv("MOVING_SPEED_KMH", "3.0"))
 
 
 def _to_utc_aware(dt):
@@ -4732,6 +4734,30 @@ def api_atualizar_valor_entrega(id):
         status_pagamento=(e.status_pagamento or "").lower(),
         changed=True
     )
+
+@app.get('/api/cliente/saldo')
+@cliente_required
+def api_cliente_saldo():
+    cli = _cliente_atual()
+
+    # garante que o saldo esteja correto (opcional mas recomendado)
+    try:
+        atualizar_saldo_credito_cliente(cli.id)
+        cli = Cliente.query.get(cli.id)
+    except Exception:
+        pass
+
+    return jsonify({
+        "ok": True,
+        "saldo": float(cli.saldo_atual or 0.0),
+        "cliente": {
+            "id": cli.id,
+            "nome": cli.nome,
+            "username": getattr(cli, "username", None),
+            "telefone": getattr(cli, "telefone", None),
+            "email": getattr(cli, "email", None),
+        }
+    })
 
 
 # =========================================================
