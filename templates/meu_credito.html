@@ -1,8 +1,11 @@
-<!-- templates/meu_credito.html (REAL)
-     Requisitos:
-     - Leaflet/OSM via CDN
-     - Endpoints Flask (abaixo)
-     - Tracking real: motoboy atualiza lat/lng no banco
+<!-- templates/meu_credito.html (CORRIGIDO / COMPATÍVEL COM SUAS ROTAS ATUAIS)
+  Compatível com as rotas que você mostrou:
+   - GET  /meu-credito  (render_template com cli, movs, entregas, bairros, pix_chave, to_brasilia)
+   - POST /api/cliente/cotar-entrega
+   - POST /api/cliente/solicitar-entrega
+   - GET  /cliente/comprovante/<entrega_id>
+   - GET  /api/rastreamento/<codigo>   (usa o ID da entrega)
+  Mantém mapa Leaflet/OSM e adiciona "cliente tirar o próprio comprovante".
 -->
 <!DOCTYPE html>
 <html lang="pt-br">
@@ -169,9 +172,13 @@
       color:#fff;background: linear-gradient(180deg, #FF5A5A, #EF4444);
       box-shadow: 0 16px 30px rgba(239,68,68,.20);
     }
+    .btn-mini{
+      height:44px;border-radius:14px;font-weight:900;
+    }
 
     .row{ display:flex; gap:10px; }
     .row > *{ flex:1; }
+    @media (max-width: 420px){ .row{ flex-direction:column; } }
 
     .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:10px; }
     .field label{ font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.15px; }
@@ -236,15 +243,17 @@
       border:1px solid rgba(214,226,255,.9);
       display:grid;place-items:center;color:var(--royal);font-weight:900;flex:0 0 auto;
     }
-    .item .tx{ flex:1; }
+    .item .tx{ flex:1; min-width:0; }
     .item .tx strong{ display:block; font-size:13px; }
-    .item .tx small{ color:var(--muted); font-weight:650; }
-    .item .right{ flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .item .tx small{ color:var(--muted); font-weight:650; display:block; margin-top:2px; }
+    .item .right{ flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
     .chip{
       display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
       font-size:11px;font-weight:900;border:1px solid rgba(214,226,255,.9);
       background:#fff;color:var(--royal);white-space:nowrap;
     }
+    .chip-ok{ border-color: rgba(18,185,129,.35); color:#0b6b4a; background:rgba(18,185,129,.10); }
+    .chip-bad{ border-color: rgba(239,68,68,.35); color:#a61b1b; background:rgba(239,68,68,.10); }
 
     .map-card{ position:relative; min-height: 620px; }
     #map{ height: 100%; min-height: 620px; width:100%; border-radius: var(--radius2); }
@@ -315,6 +324,10 @@
       border:1px solid rgba(214,226,255,.85);
       box-shadow: var(--shadow);
     }
+
+    .muted{ color:var(--muted); font-weight:650; }
+    .small{ font-size:12px; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 
@@ -326,11 +339,21 @@
         <div class="sub" id="welcomeSub">Olá, {{ cli.nome }}.</div>
       </div>
 
-      <div class="pill" title="Status do app">
-        <span class="dot" id="onlineDot"></span>
-        <div class="meta">
-          <small>CONEXÃO</small>
-          <strong id="onlineText">Conectando…</strong>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <a class="pill" href="{{ url_for('cliente_logout') }}" title="Sair">
+          <span class="dot" style="background:var(--royal-2);box-shadow:0 0 0 6px rgba(37,91,255,.14)"></span>
+          <div class="meta">
+            <small>CONTA</small>
+            <strong>Sair</strong>
+          </div>
+        </a>
+
+        <div class="pill" title="Status do app">
+          <span class="dot" id="onlineDot"></span>
+          <div class="meta">
+            <small>CONEXÃO</small>
+            <strong id="onlineText">Conectando…</strong>
+          </div>
         </div>
       </div>
     </div>
@@ -344,11 +367,11 @@
         <div class="card-h">
           <div>
             <h2>Sua carteira</h2>
-            <p>Saldo, pedidos e recargas. Use o mapa para rastrear o motoboy em tempo real.</p>
+            <p>Saldo, pedidos, rastreio e comprovantes. O rastreio atualiza quando o motoboy enviar posição.</p>
           </div>
           <span class="badge" id="badgePedido">
             <span class="b-dot" id="badgeDot"></span>
-            <span id="badgeTxt">Carregando…</span>
+            <span id="badgeTxt">Pronto</span>
           </span>
         </div>
 
@@ -357,7 +380,7 @@
             <div class="big">
               <small>SALDO DISPONÍVEL</small>
               <div class="val" id="saldoVal">R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}</div>
-              <div class="hint" id="saldoHint">Você pode comprar crédito ou usar no pagamento do pedido.</div>
+              <div class="hint" id="saldoHint">Você pode usar crédito no pagamento se tiver saldo suficiente.</div>
             </div>
             <div class="actions">
               <button class="btn btn-primary" id="btnIrRecarga" type="button">Comprar crédito</button>
@@ -388,49 +411,87 @@
 
             <div class="row">
               <div class="field">
-                <label for="origem">Coleta (endereço)</label>
-                <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label for="destino">Entrega (endereço)</label>
-                <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label for="tipo">Tipo de pedido</label>
-                <select class="select" id="tipo">
-                  <option value="entrega">Entrega padrão</option>
-                  <option value="coleta_entrega">Coletar e entregar</option>
-                  <option value="entrega_expressa">Entrega expressa</option>
+                <label for="bairroColeta">Bairro da coleta</label>
+                <select class="select" id="bairroColeta">
+                  <option value="">Selecione…</option>
+                  {% for b in bairros %}
+                    <option value="{{ b }}">{{ b }}</option>
+                  {% endfor %}
                 </select>
               </div>
+              <div class="field">
+                <label for="bairroEntrega">Bairro da entrega</label>
+                <select class="select" id="bairroEntrega">
+                  <option value="">Selecione…</option>
+                  {% for b in bairros %}
+                    <option value="{{ b }}">{{ b }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="endColeta">Coleta (endereço)</label>
+                <input class="input" id="endColeta" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="endEntrega">Entrega (endereço)</label>
+                <input class="input" id="endEntrega" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="paradas">Paradas (opcional)</label>
+                <textarea class="textarea" id="paradas" placeholder="Uma parada por linha (opcional). Ex:
+Rua X, 10 - Bairro Y
+Av. Z, 200 - Bairro W"></textarea>
+              </div>
+            </div>
+
+            <div class="row">
               <div class="field">
                 <label for="pagamento">Pagamento</label>
                 <select class="select" id="pagamento">
-                  <option value="credito">Usar crédito</option>
-                  <option value="pix">Pix (na hora)</option>
-                  <option value="cartao">Cartão (na hora)</option>
+                  <option value="CREDITO">Usar crédito</option>
+                  <option value="PIX">Pix</option>
+                  <option value="DINHEIRO">Dinheiro</option>
                 </select>
               </div>
-            </div>
-
-            <div class="field">
-              <label for="obs">Observações</label>
-              <textarea class="textarea" id="obs" placeholder="Ponto de referência, número do apto, instruções para o motoboy..."></textarea>
+              <div class="field">
+                <label for="ref">Referência (opcional)</label>
+                <input class="input" id="ref" placeholder="Ex.: perto da farmácia / portão azul / apto 201">
+              </div>
             </div>
 
             <div class="row">
               <button class="btn btn-ghost" id="btnUsarLocal" type="button">Usar minha localização</button>
-              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar motoboy</button>
+              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar entrega</button>
             </div>
 
             <div class="note" style="margin-top:12px" id="notePedido">
-              Este pedido é registrado no sistema e aparecerá para atribuição. O rastreio funciona quando o motoboy enviar posição.
+              Escolha os bairros para o sistema calcular o preço. Se o pagamento for por crédito, é necessário ter saldo suficiente.
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="statusbar">
+              <div class="kv">
+                <small>MEIOS DISPONÍVEIS</small>
+                <strong id="meiosTxt">—</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>SALDO</small>
+                <strong id="saldoMini">R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}</strong>
+              </div>
+            </div>
+
+            <div class="note" style="margin-top:10px">
+              Dica: após solicitar, você pode abrir o comprovante da entrega quando ela for criada.
             </div>
           </section>
 
@@ -442,7 +503,7 @@
                 <strong id="statusTxt">—</strong>
               </div>
               <div class="kv" style="text-align:right;">
-                <small>MOTOBOY</small>
+                <small>COOPERADO</small>
                 <strong id="motoTxt">—</strong>
               </div>
             </div>
@@ -453,11 +514,67 @@
 
             <div class="row">
               <button class="btn btn-ghost" id="btnCentralizar" type="button">Centralizar no mapa</button>
-              <button class="btn btn-danger" id="btnCancelar" type="button">Cancelar pedido</button>
+              <button class="btn btn-ghost" id="btnAbrirComprovante" type="button">Abrir comprovante</button>
             </div>
 
-            <div class="note" style="margin-top:12px">
-              O mapa mostra: coleta, entrega e posição do motoboy. Atualiza por polling (tempo real do seu banco).
+            <div class="note" style="margin-top:12px" id="noteRastreio">
+              O rastreio usa o código da entrega (ID). Se ainda não houver posição do motoboy, o mapa pode ficar parado.
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="field">
+              <label for="codigoManual">Rastrear outra entrega (código)</label>
+              <div class="row" style="align-items:flex-end">
+                <input class="input" id="codigoManual" placeholder="Ex.: 1234" inputmode="numeric">
+                <button class="btn btn-primary btn-mini" id="btnRastrearCodigo" type="button">Rastrear</button>
+              </div>
+              <div class="small muted" style="margin-top:6px">
+                Você também pode usar a página pública de rastreio:
+                <a href="{{ url_for('rastreamento') }}" class="mono" style="text-decoration:underline;">/rastreamento</a>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="kv">
+              <small>ÚLTIMAS ENTREGAS</small>
+              <strong>Baixe seu comprovante</strong>
+            </div>
+
+            <div class="list" id="listaEntregas">
+              {% for e in entregas %}
+                <div class="item">
+                  <div class="ic">{{ loop.index }}</div>
+                  <div class="tx">
+                    <strong>Entrega #{{ e.id }}</strong>
+                    <small>
+                      {% if e.data_envio %}
+                        {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') }}
+                      {% else %}
+                        Data não informada
+                      {% endif %}
+                      • Valor: R$ {{ '%.2f'|format(e.valor or 0) | replace('.', ',') }}
+                      • Pagamento: {{ (e.pagamento or '-') }}
+                      • Status: {{ (e.status or 'pendente')|capitalize }}
+                    </small>
+                  </div>
+                  <div class="right">
+                    <span class="chip {{ 'chip-ok' if (e.status_pagamento or '')|lower == 'pago' else 'chip-bad' }}">
+                      {{ 'Pago' if (e.status_pagamento or '')|lower == 'pago' else 'Pendente' }}
+                    </span>
+                    <a class="btn btn-ghost btn-mini"
+                       href="{{ url_for('cliente_comprovante', entrega_id=e.id) }}"
+                       target="_blank" rel="noopener">
+                      Comprovante
+                    </a>
+                  </div>
+                </div>
+              {% else %}
+                <div class="note" style="margin-top:10px">
+                  Você ainda não tem entregas registradas no sistema.
+                </div>
+              {% endfor %}
             </div>
           </section>
 
@@ -465,43 +582,65 @@
           <section id="tab-credito" class="hide">
             <div class="statusbar">
               <div class="kv">
-                <small>RECARGA RÁPIDA</small>
-                <strong>Escolha um valor</strong>
+                <small>PIX PARA RECARGA</small>
+                <strong>Copie a chave</strong>
               </div>
               <div class="kv" style="text-align:right;">
-                <small>MÉTODO</small>
-                <strong id="metodoTxt">Pix</strong>
+                <small>CHAVE</small>
+                <strong class="mono" id="pixChaveTxt">{{ pix_chave or '—' }}</strong>
               </div>
             </div>
 
             <div class="hr"></div>
 
             <div class="row">
-              <div class="field">
-                <label for="valorRecarga">Valor (R$)</label>
-                <input class="input" id="valorRecarga" inputmode="decimal" placeholder="Ex.: 30,00">
-              </div>
-              <div class="field">
-                <label for="metodoRecarga">Método</label>
-                <select class="select" id="metodoRecarga">
-                  <option value="pix">Pix</option>
-                  <option value="cartao">Cartão</option>
-                </select>
-              </div>
+              <button class="btn btn-ghost" id="btnCopiarPix" type="button">Copiar chave Pix</button>
+              <button class="btn btn-primary" id="btnAbrirPedidoCredito" type="button">Pedir usando crédito</button>
             </div>
 
-            <div class="row" style="margin-bottom:10px;">
-              <button class="btn btn-ghost recargaPreset" data-v="20" type="button">R$ 20</button>
-              <button class="btn btn-ghost recargaPreset" data-v="30" type="button">R$ 30</button>
-              <button class="btn btn-ghost recargaPreset" data-v="50" type="button">R$ 50</button>
+            <div class="note" style="margin-top:12px">
+              Recargas por Pix precisam ser aprovadas pela supervisão no painel administrativo antes de entrar como saldo.
+              Se você já pagou, envie o comprovante do Pix para a supervisão confirmar.
             </div>
-
-            <button class="btn btn-primary" id="btnGerarRecarga" type="button">Gerar cobrança</button>
 
             <div class="hr"></div>
 
-            <div class="note" id="boxCobranca">
-              Ao gerar cobrança, o sistema cria uma solicitação de recarga. No Pix, será exibida a chave e referência; no Cartão, você integra o seu provedor.
+            <div class="kv">
+              <small>SEU EXTRATO (ÚLTIMOS MOVIMENTOS)</small>
+              <strong>Créditos e débitos</strong>
+            </div>
+
+            <div class="list" id="listaMovs">
+              {% for m in movs[:12] %}
+                <div class="item">
+                  <div class="ic">{{ 'C' if m.tipo == 'credito' else 'D' }}</div>
+                  <div class="tx">
+                    <strong>{{ (m.referencia or '-') }}</strong>
+                    <small>
+                      {% if m.criado_em %}
+                        {{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}
+                      {% else %}
+                        —
+                      {% endif %}
+                      • Tipo: {{ 'Crédito' if m.tipo=='credito' else 'Débito' }}
+                      {% if m.entrega_id %} • Entrega #{{ m.entrega_id }}{% endif %}
+                    </small>
+                  </div>
+                  <div class="right">
+                    <span class="chip {{ 'chip-ok' if m.tipo=='credito' else 'chip-bad' }}">
+                      {{ 'R$ ' ~ ('%.2f'|format(m.valor or 0) | replace('.', ',')) }}
+                    </span>
+                  </div>
+                </div>
+              {% else %}
+                <div class="note" style="margin-top:10px">
+                  Ainda não há movimentações de crédito para sua conta.
+                </div>
+              {% endfor %}
+            </div>
+
+            <div class="note" style="margin-top:10px">
+              Precisa do histórico completo? Solicite à supervisão.
             </div>
           </section>
         </div>
@@ -517,19 +656,19 @@
             <div class="sheet-h">
               <div class="left">
                 <strong id="sheetTitle">Mapa de rastreio</strong>
-                <small id="sheetSub">Coleta, entrega e motoboy em tempo real.</small>
+                <small id="sheetSub">Coleta, entrega e motoboy (quando houver posição).</small>
               </div>
               <span class="chip" id="chipETA">ETA —</span>
             </div>
             <div class="sheet-b">
               <div>
                 <div class="kv">
-                  <small>PEDIDO</small>
+                  <small>ENTREGA</small>
                   <strong id="pedidoRef">—</strong>
                 </div>
                 <div style="height:8px"></div>
                 <div class="kv">
-                  <small>ENDEREÇOS</small>
+                  <small>ROTA</small>
                   <strong id="addrMini">—</strong>
                 </div>
               </div>
@@ -557,7 +696,7 @@
       </button>
       <button class="navbtn" data-tab="credito" type="button">
         <div>Crédito</div>
-        <div class="mini">recarga</div>
+        <div class="mini">extrato</div>
       </button>
     </div>
   </div>
@@ -570,22 +709,17 @@
 
   <script>
   /***********************
-   * ENDPOINTS REAIS (Flask)
+   * ENDPOINTS REAIS (Flask) - AJUSTADOS PARA SUAS ROTAS
    ***********************/
   const API = {
-    me:          "{{ url_for('api_cliente_cotar_entrega') }}",
-    saldo:       "{{ url_for('api_credito_saldo') }}",
-    recarga:     "{{ url_for('api_credito_recarga') }}",
-    pedido:      "{{ url_for('api_pedidos_criar') }}",
-    pedidoAtivo: "{{ url_for('api_pedidos_ativo') }}",
-
-    // Bases com placeholder "0"
-    _cancelBase: "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}",
-    _trackBase:  "{{ url_for('api_pedidos_tracking', pedido_id=0) }}",
-
-    // Troca apenas o ÚLTIMO "0" do path (mais seguro)
-    cancelar: (id) => API._cancelBase.replace(/0$/, String(id)),
+    cotar:     "{{ url_for('api_cliente_cotar_entrega') }}",
+    solicitar: "{{ url_for('api_cliente_solicitar_entrega') }}",
+    // API de rastreio usa o ID da entrega como <codigo>
+    _trackBase: "{{ url_for('api_rastreamento', codigo=0) }}",
     tracking: (id) => API._trackBase.replace(/0$/, String(id)),
+    // Base de comprovante (para abrir em nova aba)
+    _compBase: "{{ url_for('cliente_comprovante', entrega_id=0) }}",
+    comprovante: (id) => API._compBase.replace(/0$/, String(id)),
   };
 
   const POLL_MS = 3000;
@@ -610,27 +744,32 @@
         credentials: "same-origin",
         ...opts,
       });
-      if (!r.ok) throw new Error("HTTP " + r.status);
-      return await r.json();
+      const ct = (r.headers.get("content-type") || "").toLowerCase();
+      const isJSON = ct.includes("application/json");
+      if (!r.ok) {
+        if (isJSON) return await r.json();
+        throw new Error("HTTP " + r.status);
+      }
+      return isJSON ? await r.json() : null;
     } catch (e) {
       return null;
     }
   }
 
-  function parseBRL(v) {
-    const s = (v || "").trim().replace(/\./g, "").replace(",", ".");
-    const n = Number(s);
-    return Number.isFinite(n) ? n : 0;
+  function linhasParaLista(txt) {
+    return (txt || "")
+      .split("\n")
+      .map(s => s.trim())
+      .filter(Boolean);
   }
 
   /***********************
    * STATE
    ***********************/
   const state = {
-    cliente: { nome: "Cliente" },
-    saldo: 0,
-    pedido: null, // {id, origemTxt, destinoTxt, valor, status, eta_min, motoboyNome}
-    lastTracking: null,
+    saldo: Number({{ (cli.saldo_atual or 0) | float }}),
+    entregaAtivaId: null,
+    tracking: null,
   };
 
   /***********************
@@ -712,6 +851,7 @@
   function setSaldo(n) {
     state.saldo = Number(n || 0);
     $("saldoVal").textContent = moneyBR(state.saldo);
+    $("saldoMini").textContent = moneyBR(state.saldo);
     $("saldoHint").textContent =
       state.saldo > 0 ? "Use seu crédito para pagar pedidos com mais rapidez." : "Saldo zerado. Faça uma recarga para pedir com crédito.";
   }
@@ -722,182 +862,295 @@
     $("chipETA").textContent = eta != null ? `ETA ${eta} min` : "ETA —";
   }
 
-  function setBadge() {
+  function setBadgeStatus(txt, ok=false) {
     const dot = $("badgeDot");
-    const txt = $("badgeTxt");
-
-    if (!state.pedido) {
-      dot.style.background = "var(--warn)";
-      dot.style.boxShadow = "0 0 0 6px rgba(245,158,11,.14)";
-      txt.textContent = "Sem pedido ativo";
-      $("statusTxt").textContent = "Sem pedido ativo";
-      $("motoTxt").textContent = "—";
-      $("pedidoRef").textContent = "—";
-      $("addrMini").textContent = "—";
-      setEstimativa(null, null);
-      return;
-    }
-
-    const st = state.pedido.status || "Em andamento";
-    txt.textContent = st;
-    const ok = /entreg/i.test(st);
+    const t = $("badgeTxt");
     dot.style.background = ok ? "var(--ok)" : "var(--warn)";
     dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
-
-    $("statusTxt").textContent = st;
-    $("motoTxt").textContent = state.pedido.motoboyNome || "—";
-    $("pedidoRef").textContent = state.pedido.id || "—";
-    $("addrMini").textContent = `${state.pedido.origemTxt || "—"} → ${state.pedido.destinoTxt || "—"}`;
-    setEstimativa(state.pedido.valor, state.pedido.eta_min);
+    t.textContent = txt || "—";
   }
 
-  function renderTimeline() {
+  function setRastreioHeader({ status, cooperado, id }) {
+    $("statusTxt").textContent = status || "—";
+    $("motoTxt").textContent = cooperado || "—";
+    $("pedidoRef").textContent = id ? String(id) : "—";
+  }
+
+  function renderTimelineFromTracking(tr) {
     const wrap = $("timeline");
     wrap.innerHTML = "";
 
-    if (!state.pedido) {
+    if (!tr || !tr.ok) {
       wrap.innerHTML = `
         <div class="item">
           <div class="ic">1</div>
           <div class="tx">
-            <strong>Crie um pedido</strong>
-            <small>Quando houver pedido ativo, o rastreio abre com status e ETA.</small>
+            <strong>Sem rastreio ativo</strong>
+            <small>Crie uma entrega ou digite um código para rastrear.</small>
           </div>
           <div class="right"><span class="chip">Aguardando</span></div>
-        </div>
-      `;
+        </div>`;
       return;
     }
 
-    const steps = [
-      { k: "Criado", d: "Pedido criado e aguardando atribuição." },
-      { k: "Atribuído", d: "Motoboy atribuído e a caminho da coleta." },
-      { k: "Coleta", d: "Motoboy no local de coleta." },
-      { k: "Em rota", d: "Em rota para entrega." },
-      { k: "Entregue", d: "Entrega concluída." },
+    const status = String(tr.status || "pendente");
+    const stpg = String(tr.status_pagamento || "pendente").toLowerCase();
+    const pago = stpg === "pago";
+
+    const info = [
+      { k: "Status", v: status },
+      { k: "Pagamento", v: pago ? "Pago" : "Pendente" },
+      { k: "Forma", v: tr.pagamento || "—" },
+      { k: "Valor", v: moneyBR(tr.valor || 0) },
     ];
 
-    const status = (state.pedido.status || "Criado").toLowerCase();
-    const idx =
-      status.includes("entreg") ? 4 :
-      status.includes("rota") || status.includes("andamento") ? 3 :
-      status.includes("colet") ? 2 :
-      status.includes("atribu") ? 1 : 0;
-
-    steps.forEach((s, i) => {
-      const done = i < idx;
-      const cur = i === idx;
-      const chip = done ? "Concluído" : cur ? "Agora" : "Pendente";
-      const dot = done ? "var(--ok)" : cur ? "var(--warn)" : "rgba(102,112,133,.28)";
-
-      wrap.insertAdjacentHTML(
-        "beforeend",
-        `
+    info.forEach((it, i) => {
+      wrap.insertAdjacentHTML("beforeend", `
         <div class="item">
-          <div class="ic" style="background: radial-gradient(16px 16px at 30% 30%, ${dot}55, ${dot}22);">${i + 1}</div>
+          <div class="ic">${i+1}</div>
           <div class="tx">
-            <strong>${s.k}</strong>
-            <small>${s.d}</small>
+            <strong>${it.k}</strong>
+            <small>${it.v}</small>
           </div>
-          <div class="right"><span class="chip">${chip}</span></div>
+          <div class="right">
+            <span class="chip ${it.k === "Pagamento" ? (pago ? "chip-ok" : "chip-bad") : ""}">${it.k === "Pagamento" ? it.v : "Info"}</span>
+          </div>
         </div>
-      `
-      );
+      `);
     });
+
+    // Eventos (se vierem)
+    if (Array.isArray(tr.eventos) && tr.eventos.length) {
+      tr.eventos.slice(0, 8).forEach((ev, idx) => {
+        const when = ev.quando ? new Date(ev.quando) : null;
+        const whenTxt = when ? when.toLocaleString("pt-BR") : "Horário não registrado";
+        wrap.insertAdjacentHTML("beforeend", `
+          <div class="item">
+            <div class="ic">${idx + 5}</div>
+            <div class="tx">
+              <strong>${ev.titulo || "Evento"}</strong>
+              <small>${ev.descricao || ""}<br><span class="muted">${whenTxt}</span></small>
+            </div>
+            <div class="right"><span class="chip">Rastreio</span></div>
+          </div>
+        `);
+      });
+    }
   }
 
   /***********************
-   * API: carregamento e polling
+   * COTAÇÃO (usa /api/cliente/cotar-entrega)
    ***********************/
-  function normalizePedido(p) {
-    return {
-      id: String(p.id),
-      origemTxt: p.origem_txt || "",
-      destinoTxt: p.destino_txt || "",
-      valor: Number(p.valor || 0),
-      status: p.status || "Criado",
-      eta_min: p.eta_min != null ? Number(p.eta_min) : null,
-      motoboyNome: p.motoboy_nome || "",
+  let lastQuote = null;
+
+  async function cotarSePossivel() {
+    const bo = $("bairroColeta").value.trim();
+    const bd = $("bairroEntrega").value.trim();
+    const endO = $("endColeta").value.trim();
+    const endD = $("endEntrega").value.trim();
+
+    if (!bo || !bd) {
+      lastQuote = null;
+      $("meiosTxt").textContent = "—";
+      setEstimativa(null, null);
+      setBadgeStatus("Pronto");
+      return;
+    }
+
+    setBadgeStatus("Cotando…");
+
+    const payload = {
+      coleta:  { bairro: bo, endereco: endO || null },
+      entrega: { bairro: bd, endereco: endD || null },
     };
-  }
 
-  async function loadInitial() {
-    const me = await safeJSON(API.me);
-    const saldo = await safeJSON(API.saldo);
-    const ativo = await safeJSON(API.pedidoAtivo);
+    const r = await safeJSON(API.cotar, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
 
-    // Online se pelo menos 1 endpoint respondeu ok
-    const ok = !!(me?.ok || saldo?.ok || ativo?.ok);
-    setOnline(ok);
-
-    if (me?.ok) {
-      state.cliente = me.cliente;
-      $("welcomeSub").textContent = `Olá, ${state.cliente.nome || "Cliente"}.`;
+    if (!r || !r.ok) {
+      lastQuote = null;
+      $("meiosTxt").textContent = (r && r.erro) ? r.erro : "Não foi possível cotar.";
+      setEstimativa(null, null);
+      setOnline(false);
+      setBadgeStatus("Offline");
+      return;
     }
 
-    if (saldo?.ok) setSaldo(saldo.saldo);
+    setOnline(true);
+    lastQuote = r;
 
-    if (ativo?.ok && ativo.pedido) {
-      state.pedido = normalizePedido(ativo.pedido);
-      setBadge();
-      renderTimeline();
-      await applyTrackingFromAPI(state.pedido.id);
+    const meios = Array.isArray(r.meios_pagamento) ? r.meios_pagamento : [];
+    $("meiosTxt").textContent = meios.length ? meios.join(" • ") : "—";
+    setEstimativa(r.preco, null);
+
+    // Habilita/desabilita "CREDITO" conforme pode_usar_credito
+    const sel = $("pagamento");
+    const optCredito = Array.from(sel.options).find(o => o.value === "CREDITO");
+    if (optCredito) {
+      optCredito.disabled = !r.pode_usar_credito;
+      if (!r.pode_usar_credito && sel.value === "CREDITO") sel.value = "PIX";
+    }
+
+    // Atualiza saldo pelo retorno (ele devolve cliente_saldo_atual)
+    if (r.cliente_saldo_atual != null) setSaldo(r.cliente_saldo_atual);
+
+    setBadgeStatus("Cotado", true);
+  }
+
+  /***********************
+   * SOLICITAR ENTREGA (usa /api/cliente/solicitar-entrega)
+   ***********************/
+  function currentParadas() {
+    return linhasParaLista($("paradas").value);
+  }
+
+  async function solicitarEntrega() {
+    const bo = $("bairroColeta").value.trim();
+    const bd = $("bairroEntrega").value.trim();
+    const endO = $("endColeta").value.trim();
+    const endD = $("endEntrega").value.trim();
+    const ref = $("ref").value.trim();
+    const meio = $("pagamento").value; // CREDITO | PIX | DINHEIRO
+
+    if (!bo || !bd) {
+      alert("Selecione o bairro da coleta e o bairro da entrega.");
+      return;
+    }
+    if (!endO || !endD) {
+      alert("Informe os endereços de coleta e entrega.");
+      return;
+    }
+
+    const payload = {
+      coleta: {
+        bairro: bo,
+        endereco: endO,
+        referencia: ref || null,
+        lat: window.__ORIG_LAT ?? null,
+        lng: window.__ORIG_LNG ?? null,
+      },
+      entrega: {
+        bairro: bd,
+        endereco: endD,
+        referencia: ref || null,
+        lat: null,
+        lng: null,
+      },
+      paradas: currentParadas(),
+      meio_pagamento: meio,
+      apenas_simular: false
+    };
+
+    setBadgeStatus("Enviando…");
+    const r = await safeJSON(API.solicitar, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify(payload),
+    });
+
+    if (!r || !r.ok) {
+      const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Não foi possível solicitar a entrega.";
+      alert(msg);
+      setOnline(false);
+      setBadgeStatus("Erro");
+      return;
+    }
+
+    setOnline(true);
+    setBadgeStatus("Criado", true);
+
+    // A rota retorna: entrega_id, comprovante_url, status_pagamento etc.
+    state.entregaAtivaId = r.entrega_id ? String(r.entrega_id) : null;
+
+    // Atualiza o mini painel
+    $("pedidoRef").textContent = state.entregaAtivaId || "—";
+    $("addrMini").textContent = `${endO} → ${endD}`;
+    setEstimativa(r.preco, null);
+
+    // Vai para rastreio
+    setTab("rastreio");
+
+    // Já abre tracking
+    if (state.entregaAtivaId) {
+      $("codigoManual").value = state.entregaAtivaId;
+      await carregarTracking(state.entregaAtivaId);
       startPolling();
-    } else {
-      state.pedido = null;
-      setBadge();
-      renderTimeline();
-      // garante que não fica polling antigo rodando
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
     }
 
-    $("badgeTxt").textContent = state.pedido ? state.pedido.status || "Em andamento" : "Sem pedido ativo";
+    // Se tem comprovante_url, habilita botão
+    if (r.comprovante_url) {
+      $("btnAbrirComprovante").dataset.url = r.comprovante_url;
+    } else if (state.entregaAtivaId) {
+      $("btnAbrirComprovante").dataset.url = API.comprovante(state.entregaAtivaId);
+    }
   }
 
-  async function applyTrackingFromAPI(pedidoId) {
-    const data = await safeJSON(API.tracking(pedidoId));
-    if (!data || !data.ok) return;
+  /***********************
+   * TRACKING (usa /api/rastreamento/<id>)
+   ***********************/
+  let pollTimer = null;
 
-    if (state.pedido) {
-      state.pedido.status = data.status || state.pedido.status;
-      state.pedido.eta_min = data.eta_min != null ? data.eta_min : state.pedido.eta_min;
-      state.pedido.motoboyNome = data.motoboy?.nome || state.pedido.motoboyNome;
+  async function carregarTracking(id) {
+    if (!id) return;
 
-      if (data.origem?.txt) state.pedido.origemTxt = data.origem.txt;
-      if (data.destino?.txt) state.pedido.destinoTxt = data.destino.txt;
-      if (data.valor != null) state.pedido.valor = Number(data.valor);
+    const tr = await safeJSON(API.tracking(id));
+    if (!tr || !tr.ok) {
+      state.tracking = null;
+      setOnline(false);
+      setBadgeStatus("Offline");
+      setRastreioHeader({ status: "—", cooperado: "—", id });
+      renderTimelineFromTracking(null);
+      return;
     }
 
-    setBadge();
-    renderTimeline();
+    setOnline(true);
+    state.tracking = tr;
 
-    const orig = data.origem?.lat != null && data.origem?.lng != null ? [data.origem.lat, data.origem.lng] : null;
-    const dest = data.destino?.lat != null && data.destino?.lng != null ? [data.destino.lat, data.destino.lng] : null;
-    const moto = data.motoboy?.lat != null && data.motoboy?.lng != null ? [data.motoboy.lat, data.motoboy.lng] : null;
+    const coop = tr.cooperado || "—";
+    setRastreioHeader({ status: (tr.status || "pendente"), cooperado: coop, id: tr.entrega_id || id });
+
+    // Preenche ETA se vier (nem sempre existe no seu endpoint)
+    const eta = (tr.eta_min != null) ? Number(tr.eta_min) : null;
+    setEstimativa(tr.valor, eta);
+
+    // Tenta extrair coords do JSON extra (origem_extra / destino_extra)
+    const ox = tr.origem_extra || null;
+    const dx = tr.destino_extra || null;
+
+    const orig = (ox && ox.lat != null && ox.lng != null) ? [ox.lat, ox.lng] : null;
+    const dest = (dx && dx.lat != null && dx.lng != null) ? [dx.lat, dx.lng] : null;
+
+    // cooperado coords (se você salvar em algum lugar, adapte aqui)
+    // Neste endpoint atual você não retornou lat/lng do motoboy, então:
+    // - se no futuro incluir, basta ajustar para setMoto([lat,lng])
+    // Por ora, mantém o marcador.
 
     if (orig && dest) setRoute(orig, dest);
-    if (moto) setMoto(moto);
+
+    // texto da rota
+    const ot = (ox && (ox.endereco || ox.bairro)) ? `${ox.endereco || ""}${ox.bairro ? " • " + ox.bairro : ""}`.trim() : "";
+    const dt = (dx && (dx.endereco || dx.bairro)) ? `${dx.endereco || ""}${dx.bairro ? " • " + dx.bairro : ""}`.trim() : "";
+    if (ot || dt) $("addrMini").textContent = `${ot || "—"} → ${dt || "—"}`;
+
+    // botão comprovante
+    if (id) $("btnAbrirComprovante").dataset.url = API.comprovante(id);
+
+    renderTimelineFromTracking(tr);
+    setBadgeStatus(tr.status ? String(tr.status) : "Em andamento", true);
   }
 
-  let pollTimer = null;
   function startPolling() {
     if (pollTimer) clearInterval(pollTimer);
+    const id = state.entregaAtivaId || $("codigoManual").value.trim();
+    if (!id) return;
 
     pollTimer = setInterval(async () => {
-      if (!state.pedido) {
-        const ativo = await safeJSON(API.pedidoAtivo);
-        if (ativo?.ok && ativo.pedido) {
-          state.pedido = normalizePedido(ativo.pedido);
-          setBadge();
-          renderTimeline();
-        } else {
-          return;
-        }
-      }
-      await applyTrackingFromAPI(state.pedido.id);
+      const cur = state.entregaAtivaId || $("codigoManual").value.trim();
+      if (!cur) return;
+      await carregarTracking(cur);
     }, POLL_MS);
   }
 
@@ -913,11 +1166,21 @@
     $("btnAbrirRastreio").addEventListener("click", () => setTab("rastreio"));
     $("btnNovoPedido").addEventListener("click", () => {
       setTab("pedido");
-      $("origem").focus();
+      $("bairroColeta").focus();
     });
+
+    $("btnAbrirPedidoCredito").addEventListener("click", () => setTab("pedido"));
   }
 
   function wirePedido() {
+    // cotação automática quando muda bairro
+    $("bairroColeta").addEventListener("change", cotarSePossivel);
+    $("bairroEntrega").addEventListener("change", cotarSePossivel);
+
+    // cotar também quando sair do campo de endereço (opcional)
+    $("endColeta").addEventListener("blur", cotarSePossivel);
+    $("endEntrega").addEventListener("blur", cotarSePossivel);
+
     $("btnUsarLocal").addEventListener("click", async () => {
       if (!navigator.geolocation) {
         alert("Geolocalização não suportada neste navegador.");
@@ -928,59 +1191,20 @@
         (pos) => {
           const lat = pos.coords.latitude;
           const lng = pos.coords.longitude;
-          $("origem").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
           window.__ORIG_LAT = lat;
           window.__ORIG_LNG = lng;
+          // só ajuda o usuário com um texto, sem quebrar o endereço
+          if (!$("endColeta").value.trim()) {
+            $("endColeta").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+          }
+          alert("Localização registrada para a coleta.");
         },
-        () => {
-          alert("Não foi possível obter sua localização. Verifique permissões.");
-        },
+        () => alert("Não foi possível obter sua localização. Verifique permissões."),
         { enableHighAccuracy: true, timeout: 8000 }
       );
     });
 
-    $("btnCriarPedido").addEventListener("click", async () => {
-      const origemTxt = $("origem").value.trim();
-      const destinoTxt = $("destino").value.trim();
-      const tipo = $("tipo").value;
-      const pagamento = $("pagamento").value;
-      const obs = $("obs").value.trim();
-
-      if (!origemTxt || !destinoTxt) {
-        alert("Informe os endereços de coleta e entrega.");
-        return;
-      }
-
-      const payload = {
-        origem_txt: origemTxt,
-        destino_txt: destinoTxt,
-        tipo,
-        pagamento,
-        obs,
-        origem_lat: window.__ORIG_LAT ?? null,
-        origem_lng: window.__ORIG_LNG ?? null,
-      };
-
-      const res = await safeJSON(API.pedido, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!res || !res.ok) {
-        alert(res?.msg || "Não foi possível criar o pedido.");
-        return;
-      }
-
-      setOnline(true);
-      state.pedido = normalizePedido(res.pedido);
-      setBadge();
-      renderTimeline();
-      setTab("rastreio");
-
-      await applyTrackingFromAPI(state.pedido.id);
-      startPolling();
-    });
+    $("btnCriarPedido").addEventListener("click", solicitarEntrega);
   }
 
   function wireRastreio() {
@@ -991,84 +1215,52 @@
       map.fitBounds(b, { animate: true, duration: 0.6 });
     });
 
-    $("btnCancelar").addEventListener("click", async () => {
-      if (!state.pedido) {
-        alert("Não há pedido ativo para cancelar.");
+    $("btnAbrirComprovante").addEventListener("click", () => {
+      const url = $("btnAbrirComprovante").dataset.url;
+      if (!url) {
+        const id = state.entregaAtivaId || $("codigoManual").value.trim();
+        if (!id) {
+          alert("Informe um código (ID) da entrega para abrir o comprovante.");
+          return;
+        }
+        window.open(API.comprovante(id), "_blank", "noopener");
         return;
       }
-      if (!confirm("Deseja cancelar o pedido ativo?")) return;
+      window.open(url, "_blank", "noopener");
+    });
 
-      const r = await safeJSON(API.cancelar(state.pedido.id), { method: "POST" });
-      if (!r || !r.ok) {
-        alert(r?.msg || "Não foi possível cancelar.");
+    $("btnRastrearCodigo").addEventListener("click", async () => {
+      const id = $("codigoManual").value.trim();
+      if (!id || !/^\d+$/.test(id)) {
+        alert("Informe um código numérico válido (ID da entrega).");
         return;
       }
-
-      state.pedido = null;
-      setBadge();
-      renderTimeline();
-      setTab("pedido");
-
-      if (pollTimer) {
-        clearInterval(pollTimer);
-        pollTimer = null;
-      }
+      state.entregaAtivaId = id;
+      await carregarTracking(id);
+      startPolling();
     });
   }
 
   function wireCredito() {
-    $("metodoRecarga").addEventListener("change", () => {
-      $("metodoTxt").textContent = $("metodoRecarga").value === "pix" ? "Pix" : "Cartão";
-    });
-
-    document.querySelectorAll(".recargaPreset").forEach((b) => {
-      b.addEventListener("click", () => ($("valorRecarga").value = (b.dataset.v || "").replace(".", ",")));
-    });
-
-    $("btnGerarRecarga").addEventListener("click", async () => {
-      const valor = parseBRL($("valorRecarga").value);
-      const metodo = $("metodoRecarga").value;
-
-      if (!valor || valor <= 0) {
-        alert("Informe um valor válido para recarga.");
+    $("btnCopiarPix").addEventListener("click", async () => {
+      const chave = String($("pixChaveTxt").textContent || "").trim();
+      if (!chave || chave === "—") {
+        alert("Chave Pix não configurada no sistema.");
         return;
       }
-
-      const r = await safeJSON(API.recarga, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valor, metodo }),
-      });
-
-      if (!r || !r.ok) {
-        alert(r?.msg || "Não foi possível gerar a recarga.");
-        return;
+      try {
+        await navigator.clipboard.writeText(chave);
+        alert("Chave Pix copiada.");
+      } catch (e) {
+        // fallback
+        const tmp = document.createElement("input");
+        tmp.value = chave;
+        document.body.appendChild(tmp);
+        tmp.select();
+        document.execCommand("copy");
+        tmp.remove();
+        alert("Chave Pix copiada.");
       }
-
-      setOnline(true);
-
-      if (metodo === "pix") {
-        $("boxCobranca").innerHTML = `
-          <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-          Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
-          <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
-          <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
-          <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || "RECARGA-" + r.recarga_id}</span><br>
-          <div style="margin-top:10px">Após o pagamento, a recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
-        `;
-      } else {
-        $("boxCobranca").innerHTML = `
-          <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-          Método: <strong>Cartão</strong>.<br>
-          <div style="margin-top:10px">
-            Integração necessária: seu backend deve retornar um <strong>checkout_url</strong> do provedor e você redireciona o cliente.
-          </div>
-          ${r.checkout_url ? `<div style="margin-top:10px"><a class="btn btn-primary" style="height:44px" href="${r.checkout_url}">Pagar agora</a></div>` : ""}
-        `;
-      }
-
-      const s = await safeJSON(API.saldo);
-      if (s?.ok) setSaldo(s.saldo);
     });
   }
 
@@ -1080,8 +1272,13 @@
   wirePedido();
   wireRastreio();
   wireCredito();
-  loadInitial();
-</script>
+
+  // status inicial
+  setSaldo(state.saldo);
+  setOnline(navigator.onLine);
+
+  // se o usuário voltar aqui e quiser rastrear algo (opcional)
+  // não força chamada automática para não fazer requisições desnecessárias.
+  </script>
 </body>
 </html>
-
