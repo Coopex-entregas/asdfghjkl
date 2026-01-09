@@ -1,17 +1,8 @@
-<!-- templates/meu_credito.html (CORRIGIDO / COMPATÍVEL COM SUAS ROTAS ATUAIS)
-  Compatível com as rotas que você mostrou:
-   - GET  /meu-credito  (render_template com cli, movs, entregas, bairros, pix_chave, to_brasilia)
-   - POST /api/cliente/cotar-entrega
-   - POST /api/cliente/solicitar-entrega
-   - GET  /cliente/comprovante/<entrega_id>
-   - GET  /api/rastreamento/<codigo>   (usa o ID da entrega)
-  Mantém mapa Leaflet/OSM e adiciona "cliente tirar o próprio comprovante".
--->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
   <title>Meu Crédito — Cliente</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -29,25 +20,25 @@
     :root{
       --royal:#003399;
       --royal-2:#255BFF;
-      --royal-3:#0B2B7A;
 
-      --bg:#F4F7FF;
-      --card:#FFFFFF;
       --text:#0B1020;
       --muted:#667085;
-
       --line:#D6E2FF;
+
       --ok:#12B981;
       --warn:#F59E0B;
       --bad:#EF4444;
 
-      --shadow: 0 16px 40px rgba(10, 25, 80, .10);
-      --shadow2: 0 10px 28px rgba(10, 25, 80, .08);
-      --radius: 18px;
-      --radius2: 26px;
+      --shadow: 0 20px 55px rgba(10, 25, 80, .16);
+      --shadow2: 0 10px 28px rgba(10, 25, 80, .12);
 
+      --radius2: 26px;
       --tap: 52px;
-      --max: 1180px;
+
+      --safeTop: env(safe-area-inset-top, 0px);
+      --safeBottom: env(safe-area-inset-bottom, 0px);
+
+      --sheetCollapsed: 250px; /* altura quando fechado (mobile) */
     }
 
     *{ box-sizing:border-box; }
@@ -55,151 +46,214 @@
     body{
       margin:0;
       font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background: radial-gradient(1000px 520px at 10% -10%, rgba(37, 91, 255, .16), transparent 60%),
-                  radial-gradient(900px 560px at 95% 0%, rgba(0, 51, 153, .14), transparent 55%),
-                  var(--bg);
       color:var(--text);
+      background:#0b1020;
+      overflow:hidden; /* estilo app */
     }
 
     a{ color:inherit; text-decoration:none; }
     button, input, select, textarea{ font-family:inherit; }
-    .wrap{
-      max-width:var(--max);
-      margin:0 auto;
-      padding:18px 16px 92px;
+
+    /* =========================
+       MAPA FULLSCREEN (uber style)
+       ========================= */
+    .map-surface{
+      position:fixed;
+      inset:0;
+      background:#0b1020;
+      z-index:1;
+    }
+    #map{ width:100%; height:100%; }
+
+    /* Leaflet UI */
+    .leaflet-control-zoom a{
+      border-radius:14px !important;
+      border:1px solid rgba(214,226,255,.9) !important;
+      box-shadow: var(--shadow2) !important;
+      background: rgba(255,255,255,.92) !important;
+      color: var(--royal) !important;
+      backdrop-filter: blur(10px);
+    }
+    .leaflet-control-attribution{
+      background: rgba(255,255,255,.65) !important;
+      backdrop-filter: blur(10px);
+      border-radius:12px;
+      margin:0 10px 10px 0;
+      padding:6px 8px;
     }
 
+    /* =========================
+       TOP BAR (uber style)
+       ========================= */
     .topbar{
-      position:sticky; top:0; z-index:20;
-      background: linear-gradient(180deg, rgba(244,247,255,.92), rgba(244,247,255,.68));
-      backdrop-filter: blur(10px);
-      border-bottom:1px solid rgba(214,226,255,.7);
-    }
-    .topbar-inner{
-      max-width:var(--max);
-      margin:0 auto;
-      padding:14px 16px;
+      position:fixed;
+      left:0; right:0;
+      top:0;
+      padding: calc(12px + var(--safeTop)) 12px 10px;
+      z-index:60;
       display:flex;
-      gap:12px;
       align-items:center;
       justify-content:space-between;
+      gap:10px;
+      pointer-events:none;
     }
-    .brand{ display:flex; flex-direction:column; gap:2px; }
-    .brand .title{
-      font-size:15px;font-weight:900;letter-spacing:.2px;color:var(--royal);
-      line-height:1.05;text-transform:uppercase;
-    }
-    .brand .sub{ font-size:12px;color:var(--muted);font-weight:600; }
+    .topbar > *{ pointer-events:auto; }
 
-    .pill{
+    .iconbtn{
+      width:44px;height:44px;border-radius:16px;border:1px solid rgba(214,226,255,.85);
+      background: rgba(255,255,255,.92);
+      box-shadow: var(--shadow2);
+      display:grid;place-items:center;
+      cursor:pointer;
+      backdrop-filter: blur(10px);
+      user-select:none;
+    }
+    .iconbtn:active{ transform: translateY(1px) scale(.99); }
+    .iconbtn svg{ width:18px;height:18px; fill: var(--royal); }
+
+    .chip-pill{
       display:flex;align-items:center;gap:10px;
       padding:10px 12px;border-radius:999px;
-      background:linear-gradient(180deg, #fff, #F7FAFF);
-      border:1px solid var(--line);
-      box-shadow:var(--shadow2);
+      background: rgba(255,255,255,.92);
+      border:1px solid rgba(214,226,255,.85);
+      box-shadow: var(--shadow2);
       min-height:44px;
+      backdrop-filter: blur(10px);
     }
-    .pill .dot{
+    .chip-pill .dot{
       width:10px;height:10px;border-radius:999px;
       background:var(--warn);
       box-shadow:0 0 0 6px rgba(245,158,11,.14);
     }
-    .pill .meta{ display:flex; flex-direction:column; line-height:1.1; }
-    .pill .meta small{ color:var(--muted); font-weight:700; font-size:11px; }
-    .pill .meta strong{ font-size:13px; }
+    .chip-pill .meta{ display:flex; flex-direction:column; line-height:1.1; }
+    .chip-pill .meta small{ color:var(--muted); font-weight:900; font-size:11px; letter-spacing:.2px; }
+    .chip-pill .meta strong{ font-size:13px; font-weight:900; }
 
-    .grid{
-      display:grid;
-      grid-template-columns: 420px 1fr;
-      gap:16px;
-      margin-top:16px;
-    }
-    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
-
-    .card{
-      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.92));
-      border:1px solid rgba(214,226,255,.9);
-      border-radius:var(--radius2);
-      box-shadow:var(--shadow);
+    /* =========================
+       BOTTOM SHEET (uber style)
+       ========================= */
+    .sheet{
+      position:fixed;
+      left:10px; right:10px;
+      bottom: calc(74px + var(--safeBottom));
+      z-index:70;
+      border-radius: 28px;
+      background: rgba(255,255,255,.96);
+      border:1px solid rgba(214,226,255,.85);
+      box-shadow: var(--shadow);
       overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      max-height: calc(100vh - 110px - var(--safeTop) - var(--safeBottom));
+      transform: translateY(calc(100% - var(--sheetCollapsed)));
+      transition: transform .18s ease;
+      backdrop-filter: blur(14px);
     }
-    .card-h{
-      padding:16px 16px 12px;
-      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
-      border-bottom:1px solid rgba(214,226,255,.7);
-      background: radial-gradient(520px 220px at 20% 0%, rgba(37, 91, 255, .12), transparent 60%);
+    .sheet.expanded{
+      transform: translateY(0);
     }
-    .card-h h2{ margin:0;font-size:15px;font-weight:900;letter-spacing:.2px;color:var(--royal); }
-    .card-h p{ margin:6px 0 0;color:var(--muted);font-size:12px;font-weight:600;line-height:1.3; }
-    .card-b{ padding:14px 16px 16px; }
 
-    .balance{
-      display:flex;gap:12px;align-items:stretch;
+    .grab{
+      width:56px;height:6px;border-radius:999px;
+      background: rgba(102,112,133,.25);
+      margin: 10px auto 8px;
     }
-    .balance .big{
-      flex:1;padding:14px;border-radius:18px;
-      border:1px solid rgba(214,226,255,.9);
+
+    .sheet-h{
+      padding: 0 14px 12px;
+    }
+
+    .title-row{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;
+    }
+    .brand{
+      display:flex;flex-direction:column;gap:2px;line-height:1.1;
+    }
+    .brand .title{
+      font-size:14px;font-weight:900;letter-spacing:.2px;color:var(--royal);
+      text-transform:uppercase;
+    }
+    .brand .sub{ font-size:12px;color:var(--muted);font-weight:800; }
+
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;
+      font-size:12px;font-weight:900;letter-spacing:.2px;
+      border:1px solid rgba(214,226,255,.85);
+      background: rgba(255,255,255,.92);
+      color:var(--royal);
+      white-space:nowrap;
+      backdrop-filter: blur(10px);
+    }
+    .badge .b-dot{
+      width:9px;height:9px;border-radius:999px;background:var(--warn);
+      box-shadow:0 0 0 6px rgba(245,158,11,.14);
+    }
+
+    .sheet-b{
+      padding: 0 14px 14px;
+      overflow:auto;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    /* Uber-like address pills */
+    .addr-stack{ display:flex; flex-direction:column; gap:10px; margin-top:12px; }
+    .addr-pill{
+      display:flex; align-items:center; gap:10px;
+      padding: 12px 12px;
+      border-radius: 16px;
+      border:1px solid rgba(214,226,255,.95);
       background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
-      position:relative;overflow:hidden;
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
     }
-    .balance .big:before{
-      content:"";position:absolute;inset:-70px -90px auto auto;width:220px;height:220px;
-      background: radial-gradient(circle at 30% 30%, rgba(37, 91, 255, .35), transparent 60%);
-      transform: rotate(20deg);pointer-events:none;
+    .pin{
+      width:10px;height:10px;border-radius:999px;
+      flex:0 0 auto;
     }
-    .balance .big small{ display:block;color:var(--muted);font-weight:800;font-size:12px;letter-spacing:.2px; }
-    .balance .big .val{ margin-top:8px;font-size:26px;font-weight:900;color:var(--royal);letter-spacing:-.5px; }
-    .balance .big .hint{ margin-top:8px;font-size:12px;color:var(--muted);font-weight:600; }
-    .balance .actions{ display:flex;flex-direction:column;gap:10px;min-width:150px; }
+    .pin.pick{ background:#111827; box-shadow:0 0 0 6px rgba(17,24,39,.10); }
+    .pin.drop{ background:var(--royal-2); box-shadow:0 0 0 6px rgba(37,91,255,.12); }
+
+    .addr-pill input{
+      border:0;
+      outline:none;
+      background:transparent;
+      width:100%;
+      font-weight:900;
+      color:#111827;
+      font-size:13px;
+    }
+    .addr-pill input::placeholder{ color: rgba(102,112,133,.85); font-weight:800; }
+
+    .mini-actions{
+      display:flex;
+      gap:10px;
+      margin-top:10px;
+    }
 
     .btn{
       height:var(--tap);border:0;border-radius:16px;padding:0 14px;
       font-weight:900;letter-spacing:.2px;cursor:pointer;
       display:flex;align-items:center;justify-content:center;gap:10px;
-      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      transition: transform .12s ease, box-shadow .12s ease;
       user-select:none;-webkit-tap-highlight-color:transparent;
+      width:100%;
     }
     .btn:active{ transform: translateY(1px) scale(.99); }
     .btn-primary{
       color:#fff;background: linear-gradient(180deg, var(--royal-2), var(--royal));
-      box-shadow: 0 16px 30px rgba(0, 51, 153, .24);
+      box-shadow: 0 18px 34px rgba(0, 51, 153, .26);
     }
     .btn-ghost{
       color:var(--royal);background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
-      border:1px solid var(--line);box-shadow: var(--shadow2);
+      border:1px solid rgba(214,226,255,.95);
+      box-shadow: var(--shadow2);
     }
-    .btn-danger{
-      color:#fff;background: linear-gradient(180deg, #FF5A5A, #EF4444);
-      box-shadow: 0 16px 30px rgba(239,68,68,.20);
-    }
-    .btn-mini{
-      height:44px;border-radius:14px;font-weight:900;
-    }
-
-    .row{ display:flex; gap:10px; }
-    .row > *{ flex:1; }
-    @media (max-width: 420px){ .row{ flex-direction:column; } }
-
-    .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:10px; }
-    .field label{ font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.15px; }
-    .input, .select, .textarea{
-      height:46px;border-radius:14px;border:1px solid rgba(214,226,255,.95);
-      background: linear-gradient(180deg, #fff, #F8FBFF);
-      padding:0 12px;outline:none;font-weight:700;color:var(--text);
-      box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
-      transition: box-shadow .12s ease, border-color .12s ease;
-    }
-    .textarea{ height:84px;padding:10px 12px;resize:none;line-height:1.3;font-weight:650; }
-    .input:focus, .select:focus, .textarea:focus{
-      border-color: rgba(37, 91, 255, .55);
-      box-shadow: 0 0 0 5px rgba(37, 91, 255, .12);
-    }
+    .btn-mini{ height:44px;border-radius:14px;font-weight:900; }
 
     .tabs{
       display:flex;gap:8px;padding:10px;
       background: rgba(244,247,255,.75);
       border:1px solid rgba(214,226,255,.85);
-      border-radius: 999px;margin:12px 0 14px;
+      border-radius: 999px;margin:12px 0 12px;
     }
     .tab{
       flex:1;height:44px;border-radius:999px;border:1px solid transparent;
@@ -212,24 +266,43 @@
       box-shadow: var(--shadow2);
     }
 
+    .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:10px; }
+    .field label{ font-size:12px;color:var(--muted);font-weight:900;letter-spacing:.15px; }
+    .input, .select, .textarea{
+      height:46px;border-radius:14px;border:1px solid rgba(214,226,255,.95);
+      background: linear-gradient(180deg, #fff, #F8FBFF);
+      padding:0 12px;outline:none;font-weight:850;color:var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+      transition: box-shadow .12s ease, border-color .12s ease;
+    }
+    .textarea{ height:86px;padding:10px 12px;resize:none;line-height:1.3;font-weight:800; }
+    .input:focus, .select:focus, .textarea:focus{
+      border-color: rgba(37, 91, 255, .55);
+      box-shadow: 0 0 0 5px rgba(37, 91, 255, .12);
+    }
+
+    .row{ display:flex; gap:10px; align-items:flex-end; }
+    .row > *{ flex:1; }
+    @media (max-width: 520px){ .row{ flex-direction:column; } }
+
     .statusbar{
       display:flex;align-items:center;justify-content:space-between;gap:10px;
       padding:12px 14px;border:1px solid rgba(214,226,255,.92);
       background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
       border-radius:18px;
-    }
-    .badge{
-      display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;
-      font-size:12px;font-weight:900;letter-spacing:.2px;
-      border:1px solid rgba(214,226,255,.9);background:#fff;color:var(--royal);white-space:nowrap;
-    }
-    .badge .b-dot{
-      width:9px;height:9px;border-radius:999px;background:var(--warn);
-      box-shadow:0 0 0 6px rgba(245,158,11,.14);
+      margin-top:12px;
     }
     .kv{ display:flex;flex-direction:column;gap:2px;line-height:1.15; }
-    .kv small{ color:var(--muted); font-weight:800; font-size:11px; }
-    .kv strong{ font-size:13px; }
+    .kv small{ color:var(--muted); font-weight:900; font-size:11px; letter-spacing:.2px; }
+    .kv strong{ font-size:13px; font-weight:900; }
+
+    .note{
+      padding:10px 12px;border-radius:16px;border:1px dashed rgba(37, 91, 255, .35);
+      background: rgba(37, 91, 255, .06);
+      color: rgba(11,43,122,.95);
+      font-size:12px;font-weight:800;line-height:1.35;
+      margin-top:10px;
+    }
 
     .list{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
     .item{
@@ -244,9 +317,10 @@
       display:grid;place-items:center;color:var(--royal);font-weight:900;flex:0 0 auto;
     }
     .item .tx{ flex:1; min-width:0; }
-    .item .tx strong{ display:block; font-size:13px; }
-    .item .tx small{ color:var(--muted); font-weight:650; display:block; margin-top:2px; }
+    .item .tx strong{ display:block; font-size:13px; font-weight:900; }
+    .item .tx small{ color:var(--muted); font-weight:850; display:block; margin-top:2px; line-height:1.25; }
     .item .right{ flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; gap:8px; }
+
     .chip{
       display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
       font-size:11px;font-weight:900;border:1px solid rgba(214,226,255,.9);
@@ -255,42 +329,25 @@
     .chip-ok{ border-color: rgba(18,185,129,.35); color:#0b6b4a; background:rgba(18,185,129,.10); }
     .chip-bad{ border-color: rgba(239,68,68,.35); color:#a61b1b; background:rgba(239,68,68,.10); }
 
-    .map-card{ position:relative; min-height: 620px; }
-    #map{ height: 100%; min-height: 620px; width:100%; border-radius: var(--radius2); }
+    .hide{ display:none !important; }
+    .muted{ color:var(--muted); font-weight:850; }
+    .small{ font-size:12px; }
+    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
 
-    .overlay{
-      position:absolute;left:14px;right:14px;bottom:14px;z-index:500;
-      pointer-events:none;
-    }
-    .sheet{
-      pointer-events:auto;border-radius: 24px;border:1px solid rgba(214,226,255,.9);
-      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.92));
-      box-shadow: var(--shadow);overflow:hidden;
-    }
-    .sheet-h{
-      padding:12px 14px 10px;
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
-      border-bottom:1px solid rgba(214,226,255,.65);
-    }
-    .grab{ width:54px;height:6px;border-radius:999px;background: rgba(102,112,133,.25);margin:0 auto 8px; }
-    .sheet-h .left{ display:flex;flex-direction:column;gap:2px;line-height:1.15; }
-    .sheet-h .left strong{ font-size:13px; }
-    .sheet-h .left small{ font-size:11px;color:var(--muted);font-weight:700; }
-    .sheet-b{
-      padding:12px 14px 14px;
-      display:grid;grid-template-columns: 1.1fr .9fr;gap:10px;align-items:center;
-    }
-    @media (max-width: 520px){ .sheet-b{ grid-template-columns: 1fr; } }
-    .sheet-b .cta{ display:flex; gap:10px; }
-
+    /* =========================
+       BOTTOM NAV
+       ========================= */
     .bottom-nav{
-      position:fixed;left:0;right:0;bottom:0;z-index:40;
+      position:fixed;left:0;right:0;bottom:0;z-index:80;
+      padding-bottom: var(--safeBottom);
       background: linear-gradient(180deg, rgba(244,247,255,.62), rgba(244,247,255,.92));
       backdrop-filter: blur(10px);
       border-top:1px solid rgba(214,226,255,.8);
     }
     .bottom-nav .inner{
-      max-width:var(--max);margin:0 auto;display:flex;gap:10px;padding:10px 12px;
+      display:flex;gap:10px;padding:10px 12px;
+      max-width: 720px;
+      margin:0 auto;
     }
     .navbtn{
       flex:1;height:56px;border-radius:18px;border:1px solid transparent;background:transparent;
@@ -302,388 +359,340 @@
       border-color: rgba(214,226,255,.95);
       box-shadow: var(--shadow2);
     }
-    .navbtn .mini{ font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.2px; }
+    .navbtn .mini{ font-size:10px;color:var(--muted);font-weight:900;letter-spacing:.2px; }
 
-    .hide{ display:none !important; }
-    .hr{ height:1px; background:rgba(214,226,255,.9); margin:12px 0; border-radius:999px; }
-    .note{
-      padding:10px 12px;border-radius:16px;border:1px dashed rgba(37, 91, 255, .35);
-      background: rgba(37, 91, 255, .06);
-      color: rgba(11,43,122,.95);
-      font-size:12px;font-weight:650;line-height:1.35;
+    /* Desktop: sheet vira card fixo à direita? (mantém estilo app, mas também abre no PC) */
+    @media (min-width: 981px){
+      body{ overflow:auto; background:#F4F7FF; }
+      .map-surface{
+        position:relative;
+        height: calc(100vh - 24px);
+        margin:12px auto;
+        max-width: 1180px;
+        border-radius: 26px;
+        overflow:hidden;
+        border:1px solid rgba(214,226,255,.85);
+        box-shadow: var(--shadow);
+        background:#0b1020;
+      }
+      .topbar{ position:absolute; }
+      .sheet{
+        left: calc(50% - 590px);
+        width: 420px;
+        right:auto;
+        bottom: calc(12px + var(--safeBottom));
+        transform:none;
+        max-height: calc(100vh - 120px);
+      }
+      .sheet.expanded{ transform:none; }
     }
 
-    .leaflet-control-zoom a{
-      border-radius:14px !important;
-      border:1px solid rgba(214,226,255,.9) !important;
-      box-shadow: var(--shadow2) !important;
-      background: linear-gradient(180deg, #fff, #F7FAFF) !important;
-      color: var(--royal) !important;
-    }
-    .leaflet-container{
-      border:1px solid rgba(214,226,255,.85);
-      box-shadow: var(--shadow);
-    }
-
-    .muted{ color:var(--muted); font-weight:650; }
-    .small{ font-size:12px; }
-    .mono{ font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace; }
   </style>
 </head>
 
 <body>
+
+  <div class="map-surface">
+    <div id="map"></div>
+  </div>
+
+  <!-- TOP BAR -->
   <div class="topbar">
-    <div class="topbar-inner">
-      <div class="brand">
-        <div class="title">Meu Crédito</div>
-        <div class="sub" id="welcomeSub">Olá, {{ cli.nome }}.</div>
-      </div>
+    <button class="iconbtn" id="btnSair" title="Sair">
+      <svg viewBox="0 0 24 24" aria-hidden="true">
+        <path d="M10 17v-2h4v-6h-4V7l-5 5 5 5zm9 4H12v-2h7V5h-7V3h7a2 2 0 0 1 2 2v14a2 2 0 0 1-2 2z"/>
+      </svg>
+    </button>
 
-      <div style="display:flex;gap:10px;align-items:center;">
-        <a class="pill" href="{{ url_for('cliente_logout') }}" title="Sair">
-          <span class="dot" style="background:var(--royal-2);box-shadow:0 0 0 6px rgba(37,91,255,.14)"></span>
-          <div class="meta">
-            <small>CONTA</small>
-            <strong>Sair</strong>
-          </div>
-        </a>
-
-        <div class="pill" title="Status do app">
-          <span class="dot" id="onlineDot"></span>
-          <div class="meta">
-            <small>CONEXÃO</small>
-            <strong id="onlineText">Conectando…</strong>
-          </div>
-        </div>
+    <div class="chip-pill" style="min-width: 210px;">
+      <span class="dot" id="onlineDot"></span>
+      <div class="meta">
+        <small>CONEXÃO</small>
+        <strong id="onlineText">Conectando…</strong>
       </div>
     </div>
   </div>
 
-  <div class="wrap">
-    <div class="grid">
+  <!-- BOTTOM SHEET -->
+  <div class="sheet" id="sheet">
+    <div class="grab" id="grab"></div>
 
-      <!-- COLUNA ESQUERDA -->
-      <div class="card">
-        <div class="card-h">
-          <div>
-            <h2>Sua carteira</h2>
-            <p>Saldo, pedidos, rastreio e comprovantes. O rastreio atualiza quando o motoboy enviar posição.</p>
-          </div>
-          <span class="badge" id="badgePedido">
-            <span class="b-dot" id="badgeDot"></span>
-            <span id="badgeTxt">Pronto</span>
-          </span>
+    <div class="sheet-h">
+      <div class="title-row">
+        <div class="brand">
+          <div class="title">Meu Crédito</div>
+          <div class="sub">Olá, {{ cli.nome }}.</div>
         </div>
 
-        <div class="card-b">
-          <div class="balance">
-            <div class="big">
-              <small>SALDO DISPONÍVEL</small>
-              <div class="val" id="saldoVal">R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}</div>
-              <div class="hint" id="saldoHint">Você pode usar crédito no pagamento se tiver saldo suficiente.</div>
-            </div>
-            <div class="actions">
-              <button class="btn btn-primary" id="btnIrRecarga" type="button">Comprar crédito</button>
-              <button class="btn btn-ghost" id="btnIrPedido" type="button">Fazer pedido</button>
-            </div>
-          </div>
+        <span class="badge" id="badgePedido">
+          <span class="b-dot" id="badgeDot"></span>
+          <span id="badgeTxt">Pronto</span>
+        </span>
+      </div>
 
-          <div class="tabs" role="tablist" aria-label="Seções do cliente">
-            <button class="tab active" data-tab="pedido" type="button">Pedido</button>
-            <button class="tab" data-tab="rastreio" type="button">Rastreio</button>
-            <button class="tab" data-tab="credito" type="button">Crédito</button>
-          </div>
-
-          <!-- TAB: PEDIDO -->
-          <section id="tab-pedido">
-            <div class="statusbar">
-              <div class="kv">
-                <small>ESTIMATIVA</small>
-                <strong id="etaTxt">—</strong>
-              </div>
-              <div class="kv" style="text-align:right;">
-                <small>VALOR</small>
-                <strong id="precoTxt">—</strong>
-              </div>
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="row">
-              <div class="field">
-                <label for="bairroColeta">Bairro da coleta</label>
-                <select class="select" id="bairroColeta">
-                  <option value="">Selecione…</option>
-                  {% for b in bairros %}
-                    <option value="{{ b }}">{{ b }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-              <div class="field">
-                <label for="bairroEntrega">Bairro da entrega</label>
-                <select class="select" id="bairroEntrega">
-                  <option value="">Selecione…</option>
-                  {% for b in bairros %}
-                    <option value="{{ b }}">{{ b }}</option>
-                  {% endfor %}
-                </select>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label for="endColeta">Coleta (endereço)</label>
-                <input class="input" id="endColeta" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label for="endEntrega">Entrega (endereço)</label>
-                <input class="input" id="endEntrega" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label for="paradas">Paradas (opcional)</label>
-                <textarea class="textarea" id="paradas" placeholder="Uma parada por linha (opcional). Ex:
-Rua X, 10 - Bairro Y
-Av. Z, 200 - Bairro W"></textarea>
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field">
-                <label for="pagamento">Pagamento</label>
-                <select class="select" id="pagamento">
-                  <option value="CREDITO">Usar crédito</option>
-                  <option value="PIX">Pix</option>
-                  <option value="DINHEIRO">Dinheiro</option>
-                </select>
-              </div>
-              <div class="field">
-                <label for="ref">Referência (opcional)</label>
-                <input class="input" id="ref" placeholder="Ex.: perto da farmácia / portão azul / apto 201">
-              </div>
-            </div>
-
-            <div class="row">
-              <button class="btn btn-ghost" id="btnUsarLocal" type="button">Usar minha localização</button>
-              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar entrega</button>
-            </div>
-
-            <div class="note" style="margin-top:12px" id="notePedido">
-              Escolha os bairros para o sistema calcular o preço. Se o pagamento for por crédito, é necessário ter saldo suficiente.
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="statusbar">
-              <div class="kv">
-                <small>MEIOS DISPONÍVEIS</small>
-                <strong id="meiosTxt">—</strong>
-              </div>
-              <div class="kv" style="text-align:right;">
-                <small>SALDO</small>
-                <strong id="saldoMini">R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}</strong>
-              </div>
-            </div>
-
-            <div class="note" style="margin-top:10px">
-              Dica: após solicitar, você pode abrir o comprovante da entrega quando ela for criada.
-            </div>
-          </section>
-
-          <!-- TAB: RASTREIO -->
-          <section id="tab-rastreio" class="hide">
-            <div class="statusbar">
-              <div class="kv">
-                <small>STATUS</small>
-                <strong id="statusTxt">—</strong>
-              </div>
-              <div class="kv" style="text-align:right;">
-                <small>COOPERADO</small>
-                <strong id="motoTxt">—</strong>
-              </div>
-            </div>
-
-            <div class="list" id="timeline"></div>
-
-            <div class="hr"></div>
-
-            <div class="row">
-              <button class="btn btn-ghost" id="btnCentralizar" type="button">Centralizar no mapa</button>
-              <button class="btn btn-ghost" id="btnAbrirComprovante" type="button">Abrir comprovante</button>
-            </div>
-
-            <div class="note" style="margin-top:12px" id="noteRastreio">
-              O rastreio usa o código da entrega (ID). Se ainda não houver posição do motoboy, o mapa pode ficar parado.
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="field">
-              <label for="codigoManual">Rastrear outra entrega (código)</label>
-              <div class="row" style="align-items:flex-end">
-                <input class="input" id="codigoManual" placeholder="Ex.: 1234" inputmode="numeric">
-                <button class="btn btn-primary btn-mini" id="btnRastrearCodigo" type="button">Rastrear</button>
-              </div>
-              <div class="small muted" style="margin-top:6px">
-                Você também pode usar a página pública de rastreio:
-                <a href="{{ url_for('rastreamento') }}" class="mono" style="text-decoration:underline;">/rastreamento</a>
-              </div>
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="kv">
-              <small>ÚLTIMAS ENTREGAS</small>
-              <strong>Baixe seu comprovante</strong>
-            </div>
-
-            <div class="list" id="listaEntregas">
-              {% for e in entregas %}
-                <div class="item">
-                  <div class="ic">{{ loop.index }}</div>
-                  <div class="tx">
-                    <strong>Entrega #{{ e.id }}</strong>
-                    <small>
-                      {% if e.data_envio %}
-                        {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') }}
-                      {% else %}
-                        Data não informada
-                      {% endif %}
-                      • Valor: R$ {{ '%.2f'|format(e.valor or 0) | replace('.', ',') }}
-                      • Pagamento: {{ (e.pagamento or '-') }}
-                      • Status: {{ (e.status or 'pendente')|capitalize }}
-                    </small>
-                  </div>
-                  <div class="right">
-                    <span class="chip {{ 'chip-ok' if (e.status_pagamento or '')|lower == 'pago' else 'chip-bad' }}">
-                      {{ 'Pago' if (e.status_pagamento or '')|lower == 'pago' else 'Pendente' }}
-                    </span>
-                    <a class="btn btn-ghost btn-mini"
-                       href="{{ url_for('cliente_comprovante', entrega_id=e.id) }}"
-                       target="_blank" rel="noopener">
-                      Comprovante
-                    </a>
-                  </div>
-                </div>
-              {% else %}
-                <div class="note" style="margin-top:10px">
-                  Você ainda não tem entregas registradas no sistema.
-                </div>
-              {% endfor %}
-            </div>
-          </section>
-
-          <!-- TAB: CRÉDITO -->
-          <section id="tab-credito" class="hide">
-            <div class="statusbar">
-              <div class="kv">
-                <small>PIX PARA RECARGA</small>
-                <strong>Copie a chave</strong>
-              </div>
-              <div class="kv" style="text-align:right;">
-                <small>CHAVE</small>
-                <strong class="mono" id="pixChaveTxt">{{ pix_chave or '—' }}</strong>
-              </div>
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="row">
-              <button class="btn btn-ghost" id="btnCopiarPix" type="button">Copiar chave Pix</button>
-              <button class="btn btn-primary" id="btnAbrirPedidoCredito" type="button">Pedir usando crédito</button>
-            </div>
-
-            <div class="note" style="margin-top:12px">
-              Recargas por Pix precisam ser aprovadas pela supervisão no painel administrativo antes de entrar como saldo.
-              Se você já pagou, envie o comprovante do Pix para a supervisão confirmar.
-            </div>
-
-            <div class="hr"></div>
-
-            <div class="kv">
-              <small>SEU EXTRATO (ÚLTIMOS MOVIMENTOS)</small>
-              <strong>Créditos e débitos</strong>
-            </div>
-
-            <div class="list" id="listaMovs">
-              {% for m in movs[:12] %}
-                <div class="item">
-                  <div class="ic">{{ 'C' if m.tipo == 'credito' else 'D' }}</div>
-                  <div class="tx">
-                    <strong>{{ (m.referencia or '-') }}</strong>
-                    <small>
-                      {% if m.criado_em %}
-                        {{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}
-                      {% else %}
-                        —
-                      {% endif %}
-                      • Tipo: {{ 'Crédito' if m.tipo=='credito' else 'Débito' }}
-                      {% if m.entrega_id %} • Entrega #{{ m.entrega_id }}{% endif %}
-                    </small>
-                  </div>
-                  <div class="right">
-                    <span class="chip {{ 'chip-ok' if m.tipo=='credito' else 'chip-bad' }}">
-                      {{ 'R$ ' ~ ('%.2f'|format(m.valor or 0) | replace('.', ',')) }}
-                    </span>
-                  </div>
-                </div>
-              {% else %}
-                <div class="note" style="margin-top:10px">
-                  Ainda não há movimentações de crédito para sua conta.
-                </div>
-              {% endfor %}
-            </div>
-
-            <div class="note" style="margin-top:10px">
-              Precisa do histórico completo? Solicite à supervisão.
-            </div>
-          </section>
+      <!-- Barras principais estilo Uber -->
+      <div class="addr-stack">
+        <div class="addr-pill">
+          <span class="pin pick"></span>
+          <input id="endColeta" placeholder="Coleta (endereço)" autocomplete="street-address">
+        </div>
+        <div class="addr-pill">
+          <span class="pin drop"></span>
+          <input id="endEntrega" placeholder="Entrega (endereço)" autocomplete="street-address">
         </div>
       </div>
 
-      <!-- COLUNA DIREITA: MAPA -->
-      <div class="card map-card">
-        <div id="map"></div>
+      <div class="mini-actions">
+        <button class="btn btn-ghost" id="btnLocColeta" type="button">Minha localização (COLETA)</button>
+        <button class="btn btn-ghost" id="btnLocEntrega" type="button">Minha localização (ENTREGA)</button>
+      </div>
 
-        <div class="overlay">
-          <div class="sheet">
-            <div class="grab"></div>
-            <div class="sheet-h">
-              <div class="left">
-                <strong id="sheetTitle">Mapa de rastreio</strong>
-                <small id="sheetSub">Coleta, entrega e motoboy (quando houver posição).</small>
-              </div>
-              <span class="chip" id="chipETA">ETA —</span>
-            </div>
-            <div class="sheet-b">
-              <div>
-                <div class="kv">
-                  <small>ENTREGA</small>
-                  <strong id="pedidoRef">—</strong>
-                </div>
-                <div style="height:8px"></div>
-                <div class="kv">
-                  <small>ROTA</small>
-                  <strong id="addrMini">—</strong>
-                </div>
-              </div>
-              <div class="cta">
-                <button class="btn btn-ghost" id="btnAbrirRastreio" type="button">Abrir rastreio</button>
-                <button class="btn btn-primary" id="btnNovoPedido" type="button">Novo pedido</button>
-              </div>
-            </div>
-          </div>
+      <div class="statusbar">
+        <div class="kv">
+          <small>ESTIMATIVA</small>
+          <strong id="etaTxt">—</strong>
+        </div>
+        <div class="kv" style="text-align:right;">
+          <small>VALOR</small>
+          <strong id="precoTxt">—</strong>
         </div>
       </div>
+    </div>
+
+    <div class="sheet-b">
+
+      <div class="tabs" role="tablist" aria-label="Seções do cliente">
+        <button class="tab active" data-tab="pedido" type="button">Pedido</button>
+        <button class="tab" data-tab="rastreio" type="button">Rastreio</button>
+        <button class="tab" data-tab="credito" type="button">Crédito</button>
+      </div>
+
+      <!-- =======================
+           TAB: PEDIDO
+           ======================= -->
+      <section id="tab-pedido">
+
+        <div class="statusbar" style="margin-top:0">
+          <div class="kv">
+            <small>SALDO</small>
+            <strong id="saldoMini">R$ {{ '%.2f'|format(cli.saldo_atual or 0) | replace('.', ',') }}</strong>
+          </div>
+          <div class="kv" style="text-align:right;">
+            <small>MEIOS</small>
+            <strong id="meiosTxt">—</strong>
+          </div>
+        </div>
+
+        <div class="note">
+          Preencha os dados completos para coleta/entrega. Paradas são pontos intermediários (coleta ou entrega).
+        </div>
+
+        <!-- COLETA -->
+        <div class="field">
+          <label for="bairroColetaTxt">Bairro (coleta)</label>
+          <input class="input" id="bairroColetaTxt" placeholder="Ex.: Lagoa Nova">
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="coletaNome">Contato (coleta)</label>
+            <input class="input" id="coletaNome" placeholder="Ex.: Loja X / Maria">
+          </div>
+          <div class="field">
+            <label for="coletaFone">Telefone (coleta)</label>
+            <input class="input" id="coletaFone" placeholder="(84) 9xxxx-xxxx" inputmode="tel">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="coletaRef">Referência (coleta)</label>
+          <input class="input" id="coletaRef" placeholder="Ex.: portão azul / falar com...">
+        </div>
+
+        <!-- ENTREGA -->
+        <div class="field">
+          <label for="bairroEntregaTxt">Bairro (entrega)</label>
+          <input class="input" id="bairroEntregaTxt" placeholder="Ex.: Tirol">
+        </div>
+
+        <div class="row">
+          <div class="field">
+            <label for="entregaNome">Contato (entrega)</label>
+            <input class="input" id="entregaNome" placeholder="Ex.: Cliente Y / Carlos">
+          </div>
+          <div class="field">
+            <label for="entregaFone">Telefone (entrega)</label>
+            <input class="input" id="entregaFone" placeholder="(84) 9xxxx-xxxx" inputmode="tel">
+          </div>
+        </div>
+
+        <div class="field">
+          <label for="entregaRef">Referência (entrega)</label>
+          <input class="input" id="entregaRef" placeholder="Ex.: apto 201 / deixar na recepção">
+        </div>
+
+        <!-- PARADAS -->
+        <div class="row">
+          <button class="btn btn-ghost" id="btnAddStop" type="button">Adicionar parada</button>
+        </div>
+        <div id="stopsWrap" class="list"></div>
+
+        <div class="row" style="margin-top:10px">
+          <div class="field" style="margin:0">
+            <label for="pagamento">Pagamento</label>
+            <select class="select" id="pagamento">
+              <option value="CREDITO">Usar crédito</option>
+              <option value="PIX">Pix</option>
+              <option value="DINHEIRO">Dinheiro</option>
+            </select>
+          </div>
+          <div class="field" style="margin:0">
+            <label for="ref">Observação geral</label>
+            <input class="input" id="ref" placeholder="Ex.: frágil / retorno / prioridade">
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar entrega</button>
+        </div>
+
+        <div class="note" id="notePedido">
+          Dica: digite os bairros e clique fora do campo para cotar. (Sem lista, tudo digitado.)
+        </div>
+      </section>
+
+      <!-- =======================
+           TAB: RASTREIO
+           ======================= -->
+      <section id="tab-rastreio" class="hide">
+        <div class="statusbar" style="margin-top:0">
+          <div class="kv">
+            <small>STATUS</small>
+            <strong id="statusTxt">—</strong>
+          </div>
+          <div class="kv" style="text-align:right;">
+            <small>COOPERADO</small>
+            <strong id="motoTxt">—</strong>
+          </div>
+        </div>
+
+        <div class="list" id="timeline"></div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-ghost" id="btnCentralizar" type="button">Centralizar</button>
+          <button class="btn btn-ghost" id="btnAbrirComprovante" type="button">Comprovante</button>
+        </div>
+
+        <div class="field" style="margin-top:10px">
+          <label for="codigoManual">Rastrear outra entrega (código)</label>
+          <div class="row">
+            <input class="input" id="codigoManual" placeholder="Ex.: 1234" inputmode="numeric">
+            <button class="btn btn-primary btn-mini" id="btnRastrearCodigo" type="button">Rastrear</button>
+          </div>
+          <div class="small muted" style="margin-top:6px">
+            Página pública:
+            <a href="{{ url_for('rastreamento') }}" class="mono" style="text-decoration:underline;">/rastreamento</a>
+          </div>
+        </div>
+
+        <div class="note" style="margin-top:10px">
+          Últimas entregas (com comprovante):
+        </div>
+
+        <div class="list" id="listaEntregas">
+          {% for e in entregas %}
+            <div class="item">
+              <div class="ic">{{ loop.index }}</div>
+              <div class="tx">
+                <strong>Entrega #{{ e.id }}</strong>
+                <small>
+                  {% if e.data_envio %}
+                    {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') }}
+                  {% else %}
+                    Data não informada
+                  {% endif %}
+                  • Valor: R$ {{ '%.2f'|format(e.valor or 0) | replace('.', ',') }}
+                  • Pagamento: {{ (e.pagamento or '-') }}
+                  • Status: {{ (e.status or 'pendente')|capitalize }}
+                </small>
+              </div>
+              <div class="right">
+                <span class="chip {{ 'chip-ok' if (e.status_pagamento or '')|lower == 'pago' else 'chip-bad' }}">
+                  {{ 'Pago' if (e.status_pagamento or '')|lower == 'pago' else 'Pendente' }}
+                </span>
+                <a class="btn btn-ghost btn-mini"
+                   href="{{ url_for('cliente_comprovante', entrega_id=e.id) }}"
+                   target="_blank" rel="noopener">
+                  Abrir
+                </a>
+              </div>
+            </div>
+          {% else %}
+            <div class="note">Você ainda não tem entregas registradas no sistema.</div>
+          {% endfor %}
+        </div>
+      </section>
+
+      <!-- =======================
+           TAB: CRÉDITO
+           ======================= -->
+      <section id="tab-credito" class="hide">
+        <div class="statusbar" style="margin-top:0">
+          <div class="kv">
+            <small>PIX PARA RECARGA</small>
+            <strong>Copie a chave</strong>
+          </div>
+          <div class="kv" style="text-align:right;">
+            <small>CHAVE</small>
+            <strong class="mono" id="pixChaveTxt">{{ pix_chave or '—' }}</strong>
+          </div>
+        </div>
+
+        <div class="row" style="margin-top:10px">
+          <button class="btn btn-ghost" id="btnCopiarPix" type="button">Copiar Pix</button>
+          <button class="btn btn-primary" id="btnAbrirPedidoCredito" type="button">Pedir</button>
+        </div>
+
+        <div class="note">
+          Recargas por Pix precisam ser aprovadas pela supervisão antes de entrar como saldo.
+        </div>
+
+        <div class="note" style="margin-top:10px">
+          Extrato (últimos movimentos):
+        </div>
+
+        <div class="list" id="listaMovs">
+          {% for m in movs[:12] %}
+            <div class="item">
+              <div class="ic">{{ 'C' if m.tipo == 'credito' else 'D' }}</div>
+              <div class="tx">
+                <strong>{{ (m.referencia or '-') }}</strong>
+                <small>
+                  {% if m.criado_em %}
+                    {{ to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') }}
+                  {% else %}
+                    —
+                  {% endif %}
+                  • Tipo: {{ 'Crédito' if m.tipo=='credito' else 'Débito' }}
+                  {% if m.entrega_id %} • Entrega #{{ m.entrega_id }}{% endif %}
+                </small>
+              </div>
+              <div class="right">
+                <span class="chip {{ 'chip-ok' if m.tipo=='credito' else 'chip-bad' }}">
+                  {{ 'R$ ' ~ ('%.2f'|format(m.valor or 0) | replace('.', ',')) }}
+                </span>
+              </div>
+            </div>
+          {% else %}
+            <div class="note">Ainda não há movimentações de crédito para sua conta.</div>
+          {% endfor %}
+        </div>
+      </section>
 
     </div>
   </div>
 
+  <!-- Bottom nav -->
   <div class="bottom-nav">
     <div class="inner">
       <button class="navbtn active" data-tab="pedido" type="button">
@@ -707,19 +716,17 @@ Av. Z, 200 - Bairro W"></textarea>
     crossorigin
   ></script>
 
- <script>
+  <script>
 /***********************
- * ENDPOINTS REAIS (Flask) - COMPATÍVEIS COM SUAS ROTAS
+ * ENDPOINTS (Flask)
  ***********************/
 const API = {
-  cotar:      "{{ url_for('api_cliente_cotar_entrega') }}",       // POST
-  solicitar:  "{{ url_for('api_cliente_solicitar_entrega') }}",   // POST
+  cotar:      "{{ url_for('api_cliente_cotar_entrega') }}",
+  solicitar:  "{{ url_for('api_cliente_solicitar_entrega') }}",
 
-  // API de rastreio usa o ID da entrega como <codigo>
   _trackBase: "{{ url_for('api_rastreamento', codigo=0) }}",
   tracking: (id) => API._trackBase.replace(/0$/, String(id)),
 
-  // Comprovante do cliente
   _compBase: "{{ url_for('cliente_comprovante', entrega_id=0) }}",
   comprovante: (id) => API._compBase.replace(/0$/, String(id)),
 };
@@ -727,25 +734,15 @@ const API = {
 const POLL_MS = 3000;
 const PIX_CHAVE = "{{ (pix_chave or '')|e }}";
 
-/***********************
- * UTIL
- ***********************/
-const moneyBR = (n) => (Number(n || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 const $ = (id) => document.getElementById(id);
+const moneyBR = (n) => (Number(n || 0)).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
-function el(id){ return $(id); }
-function setText(id, txt){
-  const e = el(id);
-  if (e) e.textContent = (txt == null ? "" : String(txt));
-}
-function show(id, flag){
-  const e = el(id);
-  if (e) e.classList.toggle("hide", !flag);
-}
+function setText(id, txt){ const e=$(id); if(e) e.textContent = (txt==null?"":String(txt)); }
+function show(id, flag){ const e=$(id); if(e) e.classList.toggle("hide", !flag); }
 
 function setOnline(flag) {
-  const dot = el("onlineDot");
-  const txt = el("onlineText");
+  const dot = $("onlineDot");
+  const txt = $("onlineText");
   if (!dot || !txt) return;
 
   dot.style.background = flag ? "var(--ok)" : "var(--bad)";
@@ -768,37 +765,31 @@ async function safeJSON(url, opts) {
   }
 }
 
-function linhasParaLista(txt) {
-  return (txt || "")
-    .split("\n")
-    .map(s => s.trim())
-    .filter(Boolean);
-}
-
-// Normaliza valores do select de pagamento para o que sua API espera
 function normMeioPagamento(v){
   const up = String(v || "").trim().toUpperCase();
-  if (up === "CREDITO" || up === "CRÉDITO" || up === "CREDIT" || up === "CRED") return "CREDITO";
+  if (up === "CREDITO" || up === "CRÉDITO") return "CREDITO";
   if (up === "PIX") return "PIX";
-  if (up === "DINHEIRO" || up === "CASH") return "DINHEIRO";
-  // se no HTML estiver "credito"/"pix"/"dinheiro"
-  if (up === "CREDITO".toUpperCase()) return "CREDITO";
-  if (up === "PIX".toUpperCase()) return "PIX";
-  if (up === "DINHEIRO".toUpperCase()) return "DINHEIRO";
+  if (up === "DINHEIRO") return "DINHEIRO";
   return "PIX";
 }
 
 /***********************
- * STATE
+ * STATE (coords)
  ***********************/
 const state = {
   saldo: Number({{ (cli.saldo_atual or 0) | float }}),
   entregaAtivaId: null,
   tracking: null,
+
+  coleta_lat: null,
+  coleta_lng: null,
+
+  entrega_lat: null,
+  entrega_lng: null,
 };
 
 /***********************
- * MAPA (Leaflet)
+ * MAPA
  ***********************/
 let map, mOrigem, mDestino, mMoto, routeLine;
 
@@ -811,47 +802,26 @@ function initMap() {
     attribution: "&copy; OpenStreetMap",
   }).addTo(map);
 
-  const mk = (label, color) =>
-    L.divIcon({
-      className: "",
-      html: `
-        <div style="
-            width:42px;height:42px;border-radius:18px;
-            background:linear-gradient(180deg,#fff,#F7FAFF);
-            border:1px solid rgba(214,226,255,.95);
-            box-shadow:0 16px 30px rgba(10,25,80,.12);
-            display:grid;place-items:center;position:relative;">
-          <div style="width:12px;height:12px;border-radius:999px;background:${color};box-shadow:0 0 0 8px ${color}22;"></div>
-          <div style="
-            position:absolute;left:50%;top:100%;
-            transform:translate(-50%,-4px) rotate(45deg);
-            width:12px;height:12px;background:linear-gradient(180deg,#fff,#F7FAFF);
-            border-left:1px solid rgba(214,226,255,.95);
-            border-bottom:1px solid rgba(214,226,255,.95);
-            border-bottom-left-radius:3px;"></div>
-        </div>
-        <div style="
-            margin-top:6px;background:rgba(255,255,255,.92);
-            border:1px solid rgba(214,226,255,.9);
-            color:var(--royal);
-            padding:6px 10px;border-radius:999px;
-            font-weight:900;font-size:11px;display:inline-block;
-            box-shadow:0 10px 20px rgba(10,25,80,.08);
-          ">${label}</div>
-      `,
-      iconSize: [120, 56],
-      iconAnchor: [22, 42],
-    });
+  // marcadores simples (estilo app)
+  const iconDot = (color) => L.divIcon({
+    className: "",
+    html: `<div style="
+      width:18px;height:18px;border-radius:999px;background:${color};
+      box-shadow:0 0 0 10px ${color}22, 0 12px 24px rgba(0,0,0,.22);
+      border:3px solid rgba(255,255,255,.95);
+    "></div>`,
+    iconSize: [18,18],
+    iconAnchor: [9,9],
+  });
 
-  mOrigem = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
-  mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
-  mMoto   = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+  mOrigem = L.marker(natal, { icon: iconDot("#111827") }).addTo(map);
+  mDestino = L.marker(natal, { icon: iconDot("#255BFF") }).addTo(map);
+  mMoto   = L.marker(natal, { icon: iconDot("#12B981") }).addTo(map);
 
-  routeLine = L.polyline([natal, natal], { weight: 5, opacity: 0.9 }).addTo(map);
+  routeLine = L.polyline([natal, natal], { weight: 5, opacity: 0.85 }).addTo(map);
 
-  // Importantíssimo: garante render correto no carregamento
-  setTimeout(() => map.invalidateSize(), 250);
-  window.addEventListener("resize", () => setTimeout(() => map.invalidateSize(), 150));
+  setTimeout(() => map.invalidateSize(), 350);
+  window.addEventListener("resize", () => setTimeout(() => map.invalidateSize(), 200));
 }
 
 function setRoute(orig, dest) {
@@ -863,14 +833,29 @@ function setRoute(orig, dest) {
   map.fitBounds(b, { animate: true, duration: 0.6 });
 }
 
-function setMoto(pos) {
-  if (!map) return;
-  mMoto.setLatLng(pos);
-}
-
 /***********************
  * UI
  ***********************/
+function setSaldo(n) {
+  state.saldo = Number(n || 0);
+  setText("saldoMini", moneyBR(state.saldo));
+}
+
+function setEstimativa(valor, eta) {
+  setText("precoTxt", valor != null ? moneyBR(valor) : "—");
+  setText("etaTxt", eta != null ? `${eta} min` : "—");
+}
+
+function setBadgeStatus(txt, ok=false) {
+  const dot = $("badgeDot");
+  const t = $("badgeTxt");
+  if (!dot || !t) return;
+
+  dot.style.background = ok ? "var(--ok)" : "var(--warn)";
+  dot.style.boxShadow  = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
+  t.textContent = txt || "—";
+}
+
 function setTab(tab) {
   document.querySelectorAll(".tab").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
   document.querySelectorAll(".navbtn").forEach((b) => b.classList.toggle("active", b.dataset.tab === tab));
@@ -879,45 +864,394 @@ function setTab(tab) {
   show("tab-rastreio", tab === "rastreio");
   show("tab-credito",  tab === "credito");
 
-  // se trocar pra uma aba que altera layout, reforça o mapa
-  if (tab === "rastreio" && map) setTimeout(() => map.invalidateSize(), 220);
+  if (map) setTimeout(() => map.invalidateSize(), 200);
 }
 
-function setSaldo(n) {
-  state.saldo = Number(n || 0);
-  setText("saldoVal", moneyBR(state.saldo));
-  // só atualiza se existir
-  if (el("saldoMini")) setText("saldoMini", moneyBR(state.saldo));
-  const hint = state.saldo > 0
-    ? "Use seu crédito para pagar pedidos com mais rapidez."
-    : "Saldo zerado. Faça uma recarga para pedir com crédito.";
-  setText("saldoHint", hint);
+/***********************
+ * SHEET DRAG (mobile)
+ ***********************/
+function wireSheetDrag() {
+  const sheet = $("sheet");
+  const grab  = $("grab");
+  if (!sheet || !grab) return;
+
+  let startY = 0;
+  let curY = 0;
+  let dragging = false;
+
+  const setTransform = (px) => {
+    sheet.style.transition = "none";
+    sheet.style.transform = `translateY(${px}px)`;
+  };
+
+  const resetTransform = () => {
+    sheet.style.transition = "";
+    sheet.style.transform = "";
+  };
+
+  const expanded = () => sheet.classList.contains("expanded");
+  const expand = () => sheet.classList.add("expanded");
+  const collapse = () => sheet.classList.remove("expanded");
+
+  // toque no grab alterna
+  grab.addEventListener("click", () => {
+    if (expanded()) collapse(); else expand();
+    if (map) setTimeout(() => map.invalidateSize(), 220);
+  });
+
+  // arrastar
+  const onDown = (e) => {
+    dragging = true;
+    startY = (e.touches ? e.touches[0].clientY : e.clientY);
+    curY = 0;
+  };
+  const onMove = (e) => {
+    if (!dragging) return;
+    const y = (e.touches ? e.touches[0].clientY : e.clientY);
+    curY = y - startY;
+
+    // se está expandido e arrasta pra baixo -> move
+    // se está colapsado e arrasta pra cima -> move
+    if (!expanded() && curY < 0) setTransform(curY);
+    if (expanded() && curY > 0) setTransform(curY);
+  };
+  const onUp = () => {
+    if (!dragging) return;
+    dragging = false;
+
+    const threshold = 60;
+    resetTransform();
+
+    if (!expanded() && curY < -threshold) expand();
+    else if (expanded() && curY > threshold) collapse();
+
+    if (map) setTimeout(() => map.invalidateSize(), 220);
+  };
+
+  grab.addEventListener("touchstart", onDown, { passive:true });
+  grab.addEventListener("touchmove", onMove, { passive:true });
+  grab.addEventListener("touchend", onUp, { passive:true });
+
+  grab.addEventListener("mousedown", onDown);
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
 }
 
-function setEstimativa(valor, eta) {
-  setText("precoTxt", valor != null ? moneyBR(valor) : "—");
-  setText("etaTxt", eta != null ? `${eta} min` : "—");
-  setText("chipETA", eta != null ? `ETA ${eta} min` : "ETA —");
+/***********************
+ * PARADAS
+ ***********************/
+function stopCardHTML(idx, data={}) {
+  const tipo = (data.tipo || "COLETA").toUpperCase();
+  const esc = (s) => String(s || "").replaceAll('"','&quot;');
+  return `
+  <div class="item" data-stop-index="${idx}">
+    <div class="ic">${idx+1}</div>
+    <div class="tx" style="width:100%">
+      <div class="row" style="margin:0 0 8px 0">
+        <div class="field" style="margin:0">
+          <label>Tipo</label>
+          <select class="select stop-tipo">
+            <option value="COLETA" ${tipo==="COLETA"?"selected":""}>Coleta</option>
+            <option value="ENTREGA" ${tipo==="ENTREGA"?"selected":""}>Entrega</option>
+          </select>
+        </div>
+        <div class="field" style="margin:0">
+          <label>Bairro</label>
+          <input class="input stop-bairro" placeholder="Ex.: Alecrim" value="${esc(data.bairro)}">
+        </div>
+      </div>
+
+      <div class="field" style="margin:0 0 8px 0">
+        <label>Endereço</label>
+        <input class="input stop-end" placeholder="Rua/Av, número, complemento" value="${esc(data.endereco)}">
+      </div>
+
+      <div class="row" style="margin:0 0 8px 0">
+        <div class="field" style="margin:0">
+          <label>Contato</label>
+          <input class="input stop-nome" placeholder="Ex.: Loja / Pessoa" value="${esc(data.nome)}">
+        </div>
+        <div class="field" style="margin:0">
+          <label>Telefone</label>
+          <input class="input stop-fone" placeholder="(84) 9xxxx-xxxx" inputmode="tel" value="${esc(data.telefone)}">
+        </div>
+      </div>
+
+      <div class="field" style="margin:0">
+        <label>Referência</label>
+        <input class="input stop-ref" placeholder="Ex.: portão preto / falar com..." value="${esc(data.referencia)}">
+      </div>
+    </div>
+
+    <div class="right">
+      <button class="btn btn-ghost btn-mini btnRemoveStop" type="button">Remover</button>
+    </div>
+  </div>`;
 }
 
-function setBadgeStatus(txt, ok=false) {
-  const dot = el("badgeDot");
-  const t = el("badgeTxt");
-  if (!dot || !t) return;
-
-  dot.style.background = ok ? "var(--ok)" : "var(--warn)";
-  dot.style.boxShadow  = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
-  t.textContent = txt || "—";
+function wireStopButtons() {
+  document.querySelectorAll(".btnRemoveStop").forEach(btn => {
+    if (btn.__wired) return;
+    btn.__wired = true;
+    btn.addEventListener("click", (e) => {
+      const card = e.target.closest(".item");
+      if (card) card.remove();
+      renumberStops();
+      if (map) setTimeout(() => map.invalidateSize(), 150);
+    });
+  });
 }
 
-function setRastreioHeader({ status, cooperado, id }) {
+function renumberStops() {
+  const wrap = $("stopsWrap");
+  if (!wrap) return;
+  const cards = Array.from(wrap.querySelectorAll(".item[data-stop-index]"));
+  cards.forEach((card, idx) => {
+    card.dataset.stopIndex = String(idx);
+    const ic = card.querySelector(".ic");
+    if (ic) ic.textContent = String(idx+1);
+  });
+}
+
+function addStop(data) {
+  const wrap = $("stopsWrap");
+  if (!wrap) return;
+  const idx = wrap.querySelectorAll(".item[data-stop-index]").length;
+  wrap.insertAdjacentHTML("beforeend", stopCardHTML(idx, data || {}));
+  wireStopButtons();
+  if (map) setTimeout(() => map.invalidateSize(), 150);
+}
+
+function readStops() {
+  const wrap = $("stopsWrap");
+  if (!wrap) return [];
+  const cards = Array.from(wrap.querySelectorAll(".item[data-stop-index]"));
+
+  return cards.map(card => ({
+    tipo: (card.querySelector(".stop-tipo")?.value || "COLETA").trim().toUpperCase(),
+    bairro: (card.querySelector(".stop-bairro")?.value || "").trim(),
+    endereco: (card.querySelector(".stop-end")?.value || "").trim(),
+    nome: (card.querySelector(".stop-nome")?.value || "").trim(),
+    telefone: (card.querySelector(".stop-fone")?.value || "").trim(),
+    referencia: (card.querySelector(".stop-ref")?.value || "").trim(),
+  })).filter(s => s.endereco || s.bairro || s.nome || s.telefone || s.referencia);
+}
+
+/***********************
+ * GEOLOCATION (AQUI está o que você pediu)
+ * - btnLocEntrega preenche o endereço de ENTREGA
+ * - btnLocColeta preenche o endereço de COLETA
+ ***********************/
+function getLocationAndApply(target) {
+  if (!navigator.geolocation) {
+    alert("Geolocalização não suportada neste navegador.");
+    return;
+  }
+  navigator.geolocation.getCurrentPosition(
+    (pos) => {
+      const lat = pos.coords.latitude;
+      const lng = pos.coords.longitude;
+
+      const txt = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+
+      if (target === "ENTREGA") {
+        state.entrega_lat = lat;
+        state.entrega_lng = lng;
+        const end = $("endEntrega");
+        if (end) end.value = end.value.trim() ? end.value : txt;
+
+        // move marcador destino
+        if (map && mDestino) {
+          mDestino.setLatLng([lat, lng]);
+          map.setView([lat, lng], 15, { animate:true });
+        }
+      } else {
+        state.coleta_lat = lat;
+        state.coleta_lng = lng;
+        const end = $("endColeta");
+        if (end) end.value = end.value.trim() ? end.value : txt;
+
+        // move marcador origem
+        if (map && mOrigem) {
+          mOrigem.setLatLng([lat, lng]);
+          map.setView([lat, lng], 15, { animate:true });
+        }
+      }
+
+      alert(`Localização aplicada em: ${target}`);
+      // cota se já tiver bairros
+      cotarSePossivel();
+    },
+    () => alert("Não foi possível obter sua localização. Verifique permissões."),
+    { enableHighAccuracy: true, timeout: 8000 }
+  );
+}
+
+/***********************
+ * COTAÇÃO
+ ***********************/
+let lastQuote = null;
+
+async function cotarSePossivel() {
+  const bo = ($("bairroColetaTxt")?.value || "").trim();
+  const bd = ($("bairroEntregaTxt")?.value || "").trim();
+  const endO = ($("endColeta")?.value || "").trim();
+  const endD = ($("endEntrega")?.value || "").trim();
+
+  if (!bo || !bd) {
+    lastQuote = null;
+    setText("meiosTxt", "—");
+    setEstimativa(null, null);
+    setBadgeStatus("Pronto");
+    return;
+  }
+
+  setBadgeStatus("Cotando…");
+
+  const payload = {
+    coleta:  { bairro: bo, endereco: endO || null },
+    entrega: { bairro: bd, endereco: endD || null },
+  };
+
+  const r = await safeJSON(API.cotar, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r || !r.ok) {
+    lastQuote = null;
+    setText("meiosTxt", (r && r.erro) ? r.erro : "Não foi possível cotar.");
+    setEstimativa(null, null);
+    setOnline(false);
+    setBadgeStatus("Offline");
+    return;
+  }
+
+  setOnline(true);
+  lastQuote = r;
+
+  const meios = Array.isArray(r.meios_pagamento) ? r.meios_pagamento : [];
+  setText("meiosTxt", meios.length ? meios.join(" • ") : "—");
+
+  setEstimativa(r.preco, null);
+
+  const sel = $("pagamento");
+  if (sel && r.pode_usar_credito != null) {
+    const opt = Array.from(sel.options).find(o => String(o.value || "").toUpperCase() === "CREDITO");
+    if (opt) {
+      opt.disabled = !r.pode_usar_credito;
+      if (!r.pode_usar_credito && String(sel.value || "").toUpperCase() === "CREDITO") sel.value = "PIX";
+    }
+  }
+
+  if (r.cliente_saldo_atual != null) setSaldo(r.cliente_saldo_atual);
+  setBadgeStatus("Cotado", true);
+}
+
+/***********************
+ * SOLICITAR
+ * - envia coords da coleta/entrega se tiver
+ ***********************/
+async function solicitarEntrega() {
+  const bo = ($("bairroColetaTxt")?.value || "").trim();
+  const bd = ($("bairroEntregaTxt")?.value || "").trim();
+
+  const endO = ($("endColeta")?.value || "").trim();
+  const endD = ($("endEntrega")?.value || "").trim();
+
+  const coletaNome = ($("coletaNome")?.value || "").trim();
+  const coletaFone = ($("coletaFone")?.value || "").trim();
+  const coletaRef  = ($("coletaRef")?.value  || "").trim();
+
+  const entregaNome = ($("entregaNome")?.value || "").trim();
+  const entregaFone = ($("entregaFone")?.value || "").trim();
+  const entregaRef  = ($("entregaRef")?.value  || "").trim();
+
+  const obsGeral = ($("ref")?.value || "").trim();
+  const meio = normMeioPagamento($("pagamento")?.value);
+
+  if (!endO || !endD) { alert("Informe os endereços de coleta e entrega."); return; }
+  if (!bo || !bd) { alert("Informe o bairro da coleta e o bairro da entrega."); return; }
+  if (!coletaNome && !coletaFone) { alert("Informe pelo menos o nome ou telefone da coleta."); return; }
+  if (!entregaNome && !entregaFone) { alert("Informe pelo menos o nome ou telefone da entrega."); return; }
+
+  const paradas = readStops();
+  const paradas_linhas = paradas.map(p =>
+    `${p.tipo}: ${p.endereco || ""} - ${p.bairro || ""} | ${p.nome || ""} | ${p.telefone || ""} | ${p.referencia || ""}`.trim()
+  );
+
+  const payload = {
+    coleta: {
+      bairro: bo,
+      endereco: endO,
+      nome: coletaNome || null,
+      telefone: coletaFone || null,
+      referencia: coletaRef || null,
+      lat: state.coleta_lat ?? null,
+      lng: state.coleta_lng ?? null,
+    },
+    entrega: {
+      bairro: bd,
+      endereco: endD,
+      nome: entregaNome || null,
+      telefone: entregaFone || null,
+      referencia: entregaRef || null,
+      lat: state.entrega_lat ?? null,
+      lng: state.entrega_lng ?? null,
+    },
+    paradas: paradas,
+    paradas_linhas: paradas_linhas,
+    observacao_geral: obsGeral || null,
+    meio_pagamento: meio,
+    apenas_simular: false
+  };
+
+  setBadgeStatus("Enviando…");
+
+  const r = await safeJSON(API.solicitar, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+
+  if (!r || !r.ok) {
+    alert((r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Não foi possível solicitar a entrega.");
+    setOnline(false);
+    setBadgeStatus("Erro");
+    return;
+  }
+
+  setOnline(true);
+  setBadgeStatus("Criado", true);
+
+  state.entregaAtivaId = r.entrega_id ? String(r.entrega_id) : null;
+  setTab("rastreio");
+
+  if (state.entregaAtivaId) {
+    if ($("codigoManual")) $("codigoManual").value = state.entregaAtivaId;
+    await carregarTracking(state.entregaAtivaId);
+    startPolling();
+  }
+
+  const btnComp = $("btnAbrirComprovante");
+  if (btnComp) btnComp.dataset.url = r.comprovante_url ? r.comprovante_url : (state.entregaAtivaId ? API.comprovante(state.entregaAtivaId) : "");
+
+  if (map) setTimeout(() => map.invalidateSize(), 250);
+}
+
+/***********************
+ * TRACKING
+ ***********************/
+let pollTimer = null;
+
+function setRastreioHeader({ status, cooperado }) {
   setText("statusTxt", status || "—");
   setText("motoTxt", cooperado || "—");
-  setText("pedidoRef", id ? String(id) : "—");
 }
 
 function renderTimelineFromTracking(tr) {
-  const wrap = el("timeline");
+  const wrap = $("timeline");
   if (!wrap) return;
   wrap.innerHTML = "";
 
@@ -953,9 +1287,7 @@ function renderTimelineFromTracking(tr) {
           <strong>${it.k}</strong>
           <small>${it.v}</small>
         </div>
-        <div class="right">
-          <span class="chip">${it.k === "Pagamento" ? it.v : "Info"}</span>
-        </div>
+        <div class="right"><span class="chip">Info</span></div>
       </div>
     `);
   });
@@ -969,7 +1301,7 @@ function renderTimelineFromTracking(tr) {
           <div class="ic">${idx + 5}</div>
           <div class="tx">
             <strong>${ev.titulo || "Evento"}</strong>
-            <small>${ev.descricao || ""}<br><span class="muted">${whenTxt}</span></small>
+            <small>${(ev.descricao || "")}<br><span class="muted">${whenTxt}</span></small>
           </div>
           <div class="right"><span class="chip">Rastreio</span></div>
         </div>
@@ -977,166 +1309,6 @@ function renderTimelineFromTracking(tr) {
     });
   }
 }
-
-/***********************
- * COTAÇÃO (POST /api/cliente/cotar-entrega)
- ***********************/
-let lastQuote = null;
-
-async function cotarSePossivel() {
-  const boEl = el("bairroColeta");
-  const bdEl = el("bairroEntrega");
-  if (!boEl || !bdEl) return;
-
-  const bo = boEl.value.trim();
-  const bd = bdEl.value.trim();
-  const endO = (el("endColeta")?.value || "").trim();
-  const endD = (el("endEntrega")?.value || "").trim();
-
-  if (!bo || !bd) {
-    lastQuote = null;
-    if (el("meiosTxt")) setText("meiosTxt", "—");
-    setEstimativa(null, null);
-    setBadgeStatus("Pronto");
-    return;
-  }
-
-  setBadgeStatus("Cotando…");
-
-  const payload = {
-    coleta:  { bairro: bo, endereco: endO || null },
-    entrega: { bairro: bd, endereco: endD || null },
-  };
-
-  const r = await safeJSON(API.cotar, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!r || !r.ok) {
-    lastQuote = null;
-    if (el("meiosTxt")) setText("meiosTxt", (r && r.erro) ? r.erro : "Não foi possível cotar.");
-    setEstimativa(null, null);
-    setOnline(false);
-    setBadgeStatus("Offline");
-    return;
-  }
-
-  setOnline(true);
-  lastQuote = r;
-
-  const meios = Array.isArray(r.meios_pagamento) ? r.meios_pagamento : [];
-  if (el("meiosTxt")) setText("meiosTxt", meios.length ? meios.join(" • ") : "—");
-
-  setEstimativa(r.preco, null);
-
-  // Habilita/desabilita opção de crédito no select (aceita value "CREDITO" ou "credito")
-  const sel = el("pagamento");
-  if (sel) {
-    const opt = Array.from(sel.options).find(o => String(o.value || "").toUpperCase() === "CREDITO");
-    if (opt) {
-      opt.disabled = !r.pode_usar_credito;
-      if (!r.pode_usar_credito && String(sel.value || "").toUpperCase() === "CREDITO") {
-        sel.value = Array.from(sel.options).some(o => String(o.value).toUpperCase() === "PIX") ? "PIX" : sel.value;
-      }
-    }
-  }
-
-  if (r.cliente_saldo_atual != null) setSaldo(r.cliente_saldo_atual);
-
-  setBadgeStatus("Cotado", true);
-}
-
-/***********************
- * SOLICITAR ENTREGA (POST /api/cliente/solicitar-entrega)
- ***********************/
-function currentParadas() {
-  return linhasParaLista(el("paradas")?.value || "");
-}
-
-async function solicitarEntrega() {
-  const bo = (el("bairroColeta")?.value || "").trim();
-  const bd = (el("bairroEntrega")?.value || "").trim();
-  const endO = (el("endColeta")?.value || "").trim();
-  const endD = (el("endEntrega")?.value || "").trim();
-  const ref  = (el("ref")?.value || "").trim();
-  const meio = normMeioPagamento(el("pagamento")?.value);
-
-  if (!bo || !bd) {
-    alert("Selecione o bairro da coleta e o bairro da entrega.");
-    return;
-  }
-  if (!endO || !endD) {
-    alert("Informe os endereços de coleta e entrega.");
-    return;
-  }
-
-  const payload = {
-    coleta: {
-      bairro: bo,
-      endereco: endO,
-      referencia: ref || null,
-      lat: window.__ORIG_LAT ?? null,
-      lng: window.__ORIG_LNG ?? null,
-    },
-    entrega: {
-      bairro: bd,
-      endereco: endD,
-      referencia: ref || null,
-      lat: null,
-      lng: null,
-    },
-    paradas: currentParadas(),
-    meio_pagamento: meio,     // CREDITO | PIX | DINHEIRO
-    apenas_simular: false
-  };
-
-  setBadgeStatus("Enviando…");
-  const r = await safeJSON(API.solicitar, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(payload),
-  });
-
-  if (!r || !r.ok) {
-    const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Não foi possível solicitar a entrega.";
-    alert(msg);
-    setOnline(false);
-    setBadgeStatus("Erro");
-    return;
-  }
-
-  setOnline(true);
-  setBadgeStatus("Criado", true);
-
-  state.entregaAtivaId = r.entrega_id ? String(r.entrega_id) : null;
-
-  setText("pedidoRef", state.entregaAtivaId || "—");
-  setText("addrMini", `${endO} → ${endD}`);
-  setEstimativa(r.preco, null);
-
-  setTab("rastreio");
-
-  if (state.entregaAtivaId) {
-    if (el("codigoManual")) el("codigoManual").value = state.entregaAtivaId;
-    await carregarTracking(state.entregaAtivaId);
-    startPolling();
-  }
-
-  // Botão comprovante (se existir)
-  const btnComp = el("btnAbrirComprovante");
-  if (btnComp) {
-    btnComp.dataset.url = r.comprovante_url
-      ? r.comprovante_url
-      : (state.entregaAtivaId ? API.comprovante(state.entregaAtivaId) : "");
-  }
-}
-
-/***********************
- * TRACKING (GET /api/rastreamento/<id>)
- ***********************/
-let pollTimer = null;
 
 async function carregarTracking(id) {
   if (!id) return;
@@ -1146,7 +1318,7 @@ async function carregarTracking(id) {
     state.tracking = null;
     setOnline(false);
     setBadgeStatus("Offline");
-    setRastreioHeader({ status: "—", cooperado: "—", id });
+    setRastreioHeader({ status: "—", cooperado: "—" });
     renderTimelineFromTracking(null);
     return;
   }
@@ -1154,13 +1326,11 @@ async function carregarTracking(id) {
   setOnline(true);
   state.tracking = tr;
 
-  const coop = tr.cooperado || "—";
-  setRastreioHeader({ status: (tr.status || "pendente"), cooperado: coop, id: tr.entrega_id || id });
+  setRastreioHeader({ status: (tr.status || "pendente"), cooperado: (tr.cooperado || "—") });
 
   const eta = (tr.eta_min != null) ? Number(tr.eta_min) : null;
   setEstimativa(tr.valor, eta);
 
-  // Coordenadas vindas do seu endpoint (origem_extra/destino_extra)
   const ox = tr.origem_extra || null;
   const dx = tr.destino_extra || null;
 
@@ -1169,22 +1339,16 @@ async function carregarTracking(id) {
 
   if (orig && dest) setRoute(orig, dest);
 
-  const ot = (ox && (ox.endereco || ox.bairro)) ? `${ox.endereco || ""}${ox.bairro ? " • " + ox.bairro : ""}`.trim() : "";
-  const dt = (dx && (dx.endereco || dx.bairro)) ? `${dx.endereco || ""}${dx.bairro ? " • " + dx.bairro : ""}`.trim() : "";
-  if (ot || dt) setText("addrMini", `${ot || "—"} → ${dt || "—"}`);
-
-  // Botão comprovante
-  const btnComp = el("btnAbrirComprovante");
-  if (btnComp && id) btnComp.dataset.url = API.comprovante(id);
-
   renderTimelineFromTracking(tr);
   setBadgeStatus(tr.status ? String(tr.status) : "Em andamento", true);
+
+  if (map) setTimeout(() => map.invalidateSize(), 200);
 }
 
 function startPolling() {
   if (pollTimer) clearInterval(pollTimer);
 
-  const getId = () => state.entregaAtivaId || (el("codigoManual")?.value || "").trim();
+  const getId = () => state.entregaAtivaId || ($("codigoManual")?.value || "").trim();
   const first = getId();
   if (!first) return;
 
@@ -1196,7 +1360,7 @@ function startPolling() {
 }
 
 /***********************
- * AÇÕES
+ * WIRES
  ***********************/
 function wireTabs() {
   document.querySelectorAll(".tab").forEach((b) =>
@@ -1206,48 +1370,25 @@ function wireTabs() {
     b.addEventListener("click", () => setTab(b.dataset.tab))
   );
 
-  el("btnIrRecarga")?.addEventListener("click", () => setTab("credito"));
-  el("btnIrPedido")?.addEventListener("click", () => setTab("pedido"));
-  el("btnAbrirRastreio")?.addEventListener("click", () => setTab("rastreio"));
-  el("btnNovoPedido")?.addEventListener("click", () => {
-    setTab("pedido");
-    el("bairroColeta")?.focus();
-  });
-
-  el("btnAbrirPedidoCredito")?.addEventListener("click", () => setTab("pedido"));
+  $("btnAbrirPedidoCredito")?.addEventListener("click", () => setTab("pedido"));
 }
 
 function wirePedido() {
-  el("bairroColeta")?.addEventListener("change", cotarSePossivel);
-  el("bairroEntrega")?.addEventListener("change", cotarSePossivel);
-  el("endColeta")?.addEventListener("blur", cotarSePossivel);
-  el("endEntrega")?.addEventListener("blur", cotarSePossivel);
+  $("bairroColetaTxt")?.addEventListener("blur", cotarSePossivel);
+  $("bairroEntregaTxt")?.addEventListener("blur", cotarSePossivel);
+  $("endColeta")?.addEventListener("blur", cotarSePossivel);
+  $("endEntrega")?.addEventListener("blur", cotarSePossivel);
 
-  el("btnUsarLocal")?.addEventListener("click", () => {
-    if (!navigator.geolocation) {
-      alert("Geolocalização não suportada neste navegador.");
-      return;
-    }
-    navigator.geolocation.getCurrentPosition(
-      (pos) => {
-        const lat = pos.coords.latitude;
-        const lng = pos.coords.longitude;
-        window.__ORIG_LAT = lat;
-        window.__ORIG_LNG = lng;
-        const end = el("endColeta");
-        if (end && !end.value.trim()) end.value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-        alert("Localização registrada para a coleta.");
-      },
-      () => alert("Não foi possível obter sua localização. Verifique permissões."),
-      { enableHighAccuracy: true, timeout: 8000 }
-    );
-  });
+  $("btnAddStop")?.addEventListener("click", () => addStop());
 
-  el("btnCriarPedido")?.addEventListener("click", solicitarEntrega);
+  $("btnLocColeta")?.addEventListener("click", () => getLocationAndApply("COLETA"));
+  $("btnLocEntrega")?.addEventListener("click", () => getLocationAndApply("ENTREGA"));
+
+  $("btnCriarPedido")?.addEventListener("click", solicitarEntrega);
 }
 
 function wireRastreio() {
-  el("btnCentralizar")?.addEventListener("click", () => {
+  $("btnCentralizar")?.addEventListener("click", () => {
     if (!map) return;
     const o = mOrigem.getLatLng();
     const d = mDestino.getLatLng();
@@ -1255,30 +1396,15 @@ function wireRastreio() {
     map.fitBounds(b, { animate: true, duration: 0.6 });
   });
 
-  el("btnAbrirComprovante")?.addEventListener("click", () => {
-    const btn = el("btnAbrirComprovante");
-    if (!btn) return;
-
-    const url = btn.dataset.url;
-    if (url) {
-      window.open(url, "_blank", "noopener");
-      return;
-    }
-
-    const id = state.entregaAtivaId || (el("codigoManual")?.value || "").trim();
-    if (!id) {
-      alert("Informe um código (ID) da entrega para abrir o comprovante.");
-      return;
-    }
+  $("btnAbrirComprovante")?.addEventListener("click", () => {
+    const id = state.entregaAtivaId || ($("codigoManual")?.value || "").trim();
+    if (!id) { alert("Informe um código (ID) da entrega."); return; }
     window.open(API.comprovante(id), "_blank", "noopener");
   });
 
-  el("btnRastrearCodigo")?.addEventListener("click", async () => {
-    const id = (el("codigoManual")?.value || "").trim();
-    if (!id || !/^\d+$/.test(id)) {
-      alert("Informe um código numérico válido (ID da entrega).");
-      return;
-    }
+  $("btnRastrearCodigo")?.addEventListener("click", async () => {
+    const id = ($("codigoManual")?.value || "").trim();
+    if (!id || !/^\d+$/.test(id)) { alert("Informe um código numérico válido."); return; }
     state.entregaAtivaId = id;
     await carregarTracking(id);
     startPolling();
@@ -1287,15 +1413,11 @@ function wireRastreio() {
 }
 
 function wireCredito() {
-  // Preenche chave Pix no UI se existir
-  if (el("pixChaveTxt")) setText("pixChaveTxt", PIX_CHAVE || "—");
+  if ($("pixChaveTxt")) setText("pixChaveTxt", PIX_CHAVE || "—");
 
-  el("btnCopiarPix")?.addEventListener("click", async () => {
-    const chave = String(el("pixChaveTxt")?.textContent || "").trim();
-    if (!chave || chave === "—") {
-      alert("Chave Pix não configurada no sistema.");
-      return;
-    }
+  $("btnCopiarPix")?.addEventListener("click", async () => {
+    const chave = String($("pixChaveTxt")?.textContent || "").trim();
+    if (!chave || chave === "—") { alert("Chave Pix não configurada."); return; }
     try {
       await navigator.clipboard.writeText(chave);
       alert("Chave Pix copiada.");
@@ -1312,27 +1434,37 @@ function wireCredito() {
 }
 
 /***********************
- * BOOT (garante DOM pronto)
+ * BOOT
  ***********************/
 document.addEventListener("DOMContentLoaded", () => {
-  // Inicializa mapa (só se existir o container)
-  if (el("map") && window.L) initMap();
+  $("btnSair")?.addEventListener("click", () => {
+    window.location.href = "{{ url_for('cliente_logout') }}";
+  });
 
+  if ($("map") && window.L) initMap();
+
+  wireSheetDrag();
   wireTabs();
   wirePedido();
   wireRastreio();
   wireCredito();
 
-  // status inicial
-  setSaldo(state.saldo);
   setOnline(navigator.onLine);
+  setSaldo(state.saldo);
 
-  // segurança: derruba polling ao sair da página
+  // inicia sheet colapsado no mobile, expandido no desktop
+  const sheet = $("sheet");
+  if (sheet) {
+    if (window.matchMedia("(min-width: 981px)").matches) sheet.classList.add("expanded");
+    else sheet.classList.remove("expanded");
+  }
+
+  setTimeout(() => { if (map) map.invalidateSize(); }, 450);
+
   window.addEventListener("beforeunload", () => {
     if (pollTimer) clearInterval(pollTimer);
   });
 });
-</script>
+  </script>
 </body>
 </html>
-
