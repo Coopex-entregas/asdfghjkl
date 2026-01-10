@@ -4,7 +4,6 @@ import re
 import json
 import random
 from flask_socketio import SocketIO
-from itsdangerous import URLSafeTimedSerializer
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
@@ -257,14 +256,6 @@ class Entrega(db.Model):
     # =========================
     #   HELPERS DE ORIGEM
     # =========================
-    def _sso_serializer():
-    secret = os.environ.get("SSO_SHARED_SECRET") or app.secret_key
-    return URLSafeTimedSerializer(secret_key=secret, salt="coopex-sso-v1")
-
-def sso_dump(payload: dict) -> str:
-    s = _sso_serializer()
-    return s.dumps(payload)
-
 
     def set_origem(self, endereco=None, bairro=None, ref=None, lat=None, lng=None, extra=None):
         """
@@ -1466,25 +1457,6 @@ def render_or_string(template_name, fallback_html, **ctx):
         return render_template(template_name, **ctx)
     except TemplateNotFound:
         return render_template_string(fallback_html, **ctx)
-
-@app.get("/ir_escalas")
-@login_required  # se você usa login_required
-def ir_escalas():
-    # Aqui você valida permissão de quem pode abrir:
-    # Exemplo (ajuste conforme seu sistema origem):
-    if session.get("user_tipo") not in ("admin", "supervisao"):
-        return redirect(url_for("login"))
-
-    DESTINO_BASE = os.environ.get("SSO_DESTINO_BASE", "https://SEU-DESTINO.onrender.com")
-
-    token = sso_dump({
-        "aud": "painel-destino",
-        "tipo": session.get("user_tipo", "admin"),
-        "next": "/admin_dashboard",  # ou "/supervisao" se você criar um painel específico
-    })
-
-    return redirect(f"{DESTINO_BASE}/sso/entrar?token={token}")
-
 
 # =========================================================
 # ROTA INTRUSO (ARAPUCA)
