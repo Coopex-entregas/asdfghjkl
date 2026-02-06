@@ -31,9 +31,7 @@
         --shadow:0 12px 28px rgba(0,0,0,.45);
       }
     }
-    /* ✅ correção do seletor dark */
-    :root[data-theme-forced="dark"],
-    body.dark{
+    body.dark :root, :root[data-theme-forced="dark"]){
       --bg:#0b0f17; --panel:#0f1623; --panel-2:#0b1320; --border:#1d2636;
       --ink:#e7edf9; --muted:#8aa0c7; --table-head:#0b1320; --table-head-text:#b9ccff;
       --shadow:0 12px 28px rgba(0,0,0,.45);
@@ -82,8 +80,12 @@
     .table th{background:var(--table-head);color:var(--table-head-text);font-weight:800}
 
     #map{width:100%;min-height:420px;height:52vh;border-radius:16px;border:1px solid var(--border);box-shadow:var(--shadow)}
+    .legend{display:flex;gap:10px;align-items:center}
+    .legend .dot{width:12px;height:12px;border-radius:999px;display:inline-block}
+
     .section{display:none}
     .section.active{display:block}
+
     .toast{
       position:fixed;right:16px;bottom:16px;background:#0f172a;color:#fff;padding:10px 14px;border-radius:12px;
       box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transform:translateY(8px);transition:.2s;z-index:99
@@ -105,8 +107,6 @@
     .street-panel .bar{display:flex; align-items:center; gap:8px; padding:8px 10px;}
     .street-panel button{border-radius:10px}
     .street-iframe{width:100%; height:calc(60vh - 50px); border:0}
-
-    .hint{color:var(--muted);font-size:.92rem}
   </style>
 </head>
 <body>
@@ -118,6 +118,7 @@
 
       <div class="pill" aria-label="Ajuste de valor por km">
         <span style="opacity:.95">R$ por km</span>
+        <!-- texto preto em qualquer tema -->
         <input id="perKm" type="text" inputmode="decimal"
                style="width:110px;background:#fff;color:#111;border:0;border-radius:10px;padding:6px 8px"
                value="{{ '%.2f' % per_km }}"/>
@@ -138,10 +139,7 @@
        data-end-upsert="{{ url_for('api_upsert_preco') }}"
        data-end-delete="{{ url_for('api_delete_preco', item_id=0)[:-1] }}"
        data-end-ajustes="{{ url_for('api_ajustes') }}"
-       data-end-perkm="{{ url_for('api_per_km') }}"
-       data-end-exportpdf="{{ url_for('api_export_preco_pdf') }}"
-       data-end-exportods="{{ url_for('api_export_preco_ods') }}"
-       data-end-exportzip="{{ url_for('api_export_preco_pdf_zip') }}">
+       data-end-perkm="{{ url_for('api_per_km') }}">
 
     <aside class="sidebar">
       <nav class="nav" aria-label="Navegação">
@@ -249,36 +247,11 @@
           <button class="btn" id="btnLimpar">Limpar</button>
         </div>
 
-        <hr style="border:0;border-top:1px solid var(--border);margin:14px 0">
-
-        <div class="grid cols-3">
-          <div>
-            <label>Bairro base (origem) para gerar tabela</label>
-            <input list="dl-bairros" id="exportOrigem" placeholder="Ex.: Lagoa Nova">
-            <div class="hint" style="margin-top:6px">
-              Gera uma tabela “<b>Origem → Todos os destinos</b>” usando os registros do banco.
-            </div>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn primary" id="btnPdfBairro">Gerar PDF</button>
-              <button class="btn" id="btnOdsBairro">Gerar ODS (ODF)</button>
-            </div>
-          </div>
-          <div>
-            <label>&nbsp;</label>
-            <div style="display:flex;gap:10px;flex-wrap:wrap">
-              <button class="btn" id="btnPdfTodos">PDF de todos (ZIP)</button>
-            </div>
-          </div>
-        </div>
-
         <div style="display:flex;gap:10px;align-items:center;margin:14px 0 6px">
           <div class="grow"><strong>Combinações cadastradas</strong></div>
           <input id="filtroTabela" placeholder="Filtrar… (origem, destino, valor)" style="width:240px">
+          <button class="btn" id="btnExportar">Exportar JSON</button>
         </div>
-
         <div style="max-height:420px;overflow:auto;margin-top:8px">
           <table class="table" id="tabela">
             <thead>
@@ -314,7 +287,7 @@
         <h2 style="margin:0 0 8px">Dados</h2>
         <div class="grid cols-2">
           <div>
-            <p>Os dados ficam no <strong>banco de dados</strong>. O botão abaixo mostra um JSON do servidor (debug).</p>
+            <p>Agora os dados ficam no <strong>banco de dados</strong>. O botão abaixo exporta um JSON do que está no servidor.</p>
             <div style="display:flex;gap:10px;flex-wrap:wrap">
               <button class="btn" id="btnDump">Ver JSON atual</button>
             </div>
@@ -323,7 +296,6 @@
             <ul style="margin:0;color:var(--muted)">
               <li>Consulte por bairros; se não existir, calcule rota por ruas (OSRM).</li>
               <li>Edite/Exclua combinações e faça ajustes em massa por bairro ou global.</li>
-              <li>Gere PDF/ODS por bairro (origem) com o mesmo estilo do sistema.</li>
             </ul>
           </div>
         </div>
@@ -390,12 +362,9 @@ const $$$ = sel => Array.from(document.querySelectorAll(sel));
 const ROOT = document.querySelector('.layout');
 const END_LIST    = ROOT.dataset.endList;
 const END_UPSERT  = ROOT.dataset.endUpsert;
-const END_DELETE0 = ROOT.dataset.endDelete;
+const END_DELETE0 = ROOT.dataset.endDelete; // prefixo sem o último 0
 const END_AJUSTES = ROOT.dataset.endAjustes;
 const END_PERKM   = ROOT.dataset.endPerkm;
-const END_EX_PDF  = ROOT.dataset.endExportpdf;
-const END_EX_ODS  = ROOT.dataset.endExportods;
-const END_EX_ZIP  = ROOT.dataset.endExportzip;
 
 function toast(msg){
   const el = $$('#toast'); el.textContent = msg; el.classList.add('show');
@@ -409,22 +378,30 @@ function parseValor(s){
   if(s==null) return NaN;
   if(typeof s === 'number') return s;
   let str = String(s).trim();
+
   const hasComma = str.includes(',');
   const hasDot   = str.includes('.');
+
   if (hasComma && hasDot){
+    // Formato brasileiro 1.234,56 -> remove milhares e troca vírgula por ponto
     str = str.replace(/\./g,'').replace(',', '.');
   }else if (hasComma && !hasDot){
+    // 12,50 -> 12.50
     str = str.replace(',', '.');
+  } else {
+    // 12.50 -> mantém; 1250 -> mantém
+    // nada
   }
   const v = Number(str);
   return Number.isFinite(v) ? v : NaN;
 }
+
 function uniq(arr){ return Array.from(new Set(arr)); }
 function norm(s){ return (s||'').toString().trim().normalize('NFD').replace(/\p{Diacritic}/gu,'').toLowerCase(); }
 
 /* ======== Estado ======== */
 let LISTA = [];      // {id, origem, destino, valor}
-let Bairros = [];
+let Bairros = [];    // datalist vindo do servidor (não usado para contagem)
 let perKm  = parseFloat("{{ '%.2f' % per_km }}");
 
 /* ======== Abas ======== */
@@ -457,6 +434,7 @@ function renderTabela(){
   }
   rows = rows.slice().sort((a,b)=> alpha(a.origem,b.origem) || alpha(a.destino,b.destino));
 
+  // Estatísticas com base na tabela real
   $$('#statTotal').textContent = LISTA.length;
   const uniqBairros = uniq(LISTA.flatMap(x=>[x.origem,x.destino]).map(s=>s?.trim()).filter(Boolean));
   $$('#statBairros').textContent = uniqBairros.length;
@@ -473,6 +451,7 @@ function renderTabela(){
     </tr>
   `).join('') || `<tr><td colspan="4" style="color:var(--muted)">Nenhum registro ainda.</td></tr>`;
 
+  // Atualiza o datalist com o que existe nos itens
   const dl = $$('#dl-bairros');
   dl.innerHTML = uniqBairros
     .slice().sort((a,b)=>alpha(a,b))
@@ -480,6 +459,7 @@ function renderTabela(){
 }
 
 function fillDatalist(){
+  // fallback para quando não há itens ainda
   const dl = $$('#dl-bairros');
   dl.innerHTML = Bairros.map(b=>`<option value="${b.replace(/"/g,"&quot;")}"></option>`).join('');
 }
@@ -684,20 +664,24 @@ function onMapClick(e){ if(!streetEnabled) return; openStreetAt(e.latlng.lat, e.
   const iv = setInterval(()=>{ if(map){ map.on('click', onMapClick); clearInterval(iv);} }, 200);
 })();
 
-/* ======== Export PDF/ODS ======== */
-function exportBairro(fmt){
-  const origem = ($$('#exportOrigem').value || '').trim();
-  if(!origem){ alert('Escolha o bairro base (origem).'); return; }
+/* ======== Eventos ======== */
+$$('#btnConsultar').addEventListener('click', consultar);
+$$('#btnExportar').addEventListener('click', exportarJSON);
+$$('#btnDump').addEventListener('click', dumpJSON);
+$$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
+$$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
+$$('#savePerKm').addEventListener('click', salvarPerKm);
+$$('#btnSalvar').addEventListener('click', upsertComb);
+$$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
+$$('#filtroTabela').addEventListener('input', renderTabela);
+$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ upsertComb(); }});
 
-  // abre download direto
-  const base = (fmt==='pdf' ? END_EX_PDF : END_EX_ODS);
-  const url = new URL(base, window.location.origin);
-  url.searchParams.set('origem', origem);
-  window.open(url.toString(), '_blank');
-}
-function exportTodosZip(){
-  window.open(new URL(END_EX_ZIP, window.location.origin).toString(), '_blank');
-}
+$$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
+$$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
+$$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
+$$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
+$$('#btnCalcularKm').addEventListener('click', calcularRota);
+$$('#btnInverter').addEventListener('click', inverterEnd);
 
 /* ======== Per Km ======== */
 async function salvarPerKm(){
@@ -714,11 +698,17 @@ async function salvarPerKm(){
   $$('#outPerKm').value = Number(perKm).toFixed(2);
 }
 
-/* ======== Dump JSON (debug) ======== */
+/* ======== Export JSON / Dump ======== */
+function exportarJSON(){
+  const blob = new Blob([JSON.stringify({items: LISTA, perKm}, null, 2)], {type:'application/json'});
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = 'tabela-precos.json';
+  a.click(); URL.revokeObjectURL(a.href);
+}
 async function dumpJSON(){
   const r = await fetch(END_LIST, {credentials:'same-origin'});
   const j = await r.json();
-  $$('#dump').textContent = JSON.stringify(j, null, 2);
+  const blob = JSON.stringify(j, null, 2);
+  $$('#dump').textContent = blob;
 }
 
 /* ======== Teste rápido contra API ======== */
@@ -741,28 +731,7 @@ async function runTests(){
     out.textContent = logs.join('\n');
   }
 }
-
-/* ======== Eventos ======== */
-$$('#btnConsultar').addEventListener('click', consultar);
-$$('#btnDump').addEventListener('click', dumpJSON);
-$$('#btnAplicarBairro').addEventListener('click', aplicarPorBairro);
-$$('#btnAplicarGlobal').addEventListener('click', aplicarGlobal);
-$$('#savePerKm').addEventListener('click', salvarPerKm);
-$$('#btnSalvar').addEventListener('click', upsertComb);
-$$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
-$$('#filtroTabela').addEventListener('input', renderTabela);
-$$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ upsertComb(); }});
-$$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
-$$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
-$$('#endOrigem').addEventListener('input', debounce(()=> sugestionar($$('#endOrigem'), '#sugOrigem'), 300));
-$$('#endDestino').addEventListener('input', debounce(()=> sugestionar($$('#endDestino'), '#sugDestino'), 300));
-$$('#btnCalcularKm').addEventListener('click', calcularRota);
-$$('#btnInverter').addEventListener('click', inverterEnd);
 $$('#btnRunTests').addEventListener('click', runTests);
-
-$$('#btnPdfBairro').addEventListener('click', ()=> exportBairro('pdf'));
-$$('#btnOdsBairro').addEventListener('click', ()=> exportBairro('ods'));
-$$('#btnPdfTodos').addEventListener('click', exportTodosZip);
 
 /* ======== Init ======== */
 (async function init(){
