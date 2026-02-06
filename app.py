@@ -1320,16 +1320,16 @@ if ParametroSistemaCls is None:
             return f"<ConfigKV {self.chave}={self.valor}>"
 
     def _get_param(chave: str, default=None):
-        row = ConfigKV.query.filter_by(chave=chave).first()
+        row = ParametroSistemaCls.query.filter_by(chave=chave).first()
         return row.valor if row and row.valor is not None else default
-
+        
     def _set_param(chave: str, valor: str):
-        row = ConfigKV.query.filter_by(chave=chave).first()
+        row = ParametroSistemaCls.query.filter_by(chave=chave).first()
         if not row:
-            row = ConfigKV(chave=chave, valor=valor)
+            row = ParametroSistemaCls(chave=chave, valor=str(valor))
             db.session.add(row)
         else:
-            row.valor = valor
+            row.valor = str(valor)
         db.session.commit()
 
 else:
