@@ -5617,63 +5617,9 @@ def estatisticas_cooperado():
     hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
     horas_pico_top3 = [f"{h} ({q})" for h, q in cont_horas.most_common(3)]
 
-    # =========================
-    # PAGAMENTO: NORMALIZA + RESUMO (QTD + TOTAL R$)
-    # =========================
-    def norm_pgto(v):
-        s = (v or "").strip().upper()
-        if not s:
-            return "NÃO INFORMADO"
-
-        # Normalizações para manter SEMPRE separado
-        if s in {"PIX DA COOPERATIVA", "PIX COOPERATIVA", "PIXCOOPERATIVA", "PIX_COOPERATIVA"}:
-            return "PIX COOPERATIVA"
-        if s in {"PIX", "PÍX"}:
-            return "PIX"
-        if s in {"DINHEIRO", "CASH"}:
-            return "DINHEIRO"
-        if s in {"COMANDA"}:
-            return "COMANDA"
-
-        # Qualquer outro valor entra como está
-        return s
-
-    # Contador simples (para pgto_top)
-    cont_pgto = Counter([norm_pgto(e.pagamento) for e in entregas if e.pagamento or (e.pagamento is None)])
-    # OBS: acima mantém "NÃO INFORMADO" quando for vazio/nulo (pela norm_pgto)
+    cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
     pgto_top = cont_pgto.most_common(1)[0][0] if cont_pgto else "-"
 
-    # Soma por pagamento (QTD + TOTAL R$)
-    mapa_pgto = defaultdict(lambda: {"qtd": 0, "total": 0.0})
-    for e in entregas:
-        forma = norm_pgto(getattr(e, "pagamento", None))
-        mapa_pgto[forma]["qtd"] += 1
-        mapa_pgto[forma]["total"] += float(getattr(e, "valor", 0) or 0)
-
-    # Ordem fixa (como você pediu) + extras
-    ordem_fixa = ["PIX", "COMANDA", "DINHEIRO", "PIX COOPERATIVA"]
-    pgto_resumo = []
-    usados = set()
-
-    for f in ordem_fixa:
-        d = mapa_pgto.get(f, {"qtd": 0, "total": 0.0})
-        pgto_resumo.append({"forma": f, "qtd": d["qtd"], "total": round(d["total"], 2)})
-        usados.add(f)
-
-    extras = sorted([k for k in mapa_pgto.keys() if k not in usados])
-    for f in extras:
-        d = mapa_pgto[f]
-        pgto_resumo.append({"forma": f, "qtd": d["qtd"], "total": round(d["total"], 2)})
-
-    # Ranking pgto (se você usa em algum lugar)
-    ranking_pgto = [
-        {"forma": item["forma"], "qtd": item["qtd"], "total": item["total"]}
-        for item in sorted(pgto_resumo, key=lambda x: (x["total"], x["qtd"]), reverse=True)
-    ]
-
-    # =========================
-    # Ranking por cooperado (já existia)
-    # =========================
     mapa_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     total_geral_periodo = 0.0
     for e in entregas:
@@ -5716,6 +5662,8 @@ def estatisticas_cooperado():
         for b, q in cont_bairros_origem.most_common()
     ]
 
+    ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
+
     soma_por_cliente = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     for e in entregas:
         if e.cliente:
@@ -5743,10 +5691,7 @@ def estatisticas_cooperado():
         "ticket_medio": ticket_medio,
         "dia_top": dia_top,
         "hora_pico": hora_pico,
-        "pgto_top": pgto_top,
-
-        # ✅ AQUI está o que o HTML vai usar para mostrar separado
-        "pgto_resumo": pgto_resumo
+        "pgto_top": pgto_top
     }
 
     por_ano_total = defaultdict(float)
@@ -5790,7 +5735,7 @@ def estatisticas_cooperado():
         ranking_cooperados=ranking_cooperados,
         ranking_bairros=ranking_bairros,
         ranking_bairros_origem=ranking_bairros_origem,
-        ranking_pgto=ranking_pgto,  # agora com qtd + total
+        ranking_pgto=ranking_pgto,
         ranking_clientes=ranking_clientes,
         horas_pico_top3=horas_pico_top3,
         chart_entregas_labels=chart_entregas_labels,
@@ -5803,6 +5748,8 @@ def estatisticas_cooperado():
         chart_ano_qtd=chart_ano_qtd,
         chart_ano_ticket=chart_ano_ticket,
     )
+
+
 
 # =========================================================
 # EXPORTAÇÃO ESTATÍSTICAS (MASTER)
@@ -5839,11 +5786,8 @@ def estatisticas_cooperado_exportar_xlsx():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    entregas = query.options(joinedload(Entrega.cooperado)).all()
+    entregas = query.all()
 
-    # =========================
-    # 1) RESUMO COOPERADOS (já existia)
-    # =========================
     soma_por_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
     total_geral = 0.0
     for e in entregas:
@@ -5863,71 +5807,18 @@ def estatisticas_cooperado_exportar_xlsx():
         })
     linhas.sort(key=lambda r: r["Valor Total (R$)"], reverse=True)
 
-    df_resumo = pd.DataFrame(linhas)
+    df_out = pd.DataFrame(linhas)
     titulo = f"Faturamento dos cooperados do período ({periodo_legivel_str(data_inicio, data_fim)})"
 
-    # =========================
-    # 2) PAGAMENTOS (QTD + TOTAL R$) — NOVO
-    # =========================
-    def norm_pgto(v):
-        s = (v or "").strip().upper()
-        if not s:
-            return "NÃO INFORMADO"
-
-        if s in {"PIX DA COOPERATIVA", "PIX COOPERATIVA", "PIXCOOPERATIVA", "PIX_COOPERATIVA"}:
-            return "PIX COOPERATIVA"
-        if s in {"PIX", "PÍX"}:
-            return "PIX"
-        if s in {"DINHEIRO", "CASH"}:
-            return "DINHEIRO"
-        if s in {"COMANDA"}:
-            return "COMANDA"
-
-        return s
-
-    mapa_pgto = defaultdict(lambda: {"qtd": 0, "total": 0.0})
-    for e in entregas:
-        forma = norm_pgto(getattr(e, "pagamento", None))
-        mapa_pgto[forma]["qtd"] += 1
-        mapa_pgto[forma]["total"] += float(getattr(e, "valor", 0) or 0)
-
-    ordem_fixa = ["PIX", "COMANDA", "DINHEIRO", "PIX COOPERATIVA"]
-    linhas_pgto = []
-    usados = set()
-
-    for f in ordem_fixa:
-        d = mapa_pgto.get(f, {"qtd": 0, "total": 0.0})
-        linhas_pgto.append({
-            "Forma Pagamento": f,
-            "Qtd": int(d["qtd"]),
-            "Total (R$)": round(float(d["total"]), 2)
-        })
-        usados.add(f)
-
-    extras = sorted([k for k in mapa_pgto.keys() if k not in usados])
-    for f in extras:
-        d = mapa_pgto[f]
-        linhas_pgto.append({
-            "Forma Pagamento": f,
-            "Qtd": int(d["qtd"]),
-            "Total (R$)": round(float(d["total"]), 2)
-        })
-
-    df_pgto = pd.DataFrame(linhas_pgto)
-
-    # =========================
-    # GERAR XLSX COM 2 ABAS
-    # =========================
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        # ABA 1: Resumo
-        sheet1 = 'Resumo'
+        sheet = 'Resumo'
         start_row = 1
-        df_resumo.to_excel(writer, index=False, sheet_name=sheet1, startrow=start_row)
-        ws1 = writer.sheets[sheet1]
+        df_out.to_excel(writer, index=False, sheet_name=sheet, startrow=start_row)
+        ws = writer.sheets[sheet]
 
-        last_col = len(df_resumo.columns) - 1
-        ws1.merge_range(
+        last_col = len(df_out.columns) - 1
+        ws.merge_range(
             0, 0, 0, last_col, titulo,
             writer.book.add_format({
                 'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
@@ -5936,42 +5827,77 @@ def estatisticas_cooperado_exportar_xlsx():
         )
 
         widths = [28, 14, 18, 12]
-        for i, w in enumerate(widths[:len(df_resumo.columns)]):
-            ws1.set_column(i, i, w)
+        for i, w in enumerate(widths[:len(df_out.columns)]):
+            ws.set_column(i, i, w)
 
         money_fmt = writer.book.add_format({'num_format': '#,##0.00'})
         pct_fmt = writer.book.add_format({'num_format': '0.0"%"'})
-        cols = list(df_resumo.columns)
+        cols = list(df_out.columns)
         if "Valor Total (R$)" in cols:
             idx = cols.index("Valor Total (R$)")
-            ws1.set_column(idx, idx, 18, money_fmt)
+            ws.set_column(idx, idx, 18, money_fmt)
         if "% do Total" in cols:
             idx = cols.index("% do Total")
-            ws1.set_column(idx, idx, 12, pct_fmt)
-
-        # ABA 2: Pagamentos (NOVO)
-        sheet2 = 'Pagamentos'
-        df_pgto.to_excel(writer, index=False, sheet_name=sheet2, startrow=1)
-        ws2 = writer.sheets[sheet2]
-
-        titulo_pgto = f"Pagamentos separados ({periodo_legivel_str(data_inicio, data_fim)})"
-        last_col2 = len(df_pgto.columns) - 1
-        ws2.merge_range(
-            0, 0, 0, last_col2, titulo_pgto,
-            writer.book.add_format({
-                'bold': True, 'font_size': 14, 'align': 'center', 'valign': 'vcenter',
-                'font_color': '#003399'
-            })
-        )
-
-        # Larguras e formato moeda
-        ws2.set_column(0, 0, 22)  # Forma Pagamento
-        ws2.set_column(1, 1, 10)  # Qtd
-        ws2.set_column(2, 2, 16, money_fmt)  # Total (R$)
+            ws.set_column(idx, idx, 12, pct_fmt)
 
     output.seek(0)
     return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
 
+
+@app.route('/exportar_xlsx')
+def exportar_xlsx():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    cliente = (request.args.get('cliente') or '').strip()
+
+    query = Entrega.query
+    if cooperado_id != 'todos':
+        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+    if cliente:
+        like = f"%{cliente.lower()}%"
+        query = query.filter(func.lower(Entrega.cliente).like(like))
+    if data_inicio:
+        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+        inicio_utc, _ = local_date_window_to_utc_range(di)
+        query = query.filter(Entrega.data_envio >= inicio_utc)
+    if data_fim:
+        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+        _, fim_utc = local_date_window_to_utc_range(df_)
+        query = query.filter(Entrega.data_envio <= fim_utc)
+
+    entregas = query.order_by(Entrega.data_envio.asc()).all()
+
+    rows = []
+    for e in entregas:
+        dt_local = to_brasilia(e.data_envio)
+        rows.append({
+            'Data': dt_local.strftime('%d/%m/%Y') if dt_local else '',
+            'Cliente': e.cliente,
+            'Bairro': e.bairro,
+            'Valor': e.valor,
+            'Status Pagamento': e.status_pagamento,
+            'Status Entrega': e.status,
+            'Forma Pagamento': e.pagamento,
+            'Cooperado': (e.cooperado.nome if e.cooperado else 'Sem Cooperado'),
+            'Recebido Por': e.recebido_por or ''
+        })
+
+    df_out = pd.DataFrame(rows)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Entregas'
+        df_out.to_excel(writer, index=False, sheet_name=sheet)
+        ws = writer.sheets[sheet]
+        col_widths = [12, 28, 18, 10, 18, 16, 16, 22, 18]
+        for i, w in enumerate(col_widths[:len(df_out.columns)]):
+            ws.set_column(i, i, w)
+    output.seek(0)
+    return send_file(output, download_name="entregas.xlsx", as_attachment=True)
 
 # =========================================================
 # EXPORTAR / IMPORTAR CLIENTES
