@@ -1522,20 +1522,22 @@ def redirect_back_to_admin():
     return redirect(url_for("admin", **params))
 
 
-def _assert_entrega_do_cooperado(entrega: 'Entrega'):
-
-
-def _assert_cooperado():
+def _assert_cooperado() -> int:
     """Garante que há um cooperado logado (não-admin) e retorna o user_id."""
     uid = session.get('user_id')
     if not uid or session.get('is_admin') or session.get('tipo') != 'cooperado':
         abort(403)
+    return int(uid)
+
+
+def _assert_entrega_do_cooperado(entrega: 'Entrega') -> int:
+    """Garante que a entrega existe e pertence ao cooperado logado."""
+    uid = _assert_cooperado()
+    if not entrega:
+        abort(404)
+    if getattr(entrega, 'cooperado_id', None) != uid:
+        abort(403)
     return uid
-    uid = session.get('user_id')
-    if uid is None or session.get('is_admin'):
-        abort(403)
-    if entrega.cooperado_id != uid:
-        abort(403)
 
 
 def master_required(view_func):
