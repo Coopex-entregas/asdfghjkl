@@ -5,6 +5,7 @@ import json
 import random
 from flask_socketio import SocketIO
 import unicodedata
+import uuid
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
@@ -80,6 +81,17 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 db = SQLAlchemy(app)
+
+# ------------------------
+# Config Mídias (foto/vídeo) — guardar 30 dias
+# ------------------------
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+MEDIA_UPLOAD_FOLDER = os.path.join(BASE_DIR, 'instance', 'midias_entregas')
+os.makedirs(MEDIA_UPLOAD_FOLDER, exist_ok=True)
+app.config['MEDIA_UPLOAD_FOLDER'] = MEDIA_UPLOAD_FOLDER
+# limite (ajuste se quiser): 20 MB
+app.config['MAX_CONTENT_LENGTH'] = int(os.environ.get('MAX_UPLOAD_MB', '20')) * 1024 * 1024
+
 
 # =========================================================
 # FLASK-LOGIN / LOGIN MANAGER
@@ -590,6 +602,20 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
         except Exception:
             pass
 
+
+
+class MidiaEntrega(db.Model):
+    __tablename__ = 'midias_entregas'
+    id = db.Column(db.Integer, primary_key=True)
+    entrega_id = db.Column(db.Integer, db.ForeignKey('entregas.id'), nullable=False, index=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True, index=True)
+    nome_arquivo = db.Column(db.String(255), nullable=False)
+    nome_original = db.Column(db.String(255), nullable=True)
+    mimetype = db.Column(db.String(120), nullable=True)
+    criado_em = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(BRAZIL_TZ))
+
+    entrega = db.relationship('Entrega', backref=db.backref('midias', lazy=True, cascade='all, delete-orphan'))
+    cooperado = db.relationship('Usuario', foreign_keys=[cooperado_id])
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -2777,6 +2803,26 @@ def admin():
                 "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
 
+
+
+# Referências de mês/ano (para "Ganhos do mês" e "Ganhos do ano")
+hoje_ref = datetime.now(BRAZIL_TZ)
+mes_ref = hoje_ref.month
+ano_ref = hoje_ref.year
+_meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
+mes_nome = _meses[mes_ref-1]
+
+# Total geral do mês (baseado na data_envio)
+try:
+    total_geral_mes = (
+        db.session.query(func.coalesce(func.sum(Entrega.valor), 0))
+        .filter(func.extract('month', Entrega.data_envio) == mes_ref,
+                func.extract('year', Entrega.data_envio) == ano_ref)
+        .scalar()
+    ) or 0
+except Exception:
+    total_geral_mes = 0
+
     return render_template(
         'admin.html',
         entregas=entregas,
@@ -2785,6 +2831,14 @@ def admin():
         data_inicio=data_inicio,
         data_fim=data_fim,
         to_brasilia=to_brasilia,
+        mes_nome=mes_nome,
+        ano_ref=ano_ref,
+        total_geral_mes=total_geral_mes,
+        total_pago_mes=total_pago_mes,
+        total_pendente_mes=total_pendente_mes,
+        total_geral_ano=total_geral_ano,
+        total_pago_ano=total_pago_ano,
+        total_pendente_ano=total_pendente_ano,
         request=request,
         now=lambda: datetime.now(BRAZIL_TZ),
         feriado_hoje=feriado_hoje,
@@ -3020,13 +3074,94 @@ def painel_cooperado():
     )
     total_pendente = max(0.0, total_geral - total_pago)
 
+    
+    # ====== ENRIQUECE ENTREGAS (coleta/entrega) ======
+    for e in entregas:
+        try:
+            origem = e.get_origem() or {}
+            destino = e.get_destino() or {}
+            e.origem_bairro = origem.get('bairro')
+            e.destino_bairro = destino.get('bairro')
+        except Exception:
+            e.origem_bairro = None
+            e.destino_bairro = None
+
+    # ====== TOTAIS FIXOS DO MÊS / ANO ATUAL ======
+    hoje = datetime.now(BRAZIL_TZ).date()
+    ano_ref = hoje.year
+    mes_ref = hoje.month
+
+    # janela do mês
+    primeiro_dia_mes = hoje.replace(day=1)
+    # último dia do mês: pega 1º do próximo mês - 1 dia
+    if mes_ref == 12:
+        primeiro_prox = date(ano_ref+1,1,1)
+    else:
+        primeiro_prox = date(ano_ref, mes_ref+1, 1)
+    ultimo_dia_mes = primeiro_prox - timedelta(days=1)
+
+    ini_mes_utc, _ = local_date_window_to_utc_range(primeiro_dia_mes)
+    _, fim_mes_utc = local_date_window_to_utc_range(ultimo_dia_mes)
+
+    q_mes = Entrega.query.filter(
+        Entrega.cooperado_id==user_id,
+        Entrega.data_envio>=ini_mes_utc,
+        Entrega.data_envio<=fim_mes_utc
+    )
+    entregas_mes = q_mes.all()
+    total_geral_mes = sum(float(e.valor or 0) for e in entregas_mes)
+    total_pago_mes = sum(float(e.valor or 0) for e in entregas_mes if (e.status_pagamento or '').lower()=='pago')
+    total_pendente_mes = max(0.0, total_geral_mes - total_pago_mes)
+
+    # janela do ano
+    ini_ano = date(ano_ref,1,1)
+    fim_ano = date(ano_ref,12,31)
+    ini_ano_utc, _ = local_date_window_to_utc_range(ini_ano)
+    _, fim_ano_utc = local_date_window_to_utc_range(fim_ano)
+
+    q_ano = Entrega.query.filter(
+        Entrega.cooperado_id==user_id,
+        Entrega.data_envio>=ini_ano_utc,
+        Entrega.data_envio<=fim_ano_utc
+    )
+    entregas_ano = q_ano.all()
+    total_geral_ano = sum(float(e.valor or 0) for e in entregas_ano)
+    total_pago_ano = sum(float(e.valor or 0) for e in entregas_ano if (e.status_pagamento or '').lower()=='pago')
+    total_pendente_ano = max(0.0, total_geral_ano - total_pago_ano)
+
+    mes_nome = {1:'janeiro',2:'fevereiro',3:'março',4:'abril',5:'maio',6:'junho',7:'julho',8:'agosto',9:'setembro',10:'outubro',11:'novembro',12:'dezembro'}.get(mes_ref,str(mes_ref))
+
+    # ====== CHAMADAS (APENAS ATRIBUÍDAS) ======
+    chamadas = []
+    for item in corridas:
+        e = item.get('obj')
+        if not e:
+            continue
+        chamadas.append({
+            'id': e.id,
+            'cliente': e.cliente,
+            'valor': float(e.valor or 0),
+            'origem_bairro': item.get('origem_bairro'),
+            'destino_bairro': item.get('destino_bairro'),
+            'distancia': None,
+            'bairro': item.get('destino_bairro') or e.bairro
+        })
+
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
-        corridas=corridas,
+        chamadas=chamadas,
         total_geral=total_geral,
         total_pago=total_pago,
         total_pendente=total_pendente,
+        mes_nome=mes_nome,
+        ano_ref=ano_ref,
+        total_geral_mes=total_geral_mes,
+        total_pago_mes=total_pago_mes,
+        total_pendente_mes=total_pendente_mes,
+        total_geral_ano=total_geral_ano,
+        total_pago_ano=total_pago_ano,
+        total_pendente_ano=total_pendente_ano,
         request=request,
         to_brasilia=to_brasilia,
         status_pgto=status_pgto
@@ -3523,6 +3658,124 @@ def cooperado_socorro():
 # ================================
 # CRUD de COOPERADO (mantidos)
 # ================================
+
+
+# =============================
+# MÍDIAS (FOTO/VÍDEO) — BACKEND
+# Guarda no servidor e remove após 30 dias
+# =============================
+_last_midia_cleanup = None
+
+def _cleanup_midias_30_dias():
+    global _last_midia_cleanup
+    try:
+        agora = datetime.now(BRAZIL_TZ)
+        limite = agora - timedelta(days=30)
+
+        antigas = MidiaEntrega.query.filter(MidiaEntrega.criado_em < limite).all()
+        if antigas:
+            for m in antigas:
+                try:
+                    path = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], m.nome_arquivo)
+                    if os.path.exists(path):
+                        os.remove(path)
+                except Exception:
+                    pass
+                db.session.delete(m)
+            db.session.commit()
+        _last_midia_cleanup = agora
+    except Exception:
+        # não quebra o app por falha de limpeza
+        pass
+
+@app.before_request
+def _midia_cleanup_periodico():
+    global _last_midia_cleanup
+    if _last_midia_cleanup is None:
+        _cleanup_midias_30_dias()
+        return
+    # roda no máximo a cada 6h
+    try:
+        if (datetime.now(BRAZIL_TZ) - _last_midia_cleanup) > timedelta(hours=6):
+            _cleanup_midias_30_dias()
+    except Exception:
+        pass
+
+def _allowed_midia_filename(filename: str) -> bool:
+    ext = (filename.rsplit('.', 1)[-1] if '.' in filename else '').lower()
+    return ext in {'jpg','jpeg','png','webp','gif','mp4','mov','m4v','avi','mkv','heic'}
+
+@app.route('/cooperado/entrega/<int:id>/midia', methods=['POST'])
+@login_required
+def cooperado_upload_midia(id):
+    # cooperado envia foto/vídeo como comprovante
+    if getattr(current_user, 'tipo', None) != 'cooperado':
+        return jsonify(ok=False, error='SEM_PERMISSAO'), 403
+
+    entrega = Entrega.query.get_or_404(id)
+    if entrega.cooperado_id != current_user.id:
+        return jsonify(ok=False, error='NAO_AUTORIZADO'), 403
+
+    f = request.files.get('file') or request.files.get('foto') or request.files.get('midia')
+    if not f or not getattr(f, 'filename', ''):
+        return jsonify(ok=False, error='SEM_ARQUIVO'), 400
+
+    if not _allowed_midia_filename(f.filename):
+        return jsonify(ok=False, error='TIPO_NAO_PERMITIDO'), 400
+
+    ext = ('.' + f.filename.rsplit('.', 1)[-1].lower()) if '.' in f.filename else ''
+    nome = f"entrega_{id}_{int(datetime.now(BRAZIL_TZ).timestamp())}_{uuid.uuid4().hex}{ext}"
+    salvar_em = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], nome)
+    f.save(salvar_em)
+
+    m = MidiaEntrega(
+        entrega_id=id,
+        cooperado_id=current_user.id,
+        nome_arquivo=nome,
+        nome_original=f.filename,
+        mimetype=getattr(f, 'mimetype', None)
+    )
+    db.session.add(m)
+    db.session.commit()
+
+    return jsonify(ok=True, media_id=m.id)
+
+def _admin_guard():
+    return getattr(current_user, 'tipo', None) == 'admin'
+
+def _get_ultima_midia_entrega(entrega_id: int):
+    return (MidiaEntrega.query
+            .filter_by(entrega_id=entrega_id)
+            .order_by(MidiaEntrega.criado_em.desc())
+            .first())
+
+@app.route('/admin/entrega/<int:id>/midia', methods=['GET'])
+@login_required
+def admin_entrega_midia(id):
+    if not _admin_guard():
+        return "Sem permissão", 403
+    m = _get_ultima_midia_entrega(id)
+    if not m:
+        return "Sem mídia", 404
+    path = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], m.nome_arquivo)
+    if not os.path.exists(path):
+        return "Arquivo não encontrado", 404
+    return send_file(path, mimetype=m.mimetype or 'application/octet-stream', as_attachment=False, download_name=m.nome_original or m.nome_arquivo)
+
+@app.route('/admin/entrega/<int:id>/midia/download', methods=['GET'])
+@login_required
+def admin_entrega_midia_download(id):
+    if not _admin_guard():
+        return "Sem permissão", 403
+    m = _get_ultima_midia_entrega(id)
+    if not m:
+        return "Sem mídia", 404
+    path = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], m.nome_arquivo)
+    if not os.path.exists(path):
+        return "Arquivo não encontrado", 404
+    return send_file(path, mimetype=m.mimetype or 'application/octet-stream', as_attachment=True, download_name=m.nome_original or m.nome_arquivo)
+
+
 @app.route('/cooperados/cadastrar', methods=['GET', 'POST'])
 def cadastrar_cooperado():
     if not session.get('is_admin'):
