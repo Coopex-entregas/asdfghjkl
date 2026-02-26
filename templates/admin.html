@@ -721,7 +721,35 @@
     }
     .cluster-badge.online{ background: #10b981; }
     .cluster-badge.offline{ background: #ef4444; }
-  </style>
+  
+    /* ===== RECEBIDO POR + MÍDIA (sem mudar layout geral) ===== */
+    .rcb-cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .rcb-media-btn{
+      border:none;cursor:pointer;
+      width:34px;height:34px;border-radius:10px;
+      display:grid;place-items:center;
+      background:linear-gradient(180deg, rgba(39,80,255,.14), rgba(0,51,204,.10));
+      border:1px solid rgba(0,51,204,.18);
+      box-shadow:0 6px 14px rgba(0,51,204,.10);
+      font-size:16px;
+    }
+    .rcb-media-btn:active{transform:scale(.98)}
+    .rcb-name{font-weight:800}
+    /* ===== MODAL MÍDIA ===== */
+    .midia-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;padding:14px}
+    .midia-overlay.open{display:flex}
+    .midia-modal{width:min(860px, 96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:14px;border:1px solid rgba(0,51,204,.12)}
+    .midia-modal .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .midia-modal .title{font-weight:900;color:#0b1b3a}
+    .midia-modal .close{border:none;background:#eef2ff;color:#0f2a80;font-weight:900;border-radius:10px;padding:10px 12px;cursor:pointer}
+    .midia-modal .actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+    .midia-modal .btn{border:none;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
+    .midia-modal .btn-primary{background:#0033cc;color:#fff}
+    .midia-modal .btn-ghost{background:#fff;border:1px solid #e2e9ff;color:#0f2a80}
+    .midia-view{border:1px solid #e2e9ff;border-radius:14px;overflow:hidden;background:#f8faff}
+    .midia-view img,.midia-view video{width:100%;display:block}
+    .midia-hint{color:#6b7bb0;font-weight:800;font-size:.9rem;margin-top:8px}
+</style>
 </head>
 
 <body>
@@ -1030,7 +1058,12 @@
                     {% endif %}
                   </td>
 
-                  <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
+                  <td>
+  <div class="rcb-cell">
+    <button type="button" class="rcb-media-btn" title="Ver foto/vídeo (comprovante)" onclick="openMidiaModal({{ e.id }})">📷</button>
+    <div class="rcb-name" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</div>
+  </div>
+</td>
 
                   <td>
                     {% if tem_coop %}
@@ -1969,6 +2002,118 @@
       }
       setInterval(atualizarDoServidor, 5000);
     });
-  </script>
+  
+    // =============================
+    // MÍDIA (FOTO/VÍDEO) — ADMIN
+    // Botão fica acima do "Recebido por" e abre modal para ver + baixar
+    // Endpoints esperados no back-end (vamos ligar no seu PY depois):
+    //   GET  /admin/entrega/<id>/midia          -> retorna o arquivo (image/* ou video/*)
+    //   GET  /admin/entrega/<id>/midia/download -> força download
+    // Se não existir mídia, deve retornar 404.
+    let _midiaObjectUrl = null;
+
+    async function openMidiaModal(entregaId){
+      const overlay = document.getElementById('midia-overlay');
+      const img = document.getElementById('midia-img');
+      const vid = document.getElementById('midia-video');
+      const hint = document.getElementById('midia-hint');
+      const dl = document.getElementById('midia-download');
+
+      if(!overlay || !img || !vid || !hint || !dl) return;
+
+      // reset
+      if(_midiaObjectUrl){
+        try{ URL.revokeObjectURL(_midiaObjectUrl); }catch(e){}
+        _midiaObjectUrl = null;
+      }
+      img.style.display='none'; img.src='';
+      vid.style.display='none'; vid.src='';
+      hint.textContent='Carregando...';
+      dl.setAttribute('href', `/admin/entrega/${entregaId}/midia/download`);
+
+      overlay.classList.add('open');
+      document.body.style.overflow='hidden';
+
+      try{
+        const resp = await fetch(`/admin/entrega/${entregaId}/midia`, { method:'GET' });
+        if(!resp.ok){
+          if(resp.status === 404){
+            hint.textContent = 'Sem foto/vídeo anexado para esta entrega.';
+          }else{
+            hint.textContent = 'Falha ao carregar o comprovante.';
+          }
+          return;
+        }
+
+        const ct = (resp.headers.get('content-type') || '').toLowerCase();
+        const blob = await resp.blob();
+        _midiaObjectUrl = URL.createObjectURL(blob);
+
+        if(ct.startsWith('video/')){
+          vid.src = _midiaObjectUrl;
+          vid.style.display='block';
+          hint.textContent = 'Vídeo carregado.';
+        }else{
+          img.src = _midiaObjectUrl;
+          img.style.display='block';
+          hint.textContent = 'Imagem carregada.';
+        }
+      }catch(err){
+        hint.textContent = 'Erro: ' + err.message;
+      }
+    }
+
+    function closeMidiaModal(){
+      const overlay = document.getElementById('midia-overlay');
+      const img = document.getElementById('midia-img');
+      const vid = document.getElementById('midia-video');
+
+      if(overlay) overlay.classList.remove('open');
+      document.body.style.overflow='';
+
+      if(vid){
+        try{ vid.pause(); }catch(e){}
+        vid.src='';
+        vid.style.display='none';
+      }
+      if(img){
+        img.src='';
+        img.style.display='none';
+      }
+      if(_midiaObjectUrl){
+        try{ URL.revokeObjectURL(_midiaObjectUrl); }catch(e){}
+        _midiaObjectUrl = null;
+      }
+    }
+
+    document.addEventListener('keydown', (e)=>{
+      const overlay = document.getElementById('midia-overlay');
+      if(e.key === 'Escape' && overlay && overlay.classList.contains('open')){
+        closeMidiaModal();
+      }
+    });
+</script>
+
+  <!-- MODAL: VISUALIZAR FOTO/VÍDEO + DOWNLOAD (Recebido por) -->
+  <div class="midia-overlay" id="midia-overlay" role="dialog" aria-modal="true" aria-label="Comprovante">
+    <div class="midia-modal">
+      <div class="top">
+        <div class="title">Comprovante (Foto/Vídeo)</div>
+        <button type="button" class="close" onclick="closeMidiaModal()">Fechar</button>
+      </div>
+
+      <div class="midia-view" id="midia-view">
+        <img id="midia-img" alt="Comprovante" style="display:none;">
+        <video id="midia-video" controls playsinline style="display:none;"></video>
+      </div>
+
+      <div class="midia-hint" id="midia-hint">Carregando...</div>
+
+      <div class="actions">
+        <a class="btn btn-primary" id="midia-download" href="#" download>Baixar</a>
+        <button type="button" class="btn btn-ghost" onclick="closeMidiaModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
