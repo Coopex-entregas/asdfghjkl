@@ -1494,7 +1494,7 @@ def _ci_equal(a: str, b: str) -> bool:
 @app.before_request
 def remember_admin_filters():
     if request.endpoint == "admin" and request.method == "GET":
-        keys = ["cooperado_id", "data_inicio", "data_fim", "status_pagamento", "cliente"]
+        keys = ["cooperado_id", "data_inicio", "data_fim", "status_pagamento", "cliente", "endereco"]
         session["last_filters"] = {k: request.args.get(k) for k in keys if request.args.get(k)}
 
 
@@ -2697,6 +2697,7 @@ def admin():
     status_pagamento = request.args.get('status_pagamento', 'todos')
     status_pgto = status_pagamento
     cliente = (request.args.get('cliente') or '').strip()
+    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
 
