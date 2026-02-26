@@ -3731,31 +3731,6 @@ def _get_ultima_midia_entrega(entrega_id: int):
             .order_by(MidiaEntrega.criado_em.desc())
             .first())
 
-@app.route('/admin/entrega/<int:id>/midia', methods=['GET'])
-@login_required
-def admin_entrega_midia(id):
-    if not _admin_guard():
-        return "Sem permissão", 403
-    m = _get_ultima_midia_entrega(id)
-    if not m:
-        return "Sem mídia", 404
-    path = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], m.nome_arquivo)
-    if not os.path.exists(path):
-        return "Arquivo não encontrado", 404
-    return send_file(path, mimetype=m.mimetype or 'application/octet-stream', as_attachment=False, download_name=m.nome_original or m.nome_arquivo)
-
-@app.route('/admin/entrega/<int:id>/midia/download', methods=['GET'])
-@login_required
-def admin_entrega_midia_download(id):
-    if not _admin_guard():
-        return "Sem permissão", 403
-    m = _get_ultima_midia_entrega(id)
-    if not m:
-        return "Sem mídia", 404
-    path = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], m.nome_arquivo)
-    if not os.path.exists(path):
-        return "Arquivo não encontrado", 404
-    return send_file(path, mimetype=m.mimetype or 'application/octet-stream', as_attachment=True, download_name=m.nome_original or m.nome_arquivo)
 
 
 @app.route('/cooperados/cadastrar', methods=['GET', 'POST'])
