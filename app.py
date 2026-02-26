@@ -864,7 +864,19 @@ def diasemana(data):
     dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
     return dias[data.weekday()]
 
-app.jinja_env.filters['diasemana'] = diasemana
+app.jinja_env.filters
+
+# Disponibiliza now() no Jinja (usado no admin.html)
+def now():
+    """Retorna datetime atual em UTC (timezone-aware)."""
+    try:
+        import pytz
+        return datetime.now(pytz.utc)
+    except Exception:
+        return datetime.utcnow()
+
+app.jinja_env.globals['now'] = now
+['diasemana'] = diasemana
 
 # =========================================================
 # RASTREAMENTO - HELPER DE LINHA DO TEMPO
