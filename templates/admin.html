@@ -14,17 +14,7 @@
     crossorigin=""
   />
 
-  <!-- MarkerCluster (AGRUPAMENTO) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-    crossorigin=""
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-    crossorigin=""
-  />
+	  <!-- MarkerCluster removido: não agrupar GPS (pedido) -->
 
   <style>
     :root{
@@ -676,26 +666,38 @@
     }
     #toast .x:hover{filter:brightness(1.08)}
 
-    /* ===== ÍCONE MOTO (marcador) ===== */
-    .moto-pin{
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      width:34px;
-      height:34px;
-      border-radius:14px;
-      background:rgba(255,255,255,.92);
-      border:2px solid rgba(255,255,255,.85);
-      box-shadow:0 10px 22px rgba(0,0,0,.18);
-      transform: translate3d(0,0,0);
-    }
-    .moto-pin svg{
-      width:22px;
-      height:22px;
-      display:block;
-    }
-    .moto-pin.online svg{ fill: var(--good); }
-    .moto-pin.offline svg{ fill: var(--bad); }
+	    /* ===== MARCADOR NO MAPA (NOME DO COOPERADO) ===== */
+	    .moto-label{
+	      padding: 6px 10px;
+	      border-radius: 999px;
+	      font-weight: 900;
+	      font-size: 12px;
+	      line-height: 1;
+	      letter-spacing: .2px;
+	      white-space: nowrap;
+	      border: 1px solid rgba(255,255,255,.25);
+	      box-shadow: 0 10px 22px rgba(0,0,0,.22);
+	      backdrop-filter: blur(8px);
+	      -webkit-backdrop-filter: blur(8px);
+	      transform: translate(-50%, -50%);
+	      display: inline-flex;
+	      align-items: center;
+	      gap: 6px;
+	      background: rgba(0,0,0,.35);
+	    }
+	    .moto-label::before{
+	      content:"";
+	      width: 8px;
+	      height: 8px;
+	      border-radius: 999px;
+	      box-shadow: 0 0 0 3px rgba(0,0,0,.25);
+	      background: rgba(255,255,255,.6);
+	      flex: 0 0 auto;
+	    }
+	    .moto-label.online{ color: var(--good); }
+	    .moto-label.online::before{ background: var(--good); }
+	    .moto-label.offline{ color: var(--bad); }
+	    .moto-label.offline::before{ background: var(--bad); }
 
     .moto-highlight{
       outline: 3px solid rgba(110,141,255,.70);
@@ -1756,7 +1758,7 @@
     crossorigin=""></script>
 
   <!-- MarkerCluster -->
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
+  <!-- MarkerCluster removido: não agrupar GPS (pedido) -->
 
   <script>
     // ===== MAPA (agrupamento sem modal + sem "gps ocioso" + sem reagrupar quando aproximar) =====
@@ -1770,41 +1772,15 @@
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-      // grupo com cluster:
-      // - NÃO abre modal ao clicar
-      // - DESLIGA agrupamento a partir do zoom 15 (assim, ao aproximar, não volta a reagrupar sozinho)
-      var cluster = L.markerClusterGroup({
-        chunkedLoading: true,
-        maxClusterRadius: 55,
-        spiderfyOnMaxZoom: true,
-        showCoverageOnHover: false,
-        zoomToBoundsOnClick: true,
-        disableClusteringAtZoom: 15,
-        iconCreateFunction: function (cl) {
-          var children = cl.getAllChildMarkers();
-          var hasOnline = false;
-          for (var i=0;i<children.length;i++){
-            var st = children[i].__status || 'offline';
-            if(st === 'online'){ hasOnline = true; break; }
-          }
-          var cls = hasOnline ? 'online' : 'offline';
-          var count = cl.getChildCount();
-
-          return L.divIcon({
-            html: '<div class="cluster-badge '+cls+'"><span>'+count+'</span></div>',
-            className: 'cluster-wrap',
-            iconSize: L.point(42, 42)
-          });
-        }
-      });
-      map.addLayer(cluster);
+	      // Sem agrupamento/cluster (pedido): cada cooperado aparece individualmente no mapa
+	      var markersLayer = L.layerGroup().addTo(map);
 
       var motoboyMarkers = {}; // id -> marker
       var firstFitDone = false;
 
       window.__mapCoopex = map;
       window.__motoboyMarkers = motoboyMarkers;
-      window.__motoboyCluster = cluster;
+	      window.__motoboyLayer = markersLayer;
 
       function getStatus(m){
         // regra simples (sem GPS ocioso):
@@ -1817,22 +1793,23 @@
         return (st === 'online') ? 'Online (app ligado)' : 'Offline / desconectado';
       }
 
-      function motoSvg(){
-        return '' +
-          '<svg viewBox="0 0 24 24" aria-hidden="true">' +
-          '<path d="M5.5 15.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm13 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7 6h4l1.2 3H9.5c-.6 0-1 .4-1 1s.4 1 1 1h3.5l.8 2H11a1 1 0 0 0-.9.6l-.7 1.4H7.9A4.5 4.5 0 0 0 3 18h2a2.5 2.5 0 0 1 5 0h6a2.5 2.5 0 0 1 5 0h2a4.5 4.5 0 0 0-4.5-4.5h-1.7l-1.9-4.7a1.5 1.5 0 0 0-1.4-.9H12l-.7-1.7A1.5 1.5 0 0 0 9.9 5H7a1 1 0 0 0 0 2Z"/>' +
-          '</svg>';
-      }
+	      function escapeHtml(s){
+	        return String(s||'').replace(/[&<>"]/g, function(c){
+	          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c] || c;
+	        });
+	      }
 
-      function buildIcon(status){
-        return L.divIcon({
-          className: '',
-          iconSize: [34, 34],
-          iconAnchor: [17, 17],
-          popupAnchor: [0, -16],
-          html: '<div class="moto-pin '+status+'">'+motoSvg()+'</div>'
-        });
-      }
+	      // Marcador no mapa: nome do cooperado em vermelho/azul (offline/online)
+	      function buildIcon(m, status){
+	        var nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : 'COOPERADO';
+	        return L.divIcon({
+	          className: '',
+	          iconSize: null,
+	          iconAnchor: [0, 0],
+	          popupAnchor: [0, -16],
+	          html: '<div class="moto-label '+status+'">'+escapeHtml(nome)+'</div>'
+	        });
+	      }
 
       function popupHtml(m, st){
         var vel = (m.velocidade != null) ? (Number(m.velocidade) || 0) : 0;
@@ -1878,15 +1855,15 @@
         try{
           marker.setZIndexOffset(10000);
           var el = marker.getElement ? marker.getElement() : null;
-          if(el){
-            var pin = el.querySelector('.moto-pin');
-            if(pin){
-              pin.classList.add('moto-highlight');
-              setTimeout(function(){
-                try{ pin.classList.remove('moto-highlight'); }catch(e){}
-              }, 2600);
-            }
-          }
+	          if(el){
+	            var lab = el.querySelector('.moto-label');
+	            if(lab){
+	              lab.classList.add('moto-highlight');
+	              setTimeout(function(){
+	                try{ lab.classList.remove('moto-highlight'); }catch(e){}
+	              }, 2600);
+	            }
+	          }
         }catch(e){}
       }
 
@@ -1898,13 +1875,11 @@
           return;
         }
 
-        cluster.zoomToShowLayer(mk, function(){
-          try{
-            map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
-          }catch(e){}
-          try{ mk.openPopup(); }catch(e){}
-          destacarMarker(mk);
-        });
+	        try{
+	          map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
+	        }catch(e){}
+	        try{ mk.openPopup(); }catch(e){}
+	        destacarMarker(mk);
       }
 
       var selSearch = document.getElementById('mapSearch');
@@ -1932,8 +1907,8 @@
           var marker = motoboyMarkers[m.id];
 
           if (!marker) {
-            marker = L.marker([lat, lng], {
-              icon: buildIcon(st),
+	            marker = L.marker([lat, lng], {
+	              icon: buildIcon(m, st),
               riseOnHover: true
             });
 
@@ -1943,21 +1918,21 @@
 
             marker.bindPopup(popupHtml(m, st), { closeButton:true, autoPan:true });
 
-            cluster.addLayer(marker);
+	            markersLayer.addLayer(marker);
             motoboyMarkers[m.id] = marker;
           } else {
             marker.setLatLng([lat, lng]);
             marker.__status = st;
             marker.__data = m;
 
-            marker.setIcon(buildIcon(st));
+	            marker.setIcon(buildIcon(m, st));
             if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m, st));
           }
         });
 
         Object.keys(motoboyMarkers).forEach(function(id){
           if (!ativos[id]) {
-            try{ cluster.removeLayer(motoboyMarkers[id]); }catch(e){}
+	            try{ markersLayer.removeLayer(motoboyMarkers[id]); }catch(e){}
             delete motoboyMarkers[id];
           }
         });
