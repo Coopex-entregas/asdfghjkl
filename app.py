@@ -604,18 +604,6 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
 
 
 
-class MidiaEntrega(db.Model):
-    __tablename__ = 'midias_entregas'
-    id = db.Column(db.Integer, primary_key=True)
-    entrega_id = db.Column(db.Integer, db.ForeignKey('entregas.id'), nullable=False, index=True)
-    cooperado_id = db.Column(db.Integer, db.ForeignKey('usuarios.id'), nullable=True, index=True)
-    nome_arquivo = db.Column(db.String(255), nullable=False)
-    nome_original = db.Column(db.String(255), nullable=True)
-    mimetype = db.Column(db.String(120), nullable=True)
-    criado_em = db.Column(db.DateTime, nullable=False, default=lambda: datetime.now(BRAZIL_TZ))
-
-    entrega = db.relationship('Entrega', backref=db.backref('midias', lazy=True, cascade='all, delete-orphan'))
-    cooperado = db.relationship('Usuario', foreign_keys=[cooperado_id])
 
 class Credito(db.Model):
     __tablename__ = 'credito'
@@ -3654,7 +3642,7 @@ def _cleanup_midias_30_dias():
         agora = datetime.now(BRAZIL_TZ)
         limite = agora - timedelta(days=30)
 
-        antigas = MidiaEntrega.query.filter(MidiaEntrega.criado_em < limite).all()
+        antigas = EntregaMidia.query.filter(EntregaMidia.criado_em < limite).all()
         if antigas:
             for m in antigas:
                 try:
@@ -3710,7 +3698,7 @@ def cooperado_upload_midia(id):
     salvar_em = os.path.join(app.config['MEDIA_UPLOAD_FOLDER'], nome)
     f.save(salvar_em)
 
-    m = MidiaEntrega(
+    m = EntregaMidia(
         entrega_id=id,
         cooperado_id=current_user.id,
         nome_arquivo=nome,
@@ -3726,9 +3714,9 @@ def _admin_guard():
     return getattr(current_user, 'tipo', None) == 'admin'
 
 def _get_ultima_midia_entrega(entrega_id: int):
-    return (MidiaEntrega.query
+    return (EntregaMidia.query
             .filter_by(entrega_id=entrega_id)
-            .order_by(MidiaEntrega.criado_em.desc())
+            .order_by(EntregaMidia.criado_em.desc())
             .first())
 
 
