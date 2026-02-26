@@ -2802,61 +2802,43 @@ def admin():
                 "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
                 "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
-
-
-
-# Referências de mês/ano (para "Ganhos do mês" e "Ganhos do ano")
-hoje_ref = datetime.now(BRAZIL_TZ)
-mes_ref = hoje_ref.month
-ano_ref = hoje_ref.year
-_meses = ['janeiro','fevereiro','março','abril','maio','junho','julho','agosto','setembro','outubro','novembro','dezembro']
-mes_nome = _meses[mes_ref-1]
-
-# Total geral do mês (baseado na data_envio)
-try:
-    total_geral_mes = (
-        db.session.query(func.coalesce(func.sum(Entrega.valor), 0))
-        .filter(func.extract('month', Entrega.data_envio) == mes_ref,
-                func.extract('year', Entrega.data_envio) == ano_ref)
-        .scalar()
-    ) or 0
-except Exception:
-    total_geral_mes = 0
+    # Referências de data para títulos (Ganhos do mês / ano)
+    hoje_ref = datetime.now(br_tz)
+    mes_ref = hoje_ref.month
+    ano_ref = hoje_ref.year
+    _meses = [
+        "Janeiro","Fevereiro","Março","Abril","Maio","Junho",
+        "Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"
+    ]
+    mes_nome = _meses[mes_ref-1]
+    agenda_url = url_for('agendar_entrega')
 
     return render_template(
         'admin.html',
         entregas=entregas,
         cooperados=cooperados,
-        estatisticas=estatisticas,
+        cooperado_id=cooperado_id,
         data_inicio=data_inicio,
         data_fim=data_fim,
-        to_brasilia=to_brasilia,
+        status_pagamento=status_pagamento,
+        cliente=cliente,
+        endereco=endereco,
+        estatisticas=estatisticas,
         mes_nome=mes_nome,
+        mes_ref=mes_ref,
         ano_ref=ano_ref,
-        total_geral_mes=total_geral_mes,
-        total_pago_mes=total_pago_mes,
-        total_pendente_mes=total_pendente_mes,
-        total_geral_ano=total_geral_ano,
-        total_pago_ano=total_pago_ano,
-        total_pendente_ano=total_pendente_ano,
-        request=request,
-        now=lambda: datetime.now(BRAZIL_TZ),
-        feriado_hoje=feriado_hoje,
-        tem_pendente=tem_pendente,
-        lista_espera=lista_espera,
-        cooperados_disponiveis=cooperados_disponiveis,
-        # >>> VARIÁVEIS NOVAS PARA O JS <<<
+        agenda_url=agenda_url,
         cooperados_js=cooperados_js,
         motoboys_js=motoboys_js,
+        feriado_hoje=feriado_hoje,
+        status_pgto=status_pgto
     )
 
 
 
-# =========================================================
-# ADMIN — VISUALIZAR / BAIXAR COMPROVANTE (FOTO/VÍDEO)
-# GET  /admin/entrega/<id>/midia          -> retorna binário (image/* ou video/*)
-# GET  /admin/entrega/<id>/midia/download -> força download
-# =========================================================
+
+
+
 @app.get('/admin/entrega/<int:id>/midia')
 def admin_entrega_midia(id):
     if not session.get('is_admin'):
