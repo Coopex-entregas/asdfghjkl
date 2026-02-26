@@ -22,7 +22,6 @@ from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
 
 import pandas as pd
 import holidays
@@ -433,82 +432,6 @@ class Entrega(db.Model):
     def __repr__(self):
         return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
 
-
-
-# =========================================================
-# MÍDIA DO COMPROVANTE (FOTO/VÍDEO) — ARMAZENADO NO BANCO POR ATÉ 30 DIAS
-# - 1 mídia por entrega (substitui se enviar novamente)
-# - limpeza automática por expiração (expires_at)
-# =========================================================
-class EntregaMidia(db.Model):
-    __tablename__ = 'entrega_midia'
-
-    id = db.Column(db.Integer, primary_key=True)
-    entrega_id = db.Column(db.Integer, db.ForeignKey('entrega.id'), nullable=False, unique=True, index=True)
-
-    # 'image' ou 'video'
-    tipo = db.Column(db.String(10), nullable=False)
-
-    filename = db.Column(db.String(160), nullable=True)
-    mimetype = db.Column(db.String(120), nullable=False)
-
-    # Conteúdo binário armazenado no DB (Postgres/SQLite)
-    blob = db.Column(db.LargeBinary, nullable=False)
-
-    created_at = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
-    expires_at = db.Column(db.DateTime, nullable=False, index=True)
-
-    # Relacionamento (1:1)
-    entrega = db.relationship('Entrega', backref=db.backref('midia', uselist=False, cascade='all, delete-orphan'))
-
-    def is_expired(self):
-        try:
-            return self.expires_at <= datetime.utcnow()
-        except Exception:
-            return True
-
-
-
-# =========================================================
-# LIMPEZA DE MÍDIA EXPIRADA (30 dias)
-# =========================================================
-_LAST_MEDIA_CLEANUP_UTC = None
-
-def limpar_midias_expiradas(force: bool = False) -> int:
-    """Remove mídias expiradas (ou inválidas) para não crescer o banco.
-    Faz throttle para não rodar em toda requisição.
-    Retorna quantidade removida.
-    """
-    global _LAST_MEDIA_CLEANUP_UTC
-    try:
-        now_utc = datetime.utcnow()
-        if not force and _LAST_MEDIA_CLEANUP_UTC and (now_utc - _LAST_MEDIA_CLEANUP_UTC) < timedelta(minutes=10):
-            return 0
-        _LAST_MEDIA_CLEANUP_UTC = now_utc
-
-        expiradas = EntregaMidia.query.filter(EntregaMidia.expires_at <= now_utc).all()
-        n = 0
-        for item in expiradas:
-            db.session.delete(item)
-            n += 1
-        if n:
-            db.session.commit()
-        return n
-    except Exception as ex:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-        app.logger.exception("Falha ao limpar midias expiradas: %s", ex)
-        return 0
-
-@app.before_request
-def _cleanup_midias_before_request():
-    # limpeza leve (throttled)
-    try:
-        limpar_midias_expiradas(force=False)
-    except Exception:
-        pass
 
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
@@ -2794,65 +2717,6 @@ def admin():
         # >>> VARIÁVEIS NOVAS PARA O JS <<<
         cooperados_js=cooperados_js,
         motoboys_js=motoboys_js,
-    )
-
-
-
-# =========================================================
-# ADMIN — VISUALIZAR / BAIXAR COMPROVANTE (FOTO/VÍDEO)
-# GET  /admin/entrega/<id>/midia          -> retorna binário (image/* ou video/*)
-# GET  /admin/entrega/<id>/midia/download -> força download
-# =========================================================
-@app.get('/admin/entrega/<int:id>/midia')
-def admin_entrega_midia(id):
-    if not session.get('is_admin'):
-        abort(403)
-
-    limpar_midias_expiradas(force=False)
-
-    midia = EntregaMidia.query.filter_by(entrega_id=id).first()
-    if not midia or midia.is_expired():
-        if midia:
-            try:
-                db.session.delete(midia)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        abort(404)
-
-    return send_file(
-        io.BytesIO(midia.blob),
-        mimetype=midia.mimetype,
-        download_name=midia.filename or f"entrega_{id}_midia",
-        as_attachment=False,
-        max_age=0
-    )
-
-@app.get('/admin/entrega/<int:id>/midia/download')
-def admin_entrega_midia_download(id):
-    if not session.get('is_admin'):
-        abort(403)
-
-    limpar_midias_expiradas(force=False)
-
-    midia = EntregaMidia.query.filter_by(entrega_id=id).first()
-    if not midia or midia.is_expired():
-        if midia:
-            try:
-                db.session.delete(midia)
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-        abort(404)
-
-    # Sugestão de nome (preserva extensão se existir)
-    filename = midia.filename or f"entrega_{id}_comprovante"
-    return send_file(
-        io.BytesIO(midia.blob),
-        mimetype=midia.mimetype,
-        download_name=filename,
-        as_attachment=True,
-        max_age=0
     )
 
 
@@ -5649,83 +5513,6 @@ def cooperado_marcar_entregue(id):
     e.status = 'recebido'
     e.recebido_por = recebido_por
     db.session.commit()
-    return jsonify(ok=True)
-
-
-
-# =========================================================
-# COOPERADO — MARCAR ENTREGUE + ENVIAR FOTO/VÍDEO (COMPROVANTE)
-# POST /cooperado/marcar_entregue_midia/<id>
-#   multipart/form-data:
-#     - recebido_por (obrigatório)
-#     - midia (arquivo)  [opcional, image/* ou video/*]
-# Regras:
-#   - Armazena no BANCO por até 30 dias (substitui se já existir para a entrega)
-# =========================================================
-@app.post('/cooperado/marcar_entregue_midia/<int:id>')
-def cooperado_marcar_entregue_midia(id):
-    e = Entrega.query.get_or_404(id)
-    _assert_cooperado()
-
-    if e.cooperado_id != session.get('user_id'):
-        return jsonify(ok=False, error='Entrega não pertence a este cooperado.'), 403
-
-    recebido_por = (request.form.get('recebido_por') or '').strip()
-    if not recebido_por:
-        return jsonify(ok=False, error='Campo "recebido_por" é obrigatório.'), 400
-
-    # 1) atualiza status e nome
-    e.status = 'recebido'
-    e.recebido_por = recebido_por
-
-    # 2) processa arquivo (opcional)
-    f = request.files.get('midia')
-    if f and f.filename:
-        filename = secure_filename(f.filename) or 'comprovante'
-        mimetype = (f.mimetype or '').lower()
-
-        is_img = mimetype.startswith('image/')
-        is_vid = mimetype.startswith('video/')
-
-        if not (is_img or is_vid):
-            return jsonify(ok=False, error='Arquivo inválido. Envie imagem ou vídeo.'), 400
-
-        # Limite de tamanho (segurança): 20MB
-        # (se quiser maior, aumente com cuidado para não explodir o DB)
-        MAX_BYTES = 20 * 1024 * 1024
-        blob = f.read()
-        if not blob:
-            return jsonify(ok=False, error='Arquivo vazio.'), 400
-        if len(blob) > MAX_BYTES:
-            return jsonify(ok=False, error='Arquivo muito grande (máx. 20MB).'), 413
-
-        # substitui se já existir
-        midia = EntregaMidia.query.filter_by(entrega_id=e.id).first()
-        if not midia:
-            midia = EntregaMidia(entrega_id=e.id, tipo='image' if is_img else 'video', mimetype=mimetype, filename=filename, blob=blob,
-                                expires_at=datetime.utcnow() + timedelta(days=30))
-            db.session.add(midia)
-        else:
-            midia.tipo = 'image' if is_img else 'video'
-            midia.mimetype = mimetype
-            midia.filename = filename
-            midia.blob = blob
-            midia.created_at = datetime.utcnow()
-            midia.expires_at = datetime.utcnow() + timedelta(days=30)
-
-    try:
-        db.session.commit()
-    except Exception as ex:
-        db.session.rollback()
-        app.logger.exception("Falha ao salvar midia/recebido_por na entrega %s: %s", id, ex)
-        return jsonify(ok=False, error='Falha ao salvar no banco.'), 500
-
-    # Atualiza em tempo real (se estiver usando SocketIO)
-    try:
-        emitir_atualizacao_entrega(e, 'editada')
-    except Exception:
-        pass
-
     return jsonify(ok=True)
 
 
