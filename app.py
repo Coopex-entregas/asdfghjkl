@@ -2785,14 +2785,6 @@ def admin():
         data_inicio=data_inicio,
         data_fim=data_fim,
         to_brasilia=to_brasilia,
-        mes_nome=mes_nome,
-        ano_ref=ano_ref,
-        total_geral_mes=total_geral_mes,
-        total_pago_mes=total_pago_mes,
-        total_pendente_mes=total_pendente_mes,
-        total_geral_ano=total_geral_ano,
-        total_pago_ano=total_pago_ano,
-        total_pendente_ano=total_pendente_ano,
         request=request,
         now=lambda: datetime.now(BRAZIL_TZ),
         feriado_hoje=feriado_hoje,
@@ -3028,94 +3020,13 @@ def painel_cooperado():
     )
     total_pendente = max(0.0, total_geral - total_pago)
 
-    
-    # ====== ENRIQUECE ENTREGAS (coleta/entrega) ======
-    for e in entregas:
-        try:
-            origem = e.get_origem() or {}
-            destino = e.get_destino() or {}
-            e.origem_bairro = origem.get('bairro')
-            e.destino_bairro = destino.get('bairro')
-        except Exception:
-            e.origem_bairro = None
-            e.destino_bairro = None
-
-    # ====== TOTAIS FIXOS DO MÊS / ANO ATUAL ======
-    hoje = datetime.now(BRAZIL_TZ).date()
-    ano_ref = hoje.year
-    mes_ref = hoje.month
-
-    # janela do mês
-    primeiro_dia_mes = hoje.replace(day=1)
-    # último dia do mês: pega 1º do próximo mês - 1 dia
-    if mes_ref == 12:
-        primeiro_prox = date(ano_ref+1,1,1)
-    else:
-        primeiro_prox = date(ano_ref, mes_ref+1, 1)
-    ultimo_dia_mes = primeiro_prox - timedelta(days=1)
-
-    ini_mes_utc, _ = local_date_window_to_utc_range(primeiro_dia_mes)
-    _, fim_mes_utc = local_date_window_to_utc_range(ultimo_dia_mes)
-
-    q_mes = Entrega.query.filter(
-        Entrega.cooperado_id==cooperado_id,
-        Entrega.data_envio>=ini_mes_utc,
-        Entrega.data_envio<=fim_mes_utc
-    )
-    entregas_mes = q_mes.all()
-    total_geral_mes = sum(float(e.valor or 0) for e in entregas_mes)
-    total_pago_mes = sum(float(e.valor or 0) for e in entregas_mes if (e.status_pagamento or '').lower()=='pago')
-    total_pendente_mes = max(0.0, total_geral_mes - total_pago_mes)
-
-    # janela do ano
-    ini_ano = date(ano_ref,1,1)
-    fim_ano = date(ano_ref,12,31)
-    ini_ano_utc, _ = local_date_window_to_utc_range(ini_ano)
-    _, fim_ano_utc = local_date_window_to_utc_range(fim_ano)
-
-    q_ano = Entrega.query.filter(
-        Entrega.cooperado_id==cooperado_id,
-        Entrega.data_envio>=ini_ano_utc,
-        Entrega.data_envio<=fim_ano_utc
-    )
-    entregas_ano = q_ano.all()
-    total_geral_ano = sum(float(e.valor or 0) for e in entregas_ano)
-    total_pago_ano = sum(float(e.valor or 0) for e in entregas_ano if (e.status_pagamento or '').lower()=='pago')
-    total_pendente_ano = max(0.0, total_geral_ano - total_pago_ano)
-
-    mes_nome = {1:'janeiro',2:'fevereiro',3:'março',4:'abril',5:'maio',6:'junho',7:'julho',8:'agosto',9:'setembro',10:'outubro',11:'novembro',12:'dezembro'}.get(mes_ref,str(mes_ref))
-
-    # ====== CHAMADAS (APENAS ATRIBUÍDAS) ======
-    chamadas = []
-    for item in corridas:
-        e = item.get('obj')
-        if not e:
-            continue
-        chamadas.append({
-            'id': e.id,
-            'cliente': e.cliente,
-            'valor': float(e.valor or 0),
-            'origem_bairro': item.get('origem_bairro'),
-            'destino_bairro': item.get('destino_bairro'),
-            'distancia': None,
-            'bairro': item.get('destino_bairro') or e.bairro
-        })
-
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
-        chamadas=chamadas,
+        corridas=corridas,
         total_geral=total_geral,
         total_pago=total_pago,
         total_pendente=total_pendente,
-        mes_nome=mes_nome,
-        ano_ref=ano_ref,
-        total_geral_mes=total_geral_mes,
-        total_pago_mes=total_pago_mes,
-        total_pendente_mes=total_pendente_mes,
-        total_geral_ano=total_geral_ano,
-        total_pago_ano=total_pago_ano,
-        total_pendente_ano=total_pendente_ano,
         request=request,
         to_brasilia=to_brasilia,
         status_pgto=status_pgto
