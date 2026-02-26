@@ -2,1323 +2,2093 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Painel do Cooperado • COOPEX</title>
+  <title>Painel da Supervisão - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+	  <!-- MarkerCluster removido: não agrupar GPS (pedido) -->
 
   <style>
     :root{
-      --royal:#0033cc;
-      --royal-2:#2750ff;
-      --ink:#071634;
-      --muted:#6b7bb0;
-      --bg:#f2f6ff;
+      --royal:#0f35b5;
+      --royal-2:#395de1;
+      --royal-3:#6e8dff;
+
+      --ink:#0a1b3f;
+      --muted:#54679a;
+
+      --bg:#eef3ff;
       --card:#ffffff;
-      --line:#e2e9ff;
+      --line:#dbe6ff;
+      --line-2:#c6d6ff;
 
-      --good:#12b886;
-      --bad:#e03131;
-      --warn:#ffd43b;
+      --good:#10b981;
+      --bad:#ef4444;
 
-      --r:18px;
-      --shadow:0 14px 40px rgba(0,51,204,.14);
-      --shadow-sm:0 10px 28px rgba(0,51,204,.10);
+      --warn:#f59e0b; /* mantido para uso futuro se quiser */
+      --info:#2563eb;
 
-      --navH:72px;
+      --r:16px;
+      --shadow:0 10px 28px rgba(12, 38, 140, .10);
+      --shadow-2:0 18px 44px rgba(12, 38, 140, .18);
+
+      --toast-bg:rgba(2, 6, 23, .88);
+      --toast-text:#fff;
+    }
+
+    body.dark{
+      --bg:#0b1020;
+      --card:#0f172a;
+      --ink:#e7edf9;
+      --muted:#a7b7e7;
+      --line:#1d2a47;
+      --line-2:#2a3a62;
+      --shadow:0 12px 34px rgba(0,0,0,.28);
+      --shadow-2:0 22px 54px rgba(0,0,0,.38);
+      --toast-bg:rgba(255,255,255,.10);
+      --toast-text:#fff;
     }
 
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      color:var(--ink);
+      font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:
-        radial-gradient(1200px 520px at 15% -10%, rgba(39,80,255,.12), transparent 60%),
-        radial-gradient(1200px 520px at 115% -10%, rgba(0,51,204,.10), transparent 60%),
+        radial-gradient(1200px 500px at 30% 0%, rgba(79,140,255,.18), transparent 55%),
+        radial-gradient(900px 420px at 80% 20%, rgba(15,53,181,.14), transparent 60%),
         var(--bg);
+      color:var(--ink);
     }
 
-    /* ===== APP SHELL ===== */
-    .app{
-      min-height:100vh;
-      display:flex;
-      flex-direction:column;
-      padding-bottom:calc(var(--navH) + env(safe-area-inset-bottom));
-    }
+    a{color:inherit}
+    a:focus,button:focus,select:focus,input:focus{ outline:2px solid rgba(47,77,230,.75);outline-offset:2px }
 
-    /* ===== TOPBAR (estilo app) ===== */
+    /* ===== HEADER ===== */
     header{
-      position:sticky;top:0;z-index:50;
-      background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      position:sticky; top:0; z-index:100;
+      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 60%, var(--royal-3) 125%);
       color:#fff;
-      padding:14px 16px calc(12px + env(safe-area-inset-top));
-      padding-top:calc(14px + env(safe-area-inset-top));
-      box-shadow:0 10px 24px rgba(0,40,130,.18);
+      box-shadow:var(--shadow-2);
+      border-bottom:1px solid rgba(255,255,255,.18);
     }
-    .top-row{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    .topbar{
+      width:100%;
+      padding:14px 18px;
+      display:grid;
+      grid-template-columns:auto 1fr auto auto;
+      gap:14px;
+      align-items:center;
     }
     .brand{
-      display:flex;flex-direction:column;gap:2px;
+      display:flex;align-items:center;gap:12px;font-weight:900;
+      letter-spacing:.01em;
     }
-    .brand .t1{font-weight:900;letter-spacing:.2px;font-size:1.05rem}
-    .brand .t2{font-weight:700;opacity:.92;font-size:.86rem}
-    .user-pill{
-      display:flex;align-items:center;gap:10px;
-      background:rgba(255,255,255,.14);
-      border:1px solid rgba(255,255,255,.26);
-      padding:8px 10px;
-      border-radius:999px;
-      white-space:nowrap;
-      max-width:58vw;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      font-weight:800;
-      font-size:.86rem;
-    }
-    .dot{
-      width:10px;height:10px;border-radius:999px;background:var(--warn);
-      box-shadow:0 0 0 0 rgba(255,212,59,0);
-      transition:.2s;
-      flex:none;
-    }
-    .dot.on{background:#69db7c; box-shadow:0 0 0 7px rgba(105,219,124,.35);}
-    .dot.err{background:#ff6b6b; box-shadow:0 0 0 7px rgba(255,107,107,.28);}
-    .gps-btn{
-      all:unset;cursor:pointer;
-      display:flex;align-items:center;gap:8px;
-      font-weight:900;
-    }
-    .gps-btn span{opacity:.95}
-    .gps-btn:active{transform:scale(.98)}
-
-    /* ===== CONTEÚDO ===== */
-    .wrap{
-      max-width:980px;
-      margin:0 auto;
-      padding:12px 14px 18px;
-      width:100%;
-    }
-
-    /* ===== HOME GRID (cards tipo Uber) ===== */
-    .home-grid{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:12px;
-      margin-top:10px;
-    }
-    .hero{
-      grid-column:1/-1;
-      background:linear-gradient(180deg,#ffffff, #f3f7ff);
-      border:1px solid var(--line);
-      border-radius:22px;
-      box-shadow:var(--shadow-sm);
-      padding:14px 14px;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-    }
-    .hero h1{
-      margin:0;
+    .brand span{
       font-size:1.05rem;
-      color:#0b1b3a;
-      font-weight:1000;
-      letter-spacing:.1px;
+      text-shadow:0 2px 16px rgba(0,0,0,.22);
+      white-space:nowrap;
     }
-    .hero p{
-      margin:6px 0 0;
-      color:var(--muted);
-      font-weight:700;
-      font-size:.9rem;
-      line-height:1.35;
-    }
-    .hero .badge{
-      flex:none;
-      display:flex;flex-direction:column;align-items:flex-end;
-      gap:6px;
-    }
-    .mini{
-      background:#fff;
-      border:1px solid var(--line);
+
+    .menu-btn{
+      width:44px;height:44px;
       border-radius:14px;
-      padding:10px 12px;
-      box-shadow:0 10px 22px rgba(0,51,204,.09);
-      min-width:160px;
-      text-align:right;
-    }
-    .mini .k{font-size:.78rem;color:var(--muted);font-weight:900}
-    .mini .v{font-size:1.06rem;font-weight:1000;margin-top:2px}
-    .mini.good .v{color:var(--good)}
-    .mini.bad .v{color:var(--bad)}
-    .mini.total .v{color:#0f2a80}
-
-    .tile{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:22px;
-      box-shadow:var(--shadow-sm);
-      padding:14px 14px;
-      cursor:pointer;
-      user-select:none;
-      display:flex;
+      border:1px solid rgba(255,255,255,.55);
+      background:rgba(0,0,0,.14);
+      display:inline-flex;
       flex-direction:column;
-      gap:10px;
-      min-height:120px;
-      position:relative;
-      overflow:hidden;
-      transition:transform .12s ease, box-shadow .12s ease;
+      align-items:center;
+      justify-content:center;
+      gap:4px;
+      cursor:pointer;
+      padding:0;
+      box-shadow:0 10px 22px rgba(0,0,0,.18) inset, 0 8px 20px rgba(0,0,0,.10);
+      transition:transform .12s ease, filter .12s ease;
     }
-    .tile:active{transform:scale(.99)}
-    .tile:hover{box-shadow:0 16px 42px rgba(0,51,204,.16)}
-    .tile .icon{
-      width:46px;height:46px;border-radius:16px;
-      display:grid;place-items:center;
-      background:linear-gradient(180deg, rgba(39,80,255,.12), rgba(0,51,204,.10));
-      border:1px solid rgba(0,51,204,.14);
-      color:#0f2a80;
-      font-weight:1000;
-      font-size:1.15rem;
+    .menu-btn span{
+      width:20px;height:2px;border-radius:99px;background:#fff;display:block;opacity:.95;
+      transition:.18s;
     }
-    .tile h3{margin:0;font-size:.98rem;font-weight:1000}
-    .tile p{margin:0;color:var(--muted);font-weight:700;font-size:.88rem;line-height:1.35}
-    .tile .pill{
-      position:absolute;right:12px;top:12px;
-      background:#eef2ff;border:1px solid var(--line);
+    .menu-btn:hover{filter:brightness(1.06)}
+    .menu-btn:active{transform:scale(.98)}
+    .menu-btn.open span:nth-child(1){transform:translateY(6px) rotate(45deg)}
+    .menu-btn.open span:nth-child(2){opacity:0}
+    .menu-btn.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
+
+    .kpis{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
+    .kpi{
+      min-width:160px;
+      padding:8px 12px;
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:14px;
+      background:rgba(255,255,255,.14);
+      box-shadow:0 10px 18px rgba(0,0,0,.10) inset;
+    }
+    .kpi small{display:block;opacity:.95;font-weight:800}
+    .kpi span{display:block;font-weight:900;font-size:1.18rem;line-height:1.1}
+
+    .logout{
+      color:#fff;
+      background:linear-gradient(180deg,#d7263d 0%, #b91c1c 100%);
+      border:1px solid rgba(255,255,255,.25);
+      border-radius:14px;
+      padding:10px 16px;
+      font-weight:900;
+      text-decoration:none;
+      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      white-space:nowrap;
+    }
+    .logout:hover{filter:brightness(1.05)}
+    .theme-toggle{
+      margin-left:6px;
+      color:#fff;
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.35);
+      border-radius:14px;
+      padding:10px 14px;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+      box-shadow:0 10px 18px rgba(0,0,0,.12) inset;
+    }
+    .theme-toggle:hover{filter:brightness(1.06)}
+
+    /* ===== BAR DA DATA ===== */
+    .banner{
+      display:flex;align-items:center;gap:14px;justify-content:space-between;
+      background:linear-gradient(180deg, rgba(255,255,255,.98), rgba(255,255,255,.90));
+      color:var(--ink);
+      border-bottom:1px solid var(--line);
+      padding:10px 18px;
+      box-shadow:var(--shadow);
+      backdrop-filter: blur(6px);
+    }
+    body.dark .banner{
+      background:linear-gradient(180deg, rgba(15,23,42,.92), rgba(15,23,42,.86));
+      border-bottom:1px solid var(--line);
+    }
+    .today{font-weight:900}
+
+    .badge{
+      display:inline-flex;align-items:center;justify-content:center;
       border-radius:999px;padding:6px 10px;
-      font-size:.78rem;font-weight:1000;color:#0f2a80;
+      font-weight:900;font-size:.84rem;border:1px solid;
+      user-select:none;
     }
-    .pill.good{background:#e9fbf5;border-color:#b3f0dc;color:var(--good)}
-    .pill.bad{background:#fff2f2;border-color:#ffd6d6;color:var(--bad)}
+    .badge.good{background:#eafff6;border-color:#bff3de;color:#0f8a64}
+    .badge.bad{background:#ffefef;border-color:#ffd3d3;color:#b11e1e}
+    .badge.neu{background:#edf3ff;border-color:#cfdbff;color:#2347c7}
+    body.dark .badge.neu{background:#1b2750;border-color:#2b3b59;color:#cfe0ff}
+    body.dark .badge.good{background:#0f2b22;border-color:#1c614d;color:#72f0c7}
+    body.dark .badge.bad{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
 
-    /* ===== TELAS / VIEWS ===== */
-    .view{display:none}
-    .view.active{display:block}
+    /* ===== LAYOUT ===== */
+    .viewport{padding:12px 14px 18px}
+    .grid{position:relative; display:block}
 
-    /* ===== LISTA (cards) ===== */
-    .section-title{
-      margin:12px 2px 10px;
-      display:flex;align-items:center;justify-content:space-between;gap:10px;
+    /* ===== Botões ===== */
+    .btn{
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff;border:1px solid rgba(255,255,255,.10);
+      border-radius:14px;padding:10px 14px;font-weight:900;text-decoration:none;
+      box-shadow:0 10px 22px rgba(8, 37, 140, .22);
+      cursor:pointer;
+      transition:filter .12s ease, transform .12s ease;
+      user-select:none;
+      white-space:nowrap;
     }
-    .section-title h2{
-      margin:0;
-      font-size:1.02rem;
-      color:#0f2a80;
-      font-weight:1100;
+    .btn:hover{filter:brightness(1.06)}
+    .btn:active{transform:scale(.99)}
+    .btn.alt{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      color:#0a1b3f;
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
     }
-    .section-title .hint{
-      margin:0;
-      color:var(--muted);
-      font-weight:800;
-      font-size:.82rem;
+    body.dark .btn.alt{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      color:#e7edf9;
+      border:1px solid var(--line);
     }
+    .btn.disabled, .btn:disabled{opacity:.55; cursor:not-allowed; filter:saturate(.6); transform:none}
 
-    .list{display:flex;flex-direction:column;gap:10px}
+    /* ===== SIDEBAR ===== */
+    .left{
+      position:fixed;
+      top:96px;
+      right:16px;
+      width:360px;
+      max-width:92vw;
+      max-height:calc(100vh - 110px);
+      z-index:1500;
+      display:none;
+      flex-direction:column;
+      gap:14px;
+      min-height:0;
+    }
+    .left.open{display:flex;}
+    .menu-panel{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      border-radius:18px;
+      box-shadow:0 22px 60px rgba(15,23,42,.42);
+      border:1px solid var(--line);
+      padding:12px 12px 14px;
+      overflow:auto;
+      max-height:100%;
+      backdrop-filter: blur(8px);
+    }
+    body.dark .menu-panel{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      border-color:var(--line);
+    }
+    .menu-header{
+      display:flex; align-items:center; gap:10px; margin-bottom:10px;
+    }
+    .menu-header img{
+      width:46px;height:46px;border-radius:14px;background:#fff;border:2px solid #eaf0ff;object-fit:contain;
+    }
+    .menu-header strong{font-size:.92rem;color:#18308f;font-weight:900}
+    body.dark .menu-header strong{color:#cfe0ff}
+
     .card{
       background:var(--card);
       border:1px solid var(--line);
-      border-radius:20px;
-      box-shadow:var(--shadow-sm);
-      padding:12px 12px;
+      border-radius:18px;
+      box-shadow:var(--shadow);
     }
-    .row{
-      display:flex;align-items:center;justify-content:space-between;gap:12px;
+    .card .body{padding:14px}
+    .card h3{margin:0 0 10px;font-size:1rem;color:#213a99;font-weight:900}
+    body.dark .card h3{color:#97b3ff}
+
+    .row{display:flex;gap:10px;flex-wrap:wrap}
+    .menu-section-title{
+      font-size:.8rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em;
+      color:#4b61c7;margin:10px 2px 6px;
     }
-    .left{min-width:0}
-    .title{
-      margin:0;
-      font-weight:1000;
-      font-size:.98rem;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-    .sub{
-      margin:6px 0 0;
-      color:var(--muted);
-      font-weight:800;
-      font-size:.86rem;
-      display:flex;
-      flex-wrap:wrap;
-      gap:8px 10px;
-    }
-    .tag{
-      display:inline-flex;align-items:center;gap:6px;
-      background:#eef2ff;
+    body.dark .menu-section-title{color:#9fb3ff}
+    .menu-links{display:flex;flex-direction:column;gap:8px}
+    .menu-links .btn{width:100%;justify-content:flex-start;padding:10px 12px;font-size:.88rem;border-radius:12px;box-shadow:none}
+
+    /* ===== Lista de espera ===== */
+    #espera-lista{list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px}
+    .espera-chip{
+      display:flex;align-items:center;gap:10px;
+      padding:8px 10px;
       border:1px solid var(--line);
-      color:#0f2a80;
-      border-radius:999px;
-      padding:6px 10px;
-      font-weight:1000;
-      font-size:.78rem;
+      border-radius:14px;
+      background:linear-gradient(180deg,#ffffff 0%, #f2f6ff 100%);
+      cursor:grab;
     }
-    .tag.good{background:#e9fbf5;border-color:#b3f0dc;color:var(--good)}
-    .tag.bad{background:#fff2f2;border-color:#ffd6d6;color:var(--bad)}
-    .tag.gray{background:#f6f8ff;border-color:#e8eeff;color:#5d6aa0}
-
-    .money{
-      font-weight:1100;
-      font-size:1.02rem;
-      color:#0b1b3a;
-      white-space:nowrap;
-    }
-
-    .actions{
-      margin-top:10px;
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-    .btn{
-      border:none;
-      border-radius:999px;
-      padding:10px 12px;
-      font-weight:1000;
-      cursor:pointer;
-      font-size:.88rem;
+    body.dark .espera-chip{background:#0b1320;border-color:#1d2636}
+    .espera-chip-num{
+      width:26px;height:26px;border-radius:12px;
       display:inline-flex;align-items:center;justify-content:center;
-      gap:8px;
-      user-select:none;
+      background:#eaf0ff;color:#1f3bb8;font-weight:900;border:1px solid #cfdbff;
+      flex:0 0 auto;
     }
-    .btn:active{transform:scale(.99)}
-    .btn.primary{background:var(--royal);color:#fff;box-shadow:0 10px 24px rgba(0,51,204,.20)}
-    .btn.good{background:var(--good);color:#fff}
-    .btn.bad{background:#fff2f2;color:var(--bad);border:1px solid #ffd6d6}
-    .btn.ghost{background:#fff;color:#0f2a80;border:1px solid var(--line)}
-    .btn.cam{
-      background:linear-gradient(180deg, rgba(39,80,255,.12), rgba(0,51,204,.10));
-      border:1px solid rgba(0,51,204,.18);
-      color:#0f2a80;
+    body.dark .espera-chip-num{background:#1b2750;color:#cfe0ff;border-color:#2b3b59}
+    .espera-chip-text{font-weight:900;color:#102a7a}
+    body.dark .espera-chip-text{color:#cfe0ff}
+    .espera-chip-remove{
+      width:30px;height:30px;border-radius:12px;
+      border:1px solid #ffd3d3;background:#ffefef;color:#b11e1e;
+      font-weight:900;cursor:pointer;
+    }
+    body.dark .espera-chip-remove{background:#2e1313;border-color:#5b2828;color:#ffb4b4}
+
+    /* ===== CONTEÚDO PRINCIPAL ===== */
+    .panel{
+      margin-top:10px;
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow-2);
+      overflow:hidden;
+    }
+    body.dark .panel{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      border-color:var(--line);
     }
 
-    /* ===== FILTROS (minhas entregas) ===== */
-    .filters{
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:20px;
-      box-shadow:var(--shadow-sm);
-      padding:12px 12px;
-      margin:10px 0 12px;
-    }
-    .filters form{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
-    .filters input[type=date], .filters select{
-      border:1px solid var(--line);
-      border-radius:14px;
-      padding:10px 10px;
-      font-weight:900;
-      font-size:.92rem;
-      background:#fff;
-    }
-    .filters .submit{
-      background:var(--royal);
+    .panel-head{
+      background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));
       color:#fff;
-      border:none;
-      border-radius:14px;
-      padding:10px 14px;
-      font-weight:1100;
-      cursor:pointer;
-      box-shadow:0 10px 24px rgba(0,51,204,.20);
+      padding:12px 14px;
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      border-bottom:1px solid rgba(255,255,255,.16);
     }
-    .scope{
-      margin:8px 2px 0;
-      color:#0f2a80;
-      font-weight:1000;
-      font-size:.86rem;
-      text-align:center;
+    .panel-title{
+      margin:0;
+      font-size:1.02rem;
+      font-weight:900;
+      display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     }
 
-    /* ===== MODAL ===== */
-    .overlay{
-      position:fixed;inset:0;
-      background:rgba(8,16,48,.58);
-      display:none;
-      align-items:center;
-      justify-content:center;
-      z-index:1000;
-      padding:16px;
+    /* ===== MAPA ===== */
+    .map-wrapper{
+      padding:12px 12px 6px;
+      border-bottom:1px solid var(--line);
     }
-    .overlay.open{display:flex}
-    .modal{
-      width:min(720px, 96vw);
-      max-height:92vh;
-      overflow:auto;
-      background:var(--card);
-      border:1px solid var(--line);
-      border-radius:22px;
-      box-shadow:0 24px 60px rgba(0,0,0,.28);
-      padding:14px 14px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
+    body.dark .map-wrapper{border-bottom:1px solid var(--line)}
+    .map-header{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;
+      font-size:.9rem;
+      flex-wrap:wrap;
     }
-    .modal h3{
-      margin:4px 2px 2px;
-      font-size:1.02rem;
-      color:#0f2a80;
-      font-weight:1100;
+    .map-header-main{display:flex;flex-direction:column;gap:6px}
+    .map-header-main strong{font-weight:900}
+
+    .map-legend-bar{
+      margin-top:8px;
+      display:flex;gap:12px;flex-wrap:wrap;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));
+      color:#fff;
+      padding:8px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 10px 26px rgba(0,0,0,.12);
     }
-    .field{
-      display:flex;flex-direction:column;gap:8px;
-    }
-    .field input[type=text]{
-      width:100%;
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:14px 14px;
-      font-weight:900;
-      font-size:1rem;
+    .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.55)}
+    .legend-dot.on{ background:#10b981; }
+    .legend-dot.off{ background:#ef4444; }
+    .legend-item{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;opacity:.96}
+
+    .map-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .map-search{
+      min-width:240px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.45);
+      padding:9px 10px;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      font-size:.86rem;
+      font-weight:800;
       outline:none;
     }
-    .modal .hint{
-      color:var(--muted);
-      font-weight:800;
+    .map-search option{ color:#000; }
+    .map-full-btn{
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.45);
+      color:#fff;
+      border-radius:12px;
+      padding:9px 12px;
       font-size:.86rem;
-      line-height:1.35;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
     }
-    .modal .preview{
-      display:none;
-      background:#f6f8ff;
-      border:1px dashed #cfe0ff;
+    .map-full-btn:hover{filter:brightness(1.08)}
+
+    #map-coopex{
+      width:100%;
+      height:340px;
       border-radius:16px;
-      padding:10px;
-      gap:10px;
-    }
-    .modal .preview.open{display:flex;flex-direction:column}
-    .prev-box{
-      width:100%;
-      border-radius:14px;
       overflow:hidden;
-      background:#fff;
-      border:1px solid var(--line);
+      box-shadow:0 10px 26px rgba(0,0,0,.18);
+      background:#020617;
+      border:1px solid rgba(255,255,255,.10);
     }
-    .prev-box img, .prev-box video{
-      width:100%;
-      display:block;
+    @media (min-height:900px){ #map-coopex{height:390px;} }
+
+    /* ===== FILTROS ===== */
+    .filters-bar{
+      padding:12px;
+      border-bottom:1px solid var(--line);
+      background:rgba(255,255,255,.66);
+      backdrop-filter: blur(8px);
     }
-    .modal .actions{
+    body.dark .filters-bar{
+      background:rgba(15,23,42,.72);
+      border-bottom:1px solid var(--line);
+    }
+
+    .filters-top{
       display:flex;
-      gap:8px;
-      justify-content:flex-end;
+      gap:12px;
+      align-items:flex-end;
       flex-wrap:wrap;
     }
 
-    /* ===== BOTTOM NAV ===== */
-    .bottom-nav{
-      position:fixed;
-      left:0;right:0;bottom:0;
-      height:calc(var(--navH) + env(safe-area-inset-bottom));
-      padding-bottom:env(safe-area-inset-bottom);
-      background:rgba(255,255,255,.88);
-      backdrop-filter:blur(10px);
-      border-top:1px solid var(--line);
-      display:flex;
-      align-items:center;
+    .quick-left{
+      flex:0 0 auto;
+      min-width:220px;
+    }
+    .quick-left .btn{
+      width:100%;
       justify-content:center;
-      z-index:60;
-    }
-    .nav-inner{
-      width:min(980px, 100%);
-      display:flex;
-      gap:6px;
-      padding:10px 12px;
-    }
-    .nav-btn{
-      flex:1;
-      border:none;
-      background:transparent;
-      border-radius:18px;
-      padding:10px 10px;
-      cursor:pointer;
-      display:flex;
-      flex-direction:column;
-      align-items:center;
-      gap:4px;
-      color:#5b6aa0;
-      font-weight:1000;
-      font-size:.72rem;
-      transition:.12s ease;
-    }
-    .nav-btn.active{
-      background:linear-gradient(180deg, rgba(39,80,255,.12), rgba(0,51,204,.10));
-      border:1px solid rgba(0,51,204,.14);
-      color:#0f2a80;
-    }
-    .nav-ico{
-      width:28px;height:28px;border-radius:10px;
-      display:grid;place-items:center;
-      font-size:1.05rem;
-      font-weight:1100;
+      box-shadow:none;
+      border:1px solid rgba(15,53,181,.25);
     }
 
-    /* ===== RESPONSIVO ===== */
-    @media (max-width:540px){
-      .home-grid{grid-template-columns:1fr}
-      .mini{min-width:150px}
+    .filters-form{
+      flex:1 1 760px;
+      display:grid;
+      grid-template-columns: 220px 160px 160px 200px 220px 1fr auto;
+      gap:10px;
+      align-items:end;
     }
+    @media (max-width:1200px){
+      .filters-form{
+        grid-template-columns: 1fr 1fr 1fr;
+      }
+    }
+
+    .field{display:flex;flex-direction:column;gap:6px}
+    label{font-size:.82rem;color:#28409f;font-weight:900}
+    body.dark label{color:#cfe0ff}
+
+    select,input[type="date"],input[type="text"]{
+      width:100%;
+      padding:9px 10px;
+      border-radius:12px;
+      border:1.5px solid var(--line-2);
+      background:#fff;
+      color:var(--ink);
+      font-weight:800;
+    }
+    body.dark select, body.dark input[type="date"], body.dark input[type="text"]{
+      background:#0b1a3a; color:#e7edf9; border-color:#2b3b59;
+    }
+    .filters-form .btn{
+      height:42px;
+      box-shadow:none;
+      border:1px solid rgba(15,53,181,.25);
+    }
+
+    .filters-actions{
+      margin-top:10px;
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      justify-content:space-between;
+    }
+    .filters-actions .btn{
+      flex:1 1 220px;
+      justify-content:center;
+      box-shadow:none;
+      border:1px solid rgba(15,53,181,.20);
+    }
+
+    /* ===== TABELA ===== */
+    .table-shell{padding:12px;}
+    .table-wrap{
+      overflow:auto;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:var(--card);
+      box-shadow:var(--shadow);
+    }
+    body.dark .table-wrap{border-color:var(--line)}
+    table{
+      width:100%;
+      border-collapse:separate;
+      border-spacing:0;
+      font-size:13.6px;
+      color:var(--ink);
+      background:transparent;
+      min-width:1100px;
+    }
+    body.dark table{color:#e7edf9}
+    thead th{
+      position:sticky;
+      top:0;
+      z-index:2;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .98), rgba(15,53,181,.95));
+      color:#fff;
+      padding:10px 10px;
+      font-weight:900;
+      white-space:nowrap;
+      border-bottom:1px solid rgba(255,255,255,.18);
+    }
+    thead th:first-child{border-top-left-radius:14px}
+    thead th:last-child{border-top-right-radius:14px}
+    tbody td{
+      padding:10px 10px;
+      text-align:center;
+      vertical-align:middle;
+      white-space:nowrap;
+      border-bottom:1px solid rgba(219,230,255,.85);
+    }
+    body.dark tbody td{border-bottom:1px solid rgba(42,58,98,.85)}
+    tbody tr:nth-child(even) td{background:rgba(238,243,255,.55)}
+    body.dark tbody tr:nth-child(even) td{background:rgba(15,23,42,.55)}
+    tbody tr:hover td{background:rgba(110,141,255,.12)}
+    .small{font-size:.84rem;color:var(--muted)}
+    body.dark .small{color:var(--muted)}
+
+    /* Pills */
+    .pill{
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      min-width:92px;
+      padding:6px 10px;
+      border-radius:999px;
+      font-weight:900;
+      border:1px solid transparent;
+      user-select:none;
+    }
+    .pill.red{background:#fee2e2; color:#991b1b; border-color:#fecaca;}
+    .pill.green{background:#dcfce7; color:#166534; border-color:#bbf7d0;}
+    .pill.yellow{background:#fef3c7; color:#92400e; border-color:#fde68a;}
+    .pill.blue{background:#dbeafe; color:#1e40af; border-color:#bfdbfe;}
+    body.dark .pill.red{background:#2e1313;color:#ffb4b4;border-color:#5b2828}
+    body.dark .pill.green{background:#0f2b22;color:#72f0c7;border-color:#1c614d}
+    body.dark .pill.yellow{background:#2a2110;color:#ffe4b0;border-color:#5a4520}
+    body.dark .pill.blue{background:#1b2750;color:#cfe0ff;border-color:#2b3b59}
+
+    /* ID com bolinha */
+    .id-with-dot{display:inline-flex;align-items:center;gap:8px;justify-content:flex-start}
+    .status-dot{width:10px;height:10px;border-radius:50%;display:inline-block;border:1px solid rgba(10,27,63,.25)}
+    body.dark .status-dot{border-color:rgba(255,255,255,.25)}
+    .status-dot.ok{background:#10b981}
+    .status-dot.no{background:#ef4444}
+
+    /* Editáveis */
+    .coop-editable, .value-editable{
+      cursor:pointer;
+      font-weight:900;
+      text-decoration:underline dotted rgba(10,27,63,.45);
+      text-underline-offset:3px;
+    }
+    body.dark .coop-editable, body.dark .value-editable{
+      text-decoration-color:rgba(255,255,255,.38);
+    }
+
+    .value-input{
+      width:110px;
+      max-width:140px;
+      background:#fff;
+      color:var(--ink);
+      border:1.5px solid var(--line-2);
+      border-radius:10px;
+      padding:6px 8px;
+      font-weight:900;
+      text-align:center;
+      outline:none;
+    }
+    body.dark .value-input{
+      background:#0b1a3a;
+      color:#e7edf9;
+      border-color:#2b3b59;
+    }
+
+    /* Ações */
+    .actions{display:flex; gap:8px; align-items:center; justify-content:center;}
+    .act-open{
+      display:inline-flex; align-items:center; justify-content:center;
+      padding:6px 12px; border-radius:12px; font-weight:900; text-decoration:none; color:#fff;
+      background:linear-gradient(90deg, var(--royal) 0%, var(--royal-2) 100%);
+      border:1px solid rgba(15,53,181,.25); box-shadow:none;
+    }
+    .act-open:hover{filter:brightness(1.06)}
+    .act-ico{
+      width:34px;height:34px; border-radius:12px;
+      border:1px solid rgba(15,53,181,.18);
+      background:rgba(15,53,181,.06);
+      display:inline-flex; align-items:center; justify-content:center;
+      cursor:pointer; padding:0;
+    }
+    body.dark .act-ico{ border-color:rgba(255,255,255,.14); background:rgba(255,255,255,.08); }
+    .act-ico:hover{filter:brightness(1.06)}
+    .act-ico.danger{ background:#fee2e2; border-color:#fecaca; }
+    body.dark .act-ico.danger{ background:#2e1313; border-color:#5b2828; }
+    .act-ico svg{width:18px;height:18px}
+
+    /* ===== Modal ===== */
+    #overlay{
+      position:fixed; inset:0; background:rgba(8,12,24,.78);
+      display:none; align-items:center; justify-content:center; z-index:2000;
+      backdrop-filter: blur(3px);
+    }
+    .modal{
+      width:min(560px, 92vw);
+      background:#fff; color:#0a1b3f;
+      border-radius:16px; box-shadow:0 14px 44px rgba(0,0,0,.38);
+      border:1px solid #e6ebff; overflow:hidden;
+    }
+    .modal header{
+      padding:12px 16px; font-weight:900; color:var(--royal);
+      border-bottom:1px solid #e6ebff; background:#f7f9ff
+    }
+    .modal .content{padding:14px 16px; font-weight:800}
+    .modal footer{display:flex; gap:10px; justify-content:center; padding:12px; border-top:1px solid #e6ebff; background:#f8faff}
+    .modal .ok{
+      padding:10px 18px; border-radius:12px;
+      border:1px solid var(--royal);
+      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
+      color:#fff; font-weight:900; cursor:pointer
+    }
+    body.dark .modal{background:#0f1623; color:#e7edf9; border-color:#1d2636}
+    body.dark .modal header{color:#b9ccff; background:#0b1320; border-color:#1d2636}
+    body.dark .modal footer{background:#0b1320; border-color:#1d2636}
+    body.locked{overflow:hidden}
+
+    /* ===== Toast ===== */
+    #toast{
+      position:fixed;
+      left:50%;
+      bottom:18px;
+      transform:translateX(-50%);
+      z-index:2500;
+      min-width:min(520px, 92vw);
+      max-width:min(720px, 92vw);
+      background:var(--toast-bg);
+      color:var(--toast-text);
+      border:1px solid rgba(255,255,255,.14);
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      border-radius:16px;
+      padding:12px 14px;
+      display:none;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      backdrop-filter: blur(6px);
+    }
+    #toast strong{font-weight:900}
+    #toast .x{
+      border:none;
+      background:rgba(255,255,255,.12);
+      color:#fff;
+      width:34px;height:34px;
+      border-radius:12px;
+      cursor:pointer;
+      font-weight:900;
+    }
+    #toast .x:hover{filter:brightness(1.08)}
+
+	    /* ===== MARCADOR NO MAPA (NOME DO COOPERADO) ===== */
+	    .moto-label{
+	      padding: 6px 10px;
+	      border-radius: 999px;
+	      font-weight: 900;
+	      font-size: 12px;
+	      line-height: 1;
+	      letter-spacing: .2px;
+	      white-space: nowrap;
+	      border: 1px solid rgba(255,255,255,.25);
+	      box-shadow: 0 10px 22px rgba(0,0,0,.22);
+	      backdrop-filter: blur(8px);
+	      -webkit-backdrop-filter: blur(8px);
+	      transform: translate(-50%, -50%);
+	      display: inline-flex;
+	      align-items: center;
+	      gap: 6px;
+	      background: rgba(0,0,0,.35);
+	    }
+	    .moto-label::before{
+	      content:"";
+	      width: 8px;
+	      height: 8px;
+	      border-radius: 999px;
+	      box-shadow: 0 0 0 3px rgba(0,0,0,.25);
+	      background: rgba(255,255,255,.6);
+	      flex: 0 0 auto;
+	    }
+	    .moto-label.online{ color: var(--good); }
+	    .moto-label.online::before{ background: var(--good); }
+	    .moto-label.offline{ color: var(--bad); }
+	    .moto-label.offline::before{ background: var(--bad); }
+
+    .moto-highlight{
+      outline: 3px solid rgba(110,141,255,.70);
+      outline-offset: 2px;
+      box-shadow: 0 0 0 8px rgba(110,141,255,.18), 0 18px 32px rgba(0,0,0,.22);
+      animation: pulse 1.1s ease-in-out 2;
+    }
+    @keyframes pulse{
+      0%{ transform: scale(1); }
+      50%{ transform: scale(1.06); }
+      100%{ transform: scale(1); }
+    }
+
+    /* ===== CLUSTER (verde se tem online, senão vermelho) ===== */
+    .cluster-badge{
+      width:42px;height:42px;border-radius:16px;
+      display:flex;align-items:center;justify-content:center;
+      color:#fff;
+      font-weight:900;
+      border:2px solid rgba(255,255,255,.75);
+      box-shadow:0 10px 22px rgba(0,0,0,.20);
+      background:#64748b;
+    }
+    .cluster-badge.online{ background: #10b981; }
+    .cluster-badge.offline{ background: #ef4444; }
   
-/* Ocultar indicadores de GPS para o cooperado (GPS fica automático) */
-.gps-btn, .gps-pill, #gpsStatus, #gpsIndicator { display:none !important; }
+    /* ===== RECEBIDO POR + MÍDIA (sem mudar layout geral) ===== */
+    .rcb-cell{display:flex;flex-direction:column;align-items:center;gap:6px}
+    .rcb-media-btn{
+      border:none;cursor:pointer;
+      width:34px;height:34px;border-radius:10px;
+      display:grid;place-items:center;
+      background:linear-gradient(180deg, rgba(39,80,255,.14), rgba(0,51,204,.10));
+      border:1px solid rgba(0,51,204,.18);
+      box-shadow:0 6px 14px rgba(0,51,204,.10);
+      font-size:16px;
+    }
+    .rcb-media-btn:active{transform:scale(.98)}
+    .rcb-name{font-weight:800}
+    /* ===== MODAL MÍDIA ===== */
+    .midia-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;padding:14px}
+    .midia-overlay.open{display:flex}
+    .midia-modal{width:min(860px, 96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:14px;border:1px solid rgba(0,51,204,.12)}
+    .midia-modal .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
+    .midia-modal .title{font-weight:900;color:#0b1b3a}
+    .midia-modal .close{border:none;background:#eef2ff;color:#0f2a80;font-weight:900;border-radius:10px;padding:10px 12px;cursor:pointer}
+    .midia-modal .actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
+    .midia-modal .btn{border:none;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
+    .midia-modal .btn-primary{background:#0033cc;color:#fff}
+    .midia-modal .btn-ghost{background:#fff;border:1px solid #e2e9ff;color:#0f2a80}
+    .midia-view{border:1px solid #e2e9ff;border-radius:14px;overflow:hidden;background:#f8faff}
+    .midia-view img,.midia-view video{width:100%;display:block}
+    .midia-hint{color:#6b7bb0;font-weight:800;font-size:.9rem;margin-top:8px}
 </style>
 </head>
 
 <body>
-  <div class="app">
-
-    <!-- TOPBAR -->
-    <header>
-      <div class="top-row">
-        <div class="brand">
-          <div class="t1">Painel do Cooperado</div>
-          <div class="t2">COOPEX • entregas em tempo real</div>
-        </div>
-
-        <div class="user-pill" title="{{ session['user_nome'] }}">
-          
-          <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
-            {{ session['user_nome'] }}
-          </span>
-        </div>
-      </div>
-    </header>
-
-    <div class="wrap">
-
-      <!-- VIEW: HOME -->
-      <section id="view-home" class="view active" aria-label="Início">
-        <div class="hero">
-          <div>
-            <h1>Bom trabalho hoje.</h1>
-            <p>Confirme entregas com “Recebido por” e anexe foto/vídeo do comprovante quando precisar.</p>
-          </div>
-          <div class="badge">
-            <div class="mini good">
-              <div class="k">PAGO</div>
-              <div class="v" id="mini-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</div>
-            </div>
-            <div class="mini bad">
-              <div class="k">PENDENTE</div>
-              <div class="v" id="mini-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</div>
-            </div>
-            <div class="mini total">
-              <div class="k">TOTAL</div>
-              <div class="v" id="mini-total">R$ {{ '%.2f'|format(total_geral or 0) }}</div>
-            </div>
-          </div>
-        </div>
-
-        <div class="home-grid">
-          <div class="tile" onclick="go('chamadas')">
-            <div class="pill" id="pill-chamadas">{{ (chamadas|length) if chamadas else 0 }} disponíveis</div>
-            <div class="icon">🚦</div>
-            <h3>Chamadas</h3>
-            <p>Corridas novas para aceitar ou recusar.</p>
-          </div>
-
-          <div class="tile" onclick="go('minhas')">
-            <div class="pill good">Entrega + Recebido</div>
-            <div class="icon">📦</div>
-            <h3>Minhas entregas</h3>
-            <p>Marcar entregue, anexar comprovante e ver histórico.</p>
-          </div>
-
-          <div class="tile" onclick="go('ganhos')">
-            <div class="pill">Resumo</div>
-            <div class="icon">💰</div>
-            <h3>Ganhos</h3>
-            <p>Pago, pendente e total (com filtro por período).</p>
-          </div>
-
-          <div class="tile" onclick="go('ajuda')">
-            <div class="pill bad">Emergência</div>
-            <div class="icon">🆘</div>
-            <h3>Ajuda / Socorro</h3>
-            <p>Acidente, pneu furado ou outros (avisar supervisão).</p>
-          </div>
-        </div>
-      </section>
-
-      <!-- VIEW: CHAMADAS -->
-      <section id="view-chamadas" class="view" aria-label="Chamadas">
-        <div class="section-title">
-          <h2>Chamadas disponíveis</h2>
-          <p class="hint">Aceite rápido (estilo app)</p>
-        </div>
-
-        <div class="list" id="list-chamadas">
-          {% for c in chamadas %}
-          <div class="card" data-id="{{ c.id }}">
-            <div class="row">
-              <div class="left">
-                <p class="title">{{ c.cliente }}</p>
-                <div class="sub">
-                  <span class="tag">🟦 Coleta: {{ c.origem_bairro or '-' }}</span>
-                  <span class="tag">🟩 Entrega: {{ c.destino_bairro or (c.bairro or '-') }}</span>
-                  <span class="tag gray">🛣 {{ c.distancia or '-' }}</span>
-                </div>
-              </div>
-              <div class="money">R$ {{ '%.2f'|format(c.valor) }}</div>
-            </div>
-
-            <div class="actions"><span class="tag good">✅ Atribuída automaticamente</span></div>
-          </div>
-          {% else %}
-          <div class="card">
-            <p class="title" style="text-align:center;margin:6px 0;">Nenhuma chamada disponível.</p>
-            <p class="sub" style="justify-content:center;margin-top:8px;">Quando aparecer, toca o som e você recebe aqui.</p>
-          </div>
-          {% endfor %}
-        </div>
-      </section>
-
-      <!-- VIEW: MINHAS -->
-      <section id="view-minhas" class="view" aria-label="Minhas entregas">
-        <div class="section-title">
-          <h2>Minhas entregas</h2>
-          <p class="hint" id="escopo">Exibindo entregas do dia atual.</p>
-        </div>
-
-        <div class="filters" aria-label="Filtros">
-          <form id="form-filtros" method="get">
-            <input type="date" name="inicio" id="f-inicio" value="{{ request.args.get('inicio','') }}" />
-            <input type="date" name="fim" id="f-fim" value="{{ request.args.get('fim','') }}" />
-            <select name="status_pgto" id="status_pgto">
-              <option value="todas"    {{ 'selected' if (status_pgto or 'todas')=='todas' }}>Todas</option>
-              <option value="pago"     {{ 'selected' if (status_pgto or '')=='pago' }}>Pagas</option>
-              <option value="pendente" {{ 'selected' if (status_pgto or '')=='pendente' }}>Pendentes</option>
-            </select>
-            <input type="hidden" name="todas_datas" id="todas_datas" value="{{ request.args.get('todas_datas','') }}" />
-            <button class="submit" type="submit">Filtrar</button>
-          </form>
-          <div class="scope" id="scope-msg"></div>
-        </div>
-
-        <div class="list" id="list-entregas">
-          {% for e in entregas %}
-          {% set entregue = (e.status in ['recebido','entregue']) %}
-          <div class="card" id="card-{{ e.id }}">
-            <div class="row">
-              <div class="left">
-                <p class="title">{{ e.cliente }}</p>
-                <div class="sub">
-                  <span class="tag">🟦 Coleta: {{ e.origem_bairro or '-' }}</span>
-                  <span class="tag">🟩 Entrega: {{ e.destino_bairro or (e.bairro or '-') }}</span>
-                  <span class="tag gray">🕒 {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</span>
-                  <span class="tag gray">💳 {{ e.pagamento or '-' }}</span>
-                </div>
-              </div>
-              <div class="money">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
-            </div>
-
-            <div class="actions">
-              <!-- PAGAMENTO -->
-              <button
-                class="btn {{ 'ghost' if (e.status_pagamento or '').lower()=='pago' else 'primary' }}"
-                type="button"
-                data-id="{{ e.id }}"
-                data-valor="{{ '%.2f'|format(e.valor) }}"
-                data-pgto="{{ (e.status_pagamento or 'pendente')|lower }}"
-                onclick="togglePagamentoApp(this)"
-                aria-pressed="{{ 'true' if (e.status_pagamento or '').lower()=='pago' else 'false' }}"
-              >
-                {{ 'Pagamento: Pago' if (e.status_pagamento or '').lower()=='pago' else 'Pagamento: Pendente' }}
-              </button>
-
-              <!-- ENTREGA / RECEBIDO -->
-              <button
-                class="btn {{ 'good' if entregue else 'primary' }}"
-                type="button"
-                data-id="{{ e.id }}"
-                data-entregue="{{ '1' if entregue else '0' }}"
-                onclick="handleEntregaClick(this)"
-              >
-                {{ 'Entregue' if entregue else 'Marcar entregue' }}
-              </button>
-
-              <!-- CAMERA (ANEXAR MÍDIA) -->
-              <button class="btn cam" type="button" onclick="openRecebidoModal({{ e.id }})" title="Recebido por + foto/vídeo">
-                📷 Comprovante
-              </button>
-            </div>
-
-            <div class="sub" style="margin-top:10px;">
-              <span class="tag {{ 'good' if entregue else 'bad' }}">
-                {{ '✅ Entregue' if entregue else '⏳ Pendente' }}
-              </span>
-
-              <span class="tag {{ 'good' if (e.status_pagamento or '').lower()=='pago' else 'bad' }}">
-                {{ '💵 Pago' if (e.status_pagamento or '').lower()=='pago' else '💵 Pendente' }}
-              </span>
-
-              <span class="tag gray">
-                Recebido por: {{ e.recebido_por or '-' }}
-              </span>
-            </div>
-          </div>
-          {% else %}
-          <div class="card">
-            <p class="title" style="text-align:center;margin:6px 0;">Nenhuma entrega encontrada.</p>
-          </div>
-          {% endfor %}
-        </div>
-      </section>
-
-      <!-- VIEW: GANHOS -->
-      <section id="view-ganhos" class="view" aria-label="Ganhos">
-        <div class="section-title">
-          <h2>Ganhos</h2>
-          <p class="hint">Mês e Ano (automático)</p>
-        </div>
-
-        <div class="card" style="margin-bottom:10px;">
-          <div class="row">
-            <div class="left">
-              <p class="title">Ganhos do mês: {{ mes_nome }} de {{ ano_ref }}</p>
-              <p class="sub">Resumo completo do mês atual</p>
-            </div>
-          </div>
-          <div class="sub" style="margin-top:10px;">
-            <span class="tag good">💵 Pago: R$ {{ '%.2f'|format(total_pago_mes or 0) }}</span>
-            <span class="tag bad">⏳ Pendente: R$ {{ '%.2f'|format(total_pendente_mes or 0) }}</span>
-            <span class="tag gray">📦 Total: R$ {{ '%.2f'|format(total_geral_mes or 0) }}</span>
-          </div>
-        </div>
-
-        <div class="card">
-          <div class="row">
-            <div class="left">
-              <p class="title">Ganhos do ano: {{ ano_ref }}</p>
-              <p class="sub">Resumo completo do ano atual</p>
-            </div>
-          </div>
-          <div class="sub" style="margin-top:10px;">
-            <span class="tag good">💵 Pago: R$ {{ '%.2f'|format(total_pago_ano or 0) }}</span>
-            <span class="tag bad">⏳ Pendente: R$ {{ '%.2f'|format(total_pendente_ano or 0) }}</span>
-            <span class="tag gray">📦 Total: R$ {{ '%.2f'|format(total_geral_ano or 0) }}</span>
-          </div>
-        </div>
-      </section>
-
-      <!-- VIEW: AJUDA -->
-      <section id="view-ajuda" class="view" aria-label="Ajuda / Socorro">
-        <div class="section-title">
-          <h2>Ajuda / Socorro</h2>
-          <p class="hint">Use só em emergência real</p>
-        </div>
-
-        <div class="card">
-          <p class="title">Envio imediato para a supervisão</p>
-          <p class="sub">Ao enviar, o admin recebe alerta e pode agir rápido.</p>
-
-          <form id="form-socorro" onsubmit="enviarSocorro(event)" style="margin-top:10px;">
-            <label class="tag" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
-              <input type="radio" name="tipo" value="acidente_com_pedido" required>
-              Me envolvi em um acidente e estou com o pedido do cliente
-            </label>
-
-            <label class="tag" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
-              <input type="radio" name="tipo" value="acidente_sem_pedido">
-              Me envolvi em um acidente sem pedido de cliente
-            </label>
-
-            <label class="tag" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
-              <input type="radio" name="tipo" value="pneu_furou">
-              Pneu furou
-            </label>
-
-            <label class="tag" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
-              <input type="radio" name="tipo" value="outros">
-              Outros (descreva abaixo)
-            </label>
-
-            <div id="socorro-outros-box" style="margin-top:10px; display:none;">
-              <textarea id="socorro-outros-text" name="detalhes" rows="4"
-                placeholder="Descreva o que aconteceu para a supervisão"
-                style="width:100%;border-radius:16px;border:1px solid var(--line);padding:12px;font-weight:800;"></textarea>
-            </div>
-
-            <button type="submit" class="btn bad" style="margin-top:12px;width:100%;">
-              🆘 Enviar pedido de socorro
-            </button>
-          </form>
-        </div>
-      </section>
-
-    </div><!-- /wrap -->
-
-    <!-- BOTTOM NAV -->
-    <nav class="bottom-nav" aria-label="Navegação">
-      <div class="nav-inner">
-        <button class="nav-btn active" data-go="home" type="button" onclick="go('home')">
-          <div class="nav-ico">🏠</div>
-          Início
+  <!-- HEADER -->
+  <header>
+    <div class="topbar">
+      <div class="brand">
+        <button id="btnMenu" class="menu-btn" type="button" aria-label="Abrir menu principal">
+          <span></span><span></span><span></span>
         </button>
-        <button class="nav-btn" data-go="chamadas" type="button" onclick="go('chamadas')">
-          <div class="nav-ico">🚦</div>
-          Chamadas
-        </button>
-        <button class="nav-btn" data-go="minhas" type="button" onclick="go('minhas')">
-          <div class="nav-ico">📦</div>
-          Minhas
-        </button>
-        <button class="nav-btn" data-go="ganhos" type="button" onclick="go('ganhos')">
-          <div class="nav-ico">💰</div>
-          Ganhos
-        </button>
-        <button class="nav-btn" data-go="ajuda" type="button" onclick="go('ajuda')">
-          <div class="nav-ico">🆘</div>
-          Ajuda
-        </button>
-      </div>
-    </nav>
-
-  </div><!-- /app -->
-
-  <!-- MODAL: Recebido por + mídia -->
-  <div class="overlay" id="rcb-overlay" role="dialog" aria-modal="true" aria-labelledby="rcb-title">
-    <div class="modal">
-      <h3 id="rcb-title">Confirmar entrega (Recebido por + comprovante)</h3>
-
-      <div class="field">
-        <input type="text" id="rcb-input-global" placeholder="Recebido por (ex.: porteiro fulano)" maxlength="100" inputmode="text" autocomplete="name" />
-        <div class="hint">Você pode anexar uma <strong>foto</strong> ou <strong>vídeo</strong> (curto) como comprovante.</div>
+        <span>Kratos System – Supervisão</span>
       </div>
 
-      <div class="actions" style="justify-content:flex-start;">
-        <input id="midia-file" type="file" accept="image/*,video/*" style="display:none" />
-        <button class="btn cam" type="button" onclick="chooseMedia()">📷 Selecionar foto/vídeo</button>
-        <button class="btn ghost" type="button" onclick="clearMedia()">🧹 Remover mídia</button>
+      <div class="kpis">
+        <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
+        <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
+        <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
       </div>
 
-      <div class="preview" id="midia-preview">
-        <div class="hint" id="midia-info"></div>
-        <div class="prev-box" id="prev-box"></div>
-      </div>
+      <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
+      <a class="logout" href="{{ url_for('logout') }}">Sair</a>
+    </div>
+  </header>
 
-      <div class="actions">
-        <button type="button" class="btn ghost" id="rcb-cancel">Cancelar</button>
-        <button type="button" class="btn good" id="rcb-ok">✅ Confirmar</button>
-      </div>
+  <!-- BANNER -->
+  <div class="banner">
+    <div class="today">{{ to_brasilia(now()).strftime('%d/%m/%Y') }} — {{ to_brasilia(now())|diasemana }}</div>
+    <div>
+      {% if feriado_hoje %}
+        <span class="badge bad">⚠ {{ feriado_hoje }}</span>
+      {% else %}
+        <span class="badge neu">Hoje não é feriado</span>
+      {% endif %}
     </div>
   </div>
 
-  <!-- SOM de nova entrega -->
-  <audio id="som-nova-entrega" src="{{ url_for('static', filename='sons/nova_corrida.mp3') }}" preload="auto"></audio>
+  <div class="viewport">
+    <div class="grid">
+
+      <!-- MENU LATERAL -->
+      <aside class="left" id="sidePanel">
+        <div class="menu-panel">
+          <div class="menu-header">
+            <img src="{{ url_for('static', filename='logo_kratos.png') }}"
+                 alt="Logo"
+                 onerror="this.onerror=null;this.src='https://via.placeholder.com/90x38?text=LOGO'">
+            <strong>Menu rápido & Lista de Espera</strong>
+          </div>
+
+          <!-- LISTA DE ESPERA -->
+          <div class="card" style="margin-bottom:10px;">
+            <div class="body">
+              <h3>Lista de Espera</h3>
+              <form class="row" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera">
+                {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
+                <select name="cooperado_id" id="cooperado-espera" required>
+                  <option value="" selected disabled>Selecione um cooperado…</option>
+                  {% for c in coops_select %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
+                </select>
+                <input name="nome" id="nome-espera" type="text" placeholder="(Opcional) nome do cooperado" />
+                <button type="submit" class="btn">Adicionar</button>
+              </form>
+
+              <ul id="espera-lista">
+                {% if lista_espera|length == 0 %}
+                  <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
+                {% else %}
+                  {% for item in lista_espera %}
+                    <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
+                      <span class="espera-chip-num">{{ loop.index }}</span>
+                      <span class="espera-chip-text">{{ item.nome }}</span>
+                      <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
+                        <button class="espera-chip-remove" title="Remover" type="submit">×</button>
+                      </form>
+                    </li>
+                  {% endfor %}
+                {% endif %}
+              </ul>
+            </div>
+          </div>
+
+          <!-- AÇÕES -->
+          <div>
+            <div class="menu-section-title">Outras ações</div>
+            <div class="menu-links">
+              <a class="btn alt" href="{{ url_for('clientes') }}">Clientes</a>
+              <a class="btn alt" href="{{ url_for('cadastrar_cooperado') }}">Cooperados</a>
+              {% if session.is_master %}
+                <a class="btn alt" href="{{ url_for('estatisticas_cooperado') }}">Dashboard</a>
+              {% endif %}
+              <a class="btn alt" href="{{ url_for('creditos') }}">Crédito</a>
+              <a class="btn alt" href="{{ url_for('precos_rotas') }}">Tabela de Preços &amp; Rotas</a>
+
+              <a class="btn alt" href="{{ url_for('exportar_xlsx',
+                   data_inicio=data_inicio or '',
+                   data_fim=data_fim or '',
+                   cooperado_id=request.args.get('cooperado_id','todos'),
+                   status_pagamento=request.args.get('status_pagamento','todos'),
+                   cliente=request.args.get('cliente',''),
+                   endereco=request.args.get('endereco','')) }}">Exportar</a>
+
+              <a class="btn alt" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico',
+                   data_inicio=data_inicio or '',
+                   data_fim=data_fim or '',
+                   cooperado_id=request.args.get('cooperado_id','todos'),
+                   status_pagamento=request.args.get('status_pagamento','todos'),
+                   cliente=request.args.get('cliente',''),
+                   endereco=request.args.get('endereco','')) }}">Imprimir Relatório</a>
+
+              <a class="btn alt" href="{{ url_for('trajetos') }}">Trajetos (histórico)</a>
+            </div>
+          </div>
+        </div>
+      </aside>
+
+      <!-- CONTEÚDO PRINCIPAL -->
+      <section class="panel">
+        <div class="panel-head">
+          <h2 class="panel-title">
+            Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
+            <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
+          </h2>
+          <div class="small" style="color:rgba(255,255,255,.92);font-weight:900">Ajuda não é fardado</div>
+        </div>
+
+        <!-- MAPA -->
+        <div class="map-wrapper" style="background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));">
+          <div class="map-header">
+            <div class="map-header-main">
+              <strong style="color:#fff">Mapa em tempo real</strong>
+
+              <div class="map-legend-bar">
+                <div class="legend-item"><span class="legend-dot on"></span> Online (app ligado)</div>
+                <div class="legend-item"><span class="legend-dot off"></span> Offline / desconectado</div>
+              </div>
+            </div>
+
+            <div class="map-header-actions">
+              <select id="mapSearch" class="map-search">
+                <option value="">🔍 Localizar motoboy…</option>
+              </select>
+
+              <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
+            </div>
+          </div>
+
+          <div id="map-coopex"></div>
+        </div>
+
+        <!-- FILTROS -->
+        <div class="filters-bar">
+          <div class="filters-top">
+            <div class="quick-left">
+              <button class="btn" type="button" onclick="window.location.href='{{ url_for('cadastrar_entrega') }}'">
+                + Nova entrega
+              </button>
+            </div>
+
+            <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
+              <div class="field">
+                <label for="cooperado">Cooperado</label>
+                <select name="cooperado_id" id="cooperado">
+                  <option value="todos">Todos</option>
+                  {% for c in cooperados %}
+                    <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+                  {% endfor %}
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="data_inicio">De</label>
+                <input type="date" name="data_inicio" id="data_inicio" value="{{ data_inicio or '' }}" />
+              </div>
+
+              <div class="field">
+                <label for="data_fim">Até</label>
+                <input type="date" name="data_fim" id="data_fim" value="{{ data_fim or '' }}" />
+              </div>
+
+              <div class="field">
+                <label for="status_pagamento">Pagamento</label>
+                <select name="status_pagamento" id="status_pagamento">
+                  <option value="todos" {% if request.args.get('status_pagamento','todos')=='todos' %}selected{% endif %}>Todos</option>
+                  <option value="pago" {% if request.args.get('status_pagamento')=='pago' %}selected{% endif %}>Pago</option>
+                  <option value="pendente" {% if request.args.get('status_pagamento')=='pendente' %}selected{% endif %}>Pendente</option>
+                </select>
+              </div>
+
+              <div class="field">
+                <label for="cliente">Cliente</label>
+                <input type="text" name="cliente" id="cliente" placeholder="Nome do cliente" value="{{ request.args.get('cliente','') }}" />
+              </div>
+
+              <div class="field">
+                <label for="endereco">Endereço</label>
+                <input type="text" name="endereco" id="endereco" placeholder="Rua, nº, ponto de ref." value="{{ request.args.get('endereco','') }}" />
+              </div>
+
+              <button class="btn" type="submit">Filtrar</button>
+            </form>
+          </div>
+
+          <div class="filters-actions">
+            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
+              + Agendar entrega
+            </button>
+            <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
+              Ver agenda
+            </button>
+          </div>
+        </div>
+
+        <!-- TABELA -->
+        <div class="table-shell">
+          <div class="table-wrap" id="tbl">
+            <table class="tabela">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Bairro</th>
+                  <th>Endereço</th>
+                  <th>Valor</th>
+                  <th>Data<br>e<br>Dia</th>
+                  <th>Hora<br>Pedido</th>
+                  <th>Hora<br>Atribuída</th>
+                  <th>Cooperado</th>
+                  <th>Forma Pgto</th>
+                  <th>Status</th>
+                  <th>Pagamento</th>
+                  <th>Recebido por</th>
+                  <th>Rastreio</th>
+                  <th>Ações</th>
+                </tr>
+              </thead>
+
+              <tbody>
+                {% for e in entregas %}
+                {% set tem_coop = (e.cooperado is not none) %}
+                {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+                {% set st = e.status|lower if e.status else 'pendente' %}
+                <tr data-id="{{ e.id }}">
+                  <td>
+                    <span class="id-with-dot">
+                      <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
+                            title="{{ 'Com cooperado atribuído' if tem_coop else 'Sem cooperado' }}"></span>
+                      <span>{{ e.id }}</span>
+                    </span>
+                  </td>
+
+                  <td>{{ e.cliente }}</td>
+                  <td>{{ e.bairro }}</td>
+                  <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
+
+                  <td>
+                    <span class="value-editable"
+                          data-id="{{ e.id }}"
+                          data-valor="{{ '%.2f'|format(e.valor) }}"
+                          title="Clique para alterar o valor">
+                      R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}
+                    </span>
+                  </td>
+
+                  <td>
+                    {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
+                    <span class="small">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}</span>
+                  </td>
+
+                  <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+                  <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+
+                  <td>
+                    <span class="coop-editable"
+                          data-id="{{ e.id }}"
+                          data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
+                          title="Clique para trocar o cooperado">
+                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
+                    </span>
+                  </td>
+
+                  <td>{{ e.pagamento }}</td>
+
+                  <td>
+                    {% if st in ['entregue','recebido'] %}
+                      <span class="pill yellow">Entregue</span>
+                    {% elif st in ['agendado'] %}
+                      <span class="pill blue">Agendado</span>
+                    {% elif st in ['pix'] %}
+                      <span class="pill green">Pix</span>
+                    {% else %}
+                      <form action="{{ url_for('marcar_entregue', id=e.id) }}" method="POST" style="display:inline">
+                        <input type="hidden" name="status" value="entregue">
+                        <span class="pill red js-toggle-entrega" role="button" title="Clique para marcar como ENTREGUE">Pendente</span>
+                      </form>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    {% if sp == 'pago' %}
+                      <span class="pill green">Pago</span>
+                    {% else %}
+                      <form action="{{ url_for('marcar_pagamento', id=e.id) }}" method="POST" style="display:inline">
+                        <input type="hidden" name="status_pagamento" value="pago">
+                        <span class="pill red js-toggle-pagto" role="button" title="Clique para marcar como PAGO">Pendente</span>
+                      </form>
+                    {% endif %}
+                  </td>
+
+                  <td>
+  <div class="rcb-cell">
+    <button type="button" class="rcb-media-btn" title="Ver foto/vídeo (comprovante)" onclick="openMidiaModal({{ e.id }})">📷</button>
+    <div class="rcb-name" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</div>
+  </div>
+</td>
+
+                  <td>
+                    {% if tem_coop %}
+                      {% set rastreio_link = url_for('rastreamento', codigo=e.id, motoboy_id=e.cooperado.id, _external=True) %}
+                      <a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>
+                    {% else %}
+                      <span class="small">—</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    <div class="actions">
+                      <a class="act-ico" title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" aria-label="Editar">
+                        <svg viewBox="0 0 24 24" fill="#1e40af">
+                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                      </a>
+
+                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
+                        <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
+                          <svg viewBox="0 0 24 24" fill="#1e40af">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                          </svg>
+                        </button>
+                      </form>
+
+                      <button type="button" class="act-ico" title="Imprimir cupom"
+                        data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
+                        onclick="imprimirCupom({{ e.id }}, this)">
+                        <svg viewBox="0 0 24 24" fill="#16a34a">
+                          <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
+                        </svg>
+                      </button>
+
+                      <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST"
+                            style="display:inline;"
+                            onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+                        <button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir">
+                          <svg viewBox="0 0 24 24" fill="#b91c1c">
+                            <path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/>
+                          </svg>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+      </section>
+    </div>
+  </div>
+
+  <!-- Toast -->
+  <div id="toast" role="status" aria-live="polite">
+    <div id="toastText"><strong>Ok</strong></div>
+    <button class="x" type="button" onclick="hideToast()">×</button>
+  </div>
+
+  <!-- Modal (mantido para outras mensagens do sistema; não abre no cluster) -->
+  <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <div class="modal">
+      <header id="modal-title">Aviso</header>
+      <div class="content" id="modal-msg">Mensagem</div>
+      <footer>
+        <button id="modal-ok" class="ok" type="button">Ok</button>
+      </footer>
+    </div>
+  </div>
+
+  <!-- áudios -->
+  <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
+  <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
+
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <script>
+    const socket = io("{{ request.host_url.rstrip('/') }}", {
+      transports: ["polling"],
+      path: "/socket.io/",
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000
+    });
+    socket.on("connect", () => console.log("Socket conectado (polling), id:", socket.id));
+    socket.on("connect_error", (err) => console.error("Erro na conexão Socket.IO:", err));
+  </script>
 
   <script>
-    // =============================
-    // NAVEGAÇÃO (views)
-    // =============================
-    const views = {
-      home: document.getElementById('view-home'),
-      chamadas: document.getElementById('view-chamadas'),
-      minhas: document.getElementById('view-minhas'),
-      ganhos: document.getElementById('view-ganhos'),
-      ajuda: document.getElementById('view-ajuda'),
-    };
+    window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
+    window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
 
-    function go(name){
-      Object.values(views).forEach(v => v && v.classList.remove('active'));
-      const target = views[name];
-      if(target) target.classList.add('active');
-
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      const btn = document.querySelector(`.nav-btn[data-go="${name}"]`);
-      if(btn) btn.classList.add('active');
-
-      // se ir para "minhas", recalcula totais do app
-      if(name === 'ganhos' || name === 'home') recalcTotalsFromCards();
-      updateScopeText();
-      window.scrollTo({top:0, behavior:'instant'});
+    function formatBRLFromNumberLike(v){
+      const n = Number(String(v).replace(",", "."));
+      if (Number.isFinite(n)) return "R$ " + n.toFixed(2).replace(".", ",");
+      return String(v || "").trim() || "R$ 0,00";
+    }
+    function parseNumberFromBRL(text){
+      if(!text) return 0;
+      let t = String(text).replace(/[^\d,.-]/g,'').trim();
+      t = t.replace(/\.(?=\d{3}(\D|$))/g, '');
+      t = t.replace(',', '.');
+      const n = Number(t);
+      return Number.isFinite(n) ? n : 0;
     }
 
-    // =============================
-    // TOTALIZAÇÃO PELOS CARDS (Minhas)
-    // =============================
-    function parseMoney(n){ return parseFloat((n||'0').replace(',','.')) || 0; }
+    let _toastTimer = null;
+    function showToast(msg){
+      const el = document.getElementById('toast');
+      const tx = document.getElementById('toastText');
+      if(!el || !tx) return;
+      tx.innerHTML = msg;
+      el.style.display = 'flex';
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(hideToast, 2600);
+    }
+    function hideToast(){
+      const el = document.getElementById('toast');
+      if(!el) return;
+      el.style.display = 'none';
+      clearTimeout(_toastTimer);
+      _toastTimer = null;
+    }
 
-    function recalcTotalsFromCards(){
-      const cards = document.querySelectorAll('[id^="card-"]');
-      let total=0, pago=0;
-
-      cards.forEach(card=>{
-        // valor está no texto "R$ xx,xx" do money
-        const moneyEl = card.querySelector('.money');
-        if(!moneyEl) return;
-        const raw = moneyEl.textContent.replace('R$','').trim();
-        const v = parseMoney(raw);
-        total += v;
-
-        const btnPgto = card.querySelector('button[data-pgto]');
-        const st = (btnPgto?.dataset.pgto || 'pendente').toLowerCase();
-        if(st === 'pago') pago += v;
+    function showModal(title, html){
+      const ov = document.getElementById('overlay');
+      const tt = document.getElementById('modal-title');
+      const msg = document.getElementById('modal-msg');
+      if(!ov || !tt || !msg) return;
+      tt.textContent = title || 'Aviso';
+      msg.innerHTML = html || '';
+      ov.style.display = 'flex';
+      document.body.classList.add('locked');
+    }
+    function hideModal(){
+      const ov = document.getElementById('overlay');
+      if(!ov) return;
+      ov.style.display = 'none';
+      document.body.classList.remove('locked');
+    }
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const ok = document.getElementById('modal-ok');
+      const ov = document.getElementById('overlay');
+      if(ok) ok.addEventListener('click', hideModal);
+      if(ov) ov.addEventListener('click', (e)=>{
+        if(e.target === ov) hideModal();
       });
+    });
 
-      const pend = Math.max(0, total - pago);
-
-      const fmt = (x)=> 'R$ ' + x.toFixed(2).replace('.',',');
-
-      // Ganhos
-      const gPago = document.getElementById('tot-pago');
-      const gPend = document.getElementById('tot-pendente');
-      const gTot  = document.getElementById('tot-geral');
-      if(gPago) gPago.textContent = fmt(pago);
-      if(gPend) gPend.textContent = fmt(pend);
-      if(gTot)  gTot.textContent  = fmt(total);
-
-      // Home minis
-      const mPago = document.getElementById('mini-pago');
-      const mPend = document.getElementById('mini-pendente');
-      const mTot  = document.getElementById('mini-total');
-      if(mPago) mPago.textContent = fmt(pago);
-      if(mPend) mPend.textContent = fmt(pend);
-      if(mTot)  mTot.textContent  = fmt(total);
+    function contarSemCooperado(){
+      try{
+        const rows = document.querySelectorAll('.tabela tbody tr');
+        let n = 0;
+        rows.forEach(tr=>{
+          const el = tr.querySelector('.coop-editable');
+          const cid = el?.dataset?.cooperadoId || '';
+          if(!cid) n++;
+        });
+        return n;
+      }catch(e){ return 0; }
+    }
+    function atualizarBadgeAbertas(){
+      const badge = document.getElementById('abertasBadge');
+      if(!badge) return;
+      const n = contarSemCooperado();
+      badge.textContent = n + ' em aberto';
+      badge.style.display = 'inline-flex';
     }
 
-    // =============================
-    // FILTRO: “pendente” mostra todas
-    // =============================
-    const form = document.getElementById('form-filtros');
-    if(form){
-      form.addEventListener('submit', ()=>{
-        const status = document.getElementById('status_pgto').value;
-        const hidden = document.getElementById('todas_datas');
-        if(status === 'pendente'){
-          hidden.value='1';
-          document.getElementById('f-inicio').value='';
-          document.getElementById('f-fim').value='';
-        }else{
-          hidden.value='';
+    (function(){
+      try{
+        const saved = localStorage.getItem('coopex_theme') || 'light';
+        if(saved === 'dark') document.body.classList.add('dark');
+        const btn = document.getElementById('btnTheme');
+        const sync = ()=> btn && (btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro');
+        if(btn){
+          sync();
+          btn.addEventListener('click', ()=>{
+            document.body.classList.toggle('dark');
+            localStorage.setItem('coopex_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            sync();
+          });
         }
-      });
+      }catch(e){}
+    })();
+
+    window.addEventListener('DOMContentLoaded', atualizarBadgeAbertas);
+
+    document.addEventListener('click', (ev)=>{
+      const st = ev.target.closest?.('.js-toggle-pagto, .js-toggle-entrega');
+      if(!st) return;
+      const form = st.closest?.('form');
+      if(!form) return;
+
+      const confirmar = st.classList.contains('js-toggle-pagto')
+        ? 'Confirmar pagamento como PAGO?'
+        : 'Confirmar entrega como ENTREGUE?';
+      if(!confirm(confirmar)) return;
+
+      ev.preventDefault();
+      try{
+        const fd = new FormData(form);
+        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+          .then(res=>{
+            if(!res.ok) throw new Error('Falha ao atualizar.');
+            showToast('<strong>Atualizado com sucesso.</strong>');
+            setTimeout(()=> location.reload(), 350);
+          })
+          .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
+      }catch(e){
+        showToast('<strong>Não foi possível atualizar agora.</strong>');
+      }
+    });
+
+    function removerDaFilaPorNome(nome){
+      try{
+        if(!nome) return;
+        const ul = document.getElementById('espera-lista');
+        if(!ul) return;
+
+        const itens = ul.querySelectorAll('.espera-chip');
+        let alvo = null;
+        itens.forEach(li=>{
+          const txt = (li.querySelector('.espera-chip-text')?.textContent || '').trim().toLowerCase();
+          if(txt && txt === String(nome).trim().toLowerCase()) alvo = li;
+        });
+        if(!alvo) return;
+
+        const form = alvo.querySelector('form');
+        if(form?.action){
+          fetch(form.action, { method:'POST', headers:{'X-Requested-With':'fetch'} }).catch(()=>{});
+        }
+        alvo.remove();
+
+        const restou = ul.querySelectorAll('.espera-chip').length;
+        if(restou === 0){
+          const li = document.createElement('li');
+          li.id = 'fila-vazia';
+          li.className = 'small';
+          li.style.opacity = '.85';
+          li.textContent = 'Nenhum cooperado na fila.';
+          ul.appendChild(li);
+        }
+      }catch(e){}
     }
 
-    function updateScopeText(){
-      const el = document.getElementById('scope-msg');
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.coop-editable');
       if(!el) return;
 
-      const url = new URL(location.href);
-      const status = url.searchParams.get('status_pgto') || document.getElementById('status_pgto')?.value || 'todas';
+      const idEntrega = el.dataset?.id || '';
+      const atual     = el.dataset?.cooperadoId || '';
 
-      el.textContent = (status === 'pendente')
-        ? 'Exibindo TODAS as entregas PENDENTES (sem filtrar por data).'
-        : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
-      const escopo = document.getElementById('escopo');
-      if(escopo) escopo.textContent = el.textContent;
+      const sel = document.createElement('select');
+      sel.style.borderRadius='12px';
+      sel.style.padding='7px 10px';
+      sel.style.fontWeight='900';
 
-      const scope2 = document.getElementById('scope-msg');
-      if(scope2) scope2.textContent = el.textContent;
+      const opt0 = document.createElement('option');
+      opt0.value=''; opt0.textContent='Sem Cooperado';
+      sel.appendChild(opt0);
+
+      (window.COOPERADOS || []).forEach(c=>{
+        const o = document.createElement('option');
+        o.value=c.id;
+        o.textContent=c.nome;
+        if(String(c.id)===String(atual)) o.selected=true;
+        sel.appendChild(o);
+      });
+
+      el.parentNode.replaceChild(sel, el);
+      sel.focus();
+
+      function salvar(){
+        const coopId = sel.value || '';
+        let nomeEscolhido = 'Sem Cooperado';
+        if(sel.selectedIndex >= 0) nomeEscolhido = (sel.options[sel.selectedIndex]?.textContent || 'Sem Cooperado').trim();
+
+        try{
+          const url = '/atribuir_cooperado/' + idEntrega;
+          const fd  = new FormData();
+          fd.append('cooperado_id', coopId);
+          fd.append('notificar_painel', '1');
+
+          fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+            .then(()=>{
+              if(coopId) removerDaFilaPorNome(nomeEscolhido);
+              showToast('<strong>Cooperado atualizado.</strong>');
+            })
+            .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
+        }catch(e){
+          showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
+        }
+
+        const span = document.createElement('span');
+        span.className = 'coop-editable';
+        span.dataset.id = idEntrega;
+        span.dataset.cooperadoId = sel.value;
+        span.title = 'Clique para trocar o cooperado';
+
+        let nome = 'Sem Cooperado';
+        if(sel.value){
+          const found = (window.COOPERADOS || []).find(x => String(x.id)===String(sel.value));
+          if(found?.nome) nome = found.nome;
+        }
+        span.textContent = nome;
+        sel.parentNode.replaceChild(span, sel);
+
+        atualizarBadgeAbertas();
+      }
+
+      sel.addEventListener('change', salvar);
+      sel.addEventListener('blur', ()=> salvar(), { once:true });
+    });
+
+    async function salvarValorEntrega(idEntrega, novo){
+      try{
+        const r1 = await fetch(`/api/entregas/${idEntrega}/valor`, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body: JSON.stringify({ valor: novo })
+        });
+        if(r1.ok) return true;
+      }catch(e){}
+
+      try{
+        const fd = new FormData();
+        fd.append('valor', novo);
+        fd.append('valor_servico', novo);
+        fd.append('atualizar_valor', '1');
+        fd.append('notificar_painel', '1');
+
+        const r2 = await fetch(`/editar_entrega/${idEntrega}`, {
+          method:'POST',
+          body: fd,
+          headers:{'X-Requested-With':'fetch'}
+        });
+        if(r2.ok) return true;
+      }catch(e){}
+
+      return false;
     }
 
-    // =============================
-    // PAGAMENTO (estilo app)
-    // =============================
-    async function togglePagamentoApp(btn){
-      const id = btn.dataset.id;
-      try{
-        const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id),{
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.value-editable');
+      if(!el) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const idEntrega = el.dataset?.id || '';
+      if(!idEntrega) return;
+
+      let valorAtual = el.dataset.valor || '';
+      if(!valorAtual) valorAtual = String(parseNumberFromBRL(el.textContent || '')).toFixed(2);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'value-input';
+      input.inputMode = 'decimal';
+      input.value = String(valorAtual).replace('.', ',');
+
+      el.parentNode.replaceChild(input, el);
+      input.focus();
+      input.select();
+
+      async function finalizar(shouldSave){
+        const raw = (input.value || '').trim();
+        let num = parseNumberFromBRL(raw);
+        if(!Number.isFinite(num) || num <= 0) num = parseNumberFromBRL(valorAtual);
+        const novo = num.toFixed(2);
+
+        const span = document.createElement('span');
+        span.className = 'value-editable';
+        span.dataset.id = idEntrega;
+        span.dataset.valor = novo;
+        span.title = 'Clique para alterar o valor';
+        span.textContent = formatBRLFromNumberLike(novo);
+
+        input.parentNode.replaceChild(span, input);
+        if(!shouldSave) return;
+
+        const ok = await salvarValorEntrega(idEntrega, novo);
+        if(ok){
+          showToast('<strong>Valor atualizado.</strong>');
+        }else{
+          window.location.href = `/editar_entrega/${idEntrega}`;
+        }
+      }
+
+      input.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){ e.preventDefault(); finalizar(true); }
+        if(e.key === 'Escape'){ e.preventDefault(); finalizar(false); }
+      });
+      input.addEventListener('blur', ()=> finalizar(true), { once:true });
+    });
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const btnMenu   = document.getElementById('btnMenu');
+      const sidePanel = document.getElementById('sidePanel');
+      if (!btnMenu || !sidePanel) return;
+
+      btnMenu.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isOpen = sidePanel.classList.toggle('open');
+        if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
+      });
+
+      document.addEventListener('click', (ev)=>{
+        if (!sidePanel.classList.contains('open')) return;
+        if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
+        if (sidePanel.contains(ev.target)) return;
+        sidePanel.classList.remove('open');
+        btnMenu.classList.remove('open');
+      });
+    });
+
+    (function(){
+      const selCoop    = document.getElementById('cooperado-espera');
+      const inpNome    = document.getElementById('nome-espera');
+      const formEspera = document.getElementById('form-espera');
+
+      if (selCoop && inpNome){
+        selCoop.addEventListener('change', ()=>{
+          const opt  = selCoop.options[selCoop.selectedIndex];
+          const nome = opt ? (opt.text || '') : '';
+          if (!inpNome.value) inpNome.value = nome;
+        });
+      }
+      if (formEspera && selCoop && inpNome){
+        formEspera.addEventListener('submit', ()=>{
+          if (!inpNome.value) {
+            const opt  = selCoop.options[selCoop.selectedIndex];
+            const nome = opt ? (opt.text || '') : '';
+            inpNome.value = nome;
+          }
+        });
+      }
+    })();
+
+    (function(){
+      const ulFila = document.getElementById('espera-lista');
+      let dragEl = null;
+
+      function renumerar(){
+        const nums = ulFila ? ulFila.querySelectorAll('.espera-chip-num') : [];
+        nums.forEach((el,i)=> el.textContent = i+1);
+      }
+      function salvarOrdem(){
+        if(!ulFila) return;
+        const ids = [].map.call(ulFila.querySelectorAll('.espera-chip'), li => li.dataset.id);
+        fetch('/lista_espera/reordenar',{
           method:'POST',
           headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({})
+          body:JSON.stringify({ordem:ids})
+        }).catch(()=>{});
+      }
+
+      if(ulFila){
+        ulFila.addEventListener('dragstart', (e)=>{
+          const li = e.target.closest('.espera-chip');
+          if(!li) return;
+          dragEl = li;
+          li.style.opacity = 0.6;
         });
-
-        let data=null;
-        try{ data=await resp.json(); }catch{}
-
-        if(!resp.ok){
-          alert((data&&data.error)||'Falha ao alterar pagamento.');
-          return;
-        }
-
-        const novo = (data.status_pagamento || 'pendente').toLowerCase();
-        btn.dataset.pgto = novo;
-        btn.textContent = (novo === 'pago') ? 'Pagamento: Pago' : 'Pagamento: Pendente';
-        btn.classList.toggle('primary', novo !== 'pago');
-        btn.classList.toggle('ghost', novo === 'pago');
-        btn.setAttribute('aria-pressed', String(novo === 'pago'));
-
-        recalcTotalsFromCards();
-      }catch(e){
-        alert('Erro: ' + e.message);
+        ulFila.addEventListener('dragend', (e)=>{
+          const li = e.target.closest('.espera-chip');
+          if(!li) return;
+          li.style.opacity = 1;
+          dragEl = null;
+          salvarOrdem();
+        });
+        ulFila.addEventListener('dragover', (e)=>{
+          e.preventDefault();
+          const li = e.target.closest('.espera-chip');
+          if(!li || li === dragEl) return;
+          const r = li.getBoundingClientRect();
+          const after = (e.clientY - r.top) > (r.height / 2);
+          if(after) li.after(dragEl); else li.before(dragEl);
+          renumerar();
+        });
       }
+    })();
+
+    function atualizarOuInserirLinhaEntrega(dados){
+      if (!dados?.id || !dados?.linha_html) return;
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody) return;
+
+      const temp = document.createElement('tbody');
+      temp.innerHTML = dados.linha_html.trim();
+      const novaTr = temp.querySelector('tr');
+      if (!novaTr) return;
+
+      const trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
+      if (trExistente) tbody.replaceChild(novaTr, trExistente);
+      else tbody.prepend(novaTr);
+
+      atualizarBadgeAbertas();
+    }
+    function removerLinhaEntrega(id){
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody || !id) return;
+      const tr = tbody.querySelector('tr[data-id="' + id + '"]');
+      if (tr) tr.remove();
+      atualizarBadgeAbertas();
+    }
+    function atualizarFilaEsperaTempoReal(htmlLista){
+      const ulFila = document.getElementById('espera-lista');
+      if (!ulFila || !htmlLista) return;
+      ulFila.innerHTML = htmlLista;
     }
 
-    // =============================
-    // ENTREGA (abre modal se pendente)
-    // =============================
-    function handleEntregaClick(btn){
-      const id = btn.dataset.id;
-      const entregue = btn.dataset.entregue === '1';
-      if(!entregue){
-        openRecebidoModal(id);
-      }else{
-        if(confirm('Marcar como PENDENTE novamente?')){
-          desfazerEntregue(id, btn);
-        }
-      }
+    if (typeof socket !== 'undefined') {
+      socket.on('entrega_criada', atualizarOuInserirLinhaEntrega);
+      socket.on('entrega_atualizada', atualizarOuInserirLinhaEntrega);
+      socket.on('entrega_excluida', (dados)=> dados?.id && removerLinhaEntrega(dados.id));
+      socket.on('fila_espera_atualizada', (dados)=> dados?.html_lista && atualizarFilaEsperaTempoReal(dados.html_lista));
     }
+  </script>
 
-    async function desfazerEntregue(id, btn){
-      const fd = new FormData();
-      fd.append('status','pendente');
-      fd.append('recebido_por','');
+  <!-- CUPOM / MAPA TELA CHEIA -->
+  <script>
+    function imprimirCupom(idEntrega, botao) {
+      var tr = botao.closest ? botao.closest('tr') : null;
+      function get(idx){
+        if(!tr || !tr.children || !tr.children[idx]) return '-';
+        var txt = (tr.children[idx].innerText || '').trim();
+        return txt || '-';
+      }
+
+      var dataDiaBruto = (get(5) || '-').replace(/\s+/g,' ').trim();
+      var matchData = dataDiaBruto.match(/\d{2}\/\d{2}\/\d{4}/);
+      var dataSo = matchData ? matchData[0] : '-';
+
+      var rawId = get(0);
+      var numMatch = rawId.match(/\d+/);
+      var numId = numMatch ? numMatch[0] : rawId;
+
+      var cooperadoCupom = '-';
+      if (botao && botao.dataset && botao.dataset.cooperado){
+        cooperadoCupom = botao.dataset.cooperado;
+      } else {
+        cooperadoCupom = get(8) || '-';
+      }
+
+      var dados = {
+        id: numId,
+        idPad: String(numId).padStart(6,'0'),
+        cliente: get(1),
+        bairro: get(2),
+        endereco: get(3),
+        valor: get(4).replace(/^R\$\s*/,'').trim(),
+        data: dataSo,
+        horaPedido: get(6),
+        cooperado: cooperadoCupom,
+        formaPgto: get(9),
+        recebidoPor: get(12)
+      };
+
+      var agora = new Date();
+      var logoUrl = "{{ url_for('static', filename='logo_coopex.png', _external=True) }}";
+      var baseHref = "{{ request.host_url }}";
+      var cacheBust = Date.now();
+
+      var html = ''
++'<!DOCTYPE html>'
++'<html lang="pt-br">'
++'<head>'
++'  <meta charset="utf-8">'
++'  <title>Cupom #'+dados.id+'</title>'
++'  <meta name="viewport" content="width=device-width, initial-scale=1.0">'
++'  <base href="'+baseHref+'">'
++'  <style>'
++'    @page { size: 80mm 110mm; margin: 3mm; }'
++'    *{box-sizing:border-box}'
++'    body{font-family: Arial, "Segoe UI", Roboto, system-ui, sans-serif;margin:0;color:#000;background:#fff;-webkit-print-color-adjust:exact;print-color-adjust:exact;}'
++'    .cupom{width:100%; max-width:72mm; margin:0 auto; padding:0}'
++'    .center{text-align:center}'
++'    .line{display:flex; justify-content:space-between; gap:8px; font-size:12.5px; margin:2px 0}'
++'    .big{font-weight:900; font-size:18px}'
++'    hr{border:none; border-top:1px dotted #000; margin:8px 0}'
++'    .logo{width:62mm; max-width:100%; height:auto; object-fit:contain; margin:2px auto 6px; display:block}'
++'    .footer{font-size:11px; text-align:center; margin-top:6px}'
++'    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;}'
++'    .tiny{font-size:10.5px}'
++'    .sign{ text-align:center; margin-top:8px; }'
++'    .sign-line{ width:48mm; height:0; border-top:1px solid #000; margin:10px auto 2px; }'
++'    .actions{display:flex; gap:10px; justify-content:center; padding:12px 0 16px}'
++'    .btn{padding:10px 18px; border-radius:10px; font-weight:800; cursor:pointer}'
++'    .btn-print{border:1px solid #000; background:#000; color:#fff}'
++'    .btn-close{border:1px solid #c3c8d5; background:#fff; color:#000}'
++'    .wrap{min-height:100vh; display:flex; flex-direction:column; justify-content:flex-start; align-items:center; padding:10px 8px 18px;}'
++'    @media print { .actions{display:none} body{background:#fff} }'
++'  </style>'
++'</head>'
++'<body>'
++'  <div class="wrap">'
++'    <div class="cupom">'
++'      <img src="'+logoUrl+'?v='+cacheBust+'" alt="Logo Coopex" class="logo" onerror="this.onerror=null;this.src=\'https://via.placeholder.com/200x60?text=COOPEX\';">'
++'      <div class="center tiny">'
++'        CNPJ: 05.289.938/0001-97<br>'
++'        Rua José Freire de Souza, 22 — Lagoa Nova — Natal/RN — CEP: 59075-140<br>'
++'        Fone/WhatsApp: (84) 98111-0706'
++'      </div>'
++'      <hr>'
++'      <div class="center" style="font-weight:800">CUPOM NÃO FISCAL Nº: <span class="mono">'+dados.idPad+'</span></div>'
++'      <div class="line"><span>Data:</span><span class="mono">'+dados.data+'</span></div>'
++'      <div class="line"><span>Hora:</span><span class="mono">'+dados.horaPedido+'</span></div>'
++'      <div class="line"><span>Cliente:</span><span class="mono">'+dados.cliente+'</span></div>'
++'      <div class="line"><span>Endereço:</span><span class="mono">'+dados.endereco+'</span></div>'
++'      <div class="line"><span>Bairro:</span><span class="mono">'+dados.bairro+'</span></div>'
++'      <div class="line"><span>Cooperado:</span><span class="mono">'+dados.cooperado+'</span></div>'
++'      <div class="line"><span>Forma Pgto:</span><span class="mono">'+dados.formaPgto+'</span></div>'
++'      <hr>'
++'      <div class="line"><span>Valor do serviço:</span><span class="mono">'+dados.valor+'</span></div>'
++'      <div class="line big"><span>TOTAL:</span><span class="mono">'+dados.valor+'</span></div>'
++'      <hr>'
++'      <div class="sign"><div class="sign-line"></div><div class="tiny">Supervisor</div></div>'
++'      <hr>'
++'      <div class="footer">'
++'        Emitido em <span class="mono">'+agora.toLocaleDateString("pt-BR")+'</span> às '
++'        <span class="mono">'+agora.toLocaleTimeString("pt-BR")+'</span><br>'
++'        Recebido por: <span class="mono">'+dados.recebidoPor+'</span>'
++'      </div>'
++'    </div>'
++'    <div class="actions">'
++'      <button class="btn btn-print" onclick="window.print()">Imprimir</button>'
++'      <button class="btn btn-close" onclick="window.close && window.close()">Fechar</button>'
++'    </div>'
++'  </div>'
++'</body>'
++'</html>';
+
       try{
-        const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0', id),{
-          method:'POST',
-          body: fd
-        });
-        if(!resp.ok){
-          alert('Falha ao desfazer.');
+        var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+        var url = URL.createObjectURL(blob);
+        var w = window.open(url, '_blank');
+        if(w && !w.closed){
+          setTimeout(function(){ try{ URL.revokeObjectURL(url); }catch(e){} }, 15000);
           return;
         }
-        btn.dataset.entregue = '0';
-        btn.textContent = 'Marcar entregue';
-        btn.classList.remove('good');
-        btn.classList.add('primary');
+        try{ URL.revokeObjectURL(url); }catch(e){}
+      }catch(e){}
 
-        // também atualiza tag
-        const card = document.getElementById('card-'+id);
-        if(card){
-          const tag = card.querySelector('.tag.good, .tag.bad');
-          if(tag){
-            tag.classList.remove('good');
-            tag.classList.add('bad');
-            tag.textContent = '⏳ Pendente';
+      var win = null;
+      try { win = window.open('about:blank', '_blank', 'width=480,height=800'); } catch(e){}
+      if (win && !win.closed) {
+        try { win.opener = null; } catch(e){}
+        try{
+          win.document.open();
+          win.document.write(html);
+          win.document.close();
+          return;
+        }catch(e){}
+      }
+
+      showToast('<strong>Pop-up bloqueado.</strong> Libere pop-ups para imprimir.');
+    }
+
+    function abrirMapaTelaCheia() {
+      try {
+        var url = "{{ url_for('mapa_motoboys') }}";
+        var a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (e) {
+        console.error(e);
+        showToast('<strong>Não foi possível abrir o mapa agora.</strong>');
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', function(){
+      var btnFull = document.getElementById('btnFullMap');
+      if (btnFull) btnFull.addEventListener('click', abrirMapaTelaCheia);
+    });
+  </script>
+
+  <!-- Leaflet -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+
+  <!-- MarkerCluster -->
+  <!-- MarkerCluster removido: não agrupar GPS (pedido) -->
+
+  <script>
+    // ===== MAPA (agrupamento sem modal + sem "gps ocioso" + sem reagrupar quando aproximar) =====
+    window.addEventListener('DOMContentLoaded', function(){
+      var mapEl = document.getElementById('map-coopex');
+      if (!mapEl || typeof L === 'undefined') return;
+
+      var map = L.map('map-coopex', { zoomControl: true }).setView([-5.7945, -35.211], 13);
+      L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        maxZoom: 19,
+        attribution: '&copy; OpenStreetMap'
+      }).addTo(map);
+
+	      // Sem agrupamento/cluster (pedido): cada cooperado aparece individualmente no mapa
+	      var markersLayer = L.layerGroup().addTo(map);
+
+      var motoboyMarkers = {}; // id -> marker
+      var firstFitDone = false;
+
+      window.__mapCoopex = map;
+      window.__motoboyMarkers = motoboyMarkers;
+	      window.__motoboyLayer = markersLayer;
+
+      function getStatus(m){
+        // regra simples (sem GPS ocioso):
+        // online true => online
+        // online false => offline
+        return (m && m.online) ? 'online' : 'offline';
+      }
+
+      function statusTexto(st){
+        return (st === 'online') ? 'Online (app ligado)' : 'Offline / desconectado';
+      }
+
+	      function escapeHtml(s){
+	        return String(s||'').replace(/[&<>"]/g, function(c){
+	          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c] || c;
+	        });
+	      }
+
+	      // Marcador no mapa: nome do cooperado em vermelho/azul (offline/online)
+	      function buildIcon(m, status){
+	        var nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : 'COOPERADO';
+	        return L.divIcon({
+	          className: '',
+	          iconSize: null,
+	          iconAnchor: [0, 0],
+	          popupAnchor: [0, -16],
+	          html: '<div class="moto-label '+status+'">'+escapeHtml(nome)+'</div>'
+	        });
+	      }
+
+      function popupHtml(m, st){
+        var vel = (m.velocidade != null) ? (Number(m.velocidade) || 0) : 0;
+        return (
+          '<div style="min-width:220px">' +
+          '<strong>'+ (m.nome || 'Motoboy') +'</strong><br>' +
+          'Velocidade: '+ vel +' km/h<br>' +
+          'Status: '+ statusTexto(st) +
+          '</div>'
+        );
+      }
+
+      function preencherSelectPesquisa(lista){
+        var sel = document.getElementById('mapSearch');
+        if(!sel) return;
+
+        var keep = sel.value;
+        while(sel.options.length > 1) sel.remove(1);
+
+        var arr = (Array.isArray(lista) ? lista.slice() : []);
+        arr.sort(function(a,b){
+          var an = (a?.nome||'').toLowerCase();
+          var bn = (b?.nome||'').toLowerCase();
+          return an.localeCompare(bn);
+        });
+
+        arr.forEach(function(m){
+          if(!m || !m.id) return;
+          var opt = document.createElement('option');
+          opt.value = String(m.id);
+          opt.textContent = m.nome || ('Motoboy #' + m.id);
+          sel.appendChild(opt);
+        });
+
+        if(keep){
+          for(var i=0;i<sel.options.length;i++){
+            if(sel.options[i].value === keep){ sel.value = keep; break; }
           }
-          const rec = card.querySelector('.tag.gray');
-          // mantém "Recebido por" abaixo (vai ficar "-")
         }
-      }catch(e){
-        alert('Erro: '+e.message);
       }
-    }
 
+      function destacarMarker(marker){
+        try{
+          marker.setZIndexOffset(10000);
+          var el = marker.getElement ? marker.getElement() : null;
+	          if(el){
+	            var lab = el.querySelector('.moto-label');
+	            if(lab){
+	              lab.classList.add('moto-highlight');
+	              setTimeout(function(){
+	                try{ lab.classList.remove('moto-highlight'); }catch(e){}
+	              }, 2600);
+	            }
+	          }
+        }catch(e){}
+      }
+
+      function focarMotoboyPorId(id){
+        if(!id) return;
+        var mk = motoboyMarkers[id];
+        if(!mk){
+          showToast('<strong>Não localizado no mapa agora.</strong> Pode estar offline/sem GPS.');
+          return;
+        }
+
+	        try{
+	          map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
+	        }catch(e){}
+	        try{ mk.openPopup(); }catch(e){}
+	        destacarMarker(mk);
+      }
+
+      var selSearch = document.getElementById('mapSearch');
+      if(selSearch){
+        selSearch.addEventListener('change', function(){
+          var id = String(selSearch.value || '');
+          if(!id) return;
+          focarMotoboyPorId(id);
+        });
+      }
+
+      function atualizarMarcadores(lista){
+        if (!Array.isArray(lista)) lista = [];
+        var ativos = {};
+
+        lista.forEach(function(m){
+          if (!m || !m.id) return;
+
+          var lat = Number(m.lat), lng = Number(m.lng);
+          if (!Number.isFinite(lat) || !Number.isFinite(lng)) return;
+
+          ativos[m.id] = true;
+
+          var st = getStatus(m);
+          var marker = motoboyMarkers[m.id];
+
+          if (!marker) {
+	            marker = L.marker([lat, lng], {
+	              icon: buildIcon(m, st),
+              riseOnHover: true
+            });
+
+            marker.__mid = m.id;
+            marker.__status = st;
+            marker.__data = m;
+
+            marker.bindPopup(popupHtml(m, st), { closeButton:true, autoPan:true });
+
+	            markersLayer.addLayer(marker);
+            motoboyMarkers[m.id] = marker;
+          } else {
+            marker.setLatLng([lat, lng]);
+            marker.__status = st;
+            marker.__data = m;
+
+	            marker.setIcon(buildIcon(m, st));
+            if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m, st));
+          }
+        });
+
+        Object.keys(motoboyMarkers).forEach(function(id){
+          if (!ativos[id]) {
+	            try{ markersLayer.removeLayer(motoboyMarkers[id]); }catch(e){}
+            delete motoboyMarkers[id];
+          }
+        });
+
+        var layers = Object.values(motoboyMarkers);
+        if (layers.length && !firstFitDone) {
+          try{
+            var group = L.featureGroup(layers);
+            map.fitBounds(group.getBounds().pad(0.25));
+            firstFitDone = true;
+          }catch(e){}
+        }
+
+        preencherSelectPesquisa(lista);
+      }
+
+      atualizarMarcadores(Array.isArray(window.MOTOBOYS) ? window.MOTOBOYS : []);
+
+      // socket tempo real do mapa
+      if (typeof socket !== 'undefined') {
+        socket.on('motoboys_update', function(lista){
+          atualizarMarcadores(lista);
+        });
+      }
+
+      // polling fallback
+      function atualizarDoServidor(){
+        fetch("{{ url_for('mapa_motoboys') }}", { headers: { 'X-Requested-With': 'fetch' } })
+          .then(function(res){
+            var ct = (res.headers.get('content-type') || '').toLowerCase();
+            if(ct.includes('application/json')) return res.json();
+            return res.text().then(function(t){
+              try{ return JSON.parse(t); }catch(e){ throw new Error('Resposta não-JSON em mapa_motoboys'); }
+            });
+          })
+          .then(function(data){
+            atualizarMarcadores(data);
+          })
+          .catch(function(err){
+            console.error('Erro ao atualizar motoboys:', err);
+          });
+      }
+      setInterval(atualizarDoServidor, 5000);
+    });
+  
     // =============================
-    // MODAL Recebido por + mídia
-    // =============================
-    let CURRENT_ENTREGA_ID = null;
-    let SELECTED_FILE = null;
+    // MÍDIA (FOTO/VÍDEO) — ADMIN
+    // Botão fica acima do "Recebido por" e abre modal para ver + baixar
+    // Endpoints esperados no back-end (vamos ligar no seu PY depois):
+    //   GET  /admin/entrega/<id>/midia          -> retorna o arquivo (image/* ou video/*)
+    //   GET  /admin/entrega/<id>/midia/download -> força download
+    // Se não existir mídia, deve retornar 404.
+    let _midiaObjectUrl = null;
 
-    const overlay = document.getElementById('rcb-overlay');
-    const inputRecebido = document.getElementById('rcb-input-global');
-    const btnCancel = document.getElementById('rcb-cancel');
-    const btnOk = document.getElementById('rcb-ok');
-    const fileInput = document.getElementById('midia-file');
-    const preview = document.getElementById('midia-preview');
-    const prevBox = document.getElementById('prev-box');
-    const midiaInfo = document.getElementById('midia-info');
+    async function openMidiaModal(entregaId){
+      const overlay = document.getElementById('midia-overlay');
+      const img = document.getElementById('midia-img');
+      const vid = document.getElementById('midia-video');
+      const hint = document.getElementById('midia-hint');
+      const dl = document.getElementById('midia-download');
 
-    function openRecebidoModal(id){
-      CURRENT_ENTREGA_ID = id;
-      if(overlay) overlay.classList.add('open');
+      if(!overlay || !img || !vid || !hint || !dl) return;
+
+      // reset
+      if(_midiaObjectUrl){
+        try{ URL.revokeObjectURL(_midiaObjectUrl); }catch(e){}
+        _midiaObjectUrl = null;
+      }
+      img.style.display='none'; img.src='';
+      vid.style.display='none'; vid.src='';
+      hint.textContent='Carregando...';
+      dl.setAttribute('href', `/admin/entrega/${entregaId}/midia/download`);
+
+      overlay.classList.add('open');
       document.body.style.overflow='hidden';
-      if(inputRecebido){
-        inputRecebido.value='';
-        setTimeout(()=>inputRecebido.focus(), 0);
+
+      try{
+        const resp = await fetch(`/admin/entrega/${entregaId}/midia`, { method:'GET' });
+        if(!resp.ok){
+          if(resp.status === 404){
+            hint.textContent = 'Sem foto/vídeo anexado para esta entrega.';
+          }else{
+            hint.textContent = 'Falha ao carregar o comprovante.';
+          }
+          return;
+        }
+
+        const ct = (resp.headers.get('content-type') || '').toLowerCase();
+        const blob = await resp.blob();
+        _midiaObjectUrl = URL.createObjectURL(blob);
+
+        if(ct.startsWith('video/')){
+          vid.src = _midiaObjectUrl;
+          vid.style.display='block';
+          hint.textContent = 'Vídeo carregado.';
+        }else{
+          img.src = _midiaObjectUrl;
+          img.style.display='block';
+          hint.textContent = 'Imagem carregada.';
+        }
+      }catch(err){
+        hint.textContent = 'Erro: ' + err.message;
       }
-      clearMedia();
     }
 
-    function closeRecebidoModal(){
+    function closeMidiaModal(){
+      const overlay = document.getElementById('midia-overlay');
+      const img = document.getElementById('midia-img');
+      const vid = document.getElementById('midia-video');
+
       if(overlay) overlay.classList.remove('open');
       document.body.style.overflow='';
-      CURRENT_ENTREGA_ID = null;
-    }
 
-    if(btnCancel) btnCancel.addEventListener('click', closeRecebidoModal);
-    if(overlay){
-      overlay.addEventListener('click', (e)=>{ if(e.target.id === 'rcb-overlay') closeRecebidoModal(); });
+      if(vid){
+        try{ vid.pause(); }catch(e){}
+        vid.src='';
+        vid.style.display='none';
+      }
+      if(img){
+        img.src='';
+        img.style.display='none';
+      }
+      if(_midiaObjectUrl){
+        try{ URL.revokeObjectURL(_midiaObjectUrl); }catch(e){}
+        _midiaObjectUrl = null;
+      }
     }
 
     document.addEventListener('keydown', (e)=>{
-      if(e.key === 'Escape' && overlay && overlay.classList.contains('open')) closeRecebidoModal();
-      if(e.key === 'Enter' && overlay && overlay.classList.contains('open')){
-        e.preventDefault();
-        if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID);
+      const overlay = document.getElementById('midia-overlay');
+      if(e.key === 'Escape' && overlay && overlay.classList.contains('open')){
+        closeMidiaModal();
       }
     });
+</script>
 
-    function chooseMedia(){
-      if(!fileInput) return;
-      fileInput.click();
-    }
+  <!-- MODAL: VISUALIZAR FOTO/VÍDEO + DOWNLOAD (Recebido por) -->
+  <div class="midia-overlay" id="midia-overlay" role="dialog" aria-modal="true" aria-label="Comprovante">
+    <div class="midia-modal">
+      <div class="top">
+        <div class="title">Comprovante (Foto/Vídeo)</div>
+        <button type="button" class="close" onclick="closeMidiaModal()">Fechar</button>
+      </div>
 
-    function clearMedia(){
-      SELECTED_FILE = null;
-      if(fileInput) fileInput.value = '';
-      if(preview) preview.classList.remove('open');
-      if(prevBox) prevBox.innerHTML = '';
-      if(midiaInfo) midiaInfo.textContent = '';
-    }
+      <div class="midia-view" id="midia-view">
+        <img id="midia-img" alt="Comprovante" style="display:none;">
+        <video id="midia-video" controls playsinline style="display:none;"></video>
+      </div>
 
-    if(fileInput){
-      fileInput.addEventListener('change', ()=>{
-        const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
-        if(!f){ clearMedia(); return; }
+      <div class="midia-hint" id="midia-hint">Carregando...</div>
 
-        // limites básicos (vamos reforçar no PY)
-        const MAX_MB = 20; // vídeo/foto
-        const sizeMB = f.size / (1024*1024);
-        if(sizeMB > MAX_MB){
-          alert('Arquivo muito grande. Limite: ' + MAX_MB + 'MB.');
-          clearMedia();
-          return;
-        }
-
-        SELECTED_FILE = f;
-        renderPreview(f);
-      });
-    }
-
-    function renderPreview(file){
-      if(!preview || !prevBox || !midiaInfo) return;
-
-      prevBox.innerHTML = '';
-      const url = URL.createObjectURL(file);
-      midiaInfo.textContent = `Selecionado: ${file.name} • ${(file.size/(1024*1024)).toFixed(1)}MB`;
-
-      if(file.type.startsWith('image/')){
-        const img = document.createElement('img');
-        img.src = url;
-        img.alt = 'Comprovante (imagem)';
-        prevBox.appendChild(img);
-      }else if(file.type.startsWith('video/')){
-        const video = document.createElement('video');
-        video.src = url;
-        video.controls = true;
-        video.playsInline = true;
-        video.preload = 'metadata';
-        prevBox.appendChild(video);
-      }else{
-        midiaInfo.textContent = 'Tipo de arquivo não suportado.';
-        clearMedia();
-        return;
-      }
-
-      preview.classList.add('open');
-    }
-
-    if(btnOk){
-      btnOk.addEventListener('click', ()=>{
-        if(CURRENT_ENTREGA_ID) confirmarRecebido(CURRENT_ENTREGA_ID);
-      });
-    }
-
-    async function confirmarRecebido(id){
-      const nome = (inputRecebido && inputRecebido.value ? inputRecebido.value : '').trim();
-      if(!nome){
-        alert('Informe o nome de quem recebeu.');
-        return;
-      }
-
-      try{
-        // Envia tudo em UMA rota (recebido_por + opcional foto/vídeo)
-        const fd = new FormData();
-        fd.append('recebido_por', nome);
-        if(SELECTED_FILE) fd.append('file', SELECTED_FILE);
-
-        const resp = await fetch(`{{ url_for('cooperado_marcar_entregue_midia', id=0) }}`.replace('0', id), {
-          method:'POST',
-          body: fd
-        });
-
-        let data=null;
-        try{ data=await resp.json(); }catch{}
-
-        if(!resp.ok || (data && data.ok===false)){
-          alert((data&&data.error)||'Falha ao atualizar entrega.');
-          return;
-        }
-
-        // atualiza UI
-        const card = document.getElementById('card-'+id);
-        if(card){
-          const btnEnt = card.querySelector('button[data-entregue]');
-          if(btnEnt){
-            btnEnt.dataset.entregue = '1';
-            btnEnt.textContent = 'Entregue';
-            btnEnt.classList.remove('primary');
-            btnEnt.classList.add('good');
-          }
-
-          const tags = card.querySelectorAll('.tag');
-          tags.forEach(t=>{
-            if(t.textContent.includes('Pendente') || t.textContent.includes('Entregue')){
-              t.classList.remove('bad');
-              t.classList.add('good');
-              t.textContent = '✅ Entregue';
-            }
-          });
-
-          const recTag = card.querySelectorAll('.tag.gray');
-          recTag.forEach(t=>{
-            if(t.textContent.toLowerCase().includes('recebido por')){
-              t.textContent = 'Recebido por: ' + nome;
-            }
-          });
-        }
-
-        closeRecebidoModal();
-      }catch(e){
-        alert('Erro: ' + e.message);
-      }
-    }
-
-    // =============================
-    // (Sem aceitar/recusar: atribuição é automática)
-    // =============================
-    async function aceitarEntrega(id){
-      try{
-        const resp = await fetch(`{{ url_for('cooperado_aceitar_entrega', id=0) }}`.replace('0', id), {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({})
-        });
-        const data = await resp.json();
-        if(!resp.ok || data.ok===false){
-          alert(data.error || 'Falha ao aceitar entrega.');
-          return;
-        }
-        location.reload();
-      }catch(e){
-        alert('Erro ao aceitar: ' + e.message);
-      }
-    }
-
-    async function recusarEntrega(id){
-      if(!confirm('Tem certeza que deseja recusar esta entrega?')) return;
-      try{
-        const resp = await fetch(`{{ url_for('cooperado_recusar_entrega', id=0) }}`.replace('0', id), {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({})
-        });
-        const data = await resp.json();
-        if(!resp.ok || data.ok===false){
-          alert(data.error || 'Falha ao recusar entrega.');
-          return;
-        }
-        const el = document.querySelector(`#list-chamadas [data-id="${id}"]`);
-        if(el) el.remove();
-      }catch(e){
-        alert('Erro ao recusar: ' + e.message);
-      }
-    }
-
-    // =============================
-    // SOCORRO
-    // =============================
-    const radiosSocorro = document.querySelectorAll('input[name="tipo"]');
-    const outrosBox = document.getElementById('socorro-outros-box');
-
-    if(radiosSocorro.length && outrosBox){
-      radiosSocorro.forEach(r=>{
-        r.addEventListener('change', ()=>{
-          if(r.value === 'outros' && r.checked) outrosBox.style.display = 'block';
-          else if(r.checked) outrosBox.style.display = 'none';
-        });
-      });
-    }
-
-    async function enviarSocorro(e){
-      e.preventDefault();
-      const tipoEl = document.querySelector('input[name="tipo"]:checked');
-      const tipo = tipoEl ? tipoEl.value : null;
-      const detalhesEl = document.getElementById('socorro-outros-text');
-      const detalhes = (detalhesEl && detalhesEl.value ? detalhesEl.value : '').trim();
-
-      if(!tipo){ alert('Selecione uma opção.'); return; }
-      if(tipo === 'outros' && !detalhes){ alert('Descreva o que aconteceu.'); return; }
-
-      try{
-        const resp = await fetch(`{{ url_for('cooperado_socorro') }}`, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ tipo, detalhes })
-        });
-        const data = await resp.json();
-        if(!resp.ok || data.ok===false){
-          alert(data.error || 'Falha ao enviar.');
-          return;
-        }
-        alert('Pedido de socorro enviado para a supervisão.');
-        const form = document.getElementById('form-socorro');
-        if(form) form.reset();
-        if(outrosBox) outrosBox.style.display = 'none';
-      }catch(err){
-        alert('Erro: ' + err.message);
-      }
-    }
-
-    // =============================
-    // SOM DE NOVA CORRIDA
-    // =============================
-    async function checarNovasEntregas(){
-      try{
-        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`);
-        const data = await resp.json();
-        if(data.nova){
-          const audio = document.getElementById('som-nova-entrega');
-          if(audio) audio.play().catch(()=>{});
-        }
-      }catch(e){
-        console.log('Erro ao checar novas:', e);
-      }
-    }
-    setInterval(checarNovasEntregas, 10000);
-
-    // =============================
-    // GPS / RASTREAMENTO (AUTO)
-    // =============================
-    let gpsWatchId = null;
-
-    async function enviarPosicao(lat,lng,accuracy,heading,speed){
-      try{
-        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ lat, lng, accuracy, heading, speed })
-        });
-      }catch(e){
-        console.log('Falha ao enviar localização:', e);
-      }
-    }
-
-    function iniciarRastreamentoAuto(){
-      if(!navigator.geolocation){
-        console.log('Navegador sem geolocalização');
-        return;
-      }
-      if(gpsWatchId !== null) return;
-
-      // Observação: o navegador SEMPRE vai pedir permissão ao usuário (não dá pra ativar sem isso)
-      gpsWatchId = navigator.geolocation.watchPosition(
-        pos=>{
-          enviarPosicao(
-            pos.coords.latitude,
-            pos.coords.longitude,
-            pos.coords.accuracy,
-            pos.coords.heading,
-            pos.coords.speed
-          );
-        },
-        err=>{
-          console.log('Erro GPS:', err);
-        },
-        { enableHighAccuracy:true, maximumAge:5000, timeout:15000 }
-      );
-    }
-
-    // =============================
-    // ON LOAD// =============================
-    // ON LOAD
-    // =============================
-    window.addEventListener('load', ()=>{
-      updateScopeText();
-      recalcTotalsFromCards();
-      iniciarRastreamentoAuto();
-    });
-  </script>
+      <div class="actions">
+        <a class="btn btn-primary" id="midia-download" href="#" download>Baixar</a>
+        <button type="button" class="btn btn-ghost" onclick="closeMidiaModal()">Cancelar</button>
+      </div>
+    </div>
+  </div>
 </body>
 </html>
