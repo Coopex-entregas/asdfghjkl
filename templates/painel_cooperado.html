@@ -40,7 +40,6 @@
         var(--bg);
     }
 
-    /* ===== APP SHELL ===== */
     .app{
       min-height:100vh;
       display:flex;
@@ -48,7 +47,6 @@
       padding-bottom:calc(var(--navH) + env(safe-area-inset-bottom));
     }
 
-    /* ===== TOPBAR (estilo app) ===== */
     header{
       position:sticky;top:0;z-index:50;
       background:linear-gradient(90deg,var(--royal),var(--royal-2));
@@ -69,32 +67,16 @@
       display:flex;align-items:center;gap:10px;
       background:rgba(255,255,255,.14);
       border:1px solid rgba(255,255,255,.26);
-      padding:8px 10px;
+      padding:8px 12px;
       border-radius:999px;
       white-space:nowrap;
       max-width:58vw;
       overflow:hidden;
       text-overflow:ellipsis;
-      font-weight:800;
+      font-weight:900;
       font-size:.86rem;
     }
-    .dot{
-      width:10px;height:10px;border-radius:999px;background:var(--warn);
-      box-shadow:0 0 0 0 rgba(255,212,59,0);
-      transition:.2s;
-      flex:none;
-    }
-    .dot.on{background:#69db7c; box-shadow:0 0 0 7px rgba(105,219,124,.35);}
-    .dot.err{background:#ff6b6b; box-shadow:0 0 0 7px rgba(255,107,107,.28);}
-    .gps-btn{
-      all:unset;cursor:pointer;
-      display:flex;align-items:center;gap:8px;
-      font-weight:900;
-    }
-    .gps-btn span{opacity:.95}
-    .gps-btn:active{transform:scale(.98)}
 
-    /* ===== CONTEÚDO ===== */
     .wrap{
       max-width:980px;
       margin:0 auto;
@@ -102,7 +84,6 @@
       width:100%;
     }
 
-    /* ===== HOME GRID (cards tipo Uber) ===== */
     .home-grid{
       display:grid;
       grid-template-columns:1fr 1fr;
@@ -193,11 +174,9 @@
     .pill.good{background:#e9fbf5;border-color:#b3f0dc;color:var(--good)}
     .pill.bad{background:#fff2f2;border-color:#ffd6d6;color:var(--bad)}
 
-    /* ===== TELAS / VIEWS ===== */
     .view{display:none}
     .view.active{display:block}
 
-    /* ===== LISTA (cards) ===== */
     .section-title{
       margin:12px 2px 10px;
       display:flex;align-items:center;justify-content:space-between;gap:10px;
@@ -293,7 +272,6 @@
       color:#0f2a80;
     }
 
-    /* ===== FILTROS (minhas entregas) ===== */
     .filters{
       background:var(--card);
       border:1px solid var(--line);
@@ -329,7 +307,6 @@
       text-align:center;
     }
 
-    /* ===== MODAL ===== */
     .overlay{
       position:fixed;inset:0;
       background:rgba(8,16,48,.58);
@@ -404,7 +381,6 @@
       flex-wrap:wrap;
     }
 
-    /* ===== BOTTOM NAV ===== */
     .bottom-nav{
       position:fixed;
       left:0;right:0;bottom:0;
@@ -452,7 +428,6 @@
       font-weight:1100;
     }
 
-    /* ===== RESPONSIVO ===== */
     @media (max-width:540px){
       .home-grid{grid-template-columns:1fr}
       .mini{min-width:150px}
@@ -462,21 +437,14 @@
 
 <body>
   <div class="app">
-
-    <!-- TOPBAR -->
     <header>
       <div class="top-row">
         <div class="brand">
           <div class="t1">Painel do Cooperado</div>
           <div class="t2">COOPEX • entregas em tempo real</div>
         </div>
-
+        <!-- GPS fica invisível pro cooperado (liga automático em silêncio) -->
         <div class="user-pill" title="{{ session['user_nome'] }}">
-          <button class="gps-btn" id="gps-btn" type="button" title="Ligar/Desligar localização">
-            <div class="dot" id="gps-dot"></div>
-            <span id="gps-text">GPS OFF</span>
-          </button>
-          <span style="opacity:.95; font-weight:1000">•</span>
           <span style="overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">
             {{ session['user_nome'] }}
           </span>
@@ -486,7 +454,7 @@
 
     <div class="wrap">
 
-      <!-- VIEW: HOME -->
+      <!-- HOME -->
       <section id="view-home" class="view active" aria-label="Início">
         <div class="hero">
           <div>
@@ -528,7 +496,7 @@
             <div class="pill">Resumo</div>
             <div class="icon">💰</div>
             <h3>Ganhos</h3>
-            <p>Pago, pendente e total (com filtro por período).</p>
+            <p>Ganhos do mês e do ano (sempre atual).</p>
           </div>
 
           <div class="tile" onclick="go('ajuda')">
@@ -540,11 +508,11 @@
         </div>
       </section>
 
-      <!-- VIEW: CHAMADAS -->
+      <!-- CHAMADAS -->
       <section id="view-chamadas" class="view" aria-label="Chamadas">
         <div class="section-title">
           <h2>Chamadas disponíveis</h2>
-          <p class="hint">Aceite rápido (estilo app)</p>
+          <p class="hint">Aceite manual (não aceita sozinho)</p>
         </div>
 
         <div class="list" id="list-chamadas">
@@ -553,8 +521,11 @@
             <div class="row">
               <div class="left">
                 <p class="title">{{ c.cliente }}</p>
+
+                <!-- Mostrar COLETA e ENTREGA como antes (tenta várias chaves) -->
                 <div class="sub">
-                  <span class="tag">📍 {{ c.bairro or '-' }}</span>
+                  <span class="tag">🟦 Coleta: {{ c.bairro_coleta or c.bairro_retirada or c.coleta_bairro or c.bairro_coleta_nome or '-' }}</span>
+                  <span class="tag">🟩 Entrega: {{ c.bairro_entrega or c.bairro_destino or c.entrega_bairro or c.bairro or '-' }}</span>
                   <span class="tag gray">🛣 {{ c.distancia or '-' }}</span>
                 </div>
               </div>
@@ -575,7 +546,7 @@
         </div>
       </section>
 
-      <!-- VIEW: MINHAS -->
+      <!-- MINHAS -->
       <section id="view-minhas" class="view" aria-label="Minhas entregas">
         <div class="section-title">
           <h2>Minhas entregas</h2>
@@ -604,8 +575,11 @@
             <div class="row">
               <div class="left">
                 <p class="title">{{ e.cliente }}</p>
+
+                <!-- Mostrar COLETA e ENTREGA (tenta várias chaves) -->
                 <div class="sub">
-                  <span class="tag">📍 {{ e.bairro or '-' }}</span>
+                  <span class="tag">🟦 Coleta: {{ e.bairro_coleta or e.bairro_retirada or e.coleta_bairro or e.coleta or '-' }}</span>
+                  <span class="tag">🟩 Entrega: {{ e.bairro_entrega or e.bairro_destino or e.entrega_bairro or e.bairro or '-' }}</span>
                   <span class="tag gray">🕒 {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</span>
                   <span class="tag gray">💳 {{ e.pagamento or '-' }}</span>
                 </div>
@@ -666,45 +640,92 @@
         </div>
       </section>
 
-      <!-- VIEW: GANHOS -->
+      <!-- GANHOS -->
       <section id="view-ganhos" class="view" aria-label="Ganhos">
         <div class="section-title">
           <h2>Ganhos</h2>
-          <p class="hint">Resumo rápido</p>
+          <p class="hint">
+            {% if mes_nome %}Mês de {{ mes_nome }}{% else %}Mês atual{% endif %}
+            {% if ano_ref %} • {{ ano_ref }}{% endif %}
+          </p>
         </div>
 
+        <!-- MÊS (sempre mês atual / referência do servidor) -->
         <div class="card">
           <div class="row">
             <div class="left">
-              <p class="title">Total Pago</p>
-              <p class="sub">Soma das entregas marcadas como pagas</p>
+              <p class="title">Ganhos do mês {% if mes_nome %}({{ mes_nome }}){% endif %}</p>
+              <p class="sub">Pago + Pendente (mês atual automaticamente)</p>
             </div>
-            <div class="money" id="tot-pago">R$ {{ '%.2f'|format(total_pago or 0) }}</div>
+            <div class="money" id="mes-total">
+              R$ {{ '%.2f'|format(total_mes or 0) }}
+            </div>
           </div>
         </div>
 
         <div class="card">
           <div class="row">
             <div class="left">
-              <p class="title">Total Pendente</p>
-              <p class="sub">Soma das entregas pendentes</p>
+              <p class="title">Pago no mês</p>
+              <p class="sub">Somente entregas pagas no mês</p>
             </div>
-            <div class="money" id="tot-pendente">R$ {{ '%.2f'|format(total_pendente or 0) }}</div>
+            <div class="money" id="mes-pago">
+              R$ {{ '%.2f'|format(pago_mes or 0) }}
+            </div>
           </div>
         </div>
 
         <div class="card">
           <div class="row">
             <div class="left">
-              <p class="title">Total Geral</p>
-              <p class="sub">Pago + Pendente</p>
+              <p class="title">Pendente no mês</p>
+              <p class="sub">Somente entregas pendentes no mês</p>
             </div>
-            <div class="money" id="tot-geral">R$ {{ '%.2f'|format(total_geral or 0) }}</div>
+            <div class="money" id="mes-pendente">
+              R$ {{ '%.2f'|format(pendente_mes or 0) }}
+            </div>
+          </div>
+        </div>
+
+        <!-- ANO (sempre ano atual) -->
+        <div class="card">
+          <div class="row">
+            <div class="left">
+              <p class="title">Ganhos do ano {% if ano_ref %}({{ ano_ref }}){% endif %}</p>
+              <p class="sub">Pago + Pendente (ano atual automaticamente)</p>
+            </div>
+            <div class="money" id="ano-total">
+              R$ {{ '%.2f'|format(total_ano or 0) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div class="left">
+              <p class="title">Pago no ano</p>
+              <p class="sub">Somente entregas pagas no ano</p>
+            </div>
+            <div class="money" id="ano-pago">
+              R$ {{ '%.2f'|format(pago_ano or 0) }}
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="row">
+            <div class="left">
+              <p class="title">Pendente no ano</p>
+              <p class="sub">Somente entregas pendentes no ano</p>
+            </div>
+            <div class="money" id="ano-pendente">
+              R$ {{ '%.2f'|format(pendente_ano or 0) }}
+            </div>
           </div>
         </div>
       </section>
 
-      <!-- VIEW: AJUDA -->
+      <!-- AJUDA -->
       <section id="view-ajuda" class="view" aria-label="Ajuda / Socorro">
         <div class="section-title">
           <h2>Ajuda / Socorro</h2>
@@ -831,13 +852,13 @@
       const btn = document.querySelector(`.nav-btn[data-go="${name}"]`);
       if(btn) btn.classList.add('active');
 
-      if(name === 'ganhos' || name === 'home') recalcTotalsFromCards();
+      if(name === 'home') recalcTotalsFromCards();
       updateScopeText();
       window.scrollTo({top:0, behavior:'instant'});
     }
 
     // =============================
-    // TOTALIZAÇÃO PELOS CARDS (Minhas)
+    // TOTALIZAÇÃO (para Home minis)
     // =============================
     function parseMoney(n){ return parseFloat((n||'0').replace(',','.')) || 0; }
 
@@ -859,13 +880,6 @@
 
       const pend = Math.max(0, total - pago);
       const fmt = (x)=> 'R$ ' + x.toFixed(2).replace('.',',');
-
-      const gPago = document.getElementById('tot-pago');
-      const gPend = document.getElementById('tot-pendente');
-      const gTot  = document.getElementById('tot-geral');
-      if(gPago) gPago.textContent = fmt(pago);
-      if(gPend) gPend.textContent = fmt(pend);
-      if(gTot)  gTot.textContent  = fmt(total);
 
       const mPago = document.getElementById('mini-pago');
       const mPend = document.getElementById('mini-pendente');
@@ -903,15 +917,13 @@
       el.textContent = (status === 'pendente')
         ? 'Exibindo TODAS as entregas PENDENTES (sem filtrar por data).'
         : 'Exibindo ENTREGAS do DIA ATUAL. Use o filtro para outros dias.';
+
       const escopo = document.getElementById('escopo');
       if(escopo) escopo.textContent = el.textContent;
-
-      const scope2 = document.getElementById('scope-msg');
-      if(scope2) scope2.textContent = el.textContent;
     }
 
     // =============================
-    // PAGAMENTO (estilo app)
+    // PAGAMENTO
     // =============================
     async function togglePagamentoApp(btn){
       const id = btn.dataset.id;
@@ -919,6 +931,7 @@
         const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id),{
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body:JSON.stringify({})
         });
 
@@ -965,6 +978,7 @@
       try{
         const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0', id),{
           method:'POST',
+          credentials:'same-origin',
           body: fd
         });
         if(!resp.ok){
@@ -978,12 +992,21 @@
 
         const card = document.getElementById('card-'+id);
         if(card){
-          const tag = card.querySelector('.tag.good, .tag.bad');
-          if(tag){
-            tag.classList.remove('good');
-            tag.classList.add('bad');
-            tag.textContent = '⏳ Pendente';
-          }
+          const tags = card.querySelectorAll('.tag');
+          tags.forEach(t=>{
+            if(t.textContent.includes('Entregue') || t.textContent.includes('Pendente')){
+              t.classList.remove('good');
+              t.classList.add('bad');
+              t.textContent = '⏳ Pendente';
+            }
+          });
+
+          const recTags = card.querySelectorAll('.tag.gray');
+          recTags.forEach(t=>{
+            if(t.textContent.toLowerCase().includes('recebido por')){
+              t.textContent = 'Recebido por: -';
+            }
+          });
         }
       }catch(e){
         alert('Erro: '+e.message);
@@ -1086,7 +1109,7 @@
         video.preload = 'metadata';
         prevBox.appendChild(video);
       }else{
-        midiaInfo.textContent = 'Tipo de arquivo não suportado.';
+        alert('Tipo de arquivo não suportado.');
         clearMedia();
         return;
       }
@@ -1108,9 +1131,11 @@
       }
 
       try{
+        // 1) marca entregue
         const resp = await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id),{
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body:JSON.stringify({recebido_por:nome})
         });
 
@@ -1122,12 +1147,14 @@
           return;
         }
 
+        // 2) envia mídia (rota deve existir no PY)
         if(SELECTED_FILE){
           const fd = new FormData();
           fd.append('file', SELECTED_FILE);
 
-          const up = await fetch(`/cooperado/entrega/${id}/midia`, {
+          const up = await fetch(`{{ url_for('cooperado_upload_midia', id=0) }}`.replace('0', id), {
             method:'POST',
+            credentials:'same-origin',
             body: fd
           });
 
@@ -1139,6 +1166,7 @@
           }
         }
 
+        // atualiza UI
         const card = document.getElementById('card-'+id);
         if(card){
           const btnEnt = card.querySelector('button[data-entregue]');
@@ -1158,8 +1186,8 @@
             }
           });
 
-          const recTag = card.querySelectorAll('.tag.gray');
-          recTag.forEach(t=>{
+          const recTags = card.querySelectorAll('.tag.gray');
+          recTags.forEach(t=>{
             if(t.textContent.toLowerCase().includes('recebido por')){
               t.textContent = 'Recebido por: ' + nome;
             }
@@ -1173,21 +1201,26 @@
     }
 
     // =============================
-    // ACEITAR / RECUSAR
+    // ACEITAR / RECUSAR (SEM AUTO-ACEITE)
     // =============================
     async function aceitarEntrega(id){
       try{
         const resp = await fetch(`{{ url_for('cooperado_aceitar_entrega', id=0) }}`.replace('0', id), {
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body:JSON.stringify({})
         });
-        const data = await resp.json();
+        const data = await resp.json().catch(()=> ({}));
         if(!resp.ok || data.ok===false){
           alert(data.error || 'Falha ao aceitar entrega.');
           return;
         }
-        location.reload();
+
+        // remove card da lista e manda para "Minhas"
+        const el = document.querySelector(`#list-chamadas [data-id="${id}"]`);
+        if(el) el.remove();
+        go('minhas');
       }catch(e){
         alert('Erro ao aceitar: ' + e.message);
       }
@@ -1199,9 +1232,10 @@
         const resp = await fetch(`{{ url_for('cooperado_recusar_entrega', id=0) }}`.replace('0', id), {
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body:JSON.stringify({})
         });
-        const data = await resp.json();
+        const data = await resp.json().catch(()=> ({}));
         if(!resp.ok || data.ok===false){
           alert(data.error || 'Falha ao recusar entrega.');
           return;
@@ -1214,7 +1248,7 @@
     }
 
     // =============================
-    // SOCORRO
+    // SOCORRO (com credentials)
     // =============================
     const radiosSocorro = document.querySelectorAll('input[name="tipo"]');
     const outrosBox = document.getElementById('socorro-outros-box');
@@ -1242,9 +1276,10 @@
         const resp = await fetch(`{{ url_for('cooperado_socorro') }}`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body:JSON.stringify({ tipo, detalhes })
         });
-        const data = await resp.json();
+        const data = await resp.json().catch(()=> ({}));
         if(!resp.ok || data.ok===false){
           alert(data.error || 'Falha ao enviar.');
           return;
@@ -1259,15 +1294,17 @@
     }
 
     // =============================
-    // SOM DE NOVA CORRIDA
+    // SOM DE NOVA CORRIDA (sem auto-aceitar)
     // =============================
     async function checarNovasEntregas(){
       try{
-        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`);
-        const data = await resp.json();
+        const resp = await fetch(`{{ url_for('cooperado_novas_corridas') }}`, { credentials:'same-origin' });
+        const data = await resp.json().catch(()=> ({}));
         if(data.nova){
           const audio = document.getElementById('som-nova-entrega');
           if(audio) audio.play().catch(()=>{});
+          // opcional: levar pra aba chamadas
+          // go('chamadas');
         }
       }catch(e){
         console.log('Erro ao checar novas:', e);
@@ -1276,56 +1313,29 @@
     setInterval(checarNovasEntregas, 10000);
 
     // =============================
-    // GPS / RASTREAMENTO
+    // GPS / RASTREAMENTO (AUTO ON, SEM MOSTRAR, SEM DESLIGAR)
     // =============================
     let gpsWatchId = null;
-    let gpsAtivo = false;
-
-    const gpsBtn = document.getElementById('gps-btn');
-    const gpsDot = document.getElementById('gps-dot');
-    const gpsText = document.getElementById('gps-text');
-
-    function setGPS(status, extra){
-      if(!gpsDot || !gpsText) return;
-      gpsDot.classList.remove('on','err');
-
-      if(status === 'on'){
-        gpsDot.classList.add('on');
-        gpsText.textContent = 'GPS ON' + (extra ? ' • ' + extra : '');
-      }else if(status === 'err'){
-        gpsDot.classList.add('err');
-        gpsText.textContent = 'GPS ERRO';
-      }else{
-        gpsText.textContent = 'GPS OFF';
-      }
-    }
 
     async function enviarPosicao(lat,lng,accuracy,heading,speed){
       try{
         await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
           method:'POST',
           headers:{'Content-Type':'application/json'},
+          credentials:'same-origin',
           body:JSON.stringify({ lat, lng, accuracy, heading, speed })
         });
       }catch(e){
-        console.log('Falha ao enviar localização:', e);
+        // silencioso
       }
     }
 
-    function iniciarRastreamento(){
-      if(!navigator.geolocation){
-        alert('Seu navegador não suporta geolocalização.');
-        setGPS('err');
-        return;
-      }
+    function iniciarRastreamentoSilencioso(){
+      if(!navigator.geolocation) return;
       if(gpsWatchId !== null) return;
-
-      setGPS('on','Buscando...');
 
       gpsWatchId = navigator.geolocation.watchPosition(
         pos=>{
-          gpsAtivo = true;
-          setGPS('on','OK');
           enviarPosicao(
             pos.coords.latitude,
             pos.coords.longitude,
@@ -1335,41 +1345,11 @@
           );
         },
         err=>{
-          console.log('Erro GPS:', err);
-          gpsAtivo = false;
-          setGPS('err');
+          // silencioso (não mostra nada pro cooperado)
+          console.log('GPS erro:', err);
         },
         { enableHighAccuracy:true, maximumAge:5000, timeout:15000 }
       );
-    }
-
-    async function pararRastreamento(){
-      if(gpsWatchId !== null && navigator.geolocation){
-        navigator.geolocation.clearWatch(gpsWatchId);
-      }
-      gpsWatchId = null;
-      gpsAtivo = false;
-      setGPS('off');
-
-      try{
-        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body:JSON.stringify({ offline:true })
-        });
-      }catch(e){
-        console.log('Falha ao enviar offline:', e);
-      }
-    }
-
-    if(gpsBtn){
-      gpsBtn.addEventListener('click', ()=>{
-        if(gpsAtivo || gpsWatchId !== null){
-          if(confirm('Deseja desligar o rastreamento da localização?')) pararRastreamento();
-        }else{
-          iniciarRastreamento();
-        }
-      });
     }
 
     // =============================
@@ -1378,10 +1358,7 @@
     window.addEventListener('load', ()=>{
       updateScopeText();
       recalcTotalsFromCards();
-
-      // ✅ ÚNICA MUDANÇA PEDIDA:
-      // ao entrar/logar no painel, o GPS já fica ON automaticamente.
-      iniciarRastreamento();
+      iniciarRastreamentoSilencioso();
     });
   </script>
 </body>
