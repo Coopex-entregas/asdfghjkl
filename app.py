@@ -864,7 +864,8 @@ def diasemana(data):
     dias = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
     return dias[data.weekday()]
 
-app.jinja_env.filters
+# Filtro Jinja: {{ alguma_data|diasemana }}
+app.jinja_env.filters['diasemana'] = diasemana
 
 # Disponibiliza now() no Jinja (usado no admin.html)
 def now():
@@ -876,7 +877,7 @@ def now():
         return datetime.utcnow()
 
 app.jinja_env.globals['now'] = now
-['diasemana'] = diasemana
+
 
 # =========================================================
 # RASTREAMENTO - HELPER DE LINHA DO TEMPO
