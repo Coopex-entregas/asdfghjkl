@@ -877,6 +877,7 @@ def now():
         return datetime.utcnow()
 
 app.jinja_env.globals['now'] = now
+app.jinja_env.globals['to_brasilia'] = to_brasilia
 
 
 # =========================================================
