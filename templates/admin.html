@@ -1,4 +1,13 @@
-<!DOCTYPE html>
+<!DOC
+          <div class="map-tools">
+            <label class="pill" for="filtro-status">MOSTRAR</label>
+            <select id="filtro-status" class="select">
+              <option value="todos" selected>TODOS</option>
+              <option value="online">SÓ ONLINE</option>
+              <option value="offline">SÓ OFFLINE</option>
+            </select>
+          </div>
+TYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
@@ -393,14 +402,14 @@
 
     #map-coopex{
       width:100%;
-      height:430px;
+      height: 520px;
       border-radius:16px;
       overflow:hidden;
       box-shadow:0 10px 26px rgba(0,0,0,.18);
       background:#020617;
       border:1px solid rgba(255,255,255,.10);
     }
-    @media (min-height:900px){ #map-coopex{height:390px;} }
+    @media (min-height:900px){ #map-coopex{height: 520px;} }
 
     /* ===== FILTROS ===== */
     .filters-bar{
@@ -1229,8 +1238,8 @@
         hideModal();
       }
 
-      async function limparSocorroServidor(){
-        try{ await fetch('/admin_limpar_socorro', {method:'POST'}); }catch(e){}
+      async async function limparSocorroServidor(id){
+        try{ await fetch('/admin_socorro_ack', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:id})}); }catch(e){}
       }
 
       function exibirSocorro(data){
@@ -2008,7 +2017,7 @@
 
           if (!marker) {
             marker = L.circleMarker([m.lat, m.lng], {
-              radius: 8,
+              radius: 4,
               color: statusColor(st),
               fillColor: statusColor(st),
               fillOpacity: 0.92,
@@ -2072,9 +2081,11 @@
           })
           .catch(function(err){
             console.error('Erro ao atualizar motoboys:', err);
+            setTimeout(atualizarDoServidor, 2000);
           });
       }
       const filtroEl = document.getElementById('filtro-status');
+      if (filtroEl) filtroEl.addEventListener('change', function(){ atualizarDoServidor(); });
       if (filtroEl) filtroEl.addEventListener('change', function(){ atualizarDoServidor(); });
       setInterval(atualizarDoServidor, 5000);
     });
