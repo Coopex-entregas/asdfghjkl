@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
-  <title>Painel do Cooperado â¢ COOPEX</title>
+  <title>Painel do Cooperado • COOPEX</title>
 
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
 
@@ -235,7 +235,13 @@
       text-overflow:ellipsis;
       white-space:nowrap;
     }
-    .sub{
+    
+      .details{ margin-top:10px; display:flex; flex-direction:column; gap:6px; }
+      .details .item{ display:flex; justify-content:space-between; gap:12px; padding:8px 10px; border:1px solid rgba(255,255,255,.10); border-radius:12px; background:rgba(255,255,255,.04); }
+      .details .lbl{ font-size:12px; letter-spacing:.08em; opacity:.8; }
+      .details .val{ font-weight:600; text-align:right; }
+
+.sub{
       margin:6px 0 0;
       color:var(--muted);
       font-weight:800;
@@ -458,7 +464,7 @@
       .mini{min-width:150px}
     }
   
-/* Ocultar indicadores de GPS para o cooperado (GPS fica automÃ¡tico) */
+/* Ocultar indicadores de GPS para o cooperado (GPS fica automático) */
 .gps-btn, .gps-pill, #gpsStatus, #gpsIndicator { display:none !important; }
 </style>
 </head>
@@ -471,7 +477,7 @@
       <div class="top-row">
         <div class="brand">
           <div class="t1">Painel do Cooperado</div>
-          <div class="t2">COOPEX â¢ entregas em tempo real</div>
+          <div class="t2">COOPEX • entregas em tempo real</div>
         </div>
 
         <div class="user-pill" title="{{ session['user_nome'] }}">
@@ -516,11 +522,11 @@
             <div class="row">
               <div class="left">
                 <p class="title">{{ e.cliente }}</p>
-                <div class="sub">
-                  <span class="tag">ð¦ Coleta: {{ e.origem_bairro or '-' }}</span>
-                  <span class="tag">ð© Entrega: {{ e.destino_bairro or (e.bairro or '-') }}</span>
-                  <span class="tag gray">ð {{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</span>
-                  <span class="tag gray">ð³ {{ e.pagamento or '-' }}</span>
+                <div class="details">
+                  <div class="item"><span class="lbl">COLETA</span><span class="val">{{ e.origem_bairro or '-' }}</span></div>
+                  <div class="item"><span class="lbl">ENTREGA</span><span class="val">{{ e.destino_bairro or (e.bairro or '-') }}</span></div>
+                  <div class="item"><span class="lbl">HORÁRIO</span><span class="val">{{ to_brasilia(e.data_envio).strftime('%d/%m %H:%M') if e.data_envio else '-' }}</span></div>
+                  <div class="item"><span class="lbl">PAGAMENTO</span><span class="val">{{ e.pagamento or '-' }}</span></div>
                 </div>
               </div>
               <div class="money">R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}</div>
@@ -552,7 +558,7 @@
               </button>
 
               <!-- CAMERA (ANEXAR MÃDIA) -->
-              <button class="btn cam" type="button" onclick="openRecebidoModal({{ e.id }})" title="Recebido por + foto/vÃ­deo">
+              <button class="btn cam" type="button" onclick="openRecebidoModal({{ e.id }})" title="Recebido por + foto/vídeo">
                 ð· Comprovante
               </button>
             </div>
@@ -583,14 +589,14 @@
       <section id="view-ganhos" class="view" aria-label="Ganhos">
         <div class="section-title">
           <h2>Ganhos</h2>
-          <p class="hint">MÃªs e Ano (automÃ¡tico)</p>
+          <p class="hint">Mês e Ano (automático)</p>
         </div>
 
         <div class="card" style="margin-bottom:10px;">
           <div class="row">
             <div class="left">
-              <p class="title">Ganhos do mÃªs: {{ mes_nome }} de {{ ano_ref }}</p>
-              <p class="sub">Resumo completo do mÃªs atual</p>
+              <p class="title">Ganhos do mês: {{ mes_nome }} de {{ ano_ref }}</p>
+              <p class="sub">Resumo completo do mês atual</p>
             </div>
           </div>
           <div class="sub" style="margin-top:10px;">
@@ -619,12 +625,12 @@
       <section id="view-ajuda" class="view" aria-label="Ajuda / Socorro">
         <div class="section-title">
           <h2>Ajuda / Socorro</h2>
-          <p class="hint">Use sÃ³ em emergÃªncia real</p>
+          <p class="hint">Use só em emergência real</p>
         </div>
 
         <div class="card">
-          <p class="title">Envio imediato para a supervisÃ£o</p>
-          <p class="sub">Ao enviar, o admin recebe alerta e pode agir rÃ¡pido.</p>
+          <p class="title">Envio imediato para a supervisão</p>
+          <p class="sub">Ao enviar, o admin recebe alerta e pode agir rápido.</p>
 
           <form id="form-socorro" onsubmit="enviarSocorro(event)" style="margin-top:10px;">
             <label class="tag" style="display:flex;gap:10px;align-items:center;margin-bottom:8px;">
@@ -649,7 +655,7 @@
 
             <div id="socorro-outros-box" style="margin-top:10px; display:none;">
               <textarea id="socorro-outros-text" name="detalhes" rows="4"
-                placeholder="Descreva o que aconteceu para a supervisÃ£o"
+                placeholder="Descreva o que aconteceu para a supervisão"
                 style="width:100%;border-radius:16px;border:1px solid var(--line);padding:12px;font-weight:800;"></textarea>
             </div>
 
@@ -682,20 +688,20 @@
 
   </div><!-- /app -->
 
-  <!-- MODAL: Recebido por + mÃ­dia -->
+  <!-- MODAL: Recebido por + mídia -->
   <div class="overlay" id="rcb-overlay" role="dialog" aria-modal="true" aria-labelledby="rcb-title">
     <div class="modal">
       <h3 id="rcb-title">Confirmar entrega (Recebido por + comprovante)</h3>
 
       <div class="field">
         <input type="text" id="rcb-input-global" placeholder="Recebido por (ex.: porteiro fulano)" maxlength="100" inputmode="text" autocomplete="name" />
-        <div class="hint">VocÃª pode anexar uma <strong>foto</strong> ou <strong>vÃ­deo</strong> (curto) como comprovante.</div>
+        <div class="hint">Você pode anexar uma <strong>foto</strong> ou <strong>vídeo</strong> (curto) como comprovante.</div>
       </div>
 
       <div class="actions" style="justify-content:flex-start;">
         <input id="midia-file" type="file" accept="image/*,video/*" style="display:none" />
-        <button class="btn cam" type="button" onclick="chooseMedia()">ð· Selecionar foto/vÃ­deo</button>
-        <button class="btn ghost" type="button" onclick="clearMedia()">ð§¹ Remover mÃ­dia</button>
+        <button class="btn cam" type="button" onclick="chooseMedia()">ð· Selecionar foto/vídeo</button>
+        <button class="btn ghost" type="button" onclick="clearMedia()">ð§¹ Remover mídia</button>
       </div>
 
       <div class="preview" id="midia-preview">
@@ -715,7 +721,7 @@
 
   <script>
     // =============================
-    // NAVEGAÃÃO (views)
+    // NAVEGAÇÃO (views)
     // =============================
     const views = {      minhas: document.getElementById('view-minhas'),
       ganhos: document.getElementById('view-ganhos'),
@@ -738,7 +744,7 @@
     }
 
     // =============================
-    // TOTALIZAÃÃO PELOS CARDS (Minhas)
+    // TOTALIZAÇÃO PELOS CARDS (Minhas)
     // =============================
     function parseMoney(n){ return parseFloat((n||'0').replace(',','.')) || 0; }
 
@@ -747,7 +753,7 @@
       let total=0, pago=0;
 
       cards.forEach(card=>{
-        // valor estÃ¡ no texto "R$ xx,xx" do money
+        // valor está no texto "R$ xx,xx" do money
         const moneyEl = card.querySelector('.money');
         if(!moneyEl) return;
         const raw = moneyEl.textContent.replace('R$','').trim();
@@ -881,7 +887,7 @@
         btn.classList.remove('good');
         btn.classList.add('primary');
 
-        // tambÃ©m atualiza tag
+        // também atualiza tag
         const card = document.getElementById('card-'+id);
         if(card){
           const tag = card.querySelector('.tag.good, .tag.bad');
@@ -891,7 +897,7 @@
             tag.textContent = 'â³ Pendente';
           }
           const rec = card.querySelector('.tag.gray');
-          // mantÃ©m "Recebido por" abaixo (vai ficar "-")
+          // mantém "Recebido por" abaixo (vai ficar "-")
         }
       }catch(e){
         alert('Erro: '+e.message);
@@ -899,7 +905,7 @@
     }
 
     // =============================
-    // MODAL Recebido por + mÃ­dia
+    // MODAL Recebido por + mídia
     // =============================
     let CURRENT_ENTREGA_ID = null;
     let SELECTED_FILE = null;
@@ -961,8 +967,8 @@
         const f = fileInput.files && fileInput.files[0] ? fileInput.files[0] : null;
         if(!f){ clearMedia(); return; }
 
-        // limites bÃ¡sicos (vamos reforÃ§ar no PY)
-        const MAX_MB = 20; // vÃ­deo/foto
+        // limites básicos (vamos reforçar no PY)
+        const MAX_MB = 20; // vídeo/foto
         const sizeMB = f.size / (1024*1024);
         if(sizeMB > MAX_MB){
           alert('Arquivo muito grande. Limite: ' + MAX_MB + 'MB.');
@@ -980,7 +986,7 @@
 
       prevBox.innerHTML = '';
       const url = URL.createObjectURL(file);
-      midiaInfo.textContent = `Selecionado: ${file.name} â¢ ${(file.size/(1024*1024)).toFixed(1)}MB`;
+      midiaInfo.textContent = `Selecionado: ${file.name} • ${(file.size/(1024*1024)).toFixed(1)}MB`;
 
       if(file.type.startsWith('image/')){
         const img = document.createElement('img');
@@ -995,7 +1001,7 @@
         video.preload = 'metadata';
         prevBox.appendChild(video);
       }else{
-        midiaInfo.textContent = 'Tipo de arquivo nÃ£o suportado.';
+        midiaInfo.textContent = 'Tipo de arquivo não suportado.';
         clearMedia();
         return;
       }
@@ -1017,10 +1023,10 @@
       }
 
       try{
-        // Envia tudo em UMA rota (recebido_por + opcional foto/vÃ­deo)
+        // Envia tudo em UMA rota (recebido_por + opcional foto/vídeo)
         const fd = new FormData();
         fd.append('recebido_por', nome);
-        if(SELECTED_FILE) fd.append('file', SELECTED_FILE);
+        if(SELECTED_FILE) fd.append('midia', SELECTED_FILE);
 
         const resp = await fetch(`{{ url_for('cooperado_marcar_entregue_midia', id=0) }}`.replace('0', id), {
           method:'POST',
@@ -1070,7 +1076,7 @@
     }
 
     // =============================
-    // (Sem aceitar/recusar: atribuiÃ§Ã£o Ã© automÃ¡tica)
+    // (Sem aceitar/recusar: atribuição é automática)
     // =============================
     async function aceitarEntrega(id){
       try{
@@ -1132,7 +1138,7 @@
       const detalhesEl = document.getElementById('socorro-outros-text');
       const detalhes = (detalhesEl && detalhesEl.value ? detalhesEl.value : '').trim();
 
-      if(!tipo){ alert('Selecione uma opÃ§Ã£o.'); return; }
+      if(!tipo){ alert('Selecione uma opção.'); return; }
       if(tipo === 'outros' && !detalhes){ alert('Descreva o que aconteceu.'); return; }
 
       try{
@@ -1146,7 +1152,7 @@
           alert(data.error || 'Falha ao enviar.');
           return;
         }
-        alert('Pedido de socorro enviado para a supervisÃ£o.');
+        alert('Pedido de socorro enviado para a supervisão.');
         const form = document.getElementById('form-socorro');
         if(form) form.reset();
         if(outrosBox) outrosBox.style.display = 'none';
@@ -1185,18 +1191,18 @@
           body:JSON.stringify({ lat, lng, accuracy, heading, speed })
         });
       }catch(e){
-        console.log('Falha ao enviar localizaÃ§Ã£o:', e);
+        console.log('Falha ao enviar localização:', e);
       }
     }
 
     function iniciarRastreamentoAuto(){
       if(!navigator.geolocation){
-        console.log('Navegador sem geolocalizaÃ§Ã£o');
+        console.log('Navegador sem geolocalização');
         return;
       }
       if(gpsWatchId !== null) return;
 
-      // ObservaÃ§Ã£o: o navegador SEMPRE vai pedir permissÃ£o ao usuÃ¡rio (nÃ£o dÃ¡ pra ativar sem isso)
+      // Observação: o navegador SEMPRE vai pedir permissão ao usuário (não dá pra ativar sem isso)
       gpsWatchId = navigator.geolocation.watchPosition(
         pos=>{
           enviarPosicao(
