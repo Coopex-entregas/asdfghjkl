@@ -2804,6 +2804,11 @@ def admin():
         if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
             is_online, idle_s, status_str = calc_status_cooperado(c)
 
+            if filtro == 'online' and not is_online:
+                continue
+            if filtro == 'offline' and is_online:
+                continue
+
             motoboys_js.append({
                 "id": c.id,
                 "nome": c.nome,
@@ -2907,35 +2912,58 @@ def admin_entrega_midia_download(id):
 
 @app.route("/admin_novo_socorro")
 def admin_novo_socorro():
+    """Endpoint de polling do painel admin para SOCORRO.
+    - Retorna o primeiro socorro PENDENTE (não reconhecido).
+    - Não marca como lido aqui: só some quando o admin clicar em OK (ack).
     """
-    Rota que o PAINEL DA SUPERVISÃO (admin) fica consultando de tempos em tempos.
-    Se tiver um socorro não lido, devolve os dados.
-    Não tem HTML, só JSON.
-    """
-
-    # MESMA regra de permissão que você usa no /admin
-    # (se no seu app for outro campo, troque "is_admin" por ele)
     if not session.get("is_admin") and not session.get("is_master"):
         abort(403)
 
-    global ULTIMO_SOCORRO
-    if not ULTIMO_SOCORRO or ULTIMO_SOCORRO.get("lido"):
-        # não tem socorro novo
+    global SOCORROS_PENDENTES
+
+    # remove itens já reconhecidos (higiene)
+    SOCORROS_PENDENTES = [s for s in SOCORROS_PENDENTES if not s.get("lido")]
+
+    if not SOCORROS_PENDENTES:
         return jsonify({"novo": False}), 200
 
-    # marca como lido (só dispara uma vez)
-    ULTIMO_SOCORRO["lido"] = True
-
+    s = SOCORROS_PENDENTES[0]
     return jsonify({
         "novo": True,
-        "cooperado": ULTIMO_SOCORRO["cooperado_nome"],
-        "mensagem": ULTIMO_SOCORRO["mensagem"] or "",
-        "momento": ULTIMO_SOCORRO["momento"],
+        "id": s.get("id"),
+        "cooperado": s.get("cooperado_nome"),
+        "mensagem": s.get("mensagem") or "",
+        "momento": s.get("momento"),
+        "lat": s.get("lat"),
+        "lng": s.get("lng"),
     }), 200
 
-# ================================
-# PAINEL DO COOPERADO (ESTILO UBER)
-# ================================
+
+@app.post("/admin_socorro_ack")
+def admin_socorro_ack():
+    """Admin confirma (OK) e encerra o alerta sonoro/visual."""
+    if not session.get("is_admin") and not session.get("is_master"):
+        abort(403)
+
+    data = request.get_json() or {}
+    socorro_id = (data.get("id") or "").strip()
+    if not socorro_id:
+        return jsonify({"ok": False, "error": "id ausente"}), 400
+
+    global SOCORROS_PENDENTES, ULTIMO_SOCORRO
+    for s in SOCORROS_PENDENTES:
+        if s.get("id") == socorro_id:
+            s["lido"] = True
+
+    if ULTIMO_SOCORRO and ULTIMO_SOCORRO.get("id") == socorro_id:
+        ULTIMO_SOCORRO["lido"] = True
+
+    # limpa fila
+    SOCORROS_PENDENTES = [s for s in SOCORROS_PENDENTES if not s.get("lido")]
+
+    return jsonify({"ok": True})
+
+
 @app.route('/painel_cooperado')
 def painel_cooperado():
     # Cooperado logado = precisa ter user_id na sessão E NÃO ser admin
@@ -3656,11 +3684,17 @@ ULTIMO_SOCORRO = None
 
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
-    global ULTIMO_SOCORRO
+    """Recebe pedido de socorro do cooperado e notifica o painel admin.
+    - Mantém o alerta ativo até o admin reconhecer (OK).
+    - Emite via Socket.IO (polling/websocket) e também fica disponível por polling HTTP.
+    """
+    global ULTIMO_SOCORRO, SOCORROS_PENDENTES
 
     data = request.get_json() or {}
-    tipo = data.get("tipo")
+    tipo = (data.get("tipo") or "").strip()
     detalhes = (data.get("detalhes") or "").strip()
+    lat = data.get("lat")
+    lng = data.get("lng")
 
     if not tipo:
         return jsonify({"ok": False, "error": "Tipo de socorro não informado."}), 400
@@ -3670,19 +3704,28 @@ def cooperado_socorro():
 
     agora_brt = datetime.now(BRAZIL_TZ)
 
-    ULTIMO_SOCORRO = {
+    socorro_id = f"S{int(datetime.utcnow().timestamp()*1000)}_{cooperado_id or '0'}"
+
+    payload = {
+        "id": socorro_id,
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
-        # o que o admin_novo_socorro espera:
         "mensagem": f"{tipo}: {detalhes}" if detalhes else tipo,
         "momento": agora_brt.strftime("%d/%m/%Y %H:%M"),
         "timestamp": datetime.utcnow().isoformat(),
+        "lat": lat,
+        "lng": lng,
         "lido": False,
     }
 
-    socketio.emit("socorro_novo", ULTIMO_SOCORRO)
+    # mantém como "último" e também em fila (caso chegue mais de um)
+    ULTIMO_SOCORRO = payload
+    SOCORROS_PENDENTES.append(payload)
 
-    return jsonify({"ok": True})
+    # notifica todos os admins conectados
+    socketio.emit("socorro_novo", payload, broadcast=True)
+
+    return jsonify({"ok": True, "id": socorro_id})
 
 # ================================
 # CRUD de COOPERADO (mantidos)
@@ -4420,11 +4463,15 @@ from flask import request, jsonify
 
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
-    if not session.get('is_admin'):
+    if not session.get('is_admin') and not session.get('is_master'):
+        # se for chamada XHR, devolve 403 (evita HTML no fetch)
+        if request.headers.get('X-Requested-With') == 'XMLHttpRequest':
+            return jsonify({'error':'unauthorized'}), 403
         return redirect(url_for('login'))
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
+    filtro = (request.args.get('status') or 'todos').strip().lower()
 
     for c in cooperados:
         if c.last_lat is not None and c.last_lng is not None:
@@ -4443,6 +4490,11 @@ def mapa_motoboys():
                 status = "livre"
 
             is_online, idle_s, status_str = calc_status_cooperado(c)
+
+            if filtro == 'online' and not is_online:
+                continue
+            if filtro == 'offline' and is_online:
+                continue
 
             motoboys_js.append({
                 "id": c.id,
