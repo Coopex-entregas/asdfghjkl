@@ -357,6 +357,9 @@
       border:1px solid rgba(255,255,255,.18);
       box-shadow:0 10px 26px rgba(0,0,0,.12);
     }
+    .map-filters{margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
+    .map-filters label{font-size:12px;color:rgba(255,255,255,.82);}
+    .map-filters select{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:10px;padding:6px 10px;font-size:12px;outline:none;}
     .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.55)}
     .legend-dot.on{ background:#10b981; }
     .legend-dot.off{ background:#ef4444; }
@@ -390,7 +393,7 @@
 
     #map-coopex{
       width:100%;
-      height:340px;
+      height:430px;
       border-radius:16px;
       overflow:hidden;
       box-shadow:0 10px 26px rgba(0,0,0,.18);
@@ -1212,11 +1215,67 @@
     window.addEventListener('DOMContentLoaded', ()=>{
       const ok = document.getElementById('modal-ok');
       const ov = document.getElementById('overlay');
-      if(ok) ok.addEventListener('click', hideModal);
+      const socorroAudio = document.getElementById('som-socorro');
+
+      let ultimoSocorroId = null;
+      let socorroAtivo = false;
+
+      function pararSocorro(){
+        socorroAtivo = false;
+        if(socorroAudio){
+          try{ socorroAudio.pause(); }catch(e){}
+          try{ socorroAudio.currentTime = 0; }catch(e){}
+        }
+        hideModal();
+      }
+
+      async function limparSocorroServidor(){
+        try{ await fetch('/admin_limpar_socorro', {method:'POST'}); }catch(e){}
+      }
+
+      function exibirSocorro(data){
+        if(!data) return;
+        if(data.id && ultimoSocorroId && String(data.id) === String(ultimoSocorroId)) return;
+        socorroAtivo = true;
+        ultimoSocorroId = data.id || ((data.cooperado_nome||'') + '|' + (data.timestamp||''));
+        const nome = data.cooperado_nome || data.nome || 'COOPERADO';
+        const msgExtra = data.mensagem ? `<div style="margin-top:8px;opacity:.95">${data.mensagem}</div>` : '';
+        showModal('SOCORRO 🚨', `<div><b>${nome}</b> pediu socorro.</div>${msgExtra}<div style="margin-top:10px;font-size:12px;opacity:.85">O alerta só some quando você clicar em <b>OK</b>.</div>`);
+        if(socorroAudio){
+          try{ socorroAudio.loop = true; }catch(e){}
+          const p = socorroAudio.play();
+          if(p && p.catch) p.catch(()=>{});
+        }
+      }
+
+      async function checarSocorro(){
+        if(socorroAtivo) return;
+        try{
+          const r = await fetch('/admin_novo_socorro', {cache:'no-store'});
+          if(!r.ok) return;
+          const data = await r.json();
+          if(data) exibirSocorro(data);
+        }catch(e){}
+      }
+
+      if(ok) ok.addEventListener('click', async ()=>{
+        if(socorroAtivo){
+          await limparSocorroServidor();
+          pararSocorro();
+        } else {
+          hideModal();
+        }
+      });
+
       if(ov) ov.addEventListener('click', (e)=>{
+        if(socorroAtivo) return;
         if(e.target === ov) hideModal();
       });
+
+      setInterval(checarSocorro, 2500);
+      checarSocorro();
     });
+});
 
     function contarSemCooperado(){
       try{
@@ -1778,6 +1837,17 @@
       var motoboyMarkers = {}; // id -> marker
       var firstFitDone = false;
 
+      function getFiltroStatus(){
+        const el = document.getElementById('filtro-status');
+        return el ? el.value : 'todos';
+      }
+      function passaFiltroStatus(st){
+        const f = getFiltroStatus();
+        if (f === 'todos') return true;
+        return f === st;
+      }
+
+
       window.__mapCoopex = map;
       window.__motoboyMarkers = motoboyMarkers;
 	      window.__motoboyLayer = markersLayer;
@@ -1800,16 +1870,38 @@
 	      }
 
 	      // Marcador no mapa: nome do cooperado em vermelho/azul (offline/online)
-	      function buildIcon(m, status){
-	        var nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : 'COOPERADO';
-	        return L.divIcon({
-	          className: '',
-	          iconSize: null,
-	          iconAnchor: [0, 0],
-	          popupAnchor: [0, -16],
-	          html: '<div class="moto-label '+status+'">'+escapeHtml(nome)+'</div>'
-	        });
-	      }
+	      function statusColor(st){
+            return (st === 'online') ? '#00d084' : '#ff4d4f';
+          }
+
+          function buildTooltip(m, st){
+            const nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : ('ID ' + String(m.id));
+            const ultima = m && m.ultima_atualizacao ? String(m.ultima_atualizacao) : '';
+            const bat = (m && (m.bateria !== undefined && m.bateria !== null)) ? (String(m.bateria) + '%') : '';
+            const vel = (m && (m.velocidade !== undefined && m.velocidade !== null)) ? (String(m.velocidade) + ' km/h') : '';
+            return `<div style="font-size:12px;line-height:1.25">
+                      <div style="font-weight:800;margin-bottom:2px">${nome}</div>
+                      <div>Status: <b style="color:${statusColor(st)}">${st.toUpperCase()}</b></div>
+                      ${ultima ? `<div>Última: ${ultima}</div>` : ''}
+                      ${(bat || vel) ? `<div>${bat ? ('Bateria: '+bat) : ''}${(bat && vel) ? ' • ' : ''}${vel ? ('Vel: '+vel) : ''}</div>` : ''}
+                    </div>`;
+          }
+
+          function buildPopup(m, st){
+            const nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : ('ID ' + String(m.id));
+            const lat = m && m.lat ? String(m.lat) : '';
+            const lng = m && m.lng ? String(m.lng) : '';
+            const ultima = m && m.ultima_atualizacao ? String(m.ultima_atualizacao) : '';
+            const bat = (m && (m.bateria !== undefined && m.bateria !== null)) ? (String(m.bateria) + '%') : '';
+            const vel = (m && (m.velocidade !== undefined && m.velocidade !== null)) ? (String(m.velocidade) + ' km/h') : '';
+            return `<div style="min-width:220px">
+                      <div style="font-weight:900;margin-bottom:6px">${nome}</div>
+                      <div><b>Status:</b> <span style="color:${statusColor(st)};font-weight:800">${st.toUpperCase()}</span></div>
+                      ${ultima ? `<div><b>Última:</b> ${ultima}</div>` : ''}
+                      ${(bat || vel) ? `<div><b>Info:</b> ${bat ? ('Bateria '+bat) : ''}${(bat && vel) ? ' • ' : ''}${vel ? ('Vel '+vel) : ''}</div>` : ''}
+                      ${(lat && lng) ? `<div style="margin-top:6px;font-size:12px;color:#666">(${lat}, ${lng})</div>` : ''}
+                    </div>`;
+          }
 
       function popupHtml(m, st){
         var vel = (m.velocidade != null) ? (Number(m.velocidade) || 0) : 0;
@@ -1906,28 +1998,35 @@
           var st = getStatus(m);
           var marker = motoboyMarkers[m.id];
 
+          if (!passaFiltroStatus(st)) {
+            if (marker) {
+              try { markersLayer.removeLayer(marker); } catch(e){}
+              delete motoboyMarkers[m.id];
+            }
+            return;
+          }
+
           if (!marker) {
-	            marker = L.marker([lat, lng], {
-	              icon: buildIcon(m, st),
-              riseOnHover: true
+            marker = L.circleMarker([m.lat, m.lng], {
+              radius: 8,
+              color: statusColor(st),
+              fillColor: statusColor(st),
+              fillOpacity: 0.92,
+              weight: 2
             });
 
-            marker.__mid = m.id;
-            marker.__status = st;
-            marker.__data = m;
-
-            marker.bindPopup(popupHtml(m, st), { closeButton:true, autoPan:true });
-
-	            markersLayer.addLayer(marker);
+            marker.bindTooltip(buildTooltip(m, st), {direction: 'top', opacity: 0.95, sticky: true});
+            marker.bindPopup(buildPopup(m, st));
+            marker.addTo(markersLayer);
             motoboyMarkers[m.id] = marker;
           } else {
-            marker.setLatLng([lat, lng]);
-            marker.__status = st;
-            marker.__data = m;
-
-	            marker.setIcon(buildIcon(m, st));
-            if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m, st));
+            marker.setLatLng([m.lat, m.lng]);
+            marker.setStyle({color: statusColor(st), fillColor: statusColor(st)});
+            if (marker.getTooltip()) marker.getTooltip().setContent(buildTooltip(m, st));
+            if (marker.getPopup()) marker.getPopup().setContent(buildPopup(m, st));
           }
+
+          marker.__status = st;
         });
 
         Object.keys(motoboyMarkers).forEach(function(id){
@@ -1975,6 +2074,8 @@
             console.error('Erro ao atualizar motoboys:', err);
           });
       }
+      const filtroEl = document.getElementById('filtro-status');
+      if (filtroEl) filtroEl.addEventListener('change', function(){ atualizarDoServidor(); });
       setInterval(atualizarDoServidor, 5000);
     });
   
