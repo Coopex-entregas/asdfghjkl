@@ -1,13 +1,4 @@
-<!DOC
-          <div class="map-tools">
-            <label class="pill" for="filtro-status">MOSTRAR</label>
-            <select id="filtro-status" class="select">
-              <option value="todos" selected>TODOS</option>
-              <option value="online">SÓ ONLINE</option>
-              <option value="offline">SÓ OFFLINE</option>
-            </select>
-          </div>
-TYPE html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
@@ -23,7 +14,17 @@ TYPE html>
     crossorigin=""
   />
 
-	  <!-- MarkerCluster removido: não agrupar GPS (pedido) -->
+  <!-- MarkerCluster (AGRUPAMENTO) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    crossorigin=""
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    crossorigin=""
+  />
 
   <style>
     :root{
@@ -366,9 +367,6 @@ TYPE html>
       border:1px solid rgba(255,255,255,.18);
       box-shadow:0 10px 26px rgba(0,0,0,.12);
     }
-    .map-filters{margin-top:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;}
-    .map-filters label{font-size:12px;color:rgba(255,255,255,.82);}
-    .map-filters select{background:rgba(0,0,0,.25);border:1px solid rgba(255,255,255,.16);color:#fff;border-radius:10px;padding:6px 10px;font-size:12px;outline:none;}
     .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.55)}
     .legend-dot.on{ background:#10b981; }
     .legend-dot.off{ background:#ef4444; }
@@ -402,14 +400,14 @@ TYPE html>
 
     #map-coopex{
       width:100%;
-      height: 520px;
+      height:340px;
       border-radius:16px;
       overflow:hidden;
       box-shadow:0 10px 26px rgba(0,0,0,.18);
       background:#020617;
       border:1px solid rgba(255,255,255,.10);
     }
-    @media (min-height:900px){ #map-coopex{height: 520px;} }
+    @media (min-height:900px){ #map-coopex{height:390px;} }
 
     /* ===== FILTROS ===== */
     .filters-bar{
@@ -678,38 +676,26 @@ TYPE html>
     }
     #toast .x:hover{filter:brightness(1.08)}
 
-	    /* ===== MARCADOR NO MAPA (NOME DO COOPERADO) ===== */
-	    .moto-label{
-	      padding: 6px 10px;
-	      border-radius: 999px;
-	      font-weight: 900;
-	      font-size: 12px;
-	      line-height: 1;
-	      letter-spacing: .2px;
-	      white-space: nowrap;
-	      border: 1px solid rgba(255,255,255,.25);
-	      box-shadow: 0 10px 22px rgba(0,0,0,.22);
-	      backdrop-filter: blur(8px);
-	      -webkit-backdrop-filter: blur(8px);
-	      transform: translate(-50%, -50%);
-	      display: inline-flex;
-	      align-items: center;
-	      gap: 6px;
-	      background: rgba(0,0,0,.35);
-	    }
-	    .moto-label::before{
-	      content:"";
-	      width: 8px;
-	      height: 8px;
-	      border-radius: 999px;
-	      box-shadow: 0 0 0 3px rgba(0,0,0,.25);
-	      background: rgba(255,255,255,.6);
-	      flex: 0 0 auto;
-	    }
-	    .moto-label.online{ color: var(--good); }
-	    .moto-label.online::before{ background: var(--good); }
-	    .moto-label.offline{ color: var(--bad); }
-	    .moto-label.offline::before{ background: var(--bad); }
+    /* ===== ÍCONE MOTO (marcador) ===== */
+    .moto-pin{
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      width:34px;
+      height:34px;
+      border-radius:14px;
+      background:rgba(255,255,255,.92);
+      border:2px solid rgba(255,255,255,.85);
+      box-shadow:0 10px 22px rgba(0,0,0,.18);
+      transform: translate3d(0,0,0);
+    }
+    .moto-pin svg{
+      width:22px;
+      height:22px;
+      display:block;
+    }
+    .moto-pin.online svg{ fill: var(--good); }
+    .moto-pin.offline svg{ fill: var(--bad); }
 
     .moto-highlight{
       outline: 3px solid rgba(110,141,255,.70);
@@ -735,35 +721,7 @@ TYPE html>
     }
     .cluster-badge.online{ background: #10b981; }
     .cluster-badge.offline{ background: #ef4444; }
-  
-    /* ===== RECEBIDO POR + MÍDIA (sem mudar layout geral) ===== */
-    .rcb-cell{display:flex;flex-direction:column;align-items:center;gap:6px}
-    .rcb-media-btn{
-      border:none;cursor:pointer;
-      width:34px;height:34px;border-radius:10px;
-      display:grid;place-items:center;
-      background:linear-gradient(180deg, rgba(39,80,255,.14), rgba(0,51,204,.10));
-      border:1px solid rgba(0,51,204,.18);
-      box-shadow:0 6px 14px rgba(0,51,204,.10);
-      font-size:16px;
-    }
-    .rcb-media-btn:active{transform:scale(.98)}
-    .rcb-name{font-weight:800}
-    /* ===== MODAL MÍDIA ===== */
-    .midia-overlay{position:fixed;inset:0;background:rgba(0,0,0,.55);display:none;align-items:center;justify-content:center;z-index:99999;padding:14px}
-    .midia-overlay.open{display:flex}
-    .midia-modal{width:min(860px, 96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:16px;box-shadow:0 20px 60px rgba(0,0,0,.35);padding:14px;border:1px solid rgba(0,51,204,.12)}
-    .midia-modal .top{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px}
-    .midia-modal .title{font-weight:900;color:#0b1b3a}
-    .midia-modal .close{border:none;background:#eef2ff;color:#0f2a80;font-weight:900;border-radius:10px;padding:10px 12px;cursor:pointer}
-    .midia-modal .actions{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0 0}
-    .midia-modal .btn{border:none;border-radius:10px;padding:10px 12px;font-weight:900;cursor:pointer}
-    .midia-modal .btn-primary{background:#0033cc;color:#fff}
-    .midia-modal .btn-ghost{background:#fff;border:1px solid #e2e9ff;color:#0f2a80}
-    .midia-view{border:1px solid #e2e9ff;border-radius:14px;overflow:hidden;background:#f8faff}
-    .midia-view img,.midia-view video{width:100%;display:block}
-    .midia-hint{color:#6b7bb0;font-weight:800;font-size:.9rem;margin-top:8px}
-</style>
+  </style>
 </head>
 
 <body>
@@ -1072,12 +1030,7 @@ TYPE html>
                     {% endif %}
                   </td>
 
-                  <td>
-  <div class="rcb-cell">
-    <button type="button" class="rcb-media-btn" title="Ver foto/vídeo (comprovante)" onclick="openMidiaModal({{ e.id }})">📷</button>
-    <div class="rcb-name" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</div>
-  </div>
-</td>
+                  <td title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</td>
 
                   <td>
                     {% if tem_coop %}
@@ -1224,67 +1177,11 @@ TYPE html>
     window.addEventListener('DOMContentLoaded', ()=>{
       const ok = document.getElementById('modal-ok');
       const ov = document.getElementById('overlay');
-      const socorroAudio = document.getElementById('som-socorro');
-
-      let ultimoSocorroId = null;
-      let socorroAtivo = false;
-
-      function pararSocorro(){
-        socorroAtivo = false;
-        if(socorroAudio){
-          try{ socorroAudio.pause(); }catch(e){}
-          try{ socorroAudio.currentTime = 0; }catch(e){}
-        }
-        hideModal();
-      }
-
-      async async function limparSocorroServidor(id){
-        try{ await fetch('/admin_socorro_ack', {method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({id:id})}); }catch(e){}
-      }
-
-      function exibirSocorro(data){
-        if(!data) return;
-        if(data.id && ultimoSocorroId && String(data.id) === String(ultimoSocorroId)) return;
-        socorroAtivo = true;
-        ultimoSocorroId = data.id || ((data.cooperado_nome||'') + '|' + (data.timestamp||''));
-        const nome = data.cooperado_nome || data.nome || 'COOPERADO';
-        const msgExtra = data.mensagem ? `<div style="margin-top:8px;opacity:.95">${data.mensagem}</div>` : '';
-        showModal('SOCORRO 🚨', `<div><b>${nome}</b> pediu socorro.</div>${msgExtra}<div style="margin-top:10px;font-size:12px;opacity:.85">O alerta só some quando você clicar em <b>OK</b>.</div>`);
-        if(socorroAudio){
-          try{ socorroAudio.loop = true; }catch(e){}
-          const p = socorroAudio.play();
-          if(p && p.catch) p.catch(()=>{});
-        }
-      }
-
-      async function checarSocorro(){
-        if(socorroAtivo) return;
-        try{
-          const r = await fetch('/admin_novo_socorro', {cache:'no-store'});
-          if(!r.ok) return;
-          const data = await r.json();
-          if(data) exibirSocorro(data);
-        }catch(e){}
-      }
-
-      if(ok) ok.addEventListener('click', async ()=>{
-        if(socorroAtivo){
-          await limparSocorroServidor();
-          pararSocorro();
-        } else {
-          hideModal();
-        }
-      });
-
+      if(ok) ok.addEventListener('click', hideModal);
       if(ov) ov.addEventListener('click', (e)=>{
-        if(socorroAtivo) return;
         if(e.target === ov) hideModal();
       });
-
-      setInterval(checarSocorro, 2500);
-      checarSocorro();
     });
-});
 
     function contarSemCooperado(){
       try{
@@ -1826,7 +1723,7 @@ TYPE html>
     crossorigin=""></script>
 
   <!-- MarkerCluster -->
-  <!-- MarkerCluster removido: não agrupar GPS (pedido) -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <script>
     // ===== MAPA (agrupamento sem modal + sem "gps ocioso" + sem reagrupar quando aproximar) =====
@@ -1840,26 +1737,41 @@ TYPE html>
         attribution: '&copy; OpenStreetMap'
       }).addTo(map);
 
-	      // Sem agrupamento/cluster (pedido): cada cooperado aparece individualmente no mapa
-	      var markersLayer = L.layerGroup().addTo(map);
+      // grupo com cluster:
+      // - NÃO abre modal ao clicar
+      // - DESLIGA agrupamento a partir do zoom 15 (assim, ao aproximar, não volta a reagrupar sozinho)
+      var cluster = L.markerClusterGroup({
+        chunkedLoading: true,
+        maxClusterRadius: 55,
+        spiderfyOnMaxZoom: true,
+        showCoverageOnHover: false,
+        zoomToBoundsOnClick: true,
+        disableClusteringAtZoom: 15,
+        iconCreateFunction: function (cl) {
+          var children = cl.getAllChildMarkers();
+          var hasOnline = false;
+          for (var i=0;i<children.length;i++){
+            var st = children[i].__status || 'offline';
+            if(st === 'online'){ hasOnline = true; break; }
+          }
+          var cls = hasOnline ? 'online' : 'offline';
+          var count = cl.getChildCount();
+
+          return L.divIcon({
+            html: '<div class="cluster-badge '+cls+'"><span>'+count+'</span></div>',
+            className: 'cluster-wrap',
+            iconSize: L.point(42, 42)
+          });
+        }
+      });
+      map.addLayer(cluster);
 
       var motoboyMarkers = {}; // id -> marker
       var firstFitDone = false;
 
-      function getFiltroStatus(){
-        const el = document.getElementById('filtro-status');
-        return el ? el.value : 'todos';
-      }
-      function passaFiltroStatus(st){
-        const f = getFiltroStatus();
-        if (f === 'todos') return true;
-        return f === st;
-      }
-
-
       window.__mapCoopex = map;
       window.__motoboyMarkers = motoboyMarkers;
-	      window.__motoboyLayer = markersLayer;
+      window.__motoboyCluster = cluster;
 
       function getStatus(m){
         // regra simples (sem GPS ocioso):
@@ -1872,45 +1784,22 @@ TYPE html>
         return (st === 'online') ? 'Online (app ligado)' : 'Offline / desconectado';
       }
 
-	      function escapeHtml(s){
-	        return String(s||'').replace(/[&<>"]/g, function(c){
-	          return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'})[c] || c;
-	        });
-	      }
+      function motoSvg(){
+        return '' +
+          '<svg viewBox="0 0 24 24" aria-hidden="true">' +
+          '<path d="M5.5 15.5a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5Zm13 0a2.5 2.5 0 1 0 0 5 2.5 2.5 0 0 0 0-5ZM7 6h4l1.2 3H9.5c-.6 0-1 .4-1 1s.4 1 1 1h3.5l.8 2H11a1 1 0 0 0-.9.6l-.7 1.4H7.9A4.5 4.5 0 0 0 3 18h2a2.5 2.5 0 0 1 5 0h6a2.5 2.5 0 0 1 5 0h2a4.5 4.5 0 0 0-4.5-4.5h-1.7l-1.9-4.7a1.5 1.5 0 0 0-1.4-.9H12l-.7-1.7A1.5 1.5 0 0 0 9.9 5H7a1 1 0 0 0 0 2Z"/>' +
+          '</svg>';
+      }
 
-	      // Marcador no mapa: nome do cooperado em vermelho/azul (offline/online)
-	      function statusColor(st){
-            return (st === 'online') ? '#00d084' : '#ff4d4f';
-          }
-
-          function buildTooltip(m, st){
-            const nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : ('ID ' + String(m.id));
-            const ultima = m && m.ultima_atualizacao ? String(m.ultima_atualizacao) : '';
-            const bat = (m && (m.bateria !== undefined && m.bateria !== null)) ? (String(m.bateria) + '%') : '';
-            const vel = (m && (m.velocidade !== undefined && m.velocidade !== null)) ? (String(m.velocidade) + ' km/h') : '';
-            return `<div style="font-size:12px;line-height:1.25">
-                      <div style="font-weight:800;margin-bottom:2px">${nome}</div>
-                      <div>Status: <b style="color:${statusColor(st)}">${st.toUpperCase()}</b></div>
-                      ${ultima ? `<div>Última: ${ultima}</div>` : ''}
-                      ${(bat || vel) ? `<div>${bat ? ('Bateria: '+bat) : ''}${(bat && vel) ? ' • ' : ''}${vel ? ('Vel: '+vel) : ''}</div>` : ''}
-                    </div>`;
-          }
-
-          function buildPopup(m, st){
-            const nome = (m && (m.nome || m.cooperado || m.apelido || m.username)) ? (m.nome || m.cooperado || m.apelido || m.username) : ('ID ' + String(m.id));
-            const lat = m && m.lat ? String(m.lat) : '';
-            const lng = m && m.lng ? String(m.lng) : '';
-            const ultima = m && m.ultima_atualizacao ? String(m.ultima_atualizacao) : '';
-            const bat = (m && (m.bateria !== undefined && m.bateria !== null)) ? (String(m.bateria) + '%') : '';
-            const vel = (m && (m.velocidade !== undefined && m.velocidade !== null)) ? (String(m.velocidade) + ' km/h') : '';
-            return `<div style="min-width:220px">
-                      <div style="font-weight:900;margin-bottom:6px">${nome}</div>
-                      <div><b>Status:</b> <span style="color:${statusColor(st)};font-weight:800">${st.toUpperCase()}</span></div>
-                      ${ultima ? `<div><b>Última:</b> ${ultima}</div>` : ''}
-                      ${(bat || vel) ? `<div><b>Info:</b> ${bat ? ('Bateria '+bat) : ''}${(bat && vel) ? ' • ' : ''}${vel ? ('Vel '+vel) : ''}</div>` : ''}
-                      ${(lat && lng) ? `<div style="margin-top:6px;font-size:12px;color:#666">(${lat}, ${lng})</div>` : ''}
-                    </div>`;
-          }
+      function buildIcon(status){
+        return L.divIcon({
+          className: '',
+          iconSize: [34, 34],
+          iconAnchor: [17, 17],
+          popupAnchor: [0, -16],
+          html: '<div class="moto-pin '+status+'">'+motoSvg()+'</div>'
+        });
+      }
 
       function popupHtml(m, st){
         var vel = (m.velocidade != null) ? (Number(m.velocidade) || 0) : 0;
@@ -1956,15 +1845,15 @@ TYPE html>
         try{
           marker.setZIndexOffset(10000);
           var el = marker.getElement ? marker.getElement() : null;
-	          if(el){
-	            var lab = el.querySelector('.moto-label');
-	            if(lab){
-	              lab.classList.add('moto-highlight');
-	              setTimeout(function(){
-	                try{ lab.classList.remove('moto-highlight'); }catch(e){}
-	              }, 2600);
-	            }
-	          }
+          if(el){
+            var pin = el.querySelector('.moto-pin');
+            if(pin){
+              pin.classList.add('moto-highlight');
+              setTimeout(function(){
+                try{ pin.classList.remove('moto-highlight'); }catch(e){}
+              }, 2600);
+            }
+          }
         }catch(e){}
       }
 
@@ -1976,11 +1865,13 @@ TYPE html>
           return;
         }
 
-	        try{
-	          map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
-	        }catch(e){}
-	        try{ mk.openPopup(); }catch(e){}
-	        destacarMarker(mk);
+        cluster.zoomToShowLayer(mk, function(){
+          try{
+            map.setView(mk.getLatLng(), Math.max(map.getZoom(), 17), { animate:true });
+          }catch(e){}
+          try{ mk.openPopup(); }catch(e){}
+          destacarMarker(mk);
+        });
       }
 
       var selSearch = document.getElementById('mapSearch');
@@ -2007,40 +1898,33 @@ TYPE html>
           var st = getStatus(m);
           var marker = motoboyMarkers[m.id];
 
-          if (!passaFiltroStatus(st)) {
-            if (marker) {
-              try { markersLayer.removeLayer(marker); } catch(e){}
-              delete motoboyMarkers[m.id];
-            }
-            return;
-          }
-
           if (!marker) {
-            marker = L.circleMarker([m.lat, m.lng], {
-              radius: 4,
-              color: statusColor(st),
-              fillColor: statusColor(st),
-              fillOpacity: 0.92,
-              weight: 2
+            marker = L.marker([lat, lng], {
+              icon: buildIcon(st),
+              riseOnHover: true
             });
 
-            marker.bindTooltip(buildTooltip(m, st), {direction: 'top', opacity: 0.95, sticky: true});
-            marker.bindPopup(buildPopup(m, st));
-            marker.addTo(markersLayer);
+            marker.__mid = m.id;
+            marker.__status = st;
+            marker.__data = m;
+
+            marker.bindPopup(popupHtml(m, st), { closeButton:true, autoPan:true });
+
+            cluster.addLayer(marker);
             motoboyMarkers[m.id] = marker;
           } else {
-            marker.setLatLng([m.lat, m.lng]);
-            marker.setStyle({color: statusColor(st), fillColor: statusColor(st)});
-            if (marker.getTooltip()) marker.getTooltip().setContent(buildTooltip(m, st));
-            if (marker.getPopup()) marker.getPopup().setContent(buildPopup(m, st));
-          }
+            marker.setLatLng([lat, lng]);
+            marker.__status = st;
+            marker.__data = m;
 
-          marker.__status = st;
+            marker.setIcon(buildIcon(st));
+            if (marker.isPopupOpen()) marker.setPopupContent(popupHtml(m, st));
+          }
         });
 
         Object.keys(motoboyMarkers).forEach(function(id){
           if (!ativos[id]) {
-	            try{ markersLayer.removeLayer(motoboyMarkers[id]); }catch(e){}
+            try{ cluster.removeLayer(motoboyMarkers[id]); }catch(e){}
             delete motoboyMarkers[id];
           }
         });
@@ -2081,126 +1965,10 @@ TYPE html>
           })
           .catch(function(err){
             console.error('Erro ao atualizar motoboys:', err);
-            setTimeout(atualizarDoServidor, 2000);
           });
       }
-      const filtroEl = document.getElementById('filtro-status');
-      if (filtroEl) filtroEl.addEventListener('change', function(){ atualizarDoServidor(); });
-      if (filtroEl) filtroEl.addEventListener('change', function(){ atualizarDoServidor(); });
       setInterval(atualizarDoServidor, 5000);
     });
-  
-    // =============================
-    // MÍDIA (FOTO/VÍDEO) — ADMIN
-    // Botão fica acima do "Recebido por" e abre modal para ver + baixar
-    // Endpoints esperados no back-end (vamos ligar no seu PY depois):
-    //   GET  /admin/entrega/<id>/midia          -> retorna o arquivo (image/* ou video/*)
-    //   GET  /admin/entrega/<id>/midia/download -> força download
-    // Se não existir mídia, deve retornar 404.
-    let _midiaObjectUrl = null;
-
-    async function openMidiaModal(entregaId){
-      const overlay = document.getElementById('midia-overlay');
-      const img = document.getElementById('midia-img');
-      const vid = document.getElementById('midia-video');
-      const hint = document.getElementById('midia-hint');
-      const dl = document.getElementById('midia-download');
-
-      if(!overlay || !img || !vid || !hint || !dl) return;
-
-      // reset
-      if(_midiaObjectUrl){
-        try{ URL.revokeObjectURL(_midiaObjectUrl); }catch(e){}
-        _midiaObjectUrl = null;
-      }
-      img.style.display='none'; img.src='';
-      vid.style.display='none'; vid.src='';
-      hint.textContent='Carregando...';
-      dl.setAttribute('href', `/admin/entrega/${entregaId}/midia/download`);
-
-      overlay.classList.add('open');
-      document.body.style.overflow='hidden';
-
-      try{
-        const resp = await fetch(`/admin/entrega/${entregaId}/midia`, { method:'GET' });
-        if(!resp.ok){
-          if(resp.status === 404){
-            hint.textContent = 'Sem foto/vídeo anexado para esta entrega.';
-          }else{
-            hint.textContent = 'Falha ao carregar o comprovante.';
-          }
-          return;
-        }
-
-        const ct = (resp.headers.get('content-type') || '').toLowerCase();
-        const blob = await resp.blob();
-        _midiaObjectUrl = URL.createObjectURL(blob);
-
-        if(ct.startsWith('video/')){
-          vid.src = _midiaObjectUrl;
-          vid.style.display='block';
-          hint.textContent = 'Vídeo carregado.';
-        }else{
-          img.src = _midiaObjectUrl;
-          img.style.display='block';
-          hint.textContent = 'Imagem carregada.';
-        }
-      }catch(err){
-        hint.textContent = 'Erro: ' + err.message;
-      }
-    }
-
-    function closeMidiaModal(){
-      const overlay = document.getElementById('midia-overlay');
-      const img = document.getElementById('midia-img');
-      const vid = document.getElementById('midia-video');
-
-      if(overlay) overlay.classList.remove('open');
-      document.body.style.overflow='';
-
-      if(vid){
-        try{ vid.pause(); }catch(e){}
-        vid.src='';
-        vid.style.display='none';
-      }
-      if(img){
-        img.src='';
-        img.style.display='none';
-      }
-      if(_midiaObjectUrl){
-        try{ URL.revokeObjectURL(_midiaObjectUrl); }catch(e){}
-        _midiaObjectUrl = null;
-      }
-    }
-
-    document.addEventListener('keydown', (e)=>{
-      const overlay = document.getElementById('midia-overlay');
-      if(e.key === 'Escape' && overlay && overlay.classList.contains('open')){
-        closeMidiaModal();
-      }
-    });
-</script>
-
-  <!-- MODAL: VISUALIZAR FOTO/VÍDEO + DOWNLOAD (Recebido por) -->
-  <div class="midia-overlay" id="midia-overlay" role="dialog" aria-modal="true" aria-label="Comprovante">
-    <div class="midia-modal">
-      <div class="top">
-        <div class="title">Comprovante (Foto/Vídeo)</div>
-        <button type="button" class="close" onclick="closeMidiaModal()">Fechar</button>
-      </div>
-
-      <div class="midia-view" id="midia-view">
-        <img id="midia-img" alt="Comprovante" style="display:none;">
-        <video id="midia-video" controls playsinline style="display:none;"></video>
-      </div>
-
-      <div class="midia-hint" id="midia-hint">Carregando...</div>
-
-      <div class="actions">
-        <a class="btn btn-primary" id="midia-download" href="#" download>Baixar</a>
-        <button type="button" class="btn btn-ghost" onclick="closeMidiaModal()">Cancelar</button>
-      </div>
-    </div>
-  </div>
+  </script>
 </body>
 </html>
