@@ -412,7 +412,7 @@
 
     #map-coopex{
       width:100%;
-      height:340px;
+      height:clamp(360px, 55vh, 760px);
       border-radius:16px;
       overflow:hidden;
       box-shadow:0 10px 26px rgba(0,0,0,.18);
@@ -1870,26 +1870,7 @@
 +'
   <!-- SOCORRO (áudio) -->
   <audio id="socorroAudio" src="{{ url_for('static', filename='socorro.mp3') }}" preload="auto"></audio>
-  <script>
-    (function socorroPolling(){
-      const audio = document.getElementById('socorroAudio');
-      async function check(){
-        try{
-          const r = await fetch('{{ url_for("admin_novo_socorro") }}', {cache:'no-store'});
-          if(!r.ok) return;
-          const data = await r.json();
-          if(data && data.novo){
-            try{ if(audio){ audio.currentTime = 0; audio.play(); } }catch(e){}
-            try{
-              showToast('<strong>⚠️ SOCORRO:</strong> '+(data.cooperado||'')+' — '+(data.mensagem||''));
-            }catch(e){}
-          }
-        }catch(e){}
-      }
-      check();
-      setInterval(check, 4000);
-    })();
-  </script>
+  
 
 </body>'
 +'</html>';
@@ -1952,7 +1933,7 @@
   <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <script>
-    // ===== MAPA (SEM AGRUPAMENTO / COM LISTA + FILTRO) =====
+    // ===== MAPA (SEM AGRUPAMENTO / COM LISTA + FILTRO + SEGUIR SELEÇÃO) =====
     window.addEventListener('DOMContentLoaded', function(){
       var mapEl = document.getElementById('map-coopex');
       if (!mapEl || typeof L === 'undefined') return;
@@ -1960,163 +1941,223 @@
       var map = L.map('map-coopex', { zoomControl: true, preferCanvas: true }).setView([-5.7945, -35.211], 13);
 
       // Tile COLORIDO e mais estável no Render
-      var tile = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+      L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
         maxZoom: 20,
         attribution: '&copy; OpenStreetMap &copy; CARTO',
         subdomains: 'abcd'
       }).addTo(map);
 
-      // força recalcular tamanho (muito comum o mapa nascer "travado")
-      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 300);
+      // recalcula tamanho (evita "mapa preto" / mapa travado)
+      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 250);
       setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 1200);
 
-      // marcador fino e pequeno
-      function makeMarker(lat, lng, tooltipHtml, online){
-        var color = online ? '#16a34a' : '#ef4444';
-        var m = L.circleMarker([lat,lng], {
-          radius: 4,
-          weight: 2,
-          color: color,
-          fillColor: color,
-          fillOpacity: 0.85
-        }).addTo(map);
-        if (tooltipHtml){
-          m.bindTooltip(tooltipHtml, {direction:'top', sticky:true});
-        }
-        return m;
-      }
-
-      var markers = {}; // id -> marker
-      var lastData = [];
-      var currentFilter = 'all';
+      // estado
+      var markers = {};           // id -> marker
+      var lastData = [];          // lista de motoboys
+      var currentFilter = 'all';  // all|online
+      var selectedId = '';        // id selecionado para seguir
+      var userInteracted = false; // se o usuário mexeu no mapa
+      var fetching = false;       // evita overlap
+      var lastManualAt = 0;       // timestamp da última interação
+      var lastAutoFitAt = 0;
 
       var sel = document.getElementById('mapSearch');
       var filterSel = document.getElementById('mapFilter');
+
+      // Detecta interação manual para não "voltar zoom"
+      function markManual(){
+        userInteracted = true;
+        lastManualAt = Date.now();
+      }
+      map.on('zoomstart', markManual);
+      map.on('dragstart', markManual);
+      map.on('movestart', markManual);
 
       function isOnline(p){
         if (typeof p.online === 'boolean') return p.online;
         if (typeof p.is_online === 'boolean') return p.is_online;
         var s = String(p.status || '').toLowerCase();
-        return (s.includes('online') || s.includes('livre') || s.includes('corrida'));
+        return (s.includes('online') || s.includes('livre') || s.includes('corrida') || s.includes('app ligado'));
+      }
+
+      // marcador fino e pequeno
+      function upsertMarker(p){
+        var lat = p.lat, lng = p.lng;
+        if (typeof lat !== 'number' || typeof lng !== 'number') return;
+
+        var online = isOnline(p);
+        var color = online ? '#16a34a' : '#ef4444';
+        var statusTxt = online ? 'ONLINE' : 'OFFLINE';
+        var html = '<b>'+ (p.nome||'') +'</b>'
+                 + '<br><span style="font-weight:800">'+statusTxt+'</span>'
+                 + (p.ultima_atualizacao ? '<br><span style="opacity:.9">'+p.ultima_atualizacao+'</span>' : '')
+                 + (p.endereco ? '<br><span style="opacity:.9">'+p.endereco+'</span>' : '');
+
+        var key = String(p.id);
+
+        if (!markers[key]){
+          var m = L.circleMarker([lat,lng], {
+            radius: 4,
+            weight: 2,
+            color: color,
+            fillColor: color,
+            fillOpacity: 0.85
+          }).addTo(map);
+
+          m.bindTooltip(html, {direction:'top', sticky:true});
+          markers[key] = m;
+        } else {
+          markers[key].setLatLng([lat,lng]);
+          markers[key].setStyle({ color: color, fillColor: color });
+          try{ markers[key].setTooltipContent(html); }catch(e){}
+        }
       }
 
       function renderList(list){
         if (!sel) return;
-        var keep = sel.value;
+
+        var keep = sel.value || selectedId;
         sel.innerHTML = '<option value="">🔍 Localizar motoboy…</option>';
+
+        var frag = document.createDocumentFragment();
         list.forEach(function(p){
           var opt = document.createElement('option');
           opt.value = String(p.id);
           opt.textContent = p.nome || ('Motoboy ' + p.id);
-          sel.appendChild(opt);
+          frag.appendChild(opt);
         });
+        sel.appendChild(frag);
+
         // mantém seleção se ainda existir
         if (keep && Array.from(sel.options).some(function(o){ return o.value === keep; })){
           sel.value = keep;
         }
       }
 
-      function renderMarkers(list){
-        var seen = new Set();
+      function applyFilter(list){
+        if (currentFilter === 'online') return list.filter(isOnline);
+        return list.slice();
+      }
 
-        list.forEach(function(p){
-          var lat = p.lat, lng = p.lng;
-          if (typeof lat !== 'number' || typeof lng !== 'number') return;
-
-          seen.add(String(p.id));
-
-          var online = isOnline(p);
-          var statusTxt = online ? 'ONLINE' : 'OFFLINE';
-          var html = '<b>'+ (p.nome||'') +'</b>'
-                   + '<br><span style="font-weight:800">'+statusTxt+'</span>'
-                   + (p.ultima_atualizacao ? '<br><span style="opacity:.9">'+p.ultima_atualizacao+'</span>' : '')
-                   + (p.endereco ? '<br><span style="opacity:.9">'+p.endereco+'</span>' : '');
-
-          if (!markers[String(p.id)]){
-            markers[String(p.id)] = makeMarker(lat, lng, html, online);
-          } else {
-            markers[String(p.id)].setLatLng([lat,lng]);
-            markers[String(p.id)].setStyle({
-              color: online ? '#16a34a' : '#ef4444',
-              fillColor: online ? '#16a34a' : '#ef4444'
-            });
-            try{ markers[String(p.id)].setTooltipContent(html); }catch(e){}
-          }
-        });
-
-        // remove marcadores que sumiram
+      function cleanupMarkers(validList){
+        var seen = new Set(validList.map(function(p){ return String(p.id); }));
         Object.keys(markers).forEach(function(k){
           if(!seen.has(k)){
             try{ map.removeLayer(markers[k]); }catch(e){}
             delete markers[k];
           }
         });
-
-        // se não tem seleção, ajusta bounds (sem ficar pulando com zoom alto)
-        try{
-          if (list.length && (!sel || !sel.value)){
-            var pts = list
-              .filter(function(p){ return (typeof p.lat==='number' && typeof p.lng==='number'); })
-              .map(function(p){ return [p.lat, p.lng]; });
-            if (pts.length){
-              map.fitBounds(pts, {padding:[30,30], maxZoom: 14});
-            }
-          }
-        }catch(e){}
-
-        setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 50);
       }
 
-      function applyFilterAndRender(){
-        var list = lastData.slice();
-        if (currentFilter === 'online'){
-          list = list.filter(isOnline);
-        }
+      function followSelected(){
+        if (!selectedId) return;
+
+        var p = lastData.find(function(x){ return String(x.id) === String(selectedId); });
+        if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
+
+        // mantém zoom que o usuário estiver usando
+        var z = map.getZoom();
+        try{
+          map.setView([p.lat, p.lng], z, { animate: false });
+          if (markers[String(p.id)]){ try{ markers[String(p.id)].openTooltip(); }catch(e){} }
+        }catch(e){}
+      }
+
+      function maybeAutoFit(list){
+        // só ajusta bounds se:
+        // - não tem selecionado
+        // - usuário não mexeu recentemente
+        // - e existe lista com pontos válidos
+        if (selectedId) return;
+
+        var now = Date.now();
+        if (userInteracted && (now - lastManualAt) < 15000) return; // 15s de "respeito" ao zoom manual
+
+        // evita fitBounds em loop
+        if ((now - lastAutoFitAt) < 12000) return;
+
+        var pts = list
+          .filter(function(p){ return (typeof p.lat==='number' && typeof p.lng==='number'); })
+          .map(function(p){ return [p.lat, p.lng]; });
+
+        if (!pts.length) return;
+
+        try{
+          map.fitBounds(pts, {padding:[30,30], maxZoom: 14});
+          lastAutoFitAt = now;
+        }catch(e){}
+      }
+
+      function render(){
+        var list = applyFilter(lastData);
+
         renderList(list);
-        renderMarkers(list);
+
+        list.forEach(upsertMarker);
+        cleanupMarkers(list);
+
+        // se selecionou, segue automaticamente; senão, auto-enquadra quando apropriado
+        if (selectedId) followSelected();
+        else maybeAutoFit(list);
+
+        // ajuda o Leaflet em containers dinâmicos
+        setTimeout(function(){ try{ map.invalidateSize(false); }catch(e){} }, 50);
       }
 
       if (filterSel){
         filterSel.addEventListener('change', function(){
           currentFilter = filterSel.value || 'all';
-          applyFilterAndRender();
+          render();
         });
       }
 
       if (sel){
         sel.addEventListener('change', function(){
-          var id = sel.value;
-          if (!id) return;
-          var p = lastData.find(function(x){ return String(x.id) === String(id); });
-          if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
-
-          try{
-            map.setView([p.lat, p.lng], 16);
-            if (markers[String(p.id)]){
-              try{ markers[String(p.id)].openTooltip(); }catch(e){}
+          selectedId = sel.value || '';
+          if (selectedId){
+            // enquadra ao escolher
+            var p = lastData.find(function(x){ return String(x.id) === String(selectedId); });
+            if (p && typeof p.lat === 'number' && typeof p.lng === 'number'){
+              try{
+                userInteracted = false; // permitir centralização automática ao selecionar
+                map.setView([p.lat, p.lng], 16, { animate: true });
+                if (markers[String(p.id)]){ try{ markers[String(p.id)].openTooltip(); }catch(e){} }
+              }catch(e){}
             }
-          }catch(e){}
+          }
         });
       }
 
       async function atualizar(){
+        if (fetching) return;
+        fetching = true;
         try{
           const r = await fetch('{{ url_for("mapa_motoboys") }}?format=json', {
             cache:'no-store',
             headers:{'X-Requested-With':'fetch', 'Accept':'application/json'}
           });
           if(!r.ok) return;
+
           const data = await r.json();
-          if(!Array.isArray(data)) return;
-          lastData = data;
-          applyFilterAndRender();
-        }catch(e){}
+          // aceita tanto lista quanto {motoboys:[...]}
+          const arr = Array.isArray(data) ? data : (data && Array.isArray(data.motoboys) ? data.motoboys : []);
+          if(!arr.length){
+            lastData = [];
+          }else{
+            lastData = arr;
+          }
+
+          render();
+        }catch(e){
+          // silencioso
+        }finally{
+          fetching = false;
+        }
       }
 
       atualizar();
       setInterval(atualizar, 5000);
-    });
-  </script>
+    });</script>
 
   <!-- SOCORRO (áudio) -->
   <audio id="socorroAudio" src="{{ url_for('static', filename='socorro.mp3') }}" preload="auto"></audio>
