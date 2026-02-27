@@ -3142,6 +3142,38 @@ def painel_cooperado():
             'bairro': item.get('destino_bairro') or e.bairro
         })
 
+
+
+    # ====== KPI / ESTATÍSTICAS (evita UndefinedError no template) ======
+    try:
+        tz_sp = pytz.timezone('America/Sao_Paulo')
+        hoje_sp = to_brasilia(datetime.utcnow().replace(tzinfo=pytz.UTC)).date()
+
+        def _dt_sp(dt):
+            if not dt:
+                return None
+            try:
+                if dt.tzinfo is None:
+                    dt = pytz.UTC.localize(dt)
+                return dt.astimezone(tz_sp)
+            except Exception:
+                return None
+
+        total_dia = 0
+        for e in entregas:
+            dt = _dt_sp(getattr(e, 'data_envio', None) or getattr(e, 'data_atribuida', None))
+            if dt and dt.date() == hoje_sp:
+                total_dia += 1
+
+        estatisticas = {
+            'total_dia': total_dia,
+            'total_mes': int(len(entregas_mes)) if 'entregas_mes' in locals() and entregas_mes is not None else 0,
+            'total_ano': int(len(entregas_ano)) if 'entregas_ano' in locals() and entregas_ano is not None else 0,
+            'valor_mes': float(total_geral_mes or 0),
+            'valor_ano': float(total_geral_ano or 0),
+        }
+    except Exception:
+        estatisticas = {'total_dia': 0, 'total_mes': 0, 'total_ano': 0, 'valor_mes': 0.0, 'valor_ano': 0.0}
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
@@ -3159,6 +3191,8 @@ def painel_cooperado():
         total_pendente_ano=total_pendente_ano,
         request=request,
         to_brasilia=to_brasilia,
+        now=now,
+        estatisticas=estatisticas,
         status_pgto=status_pgto
     )
 
