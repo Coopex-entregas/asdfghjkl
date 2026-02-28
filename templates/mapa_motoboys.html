@@ -1,513 +1,791 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <title>Mapa de Motoboys - Coopex</title>
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <title>Mapa de Motoboys - COOPEX</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-    <!-- Leaflet CSS -->
-    <link
-        rel="stylesheet"
+  <!-- Leaflet CSS -->
+  <link rel="stylesheet"
         href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
         integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin=""
-    />
+        crossorigin=""/>
 
-    <style>
-        :root {
-            --azul: #0045a5;
-            --azul-escuro: #002b66;
-            --cinza-claro: #f4f4f4;
-            --cinza-medio: #e0e0e0;
-            --verde: #2ecc71;
-            --laranja: #f39c12;
-            --vermelho: #e74c3c;
-        }
+  <style>
+    :root{
+      /* COOPEX: Azul Royal + Branco */
+      --royal:#0B4BD6;
+      --royal2:#083AA8;
+      --white:#ffffff;
+      --ink:#0b1220;
+      --muted:#4b5563;
+      --line:rgba(11,75,214,.18);
+      --shadow: 0 18px 55px rgba(11,75,214,.12);
+      --green:#16a34a;
+      --red:#dc2626;
+      --amber:#d97706;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background:
+        radial-gradient(900px 420px at 15% -10%, rgba(11,75,214,.20), transparent 60%),
+        radial-gradient(900px 420px at 95% 0%, rgba(8,58,168,.16), transparent 60%),
+        #F6F9FF;
+      color:var(--ink);
+      overflow:hidden;
+    }
 
-        * { box-sizing: border-box; }
+    /* TOPBAR */
+    .topbar{
+      height:68px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding: 10px 14px;
+      background: linear-gradient(90deg, var(--royal2), var(--royal));
+      color: var(--white);
+      box-shadow: 0 12px 30px rgba(0,0,0,.12);
+    }
+    .brand{display:flex; gap:10px; align-items:center;}
+    .logo{
+      width:44px;height:44px;border-radius:14px;
+      background: rgba(255,255,255,.18);
+      border: 1px solid rgba(255,255,255,.28);
+      display:flex;align-items:center;justify-content:center;
+      font-weight:1000;
+      letter-spacing:.5px;
+    }
+    .titlewrap{display:flex;flex-direction:column;line-height:1.05}
+    .title{font-weight:1000;font-size:14px;letter-spacing:.2px}
+    .sub{font-size:12px;opacity:.9}
 
-        body {
-            margin: 0;
-            font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-            background: #f8f9fb;
-            color: #222;
-        }
+    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .chip{
+      display:inline-flex;gap:8px;align-items:center;
+      padding: 7px 10px;border-radius:999px;
+      background: rgba(255,255,255,.16);
+      border: 1px solid rgba(255,255,255,.22);
+      font-weight:1000;font-size:12px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .dot.g{background:var(--green)}
+    .dot.r{background:var(--red)}
+    .dot.a{background:var(--amber)}
 
-        .topbar {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 10px 16px;
-            background: linear-gradient(90deg, var(--azul-escuro), var(--azul));
-            color: #fff;
-        }
+    .btn{
+      height:40px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.30);
+      background: rgba(255,255,255,.16);
+      color: var(--white);
+      font-weight:1000;
+      padding: 0 12px;
+      cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;
+      transition: transform .08s ease, background .15s ease;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.22)}
+    .btn.ghost{
+      background: rgba(255,255,255,.10);
+      border-color: rgba(255,255,255,.22);
+    }
+    .btn.danger{
+      background: rgba(220,38,38,.22);
+      border-color: rgba(255,255,255,.22);
+    }
+    .btn.small{height:36px;border-radius:12px;font-size:12px;padding:0 10px}
 
-        .topbar-left {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
+    /* LAYOUT */
+    .wrap{
+      height: calc(100% - 68px);
+      display:grid;
+      grid-template-columns: 1fr 360px;
+    }
+    .mapwrap{position:relative; padding: 12px;}
+    #map{
+      height: 100%;
+      width: 100%;
+      border-radius: 22px;
+      border: 2px solid rgba(11,75,214,.20);
+      box-shadow: var(--shadow);
+      background:#e5e7eb;
+      overflow:hidden;
+    }
 
-        .topbar-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-        }
+    .mapbar{
+      position:absolute; top: 22px; left: 22px; right: 22px;
+      z-index: 600;
+      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
+      padding: 10px;
+      border-radius: 18px;
+      border: 1px solid rgba(11,75,214,.18);
+      background: rgba(255,255,255,.88);
+      backdrop-filter: blur(10px);
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
+    .mapbar select,.mapbar input{
+      height: 40px;
+      border-radius: 14px;
+      border: 1px solid rgba(11,75,214,.20);
+      background: #fff;
+      color: var(--ink);
+      font-weight: 1000;
+      padding: 0 12px;
+      outline:none;
+      min-width: 210px;
+    }
+    .mapbar input{min-width: 180px}
+    .mapbar .spacer{flex:1}
+    .mapbar .btnw{
+      height:40px;border-radius:14px;border:1px solid rgba(11,75,214,.20);
+      background: rgba(11,75,214,.10);
+      color: var(--royal2);
+      font-weight: 1000;
+      padding: 0 12px;
+      cursor:pointer;
+      display:inline-flex;align-items:center;gap:8px;
+    }
+    .mapbar .btnw:hover{background: rgba(11,75,214,.14)}
 
-        .pill {
-            font-size: 0.75rem;
-            background: rgba(255,255,255,0.18);
-            padding: 2px 8px;
-            border-radius: 999px;
-        }
+    .hint{
+      position:absolute; bottom: 22px; left: 22px;
+      z-index: 600;
+      padding: 10px 12px;
+      border-radius: 16px;
+      border: 1px solid rgba(11,75,214,.18);
+      background: rgba(255,255,255,.90);
+      color: var(--muted);
+      font-weight: 900;
+      font-size: 12px;
+      backdrop-filter: blur(10px);
+      max-width: 650px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.08);
+    }
 
-        .topbar-right {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
+    /* SIDEBAR */
+    .side{
+      border-left: 1px solid rgba(11,75,214,.14);
+      padding: 12px;
+      overflow:hidden;
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+      background: rgba(255,255,255,.55);
+    }
+    .panel{
+      background: #fff;
+      border: 1px solid rgba(11,75,214,.14);
+      border-radius: 20px;
+      padding: 12px;
+      box-shadow: 0 10px 30px rgba(0,0,0,.06);
+    }
+    .panel h3{
+      margin:0 0 10px;
+      font-size: 13px;
+      font-weight: 1000;
+      display:flex; align-items:center; justify-content:space-between;
+      color: var(--royal2);
+    }
+    .tiny{font-size: 11px; color: #6b7280; font-weight: 900}
 
-        .btn {
-            border: none;
-            border-radius: 999px;
-            padding: 6px 14px;
-            font-size: 0.8rem;
-            cursor: pointer;
-            display: inline-flex;
-            align-items: center;
-            gap: 6px;
-            transition: transform 0.1s ease, box-shadow 0.1s ease, background 0.15s ease;
-            background: rgba(255,255,255,0.92);
-            color: #222;
-            box-shadow: 0 1px 4px rgba(0,0,0,0.15);
-        }
+    .searchrow{display:flex; gap:8px}
+    .searchrow input{
+      flex:1;
+      height:40px;
+      border-radius: 14px;
+      border: 1px solid rgba(11,75,214,.18);
+      background: #fff;
+      color: var(--ink);
+      font-weight: 1000;
+      padding: 0 12px;
+      outline:none;
+    }
+    .filters{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .tag{
+      padding: 7px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(11,75,214,.18);
+      background: rgba(11,75,214,.06);
+      font-size: 12px;
+      font-weight: 1000;
+      cursor:pointer;
+      user-select:none;
+      color: var(--royal2);
+    }
+    .tag.active{background: rgba(11,75,214,.14); border-color: rgba(11,75,214,.28)}
 
-        .btn span.icon { font-size: 1rem; }
+    .list{
+      margin-top:10px;
+      overflow:auto;
+      max-height: calc(100vh - 68px - 330px);
+      padding-right: 4px;
+    }
+    .card{
+      border: 1px solid rgba(11,75,214,.16);
+      background: rgba(11,75,214,.05);
+      border-radius: 16px;
+      padding: 10px;
+      margin-bottom: 8px;
+      cursor:pointer;
+      transition: transform .08s ease, background .15s ease;
+    }
+    .card:hover{transform: translateY(-1px); background: rgba(11,75,214,.08)}
+    .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
+    .name{font-weight: 1100; font-size: 13px; color: var(--ink)}
+    .pill{
+      font-size: 11px;
+      font-weight: 1100;
+      padding: 4px 9px;
+      border-radius: 999px;
+      border: 1px solid rgba(11,75,214,.18);
+      background: rgba(11,75,214,.06);
+      color: var(--ink);
+    }
+    .pill.green{background: rgba(22,163,74,.12); border-color: rgba(22,163,74,.22)}
+    .pill.red{background: rgba(220,38,38,.12); border-color: rgba(220,38,38,.22)}
+    .pill.amber{background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.22)}
+    .meta{margin-top:6px; font-size: 12px; color: #475569; font-weight: 900}
 
-        .btn:hover {
-            transform: translateY(-1px);
-            box-shadow: 0 3px 8px rgba(0,0,0,0.2);
-            background: #fff;
-        }
+    @media (max-width: 980px){
+      body{overflow:auto}
+      .wrap{grid-template-columns: 1fr; grid-template-rows: 62vh auto}
+      .side{border-left:none; border-top:1px solid rgba(11,75,214,.14)}
+      .list{max-height: 40vh}
+    }
 
-        .btn-primary {
-            background: #fff;
-            color: var(--azul-escuro);
-            font-weight: 600;
-        }
+    .leaflet-control-attribution{display:none}
+    .leaflet-control-zoom a{border-radius: 12px !important}
+    .leaflet-popup-content-wrapper{
+      background: #fff;
+      color: var(--ink);
+      border:1px solid rgba(11,75,214,.16);
+      border-radius: 16px;
+      box-shadow: 0 14px 40px rgba(0,0,0,.15);
+    }
+    .leaflet-popup-tip{background: #fff}
 
-        .btn-primary:hover { background: #f5f7ff; }
-
-        .layout {
-            display: flex;
-            height: calc(100vh - 52px);
-        }
-
-        #map {
-            flex: 1.7;
-            height: 100%;
-            background: #e5e7eb; /* cinza de fundo pra não ficar branco */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 0.85rem;
-            color: #555;
-        }
-
-        .sidebar {
-            flex: 1;
-            max-width: 380px;
-            min-width: 260px;
-            border-left: 1px solid var(--cinza-medio);
-            background: #ffffff;
-            display: flex;
-            flex-direction: column;
-            padding: 10px 12px;
-            gap: 10px;
-        }
-
-        .sidebar-header {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-
-        .sidebar-title {
-            font-size: 0.95rem;
-            font-weight: 600;
-        }
-
-        .search-row {
-            display: flex;
-            gap: 6px;
-        }
-
-        .search-row input {
-            flex: 1;
-            padding: 6px 10px;
-            border-radius: 999px;
-            border: 1px solid var(--cinza-medio);
-            font-size: 0.85rem;
-        }
-
-        .badges-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 6px;
-            margin-top: 2px;
-        }
-
-        .badge-filter {
-            padding: 4px 10px;
-            border-radius: 999px;
-            border: 1px solid var(--cinza-medio);
-            font-size: 0.7rem;
-            cursor: pointer;
-            background: #fafafa;
-        }
-
-        .badge-filter.active {
-            background: var(--azul);
-            color: #fff;
-            border-color: var(--azul);
-        }
-
-        .legend-row {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 8px;
-            font-size: 0.75rem;
-            margin-top: 4px;
-        }
-
-        .legend-item {
-            display: inline-flex;
-            align-items: center;
-            gap: 4px;
-        }
-
-        .legend-dot {
-            width: 10px;
-            height: 10px;
-            border-radius: 50%;
-        }
-
-        .list {
-            flex: 1;
-            overflow-y: auto;
-            padding-right: 4px;
-        }
-
-        .motoboy-card {
-            border-radius: 10px;
-            border: 1px solid #eeeeee;
-            padding: 8px 10px;
-            margin-bottom: 6px;
-            cursor: pointer;
-            transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.08s ease;
-        }
-
-        .motoboy-card:hover {
-            background: #f7f9ff;
-            box-shadow: 0 1px 5px rgba(0,0,0,0.08);
-            transform: translateY(-1px);
-        }
-
-        .motoboy-card-header {
-            display: flex;
-            justify-content: space-between;
-            align-items: baseline;
-            gap: 6px;
-        }
-
-        .motoboy-name {
-            font-size: 0.9rem;
-            font-weight: 600;
-        }
-
-        .motoboy-status-pill {
-            font-size: 0.7rem;
-            border-radius: 999px;
-            padding: 2px 8px;
-            color: #fff;
-        }
-
-        .status-livre { background: var(--verde); }
-        .status-em_corrida { background: var(--laranja); }
-        .status-offline { background: #7f8c8d; }
-
-        .motoboy-sub {
-            font-size: 0.75rem;
-            color: #666;
-            margin-top: 2px;
-        }
-
-        .motoboy-meta {
-            font-size: 0.7rem;
-            color: #999;
-            margin-top: 2px;
-        }
-
-        .empty-state {
-            font-size: 0.8rem;
-            color: #777;
-            text-align: center;
-            margin-top: 18px;
-        }
-
-        @media (max-width: 900px) {
-            .layout { flex-direction: column; }
-            #map { height: 55vh; }
-            .sidebar {
-                max-width: 100%;
-                border-left: none;
-                border-top: 1px solid var(--cinza-medio);
-                height: 45vh;
-            }
-        }
-    </style>
+    /* Toast erro visível */
+    .toast{
+      position: fixed;
+      bottom: 18px;
+      right: 18px;
+      z-index: 9999;
+      padding: 12px 14px;
+      border-radius: 14px;
+      border: 1px solid rgba(220,38,38,.25);
+      background: rgba(220,38,38,.12);
+      color: #7f1d1d;
+      font-weight: 1000;
+      display:none;
+      max-width: 520px;
+      box-shadow: 0 12px 30px rgba(0,0,0,.10);
+    }
+  </style>
 </head>
 <body>
-    <div class="topbar">
-        <div class="topbar-left">
-            <div class="topbar-title">Mapa de Motoboys - Coopex</div>
-            <div class="pill">Visualização em tempo (quase) real</div>
-        </div>
-        <div class="topbar-right">
-            <button class="btn btn-primary" id="btnFitBounds">
-                <span class="icon">🗺️</span>
-                Enquadrar todos
-            </button>
-            <button class="btn" onclick="window.close()">
-                <span class="icon">✖</span>
-                Fechar aba
-            </button>
-        </div>
+  <div class="topbar">
+    <div class="brand">
+      <div class="logo">CX</div>
+      <div class="titlewrap">
+        <div class="title">MAPA DE MOTOBOYS — COOPEX</div>
+        <div class="sub">MapTiler (streets-v4) • atualiza só o mapa</div>
+      </div>
     </div>
 
-    <div class="layout">
-        <div id="map">Carregando mapa...</div>
+    <div class="actions">
+      <span class="chip"><span class="dot g"></span> ONLINE</span>
+      <span class="chip"><span class="dot r"></span> OFFLINE</span>
+      <span class="chip"><span class="dot a"></span> EM CORRIDA</span>
 
-        <aside class="sidebar">
-            <div class="sidebar-header">
-                <div class="sidebar-title">Motoboys conectados</div>
-                <div class="search-row">
-                    <input
-                        type="text"
-                        id="searchInput"
-                        placeholder="Buscar por nome..."
-                        autocomplete="off">
-                </div>
-                <div class="badges-row">
-                    <button class="badge-filter active" data-status="todos">Todos</button>
-                    <button class="badge-filter" data-status="livre">Livres</button>
-                    <button class="badge-filter" data-status="em_corrida">Em corrida</button>
-                    <button class="badge-filter" data-status="offline">Offline</button>
-                </div>
-                <div class="legend-row">
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: var(--verde);"></div> Livre
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: var(--laranja);"></div> Em corrida
-                    </div>
-                    <div class="legend-item">
-                        <div class="legend-dot" style="background: #7f8c8d;"></div> Offline
-                    </div>
-                </div>
-            </div>
+      <!-- botões com onclick (fallback) -->
+      <button class="btn" onclick="window.__fitAll && window.__fitAll()">Enquadrar</button>
+      <button class="btn ghost" onclick="window.__clearFollow && window.__clearFollow()">Parar seguir</button>
+      <button class="btn ghost" onclick="window.__startRoute && window.__startRoute()">Gravar rota</button>
+      <button class="btn ghost" onclick="window.__stopRoute && window.__stopRoute()">Parar rota</button>
+      <button class="btn ghost" onclick="window.__downloadRoute && window.__downloadRoute()">Baixar rota</button>
+      <button class="btn danger" onclick="window.close()">Fechar</button>
+    </div>
+  </div>
 
-            <div class="list" id="motoboysList"></div>
-        </aside>
+  <div class="wrap">
+    <div class="mapwrap">
+      <div class="mapbar">
+        <select id="selMotoboy">
+          <option value="">Selecionar motoboy (seguir)</option>
+        </select>
+
+        <select id="selFiltro">
+          <option value="todos">Todos</option>
+          <option value="online">Somente online</option>
+          <option value="offline">Somente offline</option>
+          <option value="em_corrida">Somente em corrida</option>
+        </select>
+
+        <input id="inpBusca" placeholder="Buscar por nome..." autocomplete="off" />
+
+        <div class="spacer"></div>
+
+        <button class="btnw" id="btnCenterNatal" type="button">Natal</button>
+        <button class="btnw" id="btnReload" type="button">Atualizar</button>
+      </div>
+
+      <div id="map"></div>
+
+      <div class="hint">
+        Selecione um motoboy para “seguir”. Arrastar/zoom no mapa pausa o follow. (Leve: só o mapa atualiza.)
+      </div>
     </div>
 
-    <!-- Leaflet JS (1º tentativa) -->
-    <script
-        src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-        integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-        crossorigin="">
-    </script>
+    <aside class="side">
+      <div class="panel">
+        <h3>Motoboys <span class="tiny" id="lblUpdated">—</span></h3>
+        <div class="searchrow">
+          <input id="inpBuscaSide" placeholder="Buscar..." autocomplete="off"/>
+        </div>
+        <div class="filters">
+          <div class="tag active" data-status="todos">Todos</div>
+          <div class="tag" data-status="online">Online</div>
+          <div class="tag" data-status="em_corrida">Em corrida</div>
+          <div class="tag" data-status="offline">Offline</div>
+        </div>
+        <div class="list" id="list"></div>
+      </div>
 
-    <script>
-        // Dados vindos do Flask
-        const motoboys = {{ (motoboys_js or []) | tojson | safe }};
-        const motoboysArray = Array.isArray(motoboys) ? motoboys : [];
+      <div class="panel">
+        <h3>Detalhes</h3>
+        <div class="tiny" id="details">Selecione um motoboy para ver detalhes.</div>
+      </div>
+    </aside>
+  </div>
 
-        const STATUS_CONFIG = {
-            "livre":      { label: "Livre",      color: "#2ecc71" },
-            "em_corrida": { label: "Em corrida", color: "#f39c12" },
-            "offline":    { label: "Offline",    color: "#7f8c8d" }
-        };
+  <div class="toast" id="toast"></div>
 
-        function normalizarTexto(texto) {
-            return (texto || '')
-                .toString()
-                .normalize('NFD')
-                .replace(/[\u0300-\u036f]/g, '')
-                .toLowerCase();
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+          crossorigin=""></script>
+
+  <script>
+    function toast(msg){
+      const t = document.getElementById("toast");
+      if(!t) return;
+      t.textContent = msg;
+      t.style.display = "block";
+      setTimeout(()=>{ t.style.display="none"; }, 7000);
+    }
+
+    // Seed: sem depender de filtros do jinja (evita quebrar template)
+    const motoboysSeed = {% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %};
+    const seedArray = Array.isArray(motoboysSeed) ? motoboysSeed : [];
+
+    const MAPTILER_KEY = "bSeKIro6dKQKEDRrIUee";
+    const MAPTILER_STYLE = "streets-v4";
+    const DATA_ENDPOINT = "/mapa_motoboys?format=json";
+    const POLL_MS = 3500;
+
+    const defaultCenter = [-5.79448, -35.211]; // Natal/RN
+    const $ = (id)=>document.getElementById(id);
+
+    function norm(t){
+      return (t||"").toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    }
+    function safe(v){ return (v===null || v===undefined) ? "" : String(v); }
+
+    function parseTimeToMs(ts){
+      if(!ts) return null;
+      const d = new Date(String(ts).trim());
+      return isNaN(d.getTime()) ? null : d.getTime();
+    }
+    function haversineKm(lat1, lon1, lat2, lon2){
+      const R = 6371;
+      const toRad = x => x*Math.PI/180;
+      const dLat = toRad(lat2-lat1);
+      const dLon = toRad(lon2-lon1);
+      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
+      return 2*R*Math.asin(Math.sqrt(a));
+    }
+
+    // Moto pin SVG base64 (sem moldura)
+    function svgToDataUrl(svg){
+      const encoded = btoa(unescape(encodeURIComponent(svg)));
+      return "data:image/svg+xml;base64," + encoded;
+    }
+    function motoPinSvg(color){
+      return `
+      <svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">
+        <path d="M22 0C10.7 0 1.5 9.2 1.5 20.5C1.5 35.6 20.3 54.5 21.1 55.3C21.6 55.8 22.4 55.8 22.9 55.3C23.7 54.5 42.5 35.6 42.5 20.5C42.5 9.2 33.3 0 22 0Z" fill="${color}"/>
+        <circle cx="22" cy="20.5" r="12.5" fill="#fff" opacity="0.98"/>
+        <path d="M13.6 24.2c.7-2.2 2.7-3.7 5.1-3.7h2.1l1.3-2.1h3.8l-1.2 2.1h1.6c2.7 0 4.9 2.2 4.9 4.9
+                 0 .3 0 .6-.1.9h-2.1c.1-.3.1-.6.1-.9 0-1.5-1.2-2.8-2.8-2.8h-6.7c-1.4 0-2.6.9-3 2.2l-.2.6h-2.8z"
+              fill="#0b1220"/>
+        <circle cx="17" cy="28" r="2.4" fill="#0b1220"/>
+        <circle cx="29" cy="28" r="2.4" fill="#0b1220"/>
+      </svg>`;
+    }
+    function iconFor(status, size){
+      const zSize = size || 44;
+      const h = Math.round(zSize*56/44);
+      let color = "#dc2626"; // offline
+      if(status === "em_corrida") color = "#d97706";
+      if(status === "online") color = "#16a34a";
+      return L.icon({
+        iconUrl: svgToDataUrl(motoPinSvg(color)),
+        iconSize: [zSize, h],
+        iconAnchor: [Math.round(zSize/2), h-2],
+        popupAnchor: [0, -h+10]
+      });
+    }
+    function sizeByZoom(z){
+      if(z >= 17) return 56;
+      if(z >= 15) return 50;
+      if(z >= 13) return 44;
+      return 40;
+    }
+
+    // MAP INIT
+    let map;
+    try{
+      map = L.map("map", { zoomControl: true }).setView(defaultCenter, 12);
+      L.tileLayer(
+        `https://api.maptiler.com/maps/${MAPTILER_STYLE}/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
+        { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: "&copy; OpenStreetMap &copy; MapTiler" }
+      ).addTo(map);
+    }catch(e){
+      console.error(e);
+      toast("Erro ao iniciar o mapa. Verifique internet/MapTiler.");
+    }
+
+    const markers = new Map();
+    const trails = new Map();
+    const lastPoint = new Map();
+
+    let followId = "";
+    let followActive = false;
+
+    let routeRecording = false;
+    let recordedId = "";
+    let recordedPoints = [];
+
+    if(map){
+      map.on("dragstart zoomstart", ()=>{ if(followActive){ followActive=false; updateDetails(); } });
+      map.on("zoomend", ()=>{
+        const s = sizeByZoom(map.getZoom());
+        markers.forEach((mk)=>{
+          const st = mk.options.__status || "offline";
+          mk.setIcon(iconFor(st, s));
+        });
+      });
+    }
+
+    function statusFromItem(m){
+      const s = (m.status || "").toString();
+      if(s === "livre") return "online";
+      if(s === "em_corrida") return "em_corrida";
+      if(s === "offline") return "offline";
+      if(typeof m.online === "boolean") return m.online ? "online" : "offline";
+      return s || "offline";
+    }
+
+    function popupHtml(m, speedKmh){
+      const nome = safe(m.nome || m.name || "Motoboy");
+      const st = statusFromItem(m);
+      const stLabel = st === "online" ? "ONLINE" : (st === "em_corrida" ? "EM CORRIDA" : "OFFLINE");
+      const last = safe(m.ultima_atualizacao || m.last_seen || m.updated_at || "—");
+      return `
+        <div style="min-width:240px">
+          <div style="font-weight:1000;font-size:14px;margin-bottom:6px;color:#083AA8">${nome}</div>
+          <div style="font-size:12px;font-weight:1000;margin-bottom:6px">${stLabel}</div>
+          <div style="font-size:12px;font-weight:900;color:#111827">Velocidade: <b>${speedKmh !== null ? speedKmh.toFixed(1) : "—"}</b> ${speedKmh !== null ? "km/h" : ""}</div>
+          <div style="font-size:12px;font-weight:900;color:#374151">Última atualização: <b>${last}</b></div>
+        </div>
+      `;
+    }
+
+    function addTrailPoint(id, lat, lng){
+      const key = "trail_" + id;
+      let pl = trails.get(key);
+      if(!pl && map){
+        pl = L.polyline([[lat,lng]], { color: "#0B4BD6", weight: 5, opacity: .9 }).addTo(map);
+        trails.set(key, pl);
+      }else if(pl){
+        const ll = pl.getLatLngs();
+        ll.push([lat,lng]);
+        if(ll.length > 140) ll.shift();
+        pl.setLatLngs(ll);
+      }
+    }
+    function clearTrails(){
+      trails.forEach((pl)=>{ try{ map && map.removeLayer(pl); }catch(e){} });
+      trails.clear();
+    }
+
+    function upsertMarker(m){
+      const id = String(m.id ?? m.cooperado_id ?? m.user_id ?? "");
+      const lat = Number(m.lat);
+      const lng = Number(m.lng);
+      if(!id || !isFinite(lat) || !isFinite(lng) || !map) return;
+
+      const st = statusFromItem(m);
+
+      let speedKmh = null;
+      const fromField = (m.speed_kmh ?? m.speed ?? null);
+      if(fromField !== null && fromField !== undefined && isFinite(Number(fromField))){
+        speedKmh = Number(fromField);
+      }else{
+        const prev = lastPoint.get(id);
+        const tMs = parseTimeToMs(m.ultima_atualizacao || m.last_seen || m.updated_at) || Date.now();
+        if(prev && prev.tMs && tMs && (tMs > prev.tMs)){
+          const km = haversineKm(prev.lat, prev.lng, lat, lng);
+          const hours = (tMs - prev.tMs)/3600000;
+          if(hours > 0){
+            speedKmh = km / hours;
+            if(speedKmh > 130) speedKmh = 130;
+          }
         }
+        lastPoint.set(id, {lat, lng, tMs});
+      }
 
-        function initMapa() {
-            const mapDiv = document.getElementById('map');
+      const size = sizeByZoom(map.getZoom());
+      let mk = markers.get(id);
+      if(!mk){
+        mk = L.marker([lat,lng], { icon: iconFor(st, size) }).addTo(map);
+        mk.on("click", ()=>{
+          followId = id;
+          followActive = true;
+          updateDetails();
+        });
+        markers.set(id, mk);
+      }else{
+        mk.setLatLng([lat,lng]);
+        mk.setIcon(iconFor(st, size));
+      }
 
-            if (typeof L === 'undefined') {
-                mapDiv.textContent = 'Erro ao carregar biblioteca de mapas (Leaflet). Veja o console do navegador (F12 > Console).';
-                console.error('Leaflet (L) não está definido.');
-                return;
-            }
+      mk.options.__status = st;
+      mk.options.__nome = safe(m.nome || m.name || "Motoboy");
+      mk.options.__speed = speedKmh;
+      mk.bindPopup(popupHtml(m, speedKmh));
 
-            // Limpa mensagem de "carregando"
-            mapDiv.textContent = '';
-
-            const defaultCenter = [-5.79448, -35.211]; // Natal/RN
-            const map = L.map('map').setView(defaultCenter, 12);
-
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                maxZoom: 19,
-                attribution: '&copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a>'
-            }).addTo(map);
-
-            const markersById = {};
-            const bounds = L.latLngBounds();
-
-            motoboysArray.forEach(m => {
-                if (typeof m.lat !== 'number' || typeof m.lng !== 'number') return;
-
-                const statusCfg = STATUS_CONFIG[m.status] || STATUS_CONFIG['offline'];
-
-                const marker = L.circleMarker([m.lat, m.lng], {
-                    radius: 9,
-                    stroke: true,
-                    weight: 2,
-                    color: '#ffffff',
-                    fillColor: statusCfg.color,
-                    fillOpacity: 0.95
-                });
-
-                const popupHtml = `
-                    <div style="min-width: 180px;">
-                        <strong>${m.nome || 'Motoboy'}</strong><br>
-                        <small>Status: ${statusCfg.label}</small><br>
-                        ${m.ultima_atualizacao ? `<small>Última atualização: ${m.ultima_atualizacao}</small><br>` : ''}
-                        ${m.endereco ? `<small>Zona: ${m.endereco}</small><br>` : ''}
-                        ${m.observacao ? `<small>Obs: ${m.observacao}</small>` : ''}
-                    </div>
-                `;
-                marker.bindPopup(popupHtml);
-                marker.addTo(map);
-
-                markersById[m.id] = marker;
-                bounds.extend(marker.getLatLng());
-            });
-
-            function fitToMotoboys() {
-                if (motoboysArray.length === 0 || bounds.isValid() === false) {
-                    map.setView(defaultCenter, 12);
-                } else {
-                    map.fitBounds(bounds.pad(0.2));
-                }
-            }
-
-            document.getElementById('btnFitBounds')
-                .addEventListener('click', fitToMotoboys);
-
-            fitToMotoboys();
-
-            // ==== Lista / filtros ====
-            const listEl = document.getElementById('motoboysList');
-            const searchInput = document.getElementById('searchInput');
-            const filterButtons = document.querySelectorAll('.badge-filter');
-
-            let currentStatusFilter = 'todos';
-            let currentSearch = '';
-
-            function renderList() {
-                listEl.innerHTML = '';
-                const searchNorm = normalizarTexto(currentSearch);
-                let count = 0;
-
-                motoboysArray.forEach(m => {
-                    if (currentStatusFilter !== 'todos' && m.status !== currentStatusFilter) return;
-                    const nomeNorm = normalizarTexto(m.nome);
-                    if (searchNorm && !nomeNorm.includes(searchNorm)) return;
-
-                    count++;
-                    const statusCfg = STATUS_CONFIG[m.status] || STATUS_CONFIG['offline'];
-                    const statusClass = `status-${m.status || 'offline'}`;
-
-                    const card = document.createElement('div');
-                    card.className = 'motoboy-card';
-                    card.dataset.id = m.id;
-
-                    card.innerHTML = `
-                        <div class="motoboy-card-header">
-                            <div class="motoboy-name">${m.nome || 'Motoboy'}</div>
-                            <div class="motoboy-status-pill ${statusClass}">
-                                ${statusCfg.label}
-                            </div>
-                        </div>
-                        <div class="motoboy-sub">
-                            ${m.endereco ? m.endereco : 'Sem endereço definido'}
-                        </div>
-                        <div class="motoboy-meta">
-                            ${m.ultima_atualizacao ? `Última atualização: ${m.ultima_atualizacao}` : ''}
-                            ${m.observacao ? ` &middot; ${m.observacao}` : ''}
-                        </div>
-                    `;
-
-                    card.addEventListener('click', () => {
-                        const marker = markersById[m.id];
-                        if (marker) {
-                            const latLng = marker.getLatLng();
-                            map.setView(latLng, 16, { animate: true });
-                            marker.openPopup();
-                        }
-                    });
-
-                    listEl.appendChild(card);
-                });
-
-                if (count === 0) {
-                    const empty = document.createElement('div');
-                    empty.className = 'empty-state';
-                    empty.textContent = 'Nenhum motoboy encontrado para esse filtro.';
-                    listEl.appendChild(empty);
-                }
-            }
-
-            renderList();
-
-            searchInput.addEventListener('input', (e) => {
-                currentSearch = e.target.value;
-                renderList();
-            });
-
-            filterButtons.forEach(btn => {
-                btn.addEventListener('click', () => {
-                    filterButtons.forEach(b => b.classList.remove('active'));
-                    btn.classList.add('active');
-                    currentStatusFilter = btn.dataset.status;
-                    renderList();
-                });
-            });
+      if(followId && id === followId){
+        addTrailPoint(id, lat, lng);
+        if(routeRecording && recordedId === id){
+          recordedPoints.push({lat, lng, tMs: Date.now()});
         }
+      }
+    }
 
-        // IIFE com fallback de CDN
-        (function () {
-            if (typeof L !== 'undefined') {
-                // Leaflet já carregou da primeira tag <script>
-                initMapa();
-            } else {
-                console.warn('Leaflet não disponível via unpkg, tentando carregar via cdnjs...');
-                const fallback = document.createElement('script');
-                fallback.src = "https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.js";
-                fallback.onload = initMapa;
-                fallback.onerror = function () {
-                    const mapDiv = document.getElementById('map');
-                    mapDiv.textContent = 'Não foi possível carregar o mapa (falha em ambos CDNs).';
-                };
-                document.head.appendChild(fallback);
-            }
-        })();
-    </script>
+    function tickFollow(){
+      if(!followActive || !followId || !map) return;
+      const mk = markers.get(followId);
+      if(!mk) return;
+      map.panTo(mk.getLatLng(), { animate:true, duration: 0.6 });
+    }
+    setInterval(tickFollow, 900);
+
+    function fitAll(){
+      if(!map) return;
+      const ll = [];
+      markers.forEach((mk)=> ll.push(mk.getLatLng()));
+      if(ll.length) map.fitBounds(L.latLngBounds(ll).pad(0.2));
+      else map.setView(defaultCenter, 12);
+    }
+
+    function applyFilter(arr, statusFilter, search){
+      const s = norm(search || "");
+      return arr.filter(m=>{
+        const st = statusFromItem(m);
+        if(statusFilter && statusFilter !== "todos"){
+          if(statusFilter === "online" && st !== "online") return false;
+          if(statusFilter === "offline" && st !== "offline") return false;
+          if(statusFilter === "em_corrida" && st !== "em_corrida") return false;
+        }
+        if(s){
+          const n = norm(m.nome || m.name || "");
+          if(!n.includes(s)) return false;
+        }
+        return true;
+      });
+    }
+
+    function renderSelect(arr){
+      const sel = $("selMotoboy");
+      if(!sel) return;
+      const cur = sel.value;
+      sel.innerHTML = `<option value="">Selecionar motoboy (seguir)</option>` + arr
+        .map(m=>{
+          const id = safe(m.id ?? m.cooperado_id ?? m.user_id);
+          const nm = safe(m.nome || m.name || "Motoboy");
+          return `<option value="${id}">${nm}</option>`;
+        }).join("");
+      if(cur) sel.value = cur;
+    }
+
+    function renderList(arr){
+      const list = $("list");
+      if(!list) return;
+      list.innerHTML = "";
+      if(!arr.length){
+        list.innerHTML = `<div class="tiny">Nenhum motoboy encontrado.</div>`;
+        return;
+      }
+      arr.forEach(m=>{
+        const id = safe(m.id ?? m.cooperado_id ?? m.user_id);
+        const nm = safe(m.nome || m.name || "Motoboy");
+        const st = statusFromItem(m);
+        const last = safe(m.ultima_atualizacao || m.last_seen || m.updated_at || "");
+        const card = document.createElement("div");
+        card.className = "card";
+        card.innerHTML = `
+          <div class="row">
+            <div class="name">${nm}</div>
+            ${st==="online" ? `<span class="pill green">ONLINE</span>` : (st==="em_corrida" ? `<span class="pill amber">EM CORRIDA</span>` : `<span class="pill red">OFFLINE</span>`)}
+          </div>
+          <div class="meta">${last ? ("Última: " + last) : "—"}</div>
+        `;
+        card.addEventListener("click", ()=>{
+          setFollow(id);
+          const sel = $("selMotoboy");
+          if(sel) sel.value = id;
+        });
+        list.appendChild(card);
+      });
+    }
+
+    function updateDetails(){
+      const el = $("details");
+      if(!el) return;
+      if(!followId){
+        el.textContent = "Selecione um motoboy para ver detalhes.";
+        return;
+      }
+      const mk = markers.get(followId);
+      if(!mk){
+        el.textContent = "Motoboy não encontrado no mapa.";
+        return;
+      }
+      const nome = mk.options.__nome || "Motoboy";
+      const st = mk.options.__status || "offline";
+      const speed = mk.options.__speed;
+      el.innerHTML = `
+        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
+          <div style="font-weight:1000">${nome}</div>
+          ${st==="online" ? `<span class="pill green">ONLINE</span>` : (st==="em_corrida" ? `<span class="pill amber">EM CORRIDA</span>` : `<span class="pill red">OFFLINE</span>`)}
+        </div>
+        <div class="meta">Follow: <b>${followActive ? "ATIVO" : "PAUSADO"}</b></div>
+        <div class="meta">Velocidade: <b>${(speed !== null && speed !== undefined) ? speed.toFixed(1) : "—"}</b> ${(speed !== null && speed !== undefined) ? "km/h" : ""}</div>
+      `;
+    }
+
+    function setFollow(id){
+      followId = id || "";
+      followActive = !!followId;
+      clearTrails();
+      if(followId && map){
+        const mk = markers.get(followId);
+        if(mk){
+          map.setView(mk.getLatLng(), Math.max(map.getZoom(), 16), { animate:true });
+          mk.openPopup();
+        }
+      }
+      updateDetails();
+    }
+
+    // Expor funções para onclick (fallback)
+    window.__fitAll = fitAll;
+    window.__clearFollow = function(){ followActive=false; followId=""; const sel=$("selMotoboy"); if(sel) sel.value=""; clearTrails(); updateDetails(); };
+    window.__startRoute = function(){
+      if(!followId){ alert("Selecione um motoboy para gravar a rota."); return; }
+      routeRecording = true; recordedId = followId; recordedPoints = [];
+      alert("Gravação de rota iniciada (local).");
+    };
+    window.__stopRoute = function(){ routeRecording = false; alert("Gravação de rota parada."); };
+    window.__downloadRoute = function(){
+      if(recordedPoints.length < 2){ alert("Rota curta demais para baixar."); return; }
+      const geo = {
+        type:"FeatureCollection",
+        features:[{
+          type:"Feature",
+          properties:{ id: recordedId || "", createdAt: new Date().toISOString() },
+          geometry:{ type:"LineString", coordinates: recordedPoints.map(p=>[p.lng, p.lat]) }
+        }]
+      };
+      const blob = new Blob([JSON.stringify(geo, null, 2)], {type:"application/geo+json"});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `rota_${(recordedId||"motoboy")}_${Date.now()}.geojson`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 2000);
+    };
+
+    async function fetchData(){
+      try{
+        const r = await fetch(DATA_ENDPOINT, { cache:"no-store" });
+        if(!r.ok) throw new Error("HTTP " + r.status);
+        const data = await r.json();
+        const arr = Array.isArray(data) ? data : (Array.isArray(data.motoboys) ? data.motoboys : []);
+        arr.forEach(upsertMarker);
+
+        const filtro = ($("selFiltro") && $("selFiltro").value) ? $("selFiltro").value : "todos";
+        const q = ($("inpBusca") && $("inpBusca").value) ? $("inpBusca").value : "";
+        const q2 = ($("inpBuscaSide") && $("inpBuscaSide").value) ? $("inpBuscaSide").value : "";
+        const filtered = applyFilter(arr, filtro, (q || q2));
+
+        renderSelect(filtered);
+        renderList(filtered);
+        const lbl = $("lblUpdated");
+        if(lbl) lbl.textContent = "Atualizado: " + new Date().toLocaleTimeString();
+        updateDetails();
+      }catch(e){
+        console.warn("Falha ao buscar mapa:", e);
+      }
+    }
+
+    // DOM wiring
+    window.addEventListener("DOMContentLoaded", ()=>{
+      const sel = $("selMotoboy");
+      if(sel) sel.addEventListener("change", (e)=> setFollow(e.target.value));
+
+      const f = $("selFiltro");
+      if(f) f.addEventListener("change", ()=> fetchData());
+
+      const b1 = $("inpBusca");
+      if(b1) b1.addEventListener("input", ()=> fetchData());
+
+      const b2 = $("inpBuscaSide");
+      if(b2) b2.addEventListener("input", ()=> fetchData());
+
+      const reload = $("btnReload");
+      if(reload) reload.addEventListener("click", ()=> fetchData());
+
+      const nat = $("btnCenterNatal");
+      if(nat) nat.addEventListener("click", ()=>{ if(map) map.setView(defaultCenter, 12, {animate:true}); });
+
+      document.querySelectorAll(".tag").forEach(tag=>{
+        tag.addEventListener("click", ()=>{
+          document.querySelectorAll(".tag").forEach(t=>t.classList.remove("active"));
+          tag.classList.add("active");
+          if($("selFiltro")) $("selFiltro").value = tag.dataset.status;
+          fetchData();
+        });
+      });
+
+      // seed
+      seedArray.forEach(upsertMarker);
+      setTimeout(()=>fitAll(), 450);
+      setTimeout(()=>fetchData(), 900);
+      setInterval(()=>fetchData(), POLL_MS);
+      renderSelect(seedArray);
+      renderList(seedArray);
+    });
+  </script>
 </body>
 </html>
