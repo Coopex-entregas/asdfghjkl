@@ -63,7 +63,7 @@ ADMIN_CREDENTIALS = {
 PORTAL_PRINCIPAL_URL = os.environ.get('PORTAL_PRINCIPAL_URL', 'https://financas-dxsu.onrender.com')
 
 def _sso_shared_serializer():
-    shared = os.environ.get('SSO_SHARED_SECRET') or app.config['SECRET_KEY']
+    shared = os.environ.get('SSO_SHARED_SECRET') or 'COOPEX_SSO_SHARED_2026_FIXED'
     return URLSafeTimedSerializer(shared, salt='coopex-sso-v1')
 
 def sso_dump_shared(payload: dict) -> str:
@@ -72,8 +72,11 @@ def sso_dump_shared(payload: dict) -> str:
 def sso_load_shared(token: str, max_age_seconds: int = 45):
     return _sso_shared_serializer().loads(token, max_age=max_age_seconds)
 
-def _build_principal_sso_url(tipo: str = 'supervisao', next_path: str = '/admin?tab=escalas') -> str:
-    token = sso_dump_shared({'aud': 'painel-destino', 'orig': 'sistema1', 'tipo': tipo, 'next': next_path, 'iat': int(datetime.utcnow().timestamp())})
+def _build_principal_sso_url(tipo: str = 'supervisao', next_path: str = '/admin?tab=escalas', role: str | None = None) -> str:
+    payload = {'aud': 'painel-destino', 'orig': 'sistema1', 'tipo': tipo, 'next': next_path, 'iat': int(datetime.utcnow().timestamp())}
+    if role:
+        payload['role'] = role
+    token = sso_dump_shared(payload)
     return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}\/sso/entrar?token={token}".replace('\\/', '/')
 
 def _admin_top_button_html() -> str:
@@ -1664,13 +1667,13 @@ def autologin():
 def ir_principal_escala():
     if not session.get('is_admin') or session.get('is_master'):
         return redirect(url_for('login'))
-    return redirect(_build_principal_sso_url(tipo='supervisao', next_path='/admin?tab=escalas'))
+    return redirect(_build_principal_sso_url(tipo='supervisao', next_path='/admin?tab=escalas', role='supervisao'))
 
 @app.get('/voltar-admin')
 def voltar_admin():
     if not session.get('is_master'):
         return redirect(url_for('login'))
-    return redirect(_build_principal_sso_url(tipo='admin', next_path='/admin?tab=sistemas'))
+    return redirect(_build_principal_sso_url(tipo='admin', next_path='/admin?tab=sistemas', role='master'))
 
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
