@@ -23,7 +23,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature, SignatureExpired
+from itsdangerous import URLSafeSerializer, BadSignature
 
 import pandas as pd
 import holidays
@@ -205,77 +205,6 @@ def gerar_token_rastreio(entrega_id: int):
 def ler_token_rastreio(token: str):
     return _rastreio_serializer().loads(token)
 
-
-
-
-# =========================================================
-# SSO ENTRE SISTEMAS
-# =========================================================
-PORTAL_ADMIN_URL = os.environ.get("PORTAL_ADMIN_URL", "https://financas-dxsu.onrender.com")
-
-def _sso_shared_serializer():
-    shared = os.environ.get("SSO_SHARED_SECRET", "COOPEX_SSO_SHARED_CHANGE_ME_2026")
-    return URLSafeTimedSerializer(shared, salt="coopex-sso-v1")
-
-def sso_load_shared(token: str, max_age_seconds: int = 45):
-    return _sso_shared_serializer().loads(token, max_age=max_age_seconds)
-
-def sso_dump_shared(payload: dict) -> str:
-    return _sso_shared_serializer().dumps(payload)
-
-@app.route('/autologin')
-def autologin():
-    token = (request.args.get('token') or '').strip()
-    if not token:
-        return redirect(url_for('login'))
-    try:
-        data = sso_load_shared(token, max_age_seconds=45)
-    except SignatureExpired:
-        flash('Link expirou. Clique novamente no portal.', 'error')
-        return redirect(url_for('login'))
-    except BadSignature:
-        flash('Link inválido.', 'error')
-        return redirect(url_for('login'))
-
-    if data.get('aud') != 'sistema-1':
-        flash('Destino inválido.', 'error')
-        return redirect(url_for('login'))
-
-    session.clear()
-    session['user_id'] = 0
-    session['user_nome'] = 'Portal COOPEX'
-    session['is_admin'] = True
-    session['is_master'] = True
-    session['tipo'] = 'admin'
-    next_url = data.get('next') or url_for('admin')
-    return redirect(next_url)
-
-@app.route('/voltar-admin')
-def voltar_admin():
-    return redirect(f"{PORTAL_ADMIN_URL}/admin?tab=sistemas")
-
-@app.context_processor
-def inject_portal_admin_link():
-    return {'voltar_admin_url': url_for('voltar_admin')}
-
-@app.after_request
-def inject_voltar_admin_button(response):
-    try:
-        ctype = (response.content_type or '').lower()
-        if 'text/html' not in ctype:
-            return response
-        if request.path.startswith('/static') or request.path in ['/login', '/autologin', '/logout']:
-            return response
-        if not session.get('is_master'):
-            return response
-        body = response.get_data(as_text=True)
-        if 'voltar-admin-flutuante' in body or '</body>' not in body:
-            return response
-        btn = '<a id="voltar-admin-flutuante" href="%s" style="position:fixed;right:18px;bottom:18px;z-index:9999;background:#2747d9;color:#fff;text-decoration:none;padding:10px 14px;border-radius:999px;font-weight:700;box-shadow:0 10px 24px rgba(0,0,0,.18);font-family:Arial,sans-serif;">Voltar ao Admin</a>' % url_for('voltar_admin')
-        response.set_data(body.replace('</body>', btn + '</body>'))
-    except Exception:
-        return response
-    return response
 
 # =========================================================
 # FLASK-LOGIN / LOGIN MANAGER
