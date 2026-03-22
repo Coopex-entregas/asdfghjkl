@@ -7,7 +7,7 @@ from flask_socketio import SocketIO
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
-from urllib.parse import urlparse, parse_qs
+from urllib.parse import urlparse, parse_qs, quote
 from functools import wraps
 from decimal import Decimal
 
@@ -23,7 +23,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature, SignatureExpired
+from itsdangerous import URLSafeSerializer, BadSignature
 
 import pandas as pd
 import holidays
@@ -52,17 +52,108 @@ socketio = SocketIO(
 )
 
 
-PORTAL_PRINCIPAL_URL = os.environ.get('PORTAL_PRINCIPAL_URL', 'https://financas-dxsu.onrender.com')
+# =========================================================
+# INTEGRAÇÃO COM O PRINCIPAL (SSO)
+# =========================================================
+PRINCIPAL_BASE_URL = os.environ.get("PRINCIPAL_BASE_URL", "https://financas-dxsu.onrender.com").rstrip("/")
 
-def _sso_serializer():
-    secret = os.environ.get('SSO_SHARED_SECRET') or 'COOPEX_SSO_SHARED_2026_FIXED'
-    return URLSafeTimedSerializer(secret_key=secret, salt='coopex-sso-v1')
+def _sso_secret():
+    return os.environ.get("SSO_SHARED_SECRET") or "COOPEX_SSO_SHARED_2026_FIXED"
 
-def sso_dump(payload: dict) -> str:
-    return _sso_serializer().dumps(payload)
+def _sso_dump(payload: dict) -> str:
+    return URLSafeSerializer(_sso_secret(), salt="coopex-sso-v1").dumps(payload)
 
-def sso_load(token: str, max_age_seconds: int = 60):
-    return _sso_serializer().loads(token, max_age=max_age_seconds)
+def _sso_load(token: str) -> dict:
+    return URLSafeSerializer(_sso_secret(), salt="coopex-sso-v1").loads(token)
+
+def _principal_sso_url(payload: dict) -> str:
+    return f"{PRINCIPAL_BASE_URL}/sso/entrar?token={quote(_sso_dump(payload))}"
+
+@app.get("/autologin")
+def autologin():
+    token = (request.args.get("token") or "").strip()
+    if not token:
+        flash("Link inválido.", "error")
+        return redirect(url_for("login"))
+    try:
+        data = _sso_load(token)
+    except BadSignature:
+        flash("Link inválido.", "error")
+        return redirect(url_for("login"))
+
+    aud = str(data.get("aud") or "").strip().lower()
+    if aud not in {"sistema1", "painel1", "sistema-1"}:
+        flash("Destino inválido.", "error")
+        return redirect(url_for("login"))
+
+    role = str(data.get("role") or "master").strip().lower()
+    session.clear()
+    session["user_id"] = 0
+    session["user_nome"] = "coopex"
+    session["is_admin"] = True
+    session["tipo"] = "admin"
+    # do principal para o sistema 1 entra como master
+    session["is_master"] = (role == "master")
+    return redirect(url_for("admin"))
+
+@app.get("/retornar-admin")
+def retornar_admin():
+    if not session.get("is_admin") or not session.get("is_master"):
+        return redirect(url_for("admin"))
+    payload = {
+        "aud": "painel-destino",
+        "orig": "sistema1",
+        "tipo": "admin",
+        "principal_user": "COOPEX",
+        "next": "/admin",
+        "iat": int(datetime.utcnow().timestamp()),
+    }
+    return redirect(_principal_sso_url(payload))
+
+@app.get("/ir-principal-escala")
+def ir_principal_escala():
+    # admin comum (coopex / 84253700) -> principal como SUPERVISAO na aba escalas
+    if not session.get("is_admin") or session.get("is_master"):
+        return redirect(url_for("admin"))
+    payload = {
+        "aud": "painel-destino",
+        "orig": "sistema1",
+        "tipo": "supervisao",
+        "principal_user": "SUPERVISAO",
+        "next": "/admin?tab=escalas",
+        "iat": int(datetime.utcnow().timestamp()),
+    }
+    return redirect(_principal_sso_url(payload))
+
+@app.after_request
+def _patch_admin_principal_button(response):
+    try:
+        if request.method != "GET":
+            return response
+        if not request.path.startswith("/admin"):
+            return response
+        ctype = (response.content_type or "").lower()
+        if "text/html" not in ctype:
+            return response
+        body = response.get_data(as_text=True)
+        hardcoded = '<a href="https://financas-dxsu.onrender.com/admin?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
+        if hardcoded in body:
+            if session.get("is_admin") and session.get("is_master"):
+                repl = '<a href="/retornar-admin" class="top-link-btn">Dashboard Principal</a>'
+            elif session.get("is_admin"):
+                repl = '<a href="/ir-principal-escala" class="top-link-btn">Escala</a>'
+            else:
+                repl = ""
+            body = body.replace(hardcoded, repl)
+            response.set_data(body)
+            try:
+                response.headers["Content-Length"] = str(len(response.get_data()))
+            except Exception:
+                pass
+    except Exception:
+        return response
+    return response
+
 
 
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
@@ -1751,88 +1842,6 @@ def api_mobile_login_cooperado():
             "ativo": bool(coop.ativo),
         }
     )
-
-
-
-@app.route('/autologin')
-def autologin():
-    token = (request.args.get('token') or '').strip()
-    if not token:
-        return redirect(url_for('login'))
-    try:
-        data = sso_load(token, max_age_seconds=60)
-    except SignatureExpired:
-        flash('Link expirou. Clique novamente no portal.', 'danger')
-        return redirect(url_for('login'))
-    except BadSignature:
-        flash('Link inválido.', 'danger')
-        return redirect(url_for('login'))
-
-    if (data.get('aud') or '').strip().lower() != 'sistema1':
-        flash('Destino inválido.', 'danger')
-        return redirect(url_for('login'))
-
-    role = (data.get('role') or 'master').strip().lower()
-    session.clear()
-    session.permanent = True
-    session['user_id'] = 0
-    session['user_nome'] = 'coopex'
-    session['is_admin'] = True
-    session['is_master'] = (role == 'master')
-    next_url = data.get('next') or url_for('admin')
-    return redirect(next_url)
-
-@app.route('/retornar-admin')
-def retornar_admin():
-    if not session.get('is_admin') or not session.get('is_master'):
-        return redirect(url_for('admin'))
-    token = sso_dump({
-        'aud': 'painel-destino',
-        'orig': 'sistema1',
-        'tipo': 'admin',
-        'principal_user': 'COOPEX',
-        'principal_pass': 'COOPEX05289',
-        'next': '/admin',
-        'iat': int(datetime.utcnow().timestamp()),
-    })
-    return redirect(f"{PORTAL_PRINCIPAL_URL.rstrip('/')}/sso/entrar?token={token}")
-
-@app.route('/ir-principal-escala')
-def ir_principal_escala():
-    if not session.get('is_admin') or session.get('is_master'):
-        return redirect(url_for('admin'))
-    token = sso_dump({
-        'aud': 'painel-destino',
-        'orig': 'sistema1',
-        'tipo': 'supervisao',
-        'principal_user': 'SUPERVISAO',
-        'principal_pass': '84253700',
-        'next': '/admin?tab=escalas',
-        'iat': int(datetime.utcnow().timestamp()),
-    })
-    return redirect(f"{PORTAL_PRINCIPAL_URL.rstrip('/')}/sso/entrar?token={token}")
-
-@app.after_request
-def _patch_admin_top_button(resp):
-    try:
-        if request.endpoint == 'admin' and request.method == 'GET' and (resp.mimetype or '').startswith('text/html'):
-            body = resp.get_data(as_text=True)
-            if 'class="top-link-btn"' in body:
-                if session.get('is_admin') and session.get('is_master'):
-                    repl = '<a href="%s" class="top-link-btn">Dashboard Principal</a>' % url_for('retornar_admin')
-                elif session.get('is_admin'):
-                    repl = '<a href="%s" class="top-link-btn">Escala</a>' % url_for('ir_principal_escala')
-                else:
-                    repl = None
-                if repl:
-                    body = re.sub(r'<a\\s+href="https://financas-dxsu\\.onrender\\.com/admin\\?tab=escalas"\\s+class="top-link-btn"[^>]*>Escala</a>', repl, body, count=1)
-                    body = re.sub(r'<a\\s+href="[^"]*"\\s+class="top-link-btn"[^>]*>Retornar Admin</a>', repl, body, count=1)
-                    body = re.sub(r'<a\\s+href="[^"]*"\\s+class="top-link-btn"[^>]*>Escala</a>', repl, body, count=1)
-                    resp.set_data(body)
-                    resp.headers['Content-Length'] = str(len(body.encode('utf-8')))
-    except Exception:
-        pass
-    return resp
 
 
 @app.route('/logout')
