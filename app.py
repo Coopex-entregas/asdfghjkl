@@ -23,7 +23,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature
+from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 import pandas as pd
 import holidays
@@ -60,24 +60,29 @@ ADMIN_CREDENTIALS = {
     }
 }
 
-PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
+PORTAL_PRINCIPAL_URL = os.environ.get('PORTAL_PRINCIPAL_URL', 'https://financas-dxsu.onrender.com')
 
-def _sso_serializer_principal():
-    secret = os.environ.get("SSO_SHARED_SECRET") or app.secret_key
-    return URLSafeTimedSerializer(secret_key=secret, salt="coopex-sso-v1")
+def _sso_shared_serializer():
+    shared = os.environ.get('SSO_SHARED_SECRET') or app.config['SECRET_KEY']
+    return URLSafeTimedSerializer(shared, salt='coopex-sso-v1')
 
-def _build_principal_sso_url(tipo: str = "supervisao", next_path: str = "/admin?tab=escalas") -> str:
-    s = _sso_serializer_principal()
-    payload = {"aud": "painel-destino", "tipo": tipo, "next": next_path}
-    token = s.dumps(payload)
-    return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}/sso/entrar?token={token}"
+def sso_dump_shared(payload: dict) -> str:
+    return _sso_shared_serializer().dumps(payload)
+
+def sso_load_shared(token: str, max_age_seconds: int = 45):
+    return _sso_shared_serializer().loads(token, max_age=max_age_seconds)
+
+def _build_principal_sso_url(tipo: str = 'supervisao', next_path: str = '/admin?tab=escalas') -> str:
+    token = sso_dump_shared({'aud': 'painel-destino', 'orig': 'sistema1', 'tipo': tipo, 'next': next_path, 'iat': int(datetime.utcnow().timestamp())})
+    return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}\/sso/entrar?token={token}".replace('\\/', '/')
 
 def _admin_top_button_html() -> str:
     if session.get('is_master'):
-        return f'<a href="{PORTAL_PRINCIPAL_URL.rstrip('/')}/admin?tab=sistemas" class="top-link-btn" target="_blank" rel="noopener">Retornar Admin</a>'
+        href = url_for('voltar_admin')
+        return f'<a href="{href}" class="top-link-btn">Retornar Admin</a>'
     if session.get('is_admin'):
         href = url_for('ir_principal_escala')
-        return f'<a href="{href}" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
+        return f'<a href="{href}" class="top-link-btn">Escala</a>'
     return ''
 
 # ------------------------
@@ -1628,6 +1633,45 @@ def intruso():
         registro_id=registro_id
     )
 
+
+@app.route('/autologin')
+def autologin():
+    token = (request.args.get('token') or '').strip()
+    if not token:
+        return redirect(url_for('login'))
+    try:
+        data = sso_load_shared(token, max_age_seconds=45)
+    except SignatureExpired:
+        flash('Link expirou. Clique novamente no portal.', 'error')
+        return redirect(url_for('login'))
+    except BadSignature:
+        flash('Link inválido.', 'error')
+        return redirect(url_for('login'))
+    if (data.get('aud') or '').strip().lower() not in ('sistema1', 'sistema-1'):
+        flash('Destino inválido.', 'error')
+        return redirect(url_for('login'))
+    role = (data.get('role') or 'master').strip().lower()
+    session.clear()
+    session['user_id'] = 0
+    session['user_nome'] = 'Portal COOPEX'
+    session['is_admin'] = True
+    session['is_master'] = (role == 'master')
+    session['tipo'] = 'admin'
+    next_url = data.get('next') or url_for('admin')
+    return redirect(next_url)
+
+@app.get('/ir-principal-escala')
+def ir_principal_escala():
+    if not session.get('is_admin') or session.get('is_master'):
+        return redirect(url_for('login'))
+    return redirect(_build_principal_sso_url(tipo='supervisao', next_path='/admin?tab=escalas'))
+
+@app.get('/voltar-admin')
+def voltar_admin():
+    if not session.get('is_master'):
+        return redirect(url_for('login'))
+    return redirect(_build_principal_sso_url(tipo='admin', next_path='/admin?tab=sistemas'))
+
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
 # =========================================================
@@ -2734,13 +2778,6 @@ def api_rastreamento(codigo):
 # =========================================================
 # ADMIN: DASHBOARD PRINCIPAL
 # =========================================================
-@app.get("/ir-principal-escala")
-def ir_principal_escala():
-    if not session.get('is_admin') or session.get('is_master'):
-        return redirect(url_for('login'))
-    return redirect(_build_principal_sso_url(tipo="supervisao", next_path="/admin?tab=escalas"))
-
-
 @app.route('/admin')
 def admin():
     if not session.get('is_admin'):
@@ -2855,7 +2892,7 @@ def admin():
                 "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
 
-    html = render_template(
+    return render_template(
         'admin.html',
         entregas=entregas,
         cooperados=cooperados,
@@ -2873,14 +2910,6 @@ def admin():
         cooperados_js=cooperados_js,
         motoboys_js=motoboys_js,
     )
-
-    html = re.sub(
-        r'<a\s+href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas"\s+class="top-link-btn"\s+target="_blank"\s+rel="noopener">Escala</a>',
-        _admin_top_button_html(),
-        html,
-        count=1,
-    )
-    return html
 
 
 @app.route("/admin_novo_socorro")
