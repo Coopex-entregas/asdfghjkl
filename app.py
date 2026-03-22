@@ -23,7 +23,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature, SignatureExpired
+from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature
 
 import pandas as pd
 import holidays
@@ -59,6 +59,26 @@ ADMIN_CREDENTIALS = {
         os.environ.get('ADMIN_PWD_COOPEX',        '84253700'):     {'is_master': False},
     }
 }
+
+PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
+
+def _sso_serializer_principal():
+    secret = os.environ.get("SSO_SHARED_SECRET") or app.secret_key
+    return URLSafeTimedSerializer(secret_key=secret, salt="coopex-sso-v1")
+
+def _build_principal_sso_url(tipo: str = "supervisao", next_path: str = "/admin?tab=escalas") -> str:
+    s = _sso_serializer_principal()
+    payload = {"aud": "painel-destino", "tipo": tipo, "next": next_path}
+    token = s.dumps(payload)
+    return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}/sso/entrar?token={token}"
+
+def _admin_top_button_html() -> str:
+    if session.get('is_master'):
+        return f'<a href="{PORTAL_PRINCIPAL_URL.rstrip('/')}/admin?tab=sistemas" class="top-link-btn" target="_blank" rel="noopener">Retornar Admin</a>'
+    if session.get('is_admin'):
+        href = url_for('ir_principal_escala')
+        return f'<a href="{href}" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
+    return ''
 
 # ------------------------
 # Configuração do Banco
@@ -205,84 +225,6 @@ def gerar_token_rastreio(entrega_id: int):
 def ler_token_rastreio(token: str):
     return _rastreio_serializer().loads(token)
 
-
-
-
-# =========================================================
-# SSO ENTRE SISTEMAS
-# =========================================================
-PORTAL_ADMIN_URL = os.environ.get("PORTAL_ADMIN_URL", "https://financas-dxsu.onrender.com")
-
-def _sso_shared_serializer():
-    shared = os.environ.get("SSO_SHARED_SECRET", "COOPEX_SSO_SHARED_CHANGE_ME_2026")
-    return URLSafeTimedSerializer(shared, salt="coopex-sso-v1")
-
-def sso_load_shared(token: str, max_age_seconds: int = 45):
-    return _sso_shared_serializer().loads(token, max_age=max_age_seconds)
-
-def sso_dump_shared(payload: dict) -> str:
-    return _sso_shared_serializer().dumps(payload)
-
-@app.route('/autologin')
-def autologin():
-    token = (request.args.get('token') or '').strip()
-    if not token:
-        return redirect(url_for('login'))
-    try:
-        data = sso_load_shared(token, max_age_seconds=45)
-    except SignatureExpired:
-        flash('Link expirou. Clique novamente no portal.', 'error')
-        return redirect(url_for('login'))
-    except BadSignature:
-        flash('Link inválido.', 'error')
-        return redirect(url_for('login'))
-
-    if data.get('aud') != 'sistema-1':
-        flash('Destino inválido.', 'error')
-        return redirect(url_for('login'))
-
-    session.clear()
-    session['user_id'] = 0
-    session['user_nome'] = 'Portal COOPEX'
-    session['is_admin'] = True
-    session['is_master'] = True
-    session['tipo'] = 'admin'
-    next_url = data.get('next') or url_for('admin')
-    return redirect(next_url)
-
-@app.route('/voltar-admin')
-def voltar_admin():
-    token = sso_dump_shared({
-        'aud': 'painel-destino',
-        'orig': 'sistema-1',
-        'tipo': 'admin',
-        'next': '/admin?tab=sistemas',
-        'iat': int(datetime.utcnow().timestamp()),
-    })
-    return redirect(f"{PORTAL_ADMIN_URL}/sso/entrar?token={token}")
-
-@app.context_processor
-def inject_portal_admin_link():
-    return {'voltar_admin_url': url_for('voltar_admin')}
-
-@app.after_request
-def inject_voltar_admin_button(response):
-    try:
-        ctype = (response.content_type or '').lower()
-        if 'text/html' not in ctype:
-            return response
-        if request.path.startswith('/static') or request.path in ['/login', '/autologin', '/logout']:
-            return response
-        if not session.get('is_master'):
-            return response
-        body = response.get_data(as_text=True)
-        if 'voltar-admin-flutuante' in body or '</body>' not in body:
-            return response
-        btn = '<a id="voltar-admin-flutuante" href="%s" style="position:fixed;right:18px;bottom:18px;z-index:9999;background:#2747d9;color:#fff;text-decoration:none;padding:10px 14px;border-radius:999px;font-weight:700;box-shadow:0 10px 24px rgba(0,0,0,.18);font-family:Arial,sans-serif;">Voltar ao Admin</a>' % url_for('voltar_admin')
-        response.set_data(body.replace('</body>', btn + '</body>'))
-    except Exception:
-        return response
-    return response
 
 # =========================================================
 # FLASK-LOGIN / LOGIN MANAGER
@@ -2792,6 +2734,13 @@ def api_rastreamento(codigo):
 # =========================================================
 # ADMIN: DASHBOARD PRINCIPAL
 # =========================================================
+@app.get("/ir-principal-escala")
+def ir_principal_escala():
+    if not session.get('is_admin') or session.get('is_master'):
+        return redirect(url_for('login'))
+    return redirect(_build_principal_sso_url(tipo="supervisao", next_path="/admin?tab=escalas"))
+
+
 @app.route('/admin')
 def admin():
     if not session.get('is_admin'):
@@ -2906,7 +2855,7 @@ def admin():
                 "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
 
-    return render_template(
+    html = render_template(
         'admin.html',
         entregas=entregas,
         cooperados=cooperados,
@@ -2924,6 +2873,14 @@ def admin():
         cooperados_js=cooperados_js,
         motoboys_js=motoboys_js,
     )
+
+    html = re.sub(
+        r'<a\s+href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas"\s+class="top-link-btn"\s+target="_blank"\s+rel="noopener">Escala</a>',
+        _admin_top_button_html(),
+        html,
+        count=1,
+    )
+    return html
 
 
 @app.route("/admin_novo_socorro")
