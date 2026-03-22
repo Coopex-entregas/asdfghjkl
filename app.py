@@ -266,7 +266,7 @@ def inject_voltar_admin_button(response):
             return response
         if request.path.startswith('/static') or request.path in ['/login', '/autologin', '/logout']:
             return response
-        if not (session.get('is_admin') or session.get('user_id') or session.get('cliente_id')):
+        if not session.get('is_master'):
             return response
         body = response.get_data(as_text=True)
         if 'voltar-admin-flutuante' in body or '</body>' not in body:
