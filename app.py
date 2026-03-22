@@ -23,7 +23,7 @@ from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
 from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature, SignatureExpired
+from itsdangerous import URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 import pandas as pd
 import holidays
@@ -59,7 +59,6 @@ ADMIN_CREDENTIALS = {
         os.environ.get('ADMIN_PWD_COOPEX',        '84253700'):     {'is_master': False},
     }
 }
-
 PORTAL_PRINCIPAL_URL = os.environ.get('PORTAL_PRINCIPAL_URL', 'https://financas-dxsu.onrender.com')
 
 def _sso_shared_serializer():
@@ -69,23 +68,23 @@ def _sso_shared_serializer():
 def sso_dump_shared(payload: dict) -> str:
     return _sso_shared_serializer().dumps(payload)
 
-def sso_load_shared(token: str, max_age_seconds: int = 45):
+def sso_load_shared(token: str, max_age_seconds: int = 60):
     return _sso_shared_serializer().loads(token, max_age=max_age_seconds)
 
-def _build_principal_sso_url(tipo: str = 'supervisao', next_path: str = '/admin?tab=escalas', role: str | None = None) -> str:
+def _build_principal_sso_url(tipo='supervisao', next_path='/admin?tab=escalas', role=None, principal_user=None):
     payload = {'aud': 'painel-destino', 'orig': 'sistema1', 'tipo': tipo, 'next': next_path, 'iat': int(datetime.utcnow().timestamp())}
     if role:
         payload['role'] = role
+    if principal_user:
+        payload['principal_user'] = principal_user
     token = sso_dump_shared(payload)
-    return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}\/sso/entrar?token={token}".replace('\\/', '/')
+    return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}" + '/sso/entrar?token=' + token
 
-def _admin_top_button_html() -> str:
-    if session.get('is_master'):
-        href = url_for('voltar_admin')
-        return f'<a href="{href}" class="top-link-btn">Retornar Admin</a>'
-    if session.get('is_admin'):
-        href = url_for('ir_principal_escala')
-        return f'<a href="{href}" class="top-link-btn">Escala</a>'
+def _top_link_button_html():
+    if session.get('is_admin') and session.get('is_master'):
+        return '<a href="%s" class="top-link-btn">Retornar Admin</a>' % url_for('voltar_admin')
+    if session.get('is_admin') and not session.get('is_master'):
+        return '<a href="%s" class="top-link-btn">Escala</a>' % url_for('ir_principal_escala')
     return ''
 
 # ------------------------
@@ -1636,14 +1635,13 @@ def intruso():
         registro_id=registro_id
     )
 
-
 @app.route('/autologin')
 def autologin():
     token = (request.args.get('token') or '').strip()
     if not token:
         return redirect(url_for('login'))
     try:
-        data = sso_load_shared(token, max_age_seconds=45)
+        data = sso_load_shared(token, max_age_seconds=60)
     except SignatureExpired:
         flash('Link expirou. Clique novamente no portal.', 'error')
         return redirect(url_for('login'))
@@ -1656,7 +1654,7 @@ def autologin():
     role = (data.get('role') or 'master').strip().lower()
     session.clear()
     session['user_id'] = 0
-    session['user_nome'] = 'Portal COOPEX'
+    session['user_nome'] = 'coopex'
     session['is_admin'] = True
     session['is_master'] = (role == 'master')
     session['tipo'] = 'admin'
@@ -1667,13 +1665,30 @@ def autologin():
 def ir_principal_escala():
     if not session.get('is_admin') or session.get('is_master'):
         return redirect(url_for('login'))
-    return redirect(_build_principal_sso_url(tipo='supervisao', next_path='/admin?tab=escalas', role='supervisao'))
+    return redirect(_build_principal_sso_url(tipo='supervisao', next_path='/admin?tab=escalas', role='supervisao', principal_user='SUPERVISAO'))
 
 @app.get('/voltar-admin')
 def voltar_admin():
-    if not session.get('is_master'):
+    if not session.get('is_admin') or not session.get('is_master'):
         return redirect(url_for('login'))
-    return redirect(_build_principal_sso_url(tipo='admin', next_path='/admin?tab=sistemas', role='master'))
+    return redirect(_build_principal_sso_url(tipo='admin', next_path='/admin?tab=sistemas', role='master', principal_user='COOPEX'))
+
+@app.after_request
+def _inject_top_link_button(resp):
+    try:
+        if request.endpoint != 'admin':
+            return resp
+        ctype = (resp.headers.get('Content-Type') or '').lower()
+        if 'text/html' not in ctype:
+            return resp
+        body = resp.get_data(as_text=True)
+        old = '<a href="https://financas-dxsu.onrender.com/admin?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
+        if old in body:
+            body = body.replace(old, _top_link_button_html(), 1)
+            resp.set_data(body)
+    except Exception:
+        pass
+    return resp
 
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
