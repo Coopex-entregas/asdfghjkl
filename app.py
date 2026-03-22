@@ -1791,7 +1791,8 @@ def retornar_admin():
         'orig': 'sistema1',
         'tipo': 'admin',
         'principal_user': 'COOPEX',
-        'next': '/admin?tab=sistemas',
+        'principal_pass': 'COOPEX05289',
+        'next': '/admin',
         'iat': int(datetime.utcnow().timestamp()),
     })
     return redirect(f"{PORTAL_PRINCIPAL_URL.rstrip('/')}/sso/entrar?token={token}")
@@ -1805,6 +1806,7 @@ def ir_principal_escala():
         'orig': 'sistema1',
         'tipo': 'supervisao',
         'principal_user': 'SUPERVISAO',
+        'principal_pass': '84253700',
         'next': '/admin?tab=escalas',
         'iat': int(datetime.utcnow().timestamp()),
     })
@@ -1817,7 +1819,7 @@ def _patch_admin_top_button(resp):
             body = resp.get_data(as_text=True)
             if 'class="top-link-btn"' in body:
                 if session.get('is_admin') and session.get('is_master'):
-                    repl = '<a href="%s" class="top-link-btn">Retornar Admin</a>' % url_for('retornar_admin')
+                    repl = '<a href="%s" class="top-link-btn">Dashboard Principal</a>' % url_for('retornar_admin')
                 elif session.get('is_admin'):
                     repl = '<a href="%s" class="top-link-btn">Escala</a>' % url_for('ir_principal_escala')
                 else:
