@@ -5,6 +5,7 @@
 <title>Painel Analítico — Coopex</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css" />
 
 <style>
 :root{
@@ -475,6 +476,87 @@ tbody tr:hover{background:#f6f9ff}
   body{background:#fff}
   .card{box-shadow:none}
 }
+
+
+/* ====== LAYOUT UNIFICADO COM MENU LATERAL PADRÃO ====== */
+:root{
+  --sidebar-w:278px;
+  --cx-radius:20px;
+}
+body{font-family:'Inter',system-ui,Segoe UI,Arial,sans-serif !important; background:#f4f7fc !important; color:#182033; overflow-x:hidden;}
+.cx-shell{display:flex;min-height:100vh}
+.cx-sidebar{
+  position:fixed;top:0;left:0;width:var(--sidebar-w);height:100vh;padding:18px 14px;
+  background:linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);
+  color:#fff;box-shadow:0 0 26px rgba(0,0,0,.22);z-index:1020;overflow-y:auto;display:flex;flex-direction:column
+}
+.cx-sidebar::-webkit-scrollbar{width:8px}
+.cx-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
+.cx-brand{position:relative;padding:16px;margin-bottom:14px;border-radius:18px;background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)}
+.cx-brand-title{margin:0;font-family:'Orbitron',sans-serif;font-size:1.08rem;letter-spacing:.9px;text-transform:uppercase;line-height:1.28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx-brand-sub{display:block;margin-top:6px;font-size:.74rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx-nav{padding:0;margin:0}
+.cx-nav-section{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.60);margin:14px 8px 8px}
+.cx-nav-divider{border-color:rgba(255,255,255,.08);margin:12px 0 8px}
+.cx-link,.cx-group-toggle{display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-radius:14px;padding:10px 12px;margin:4px 0;background:transparent;color:#fff;text-decoration:none;font-size:.92rem;font-weight:700;cursor:pointer;transition:all .18s ease}
+.cx-link:hover,.cx-group-toggle:hover{background:rgba(255,255,255,.10);transform:translateY(-1px);color:#fff}
+.cx-link.active,.cx-sublink.active{background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.18);box-shadow:0 8px 18px rgba(0,0,0,.10);color:#fff!important}
+.cx-link-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
+.cx-link-left span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cx-link-icon{width:22px;display:flex;justify-content:center;align-items:center;font-size:1rem;flex-shrink:0}
+.cx-caret{font-size:.82rem;opacity:.72;transition:transform .18s ease}
+.cx-group-toggle.open .cx-caret{transform:rotate(180deg)}
+.cx-sublinks{display:none;padding-left:16px;margin-bottom:6px}
+.cx-sublinks.open{display:block}
+.cx-sublink{display:flex;align-items:center;gap:8px;padding:8px 10px;margin:4px 0;border-radius:12px;color:rgba(255,255,255,.84);text-decoration:none;font-size:.84rem;font-weight:700;transition:all .18s ease;cursor:pointer;background:transparent;border:0;width:100%;text-align:left}
+.cx-sublink:hover{color:#fff;background:rgba(255,255,255,.10);transform:translateX(2px)}
+.cx-sidebar-footer{margin-top:auto;padding-top:10px}
+.cx-main{flex:1;margin-left:var(--sidebar-w);padding:20px 20px 30px;width:calc(100% - var(--sidebar-w));min-width:0}
+.cx-content-shell{max-width:none!important;width:100%;margin:0 auto}
+.cx-mobile-toggle{display:none}
+.top,.tabs{display:none !important}
+.container{max-width:none !important;margin:0 !important;padding:0 !important}
+.panel-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;margin-bottom:16px;flex-wrap:wrap}
+.panel-title-block{display:flex;flex-direction:column;gap:6px}
+.panel-title-block h1{margin:0;font-size:1.45rem;line-height:1.12;color:#182033;font-weight:900;letter-spacing:-.02em}
+.panel-title-block .sub{font-size:.94rem;color:#61708f;font-weight:700}
+.inline-actions{display:flex;gap:10px;flex-wrap:wrap}
+.inline-btn{display:inline-flex;align-items:center;gap:8px;padding:10px 14px;border-radius:14px;background:#fff;border:1px solid #dce6ff;box-shadow:0 10px 24px rgba(15,23,42,.06);color:#18308f;font-size:.9rem;font-weight:800;text-decoration:none;cursor:pointer}
+.inline-btn.primary{background:linear-gradient(135deg,#2747d9,#3358f0);border-color:transparent;color:#fff}
+.filter-card{margin-bottom:16px;padding:14px 16px;border-radius:20px;background:#fff;border:1px solid #dce6ff;box-shadow:0 10px 24px rgba(15,23,42,.06)}
+.filter-title{font-size:.92rem;font-weight:900;color:#1b2b5e;margin:0 0 12px}
+.filter-grid{display:grid;grid-template-columns:1.4fr 180px 180px 180px 1.2fr auto;gap:10px;align-items:end}
+.filter-field label{display:block;font-size:.78rem;font-weight:900;color:#51648c;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.filter-field input,.filter-field select{width:100%;min-height:42px;padding:10px 12px;border-radius:12px;border:1px solid #cfdcff;background:#f8fbff;color:#182033;font-size:.92rem;font-weight:700;outline:none}
+.filter-field input:focus,.filter-field select:focus{border-color:#8db0ff;box-shadow:0 0 0 4px rgba(79,140,255,.14)}
+.filter-submit{min-height:42px;padding:10px 16px;border-radius:12px;border:0;background:linear-gradient(135deg,#2747d9,#3358f0);color:#fff;font-size:.92rem;font-weight:800;cursor:pointer}
+.section{padding:0 0 18px}
+.card{background:#fff !important;border:1px solid #dce6ff !important;box-shadow:0 10px 24px rgba(15,23,42,.06) !important;border-radius:20px !important;padding:16px !important;backdrop-filter:none !important}
+.card.soft,.table-wrap{box-shadow:0 10px 24px rgba(15,23,42,.05)!important}
+.card-title h2{font-size:1rem !important;color:#182033 !important}
+.subtle,.kpiTop .hint,.tab small{color:#61708f !important}
+.kpis{gap:10px !important}
+.kpiCard{border-radius:18px !important;background:#fcfdff !important;box-shadow:none !important;border:1px solid #e4ecff !important}
+.chips .btn,.chips button.btn{border-radius:12px !important;padding:10px 14px !important;font-size:.9rem !important;font-weight:800 !important;box-shadow:none !important}
+.table-wrap{border-radius:18px !important}
+th{font-size:.85rem !important}
+td{font-size:.88rem !important}
+.no-data{background:#fbfcff !important}
+.modal{display:none !important}
+@media (max-width:1200px){
+  .filter-grid{grid-template-columns:1fr 1fr 1fr;}
+}
+@media (max-width:991px){
+  .cx-mobile-toggle{position:fixed;left:14px;top:14px;z-index:1100;border:none;width:46px;height:46px;border-radius:14px;color:#fff;background:linear-gradient(180deg,#3051ea,#2439bf);box-shadow:0 14px 30px rgba(20,31,116,.22);display:flex;align-items:center;justify-content:center}
+  .cx-sidebar{transform:translateX(-100%);transition:transform .22s ease}
+  .cx-sidebar.mobile-open{transform:translateX(0)}
+  .cx-main{margin-left:0;width:100%;padding:70px 14px 20px}
+}
+@media (max-width:700px){
+  .filter-grid{grid-template-columns:1fr;}
+  .panel-title-block h1{font-size:1.18rem}
+}
+
 </style>
 </head>
 
@@ -482,108 +564,107 @@ tbody tr:hover{background:#f6f9ff}
 
 <div class="toast" id="toast"></div>
 
-<!-- ====== HEADER (sem sidebar) ====== -->
-<header class="top">
-  <div class="container">
-    <div class="top-inner">
-      <div class="brand">
-        <img src="{{ url_for('static', filename='logo_kratos.png') }}" alt="Logo Coopex"
-             onerror="this.onerror=null;this.src='https://via.placeholder.com/44?text=LOGO';">
-        <div class="t">
-          <b>Painel Analítico</b>
-          <small>{{ periodo_legivel or 'todo o período' }}</small>
+<button class="cx-mobile-toggle" type="button"><i class="bi bi-list"></i></button>
+<div class="cx-shell">
+  <aside class="cx-sidebar">
+    <div class="cx-brand">
+      <p class="cx-brand-title">Painel Coopex</p>
+      <span class="cx-brand-sub">Administração central</span>
+    </div>
+
+    <nav class="cx-nav">
+      <div class="cx-nav-section">Principal</div>
+      <a class="cx-link" href="{{ url_for('admin') }}">
+        <span class="cx-link-left"><i class="bi bi-house-door cx-link-icon"></i><span>Principal</span></span>
+      </a>
+
+      <button type="button" class="cx-group-toggle open">
+        <span class="cx-link-left"><i class="bi bi-bar-chart-line cx-link-icon"></i><span>Produção</span></span>
+        <i class="bi bi-chevron-down cx-caret"></i>
+      </button>
+      <div class="cx-sublinks open">
+        <button type="button" class="cx-sublink" data-sec="sec-resumo"><i class="bi bi-grid-1x2"></i><span>Resumo</span></button>
+        <button type="button" class="cx-sublink active" data-sec="sec-cooperados"><i class="bi bi-people"></i><span>Produção</span></button>
+        <button type="button" class="cx-sublink" data-sec="sec-graficos"><i class="bi bi-graph-up-arrow"></i><span>Gráficos</span></button>
+        <button type="button" class="cx-sublink" data-sec="sec-rankings"><i class="bi bi-trophy"></i><span>Rankings</span></button>
+        <button type="button" class="cx-sublink" data-sec="sec-crescimento"><i class="bi bi-activity"></i><span>Crescimento</span></button>
+        <button type="button" class="cx-sublink" data-sec="sec-export"><i class="bi bi-download"></i><span>Exportar</span></button>
+      </div>
+
+      <button type="button" class="cx-group-toggle open">
+        <span class="cx-link-left"><i class="bi bi-lightning-charge cx-link-icon"></i><span>Ações</span></span>
+        <i class="bi bi-chevron-down cx-caret"></i>
+      </button>
+      <div class="cx-sublinks open">
+        <button type="button" class="cx-sublink" id="sidePrint"><i class="bi bi-printer"></i><span>Imprimir</span></button>
+        <a class="cx-sublink" href="{{ url_for('estatisticas_cooperado_exportar_xlsx') }}?cooperado_id={{ cooperado_id }}{% if data_inicio %}&data_inicio={{ data_inicio }}{% endif %}{% if data_fim %}&data_fim={{ data_fim }}{% endif %}&status_pagamento={{ status_pagamento }}&cliente={{ cliente|urlencode if cliente }}"><i class="bi bi-file-earmark-excel"></i><span>Excel</span></a>
+        <button type="button" class="cx-sublink" id="sideCSV"><i class="bi bi-filetype-csv"></i><span>CSV</span></button>
+        <button type="button" class="cx-sublink" data-save="chartDia"><i class="bi bi-image"></i><span>PNG Dia</span></button>
+        <button type="button" class="cx-sublink" data-save="chartCoop"><i class="bi bi-image"></i><span>PNG Produção</span></button>
+        <button type="button" class="cx-sublink" data-save="chartStatus"><i class="bi bi-image"></i><span>PNG Status</span></button>
+        <button type="button" class="cx-sublink" data-save="chartAno"><i class="bi bi-image"></i><span>PNG Anual</span></button>
+      </div>
+
+      <hr class="cx-nav-divider">
+      <a class="cx-link" href="{{ url_for('logout') }}">
+        <span class="cx-link-left"><i class="bi bi-box-arrow-left cx-link-icon"></i><span>Sair</span></span>
+      </a>
+    </nav>
+    <div class="cx-sidebar-footer"></div>
+  </aside>
+
+  <main class="cx-main">
+    <div class="cx-content-shell">
+      <div class="panel-top">
+        <div class="panel-title-block">
+          <h1>Painel Analítico de Produção</h1>
+          <div class="sub">Visualização mais simples, com foco em cooperados, produção, gráficos e exportação.</div>
+        </div>
+        <div class="inline-actions">
+          <a class="inline-btn" href="{{ url_for('admin') }}"><i class="bi bi-arrow-left"></i> Principal</a>
+          <button class="inline-btn primary" id="btnPrintTop" type="button"><i class="bi bi-printer"></i> Imprimir</button>
         </div>
       </div>
 
-      <div class="search" title="Busca rápida (cooperados)">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
-          <path d="M21 21l-4.3-4.3" stroke="#4f8cff" stroke-width="2.2" stroke-linecap="round"/>
-          <circle cx="11" cy="11" r="6.5" stroke="#003399" stroke-width="2.2"/>
-        </svg>
-        <input id="qGlobal" type="search" placeholder="Buscar cooperado..." />
-      </div>
-
-      <div class="controls">
-        <span class="pill" id="pillPeriodo" title="Período (servidor)">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M7 3v3M17 3v3" stroke="#003399" stroke-width="2.2" stroke-linecap="round"/>
-            <path d="M4 9h16" stroke="#4f8cff" stroke-width="2.2" stroke-linecap="round"/>
-            <rect x="4.5" y="6.5" width="15" height="14" rx="3" stroke="#003399" stroke-width="2.2"/>
-          </svg>
-          {{ periodo_legivel or 'todo o período' }}
-        </span>
-
-        <button class="btn" id="btnOpenFilters" type="button" title="Filtros do servidor">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M4 6h16M7 12h10M10 18h4" stroke="#003399" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-          Filtros
-        </button>
-
-        <a class="btn" href="{{ url_for('admin') }}" title="Voltar">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M15 18l-6-6 6-6" stroke="#003399" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
-          </svg>
-          Voltar
-        </a>
-
-        <button class="btn primary" id="btnPrint" type="button" title="Imprimir">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none">
-            <path d="M7 9V4h10v5" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-            <rect x="6" y="13" width="12" height="7" rx="2" stroke="#fff" stroke-width="2.2"/>
-            <path d="M6 12H5a2 2 0 0 1-2-2V9a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1a2 2 0 0 1-2 2h-1" stroke="#fff" stroke-width="2.2" stroke-linecap="round"/>
-          </svg>
-          Imprimir
-        </button>
-      </div>
-    </div>
-
-    <div class="tabs">
-      <div class="tabs-row" role="tablist" aria-label="Seções do painel">
-        <button class="tab active" data-sec="sec-resumo" type="button">
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-            <span>Resumo</span><small>KPIs • Alertas</small>
+      <form class="filter-card" method="GET" action="{{ url_for('estatisticas_cooperado') }}">
+        <div class="filter-title">Filtros</div>
+        <div class="filter-grid">
+          <div class="filter-field">
+            <label for="flt-cooperado">Cooperado</label>
+            <select name="cooperado_id" id="flt-cooperado">
+              <option value="todos" {% if cooperado_id == 'todos' %}selected{% endif %}>Todos</option>
+              {% for c in cooperados %}
+              <option value="{{ c.id }}" {% if cooperado_id == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
+              {% endfor %}
+            </select>
           </div>
-        </button>
-
-        <button class="tab" data-sec="sec-cooperados" type="button">
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-            <span>Cooperados</span><small>Tabela • Ranking</small>
+          <div class="filter-field">
+            <label for="flt-inicio">De</label>
+            <input type="date" name="data_inicio" id="flt-inicio" value="{{ data_inicio }}">
           </div>
-        </button>
-
-        <button class="tab" data-sec="sec-graficos" type="button">
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-            <span>Gráficos</span><small>Dia • Status • Coop</small>
+          <div class="filter-field">
+            <label for="flt-fim">Até</label>
+            <input type="date" name="data_fim" id="flt-fim" value="{{ data_fim }}">
           </div>
-        </button>
-
-        <button class="tab" data-sec="sec-rankings" type="button">
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-            <span>Rankings</span><small>Bairros • Clientes</small>
+          <div class="filter-field">
+            <label for="flt-pagamento">Pagamento</label>
+            <select name="status_pagamento" id="flt-pagamento">
+              <option value="todos" {% if status_pagamento == 'todos' %}selected{% endif %}>Todos</option>
+              <option value="pago" {% if status_pagamento == 'pago' %}selected{% endif %}>Pago</option>
+              <option value="pendente" {% if status_pagamento == 'pendente' %}selected{% endif %}>Pendente</option>
+            </select>
           </div>
-        </button>
-
-        <button class="tab" data-sec="sec-crescimento" type="button">
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-            <span>Crescimento</span><small>Anual • YoY</small>
+          <div class="filter-field">
+            <label for="flt-cliente">Cliente</label>
+            <input type="text" name="cliente" id="flt-cliente" value="{{ cliente or '' }}" placeholder="Nome do cliente">
           </div>
-        </button>
+          <button class="filter-submit" type="submit">Aplicar</button>
+        </div>
+      </form>
 
-        <button class="tab" data-sec="sec-export" type="button">
-          <div style="display:flex;flex-direction:column;gap:2px;align-items:flex-start">
-            <span>Exportar</span><small>Excel • CSV • PNG</small>
-          </div>
-        </button>
-      </div>
-    </div>
-  </div>
-</header>
-
-<main class="container">
 
   <!-- ====== SECTION: RESUMO ====== -->
-  <section class="section active" id="sec-resumo">
+  <section class="section" id="sec-resumo">
     <div class="card">
       <div class="card-title">
         <div>
@@ -807,7 +888,7 @@ tbody tr:hover{background:#f6f9ff}
   </section>
 
   <!-- ====== SECTION: COOPERADOS ====== -->
-  <section class="section" id="sec-cooperados">
+  <section class="section active" id="sec-cooperados">
     <div class="card">
       <div class="card-title">
         <div>
@@ -1161,7 +1242,9 @@ tbody tr:hover{background:#f6f9ff}
     </div>
   </section>
 
-</main>
+    </div>
+  </main>
+</div>
 
 <!-- ====== MODAL FILTROS (SERVIDOR) ====== -->
 <div class="modal" id="modal">
@@ -1308,9 +1391,11 @@ function exportCanvasPNG(canvasId, filename){
    ========================= */
 function activateSection(id){
   document.querySelectorAll('.tab').forEach(b=>b.classList.remove('active'));
+  document.querySelectorAll('.cx-sublink[data-sec]').forEach(b=>b.classList.remove('active'));
   document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));
 
   document.querySelector(`.tab[data-sec="${id}"]`)?.classList.add('active');
+  document.querySelector(`.cx-sublink[data-sec="${id}"]`)?.classList.add('active');
   document.getElementById(id)?.classList.add('active');
 
   localStorage.setItem('coopex_sec', id);
@@ -1322,12 +1407,26 @@ function activateSection(id){
     });
   });
 }
-document.querySelectorAll('.tab[data-sec]').forEach(btn=>{
+document.querySelectorAll('.tab[data-sec], .cx-sublink[data-sec]').forEach(btn=>{
   btn.addEventListener('click', ()=> activateSection(btn.getAttribute('data-sec')));
 });
+document.querySelectorAll('.cx-group-toggle').forEach(btn=>{
+  btn.addEventListener('click', ()=>{
+    btn.classList.toggle('open');
+    const panel = btn.nextElementSibling;
+    if(panel && panel.classList.contains('cx-sublinks')) panel.classList.toggle('open');
+  });
+});
+document.querySelector('.cx-mobile-toggle')?.addEventListener('click', ()=>{
+  document.querySelector('.cx-sidebar')?.classList.toggle('mobile-open');
+});
+document.getElementById('sidePrint')?.addEventListener('click', ()=> window.print());
+document.getElementById('btnPrintTop')?.addEventListener('click', ()=> window.print());
+document.getElementById('sideCSV')?.addEventListener('click', ()=> document.getElementById('btnCSV2')?.click());
 (function restoreSection(){
   const id = localStorage.getItem('coopex_sec');
   if(id && document.getElementById(id)) activateSection(id);
+  else activateSection('sec-cooperados');
 })();
 
 /* =========================
@@ -1335,10 +1434,10 @@ document.querySelectorAll('.tab[data-sec]').forEach(btn=>{
    ========================= */
 const modal = document.getElementById('modal');
 const modalBg = document.getElementById('modalBg');
-document.getElementById('btnOpenFilters')?.addEventListener('click', ()=> modal.classList.add('show'));
-document.getElementById('btnCloseModal')?.addEventListener('click', ()=> modal.classList.remove('show'));
-modalBg?.addEventListener('click', ()=> modal.classList.remove('show'));
-window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') modal.classList.remove('show'); });
+document.getElementById('btnOpenFilters')?.addEventListener('click', ()=> modal?.classList.add('show'));
+document.getElementById('btnCloseModal')?.addEventListener('click', ()=> modal?.classList.remove('show'));
+modalBg?.addEventListener('click', ()=> modal?.classList.remove('show'));
+window.addEventListener('keydown', (e)=>{ if(e.key==='Escape') modal?.classList.remove('show'); });
 
 /* =========================
    KPIs DERIVADAS
