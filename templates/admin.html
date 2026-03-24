@@ -4,8 +4,7 @@
   <meta charset="UTF-8" />
   <title>Painel da Supervisão - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&family=Orbitron:wght@500;600;700;800&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
   <!-- Leaflet -->
   <link
@@ -808,179 +807,10 @@
   height: calc(100vh - 120px) !important;
 }
 
-
-    /* ===== MASTER SIDEBAR UNIFICADA ===== */
-    .master-only{display:none}
-    {% if session.is_master %}
-    .master-only{display:block}
-    body{padding-left:278px}
-    header,.banner,.viewport{margin-left:0}
-    #btnMenu,#sidePanel{display:none !important}
-    .filters-bar .quick-left,
-    .filters-bar .filters-actions{display:none}
-    {% endif %}
-
-    .cx-mobile-toggle{display:none}
-    .master-sidebar{
-      position:fixed;top:0;left:0;bottom:0;z-index:1200;
-      width:278px;min-width:278px;padding:18px 14px;
-      background:linear-gradient(180deg, rgba(51,88,240,1) 0%, rgba(39,71,217,1) 38%, rgba(22,37,138,1) 100%);
-      color:#fff;box-shadow:0 0 26px rgba(0,0,0,.22);overflow-y:auto;overflow-x:hidden;
-    }
-    .master-sidebar::-webkit-scrollbar{width:8px}
-    .master-sidebar::-webkit-scrollbar-thumb{background:rgba(255,255,255,.18);border-radius:999px}
-    .master-brand{
-      position:relative;padding:16px;margin-bottom:14px;border-radius:18px;
-      background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(8px)
-    }
-    .master-brand-title{
-      margin:0;font-family:'Orbitron',sans-serif;font-size:1.08rem;letter-spacing:.9px;
-      text-transform:uppercase;line-height:1.28;white-space:nowrap;overflow:hidden;text-overflow:ellipsis
-    }
-    .master-brand-sub{display:block;margin-top:6px;font-size:.74rem;opacity:.82;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .master-nav-section{font-size:.68rem;letter-spacing:.12em;text-transform:uppercase;color:rgba(255,255,255,.60);margin:14px 8px 8px;font-weight:800}
-    .master-nav-divider{border:none;border-top:1px solid rgba(255,255,255,.10);margin:12px 0 8px}
-    .master-link,.master-group-toggle{
-      display:flex;align-items:center;justify-content:space-between;width:100%;border:0;border-radius:14px;
-      padding:10px 12px;margin:4px 0;background:transparent;color:#fff;text-decoration:none;font-size:.92rem;
-      cursor:pointer;transition:all .18s ease;font-weight:700
-    }
-    .master-link:hover,.master-group-toggle:hover{background:rgba(255,255,255,.10);transform:translateY(-1px);color:#fff}
-    .master-link.active,.master-sublink.active{
-      background:rgba(255,255,255,.16)!important;border:1px solid rgba(255,255,255,.18);
-      box-shadow:0 8px 18px rgba(0,0,0,.10);color:#fff!important
-    }
-    .master-link-left{display:flex;align-items:center;gap:10px;min-width:0;flex:1}
-    .master-link-left span{white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .master-link-icon{width:22px;display:flex;justify-content:center;align-items:center;font-size:1rem;flex-shrink:0}
-    .master-caret{font-size:.82rem;opacity:.72;transition:transform .18s ease}
-    .master-group-toggle.open .master-caret{transform:rotate(180deg)}
-    .master-sublinks{display:none;padding-left:16px;margin-bottom:6px}
-    .master-sublinks.open{display:block}
-    .master-sublink{
-      display:flex;align-items:center;gap:8px;padding:8px 10px;margin:4px 0;border-radius:12px;
-      color:rgba(255,255,255,.84);text-decoration:none;font-size:.84rem;transition:all .18s ease;font-weight:600
-    }
-    .master-sublink:hover{color:#fff;background:rgba(255,255,255,.10);transform:translateX(2px)}
-    .master-side-card{background:rgba(255,255,255,.10);border:1px solid rgba(255,255,255,.12);border-radius:18px;padding:12px;box-shadow:inset 0 1px 0 rgba(255,255,255,.08)}
-    .master-side-card h3{margin:0 0 10px;font-size:1rem;color:#fff;font-weight:900}
-    .master-side-card select,.master-side-card input[type="text"]{
-      width:100%;padding:9px 10px;border-radius:12px;border:1px solid rgba(255,255,255,.18);
-      background:rgba(255,255,255,.12);color:#fff;font-weight:800;margin-bottom:8px
-    }
-    .master-side-card select option{color:#0b1220}
-    .master-side-card input::placeholder{color:rgba(255,255,255,.74)}
-    .master-side-card .btn{width:100%;justify-content:center;box-shadow:none}
-    .master-sidebar .espera-chip{background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.14)}
-    .master-sidebar .espera-chip-num{background:rgba(255,255,255,.16);border-color:rgba(255,255,255,.18);color:#fff}
-    .master-sidebar .espera-chip-text{color:#fff}
-    .master-sidebar .espera-chip-remove{background:rgba(255,255,255,.14);border-color:rgba(255,255,255,.24);color:#fff}
-    .master-sidebar .small{color:rgba(255,255,255,.78)}
-
-    @media (max-width: 991px){
-      {% if session.is_master %}
-      body{padding-left:0}
-      .master-sidebar{transform:translateX(-100%);transition:transform .22s ease}
-      .master-sidebar.mobile-open{transform:translateX(0)}
-      .cx-mobile-toggle{
-        display:inline-flex;align-items:center;justify-content:center;position:fixed;left:14px;top:14px;z-index:1300;
-        border:none;width:46px;height:46px;border-radius:14px;color:#fff;font-size:1.25rem;
-        background:linear-gradient(180deg,#3051ea,#2439bf);box-shadow:0 14px 30px rgba(20,31,116,.22)
-      }
-      .topbar{padding-left:70px}
-      {% endif %}
-    }
-
 </style>
 </head>
 
 <body>
-
-{% if session.is_master %}
-<button class="cx-mobile-toggle master-only" id="masterMobileToggle" type="button" aria-label="Abrir menu master"><i class="bi bi-list"></i></button>
-<aside class="master-sidebar master-only" id="masterSidebar">
-  <div class="master-brand">
-    <p class="master-brand-title">PAINEL COOPEX</p>
-    <span class="master-brand-sub">Adiminstração Central</span>
-  </div>
-
-  <div class="master-nav-section">Visão geral</div>
-  <a class="master-link active" href="{{ url_for('admin') }}">
-    <span class="master-link-left"><i class="bi bi-speedometer2 master-link-icon"></i><span>Painel da Supervisão</span></span>
-  </a>
-  <a class="master-link" href="https://financas-dxsu.onrender.com/admin?tab=escalas" target="_blank" rel="noopener">
-    <span class="master-link-left"><i class="bi bi-calendar3 master-link-icon"></i><span>Escala</span></span>
-  </a>
-
-  <button type="button" class="master-group-toggle open">
-    <span class="master-link-left"><i class="bi bi-lightning-charge master-link-icon"></i><span>Ações rápidas</span></span>
-    <i class="bi bi-chevron-down master-caret"></i>
-  </button>
-  <div class="master-sublinks open">
-    <a class="master-sublink" href="{{ url_for('cadastrar_entrega') }}"><i class="bi bi-plus-circle"></i><span>Nova entrega</span></a>
-    <a class="master-sublink" href="{{ url_for('agendar_entrega') }}"><i class="bi bi-clock-history"></i><span>Agendar entrega</span></a>
-    <a class="master-sublink" href="{{ agenda_url }}"><i class="bi bi-calendar-week"></i><span>Ver agenda</span></a>
-    <a class="master-sublink" href="{{ url_for('trajetos') }}"><i class="bi bi-geo-alt"></i><span>Trajetos</span></a>
-  </div>
-
-  <button type="button" class="master-group-toggle open">
-    <span class="master-link-left"><i class="bi bi-people master-link-icon"></i><span>Cadastros e gestão</span></span>
-    <i class="bi bi-chevron-down master-caret"></i>
-  </button>
-  <div class="master-sublinks open">
-    <a class="master-sublink" href="{{ url_for('clientes') }}"><i class="bi bi-person-lines-fill"></i><span>Clientes</span></a>
-    <a class="master-sublink" href="{{ url_for('cadastrar_cooperado') }}"><i class="bi bi-person-badge"></i><span>Cooperados</span></a>
-    <a class="master-sublink" href="{{ url_for('creditos') }}"><i class="bi bi-cash-coin"></i><span>Crédito</span></a>
-    <a class="master-sublink" href="{{ url_for('precos_rotas') }}"><i class="bi bi-signpost-split"></i><span>Tabela de Preços &amp; Rotas</span></a>
-    <a class="master-sublink" href="{{ url_for('estatisticas_cooperado') }}"><i class="bi bi-bar-chart-line"></i><span>Dashboard</span></a>
-  </div>
-
-  <button type="button" class="master-group-toggle open">
-    <span class="master-link-left"><i class="bi bi-file-earmark-spreadsheet master-link-icon"></i><span>Relatórios</span></span>
-    <i class="bi bi-chevron-down master-caret"></i>
-  </button>
-  <div class="master-sublinks open">
-    <a class="master-sublink" href="{{ url_for('exportar_xlsx', data_inicio=data_inicio or '', data_fim=data_fim or '', cooperado_id=request.args.get('cooperado_id','todos'), status_pagamento=request.args.get('status_pagamento','todos'), cliente=request.args.get('cliente',''), endereco=request.args.get('endereco','')) }}"><i class="bi bi-file-earmark-excel"></i><span>Exportar XLSX</span></a>
-    <a class="master-sublink" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico', data_inicio=data_inicio or '', data_fim=data_fim or '', cooperado_id=request.args.get('cooperado_id','todos'), status_pagamento=request.args.get('status_pagamento','todos'), cliente=request.args.get('cliente',''), endereco=request.args.get('endereco','')) }}"><i class="bi bi-printer"></i><span>Imprimir relatório</span></a>
-  </div>
-
-  <hr class="master-nav-divider">
-
-  <div class="master-side-card" style="margin-bottom:12px;">
-    <h3>Lista de Espera</h3>
-    <form action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera-master">
-      {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
-      <select name="cooperado_id" id="cooperado-espera-master" required>
-        <option value="" selected disabled>Selecione um cooperado…</option>
-        {% for c in coops_select %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
-      </select>
-      <input name="nome" id="nome-espera-master" type="text" placeholder="(Opcional) nome do cooperado">
-      <button type="submit" class="btn">Adicionar na fila</button>
-    </form>
-
-    <ul id="espera-lista-master" style="list-style:none;margin:10px 0 0;padding:0;display:flex;flex-direction:column;gap:8px">
-      {% if lista_espera|length == 0 %}
-        <li id="fila-vazia-master" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
-      {% else %}
-        {% for item in lista_espera %}
-          <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
-            <span class="espera-chip-num">{{ loop.index }}</span>
-            <span class="espera-chip-text">{{ item.nome }}</span>
-            <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
-              <button class="espera-chip-remove" title="Remover" type="submit">×</button>
-            </form>
-          </li>
-        {% endfor %}
-      {% endif %}
-    </ul>
-  </div>
-
-  <a class="master-link" href="{{ url_for('logout') }}">
-    <span class="master-link-left"><i class="bi bi-box-arrow-left master-link-icon"></i><span>Sair</span></span>
-  </a>
-</aside>
-{% endif %}
-
   <!-- HEADER -->
   <header>
     <div class="topbar">
@@ -988,7 +818,7 @@
         <button id="btnMenu" class="menu-btn" type="button" aria-label="Abrir menu principal">
           <span></span><span></span><span></span>
         </button>
-        <span>PAINEL COOPEX – Supervisão</span>
+        <span>Kratos System – Supervisão</span>
         <a href="https://financas-dxsu.onrender.com/admin?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>
       </div>
 
@@ -1019,7 +849,7 @@
     <div class="grid">
 
       <!-- MENU LATERAL -->
-      {% if not session.is_master %}<aside class="left" id="sidePanel">
+      <aside class="left" id="sidePanel">
         <div class="menu-panel">
           <div class="menu-header">
             <img src="{{ url_for('static', filename='logo_kratos.png') }}"
@@ -1032,19 +862,19 @@
           <div class="card" style="margin-bottom:10px;">
             <div class="body">
               <h3>Lista de Espera</h3>
-              <form class="row" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera-normal">
+              <form class="row" action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera">
                 {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
-                <select name="cooperado_id" id="cooperado-espera-normal" required>
+                <select name="cooperado_id" id="cooperado-espera" required>
                   <option value="" selected disabled>Selecione um cooperado…</option>
                   {% for c in coops_select %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
                 </select>
-                <input name="nome" id="nome-espera-normal" type="text" placeholder="(Opcional) nome do cooperado" />
+                <input name="nome" id="nome-espera" type="text" placeholder="(Opcional) nome do cooperado" />
                 <button type="submit" class="btn">Adicionar</button>
               </form>
 
-              <ul id="espera-lista-normal">
+              <ul id="espera-lista">
                 {% if lista_espera|length == 0 %}
-                  <li id="fila-vazia-normal" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
+                  <li id="fila-vazia" class="small" style="opacity:.85">Nenhum cooperado na fila.</li>
                 {% else %}
                   {% for item in lista_espera %}
                     <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
@@ -1092,7 +922,7 @@
             </div>
           </div>
         </div>
-      </aside>{% endif %}
+      </aside>
 
       <!-- CONTEÚDO PRINCIPAL -->
       <section class="panel">
@@ -1101,7 +931,7 @@
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
-          <div class="small" style="color:rgba(255,255,255,.92);font-weight:900">Bom Trabalho</div>
+          <div class="small" style="color:rgba(255,255,255,.92);font-weight:900">Ajuda não é fardado</div>
         </div>
 
         <!-- MAPA -->
@@ -1540,7 +1370,7 @@
     function removerDaFilaPorNome(nome){
       try{
         if(!nome) return;
-        const ul = document.getElementById('espera-lista-normal') || document.getElementById('espera-lista-master');
+        const ul = document.getElementById('espera-lista');
         if(!ul) return;
 
         const itens = ul.querySelectorAll('.espera-chip');
@@ -1560,7 +1390,7 @@
         const restou = ul.querySelectorAll('.espera-chip').length;
         if(restou === 0){
           const li = document.createElement('li');
-          li.id = 'fila-vazia-dinamica';
+          li.id = 'fila-vazia';
           li.className = 'small';
           li.style.opacity = '.85';
           li.textContent = 'Nenhum cooperado na fila.';
@@ -1848,67 +1678,48 @@
     window.addEventListener('DOMContentLoaded', ()=>{
       const btnMenu   = document.getElementById('btnMenu');
       const sidePanel = document.getElementById('sidePanel');
-      if (btnMenu && sidePanel){
-        btnMenu.addEventListener('click', (e)=>{
-          e.stopPropagation();
-          const isOpen = sidePanel.classList.toggle('open');
-          if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
-        });
+      if (!btnMenu || !sidePanel) return;
 
-        document.addEventListener('click', (ev)=>{
-          if (!sidePanel.classList.contains('open')) return;
-          if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
-          if (sidePanel.contains(ev.target)) return;
-          sidePanel.classList.remove('open');
-          btnMenu.classList.remove('open');
-        });
-      }
-
-      document.querySelectorAll('.master-group-toggle').forEach((btn)=>{
-        btn.addEventListener('click', ()=>{
-          btn.classList.toggle('open');
-          const panel = btn.nextElementSibling;
-          if(panel && panel.classList.contains('master-sublinks')) panel.classList.toggle('open');
-        });
+      btnMenu.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isOpen = sidePanel.classList.toggle('open');
+        if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
       });
 
-      const masterToggle = document.getElementById('masterMobileToggle');
-      const masterSidebar = document.getElementById('masterSidebar');
-      if(masterToggle && masterSidebar){
-        masterToggle.addEventListener('click', ()=> masterSidebar.classList.toggle('mobile-open'));
-      }
+      document.addEventListener('click', (ev)=>{
+        if (!sidePanel.classList.contains('open')) return;
+        if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
+        if (sidePanel.contains(ev.target)) return;
+        sidePanel.classList.remove('open');
+        btnMenu.classList.remove('open');
+      });
     });
 
     (function(){
-      [
-        {sel:'cooperado-espera-normal', inp:'nome-espera-normal', form:'form-espera-normal'},
-        {sel:'cooperado-espera-master', inp:'nome-espera-master', form:'form-espera-master'}
-      ].forEach(cfg=>{
-        const selCoop    = document.getElementById(cfg.sel);
-        const inpNome    = document.getElementById(cfg.inp);
-        const formEspera = document.getElementById(cfg.form);
+      const selCoop    = document.getElementById('cooperado-espera');
+      const inpNome    = document.getElementById('nome-espera');
+      const formEspera = document.getElementById('form-espera');
 
-        if (selCoop && inpNome){
-          selCoop.addEventListener('change', ()=>{
+      if (selCoop && inpNome){
+        selCoop.addEventListener('change', ()=>{
+          const opt  = selCoop.options[selCoop.selectedIndex];
+          const nome = opt ? (opt.text || '') : '';
+          if (!inpNome.value) inpNome.value = nome;
+        });
+      }
+      if (formEspera && selCoop && inpNome){
+        formEspera.addEventListener('submit', ()=>{
+          if (!inpNome.value) {
             const opt  = selCoop.options[selCoop.selectedIndex];
             const nome = opt ? (opt.text || '') : '';
-            if (!inpNome.value) inpNome.value = nome;
-          });
-        }
-        if (formEspera && selCoop && inpNome){
-          formEspera.addEventListener('submit', ()=>{
-            if (!inpNome.value) {
-              const opt  = selCoop.options[selCoop.selectedIndex];
-              const nome = opt ? (opt.text || '') : '';
-              inpNome.value = nome;
-            }
-          });
-        }
-      });
+            inpNome.value = nome;
+          }
+        });
+      }
     })();
 
     (function(){
-      const ulFila = document.getElementById('espera-lista-normal') || document.getElementById('espera-lista-master');
+      const ulFila = document.getElementById('espera-lista');
       let dragEl = null;
 
       function renumerar(){
