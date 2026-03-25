@@ -17,7 +17,7 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, case
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -107,14 +107,18 @@ def _build_principal_sso_url(*, tipo: str, principal_user: str, next_path: str) 
     return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}" + "/sso/entrar?token=" + token
 
 def _admin_top_link_html() -> str:
-    href = url_for("admin") + "?tab=escalas"
-    label = "Escala"
+    if bool(session.get("is_master")):
+        href = url_for("retornar_admin_principal")
+        label = "Dashboard Principal"
+    else:
+        href = url_for("ir_principal_escala")
+        label = "Escala"
     return f'<a href="{href}" class="top-link-btn">{label}</a>'
 
 def _patch_admin_top_link(html: str) -> str:
+    pattern = r'<a href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
     repl = _admin_top_link_html()
-    pattern1 = r'<a href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
-    html2, n = re.subn(pattern1, repl, html, count=1)
+    html2, n = re.subn(pattern, repl, html, count=1)
     if n:
         return html2
     pattern2 = r'<a[^>]*class="top-link-btn"[^>]*>Escala</a>'
@@ -613,17 +617,31 @@ def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
         return
 
     try:
-        payload = serializar_entrega_admin(entrega) or {
+        payload = {
             "id": entrega.id,
+            "acao": acao,  # 'criada', 'editada', 'excluida', etc.
             "cliente": entrega.cliente,
             "bairro": entrega.bairro,
             "valor": float(entrega.valor or 0),
+            "status": entrega.status,
+            "status_pagamento": entrega.status_pagamento,
+            "pagamento": entrega.pagamento,
+            "cooperado_id": entrega.cooperado_id,
+            "cooperado_nome": entrega.cooperado.nome if entrega.cooperado else None,
+            "data_envio": (
+                to_brasilia(entrega.data_envio).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_envio else None
+            ),
+            "data_atribuida": (
+                to_brasilia(entrega.data_atribuida).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_atribuida else None
+            ),
         }
-        payload['acao'] = acao
 
-        evento = 'entrega_criada' if acao == 'criada' else 'entrega_atualizada'
-        socketio.emit(evento, payload)
-        socketio.emit('entrega_atualizada', payload)
+        # Evento específico para os painéis de entregas
+        socketio.emit(
+            "entrega_atualizada",
+            payload)
 
     except Exception as e:
         # não quebra o fluxo se der problema no websocket
@@ -1666,15 +1684,17 @@ def autologin():
 
 @app.get('/retornar-admin')
 def retornar_admin_principal():
-    if not session.get('is_admin'):
+    if not session.get('is_admin') or not bool(session.get('is_master')):
         return redirect(url_for('login'))
-    return redirect(url_for('admin'))
+    return redirect(_build_principal_sso_url(tipo='admin', principal_user='COOPEX', next_path='/admin'))
 
 @app.get('/ir-principal-escala')
 def ir_principal_escala():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    return redirect(url_for('admin') + '?tab=escalas')
+    if bool(session.get('is_master')):
+        return redirect(url_for('retornar_admin_principal'))
+    return redirect(_build_principal_sso_url(tipo='supervisao', principal_user='SUPERVISAO', next_path='/admin?tab=escalas'))
 
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
@@ -2792,7 +2812,6 @@ def admin():
     cooperado_id = request.args.get('cooperado_id', 'todos')
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
 
@@ -2828,15 +2847,14 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    if endereco:
-        like_end = f"%{endereco.lower()}%"
-        query = query.filter(func.lower(func.coalesce(Entrega.endereco, '')).like(like_end))
-
-    entregas = (
+    entregas_all = (
         query.options(joinedload(Entrega.cooperado))
-        .order_by(case((Entrega.cooperado_id.is_(None), 0), else_=1), Entrega.data_envio.desc())
+        .order_by(Entrega.data_envio.desc())
         .all()
     )
+    nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
+    atribuidos = [e for e in entregas_all if e.cooperado_id]
+    entregas = nao_atribuidos + atribuidos
 
     # AQUI você já tinha isso:
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
@@ -2898,13 +2916,10 @@ def admin():
                 "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
 
-    clientes = Cliente.query.order_by(Cliente.nome.asc()).all()
-
     html = render_template(
         'admin.html',
         entregas=entregas,
         cooperados=cooperados,
-        clientes=clientes,
         estatisticas=estatisticas,
         data_inicio=data_inicio,
         data_fim=data_fim,
@@ -4356,7 +4371,6 @@ def _wants_json():
     Decide se a resposta deve ser JSON (para AJAX / fetch).
     - ?format=json
     - request.is_json
-    - header X-Requested-With: fetch / XMLHttpRequest
     - Accept: application/json
     """
     try:
@@ -4366,69 +4380,12 @@ def _wants_json():
         pass
 
     try:
-        xr = (request.headers.get('X-Requested-With') or '').strip().lower()
-        if xr in ('fetch', 'xmlhttprequest'):
-            return True
-    except Exception:
-        pass
-
-    try:
         if request.is_json:
             return True
         best = request.accept_mimetypes.best
         return best == 'application/json'
     except Exception:
         return False
-
-
-def serializar_entrega_admin(entrega):
-    if not entrega:
-        return None
-
-    data_envio_br = to_brasilia(entrega.data_envio) if entrega.data_envio else None
-    data_atribuida_br = to_brasilia(entrega.data_atribuida) if entrega.data_atribuida else None
-    tem_coop = bool(getattr(entrega, 'cooperado_id', None))
-    st = (entrega.status or 'pendente').lower()
-    sp = (entrega.status_pagamento or 'pendente').lower()
-
-    rastreio_aberto = bool(tem_coop and st not in ['recebido', 'entregue'])
-    rastreio_url = None
-    if rastreio_aberto:
-        try:
-            rastreio_url = url_for('rastreio_publico', token=gerar_token_rastreio(entrega.id), _external=True)
-        except Exception:
-            rastreio_url = None
-
-    return {
-        'id': entrega.id,
-        'cliente_id': getattr(entrega, 'cliente_id', None) or '',
-        'cliente': entrega.cliente or '',
-        'bairro': entrega.bairro or '',
-        'endereco': getattr(entrega, 'endereco', None) or '-',
-        'valor': float(entrega.valor or 0),
-        'valor_fmt': f"R$ {float(entrega.valor or 0):.2f}".replace('.', ','),
-        'data_envio_iso': data_envio_br.strftime('%Y-%m-%dT%H:%M') if data_envio_br else '',
-        'data_envio_data': data_envio_br.strftime('%d/%m/%Y') if data_envio_br else '-',
-        'data_envio_hora': data_envio_br.strftime('%H:%M') if data_envio_br else '-',
-        'dia_semana': diasemana(data_envio_br) if data_envio_br else '',
-        'data_atribuida_hora': data_atribuida_br.strftime('%H:%M') if data_atribuida_br else '-',
-        'cooperado_id': entrega.cooperado_id or '',
-        'cooperado_nome': entrega.cooperado.nome if getattr(entrega, 'cooperado', None) else 'Sem Cooperado',
-        'pagamento': entrega.pagamento or '',
-        'status': st,
-        'status_label': 'Entregue' if st in ['entregue', 'recebido'] else ('Agendado' if st == 'agendado' else 'Pendente'),
-        'status_pagamento': sp,
-        'status_pagamento_label': 'Pago' if sp == 'pago' else 'Pendente',
-        'recebido_por': entrega.recebido_por or '-',
-        'tem_comprovante': bool(comprovante_existe(entrega.id)),
-        'comprovante_url': url_for('admin_ver_comprovante', entrega_id=entrega.id),
-        'comprovante_download_url': url_for('admin_baixar_comprovante', entrega_id=entrega.id),
-        'rastreio_aberto': rastreio_aberto,
-        'rastreio_url': rastreio_url,
-        'edit_url': url_for('editar_entrega', id=entrega.id),
-        'clone_url': url_for('clonar_entrega', id=entrega.id),
-        'delete_url': url_for('excluir_entrega', id=entrega.id),
-    }
 
 def _parse_money_to_float(v) -> float:
     """
@@ -4557,15 +4514,6 @@ def api_update_entrega_inline(entrega_id):
     )
 
 
-@app.get('/api/admin/entregas/<int:id>')
-def api_admin_entrega(id):
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    entrega = Entrega.query.options(joinedload(Entrega.cooperado)).get_or_404(id)
-    return jsonify(ok=True, entrega=serializar_entrega_admin(entrega))
-
-
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
     if not session.get('is_admin'):
@@ -4591,9 +4539,19 @@ def clonar_entrega(id):
     flash(msg)
 
     if _wants_json():
-        data = serializar_entrega_admin(nova) or {}
-        data['origem_id'] = e.id
-        return jsonify(ok=True, message=msg, entrega=data)
+        return jsonify(
+            ok=True,
+            message=msg,
+            entrega={
+                'id': nova.id,
+                'origem_id': e.id,
+                'cliente': nova.cliente,
+                'bairro': nova.bairro,
+                'valor': float(nova.valor or 0),
+                'status': nova.status,
+                'status_pagamento': nova.status_pagamento,
+            }
+        )
 
     return redirect_back_to_admin()
 
@@ -4612,9 +4570,6 @@ def cadastrar_entrega():
         valor = float(request.form.get('valor') or 0)
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
-        endereco = (request.form.get('endereco') or '').strip()
-        status_entrega = (request.form.get('status_entrega') or request.form.get('status') or 'pendente').strip().lower()
-        status_pagamento = (request.form.get('status_pagamento') or 'pendente').strip().lower()
 
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
@@ -4628,10 +4583,9 @@ def cadastrar_entrega():
             bairro=bairro,
             valor=valor,
             data_envio=datetime.utcnow(),
-            status_pagamento=(status_pagamento or 'pendente'),
-            status=(status_entrega or 'pendente'),
-            pagamento=pagamento,
-            endereco=endereco or None
+            status_pagamento='pendente',
+            status='pendente',
+            pagamento=pagamento
         )
 
         if cli:
@@ -4705,7 +4659,6 @@ def cadastrar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
-                entrega=serializar_entrega_admin(entrega),
             )
 
         return redirect_back_to_admin()
@@ -4730,7 +4683,6 @@ def agendar_entrega():
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
-        endereco = (request.form.get('endereco') or '').strip()
 
         data_envio = parse_local_datetime_to_utc_naive(data_str)
 
@@ -4749,8 +4701,7 @@ def agendar_entrega():
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=(status_entrega or 'pendente'),
             status_pagamento=(status_pagamento or 'pendente').lower(),
-            pagamento=pagamento,
-            endereco=endereco or None
+            pagamento=pagamento
         )
 
         if cli:
@@ -4818,7 +4769,6 @@ def agendar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
-                entrega=serializar_entrega_admin(entrega),
             )
 
         return redirect_back_to_admin()
@@ -4841,8 +4791,6 @@ def editar_entrega(id):
             novo_cliente_nome = (request.form.get('cliente') or '').strip()
             entrega.cliente = novo_cliente_nome
             entrega.bairro = request.form.get('bairro')
-            if hasattr(entrega, 'endereco'):
-                entrega.endereco = (request.form.get('endereco') or '').strip() or None
 
             try:
                 entrega.valor = float(request.form.get('valor') or entrega.valor or 0)
@@ -4910,7 +4858,6 @@ def editar_entrega(id):
                     cliente=entrega.cliente,
                     bairro=entrega.bairro,
                     valor=float(entrega.valor or 0),
-                    entrega=serializar_entrega_admin(entrega),
                 )
 
             return redirect_back_to_admin()
@@ -6059,7 +6006,6 @@ def estatisticas_cooperado():
     data_fim = request.args.get('data_fim')
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
     if cooperado_id != 'todos':
@@ -6260,7 +6206,6 @@ def estatisticas_cooperado_exportar_xlsx():
     data_fim = request.args.get('data_fim')
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
     if cooperado_id != 'todos':
@@ -7193,17 +7138,11 @@ def rastreio_publico(token):
 
       const txt = (data.cooperado || '') + ' • ' + (data.quando_local || '');
       if(!marker){{
-        const pinSvg = `
-          <svg xmlns="http://www.w3.org/2000/svg" width="28" height="36" viewBox="0 0 44 56">
-            <path d="M22 0C10.7 0 1.5 9.2 1.5 20.5C1.5 35.6 20.3 54.5 21.1 55.3C21.6 55.8 22.4 55.8 22.9 55.3C23.7 54.5 42.5 35.6 42.5 20.5C42.5 9.2 33.3 0 22 0Z" fill="#2563eb"/>
-            <circle cx="22" cy="20.5" r="11.8" fill="#ffffff" opacity="0.98"/>
-            <path d="M13.6 24.2c.7-2.2 2.7-3.7 5.1-3.7h2.1l1.3-2.1h3.8l-1.2 2.1h1.6c2.7 0 4.9 2.2 4.9 4.9 0 .3 0 .6-.1.9h-2.1c.1-.3.1-.6.1-.9 0-1.5-1.2-2.8-2.8-2.8h-6.7c-1.4 0-2.6.9-3 2.2l-.2.6h-2.8z" fill="#0b1220"/>
-            <circle cx="17" cy="28" r="2.4" fill="#0b1220"/>
-            <circle cx="29" cy="28" r="2.4" fill="#0b1220"/>
-          </svg>`;
-        const pinUrl = 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(pinSvg)));
-        const pinIcon = L.icon({ iconUrl: pinUrl, iconSize:[28,36], iconAnchor:[14,35], popupAnchor:[0,-30] });
-        marker = L.marker([lat,lng], {{ icon: pinIcon }}).addTo(map);
+        marker = L.circleMarker([lat,lng], {{
+          radius: 7,
+          weight: 2,
+          fillOpacity: 0.8
+        }}).addTo(map);
         marker.bindTooltip(txt, {{direction:'top', sticky:true}});
         map.setView([lat,lng], 15);
       }} else {{
@@ -7213,7 +7152,7 @@ def rastreio_publico(token):
     }}catch(e){{}}
   }}
   pull();
-  setInterval(pull, 10000);
+  setInterval(pull, 5000);
 </script>
 </body></html>"""
     return html
