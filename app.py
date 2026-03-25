@@ -107,18 +107,14 @@ def _build_principal_sso_url(*, tipo: str, principal_user: str, next_path: str) 
     return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}" + "/sso/entrar?token=" + token
 
 def _admin_top_link_html() -> str:
-    if bool(session.get("is_master")):
-        href = url_for("retornar_admin_principal")
-        label = "Dashboard Principal"
-    else:
-        href = url_for("ir_principal_escala")
-        label = "Escala"
+    href = url_for("admin") + "?tab=escalas"
+    label = "Escala"
     return f'<a href="{href}" class="top-link-btn">{label}</a>'
 
 def _patch_admin_top_link(html: str) -> str:
-    pattern = r'<a href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
     repl = _admin_top_link_html()
-    html2, n = re.subn(pattern, repl, html, count=1)
+    pattern1 = r'<a href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
+    html2, n = re.subn(pattern1, repl, html, count=1)
     if n:
         return html2
     pattern2 = r'<a[^>]*class="top-link-btn"[^>]*>Escala</a>'
@@ -1684,17 +1680,15 @@ def autologin():
 
 @app.get('/retornar-admin')
 def retornar_admin_principal():
-    if not session.get('is_admin') or not bool(session.get('is_master')):
+    if not session.get('is_admin'):
         return redirect(url_for('login'))
-    return redirect(_build_principal_sso_url(tipo='admin', principal_user='COOPEX', next_path='/admin'))
+    return redirect(url_for('admin'))
 
 @app.get('/ir-principal-escala')
 def ir_principal_escala():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    if bool(session.get('is_master')):
-        return redirect(url_for('retornar_admin_principal'))
-    return redirect(_build_principal_sso_url(tipo='supervisao', principal_user='SUPERVISAO', next_path='/admin?tab=escalas'))
+    return redirect(url_for('admin') + '?tab=escalas')
 
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
