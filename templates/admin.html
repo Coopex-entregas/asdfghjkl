@@ -644,6 +644,55 @@
     body.dark .act-ico.danger{ background:#2e1313; border-color:#5b2828; }
     .act-ico svg{width:18px;height:18px}
 
+
+
+    /* ===== Nova entrega rápida ===== */
+    .fast-modal{
+      position:fixed; inset:0;
+      background:rgba(8,12,24,.78);
+      display:none; align-items:center; justify-content:center;
+      z-index:2100; backdrop-filter: blur(3px);
+      padding:14px;
+    }
+    .fast-modal.open{display:flex}
+    .fast-card{
+      width:min(780px, 96vw);
+      background:var(--card);
+      color:var(--ink);
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:0 18px 50px rgba(0,0,0,.35);
+      overflow:hidden;
+    }
+    .fast-head{
+      padding:12px 14px;
+      display:flex; align-items:center; justify-content:space-between; gap:10px;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .98), rgba(15,53,181,.95));
+      color:#fff;
+      border-bottom:1px solid rgba(255,255,255,.18);
+    }
+    .fast-head strong{font-size:1rem}
+    .fast-x{
+      width:38px;height:38px;border-radius:12px;border:1px solid rgba(255,255,255,.22);
+      background:rgba(255,255,255,.12);color:#fff;font-size:22px;font-weight:900;cursor:pointer;
+    }
+    .fast-body{padding:14px}
+    .fast-grid{
+      display:grid;
+      grid-template-columns:1.25fr .9fr .8fr 1fr 1fr;
+      gap:10px;
+      align-items:end;
+    }
+    .fast-grid .field{margin:0}
+    .fast-actions{display:flex; gap:10px; justify-content:flex-end; margin-top:12px; flex-wrap:wrap}
+    .fast-actions .btn{box-shadow:none}
+    @media (max-width:980px){
+      .fast-grid{grid-template-columns:1fr 1fr}
+    }
+    @media (max-width:640px){
+      .fast-grid{grid-template-columns:1fr}
+    }
+
     /* ===== Modal ===== */
     #overlay{
       position:fixed; inset:0; background:rgba(8,12,24,.78);
@@ -967,7 +1016,7 @@
         <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
-              <button class="btn" type="button" onclick="window.location.href='{{ url_for('cadastrar_entrega') }}'">
+              <button class="btn" id="btnNovaEntregaRapida" type="button">
                 + Nova entrega
               </button>
             </div>
@@ -1206,6 +1255,59 @@
     </div>
   </div>
 
+
+  <!-- Nova entrega rápida -->
+  <div id="novaEntregaModal" class="fast-modal" aria-hidden="true">
+    <div class="fast-card" role="dialog" aria-modal="true" aria-labelledby="novaEntregaTitulo">
+      <div class="fast-head">
+        <strong id="novaEntregaTitulo">Nova entrega rápida</strong>
+        <button type="button" class="fast-x" id="fecharNovaEntrega" aria-label="Fechar">×</button>
+      </div>
+      <div class="fast-body">
+        <form id="formNovaEntregaRapida">
+          <div class="fast-grid">
+            <div class="field">
+              <label for="ne_cliente">Cliente</label>
+              <input type="text" id="ne_cliente" name="cliente" required placeholder="Nome do cliente" />
+            </div>
+            <div class="field">
+              <label for="ne_bairro">Bairro</label>
+              <input type="text" id="ne_bairro" name="bairro" required placeholder="Bairro" />
+            </div>
+            <div class="field">
+              <label for="ne_valor">Valor</label>
+              <input type="text" id="ne_valor" inputmode="decimal" placeholder="0,00" required />
+              <input type="hidden" id="ne_valor_hidden" name="valor" />
+            </div>
+            <div class="field">
+              <label for="ne_cooperado">Cooperado</label>
+              <select id="ne_cooperado" name="cooperado_id">
+                <option value="">Sem cooperado</option>
+                {% for c in cooperados %}
+                <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+            <div class="field">
+              <label for="ne_pagamento">Pagamento</label>
+              <select id="ne_pagamento" name="pagamento" required>
+                <option value="">Selecione</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="Cartão">Cartão</option>
+                <option value="Crédito">Crédito</option>
+              </select>
+            </div>
+          </div>
+          <div class="fast-actions">
+            <button type="button" class="btn alt" id="abrirCadastroCompletoBtn">Cadastro completo</button>
+            <button type="submit" class="btn" id="salvarNovaEntregaBtn">Salvar entrega</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
   <!-- Toast -->
   <div id="toast" role="status" aria-live="polite">
     <div id="toastText"><strong>Ok</strong></div>
@@ -1275,6 +1377,34 @@
       el.style.display = 'none';
       clearTimeout(_toastTimer);
       _toastTimer = null;
+    }
+
+    async function refreshEntregasTable(){
+      try{
+        const r = await fetch(window.location.href, {
+          cache:'no-store',
+          headers:{'X-Requested-With':'fetch','Accept':'text/html'}
+        });
+        if(!r.ok) throw new Error('Falha ao atualizar a tabela.');
+        const html = await r.text();
+        const doc = new DOMParser().parseFromString(html, 'text/html');
+        const novoTbody = doc.querySelector('.tabela tbody, table tbody');
+        const tbody = document.querySelector('.tabela tbody, table tbody');
+        if(novoTbody && tbody){
+          tbody.innerHTML = novoTbody.innerHTML;
+        }
+        const novoBadge = doc.getElementById('badgeAbertas');
+        const badge = document.getElementById('badgeAbertas');
+        if(novoBadge && badge) badge.textContent = novoBadge.textContent;
+      }catch(e){
+        console.error(e);
+      }
+    }
+
+    function removeEntregaRow(id){
+      const tr = document.querySelector('tr[data-id=+id+]');
+      if(tr) tr.remove();
+      try{ atualizarBadgeAbertas(); }catch(e){}
     }
 
     function showModal(title, html){
@@ -1355,13 +1485,14 @@
       ev.preventDefault();
       try{
         const fd = new FormData(form);
-        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
-          .then(res=>{
-            if(!res.ok) throw new Error('Falha ao atualizar.');
+        fetch(form.action + '?format=json', { method:'POST', body:fd, headers:{'X-Requested-With':'fetch','Accept':'application/json'} })
+          .then(async res=>{
+            const data = await res.json().catch(()=>({ok:res.ok}));
+            if(!res.ok || data.ok === false) throw new Error(data.message || 'Falha ao atualizar.');
             showToast('<strong>Atualizado com sucesso.</strong>');
-            setTimeout(()=> location.reload(), 350);
+            await refreshEntregasTable();
           })
-          .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
+          .catch((err)=> showToast('<strong>' + (err?.message || 'Não foi possível atualizar agora.') + '</strong>'));
       }catch(e){
         showToast('<strong>Não foi possível atualizar agora.</strong>');
       }
@@ -1799,6 +1930,124 @@
     }
   </script>
 
+
+  <script>
+    (function(){
+      const modal = document.getElementById('novaEntregaModal');
+      const openBtn = document.getElementById('btnNovaEntregaRapida');
+      const closeBtn = document.getElementById('fecharNovaEntrega');
+      const fullBtn = document.getElementById('abrirCadastroCompletoBtn');
+      const form = document.getElementById('formNovaEntregaRapida');
+      const valorVisual = document.getElementById('ne_valor');
+      const valorHidden = document.getElementById('ne_valor_hidden');
+      const submitBtn = document.getElementById('salvarNovaEntregaBtn');
+
+      function parseMoneyBR(v){
+        const s = String(v || '').trim().replace(/\./g,'').replace(',', '.').replace(/[^0-9.-]/g,'');
+        const n = Number(s);
+        return Number.isFinite(n) ? n : NaN;
+      }
+      function openModal(){
+        if(!modal) return;
+        modal.classList.add('open');
+        modal.setAttribute('aria-hidden', 'false');
+        setTimeout(()=>{ const f = document.getElementById('ne_cliente'); if(f) f.focus(); }, 20);
+      }
+      function closeModal(){
+        if(!modal) return;
+        modal.classList.remove('open');
+        modal.setAttribute('aria-hidden', 'true');
+      }
+
+      if(openBtn) openBtn.addEventListener('click', openModal);
+      if(closeBtn) closeBtn.addEventListener('click', closeModal);
+      if(modal) modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+      document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && modal && modal.classList.contains('open')) closeModal(); });
+      if(fullBtn) fullBtn.addEventListener('click', ()=>{ window.location.href = '{{ url_for('cadastrar_entrega') }}'; });
+
+      if(valorVisual){
+        valorVisual.addEventListener('blur', ()=>{
+          const n = parseMoneyBR(valorVisual.value);
+          if(Number.isFinite(n) && n > 0){
+            valorHidden.value = n.toFixed(2);
+            valorVisual.value = n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+          }
+        });
+      }
+
+      if(form){
+        form.addEventListener('submit', async (e)=>{
+          e.preventDefault();
+          const n = parseMoneyBR(valorVisual ? valorVisual.value : '');
+          if(!Number.isFinite(n) || n <= 0){
+            alert('Informe um valor válido.');
+            if(valorVisual) valorVisual.focus();
+            return;
+          }
+          if(valorHidden) valorHidden.value = n.toFixed(2);
+
+          const fd = new FormData(form);
+          const oldText = submitBtn ? submitBtn.textContent : '';
+          if(submitBtn){ submitBtn.disabled = true; submitBtn.textContent = 'Salvando...'; }
+          try{
+            const resp = await fetch('{{ url_for('cadastrar_entrega') }}?format=json', {
+              method:'POST',
+              headers:{'X-Requested-With':'fetch','Accept':'application/json'},
+              body:fd
+            });
+            const data = await resp.json().catch(()=>({ok:false, message:'Erro ao salvar.'}));
+            if(!resp.ok || !data.ok){
+              throw new Error(data.message || 'Não foi possível cadastrar a entrega.');
+            }
+            showToast('<strong>' + (data.message || 'Entrega cadastrada!') + '</strong>');
+            closeModal();
+            form.reset();
+            await refreshEntregasTable();
+          }catch(err){
+            alert(err?.message || 'Erro de conexão ao salvar a entrega.');
+          }finally{
+            if(submitBtn){ submitBtn.disabled = false; submitBtn.textContent = oldText; }
+          }
+        });
+      }
+
+      document.addEventListener('submit', async function(e){
+        const form = e.target;
+        if(!(form instanceof HTMLFormElement)) return;
+
+        const isClone = form.action && form.action.includes('/clonar_entrega/');
+        const isDelete = form.action && form.action.includes('/excluir_entrega/');
+        if(!isClone && !isDelete) return;
+
+        e.preventDefault();
+        const btn = form.querySelector('button[type="submit"]');
+        const oldDisabled = btn ? btn.disabled : false;
+        if(btn) btn.disabled = true;
+        try{
+          const resp = await fetch(form.action + '?format=json', {
+            method:'POST',
+            headers:{'X-Requested-With':'fetch','Accept':'application/json'},
+            body:new FormData(form)
+          });
+          const data = await resp.json().catch(()=>({ok:false, message:'Falha na ação.'}));
+          if(!resp.ok || data.ok === false) throw new Error(data.message || 'Falha na ação.');
+
+          if(isDelete){
+            const tr = form.closest('tr[data-id]');
+            if(tr){ removeEntregaRow(tr.dataset.id); }
+          }
+
+          showToast('<strong>' + (data.message || (isDelete ? 'Entrega excluída.' : 'Entrega clonada.')) + '</strong>');
+          await refreshEntregasTable();
+        }catch(err){
+          showToast('<strong>' + (err?.message || 'Não foi possível concluir a ação.') + '</strong>');
+        }finally{
+          if(btn) btn.disabled = oldDisabled;
+        }
+      }, true);
+    })();
+  </script>
+
   <!-- CUPOM / MAPA TELA CHEIA -->
   <script>
     
@@ -2080,7 +2329,7 @@ function __svgToDataUrl(svg){
 }
 function __motoPinSvg(color){
   return (
-    '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">' +
+    '<svg xmlns="http://www.w3.org/2000/svg" width="34" height="44" viewBox="0 0 44 56">' +
       '<path d="M22 0C10.7 0 1.5 9.2 1.5 20.5C1.5 35.6 20.3 54.5 21.1 55.3C21.6 55.8 22.4 55.8 22.9 55.3C23.7 54.5 42.5 35.6 42.5 20.5C42.5 9.2 33.3 0 22 0Z" fill="'+color+'"/>' +
       '<circle cx="22" cy="20.5" r="12.5" fill="#ffffff" opacity="0.98"/>' +
       // moto (silhueta simples)
@@ -2091,10 +2340,10 @@ function __motoPinSvg(color){
   );
 }
 function __iconSizeForZoom(z){
-  if (z >= 17) return 54;
-  if (z >= 15) return 48;
-  if (z >= 13) return 42;
-  return 36;
+  if (z >= 17) return 38;
+  if (z >= 15) return 34;
+  if (z >= 13) return 30;
+  return 26;
 }
 function __buildMotoIcon(online){
   var color = online ? '#22c55e' : '#ef4444';
@@ -2298,46 +2547,52 @@ var markers = {}; // id -> marker
         try{ setTimeout(function(){ map.invalidateSize(true); }, 200); }catch(e){}
       });
 
+      let mapPollTimer = null;
+      let mapPollMs = 60000;
+
+      function scheduleMapPoll(ms){
+        mapPollMs = ms;
+        if(mapPollTimer) clearTimeout(mapPollTimer);
+        mapPollTimer = setTimeout(atualizar, mapPollMs);
+      }
+
       async function atualizar(){
+        if(document.hidden){
+          scheduleMapPoll(mapPollMs || 60000);
+          return;
+        }
         try{
           const r = await fetch('{{ url_for("mapa_motoboys") }}?format=json', {
             cache:'no-store',
             headers:{'X-Requested-With':'fetch', 'Accept':'application/json'}
           });
-          if(!r.ok) return;
+          if(!r.ok){
+            scheduleMapPoll(60000);
+            return;
+          }
           const data = await r.json();
-          if(!Array.isArray(data)) return;
+          if(!Array.isArray(data)){
+            scheduleMapPoll(60000);
+            return;
+          }
           lastData = data;
           applyFilterAndRender();
-        }catch(e){}
+
+          const temOnline = data.some(isOnline);
+          scheduleMapPoll(temOnline ? 10000 : 60000);
+        }catch(e){
+          scheduleMapPoll(60000);
+        }
       }
+
+      document.addEventListener('visibilitychange', function(){
+        if(!document.hidden){
+          atualizar();
+        }
+      });
 
       atualizar();
-      setInterval(atualizar, 5000);
     });
-  </script>
-
-  <!-- SOCORRO (áudio) -->
-  <audio id="socorroAudio" src="{{ url_for('static', filename='socorro.mp3') }}" preload="auto"></audio>
-  <script>
-    (function socorroPolling(){
-      const audio = document.getElementById('socorroAudio');
-      async function check(){
-        try{
-          const r = await fetch('{{ url_for("admin_novo_socorro") }}', {cache:'no-store'});
-          if(!r.ok) return;
-          const data = await r.json();
-          if(data && data.novo){
-            try{ if(audio){ audio.currentTime = 0; audio.play(); } }catch(e){}
-            try{
-              showToast('<strong>⚠️ SOCORRO:</strong> '+(data.cooperado||'')+' — '+(data.mensagem||''));
-            }catch(e){}
-          }
-        }catch(e){}
-      }
-      check();
-      setInterval(check, 4000);
-    })();
   </script>
 
 
@@ -2411,7 +2666,7 @@ var markers = {}; // id -> marker
       }
 
       check();
-      setInterval(check, 4000);
+      setInterval(check, 60000);
     })();
   </script>
 
