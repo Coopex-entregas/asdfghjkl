@@ -6,7 +6,6 @@ import random
 from flask_socketio import SocketIO
 import unicodedata
 from datetime import datetime, timedelta, time, date
-from time import time as time_now
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 from functools import wraps
@@ -19,7 +18,7 @@ from flask import (
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
-from sqlalchemy.orm import joinedload, load_only
+from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -82,86 +81,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 db = SQLAlchemy(app)
-
-# =========================================================
-# CACHE LEVE / CONSULTAS RÁPIDAS DO FORMULÁRIO
-# =========================================================
-_FORM_CACHE = {
-    'cooperados': {'expira': 0, 'dados': []},
-    'clientes': {'expira': 0, 'dados': []},
-}
-FORM_CACHE_TTL = int(os.environ.get('FORM_CACHE_TTL', '60'))
-FORM_CLIENTES_LIMIT = int(os.environ.get('FORM_CLIENTES_LIMIT', '300'))
-
-def _form_cache_get(chave):
-    slot = _FORM_CACHE.get(chave) or {}
-    if slot.get('expira', 0) > time_now():
-        return slot.get('dados', [])
-    return None
-
-def _form_cache_set(chave, dados, ttl=FORM_CACHE_TTL):
-    _FORM_CACHE[chave] = {'expira': time_now() + ttl, 'dados': dados}
-
-def _invalidate_form_cache(*nomes):
-    alvos = nomes or ('cooperados', 'clientes')
-    for nome in alvos:
-        _FORM_CACHE[nome] = {'expira': 0, 'dados': []}
-
-def _get_cooperados_form_choices():
-    cached = _form_cache_get('cooperados')
-    if cached is not None:
-        return cached
-    dados = (
-        Cooperado.query
-        .options(load_only(Cooperado.id, Cooperado.nome, Cooperado.ativo))
-        .filter((Cooperado.ativo == True) | (Cooperado.ativo.is_(None)))
-        .order_by(Cooperado.nome.asc())
-        .all()
-    )
-    _form_cache_set('cooperados', dados)
-    return dados
-
-def _get_clientes_form_choices(limit=FORM_CLIENTES_LIMIT):
-    cached = _form_cache_get('clientes')
-    if cached is not None:
-        return cached
-    dados = (
-        Cliente.query
-        .options(load_only(Cliente.id, Cliente.nome, Cliente.telefone, Cliente.bairro_origem, Cliente.endereco))
-        .order_by(Cliente.nome.asc())
-        .limit(limit)
-        .all()
-    )
-    _form_cache_set('clientes', dados)
-    return dados
-
-def _find_cliente_by_nome_fast(nome: str):
-    nome = (nome or '').strip()
-    if not nome:
-        return None
-
-    q_base = Cliente.query.options(load_only(Cliente.id, Cliente.nome))
-
-    cli = q_base.filter(func.lower(Cliente.nome) == nome.lower()).first()
-    if cli:
-        return cli
-
-    cli = q_base.filter(Cliente.nome.ilike(nome)).first()
-    if cli:
-        return cli
-
-    tok = normalize_first_token(nome)
-    if tok:
-        candidatos = q_base.filter(Cliente.nome.ilike(f'{tok}%')).limit(25).all()
-        alvo = normalize_letters_key(nome)
-        for c in candidatos:
-            if normalize_letters_key(c.nome or '') == alvo:
-                return c
-        if candidatos:
-            return candidatos[0]
-
-    return None
-
 
 PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
 
@@ -2938,17 +2857,7 @@ def admin():
     entregas = nao_atribuidos + atribuidos
 
     # AQUI você já tinha isso:
-    cooperados = (
-        Cooperado.query
-        .options(load_only(
-            Cooperado.id, Cooperado.nome, Cooperado.ativo,
-            Cooperado.last_lat, Cooperado.last_lng, Cooperado.last_ping, Cooperado.online,
-            Cooperado.last_speed_kmh, Cooperado.last_heading, Cooperado.last_accuracy_m,
-            Cooperado.last_moving_at
-        ))
-        .order_by(Cooperado.nome.asc())
-        .all()
-    )
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
     hoje = datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
@@ -4652,12 +4561,12 @@ def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = _get_cooperados_form_choices()
-    clientes_lista = _get_clientes_form_choices()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
-        bairro = (request.form.get('bairro') or '').strip()
+        bairro = request.form.get('bairro')
         valor = float(request.form.get('valor') or 0)
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
@@ -4665,9 +4574,9 @@ def cadastrar_entrega():
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
         if cliente_id_form:
-            cli = Cliente.query.options(load_only(Cliente.id, Cliente.nome)).get(cliente_id_form)
+            cli = Cliente.query.get(cliente_id_form)
         if not cli and cliente_nome:
-            cli = _find_cliente_by_nome_fast(cliente_nome)
+            cli = _find_cliente_by_nome(cliente_nome)
 
         entrega = Entrega(
             cliente=cliente_nome,
@@ -4682,55 +4591,65 @@ def cadastrar_entrega():
         if cli:
             entrega.cliente_id = cli.id
 
-        coop_id_int = None
         if cooperado_id:
-            try:
-                coop_id_int = int(cooperado_id)
-            except Exception:
-                coop_id_int = None
-
-        if coop_id_int:
-            entrega.cooperado_id = coop_id_int
+            entrega.cooperado_id = int(cooperado_id)
             entrega.data_atribuida = datetime.utcnow()
 
         db.session.add(entrega)
 
-        if coop_id_int:
-            ListaEspera.query.filter_by(cooperado_id=coop_id_int).delete()
+        if cooperado_id:
+            ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
         db.session.commit()
+
+        # DEBUG AQUI
+        print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
 
         credito_consumido = 0.0
         erro_credito = False
         msg = 'Entrega cadastrada!'
         msg_category = 'info'
 
+        # Tenta consumir crédito e mostra o resultado
         try:
             if pagamento_usa_credito(entrega.pagamento):
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
                 credito_consumido = float(valor_consumido or 0.0)
                 if credito_consumido > 0:
-                    msg = f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} de crédito do cliente.'
+                    msg = (
+                        f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} '
+                        f'de crédito do cliente.'
+                    )
                     msg_category = 'success'
                 else:
-                    msg = 'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).'
+                    msg = (
+                        'Entrega cadastrada! (nenhum crédito foi consumido para '
+                        'este cliente).'
+                    )
+                    msg_category = 'info'
             else:
-                msg = 'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).'
+                msg = (
+                    'Entrega cadastrada! (nenhum crédito foi consumido para '
+                    'este cliente).'
+                )
+                msg_category = 'info'
         except Exception as ex:
-            app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
+            app.logger.exception(
+                "Falha ao consumir crédito na entrega %s: %s", entrega.id, ex
+            )
             erro_credito = True
-            msg = 'Entrega cadastrada, mas houve erro ao tentar consumir crédito automaticamente.'
+            msg = (
+                'Entrega cadastrada, mas houve erro ao tentar consumir crédito '
+                'automaticamente.'
+            )
             msg_category = 'warning'
 
         flash(msg, msg_category)
+
+         # 🔴 EMITE PARA O PAINEL EM TEMPO REAL
         emitir_atualizacao_entrega(entrega, 'criada')
 
-        wants_json = bool(
-            request.headers.get('X-Requested-With') == 'fetch'
-            or request.args.get('format') == 'json'
-            or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json')
-        )
-        if wants_json or _wants_json():
+        if _wants_json():
             return jsonify(
                 ok=True,
                 message=msg,
@@ -4752,8 +4671,8 @@ def agendar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = _get_cooperados_form_choices()
-    clientes_lista = _get_clientes_form_choices()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
