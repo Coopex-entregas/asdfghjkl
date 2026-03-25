@@ -5,7 +5,28 @@
   <title>Painel da Supervisão - Coopex</title>
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
-<style>
+
+  <!-- Leaflet -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin=""
+  />
+
+  <!-- MarkerCluster (AGRUPAMENTO) -->
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
+    crossorigin=""
+  />
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
+    crossorigin=""
+  />
+
+  <style>
     :root{
       --royal:#0f35b5;
       --royal-2:#395de1;
@@ -757,23 +778,6 @@
     .recb-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
     .recb-nome{font-weight:800;font-size:.86rem;opacity:.92;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-
-    .socorro-bar{
-      position:fixed; left:16px; right:16px; bottom:16px;
-      background:linear-gradient(90deg,#b91c1c,#ef4444);
-      color:#fff; border-radius:16px; padding:12px 14px;
-      display:flex; align-items:center; justify-content:space-between;
-      box-shadow:0 18px 40px rgba(0,0,0,.30);
-      z-index:9999;
-    }
-    .socorro-left{display:flex; flex-direction:column; gap:4px}
-    .socorro-title{font-weight:900; letter-spacing:.2px}
-    .socorro-count{background:rgba(255,255,255,.2); padding:2px 8px; border-radius:999px; margin-left:6px}
-    .socorro-msg{font-weight:700; opacity:.95; font-size:.92rem; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:70vw}
-    .socorro-x{border:none; background:rgba(255,255,255,.2); color:#fff; font-size:22px; width:38px; height:38px; border-radius:12px; cursor:pointer; font-weight:900}
-    .socorro-x:hover{background:rgba(255,255,255,.28)}
-
-
 /* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
 .map-card.fullscreen {
   position: fixed;
@@ -785,18 +789,6 @@
 .map-card.fullscreen #map-coopex {
   height: calc(100vh - 120px) !important;
 }
-    .map-shortcut-box{
-      margin:12px 12px 6px;
-      padding:16px 18px;
-      border-radius:18px;
-      border:1px solid rgba(255,255,255,.14);
-      background:linear-gradient(90deg, rgba(9,33,120,.95), rgba(15,53,181,.92));
-      display:flex;align-items:center;justify-content:space-between;gap:14px;flex-wrap:wrap;
-      box-shadow:0 12px 28px rgba(0,0,0,.14);
-    }
-    .map-shortcut-text{display:flex;flex-direction:column;gap:4px;color:#fff}
-    .map-shortcut-text strong{font-size:1rem;font-weight:900}
-    .map-shortcut-text span{font-size:.92rem;opacity:.95}
 
 </style>
 </head>
@@ -811,7 +803,6 @@
         </button>
         <span>Kratos System – Supervisão</span>
         <a href="https://financas-dxsu.onrender.com/admin?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>
-        <a href="{{ url_for('mapa_motoboys') }}" class="top-link-btn">Mapa</a>
       </div>
 
       <div class="kpis">
@@ -925,13 +916,34 @@
           </h2>
           <div class="small" style="color:rgba(255,255,255,.92);font-weight:900">Ajuda não é fardado</div>
         </div>
-        <!-- ACESSO RÁPIDO AO MAPA -->
-        <div class="map-shortcut-box">
-          <div class="map-shortcut-text">
-            <strong>Mapa dos motoboys</strong>
-            <span>Aberto em tela inteira para não pesar o admin.</span>
+
+        <!-- MAPA -->
+        <div class="map-wrapper" style="background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));">
+          <div class="map-header">
+            <div class="map-header-main">
+              <strong style="color:#fff">Mapa em tempo real</strong>
+
+              <div class="map-legend-bar">
+                <div class="legend-item"><span class="legend-dot on"></span> Online (app ligado)</div>
+                <div class="legend-item"><span class="legend-dot off"></span> Offline / desconectado</div>
+              </div>
+            </div>
+
+            <div class="map-header-actions">
+              <select id="mapSearch" class="map-search">
+                <option value="">🔍 Localizar motoboy…</option>
+              </select>
+
+              <select id="mapFilter" class="map-filter">
+                <option value="all">👁️ Ver todos</option>
+                <option value="online">🟢 Só online</option>
+              </select>
+
+              <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
+            </div>
           </div>
-          <a class="btn" href="{{ url_for('mapa_motoboys') }}">Abrir mapa em tela cheia</a>
+
+          <div id="map-coopex"></div>
         </div>
 
         <!-- FILTROS -->
@@ -1196,7 +1208,6 @@
 
   <!-- áudios -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
-  <audio id="som-socorro" src="{{ url_for('static', filename='socorro.mp3') }}"></audio>
 
   <!-- Socket.IO -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
@@ -1214,7 +1225,7 @@
 
   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
-    window.MOTOBOYS   = [];
+    window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
 
     function formatBRLFromNumberLike(v){
       const n = Number(String(v).replace(",", "."));
@@ -2011,83 +2022,281 @@ function abrirMapaTelaCheia() {
       if (btnFull) btnFull.addEventListener('click', abrirMapaTelaCheia);
     });
   </script>
-<!-- SOCORRO (persistente até clicar no X) -->
-  <div id="socorro-bar" style="display:none" class="socorro-bar" role="alert" aria-live="assertive">
-    <div class="socorro-left">
-      <div class="socorro-title">⚠️ SOCORRO <span id="socorro-count" class="socorro-count">0</span></div>
-      <div id="socorro-msg" class="socorro-msg"></div>
-    </div>
-    <button id="socorro-x" class="socorro-x" type="button" title="Marcar como lido">×</button>
-  </div>
+
+  <!-- Leaflet -->
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin=""></script>
+
+  <!-- MarkerCluster -->
+  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
 
   <script>
-    (function socorroPollingReal(){
-      const audio = document.getElementById('som-socorro') || document.getElementById('socorroAudio') || document.getElementById('som-pendente');
-      const bar = document.getElementById('socorro-bar');
-      const msgEl = document.getElementById('socorro-msg');
-      const countEl = document.getElementById('socorro-count');
-      const btnX = document.getElementById('socorro-x');
+    // ===== MAPA (SEM AGRUPAMENTO / COM LISTA + FILTRO) =====
+    window.addEventListener('DOMContentLoaded', function(){
+      var mapEl = document.getElementById('map-coopex');
+      if (!mapEl || typeof L === 'undefined') return;
 
-      let currentId = null;
-      let lastPlayedId = null;
+      var map = L.map('map-coopex', { zoomControl: true, preferCanvas: true }).setView([-5.7945, -35.211], 13);
 
-      function show(data){
-        if(!bar || !msgEl || !countEl) return;
-        bar.style.display = 'flex';
-        countEl.textContent = String(data.count || 0);
-        msgEl.textContent = (data.cooperado||'') + ' — ' + (data.mensagem||'') + (data.momento ? (' · ' + data.momento) : '');
+      // Tile COLORIDO e mais estável no Render
+      var tile = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
+        maxZoom: 20,
+        attribution: '&copy; OpenStreetMap &copy; CARTO',
+        subdomains: 'abcd'
+      }).addTo(map);
+
+      // força recalcular tamanho (muito comum o mapa nascer "travado")
+      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 300);
+      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 1200);
+
+      // marcador: PIN + MOTO (SVG Base64) - online verde / offline vermelho
+function __svgToDataUrl(svg){
+  try{
+    var encoded = btoa(unescape(encodeURIComponent(svg)));
+    return "data:image/svg+xml;base64," + encoded;
+  }catch(e){
+    return "";
+  }
+}
+function __motoPinSvg(color){
+  return (
+    '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">' +
+      '<path d="M22 0C10.7 0 1.5 9.2 1.5 20.5C1.5 35.6 20.3 54.5 21.1 55.3C21.6 55.8 22.4 55.8 22.9 55.3C23.7 54.5 42.5 35.6 42.5 20.5C42.5 9.2 33.3 0 22 0Z" fill="'+color+'"/>' +
+      '<circle cx="22" cy="20.5" r="12.5" fill="#ffffff" opacity="0.98"/>' +
+      // moto (silhueta simples)
+      '<path d="M13.6 24.2c.7-2.2 2.7-3.7 5.1-3.7h2.1l1.3-2.1h3.8l-1.2 2.1h1.6c2.7 0 4.9 2.2 4.9 4.9 0 .3 0 .6-.1.9h-2.1c.1-.3.1-.6.1-.9 0-1.5-1.2-2.8-2.8-2.8h-6.7c-1.4 0-2.6.9-3 2.2l-.2.6h-2.8z" fill="#0b1220"/>' +
+      '<circle cx="17" cy="28" r="2.4" fill="#0b1220"/>' +
+      '<circle cx="29" cy="28" r="2.4" fill="#0b1220"/>' +
+    '</svg>'
+  );
+}
+function __iconSizeForZoom(z){
+  if (z >= 17) return 54;
+  if (z >= 15) return 48;
+  if (z >= 13) return 42;
+  return 36;
+}
+function __buildMotoIcon(online){
+  var color = online ? '#22c55e' : '#ef4444';
+  var size = __iconSizeForZoom(map.getZoom());
+  var url = __svgToDataUrl(__motoPinSvg(color));
+  return L.icon({
+    iconUrl: url,
+    iconSize: [size, Math.round(size * 56 / 44)],
+    iconAnchor: [Math.round(size/2), Math.round(size * 56 / 44) - 2],
+    popupAnchor: [0, -Math.round(size * 56 / 44) + 8]
+  });
+}
+
+function makeMarker(lat, lng, tooltipHtml, online){
+  var m = L.marker([lat, lng], { icon: __buildMotoIcon(online) }).addTo(map);
+  m.options.__online = !!online;
+
+  if (tooltipHtml){
+    m.bindTooltip(tooltipHtml, {direction:'top', sticky:true, opacity:0.95});
+    // popup com as mesmas infos do tooltip (e espaço para velocidade se vier no HTML)
+    m.bindPopup('<div style="min-width:220px">' + tooltipHtml + '</div>', {closeButton:true});
+  }
+  return m;
+}
+
+// reajusta tamanho dos ícones quando der zoom
+map.on('zoomend', function(){
+  try{
+    Object.keys(markers || {}).forEach(function(k){
+      var mk = markers[k];
+      if (mk && mk.setIcon){
+        mk.setIcon(__buildMotoIcon(!!mk.options.__online));
       }
-      function hide(){
-        if(!bar) return;
-        bar.style.display = 'none';
-        if(msgEl) msgEl.textContent = '';
-        if(countEl) countEl.textContent = '0';
+    });
+  }catch(e){}
+});
+var markers = {}; // id -> marker
+      var lastData = [];
+      var currentFilter = 'all';
+
+      var selectedId = '';
+      var userInteracted = false;
+      var programmaticMove = false;
+
+      // Se o admin mexer no mapa (zoom/arrastar), não vamos mais resetar o zoom automaticamente
+      map.on('zoomstart movestart', function(){
+        if (!programmaticMove) userInteracted = true;
+      });
+
+      var sel = document.getElementById('mapSearch');
+      var filterSel = document.getElementById('mapFilter');
+
+      function isOnline(p){
+        if (typeof p.online === 'boolean') return p.online;
+        if (typeof p.is_online === 'boolean') return p.is_online;
+        var s = String(p.status || '').toLowerCase();
+        return (s.includes('online') || s.includes('livre') || s.includes('corrida'));
       }
 
-      async function check(){
+      function renderList(list){
+        if (!sel) return;
+        var keep = sel.value;
+        sel.innerHTML = '<option value="">🔍 Localizar motoboy…</option>';
+        list.forEach(function(p){
+          var opt = document.createElement('option');
+          opt.value = String(p.id);
+          opt.textContent = p.nome || ('Motoboy ' + p.id);
+          sel.appendChild(opt);
+        });
+        // mantém seleção se ainda existir
+        if (keep && Array.from(sel.options).some(function(o){ return o.value === keep; })){
+          sel.value = keep;
+        }
+      }
+
+      function renderMarkers(list){
+        var seen = new Set();
+
+        list.forEach(function(p){
+          var lat = p.lat, lng = p.lng;
+          if (typeof lat !== 'number' || typeof lng !== 'number') return;
+
+          seen.add(String(p.id));
+
+          var online = isOnline(p);
+          var statusTxt = online ? 'ONLINE' : 'OFFLINE';
+          var html = '<b>'+ (p.nome||'') +'</b>'
+                   + '<br><span style="font-weight:800">'+statusTxt+'</span>'
+                   + (p.ultima_atualizacao ? '<br><span style="opacity:.9">'+p.ultima_atualizacao+'</span>' : '')
+                   + (p.endereco ? '<br><span style="opacity:.9">'+p.endereco+'</span>' : '');
+
+          if (!markers[String(p.id)]){
+            markers[String(p.id)] = makeMarker(lat, lng, html, online);
+          } else {
+            markers[String(p.id)].setLatLng([lat,lng]);
+            try{
+              markers[String(p.id)].options.__online = !!online;
+              if (markers[String(p.id)].setIcon){
+                markers[String(p.id)].setIcon(__buildMotoIcon(!!online));
+              }
+            }catch(e){}
+            try{ markers[String(p.id)].setTooltipContent(html); }catch(e){}
+            try{ markers[String(p.id)].setPopupContent('<div style="min-width:220px">'+html+'</div>'); }catch(e){}
+          }
+        });
+
+        // remove marcadores que sumiram
+        Object.keys(markers).forEach(function(k){
+          if(!seen.has(k)){
+            try{ map.removeLayer(markers[k]); }catch(e){}
+            delete markers[k];
+          }
+        });
+
+        // se não tem seleção, ajusta bounds (sem ficar pulando com zoom alto)
         try{
-          const r = await fetch('{{ url_for("admin_novo_socorro") }}', {cache:'no-store'});
-          if(!r.ok) return;
-          const data = await r.json();
-          if(data && data.novo){
-            currentId = data.id || null;
-            show(data);
-
-            if(currentId && currentId !== lastPlayedId){
-              lastPlayedId = currentId;
-              try{ if(audio){ audio.currentTime = 0; audio.play(); } }catch(e){}
+          if (list.length && (!sel || !sel.value)){
+            var pts = list
+              .filter(function(p){ return (typeof p.lat==='number' && typeof p.lng==='number'); })
+              .map(function(p){ return [p.lat, p.lng]; });
+            if (pts.length && !selectedId && !userInteracted){
+              map.fitBounds(pts, {padding:[30,30], maxZoom: 14});
             }
-          }else{
-            currentId = null;
-            hide();
           }
         }catch(e){}
+
+        setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 50);
       }
 
-      if(btnX){
-        btnX.addEventListener('click', async ()=>{
-          if(!currentId) return;
+      function applyFilterAndRender(){
+        var list = lastData.slice();
+        if (currentFilter === 'online'){
+          list = list.filter(isOnline);
+        }
+        renderList(list);
+        renderMarkers(list);
+      }
+
+      if (filterSel){
+        filterSel.addEventListener('change', function(){
+          currentFilter = filterSel.value || 'all';
+          applyFilterAndRender();
+        });
+      }
+
+      if (sel){
+        sel.addEventListener('change', function(){
+          var id = sel.value;
+          selectedId = id || '';
+          if (!id) return;
+          programmaticMove = true;
+          var p = lastData.find(function(x){ return String(x.id) === String(id); });
+          if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
+
           try{
-            const r = await fetch('{{ url_for("admin_socorro_marcar_lido") }}', {
-              method:'POST',
-              headers:{'Content-Type':'application/json'},
-              body: JSON.stringify({id: currentId})
-            });
-            if(r.ok){
-              await check();
+            map.setView([p.lat, p.lng], 16);
+            if (markers[String(p.id)]){
+              try{ markers[String(p.id)].openTooltip(); }catch(e){}
             }
           }catch(e){}
         });
       }
 
-      check();
-      setInterval(check, 60000);
-    })();
+      // Botão: mapa em tela cheia (tenta Fullscreen API; se falhar, usa CSS fullscreen)
+      var fullBtn = document.getElementById('btnFullMap');
+      function toggleFull(){
+        try{
+          var card = mapEl.closest('.map-card') || mapEl.parentElement;
+          if (!card) card = mapEl;
+          var goFull = !document.fullscreenElement;
+          if (goFull){
+            if (card.requestFullscreen){
+              card.requestFullscreen().then(function(){
+                setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 400);
+              }).catch(function(){
+                card.classList.add('fullscreen');
+                setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 200);
+              });
+            }else{
+              card.classList.add('fullscreen');
+              setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 200);
+            }
+          }else{
+            if (document.exitFullscreen){
+              document.exitFullscreen().catch(function(){});
+            }
+            card.classList.remove('fullscreen');
+            setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 200);
+          }
+        }catch(e){}
+      }
+      if (fullBtn){
+        fullBtn.addEventListener('click', function(ev){
+          ev.preventDefault();
+          toggleFull();
+        });
+      }
+      document.addEventListener('fullscreenchange', function(){
+        try{ setTimeout(function(){ map.invalidateSize(true); }, 200); }catch(e){}
+      });
+
+      async function atualizar(){
+        try{
+          const r = await fetch('{{ url_for("mapa_motoboys") }}?format=json', {
+            cache:'no-store',
+            headers:{'X-Requested-With':'fetch', 'Accept':'application/json'}
+          });
+          if(!r.ok) return;
+          const data = await r.json();
+          if(!Array.isArray(data)) return;
+          lastData = data;
+          applyFilterAndRender();
+        }catch(e){}
+      }
+
+      atualizar();
+      setInterval(atualizar, 5000);
+    });
   </script>
-
-
-
-  <!-- CUPOM: Overlay de escolha/edição (não salva no banco, só imprime) -->
+<!-- CUPOM: Overlay de escolha/edição (não salva no banco, só imprime) -->
   <div id="cupomOverlay" style="display:none;">
     <div class="cupom-modal" role="dialog" aria-modal="true" aria-label="Imprimir cupom">
       <div class="cupom-head">
