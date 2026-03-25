@@ -807,42 +807,7 @@
   height: calc(100vh - 120px) !important;
 }
 
-
-    .cx-modal-backdrop{position:fixed;inset:0;background:rgba(15,23,42,.48);display:none;align-items:center;justify-content:center;z-index:99999;padding:18px}
-    .cx-modal-backdrop.open{display:flex}
-    .cx-modal{width:min(980px,96vw);max-height:92vh;overflow:auto;background:#fff;border:1px solid #dce6ff;border-radius:24px;box-shadow:0 30px 80px rgba(15,23,42,.24);padding:18px}
-    body.dark .cx-modal{background:#0f172a;border-color:rgba(255,255,255,.14);color:#e7edf9}
-    .cx-modal-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-    .cx-modal-title{font-size:1.05rem;font-weight:900}
-    .cx-modal-close{border:1px solid #dce6ff;background:#fff;border-radius:12px;padding:8px 12px;font-weight:900;cursor:pointer}
-    body.dark .cx-modal-close{background:#111827;border-color:rgba(255,255,255,.14);color:#e7edf9}
-    .cx-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px}
-    .cx-field{display:flex;flex-direction:column;gap:6px}
-    .cx-field label{font-weight:800;font-size:.82rem}
-    .cx-field input,.cx-field select{width:100%;border:1px solid #dce6ff;border-radius:12px;padding:10px 12px;font-size:.95rem;background:#fff}
-    body.dark .cx-field input,body.dark .cx-field select{background:#0b1220;border-color:rgba(255,255,255,.14);color:#e7edf9}
-    .cx-field.span-2{grid-column:span 2}
-    .cx-field.span-4{grid-column:1/-1}
-    .cx-modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px}
-    .cx-client-results{display:none;margin-top:8px;border:1px solid #dce6ff;border-radius:14px;max-height:220px;overflow:auto;background:#fff}
-    .cx-client-results.open{display:block}
-    .cx-client-item{padding:10px 12px;border-bottom:1px dashed #e5edff;cursor:pointer;display:flex;justify-content:space-between;gap:10px;align-items:center}
-    .cx-client-item:last-child{border-bottom:none}
-    .cx-client-item:hover,.cx-client-item.active{background:#eef4ff}
-    .cx-client-main{display:flex;flex-direction:column;gap:2px}
-    .cx-client-name{font-weight:800}
-    .cx-client-phone{font-size:.82rem;color:#64748b}
-    .cx-client-pill{font-size:.72rem;border:1px solid #dce6ff;background:#f8fbff;border-radius:999px;padding:3px 8px;white-space:nowrap}
-    body.dark .cx-client-results{background:#111827;border-color:rgba(255,255,255,.14)}
-    body.dark .cx-client-item{border-color:rgba(255,255,255,.08)}
-    body.dark .cx-client-item:hover,body.dark .cx-client-item.active{background:#172033}
-    body.dark .cx-client-phone{color:#94a3b8}
-    body.dark .cx-client-pill{background:#0f172a;border-color:rgba(255,255,255,.14);color:#cbd5e1}
-    .is-busy{opacity:.65;pointer-events:none}
-    @media (max-width:900px){.cx-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.cx-field.span-2{grid-column:span 2}}
-    @media (max-width:640px){.cx-grid{grid-template-columns:1fr}.cx-field.span-2,.cx-field.span-4{grid-column:1/-1}}
-
-  </style>
+</style>
 </head>
 
 <body>
@@ -854,7 +819,7 @@
           <span></span><span></span><span></span>
         </button>
         <span>Kratos System – Supervisão</span>
-        <a href="{{ url_for('admin') }}?tab=escalas" class="top-link-btn">Escala</a>
+        <a href="https://financas-dxsu.onrender.com/admin?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>
       </div>
 
       <div class="kpis">
@@ -1002,7 +967,7 @@
         <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
-              <button class="btn" type="button" id="btnNovaEntrega">
+              <button class="btn" type="button" onclick="window.location.href='{{ url_for('cadastrar_entrega') }}'">
                 + Nova entrega
               </button>
             </div>
@@ -1052,7 +1017,7 @@
           </div>
 
           <div class="filters-actions">
-            <button class="btn alt" type="button" id="btnAgendarEntrega">
+            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
               + Agendar entrega
             </button>
             <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
@@ -1187,13 +1152,13 @@
 
                   <td>
                     <div class="actions">
-                      <button class="act-ico js-open-edit" type="button" title="Editar" aria-label="Editar" data-id="{{ e.id }}">
+                      <a class="act-ico" title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" aria-label="Editar">
                         <svg viewBox="0 0 24 24" fill="#1e40af">
                           <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
                         </svg>
-                      </button>
+                      </a>
 
-                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;" class="js-clone-form">
+                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
                         <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
                           <svg viewBox="0 0 24 24" fill="#1e40af">
                             <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
@@ -1219,7 +1184,9 @@
                         </svg>
                       </button>
 
-                      <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST" style="display:inline;" class="js-delete-form">
+                      <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST"
+                            style="display:inline;"
+                            onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
                         <button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir">
                           <svg viewBox="0 0 24 24" fill="#b91c1c">
                             <path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/>
@@ -1235,96 +1202,6 @@
           </div>
         </div>
 
-
-        <div class="cx-modal-backdrop" id="entregaModalBackdrop" aria-hidden="true">
-          <div class="cx-modal">
-            <div class="cx-modal-head">
-              <div class="cx-modal-title" id="entregaModalTitle">Nova entrega</div>
-              <button type="button" class="cx-modal-close" id="entregaModalClose">Fechar</button>
-            </div>
-
-            <form id="entregaModalForm">
-              <input type="hidden" name="modo" id="modalModo" value="nova">
-              <input type="hidden" name="entrega_id" id="modalEntregaId" value="">
-              <input type="hidden" name="cliente_id" id="m_cliente_id" value="">
-              <div class="cx-grid">
-                <div class="cx-field span-2">
-                  <label for="m_cliente_select">Cliente cadastrado</label>
-                  <select id="m_cliente_select">
-                    <option value="">-- Selecione um cliente (opcional) --</option>
-                    {% for cl in clientes %}
-                    <option value="{{ cl.id }}" data-nome="{{ cl.nome|e }}" data-bairro="{{ cl.bairro_origem or ''|e }}" data-telefone="{{ cl.telefone or ''|e }}">{{ cl.nome }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="cx-field span-2">
-                  <label for="m_cliente">Cliente</label>
-                  <input type="text" name="cliente" id="m_cliente" required autocomplete="off">
-                  <div id="m_cliente_resultados" class="cx-client-results" role="listbox" aria-label="Resultados de clientes"></div>
-                </div>
-                <div class="cx-field">
-                  <label for="m_bairro">Bairro</label>
-                  <input type="text" name="bairro" id="m_bairro">
-                </div>
-                <div class="cx-field">
-                  <label for="m_valor">Valor</label>
-                  <input type="text" name="valor" id="m_valor" inputmode="decimal" value="0,00">
-                </div>
-                <div class="cx-field span-4">
-                  <label for="m_endereco">Endereço</label>
-                  <input type="text" name="endereco" id="m_endereco">
-                </div>
-                <div class="cx-field">
-                  <label for="m_data">Data e hora</label>
-                  <input type="datetime-local" name="data" id="m_data">
-                </div>
-                <div class="cx-field">
-                  <label for="m_cooperado_id">Cooperado</label>
-                  <select name="cooperado_id" id="m_cooperado_id">
-                    <option value="">Sem cooperado</option>
-                    {% for c in cooperados %}
-                    <option value="{{ c.id }}">{{ c.nome }}</option>
-                    {% endfor %}
-                  </select>
-                </div>
-                <div class="cx-field">
-                  <label for="m_status_entrega">Status da entrega</label>
-                  <select name="status_entrega" id="m_status_entrega">
-                    <option value="pendente">Pendente</option>
-                    <option value="agendado">Agendado</option>
-                    <option value="recebido">Entregue</option>
-                  </select>
-                </div>
-                <div class="cx-field">
-                  <label for="m_status_pagamento">Status pagamento</label>
-                  <select name="status_pagamento" id="m_status_pagamento">
-                    <option value="pendente">Pendente</option>
-                    <option value="pago">Pago</option>
-                  </select>
-                </div>
-                <div class="cx-field">
-                  <label for="m_pagamento">Forma pgto</label>
-                  <select name="pagamento" id="m_pagamento">
-                    <option value="CREDITO_AUTO">Crédito automático</option>
-                    <option value="Dinheiro">Dinheiro</option>
-                    <option value="Pix">Pix</option>
-                    <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
-                    <option value="Comanda">Comanda</option>
-                  </select>
-                </div>
-                <div class="cx-field span-2">
-                  <label for="m_recebido_por">Recebido por</label>
-                  <input type="text" name="recebido_por" id="m_recebido_por">
-                </div>
-              </div>
-              <div class="cx-modal-actions">
-                <button type="button" class="btn alt" id="entregaModalCancel">Cancelar</button>
-                <button type="submit" class="btn" id="entregaModalSubmit">Salvar</button>
-              </div>
-            </form>
-          </div>
-        </div>
-
       </section>
     </div>
   </div>
@@ -1336,19 +1213,6 @@
   </div>
 
   <!-- Modal (mantido para outras mensagens do sistema; não abre no cluster) -->
-  <script id="admin-clientes-json" type="application/json">
-    [
-      {% for cl in clientes %}
-      {
-        "id": {{ cl.id }},
-        "nome": {{ cl.nome|tojson }},
-        "telefone": {{ (cl.telefone if cl.telefone is defined and cl.telefone else '')|tojson }},
-        "bairro": {{ (cl.bairro_origem if cl.bairro_origem is defined and cl.bairro_origem else '')|tojson }}
-      }{{ ',' if not loop.last }}
-      {% endfor %}
-    ]
-  </script>
-
   <div id="overlay" role="dialog" aria-modal="true" aria-labelledby="modal-title">
     <div class="modal">
       <header id="modal-title">Aviso</header>
@@ -1898,87 +1762,20 @@
       }
     })();
 
-    function escHtml(s){
-      return String(s ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
-    }
-    function fmtDateTimeLocalNow(addMinutes){
-      const d = new Date(Date.now() + ((addMinutes||0) * 60000));
-      const pad = n => String(n).padStart(2,'0');
-      return d.getFullYear() + '-' + pad(d.getMonth()+1) + '-' + pad(d.getDate()) + 'T' + pad(d.getHours()) + ':' + pad(d.getMinutes());
-    }
-    function corPillStatus(st){
-      st = (st||'').toLowerCase();
-      if(st === 'agendado') return 'blue';
-      if(st === 'entregue' || st === 'recebido') return 'yellow';
-      return 'red';
-    }
-    function corPillPagto(sp){
-      return (String(sp||'').toLowerCase() === 'pago') ? 'green' : 'red';
-    }
-    function renderRastreioCell(d){
-      if(d?.rastreio_aberto && d?.rastreio_url) return `<a href="${escHtml(d.rastreio_url)}" target="_blank" class="act-open" rel="noopener">Abrir</a>`;
-      if(d?.cooperado_id) return '<span class="small">Encerrado</span>';
-      return '<span class="small">—</span>';
-    }
-    function renderRecebidoCell(d){
-      const nome = escHtml(d?.recebido_por || '-');
-      if(d?.tem_comprovante){
-        return `<div class="recb-wrap"><a class="foto-btn foto-ok" title="Ver foto" target="_blank" rel="noopener" href="${escHtml(d.comprovante_url)}">📷</a><a class="foto-dl" title="Baixar foto" href="${escHtml(d.comprovante_download_url)}">⬇</a><div class="recb-nome" title="${nome}">${nome}</div></div>`;
-      }
-      return `<div class="recb-wrap"><span class="foto-btn foto-no" title="Sem foto">📷</span><div class="recb-nome" title="${nome}">${nome}</div></div>`;
-    }
-    function renderEntregaRow(d){
-      if(!d?.id) return '';
-      const temCoop = !!d.cooperado_id;
-      const dotCls = temCoop ? 'ok' : 'no';
-      const dotTitle = temCoop ? 'Com cooperado atribuído' : 'Sem cooperado';
-      const coopNome = escHtml(d.cooperado_nome || 'Sem Cooperado');
-      const cliente = escHtml(d.cliente || '');
-      const bairro = escHtml(d.bairro || '');
-      const endereco = escHtml(d.endereco || '-');
-      const valorFmt = escHtml(d.valor_fmt || formatBRLFromNumberLike(d.valor || 0));
-      const pagamento = escHtml(d.pagamento || '');
-      const recebido = escHtml(d.recebido_por || '-');
-      const statusLabel = escHtml(d.status_label || 'Pendente');
-      const pagtoLabel = escHtml(d.status_pagamento_label || 'Pendente');
-      return `
-        <tr data-id="${d.id}">
-          <td><span class="id-with-dot"><span class="status-dot ${dotCls}" title="${dotTitle}"></span><span>${d.id}</span></span></td>
-          <td>${cliente}</td>
-          <td>${bairro}</td>
-          <td>${endereco}</td>
-          <td><span class="value-editable" data-id="${d.id}" data-valor="${Number(d.valor||0).toFixed(2)}" title="Clique para alterar o valor">${valorFmt}</span></td>
-          <td>${escHtml(d.data_envio_data || '-')}<br><span class="small">${escHtml(d.dia_semana || '')}</span></td>
-          <td>${escHtml(d.data_envio_hora || '-')}</td>
-          <td>${escHtml(d.data_atribuida_hora || '-')}</td>
-          <td><span class="coop-editable" data-id="${d.id}" data-cooperado-id="${escHtml(d.cooperado_id || '')}" title="Clique para trocar o cooperado">${coopNome}</span></td>
-          <td>${pagamento}</td>
-          <td><span class="status-editable" data-id="${d.id}" data-status="${escHtml(d.status || 'pendente')}" title="Clique para alterar o status da entrega"><span class="pill ${corPillStatus(d.status)}">${statusLabel}</span></span></td>
-          <td><span class="pagamento-editable" data-id="${d.id}" data-status-pagamento="${escHtml(d.status_pagamento || 'pendente')}" title="Clique para alterar o status do pagamento"><span class="pill ${corPillPagto(d.status_pagamento)}">${pagtoLabel}</span></span></td>
-          <td class="td-recebido" style="text-align:center">${renderRecebidoCell(d)}</td>
-          <td>${renderRastreioCell(d)}</td>
-          <td><div class="actions">${montarAcoesEntregaHtml(d)}</div></td>
-        </tr>`;
-    }
-    function montarAcoesEntregaHtml(d){
-      return `<button class="act-ico js-open-edit" type="button" title="Editar" aria-label="Editar" data-entrega="${escHtml(JSON.stringify(d))}"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></button><form action="${escHtml(d.clone_url)}" method="POST" style="display:inline;" class="js-clone-form"><button class="act-ico" title="Clonar" type="submit" aria-label="Clonar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button></form><button type="button" class="act-ico" title="Imprimir cupom" data-id="${d.id}" data-cliente="${escHtml(d.cliente||'')}" data-bairro="${escHtml(d.bairro||'')}" data-endereco="${escHtml(d.endereco||'-')}" data-valor="${Number(d.valor||0).toFixed(2)}" data-data="${escHtml(d.data_envio_data||'-')}" data-hora_pedido="${escHtml(d.data_envio_hora||'-')}" data-hora_atribuida="${escHtml(d.data_atribuida_hora||'-')}" data-cooperado="${escHtml(d.cooperado_nome||'Sem Cooperado')}" data-pagamento="${escHtml(d.pagamento||'')}" data-recebido="${escHtml(d.recebido_por||'-')}" onclick="imprimirCupom(${d.id}, this)"><svg viewBox="0 0 24 24" fill="#16a34a"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg></button><form action="${escHtml(d.delete_url)}" method="POST" style="display:inline;" class="js-delete-form"><button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir"><svg viewBox="0 0 24 24" fill="#b91c1c"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg></button></form>`;
-    }
-    function normalizarEntregaPayload(raw){
-      if(!raw) return null;
-      return raw.entrega ? raw.entrega : raw;
-    }
     function atualizarOuInserirLinhaEntrega(dados){
-      const d = normalizarEntregaPayload(dados);
-      if (!d?.id) return;
+      if (!dados?.id || !dados?.linha_html) return;
       const tbody = document.querySelector('.tabela tbody');
       if (!tbody) return;
+
       const temp = document.createElement('tbody');
-      temp.innerHTML = renderEntregaRow(d).trim();
+      temp.innerHTML = dados.linha_html.trim();
       const novaTr = temp.querySelector('tr');
       if (!novaTr) return;
-      const trExistente = tbody.querySelector('tr[data-id="' + d.id + '"]');
+
+      const trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
       if (trExistente) tbody.replaceChild(novaTr, trExistente);
       else tbody.prepend(novaTr);
+
       atualizarBadgeAbertas();
     }
     function removerLinhaEntrega(id){
@@ -1988,238 +1785,6 @@
       if (tr) tr.remove();
       atualizarBadgeAbertas();
     }
-    function parseMoney(v){ return parseNumberFromBRL(v || 0) || 0; }
-    async function carregarEntregaAdmin(id){
-      const r = await fetch(`/api/admin/entregas/${id}`, {headers:{'X-Requested-With':'fetch'}, cache:'no-store'});
-      if(!r.ok) throw new Error('Falha ao carregar');
-      const j = await r.json();
-      return j?.entrega || null;
-    }
-    const entregaModalBackdrop = document.getElementById('entregaModalBackdrop');
-    const entregaModalForm = document.getElementById('entregaModalForm');
-    const entregaModalTitle = document.getElementById('entregaModalTitle');
-    const modalModo = document.getElementById('modalModo');
-    const modalEntregaId = document.getElementById('modalEntregaId');
-    const mClienteSelect = document.getElementById('m_cliente_select');
-    const mClienteId = document.getElementById('m_cliente_id');
-    const mCliente = document.getElementById('m_cliente');
-    const mClienteResultados = document.getElementById('m_cliente_resultados');
-    const mBairro = document.getElementById('m_bairro');
-    const mValor = document.getElementById('m_valor');
-    const mEndereco = document.getElementById('m_endereco');
-    const mData = document.getElementById('m_data');
-    const mCooperado = document.getElementById('m_cooperado_id');
-    const mStatusEntrega = document.getElementById('m_status_entrega');
-    const mStatusPagamento = document.getElementById('m_status_pagamento');
-    const mPagamento = document.getElementById('m_pagamento');
-    const mRecebido = document.getElementById('m_recebido_por');
-    let ADMIN_CLIENTES = [];
-    try{
-      const raw = document.getElementById('admin-clientes-json')?.textContent || '[]';
-      ADMIN_CLIENTES = JSON.parse(raw).map(c => ({
-        id: c?.id ?? '',
-        nome: String(c?.nome ?? ''),
-        telefone: String(c?.telefone ?? ''),
-        bairro: String(c?.bairro ?? '')
-      }));
-    }catch(e){ ADMIN_CLIENTES = []; }
-    const deaccent = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
-    const norm = (s) => deaccent(String(s || '').toLowerCase().trim());
-    const digits = (s) => String(s || '').replace(/\D+/g, '');
-    function setClienteModal(cliente){
-      if(!cliente) return;
-      if(mClienteSelect) mClienteSelect.value = String(cliente.id || '');
-      if(mClienteId) mClienteId.value = String(cliente.id || '');
-      if(mCliente) mCliente.value = cliente.nome || '';
-      if(mBairro && !String(mBairro.value || '').trim() && cliente.bairro) mBairro.value = cliente.bairro;
-      fecharResultadosCliente();
-    }
-    function fecharResultadosCliente(){
-      if(mClienteResultados){
-        mClienteResultados.innerHTML = '';
-        mClienteResultados.classList.remove('open');
-      }
-    }
-    function renderResultadosCliente(query){
-      if(!mClienteResultados) return;
-      const q = norm(query);
-      const qDigits = digits(query);
-      if(!q && !qDigits){ fecharResultadosCliente(); return; }
-      const lista = ADMIN_CLIENTES.filter(c => {
-        const nome = norm(c.nome);
-        const tel = digits(c.telefone);
-        return (q && nome.includes(q)) || (qDigits && tel.includes(qDigits));
-      }).slice(0, 12);
-      if(!lista.length){
-        mClienteResultados.innerHTML = '<div class="cx-client-item"><div class="cx-client-main"><div class="cx-client-name">Nenhum cliente encontrado</div></div></div>';
-        mClienteResultados.classList.add('open');
-        return;
-      }
-      mClienteResultados.innerHTML = lista.map(c => `
-        <div class="cx-client-item" data-id="${c.id}">
-          <div class="cx-client-main">
-            <div class="cx-client-name">${escapeHtml(c.nome)}</div>
-            <div class="cx-client-phone">${escapeHtml(c.telefone || '')}</div>
-          </div>
-          <span class="cx-client-pill">${escapeHtml(c.bairro || 'Sem bairro')}</span>
-        </div>`).join('');
-      mClienteResultados.classList.add('open');
-    }
-    mClienteSelect?.addEventListener('change', ()=>{
-      const id = String(mClienteSelect.value || '');
-      const cliente = ADMIN_CLIENTES.find(c => String(c.id) === id);
-      if(cliente){
-        if(mClienteId) mClienteId.value = id;
-        if(mCliente) mCliente.value = cliente.nome || '';
-        if(mBairro && cliente.bairro && !String(mBairro.value || '').trim()) mBairro.value = cliente.bairro;
-      }else{
-        if(mClienteId) mClienteId.value = '';
-      }
-      fecharResultadosCliente();
-    });
-    mCliente?.addEventListener('input', ()=>{
-      if(mClienteSelect?.value) mClienteSelect.value = '';
-      if(mClienteId?.value) mClienteId.value = '';
-      renderResultadosCliente(mCliente.value || '');
-    });
-    mClienteResultados?.addEventListener('click', (ev)=>{
-      const item = ev.target.closest('.cx-client-item[data-id]');
-      if(!item) return;
-      const cliente = ADMIN_CLIENTES.find(c => String(c.id) === String(item.dataset.id || ''));
-      if(cliente) setClienteModal(cliente);
-    });
-    document.addEventListener('click', (ev)=>{
-      if(!ev.target.closest('#m_cliente') && !ev.target.closest('#m_cliente_resultados')) fecharResultadosCliente();
-    });
-    function syncClienteSelecionado(d){
-      const cid = String(d?.cliente_id || '');
-      if(cid && mClienteSelect){
-        mClienteSelect.value = cid;
-        if(mClienteId) mClienteId.value = cid;
-      }else{
-        if(mClienteSelect) mClienteSelect.value = '';
-        if(mClienteId) mClienteId.value = '';
-      }
-    }
-    function abrirModalEntrega(modo, d){
-      modalModo.value = modo;
-      modalEntregaId.value = d?.id || '';
-      entregaModalTitle.textContent = modo === 'editar' ? 'Editar entrega' : (modo === 'agendar' ? 'Agendar entrega' : 'Nova entrega');
-      mCliente.value = d?.cliente || '';
-      mBairro.value = d?.bairro || '';
-      mValor.value = Number(d?.valor || 0).toFixed(2).replace('.', ',');
-      mEndereco.value = d?.endereco && d.endereco !== '-' ? d.endereco : '';
-      mData.value = d?.data_envio_iso || fmtDateTimeLocalNow(modo === 'agendar' ? 30 : 0);
-      mCooperado.value = d?.cooperado_id || '';
-      mStatusEntrega.value = (modo === 'agendar' ? 'agendado' : (d?.status || 'pendente'));
-      mStatusPagamento.value = (d?.status_pagamento || 'pendente').toLowerCase();
-      mPagamento.value = d?.pagamento || 'CREDITO_AUTO';
-      mRecebido.value = (d?.recebido_por && d.recebido_por !== '-') ? d.recebido_por : '';
-      syncClienteSelecionado(d);
-      fecharResultadosCliente();
-      entregaModalBackdrop.classList.add('open');
-      document.body.style.overflow = 'hidden';
-      setTimeout(()=>mCliente?.focus(), 30);
-    }
-    function fecharModalEntrega(){
-      entregaModalBackdrop.classList.remove('open');
-      document.body.style.overflow = '';
-    }
-    document.getElementById('btnNovaEntrega')?.addEventListener('click', ()=>abrirModalEntrega('nova', null));
-    document.getElementById('btnAgendarEntrega')?.addEventListener('click', ()=>abrirModalEntrega('agendar', null));
-    document.getElementById('entregaModalClose')?.addEventListener('click', fecharModalEntrega);
-    document.getElementById('entregaModalCancel')?.addEventListener('click', fecharModalEntrega);
-    entregaModalBackdrop?.addEventListener('click', (e)=>{ if(e.target === entregaModalBackdrop) fecharModalEntrega(); });
-    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && entregaModalBackdrop?.classList.contains('open')) fecharModalEntrega(); });
-    document.addEventListener('click', async (ev)=>{
-      const btn = ev.target.closest?.('.js-open-edit');
-      if(!btn) return;
-      ev.preventDefault();
-      try{
-        let d = null;
-        const raw = btn.dataset.entrega || '';
-        if(raw){ try{ d = JSON.parse(raw); }catch(e){} }
-        if(!d?.id && btn.dataset.id){
-          d = await carregarEntregaAdmin(btn.dataset.id);
-        }
-        if(!d?.id){
-          const tr = btn.closest('tr[data-id]');
-          if(tr?.dataset?.id) d = await carregarEntregaAdmin(tr.dataset.id);
-        }
-        if(!d?.id) return showToast('<strong>Não foi possível abrir a edição.</strong>');
-        abrirModalEntrega('editar', d);
-      }catch(e){
-        showToast('<strong>Não foi possível abrir a edição.</strong>');
-      }
-    });
-    entregaModalForm?.addEventListener('submit', async (ev)=>{
-      ev.preventDefault();
-      const modo = modalModo.value || 'nova';
-      const id = modalEntregaId.value || '';
-      const isEditar = modo === 'editar' && id;
-      const isAgendar = modo === 'agendar';
-      const url = isEditar ? `/editar_entrega/${id}` : (isAgendar ? `/agendar_entrega` : `/cadastrar_entrega`);
-      const fd = new FormData();
-      fd.append('cliente', mCliente.value.trim());
-      fd.append('cliente_id', mClienteId?.value || '');
-      fd.append('bairro', mBairro.value.trim());
-      fd.append('valor', String(parseMoney(mValor.value)).replace('.', ','));
-      fd.append('endereco', mEndereco.value.trim());
-      if(mData.value) fd.append('data', mData.value);
-      fd.append('cooperado_id', mCooperado.value || '');
-      fd.append(isEditar ? 'status' : 'status_entrega', mStatusEntrega.value || 'pendente');
-      fd.append('status_pagamento', mStatusPagamento.value || 'pendente');
-      fd.append('pagamento', mPagamento.value.trim());
-      fd.append('recebido_por', mRecebido.value.trim());
-      const submitBtn = document.getElementById('entregaModalSubmit');
-      entregaModalForm.classList.add('is-busy');
-      if(submitBtn) submitBtn.disabled = true;
-      try{
-        const r = await fetch(url, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch','Accept':'application/json'}});
-        const j = await r.json().catch(()=>null);
-        if(!r.ok || !j?.ok) throw new Error('Falha');
-        const d = j.entrega || (j.entrega_id ? await carregarEntregaAdmin(j.entrega_id) : null);
-        if(d?.id) atualizarOuInserirLinhaEntrega(d);
-        fecharModalEntrega();
-        showToast(`<strong>${isEditar ? 'Entrega atualizada.' : (isAgendar ? 'Entrega agendada.' : 'Entrega criada.')}</strong>`);
-      }catch(e){
-        showToast('<strong>Não foi possível salvar agora.</strong>');
-      }finally{
-        entregaModalForm.classList.remove('is-busy');
-        if(submitBtn) submitBtn.disabled = false;
-      }
-    });
-    document.addEventListener('submit', async (ev)=>{
-      const form = ev.target;
-      if(form?.matches('.js-delete-form')){
-        ev.preventDefault();
-        if(!confirm('Tem certeza que deseja excluir esta entrega?')) return;
-        const tr = form.closest('tr[data-id]');
-        const id = tr?.dataset?.id || '';
-        try{
-          const r = await fetch(form.action, {method:'POST', headers:{'X-Requested-With':'fetch','Accept':'application/json'}});
-          const j = await r.json().catch(()=>null);
-          if(!r.ok || !j?.ok) throw new Error('Falha');
-          removerLinhaEntrega(id || j?.entrega_id || j?.id);
-          showToast('<strong>Entrega excluída.</strong>');
-        }catch(e){
-          showToast('<strong>Não foi possível excluir agora.</strong>');
-        }
-      }
-      if(form?.matches('.js-clone-form')){
-        ev.preventDefault();
-        try{
-          const r = await fetch(form.action, {method:'POST', headers:{'X-Requested-With':'fetch','Accept':'application/json'}});
-          const j = await r.json().catch(()=>null);
-          if(!r.ok || !j?.ok) throw new Error('Falha');
-          const d = j.entrega || (j?.entrega_id ? await carregarEntregaAdmin(j.entrega_id) : null);
-          if(d?.id) atualizarOuInserirLinhaEntrega(d);
-          showToast('<strong>Entrega clonada.</strong>');
-        }catch(e){
-          showToast('<strong>Não foi possível clonar agora.</strong>');
-        }
-      }
-    });
     function atualizarFilaEsperaTempoReal(htmlLista){
       const ulFila = document.getElementById('espera-lista');
       if (!ulFila || !htmlLista) return;
@@ -2526,10 +2091,10 @@ function __motoPinSvg(color){
   );
 }
 function __iconSizeForZoom(z){
-  if (z >= 17) return 38;
-  if (z >= 15) return 34;
-  if (z >= 13) return 30;
-  return 26;
+  if (z >= 17) return 54;
+  if (z >= 15) return 48;
+  if (z >= 13) return 42;
+  return 36;
 }
 function __buildMotoIcon(online){
   var color = online ? '#22c55e' : '#ef4444';
@@ -2748,12 +2313,33 @@ var markers = {}; // id -> marker
       }
 
       atualizar();
-      setInterval(atualizar, 10000);
+      setInterval(atualizar, 5000);
     });
   </script>
 
   <!-- SOCORRO (áudio) -->
   <audio id="socorroAudio" src="{{ url_for('static', filename='socorro.mp3') }}" preload="auto"></audio>
+  <script>
+    (function socorroPolling(){
+      const audio = document.getElementById('socorroAudio');
+      async function check(){
+        try{
+          const r = await fetch('{{ url_for("admin_novo_socorro") }}', {cache:'no-store'});
+          if(!r.ok) return;
+          const data = await r.json();
+          if(data && data.novo){
+            try{ if(audio){ audio.currentTime = 0; audio.play(); } }catch(e){}
+            try{
+              showToast('<strong>⚠️ SOCORRO:</strong> '+(data.cooperado||'')+' — '+(data.mensagem||''));
+            }catch(e){}
+          }
+        }catch(e){}
+      }
+      check();
+      setInterval(check, 4000);
+    })();
+  </script>
+
 
   <!-- SOCORRO (persistente até clicar no X) -->
   <div id="socorro-bar" style="display:none" class="socorro-bar" role="alert" aria-live="assertive">
@@ -2825,7 +2411,7 @@ var markers = {}; // id -> marker
       }
 
       check();
-      setInterval(check, 30000);
+      setInterval(check, 4000);
     })();
   </script>
 
