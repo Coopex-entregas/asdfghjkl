@@ -1060,7 +1060,7 @@
           </div>
 
           <div class="filters-actions">
-            <button class="btn alt" type="button" id="btnAgendarRapido">
+            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
               + Agendar entrega
             </button>
             <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
@@ -1459,11 +1459,11 @@
       ev.preventDefault();
       try{
         const fd = new FormData(form);
-        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch','Accept':'application/json'} })
           .then(res=>{
             if(!res.ok) throw new Error('Falha ao atualizar.');
             showToast('<strong>Atualizado com sucesso.</strong>');
-            setTimeout(()=> location.reload(), 350);
+            
           })
           .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
       }catch(e){
@@ -1487,7 +1487,7 @@
 
         const form = alvo.querySelector('form');
         if(form?.action){
-          fetch(form.action, { method:'POST', headers:{'X-Requested-With':'fetch'} }).catch(()=>{});
+          fetch(form.action, { method:'POST', headers:{'X-Requested-With':'fetch','Accept':'application/json'} }).catch(()=>{});
         }
         alvo.remove();
 
@@ -1541,7 +1541,7 @@
           fd.append('cooperado_id', coopId);
           fd.append('notificar_painel', '1');
 
-          fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+          fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch','Accept':'application/json'} })
             .then(()=>{
               if(coopId) removerDaFilaPorNome(nomeEscolhido);
               showToast('<strong>Cooperado atualizado.</strong>');
@@ -1576,7 +1576,7 @@
       try{
         const r = await fetch(`/api/entregas/${idEntrega}/inline`, {
           method:'PATCH',
-          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch','Accept':'application/json'},
           body: JSON.stringify(payload || {})
         });
         if(!r.ok) return null;
@@ -1597,6 +1597,65 @@
       if(sp === 'pago') return '<span class="pill green">Pago</span>';
       return '<span class="pill red">Pendente</span>';
     }
+    function escHtml(s){
+      return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
+    }
+    function moneyBr(v){
+      const n = Number(v || 0);
+      return 'R$ ' + n.toFixed(2).replace('.', ',');
+    }
+    function dotHtml(hasCoop){
+      return `<span class="id-with-dot"><span class="status-dot ${hasCoop ? 'ok' : 'no'}" title="${hasCoop ? 'Com cooperado atribuído' : 'Sem cooperado'}"></span><span></span></span>`;
+    }
+    function makeEntregaRowHtml(e){
+      if(!e || !e.id) return '';
+      const temCoop = !!e.cooperado_id;
+      const stVal = String(e.status || 'pendente').toLowerCase();
+      const spVal = String(e.status_pagamento || 'pendente').toLowerCase();
+      const rastreioHtml = (e.rastreio_url && temCoop && !['recebido','entregue'].includes(stVal))
+        ? `<a href="${escHtml(e.rastreio_url)}" target="_blank" class="act-open" rel="noopener">Abrir</a>`
+        : (temCoop ? '<span class="small">Encerrado</span>' : '<span class="small">—</span>');
+      return `
+        <tr data-id="${e.id}">
+          <td><span class="id-with-dot"><span class="status-dot ${temCoop ? 'ok' : 'no'}" title="${temCoop ? 'Com cooperado atribuído' : 'Sem cooperado'}"></span><span>${e.id}</span></span></td>
+          <td>${escHtml(e.cliente || '')}</td>
+          <td>${escHtml(e.bairro || '')}</td>
+          <td>${escHtml(e.endereco || '-')}</td>
+          <td><span class="value-editable" data-id="${e.id}" data-valor="${Number(e.valor || 0).toFixed(2)}" title="Clique para alterar o valor">${moneyBr(e.valor)}</span></td>
+          <td>${escHtml(e.data_envio_data || '-')}<br><span class="small">${escHtml(e.data_envio_dia || '')}</span></td>
+          <td>${escHtml(e.hora_envio || '-')}</td>
+          <td>${escHtml(e.hora_atribuida || '-')}</td>
+          <td><span class="coop-editable" data-id="${e.id}" data-cooperado-id="${e.cooperado_id || ''}" title="Clique para trocar o cooperado">${escHtml(e.cooperado_nome || 'Sem Cooperado')}</span></td>
+          <td>${escHtml(e.pagamento || '')}</td>
+          <td><span class="status-editable" data-id="${e.id}" data-status="${escHtml(stVal)}" title="Clique para alterar o status da entrega">${makePillStatus(stVal)}</span></td>
+          <td><span class="pagamento-editable" data-id="${e.id}" data-status-pagamento="${escHtml(spVal)}" title="Clique para alterar o status do pagamento">${makePillPagto(spVal)}</span></td>
+          <td class="td-recebido" style="text-align:center"><div class="recb-wrap"><span class="foto-btn foto-no" title="Sem foto">📷</span><div class="recb-nome" title="${escHtml(e.recebido_por || '-')}">${escHtml(e.recebido_por || '-')}</div></div></td>
+          <td>${rastreioHtml}</td>
+          <td>
+            <div class="actions">
+              <a class="act-ico" title="Editar" href="/editar_entrega/${e.id}" aria-label="Editar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a>
+              <form action="/clonar_entrega/${e.id}" method="POST" style="display:inline;"><button class="act-ico" title="Clonar" type="submit" aria-label="Clonar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button></form>
+              <button type="button" class="act-ico" title="Imprimir cupom" data-id="${e.id}" data-cliente="${escHtml(e.cliente || '')}" data-bairro="${escHtml(e.bairro || '')}" data-endereco="${escHtml(e.endereco || '-')}" data-valor="${Number(e.valor || 0).toFixed(2)}" data-data="${escHtml(e.data_envio_data || '-')}" data-hora_pedido="${escHtml(e.hora_envio || '-')}" data-hora_atribuida="${escHtml(e.hora_atribuida || '-')}" data-cooperado="${escHtml(e.cooperado_nome || 'Sem Cooperado')}" data-pagamento="${escHtml(e.pagamento || '')}" data-recebido="${escHtml(e.recebido_por || '')}" onclick="imprimirCupom(${e.id}, this)"><svg viewBox="0 0 24 24" fill="#16a34a"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg></button>
+              <form action="/excluir_entrega/${e.id}" method="POST" style="display:inline;"><button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir"><svg viewBox="0 0 24 24" fill="#b91c1c"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg></button></form>
+            </div>
+          </td>
+        </tr>`;
+    }
+    function upsertEntregaNaTabela(e){
+      const tbody = document.querySelector('.tabela tbody');
+      if(!tbody || !e || !e.id) return;
+      const html = makeEntregaRowHtml(e);
+      if(!html) return;
+      const temp = document.createElement('tbody');
+      temp.innerHTML = html.trim();
+      const novaTr = temp.querySelector('tr');
+      if(!novaTr) return;
+      const antiga = tbody.querySelector(`tr[data-id="${e.id}"]`);
+      if(antiga) tbody.replaceChild(novaTr, antiga);
+      else tbody.prepend(novaTr);
+      atualizarBadgeAbertas();
+    }
+
 
     document.addEventListener('click', (ev)=>{
       const el = ev.target.closest?.('.status-editable');
@@ -1701,7 +1760,7 @@
       try{
         const r1 = await fetch(`/api/entregas/${idEntrega}/valor`, {
           method:'PATCH',
-          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch','Accept':'application/json'},
           body: JSON.stringify({ valor: novo })
         });
         if(r1.ok) return true;
@@ -1867,20 +1926,21 @@
     })();
 
     function atualizarOuInserirLinhaEntrega(dados){
-      if (!dados?.id || !dados?.linha_html) return;
-      const tbody = document.querySelector('.tabela tbody');
-      if (!tbody) return;
-
-      const temp = document.createElement('tbody');
-      temp.innerHTML = dados.linha_html.trim();
-      const novaTr = temp.querySelector('tr');
-      if (!novaTr) return;
-
-      const trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
-      if (trExistente) tbody.replaceChild(novaTr, trExistente);
-      else tbody.prepend(novaTr);
-
-      atualizarBadgeAbertas();
+      if (!dados?.id) return;
+      if (dados?.linha_html) {
+        const tbody = document.querySelector('.tabela tbody');
+        if (!tbody) return;
+        const temp = document.createElement('tbody');
+        temp.innerHTML = dados.linha_html.trim();
+        const novaTr = temp.querySelector('tr');
+        if (!novaTr) return;
+        const trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
+        if (trExistente) tbody.replaceChild(novaTr, trExistente);
+        else tbody.prepend(novaTr);
+        atualizarBadgeAbertas();
+        return;
+      }
+      upsertEntregaNaTabela(dados);
     }
     function removerLinhaEntrega(id){
       const tbody = document.querySelector('.tabela tbody');
@@ -1901,6 +1961,36 @@
       socket.on('entrega_excluida', (dados)=> dados?.id && removerLinhaEntrega(dados.id));
       socket.on('fila_espera_atualizada', (dados)=> dados?.html_lista && atualizarFilaEsperaTempoReal(dados.html_lista));
     }
+
+  <script>
+    document.addEventListener('submit', async (ev)=>{
+      const form = ev.target;
+      if(!(form instanceof HTMLFormElement)) return;
+      const isClone = /\/clonar_entrega\//.test(form.action || '');
+      const isDelete = /\/excluir_entrega\//.test(form.action || '');
+      if(!isClone && !isDelete) return;
+      ev.preventDefault();
+      if(isDelete && !confirm('Tem certeza que deseja excluir esta entrega?')) return;
+      try{
+        const resp = await fetch(form.action, {
+          method:'POST',
+          headers:{'X-Requested-With':'fetch','Accept':'application/json'}
+        });
+        const result = await resp.json();
+        if(!resp.ok || !result.ok) throw new Error(result.message || 'Falha ao processar.');
+        if(isDelete){
+          removerLinhaEntrega(result.entrega_id);
+          showToast('<strong>' + (result.message || 'Entrega excluída com sucesso.') + '</strong>');
+        }else if(result.entrega){
+          upsertEntregaNaTabela(result.entrega);
+          showToast('<strong>' + (result.message || 'Entrega clonada com sucesso.') + '</strong>');
+        }
+      }catch(err){
+        showToast('<strong>' + escHtml(err?.message || 'Não foi possível processar agora.') + '</strong>');
+      }
+    }, true);
+  </script>
+
   </script>
 
   <!-- CUPOM / MAPA TELA CHEIA -->
@@ -2417,7 +2507,7 @@ var markers = {}; // id -> marker
       }
 
       atualizar();
-      setInterval(atualizar, 20000);
+      setInterval(atualizar, 5000);
     });
   </script>
 
@@ -2440,7 +2530,7 @@ var markers = {}; // id -> marker
         }catch(e){}
       }
       check();
-      setInterval(check, 15000);
+      setInterval(check, 4000);
     })();
   </script>
 
@@ -2515,7 +2605,7 @@ var markers = {}; // id -> marker
       }
 
       check();
-      setInterval(check, 15000);
+      setInterval(check, 4000);
     })();
   </script>
 
@@ -2615,118 +2705,6 @@ var markers = {}; // id -> marker
   </style>
 
 
-
-<script id="adminActionBoot">
-(function(){
-  function qs(sel, root){ return (root || document).querySelector(sel); }
-  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
-
-  async function postFormAjax(form, okMsg){
-    const fd = new FormData(form);
-    const r = await fetch(form.action, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
-    const data = await r.json().catch(()=>({ok:r.ok}));
-    if(!r.ok || data.ok === false) throw new Error(data.message || 'Falha');
-    showToast('<strong>' + (okMsg || data.message || 'OK') + '</strong>');
-    setTimeout(()=> location.reload(), 250);
-  }
-
-  document.addEventListener('submit', async (ev)=>{
-    const form = ev.target;
-    if(!form || !form.action) return;
-    if(form.action.includes('/clonar_entrega/')){
-      ev.preventDefault();
-      try{ await postFormAjax(form, 'Entrega clonada.'); }catch(e){ showToast('<strong>Não foi possível clonar agora.</strong>'); }
-      return;
-    }
-    if(form.action.includes('/excluir_entrega/')){
-      ev.preventDefault();
-      if(!confirm('Tem certeza que deseja excluir esta entrega?')) return;
-      try{ await postFormAjax(form, 'Entrega excluída.'); }catch(e){ showToast('<strong>Não foi possível excluir agora.</strong>'); }
-      return;
-    }
-  }, true);
-
-  function buildEditHtml(e){
-    const coopOptions = ['<option value="">-- Nenhum --</option>'].concat((window.__cooperadosQuick || []).map(c => `<option value="${c.id}" ${String(c.id)===String(e.cooperado_id||'')?'selected':''}>${esc(c.nome)}</option>`)).join('');
-    const pagtos = ['CREDITO_AUTO','Dinheiro','Pix','Pix (Cooperativa)','Comanda'];
-    const pagtoOptions = pagtos.map(p => `<option value="${esc(p)}" ${String(e.pagamento||'')===p?'selected':''}>${esc(p)}</option>`).join('');
-    return `
-      <form id="quickEditForm" action="/editar_entrega/${e.id}" method="POST">
-        <label>Cliente</label><input name="cliente" type="text" value="${esc(e.cliente)}" required>
-        <label>Bairro</label><input name="bairro" type="text" value="${esc(e.bairro)}" required>
-        <label>Valor</label><input name="valor" type="number" step="0.01" min="0" value="${esc(Number(e.valor||0).toFixed(2))}" required>
-        <label>Forma de Pagamento</label><select name="pagamento">${pagtoOptions}</select>
-        <label>Cooperado</label><select name="cooperado_id">${coopOptions}</select>
-        <label>Status Pagamento</label><select name="status_pagamento"><option value="pendente" ${(e.status_pagamento||'pendente')==='pendente'?'selected':''}>Pendente</option><option value="pago" ${(e.status_pagamento||'')==='pago'?'selected':''}>Pago</option></select>
-        <label>Status Entrega</label><select name="status"><option value="pendente" ${(e.status||'pendente')==='pendente'?'selected':''}>Pendente</option><option value="recebido" ${(e.status||'')==='recebido'?'selected':''}>Entregue</option><option value="em_andamento" ${(e.status||'')==='em_andamento'?'selected':''}>Em andamento</option></select>
-        <label>Recebido por</label><input name="recebido_por" type="text" value="${esc(e.recebido_por||'')}">
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" type="submit">Salvar</button><button class="btn alt" type="button" id="quickEditCancel">Cancelar</button></div>
-      </form>`;
-  }
-
-  async function ensureCoops(){
-    if(window.__cooperadosQuick) return;
-    const r = await fetch("{{ url_for('api_cooperados_lookup_admin') }}", {headers:{'X-Requested-With':'fetch'}});
-    const data = await r.json();
-    window.__cooperadosQuick = Array.isArray(data.cooperados) ? data.cooperados : [];
-  }
-
-  document.addEventListener('click', async (ev)=>{
-    const a = ev.target.closest('a.act-ico[href*="/editar_entrega/"]');
-    if(!a) return;
-    ev.preventDefault();
-    try{
-      await ensureCoops();
-      const r = await fetch(a.href.replace(location.origin,''), {headers:{'X-Requested-With':'fetch','Accept':'application/json'}});
-      if(!r.ok){ location.href = a.href; return; }
-    }catch(e){}
-    try{
-      const id = (a.getAttribute('href').match(/\/(\d+)$/)||[])[1];
-      const r = await fetch(`/api/entrega/${id}`, {headers:{'X-Requested-With':'fetch'}});
-      const data = await r.json();
-      if(!r.ok || !data.ok) throw new Error();
-      showModal('Editar entrega', buildEditHtml(data.entrega));
-      const form = qs('#quickEditForm');
-      const cancel = qs('#quickEditCancel');
-      if(cancel) cancel.addEventListener('click', hideModal);
-      if(form) form.addEventListener('submit', async (e2)=>{
-        e2.preventDefault();
-        try{ await postFormAjax(form, 'Entrega atualizada.'); hideModal(); }catch(err){ showToast('<strong>Não foi possível salvar agora.</strong>'); }
-      });
-    }catch(err){ location.href = a.href; }
-  });
-
-  document.addEventListener('click', async (ev)=>{
-    const btn = ev.target.closest('#btnAgendarRapido');
-    if(!btn) return;
-    ev.preventDefault();
-    showModal('Agendar entrega', `
-      <form id="quickAgendarForm" action="{{ url_for('agendar_entrega') }}" method="POST">
-        <label>Cliente</label><input name="cliente" type="text" required>
-        <label>Bairro</label><input name="bairro" type="text" required>
-        <label>Valor</label><input name="valor" type="number" step="0.01" min="0" required>
-        <label>Data e hora</label><input name="data" type="datetime-local" required>
-        <label>Forma de Pagamento</label><select name="pagamento"><option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option><option value="Dinheiro">Dinheiro</option><option value="Pix">Pix</option><option value="Pix (Cooperativa)">Pix (Cooperativa)</option><option value="Comanda">Comanda</option></select>
-        <label>Status Entrega</label><select name="status_entrega"><option value="pendente">Pendente</option></select>
-        <label>Status Pagamento</label><select name="status_pagamento"><option value="pendente">Pendente</option><option value="pago">Pago</option></select>
-        <label>Cooperado</label><select name="cooperado_id" id="quickAgendarCoop"></select>
-        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" type="submit">Agendar</button><button class="btn alt" type="button" id="quickAgendarCancel">Cancelar</button></div>
-      </form>`);
-    try{
-      await ensureCoops();
-      const sel = qs('#quickAgendarCoop');
-      if(sel){
-        sel.innerHTML = '<option value="">-- Nenhum --</option>' + (window.__cooperadosQuick||[]).map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
-      }
-      qs('#quickAgendarCancel')?.addEventListener('click', hideModal);
-      qs('#quickAgendarForm')?.addEventListener('submit', async (e2)=>{
-        e2.preventDefault();
-        try{ await postFormAjax(e2.target, 'Entrega agendada.'); hideModal(); }catch(err){ showToast('<strong>Não foi possível agendar agora.</strong>'); }
-      });
-    }catch(err){ showToast('<strong>Não foi possível abrir o agendamento rápido.</strong>'); }
-  });
-})();
-</script>
 <script id="entregaRapidaBoot">
   (function(){
     const overlay = document.getElementById('entregaRapidaOverlay');
