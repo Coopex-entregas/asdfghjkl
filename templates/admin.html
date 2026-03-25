@@ -673,6 +673,49 @@
     body.dark .modal footer{background:#0b1320; border-color:#1d2636}
     body.locked{overflow:hidden}
 
+    /* ===== Nova entrega rápida ===== */
+    .entrega-rapida-overlay{
+      position:fixed; inset:0; z-index:2100; display:none;
+      align-items:center; justify-content:center;
+      background:rgba(8,12,24,.72); backdrop-filter:blur(3px);
+      padding:18px;
+    }
+    .entrega-rapida-overlay.show{display:flex}
+    .entrega-rapida-modal{
+      width:min(560px, 96vw); max-height:min(92vh, 920px); overflow:auto;
+      background:#fff; color:#0a1b3f; border-radius:18px;
+      box-shadow:0 18px 54px rgba(0,0,0,.38); border:1px solid #e6ebff;
+      padding:18px;
+    }
+    .entrega-rapida-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px}
+    .entrega-rapida-head h3{margin:0; font-size:1.2rem; color:var(--royal)}
+    .entrega-rapida-close{width:38px; height:38px; border:none; border-radius:12px; cursor:pointer; font-size:24px; font-weight:900; background:#eef3ff; color:var(--royal)}
+    .entrega-rapida-form label{display:block; margin:10px 0 6px; font-weight:900}
+    .entrega-rapida-form input[type="text"],
+    .entrega-rapida-form input[type="number"],
+    .entrega-rapida-form select{width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; outline:none}
+    .entrega-rapida-form input:focus, .entrega-rapida-form select:focus{border-color:var(--royal); box-shadow:0 0 0 3px rgba(0,51,170,.12)}
+    .entrega-rapida-hint{display:block; margin:4px 0 10px; color:#667085; font-size:12px}
+    .entrega-rapida-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
+    .entrega-rapida-actions .btn{flex:1 1 170px; justify-content:center}
+    .entrega-rapida-searchhint{font-size:12px; color:#667085; margin:4px 0 6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+    .entrega-rapida-pill{padding:2px 8px; border-radius:999px; background:#f8fafc; border:1px solid #e2e8f0; font-size:11px; color:#475569}
+    .entrega-rapida-results{border:1px solid #d9e1f2; background:#fff; border-radius:10px; padding:6px; margin:0 0 12px; max-height:230px; overflow:auto}
+    .entrega-rapida-item{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px; border-radius:8px; cursor:pointer}
+    .entrega-rapida-item + .entrega-rapida-item{border-top:1px dashed #eef2ff}
+    .entrega-rapida-item:hover, .entrega-rapida-item.active{background:#eef3ff}
+    .entrega-rapida-main{display:flex; flex-direction:column; gap:2px}
+    .entrega-rapida-nome{font-weight:800}
+    .entrega-rapida-fone{font-size:12px; color:#667085}
+    .entrega-rapida-empty{padding:10px; color:#667085; text-align:center}
+    .entrega-rapida-status{margin-top:8px; font-size:12px; color:#667085}
+    .entrega-rapida-status.error{color:#b42318}
+    body.dark .entrega-rapida-modal{background:#0f1623; color:#e7edf9; border-color:#1d2636}
+    body.dark .entrega-rapida-close{background:#172235; color:#cdd9ff}
+    body.dark .entrega-rapida-form input[type="text"], body.dark .entrega-rapida-form input[type="number"], body.dark .entrega-rapida-form select{background:#0b1320; color:#e7edf9; border-color:#2b3b59}
+    body.dark .entrega-rapida-results{background:#0b1320; border-color:#2b3b59}
+    body.dark .entrega-rapida-item:hover, body.dark .entrega-rapida-item.active{background:#13203a}
+
     /* ===== Toast ===== */
     #toast{
       position:fixed;
@@ -807,36 +850,7 @@
   height: calc(100vh - 120px) !important;
 }
 
-
-
-    .fast-modal-overlay{position:fixed;inset:0;background:rgba(10,18,40,.56);display:none;align-items:center;justify-content:center;z-index:10050;padding:18px;}
-    .fast-modal-overlay.open{display:flex;}
-    .fast-modal{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:18px;box-shadow:0 30px 90px rgba(2,6,23,.35);border:1px solid rgba(37,99,235,.15);}
-    .fast-modal-head{position:sticky;top:0;z-index:2;display:flex;align-items:center;justify-content:space-between;padding:16px 18px;background:linear-gradient(135deg,#244be8,#1c33b8);color:#fff;border-radius:18px 18px 0 0;}
-    .fast-modal-body{padding:18px;}
-    .fast-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;}
-    .fast-grid .field{min-width:0;}
-    .fast-grid .field.full{grid-column:1/-1;}
-    .fast-modal .field label{display:block;margin:0 0 6px;font-weight:800;color:#15306c;}
-    .fast-modal .field input,.fast-modal .field select{width:100%;padding:11px 12px;border:1px solid #cbd5e1;border-radius:10px;background:#fff;}
-    .fast-actions{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px;}
-    .fast-close{border:none;background:rgba(255,255,255,.18);color:#fff;width:38px;height:38px;border-radius:999px;font-size:22px;cursor:pointer;}
-    .fast-results{border:1px solid #dbe5ff;background:#fff;border-radius:12px;max-height:240px;overflow:auto;margin-top:6px;}
-    .fast-result-item{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;cursor:pointer;border-bottom:1px dashed #e8efff;}
-    .fast-result-item:last-child{border-bottom:none;}
-    .fast-result-item:hover,.fast-result-item.active{background:#eef3ff;}
-    .fast-result-main{display:flex;flex-direction:column;gap:2px;}
-    .fast-result-phone{font-size:12px;color:#64748b;}
-    .fast-hint{font-size:12px;color:#64748b;margin-top:6px;}
-    .fast-loading{display:none;align-items:center;gap:8px;font-size:13px;color:#2747d9;font-weight:700;}
-    .fast-loading.show{display:flex;}
-    .fast-spinner{width:15px;height:15px;border:2px solid #c7d2fe;border-top-color:#2747d9;border-radius:999px;animation:fastspin .75s linear infinite;}
-    @keyframes fastspin{to{transform:rotate(360deg)}}
-    body.fast-locked{overflow:hidden;}
-    .admin-soft-busy{opacity:.65;pointer-events:none;filter:grayscale(.06);}
-    @media (max-width:760px){.fast-grid{grid-template-columns:1fr;}}
-
-  </style>
+</style>
 </head>
 
 <body>
@@ -954,8 +968,8 @@
       </aside>
 
       <!-- CONTEÚDO PRINCIPAL -->
-      <section class="panel" id="adminMainPanel">
-        <div class="panel-head" id="adminPanelHead">
+      <section class="panel">
+        <div class="panel-head">
           <h2 class="panel-title">
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
@@ -993,7 +1007,7 @@
         </div>
 
         <!-- FILTROS -->
-        <div class="filters-bar" id="adminFiltersBar">
+        <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
               <button class="btn" type="button" id="btnNovaEntregaRapida">
@@ -1001,7 +1015,7 @@
               </button>
             </div>
 
-            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" id="adminFiltersForm">
+            <form class="filters-form" method="GET" action="{{ url_for('admin') }}">
               <div class="field">
                 <label for="cooperado">Cooperado</label>
                 <select name="cooperado_id" id="cooperado">
@@ -1046,7 +1060,7 @@
           </div>
 
           <div class="filters-actions">
-            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
+            <button class="btn alt" type="button" id="btnAgendarRapido">
               + Agendar entrega
             </button>
             <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
@@ -1056,7 +1070,7 @@
         </div>
 
         <!-- TABELA -->
-        <div class="table-shell" id="adminTableShell">
+        <div class="table-shell">
           <div class="table-wrap" id="tbl">
             <table class="tabela">
               <thead>
@@ -1236,81 +1250,63 @@
   </div>
 
 
+  <div id="entregaRapidaOverlay" class="entrega-rapida-overlay" aria-hidden="true">
+    <div class="entrega-rapida-modal" role="dialog" aria-modal="true" aria-labelledby="entregaRapidaTitulo">
+      <div class="entrega-rapida-head">
+        <h3 id="entregaRapidaTitulo">Cadastrar Entrega</h3>
+        <button type="button" class="entrega-rapida-close" id="entregaRapidaFechar" aria-label="Fechar">×</button>
+      </div>
 
-  <div id="fastModalOverlay" class="fast-modal-overlay" aria-hidden="true">
-    <div class="fast-modal" role="dialog" aria-modal="true" aria-labelledby="fastModalTitle">
-      <div class="fast-modal-head">
-        <strong id="fastModalTitle">Nova entrega rápida</strong>
-        <button type="button" class="fast-close" id="fastModalClose" aria-label="Fechar">×</button>
-      </div>
-      <div class="fast-modal-body">
-        <div class="fast-loading" id="fastModalLoading"><span class="fast-spinner"></span><span>Carregando…</span></div>
-        <form id="fastEntregaForm">
-          <input type="hidden" name="cliente_id" id="fast_cliente_id">
-          <div class="fast-grid">
-            <div class="field full">
-              <label for="fast_cliente_select">Cliente (cadastrado)</label>
-              <select id="fast_cliente_select">
-                <option value="">-- Selecione um cliente (opcional) --</option>
-              </select>
-            </div>
-            <div class="field full">
-              <label for="fast_cliente_manual">Ou digite o nome do cliente (manual)</label>
-              <input id="fast_cliente_manual" name="cliente" type="text" autocomplete="off" placeholder="Nome do cliente ou últimos dígitos do telefone" required>
-              <div class="fast-hint">Digite pelo nome ou pelos últimos dígitos do telefone.</div>
-              <div id="fast_clientes_resultados" class="fast-results"></div>
-            </div>
-            <div class="field">
-              <label for="fast_bairro">Bairro da entrega</label>
-              <input id="fast_bairro" name="bairro" type="text" required>
-            </div>
-            <div class="field">
-              <label for="fast_valor">Valor (R$)</label>
-              <input id="fast_valor" name="valor" type="number" step="0.01" min="0" required>
-            </div>
-            <div class="field">
-              <label for="fast_pagamento">Forma de Pagamento</label>
-              <select id="fast_pagamento" name="pagamento" required>
-                <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Pix">Pix</option>
-                <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
-                <option value="Comanda">Comanda</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="fast_cooperado_id">Atribuir Cooperado (opcional)</label>
-              <select id="fast_cooperado_id" name="cooperado_id">
-                <option value="">-- Nenhum --</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="fast_status_pagamento">Status Pagamento</label>
-              <select id="fast_status_pagamento" name="status_pagamento">
-                <option value="pendente">Pendente</option>
-                <option value="pago">Pago</option>
-              </select>
-            </div>
-            <div class="field">
-              <label for="fast_status">Status</label>
-              <select id="fast_status" name="status">
-                <option value="pendente">Pendente</option>
-                <option value="entregue">Entregue</option>
-                <option value="recebido">Recebido</option>
-              </select>
-            </div>
-            <div class="field full">
-              <label for="fast_recebido_por">Recebido por</label>
-              <input id="fast_recebido_por" name="recebido_por" type="text" placeholder="Opcional">
-            </div>
-          </div>
-          <div class="fast-actions">
-            <a class="btn alt" href="{{ url_for('cadastrar_entrega') }}">Cadastro completo</a>
-            <button type="button" class="btn alt" id="fastModalCancel">Cancelar</button>
-            <button type="submit" class="btn" id="fastModalSubmit">Salvar</button>
-          </div>
-        </form>
-      </div>
+      <form id="entregaRapidaForm" class="entrega-rapida-form">
+        <label for="er_cliente_select">Cliente (cadastrado):</label>
+        <select id="er_cliente_select">
+          <option value="">-- Selecione um cliente (opcional) --</option>
+        </select>
+        <small class="entrega-rapida-hint">Se não encontrar o cliente, digite abaixo.</small>
+
+        <input type="hidden" id="er_cliente_id" name="cliente_id">
+
+        <label for="er_cliente_manual">Ou digite o nome do cliente (manual):</label>
+        <input id="er_cliente_manual" name="cliente" type="text" autocomplete="off" required placeholder="Ex.: Restaurante Bom Sabor ou últimos dígitos do telefone">
+
+        <div class="entrega-rapida-searchhint">
+          🔎 Resultados abaixo aparecem enquanto você digita
+          <span class="entrega-rapida-pill">nome</span>
+          <span class="entrega-rapida-pill">últimos dígitos do telefone</span>
+        </div>
+        <div id="er_resultados" class="entrega-rapida-results" role="listbox" aria-label="Resultados de clientes"></div>
+
+        <label for="er_bairro">Bairro da entrega:</label>
+        <input id="er_bairro" name="bairro" type="text" required placeholder="Digite o bairro da entrega">
+
+        <label for="er_valor">Valor (R$):</label>
+        <input id="er_valor" name="valor" type="number" step="0.01" min="0" required>
+
+        <label for="er_pagamento">Forma de Pagamento:</label>
+        <select id="er_pagamento" name="pagamento" required>
+          <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Pix">Pix</option>
+          <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
+          <option value="Comanda">Comanda</option>
+        </select>
+        <small class="entrega-rapida-hint">Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo de crédito do cliente.</small>
+
+        <label for="er_cooperado_id">Atribuir Cooperado (opcional):</label>
+        <select id="er_cooperado_id" name="cooperado_id">
+          <option value="">-- Nenhum --</option>
+          {% for c in cooperados %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+
+        <div id="er_status" class="entrega-rapida-status"></div>
+
+        <div class="entrega-rapida-actions">
+          <button type="submit" class="btn" id="er_submit">Cadastrar</button>
+          <a class="btn alt" href="{{ url_for('cadastrar_entrega') }}">Cadastro completo</a>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2030,224 +2026,7 @@
             '<div class="small" style="text-align:center;">Obrigado por escolher a <strong>COOPEX</strong>!<br>Sua avaliação ajuda nosso serviço a melhorar.</div>' +
           '</div>' +
         '</div>' +
-        '
-<script>
-(function(){
-  const overlay = document.getElementById('fastModalOverlay');
-  const modalTitle = document.getElementById('fastModalTitle');
-  const btnOpen = document.getElementById('btnNovaEntregaRapida');
-  const btnClose = document.getElementById('fastModalClose');
-  const btnCancel = document.getElementById('fastModalCancel');
-  const form = document.getElementById('fastEntregaForm');
-  const loading = document.getElementById('fastModalLoading');
-  const submitBtn = document.getElementById('fastModalSubmit');
-  const selCliente = document.getElementById('fast_cliente_select');
-  const hidCliente = document.getElementById('fast_cliente_id');
-  const inpCliente = document.getElementById('fast_cliente_manual');
-  const boxResultados = document.getElementById('fast_clientes_resultados');
-  const selCoop = document.getElementById('fast_cooperado_id');
-  const adminMain = document.getElementById('adminMainPanel');
-  let clientesCache = [];
-  let cooperadosCache = [];
-  let editingId = null;
-
-  function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]||m));}
-  function deaccent(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'');}
-  function norm(s){return deaccent(String(s||'').toLowerCase().trim());}
-  function onlyDigits(s){return String(s||'').replace(/\D+/g,'');}
-  function formatBR(v){try{return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}}
-  function showBusy(on){ if(!adminMain) return; adminMain.classList.toggle('admin-soft-busy', !!on); }
-  function setLoading(on, txt){ if(!loading) return; loading.classList.toggle('show', !!on); if(txt){ const span = loading.querySelector('span:last-child'); if(span) span.textContent = txt; } }
-  function resetForm(){ if(form) form.reset(); editingId = null; hidCliente.value=''; if(boxResultados) boxResultados.innerHTML=''; modalTitle.textContent='Nova entrega rápida'; submitBtn.textContent='Salvar'; }
-  function openModal(){ overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false'); document.body.classList.add('fast-locked'); if(inpCliente) setTimeout(()=>inpCliente.focus(), 50); }
-  function closeModal(){ overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true'); document.body.classList.remove('fast-locked'); resetForm(); }
-
-  async function fetchJSON(url, opts){ const r = await fetch(url, opts || {}); const data = await r.json().catch(()=>({ok:false,message:'Resposta inválida'})); if(!r.ok || data.ok===false){ throw new Error(data.message || data.error || 'Falha'); } return data; }
-
-  async function ensureLookups(){
-    setLoading(true, 'Carregando listas...');
-    try{
-      const [clientesResp, coopsResp] = await Promise.all([
-        fetchJSON('/api/clientes_lookup?limit=60', {headers:{'Accept':'application/json','X-Requested-With':'fetch'}}),
-        fetchJSON('/api/cooperados_lookup', {headers:{'Accept':'application/json','X-Requested-With':'fetch'}})
-      ]);
-      clientesCache = Array.isArray(clientesResp.items) ? clientesResp.items : [];
-      cooperadosCache = Array.isArray(coopsResp.items) ? coopsResp.items : [];
-      renderClienteSelect(clientesCache);
-      renderCooperados();
-      renderClienteResultados('');
-    } finally { setLoading(false); }
-  }
-
-  function renderClienteSelect(items){
-    if(!selCliente) return;
-    const prev = selCliente.value || '';
-    selCliente.innerHTML = '<option value="">-- Selecione um cliente (opcional) --</option>' + items.map(c=>`<option value="${c.id}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
-    if(prev) selCliente.value = prev;
-  }
-  function renderCooperados(){
-    if(!selCoop) return;
-    const prev = selCoop.value || '';
-    selCoop.innerHTML = '<option value="">-- Nenhum --</option>' + cooperadosCache.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
-    if(prev) selCoop.value = prev;
-  }
-  function chooseCliente(c){
-    inpCliente.value = c.nome || '';
-    hidCliente.value = c.id != null ? String(c.id) : '';
-    selCliente.value = c.id != null ? String(c.id) : '';
-    renderClienteResultados(c.nome || '');
-    const bairro = document.getElementById('fast_bairro'); if(bairro) bairro.focus();
-  }
-  function renderClienteResultados(query){
-    if(!boxResultados) return;
-    const q = String(query||'').trim(); const qName = norm(q.replace(/\d+/g,'')); const qDig = onlyDigits(q);
-    let items = clientesCache.slice();
-    items = items.map(c=>{
-      const nomeN = norm(c.nome); const telN = onlyDigits(c.telefone||''); let match=!q, score=999;
-      if(q){
-        match = false;
-        if(qName && nomeN.includes(qName)){ match=true; score = nomeN.indexOf(qName); }
-        if(qDig && telN){ if(telN.endsWith(qDig)){ match=true; score=Math.min(score,0);} else if(telN.includes(qDig)){ match=true; score=Math.min(score,1);} }
-      }
-      return {...c, _match:match, _score:score};
-    }).filter(c=>c._match).sort((a,b)=>(a._score-b._score)|| String(a.nome).localeCompare(String(b.nome),'pt-BR')).slice(0,12);
-    if(!items.length){ boxResultados.innerHTML = '<div class="fast-result-item"><div class="fast-result-main"><strong>Nenhum resultado</strong><span class="fast-result-phone">Continue digitando.</span></div></div>'; return; }
-    boxResultados.innerHTML = items.map(c=>`<div class="fast-result-item" data-id="${c.id}"><div class="fast-result-main"><strong>${esc(c.nome)}</strong><span class="fast-result-phone">${esc(c.telefone || '—')}</span></div><span>Selecionar</span></div>`).join('');
-    [...boxResultados.querySelectorAll('.fast-result-item')].forEach((el,i)=> el.addEventListener('click', ()=> chooseCliente(items[i])));
-  }
-
-  async function buscarClientesRemoto(q){
-    const data = await fetchJSON('/api/clientes_lookup?limit=40&q=' + encodeURIComponent(q || ''), {headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-    clientesCache = Array.isArray(data.items) ? data.items : [];
-    renderClienteSelect(clientesCache);
-    renderClienteResultados(q || '');
-  }
-
-  async function refreshAdminView(){
-    showBusy(true);
-    try{
-      const url = new URL(window.location.href);
-      const r = await fetch(url.toString(), {headers:{'X-Requested-With':'fetch'}});
-      const html = await r.text();
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const repl = [
-        ['#adminPanelHead','#adminPanelHead'],
-        ['#adminFiltersBar','#adminFiltersBar'],
-        ['#adminTableShell','#adminTableShell'],
-        ['#adminSidebar','#adminSidebar']
-      ];
-      repl.forEach(([selTarget, selNew])=>{
-        const target = document.querySelector(selTarget);
-        const fresh = doc.querySelector(selNew);
-        if(target && fresh) target.replaceWith(fresh);
-      });
-      if(doc.title) document.title = doc.title;
-      bindDynamicActions();
-    } finally { showBusy(false); }
-  }
-
-  async function abrirEditar(id){
-    setLoading(true, 'Carregando entrega...');
-    await ensureLookups();
-    const data = await fetchJSON(`/api/entrega/${id}`, {headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-    const e = data.entrega || {};
-    editingId = id;
-    modalTitle.textContent = 'Editar entrega #' + id;
-    submitBtn.textContent = 'Salvar alteração';
-    inpCliente.value = e.cliente || '';
-    hidCliente.value = e.cliente_id != null ? String(e.cliente_id) : '';
-    selCliente.value = e.cliente_id != null ? String(e.cliente_id) : '';
-    document.getElementById('fast_bairro').value = e.bairro || '';
-    document.getElementById('fast_valor').value = Number(e.valor || 0).toFixed(2);
-    document.getElementById('fast_pagamento').value = e.pagamento || 'Dinheiro';
-    document.getElementById('fast_cooperado_id').value = e.cooperado_id != null ? String(e.cooperado_id) : '';
-    document.getElementById('fast_status_pagamento').value = (e.status_pagamento || 'pendente');
-    document.getElementById('fast_status').value = (e.status || 'pendente');
-    document.getElementById('fast_recebido_por').value = e.recebido_por || '';
-    renderClienteResultados(e.cliente || '');
-    openModal();
-    setLoading(false);
-  }
-
-  async function submitFastForm(ev){
-    ev.preventDefault();
-    const fd = new FormData(form);
-    const url = editingId ? `/editar_entrega/${editingId}?format=json` : `/cadastrar_entrega?format=json`;
-    submitBtn.disabled = true;
-    setLoading(true, editingId ? 'Salvando alteração...' : 'Lançando entrega...');
-    try{
-      const data = await fetchJSON(url, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-      closeModal();
-      if(typeof showToast === 'function'){ showToast(`<strong>${data.message || 'Salvo com sucesso.'}</strong>`); }
-      await refreshAdminView();
-    } catch(err){
-      alert(err.message || 'Falha ao salvar.');
-    } finally { submitBtn.disabled = false; setLoading(false); }
-  }
-
-  async function excluirEntrega(id){
-    if(!confirm('Tem certeza que deseja excluir esta entrega?')) return;
-    showBusy(true);
-    try{
-      const fd = new FormData();
-      const data = await fetchJSON(`/excluir_entrega/${id}?format=json`, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-      if(typeof showToast === 'function'){ showToast(`<strong>${data.message || 'Entrega excluída.'}</strong>`); }
-      await refreshAdminView();
-    } catch(err){ alert(err.message || 'Falha ao excluir.'); } finally { showBusy(false); }
-  }
-
-  async function clonarEntrega(id){
-    showBusy(true);
-    try{
-      const data = await fetchJSON(`/clonar_entrega/${id}?format=json`, {method:'POST', headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-      if(typeof showToast === 'function'){ showToast(`<strong>${data.message || 'Entrega clonada.'}</strong>`); }
-      await refreshAdminView();
-    } catch(err){ alert(err.message || 'Falha ao clonar.'); } finally { showBusy(false); }
-  }
-
-  async function submitFiltersAjax(ev){
-    ev.preventDefault();
-    const formFilt = ev.currentTarget;
-    const params = new URLSearchParams(new FormData(formFilt));
-    const newUrl = formFilt.action + '?' + params.toString();
-    showBusy(true);
-    try{
-      const r = await fetch(newUrl, {headers:{'X-Requested-With':'fetch'}});
-      const html = await r.text();
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const ids = ['#adminPanelHead','#adminFiltersBar','#adminTableShell','#adminSidebar'];
-      ids.forEach(sel=>{
-        const cur = document.querySelector(sel);
-        const fresh = doc.querySelector(sel);
-        if(cur && fresh) cur.replaceWith(fresh);
-      });
-      history.replaceState({}, '', newUrl);
-      bindDynamicActions();
-    } finally { showBusy(false); }
-  }
-
-  function bindDynamicActions(){
-    const filters = document.getElementById('adminFiltersForm');
-    if(filters && !filters.dataset.fastBound){ filters.dataset.fastBound='1'; filters.addEventListener('submit', submitFiltersAjax); }
-    document.querySelectorAll('a[href*="/editar_entrega/"]').forEach(a=>{ if(a.dataset.fastBound) return; a.dataset.fastBound='1'; a.addEventListener('click', ev=>{ ev.preventDefault(); const m=a.getAttribute('href').match(/\/editar_entrega\/(\d+)/); if(m) abrirEditar(m[1]); }); });
-    document.querySelectorAll('form[action*="/excluir_entrega/"]').forEach(f=>{ if(f.dataset.fastBound) return; f.dataset.fastBound='1'; f.addEventListener('submit', ev=>{ ev.preventDefault(); const m=f.getAttribute('action').match(/\/excluir_entrega\/(\d+)/); if(m) excluirEntrega(m[1]); }); });
-    document.querySelectorAll('form[action*="/clonar_entrega/"]').forEach(f=>{ if(f.dataset.fastBound) return; f.dataset.fastBound='1'; f.addEventListener('submit', ev=>{ ev.preventDefault(); const m=f.getAttribute('action').match(/\/clonar_entrega\/(\d+)/); if(m) clonarEntrega(m[1]); }); });
-    const btn = document.getElementById('btnNovaEntregaRapida');
-    if(btn && !btn.dataset.fastBound){ btn.dataset.fastBound='1'; btn.addEventListener('click', async ()=>{ resetForm(); openModal(); await ensureLookups(); }); }
-  }
-
-  if(selCliente){ selCliente.addEventListener('change', ()=>{ const opt=selCliente.selectedOptions[0]; const nome=opt ? (opt.dataset.nome || opt.textContent || '') : ''; hidCliente.value = selCliente.value || ''; if(nome) inpCliente.value = nome; renderClienteResultados(inpCliente.value || nome || ''); }); }
-  if(inpCliente){ let t=null; inpCliente.addEventListener('input', ()=>{ hidCliente.value=''; selCliente.value=''; renderClienteResultados(inpCliente.value); clearTimeout(t); t=setTimeout(()=>buscarClientesRemoto(inpCliente.value), 180); }); }
-  if(btnClose) btnClose.addEventListener('click', closeModal);
-  if(btnCancel) btnCancel.addEventListener('click', closeModal);
-  if(overlay) overlay.addEventListener('click', ev=>{ if(ev.target===overlay) closeModal(); });
-  if(form) form.addEventListener('submit', submitFastForm);
-  document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && overlay.classList.contains('open')) closeModal(); });
-  bindDynamicActions();
-})();
-</script>
-
-</body></html>';
+        '</body></html>';
 
       return html;
     }
@@ -2625,7 +2404,6 @@ var markers = {}; // id -> marker
 
       async function atualizar(){
         try{
-          if (document.hidden) return;
           const r = await fetch('{{ url_for("mapa_motoboys") }}?format=json', {
             cache:'no-store',
             headers:{'X-Requested-With':'fetch', 'Accept':'application/json'}
@@ -2639,7 +2417,7 @@ var markers = {}; // id -> marker
       }
 
       atualizar();
-      setInterval(atualizar, 5000);
+      setInterval(atualizar, 20000);
     });
   </script>
 
@@ -2836,6 +2614,379 @@ var markers = {}; // id -> marker
     @media (max-width:520px){ .cupom-grid{ grid-template-columns:1fr; } }
   </style>
 
+
+
+<script id="adminActionBoot">
+(function(){
+  function qs(sel, root){ return (root || document).querySelector(sel); }
+  function esc(s){ return String(s ?? '').replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m])); }
+
+  async function postFormAjax(form, okMsg){
+    const fd = new FormData(form);
+    const r = await fetch(form.action, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
+    const data = await r.json().catch(()=>({ok:r.ok}));
+    if(!r.ok || data.ok === false) throw new Error(data.message || 'Falha');
+    showToast('<strong>' + (okMsg || data.message || 'OK') + '</strong>');
+    setTimeout(()=> location.reload(), 250);
+  }
+
+  document.addEventListener('submit', async (ev)=>{
+    const form = ev.target;
+    if(!form || !form.action) return;
+    if(form.action.includes('/clonar_entrega/')){
+      ev.preventDefault();
+      try{ await postFormAjax(form, 'Entrega clonada.'); }catch(e){ showToast('<strong>Não foi possível clonar agora.</strong>'); }
+      return;
+    }
+    if(form.action.includes('/excluir_entrega/')){
+      ev.preventDefault();
+      if(!confirm('Tem certeza que deseja excluir esta entrega?')) return;
+      try{ await postFormAjax(form, 'Entrega excluída.'); }catch(e){ showToast('<strong>Não foi possível excluir agora.</strong>'); }
+      return;
+    }
+  }, true);
+
+  function buildEditHtml(e){
+    const coopOptions = ['<option value="">-- Nenhum --</option>'].concat((window.__cooperadosQuick || []).map(c => `<option value="${c.id}" ${String(c.id)===String(e.cooperado_id||'')?'selected':''}>${esc(c.nome)}</option>`)).join('');
+    const pagtos = ['CREDITO_AUTO','Dinheiro','Pix','Pix (Cooperativa)','Comanda'];
+    const pagtoOptions = pagtos.map(p => `<option value="${esc(p)}" ${String(e.pagamento||'')===p?'selected':''}>${esc(p)}</option>`).join('');
+    return `
+      <form id="quickEditForm" action="/editar_entrega/${e.id}" method="POST">
+        <label>Cliente</label><input name="cliente" type="text" value="${esc(e.cliente)}" required>
+        <label>Bairro</label><input name="bairro" type="text" value="${esc(e.bairro)}" required>
+        <label>Valor</label><input name="valor" type="number" step="0.01" min="0" value="${esc(Number(e.valor||0).toFixed(2))}" required>
+        <label>Forma de Pagamento</label><select name="pagamento">${pagtoOptions}</select>
+        <label>Cooperado</label><select name="cooperado_id">${coopOptions}</select>
+        <label>Status Pagamento</label><select name="status_pagamento"><option value="pendente" ${(e.status_pagamento||'pendente')==='pendente'?'selected':''}>Pendente</option><option value="pago" ${(e.status_pagamento||'')==='pago'?'selected':''}>Pago</option></select>
+        <label>Status Entrega</label><select name="status"><option value="pendente" ${(e.status||'pendente')==='pendente'?'selected':''}>Pendente</option><option value="recebido" ${(e.status||'')==='recebido'?'selected':''}>Entregue</option><option value="em_andamento" ${(e.status||'')==='em_andamento'?'selected':''}>Em andamento</option></select>
+        <label>Recebido por</label><input name="recebido_por" type="text" value="${esc(e.recebido_por||'')}">
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" type="submit">Salvar</button><button class="btn alt" type="button" id="quickEditCancel">Cancelar</button></div>
+      </form>`;
+  }
+
+  async function ensureCoops(){
+    if(window.__cooperadosQuick) return;
+    const r = await fetch("{{ url_for('api_cooperados_lookup_admin') }}", {headers:{'X-Requested-With':'fetch'}});
+    const data = await r.json();
+    window.__cooperadosQuick = Array.isArray(data.cooperados) ? data.cooperados : [];
+  }
+
+  document.addEventListener('click', async (ev)=>{
+    const a = ev.target.closest('a.act-ico[href*="/editar_entrega/"]');
+    if(!a) return;
+    ev.preventDefault();
+    try{
+      await ensureCoops();
+      const r = await fetch(a.href.replace(location.origin,''), {headers:{'X-Requested-With':'fetch','Accept':'application/json'}});
+      if(!r.ok){ location.href = a.href; return; }
+    }catch(e){}
+    try{
+      const id = (a.getAttribute('href').match(/\/(\d+)$/)||[])[1];
+      const r = await fetch(`/api/entrega/${id}`, {headers:{'X-Requested-With':'fetch'}});
+      const data = await r.json();
+      if(!r.ok || !data.ok) throw new Error();
+      showModal('Editar entrega', buildEditHtml(data.entrega));
+      const form = qs('#quickEditForm');
+      const cancel = qs('#quickEditCancel');
+      if(cancel) cancel.addEventListener('click', hideModal);
+      if(form) form.addEventListener('submit', async (e2)=>{
+        e2.preventDefault();
+        try{ await postFormAjax(form, 'Entrega atualizada.'); hideModal(); }catch(err){ showToast('<strong>Não foi possível salvar agora.</strong>'); }
+      });
+    }catch(err){ location.href = a.href; }
+  });
+
+  document.addEventListener('click', async (ev)=>{
+    const btn = ev.target.closest('#btnAgendarRapido');
+    if(!btn) return;
+    ev.preventDefault();
+    showModal('Agendar entrega', `
+      <form id="quickAgendarForm" action="{{ url_for('agendar_entrega') }}" method="POST">
+        <label>Cliente</label><input name="cliente" type="text" required>
+        <label>Bairro</label><input name="bairro" type="text" required>
+        <label>Valor</label><input name="valor" type="number" step="0.01" min="0" required>
+        <label>Data e hora</label><input name="data" type="datetime-local" required>
+        <label>Forma de Pagamento</label><select name="pagamento"><option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option><option value="Dinheiro">Dinheiro</option><option value="Pix">Pix</option><option value="Pix (Cooperativa)">Pix (Cooperativa)</option><option value="Comanda">Comanda</option></select>
+        <label>Status Entrega</label><select name="status_entrega"><option value="pendente">Pendente</option></select>
+        <label>Status Pagamento</label><select name="status_pagamento"><option value="pendente">Pendente</option><option value="pago">Pago</option></select>
+        <label>Cooperado</label><select name="cooperado_id" id="quickAgendarCoop"></select>
+        <div style="display:flex;gap:8px;margin-top:12px"><button class="btn" type="submit">Agendar</button><button class="btn alt" type="button" id="quickAgendarCancel">Cancelar</button></div>
+      </form>`);
+    try{
+      await ensureCoops();
+      const sel = qs('#quickAgendarCoop');
+      if(sel){
+        sel.innerHTML = '<option value="">-- Nenhum --</option>' + (window.__cooperadosQuick||[]).map(c => `<option value="${c.id}">${esc(c.nome)}</option>`).join('');
+      }
+      qs('#quickAgendarCancel')?.addEventListener('click', hideModal);
+      qs('#quickAgendarForm')?.addEventListener('submit', async (e2)=>{
+        e2.preventDefault();
+        try{ await postFormAjax(e2.target, 'Entrega agendada.'); hideModal(); }catch(err){ showToast('<strong>Não foi possível agendar agora.</strong>'); }
+      });
+    }catch(err){ showToast('<strong>Não foi possível abrir o agendamento rápido.</strong>'); }
+  });
+})();
+</script>
+<script id="entregaRapidaBoot">
+  (function(){
+    const overlay = document.getElementById('entregaRapidaOverlay');
+    const btnOpen = document.getElementById('btnNovaEntregaRapida');
+    const btnClose = document.getElementById('entregaRapidaFechar');
+    const form = document.getElementById('entregaRapidaForm');
+    const sel = document.getElementById('er_cliente_select');
+    const manual = document.getElementById('er_cliente_manual');
+    const resultados = document.getElementById('er_resultados');
+    const hiddenId = document.getElementById('er_cliente_id');
+    const statusBox = document.getElementById('er_status');
+    const submitBtn = document.getElementById('er_submit');
+
+    let CLIENTES = [];
+    let activeIndex = -1;
+    let clientesLoaded = false;
+    let clientesLoading = false;
+
+    const deaccent = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const onlyDigits = (s) => String(s || '').replace(/\D+/g, '');
+    const norm = (s) => deaccent(String(s || '').toLowerCase().trim());
+
+    function setStatus(msg, isError){
+      if(!statusBox) return;
+      statusBox.textContent = msg || '';
+      statusBox.classList.toggle('error', !!isError);
+    }
+
+    function openModal(){
+      if(!overlay) return;
+      overlay.classList.add('show');
+      overlay.style.display = 'flex';
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('locked');
+      setStatus('', false);
+      ensureClientes().finally(()=>{
+        setTimeout(()=> manual && manual.focus(), 40);
+      });
+    }
+
+    function closeModal(){
+      if(!overlay) return;
+      overlay.classList.remove('show');
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('locked');
+      setStatus('', false);
+    }
+
+    async function ensureClientes(){
+      if(clientesLoaded || clientesLoading) return;
+      clientesLoading = true;
+      setStatus('Carregando clientes...', false);
+      try{
+        const resp = await fetch("{{ url_for('api_clientes_lookup_admin') }}", {headers:{'X-Requested-With':'fetch'}});
+        const data = await resp.json();
+        if(!resp.ok || !data.ok) throw new Error(data.erro || 'Falha ao carregar clientes');
+        CLIENTES = Array.isArray(data.clientes) ? data.clientes.map(c => ({
+          id: c.id, nome: c.nome || '', telefone: String(c.telefone || '').trim()
+        })) : [];
+        preencherSelectClientes();
+        renderResultados(manual ? manual.value : '');
+        clientesLoaded = true;
+        setStatus('', false);
+      }catch(err){
+        console.error(err);
+        setStatus('Não foi possível carregar os clientes agora.', true);
+      }finally{
+        clientesLoading = false;
+      }
+    }
+
+    function preencherSelectClientes(){
+      if(!sel) return;
+      const current = sel.value || '';
+      sel.innerHTML = '<option value="">-- Selecione um cliente (opcional) --</option>';
+      CLIENTES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = String(c.id ?? '');
+        opt.textContent = c.nome || '';
+        opt.setAttribute('data-nome', c.nome || '');
+        opt.setAttribute('data-telefone', c.telefone || '');
+        sel.appendChild(opt);
+      });
+      if(current) sel.value = current;
+    }
+
+    function highlight(text, query){
+      if(!query) return text;
+      const q = norm(query);
+      if(!q) return text;
+      const src = deaccent(text);
+      const idx = src.toLowerCase().indexOf(q);
+      if(idx === -1) return text;
+      const end = idx + q.length;
+      return text.substring(0, idx) + '<mark>' + text.substring(idx, end) + '</mark>' + text.substring(end);
+    }
+
+    function setActive(i){
+      const children = Array.from(resultados.querySelectorAll('.entrega-rapida-item'));
+      children.forEach(el => el.classList.remove('active'));
+      if(i >= 0 && i < children.length){
+        children[i].classList.add('active');
+        activeIndex = i;
+      }else{
+        activeIndex = -1;
+      }
+    }
+
+    function scrollIntoViewIfNeeded(el){
+      const eb = el.getBoundingClientRect();
+      const cb = resultados.getBoundingClientRect();
+      if(eb.bottom > cb.bottom) resultados.scrollTop += (eb.bottom - cb.bottom);
+      if(eb.top < cb.top) resultados.scrollTop -= (cb.top - eb.top);
+    }
+
+    function escolher(cliente){
+      if(!cliente) return;
+      if(manual) manual.value = cliente.nome || '';
+      if(hiddenId) hiddenId.value = cliente.id != null ? String(cliente.id) : '';
+      if(sel){
+        const match = Array.from(sel.options).find(o => String(o.value) === String(cliente.id));
+        sel.value = match ? match.value : '';
+      }
+      renderResultados(cliente.nome || '');
+      const bairro = document.getElementById('er_bairro');
+      if(bairro) bairro.focus();
+    }
+
+    function renderResultados(query){
+      if(!resultados) return;
+      const q = String(query || '').trim();
+      const qDigits = onlyDigits(q);
+      const qName = norm(q.replace(/\d+/g, ''));
+      const filtrados = CLIENTES.map(c => {
+        const nomeN = norm(c.nome);
+        const foneD = onlyDigits(c.telefone);
+        let match = false;
+        let score = 999;
+        if(q && !qName && qDigits){
+          if(foneD.endsWith(qDigits)){ match = true; score = 0; }
+          else if(foneD.includes(qDigits)){ match = true; score = 1; }
+        }else if(qName){
+          if(nomeN.includes(qName)){ match = true; score = nomeN.indexOf(qName); }
+          if(qDigits && foneD){
+            if(foneD.endsWith(qDigits)){ match = true; score = Math.min(score, 0); }
+            else if(foneD.includes(qDigits)){ match = true; score = Math.min(score, 1); }
+          }
+        }else if(!q){
+          match = true; score = 50;
+        }
+        return {...c, match, score};
+      }).filter(it => it.match).sort((a,b) => a.score - b.score || a.nome.localeCompare(b.nome)).slice(0,12);
+
+      resultados.innerHTML = '';
+      activeIndex = -1;
+      resultados._items = filtrados;
+
+      if(!filtrados.length){
+        resultados.innerHTML = '<div class="entrega-rapida-empty">Nenhum resultado. Tente digitar o nome ou os últimos dígitos do telefone.</div>';
+        return;
+      }
+
+      filtrados.forEach((c, i) => {
+        const item = document.createElement('div');
+        item.className = 'entrega-rapida-item';
+        item.setAttribute('role', 'option');
+        item.dataset.index = String(i);
+        item.innerHTML = `
+          <div class="entrega-rapida-main">
+            <span class="entrega-rapida-nome">${highlight(c.nome || '', q.replace(/\d+/g, '').trim())}</span>
+            <span class="entrega-rapida-fone">${c.telefone || '—'}</span>
+          </div>
+          <div class="entrega-rapida-pill">Selecionar</div>`;
+        item.addEventListener('click', () => escolher(filtrados[i]));
+        item.addEventListener('mousemove', () => setActive(i));
+        resultados.appendChild(item);
+      });
+    }
+
+    if(btnOpen) btnOpen.addEventListener('click', openModal);
+    if(btnClose) btnClose.addEventListener('click', closeModal);
+    if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && overlay && overlay.classList.contains('show')) closeModal();
+    });
+
+    if(sel && manual && hiddenId){
+      sel.addEventListener('change', () => {
+        const id = sel.value || '';
+        const opt = sel.selectedOptions[0];
+        const nome = opt ? (opt.getAttribute('data-nome') || opt.textContent || '') : '';
+        if(nome) manual.value = nome;
+        hiddenId.value = id || '';
+        renderResultados(nome || manual.value || '');
+      });
+
+      manual.addEventListener('input', (e) => {
+        hiddenId.value = '';
+        if(sel) sel.value = '';
+        renderResultados(e.target.value);
+      });
+
+      manual.addEventListener('keydown', (e) => {
+        const items = Array.from(resultados.querySelectorAll('.entrega-rapida-item'));
+        if(!items.length) return;
+        if(e.key === 'ArrowDown'){
+          e.preventDefault();
+          const next = activeIndex < items.length - 1 ? activeIndex + 1 : 0;
+          setActive(next);
+          scrollIntoViewIfNeeded(items[next]);
+        }else if(e.key === 'ArrowUp'){
+          e.preventDefault();
+          const prev = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
+          setActive(prev);
+          scrollIntoViewIfNeeded(items[prev]);
+        }else if(e.key === 'Enter' && activeIndex >= 0){
+          e.preventDefault();
+          const escolhaItem = resultados._items?.[activeIndex];
+          if(escolhaItem) escolher(escolhaItem);
+        }
+      });
+    }
+
+    if(form){
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setStatus('', false);
+        submitBtn.disabled = true;
+        const txt = submitBtn.textContent;
+        submitBtn.textContent = 'Cadastrando...';
+        try{
+          const fd = new FormData(form);
+          const resp = await fetch("{{ url_for('cadastrar_entrega') }}", {
+            method: 'POST',
+            body: fd,
+            headers: {'X-Requested-With':'fetch','Accept':'application/json'}
+          });
+          const data = await resp.json();
+          if(!resp.ok || !data.ok){
+            throw new Error(data.message || data.erro || 'Não foi possível cadastrar.');
+          }
+          showToast(`<strong>${data.message || 'Entrega cadastrada!'}</strong>`);
+          form.reset();
+          if(resultados){ resultados.innerHTML = ''; resultados._items = []; }
+          closeModal();
+          setTimeout(()=> window.location.reload(), 250);
+        }catch(err){
+          console.error(err);
+          setStatus(err.message || 'Não foi possível cadastrar a entrega.', true);
+        }finally{
+          submitBtn.disabled = false;
+          submitBtn.textContent = txt;
+        }
+      });
+    }
+  })();
+</script>
+
+
 <script id="tm20x_iframe_printer">
   // Impressão TM-T20X 80mm via IFRAME (sem pop-up)
   // Importante: alguns navegadores bloqueiam print() se ele ocorrer fora do "clique".
@@ -2895,223 +3046,6 @@ var markers = {}; // id -> marker
       alert('Erro ao imprimir o cupom.');
     }
   };
-</script>
-
-
-<script>
-(function(){
-  const overlay = document.getElementById('fastModalOverlay');
-  const modalTitle = document.getElementById('fastModalTitle');
-  const btnOpen = document.getElementById('btnNovaEntregaRapida');
-  const btnClose = document.getElementById('fastModalClose');
-  const btnCancel = document.getElementById('fastModalCancel');
-  const form = document.getElementById('fastEntregaForm');
-  const loading = document.getElementById('fastModalLoading');
-  const submitBtn = document.getElementById('fastModalSubmit');
-  const selCliente = document.getElementById('fast_cliente_select');
-  const hidCliente = document.getElementById('fast_cliente_id');
-  const inpCliente = document.getElementById('fast_cliente_manual');
-  const boxResultados = document.getElementById('fast_clientes_resultados');
-  const selCoop = document.getElementById('fast_cooperado_id');
-  const adminMain = document.getElementById('adminMainPanel');
-  let clientesCache = [];
-  let cooperadosCache = [];
-  let editingId = null;
-
-  function esc(s){return String(s ?? '').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;',"'":'&#39;'}[m]||m));}
-  function deaccent(s){return String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'');}
-  function norm(s){return deaccent(String(s||'').toLowerCase().trim());}
-  function onlyDigits(s){return String(s||'').replace(/\D+/g,'');}
-  function formatBR(v){try{return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}catch(e){return 'R$ 0,00';}}
-  function showBusy(on){ if(!adminMain) return; adminMain.classList.toggle('admin-soft-busy', !!on); }
-  function setLoading(on, txt){ if(!loading) return; loading.classList.toggle('show', !!on); if(txt){ const span = loading.querySelector('span:last-child'); if(span) span.textContent = txt; } }
-  function resetForm(){ if(form) form.reset(); editingId = null; hidCliente.value=''; if(boxResultados) boxResultados.innerHTML=''; modalTitle.textContent='Nova entrega rápida'; submitBtn.textContent='Salvar'; }
-  function openModal(){ overlay.classList.add('open'); overlay.setAttribute('aria-hidden','false'); document.body.classList.add('fast-locked'); if(inpCliente) setTimeout(()=>inpCliente.focus(), 50); }
-  function closeModal(){ overlay.classList.remove('open'); overlay.setAttribute('aria-hidden','true'); document.body.classList.remove('fast-locked'); resetForm(); }
-
-  async function fetchJSON(url, opts){ const r = await fetch(url, opts || {}); const data = await r.json().catch(()=>({ok:false,message:'Resposta inválida'})); if(!r.ok || data.ok===false){ throw new Error(data.message || data.error || 'Falha'); } return data; }
-
-  async function ensureLookups(){
-    setLoading(true, 'Carregando listas...');
-    try{
-      const [clientesResp, coopsResp] = await Promise.all([
-        fetchJSON('/api/clientes_lookup?limit=60', {headers:{'Accept':'application/json','X-Requested-With':'fetch'}}),
-        fetchJSON('/api/cooperados_lookup', {headers:{'Accept':'application/json','X-Requested-With':'fetch'}})
-      ]);
-      clientesCache = Array.isArray(clientesResp.items) ? clientesResp.items : [];
-      cooperadosCache = Array.isArray(coopsResp.items) ? coopsResp.items : [];
-      renderClienteSelect(clientesCache);
-      renderCooperados();
-      renderClienteResultados('');
-    } finally { setLoading(false); }
-  }
-
-  function renderClienteSelect(items){
-    if(!selCliente) return;
-    const prev = selCliente.value || '';
-    selCliente.innerHTML = '<option value="">-- Selecione um cliente (opcional) --</option>' + items.map(c=>`<option value="${c.id}" data-nome="${esc(c.nome)}">${esc(c.nome)}</option>`).join('');
-    if(prev) selCliente.value = prev;
-  }
-  function renderCooperados(){
-    if(!selCoop) return;
-    const prev = selCoop.value || '';
-    selCoop.innerHTML = '<option value="">-- Nenhum --</option>' + cooperadosCache.map(c=>`<option value="${c.id}">${esc(c.nome)}</option>`).join('');
-    if(prev) selCoop.value = prev;
-  }
-  function chooseCliente(c){
-    inpCliente.value = c.nome || '';
-    hidCliente.value = c.id != null ? String(c.id) : '';
-    selCliente.value = c.id != null ? String(c.id) : '';
-    renderClienteResultados(c.nome || '');
-    const bairro = document.getElementById('fast_bairro'); if(bairro) bairro.focus();
-  }
-  function renderClienteResultados(query){
-    if(!boxResultados) return;
-    const q = String(query||'').trim(); const qName = norm(q.replace(/\d+/g,'')); const qDig = onlyDigits(q);
-    let items = clientesCache.slice();
-    items = items.map(c=>{
-      const nomeN = norm(c.nome); const telN = onlyDigits(c.telefone||''); let match=!q, score=999;
-      if(q){
-        match = false;
-        if(qName && nomeN.includes(qName)){ match=true; score = nomeN.indexOf(qName); }
-        if(qDig && telN){ if(telN.endsWith(qDig)){ match=true; score=Math.min(score,0);} else if(telN.includes(qDig)){ match=true; score=Math.min(score,1);} }
-      }
-      return {...c, _match:match, _score:score};
-    }).filter(c=>c._match).sort((a,b)=>(a._score-b._score)|| String(a.nome).localeCompare(String(b.nome),'pt-BR')).slice(0,12);
-    if(!items.length){ boxResultados.innerHTML = '<div class="fast-result-item"><div class="fast-result-main"><strong>Nenhum resultado</strong><span class="fast-result-phone">Continue digitando.</span></div></div>'; return; }
-    boxResultados.innerHTML = items.map(c=>`<div class="fast-result-item" data-id="${c.id}"><div class="fast-result-main"><strong>${esc(c.nome)}</strong><span class="fast-result-phone">${esc(c.telefone || '—')}</span></div><span>Selecionar</span></div>`).join('');
-    [...boxResultados.querySelectorAll('.fast-result-item')].forEach((el,i)=> el.addEventListener('click', ()=> chooseCliente(items[i])));
-  }
-
-  async function buscarClientesRemoto(q){
-    const data = await fetchJSON('/api/clientes_lookup?limit=40&q=' + encodeURIComponent(q || ''), {headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-    clientesCache = Array.isArray(data.items) ? data.items : [];
-    renderClienteSelect(clientesCache);
-    renderClienteResultados(q || '');
-  }
-
-  async function refreshAdminView(){
-    showBusy(true);
-    try{
-      const url = new URL(window.location.href);
-      const r = await fetch(url.toString(), {headers:{'X-Requested-With':'fetch'}});
-      const html = await r.text();
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const repl = [
-        ['#adminPanelHead','#adminPanelHead'],
-        ['#adminFiltersBar','#adminFiltersBar'],
-        ['#adminTableShell','#adminTableShell'],
-        ['#adminSidebar','#adminSidebar']
-      ];
-      repl.forEach(([selTarget, selNew])=>{
-        const target = document.querySelector(selTarget);
-        const fresh = doc.querySelector(selNew);
-        if(target && fresh) target.replaceWith(fresh);
-      });
-      if(doc.title) document.title = doc.title;
-      bindDynamicActions();
-    } finally { showBusy(false); }
-  }
-
-  async function abrirEditar(id){
-    setLoading(true, 'Carregando entrega...');
-    await ensureLookups();
-    const data = await fetchJSON(`/api/entrega/${id}`, {headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-    const e = data.entrega || {};
-    editingId = id;
-    modalTitle.textContent = 'Editar entrega #' + id;
-    submitBtn.textContent = 'Salvar alteração';
-    inpCliente.value = e.cliente || '';
-    hidCliente.value = e.cliente_id != null ? String(e.cliente_id) : '';
-    selCliente.value = e.cliente_id != null ? String(e.cliente_id) : '';
-    document.getElementById('fast_bairro').value = e.bairro || '';
-    document.getElementById('fast_valor').value = Number(e.valor || 0).toFixed(2);
-    document.getElementById('fast_pagamento').value = e.pagamento || 'Dinheiro';
-    document.getElementById('fast_cooperado_id').value = e.cooperado_id != null ? String(e.cooperado_id) : '';
-    document.getElementById('fast_status_pagamento').value = (e.status_pagamento || 'pendente');
-    document.getElementById('fast_status').value = (e.status || 'pendente');
-    document.getElementById('fast_recebido_por').value = e.recebido_por || '';
-    renderClienteResultados(e.cliente || '');
-    openModal();
-    setLoading(false);
-  }
-
-  async function submitFastForm(ev){
-    ev.preventDefault();
-    const fd = new FormData(form);
-    const url = editingId ? `/editar_entrega/${editingId}?format=json` : `/cadastrar_entrega?format=json`;
-    submitBtn.disabled = true;
-    setLoading(true, editingId ? 'Salvando alteração...' : 'Lançando entrega...');
-    try{
-      const data = await fetchJSON(url, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-      closeModal();
-      if(typeof showToast === 'function'){ showToast(`<strong>${data.message || 'Salvo com sucesso.'}</strong>`); }
-      await refreshAdminView();
-    } catch(err){
-      alert(err.message || 'Falha ao salvar.');
-    } finally { submitBtn.disabled = false; setLoading(false); }
-  }
-
-  async function excluirEntrega(id){
-    if(!confirm('Tem certeza que deseja excluir esta entrega?')) return;
-    showBusy(true);
-    try{
-      const fd = new FormData();
-      const data = await fetchJSON(`/excluir_entrega/${id}?format=json`, {method:'POST', body:fd, headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-      if(typeof showToast === 'function'){ showToast(`<strong>${data.message || 'Entrega excluída.'}</strong>`); }
-      await refreshAdminView();
-    } catch(err){ alert(err.message || 'Falha ao excluir.'); } finally { showBusy(false); }
-  }
-
-  async function clonarEntrega(id){
-    showBusy(true);
-    try{
-      const data = await fetchJSON(`/clonar_entrega/${id}?format=json`, {method:'POST', headers:{'Accept':'application/json','X-Requested-With':'fetch'}});
-      if(typeof showToast === 'function'){ showToast(`<strong>${data.message || 'Entrega clonada.'}</strong>`); }
-      await refreshAdminView();
-    } catch(err){ alert(err.message || 'Falha ao clonar.'); } finally { showBusy(false); }
-  }
-
-  async function submitFiltersAjax(ev){
-    ev.preventDefault();
-    const formFilt = ev.currentTarget;
-    const params = new URLSearchParams(new FormData(formFilt));
-    const newUrl = formFilt.action + '?' + params.toString();
-    showBusy(true);
-    try{
-      const r = await fetch(newUrl, {headers:{'X-Requested-With':'fetch'}});
-      const html = await r.text();
-      const doc = new DOMParser().parseFromString(html, 'text/html');
-      const ids = ['#adminPanelHead','#adminFiltersBar','#adminTableShell','#adminSidebar'];
-      ids.forEach(sel=>{
-        const cur = document.querySelector(sel);
-        const fresh = doc.querySelector(sel);
-        if(cur && fresh) cur.replaceWith(fresh);
-      });
-      history.replaceState({}, '', newUrl);
-      bindDynamicActions();
-    } finally { showBusy(false); }
-  }
-
-  function bindDynamicActions(){
-    const filters = document.getElementById('adminFiltersForm');
-    if(filters && !filters.dataset.fastBound){ filters.dataset.fastBound='1'; filters.addEventListener('submit', submitFiltersAjax); }
-    document.querySelectorAll('a[href*="/editar_entrega/"]').forEach(a=>{ if(a.dataset.fastBound) return; a.dataset.fastBound='1'; a.addEventListener('click', ev=>{ ev.preventDefault(); const m=a.getAttribute('href').match(/\/editar_entrega\/(\d+)/); if(m) abrirEditar(m[1]); }); });
-    document.querySelectorAll('form[action*="/excluir_entrega/"]').forEach(f=>{ if(f.dataset.fastBound) return; f.dataset.fastBound='1'; f.addEventListener('submit', ev=>{ ev.preventDefault(); const m=f.getAttribute('action').match(/\/excluir_entrega\/(\d+)/); if(m) excluirEntrega(m[1]); }); });
-    document.querySelectorAll('form[action*="/clonar_entrega/"]').forEach(f=>{ if(f.dataset.fastBound) return; f.dataset.fastBound='1'; f.addEventListener('submit', ev=>{ ev.preventDefault(); const m=f.getAttribute('action').match(/\/clonar_entrega\/(\d+)/); if(m) clonarEntrega(m[1]); }); });
-    const btn = document.getElementById('btnNovaEntregaRapida');
-    if(btn && !btn.dataset.fastBound){ btn.dataset.fastBound='1'; btn.addEventListener('click', async ()=>{ resetForm(); openModal(); await ensureLookups(); }); }
-  }
-
-  if(selCliente){ selCliente.addEventListener('change', ()=>{ const opt=selCliente.selectedOptions[0]; const nome=opt ? (opt.dataset.nome || opt.textContent || '') : ''; hidCliente.value = selCliente.value || ''; if(nome) inpCliente.value = nome; renderClienteResultados(inpCliente.value || nome || ''); }); }
-  if(inpCliente){ let t=null; inpCliente.addEventListener('input', ()=>{ hidCliente.value=''; selCliente.value=''; renderClienteResultados(inpCliente.value); clearTimeout(t); t=setTimeout(()=>buscarClientesRemoto(inpCliente.value), 180); }); }
-  if(btnClose) btnClose.addEventListener('click', closeModal);
-  if(btnCancel) btnCancel.addEventListener('click', closeModal);
-  if(overlay) overlay.addEventListener('click', ev=>{ if(ev.target===overlay) closeModal(); });
-  if(form) form.addEventListener('submit', submitFastForm);
-  document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && overlay.classList.contains('open')) closeModal(); });
-  bindDynamicActions();
-})();
 </script>
 
 </body>
