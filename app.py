@@ -4514,6 +4514,51 @@ def api_update_entrega_inline(entrega_id):
     )
 
 
+@app.get("/api/clientes_lookup_admin")
+def api_clientes_lookup_admin():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, erro='unauthorized'), 401
+
+    q = (request.args.get('q') or '').strip()
+    query = Cliente.query.with_entities(Cliente.id, Cliente.nome, Cliente.telefone).order_by(Cliente.nome.asc())
+    if q:
+        like = f"%{q}%"
+        query = query.filter(db.or_(Cliente.nome.ilike(like), Cliente.telefone.ilike(like)))
+    itens = query.limit(1000).all()
+    return jsonify(ok=True, clientes=[{'id': c.id, 'nome': c.nome or '', 'telefone': c.telefone or ''} for c in itens])
+
+
+@app.get("/api/cooperados_lookup_admin")
+def api_cooperados_lookup_admin():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, erro='unauthorized'), 401
+
+    itens = Cooperado.query.with_entities(Cooperado.id, Cooperado.nome).order_by(Cooperado.nome.asc()).all()
+    return jsonify(ok=True, cooperados=[{'id': c.id, 'nome': c.nome or ''} for c in itens])
+
+
+@app.get('/api/entrega/<int:id>')
+def api_entrega_admin(id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, erro='unauthorized'), 401
+
+    e = Entrega.query.get_or_404(id)
+    return jsonify(
+        ok=True,
+        entrega={
+            'id': e.id,
+            'cliente': e.cliente or '',
+            'bairro': e.bairro or '',
+            'valor': float(e.valor or 0),
+            'cooperado_id': e.cooperado_id or '',
+            'pagamento': e.pagamento or '',
+            'status': e.status or 'pendente',
+            'status_pagamento': (e.status_pagamento or 'pendente').lower(),
+            'recebido_por': e.recebido_por or ''
+        }
+    )
+
+
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
     if not session.get('is_admin'):
@@ -4556,135 +4601,13 @@ def clonar_entrega(id):
     return redirect_back_to_admin()
 
 
-@app.get('/api/clientes_lookup')
-def api_clientes_lookup():
-    if not session.get('is_admin'):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
-
-    q = (request.args.get('q') or '').strip()
-    limit = min(max(request.args.get('limit', 40, type=int), 1), 100)
-
-    try:
-        base = Cliente.query
-        itens = []
-        vistos = set()
-
-        if q:
-            qn = _norm(q)
-            qd = _norm_phone(q)
-            candidatos = (
-                base
-                .with_entities(Cliente.id, Cliente.nome, Cliente.telefone)
-                .order_by(Cliente.nome.asc())
-                .limit(500)
-                .all()
-            )
-            for cid, nome, telefone in candidatos:
-                nome = nome or ''
-                telefone = telefone or ''
-                nome_n = _norm(nome)
-                tel_n = _norm_phone(telefone)
-                ok = False
-                score = 999
-                if qn and qn in nome_n:
-                    ok = True
-                    score = nome_n.find(qn)
-                if qd and tel_n:
-                    if tel_n.endswith(qd):
-                        ok = True
-                        score = min(score, 0)
-                    elif qd in tel_n:
-                        ok = True
-                        score = min(score, 1)
-                if ok and cid not in vistos:
-                    itens.append({
-                        'id': cid,
-                        'nome': nome,
-                        'telefone': telefone,
-                        '_score': score,
-                    })
-                    vistos.add(cid)
-            itens.sort(key=lambda x: (x.get('_score', 999), _norm(x.get('nome') or '')) )
-            itens = itens[:limit]
-        else:
-            candidatos = (
-                base
-                .with_entities(Cliente.id, Cliente.nome, Cliente.telefone)
-                .order_by(Cliente.nome.asc())
-                .limit(limit)
-                .all()
-            )
-            itens = [
-                {'id': cid, 'nome': nome or '', 'telefone': telefone or ''}
-                for cid, nome, telefone in candidatos
-            ]
-
-        for it in itens:
-            it.pop('_score', None)
-
-        return jsonify({"ok": True, "items": itens})
-    except Exception as ex:
-        current_app.logger.exception('Falha no lookup de clientes: %s', ex)
-        return jsonify({"ok": False, "error": "lookup_failed"}), 500
-
-
-@app.get('/api/cooperados_lookup')
-def api_cooperados_lookup():
-    if not session.get('is_admin'):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
-
-    try:
-        rows = (
-            Cooperado.query
-            .with_entities(Cooperado.id, Cooperado.nome, Cooperado.ativo)
-            .order_by(Cooperado.nome.asc())
-            .all()
-        )
-        items = [
-            {
-                'id': cid,
-                'nome': nome or '',
-                'ativo': bool(ativo) if ativo is not None else True,
-            }
-            for cid, nome, ativo in rows
-            if (ativo is None or ativo is True)
-        ]
-        return jsonify({"ok": True, "items": items})
-    except Exception as ex:
-        current_app.logger.exception('Falha no lookup de cooperados: %s', ex)
-        return jsonify({"ok": False, "error": "lookup_failed"}), 500
-
-
-@app.get('/api/entrega/<int:id>')
-def api_entrega_lookup(id):
-    if not session.get('is_admin'):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
-
-    e = Entrega.query.options(joinedload(Entrega.cooperado)).get_or_404(id)
-    return jsonify({
-        'ok': True,
-        'entrega': {
-            'id': e.id,
-            'cliente': e.cliente or '',
-            'cliente_id': e.cliente_id,
-            'bairro': e.bairro or '',
-            'valor': float(e.valor or 0),
-            'cooperado_id': e.cooperado_id,
-            'status': e.status or 'pendente',
-            'status_pagamento': (e.status_pagamento or 'pendente').lower(),
-            'pagamento': e.pagamento or '',
-            'recebido_por': e.recebido_por or '',
-        }
-    })
-
-
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
+    cooperados = Cooperado.query.with_entities(Cooperado.id, Cooperado.nome).order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.with_entities(Cliente.id, Cliente.nome, Cliente.bairro_origem, Cliente.telefone).order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
@@ -4768,8 +4691,9 @@ def cadastrar_entrega():
 
         flash(msg, msg_category)
 
-         # 🔴 EMITE PARA O PAINEL EM TEMPO REAL
-        emitir_atualizacao_entrega(entrega, 'criada')
+         # emissão em tempo real só quando não for requisição fetch/json
+        if not _wants_json():
+            emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
             return jsonify(
@@ -4793,8 +4717,8 @@ def agendar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
+    cooperados = Cooperado.query.with_entities(Cooperado.id, Cooperado.nome).order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.with_entities(Cliente.id, Cliente.nome, Cliente.telefone).order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
@@ -4878,8 +4802,9 @@ def agendar_entrega():
 
         flash(msg, msg_category)
 
-        # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (entrega agendada)
-        emitir_atualizacao_entrega(entrega, 'criada')
+        # emissão em tempo real só quando não for requisição fetch/json
+        if not _wants_json():
+            emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
             return jsonify(
