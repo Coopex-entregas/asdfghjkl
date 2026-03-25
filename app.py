@@ -6,7 +6,6 @@ import random
 from flask_socketio import SocketIO
 import unicodedata
 from datetime import datetime, timedelta, time, date
-from time import time as time_now
 from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 from functools import wraps
@@ -51,41 +50,6 @@ socketio = SocketIO(
     logger=False,
     engineio_logger=False
 )
-
-# Cache leve para listas usadas no lançamento rápido
-_FORM_LOOKUP_CACHE = {
-    "clientes_admin": {"expira": 0, "dados": []},
-    "cooperados_form": {"expira": 0, "dados": []},
-}
-
-def _cache_lookup_get(chave):
-    slot = _FORM_LOOKUP_CACHE.get(chave) or {}
-    if slot.get("expira", 0) > time_now():
-        return slot.get("dados", [])
-    return None
-
-def _cache_lookup_set(chave, dados, ttl=60):
-    _FORM_LOOKUP_CACHE[chave] = {"expira": time_now() + ttl, "dados": dados}
-
-def _cache_lookup_invalidate(*chaves):
-    for chave in chaves:
-        _FORM_LOOKUP_CACHE[chave] = {"expira": 0, "dados": []}
-
-def _get_clientes_admin_lookup():
-    cached = _cache_lookup_get("clientes_admin")
-    if cached is not None:
-        return cached
-    dados = Cliente.query.order_by(Cliente.nome.asc()).all()
-    _cache_lookup_set("clientes_admin", dados)
-    return dados
-
-def _get_cooperados_form_lookup():
-    cached = _cache_lookup_get("cooperados_form")
-    if cached is not None:
-        return cached
-    dados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
-    _cache_lookup_set("cooperados_form", dados)
-    return dados
 
 
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
@@ -4592,22 +4556,125 @@ def clonar_entrega(id):
     return redirect_back_to_admin()
 
 
-@app.get('/api/clientes_lookup_admin')
-def api_clientes_lookup_admin():
+@app.get('/api/clientes_lookup')
+def api_clientes_lookup():
     if not session.get('is_admin'):
-        return jsonify(ok=False, erro='não autorizado'), 403
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
 
-    clientes = _get_clientes_admin_lookup()
+    q = (request.args.get('q') or '').strip()
+    limit = min(max(request.args.get('limit', 40, type=int), 1), 100)
+
+    try:
+        base = Cliente.query
+        itens = []
+        vistos = set()
+
+        if q:
+            qn = _norm(q)
+            qd = _norm_phone(q)
+            candidatos = (
+                base
+                .with_entities(Cliente.id, Cliente.nome, Cliente.telefone)
+                .order_by(Cliente.nome.asc())
+                .limit(500)
+                .all()
+            )
+            for cid, nome, telefone in candidatos:
+                nome = nome or ''
+                telefone = telefone or ''
+                nome_n = _norm(nome)
+                tel_n = _norm_phone(telefone)
+                ok = False
+                score = 999
+                if qn and qn in nome_n:
+                    ok = True
+                    score = nome_n.find(qn)
+                if qd and tel_n:
+                    if tel_n.endswith(qd):
+                        ok = True
+                        score = min(score, 0)
+                    elif qd in tel_n:
+                        ok = True
+                        score = min(score, 1)
+                if ok and cid not in vistos:
+                    itens.append({
+                        'id': cid,
+                        'nome': nome,
+                        'telefone': telefone,
+                        '_score': score,
+                    })
+                    vistos.add(cid)
+            itens.sort(key=lambda x: (x.get('_score', 999), _norm(x.get('nome') or '')) )
+            itens = itens[:limit]
+        else:
+            candidatos = (
+                base
+                .with_entities(Cliente.id, Cliente.nome, Cliente.telefone)
+                .order_by(Cliente.nome.asc())
+                .limit(limit)
+                .all()
+            )
+            itens = [
+                {'id': cid, 'nome': nome or '', 'telefone': telefone or ''}
+                for cid, nome, telefone in candidatos
+            ]
+
+        for it in itens:
+            it.pop('_score', None)
+
+        return jsonify({"ok": True, "items": itens})
+    except Exception as ex:
+        current_app.logger.exception('Falha no lookup de clientes: %s', ex)
+        return jsonify({"ok": False, "error": "lookup_failed"}), 500
+
+
+@app.get('/api/cooperados_lookup')
+def api_cooperados_lookup():
+    if not session.get('is_admin'):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    try:
+        rows = (
+            Cooperado.query
+            .with_entities(Cooperado.id, Cooperado.nome, Cooperado.ativo)
+            .order_by(Cooperado.nome.asc())
+            .all()
+        )
+        items = [
+            {
+                'id': cid,
+                'nome': nome or '',
+                'ativo': bool(ativo) if ativo is not None else True,
+            }
+            for cid, nome, ativo in rows
+            if (ativo is None or ativo is True)
+        ]
+        return jsonify({"ok": True, "items": items})
+    except Exception as ex:
+        current_app.logger.exception('Falha no lookup de cooperados: %s', ex)
+        return jsonify({"ok": False, "error": "lookup_failed"}), 500
+
+
+@app.get('/api/entrega/<int:id>')
+def api_entrega_lookup(id):
+    if not session.get('is_admin'):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    e = Entrega.query.options(joinedload(Entrega.cooperado)).get_or_404(id)
     return jsonify({
         'ok': True,
-        'clientes': [
-            {
-                'id': c.id,
-                'nome': c.nome or '',
-                'telefone': c.telefone or ''
-            }
-            for c in clientes
-        ]
+        'entrega': {
+            'id': e.id,
+            'cliente': e.cliente or '',
+            'cliente_id': e.cliente_id,
+            'bairro': e.bairro or '',
+            'valor': float(e.valor or 0),
+            'cooperado_id': e.cooperado_id,
+            'status': e.status or 'pendente',
+            'status_pagamento': (e.status_pagamento or 'pendente').lower(),
+            'pagamento': e.pagamento or '',
+            'recebido_por': e.recebido_por or '',
+        }
     })
 
 
@@ -4616,8 +4683,8 @@ def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = _get_cooperados_form_lookup()
-    clientes_lista = _get_clientes_admin_lookup()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
@@ -4656,7 +4723,6 @@ def cadastrar_entrega():
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
         db.session.commit()
-        _cache_lookup_invalidate('clientes_admin', 'cooperados_form')
 
         # DEBUG AQUI
         print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
