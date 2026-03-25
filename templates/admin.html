@@ -967,7 +967,7 @@
         <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
-              <button class="btn" type="button" onclick="window.location.href='{{ url_for('cadastrar_entrega') }}'">
+              <button class="btn" type="button" id="btnNovaEntregaRapida">
                 + Nova entrega
               </button>
             </div>
@@ -2508,7 +2508,193 @@ var markers = {}; // id -> marker
       margin-top:10px;
     }
     @media (max-width:520px){ .cupom-grid{ grid-template-columns:1fr; } }
+
+    .quick-modal-backdrop{
+      position:fixed; inset:0; z-index:99990; display:none;
+      align-items:center; justify-content:center; padding:18px;
+      background:rgba(8,12,24,.64); backdrop-filter:blur(3px);
+    }
+    .quick-modal-backdrop.open{display:flex;}
+    .quick-modal{
+      width:min(720px, 96vw);
+      max-height:92vh; overflow:auto;
+      background:var(--card); color:var(--ink);
+      border:1px solid var(--line); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.35);
+    }
+    .quick-modal-head{
+      display:flex; align-items:center; justify-content:space-between; gap:12px;
+      padding:14px 16px; color:#fff;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .98), rgba(15,53,181,.95));
+      border-bottom:1px solid rgba(255,255,255,.18);
+    }
+    .quick-modal-title{font-size:1rem; font-weight:900;}
+    .quick-modal-x{
+      width:38px; height:38px; border-radius:12px; cursor:pointer;
+      border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.12); color:#fff; font-size:22px; font-weight:900;
+    }
+    .quick-modal-body{padding:16px;}
+    .quick-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;}
+    .quick-grid .full{grid-column:1 / -1;}
+    .quick-help{font-size:.82rem; color:var(--muted); font-weight:800;}
+    .quick-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
+    .quick-actions .btn{flex:1 1 180px; justify-content:center; box-shadow:none;}
+    @media (max-width:680px){ .quick-grid{grid-template-columns:1fr;} }
+
   </style>
+
+
+
+  <div class="quick-modal" id="novaEntregaModal" aria-hidden="true">
+    <div class="quick-modal-card" role="dialog" aria-modal="true" aria-labelledby="novaEntregaTitulo">
+      <div class="quick-modal-head">
+        <div>
+          <div class="quick-modal-title" id="novaEntregaTitulo">Nova entrega rápida</div>
+          <div class="small" style="color:rgba(255,255,255,.88);font-weight:800">Cadastro sem sair do painel</div>
+        </div>
+        <button class="quick-modal-x" type="button" id="fecharNovaEntrega" aria-label="Fechar">×</button>
+      </div>
+      <div class="quick-modal-body">
+        <form id="formNovaEntregaRapida" method="post" action="{{ url_for('cadastrar_entrega') }}">
+          <input type="hidden" name="cliente_id" id="ne_cliente_id" value="" />
+          <input type="hidden" name="valor" id="ne_valor_hidden" value="" />
+          <div class="quick-grid">
+            <div>
+              <label for="ne_cliente">Cliente</label>
+              <input type="text" id="ne_cliente" name="cliente" placeholder="Nome do cliente" autocomplete="off" required />
+            </div>
+            <div>
+              <label for="ne_bairro">Bairro</label>
+              <input type="text" id="ne_bairro" name="bairro" placeholder="Bairro" required />
+            </div>
+            <div>
+              <label for="ne_valor">Valor</label>
+              <input type="text" id="ne_valor" inputmode="decimal" placeholder="0,00" required />
+            </div>
+            <div>
+              <label for="ne_pagamento">Forma de pagamento</label>
+              <select id="ne_pagamento" name="pagamento">
+                <option value="">Selecione</option>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="Cartão">Cartão</option>
+                <option value="Crédito Cliente">Crédito Cliente</option>
+                <option value="Pago">Pago</option>
+                <option value="Pendente">Pendente</option>
+              </select>
+            </div>
+            <div class="full">
+              <label for="ne_cooperado_id">Cooperado</label>
+              <select id="ne_cooperado_id" name="cooperado_id">
+                <option value="">Sem cooperado</option>
+                {% for c in cooperados %}
+                  <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+              <div class="quick-help">Pode salvar sem cooperado e atribuir depois.</div>
+            </div>
+          </div>
+          <div class="quick-actions">
+            <button type="submit" class="btn" id="salvarNovaEntregaBtn">Salvar entrega</button>
+            <button type="button" class="btn alt" id="abrirCadastroCompletoBtn">Abrir cadastro completo</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+
+<script>
+  (function(){
+    const modal = document.getElementById('novaEntregaModal');
+    const openBtn = document.getElementById('btnNovaEntregaRapida');
+    const closeBtn = document.getElementById('fecharNovaEntrega');
+    const fullBtn = document.getElementById('abrirCadastroCompletoBtn');
+    const form = document.getElementById('formNovaEntregaRapida');
+    const valorVisual = document.getElementById('ne_valor');
+    const valorHidden = document.getElementById('ne_valor_hidden');
+    const submitBtn = document.getElementById('salvarNovaEntregaBtn');
+
+    if(!modal || !openBtn || !closeBtn || !form || !valorVisual || !valorHidden || !submitBtn) return;
+
+    function parseMoneyBR(v){
+      const s = String(v || '').trim().replace(/\./g,'').replace(',', '.').replace(/[^0-9.-]/g,'');
+      const n = Number(s);
+      return Number.isFinite(n) ? n : NaN;
+    }
+
+    function openModal(){
+      modal.classList.add('open');
+      modal.setAttribute('aria-hidden', 'false');
+      setTimeout(()=>{ const f = document.getElementById('ne_cliente'); if(f) f.focus(); }, 30);
+    }
+
+    function closeModal(){
+      modal.classList.remove('open');
+      modal.setAttribute('aria-hidden', 'true');
+    }
+
+    openBtn.addEventListener('click', openModal);
+    closeBtn.addEventListener('click', closeModal);
+    modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
+    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
+
+    valorVisual.addEventListener('blur', ()=>{
+      const n = parseMoneyBR(valorVisual.value);
+      if(Number.isFinite(n) && n > 0){
+        valorHidden.value = n.toFixed(2);
+        valorVisual.value = n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
+      }
+    });
+
+    if(fullBtn){
+      fullBtn.addEventListener('click', ()=>{
+        window.location.href = '{{ url_for('cadastrar_entrega') }}';
+      });
+    }
+
+    form.addEventListener('submit', async (e)=>{
+      e.preventDefault();
+      const n = parseMoneyBR(valorVisual.value);
+      if(!Number.isFinite(n) || n <= 0){
+        alert('Informe um valor válido.');
+        valorVisual.focus();
+        return;
+      }
+      valorHidden.value = n.toFixed(2);
+
+      const fd = new FormData(form);
+      submitBtn.disabled = true;
+      const oldText = submitBtn.textContent;
+      submitBtn.textContent = 'Salvando...';
+      try{
+        const resp = await fetch('{{ url_for('cadastrar_entrega') }}?format=json', {
+          method:'POST',
+          headers:{
+            'X-Requested-With':'fetch',
+            'Accept':'application/json'
+          },
+          body:fd
+        });
+        const data = await resp.json().catch(()=>({ok:false, message:'Erro ao salvar.'}));
+        if(resp.ok && data.ok){
+          if(window.showToast){
+            showToast('<strong>' + (data.message || 'Entrega cadastrada!') + '</strong>');
+          }
+          closeModal();
+          form.reset();
+          setTimeout(()=>{ window.location.reload(); }, 250);
+        }else{
+          alert(data.message || data.error || 'Não foi possível cadastrar a entrega.');
+        }
+      }catch(err){
+        alert('Erro de conexão ao salvar a entrega.');
+      }finally{
+        submitBtn.disabled = false;
+        submitBtn.textContent = oldText;
+      }
+    });
+  })();
+</script>
 
 <script id="tm20x_iframe_printer">
   // Impressão TM-T20X 80mm via IFRAME (sem pop-up)
