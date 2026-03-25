@@ -673,6 +673,49 @@
     body.dark .modal footer{background:#0b1320; border-color:#1d2636}
     body.locked{overflow:hidden}
 
+    /* ===== Nova entrega rápida ===== */
+    .entrega-rapida-overlay{
+      position:fixed; inset:0; z-index:2100; display:none;
+      align-items:center; justify-content:center;
+      background:rgba(8,12,24,.72); backdrop-filter:blur(3px);
+      padding:18px;
+    }
+    .entrega-rapida-overlay.show{display:flex}
+    .entrega-rapida-modal{
+      width:min(560px, 96vw); max-height:min(92vh, 920px); overflow:auto;
+      background:#fff; color:#0a1b3f; border-radius:18px;
+      box-shadow:0 18px 54px rgba(0,0,0,.38); border:1px solid #e6ebff;
+      padding:18px;
+    }
+    .entrega-rapida-head{display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:10px}
+    .entrega-rapida-head h3{margin:0; font-size:1.2rem; color:var(--royal)}
+    .entrega-rapida-close{width:38px; height:38px; border:none; border-radius:12px; cursor:pointer; font-size:24px; font-weight:900; background:#eef3ff; color:var(--royal)}
+    .entrega-rapida-form label{display:block; margin:10px 0 6px; font-weight:900}
+    .entrega-rapida-form input[type="text"],
+    .entrega-rapida-form input[type="number"],
+    .entrega-rapida-form select{width:100%; padding:10px 12px; border:1px solid #cbd5e1; border-radius:10px; background:#fff; outline:none}
+    .entrega-rapida-form input:focus, .entrega-rapida-form select:focus{border-color:var(--royal); box-shadow:0 0 0 3px rgba(0,51,170,.12)}
+    .entrega-rapida-hint{display:block; margin:4px 0 10px; color:#667085; font-size:12px}
+    .entrega-rapida-actions{display:flex; gap:10px; margin-top:14px; flex-wrap:wrap}
+    .entrega-rapida-actions .btn{flex:1 1 170px; justify-content:center}
+    .entrega-rapida-searchhint{font-size:12px; color:#667085; margin:4px 0 6px; display:flex; align-items:center; gap:6px; flex-wrap:wrap}
+    .entrega-rapida-pill{padding:2px 8px; border-radius:999px; background:#f8fafc; border:1px solid #e2e8f0; font-size:11px; color:#475569}
+    .entrega-rapida-results{border:1px solid #d9e1f2; background:#fff; border-radius:10px; padding:6px; margin:0 0 12px; max-height:230px; overflow:auto}
+    .entrega-rapida-item{display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px; border-radius:8px; cursor:pointer}
+    .entrega-rapida-item + .entrega-rapida-item{border-top:1px dashed #eef2ff}
+    .entrega-rapida-item:hover, .entrega-rapida-item.active{background:#eef3ff}
+    .entrega-rapida-main{display:flex; flex-direction:column; gap:2px}
+    .entrega-rapida-nome{font-weight:800}
+    .entrega-rapida-fone{font-size:12px; color:#667085}
+    .entrega-rapida-empty{padding:10px; color:#667085; text-align:center}
+    .entrega-rapida-status{margin-top:8px; font-size:12px; color:#667085}
+    .entrega-rapida-status.error{color:#b42318}
+    body.dark .entrega-rapida-modal{background:#0f1623; color:#e7edf9; border-color:#1d2636}
+    body.dark .entrega-rapida-close{background:#172235; color:#cdd9ff}
+    body.dark .entrega-rapida-form input[type="text"], body.dark .entrega-rapida-form input[type="number"], body.dark .entrega-rapida-form select{background:#0b1320; color:#e7edf9; border-color:#2b3b59}
+    body.dark .entrega-rapida-results{background:#0b1320; border-color:#2b3b59}
+    body.dark .entrega-rapida-item:hover, body.dark .entrega-rapida-item.active{background:#13203a}
+
     /* ===== Toast ===== */
     #toast{
       position:fixed;
@@ -1203,6 +1246,67 @@
         </div>
 
       </section>
+    </div>
+  </div>
+
+
+  <div id="entregaRapidaOverlay" class="entrega-rapida-overlay" aria-hidden="true">
+    <div class="entrega-rapida-modal" role="dialog" aria-modal="true" aria-labelledby="entregaRapidaTitulo">
+      <div class="entrega-rapida-head">
+        <h3 id="entregaRapidaTitulo">Cadastrar Entrega</h3>
+        <button type="button" class="entrega-rapida-close" id="entregaRapidaFechar" aria-label="Fechar">×</button>
+      </div>
+
+      <form id="entregaRapidaForm" class="entrega-rapida-form">
+        <label for="er_cliente_select">Cliente (cadastrado):</label>
+        <select id="er_cliente_select">
+          <option value="">-- Selecione um cliente (opcional) --</option>
+        </select>
+        <small class="entrega-rapida-hint">Se não encontrar o cliente, digite abaixo.</small>
+
+        <input type="hidden" id="er_cliente_id" name="cliente_id">
+
+        <label for="er_cliente_manual">Ou digite o nome do cliente (manual):</label>
+        <input id="er_cliente_manual" name="cliente" type="text" autocomplete="off" required placeholder="Ex.: Restaurante Bom Sabor ou últimos dígitos do telefone">
+
+        <div class="entrega-rapida-searchhint">
+          🔎 Resultados abaixo aparecem enquanto você digita
+          <span class="entrega-rapida-pill">nome</span>
+          <span class="entrega-rapida-pill">últimos dígitos do telefone</span>
+        </div>
+        <div id="er_resultados" class="entrega-rapida-results" role="listbox" aria-label="Resultados de clientes"></div>
+
+        <label for="er_bairro">Bairro da entrega:</label>
+        <input id="er_bairro" name="bairro" type="text" required placeholder="Digite o bairro da entrega">
+
+        <label for="er_valor">Valor (R$):</label>
+        <input id="er_valor" name="valor" type="number" step="0.01" min="0" required>
+
+        <label for="er_pagamento">Forma de Pagamento:</label>
+        <select id="er_pagamento" name="pagamento" required>
+          <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
+          <option value="Dinheiro">Dinheiro</option>
+          <option value="Pix">Pix</option>
+          <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
+          <option value="Comanda">Comanda</option>
+        </select>
+        <small class="entrega-rapida-hint">Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo de crédito do cliente.</small>
+
+        <label for="er_cooperado_id">Atribuir Cooperado (opcional):</label>
+        <select id="er_cooperado_id" name="cooperado_id">
+          <option value="">-- Nenhum --</option>
+          {% for c in cooperados %}
+            <option value="{{ c.id }}">{{ c.nome }}</option>
+          {% endfor %}
+        </select>
+
+        <div id="er_status" class="entrega-rapida-status"></div>
+
+        <div class="entrega-rapida-actions">
+          <button type="submit" class="btn" id="er_submit">Cadastrar</button>
+          <a class="btn alt" href="{{ url_for('cadastrar_entrega') }}">Cadastro completo</a>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -2508,193 +2612,268 @@ var markers = {}; // id -> marker
       margin-top:10px;
     }
     @media (max-width:520px){ .cupom-grid{ grid-template-columns:1fr; } }
-
-    .quick-modal-backdrop{
-      position:fixed; inset:0; z-index:99990; display:none;
-      align-items:center; justify-content:center; padding:18px;
-      background:rgba(8,12,24,.64); backdrop-filter:blur(3px);
-    }
-    .quick-modal-backdrop.open{display:flex;}
-    .quick-modal{
-      width:min(720px, 96vw);
-      max-height:92vh; overflow:auto;
-      background:var(--card); color:var(--ink);
-      border:1px solid var(--line); border-radius:18px; box-shadow:0 24px 60px rgba(0,0,0,.35);
-    }
-    .quick-modal-head{
-      display:flex; align-items:center; justify-content:space-between; gap:12px;
-      padding:14px 16px; color:#fff;
-      background:linear-gradient(90deg, rgba(9, 33, 120, .98), rgba(15,53,181,.95));
-      border-bottom:1px solid rgba(255,255,255,.18);
-    }
-    .quick-modal-title{font-size:1rem; font-weight:900;}
-    .quick-modal-x{
-      width:38px; height:38px; border-radius:12px; cursor:pointer;
-      border:1px solid rgba(255,255,255,.22); background:rgba(255,255,255,.12); color:#fff; font-size:22px; font-weight:900;
-    }
-    .quick-modal-body{padding:16px;}
-    .quick-grid{display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;}
-    .quick-grid .full{grid-column:1 / -1;}
-    .quick-help{font-size:.82rem; color:var(--muted); font-weight:800;}
-    .quick-actions{display:flex; gap:10px; flex-wrap:wrap; margin-top:14px;}
-    .quick-actions .btn{flex:1 1 180px; justify-content:center; box-shadow:none;}
-    @media (max-width:680px){ .quick-grid{grid-template-columns:1fr;} }
-
   </style>
 
 
-
-  <div class="quick-modal" id="novaEntregaModal" aria-hidden="true">
-    <div class="quick-modal-card" role="dialog" aria-modal="true" aria-labelledby="novaEntregaTitulo">
-      <div class="quick-modal-head">
-        <div>
-          <div class="quick-modal-title" id="novaEntregaTitulo">Nova entrega rápida</div>
-          <div class="small" style="color:rgba(255,255,255,.88);font-weight:800">Cadastro sem sair do painel</div>
-        </div>
-        <button class="quick-modal-x" type="button" id="fecharNovaEntrega" aria-label="Fechar">×</button>
-      </div>
-      <div class="quick-modal-body">
-        <form id="formNovaEntregaRapida" method="post" action="{{ url_for('cadastrar_entrega') }}">
-          <input type="hidden" name="cliente_id" id="ne_cliente_id" value="" />
-          <input type="hidden" name="valor" id="ne_valor_hidden" value="" />
-          <div class="quick-grid">
-            <div>
-              <label for="ne_cliente">Cliente</label>
-              <input type="text" id="ne_cliente" name="cliente" placeholder="Nome do cliente" autocomplete="off" required />
-            </div>
-            <div>
-              <label for="ne_bairro">Bairro</label>
-              <input type="text" id="ne_bairro" name="bairro" placeholder="Bairro" required />
-            </div>
-            <div>
-              <label for="ne_valor">Valor</label>
-              <input type="text" id="ne_valor" inputmode="decimal" placeholder="0,00" required />
-            </div>
-            <div>
-              <label for="ne_pagamento">Forma de pagamento</label>
-              <select id="ne_pagamento" name="pagamento">
-                <option value="">Selecione</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Pix">Pix</option>
-                <option value="Cartão">Cartão</option>
-                <option value="Crédito Cliente">Crédito Cliente</option>
-                <option value="Pago">Pago</option>
-                <option value="Pendente">Pendente</option>
-              </select>
-            </div>
-            <div class="full">
-              <label for="ne_cooperado_id">Cooperado</label>
-              <select id="ne_cooperado_id" name="cooperado_id">
-                <option value="">Sem cooperado</option>
-                {% for c in cooperados %}
-                  <option value="{{ c.id }}">{{ c.nome }}</option>
-                {% endfor %}
-              </select>
-              <div class="quick-help">Pode salvar sem cooperado e atribuir depois.</div>
-            </div>
-          </div>
-          <div class="quick-actions">
-            <button type="submit" class="btn" id="salvarNovaEntregaBtn">Salvar entrega</button>
-            <button type="button" class="btn alt" id="abrirCadastroCompletoBtn">Abrir cadastro completo</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-
-<script>
+<script id="entregaRapidaBoot">
   (function(){
-    const modal = document.getElementById('novaEntregaModal');
-    const openBtn = document.getElementById('btnNovaEntregaRapida');
-    const closeBtn = document.getElementById('fecharNovaEntrega');
-    const fullBtn = document.getElementById('abrirCadastroCompletoBtn');
-    const form = document.getElementById('formNovaEntregaRapida');
-    const valorVisual = document.getElementById('ne_valor');
-    const valorHidden = document.getElementById('ne_valor_hidden');
-    const submitBtn = document.getElementById('salvarNovaEntregaBtn');
+    const overlay = document.getElementById('entregaRapidaOverlay');
+    const btnOpen = document.getElementById('btnNovaEntregaRapida');
+    const btnClose = document.getElementById('entregaRapidaFechar');
+    const form = document.getElementById('entregaRapidaForm');
+    const sel = document.getElementById('er_cliente_select');
+    const manual = document.getElementById('er_cliente_manual');
+    const resultados = document.getElementById('er_resultados');
+    const hiddenId = document.getElementById('er_cliente_id');
+    const statusBox = document.getElementById('er_status');
+    const submitBtn = document.getElementById('er_submit');
 
-    if(!modal || !openBtn || !closeBtn || !form || !valorVisual || !valorHidden || !submitBtn) return;
+    let CLIENTES = [];
+    let activeIndex = -1;
+    let clientesLoaded = false;
+    let clientesLoading = false;
 
-    function parseMoneyBR(v){
-      const s = String(v || '').trim().replace(/\./g,'').replace(',', '.').replace(/[^0-9.-]/g,'');
-      const n = Number(s);
-      return Number.isFinite(n) ? n : NaN;
+    const deaccent = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '');
+    const onlyDigits = (s) => String(s || '').replace(/\D+/g, '');
+    const norm = (s) => deaccent(String(s || '').toLowerCase().trim());
+
+    function setStatus(msg, isError){
+      if(!statusBox) return;
+      statusBox.textContent = msg || '';
+      statusBox.classList.toggle('error', !!isError);
     }
 
     function openModal(){
-      modal.classList.add('open');
-      modal.setAttribute('aria-hidden', 'false');
-      setTimeout(()=>{ const f = document.getElementById('ne_cliente'); if(f) f.focus(); }, 30);
-    }
-
-    function closeModal(){
-      modal.classList.remove('open');
-      modal.setAttribute('aria-hidden', 'true');
-    }
-
-    openBtn.addEventListener('click', openModal);
-    closeBtn.addEventListener('click', closeModal);
-    modal.addEventListener('click', (e)=>{ if(e.target === modal) closeModal(); });
-    document.addEventListener('keydown', (e)=>{ if(e.key === 'Escape' && modal.classList.contains('open')) closeModal(); });
-
-    valorVisual.addEventListener('blur', ()=>{
-      const n = parseMoneyBR(valorVisual.value);
-      if(Number.isFinite(n) && n > 0){
-        valorHidden.value = n.toFixed(2);
-        valorVisual.value = n.toLocaleString('pt-BR', {minimumFractionDigits:2, maximumFractionDigits:2});
-      }
-    });
-
-    if(fullBtn){
-      fullBtn.addEventListener('click', ()=>{
-        window.location.href = '{{ url_for('cadastrar_entrega') }}';
+      if(!overlay) return;
+      overlay.classList.add('show');
+      overlay.style.display = 'flex';
+      overlay.setAttribute('aria-hidden', 'false');
+      document.body.classList.add('locked');
+      setStatus('', false);
+      ensureClientes().finally(()=>{
+        setTimeout(()=> manual && manual.focus(), 40);
       });
     }
 
-    form.addEventListener('submit', async (e)=>{
-      e.preventDefault();
-      const n = parseMoneyBR(valorVisual.value);
-      if(!Number.isFinite(n) || n <= 0){
-        alert('Informe um valor válido.');
-        valorVisual.focus();
+    function closeModal(){
+      if(!overlay) return;
+      overlay.classList.remove('show');
+      overlay.style.display = 'none';
+      overlay.setAttribute('aria-hidden', 'true');
+      document.body.classList.remove('locked');
+      setStatus('', false);
+    }
+
+    async function ensureClientes(){
+      if(clientesLoaded || clientesLoading) return;
+      clientesLoading = true;
+      setStatus('Carregando clientes...', false);
+      try{
+        const resp = await fetch("{{ url_for('api_clientes_lookup_admin') }}", {headers:{'X-Requested-With':'fetch'}});
+        const data = await resp.json();
+        if(!resp.ok || !data.ok) throw new Error(data.erro || 'Falha ao carregar clientes');
+        CLIENTES = Array.isArray(data.clientes) ? data.clientes.map(c => ({
+          id: c.id, nome: c.nome || '', telefone: String(c.telefone || '').trim()
+        })) : [];
+        preencherSelectClientes();
+        renderResultados(manual ? manual.value : '');
+        clientesLoaded = true;
+        setStatus('', false);
+      }catch(err){
+        console.error(err);
+        setStatus('Não foi possível carregar os clientes agora.', true);
+      }finally{
+        clientesLoading = false;
+      }
+    }
+
+    function preencherSelectClientes(){
+      if(!sel) return;
+      const current = sel.value || '';
+      sel.innerHTML = '<option value="">-- Selecione um cliente (opcional) --</option>';
+      CLIENTES.forEach(c => {
+        const opt = document.createElement('option');
+        opt.value = String(c.id ?? '');
+        opt.textContent = c.nome || '';
+        opt.setAttribute('data-nome', c.nome || '');
+        opt.setAttribute('data-telefone', c.telefone || '');
+        sel.appendChild(opt);
+      });
+      if(current) sel.value = current;
+    }
+
+    function highlight(text, query){
+      if(!query) return text;
+      const q = norm(query);
+      if(!q) return text;
+      const src = deaccent(text);
+      const idx = src.toLowerCase().indexOf(q);
+      if(idx === -1) return text;
+      const end = idx + q.length;
+      return text.substring(0, idx) + '<mark>' + text.substring(idx, end) + '</mark>' + text.substring(end);
+    }
+
+    function setActive(i){
+      const children = Array.from(resultados.querySelectorAll('.entrega-rapida-item'));
+      children.forEach(el => el.classList.remove('active'));
+      if(i >= 0 && i < children.length){
+        children[i].classList.add('active');
+        activeIndex = i;
+      }else{
+        activeIndex = -1;
+      }
+    }
+
+    function scrollIntoViewIfNeeded(el){
+      const eb = el.getBoundingClientRect();
+      const cb = resultados.getBoundingClientRect();
+      if(eb.bottom > cb.bottom) resultados.scrollTop += (eb.bottom - cb.bottom);
+      if(eb.top < cb.top) resultados.scrollTop -= (cb.top - eb.top);
+    }
+
+    function escolher(cliente){
+      if(!cliente) return;
+      if(manual) manual.value = cliente.nome || '';
+      if(hiddenId) hiddenId.value = cliente.id != null ? String(cliente.id) : '';
+      if(sel){
+        const match = Array.from(sel.options).find(o => String(o.value) === String(cliente.id));
+        sel.value = match ? match.value : '';
+      }
+      renderResultados(cliente.nome || '');
+      const bairro = document.getElementById('er_bairro');
+      if(bairro) bairro.focus();
+    }
+
+    function renderResultados(query){
+      if(!resultados) return;
+      const q = String(query || '').trim();
+      const qDigits = onlyDigits(q);
+      const qName = norm(q.replace(/\d+/g, ''));
+      const filtrados = CLIENTES.map(c => {
+        const nomeN = norm(c.nome);
+        const foneD = onlyDigits(c.telefone);
+        let match = false;
+        let score = 999;
+        if(q && !qName && qDigits){
+          if(foneD.endsWith(qDigits)){ match = true; score = 0; }
+          else if(foneD.includes(qDigits)){ match = true; score = 1; }
+        }else if(qName){
+          if(nomeN.includes(qName)){ match = true; score = nomeN.indexOf(qName); }
+          if(qDigits && foneD){
+            if(foneD.endsWith(qDigits)){ match = true; score = Math.min(score, 0); }
+            else if(foneD.includes(qDigits)){ match = true; score = Math.min(score, 1); }
+          }
+        }else if(!q){
+          match = true; score = 50;
+        }
+        return {...c, match, score};
+      }).filter(it => it.match).sort((a,b) => a.score - b.score || a.nome.localeCompare(b.nome)).slice(0,12);
+
+      resultados.innerHTML = '';
+      activeIndex = -1;
+      resultados._items = filtrados;
+
+      if(!filtrados.length){
+        resultados.innerHTML = '<div class="entrega-rapida-empty">Nenhum resultado. Tente digitar o nome ou os últimos dígitos do telefone.</div>';
         return;
       }
-      valorHidden.value = n.toFixed(2);
 
-      const fd = new FormData(form);
-      submitBtn.disabled = true;
-      const oldText = submitBtn.textContent;
-      submitBtn.textContent = 'Salvando...';
-      try{
-        const resp = await fetch('{{ url_for('cadastrar_entrega') }}?format=json', {
-          method:'POST',
-          headers:{
-            'X-Requested-With':'fetch',
-            'Accept':'application/json'
-          },
-          body:fd
-        });
-        const data = await resp.json().catch(()=>({ok:false, message:'Erro ao salvar.'}));
-        if(resp.ok && data.ok){
-          if(window.showToast){
-            showToast('<strong>' + (data.message || 'Entrega cadastrada!') + '</strong>');
-          }
-          closeModal();
-          form.reset();
-          setTimeout(()=>{ window.location.reload(); }, 250);
-        }else{
-          alert(data.message || data.error || 'Não foi possível cadastrar a entrega.');
-        }
-      }catch(err){
-        alert('Erro de conexão ao salvar a entrega.');
-      }finally{
-        submitBtn.disabled = false;
-        submitBtn.textContent = oldText;
-      }
+      filtrados.forEach((c, i) => {
+        const item = document.createElement('div');
+        item.className = 'entrega-rapida-item';
+        item.setAttribute('role', 'option');
+        item.dataset.index = String(i);
+        item.innerHTML = `
+          <div class="entrega-rapida-main">
+            <span class="entrega-rapida-nome">${highlight(c.nome || '', q.replace(/\d+/g, '').trim())}</span>
+            <span class="entrega-rapida-fone">${c.telefone || '—'}</span>
+          </div>
+          <div class="entrega-rapida-pill">Selecionar</div>`;
+        item.addEventListener('click', () => escolher(filtrados[i]));
+        item.addEventListener('mousemove', () => setActive(i));
+        resultados.appendChild(item);
+      });
+    }
+
+    if(btnOpen) btnOpen.addEventListener('click', openModal);
+    if(btnClose) btnClose.addEventListener('click', closeModal);
+    if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target === overlay) closeModal(); });
+    document.addEventListener('keydown', (e)=>{
+      if(e.key === 'Escape' && overlay && overlay.classList.contains('show')) closeModal();
     });
+
+    if(sel && manual && hiddenId){
+      sel.addEventListener('change', () => {
+        const id = sel.value || '';
+        const opt = sel.selectedOptions[0];
+        const nome = opt ? (opt.getAttribute('data-nome') || opt.textContent || '') : '';
+        if(nome) manual.value = nome;
+        hiddenId.value = id || '';
+        renderResultados(nome || manual.value || '');
+      });
+
+      manual.addEventListener('input', (e) => {
+        hiddenId.value = '';
+        if(sel) sel.value = '';
+        renderResultados(e.target.value);
+      });
+
+      manual.addEventListener('keydown', (e) => {
+        const items = Array.from(resultados.querySelectorAll('.entrega-rapida-item'));
+        if(!items.length) return;
+        if(e.key === 'ArrowDown'){
+          e.preventDefault();
+          const next = activeIndex < items.length - 1 ? activeIndex + 1 : 0;
+          setActive(next);
+          scrollIntoViewIfNeeded(items[next]);
+        }else if(e.key === 'ArrowUp'){
+          e.preventDefault();
+          const prev = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
+          setActive(prev);
+          scrollIntoViewIfNeeded(items[prev]);
+        }else if(e.key === 'Enter' && activeIndex >= 0){
+          e.preventDefault();
+          const escolhaItem = resultados._items?.[activeIndex];
+          if(escolhaItem) escolher(escolhaItem);
+        }
+      });
+    }
+
+    if(form){
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        setStatus('', false);
+        submitBtn.disabled = true;
+        const txt = submitBtn.textContent;
+        submitBtn.textContent = 'Cadastrando...';
+        try{
+          const fd = new FormData(form);
+          const resp = await fetch("{{ url_for('cadastrar_entrega') }}", {
+            method: 'POST',
+            body: fd,
+            headers: {'X-Requested-With':'fetch','Accept':'application/json'}
+          });
+          const data = await resp.json();
+          if(!resp.ok || !data.ok){
+            throw new Error(data.message || data.erro || 'Não foi possível cadastrar.');
+          }
+          showToast(`<strong>${data.message || 'Entrega cadastrada!'}</strong>`);
+          form.reset();
+          if(resultados){ resultados.innerHTML = ''; resultados._items = []; }
+          closeModal();
+          setTimeout(()=> window.location.reload(), 250);
+        }catch(err){
+          console.error(err);
+          setStatus(err.message || 'Não foi possível cadastrar a entrega.', true);
+        }finally{
+          submitBtn.disabled = false;
+          submitBtn.textContent = txt;
+        }
+      });
+    }
   })();
 </script>
+
 
 <script id="tm20x_iframe_printer">
   // Impressão TM-T20X 80mm via IFRAME (sem pop-up)
