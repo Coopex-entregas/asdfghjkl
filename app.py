@@ -17,7 +17,7 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -4556,18 +4556,68 @@ def clonar_entrega(id):
     return redirect_back_to_admin()
 
 
+@app.get('/api/clientes/busca')
+def api_busca_clientes_entrega():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='não autorizado'), 401
+
+    termo = (request.args.get('q') or '').strip()
+    limite = request.args.get('limit', type=int) or 12
+    limite = max(1, min(limite, 20))
+
+    query = Cliente.query
+
+    if termo:
+        termo_like = f"%{termo}%"
+        termo_digits = re.sub(r'\D+', '', termo)
+
+        filtros = [
+            Cliente.nome.ilike(termo_like),
+        ]
+
+        if termo_digits:
+            filtros.append(func.regexp_replace(func.coalesce(Cliente.telefone, ''), r'\\D', '', 'g').ilike(f"%{termo_digits}%"))
+
+        query = query.filter(or_(*filtros))
+    
+    clientes = (
+        query
+        .order_by(Cliente.nome.asc())
+        .limit(limite)
+        .all()
+    )
+
+    return jsonify({
+        'ok': True,
+        'items': [
+            {
+                'id': c.id,
+                'nome': c.nome,
+                'telefone': c.telefone or '',
+                'bairro_origem': c.bairro_origem or '',
+                'endereco': c.endereco or '',
+                'saldo_atual': float(c.saldo_atual or 0.0),
+            }
+            for c in clientes
+        ]
+    })
+
+
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
-        bairro = request.form.get('bairro')
-        valor = float(request.form.get('valor') or 0)
+        bairro = (request.form.get('bairro') or '').strip()
+        valor_raw = (request.form.get('valor') or '0').strip().replace('.', '').replace(',', '.') if ',' in (request.form.get('valor') or '') and (request.form.get('valor') or '').count(',') == 1 else (request.form.get('valor') or '0').strip().replace(',', '.')
+        try:
+            valor = float(valor_raw or 0)
+        except Exception:
+            valor = 0.0
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
 
@@ -4602,7 +4652,6 @@ def cadastrar_entrega():
 
         db.session.commit()
 
-        # DEBUG AQUI
         print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
 
         credito_consumido = 0.0
@@ -4610,7 +4659,6 @@ def cadastrar_entrega():
         msg = 'Entrega cadastrada!'
         msg_category = 'info'
 
-        # Tenta consumir crédito e mostra o resultado
         try:
             if pagamento_usa_credito(entrega.pagamento):
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
@@ -4646,7 +4694,6 @@ def cadastrar_entrega():
 
         flash(msg, msg_category)
 
-         # 🔴 EMITE PARA O PAINEL EM TEMPO REAL
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
@@ -4663,7 +4710,7 @@ def cadastrar_entrega():
 
         return redirect_back_to_admin()
 
-    return render_template('cadastrar_entrega.html', cooperados=cooperados, clientes=clientes_lista)
+    return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
