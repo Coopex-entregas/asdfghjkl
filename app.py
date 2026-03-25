@@ -2899,9 +2899,22 @@ def admin():
         for c in cooperados
     ]
 
-    # Mapa removido da tela principal do admin para abrir mais rápido.
-    # Os dados do mapa agora são carregados apenas na rota dedicada /mapa_motoboys.
     motoboys_js = []
+    for c in cooperados:
+        if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
+            is_online, idle_s, status_str = calc_status_cooperado(c)
+
+            motoboys_js.append({
+                "id": c.id,
+                "nome": c.nome,
+                "lat": c.last_lat,
+                "lng": c.last_lng,
+                "online": bool(is_online),
+                "status": status_str,
+                "idle_seconds": idle_s,
+                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
+                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+            })
 
     html = render_template(
         'admin.html',
@@ -4346,109 +4359,8 @@ def mapa_motoboys():
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
 
-    # 👇 Se for acesso normal (mapa em tela cheia) → HTML dedicado e independente do admin
-    mapa_tpl = r"""
-<!doctype html>
-<html lang="pt-br">
-<head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Mapa dos Motoboys - Coopex</title>
-  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap">
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
-  <style>
-    :root{--blue:#1437c9;--blue2:#244be8;--bg:#eef3ff;--card:#fff;--line:#dbe6ff;--ok:#16a34a;--off:#ef4444;--text:#0f172a}
-    *{box-sizing:border-box} html,body{height:100%;margin:0;font-family:Inter,Arial,sans-serif;background:var(--bg);color:var(--text)}
-    .shell{height:100%;display:flex;flex-direction:column}
-    .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 16px;background:linear-gradient(90deg,var(--blue),var(--blue2));color:#fff}
-    .title-wrap{display:flex;flex-direction:column;gap:4px}.title-wrap strong{font-size:1.05rem}.title-wrap span{font-size:.9rem;opacity:.92}
-    .actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
-    .btn{border:none;border-radius:12px;padding:10px 14px;font-weight:800;cursor:pointer;text-decoration:none;background:#fff;color:var(--blue)}
-    .btn.alt{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.18)}
-    .filter{border:1px solid var(--line);border-radius:12px;padding:10px 12px;font-weight:700;background:#fff;color:var(--text)}
-    .map-wrap{flex:1;padding:12px}.map-card{height:100%;background:var(--card);border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:0 14px 38px rgba(18,33,120,.12)}
-    #mapa-full{width:100%;height:100%}
-    .pin{width:16px;height:16px;border-radius:999px;border:2px solid #fff;box-shadow:0 2px 10px rgba(0,0,0,.25)}
-    .pin.on{background:var(--ok)} .pin.off{background:var(--off)}
-    .legend{display:flex;gap:12px;align-items:center;flex-wrap:wrap}.legend .item{display:flex;gap:6px;align-items:center;font-weight:700}
-  </style>
-</head>
-<body>
-  <div class="shell">
-    <div class="topbar">
-      <div class="title-wrap">
-        <strong>Mapa dos motoboys</strong>
-        <span>Tela inteira. Atualiza rápido só quando houver alguém online.</span>
-      </div>
-      <div class="actions">
-        <div class="legend">
-          <div class="item"><span class="pin on"></span> Online</div>
-          <div class="item"><span class="pin off"></span> Offline</div>
-        </div>
-        <select id="filtro" class="filter">
-          <option value="all">Ver todos</option>
-          <option value="online">Só online</option>
-        </select>
-        <a class="btn alt" href="{{ url_for('admin') }}">Voltar ao admin</a>
-      </div>
-    </div>
-    <div class="map-wrap"><div class="map-card"><div id="mapa-full"></div></div></div>
-  </div>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
-  <script>
-    const map = L.map('mapa-full', {zoomControl:true, preferCanvas:true}).setView([-5.7945, -35.211], 12);
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom: 19, attribution: '&copy; OpenStreetMap'}).addTo(map);
-    const markers = {};
-    let timer = null;
-
-    function iconOnline(on){
-      return L.divIcon({className:'', html:`<div class="pin ${on?'on':'off'}"></div>`, iconSize:[16,16], iconAnchor:[8,8]});
-    }
-    function popupHtml(p){
-      return `<strong>${p.nome||'Motoboy'}</strong><br>Status: ${p.online ? 'ONLINE' : 'OFFLINE'}<br>${p.ultima_atualizacao ? 'Última atualização: '+p.ultima_atualizacao : ''}`;
-    }
-    function applyData(items){
-      const filtro = document.getElementById('filtro').value;
-      const ids = new Set();
-      let onlineCount = 0;
-      items.forEach(p=>{
-        const lat = Number(p.lat), lng = Number(p.lng);
-        if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
-        if(p.online) onlineCount += 1;
-        ids.add(String(p.id));
-        const hidden = (filtro === 'online' && !p.online);
-        if(!markers[p.id]){
-          markers[p.id] = L.marker([lat,lng], {icon:iconOnline(!!p.online)}).addTo(map).bindPopup(popupHtml(p));
-        }else{
-          markers[p.id].setLatLng([lat,lng]);
-          markers[p.id].setIcon(iconOnline(!!p.online));
-          markers[p.id].setPopupContent(popupHtml(p));
-        }
-        if(hidden){ if(map.hasLayer(markers[p.id])) map.removeLayer(markers[p.id]); }
-        else { if(!map.hasLayer(markers[p.id])) markers[p.id].addTo(map); }
-      });
-      Object.keys(markers).forEach(id=>{ if(!ids.has(String(id)) && map.hasLayer(markers[id])) map.removeLayer(markers[id]); });
-      if(items.length){
-        const bounds = L.latLngBounds(items.filter(p=>Number.isFinite(Number(p.lat)) && Number.isFinite(Number(p.lng))).map(p=>[Number(p.lat), Number(p.lng)]));
-        if(bounds.isValid()) map.fitBounds(bounds, {padding:[30,30], maxZoom:15});
-      }
-      if(timer) clearInterval(timer);
-      timer = setInterval(fetchData, onlineCount > 0 ? 10000 : 60000);
-    }
-    async function fetchData(){
-      try{
-        const r = await fetch('{{ url_for("mapa_motoboys") }}?format=json', {cache:'no-store', headers:{'X-Requested-With':'fetch'}});
-        const data = await r.json();
-        applyData(Array.isArray(data) ? data : []);
-      }catch(e){ console.error('Falha no mapa:', e); }
-    }
-    document.getElementById('filtro').addEventListener('change', fetchData);
-    fetchData();
-  </script>
-</body>
-</html>
-    """
-    return render_template_string(mapa_tpl, motoboys_js=motoboys_js)
+    # 👇 Se for acesso normal (mapa em tela cheia) → HTML usando esse mesmo motoboys_js
+    return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
 
 
 # =========================================================
