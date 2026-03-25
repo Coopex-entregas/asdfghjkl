@@ -17,7 +17,7 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -675,7 +675,7 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
             'ultima_atualizacao': ultima_str,
         }
 
-        socketio.emit('posicao_motoboy_atualizada', payload, broadcast=True)
+        socketio.emit('posicao_motoboy_atualizada', payload)
 
     except Exception as e:
         try:
@@ -4372,6 +4372,7 @@ def _wants_json():
     - ?format=json
     - request.is_json
     - Accept: application/json
+    - X-Requested-With: fetch / XMLHttpRequest
     """
     try:
         if request.args.get('format') == 'json':
@@ -4380,12 +4381,55 @@ def _wants_json():
         pass
 
     try:
+        xrw = (request.headers.get('X-Requested-With') or '').strip().lower()
+        if xrw in {'fetch', 'xmlhttprequest'}:
+            return True
+
+        accept = (request.headers.get('Accept') or '').lower()
+        if 'application/json' in accept:
+            return True
+
         if request.is_json:
             return True
+
         best = request.accept_mimetypes.best
         return best == 'application/json'
     except Exception:
         return False
+
+
+def _entrega_admin_payload(entrega: Entrega, origem_id=None):
+    coop = getattr(entrega, 'cooperado', None)
+    dt_envio = to_brasilia(entrega.data_envio) if getattr(entrega, 'data_envio', None) else None
+    dt_atr = to_brasilia(entrega.data_atribuida) if getattr(entrega, 'data_atribuida', None) else None
+    st = (entrega.status or 'pendente').lower()
+    rastreio_url = None
+    try:
+        if coop and st not in {'recebido', 'entregue'}:
+            rastreio_url = url_for('rastreio_publico', token=token_rastreio(entrega.id))
+    except Exception:
+        rastreio_url = None
+
+    return {
+        'id': entrega.id,
+        'origem_id': origem_id,
+        'cliente': entrega.cliente,
+        'bairro': entrega.bairro,
+        'endereco': getattr(entrega, 'endereco', None) or '-',
+        'valor': float(entrega.valor or 0),
+        'data_envio_data': dt_envio.strftime('%d/%m/%Y') if dt_envio else '-',
+        'data_envio_dia': diasemana(dt_envio) if dt_envio else '',
+        'hora_envio': dt_envio.strftime('%H:%M') if dt_envio else '-',
+        'hora_atribuida': dt_atr.strftime('%H:%M') if dt_atr else '-',
+        'cooperado_id': entrega.cooperado_id,
+        'cooperado_nome': coop.nome if coop else 'Sem Cooperado',
+        'pagamento': entrega.pagamento or '',
+        'status': entrega.status or 'pendente',
+        'status_pagamento': entrega.status_pagamento or 'pendente',
+        'recebido_por': entrega.recebido_por or '-',
+        'rastreio_url': rastreio_url,
+    }
+
 
 def _parse_money_to_float(v) -> float:
     """
@@ -4514,49 +4558,55 @@ def api_update_entrega_inline(entrega_id):
     )
 
 
-@app.get("/api/clientes_lookup_admin")
+
+@app.get('/api_clientes_lookup_admin')
 def api_clientes_lookup_admin():
     if not session.get('is_admin'):
-        return jsonify(ok=False, erro='unauthorized'), 401
+        return jsonify(ok=False, error='unauthorized'), 401
 
     q = (request.args.get('q') or '').strip()
-    query = Cliente.query.with_entities(Cliente.id, Cliente.nome, Cliente.telefone).order_by(Cliente.nome.asc())
+    limit = min(max(int(request.args.get('limit', 150) or 150), 1), 400)
+
+    query = Cliente.query
     if q:
-        like = f"%{q}%"
-        query = query.filter(db.or_(Cliente.nome.ilike(like), Cliente.telefone.ilike(like)))
-    itens = query.limit(1000).all()
-    return jsonify(ok=True, clientes=[{'id': c.id, 'nome': c.nome or '', 'telefone': c.telefone or ''} for c in itens])
+        filtros = [Cliente.nome.ilike(f'%{q}%')]
+        digits = re.sub(r'\D+', '', q)
+        if digits:
+            filtros.append(Cliente.telefone.ilike(f'%{digits}%'))
+        query = query.filter(or_(*filtros))
+
+    clientes = query.order_by(Cliente.nome.asc()).limit(limit).all()
+    return jsonify(ok=True, clientes=[
+        {
+            'id': c.id,
+            'nome': c.nome,
+            'telefone': c.telefone or ''
+        }
+        for c in clientes
+    ])
 
 
-@app.get("/api/cooperados_lookup_admin")
+@app.get('/api_cooperados_lookup_admin')
 def api_cooperados_lookup_admin():
     if not session.get('is_admin'):
-        return jsonify(ok=False, erro='unauthorized'), 401
+        return jsonify(ok=False, error='unauthorized'), 401
 
-    itens = Cooperado.query.with_entities(Cooperado.id, Cooperado.nome).order_by(Cooperado.nome.asc()).all()
-    return jsonify(ok=True, cooperados=[{'id': c.id, 'nome': c.nome or ''} for c in itens])
+    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
+    return jsonify(ok=True, cooperados=[
+        {
+            'id': c.id,
+            'nome': c.nome
+        }
+        for c in cooperados
+    ])
 
 
 @app.get('/api/entrega/<int:id>')
-def api_entrega_admin(id):
+def api_get_entrega_admin(id):
     if not session.get('is_admin'):
-        return jsonify(ok=False, erro='unauthorized'), 401
-
+        return jsonify(ok=False, error='unauthorized'), 401
     e = Entrega.query.get_or_404(id)
-    return jsonify(
-        ok=True,
-        entrega={
-            'id': e.id,
-            'cliente': e.cliente or '',
-            'bairro': e.bairro or '',
-            'valor': float(e.valor or 0),
-            'cooperado_id': e.cooperado_id or '',
-            'pagamento': e.pagamento or '',
-            'status': e.status or 'pendente',
-            'status_pagamento': (e.status_pagamento or 'pendente').lower(),
-            'recebido_por': e.recebido_por or ''
-        }
-    )
+    return jsonify(ok=True, entrega=_entrega_admin_payload(e))
 
 
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
@@ -4587,15 +4637,7 @@ def clonar_entrega(id):
         return jsonify(
             ok=True,
             message=msg,
-            entrega={
-                'id': nova.id,
-                'origem_id': e.id,
-                'cliente': nova.cliente,
-                'bairro': nova.bairro,
-                'valor': float(nova.valor or 0),
-                'status': nova.status,
-                'status_pagamento': nova.status_pagamento,
-            }
+            entrega=_entrega_admin_payload(nova, origem_id=e.id)
         )
 
     return redirect_back_to_admin()
@@ -4606,8 +4648,8 @@ def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.with_entities(Cooperado.id, Cooperado.nome).order_by(Cooperado.nome).all()
-    clientes_lista = Cliente.query.with_entities(Cliente.id, Cliente.nome, Cliente.bairro_origem, Cliente.telefone).order_by(Cliente.nome).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
@@ -4691,9 +4733,8 @@ def cadastrar_entrega():
 
         flash(msg, msg_category)
 
-         # emissão em tempo real só quando não for requisição fetch/json
-        if not _wants_json():
-            emitir_atualizacao_entrega(entrega, 'criada')
+         # 🔴 EMITE PARA O PAINEL EM TEMPO REAL
+        emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
             return jsonify(
@@ -4705,6 +4746,7 @@ def cadastrar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
+                entrega=_entrega_admin_payload(entrega),
             )
 
         return redirect_back_to_admin()
@@ -4717,8 +4759,8 @@ def agendar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.with_entities(Cooperado.id, Cooperado.nome).order_by(Cooperado.nome).all()
-    clientes_lista = Cliente.query.with_entities(Cliente.id, Cliente.nome, Cliente.telefone).order_by(Cliente.nome).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
@@ -4802,9 +4844,8 @@ def agendar_entrega():
 
         flash(msg, msg_category)
 
-        # emissão em tempo real só quando não for requisição fetch/json
-        if not _wants_json():
-            emitir_atualizacao_entrega(entrega, 'criada')
+        # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (entrega agendada)
+        emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
             return jsonify(
@@ -4816,6 +4857,7 @@ def agendar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
+                entrega=_entrega_admin_payload(entrega),
             )
 
         return redirect_back_to_admin()
@@ -4905,6 +4947,7 @@ def editar_entrega(id):
                     cliente=entrega.cliente,
                     bairro=entrega.bairro,
                     valor=float(entrega.valor or 0),
+                    entrega=_entrega_admin_payload(entrega),
                 )
 
             return redirect_back_to_admin()
