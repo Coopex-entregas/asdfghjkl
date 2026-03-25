@@ -17,13 +17,11 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, case
+from sqlalchemy import func
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
 from werkzeug.security import generate_password_hash, check_password_hash
-from werkzeug.utils import secure_filename
-from itsdangerous import URLSafeSerializer, URLSafeTimedSerializer, BadSignature, SignatureExpired
 
 import pandas as pd
 import holidays
@@ -81,170 +79,6 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 db = SQLAlchemy(app)
-
-PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
-
-def _sso_shared_serializer():
-    shared = os.environ.get("SSO_SHARED_SECRET") or "COOPEX_SSO_SHARED_2026_FIXED"
-    return URLSafeTimedSerializer(shared, salt="coopex-sso-v1")
-
-def sso_dump_shared(payload: dict) -> str:
-    return _sso_shared_serializer().dumps(payload)
-
-def sso_load_shared(token: str, max_age_seconds: int = 60):
-    return _sso_shared_serializer().loads(token, max_age=max_age_seconds)
-
-def _build_principal_sso_url(*, tipo: str, principal_user: str, next_path: str) -> str:
-    payload = {
-        "aud": "painel-destino",
-        "orig": "sistema1",
-        "tipo": tipo,
-        "principal_user": principal_user,
-        "next": next_path,
-        "iat": int(datetime.utcnow().timestamp()),
-    }
-    token = sso_dump_shared(payload)
-    return f"{PORTAL_PRINCIPAL_URL.rstrip('/')}" + "/sso/entrar?token=" + token
-
-def _admin_top_link_html() -> str:
-    href = url_for("admin") + "?tab=escalas"
-    label = "Escala"
-    return f'<a href="{href}" class="top-link-btn">{label}</a>'
-
-def _patch_admin_top_link(html: str) -> str:
-    repl = _admin_top_link_html()
-    pattern1 = r'<a href="https://financas-dxsu\.onrender\.com/admin\?tab=escalas" class="top-link-btn" target="_blank" rel="noopener">Escala</a>'
-    html2, n = re.subn(pattern1, repl, html, count=1)
-    if n:
-        return html2
-    pattern2 = r'<a[^>]*class="top-link-btn"[^>]*>Escala</a>'
-    html2, n = re.subn(pattern2, repl, html, count=1)
-    return html2
-
-
-# =========================================================
-# COMPROVANTE DE ENTREGA (FOTO) — armazenado por 7 dias
-# =========================================================
-COMPROVANTE_DIR = os.path.join(app.instance_path, "comprovantes")
-COMPROVANTE_INDEX = os.path.join(app.instance_path, "comprovantes_index.json")
-COMPROVANTE_TTL_DAYS = 7
-
-def _ensure_comprovante_dirs():
-    try:
-        os.makedirs(COMPROVANTE_DIR, exist_ok=True)
-    except Exception:
-        pass
-
-def _load_comprovante_index():
-    _ensure_comprovante_dirs()
-    data = {}
-    try:
-        if os.path.exists(COMPROVANTE_INDEX):
-            with open(COMPROVANTE_INDEX, "r", encoding="utf-8") as f:
-                data = json.load(f) or {}
-    except Exception:
-        data = {}
-    _cleanup_comprovantes(data)
-    return data
-
-def _save_comprovante_index(data: dict):
-    _ensure_comprovante_dirs()
-    try:
-        tmp = COMPROVANTE_INDEX + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as f:
-            json.dump(data, f, ensure_ascii=False, indent=2)
-        os.replace(tmp, COMPROVANTE_INDEX)
-    except Exception:
-        pass
-
-from typing import Optional, Dict, Any
-
-def _cleanup_comprovantes(index_data: Optional[Dict[str, Any]] = None):
-    # apaga arquivos com mais de 7 dias (por mtime) e limpa o index
-    _ensure_comprovante_dirs()
-    cutoff = datetime.utcnow() - timedelta(days=COMPROVANTE_TTL_DAYS)
-    try:
-        for name in os.listdir(COMPROVANTE_DIR):
-            p = os.path.join(COMPROVANTE_DIR, name)
-            try:
-                mtime = datetime.utcfromtimestamp(os.path.getmtime(p))
-                if mtime < cutoff:
-                    os.remove(p)
-            except Exception:
-                pass
-    except Exception:
-        pass
-
-    if index_data is None:
-        return
-
-    # remove entradas expiradas ou sem arquivo
-    changed = False
-    for k in list(index_data.keys()):
-        fn = (index_data.get(k) or {}).get("filename")
-        if not fn:
-            index_data.pop(k, None); changed = True; continue
-        fp = os.path.join(COMPROVANTE_DIR, fn)
-        if not os.path.exists(fp):
-            index_data.pop(k, None); changed = True; continue
-        try:
-            mtime = datetime.utcfromtimestamp(os.path.getmtime(fp))
-            if mtime < cutoff:
-                try: os.remove(fp)
-                except Exception: pass
-                index_data.pop(k, None); changed = True
-        except Exception:
-            pass
-    if changed:
-        _save_comprovante_index(index_data)
-
-def comprovante_info(entrega_id: int):
-    idx = _load_comprovante_index()
-    return idx.get(str(entrega_id))
-
-def comprovante_existe(entrega_id: int) -> bool:
-    info = comprovante_info(entrega_id)
-    if not info: 
-        return False
-    fn = info.get("filename")
-    if not fn:
-        return False
-    return os.path.exists(os.path.join(COMPROVANTE_DIR, fn))
-
-def _salvar_comprovante(entrega_id: int, file_storage):
-    _ensure_comprovante_dirs()
-    _cleanup_comprovantes()
-    if not file_storage:
-        return None
-
-    filename = secure_filename(file_storage.filename or "")
-    ext = os.path.splitext(filename)[1].lower()
-    if ext not in [".jpg", ".jpeg", ".png", ".webp"]:
-        # tenta salvar como jpg se vier sem extensão correta
-        ext = ".jpg"
-
-    ts = datetime.utcnow().strftime("%Y%m%d%H%M%S")
-    out_name = f"entrega_{entrega_id}_{ts}{ext}"
-    out_path = os.path.join(COMPROVANTE_DIR, out_name)
-    file_storage.save(out_path)
-
-    idx = _load_comprovante_index()
-    idx[str(entrega_id)] = {"filename": out_name, "uploaded_at": datetime.utcnow().isoformat() + "Z"}
-    _save_comprovante_index(idx)
-    return out_name
-
-# =========================================================
-# RASTREIO POR LINK (por entrega)
-# =========================================================
-def _rastreio_serializer():
-    return URLSafeSerializer(app.config["SECRET_KEY"], salt="rastreio_entrega_v1")
-
-def gerar_token_rastreio(entrega_id: int):
-    return _rastreio_serializer().dumps({"entrega_id": int(entrega_id)})
-
-def ler_token_rastreio(token: str):
-    return _rastreio_serializer().loads(token)
-
 
 # =========================================================
 # FLASK-LOGIN / LOGIN MANAGER
@@ -613,17 +447,31 @@ def emitir_atualizacao_entrega(entrega: Entrega, acao: str):
         return
 
     try:
-        payload = serializar_entrega_admin(entrega) or {
+        payload = {
             "id": entrega.id,
+            "acao": acao,  # 'criada', 'editada', 'excluida', etc.
             "cliente": entrega.cliente,
             "bairro": entrega.bairro,
             "valor": float(entrega.valor or 0),
+            "status": entrega.status,
+            "status_pagamento": entrega.status_pagamento,
+            "pagamento": entrega.pagamento,
+            "cooperado_id": entrega.cooperado_id,
+            "cooperado_nome": entrega.cooperado.nome if entrega.cooperado else None,
+            "data_envio": (
+                to_brasilia(entrega.data_envio).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_envio else None
+            ),
+            "data_atribuida": (
+                to_brasilia(entrega.data_atribuida).strftime('%Y-%m-%d %H:%M')
+                if entrega.data_atribuida else None
+            ),
         }
-        payload['acao'] = acao
 
-        evento = 'entrega_criada' if acao == 'criada' else 'entrega_atualizada'
-        socketio.emit(evento, payload)
-        socketio.emit('entrega_atualizada', payload)
+        # Evento específico para os painéis de entregas
+        socketio.emit(
+            "entrega_atualizada",
+            payload)
 
     except Exception as e:
         # não quebra o fluxo se der problema no websocket
@@ -657,7 +505,7 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
             'ultima_atualizacao': ultima_str,
         }
 
-        socketio.emit('posicao_motoboy_atualizada', payload, broadcast=True)
+        socketio.emit('posicao_motoboy_atualizada', payload)
 
     except Exception as e:
         try:
@@ -769,8 +617,7 @@ def emitir_lista_espera():
 
         socketio.emit(
             "fila_espera_atualizada",
-            {"itens": payload},
-            broadcast=True
+            {"itens": payload}
         )
     except Exception as e:
         try:
@@ -927,8 +774,6 @@ def diasemana(data):
     return dias[data.weekday()]
 
 app.jinja_env.filters['diasemana'] = diasemana
-app.jinja_env.globals['tem_comprovante'] = comprovante_existe
-app.jinja_env.globals['token_rastreio'] = gerar_token_rastreio
 
 # =========================================================
 # RASTREAMENTO - HELPER DE LINHA DO TEMPO
@@ -1633,48 +1478,6 @@ def intruso():
         acesso_data=acesso_data,
         registro_id=registro_id
     )
-
-@app.get('/autologin')
-def autologin():
-    token = (request.args.get('token') or '').strip()
-    if not token:
-        flash('Link inválido.', 'error')
-        return redirect(url_for('login'))
-    try:
-        data = sso_load_shared(token, max_age_seconds=60)
-    except SignatureExpired:
-        flash('Link expirou. Clique novamente no botão.', 'error')
-        return redirect(url_for('login'))
-    except BadSignature:
-        flash('Link inválido.', 'error')
-        return redirect(url_for('login'))
-
-    if (data.get('aud') or '').strip().lower() != 'sistema1':
-        flash('Token com destino inválido.', 'error')
-        return redirect(url_for('login'))
-
-    role = (data.get('role') or 'admin').strip().lower()
-    next_url = (data.get('next') or '/admin').strip() or '/admin'
-
-    session.clear()
-    session['user_id'] = 0
-    session['user_nome'] = 'coopex'
-    session['is_admin'] = True
-    session['is_master'] = bool(role == 'master')
-    session['tipo'] = 'admin'
-    return redirect(next_url)
-
-@app.get('/retornar-admin')
-def retornar_admin_principal():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-    return redirect(url_for('admin'))
-
-@app.get('/ir-principal-escala')
-def ir_principal_escala():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-    return redirect(url_for('admin') + '?tab=escalas')
 
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
@@ -2792,7 +2595,6 @@ def admin():
     cooperado_id = request.args.get('cooperado_id', 'todos')
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
 
@@ -2828,15 +2630,14 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    if endereco:
-        like_end = f"%{endereco.lower()}%"
-        query = query.filter(func.lower(func.coalesce(Entrega.endereco, '')).like(like_end))
-
-    entregas = (
+    entregas_all = (
         query.options(joinedload(Entrega.cooperado))
-        .order_by(case((Entrega.cooperado_id.is_(None), 0), else_=1), Entrega.data_envio.desc())
+        .order_by(Entrega.data_envio.desc())
         .all()
     )
+    nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
+    atribuidos = [e for e in entregas_all if e.cooperado_id]
+    entregas = nao_atribuidos + atribuidos
 
     # AQUI você já tinha isso:
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
@@ -2898,13 +2699,10 @@ def admin():
                 "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
             })
 
-    clientes = Cliente.query.order_by(Cliente.nome.asc()).all()
-
-    html = render_template(
+    return render_template(
         'admin.html',
         entregas=entregas,
         cooperados=cooperados,
-        clientes=clientes,
         estatisticas=estatisticas,
         data_inicio=data_inicio,
         data_fim=data_fim,
@@ -2915,94 +2713,39 @@ def admin():
         tem_pendente=tem_pendente,
         lista_espera=lista_espera,
         cooperados_disponiveis=cooperados_disponiveis,
+        # >>> VARIÁVEIS NOVAS PARA O JS <<<
         cooperados_js=cooperados_js,
         motoboys_js=motoboys_js,
     )
-    return _patch_admin_top_link(html)
 
 
 @app.route("/admin_novo_socorro")
 def admin_novo_socorro():
-    """Rota que o admin consulta (polling) para saber se há socorros pendentes.
-    Importante: **não** marca como lido aqui. Só marca quando o admin clicar no X.
     """
+    Rota que o PAINEL DA SUPERVISÃO (admin) fica consultando de tempos em tempos.
+    Se tiver um socorro não lido, devolve os dados.
+    Não tem HTML, só JSON.
+    """
+
+    # MESMA regra de permissão que você usa no /admin
+    # (se no seu app for outro campo, troque "is_admin" por ele)
     if not session.get("is_admin") and not session.get("is_master"):
         abort(403)
 
-    global SOCORRO_QUEUE
+    global ULTIMO_SOCORRO
+    if not ULTIMO_SOCORRO or ULTIMO_SOCORRO.get("lido"):
+        # não tem socorro novo
+        return jsonify({"novo": False}), 200
 
-    pendentes = [s for s in (SOCORRO_QUEUE or []) if not s.get("lido")]
-    if not pendentes:
-        return jsonify({"novo": False, "count": 0}), 200
+    # marca como lido (só dispara uma vez)
+    ULTIMO_SOCORRO["lido"] = True
 
-    ultimo = pendentes[-1]
     return jsonify({
         "novo": True,
-        "count": len(pendentes),
-        "id": ultimo.get("id"),
-        "cooperado": ultimo.get("cooperado_nome"),
-        "mensagem": ultimo.get("mensagem") or "",
-        "momento": ultimo.get("momento"),
+        "cooperado": ULTIMO_SOCORRO["cooperado_nome"],
+        "mensagem": ULTIMO_SOCORRO["mensagem"] or "",
+        "momento": ULTIMO_SOCORRO["momento"],
     }), 200
-
-
-
-@app.post("/admin_socorro_marcar_lido")
-def admin_socorro_marcar_lido():
-    """Admin confirma que viu o socorro (clicou no X)."""
-    if not session.get("is_admin") and not session.get("is_master"):
-        abort(403)
-
-    global SOCORRO_QUEUE
-
-    data = request.get_json(silent=True) or {}
-    sid = data.get("id")
-    try:
-        sid_int = int(sid)
-    except Exception:
-        return jsonify(ok=False, error="id inválido"), 400
-
-    found = False
-    for s in SOCORRO_QUEUE:
-        if int(s.get("id") or 0) == sid_int:
-            s["lido"] = True
-            found = True
-            break
-
-    if not found:
-        return jsonify(ok=False, error="socorro não encontrado"), 404
-
-    pendentes = [s for s in (SOCORRO_QUEUE or []) if not s.get("lido")]
-    return jsonify(ok=True, count=len(pendentes))
-
-# =========================================================
-# ADMIN — visualizar / baixar comprovante (foto) da entrega
-# =========================================================
-@app.get("/admin/entrega/<int:entrega_id>/comprovante")
-def admin_ver_comprovante(entrega_id):
-    if not session.get("is_admin") and not session.get("is_master"):
-        abort(403)
-    info = comprovante_info(entrega_id)
-    if not info or not info.get("filename"):
-        abort(404)
-    fp = os.path.join(COMPROVANTE_DIR, info["filename"])
-    if not os.path.exists(fp):
-        abort(404)
-    # envia inline (abre no navegador)
-    return send_file(fp)
-
-@app.get("/admin/entrega/<int:entrega_id>/comprovante/download")
-def admin_baixar_comprovante(entrega_id):
-    if not session.get("is_admin") and not session.get("is_master"):
-        abort(403)
-    info = comprovante_info(entrega_id)
-    if not info or not info.get("filename"):
-        abort(404)
-    fp = os.path.join(COMPROVANTE_DIR, info["filename"])
-    if not os.path.exists(fp):
-        abort(404)
-    return send_file(fp, as_attachment=True, download_name=info["filename"])
-
 
 # ================================
 # PAINEL DO COOPERADO (ESTILO UBER)
@@ -3149,14 +2892,7 @@ def painel_cooperado():
         total_pendente=total_pendente,
         request=request,
         to_brasilia=to_brasilia,
-        status_pgto=status_pgto,
-        ano_atual=datetime.now(BRAZIL_TZ).year,
-        mes_atual=datetime.now(BRAZIL_TZ).month,
-        meses_ano=[
-            {'num':1,'nome':'Janeiro'},{'num':2,'nome':'Fevereiro'},{'num':3,'nome':'Março'},{'num':4,'nome':'Abril'},
-            {'num':5,'nome':'Maio'},{'num':6,'nome':'Junho'},{'num':7,'nome':'Julho'},{'num':8,'nome':'Agosto'},
-            {'num':9,'nome':'Setembro'},{'num':10,'nome':'Outubro'},{'num':11,'nome':'Novembro'},{'num':12,'nome':'Dezembro'},
-        ],
+        status_pgto=status_pgto
     )
 
 @app.route("/cooperado/verificar_nova_entrega")
@@ -3615,17 +3351,13 @@ def api_mobile_cooperado_corridas():
     return jsonify(ok=True, corridas=corridas)
 
 # variável global bem simples pra sinalizar um novo socorro
-SOCORRO_QUEUE = []
-NEXT_SOCORRO_ID = 1
+ULTIMO_SOCORRO = None
 
 @app.route("/cooperado_socorro", methods=["POST"])
 def cooperado_socorro():
-    """Cooperado pede ajuda (socorro).
-    Guarda em fila global simples para o admin visualizar até marcar como lido.
-    """
-    global SOCORRO_QUEUE, NEXT_SOCORRO_ID
+    global ULTIMO_SOCORRO
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json() or {}
     tipo = data.get("tipo")
     detalhes = (data.get("detalhes") or "").strip()
 
@@ -3637,25 +3369,19 @@ def cooperado_socorro():
 
     agora_brt = datetime.now(BRAZIL_TZ)
 
-    item = {
-        "id": int(NEXT_SOCORRO_ID),
+    ULTIMO_SOCORRO = {
         "cooperado_id": cooperado_id,
         "cooperado_nome": cooperado_nome,
-        "mensagem": f"{tipo}: {detalhes}" if detalhes else str(tipo),
+        # o que o admin_novo_socorro espera:
+        "mensagem": f"{tipo}: {detalhes}" if detalhes else tipo,
         "momento": agora_brt.strftime("%d/%m/%Y %H:%M"),
         "timestamp": datetime.utcnow().isoformat(),
         "lido": False,
     }
-    NEXT_SOCORRO_ID += 1
-    SOCORRO_QUEUE.append(item)
 
-    # emite via socket (se o admin estiver conectado)
-    try:
-        socketio.emit("socorro_novo", item, broadcast=True)
-    except Exception:
-        pass
+    socketio.emit("socorro_novo", ULTIMO_SOCORRO)
 
-    return jsonify({"ok": True, "id": item["id"]})
+    return jsonify({"ok": True})
 
 # ================================
 # CRUD de COOPERADO (mantidos)
@@ -3858,7 +3584,7 @@ def editar_cliente(id):
     endereco = (request.form.get('endereco') or '').strip()
 
     if not nome:
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error='Informe o nome do cliente.'), 400
         flash('Informe o nome do cliente.')
         return redirect(url_for('clientes'))
@@ -3868,7 +3594,7 @@ def editar_cliente(id):
         Cliente.id != id
     ).first()
     if existe:
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error='Já existe outro cliente com esse nome.'), 400
         flash('Já existe outro cliente com esse nome.')
         return redirect(url_for('clientes'))
@@ -3879,7 +3605,7 @@ def editar_cliente(id):
     cl.endereco = endereco or None
     db.session.commit()
 
-    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+    if request.headers.get('X-Requested-With') == 'fetch':
         aggs = (
             db.session.query(
                 Entrega.cliente.label('cli'),
@@ -3919,7 +3645,7 @@ def excluir_cliente(id):
     db.session.delete(cl)
     db.session.commit()
 
-    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+    if request.headers.get('X-Requested-With') == 'fetch':
         return ("", 204)
     flash('Cliente excluído.')
     return redirect(url_for('clientes'))
@@ -4339,7 +4065,7 @@ def mapa_motoboys():
             })
 
     # 👇 Se for chamada via fetch (admin embutido) → JSON
-    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+    if request.headers.get('X-Requested-With') == 'fetch':
         resp = jsonify(motoboys_js)
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
@@ -4356,7 +4082,6 @@ def _wants_json():
     Decide se a resposta deve ser JSON (para AJAX / fetch).
     - ?format=json
     - request.is_json
-    - header X-Requested-With: fetch / XMLHttpRequest
     - Accept: application/json
     """
     try:
@@ -4366,69 +4091,12 @@ def _wants_json():
         pass
 
     try:
-        xr = (request.headers.get('X-Requested-With') or '').strip().lower()
-        if xr in ('fetch', 'xmlhttprequest'):
-            return True
-    except Exception:
-        pass
-
-    try:
         if request.is_json:
             return True
         best = request.accept_mimetypes.best
         return best == 'application/json'
     except Exception:
         return False
-
-
-def serializar_entrega_admin(entrega):
-    if not entrega:
-        return None
-
-    data_envio_br = to_brasilia(entrega.data_envio) if entrega.data_envio else None
-    data_atribuida_br = to_brasilia(entrega.data_atribuida) if entrega.data_atribuida else None
-    tem_coop = bool(getattr(entrega, 'cooperado_id', None))
-    st = (entrega.status or 'pendente').lower()
-    sp = (entrega.status_pagamento or 'pendente').lower()
-
-    rastreio_aberto = bool(tem_coop and st not in ['recebido', 'entregue'])
-    rastreio_url = None
-    if rastreio_aberto:
-        try:
-            rastreio_url = url_for('rastreio_publico', token=gerar_token_rastreio(entrega.id), _external=True)
-        except Exception:
-            rastreio_url = None
-
-    return {
-        'id': entrega.id,
-        'cliente_id': getattr(entrega, 'cliente_id', None) or '',
-        'cliente': entrega.cliente or '',
-        'bairro': entrega.bairro or '',
-        'endereco': getattr(entrega, 'endereco', None) or '-',
-        'valor': float(entrega.valor or 0),
-        'valor_fmt': f"R$ {float(entrega.valor or 0):.2f}".replace('.', ','),
-        'data_envio_iso': data_envio_br.strftime('%Y-%m-%dT%H:%M') if data_envio_br else '',
-        'data_envio_data': data_envio_br.strftime('%d/%m/%Y') if data_envio_br else '-',
-        'data_envio_hora': data_envio_br.strftime('%H:%M') if data_envio_br else '-',
-        'dia_semana': diasemana(data_envio_br) if data_envio_br else '',
-        'data_atribuida_hora': data_atribuida_br.strftime('%H:%M') if data_atribuida_br else '-',
-        'cooperado_id': entrega.cooperado_id or '',
-        'cooperado_nome': entrega.cooperado.nome if getattr(entrega, 'cooperado', None) else 'Sem Cooperado',
-        'pagamento': entrega.pagamento or '',
-        'status': st,
-        'status_label': 'Entregue' if st in ['entregue', 'recebido'] else ('Agendado' if st == 'agendado' else 'Pendente'),
-        'status_pagamento': sp,
-        'status_pagamento_label': 'Pago' if sp == 'pago' else 'Pendente',
-        'recebido_por': entrega.recebido_por or '-',
-        'tem_comprovante': bool(comprovante_existe(entrega.id)),
-        'comprovante_url': url_for('admin_ver_comprovante', entrega_id=entrega.id),
-        'comprovante_download_url': url_for('admin_baixar_comprovante', entrega_id=entrega.id),
-        'rastreio_aberto': rastreio_aberto,
-        'rastreio_url': rastreio_url,
-        'edit_url': url_for('editar_entrega', id=entrega.id),
-        'clone_url': url_for('clonar_entrega', id=entrega.id),
-        'delete_url': url_for('excluir_entrega', id=entrega.id),
-    }
 
 def _parse_money_to_float(v) -> float:
     """
@@ -4489,83 +4157,6 @@ def api_update_entrega_valor(entrega_id):
     return jsonify({"ok": True, "id": e.id, "valor": float(e.valor)}), 200
 
 
-@app.patch("/api/entregas/<int:entrega_id>/inline")
-def api_update_entrega_inline(entrega_id):
-    """Atualização inline (admin) para edição rápida na tabela.
-    Aceita JSON com qualquer combinação:
-      - valor (string/number)
-      - cooperado_id (int ou '' para remover)
-      - status (string)
-      - status_pagamento (string)
-    """
-    if not session.get("is_admin") and not session.get("is_master"):
-        return jsonify(ok=False, error="unauthorized"), 401
-
-    e = Entrega.query.get_or_404(entrega_id)
-    data = request.get_json(silent=True) or {}
-
-    changed = False
-
-    if "valor" in data:
-        try:
-            novo_valor = _parse_money_to_float(data.get("valor"))
-            if novo_valor is not None:
-                e.valor = float(novo_valor)
-                changed = True
-        except Exception:
-            return jsonify(ok=False, error="valor inválido"), 400
-
-    if "cooperado_id" in data:
-        cid = data.get("cooperado_id")
-        if cid in (None, "", 0, "0"):
-            e.cooperado_id = None
-            changed = True
-        else:
-            try:
-                cid_int = int(cid)
-            except Exception:
-                return jsonify(ok=False, error="cooperado_id inválido"), 400
-            coop = Cooperado.query.get(cid_int)
-            if not coop:
-                return jsonify(ok=False, error="cooperado não encontrado"), 404
-            e.cooperado_id = cid_int
-            changed = True
-
-    if "status" in data:
-        st = (data.get("status") or "").strip().lower()
-        if st:
-            e.status = st
-            changed = True
-
-    if "status_pagamento" in data:
-        sp = (data.get("status_pagamento") or "").strip().lower()
-        if sp:
-            e.status_pagamento = sp
-            changed = True
-
-    if changed:
-        db.session.commit()
-
-    return jsonify(
-        ok=True,
-        entrega_id=e.id,
-        valor=float(e.valor or 0),
-        cooperado_id=e.cooperado_id,
-        cooperado_nome=(e.cooperado.nome if getattr(e, "cooperado", None) else None),
-        status=e.status,
-        status_pagamento=e.status_pagamento,
-    )
-
-
-@app.get('/api/admin/entregas/<int:id>')
-def api_admin_entrega(id):
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    entrega = Entrega.query.options(joinedload(Entrega.cooperado)).get_or_404(id)
-    return jsonify(ok=True, entrega=serializar_entrega_admin(entrega))
-
-
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
     if not session.get('is_admin'):
@@ -4591,9 +4182,19 @@ def clonar_entrega(id):
     flash(msg)
 
     if _wants_json():
-        data = serializar_entrega_admin(nova) or {}
-        data['origem_id'] = e.id
-        return jsonify(ok=True, message=msg, entrega=data)
+        return jsonify(
+            ok=True,
+            message=msg,
+            entrega={
+                'id': nova.id,
+                'origem_id': e.id,
+                'cliente': nova.cliente,
+                'bairro': nova.bairro,
+                'valor': float(nova.valor or 0),
+                'status': nova.status,
+                'status_pagamento': nova.status_pagamento,
+            }
+        )
 
     return redirect_back_to_admin()
 
@@ -4612,9 +4213,6 @@ def cadastrar_entrega():
         valor = float(request.form.get('valor') or 0)
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
-        endereco = (request.form.get('endereco') or '').strip()
-        status_entrega = (request.form.get('status_entrega') or request.form.get('status') or 'pendente').strip().lower()
-        status_pagamento = (request.form.get('status_pagamento') or 'pendente').strip().lower()
 
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
@@ -4628,10 +4226,9 @@ def cadastrar_entrega():
             bairro=bairro,
             valor=valor,
             data_envio=datetime.utcnow(),
-            status_pagamento=(status_pagamento or 'pendente'),
-            status=(status_entrega or 'pendente'),
-            pagamento=pagamento,
-            endereco=endereco or None
+            status_pagamento='pendente',
+            status='pendente',
+            pagamento=pagamento
         )
 
         if cli:
@@ -4705,7 +4302,6 @@ def cadastrar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
-                entrega=serializar_entrega_admin(entrega),
             )
 
         return redirect_back_to_admin()
@@ -4730,7 +4326,6 @@ def agendar_entrega():
         status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
-        endereco = (request.form.get('endereco') or '').strip()
 
         data_envio = parse_local_datetime_to_utc_naive(data_str)
 
@@ -4749,8 +4344,7 @@ def agendar_entrega():
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=(status_entrega or 'pendente'),
             status_pagamento=(status_pagamento or 'pendente').lower(),
-            pagamento=pagamento,
-            endereco=endereco or None
+            pagamento=pagamento
         )
 
         if cli:
@@ -4818,7 +4412,6 @@ def agendar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
-                entrega=serializar_entrega_admin(entrega),
             )
 
         return redirect_back_to_admin()
@@ -4841,8 +4434,6 @@ def editar_entrega(id):
             novo_cliente_nome = (request.form.get('cliente') or '').strip()
             entrega.cliente = novo_cliente_nome
             entrega.bairro = request.form.get('bairro')
-            if hasattr(entrega, 'endereco'):
-                entrega.endereco = (request.form.get('endereco') or '').strip() or None
 
             try:
                 entrega.valor = float(request.form.get('valor') or entrega.valor or 0)
@@ -4910,7 +4501,6 @@ def editar_entrega(id):
                     cliente=entrega.cliente,
                     bairro=entrega.bairro,
                     valor=float(entrega.valor or 0),
-                    entrega=serializar_entrega_admin(entrega),
                 )
 
             return redirect_back_to_admin()
@@ -5911,106 +5501,18 @@ def toggle_pagamento(id):
     return jsonify(ok=True, status_pagamento=novo)
 
 
-@app.get('/cooperado/api/ganhos')
-def api_ganhos():
-    if session.get('user_id') is None or session.get('is_admin'):
-        return jsonify(ok=False, error='unauthorized'), 401
-
-    cooperado_id = int(session.get('user_id'))
-    hoje_local = datetime.now(BRAZIL_TZ).date()
-    ano = request.args.get('ano', type=int) or hoje_local.year
-    mes = request.args.get('mes', type=int) or hoje_local.month
-
-    # janela do mês (em BRT) -> UTC range
-    first = date(ano, mes, 1)
-    # último dia do mês
-    if mes == 12:
-        last = date(ano + 1, 1, 1) - timedelta(days=1)
-    else:
-        last = date(ano, mes + 1, 1) - timedelta(days=1)
-
-    ini_utc, _ = local_date_window_to_utc_range(first)
-    _, fim_utc = local_date_window_to_utc_range(last)
-
-    q = Entrega.query.filter(
-        Entrega.cooperado_id == cooperado_id,
-        Entrega.data_envio >= ini_utc,
-        Entrega.data_envio <= fim_utc,
-    )
-
-    entregas = q.all()
-    total_mes = sum(float(e.valor or 0) for e in entregas)
-    total_pago_mes = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
-    total_pendente_mes = max(0.0, total_mes - total_pago_mes)
-
-    # ano atual
-    first_y = date(ano, 1, 1)
-    last_y = date(ano, 12, 31)
-    ini_y, _ = local_date_window_to_utc_range(first_y)
-    _, fim_y = local_date_window_to_utc_range(last_y)
-
-    qy = Entrega.query.filter(
-        Entrega.cooperado_id == cooperado_id,
-        Entrega.data_envio >= ini_y,
-        Entrega.data_envio <= fim_y,
-    )
-    ent_ano = qy.all()
-    total_ano = sum(float(e.valor or 0) for e in ent_ano)
-    total_pago_ano = sum(float(e.valor or 0) for e in ent_ano if (e.status_pagamento or '').lower() == 'pago')
-    total_pendente_ano = max(0.0, total_ano - total_pago_ano)
-
-    return jsonify(ok=True,
-                   ano=ano, mes=mes,
-                   total_mes=round(total_mes, 2),
-                   pago_mes=round(total_pago_mes, 2),
-                   pendente_mes=round(total_pendente_mes, 2),
-                   total_ano=round(total_ano, 2),
-                   pago_ano=round(total_pago_ano, 2),
-                   pendente_ano=round(total_pendente_ano, 2),
-                   qtd_mes=len(entregas),
-                   qtd_ano=len(ent_ano))
-
-
-
 @app.post('/cooperado/marcar_entregue/<int:id>')
 def cooperado_marcar_entregue(id):
-    """Marca entrega como recebida/entregue.
-    Agora aceita:
-      - JSON: {recebido_por: "..."} (compatível com o que já existia)
-      - multipart/form-data: recebido_por (opcional) + foto (opcional)
-    Regra: precisa ter **nome** OU **foto**.
-    """
     e = Entrega.query.get_or_404(id)
     _assert_entrega_do_cooperado(e)
-
-    recebido_por = ''
-    foto_fs = None
-
-    # 1) Se veio multipart (FormData), pega do form/files
-    # OBS: mesmo sem arquivo, o browser envia multipart e request.files pode vir vazio,
-    # então usamos mimetype pra decidir.
-    if (request.mimetype or '').startswith('multipart/form-data'):
-        recebido_por = (request.form.get('recebido_por') or '').strip()
-        foto_fs = request.files.get('foto')
-    else:
-        # 2) Compatibilidade com JSON antigo
-        payload = request.get_json(silent=True) or {}
-        recebido_por = (payload.get('recebido_por') or '').strip()
-
-    if not recebido_por and not foto_fs:
-        return jsonify(ok=False, error='Informe o nome de quem recebeu OU envie uma foto.'), 400
-
-    # salva foto (se veio)
-    if foto_fs and getattr(foto_fs, "filename", ""):
-        try:
-            _salvar_comprovante(e.id, foto_fs)
-        except Exception:
-            return jsonify(ok=False, error='Não foi possível salvar a foto agora.'), 500
-
+    payload = request.get_json(silent=True) or {}
+    recebido_por = (payload.get('recebido_por') or '').strip()
+    if not recebido_por:
+        return jsonify(ok=False, error='Campo "recebido_por" é obrigatório.'), 400
     e.status = 'recebido'
-    e.recebido_por = recebido_por or (e.recebido_por or None)
+    e.recebido_por = recebido_por
     db.session.commit()
-    return jsonify(ok=True, tem_foto=comprovante_existe(e.id))
+    return jsonify(ok=True)
 
 
 @app.get('/cooperado/api/entrega_atribuida')
@@ -6059,7 +5561,6 @@ def estatisticas_cooperado():
     data_fim = request.args.get('data_fim')
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
     if cooperado_id != 'todos':
@@ -6260,7 +5761,6 @@ def estatisticas_cooperado_exportar_xlsx():
     data_fim = request.args.get('data_fim')
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
     if cooperado_id != 'todos':
@@ -6455,7 +5955,7 @@ def importar_clientes():
 
     f = request.files.get('arquivo')
     if not f or not f.filename:
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error="Envie um arquivo (.xlsx ou .csv)."), 400
         flash("Envie um arquivo (.xlsx ou .csv).")
         return redirect(url_for('clientes'))
@@ -6468,7 +5968,7 @@ def importar_clientes():
             raise ValueError("Arquivo vazio.")
     except Exception as e:
         msg = f"Falha ao ler upload: {e}"
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 400
         flash(msg)
         return redirect(url_for('clientes'))
@@ -6507,7 +6007,7 @@ def importar_clientes():
 
     if df_in is None:
         msg = "Não consegui ler o arquivo. " + (" | ".join(load_errors) if load_errors else "")
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 400
         flash(msg)
         return redirect(url_for('clientes'))
@@ -6533,7 +6033,7 @@ def importar_clientes():
         missing.append("Telefone/Número")
     if missing:
         msg = f"Cabeçalho ausente: {', '.join(missing)}. Colunas recebidas: {list(df_in.columns)}"
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 400
         flash(msg)
         return redirect(url_for('clientes'))
@@ -6612,12 +6112,12 @@ def importar_clientes():
         msg = "Erro ao salvar no banco."
         if app.debug:
             msg += f" Detalhes: {e}"
-        if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+        if request.headers.get('X-Requested-With') == 'fetch':
             return jsonify(ok=False, error=msg), 500
         flash(msg)
         return redirect(url_for('clientes'))
 
-    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+    if request.headers.get('X-Requested-With') == 'fetch':
         return jsonify(
             ok=True,
             adicionados=adicionados,
@@ -7133,117 +6633,6 @@ def handle_atualizar_entrega(data):
         },
         room=f"entrega_{entrega_id}",
     )
-
-
-
-# =========================================================
-# LINK DE RASTREIO (por entrega) — desativa ao concluir
-# =========================================================
-@app.get("/rastreio/<token>")
-def rastreio_publico(token):
-    try:
-        data = ler_token_rastreio(token)
-        entrega_id = int(data.get("entrega_id"))
-    except Exception:
-        return "<h2>Link inválido.</h2>", 400
-
-    e = Entrega.query.get(entrega_id)
-    if not e:
-        return "<h2>Entrega não encontrada.</h2>", 404
-
-    st = (e.status or "").lower()
-    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
-        return "<h2>Rastreio encerrado: entrega concluída.</h2>", 410
-
-    coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "Cooperado")
-    html = f"""<!doctype html>
-<html lang="pt-br"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rastreio — Entrega #{entrega_id}</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-  body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b1220;color:#fff}}
-  header{{padding:10px 12px;background:linear-gradient(90deg,#0b2cc2,#1a47ff);font-weight:800}}
-  #map{{height: calc(100vh - 54px); width:100%}}
-  .small{{opacity:.9;font-weight:700}}
-</style>
-</head><body>
-<header>Rastreio em tempo real — Entrega #{entrega_id} <span class="small">({coop_nome})</span></header>
-<div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  const token = {json.dumps(token)};
-  const map = L.map('map', {{ zoomControl:true }}).setView([-5.7945,-35.2110], 13);
-  L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{ maxZoom: 19 }}).addTo(map);
-  let marker = null;
-
-  async function pull(){{
-    try{{
-      const r = await fetch('/api/rastreio_pos/'+encodeURIComponent(token), {{cache:'no-store'}});
-      if(r.status === 410){{
-        document.body.innerHTML = '<h2 style="padding:16px">Rastreio encerrado: entrega concluída.</h2>';
-        return;
-      }}
-      const data = await r.json();
-      if(!data.ok) return;
-
-      const lat = data.lat, lng = data.lng;
-      if(typeof lat !== 'number' || typeof lng !== 'number') return;
-
-      const txt = (data.cooperado || '') + ' • ' + (data.quando_local || '');
-      if(!marker){{
-        marker = L.circleMarker([lat,lng], {{
-          radius: 7,
-          weight: 2,
-          fillOpacity: 0.8
-        }}).addTo(map);
-        marker.bindTooltip(txt, {{direction:'top', sticky:true}});
-        map.setView([lat,lng], 15);
-      }} else {{
-        marker.setLatLng([lat,lng]);
-        marker.setTooltipContent(txt);
-      }}
-    }}catch(e){{}}
-  }}
-  pull();
-  setInterval(pull, 5000);
-</script>
-</body></html>"""
-    return html
-
-@app.get("/api/rastreio_pos/<token>")
-def api_rastreio_pos(token):
-    try:
-        data = ler_token_rastreio(token)
-        entrega_id = int(data.get("entrega_id"))
-    except Exception:
-        return jsonify(ok=False, error="invalid_token"), 400
-
-    e = Entrega.query.get(entrega_id)
-    if not e:
-        return jsonify(ok=False, error="not_found"), 404
-
-    st = (e.status or "").lower()
-    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
-        return jsonify(ok=False, error="ended"), 410
-
-    coop = getattr(e, "cooperado", None)
-    if not coop or coop.last_lat is None or coop.last_lng is None:
-        return jsonify(ok=True, lat=None, lng=None, cooperado=(coop.nome if coop else None), quando_local=None)
-
-    when_local = None
-    try:
-        if coop.last_ping:
-            when_local = to_brasilia(coop.last_ping).strftime("%d/%m/%Y %H:%M:%S")
-    except Exception:
-        when_local = None
-
-    return jsonify(ok=True,
-                   lat=float(coop.last_lat),
-                   lng=float(coop.last_lng),
-                   cooperado=coop.nome,
-                   quando_local=when_local)
 
 
 if __name__ == '__main__':
