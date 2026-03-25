@@ -8,58 +8,41 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root{
-      --royal-1:#2949e6;
-      --royal-2:#3b5cff;
-      --royal-3:#5774ff;
-      --bg:#eef2ff;
-      --card:#ffffff;
-      --ink:#12203f;
-      --muted:#6c7a9c;
-      --line:#dfe6ff;
-      --good:#169c5a;
-      --warn:#d68200;
-      --bad:#e03131;
-      --shadow:0 16px 34px rgba(35,57,154,.14);
-      --shadow-soft:0 10px 24px rgba(35,57,154,.10);
-      --radius:22px;
+      --royal-1:#2949e6; --royal-2:#3b5cff; --royal-3:#5774ff; --bg:#eef2ff; --card:#ffffff;
+      --ink:#12203f; --muted:#6c7a9c; --line:#dfe6ff; --good:#169c5a; --warn:#d68200; --bad:#e03131;
+      --shadow:0 16px 34px rgba(35,57,154,.14); --shadow-soft:0 10px 24px rgba(35,57,154,.10); --radius:22px;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    *{box-sizing:border-box} html,body{height:100%}
     body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--ink);background:linear-gradient(180deg,#f5f7ff 0%, #edf1ff 100%)}
     .app{max-width:980px;margin:0 auto;padding:0 16px 28px}
     .hero{background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;border-radius:0 0 28px 28px;box-shadow:0 14px 34px rgba(35,57,154,.25);padding:14px 14px 16px;position:sticky;top:0;z-index:10}
     .hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .brand{display:flex;align-items:center;gap:8px;min-width:0;flex:0 0 auto}
-    .brand-badge{width:36px;height:36px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
-    .brand small{display:block;font-size:.78rem;font-weight:800;letter-spacing:.08em;opacity:.95}
-    .brand strong{display:none}
-    .hero-right{display:flex;align-items:stretch;gap:8px;flex:1 1 auto;justify-content:flex-end;min-width:0}
-    .hero-pill{min-width:120px;padding:10px 10px;flex:1 1 0;border-radius:16px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.15);display:flex;flex-direction:column;justify-content:center}
-    .hero-pill .k{font-size:.68rem;font-weight:800;opacity:.9;text-transform:uppercase;white-space:nowrap}
-    .hero-pill .v{font-size:clamp(1rem,2.2vw,1.35rem);font-weight:800;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-    .hero-exit{border:none;border-radius:16px;padding:0 12px;flex:0 0 auto;background:rgba(255,255,255,.14);color:#fff;font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18)}
-
+    .brand{display:flex;align-items:center;gap:12px;min-width:0}
+    .brand-badge{width:44px;height:44px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+    .brand small{display:block;font-size:.72rem;font-weight:800;letter-spacing:.08em;opacity:.88}
+    .brand strong{display:block;font-size:1.03rem;line-height:1.1}
+    .hero-right{display:flex;align-items:stretch;gap:10px}
+    .hero-pill{min-width:86px;padding:10px 12px;border-radius:16px;background:rgba(255,255,255,.12);border:1px solid rgba(255,255,255,.18);box-shadow:inset 0 1px 0 rgba(255,255,255,.15);display:flex;flex-direction:column;justify-content:center}
+    .hero-pill .k{font-size:.72rem;font-weight:800;opacity:.9;text-transform:uppercase}
+    .hero-pill .v{font-size:1.08rem;font-weight:800;margin-top:2px}
+    .hero-exit{border:none;border-radius:16px;padding:0 16px;background:rgba(255,255,255,.14);color:#fff;font-weight:800;cursor:pointer;border:1px solid rgba(255,255,255,.18)}
     .panel{margin-top:18px;background:rgba(255,255,255,.65);backdrop-filter:blur(4px)}
-    .filters-card,.tab-shell,.section-card,.metric,.chart-card,.table-card,.upload-card{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-soft)}
+    .filters-card,.tab-shell,.section-card,.metric,.chart-card,.table-card,.upload-card,.modal{background:var(--card);border:1px solid var(--line);border-radius:var(--radius);box-shadow:var(--shadow-soft)}
     .filters-card{padding:14px;margin-bottom:14px}
     .filters-grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr) 52px;gap:10px;align-items:end}
     .field label{display:block;font-size:.82rem;color:var(--muted);font-weight:700;margin:0 0 6px}
     .field input,.field select{width:100%;height:46px;border:1px solid var(--line);border-radius:16px;padding:0 14px;background:#fff;font:inherit;color:var(--ink);outline:none}
     .icon-btn{width:52px;height:46px;border:none;border-radius:16px;background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;cursor:pointer;box-shadow:0 8px 18px rgba(35,57,154,.24);font-size:1.08rem;display:flex;align-items:center;justify-content:center}
-
     .tab-shell{padding:10px;margin-bottom:14px}
     .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
     .tab-btn{border:none;background:transparent;border-radius:18px;padding:14px 12px;cursor:pointer;font-weight:800;color:var(--muted);display:flex;flex-direction:column;align-items:center;gap:4px}
     .tab-btn .icon{font-size:1.1rem;line-height:1}
     .tab-btn.active{background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;box-shadow:0 8px 20px rgba(35,57,154,.22)}
-
-    .tab-panel{display:none}
-    .tab-panel.active{display:block}
+    .tab-panel{display:none} .tab-panel.active{display:block}
     .section-card{padding:14px}
     .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
     .section-head h2{margin:0;font-size:clamp(1.2rem,2vw,1.55rem)}
     .chip-brand{padding:9px 14px;border-radius:999px;background:#eef2ff;color:var(--royal-1);font-weight:800;font-size:.9rem}
-
     .metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
     .metric{padding:16px 14px}
     .metric .label{font-size:.82rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
@@ -75,7 +58,6 @@
     .metric.primary .label,.metric.primary .sub,.metric.primary .value{color:#fff}
     .metric.clickable{cursor:pointer}
     .quick-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
-
     .chart-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
     .year-pills,.period-pills{display:flex;gap:8px;flex-wrap:wrap}
     .pill-btn{border:none;padding:10px 14px;border-radius:999px;background:#eef2ff;color:var(--royal-1);font-weight:800;cursor:pointer}
@@ -85,7 +67,6 @@
     .chart-card h3{margin:0 0 10px;font-size:1rem}
     .chart-wrap{height:280px}
     .chart-meta{margin-top:10px;font-size:.92rem;color:var(--muted);font-weight:700}
-
     .table-toolbar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:12px}
     .table-toolbar .left{display:flex;gap:8px;flex-wrap:wrap}
     .small-filter{border:1px solid var(--line);background:#fff;border-radius:999px;padding:9px 12px;font-weight:700;color:var(--ink);cursor:pointer}
@@ -106,28 +87,35 @@
     .upload-btn input{position:absolute;inset:0;opacity:0;cursor:pointer}
     .upload-name{font-size:.88rem;color:var(--muted);font-weight:700}
     .empty{padding:24px 16px;text-align:center;color:var(--muted);font-weight:700}
-
+    .overlay{position:fixed;inset:0;background:rgba(8,16,48,.55);display:none;align-items:center;justify-content:center;z-index:1000;padding:14px}
+    .overlay.open{display:flex}
+    .modal{width:min(560px, 100%);padding:16px;border-radius:20px}
+    .modal h3{margin:0 0 8px;color:#0f2a80}
+    .modal .hint{font-size:.9rem;color:var(--muted);margin-bottom:12px}
+    .modal .field-row{display:grid;gap:10px}
+    .modal .field-row input[type=text]{width:100%;height:48px;border:1px solid var(--line);border-radius:14px;padding:0 14px;font:inherit}
+    .modal-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:14px;flex-wrap:wrap}
+    .btn-primary,.btn-ghost,.btn-secondary{border:none;border-radius:14px;padding:12px 16px;font-weight:800;cursor:pointer}
+    .btn-primary{background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff}
+    .btn-ghost{background:#fff;border:1px solid var(--line);color:#2840a2}
+    .btn-secondary{background:#eef2ff;color:var(--royal-1)}
+    .modal-photo-row{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:8px}
+    .modal-photo-name{font-size:.88rem;color:var(--muted);font-weight:700}
     @media (max-width:820px){
-      .app{padding:0 12px 22px}
-      .hero{padding:14px 12px 16px}
-      .hero-top{align-items:flex-start}
-      .hero-right{gap:6px}
-      .hero-pill{min-width:104px;padding:9px 8px}
-      .charts-grid{grid-template-columns:1fr}
+      .app{padding:0 12px 22px} .hero{padding:14px 12px 16px} .hero-top{align-items:flex-start}
+      .hero-right{gap:8px} .hero-pill{min-width:74px;padding:9px 10px} .charts-grid{grid-template-columns:1fr}
     }
     @media (max-width:640px){
       .filters-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 46px}
-      .icon-btn{width:46px}
-      .metrics-grid,.quick-row{grid-template-columns:1fr 1fr}
-      .section-card{padding:12px}
-      table,thead,tbody,tr,td,th{display:block;width:100%}
-      thead{display:none}
-      .table-card{padding:6px 6px 8px}
+      .icon-btn{width:46px} .metrics-grid,.quick-row{grid-template-columns:1fr 1fr} .section-card{padding:12px}
+      table,thead,tbody,tr,td,th{display:block;width:100%} thead{display:none} .table-card{padding:6px 6px 8px}
       tbody tr{display:block;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-soft);margin:10px 0;overflow:hidden}
       tbody td{display:grid;grid-template-columns:42% 58%;gap:8px;text-align:left;padding:10px 12px;border-top:1px solid #f1f4ff}
       tbody td:first-child{border-top:none}
       tbody td::before{content:attr(data-label);font-weight:800;color:#3b4a74;font-size:.82rem}
       .status{min-width:0;width:max-content}
+      .hero-right{display:grid;grid-template-columns:1fr 1fr auto}
+      .modal{width:min(96vw, 100%);padding:14px}
     }
   </style>
 </head>
@@ -141,14 +129,8 @@
         </div>
       </div>
       <div class="hero-right">
-        <div class="hero-pill">
-          <span class="k">Receita</span>
-          <span class="v" id="hero-receita">R$ 0,00</span>
-        </div>
-        <div class="hero-pill">
-          <span class="k">Entregas</span>
-          <span class="v" id="hero-entregas">0</span>
-        </div>
+        <div class="hero-pill"><span class="k">Receita</span><span class="v" id="hero-receita">R$ 0,00</span></div>
+        <div class="hero-pill"><span class="k">Entregas</span><span class="v" id="hero-entregas">0</span></div>
         <button class="hero-exit" type="button" onclick="window.location.href='{{ url_for('logout') }}'">Sair</button>
       </div>
     </div>
@@ -183,69 +165,23 @@
 
     <section id="tab-resumo" class="tab-panel active">
       <div class="section-card">
-        <div class="section-head">
-          <h2>Resumo</h2>
-          <div class="chip-brand">Coopex</div>
-        </div>
-
+        <div class="section-head"><h2>Resumo</h2><div class="chip-brand">Coopex</div></div>
         <div class="metrics-grid">
-          <div class="metric good">
-            <div class="label">Receita</div>
-            <div class="value" id="resumo-receita">R$ 0,00</div>
-            <div class="sub">Soma de todas as entregas filtradas</div>
-          </div>
-          <div class="metric warn">
-            <div class="label">Quantidade de entregas</div>
-            <div class="value" id="resumo-quantidade">0</div>
-            <div class="sub">Quantidade dentro do filtro aplicado</div>
-          </div>
-          <div class="metric bad clickable" id="card-pendencias">
-            <div class="label">Pendências</div>
-            <div class="value" id="resumo-pendencias">R$ 0,00</div>
-            <div class="sub">Toque para ver as entregas pendentes</div>
-          </div>
-          <div class="metric primary">
-            <div class="label">Total recebido</div>
-            <div class="value" id="resumo-recebido">R$ 0,00</div>
-            <div class="sub">Valor marcado como pago dentro do filtro</div>
-          </div>
+          <div class="metric good"><div class="label">Receita</div><div class="value" id="resumo-receita">R$ 0,00</div><div class="sub">Soma de todas as entregas filtradas</div></div>
+          <div class="metric warn"><div class="label">Quantidade de entregas</div><div class="value" id="resumo-quantidade">0</div><div class="sub">Quantidade dentro do filtro aplicado</div></div>
+          <div class="metric bad clickable" id="card-pendencias"><div class="label">Pendências</div><div class="value" id="resumo-pendencias">R$ 0,00</div><div class="sub">Toque para ver as entregas pendentes</div></div>
+          <div class="metric primary"><div class="label">Total recebido</div><div class="value" id="resumo-recebido">R$ 0,00</div><div class="sub">Valor marcado como pago dentro do filtro</div></div>
         </div>
-
         <div class="quick-row">
-          <div class="metric">
-            <div class="label">Ticket médio</div>
-            <div class="value" id="resumo-ticket">R$ 0,00</div>
-            <div class="sub">Média por entrega filtrada</div>
-          </div>
-          <div class="metric">
-            <div class="label">Melhor forma de pagamento</div>
-            <div class="value" id="resumo-melhor-pgto">-</div>
-            <div class="sub">Forma mais usada no filtro</div>
-          </div>
+          <div class="metric"><div class="label">Ticket médio</div><div class="value" id="resumo-ticket">R$ 0,00</div><div class="sub">Média por entrega filtrada</div></div>
+          <div class="metric"><div class="label">Melhor forma de pagamento</div><div class="value" id="resumo-melhor-pgto">-</div><div class="sub">Forma mais usada no filtro</div></div>
         </div>
       </div>
     </section>
 
     <section id="tab-producao" class="tab-panel">
       <div class="section-card">
-        <div class="section-head">
-          <h2>Produção</h2>
-          <div class="chip-brand" id="table-count">0 entregas</div>
-        </div>
-
-        <div class="upload-card">
-          <div>
-            <strong>Foto de recebimento</strong>
-            <small>Opcional. Se quiser usar, selecione uma foto e ela será enviada quando marcar entregue.</small>
-          </div>
-          <div>
-            <label class="upload-btn">
-              Escolher foto
-              <input type="file" id="foto-recebimento" accept="image/*">
-            </label>
-            <div class="upload-name" id="foto-nome">Nenhuma foto selecionada</div>
-          </div>
-        </div>
+        <div class="section-head"><h2>Produção</h2><div class="chip-brand" id="table-count">0 entregas</div></div>
 
         <div class="table-toolbar">
           <div class="left">
@@ -259,13 +195,7 @@
           <table id="tabela-entregas">
             <thead>
               <tr>
-                <th>Cliente</th>
-                <th>Pagamento</th>
-                <th>Valor</th>
-                <th>Data</th>
-                <th>Hora</th>
-                <th>Status pgto</th>
-                <th>Status entrega</th>
+                <th>Cliente</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Hora</th><th>Status pgto</th><th>Status entrega</th>
               </tr>
             </thead>
             <tbody>
@@ -304,11 +234,7 @@
 
     <section id="tab-graficos" class="tab-panel">
       <div class="section-card">
-        <div class="section-head">
-          <h2>Gráficos</h2>
-          <div class="chip-brand" id="best-year-chip">Melhor ano: -</div>
-        </div>
-
+        <div class="section-head"><h2>Gráficos</h2><div class="chip-brand" id="best-year-chip">Melhor ano: -</div></div>
         <div class="chart-top">
           <div class="year-pills" id="year-pills"></div>
           <div class="period-pills">
@@ -317,48 +243,48 @@
             <button type="button" class="pill-btn" data-period="ano">Anual</button>
           </div>
         </div>
-
         <div class="charts-grid">
-          <div class="chart-card">
-            <h3>Valor por período</h3>
-            <div class="chart-wrap"><canvas id="chartValor"></canvas></div>
-            <div class="chart-meta">Valores conforme o período escolhido.</div>
-          </div>
-          <div class="chart-card">
-            <h3>Quantidade por forma de pagamento</h3>
-            <div class="chart-wrap"><canvas id="chartPagamento"></canvas></div>
-            <div class="chart-meta">Pix, Dinheiro, Comanda e Pix Cooperativa.</div>
-          </div>
-          <div class="chart-card">
-            <h3>Entregas por período</h3>
-            <div class="chart-wrap"><canvas id="chartEntregas"></canvas></div>
-            <div class="chart-meta">Quantidade de entregas do período selecionado.</div>
-          </div>
-          <div class="chart-card">
-            <h3>Resumo anual</h3>
-            <div class="chart-wrap"><canvas id="chartAno"></canvas></div>
-            <div class="chart-meta">Comparativo dos anos presentes nos dados carregados.</div>
-          </div>
+          <div class="chart-card"><h3>Valor por período</h3><div class="chart-wrap"><canvas id="chartValor"></canvas></div><div class="chart-meta">Valores conforme o período escolhido.</div></div>
+          <div class="chart-card"><h3>Quantidade por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPagamento"></canvas></div><div class="chart-meta">Pix, Dinheiro, Comanda e Pix Cooperativa.</div></div>
+          <div class="chart-card"><h3>Entregas por período</h3><div class="chart-wrap"><canvas id="chartEntregas"></canvas></div><div class="chart-meta">Quantidade de entregas do período selecionado.</div></div>
+          <div class="chart-card"><h3>Resumo anual</h3><div class="chart-wrap"><canvas id="chartAno"></canvas></div><div class="chart-meta">Comparativo dos anos presentes nos dados carregados.</div></div>
         </div>
       </div>
     </section>
   </main>
 
+  <div class="overlay" id="recebimento-overlay" aria-hidden="true">
+    <div class="modal">
+      <h3>Confirmar entrega</h3>
+      <div class="hint">Você pode informar só o nome, só a foto, ou os dois. No celular, o botão de foto permite tirar na hora ou escolher da galeria.</div>
+      <div class="field-row">
+        <input type="text" id="recebido-por-input" placeholder="Recebido por">
+      </div>
+      <div class="modal-photo-row">
+        <label class="upload-btn" style="min-width:auto">
+          Tirar foto / galeria
+          <input type="file" id="recebimento-foto-input" accept="image/*" capture="environment">
+        </label>
+        <span class="modal-photo-name" id="recebimento-foto-nome">Nenhuma foto selecionada</span>
+      </div>
+      <div class="modal-actions">
+        <button type="button" class="btn-ghost" id="recebimento-cancelar">Cancelar</button>
+        <button type="button" class="btn-primary" id="recebimento-confirmar">Confirmar</button>
+      </div>
+    </div>
+  </div>
+
   <script>
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     const rows = Array.from(document.querySelectorAll('.entrega-row'));
     const allDeliveries = rows.map(row => ({
-      id: row.dataset.id,
-      cliente: row.dataset.cliente,
-      valor: Number(row.dataset.valor || 0),
+      id: row.dataset.id, cliente: row.dataset.cliente, valor: Number(row.dataset.valor || 0),
       pagamento: (row.dataset.pagamento || '-').toLowerCase(),
       statusPagamento: (row.dataset.statusPagamento || 'pendente').toLowerCase(),
       statusEntrega: (row.dataset.statusEntrega || 'pendente').toLowerCase(),
-      data: row.dataset.data || '',
-      hora: row.dataset.hora || ''
+      data: row.dataset.data || '', hora: row.dataset.hora || ''
     }));
-
-    const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana' };
+    const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
 
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(btn => btn.addEventListener('click', () => {
@@ -369,21 +295,10 @@
       state.selectedTab = btn.dataset.tab;
     }));
 
-    const parseDate = (str) => {
-      if (!str) return null;
-      const [y,m,d] = str.split('-').map(Number);
-      return new Date(y, (m||1)-1, d||1, 12, 0, 0, 0);
-    };
+    const parseDate = (str) => { if (!str) return null; const [y,m,d] = str.split('-').map(Number); return new Date(y, (m||1)-1, d||1, 12, 0, 0, 0); };
     const getYear = (d) => d ? d.getFullYear() : null;
     const getMonthIndex = (d) => d ? d.getMonth() : null;
-    const getWeekLabel = (d) => {
-      const start = new Date(d);
-      start.setHours(0,0,0,0);
-      start.setDate(start.getDate() - ((start.getDay() + 6) % 7));
-      const end = new Date(start); end.setDate(start.getDate() + 6);
-      const fmt = (x) => `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}`;
-      return `${fmt(start)} a ${fmt(end)}`;
-    };
+    const getWeekLabel = (d) => { const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); const end = new Date(start); end.setDate(start.getDate() + 6); const fmt = (x) => `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}`; return `${fmt(start)} a ${fmt(end)}`; };
 
     function summarize(deliveries){
       const receita = deliveries.reduce((s,d)=>s+d.valor,0);
@@ -432,9 +347,7 @@
       filterButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.tableFilter = btn.dataset.filter;
-      applyTableFilter();
-      updateSummary();
-      buildCharts();
+      applyTableFilter(); updateSummary(); buildCharts();
     }));
 
     function applyTableFilter(){
@@ -451,12 +364,6 @@
     document.getElementById('card-pendencias').addEventListener('click', () => {
       document.querySelector('.tab-btn[data-tab="tab-producao"]').click();
       document.querySelector('.small-filter[data-filter="pendente"]').click();
-    });
-
-    const fotoInput = document.getElementById('foto-recebimento');
-    const fotoNome = document.getElementById('foto-nome');
-    fotoInput?.addEventListener('change', () => {
-      fotoNome.textContent = fotoInput.files && fotoInput.files[0] ? fotoInput.files[0].name : 'Nenhuma foto selecionada';
     });
 
     async function togglePagamento(btn){
@@ -481,33 +388,95 @@
       }
     }
 
+    const overlay = document.getElementById('recebimento-overlay');
+    const recebidoPorInput = document.getElementById('recebido-por-input');
+    const recebimentoFotoInput = document.getElementById('recebimento-foto-input');
+    const recebimentoFotoNome = document.getElementById('recebimento-foto-nome');
+    const btnCancelarRecebimento = document.getElementById('recebimento-cancelar');
+    const btnConfirmarRecebimento = document.getElementById('recebimento-confirmar');
+
+    function abrirModalRecebimento(id){
+      state.entregaIdModal = id;
+      overlay.classList.add('open');
+      overlay.setAttribute('aria-hidden', 'false');
+      recebidoPorInput.value = '';
+      recebimentoFotoInput.value = '';
+      recebimentoFotoNome.textContent = 'Nenhuma foto selecionada';
+      setTimeout(() => recebidoPorInput.focus(), 0);
+    }
+
+    function fecharModalRecebimento(){
+      state.entregaIdModal = null;
+      overlay.classList.remove('open');
+      overlay.setAttribute('aria-hidden', 'true');
+      recebidoPorInput.value = '';
+      recebimentoFotoInput.value = '';
+      recebimentoFotoNome.textContent = 'Nenhuma foto selecionada';
+    }
+
+    recebimentoFotoInput.addEventListener('change', () => {
+      recebimentoFotoNome.textContent = recebimentoFotoInput.files && recebimentoFotoInput.files[0] ? recebimentoFotoInput.files[0].name : 'Nenhuma foto selecionada';
+    });
+    btnCancelarRecebimento.addEventListener('click', fecharModalRecebimento);
+    overlay.addEventListener('click', (e) => { if (e.target === overlay) fecharModalRecebimento(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && overlay.classList.contains('open')) fecharModalRecebimento(); });
+
+    async function confirmarRecebimentoModal(){
+      const id = state.entregaIdModal;
+      if (!id) return;
+      const nome = (recebidoPorInput.value || '').trim();
+      const foto = recebimentoFotoInput.files && recebimentoFotoInput.files[0] ? recebimentoFotoInput.files[0] : null;
+      if (!nome && !foto) {
+        alert('Informe o nome, envie uma foto, ou use os dois.');
+        return;
+      }
+      btnConfirmarRecebimento.disabled = true;
+      try {
+        const fd = new FormData();
+        fd.append('recebido_por', nome);
+        if (foto) {
+          fd.append('foto', foto);
+          fd.append('foto_recebimento', foto);
+        }
+        const resp = await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id), { method:'POST', body:fd });
+        const data = await resp.json().catch(() => ({}));
+        if (!resp.ok || data.ok === false) throw new Error(data.error || 'Falha ao marcar entregue');
+        const tr = document.querySelector(`tr.entrega-row[data-id="${id}"]`);
+        const btn = tr ? tr.querySelector('[data-role="entrega"]') : null;
+        if (tr) tr.dataset.statusEntrega = 'entregue';
+        if (btn) {
+          btn.textContent = 'Entregue';
+          btn.classList.remove('pendente');
+          btn.classList.add('entregue');
+        }
+        syncRowState(tr);
+        fecharModalRecebimento();
+      } catch (e) {
+        alert(e.message || 'Erro ao marcar entrega');
+      } finally {
+        btnConfirmarRecebimento.disabled = false;
+      }
+    }
+    btnConfirmarRecebimento.addEventListener('click', confirmarRecebimentoModal);
+
     async function toggleEntrega(btn){
       if (btn.dataset.busy === '1') return;
-      btn.dataset.busy = '1'; btn.disabled = true;
       const id = btn.dataset.id;
       const tr = btn.closest('tr');
       const entregue = tr.dataset.statusEntrega === 'entregue';
+      if (!entregue) {
+        abrirModalRecebimento(id);
+        return;
+      }
+      btn.dataset.busy = '1'; btn.disabled = true;
       try {
-        if (entregue) {
-          const fd = new FormData();
-          fd.append('status', 'pendente');
-          fd.append('recebido_por', '');
-          const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0', id), { method:'POST', body:fd });
-          if (!resp.ok) throw new Error('Falha ao voltar entrega para pendente');
-          tr.dataset.statusEntrega = 'pendente';
-          btn.textContent = 'Pendente'; btn.classList.remove('entregue'); btn.classList.add('pendente');
-        } else {
-          const recebidoPor = prompt('Recebido por:');
-          if (recebidoPor === null) return;
-          const fd = new FormData();
-          fd.append('recebido_por', recebidoPor.trim());
-          if (fotoInput && fotoInput.files && fotoInput.files[0]) fd.append('foto_recebimento', fotoInput.files[0]);
-          const resp = await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id), { method:'POST', body:fd });
-          const data = await resp.json().catch(() => ({}));
-          if (!resp.ok || data.ok === false) throw new Error(data.error || 'Falha ao marcar entregue');
-          tr.dataset.statusEntrega = 'entregue';
-          btn.textContent = 'Entregue'; btn.classList.remove('pendente'); btn.classList.add('entregue');
-        }
+        const fd = new FormData();
+        fd.append('status', 'pendente');
+        fd.append('recebido_por', '');
+        const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0', id), { method:'POST', body:fd });
+        if (!resp.ok) throw new Error('Falha ao voltar entrega para pendente');
+        tr.dataset.statusEntrega = 'pendente';
+        btn.textContent = 'Pendente'; btn.classList.remove('entregue'); btn.classList.add('pendente');
         syncRowState(tr);
       } catch (e) {
         alert(e.message || 'Erro ao alterar entrega');
@@ -517,6 +486,7 @@
     }
 
     function syncRowState(tr){
+      if (!tr) return;
       const id = tr.dataset.id;
       const item = allDeliveries.find(x => String(x.id) === String(id));
       if (!item) return;
@@ -607,10 +577,7 @@
       chartAno = new Chart(document.getElementById('chartAno'), { type:'bar', data:{ labels:annual.labels, datasets:[{ label:'Valor', data:annual.valores, yAxisID:'y' }, { label:'Entregas', data:annual.quantidades, yAxisID:'y1' }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{ mode:'index', intersect:false }, scales:{ y:{ beginAtZero:true }, y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false } } } } });
     }
 
-    updateSummary();
-    applyTableFilter();
-    buildYearPills();
-    buildCharts();
+    updateSummary(); applyTableFilter(); buildYearPills(); buildCharts();
 
     let gpsBooted = false, gpsWatchId = null, lastGpsSentAt = 0, lastGpsCoords = null;
     function distanceMeters(a,b){ if(!a || !b) return Infinity; const R=6371000,toRad=n=>n*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lng-a.lng),lat1=toRad(a.lat),lat2=toRad(b.lat); const x=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x)); }
