@@ -2932,6 +2932,7 @@ def admin():
         cooperados_disponiveis=cooperados_disponiveis,
         cooperados_js=cooperados_js,
         motoboys_js=motoboys_js,
+        clientes_js=[{'id': c.id, 'nome': c.nome} for c in Cliente.query.order_by(Cliente.nome).all()],
     )
     return _patch_admin_top_link(html)
 
@@ -4320,7 +4321,6 @@ def mapa_motoboys():
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
-    only_online = (request.args.get('only_online') == '1')
 
     for c in cooperados:
         if c.last_lat is not None and c.last_lng is not None:
@@ -4339,9 +4339,6 @@ def mapa_motoboys():
                 status = "livre"
 
             is_online, idle_s, status_str = calc_status_cooperado(c)
-
-            if only_online and not bool(is_online):
-                continue
 
             motoboys_js.append({
                 "id": c.id,
@@ -4571,13 +4568,7 @@ def cadastrar_entrega():
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
         bairro = request.form.get('bairro')
-        try:
-            valor = _parse_money_to_float(request.form.get('valor') or 0)
-        except Exception:
-            if _wants_json():
-                return jsonify(ok=False, message='Valor inválido.'), 400
-            flash('Valor inválido.', 'danger')
-            return redirect_back_to_admin()
+        valor = float(request.form.get('valor') or 0)
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
 
@@ -4972,10 +4963,6 @@ def excluir_entrega(id):
 
         db.session.delete(entrega)
         db.session.commit()
-        try:
-            socketio.emit('entrega_excluida', {'id': id})
-        except Exception:
-            pass
         msg = 'Entrega excluída com sucesso.'
         flash(msg, 'success')
 
