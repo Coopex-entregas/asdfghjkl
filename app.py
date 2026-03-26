@@ -43,18 +43,12 @@ app.config['SECRET_KEY'] = os.environ.get(
 
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
 from flask_socketio import SocketIO
-# IMPORTANTE: esta versão evita o argumento broadcast=True, que quebra em algumas versões
-# do Flask-SocketIO / python-socketio e causa falha na emissão de eventos.
 
 socketio = SocketIO(
     app,
-    async_mode="threading",
+    async_mode="threading",   # (opcional, mas bom deixar explícito)
     logger=False,
-    engineio_logger=False,
-    cors_allowed_origins="*",
-    manage_session=False,
-    ping_timeout=20,
-    ping_interval=25,
+    engineio_logger=False
 )
 
 
@@ -681,7 +675,7 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
             'ultima_atualizacao': ultima_str,
         }
 
-        socketio.emit('posicao_motoboy_atualizada', payload)
+        socketio.emit('posicao_motoboy_atualizada', payload, broadcast=True)
 
     except Exception as e:
         try:
@@ -793,7 +787,8 @@ def emitir_lista_espera():
 
         socketio.emit(
             "fila_espera_atualizada",
-            {"itens": payload}
+            {"itens": payload},
+            broadcast=True
         )
     except Exception as e:
         try:
@@ -832,6 +827,57 @@ class Trajeto(db.Model):
     criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
 
 
+
+
+def _trajeto_haversine_m(lat1, lng1, lat2, lng2):
+    try:
+        from math import radians, sin, cos, sqrt, atan2
+        r = 6371000.0
+        dlat = radians(float(lat2) - float(lat1))
+        dlng = radians(float(lng2) - float(lng1))
+        a = sin(dlat / 2) ** 2 + cos(radians(float(lat1))) * cos(radians(float(lat2))) * sin(dlng / 2) ** 2
+        return 2 * r * atan2(sqrt(a), sqrt(1 - a))
+    except Exception:
+        return 0.0
+
+def _trajeto_metricas_from_points(points):
+    if not points or len(points) < 2:
+        return {
+            'distancia_m': 0.0,
+            'duracao_s': 0,
+            'velocidade_media_kmh': 0.0,
+            'origem_lat': None,
+            'origem_lng': None,
+            'destino_lat': None,
+            'destino_lng': None,
+        }
+    dist = 0.0
+    prev = None
+    for p in points:
+        try:
+            lat = float(p.get('lat'))
+            lng = float(p.get('lng'))
+        except Exception:
+            continue
+        if prev is not None:
+            dist += _trajeto_haversine_m(prev[0], prev[1], lat, lng)
+        prev = (lat, lng)
+    first = points[0]
+    last = points[-1]
+    try:
+        dur = max(0, int((int(last.get('tMs') or 0) - int(first.get('tMs') or 0)) / 1000))
+    except Exception:
+        dur = 0
+    vel = ((dist / 1000.0) / (dur / 3600.0)) if dur > 0 else 0.0
+    return {
+        'distancia_m': float(dist),
+        'duracao_s': int(dur),
+        'velocidade_media_kmh': float(vel),
+        'origem_lat': float(first.get('lat')) if first.get('lat') is not None else None,
+        'origem_lng': float(first.get('lng')) if first.get('lng') is not None else None,
+        'destino_lat': float(last.get('lat')) if last.get('lat') is not None else None,
+        'destino_lng': float(last.get('lng')) if last.get('lng') is not None else None,
+    }
 # =========================================================
 # HELPERS DE DATA / FUSO
 # =========================================================
@@ -3671,7 +3717,7 @@ def cooperado_socorro():
 
     # emite via socket (se o admin estiver conectado)
     try:
-        socketio.emit("socorro_novo", item)
+        socketio.emit("socorro_novo", item, broadcast=True)
     except Exception:
         pass
 
@@ -4317,6 +4363,182 @@ def trajetos_exportar():
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
 
 from flask import request, jsonify
+
+
+
+@app.route('/api/trajetos/salvar', methods=['POST'])
+def api_trajetos_salvar():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    data = request.get_json(silent=True) or {}
+    try:
+        cooperado_id = int(data.get('cooperado_id') or 0)
+    except Exception:
+        cooperado_id = 0
+    if not cooperado_id:
+        return jsonify(ok=False, error='cooperado_id obrigatório'), 400
+
+    cooperado = Cooperado.query.get(cooperado_id)
+    if not cooperado:
+        return jsonify(ok=False, error='Cooperado não encontrado'), 404
+
+    pontos = data.get('pontos') or []
+    if not isinstance(pontos, list) or len(pontos) < 2:
+        return jsonify(ok=False, error='Rota curta demais para salvar'), 400
+
+    pts = []
+    for p in pontos:
+        try:
+            pts.append({
+                'lat': float(p.get('lat')),
+                'lng': float(p.get('lng')),
+                'tMs': int(p.get('tMs') or 0),
+            })
+        except Exception:
+            continue
+    if len(pts) < 2:
+        return jsonify(ok=False, error='Pontos inválidos'), 400
+
+    metricas = _trajeto_metricas_from_points(pts)
+
+    inicio = None
+    fim = None
+    try:
+        inicio = datetime.utcfromtimestamp((pts[0].get('tMs') or 0) / 1000.0)
+    except Exception:
+        inicio = datetime.utcnow()
+    try:
+        fim = datetime.utcfromtimestamp((pts[-1].get('tMs') or 0) / 1000.0)
+    except Exception:
+        fim = None
+
+    traj = Trajeto(
+        cooperado_id=cooperado_id,
+        inicio=inicio or datetime.utcnow(),
+        fim=fim,
+        distancia_m=metricas['distancia_m'],
+        duracao_s=metricas['duracao_s'],
+        velocidade_media_kmh=metricas['velocidade_media_kmh'],
+        origem_lat=metricas['origem_lat'],
+        origem_lng=metricas['origem_lng'],
+        destino_lat=metricas['destino_lat'],
+        destino_lng=metricas['destino_lng'],
+        pontos_json=json.dumps(pts, ensure_ascii=False),
+    )
+    db.session.add(traj)
+    db.session.commit()
+
+    return jsonify(ok=True, id=traj.id, nome=cooperado.nome)
+
+
+@app.route('/api/trajetos/historico')
+def api_trajetos_historico():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    try:
+        limit = max(1, min(100, int(request.args.get('limit', 30))))
+    except Exception:
+        limit = 30
+
+    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
+
+    cooperado_id = request.args.get('cooperado_id')
+    if cooperado_id:
+        try:
+            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    try:
+        if data_inicio:
+            di = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            di_utc, _ = local_date_window_to_utc_range(di)
+            q = q.filter(Trajeto.inicio >= di_utc)
+        if data_fim:
+            df = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            _, df_utc = local_date_window_to_utc_range(df)
+            q = q.filter(Trajeto.inicio <= df_utc)
+    except Exception:
+        pass
+
+    itens = []
+    for t in q.order_by(Trajeto.inicio.desc()).limit(limit).all():
+        itens.append({
+            'id': t.id,
+            'cooperado_id': t.cooperado_id,
+            'nome': t.cooperado.nome if t.cooperado else '',
+            'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
+            'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
+            'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
+            'duracao_min': round((t.duracao_s or 0)/60.0, 1),
+            'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
+        })
+    return jsonify(ok=True, itens=itens)
+
+
+@app.route('/api/trajetos/<int:trajeto_id>')
+def api_trajetos_detalhe(trajeto_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    try:
+        pontos = json.loads(t.pontos_json or '[]')
+    except Exception:
+        pontos = []
+    return jsonify(ok=True, item={
+        'id': t.id,
+        'cooperado_id': t.cooperado_id,
+        'nome': t.cooperado.nome if t.cooperado else '',
+        'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
+        'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
+        'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
+        'duracao_min': round((t.duracao_s or 0)/60.0, 1),
+        'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
+        'pontos': pontos,
+    })
+
+
+@app.route('/api/trajetos/<int:trajeto_id>/geojson')
+def api_trajetos_geojson(trajeto_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    try:
+        pontos = json.loads(t.pontos_json or '[]')
+    except Exception:
+        pontos = []
+    geo = {
+        'type': 'FeatureCollection',
+        'features': [{
+            'type': 'Feature',
+            'properties': {
+                'id': t.id,
+                'cooperado_id': t.cooperado_id,
+                'nome': t.cooperado.nome if t.cooperado else '',
+                'inicio': t.inicio.isoformat() if t.inicio else None,
+                'fim': t.fim.isoformat() if t.fim else None,
+                'distancia_m': t.distancia_m or 0.0,
+                'duracao_s': t.duracao_s or 0,
+                'velocidade_media_kmh': t.velocidade_media_kmh or 0.0,
+            },
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': [[float(p.get('lng')), float(p.get('lat'))] for p in pontos if p.get('lng') is not None and p.get('lat') is not None]
+            }
+        }]
+    }
+    return current_app.response_class(
+        json.dumps(geo, ensure_ascii=False, indent=2),
+        mimetype='application/geo+json',
+        headers={'Content-Disposition': f'attachment; filename=trajeto_{t.id}.geojson'}
+    )
+
 
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
