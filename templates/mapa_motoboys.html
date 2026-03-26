@@ -102,6 +102,31 @@
     }
     .btn.small{height:36px;border-radius:12px;font-size:12px;padding:0 10px}
 
+    .chip strong{font-size:13px;line-height:1}
+    .rec-indicator{
+      display:none;
+      align-items:center;
+      gap:8px;
+      padding: 7px 10px;
+      border-radius:999px;
+      background: rgba(220,38,38,.18);
+      border: 1px solid rgba(255,255,255,.24);
+      font-weight:1000;
+      font-size:12px;
+      white-space:nowrap;
+    }
+    .rec-indicator.on{display:inline-flex}
+    .rec-pulse{
+      width:10px;height:10px;border-radius:999px;background:#fff;
+      box-shadow:0 0 0 0 rgba(255,255,255,.9);
+      animation: recPulse 1.25s infinite;
+    }
+    @keyframes recPulse{
+      0%{ box-shadow:0 0 0 0 rgba(255,255,255,.75); }
+      70%{ box-shadow:0 0 0 8px rgba(255,255,255,0); }
+      100%{ box-shadow:0 0 0 0 rgba(255,255,255,0); }
+    }
+
     /* LAYOUT */
     .wrap{
       height: calc(100% - 68px);
@@ -295,14 +320,15 @@
       <div class="logo">CX</div>
       <div class="titlewrap">
         <div class="title">MAPA DE MOTOBOYS — COOPEX</div>
-        <div class="sub">MapTiler (streets-v4) • atualiza só o mapa</div>
+        <div class="sub">Monitoramento em tempo real • visual profissional e leve</div>
       </div>
     </div>
 
     <div class="actions">
-      <span class="chip"><span class="dot g"></span> ONLINE</span>
-      <span class="chip"><span class="dot r"></span> OFFLINE</span>
-      <span class="chip"><span class="dot a"></span> EM CORRIDA</span>
+      <span class="chip"><span class="dot g"></span> ONLINE <strong id="countOnline">0</strong></span>
+      <span class="chip"><span class="dot r"></span> OFFLINE <strong id="countOffline">0</strong></span>
+      <span class="chip"><span class="dot a"></span> EM CORRIDA <strong id="countBusy">0</strong></span>
+      <span class="rec-indicator" id="recIndicator"><span class="rec-pulse"></span> GRAVANDO ROTA</span>
 
       <!-- botões com onclick (fallback) -->
       <button class="btn" onclick="window.__fitAll && window.__fitAll()">Enquadrar</button>
@@ -332,20 +358,20 @@
 
         <div class="spacer"></div>
 
-        <button class="btnw" id="btnCenterNatal" type="button">Natal</button>
+        <button class="btnw" id="btnCenterNatal" type="button">Centralizar Natal</button>
         <button class="btnw" id="btnReload" type="button">Atualizar</button>
       </div>
 
       <div id="map"></div>
 
       <div class="hint">
-        Selecione um motoboy para “seguir”. Arrastar/zoom no mapa pausa o follow. (Leve: só o mapa atualiza.)
+        Selecione um motoboy para seguir. Arrastar ou dar zoom pausa o follow. A rota gravada continua acompanhando o deslocamento enquanto o motoboy se move.
       </div>
     </div>
 
     <aside class="side">
       <div class="panel">
-        <h3>Motoboys <span class="tiny" id="lblUpdated">—</span></h3>
+        <h3>Motoboys <span class="tiny"><span id="lblCounts">0 no mapa</span> • <span id="lblUpdated">—</span></span></h3>
         <div class="searchrow">
           <input id="inpBuscaSide" placeholder="Buscar..." autocomplete="off"/>
         </div>
@@ -360,7 +386,7 @@
 
       <div class="panel">
         <h3>Detalhes</h3>
-        <div class="tiny" id="details">Selecione um motoboy para ver detalhes.</div>
+        <div class="tiny" id="details">Selecione um motoboy para ver detalhes e acompanhamento.</div>
       </div>
     </aside>
   </div>
@@ -412,41 +438,49 @@
       return 2*R*Math.asin(Math.sqrt(a));
     }
 
-    // Moto pin SVG base64 (sem moldura)
+    // Push pin SVG base64 (estilo profissional)
     function svgToDataUrl(svg){
       const encoded = btoa(unescape(encodeURIComponent(svg)));
       return "data:image/svg+xml;base64," + encoded;
     }
-    function motoPinSvg(color){
+    function pushPinSvg(color){
       return `
-      <svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">
-        <path d="M22 0C10.7 0 1.5 9.2 1.5 20.5C1.5 35.6 20.3 54.5 21.1 55.3C21.6 55.8 22.4 55.8 22.9 55.3C23.7 54.5 42.5 35.6 42.5 20.5C42.5 9.2 33.3 0 22 0Z" fill="${color}"/>
-        <circle cx="22" cy="20.5" r="12.5" fill="#fff" opacity="0.98"/>
-        <path d="M13.6 24.2c.7-2.2 2.7-3.7 5.1-3.7h2.1l1.3-2.1h3.8l-1.2 2.1h1.6c2.7 0 4.9 2.2 4.9 4.9
-                 0 .3 0 .6-.1.9h-2.1c.1-.3.1-.6.1-.9 0-1.5-1.2-2.8-2.8-2.8h-6.7c-1.4 0-2.6.9-3 2.2l-.2.6h-2.8z"
-              fill="#0b1220"/>
-        <circle cx="17" cy="28" r="2.4" fill="#0b1220"/>
-        <circle cx="29" cy="28" r="2.4" fill="#0b1220"/>
+      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="50" viewBox="0 0 34 50">
+        <defs>
+          <radialGradient id="pinGlow" cx="35%" cy="30%" r="70%">
+            <stop offset="0%" stop-color="#ffffff" stop-opacity=".95"/>
+            <stop offset="18%" stop-color="${color}" stop-opacity=".98"/>
+            <stop offset="100%" stop-color="${color}" stop-opacity="1"/>
+          </radialGradient>
+          <linearGradient id="pinMetal" x1="0" x2="0" y1="0" y2="1">
+            <stop offset="0%" stop-color="#d9dee7"/>
+            <stop offset="100%" stop-color="#7d8796"/>
+          </linearGradient>
+        </defs>
+        <ellipse cx="17" cy="11.5" rx="10.8" ry="10.8" fill="url(#pinGlow)" stroke="rgba(255,255,255,.82)" stroke-width="1.25"/>
+        <ellipse cx="13.2" cy="7.9" rx="3.1" ry="2.25" fill="rgba(255,255,255,.68)"/>
+        <rect x="16.1" y="21.2" width="1.8" height="22.5" rx="1" fill="url(#pinMetal)"/>
+        <path d="M17 42.2 L14.8 49.2 L19.2 42.2 Z" fill="#6b7280"/>
       </svg>`;
     }
     function iconFor(status, size){
-      const zSize = size || 44;
-      const h = Math.round(zSize*56/44);
-      let color = "#dc2626"; // offline
-      if(status === "em_corrida") color = "#d97706";
+      const zSize = size || 30;
+      const h = Math.round(zSize*50/34);
+      let color = "#dc2626";
+      if(status === "em_corrida") color = "#f59e0b";
       if(status === "online") color = "#16a34a";
       return L.icon({
-        iconUrl: svgToDataUrl(motoPinSvg(color)),
+        iconUrl: svgToDataUrl(pushPinSvg(color)),
         iconSize: [zSize, h],
-        iconAnchor: [Math.round(zSize/2), h-2],
+        iconAnchor: [Math.round(zSize/2), h-1],
         popupAnchor: [0, -h+10]
       });
     }
     function sizeByZoom(z){
-      if(z >= 17) return 56;
-      if(z >= 15) return 50;
-      if(z >= 13) return 44;
-      return 40;
+      if(z >= 17) return 34;
+      if(z >= 15) return 31;
+      if(z >= 13) return 29;
+      return 27;
     }
 
     // MAP INIT
@@ -613,6 +647,23 @@
       });
     }
 
+    function updateCounters(arr){
+      const counts = {online:0, offline:0, em_corrida:0};
+      arr.forEach(m=>{
+        const st = statusFromItem(m);
+        if(st === "online") counts.online += 1;
+        else if(st === "em_corrida") counts.em_corrida += 1;
+        else counts.offline += 1;
+      });
+      const total = arr.length;
+      const setTxt = (id, v)=>{ const el=$(id); if(el) el.textContent = String(v); };
+      setTxt("countOnline", counts.online);
+      setTxt("countOffline", counts.offline);
+      setTxt("countBusy", counts.em_corrida);
+      const lbl = $("lblCounts");
+      if(lbl) lbl.textContent = `${total} no mapa`;
+    }
+
     function renderSelect(arr){
       const sel = $("selMotoboy");
       if(!sel) return;
@@ -661,7 +712,7 @@
       const el = $("details");
       if(!el) return;
       if(!followId){
-        el.textContent = "Selecione um motoboy para ver detalhes.";
+        el.textContent = "Selecione um motoboy para ver detalhes e acompanhamento.";
         return;
       }
       const mk = markers.get(followId);
@@ -672,6 +723,7 @@
       const nome = mk.options.__nome || "Motoboy";
       const st = mk.options.__status || "offline";
       const speed = mk.options.__speed;
+      const ll = mk.getLatLng();
       el.innerHTML = `
         <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
           <div style="font-weight:1000">${nome}</div>
@@ -679,6 +731,7 @@
         </div>
         <div class="meta">Follow: <b>${followActive ? "ATIVO" : "PAUSADO"}</b></div>
         <div class="meta">Velocidade: <b>${(speed !== null && speed !== undefined) ? speed.toFixed(1) : "—"}</b> ${(speed !== null && speed !== undefined) ? "km/h" : ""}</div>
+        <div class="meta">Latitude: <b>${ll.lat.toFixed(5)}</b> • Longitude: <b>${ll.lng.toFixed(5)}</b></div>
       `;
     }
 
@@ -702,9 +755,10 @@
     window.__startRoute = function(){
       if(!followId){ alert("Selecione um motoboy para gravar a rota."); return; }
       routeRecording = true; recordedId = followId; recordedPoints = [];
+      const rec=$("recIndicator"); if(rec) rec.classList.add("on");
       alert("Gravação de rota iniciada (local).");
     };
-    window.__stopRoute = function(){ routeRecording = false; alert("Gravação de rota parada."); };
+    window.__stopRoute = function(){ routeRecording = false; const rec=$("recIndicator"); if(rec) rec.classList.remove("on"); alert("Gravação de rota parada."); };
     window.__downloadRoute = function(){
       if(recordedPoints.length < 2){ alert("Rota curta demais para baixar."); return; }
       const geo = {
@@ -723,6 +777,7 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
+      const rec=$("recIndicator"); if(rec) rec.classList.remove("on");
       setTimeout(()=>URL.revokeObjectURL(url), 2000);
     };
 
@@ -741,6 +796,7 @@
 
         renderSelect(filtered);
         renderList(filtered);
+        updateCounters(arr);
         const lbl = $("lblUpdated");
         if(lbl) lbl.textContent = "Atualizado: " + new Date().toLocaleTimeString();
         updateDetails();
@@ -785,6 +841,7 @@
       setInterval(()=>fetchData(), POLL_MS);
       renderSelect(seedArray);
       renderList(seedArray);
+      updateCounters(seedArray);
     });
   </script>
 </body>
