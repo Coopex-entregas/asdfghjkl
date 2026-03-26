@@ -1190,21 +1190,8 @@
   <!-- áudios -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
-  <!-- Socket.IO (entregas/lista de espera; mapa fica só em mapa_motoboys) -->
-  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
-  <script>
-    const socket = io("{{ request.host_url.rstrip('/') }}", {
-      transports: ["polling"],
-      path: "/socket.io/",
-      reconnection: true,
-      reconnectionAttempts: Infinity,
-      reconnectionDelay: 1000
-    });
-    socket.on("connect", () => console.log("Socket conectado (polling), id:", socket.id));
-    socket.on("connect_error", (err) => console.error("Erro na conexão Socket.IO:", err));
-  </script>
-
-  <script>
+  <!-- Admin sem tempo real automático: atualização manual por F5 -->
+<script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
 
     function formatBRLFromNumberLike(v){
@@ -1875,14 +1862,7 @@
       if (!ulFila || !htmlLista) return;
       ulFila.innerHTML = htmlLista;
     }
-
-    if (typeof socket !== 'undefined') {
-      socket.on('entrega_criada', atualizarOuInserirLinhaEntrega);
-      socket.on('entrega_atualizada', atualizarOuInserirLinhaEntrega);
-      socket.on('entrega_excluida', (dados)=> dados?.id && removerLinhaEntrega(dados.id));
-      socket.on('fila_espera_atualizada', (dados)=> dados?.html_lista && atualizarFilaEsperaTempoReal(dados.html_lista));
-    }
-  </script>
+</script>
 
   <!-- CUPOM / MAPA TELA CHEIA -->
   <script>
