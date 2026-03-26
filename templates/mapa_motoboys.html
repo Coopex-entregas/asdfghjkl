@@ -320,7 +320,7 @@
       <div class="logo">CX</div>
       <div class="titlewrap">
         <div class="title">MAPA DE MOTOBOYS — COOPEX</div>
-        <div class="sub">Monitoramento em tempo real dos motoboys • mapa roda separado do admin</div>
+        <div class="sub">Monitoramento em tempo real • visual profissional e leve</div>
       </div>
     </div>
 
@@ -335,9 +335,8 @@
       <button class="btn ghost" onclick="window.__clearFollow && window.__clearFollow()">Parar seguir</button>
       <button class="btn ghost" onclick="window.__startRoute && window.__startRoute()">Gravar rota</button>
       <button class="btn ghost" onclick="window.__stopRoute && window.__stopRoute()">Parar rota</button>
-      <button class="btn ghost" onclick="window.__downloadRoute && window.__downloadRoute()">Baixar rota</button>
-      <button class="btn ghost" onclick="window.__startVideoRec && window.__startVideoRec()">Gravar vídeo</button>
-      <button class="btn ghost" onclick="window.__stopVideoRec && window.__stopVideoRec()">Parar vídeo</button>
+      <button class="btn ghost" onclick="window.__saveRouteHistory && window.__saveRouteHistory()">Salvar histórico</button>
+      <button class="btn ghost" onclick="window.__downloadRoute && window.__downloadRoute()">Baixar GeoJSON</button>
       <button class="btn danger" onclick="window.close()">Fechar</button>
     </div>
   </div>
@@ -508,6 +507,9 @@
     let routeRecording = false;
     let recordedId = "";
     let recordedPoints = [];
+    let recordedStartMs = 0;
+    let historyRouteLayer = null;
+    let historyFilterToday = true;
 
     if(map){
       map.on("dragstart zoomstart", ()=>{ if(followActive){ followActive=false; updateDetails(); } });
@@ -749,6 +751,7 @@
         }
       }
       updateDetails();
+      loadHistory();
     }
 
     // Expor funções para onclick (fallback)
@@ -756,14 +759,19 @@
     window.__clearFollow = function(){ followActive=false; followId=""; const sel=$("selMotoboy"); if(sel) sel.value=""; clearTrails(); updateDetails(); };
     window.__startRoute = function(){
       if(!followId){ alert("Selecione um motoboy para gravar a rota."); return; }
-      routeRecording = true; recordedId = followId; recordedPoints = [];
+      routeRecording = true; recordedId = followId; recordedPoints = []; recordedStartMs = Date.now();
+      const mk = markers.get(recordedId);
+      if(mk){ const ll = mk.getLatLng(); recordedPoints.push({lat: ll.lat, lng: ll.lng, tMs: recordedStartMs}); }
       const rec=$("recIndicator"); if(rec) rec.classList.add("on");
-      alert("Gravação de rota iniciada (local).");
+      toast("Gravação iniciada.");
     };
-    window.__stopRoute = function(){ routeRecording = false; const rec=$("recIndicator"); if(rec) rec.classList.remove("on"); alert("Gravação de rota parada."); };
-    window.__downloadRoute = function(){
-      if(recordedPoints.length < 2){ alert("Rota curta demais para baixar."); return; }
-      const geo = {
+    window.__stopRoute = function(){
+      routeRecording = false;
+      const rec=$("recIndicator"); if(rec) rec.classList.remove("on");
+      toast(`Gravação parada. ${recordedPoints.length} pontos.`);
+    };
+    function buildGeoJsonFromRecorded(){
+      return {
         type:"FeatureCollection",
         features:[{
           type:"Feature",
@@ -771,7 +779,10 @@
           geometry:{ type:"LineString", coordinates: recordedPoints.map(p=>[p.lng, p.lat]) }
         }]
       };
-      const blob = new Blob([JSON.stringify(geo, null, 2)], {type:"application/geo+json"});
+    }
+    window.__downloadRoute = function(){
+      if(recordedPoints.length < 2){ alert("Rota curta demais para baixar."); return; }
+      const blob = new Blob([JSON.stringify(buildGeoJsonFromRecorded(), null, 2)], {type:"application/geo+json"});
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -779,9 +790,87 @@
       document.body.appendChild(a);
       a.click();
       a.remove();
-      const rec=$("recIndicator"); if(rec) rec.classList.remove("on");
       setTimeout(()=>URL.revokeObjectURL(url), 2000);
     };
+    window.__saveRouteHistory = async function(){
+      if(recordedPoints.length < 2){ alert("Rota curta demais para salvar."); return; }
+      try{
+        const resp = await fetch('/api/trajetos/salvar', {
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body: JSON.stringify({ cooperado_id: Number(recordedId), pontos: recordedPoints })
+        });
+        const data = await resp.json().catch(()=>({}));
+        if(!resp.ok || !data.ok) throw new Error(data.error || ('HTTP '+resp.status));
+        toast(`Histórico salvo #${data.id}`);
+        await loadHistory();
+      }catch(e){
+        console.error(e);
+        alert('Não foi possível salvar o histórico.');
+      }
+    };
+    async function loadHistory(){
+      const list = $("historyList");
+      const info = $("historyInfo");
+      if(list) list.innerHTML = '<div class="tiny">Carregando...</div>';
+      try{
+        const params = new URLSearchParams();
+        params.set('limit','40');
+        if(followId) params.set('cooperado_id', String(followId));
+        if(historyFilterToday){
+          const now = new Date();
+          const y = now.getFullYear();
+          const m = String(now.getMonth()+1).padStart(2,'0');
+          const d = String(now.getDate()).padStart(2,'0');
+          const iso = `${y}-${m}-${d}`;
+          params.set('data_inicio', iso);
+          params.set('data_fim', iso);
+        }
+        const resp = await fetch('/api/trajetos/historico?' + params.toString(), {cache:'no-store'});
+        const data = await resp.json();
+        if(!resp.ok || !data.ok) throw new Error(data.error || ('HTTP '+resp.status));
+        const itens = Array.isArray(data.itens) ? data.itens : [];
+        if(info) info.textContent = itens.length ? `${itens.length} rota(s) ${followId ? 'do motoboy selecionado' : 'encontradas'}` : 'Nenhuma rota salva';
+        if(!list) return;
+        if(!itens.length){ list.innerHTML = '<div class="tiny">Nenhuma rota salva.</div>'; return; }
+        list.innerHTML = '';
+        itens.forEach(it=>{
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `
+            <div class="row"><div class="name">${safe(it.nome || 'Motoboy')}</div><span class="pill green">#${it.id}</span></div>
+            <div class="meta">${safe(it.inicio || '')}</div>
+            <div class="meta">${(it.distancia_km||0).toFixed ? it.distancia_km.toFixed(2) : it.distancia_km} km • ${it.duracao_min} min • ${it.velocidade_media_kmh} km/h</div>
+            <div style="display:flex;gap:8px;margin-top:8px"><button class="btnw hist-view" data-id="${it.id}">Ver no mapa</button><button class="btnw hist-down" data-id="${it.id}">Baixar</button></div>
+          `;
+          list.appendChild(div);
+        });
+        list.querySelectorAll('.hist-view').forEach(btn=> btn.addEventListener('click', ()=> viewHistoryRoute(btn.dataset.id)));
+        list.querySelectorAll('.hist-down').forEach(btn=> btn.addEventListener('click', ()=> { window.open(`/api/trajetos/${btn.dataset.id}/geojson`, '_blank'); }));
+      }catch(e){
+        console.error(e);
+        if(info) info.textContent = 'Erro ao carregar histórico';
+        if(list) list.innerHTML = '<div class="tiny">Falha ao carregar histórico.</div>';
+      }
+    }
+    async function viewHistoryRoute(id){
+      try{
+        const resp = await fetch(`/api/trajetos/${id}`, {cache:'no-store'});
+        const data = await resp.json();
+        if(!resp.ok || !data.ok) throw new Error(data.error || ('HTTP '+resp.status));
+        const item = data.item || {};
+        const pts = Array.isArray(item.pontos) ? item.pontos : [];
+        if(pts.length < 2){ alert('Rota sem pontos suficientes.'); return; }
+        const latlngs = pts.map(p=> [Number(p.lat), Number(p.lng)]).filter(v=> isFinite(v[0]) && isFinite(v[1]));
+        if(historyRouteLayer && map){ try{ map.removeLayer(historyRouteLayer); }catch(e){} }
+        historyRouteLayer = L.polyline(latlngs, {color:'#dc2626', weight:6, opacity:.92}).addTo(map);
+        map.fitBounds(historyRouteLayer.getBounds().pad(0.15));
+        toast(`Rota #${item.id} carregada no mapa.`);
+      }catch(e){
+        console.error(e);
+        alert('Não foi possível abrir a rota.');
+      }
+    }
 
     async function fetchData(){
       try{
@@ -827,6 +916,11 @@
       const nat = $("btnCenterNatal");
       if(nat) nat.addEventListener("click", ()=>{ if(map) map.setView(defaultCenter, 12, {animate:true}); });
 
+      const hr = $("btnHistoryReload");
+      if(hr) hr.addEventListener("click", ()=> loadHistory());
+      const ht = $("btnHistoryToday");
+      if(ht) ht.addEventListener("click", ()=>{ historyFilterToday = !historyFilterToday; ht.textContent = historyFilterToday ? 'Hoje' : 'Todos'; loadHistory(); });
+
       document.querySelectorAll(".tag").forEach(tag=>{
         tag.addEventListener("click", ()=>{
           document.querySelectorAll(".tag").forEach(t=>t.classList.remove("active"));
@@ -844,155 +938,8 @@
       renderSelect(seedArray);
       renderList(seedArray);
       updateCounters(seedArray);
+      loadHistory();
     });
-  
-
-    // ==============================
-    // GRAVAÇÃO DE VÍDEO DO MAPA/TELA
-    // Tenta MP4 primeiro; se o navegador não suportar, usa WEBM.
-    // ==============================
-    let __videoStream = null;
-    let __videoRecorder = null;
-    let __videoChunks = [];
-    let __videoMime = "";
-
-    function __pickBestVideoMime(){
-      const list = [
-        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
-        'video/mp4;codecs=h264,aac',
-        'video/mp4',
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm'
-      ];
-      for(const mt of list){
-        try{
-          if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mt)){
-            return mt;
-          }
-        }catch(e){}
-      }
-      return '';
-    }
-
-    function __downloadRecordedVideo(blob, mime){
-      const ext = (mime || '').startsWith('video/mp4') ? 'mp4' : 'webm';
-      const a = document.createElement('a');
-      const url = URL.createObjectURL(blob);
-      a.href = url;
-      a.download = `mapa_motoboys_${Date.now()}.${ext}`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 2500);
-      toast(`Vídeo salvo em ${ext.toUpperCase()}.`);
-    }
-
-    function __stopVideoTracks(){
-      try{
-        if(__videoStream){
-          __videoStream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} });
-        }
-      }catch(e){}
-      __videoStream = null;
-    }
-
-    window.__startVideoRec = async function(){
-      try{
-        if(__videoRecorder && __videoRecorder.state === 'recording'){
-          alert('A gravação de vídeo já está em andamento.');
-          return;
-        }
-        if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
-          alert('Esse navegador não suporta gravação da tela por esta função.');
-          return;
-        }
-
-        __videoMime = __pickBestVideoMime();
-        if(!__videoMime){
-          alert('Seu navegador não liberou um formato de gravação compatível.');
-          return;
-        }
-
-        __videoStream = await navigator.mediaDevices.getDisplayMedia({
-          video: {
-            frameRate: 30,
-            displaySurface: 'browser'
-          },
-          audio: false,
-          preferCurrentTab: true,
-          selfBrowserSurface: 'include',
-          surfaceSwitching: 'include'
-        });
-
-        __videoChunks = [];
-        __videoRecorder = new MediaRecorder(__videoStream, {
-          mimeType: __videoMime,
-          videoBitsPerSecond: 5500000
-        });
-
-        __videoRecorder.ondataavailable = function(ev){
-          if(ev && ev.data && ev.data.size > 0) __videoChunks.push(ev.data);
-        };
-
-        __videoRecorder.onstop = function(){
-          try{
-            const blob = new Blob(__videoChunks, { type: __videoMime || 'video/webm' });
-            if(blob.size > 0){
-              __downloadRecordedVideo(blob, __videoMime || 'video/webm');
-            }else{
-              alert('A gravação terminou, mas o arquivo saiu vazio.');
-            }
-          }catch(e){
-            console.error(e);
-            alert('Não foi possível salvar o vídeo.');
-          }finally{
-            __videoChunks = [];
-            __videoRecorder = null;
-            __stopVideoTracks();
-            const rec=$('recIndicator'); if(rec) rec.classList.remove('on');
-          }
-        };
-
-        const vtrack = __videoStream.getVideoTracks && __videoStream.getVideoTracks()[0];
-        if(vtrack){
-          vtrack.addEventListener('ended', function(){
-            try{
-              if(__videoRecorder && __videoRecorder.state === 'recording'){
-                __videoRecorder.stop();
-              }
-            }catch(e){}
-          }, { once:true });
-        }
-
-        __videoRecorder.start(1000);
-        const rec=$('recIndicator'); if(rec) rec.classList.add('on');
-        if((__videoMime || '').startsWith('video/mp4')){
-          toast('Gravação iniciada. Na janela do navegador, escolha esta aba para salvar em MP4.');
-        }else{
-          toast('Gravação iniciada. Este navegador não suportou MP4 aqui, então o arquivo sairá em WEBM.');
-        }
-      }catch(e){
-        console.error(e);
-        __stopVideoTracks();
-        __videoRecorder = null;
-        const rec=$('recIndicator'); if(rec) rec.classList.remove('on');
-        alert('Não foi possível iniciar a gravação do vídeo.');
-      }
-    };
-
-    window.__stopVideoRec = function(){
-      try{
-        if(__videoRecorder && __videoRecorder.state === 'recording'){
-          __videoRecorder.stop();
-        }else{
-          alert('Nenhuma gravação de vídeo está em andamento.');
-        }
-      }catch(e){
-        console.error(e);
-        alert('Não foi possível parar a gravação do vídeo.');
-      }
-    };
-</script>
+  </script>
 </body>
 </html>
