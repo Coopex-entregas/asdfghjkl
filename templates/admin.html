@@ -1422,34 +1422,7 @@
             '<div class="small" style="text-align:center;">Obrigado por escolher a <strong>COOPEX</strong>!<br>Sua avaliação ajuda nosso serviço a melhorar.</div>' +
           '</div>' +
         '</div>' +
-        '
-
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      var btnMap = document.getElementById('btnFullMap');
-      if(btnMap){
-        btnMap.addEventListener('click', function(){
-          window.location.href = "{{ url_for('mapa_motoboys') }}";
-        });
-      }
-      var btnAtrib = document.getElementById('btnToggleAtribuidas');
-      var panel = document.getElementById('panelAtribuidas');
-      if(btnAtrib && panel){
-        btnAtrib.addEventListener('click', function(){
-          var isHidden = panel.hasAttribute('hidden');
-          if(isHidden){
-            panel.removeAttribute('hidden');
-            btnAtrib.textContent = 'Ocultar atribuídas';
-          }else{
-            panel.setAttribute('hidden','hidden');
-            btnAtrib.textContent = 'Atribuídas hoje';
-          }
-        });
-      }
-    });
-  </script>
-</body></html>';
+        '</body></html>';
 
       return html;
     }
@@ -1545,8 +1518,32 @@
         }
       });
     });
+  </script>
 
-
+  <script>
+    document.addEventListener('DOMContentLoaded', function(){
+      var btnMap = document.getElementById('btnFullMap');
+      if(btnMap){
+        btnMap.addEventListener('click', function(){
+          window.location.href = "{{ url_for('mapa_motoboys') }}";
+        });
+      }
+      var btnAtrib = document.getElementById('btnToggleAtribuidas');
+      var panel = document.getElementById('panelAtribuidas');
+      if(btnAtrib && panel){
+        btnAtrib.addEventListener('click', function(){
+          var isHidden = panel.hasAttribute('hidden');
+          if(isHidden){
+            panel.removeAttribute('hidden');
+            btnAtrib.textContent = 'Ocultar atribuídas';
+          }else{
+            panel.setAttribute('hidden','hidden');
+            btnAtrib.textContent = 'Atribuídas hoje';
+          }
+        });
+      }
+    });
+  </script>
 
 <!-- CUPOM: Overlay de escolha/edição (não salva no banco, só imprime) -->
   <div id="cupomOverlay" style="display:none;">
@@ -1701,31 +1698,5 @@
     }
   };
 </script>
-
-
-  <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      var btnMap = document.getElementById('btnFullMap');
-      if(btnMap){
-        btnMap.addEventListener('click', function(){
-          window.location.href = "{{ url_for('mapa_motoboys') }}";
-        });
-      }
-      var btnAtrib = document.getElementById('btnToggleAtribuidas');
-      var panel = document.getElementById('panelAtribuidas');
-      if(btnAtrib && panel){
-        btnAtrib.addEventListener('click', function(){
-          var isHidden = panel.hasAttribute('hidden');
-          if(isHidden){
-            panel.removeAttribute('hidden');
-            btnAtrib.textContent = 'Ocultar atribuídas';
-          }else{
-            panel.setAttribute('hidden','hidden');
-            btnAtrib.textContent = 'Atribuídas hoje';
-          }
-        });
-      }
-    });
-  </script>
 </body>
 </html>
