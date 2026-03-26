@@ -6,26 +6,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
 
-  <!-- Leaflet -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-    crossorigin=""
-  />
-
-  <!-- MarkerCluster (AGRUPAMENTO) -->
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.css"
-    crossorigin=""
-  />
-  <link
-    rel="stylesheet"
-    href="https://unpkg.com/leaflet.markercluster@1.5.3/dist/MarkerCluster.Default.css"
-    crossorigin=""
-  />
-
   <style>
     :root{
       --royal:#0f35b5;
@@ -644,6 +624,38 @@
     body.dark .act-ico.danger{ background:#2e1313; border-color:#5b2828; }
     .act-ico svg{width:18px;height:18px}
 
+
+
+    /* ===== PAINEL LEVE ===== */
+    .quick-actions-grid{
+      display:grid;
+      grid-template-columns:repeat(4, minmax(0,1fr));
+      gap:10px;
+      width:100%;
+    }
+    .quick-actions-grid .btn{width:100%;justify-content:center;box-shadow:none;border:1px solid rgba(15,53,181,.20)}
+    .subpanel{padding:0 12px 12px}
+    .subpanel[hidden]{display:none !important}
+    .subpanel-head{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
+      padding:12px 0 10px;
+    }
+    .subpanel-title{margin:0;font-size:.96rem;font-weight:900;color:#18308f}
+    body.dark .subpanel-title{color:#cfe0ff}
+    .section-note{font-size:.82rem;color:var(--muted);font-weight:800}
+    .empty-box{
+      border:1px dashed var(--line-2);
+      border-radius:16px;
+      padding:16px;
+      text-align:center;
+      font-weight:900;
+      color:var(--muted);
+      background:rgba(255,255,255,.55);
+    }
+    body.dark .empty-box{background:rgba(15,23,42,.55)}
+    @media (max-width:980px){ .quick-actions-grid{grid-template-columns:1fr 1fr} }
+    @media (max-width:640px){ .quick-actions-grid{grid-template-columns:1fr} }
+
     /* ===== Modal ===== */
     #overlay{
       position:fixed; inset:0; background:rgba(8,12,24,.78);
@@ -778,17 +790,7 @@
     .recb-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
     .recb-nome{font-weight:800;font-size:.86rem;opacity:.92;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
-/* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
-.map-card.fullscreen {
-  position: fixed;
-  top: 12px; left: 12px; right: 12px; bottom: 12px;
-  z-index: 99999;
-  border-radius: 16px;
-  overflow: hidden;
-}
-.map-card.fullscreen #map-coopex {
-  height: calc(100vh - 120px) !important;
-}
+
 
 </style>
 </head>
@@ -916,35 +918,7 @@
           </h2>
           <div class="small" style="color:rgba(255,255,255,.92);font-weight:900">Ajuda não é fardado</div>
         </div>
-
-        <!-- MAPA -->
-        <div class="map-wrapper" style="background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));">
-          <div class="map-header">
-            <div class="map-header-main">
-              <strong style="color:#fff">Mapa em tempo real</strong>
-
-              <div class="map-legend-bar">
-                <div class="legend-item"><span class="legend-dot on"></span> Online (app ligado)</div>
-                <div class="legend-item"><span class="legend-dot off"></span> Offline / desconectado</div>
-              </div>
-            </div>
-
-            <div class="map-header-actions">
-              <select id="mapSearch" class="map-search">
-                <option value="">🔍 Localizar motoboy…</option>
-              </select>
-
-              <select id="mapFilter" class="map-filter">
-                <option value="all">👁️ Ver todos</option>
-                <option value="online">🟢 Só online</option>
-              </select>
-
-              <button id="btnFullMap" class="map-full-btn" type="button">Mapa em tela cheia</button>
-            </div>
-          </div>
-
-          <div id="map-coopex"></div>
-        </div>
+        <!-- MAPA REMOVIDO DA TELA PRINCIPAL PARA FICAR LEVE -->
 
         <!-- FILTROS -->
         <div class="filters-bar">
@@ -1000,20 +974,32 @@
           </div>
 
           <div class="filters-actions">
-            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
-              + Agendar entrega
-            </button>
-            <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
-              Ver agenda
-            </button>
+            <div class="quick-actions-grid">
+              <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
+                + Agendar entrega
+              </button>
+              <button class="btn alt" type="button" id="btnToggleAtribuidas">
+                Atribuídas hoje
+              </button>
+              <button class="btn alt" type="button" id="btnFullMap">
+                Mapa tela cheia
+              </button>
+              <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
+                Ver agenda
+              </button>
+            </div>
           </div>
         </div>
 
-        <!-- TABELA -->
+        <!-- TABELAS -->
         <div class="table-shell">
-          <div class="table-wrap" id="tbl">
-            <table class="tabela">
-              <thead>
+          <div class="subpanel">
+            <div class="subpanel-head">
+              <h3 class="subpanel-title">Entregas em aberto</h3>
+              <div class="section-note">A tela abre só com as não atribuídas para ficar mais rápida.</div>
+            </div>
+            <div class="table-wrap" id="tbl">
+              <table class="tabela"><thead>
                 <tr>
                   <th>ID</th>
                   <th>Cliente</th>
@@ -1031,13 +1017,12 @@
                   <th>Rastreio</th>
                   <th>Ações</th>
                 </tr>
-              </thead>
-
-              <tbody>
+              </thead><tbody>
                 {% for e in entregas %}
                 {% set tem_coop = (e.cooperado is not none) %}
                 {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
                 {% set st = e.status|lower if e.status else 'pendente' %}
+                {% if not tem_coop %}
                 <tr data-id="{{ e.id }}">
                   <td>
                     <span class="id-with-dot">
@@ -1179,9 +1164,187 @@
                     </div>
                   </td>
                 </tr>
+                {% endif %}
                 {% endfor %}
-              </tbody>
-            </table>
+              </tbody></table>
+            </div>
+          </div>
+
+          <div class="subpanel" id="panelAtribuidas" hidden>
+            <div class="subpanel-head">
+              <h3 class="subpanel-title">Entregas atribuídas de hoje</h3>
+              <div class="section-note">Mesmas ações: pago, entregue, editar, excluir, cupom e rastreio.</div>
+            </div>
+            <div class="table-wrap">
+              <table class="tabela"><thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Cliente</th>
+                  <th>Bairro</th>
+                  <th>Endereço</th>
+                  <th>Valor</th>
+                  <th>Data<br>e<br>Dia</th>
+                  <th>Hora<br>Pedido</th>
+                  <th>Hora<br>Atribuída</th>
+                  <th>Cooperado</th>
+                  <th>Forma Pgto</th>
+                  <th>Status</th>
+                  <th>Pagamento</th>
+                  <th>Recebido por</th>
+                  <th>Rastreio</th>
+                  <th>Ações</th>
+                </tr>
+              </thead><tbody>
+                {% for e in entregas %}
+                {% set tem_coop = (e.cooperado is not none) %}
+                {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
+                {% set st = e.status|lower if e.status else 'pendente' %}
+                {% if tem_coop and e.data_envio and to_brasilia(e.data_envio).strftime('%Y-%m-%d') == to_brasilia(now()).strftime('%Y-%m-%d') %}
+                <tr data-id="{{ e.id }}">
+                  <td>
+                    <span class="id-with-dot">
+                      <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
+                            title="{{ 'Com cooperado atribuído' if tem_coop else 'Sem cooperado' }}"></span>
+                      <span>{{ e.id }}</span>
+                    </span>
+                  </td>
+
+                  <td>{{ e.cliente }}</td>
+                  <td>{{ e.bairro }}</td>
+                  <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
+
+                  <td>
+                    <span class="value-editable"
+                          data-id="{{ e.id }}"
+                          data-valor="{{ '%.2f'|format(e.valor) }}"
+                          title="Clique para alterar o valor">
+                      R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}
+                    </span>
+                  </td>
+
+                  <td>
+                    {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
+                    <span class="small">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}</span>
+                  </td>
+
+                  <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
+                  <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
+
+                  <td>
+                    <span class="coop-editable"
+                          data-id="{{ e.id }}"
+                          data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
+                          title="Clique para trocar o cooperado">
+                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
+                    </span>
+                  </td>
+
+                  <td>{{ e.pagamento }}</td>
+
+                  <td>
+                    {% set st_val = (e.status or 'pendente')|lower %}
+                    <span class="status-editable"
+                          data-id="{{ e.id }}"
+                          data-status="{{ st_val }}"
+                          title="Clique para alterar o status da entrega">
+                      {% if st_val in ['entregue','recebido'] %}
+                        <span class="pill yellow">Entregue</span>
+                      {% elif st_val in ['agendado'] %}
+                        <span class="pill blue">Agendado</span>
+                      {% else %}
+                        <span class="pill red">Pendente</span>
+                      {% endif %}
+                    </span>
+                  </td>
+
+                  <td>
+                    {% set sp_val = (e.status_pagamento or 'pendente')|lower %}
+                    <span class="pagamento-editable"
+                          data-id="{{ e.id }}"
+                          data-status-pagamento="{{ sp_val }}"
+                          title="Clique para alterar o status do pagamento">
+                      {% if sp_val == 'pago' %}
+                        <span class="pill green">Pago</span>
+                      {% else %}
+                        <span class="pill red">Pendente</span>
+                      {% endif %}
+                    </span>
+                  </td>
+
+                  <td class="td-recebido" style="text-align:center">
+                    <div class="recb-wrap">
+                      {% if tem_comprovante(e.id) %}
+                        <a class="foto-btn foto-ok" title="Ver foto" target="_blank" rel="noopener" href="{{ url_for('admin_ver_comprovante', entrega_id=e.id) }}">📷</a>
+                        <a class="foto-dl" title="Baixar foto" href="{{ url_for('admin_baixar_comprovante', entrega_id=e.id) }}">⬇</a>
+                      {% else %}
+                        <span class="foto-btn foto-no" title="Sem foto">📷</span>
+                      {% endif %}
+                      <div class="recb-nome" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</div>
+                    </div>
+                  </td>
+
+                  <td>
+                    {% set st_ent = (e.status or '')|lower %}
+                    {% if tem_coop and st_ent not in ['recebido','entregue'] %}
+                      {% set rastreio_link = url_for('rastreio_publico', token=token_rastreio(e.id), _external=True) %}
+                      <a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>
+                    {% elif tem_coop %}
+                      <span class="small">Encerrado</span>
+                    {% else %}
+                      <span class="small">—</span>
+                    {% endif %}
+                  </td>
+
+                  <td>
+                    <div class="actions">
+                      <a class="act-ico" title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" aria-label="Editar">
+                        <svg viewBox="0 0 24 24" fill="#1e40af">
+                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
+                        </svg>
+                      </a>
+
+                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
+                        <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
+                          <svg viewBox="0 0 24 24" fill="#1e40af">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
+                          </svg>
+                        </button>
+                      </form>
+
+                      <button type="button" class="act-ico" title="Imprimir cupom"
+                        data-id="{{ e.id }}"
+                        data-cliente="{{ e.cliente|e }}"
+                        data-bairro="{{ e.bairro|e }}"
+                        data-endereco="{{ (e.endereco if e.endereco is defined and e.endereco else '-')|e }}"
+                        data-valor="{{ '%.2f'|format(e.valor) }}"
+                        data-data="{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}"
+                        data-hora_pedido="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}"
+                        data-hora_atribuida="{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}"
+                        data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
+                        data-pagamento="{{ e.pagamento|e }}"
+                        
+                        data-recebido="{{ (e.recebido_por if e.recebido_por is defined else '')|e }}" onclick="imprimirCupom({{ e.id }}, this)">
+                        <svg viewBox="0 0 24 24" fill="#16a34a">
+                          <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
+                        </svg>
+                      </button>
+
+                      <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST"
+                            style="display:inline;"
+                            onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
+                        <button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir">
+                          <svg viewBox="0 0 24 24" fill="#b91c1c">
+                            <path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/>
+                          </svg>
+                        </button>
+                      </form>
+                    </div>
+                  </td>
+                </tr>
+                {% endif %}
+                {% endfor %}
+              </tbody></table>
+            </div>
           </div>
         </div>
 
@@ -2004,298 +2167,37 @@
 function abrirMapaTelaCheia() {
       try {
         var url = "{{ url_for('mapa_motoboys') }}";
-        var a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        window.open(url, '_blank', 'noopener,noreferrer');
       } catch (e) {
         console.error(e);
         showToast('<strong>Não foi possível abrir o mapa agora.</strong>');
       }
     }
 
+    function alternarAtribuidas(){
+      try{
+        var panel = document.getElementById('panelAtribuidas');
+        var btn = document.getElementById('btnToggleAtribuidas');
+        if(!panel || !btn) return;
+        var aberto = panel.hasAttribute('hidden');
+        if(aberto){
+          panel.removeAttribute('hidden');
+          btn.textContent = 'Ocultar atribuídas';
+        }else{
+          panel.setAttribute('hidden','hidden');
+          btn.textContent = 'Atribuídas hoje';
+        }
+      }catch(e){}
+    }
+
     window.addEventListener('DOMContentLoaded', function(){
       var btnFull = document.getElementById('btnFullMap');
       if (btnFull) btnFull.addEventListener('click', abrirMapaTelaCheia);
+      var btnToggle = document.getElementById('btnToggleAtribuidas');
+      if (btnToggle) btnToggle.addEventListener('click', alternarAtribuidas);
     });
   </script>
 
-  <!-- Leaflet -->
-  <script
-    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-    crossorigin=""></script>
-
-  <!-- MarkerCluster -->
-  <script src="https://unpkg.com/leaflet.markercluster@1.5.3/dist/leaflet.markercluster.js" crossorigin=""></script>
-
-  <script>
-    // ===== MAPA (SEM AGRUPAMENTO / COM LISTA + FILTRO) =====
-    window.addEventListener('DOMContentLoaded', function(){
-      var mapEl = document.getElementById('map-coopex');
-      if (!mapEl || typeof L === 'undefined') return;
-
-      var map = L.map('map-coopex', { zoomControl: true, preferCanvas: true }).setView([-5.7945, -35.211], 13);
-
-      // Tile COLORIDO e mais estável no Render
-      var tile = L.tileLayer('https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png', {
-        maxZoom: 20,
-        attribution: '&copy; OpenStreetMap &copy; CARTO',
-        subdomains: 'abcd'
-      }).addTo(map);
-
-      // força recalcular tamanho (muito comum o mapa nascer "travado")
-      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 300);
-      setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 1200);
-
-      // marcador: PIN + MOTO (SVG Base64) - online verde / offline vermelho
-function __svgToDataUrl(svg){
-  try{
-    var encoded = btoa(unescape(encodeURIComponent(svg)));
-    return "data:image/svg+xml;base64," + encoded;
-  }catch(e){
-    return "";
-  }
-}
-function __motoPinSvg(color){
-  return (
-    '<svg xmlns="http://www.w3.org/2000/svg" width="44" height="56" viewBox="0 0 44 56">' +
-      '<path d="M22 0C10.7 0 1.5 9.2 1.5 20.5C1.5 35.6 20.3 54.5 21.1 55.3C21.6 55.8 22.4 55.8 22.9 55.3C23.7 54.5 42.5 35.6 42.5 20.5C42.5 9.2 33.3 0 22 0Z" fill="'+color+'"/>' +
-      '<circle cx="22" cy="20.5" r="12.5" fill="#ffffff" opacity="0.98"/>' +
-      // moto (silhueta simples)
-      '<path d="M13.6 24.2c.7-2.2 2.7-3.7 5.1-3.7h2.1l1.3-2.1h3.8l-1.2 2.1h1.6c2.7 0 4.9 2.2 4.9 4.9 0 .3 0 .6-.1.9h-2.1c.1-.3.1-.6.1-.9 0-1.5-1.2-2.8-2.8-2.8h-6.7c-1.4 0-2.6.9-3 2.2l-.2.6h-2.8z" fill="#0b1220"/>' +
-      '<circle cx="17" cy="28" r="2.4" fill="#0b1220"/>' +
-      '<circle cx="29" cy="28" r="2.4" fill="#0b1220"/>' +
-    '</svg>'
-  );
-}
-function __iconSizeForZoom(z){
-  if (z >= 17) return 54;
-  if (z >= 15) return 48;
-  if (z >= 13) return 42;
-  return 36;
-}
-function __buildMotoIcon(online){
-  var color = online ? '#22c55e' : '#ef4444';
-  var size = __iconSizeForZoom(map.getZoom());
-  var url = __svgToDataUrl(__motoPinSvg(color));
-  return L.icon({
-    iconUrl: url,
-    iconSize: [size, Math.round(size * 56 / 44)],
-    iconAnchor: [Math.round(size/2), Math.round(size * 56 / 44) - 2],
-    popupAnchor: [0, -Math.round(size * 56 / 44) + 8]
-  });
-}
-
-function makeMarker(lat, lng, tooltipHtml, online){
-  var m = L.marker([lat, lng], { icon: __buildMotoIcon(online) }).addTo(map);
-  m.options.__online = !!online;
-
-  if (tooltipHtml){
-    m.bindTooltip(tooltipHtml, {direction:'top', sticky:true, opacity:0.95});
-    // popup com as mesmas infos do tooltip (e espaço para velocidade se vier no HTML)
-    m.bindPopup('<div style="min-width:220px">' + tooltipHtml + '</div>', {closeButton:true});
-  }
-  return m;
-}
-
-// reajusta tamanho dos ícones quando der zoom
-map.on('zoomend', function(){
-  try{
-    Object.keys(markers || {}).forEach(function(k){
-      var mk = markers[k];
-      if (mk && mk.setIcon){
-        mk.setIcon(__buildMotoIcon(!!mk.options.__online));
-      }
-    });
-  }catch(e){}
-});
-var markers = {}; // id -> marker
-      var lastData = [];
-      var currentFilter = 'all';
-
-      var selectedId = '';
-      var userInteracted = false;
-      var programmaticMove = false;
-
-      // Se o admin mexer no mapa (zoom/arrastar), não vamos mais resetar o zoom automaticamente
-      map.on('zoomstart movestart', function(){
-        if (!programmaticMove) userInteracted = true;
-      });
-
-      var sel = document.getElementById('mapSearch');
-      var filterSel = document.getElementById('mapFilter');
-
-      function isOnline(p){
-        if (typeof p.online === 'boolean') return p.online;
-        if (typeof p.is_online === 'boolean') return p.is_online;
-        var s = String(p.status || '').toLowerCase();
-        return (s.includes('online') || s.includes('livre') || s.includes('corrida'));
-      }
-
-      function renderList(list){
-        if (!sel) return;
-        var keep = sel.value;
-        sel.innerHTML = '<option value="">🔍 Localizar motoboy…</option>';
-        list.forEach(function(p){
-          var opt = document.createElement('option');
-          opt.value = String(p.id);
-          opt.textContent = p.nome || ('Motoboy ' + p.id);
-          sel.appendChild(opt);
-        });
-        // mantém seleção se ainda existir
-        if (keep && Array.from(sel.options).some(function(o){ return o.value === keep; })){
-          sel.value = keep;
-        }
-      }
-
-      function renderMarkers(list){
-        var seen = new Set();
-
-        list.forEach(function(p){
-          var lat = p.lat, lng = p.lng;
-          if (typeof lat !== 'number' || typeof lng !== 'number') return;
-
-          seen.add(String(p.id));
-
-          var online = isOnline(p);
-          var statusTxt = online ? 'ONLINE' : 'OFFLINE';
-          var html = '<b>'+ (p.nome||'') +'</b>'
-                   + '<br><span style="font-weight:800">'+statusTxt+'</span>'
-                   + (p.ultima_atualizacao ? '<br><span style="opacity:.9">'+p.ultima_atualizacao+'</span>' : '')
-                   + (p.endereco ? '<br><span style="opacity:.9">'+p.endereco+'</span>' : '');
-
-          if (!markers[String(p.id)]){
-            markers[String(p.id)] = makeMarker(lat, lng, html, online);
-          } else {
-            markers[String(p.id)].setLatLng([lat,lng]);
-            try{
-              markers[String(p.id)].options.__online = !!online;
-              if (markers[String(p.id)].setIcon){
-                markers[String(p.id)].setIcon(__buildMotoIcon(!!online));
-              }
-            }catch(e){}
-            try{ markers[String(p.id)].setTooltipContent(html); }catch(e){}
-            try{ markers[String(p.id)].setPopupContent('<div style="min-width:220px">'+html+'</div>'); }catch(e){}
-          }
-        });
-
-        // remove marcadores que sumiram
-        Object.keys(markers).forEach(function(k){
-          if(!seen.has(k)){
-            try{ map.removeLayer(markers[k]); }catch(e){}
-            delete markers[k];
-          }
-        });
-
-        // se não tem seleção, ajusta bounds (sem ficar pulando com zoom alto)
-        try{
-          if (list.length && (!sel || !sel.value)){
-            var pts = list
-              .filter(function(p){ return (typeof p.lat==='number' && typeof p.lng==='number'); })
-              .map(function(p){ return [p.lat, p.lng]; });
-            if (pts.length && !selectedId && !userInteracted){
-              map.fitBounds(pts, {padding:[30,30], maxZoom: 14});
-            }
-          }
-        }catch(e){}
-
-        setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 50);
-      }
-
-      function applyFilterAndRender(){
-        var list = lastData.slice();
-        if (currentFilter === 'online'){
-          list = list.filter(isOnline);
-        }
-        renderList(list);
-        renderMarkers(list);
-      }
-
-      if (filterSel){
-        filterSel.addEventListener('change', function(){
-          currentFilter = filterSel.value || 'all';
-          applyFilterAndRender();
-        });
-      }
-
-      if (sel){
-        sel.addEventListener('change', function(){
-          var id = sel.value;
-          selectedId = id || '';
-          if (!id) return;
-          programmaticMove = true;
-          var p = lastData.find(function(x){ return String(x.id) === String(id); });
-          if (!p || typeof p.lat !== 'number' || typeof p.lng !== 'number') return;
-
-          try{
-            map.setView([p.lat, p.lng], 16);
-            if (markers[String(p.id)]){
-              try{ markers[String(p.id)].openTooltip(); }catch(e){}
-            }
-          }catch(e){}
-        });
-      }
-
-      // Botão: mapa em tela cheia (tenta Fullscreen API; se falhar, usa CSS fullscreen)
-      var fullBtn = document.getElementById('btnFullMap');
-      function toggleFull(){
-        try{
-          var card = mapEl.closest('.map-card') || mapEl.parentElement;
-          if (!card) card = mapEl;
-          var goFull = !document.fullscreenElement;
-          if (goFull){
-            if (card.requestFullscreen){
-              card.requestFullscreen().then(function(){
-                setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 400);
-              }).catch(function(){
-                card.classList.add('fullscreen');
-                setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 200);
-              });
-            }else{
-              card.classList.add('fullscreen');
-              setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 200);
-            }
-          }else{
-            if (document.exitFullscreen){
-              document.exitFullscreen().catch(function(){});
-            }
-            card.classList.remove('fullscreen');
-            setTimeout(function(){ try{ map.invalidateSize(true); }catch(e){} }, 200);
-          }
-        }catch(e){}
-      }
-      if (fullBtn){
-        fullBtn.addEventListener('click', function(ev){
-          ev.preventDefault();
-          toggleFull();
-        });
-      }
-      document.addEventListener('fullscreenchange', function(){
-        try{ setTimeout(function(){ map.invalidateSize(true); }, 200); }catch(e){}
-      });
-
-      async function atualizar(){
-        try{
-          const r = await fetch('{{ url_for("mapa_motoboys") }}?format=json', {
-            cache:'no-store',
-            headers:{'X-Requested-With':'fetch', 'Accept':'application/json'}
-          });
-          if(!r.ok) return;
-          const data = await r.json();
-          if(!Array.isArray(data)) return;
-          lastData = data;
-          applyFilterAndRender();
-        }catch(e){}
-      }
-
-      atualizar();
-      setInterval(atualizar, 5000);
-    });
-  </script>
 <!-- CUPOM: Overlay de escolha/edição (não salva no banco, só imprime) -->
   <div id="cupomOverlay" style="display:none;">
     <div class="cupom-modal" role="dialog" aria-modal="true" aria-label="Imprimir cupom">
