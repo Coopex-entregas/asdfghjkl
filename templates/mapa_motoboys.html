@@ -336,6 +336,8 @@
       <button class="btn ghost" onclick="window.__startRoute && window.__startRoute()">Gravar rota</button>
       <button class="btn ghost" onclick="window.__stopRoute && window.__stopRoute()">Parar rota</button>
       <button class="btn ghost" onclick="window.__downloadRoute && window.__downloadRoute()">Baixar rota</button>
+      <button class="btn ghost" onclick="window.__startVideoRec && window.__startVideoRec()">Gravar vídeo</button>
+      <button class="btn ghost" onclick="window.__stopVideoRec && window.__stopVideoRec()">Parar vídeo</button>
       <button class="btn danger" onclick="window.close()">Fechar</button>
     </div>
   </div>
@@ -843,6 +845,154 @@
       renderList(seedArray);
       updateCounters(seedArray);
     });
-  </script>
+  
+
+    // ==============================
+    // GRAVAÇÃO DE VÍDEO DO MAPA/TELA
+    // Tenta MP4 primeiro; se o navegador não suportar, usa WEBM.
+    // ==============================
+    let __videoStream = null;
+    let __videoRecorder = null;
+    let __videoChunks = [];
+    let __videoMime = "";
+
+    function __pickBestVideoMime(){
+      const list = [
+        'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+        'video/mp4;codecs=h264,aac',
+        'video/mp4',
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm'
+      ];
+      for(const mt of list){
+        try{
+          if(window.MediaRecorder && MediaRecorder.isTypeSupported && MediaRecorder.isTypeSupported(mt)){
+            return mt;
+          }
+        }catch(e){}
+      }
+      return '';
+    }
+
+    function __downloadRecordedVideo(blob, mime){
+      const ext = (mime || '').startsWith('video/mp4') ? 'mp4' : 'webm';
+      const a = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      a.href = url;
+      a.download = `mapa_motoboys_${Date.now()}.${ext}`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      setTimeout(()=>URL.revokeObjectURL(url), 2500);
+      toast(`Vídeo salvo em ${ext.toUpperCase()}.`);
+    }
+
+    function __stopVideoTracks(){
+      try{
+        if(__videoStream){
+          __videoStream.getTracks().forEach(t=>{ try{ t.stop(); }catch(e){} });
+        }
+      }catch(e){}
+      __videoStream = null;
+    }
+
+    window.__startVideoRec = async function(){
+      try{
+        if(__videoRecorder && __videoRecorder.state === 'recording'){
+          alert('A gravação de vídeo já está em andamento.');
+          return;
+        }
+        if(!navigator.mediaDevices || !navigator.mediaDevices.getDisplayMedia){
+          alert('Esse navegador não suporta gravação da tela por esta função.');
+          return;
+        }
+
+        __videoMime = __pickBestVideoMime();
+        if(!__videoMime){
+          alert('Seu navegador não liberou um formato de gravação compatível.');
+          return;
+        }
+
+        __videoStream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            frameRate: 30,
+            displaySurface: 'browser'
+          },
+          audio: false,
+          preferCurrentTab: true,
+          selfBrowserSurface: 'include',
+          surfaceSwitching: 'include'
+        });
+
+        __videoChunks = [];
+        __videoRecorder = new MediaRecorder(__videoStream, {
+          mimeType: __videoMime,
+          videoBitsPerSecond: 5500000
+        });
+
+        __videoRecorder.ondataavailable = function(ev){
+          if(ev && ev.data && ev.data.size > 0) __videoChunks.push(ev.data);
+        };
+
+        __videoRecorder.onstop = function(){
+          try{
+            const blob = new Blob(__videoChunks, { type: __videoMime || 'video/webm' });
+            if(blob.size > 0){
+              __downloadRecordedVideo(blob, __videoMime || 'video/webm');
+            }else{
+              alert('A gravação terminou, mas o arquivo saiu vazio.');
+            }
+          }catch(e){
+            console.error(e);
+            alert('Não foi possível salvar o vídeo.');
+          }finally{
+            __videoChunks = [];
+            __videoRecorder = null;
+            __stopVideoTracks();
+            const rec=$('recIndicator'); if(rec) rec.classList.remove('on');
+          }
+        };
+
+        const vtrack = __videoStream.getVideoTracks && __videoStream.getVideoTracks()[0];
+        if(vtrack){
+          vtrack.addEventListener('ended', function(){
+            try{
+              if(__videoRecorder && __videoRecorder.state === 'recording'){
+                __videoRecorder.stop();
+              }
+            }catch(e){}
+          }, { once:true });
+        }
+
+        __videoRecorder.start(1000);
+        const rec=$('recIndicator'); if(rec) rec.classList.add('on');
+        if((__videoMime || '').startsWith('video/mp4')){
+          toast('Gravação iniciada. Na janela do navegador, escolha esta aba para salvar em MP4.');
+        }else{
+          toast('Gravação iniciada. Este navegador não suportou MP4 aqui, então o arquivo sairá em WEBM.');
+        }
+      }catch(e){
+        console.error(e);
+        __stopVideoTracks();
+        __videoRecorder = null;
+        const rec=$('recIndicator'); if(rec) rec.classList.remove('on');
+        alert('Não foi possível iniciar a gravação do vídeo.');
+      }
+    };
+
+    window.__stopVideoRec = function(){
+      try{
+        if(__videoRecorder && __videoRecorder.state === 'recording'){
+          __videoRecorder.stop();
+        }else{
+          alert('Nenhuma gravação de vídeo está em andamento.');
+        }
+      }catch(e){
+        console.error(e);
+        alert('Não foi possível parar a gravação do vídeo.');
+      }
+    };
+</script>
 </body>
 </html>
