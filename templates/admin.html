@@ -342,6 +342,82 @@
     }
 
     /* ===== MAPA ===== */
+    .map-wrapper{
+      padding:12px 12px 6px;
+      border-bottom:1px solid var(--line);
+    }
+    body.dark .map-wrapper{border-bottom:1px solid var(--line)}
+    .map-header{
+      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;
+      font-size:.9rem;
+      flex-wrap:wrap;
+    }
+    .map-header-main{display:flex;flex-direction:column;gap:6px}
+    .map-header-main strong{font-weight:900}
+
+    .map-legend-bar{
+      margin-top:8px;
+      display:flex;gap:12px;flex-wrap:wrap;
+      background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));
+      color:#fff;
+      padding:8px 10px;
+      border-radius:14px;
+      border:1px solid rgba(255,255,255,.18);
+      box-shadow:0 10px 26px rgba(0,0,0,.12);
+    }
+    .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.55)}
+    .legend-dot.on{ background:#10b981; }
+    .legend-dot.off{ background:#ef4444; }
+    .legend-item{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;opacity:.96}
+
+    .map-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .map-search{
+      min-width:240px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.45);
+      padding:9px 10px;
+      background:rgba(255,255,255,.14);
+      color:#fff;
+      font-size:.86rem;
+      font-weight:800;
+      outline:none;
+    }
+
+    .map-filter{
+      min-width:180px;
+      padding:10px 12px;
+      border-radius:12px;
+      border:1px solid rgba(255,255,255,.25);
+      background:rgba(255,255,255,.08);
+      color:#fff;
+      outline:none;
+    }
+    .map-filter option{color:#0b1220;}
+
+    .map-search option{ color:#000; }
+    .map-full-btn{
+      background:rgba(255,255,255,.14);
+      border:1px solid rgba(255,255,255,.45);
+      color:#fff;
+      border-radius:12px;
+      padding:9px 12px;
+      font-size:.86rem;
+      font-weight:900;
+      cursor:pointer;
+      white-space:nowrap;
+    }
+    .map-full-btn:hover{filter:brightness(1.08)}
+
+    #map-coopex{
+      width:100%;
+      height:340px;
+      border-radius:16px;
+      overflow:hidden;
+      box-shadow:0 10px 26px rgba(0,0,0,.18);
+      background:#020617;
+      border:1px solid rgba(255,255,255,.10);
+    }
+    @media (min-height:900px){ #map-coopex{height:390px;} }
 
     /* ===== FILTROS ===== */
     .filters-bar{
@@ -508,6 +584,13 @@
       text-decoration-color:rgba(255,255,255,.38);
     }
 
+
+    .quick-view-bar{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin:0 0 10px}
+    .quick-view-chip{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:999px;background:#eef4ff;border:1px solid var(--line-2);color:var(--royal);font-weight:900;font-size:.84rem}
+    body.dark .quick-view-chip{background:#101a33;color:#dbe6ff;border-color:#2a3a62}
+    .quick-view-chip.active{background:linear-gradient(135deg, rgba(15,53,181,.12), rgba(57,93,225,.18));box-shadow:0 10px 24px rgba(15,53,181,.10)}
+    body.hide-assigned .row-assigned{display:none}
+
     .value-input{
       width:110px;
       max-width:140px;
@@ -547,38 +630,6 @@
     .act-ico.danger{ background:#fee2e2; border-color:#fecaca; }
     body.dark .act-ico.danger{ background:#2e1313; border-color:#5b2828; }
     .act-ico svg{width:18px;height:18px}
-
-
-
-    /* ===== PAINEL LEVE ===== */
-    .quick-actions-grid{
-      display:grid;
-      grid-template-columns:repeat(4, minmax(0,1fr));
-      gap:10px;
-      width:100%;
-    }
-    .quick-actions-grid .btn{width:100%;justify-content:center;box-shadow:none;border:1px solid rgba(15,53,181,.20)}
-    .subpanel{padding:0 12px 12px}
-    .subpanel[hidden]{display:none !important}
-    .subpanel-head{
-      display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;
-      padding:12px 0 10px;
-    }
-    .subpanel-title{margin:0;font-size:.96rem;font-weight:900;color:#18308f}
-    body.dark .subpanel-title{color:#cfe0ff}
-    .section-note{font-size:.82rem;color:var(--muted);font-weight:800}
-    .empty-box{
-      border:1px dashed var(--line-2);
-      border-radius:16px;
-      padding:16px;
-      text-align:center;
-      font-weight:900;
-      color:var(--muted);
-      background:rgba(255,255,255,.55);
-    }
-    body.dark .empty-box{background:rgba(15,23,42,.55)}
-    @media (max-width:980px){ .quick-actions-grid{grid-template-columns:1fr 1fr} }
-    @media (max-width:640px){ .quick-actions-grid{grid-template-columns:1fr} }
 
     /* ===== Modal ===== */
     #overlay{
@@ -714,10 +765,18 @@
     .recb-wrap{display:flex;flex-direction:column;align-items:center;gap:6px}
     .recb-nome{font-weight:800;font-size:.86rem;opacity:.92;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
+.map-card.fullscreen {
+  position: fixed;
+  top: 12px; left: 12px; right: 12px; bottom: 12px;
+  z-index: 99999;
+  border-radius: 16px;
+  overflow: hidden;
+}
+.map-card.fullscreen #map-coopex {
+  height: calc(100vh - 120px) !important;
+}
 
-
-
-    .hidden{display:none !important;}
 </style>
 </head>
 
@@ -842,9 +901,8 @@
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
-          
+
         </div>
-        <!-- MAPA REMOVIDO DA TELA PRINCIPAL PARA FICAR LEVE -->
 
         <!-- FILTROS -->
         <div class="filters-bar">
@@ -900,32 +958,30 @@
           </div>
 
           <div class="filters-actions">
-            <div class="quick-actions-grid">
-              <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
-                + Agendar entrega
-              </button>
-              <button class="btn alt" type="button" id="btnToggleAtribuidas">
-                Atribuídas hoje
-              </button>
-              <button class="btn alt" type="button" id="btnFullMap">
-                Mapa
-              </button>
-              <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
-                Ver agenda
-              </button>
-            </div>
+            <button class="btn alt" type="button" onclick="window.location.href='{{ url_for('agendar_entrega') }}'">
+              + Agendar entrega
+            </button>
+            <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="false">
+              Atribuídas de hoje
+            </button>
+            <button class="btn alt" type="button" onclick="abrirMapaTelaCheia()">
+              Mapa
+            </button>
+            <button class="btn alt" type="button" onclick="window.location.href='{{ agenda_url }}'">
+              Ver agenda
+            </button>
           </div>
         </div>
 
-        <!-- TABELAS -->
+        <!-- TABELA -->
+        <div class="quick-view-bar">
+          <div class="quick-view-chip active" id="chipOpenOnly">Em aberto primeiro</div>
+          <div class="quick-view-chip" id="chipAssignedInfo">Atribuídas escondidas até clicar no botão</div>
+        </div>
         <div class="table-shell">
-          <div class="subpanel">
-            <div class="subpanel-head">
-              <h3 class="subpanel-title">Entregas em aberto</h3>
-              <div class="section-note">A tela abre só com as não atribuídas para ficar mais rápida.</div>
-            </div>
-            <div class="table-wrap" id="tbl">
-              <table class="tabela"><thead>
+          <div class="table-wrap" id="tbl">
+            <table class="tabela">
+              <thead>
                 <tr>
                   <th>ID</th>
                   <th>Cliente</th>
@@ -943,13 +999,14 @@
                   <th>Rastreio</th>
                   <th>Ações</th>
                 </tr>
-              </thead><tbody>
+              </thead>
+
+              <tbody>
                 {% for e in entregas %}
                 {% set tem_coop = (e.cooperado is not none) %}
                 {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
                 {% set st = e.status|lower if e.status else 'pendente' %}
-                {% if not tem_coop %}
-                <tr data-id="{{ e.id }}">
+                <tr data-id="{{ e.id }}" class="{{ "row-assigned" if tem_coop else "row-open" }}" data-has-coop="{{ "1" if tem_coop else "0" }}">
                   <td>
                     <span class="id-with-dot">
                       <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
@@ -1090,187 +1147,9 @@
                     </div>
                   </td>
                 </tr>
-                {% endif %}
                 {% endfor %}
-              </tbody></table>
-            </div>
-          </div>
-
-          <div class="subpanel" id="panelAtribuidas" hidden>
-            <div class="subpanel-head">
-              <h3 class="subpanel-title">Entregas atribuídas de hoje</h3>
-              <div class="section-note">Mesmas ações: pago, entregue, editar, excluir, cupom e rastreio.</div>
-            </div>
-            <div class="table-wrap">
-              <table class="tabela"><thead>
-                <tr>
-                  <th>ID</th>
-                  <th>Cliente</th>
-                  <th>Bairro</th>
-                  <th>Endereço</th>
-                  <th>Valor</th>
-                  <th>Data<br>e<br>Dia</th>
-                  <th>Hora<br>Pedido</th>
-                  <th>Hora<br>Atribuída</th>
-                  <th>Cooperado</th>
-                  <th>Forma Pgto</th>
-                  <th>Status</th>
-                  <th>Pagamento</th>
-                  <th>Recebido por</th>
-                  <th>Rastreio</th>
-                  <th>Ações</th>
-                </tr>
-              </thead><tbody>
-                {% for e in entregas %}
-                {% set tem_coop = (e.cooperado is not none) %}
-                {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
-                {% set st = e.status|lower if e.status else 'pendente' %}
-                {% if tem_coop and e.data_envio and to_brasilia(e.data_envio).strftime('%Y-%m-%d') == to_brasilia(now()).strftime('%Y-%m-%d') %}
-                <tr data-id="{{ e.id }}">
-                  <td>
-                    <span class="id-with-dot">
-                      <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
-                            title="{{ 'Com cooperado atribuído' if tem_coop else 'Sem cooperado' }}"></span>
-                      <span>{{ e.id }}</span>
-                    </span>
-                  </td>
-
-                  <td>{{ e.cliente }}</td>
-                  <td>{{ e.bairro }}</td>
-                  <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
-
-                  <td>
-                    <span class="value-editable"
-                          data-id="{{ e.id }}"
-                          data-valor="{{ '%.2f'|format(e.valor) }}"
-                          title="Clique para alterar o valor">
-                      R$ {{ '%.2f'|format(e.valor) | replace('.', ',') }}
-                    </span>
-                  </td>
-
-                  <td>
-                    {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}<br>
-                    <span class="small">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else '' }}</span>
-                  </td>
-
-                  <td>{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-                  <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
-
-                  <td>
-                    <span class="coop-editable"
-                          data-id="{{ e.id }}"
-                          data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
-                          title="Clique para trocar o cooperado">
-                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
-                    </span>
-                  </td>
-
-                  <td>{{ e.pagamento }}</td>
-
-                  <td>
-                    {% set st_val = (e.status or 'pendente')|lower %}
-                    <span class="status-editable"
-                          data-id="{{ e.id }}"
-                          data-status="{{ st_val }}"
-                          title="Clique para alterar o status da entrega">
-                      {% if st_val in ['entregue','recebido'] %}
-                        <span class="pill yellow">Entregue</span>
-                      {% elif st_val in ['agendado'] %}
-                        <span class="pill blue">Agendado</span>
-                      {% else %}
-                        <span class="pill red">Pendente</span>
-                      {% endif %}
-                    </span>
-                  </td>
-
-                  <td>
-                    {% set sp_val = (e.status_pagamento or 'pendente')|lower %}
-                    <span class="pagamento-editable"
-                          data-id="{{ e.id }}"
-                          data-status-pagamento="{{ sp_val }}"
-                          title="Clique para alterar o status do pagamento">
-                      {% if sp_val == 'pago' %}
-                        <span class="pill green">Pago</span>
-                      {% else %}
-                        <span class="pill red">Pendente</span>
-                      {% endif %}
-                    </span>
-                  </td>
-
-                  <td class="td-recebido" style="text-align:center">
-                    <div class="recb-wrap">
-                      {% if tem_comprovante(e.id) %}
-                        <a class="foto-btn foto-ok" title="Ver foto" target="_blank" rel="noopener" href="{{ url_for('admin_ver_comprovante', entrega_id=e.id) }}">📷</a>
-                        <a class="foto-dl" title="Baixar foto" href="{{ url_for('admin_baixar_comprovante', entrega_id=e.id) }}">⬇</a>
-                      {% else %}
-                        <span class="foto-btn foto-no" title="Sem foto">📷</span>
-                      {% endif %}
-                      <div class="recb-nome" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</div>
-                    </div>
-                  </td>
-
-                  <td>
-                    {% set st_ent = (e.status or '')|lower %}
-                    {% if tem_coop and st_ent not in ['recebido','entregue'] %}
-                      {% set rastreio_link = url_for('rastreio_publico', token=token_rastreio(e.id), _external=True) %}
-                      <a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>
-                    {% elif tem_coop %}
-                      <span class="small">Encerrado</span>
-                    {% else %}
-                      <span class="small">—</span>
-                    {% endif %}
-                  </td>
-
-                  <td>
-                    <div class="actions">
-                      <a class="act-ico" title="Editar" href="{{ url_for('editar_entrega', id=e.id) }}" aria-label="Editar">
-                        <svg viewBox="0 0 24 24" fill="#1e40af">
-                          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-                        </svg>
-                      </a>
-
-                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
-                        <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
-                          <svg viewBox="0 0 24 24" fill="#1e40af">
-                            <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                          </svg>
-                        </button>
-                      </form>
-
-                      <button type="button" class="act-ico" title="Imprimir cupom"
-                        data-id="{{ e.id }}"
-                        data-cliente="{{ e.cliente|e }}"
-                        data-bairro="{{ e.bairro|e }}"
-                        data-endereco="{{ (e.endereco if e.endereco is defined and e.endereco else '-')|e }}"
-                        data-valor="{{ '%.2f'|format(e.valor) }}"
-                        data-data="{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}"
-                        data-hora_pedido="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}"
-                        data-hora_atribuida="{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}"
-                        data-cooperado="{{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}"
-                        data-pagamento="{{ e.pagamento|e }}"
-                        
-                        data-recebido="{{ (e.recebido_por if e.recebido_por is defined else '')|e }}" onclick="imprimirCupom({{ e.id }}, this)">
-                        <svg viewBox="0 0 24 24" fill="#16a34a">
-                          <path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/>
-                        </svg>
-                      </button>
-
-                      <form action="{{ url_for('excluir_entrega', id=e.id) }}" method="POST"
-                            style="display:inline;"
-                            onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');">
-                        <button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir">
-                          <svg viewBox="0 0 24 24" fill="#b91c1c">
-                            <path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/>
-                          </svg>
-                        </button>
-                      </form>
-                    </div>
-                  </td>
-                </tr>
-                {% endif %}
-                {% endfor %}
-              </tbody></table>
-            </div>
+              </tbody>
+            </table>
           </div>
         </div>
 
@@ -1298,6 +1177,622 @@
   <!-- áudios -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
+  <!-- Socket.IO -->
+  <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
+  <script>
+    const socket = io("{{ request.host_url.rstrip('/') }}", {
+      transports: ["polling"],
+      path: "/socket.io/",
+      reconnection: true,
+      reconnectionAttempts: Infinity,
+      reconnectionDelay: 1000
+    });
+    socket.on("connect", () => console.log("Socket conectado (polling), id:", socket.id));
+    socket.on("connect_error", (err) => console.error("Erro na conexão Socket.IO:", err));
+  </script>
+
+  <script>
+    window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
+    window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
+
+    function formatBRLFromNumberLike(v){
+      const n = Number(String(v).replace(",", "."));
+      if (Number.isFinite(n)) return "R$ " + n.toFixed(2).replace(".", ",");
+      return String(v || "").trim() || "R$ 0,00";
+    }
+    function parseNumberFromBRL(text){
+      if(!text) return 0;
+      let t = String(text).replace(/[^\d,.-]/g,'').trim();
+      t = t.replace(/\.(?=\d{3}(\D|$))/g, '');
+      t = t.replace(',', '.');
+      const n = Number(t);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    let _toastTimer = null;
+    function showToast(msg){
+      const el = document.getElementById('toast');
+      const tx = document.getElementById('toastText');
+      if(!el || !tx) return;
+      tx.innerHTML = msg;
+      el.style.display = 'flex';
+      clearTimeout(_toastTimer);
+      _toastTimer = setTimeout(hideToast, 2600);
+    }
+    function hideToast(){
+      const el = document.getElementById('toast');
+      if(!el) return;
+      el.style.display = 'none';
+      clearTimeout(_toastTimer);
+      _toastTimer = null;
+    }
+
+    function showModal(title, html){
+      const ov = document.getElementById('overlay');
+      const tt = document.getElementById('modal-title');
+      const msg = document.getElementById('modal-msg');
+      if(!ov || !tt || !msg) return;
+      tt.textContent = title || 'Aviso';
+      msg.innerHTML = html || '';
+      ov.style.display = 'flex';
+      document.body.classList.add('locked');
+    }
+    function hideModal(){
+      const ov = document.getElementById('overlay');
+      if(!ov) return;
+      ov.style.display = 'none';
+      document.body.classList.remove('locked');
+    }
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const ok = document.getElementById('modal-ok');
+      const ov = document.getElementById('overlay');
+      if(ok) ok.addEventListener('click', hideModal);
+      if(ov) ov.addEventListener('click', (e)=>{
+        if(e.target === ov) hideModal();
+      });
+    });
+
+    function contarSemCooperado(){
+      try{
+        const rows = document.querySelectorAll('.tabela tbody tr');
+        let n = 0;
+        rows.forEach(tr=>{
+          const el = tr.querySelector('.coop-editable');
+          const cid = el?.dataset?.cooperadoId || '';
+          if(!cid) n++;
+        });
+        return n;
+      }catch(e){ return 0; }
+    }
+    function atualizarBadgeAbertas(){
+      const badge = document.getElementById('abertasBadge');
+      if(!badge) return;
+      const n = contarSemCooperado();
+      badge.textContent = n + ' em aberto';
+      badge.style.display = 'inline-flex';
+    }
+
+    (function(){
+      try{
+        const saved = localStorage.getItem('coopex_theme') || 'light';
+        if(saved === 'dark') document.body.classList.add('dark');
+        const btn = document.getElementById('btnTheme');
+        const sync = ()=> btn && (btn.textContent = document.body.classList.contains('dark') ? 'Modo claro' : 'Modo escuro');
+        if(btn){
+          sync();
+          btn.addEventListener('click', ()=>{
+            document.body.classList.toggle('dark');
+            localStorage.setItem('coopex_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
+            sync();
+          });
+        }
+      }catch(e){}
+    })();
+
+    window.addEventListener('DOMContentLoaded', function(){
+      atualizarBadgeAbertas();
+      try{
+        document.body.classList.add('hide-assigned');
+        const btn = document.getElementById('btnToggleAssigned');
+        const chipAssigned = document.getElementById('chipAssignedInfo');
+        const syncAssignedUi = ()=>{
+          const mostrando = !document.body.classList.contains('hide-assigned');
+          if(btn){
+            btn.setAttribute('aria-expanded', mostrando ? 'true' : 'false');
+            btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Atribuídas de hoje';
+          }
+          if(chipAssigned){
+            chipAssigned.textContent = mostrando ? 'Atribuídas visíveis' : 'Atribuídas escondidas até clicar no botão';
+            chipAssigned.classList.toggle('active', mostrando);
+          }
+        };
+        syncAssignedUi();
+        if(btn){
+          btn.addEventListener('click', function(){
+            document.body.classList.toggle('hide-assigned');
+            syncAssignedUi();
+          });
+        }
+      }catch(e){}
+    });
+
+    document.addEventListener('click', (ev)=>{
+      const st = ev.target.closest?.('.js-toggle-pagto, .js-toggle-entrega');
+      if(!st) return;
+      const form = st.closest?.('form');
+      if(!form) return;
+
+      const confirmar = st.classList.contains('js-toggle-pagto')
+        ? 'Confirmar pagamento como PAGO?'
+        : 'Confirmar entrega como ENTREGUE?';
+      if(!confirm(confirmar)) return;
+
+      ev.preventDefault();
+      try{
+        const fd = new FormData(form);
+        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+          .then(res=>{
+            if(!res.ok) throw new Error('Falha ao atualizar.');
+            showToast('<strong>Atualizado com sucesso.</strong>');
+            setTimeout(()=> location.reload(), 350);
+          })
+          .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
+      }catch(e){
+        showToast('<strong>Não foi possível atualizar agora.</strong>');
+      }
+    });
+
+    function removerDaFilaPorNome(nome){
+      try{
+        if(!nome) return;
+        const ul = document.getElementById('espera-lista');
+        if(!ul) return;
+
+        const itens = ul.querySelectorAll('.espera-chip');
+        let alvo = null;
+        itens.forEach(li=>{
+          const txt = (li.querySelector('.espera-chip-text')?.textContent || '').trim().toLowerCase();
+          if(txt && txt === String(nome).trim().toLowerCase()) alvo = li;
+        });
+        if(!alvo) return;
+
+        const form = alvo.querySelector('form');
+        if(form?.action){
+          fetch(form.action, { method:'POST', headers:{'X-Requested-With':'fetch'} }).catch(()=>{});
+        }
+        alvo.remove();
+
+        const restou = ul.querySelectorAll('.espera-chip').length;
+        if(restou === 0){
+          const li = document.createElement('li');
+          li.id = 'fila-vazia';
+          li.className = 'small';
+          li.style.opacity = '.85';
+          li.textContent = 'Nenhum cooperado na fila.';
+          ul.appendChild(li);
+        }
+      }catch(e){}
+    }
+
+
+    function atualizarLinhaEntregaDepoisEdicao(elRef, cooperadoId){
+      try{
+        const tr = elRef && elRef.closest ? elRef.closest('tr') : null;
+        if(!tr) return;
+        const temCoop = !!(cooperadoId && String(cooperadoId).trim());
+        tr.dataset.hasCoop = temCoop ? '1' : '0';
+        tr.classList.toggle('row-open', !temCoop);
+        tr.classList.toggle('row-assigned', temCoop);
+        const dot = tr.querySelector('.status-dot');
+        if(dot){
+          dot.classList.toggle('ok', temCoop);
+          dot.classList.toggle('no', !temCoop);
+          dot.title = temCoop ? 'Com cooperado atribuído' : 'Sem cooperado';
+        }
+        atualizarBadgeAbertas();
+      }catch(e){}
+    }
+
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.coop-editable');
+      if(!el) return;
+
+      const idEntrega = el.dataset?.id || '';
+      const atual     = el.dataset?.cooperadoId || '';
+
+      const sel = document.createElement('select');
+      sel.style.borderRadius='12px';
+      sel.style.padding='7px 10px';
+      sel.style.fontWeight='900';
+
+      const opt0 = document.createElement('option');
+      opt0.value=''; opt0.textContent='Sem Cooperado';
+      sel.appendChild(opt0);
+
+      (window.COOPERADOS || []).forEach(c=>{
+        const o = document.createElement('option');
+        o.value=c.id;
+        o.textContent=c.nome;
+        if(String(c.id)===String(atual)) o.selected=true;
+        sel.appendChild(o);
+      });
+
+      el.parentNode.replaceChild(sel, el);
+      sel.focus();
+
+      function salvar(){
+        const coopId = sel.value || '';
+        let nomeEscolhido = 'Sem Cooperado';
+        if(sel.selectedIndex >= 0) nomeEscolhido = (sel.options[sel.selectedIndex]?.textContent || 'Sem Cooperado').trim();
+
+        try{
+          const url = '/atribuir_cooperado/' + idEntrega;
+          const fd  = new FormData();
+          fd.append('cooperado_id', coopId);
+          fd.append('notificar_painel', '1');
+
+          fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+            .then(()=>{
+              if(coopId) removerDaFilaPorNome(nomeEscolhido);
+              showToast('<strong>Cooperado atualizado.</strong>');
+            })
+            .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
+        }catch(e){
+          showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
+        }
+
+        const span = document.createElement('span');
+        span.className = 'coop-editable';
+        span.dataset.id = idEntrega;
+        span.dataset.cooperadoId = sel.value;
+        span.title = 'Clique para trocar o cooperado';
+
+        let nome = 'Sem Cooperado';
+        if(sel.value){
+          const found = (window.COOPERADOS || []).find(x => String(x.id)===String(sel.value));
+          if(found?.nome) nome = found.nome;
+        }
+        span.textContent = nome;
+        sel.parentNode.replaceChild(span, sel);
+
+        atualizarLinhaEntregaDepoisEdicao(span, sel.value);
+        atualizarBadgeAbertas();
+      }
+
+      sel.addEventListener('change', salvar);
+      sel.addEventListener('blur', ()=> salvar(), { once:true });
+    });
+
+    async function salvarInlineEntrega(idEntrega, payload){
+      try{
+        const r = await fetch(`/api/entregas/${idEntrega}/inline`, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body: JSON.stringify(payload || {})
+        });
+        if(!r.ok) return null;
+        return await r.json();
+      }catch(e){
+        return null;
+      }
+    }
+
+    function makePillStatus(st){
+      st = (st||'').toLowerCase();
+      if(st === 'agendado') return '<span class="pill blue">Agendado</span>';
+      if(st === 'entregue' || st === 'recebido') return '<span class="pill yellow">Entregue</span>';
+      return '<span class="pill red">Pendente</span>';
+    }
+    function makePillPagto(sp){
+      sp = (sp||'').toLowerCase();
+      if(sp === 'pago') return '<span class="pill green">Pago</span>';
+      return '<span class="pill red">Pendente</span>';
+    }
+
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.status-editable');
+      if(!el) return;
+      ev.preventDefault(); ev.stopPropagation();
+
+      const idEntrega = el.dataset?.id || '';
+      const atual = (el.dataset?.status || '').toLowerCase();
+
+      const sel = document.createElement('select');
+      sel.style.borderRadius='12px';
+      sel.style.padding='7px 10px';
+      sel.style.fontWeight='900';
+
+      const opts = [
+        {v:'pendente', t:'Pendente'},
+        {v:'agendado', t:'Agendado'},
+        {v:'recebido', t:'Entregue'},
+      ];
+      opts.forEach(o=>{
+        const op=document.createElement('option');
+        op.value=o.v; op.textContent=o.t;
+        if(o.v===atual || (atual==='' && o.v==='pendente')) op.selected=true;
+        sel.appendChild(op);
+      });
+
+      el.parentNode.replaceChild(sel, el);
+      sel.focus();
+
+      async function salvar(){
+        const st = sel.value || 'pendente';
+        const res = await salvarInlineEntrega(idEntrega, {status: st});
+        const span = document.createElement('span');
+        span.className='status-editable';
+        span.dataset.id=idEntrega;
+        span.dataset.status=st;
+        span.title='Clique para alterar o status da entrega';
+        span.innerHTML = makePillStatus(st);
+        sel.parentNode.replaceChild(span, sel);
+
+        if(res && res.ok){
+          showToast('<strong>Status atualizado.</strong>');
+        }else{
+          showToast('<strong>Não foi possível atualizar o status agora.</strong>');
+        }
+      }
+
+      sel.addEventListener('change', salvar);
+      sel.addEventListener('blur', ()=> salvar(), {once:true});
+    });
+
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.pagamento-editable');
+      if(!el) return;
+      ev.preventDefault(); ev.stopPropagation();
+
+      const idEntrega = el.dataset?.id || '';
+      const atual = (el.dataset?.statusPagamento || '').toLowerCase();
+
+      const sel = document.createElement('select');
+      sel.style.borderRadius='12px';
+      sel.style.padding='7px 10px';
+      sel.style.fontWeight='900';
+
+      const opts = [
+        {v:'pendente', t:'Pendente'},
+        {v:'pago', t:'Pago'},
+      ];
+      opts.forEach(o=>{
+        const op=document.createElement('option');
+        op.value=o.v; op.textContent=o.t;
+        if(o.v===atual || (atual==='' && o.v==='pendente')) op.selected=true;
+        sel.appendChild(op);
+      });
+
+      el.parentNode.replaceChild(sel, el);
+      sel.focus();
+
+      async function salvar(){
+        const sp = sel.value || 'pendente';
+        const res = await salvarInlineEntrega(idEntrega, {status_pagamento: sp});
+        const span = document.createElement('span');
+        span.className='pagamento-editable';
+        span.dataset.id=idEntrega;
+        span.dataset.statusPagamento=sp;
+        span.title='Clique para alterar o status do pagamento';
+        span.innerHTML = makePillPagto(sp);
+        sel.parentNode.replaceChild(span, sel);
+
+        if(res && res.ok){
+          showToast('<strong>Pagamento atualizado.</strong>');
+        }else{
+          showToast('<strong>Não foi possível atualizar o pagamento agora.</strong>');
+        }
+      }
+
+      sel.addEventListener('change', salvar);
+      sel.addEventListener('blur', ()=> salvar(), {once:true});
+    });
+
+    async function salvarValorEntrega(idEntrega, novo){
+      try{
+        const r1 = await fetch(`/api/entregas/${idEntrega}/valor`, {
+          method:'PATCH',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body: JSON.stringify({ valor: novo })
+        });
+        if(r1.ok) return true;
+      }catch(e){}
+
+      try{
+        const fd = new FormData();
+        fd.append('valor', novo);
+        fd.append('valor_servico', novo);
+        fd.append('atualizar_valor', '1');
+        fd.append('notificar_painel', '1');
+
+        const r2 = await fetch(`/editar_entrega/${idEntrega}`, {
+          method:'POST',
+          body: fd,
+          headers:{'X-Requested-With':'fetch'}
+        });
+        if(r2.ok) return true;
+      }catch(e){}
+
+      return false;
+    }
+
+    document.addEventListener('click', (ev)=>{
+      const el = ev.target.closest?.('.value-editable');
+      if(!el) return;
+
+      ev.preventDefault();
+      ev.stopPropagation();
+
+      const idEntrega = el.dataset?.id || '';
+      if(!idEntrega) return;
+
+      let valorAtual = el.dataset.valor || '';
+      if(!valorAtual) valorAtual = String(parseNumberFromBRL(el.textContent || '')).toFixed(2);
+
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.className = 'value-input';
+      input.inputMode = 'decimal';
+      input.value = String(valorAtual).replace('.', ',');
+
+      el.parentNode.replaceChild(input, el);
+      input.focus();
+      input.select();
+
+      async function finalizar(shouldSave){
+        const raw = (input.value || '').trim();
+        let num = parseNumberFromBRL(raw);
+        if(!Number.isFinite(num) || num <= 0) num = parseNumberFromBRL(valorAtual);
+        const novo = num.toFixed(2);
+
+        const span = document.createElement('span');
+        span.className = 'value-editable';
+        span.dataset.id = idEntrega;
+        span.dataset.valor = novo;
+        span.title = 'Clique para alterar o valor';
+        span.textContent = formatBRLFromNumberLike(novo);
+
+        input.parentNode.replaceChild(span, input);
+        if(!shouldSave) return;
+
+        const ok = await salvarValorEntrega(idEntrega, novo);
+        if(ok){
+          showToast('<strong>Valor atualizado.</strong>');
+        }else{
+          window.location.href = `/editar_entrega/${idEntrega}`;
+        }
+      }
+
+      input.addEventListener('keydown', (e)=>{
+        if(e.key === 'Enter'){ e.preventDefault(); finalizar(true); }
+        if(e.key === 'Escape'){ e.preventDefault(); finalizar(false); }
+      });
+      input.addEventListener('blur', ()=> finalizar(true), { once:true });
+    });
+
+    window.addEventListener('DOMContentLoaded', ()=>{
+      const btnMenu   = document.getElementById('btnMenu');
+      const sidePanel = document.getElementById('sidePanel');
+      if (!btnMenu || !sidePanel) return;
+
+      btnMenu.addEventListener('click', (e)=>{
+        e.stopPropagation();
+        const isOpen = sidePanel.classList.toggle('open');
+        if(isOpen) btnMenu.classList.add('open'); else btnMenu.classList.remove('open');
+      });
+
+      document.addEventListener('click', (ev)=>{
+        if (!sidePanel.classList.contains('open')) return;
+        if (ev.target === btnMenu || btnMenu.contains(ev.target)) return;
+        if (sidePanel.contains(ev.target)) return;
+        sidePanel.classList.remove('open');
+        btnMenu.classList.remove('open');
+      });
+    });
+
+    (function(){
+      const selCoop    = document.getElementById('cooperado-espera');
+      const inpNome    = document.getElementById('nome-espera');
+      const formEspera = document.getElementById('form-espera');
+
+      if (selCoop && inpNome){
+        selCoop.addEventListener('change', ()=>{
+          const opt  = selCoop.options[selCoop.selectedIndex];
+          const nome = opt ? (opt.text || '') : '';
+          if (!inpNome.value) inpNome.value = nome;
+        });
+      }
+      if (formEspera && selCoop && inpNome){
+        formEspera.addEventListener('submit', ()=>{
+          if (!inpNome.value) {
+            const opt  = selCoop.options[selCoop.selectedIndex];
+            const nome = opt ? (opt.text || '') : '';
+            inpNome.value = nome;
+          }
+        });
+      }
+    })();
+
+    (function(){
+      const ulFila = document.getElementById('espera-lista');
+      let dragEl = null;
+
+      function renumerar(){
+        const nums = ulFila ? ulFila.querySelectorAll('.espera-chip-num') : [];
+        nums.forEach((el,i)=> el.textContent = i+1);
+      }
+      function salvarOrdem(){
+        if(!ulFila) return;
+        const ids = [].map.call(ulFila.querySelectorAll('.espera-chip'), li => li.dataset.id);
+        fetch('/lista_espera/reordenar',{
+          method:'POST',
+          headers:{'Content-Type':'application/json'},
+          body:JSON.stringify({ordem:ids})
+        }).catch(()=>{});
+      }
+
+      if(ulFila){
+        ulFila.addEventListener('dragstart', (e)=>{
+          const li = e.target.closest('.espera-chip');
+          if(!li) return;
+          dragEl = li;
+          li.style.opacity = 0.6;
+        });
+        ulFila.addEventListener('dragend', (e)=>{
+          const li = e.target.closest('.espera-chip');
+          if(!li) return;
+          li.style.opacity = 1;
+          dragEl = null;
+          salvarOrdem();
+        });
+        ulFila.addEventListener('dragover', (e)=>{
+          e.preventDefault();
+          const li = e.target.closest('.espera-chip');
+          if(!li || li === dragEl) return;
+          const r = li.getBoundingClientRect();
+          const after = (e.clientY - r.top) > (r.height / 2);
+          if(after) li.after(dragEl); else li.before(dragEl);
+          renumerar();
+        });
+      }
+    })();
+
+    function atualizarOuInserirLinhaEntrega(dados){
+      if (!dados?.id || !dados?.linha_html) return;
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody) return;
+
+      const temp = document.createElement('tbody');
+      temp.innerHTML = dados.linha_html.trim();
+      const novaTr = temp.querySelector('tr');
+      if (!novaTr) return;
+
+      const trExistente = tbody.querySelector('tr[data-id="' + dados.id + '"]');
+      if (trExistente) tbody.replaceChild(novaTr, trExistente);
+      else tbody.prepend(novaTr);
+
+      atualizarBadgeAbertas();
+    }
+    function removerLinhaEntrega(id){
+      const tbody = document.querySelector('.tabela tbody');
+      if (!tbody || !id) return;
+      const tr = tbody.querySelector('tr[data-id="' + id + '"]');
+      if (tr) tr.remove();
+      atualizarBadgeAbertas();
+    }
+    function atualizarFilaEsperaTempoReal(htmlLista){
+      const ulFila = document.getElementById('espera-lista');
+      if (!ulFila || !htmlLista) return;
+      ulFila.innerHTML = htmlLista;
+    }
+
+    if (typeof socket !== 'undefined') {
+      socket.on('entrega_criada', atualizarOuInserirLinhaEntrega);
+      socket.on('entrega_atualizada', atualizarOuInserirLinhaEntrega);
+      socket.on('entrega_excluida', (dados)=> dados?.id && removerLinhaEntrega(dados.id));
+      socket.on('fila_espera_atualizada', (dados)=> dados?.html_lista && atualizarFilaEsperaTempoReal(dados.html_lista));
+    }
+  </script>
 
   <!-- CUPOM / MAPA TELA CHEIA -->
   <script>
@@ -1518,33 +2013,23 @@
         }
       });
     });
-  </script>
 
-  <script>
-    document.addEventListener('DOMContentLoaded', function(){
-      var btnMap = document.getElementById('btnFullMap');
-      if(btnMap){
-        btnMap.addEventListener('click', function(){
-          window.location.href = "{{ url_for('mapa_motoboys') }}";
-        });
+function abrirMapaTelaCheia() {
+      try {
+        var url = "{{ url_for('mapa_motoboys') }}";
+        var a = document.createElement('a');
+        a.href = url;
+        a.target = '_blank';
+        a.rel = 'noopener noreferrer';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+      } catch (e) {
+        console.error(e);
+        showToast('<strong>Não foi possível abrir o mapa agora.</strong>');
       }
-      var btnAtrib = document.getElementById('btnToggleAtribuidas');
-      var panel = document.getElementById('panelAtribuidas');
-      if(btnAtrib && panel){
-        btnAtrib.addEventListener('click', function(){
-          var isHidden = panel.hasAttribute('hidden');
-          if(isHidden){
-            panel.removeAttribute('hidden');
-            btnAtrib.textContent = 'Ocultar atribuídas';
-          }else{
-            panel.setAttribute('hidden','hidden');
-            btnAtrib.textContent = 'Atribuídas hoje';
-          }
-        });
-      }
-    });
+    }
   </script>
-
 <!-- CUPOM: Overlay de escolha/edição (não salva no banco, só imprime) -->
   <div id="cupomOverlay" style="display:none;">
     <div class="cupom-modal" role="dialog" aria-modal="true" aria-label="Imprimir cupom">
@@ -1698,5 +2183,6 @@
     }
   };
 </script>
+
 </body>
 </html>
