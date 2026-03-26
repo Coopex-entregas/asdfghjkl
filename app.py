@@ -3,7 +3,7 @@ import io
 import re
 import json
 import random
-from flask_socketio import SocketIO
+from flask_socketio import SocketIO, join_room, leave_room
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
@@ -40,15 +40,17 @@ app.config['SECRET_KEY'] = os.environ.get(
     'SECRET_KEY',
     'COOPEX_ULTRA_SEGURA_2024_FIXA'
 )
-
 # 🔽 INSTÂNCIA DO SOCKETIO LIGADA NO APP
-from flask_socketio import SocketIO
 
 socketio = SocketIO(
     app,
-    async_mode="threading",   # (opcional, mas bom deixar explícito)
+    async_mode="threading",
+    cors_allowed_origins="*",
+    manage_session=False,
     logger=False,
-    engineio_logger=False
+    engineio_logger=False,
+    ping_timeout=20,
+    ping_interval=25,
 )
 
 
@@ -81,6 +83,22 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 }
 
 db = SQLAlchemy(app)
+
+@app.route('/healthz')
+def healthz():
+    return ('OK', 200, {'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store'})
+
+@app.route('/readyz')
+def readyz():
+    try:
+        db.session.execute(text('SELECT 1'))
+        return ('READY', 200, {'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store'})
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return (f'NOT_READY: {e}', 503, {'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store'})
 
 PORTAL_PRINCIPAL_URL = os.environ.get("PORTAL_PRINCIPAL_URL", "https://financas-dxsu.onrender.com")
 
@@ -675,7 +693,7 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
             'ultima_atualizacao': ultima_str,
         }
 
-        socketio.emit('posicao_motoboy_atualizada', payload, broadcast=True)
+        socketio.emit('posicao_motoboy_atualizada', payload)
 
     except Exception as e:
         try:
@@ -787,8 +805,7 @@ def emitir_lista_espera():
 
         socketio.emit(
             "fila_espera_atualizada",
-            {"itens": payload},
-            broadcast=True
+            {"itens": payload}
         )
     except Exception as e:
         try:
@@ -3717,7 +3734,7 @@ def cooperado_socorro():
 
     # emite via socket (se o admin estiver conectado)
     try:
-        socketio.emit("socorro_novo", item, broadcast=True)
+        socketio.emit("socorro_novo", item)
     except Exception:
         pass
 
@@ -4371,6 +4388,11 @@ def api_trajetos_salvar():
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
 
+    try:
+        db.create_all()
+    except Exception:
+        pass
+
     data = request.get_json(silent=True) or {}
     try:
         cooperado_id = int(data.get('cooperado_id') or 0)
@@ -4390,46 +4412,55 @@ def api_trajetos_salvar():
     pts = []
     for p in pontos:
         try:
-            pts.append({
-                'lat': float(p.get('lat')),
-                'lng': float(p.get('lng')),
-                'tMs': int(p.get('tMs') or 0),
-            })
+            lat = float(p.get('lat'))
+            lng = float(p.get('lng'))
+            tms = int(p.get('tMs') or p.get('timestamp') or 0)
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                continue
+            pts.append({'lat': lat, 'lng': lng, 'tMs': tms})
         except Exception:
             continue
     if len(pts) < 2:
         return jsonify(ok=False, error='Pontos inválidos'), 400
 
-    metricas = _trajeto_metricas_from_points(pts)
-
-    inicio = None
-    fim = None
     try:
-        inicio = datetime.utcfromtimestamp((pts[0].get('tMs') or 0) / 1000.0)
-    except Exception:
-        inicio = datetime.utcnow()
-    try:
-        fim = datetime.utcfromtimestamp((pts[-1].get('tMs') or 0) / 1000.0)
-    except Exception:
-        fim = None
+        metricas = _trajeto_metricas_from_points(pts)
 
-    traj = Trajeto(
-        cooperado_id=cooperado_id,
-        inicio=inicio or datetime.utcnow(),
-        fim=fim,
-        distancia_m=metricas['distancia_m'],
-        duracao_s=metricas['duracao_s'],
-        velocidade_media_kmh=metricas['velocidade_media_kmh'],
-        origem_lat=metricas['origem_lat'],
-        origem_lng=metricas['origem_lng'],
-        destino_lat=metricas['destino_lat'],
-        destino_lng=metricas['destino_lng'],
-        pontos_json=json.dumps(pts, ensure_ascii=False),
-    )
-    db.session.add(traj)
-    db.session.commit()
+        try:
+            inicio = datetime.utcfromtimestamp((pts[0].get('tMs') or 0) / 1000.0)
+        except Exception:
+            inicio = datetime.utcnow()
+        try:
+            fim = datetime.utcfromtimestamp((pts[-1].get('tMs') or 0) / 1000.0)
+        except Exception:
+            fim = None
 
-    return jsonify(ok=True, id=traj.id, nome=cooperado.nome)
+        traj = Trajeto(
+            cooperado_id=cooperado_id,
+            inicio=inicio or datetime.utcnow(),
+            fim=fim,
+            distancia_m=metricas['distancia_m'],
+            duracao_s=metricas['duracao_s'],
+            velocidade_media_kmh=metricas['velocidade_media_kmh'],
+            origem_lat=metricas['origem_lat'],
+            origem_lng=metricas['origem_lng'],
+            destino_lat=metricas['destino_lat'],
+            destino_lng=metricas['destino_lng'],
+            pontos_json=json.dumps(pts, ensure_ascii=False),
+        )
+        db.session.add(traj)
+        db.session.commit()
+        return jsonify(ok=True, id=traj.id, nome=cooperado.nome)
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            current_app.logger.exception('Falha ao salvar trajeto')
+        except Exception:
+            pass
+        return jsonify(ok=False, error=f'Falha ao salvar histórico: {e}'), 500
 
 
 @app.route('/api/trajetos/historico')
