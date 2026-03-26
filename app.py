@@ -2898,23 +2898,8 @@ def admin():
         }
         for c in cooperados
     ]
-
-    motoboys_js = []
-    for c in cooperados:
-        if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
-            is_online, idle_s, status_str = calc_status_cooperado(c)
-
-            motoboys_js.append({
-                "id": c.id,
-                "nome": c.nome,
-                "lat": c.last_lat,
-                "lng": c.last_lng,
-                "online": bool(is_online),
-                "status": status_str,
-                "idle_seconds": idle_s,
-                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
-                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
-            })
+    # Mapa removido do admin para reduzir carga da rota /admin.
+    # A tela em tempo real fica somente em /mapa_motoboys.
 
     html = render_template(
         'admin.html',
@@ -2931,7 +2916,6 @@ def admin():
         lista_espera=lista_espera,
         cooperados_disponiveis=cooperados_disponiveis,
         cooperados_js=cooperados_js,
-        motoboys_js=motoboys_js,
     )
     return _patch_admin_top_link(html)
 
