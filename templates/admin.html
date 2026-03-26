@@ -1177,7 +1177,7 @@
   <!-- áudios -->
   <audio id="som-pendente" src="{{ url_for('static', filename='aviso_pendente.mp3') }}"></audio>
 
-  <!-- Socket.IO -->
+  <!-- Socket.IO (entregas/lista de espera; mapa fica só em mapa_motoboys) -->
   <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
   <script>
     const socket = io("{{ request.host_url.rstrip('/') }}", {
@@ -1193,7 +1193,6 @@
 
   <script>
     window.COOPERADOS = {{ cooperados_js | default([]) | tojson | safe }};
-    window.MOTOBOYS   = {{ motoboys_js | default([]) | tojson | safe }};
 
     function formatBRLFromNumberLike(v){
       const n = Number(String(v).replace(",", "."));
