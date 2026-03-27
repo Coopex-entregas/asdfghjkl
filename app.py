@@ -17,7 +17,7 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, or_, case
+from sqlalchemy import func, or_
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -2881,19 +2881,16 @@ def admin():
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
 
-    hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
     # padrão: dia de hoje
     if not data_inicio and not data_fim:
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
+        hoje_brasil = datetime.now(BRAZIL_TZ).date()
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
     if cooperado_id and cooperado_id != 'todos':
-        try:
-            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
-        except Exception:
-            pass
+        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
 
     if data_inicio:
         di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
@@ -2927,34 +2924,65 @@ def admin():
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = nao_atribuidos + atribuidos
 
+    # AQUI você já tinha isso:
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
+    hoje = datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
-    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
 
-    stats_row = db.session.query(
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
-    ).select_from(Entrega).one()
-    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
+    total_dia = Entrega.query.filter(
+        Entrega.data_envio >= inicio_dia_utc,
+        Entrega.data_envio <= fim_dia_utc
+    ).count()
+    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+    total_mes = Entrega.query.filter(
+        Entrega.data_envio >= mes_ini_utc,
+        Entrega.data_envio <= mes_fim_utc
+    ).count()
+    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+    total_ano = Entrega.query.filter(
+        Entrega.data_envio >= ano_ini_utc,
+        Entrega.data_envio <= ano_fim_utc
+    ).count()
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
     feriado_hoje = verifica_feriado(hoje)
-    tem_pendente = pendentes_dia > 0
+    tem_pendente = Entrega.query.filter(
+        Entrega.data_envio >= inicio_dia_utc,
+        Entrega.data_envio <= fim_dia_utc,
+        (Entrega.status_pagamento == None) |
+        (func.lower(Entrega.status_pagamento) == 'pendente')
+    ).count() > 0
 
-    lista_espera = (
-        ListaEspera.query
-        .options(joinedload(ListaEspera.cooperado))
-        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
-        .all()
-    )
+    lista_espera = ListaEspera.query.order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc()).all()
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
-    cooperados_js = [{"id": c.id, "nome": c.nome} for c in cooperados]
+    # >>> NOVO: listas seguras para o JavaScript <<<
+    cooperados_js = [
+        {
+            "id": c.id,
+            "nome": c.nome
+        }
+        for c in cooperados
+    ]
+
+    motoboys_js = []
+    for c in cooperados:
+        if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
+            is_online, idle_s, status_str = calc_status_cooperado(c)
+
+            motoboys_js.append({
+                "id": c.id,
+                "nome": c.nome,
+                "lat": c.last_lat,
+                "lng": c.last_lng,
+                "online": bool(is_online),
+                "status": status_str,
+                "idle_seconds": idle_s,
+                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
+                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
+            })
 
     html = render_template(
         'admin.html',
@@ -2975,25 +3003,50 @@ def admin():
     return _patch_admin_top_link(html)
 
 
-@app.route('/api/admin/kpis')
-def api_admin_kpis():
-    if not session.get('is_admin'):
-        return jsonify(ok=False, error='unauthorized'), 401
 
-    hoje = datetime.now(BRAZIL_TZ).date()
+def _admin_kpis_payload(ref_date=None):
+    hoje = ref_date or datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
     mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
     ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+    row = db.session.query(
+        func.sum(case((and_(Entrega.data_envio >= inicio_dia_utc, Entrega.data_envio <= fim_dia_utc), 1), else_=0)).label('total_dia'),
+        func.sum(case((and_(Entrega.data_envio >= mes_ini_utc, Entrega.data_envio <= mes_fim_utc), 1), else_=0)).label('total_mes'),
+        func.sum(case((and_(Entrega.data_envio >= ano_ini_utc, Entrega.data_envio <= ano_fim_utc), 1), else_=0)).label('total_ano'),
+    ).one()
+    return {
+        'total_dia': int(row.total_dia or 0),
+        'total_mes': int(row.total_mes or 0),
+        'total_ano': int(row.total_ano or 0),
+    }
 
-    stats_row = db.session.query(
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
-    ).select_from(Entrega).one()
 
-    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
-    return jsonify(ok=True, total_dia=total_dia, total_mes=total_mes, total_ano=total_ano, pendentes_dia=pendentes_dia)
+def _serialize_entrega_admin(e):
+    return {
+        'id': e.id,
+        'cliente': e.cliente,
+        'bairro': e.bairro,
+        'endereco': getattr(e, 'endereco', None) or '-',
+        'valor': float(e.valor or 0),
+        'data_envio_iso': to_brasilia(e.data_envio).isoformat() if e.data_envio else None,
+        'data_envio_local': to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else None,
+        'data_atribuida_iso': to_brasilia(e.data_atribuida).isoformat() if e.data_atribuida else None,
+        'cooperado_id': e.cooperado_id,
+        'cooperado_nome': (e.cooperado.nome if getattr(e, 'cooperado', None) else None),
+        'pagamento': e.pagamento,
+        'status': (e.status or 'pendente').lower(),
+        'status_pagamento': (e.status_pagamento or 'pendente').lower(),
+        'recebido_por': getattr(e, 'recebido_por', None) or '',
+        'dia_semana': to_brasilia(e.data_envio).strftime('%a') if e.data_envio else '',
+        'rastreio_url': (url_for('rastreio_publico', token=gerar_token_rastreio(e.id), _external=True) if e.cooperado_id and (e.status or '').lower() not in ['recebido','entregue'] else None),
+    }
+
+
+@app.get('/api/admin/kpis')
+def api_admin_kpis():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+    return jsonify(ok=True, kpis=_admin_kpis_payload())
 
 
 @app.route("/admin_novo_socorro")
@@ -4764,6 +4817,7 @@ def api_update_entrega_inline(entrega_id):
         cooperado_nome=(e.cooperado.nome if getattr(e, "cooperado", None) else None),
         status=e.status,
         status_pagamento=e.status_pagamento,
+        kpis=_admin_kpis_payload(),
     )
 
 
@@ -4950,6 +5004,7 @@ def cadastrar_entrega():
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
+            entrega = Entrega.query.options(joinedload(Entrega.cooperado)).get(entrega.id)
             return jsonify(
                 ok=True,
                 message=msg,
@@ -4959,6 +5014,8 @@ def cadastrar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
+                entrega=_serialize_entrega_admin(entrega),
+                kpis=_admin_kpis_payload(),
             )
 
         return redirect_back_to_admin()
@@ -5060,6 +5117,7 @@ def agendar_entrega():
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
+            entrega = Entrega.query.options(joinedload(Entrega.cooperado)).get(entrega.id)
             return jsonify(
                 ok=True,
                 message=msg,
@@ -5069,6 +5127,8 @@ def agendar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
+                entrega=_serialize_entrega_admin(entrega),
+                kpis=_admin_kpis_payload(),
             )
 
         return redirect_back_to_admin()
@@ -5388,7 +5448,8 @@ def api_atualizar_valor_entrega(id):
         entrega_id=e.id,
         valor=round(float(e.valor or 0), 2),
         status_pagamento=(e.status_pagamento or "").lower(),
-        changed=True
+        changed=True,
+        kpis=_admin_kpis_payload(),
     )
 
 @app.get('/api/cliente/saldo')
