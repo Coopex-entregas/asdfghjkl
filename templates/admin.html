@@ -328,6 +328,7 @@
     /* ===== CONTEÚDO PRINCIPAL ===== */
     .panel{
       margin-top:10px;
+      contain:layout paint style;
       background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
       border:1px solid var(--line);
       border-radius:18px;
@@ -436,6 +437,8 @@
     .table-shell{padding:12px;}
     .table-wrap{
       overflow:auto;
+      content-visibility:auto;
+      contain:layout paint style;
       border-radius:16px;
       border:1px solid var(--line);
       background:var(--card);
@@ -1249,9 +1252,9 @@
       }
       function ratingText(ms){
         if(!Number.isFinite(ms)) return '--';
-        if(ms <= 180) return 'bom';
-        if(ms <= 450) return 'normal';
-        if(ms <= 900) return 'lento';
+        if(ms <= 700) return 'Rápido';
+        if(ms <= 800) return 'normal';
+        if(ms <= 2900) return 'lento';
         return 'pesado';
       }
       function setChip(el, label, value, cls){
@@ -1275,6 +1278,7 @@
         return parts.join(' ') || 'ok';
       }
       async function medirPing(){
+        if(document.hidden) return;
         const t0 = performance.now();
         try{
           await fetch(window.location.pathname + '?_p=' + Date.now(), {method:'HEAD', cache:'no-store'});
@@ -1285,6 +1289,7 @@
         }
       }
       async function medirHealth(){
+        if(document.hidden) return;
         const t0 = performance.now();
         try{
           const r = await fetch('/healthz?_h=' + Date.now(), {method:'GET', cache:'no-store'});
@@ -1304,7 +1309,7 @@
           if(et === '4g') cls = 'good';
           else if(et === '3g') cls = 'warn';
           else if(et && et !== 'unknown') cls = 'bad';
-          const status = cls==='good' ? 'bom' : cls==='warn' ? 'lento' : cls==='bad' ? 'pesado' : 'normal';
+          const status = cls==='good' ? 'rapido' : cls==='warn' ? 'normal' : cls==='bad' ? 'lento' : 'normal';
           setChip(connEl, 'Conexão', `${status} <span class="diag-sep">·</span> ${fmtConn(c)}`, cls);
         }catch(e){ setChip(connEl, 'Conexão', 'pesado <span class="diag-sep">·</span> erro', 'bad'); }
       }
@@ -1338,10 +1343,10 @@
           }
         }catch(e){}
         medirRede();
-        medirPing();
-        medirHealth();
-        setInterval(medirPing, 30000);
-        setInterval(medirHealth, 45000);
+        setTimeout(medirPing, 800);
+        setTimeout(medirHealth, 1500);
+        setInterval(medirPing, 60000);
+        setInterval(medirHealth, 90000);
         const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
         if(c && c.addEventListener) c.addEventListener('change', medirRede);
       });
@@ -1453,11 +1458,15 @@
       el.parentNode.replaceChild(sel, el);
       sel.focus();
 
-      function salvar(){
+      let salvando = false;
+      async function salvar(){
+        if(salvando) return;
+        salvando = true;
         const coopId = sel.value || '';
         let nomeEscolhido = 'Sem Cooperado';
         if(sel.selectedIndex >= 0) nomeEscolhido = (sel.options[sel.selectedIndex]?.textContent || 'Sem Cooperado').trim();
 
+        let requestOk = false;
         try{
           window.__markActionStart&&window.__markActionStart();
           const url = '/atribuir_cooperado/' + idEntrega;
@@ -1465,14 +1474,18 @@
           fd.append('cooperado_id', coopId);
           fd.append('notificar_painel', '1');
 
-          fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
-            .then(()=>{
-              if(coopId) removerDaFilaPorNome(nomeEscolhido);
-              window.__markActionEnd&&window.__markActionEnd();
-              showToast('<strong>Cooperado atualizado.</strong>');
-            })
-            .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
+          const res = await fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
+          requestOk = !!(res && res.ok);
+          if(requestOk){
+            if(coopId) removerDaFilaPorNome(nomeEscolhido);
+            window.__markActionEnd&&window.__markActionEnd();
+            showToast('<strong>Cooperado atualizado.</strong>');
+          }else{
+            window.__markActionFail&&window.__markActionFail();
+            showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
+          }
         }catch(e){
+          window.__markActionFail&&window.__markActionFail();
           showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
         }
 
@@ -1568,7 +1581,10 @@
       el.parentNode.replaceChild(sel, el);
       sel.focus();
 
+      let salvando = false;
       async function salvar(){
+        if(salvando) return;
+        salvando = true;
         const st = sel.value || 'pendente';
         window.__markActionStart&&window.__markActionStart();
         const res = await salvarInlineEntrega(idEntrega, {status: st});
@@ -1619,7 +1635,10 @@
       el.parentNode.replaceChild(sel, el);
       sel.focus();
 
+      let salvando = false;
       async function salvar(){
+        if(salvando) return;
+        salvando = true;
         const sp = sel.value || 'pendente';
         window.__markActionStart&&window.__markActionStart();
         const res = await salvarInlineEntrega(idEntrega, {status_pagamento: sp});
@@ -1694,7 +1713,10 @@
       input.focus();
       input.select();
 
+      let finalizando = false;
       async function finalizar(shouldSave){
+        if(finalizando) return;
+        finalizando = true;
         const raw = (input.value || '').trim();
         let num = parseNumberFromBRL(raw);
         if(!Number.isFinite(num) || num <= 0) num = parseNumberFromBRL(valorAtual);
