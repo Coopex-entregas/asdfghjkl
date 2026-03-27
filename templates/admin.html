@@ -143,15 +143,13 @@
     .kpi small{display:block;opacity:.95;font-weight:800}
     .kpi span{display:block;font-weight:900;font-size:1.18rem;line-height:1.1}
 
-    .diag-mini{display:flex;flex-direction:column;align-items:flex-start;gap:6px;min-width:152px;margin-right:10px;padding:8px 10px;border-radius:14px;border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.10);box-shadow:0 10px 24px rgba(0,0,0,.10) inset}
-    .diag-line{display:flex;align-items:center;justify-content:space-between;gap:10px;width:100%;min-height:22px}
-    .diag-name{font-size:.70rem;font-weight:900;letter-spacing:.02em;color:rgba(255,255,255,.92);text-transform:uppercase}
-    .diag-chip{display:inline-flex;align-items:center;justify-content:flex-end;gap:6px;min-height:22px;padding:2px 8px;border-radius:999px;border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.12);color:#fff;font-size:.72rem;font-weight:900;white-space:nowrap;box-shadow:0 6px 14px rgba(0,0,0,.08) inset}
-    .diag-chip b{font-size:.73rem}
-    .diag-chip.good{background:rgba(16,185,129,.18);border-color:rgba(167,243,208,.34)}
-    .diag-chip.normal{background:rgba(59,130,246,.16);border-color:rgba(191,219,254,.34)}
-    .diag-chip.slow{background:rgba(245,158,11,.18);border-color:rgba(253,230,138,.34)}
-    .diag-chip.heavy,.diag-chip.bad,.diag-chip.warn{background:rgba(239,68,68,.18);border-color:rgba(254,202,202,.34)}
+    .diag-mini{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:140px;margin-left:2px;padding:2px 0}
+    .diag-chip{display:grid;grid-template-columns:60px minmax(0,1fr);align-items:center;gap:7px;min-height:18px;padding:0;border:0;background:transparent;color:#eef4ff;font-size:.68rem;font-weight:600;line-height:1.05;white-space:nowrap;box-shadow:none;letter-spacing:.01em}
+    .diag-chip .lab{opacity:.94;font-weight:800;font-size:.63rem;letter-spacing:.05em;text-transform:uppercase}
+    .diag-chip b{display:inline-block;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.22);background:rgba(255,255,255,.10);font-size:.66rem;font-weight:700;overflow:hidden;text-overflow:ellipsis;max-width:132px}
+    .diag-chip.bad b{background:rgba(239,68,68,.16);border-color:rgba(239,68,68,.28)}
+    .diag-chip.warn b{background:rgba(245,158,11,.16);border-color:rgba(245,158,11,.30)}
+    .diag-chip.good b{background:rgba(16,185,129,.16);border-color:rgba(16,185,129,.28)}
 
     .logout{
       color:#fff;
@@ -715,13 +713,13 @@
       </div>
 
       <div class="kpis">
-        <div class="diag-mini" aria-label="Diagnóstico rápido">
-          <div class="diag-line"><span class="diag-name">Página</span><span class="diag-chip" id="diagPing"><b>--</b></span></div>
-          <div class="diag-line"><span class="diag-name">Servidor</span><span class="diag-chip" id="diagHealth"><b>--</b></span></div>
-          <div class="diag-line"><span class="diag-name">Operação</span><span class="diag-chip" id="diagAction"><b>--</b></span></div>
-          <div class="diag-line"><span class="diag-name">Conexão</span><span class="diag-chip" id="diagConn"><b>--</b></span></div>
-        </div>
         <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
+        <div class="diag-mini" aria-label="Diagnóstico rápido">
+          <span class="diag-chip" id="diagPing"><span class="lab">Página</span><b>--</b></span>
+          <span class="diag-chip" id="diagHealth"><span class="lab">Servidor</span><b>--</b></span>
+          <span class="diag-chip" id="diagAction"><span class="lab">Operação</span><b>--</b></span>
+          <span class="diag-chip" id="diagConn"><span class="lab">Conexão</span><b>--</b></span>
+        </div>
         <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
         <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
       </div>
@@ -1237,34 +1235,35 @@
       const actionEl = document.getElementById('diagAction');
       const connEl = document.getElementById('diagConn');
 
-      function setChip(el, value, cls){
-        if(!el) return;
-        el.classList.remove('good','normal','slow','heavy','warn','bad');
-        if(cls) el.classList.add(cls);
-        el.innerHTML = '<b>' + value + '</b>';
-      }
       function statusByMs(ms){
-        if(!Number.isFinite(ms)) return {cls:'', text:'--'};
-        if(ms <= 180) return {cls:'good', text:'bom · ' + ms + 'ms'};
-        if(ms <= 450) return {cls:'normal', text:'normal · ' + ms + 'ms'};
-        if(ms <= 900) return {cls:'slow', text:'lento · ' + ms + 'ms'};
-        return {cls:'heavy', text:'pesado · ' + ms + 'ms'};
+        if(!Number.isFinite(ms)) return {cls:'', txt:'--'};
+        if(ms <= 180) return {cls:'good', txt:'bom'};
+        if(ms <= 450) return {cls:'good', txt:'normal'};
+        if(ms <= 900) return {cls:'warn', txt:'lento'};
+        return {cls:'bad', txt:'pesado'};
       }
-      function statusByConn(txt, et){
-        const e = String(et || '').toLowerCase();
-        if(e === '4g') return {cls:'good', text:'bom · ' + (txt || '4g')};
-        if(e === '3g') return {cls:'slow', text:'lento · ' + (txt || '3g')};
-        if(e) return {cls:'heavy', text:'pesado · ' + txt};
-        return {cls:'normal', text: txt || 'normal'};
+      function statusByConn(effectiveType, downlink){
+        const et = String(effectiveType || '').toLowerCase();
+        if(et === '4g' && Number(downlink || 0) >= 5) return {cls:'good', txt:'bom'};
+        if(et === '4g' || et === '3g') return {cls:'warn', txt:'normal'};
+        if(et) return {cls:'bad', txt:'lento'};
+        return {cls:'', txt:'--'};
+      }
+      function setChip(el, label, value, cls){
+        if(!el) return;
+        el.classList.remove('good','warn','bad');
+        if(cls) el.classList.add(cls);
+        el.innerHTML = '<span class="lab">' + label + '</span><b>' + value + '</b>';
       }
       async function medirPing(){
         const t0 = performance.now();
         try{
           await fetch(window.location.pathname + '?_p=' + Date.now(), {method:'HEAD', cache:'no-store'});
           const ms = Math.round(performance.now() - t0);
-          { const s = statusByMs(ms); setChip(pingEl, s.text, s.cls); }
+          const s = statusByMs(ms);
+          setChip(pingEl, 'Página', s.txt + ' · ' + ms + 'ms', s.cls);
         }catch(e){
-          setChip(pingEl, 'pesado · erro', 'heavy');
+          setChip(pingEl, 'Página', 'pesado · erro', 'bad');
         }
       }
       async function medirHealth(){
@@ -1272,30 +1271,35 @@
         try{
           const r = await fetch('/healthz?_h=' + Date.now(), {cache:'no-store'});
           const ms = Math.round(performance.now() - t0);
-          setChip(healthEl, 'Srv', (r.ok ? ms + 'ms' : 'falha'), r.ok ? clsByMs(ms) : 'bad');
+          if(!r.ok){ setChip(healthEl, 'Servidor', 'pesado · falha', 'bad'); return; }
+          const s = statusByMs(ms);
+          setChip(healthEl, 'Servidor', s.txt + ' · ' + ms + 'ms', s.cls);
         }catch(e){
-          setChip(healthEl, 'pesado · erro', 'heavy');
+          setChip(healthEl, 'Servidor', 'pesado · erro', 'bad');
         }
       }
       function medirRede(){
         try{
           const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-          if(!c){ setChip(connEl, 'normal · n/d', 'normal'); return; }
-          const txt = [c.effectiveType || '', Number.isFinite(c.downlink) ? (c.downlink + 'Mb') : ''].filter(Boolean).join(' ');
-          const st = statusByConn(txt || 'ok', c.effectiveType || '');
-          setChip(connEl, st.text, st.cls);
-        }catch(e){ setChip(connEl, 'pesado · erro', 'heavy'); }
+          if(!c){ setChip(connEl, 'Conexão', '--', ''); return; }
+          const vel = Number.isFinite(c.downlink) ? (c.downlink + 'Mb') : '';
+          const txt = [String(c.effectiveType || '').toLowerCase(), vel].filter(Boolean).join(' ');
+          const s = statusByConn(c.effectiveType, c.downlink);
+          setChip(connEl, 'Conexão', (s.txt !== '--' ? s.txt + ' · ' : '') + (txt || '--'), s.cls);
+        }catch(e){ setChip(connEl, 'Conexão', 'pesado · erro', 'bad'); }
       }
       window.__markActionStart = function(){ window.__actionPerfStart = performance.now(); };
-      window.__markActionEnd = function(){
+      window.__markActionEnd = function(label){
         const t0 = window.__actionPerfStart;
         if(!Number.isFinite(t0)) return;
         const ms = Math.round(performance.now() - t0);
         const s = statusByMs(ms);
-        setChip(actionEl, s.text, s.cls);
+        const extra = label ? (label + ' ') : '';
+        setChip(actionEl, 'Operação', s.txt + ' · ' + extra + ms + 'ms', s.cls);
+        window.__actionPerfStart = null;
       };
       window.addEventListener('DOMContentLoaded', function(){
-        setChip(actionEl, '--', '');
+        setChip(actionEl, 'Operação', '--', '');
         medirRede();
         medirPing();
         medirHealth();
@@ -1304,6 +1308,13 @@
         const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
         if(c && c.addEventListener) c.addEventListener('change', medirRede);
       });
+      document.addEventListener('submit', function(ev){
+        const form = ev.target;
+        if(!form) return;
+        if(form.matches('.filters-form') || form.id === 'form-espera' || form.closest('.actions')){
+          window.__markActionStart && window.__markActionStart();
+        }
+      }, true);
     })();
 
     document.addEventListener('click', (ev)=>{
@@ -1319,12 +1330,12 @@
 
       ev.preventDefault();
       try{
-        window.__markActionStart&&window.__markActionStart();
         const fd = new FormData(form);
+        window.__markActionStart&&window.__markActionStart();
         fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
           .then(res=>{
             if(!res.ok) throw new Error('Falha ao atualizar.');
-            window.__markActionEnd&&window.__markActionEnd();
+            window.__markActionEnd&&window.__markActionEnd('ação');
             showToast('<strong>Atualizado com sucesso.</strong>');
             setTimeout(()=> location.reload(), 350);
           })
@@ -1427,7 +1438,7 @@
           fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
             .then(()=>{
               if(coopId) removerDaFilaPorNome(nomeEscolhido);
-              window.__markActionEnd&&window.__markActionEnd();
+              window.__markActionEnd&&window.__markActionEnd('ação');
               showToast('<strong>Cooperado atualizado.</strong>');
             })
             .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
@@ -1524,7 +1535,7 @@
         sel.parentNode.replaceChild(span, sel);
 
         if(res && res.ok){
-          window.__markActionEnd&&window.__markActionEnd();
+          window.__markActionEnd&&window.__markActionEnd('ação');
           showToast('<strong>Status atualizado.</strong>');
         }else{
           showToast('<strong>Não foi possível atualizar o status agora.</strong>');
@@ -1575,7 +1586,7 @@
         sel.parentNode.replaceChild(span, sel);
 
         if(res && res.ok){
-          window.__markActionEnd&&window.__markActionEnd();
+          window.__markActionEnd&&window.__markActionEnd('ação');
           showToast('<strong>Pagamento atualizado.</strong>');
         }else{
           showToast('<strong>Não foi possível atualizar o pagamento agora.</strong>');
@@ -1656,7 +1667,7 @@
         window.__markActionStart&&window.__markActionStart();
         const ok = await salvarValorEntrega(idEntrega, novo);
         if(ok){
-          window.__markActionEnd&&window.__markActionEnd();
+          window.__markActionEnd&&window.__markActionEnd('ação');
           showToast('<strong>Valor atualizado.</strong>');
         }else{
           window.location.href = `/editar_entrega/${idEntrega}`;
