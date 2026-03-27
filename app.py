@@ -3183,17 +3183,20 @@ def painel_cooperado():
         )
 
     # Filtros de data
-    if not todas_datas_flag:
+    # Regra de desempenho + uso:
+    # - padrão continua sendo dia atual
+    # - mas, ao pedir PENDENTES sem informar datas, mostra todas as pendentes
+    aplicar_filtro_padrao_hoje = (not todas_datas_flag and not inicio and not fim and status_pgto != 'pendente')
+
+    if aplicar_filtro_padrao_hoje:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
+        query = query.filter(
+            Entrega.data_envio >= inicio_utc,
+            Entrega.data_envio <= fim_utc
+        )
 
-        # Nenhuma data informada -> dia atual
-        if not inicio and not fim:
-            inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
-            query = query.filter(
-                Entrega.data_envio >= inicio_utc,
-                Entrega.data_envio <= fim_utc
-            )
-
+    if not todas_datas_flag:
         # Data inicial
         if inicio:
             di = datetime.strptime(inicio, "%Y-%m-%d").date()
