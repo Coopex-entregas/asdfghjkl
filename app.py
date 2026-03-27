@@ -17,7 +17,7 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, or_
+from sqlalchemy import func, or_, case
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -2933,27 +2933,17 @@ def admin():
     mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
     ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
 
-    total_dia = Entrega.query.filter(
-        Entrega.data_envio >= inicio_dia_utc,
-        Entrega.data_envio <= fim_dia_utc
-    ).count()
-    total_mes = Entrega.query.filter(
-        Entrega.data_envio >= mes_ini_utc,
-        Entrega.data_envio <= mes_fim_utc
-    ).count()
-    total_ano = Entrega.query.filter(
-        Entrega.data_envio >= ano_ini_utc,
-        Entrega.data_envio <= ano_fim_utc
-    ).count()
+    stats_row = db.session.query(
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
+    ).select_from(Entrega).one()
+    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
     feriado_hoje = verifica_feriado(hoje)
-    tem_pendente = Entrega.query.filter(
-        Entrega.data_envio >= inicio_dia_utc,
-        Entrega.data_envio <= fim_dia_utc,
-        (Entrega.status_pagamento == None) |
-        (func.lower(Entrega.status_pagamento) == 'pendente')
-    ).count() > 0
+    tem_pendente = pendentes_dia > 0
 
     lista_espera = (
         ListaEspera.query
@@ -2983,6 +2973,27 @@ def admin():
         cooperados_js=cooperados_js,
     )
     return _patch_admin_top_link(html)
+
+
+@app.route('/api/admin/kpis')
+def api_admin_kpis():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    hoje = datetime.now(BRAZIL_TZ).date()
+    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
+    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+
+    stats_row = db.session.query(
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
+    ).select_from(Entrega).one()
+
+    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
+    return jsonify(ok=True, total_dia=total_dia, total_mes=total_mes, total_ano=total_ano, pendentes_dia=pendentes_dia)
 
 
 @app.route("/admin_novo_socorro")
