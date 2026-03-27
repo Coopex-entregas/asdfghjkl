@@ -143,8 +143,8 @@
     .kpi small{display:block;opacity:.95;font-weight:800}
     .kpi span{display:block;font-weight:900;font-size:1.18rem;line-height:1.1}
 
-    .diag-mini{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:158px;max-width:170px;margin-right:8px;line-height:1}
-    .diag-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:18px;padding:0;border:0;background:transparent;color:#f8fbff;font-size:.67rem;font-weight:600;white-space:nowrap;box-shadow:none;letter-spacing:.01em}
+    .diag-mini{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:2px;min-width:142px;max-width:150px;margin-right:8px;line-height:1}
+    .diag-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:18px;padding:0;border:0;background:transparent;color:#f8fbff;font-size:.62rem;font-weight:600;white-space:nowrap;box-shadow:none;letter-spacing:.01em}
     .diag-chip .diag-label{opacity:.86;font-weight:700}
     .diag-chip .diag-value{font-weight:700;opacity:.98}
     .diag-chip .diag-sep{opacity:.45;margin:0 3px}
@@ -188,7 +188,7 @@
       color:var(--ink);
       border-bottom:1px solid var(--line);
       padding:10px 18px;
-      box-shadow:var(--shadow);
+      box-shadow:0 8px 18px rgba(14,27,68,.10);
       backdrop-filter: blur(6px);
     }
     body.dark .banner{
@@ -229,13 +229,13 @@
     .btn:hover{filter:brightness(1.06)}
     .btn:active{transform:scale(.99)}
     .btn.alt{
-      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      background:#ffffff;
       color:#0a1b3f;
       border:1px solid var(--line);
-      box-shadow:var(--shadow);
+      box-shadow:0 8px 18px rgba(14,27,68,.10);
     }
     body.dark .btn.alt{
-      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      background:#0f172a;
       color:#e7edf9;
       border:1px solid var(--line);
     }
@@ -257,7 +257,7 @@
     }
     .left.open{display:flex;}
     .menu-panel{
-      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      background:#ffffff;
       border-radius:18px;
       box-shadow:0 22px 60px rgba(15,23,42,.42);
       border:1px solid var(--line);
@@ -267,7 +267,7 @@
       backdrop-filter: blur(8px);
     }
     body.dark .menu-panel{
-      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      background:#0f172a;
       border-color:var(--line);
     }
     .menu-header{
@@ -283,7 +283,7 @@
       background:var(--card);
       border:1px solid var(--line);
       border-radius:18px;
-      box-shadow:var(--shadow);
+      box-shadow:0 8px 18px rgba(14,27,68,.10);
     }
     .card .body{padding:14px}
     .card h3{margin:0 0 10px;font-size:1rem;color:#213a99;font-weight:900}
@@ -328,14 +328,14 @@
     /* ===== CONTEÚDO PRINCIPAL ===== */
     .panel{
       margin-top:10px;
-      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90));
+      background:#ffffff;
       border:1px solid var(--line);
       border-radius:18px;
       box-shadow:var(--shadow-2);
       overflow:hidden;
     }
     body.dark .panel{
-      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90));
+      background:#0f172a;
       border-color:var(--line);
     }
 
@@ -439,7 +439,7 @@
       border-radius:16px;
       border:1px solid var(--line);
       background:var(--card);
-      box-shadow:var(--shadow);
+      box-shadow:0 8px 18px rgba(14,27,68,.10);
     }
     body.dark .table-wrap{border-color:var(--line)}
     table{
@@ -701,30 +701,6 @@
 
 /* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
 
-
-  .quick-delivery-overlay{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;align-items:center;justify-content:center;z-index:2200;padding:18px}
-  .quick-delivery-card{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(15,23,42,.28);border:1px solid #dbe4ff}
-  .quick-delivery-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #e5edff;background:linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%)}
-  .quick-delivery-head h3{margin:0;font-size:1.05rem;color:#15306b}
-  .quick-delivery-body{padding:16px 18px 18px}
-  .qd-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px}
-  .qd-grid .full{grid-column:1/-1}
-  .qd-field{display:flex;flex-direction:column;gap:6px}
-  .qd-field label{font-size:.78rem;font-weight:800;color:#26407e}
-  .qd-field input,.qd-field select{border:1px solid #cfdcff;border-radius:14px;padding:11px 12px;font-size:.95rem;outline:none;background:#fff}
-  .qd-field input:focus,.qd-field select:focus{border-color:#5c7cff;box-shadow:0 0 0 3px rgba(92,124,255,.12)}
-  .qd-search-wrap{position:relative}
-  .qd-results{position:absolute;left:0;right:0;top:100%;margin-top:6px;display:none;background:#fff;border:1px solid #dbe4ff;border-radius:16px;box-shadow:0 18px 40px rgba(15,23,42,.14);max-height:250px;overflow:auto;z-index:30}
-  .qd-item{padding:10px 12px;border-bottom:1px solid #eef2ff;cursor:pointer}
-  .qd-item:last-child{border-bottom:none}
-  .qd-item:hover,.qd-item.active{background:#f3f7ff}
-  .qd-item b{color:#143883}
-  .qd-meta{font-size:.78rem;color:#5f709c}
-  .qd-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:14px}
-  .qd-note{font-size:.78rem;color:#5f709c;margin-top:4px}
-  .qd-close{border:none;background:transparent;font-size:22px;cursor:pointer;color:#4b5f95}
-  @media (max-width:840px){.qd-grid{grid-template-columns:1fr}.quick-delivery-overlay{padding:10px}}
-
 </style>
 </head>
 
@@ -747,9 +723,9 @@
           <span class="diag-chip" id="diagAction"><span class="diag-label">Operação</span><span class="diag-value">--</span></span>
           <span class="diag-chip" id="diagConn"><span class="diag-label">Conexão</span><span class="diag-value">--</span></span>
         </div>
-        <div class="kpi"><small>Entregas do Dia</small><span id="kpiDia">{{ estatisticas.total_dia }}</span></div>
-        <div class="kpi"><small>Do Mês</small><span id="kpiMes">{{ estatisticas.total_mes }}</span></div>
-        <div class="kpi"><small>Do Ano</small><span id="kpiAno">{{ estatisticas.total_ano }}</span></div>
+        <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
+        <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
+        <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
       </div>
 
       <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
@@ -862,7 +838,7 @@
         <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
-              <button class="btn" id="btnNovaEntregaRapida" type="button">
+              <button class="btn" type="button" data-action-label="Nova entrega" onclick="window.__markActionStart&&window.__markActionStart('Nova entrega');window.location.href='{{ url_for('cadastrar_entrega') }}'">
                 + Nova entrega
               </button>
             </div>
@@ -912,7 +888,7 @@
           </div>
 
           <div class="filters-actions">
-            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
+            <button class="btn alt" type="button" data-action-label="Agendar entrega" onclick="window.__markActionStart&&window.__markActionStart('Agendar entrega');window.location.href='{{ url_for('agendar_entrega') }}'">
               + Agendar entrega
             </button>
             <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="false">
@@ -1111,59 +1087,6 @@
     </div>
   </div>
 
-
-  <div id="quickDeliveryOverlay" class="quick-delivery-overlay" aria-hidden="true">
-    <div class="quick-delivery-card" role="dialog" aria-modal="true" aria-labelledby="qdTitle">
-      <div class="quick-delivery-head">
-        <h3 id="qdTitle">Nova entrega rápida</h3>
-        <button type="button" class="qd-close" id="qdClose">×</button>
-      </div>
-      <div class="quick-delivery-body">
-        <form id="quickDeliveryForm" autocomplete="off">
-          <input type="hidden" id="qdClienteId" name="cliente_id" />
-          <div class="qd-grid">
-            <div class="qd-field full qd-search-wrap">
-              <label for="qdCliente">Cliente</label>
-              <input id="qdCliente" name="cliente" type="text" placeholder="Digite nome ou telefone" required />
-              <div id="qdResultados" class="qd-results"></div>
-              <div id="qdClienteMeta" class="qd-note"></div>
-            </div>
-            <div class="qd-field">
-              <label for="qdBairro">Bairro</label>
-              <input id="qdBairro" name="bairro" type="text" required />
-            </div>
-            <div class="qd-field">
-              <label for="qdValor">Valor (R$)</label>
-              <input id="qdValor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required />
-            </div>
-            <div class="qd-field">
-              <label for="qdPagamento">Pagamento</label>
-              <select id="qdPagamento" name="pagamento" required>
-                <option value="CREDITO_AUTO">Crédito automático</option>
-                <option value="Dinheiro">Dinheiro</option>
-                <option value="Pix">Pix</option>
-                <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
-                <option value="Comanda">Comanda</option>
-              </select>
-            </div>
-            <div class="qd-field full">
-              <label for="qdCooperado">Atribuir cooperado (opcional)</label>
-              <select id="qdCooperado" name="cooperado_id">
-                <option value="">-- Nenhum --</option>
-                {% for c in cooperados %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}
-              </select>
-            </div>
-          </div>
-          <div class="qd-actions">
-            <button type="button" class="btn alt" id="qdCancel">Cancelar</button>
-            <button type="submit" class="btn" id="qdSubmit">Cadastrar</button>
-          </div>
-        </form>
-      </div>
-    </div>
-  </div>
-
-
   <!-- Toast -->
   <div id="toast" role="status" aria-live="polite">
     <div id="toastText"><strong>Ok</strong></div>
@@ -1236,200 +1159,6 @@
       ov.style.display = 'none';
       document.body.classList.remove('locked');
     }
-
-
-    async function refreshAdminKpis(){
-      try{
-        const r = await fetch('/api/admin/kpis', {headers:{'X-Requested-With':'fetch'}});
-        if(!r.ok) return;
-        const data = await r.json();
-        if(!data || !data.ok) return;
-        const dia = document.getElementById('kpiDia');
-        const mes = document.getElementById('kpiMes');
-        const ano = document.getElementById('kpiAno');
-        if(dia) dia.textContent = data.kpis.total_dia ?? '0';
-        if(mes) mes.textContent = data.kpis.total_mes ?? '0';
-        if(ano) ano.textContent = data.kpis.total_ano ?? '0';
-      }catch(e){}
-    }
-
-    function escapeHtml(s){
-      return String(s ?? '').replace(/[&<>\"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-    }
-    function formatDateBR(dt){
-      try{
-        if(!dt) return '-';
-        const d = new Date(dt);
-        return d.toLocaleDateString('pt-BR', {timeZone:'America/Sao_Paulo'});
-      }catch(e){ return '-'; }
-    }
-    function formatDayShort(dt){
-      try{
-        if(!dt) return '';
-        const d = new Date(dt);
-        return d.toLocaleDateString('pt-BR', {weekday:'short', timeZone:'America/Sao_Paulo'}).replace('.','');
-      }catch(e){ return ''; }
-    }
-    function formatTimeBR(dt){
-      try{
-        if(!dt) return '-';
-        const d = new Date(dt);
-        return d.toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit', timeZone:'America/Sao_Paulo'});
-      }catch(e){ return '-'; }
-    }
-    function currentFiltersAllowDelivery(ent){
-      try{
-        const fCoop = document.getElementById('cooperado');
-        const fIni = document.getElementById('data_inicio');
-        const fFim = document.getElementById('data_fim');
-        const fPg = document.getElementById('status_pagamento');
-        const fCli = document.getElementById('cliente');
-        const coopVal = fCoop ? (fCoop.value||'todos') : 'todos';
-        const pgVal = fPg ? (fPg.value||'todos') : 'todos';
-        const cliVal = fCli ? (fCli.value||'').trim().toLowerCase() : '';
-        const ini = fIni ? (fIni.value||'') : '';
-        const fim = fFim ? (fFim.value||'') : '';
-        const entDate = (ent.data_envio_local||'').slice(0,10);
-        if(coopVal !== 'todos' && String(coopVal) !== String(ent.cooperado_id || '')) return false;
-        if(pgVal === 'pago' && String(ent.status_pagamento||'').toLowerCase() !== 'pago') return false;
-        if(pgVal === 'pendente' && String(ent.status_pagamento||'').toLowerCase() !== 'pendente') return false;
-        if(cliVal && !String(ent.cliente||'').toLowerCase().includes(cliVal)) return false;
-        if(ini && entDate && entDate < ini) return false;
-        if(fim && entDate && entDate > fim) return false;
-        if(!ini && !fim){
-          const hoje = new Date().toLocaleDateString('en-CA', {timeZone:'America/Sao_Paulo'});
-          if(entDate && entDate !== hoje) return false;
-        }
-        return true;
-      }catch(e){ return true; }
-    }
-    function buildEntregaRow(ent){
-      const hasCoop = !!ent.cooperado_id;
-      const sp = String(ent.status_pagamento || 'pendente').toLowerCase();
-      const st = String(ent.status || 'pendente').toLowerCase();
-      const rastreio = hasCoop && !['recebido','entregue'].includes(st)
-        ? `<a href="${ent.rastreio_url||'#'}" target="_blank" class="act-open" rel="noopener">Abrir</a>`
-        : (hasCoop ? '<span class="small">Encerrado</span>' : '<span class="small">—</span>');
-      return `<tr data-id="${ent.id}" class="${hasCoop?'row-assigned':'row-open'}" data-has-coop="${hasCoop?'1':'0'}">
-        <td><span class="id-with-dot"><span class="status-dot ${hasCoop?'ok':'no'}" title="${hasCoop?'Com cooperado atribuído':'Sem cooperado'}"></span><span>${ent.id}</span></span></td>
-        <td>${escapeHtml(ent.cliente||'')}</td>
-        <td>${escapeHtml(ent.bairro||'')}</td>
-        <td>${escapeHtml(ent.endereco||'-')}</td>
-        <td><span class="value-editable" data-id="${ent.id}" data-valor="${Number(ent.valor||0).toFixed(2)}" title="Clique para alterar o valor">${formatBRLFromNumberLike(ent.valor||0)}</span></td>
-        <td>${formatDateBR(ent.data_envio_iso)}<br><span class="small">${escapeHtml(ent.dia_semana||formatDayShort(ent.data_envio_iso))}</span></td>
-        <td>${formatTimeBR(ent.data_envio_iso)}</td>
-        <td>${ent.data_atribuida_iso ? formatTimeBR(ent.data_atribuida_iso) : '-'}</td>
-        <td><span class="coop-editable" data-id="${ent.id}" data-cooperado-id="${ent.cooperado_id||''}" title="Clique para trocar o cooperado">${escapeHtml(ent.cooperado_nome || 'Sem Cooperado')}</span></td>
-        <td>${escapeHtml(ent.pagamento||'')}</td>
-        <td><span class="status-editable" data-id="${ent.id}" data-status="${st}" title="Clique para alterar o status da entrega">${makePillStatus(st)}</span></td>
-        <td><span class="pagamento-editable" data-id="${ent.id}" data-status-pagamento="${sp}" title="Clique para alterar o status do pagamento">${makePillPagto(sp)}</span></td>
-        <td class="td-recebido" style="text-align:center"><div class="recb-wrap"><span class="foto-btn foto-no" title="Sem foto">📷</span><div class="recb-nome" title="-">-</div></div></td>
-        <td>${rastreio}</td>
-        <td><div class="actions">
-          <a class="act-ico" title="Editar" href="/editar_entrega/${ent.id}" aria-label="Editar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a>
-          <form action="/clonar_entrega/${ent.id}" method="POST" style="display:inline;"><button class="act-ico" title="Clonar" type="submit" aria-label="Clonar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button></form>
-          <button type="button" class="act-ico" title="Imprimir cupom" data-id="${ent.id}" data-cliente="${escapeHtml(ent.cliente||'')}" data-bairro="${escapeHtml(ent.bairro||'')}" data-endereco="${escapeHtml(ent.endereco||'-')}" data-valor="${Number(ent.valor||0).toFixed(2)}" data-data="${formatDateBR(ent.data_envio_iso)}" data-hora_pedido="${formatTimeBR(ent.data_envio_iso)}" data-hora_atribuida="${ent.data_atribuida_iso?formatTimeBR(ent.data_atribuida_iso):'-'}" data-cooperado="${escapeHtml(ent.cooperado_nome||'Sem Cooperado')}" data-pagamento="${escapeHtml(ent.pagamento||'')}" data-recebido="${escapeHtml(ent.recebido_por||'')}" onclick="imprimirCupom(${ent.id}, this)"><svg viewBox="0 0 24 24" fill="#16a34a"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg></button>
-          <form action="/excluir_entrega/${ent.id}" method="POST" style="display:inline;" onsubmit="return confirm('Tem certeza que deseja excluir esta entrega?');"><button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir"><svg viewBox="0 0 24 24" fill="#b91c1c"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg></button></form>
-        </div></td></tr>`;
-    }
-
-    (function(){
-      const btn = document.getElementById('btnNovaEntregaRapida');
-      const overlay = document.getElementById('quickDeliveryOverlay');
-      const closeBtn = document.getElementById('qdClose');
-      const cancelBtn = document.getElementById('qdCancel');
-      const form = document.getElementById('quickDeliveryForm');
-      const submitBtn = document.getElementById('qdSubmit');
-      const clienteInput = document.getElementById('qdCliente');
-      const clienteId = document.getElementById('qdClienteId');
-      const bairro = document.getElementById('qdBairro');
-      const resultados = document.getElementById('qdResultados');
-      const meta = document.getElementById('qdClienteMeta');
-      const tbody = document.querySelector('.tabela tbody');
-      let debounce = null;
-      let items = [];
-      let idx = -1;
-      let ctrl = null;
-
-      function open(){ if(overlay){ overlay.style.display='flex'; overlay.setAttribute('aria-hidden','false'); setTimeout(()=>clienteInput&&clienteInput.focus(), 30);} }
-      function close(){ if(overlay){ overlay.style.display='none'; overlay.setAttribute('aria-hidden','true'); } if(form) form.reset(); if(meta) meta.textContent=''; if(resultados) resultados.style.display='none'; items=[]; idx=-1; }
-      function pick(item){
-        clienteId.value = item.id || '';
-        clienteInput.value = item.nome || '';
-        if(!bairro.value) bairro.value = item.bairro_origem || '';
-        meta.textContent = `${item.nome || ''}${item.telefone ? ' · ' + item.telefone : ''}${item.saldo_atual != null ? ' · Saldo R$ ' + Number(item.saldo_atual||0).toFixed(2).replace('.',',') : ''}`;
-        resultados.style.display='none';
-      }
-      async function search(q){
-        if(ctrl) ctrl.abort();
-        ctrl = new AbortController();
-        const r = await fetch(`{{ url_for('api_busca_clientes_entrega') }}?q=${encodeURIComponent(q)}&limit=12`, {headers:{'X-Requested-With':'fetch'}, signal:ctrl.signal});
-        if(!r.ok) throw new Error('falha');
-        const data = await r.json();
-        return (data && data.items) ? data.items : [];
-      }
-      function renderResults(){
-        if(!resultados) return;
-        if(!items.length){ resultados.style.display='none'; resultados.innerHTML=''; return; }
-        resultados.innerHTML = items.map((it,i)=>`<div class="qd-item ${i===idx?'active':''}" data-idx="${i}"><b>${escapeHtml(it.nome||'')}</b><div class="qd-meta">${escapeHtml(it.telefone||'')} ${it.bairro_origem? '· ' + escapeHtml(it.bairro_origem):''}</div></div>`).join('');
-        resultados.style.display='block';
-      }
-      if(btn) btn.addEventListener('click', open);
-      if(closeBtn) closeBtn.addEventListener('click', close);
-      if(cancelBtn) cancelBtn.addEventListener('click', close);
-      if(overlay) overlay.addEventListener('click', (e)=>{ if(e.target===overlay) close(); });
-      document.addEventListener('keydown', (e)=>{ if(e.key==='Escape' && overlay && overlay.style.display==='flex') close(); });
-      if(resultados) resultados.addEventListener('click', (e)=>{ const item=e.target.closest('.qd-item'); if(!item) return; pick(items[Number(item.dataset.idx)||0]); });
-      if(clienteInput) clienteInput.addEventListener('input', ()=>{
-        clienteId.value=''; meta.textContent='';
-        clearTimeout(debounce);
-        const q=(clienteInput.value||'').trim();
-        if(q.length<2){ items=[]; renderResults(); return; }
-        debounce = setTimeout(async ()=>{
-          try{ items = await search(q); idx=-1; renderResults(); }catch(e){ items=[]; renderResults(); }
-        }, 220);
-      });
-      if(clienteInput) clienteInput.addEventListener('keydown', (e)=>{
-        if(!items.length) return;
-        if(e.key==='ArrowDown'){ e.preventDefault(); idx = Math.min(items.length-1, idx+1); renderResults(); }
-        else if(e.key==='ArrowUp'){ e.preventDefault(); idx = Math.max(0, idx-1); renderResults(); }
-        else if(e.key==='Enter' && idx>=0){ e.preventDefault(); pick(items[idx]); }
-      });
-      if(form) form.addEventListener('submit', async (e)=>{
-        e.preventDefault();
-        if(submitBtn) { submitBtn.disabled=true; submitBtn.textContent='Cadastrando...'; }
-        try{
-          window.__markActionStart&&window.__markActionStart();
-          const fd = new FormData(form);
-          const r = await fetch(`{{ url_for('cadastrar_entrega') }}?format=json`, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch','Accept':'application/json'}});
-          const data = await r.json().catch(()=>null);
-          if(!r.ok || !data || !data.ok) throw new Error((data&&data.error)||(data&&data.message)||'Não foi possível cadastrar.');
-          if(data.entrega && tbody && currentFiltersAllowDelivery(data.entrega)){
-            const temp = document.createElement('tbody');
-            temp.innerHTML = buildEntregaRow(data.entrega);
-            const tr = temp.firstElementChild;
-            if(tr) tbody.prepend(tr);
-            atualizarBadgeAbertas();
-          }
-          if(data.kpis){
-            const dia = document.getElementById('kpiDia'); if(dia) dia.textContent = data.kpis.total_dia ?? dia.textContent;
-            const mes = document.getElementById('kpiMes'); if(mes) mes.textContent = data.kpis.total_mes ?? mes.textContent;
-            const ano = document.getElementById('kpiAno'); if(ano) ano.textContent = data.kpis.total_ano ?? ano.textContent;
-          } else {
-            refreshAdminKpis();
-          }
-          window.__markActionEnd&&window.__markActionEnd();
-          showToast('<strong>Entrega cadastrada.</strong>');
-          close();
-        }catch(err){
-          window.__markActionFail&&window.__markActionFail();
-          showToast('<strong>' + escapeHtml(err.message || 'Não foi possível cadastrar agora.') + '</strong>');
-        }finally{
-          if(submitBtn) { submitBtn.disabled=false; submitBtn.textContent='Cadastrar'; }
-        }
-      });
-    })();
-
     window.addEventListener('DOMContentLoaded', ()=>{
       const ok = document.getElementById('modal-ok');
       const ov = document.getElementById('overlay');
@@ -1602,10 +1331,12 @@
           const started = Number(sessionStorage.getItem(NAV_KEY) || '');
           if(Number.isFinite(started) && started > 0){
             const delta = Date.now() - started;
+            const navLabel = sessionStorage.getItem(NAV_LABEL_KEY) || 'Operação';
             if(delta > 0 && delta < 120000){
-              setChip(actionEl, 'Operação', fmtMetric(delta), classByMs(delta));
+              setChip(actionEl, navLabel, fmtMetric(delta), classByMs(delta));
             }
             sessionStorage.removeItem(NAV_KEY);
+            sessionStorage.removeItem(NAV_LABEL_KEY);
           }
         }catch(e){}
         medirRede();
@@ -1615,6 +1346,21 @@
         setInterval(medirHealth, 45000);
         const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
         if(c && c.addEventListener) c.addEventListener('change', medirRede);
+
+        document.addEventListener('submit', function(ev){
+          const form = ev.target;
+          if(!form) return;
+          const btn = form.querySelector('[type=submit]');
+          const txt = (btn?.textContent || form.getAttribute('data-action-label') || 'Operação').trim().replace(/\s+/g,' ');
+          window.__markActionStart && window.__markActionStart(txt);
+        }, true);
+        document.addEventListener('click', function(ev){
+          const el = ev.target.closest('a.btn, button.btn, .action, .icon-btn, .status-editable, .pagto-editable, .valor-editable, .coop-editable');
+          if(!el) return;
+          const txt = (el.getAttribute('data-action-label') || el.textContent || el.title || 'Operação').trim().replace(/\s+/g,' ');
+          if(!txt) return;
+          window.__markActionStart && window.__markActionStart(txt.slice(0,40));
+        }, true);
       });
     })();
 
@@ -1631,13 +1377,13 @@
 
       ev.preventDefault();
       try{
-        window.__markActionStart&&window.__markActionStart();
+        window.__markActionStart&&window.__markActionStart(st.classList.contains('js-toggle-pagto') ? 'Pagamento' : 'Status da entrega');
         const fd = new FormData(form);
         fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
           .then(async res=>{
             if(!res.ok) throw new Error('Falha ao atualizar.');
             window.__markActionEnd&&window.__markActionEnd();
-            showToast('<strong>Atualizado com sucesso.</strong>');
+            showToast('<strong>Atualizado com sucesso.</strong>'); atualizarKpisTopo();
           })
           .catch(()=>{ window.__markActionFail&&window.__markActionFail(); showToast('<strong>Não foi possível atualizar agora.</strong>'); });
       }catch(e){
@@ -1730,7 +1476,7 @@
         if(sel.selectedIndex >= 0) nomeEscolhido = (sel.options[sel.selectedIndex]?.textContent || 'Sem Cooperado').trim();
 
         try{
-          window.__markActionStart&&window.__markActionStart();
+          window.__markActionStart&&window.__markActionStart('Trocar cooperado');
           const url = '/atribuir_cooperado/' + idEntrega;
           const fd  = new FormData();
           fd.append('cooperado_id', coopId);
@@ -1740,7 +1486,7 @@
             .then(()=>{
               if(coopId) removerDaFilaPorNome(nomeEscolhido);
               window.__markActionEnd&&window.__markActionEnd();
-              showToast('<strong>Cooperado atualizado.</strong>');
+              showToast('<strong>Cooperado atualizado.</strong>'); atualizarKpisTopo();
             })
             .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
         }catch(e){
@@ -1825,7 +1571,7 @@
 
       async function salvar(){
         const st = sel.value || 'pendente';
-        window.__markActionStart&&window.__markActionStart();
+        window.__markActionStart&&window.__markActionStart('Status da entrega');
         const res = await salvarInlineEntrega(idEntrega, {status: st});
         const span = document.createElement('span');
         span.className='status-editable';
@@ -1837,7 +1583,7 @@
 
         if(res && res.ok){
           window.__markActionEnd&&window.__markActionEnd();
-          showToast('<strong>Status atualizado.</strong>');
+          showToast('<strong>Status atualizado.</strong>'); atualizarKpisTopo();
         }else{
           showToast('<strong>Não foi possível atualizar o status agora.</strong>');
         }
@@ -1888,7 +1634,7 @@
 
         if(res && res.ok){
           window.__markActionEnd&&window.__markActionEnd();
-          showToast('<strong>Pagamento atualizado.</strong>');
+          showToast('<strong>Pagamento atualizado.</strong>'); atualizarKpisTopo();
         }else{
           showToast('<strong>Não foi possível atualizar o pagamento agora.</strong>');
         }
@@ -1969,7 +1715,7 @@
         const ok = await salvarValorEntrega(idEntrega, novo);
         if(ok){
           window.__markActionEnd&&window.__markActionEnd();
-          showToast('<strong>Valor atualizado.</strong>');
+          showToast('<strong>Valor atualizado.</strong>'); atualizarKpisTopo();
         }else{
           window.location.href = `/editar_entrega/${idEntrega}`;
         }
@@ -2068,6 +1814,32 @@
         });
       }
     })();
+
+    
+    async function atualizarKpisTopo(){
+      try{
+        const url = new URL(window.location.href);
+        const qs = url.searchParams.toString();
+        const r = await fetch('/api/admin/kpis' + (qs ? ('?' + qs) : ''), {headers:{'X-Requested-With':'fetch'}});
+        if(!r.ok) return;
+        const j = await r.json();
+        const ids = {
+          totalDia: j.total_dia,
+          totalMes: j.total_mes,
+          totalAno: j.total_ano
+        };
+        const map = {
+          total_dia:['#kpiTotalDia','[data-kpi="total-dia"]'],
+          total_mes:['#kpiTotalMes','[data-kpi="total-mes"]'],
+          total_ano:['#kpiTotalAno','[data-kpi="total-ano"]']
+        };
+        Object.entries(map).forEach(([k, sels])=>{
+          sels.forEach(sel=>{
+            document.querySelectorAll(sel).forEach(el=>{ el.textContent = ids[k] ?? el.textContent; });
+          });
+        });
+      }catch(e){}
+    }
 
     function atualizarOuInserirLinhaEntrega(dados){
       if (!dados?.id || !dados?.linha_html) return;
@@ -2196,31 +1968,7 @@
         '.small{font-size:11px; opacity:.9;}' +
         '.qrWrap{margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:6px;}' +
         '.qrImg{width:38mm;height:38mm; object-fit:contain;}' +
-        '
-  .quick-delivery-overlay{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;align-items:center;justify-content:center;z-index:2200;padding:18px}
-  .quick-delivery-card{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(15,23,42,.28);border:1px solid #dbe4ff}
-  .quick-delivery-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #e5edff;background:linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%)}
-  .quick-delivery-head h3{margin:0;font-size:1.05rem;color:#15306b}
-  .quick-delivery-body{padding:16px 18px 18px}
-  .qd-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px}
-  .qd-grid .full{grid-column:1/-1}
-  .qd-field{display:flex;flex-direction:column;gap:6px}
-  .qd-field label{font-size:.78rem;font-weight:800;color:#26407e}
-  .qd-field input,.qd-field select{border:1px solid #cfdcff;border-radius:14px;padding:11px 12px;font-size:.95rem;outline:none;background:#fff}
-  .qd-field input:focus,.qd-field select:focus{border-color:#5c7cff;box-shadow:0 0 0 3px rgba(92,124,255,.12)}
-  .qd-search-wrap{position:relative}
-  .qd-results{position:absolute;left:0;right:0;top:100%;margin-top:6px;display:none;background:#fff;border:1px solid #dbe4ff;border-radius:16px;box-shadow:0 18px 40px rgba(15,23,42,.14);max-height:250px;overflow:auto;z-index:30}
-  .qd-item{padding:10px 12px;border-bottom:1px solid #eef2ff;cursor:pointer}
-  .qd-item:last-child{border-bottom:none}
-  .qd-item:hover,.qd-item.active{background:#f3f7ff}
-  .qd-item b{color:#143883}
-  .qd-meta{font-size:.78rem;color:#5f709c}
-  .qd-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:14px}
-  .qd-note{font-size:.78rem;color:#5f709c;margin-top:4px}
-  .qd-close{border:none;background:transparent;font-size:22px;cursor:pointer;color:#4b5f95}
-  @media (max-width:840px){.qd-grid{grid-template-columns:1fr}.quick-delivery-overlay{padding:10px}}
-
-</style></head><body>' +
+        '</style></head><body>' +
         '<div class="ticket">' +
           '<div class="center">' +
             '<img class="logo" src="'+ logoUrl +'" alt="COOPEX">' +
@@ -2435,31 +2183,7 @@
       margin-top:10px;
     }
     @media (max-width:520px){ .cupom-grid{ grid-template-columns:1fr; } }
-  
-  .quick-delivery-overlay{position:fixed;inset:0;background:rgba(15,23,42,.42);display:none;align-items:center;justify-content:center;z-index:2200;padding:18px}
-  .quick-delivery-card{width:min(760px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 30px 70px rgba(15,23,42,.28);border:1px solid #dbe4ff}
-  .quick-delivery-head{display:flex;align-items:center;justify-content:space-between;padding:16px 18px;border-bottom:1px solid #e5edff;background:linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%)}
-  .quick-delivery-head h3{margin:0;font-size:1.05rem;color:#15306b}
-  .quick-delivery-body{padding:16px 18px 18px}
-  .qd-grid{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:12px}
-  .qd-grid .full{grid-column:1/-1}
-  .qd-field{display:flex;flex-direction:column;gap:6px}
-  .qd-field label{font-size:.78rem;font-weight:800;color:#26407e}
-  .qd-field input,.qd-field select{border:1px solid #cfdcff;border-radius:14px;padding:11px 12px;font-size:.95rem;outline:none;background:#fff}
-  .qd-field input:focus,.qd-field select:focus{border-color:#5c7cff;box-shadow:0 0 0 3px rgba(92,124,255,.12)}
-  .qd-search-wrap{position:relative}
-  .qd-results{position:absolute;left:0;right:0;top:100%;margin-top:6px;display:none;background:#fff;border:1px solid #dbe4ff;border-radius:16px;box-shadow:0 18px 40px rgba(15,23,42,.14);max-height:250px;overflow:auto;z-index:30}
-  .qd-item{padding:10px 12px;border-bottom:1px solid #eef2ff;cursor:pointer}
-  .qd-item:last-child{border-bottom:none}
-  .qd-item:hover,.qd-item.active{background:#f3f7ff}
-  .qd-item b{color:#143883}
-  .qd-meta{font-size:.78rem;color:#5f709c}
-  .qd-actions{display:flex;justify-content:flex-end;gap:10px;padding-top:14px}
-  .qd-note{font-size:.78rem;color:#5f709c;margin-top:4px}
-  .qd-close{border:none;background:transparent;font-size:22px;cursor:pointer;color:#4b5f95}
-  @media (max-width:840px){.qd-grid{grid-template-columns:1fr}.quick-delivery-overlay{padding:10px}}
-
-</style>
+  </style>
 
 <script id="tm20x_iframe_printer">
   // Impressão TM-T20X 80mm via IFRAME (sem pop-up)
