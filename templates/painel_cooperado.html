@@ -6,14 +6,6 @@
   <title>Painel do Cooperado</title>
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-  <style id="period-summary-style">
-    .period-summary{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:0 0 12px}
-    .period-box{background:linear-gradient(180deg,#f8faff,#eef2ff);border:1px solid var(--line);border-radius:18px;padding:14px;box-shadow:var(--shadow-soft)}
-    .period-box strong{display:block;font-size:.82rem;color:var(--muted);text-transform:uppercase;letter-spacing:.04em;margin-bottom:8px}
-    .period-box .big{font-size:1.08rem;font-weight:800;color:var(--royal-1)}
-    .period-box .sub{margin-top:4px;font-size:.9rem;color:var(--muted);font-weight:700}
-    @media (max-width:820px){ .period-summary{grid-template-columns:1fr} }
-  </style>
   <style>
     :root{
       --royal-1:#2949e6; --royal-2:#3b5cff; --royal-3:#5774ff; --bg:#eef2ff; --card:#ffffff;
@@ -148,9 +140,6 @@
   <main class="app panel">
     <section class="filters-card">
       <form id="form-filtros" method="get">
-        <input type="hidden" id="status_pgto" name="status_pgto" value="{{ request.args.get('status_pgto', 'todas') }}">
-        <input type="hidden" id="todas_datas" name="todas_datas" value="{{ request.args.get('todas_datas', '') }}">
-        <input type="hidden" id="active_tab" name="tab" value="{{ request.args.get('tab', 'tab-resumo') }}">
         <div class="filters-grid">
           <div class="field">
             <label for="f-inicio">Início</label>
@@ -253,11 +242,6 @@
             <button type="button" class="pill-btn" data-period="ano">Anual</button>
           </div>
         </div>
-        <div class="period-summary">
-          <div class="period-box"><strong>Semana</strong><div class="big" id="sum-semana-valor">R$ 0,00</div><div class="sub" id="sum-semana-qtd">0 entregas</div></div>
-          <div class="period-box"><strong>Mês</strong><div class="big" id="sum-mes-valor">R$ 0,00</div><div class="sub" id="sum-mes-qtd">0 entregas</div></div>
-          <div class="period-box"><strong>Ano</strong><div class="big" id="sum-ano-valor">R$ 0,00</div><div class="sub" id="sum-ano-qtd">0 entregas</div></div>
-        </div>
         <div class="charts-grid">
           <div class="chart-card"><h3>Valor por período</h3><div class="chart-wrap"><canvas id="chartValor"></canvas></div><div class="chart-meta">Valores conforme o período escolhido.</div></div>
           <div class="chart-card"><h3>Quantidade por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPagamento"></canvas></div><div class="chart-meta">Pix, Dinheiro, Comanda e Pix Cooperativa.</div></div>
@@ -299,30 +283,16 @@
       statusEntrega: (row.dataset.statusEntrega || 'pendente').toLowerCase(),
       data: row.dataset.data || '', hora: row.dataset.hora || ''
     }));
-    const initialTabFromQuery = new URLSearchParams(window.location.search).get('tab') || 'tab-resumo';
-    const initialFilterFromQuery = (new URLSearchParams(window.location.search).get('status_pgto') || 'todas').toLowerCase();
-    const state = {
-      selectedTab: initialTabFromQuery,
-      tableFilter: (initialFilterFromQuery === 'pago' || initialFilterFromQuery === 'pendente') ? initialFilterFromQuery : 'todas',
-      year:null,
-      period:'semana',
-      entregaIdModal:null
-    };
-
-    function activateTab(tabId){
-      tabs.forEach(b => b.classList.remove('active'));
-      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
-      const btn = document.querySelector(`.tab-btn[data-tab="${tabId}"]`);
-      const panel = document.getElementById(tabId);
-      if (btn) btn.classList.add('active');
-      if (panel) panel.classList.add('active');
-      state.selectedTab = tabId;
-      const activeField = document.getElementById('active_tab');
-      if (activeField) activeField.value = tabId;
-    }
+    const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
 
     const tabs = document.querySelectorAll('.tab-btn');
-    tabs.forEach(btn => btn.addEventListener('click', () => activateTab(btn.dataset.tab)));
+    tabs.forEach(btn => btn.addEventListener('click', () => {
+      tabs.forEach(b => b.classList.remove('active'));
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      btn.classList.add('active');
+      document.getElementById(btn.dataset.tab).classList.add('active');
+      state.selectedTab = btn.dataset.tab;
+    }));
 
     const parseDate = (str) => { if (!str) return null; const [y,m,d] = str.split('-').map(Number); return new Date(y, (m||1)-1, d||1, 12, 0, 0, 0); };
     const getYear = (d) => d ? d.getFullYear() : null;
@@ -376,11 +346,7 @@
       filterButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.tableFilter = btn.dataset.filter;
-      const statusField = document.getElementById('status_pgto');
-      const allDatesField = document.getElementById('todas_datas');
-      if (statusField) statusField.value = btn.dataset.filter === 'todas' ? 'todas' : btn.dataset.filter;
-      if (allDatesField) allDatesField.value = btn.dataset.filter === 'pendente' ? '1' : '';
-      applyTableFilter(); updateSummary(); updatePeriodSummary(); buildCharts();
+      applyTableFilter(); updateSummary(); buildCharts();
     }));
 
     function applyTableFilter(){
@@ -395,23 +361,8 @@
     }
 
     document.getElementById('card-pendencias').addEventListener('click', () => {
-      activateTab('tab-producao');
-      const pendingBtn = document.querySelector('.small-filter[data-filter="pendente"]');
-      if (pendingBtn) pendingBtn.click();
-      if (rows.length && rows.some(r => (r.dataset.statusPagamento || '') !== 'pago')) return;
-      const form = document.getElementById('form-filtros');
-      if (!form) return;
-      const statusField = document.getElementById('status_pgto');
-      const allDatesField = document.getElementById('todas_datas');
-      const activeField = document.getElementById('active_tab');
-      const inicioField = document.getElementById('f-inicio');
-      const fimField = document.getElementById('f-fim');
-      if (statusField) statusField.value = 'pendente';
-      if (allDatesField) allDatesField.value = '1';
-      if (activeField) activeField.value = 'tab-producao';
-      if (inicioField) inicioField.value = '';
-      if (fimField) fimField.value = '';
-      form.submit();
+      document.querySelector('.tab-btn[data-tab="tab-producao"]').click();
+      document.querySelector('.small-filter[data-filter="pendente"]').click();
     });
 
     async function togglePagamento(btn){
@@ -550,38 +501,6 @@
     const years = Array.from(new Set(allDeliveries.map(d => getYear(parseDate(d.data))).filter(Boolean))).sort();
     state.year = years[years.length - 1] || new Date().getFullYear();
 
-    function scopedRows(kind){
-      const list = allRows();
-      const now = new Date();
-      const startOfWeek = new Date(now);
-      const day = startOfWeek.getDay();
-      const diff = day === 0 ? -6 : 1 - day;
-      startOfWeek.setHours(0,0,0,0);
-      startOfWeek.setDate(startOfWeek.getDate() + diff);
-      const endOfWeek = new Date(startOfWeek); endOfWeek.setDate(endOfWeek.getDate() + 6); endOfWeek.setHours(23,59,59,999);
-      const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-      const endOfMonth = new Date(now.getFullYear(), now.getMonth()+1, 0, 23,59,59,999);
-      const startOfYear = new Date(now.getFullYear(), 0, 1);
-      const endOfYear = new Date(now.getFullYear(), 11, 31, 23,59,59,999);
-      return list.filter(r => {
-        const d = parseDate(r.dataset.data);
-        if (!d) return false;
-        if (kind === 'semana') return d >= startOfWeek && d <= endOfWeek;
-        if (kind === 'mes') return d >= startOfMonth && d <= endOfMonth;
-        return d >= startOfYear && d <= endOfYear;
-      });
-    }
-
-    function updatePeriodSummary(){
-      [['semana','sum-semana'],['mes','sum-mes'],['ano','sum-ano']].forEach(([kind,prefix]) => {
-        const s = summarize(scopedRows(kind));
-        const val = document.getElementById(prefix + '-valor');
-        const qtd = document.getElementById(prefix + '-qtd');
-        if (val) val.textContent = money(s.receita);
-        if (qtd) qtd.textContent = `${s.qtd} entrega${s.qtd === 1 ? '' : 's'}`;
-      });
-    }
-
     function buildYearPills(){
       const host = document.getElementById('year-pills'); host.innerHTML = '';
       if (!years.length) { host.innerHTML = '<span class="muted">Sem anos disponíveis</span>'; return; }
@@ -657,18 +576,15 @@
       chartAno = new Chart(document.getElementById('chartAno'), { type:'bar', data:{ labels:annual.labels, datasets:[{ label:'Valor', data:annual.valores, yAxisID:'y' }, { label:'Entregas', data:annual.quantidades, yAxisID:'y1' }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{ mode:'index', intersect:false }, scales:{ y:{ beginAtZero:true }, y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false } } } } });
     }
 
-    updateSummary(); applyTableFilter(); buildYearPills(); updatePeriodSummary(); buildCharts();
+    updateSummary(); applyTableFilter(); buildYearPills(); buildCharts();
 
-    const HAS_ACTIVE_RUN = {{ 'true' if corridas|length else 'false' }};
     let gpsBooted = false, gpsWatchId = null, lastGpsSentAt = 0, lastGpsCoords = null;
     function distanceMeters(a,b){ if(!a || !b) return Infinity; const R=6371000,toRad=n=>n*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lng-a.lng),lat1=toRad(a.lat),lat2=toRad(b.lat); const x=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x)); }
-    async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(document.hidden && !force) return; if(!force && lastGpsCoords && moved < 35 && (now-lastGpsSentAt) < 30000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
+    async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(!force && lastGpsCoords && moved < 20 && (now-lastGpsSentAt) < 15000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
     function forceLogout(){ window.location.href = `{{ url_for('logout') }}`; }
-    function stopGpsWatch(){ if(gpsWatchId !== null && navigator.geolocation){ navigator.geolocation.clearWatch(gpsWatchId); gpsWatchId = null; } }
-    function startGpsWatch(){ if(!HAS_ACTIVE_RUN || document.hidden || gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:30000, timeout:25000 }); }
-    async function requireLocation(){ if(!HAS_ACTIVE_RUN || gpsBooted) return; gpsBooted = true; if(!navigator.geolocation){ alert('Seu dispositivo não suporta localização.'); forceLogout(); return; } try{ if(navigator.permissions && navigator.permissions.query){ const status = await navigator.permissions.query({ name:'geolocation' }); status.onchange = () => { if(status.state !== 'granted') forceLogout(); if(status.state === 'granted' && !document.hidden) startGpsWatch(); }; if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; } if(status.state === 'granted'){ startGpsWatch(); return; } } navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:15000, maximumAge:0 }); }catch(_){ forceLogout(); } }
-    document.addEventListener('visibilitychange', () => { if(document.hidden) stopGpsWatch(); else if(HAS_ACTIVE_RUN) startGpsWatch(); });
-    document.addEventListener('DOMContentLoaded', () => { if(HAS_ACTIVE_RUN) requireLocation(); });
+    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:15000, timeout:20000 }); }
+    async function requireLocation(){ if(gpsBooted) return; gpsBooted = true; if(!navigator.geolocation){ alert('Seu dispositivo não suporta localização.'); forceLogout(); return; } try{ if(navigator.permissions && navigator.permissions.query){ const status = await navigator.permissions.query({ name:'geolocation' }); status.onchange = () => { if(status.state !== 'granted') forceLogout(); }; if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; } if(status.state === 'granted'){ startGpsWatch(); return; } } navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:15000, maximumAge:0 }); }catch(_){ forceLogout(); } }
+    document.addEventListener('DOMContentLoaded', () => requireLocation());
   </script>
 </body>
 </html>
