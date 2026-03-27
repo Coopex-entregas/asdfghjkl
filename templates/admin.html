@@ -723,9 +723,9 @@
           <span class="diag-chip" id="diagAction"><span class="diag-label">Operação</span><span class="diag-value">--</span></span>
           <span class="diag-chip" id="diagConn"><span class="diag-label">Conexão</span><span class="diag-value">--</span></span>
         </div>
-        <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
-        <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
-        <div class="kpi"><small>Do Ano</small><span>{{ estatisticas.total_ano }}</span></div>
+        <div class="kpi"><small>Entregas do Dia</small><span id="kpiTotalDia">{{ estatisticas.total_dia }}</span></div>
+        <div class="kpi"><small>Do Mês</small><span id="kpiTotalMes">{{ estatisticas.total_mes }}</span></div>
+        <div class="kpi"><small>Do Ano</small><span id="kpiTotalAno">{{ estatisticas.total_ano }}</span></div>
       </div>
 
       <button id="btnTheme" class="theme-toggle" type="button">Modo escuro</button>
@@ -1523,6 +1523,22 @@
       if(sp === 'pago') return '<span class="pill green">Pago</span>';
       return '<span class="pill red">Pendente</span>';
     }
+
+    async function atualizarKPIsAdmin(){
+      try{
+        const r = await fetch('/api/admin/kpis', { headers:{'X-Requested-With':'fetch'} });
+        if(!r.ok) return;
+        const j = await r.json();
+        if(!j || !j.ok) return;
+        const d = document.getElementById('kpiTotalDia');
+        const m = document.getElementById('kpiTotalMes');
+        const a = document.getElementById('kpiTotalAno');
+        if(d) d.textContent = j.total_dia ?? d.textContent;
+        if(m) m.textContent = j.total_mes ?? m.textContent;
+        if(a) a.textContent = j.total_ano ?? a.textContent;
+      }catch(e){}
+    }
+
 
     document.addEventListener('click', (ev)=>{
       const el = ev.target.closest?.('.status-editable');
