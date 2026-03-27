@@ -838,7 +838,7 @@
         <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
-              <button class="btn" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('cadastrar_entrega') }}'">
+              <button class="btn" type="button" onclick="abrirNovaEntregaRapida()">
                 + Nova entrega
               </button>
             </div>
@@ -1084,6 +1084,31 @@
         </div>
 
       </section>
+    </div>
+  </div>
+
+
+  <div id="novaEntregaOverlay" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,.38);z-index:9999;align-items:center;justify-content:center;padding:18px">
+    <div style="width:min(920px,96vw);max-height:92vh;overflow:auto;background:#fff;border-radius:22px;box-shadow:0 22px 64px rgba(2,6,23,.18);border:1px solid #dbe4ff">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e8eefc">
+        <div style="font-weight:900;color:#0f172a">Nova entrega rápida</div>
+        <div style="display:flex;gap:8px;align-items:center">
+          <a href="{{ url_for('cadastrar_entrega') }}" class="btn alt" onclick="window.__markActionStart&&window.__markActionStart()">Tela completa</a>
+          <button type="button" class="btn" onclick="fecharNovaEntregaRapida()">Fechar</button>
+        </div>
+      </div>
+      <form id="novaEntregaRapidaForm" style="padding:16px;display:grid;grid-template-columns:repeat(12,minmax(0,1fr));gap:12px">
+        <input type="hidden" name="cliente_id" value="">
+        <label style="grid-column:span 5;display:block"><div class="small" style="margin-bottom:6px">Cliente</div><input name="cliente" required style="width:100%;height:44px;border:1px solid #dbe4ff;border-radius:12px;padding:0 12px"></label>
+        <label style="grid-column:span 3;display:block"><div class="small" style="margin-bottom:6px">Bairro</div><input name="bairro" required style="width:100%;height:44px;border:1px solid #dbe4ff;border-radius:12px;padding:0 12px"></label>
+        <label style="grid-column:span 2;display:block"><div class="small" style="margin-bottom:6px">Valor</div><input name="valor" inputmode="decimal" required style="width:100%;height:44px;border:1px solid #dbe4ff;border-radius:12px;padding:0 12px"></label>
+        <label style="grid-column:span 2;display:block"><div class="small" style="margin-bottom:6px">Pagamento</div><input name="pagamento" placeholder="Pix / Dinheiro / Crédito" style="width:100%;height:44px;border:1px solid #dbe4ff;border-radius:12px;padding:0 12px"></label>
+        <label style="grid-column:span 6;display:block"><div class="small" style="margin-bottom:6px">Cooperado</div><select name="cooperado_id" style="width:100%;height:44px;border:1px solid #dbe4ff;border-radius:12px;padding:0 12px"><option value="">Sem cooperado</option>{% for c in cooperados %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select></label>
+        <div style="grid-column:1/-1;display:flex;justify-content:flex-end;gap:10px;padding-top:6px">
+          <button type="button" class="btn alt" onclick="fecharNovaEntregaRapida()">Cancelar</button>
+          <button type="submit" class="btn">Salvar entrega</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -1842,6 +1867,48 @@
       if (!ulFila || !htmlLista) return;
       ulFila.innerHTML = htmlLista;
     }
+
+    function aplicarKPIsAdmin(j){
+      try{
+        const d = document.getElementById('kpiTotalDia');
+        const m = document.getElementById('kpiTotalMes');
+        const a = document.getElementById('kpiTotalAno');
+        if(d && j && j.total_dia != null) d.textContent = j.total_dia;
+        if(m && j && j.total_mes != null) m.textContent = j.total_mes;
+        if(a && j && j.total_ano != null) a.textContent = j.total_ano;
+      }catch(e){}
+    }
+    function abrirNovaEntregaRapida(){
+      try{ window.__markActionStart&&window.__markActionStart(); }catch(e){}
+      const ov = document.getElementById('novaEntregaOverlay');
+      const form = document.getElementById('novaEntregaRapidaForm');
+      if(form) form.reset();
+      if(ov) ov.style.display='flex';
+    }
+    function fecharNovaEntregaRapida(){
+      const ov = document.getElementById('novaEntregaOverlay');
+      if(ov) ov.style.display='none';
+    }
+    document.addEventListener('submit', async (ev)=>{
+      const form = ev.target.closest?.('#novaEntregaRapidaForm');
+      if(!form) return;
+      ev.preventDefault();
+      try{
+        window.__markActionStart&&window.__markActionStart();
+        const fd = new FormData(form);
+        const r = await fetch('{{ url_for("cadastrar_entrega") }}', { method:'POST', body:fd, headers:{'X-Requested-With':'fetch','Accept':'application/json'} });
+        const j = await r.json().catch(()=>null);
+        if(!r.ok || !j || !j.ok){ throw new Error((j&&j.error)||'Falha ao cadastrar'); }
+        if(j.linha_html && j.entrega_id){ atualizarOuInserirLinhaEntrega({id:j.entrega_id, linha_html:j.linha_html}); }
+        if(j.kpis){ aplicarKPIsAdmin(j.kpis); } else { atualizarKPIsAdmin(); }
+        fecharNovaEntregaRapida();
+        window.__markActionEnd&&window.__markActionEnd();
+        showToast('<strong>Entrega cadastrada.</strong>');
+      }catch(err){
+        window.__markActionFail&&window.__markActionFail();
+        showToast('<strong>Não foi possível cadastrar entrega agora.</strong>');
+      }
+    });
 </script>
 
   <!-- CUPOM / MAPA TELA CHEIA -->
