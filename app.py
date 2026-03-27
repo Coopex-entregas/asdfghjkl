@@ -2871,28 +2871,6 @@ def api_rastreamento(codigo):
 # ADMIN: DASHBOARD PRINCIPAL
 # =========================================================
 @app.route('/admin')
-
-def _admin_kpis_payload():
-    hoje = datetime.now(BRAZIL_TZ).date()
-    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
-    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
-
-    total_dia, total_mes, total_ano, pendentes_dia = db.session.query(
-        func.coalesce(func.sum(case((db.and_(Entrega.data_envio >= inicio_dia_utc, Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case((db.and_(Entrega.data_envio >= mes_ini_utc, Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case((db.and_(Entrega.data_envio >= ano_ini_utc, Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case((db.and_(Entrega.data_envio >= inicio_dia_utc, Entrega.data_envio <= fim_dia_utc,
-                                           db.or_(Entrega.status_pagamento == None, func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
-    ).one()
-
-    return {
-        'total_dia': int(total_dia or 0),
-        'total_mes': int(total_mes or 0),
-        'total_ano': int(total_ano or 0),
-        'tem_pendente': bool(int(pendentes_dia or 0) > 0),
-    }
-
 def admin():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
@@ -2903,16 +2881,19 @@ def admin():
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
 
+    hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
     # padrão: dia de hoje
     if not data_inicio and not data_fim:
-        hoje_brasil = datetime.now(BRAZIL_TZ).date()
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
     if cooperado_id and cooperado_id != 'todos':
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        try:
+            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
 
     if data_inicio:
         di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
@@ -2946,28 +2927,34 @@ def admin():
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = nao_atribuidos + atribuidos
 
-    # AQUI você já tinha isso:
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
-    hoje = datetime.now(BRAZIL_TZ).date()
-    estatisticas = _admin_kpis_payload()
+    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
+    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+
+    stats_row = db.session.query(
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
+    ).select_from(Entrega).one()
+    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
+    estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
     feriado_hoje = verifica_feriado(hoje)
-    tem_pendente = estatisticas.get('tem_pendente', False)
+    tem_pendente = pendentes_dia > 0
 
-    lista_espera = ListaEspera.query.order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc()).all()
+    lista_espera = (
+        ListaEspera.query
+        .options(joinedload(ListaEspera.cooperado))
+        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+        .all()
+    )
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
-    # >>> NOVO: listas seguras para o JavaScript <<<
-    cooperados_js = [
-        {
-            "id": c.id,
-            "nome": c.nome
-        }
-        for c in cooperados
-    ]
-
+    cooperados_js = [{"id": c.id, "nome": c.nome} for c in cooperados]
 
     html = render_template(
         'admin.html',
@@ -2988,14 +2975,25 @@ def admin():
     return _patch_admin_top_link(html)
 
 
-@app.get('/api/admin/kpis')
+@app.route('/api/admin/kpis')
 def api_admin_kpis():
     if not session.get('is_admin'):
         return jsonify(ok=False, error='unauthorized'), 401
-    payload = _admin_kpis_payload()
-    payload['ok'] = True
-    return jsonify(payload)
 
+    hoje = datetime.now(BRAZIL_TZ).date()
+    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
+    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+
+    stats_row = db.session.query(
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
+        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
+    ).select_from(Entrega).one()
+
+    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
+    return jsonify(ok=True, total_dia=total_dia, total_mes=total_mes, total_ano=total_ano, pendentes_dia=pendentes_dia)
 
 
 @app.route("/admin_novo_socorro")
