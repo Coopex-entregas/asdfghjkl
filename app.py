@@ -2881,16 +2881,19 @@ def admin():
     status_pagamento = request.args.get('status_pagamento', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
 
+    hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
     # padrão: dia de hoje
     if not data_inicio and not data_fim:
-        hoje_brasil = datetime.now(BRAZIL_TZ).date()
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
     if cooperado_id and cooperado_id != 'todos':
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        try:
+            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
 
     if data_inicio:
         di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
@@ -2924,22 +2927,20 @@ def admin():
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = nao_atribuidos + atribuidos
 
-    # AQUI você já tinha isso:
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
-    hoje = datetime.now(BRAZIL_TZ).date()
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
+    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
 
     total_dia = Entrega.query.filter(
         Entrega.data_envio >= inicio_dia_utc,
         Entrega.data_envio <= fim_dia_utc
     ).count()
-    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
     total_mes = Entrega.query.filter(
         Entrega.data_envio >= mes_ini_utc,
         Entrega.data_envio <= mes_fim_utc
     ).count()
-    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
     total_ano = Entrega.query.filter(
         Entrega.data_envio >= ano_ini_utc,
         Entrega.data_envio <= ano_fim_utc
@@ -2954,35 +2955,16 @@ def admin():
         (func.lower(Entrega.status_pagamento) == 'pendente')
     ).count() > 0
 
-    lista_espera = ListaEspera.query.order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc()).all()
+    lista_espera = (
+        ListaEspera.query
+        .options(joinedload(ListaEspera.cooperado))
+        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+        .all()
+    )
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
-    # >>> NOVO: listas seguras para o JavaScript <<<
-    cooperados_js = [
-        {
-            "id": c.id,
-            "nome": c.nome
-        }
-        for c in cooperados
-    ]
-
-    motoboys_js = []
-    for c in cooperados:
-        if getattr(c, "last_lat", None) is not None and getattr(c, "last_lng", None) is not None:
-            is_online, idle_s, status_str = calc_status_cooperado(c)
-
-            motoboys_js.append({
-                "id": c.id,
-                "nome": c.nome,
-                "lat": c.last_lat,
-                "lng": c.last_lng,
-                "online": bool(is_online),
-                "status": status_str,
-                "idle_seconds": idle_s,
-                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
-                "ultima_atualizacao": to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""
-            })
+    cooperados_js = [{"id": c.id, "nome": c.nome} for c in cooperados]
 
     html = render_template(
         'admin.html',
@@ -2999,7 +2981,6 @@ def admin():
         lista_espera=lista_espera,
         cooperados_disponiveis=cooperados_disponiveis,
         cooperados_js=cooperados_js,
-        motoboys_js=motoboys_js,
     )
     return _patch_admin_top_link(html)
 
