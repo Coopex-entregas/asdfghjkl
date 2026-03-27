@@ -348,84 +348,6 @@
       display:flex; align-items:center; gap:10px; flex-wrap:wrap;
     }
 
-    /* ===== MAPA ===== */
-    .map-wrapper{
-      padding:12px 12px 6px;
-      border-bottom:1px solid var(--line);
-    }
-    body.dark .map-wrapper{border-bottom:1px solid var(--line)}
-    .map-header{
-      display:flex;align-items:flex-start;justify-content:space-between;gap:10px;margin-bottom:10px;
-      font-size:.9rem;
-      flex-wrap:wrap;
-    }
-    .map-header-main{display:flex;flex-direction:column;gap:6px}
-    .map-header-main strong{font-weight:900}
-
-    .map-legend-bar{
-      margin-top:8px;
-      display:flex;gap:12px;flex-wrap:wrap;
-      background:linear-gradient(90deg, rgba(9, 33, 120, .95), rgba(15,53,181,.92));
-      color:#fff;
-      padding:8px 10px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.18);
-      box-shadow:0 10px 26px rgba(0,0,0,.12);
-    }
-    .legend-dot{width:10px;height:10px;border-radius:999px;display:inline-block;border:1px solid rgba(255,255,255,.55)}
-    .legend-dot.on{ background:#10b981; }
-    .legend-dot.off{ background:#ef4444; }
-    .legend-item{display:flex;align-items:center;gap:8px;font-weight:800;font-size:.84rem;opacity:.96}
-
-    .map-header-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .map-search{
-      min-width:240px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.45);
-      padding:9px 10px;
-      background:rgba(255,255,255,.14);
-      color:#fff;
-      font-size:.86rem;
-      font-weight:800;
-      outline:none;
-    }
-
-    .map-filter{
-      min-width:180px;
-      padding:10px 12px;
-      border-radius:12px;
-      border:1px solid rgba(255,255,255,.25);
-      background:rgba(255,255,255,.08);
-      color:#fff;
-      outline:none;
-    }
-    .map-filter option{color:#0b1220;}
-
-    .map-search option{ color:#000; }
-    .map-full-btn{
-      background:rgba(255,255,255,.14);
-      border:1px solid rgba(255,255,255,.45);
-      color:#fff;
-      border-radius:12px;
-      padding:9px 12px;
-      font-size:.86rem;
-      font-weight:900;
-      cursor:pointer;
-      white-space:nowrap;
-    }
-    .map-full-btn:hover{filter:brightness(1.08)}
-
-    #map-coopex{
-      width:100%;
-      height:340px;
-      border-radius:16px;
-      overflow:hidden;
-      box-shadow:0 10px 26px rgba(0,0,0,.18);
-      background:#020617;
-      border:1px solid rgba(255,255,255,.10);
-    }
-    @media (min-height:900px){ #map-coopex{height:390px;} }
-
     /* ===== FILTROS ===== */
     .filters-bar{
       padding:12px;
@@ -773,16 +695,6 @@
     .recb-nome{font-weight:800;font-size:.86rem;opacity:.92;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 /* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
-.map-card.fullscreen {
-  position: fixed;
-  top: 12px; left: 12px; right: 12px; bottom: 12px;
-  z-index: 99999;
-  border-radius: 16px;
-  overflow: hidden;
-}
-.map-card.fullscreen #map-coopex {
-  height: calc(100vh - 120px) !important;
-}
 
 </style>
 </head>
@@ -977,7 +889,7 @@
             <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="false">
               Atribuídas de hoje
             </button>
-            <button class="btn alt" type="button" onclick="abrirMapaTelaCheia()">
+            <button class="btn alt" type="button" onclick="window.open('{{ url_for('mapa_motoboys') }}','_blank','noopener,noreferrer')">
               Mapa
             </button>
             <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ agenda_url }}'">
@@ -2084,21 +1996,6 @@
       });
     });
 
-function abrirMapaTelaCheia() {
-      try {
-        var url = "{{ url_for('mapa_motoboys') }}";
-        var a = document.createElement('a');
-        a.href = url;
-        a.target = '_blank';
-        a.rel = 'noopener noreferrer';
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-      } catch (e) {
-        console.error(e);
-        showToast('<strong>Não foi possível abrir o mapa agora.</strong>');
-      }
-    }
   </script>
 <!-- CUPOM: Overlay de escolha/edição (não salva no banco, só imprime) -->
   <div id="cupomOverlay" style="display:none;">
