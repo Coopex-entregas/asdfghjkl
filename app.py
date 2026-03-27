@@ -2918,11 +2918,14 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    entregas = (
+    entregas_all = (
         query.options(joinedload(Entrega.cooperado))
-        .order_by(case((Entrega.cooperado_id.is_(None), 0), else_=1), Entrega.data_envio.desc())
+        .order_by(Entrega.data_envio.desc())
         .all()
     )
+    nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
+    atribuidos = [e for e in entregas_all if e.cooperado_id]
+    entregas = nao_atribuidos + atribuidos
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
@@ -4853,26 +4856,6 @@ def api_busca_clientes_entrega():
     })
 
 
-def _admin_kpis_payload():
-    hoje = datetime.now(BRAZIL_TZ).date()
-    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
-    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
-    stats_row = db.session.query(
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
-    ).select_from(Entrega).one()
-    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
-    return {'total_dia': total_dia, 'total_mes': total_mes, 'total_ano': total_ano, 'pendentes_dia': pendentes_dia, 'tem_pendente': pendentes_dia > 0}
-
-
-def _render_admin_row_html(e):
-    row_tpl = '\n<tr data-id="{{ e.id }}" data-has-coop="{{ \'1\' if tem_coop else \'0\' }}" class="{{ \'row-assigned\' if tem_coop else \'row-open\' }}">\n  <td><span class="status-dot {{ \'ok\' if tem_coop else \'no\' }}" title="{{ \'Com cooperado atribuído\' if tem_coop else \'Sem cooperado\' }}"></span></td>\n  <td>{{ e.id }}</td>\n  <td>{{ e.cliente }}</td>\n  <td>{{ e.bairro }}</td>\n  <td>{{ (e.endereco if e.endereco is defined and e.endereco else \'-\') }}</td>\n  <td><span class="valor-editable" data-id="{{ e.id }}" data-valor="{{ \'%.2f\'|format(e.valor or 0) }}" title="Clique para alterar o valor">{{ (\'R$ \' ~ (\'%.2f\'|format(e.valor or 0)).replace(\'.\', \',\')) }}</span></td>\n  <td>{{ to_brasilia(e.data_envio).strftime(\'%d/%m/%Y\') if e.data_envio else \'-\' }}<br><span class="small">{{ to_brasilia(e.data_envio)|diasemana if e.data_envio else \'\' }}</span></td>\n  <td>{{ to_brasilia(e.data_envio).strftime(\'%H:%M\') if e.data_envio else \'-\' }}</td>\n  <td>{{ to_brasilia(e.data_atribuida).strftime(\'%H:%M\') if e.data_atribuida else \'-\' }}</td>\n  <td><span class="coop-editable" data-id="{{ e.id }}" data-cooperado-id="{{ e.cooperado.id if e.cooperado else \'\' }}" title="Clique para trocar o cooperado">{{ e.cooperado.nome if e.cooperado else \'Sem Cooperado\' }}</span></td>\n  <td>{{ e.pagamento }}</td>\n  <td>{% set st_val = (e.status or \'pendente\')|lower %}<span class="status-editable" data-id="{{ e.id }}" data-status="{{ st_val }}" title="Clique para alterar o status da entrega">{% if st_val in [\'entregue\',\'recebido\'] %}<span class="pill yellow">Entregue</span>{% elif st_val in [\'agendado\'] %}<span class="pill blue">Agendado</span>{% else %}<span class="pill red">Pendente</span>{% endif %}</span></td>\n  <td>{% set sp_val = (e.status_pagamento or \'pendente\')|lower %}<span class="pagamento-editable" data-id="{{ e.id }}" data-status-pagamento="{{ sp_val }}" title="Clique para alterar o status do pagamento">{% if sp_val == \'pago\' %}<span class="pill green">Pago</span>{% else %}<span class="pill red">Pendente</span>{% endif %}</span></td>\n  <td class="td-recebido" style="text-align:center"><div class="recb-wrap">{% if tem_comprovante(e.id) %}<a class="foto-btn foto-ok" title="Ver foto" target="_blank" rel="noopener" href="{{ url_for(\'admin_ver_comprovante\', entrega_id=e.id) }}">📷</a><a class="foto-dl" title="Baixar foto" href="{{ url_for(\'admin_baixar_comprovante\', entrega_id=e.id) }}">⬇</a>{% else %}<span class="foto-btn foto-no" title="Sem foto">📷</span>{% endif %}<div class="recb-nome" title="{{ e.recebido_por or \'-\' }}">{{ e.recebido_por or \'-\' }}</div></div></td>\n  <td>{% set st_ent = (e.status or \'\')|lower %}{% if tem_coop and st_ent not in [\'recebido\',\'entregue\'] %}{% set rastreio_link = url_for(\'rastreio_publico\', token=token_rastreio(e.id), _external=True) %}<a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>{% elif tem_coop %}<span class="small">Encerrado</span>{% else %}<span class="small">—</span>{% endif %}</td>\n  <td><div class="actions"><a class="act-ico" title="Editar" href="{{ url_for(\'editar_entrega\', id=e.id) }}" aria-label="Editar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM21.41 6.34c.39-.39.39-1.02 0-1.41l-2.34-2.34a.9959.9959 0 0 0-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/></svg></a><form action="{{ url_for(\'clonar_entrega\', id=e.id) }}" method="POST" style="display:inline;"><button class="act-ico" title="Clonar" type="submit" aria-label="Clonar"><svg viewBox="0 0 24 24" fill="#1e40af"><path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/></svg></button></form><button type="button" class="act-ico" title="Imprimir cupom" data-id="{{ e.id }}" data-cliente="{{ e.cliente|e }}" data-bairro="{{ e.bairro|e }}" data-endereco="{{ (e.endereco if e.endereco is defined and e.endereco else \'-\')|e }}" data-valor="{{ \'%.2f\'|format(e.valor or 0) }}" data-data="{{ to_brasilia(e.data_envio).strftime(\'%d/%m/%Y\') if e.data_envio else \'-\' }}" data-hora_pedido="{{ to_brasilia(e.data_envio).strftime(\'%H:%M\') if e.data_envio else \'-\' }}" data-hora_atribuida="{{ to_brasilia(e.data_atribuida).strftime(\'%H:%M\') if e.data_atribuida else \'-\' }}" data-cooperado="{{ e.cooperado.nome if e.cooperado else \'Sem Cooperado\' }}" data-pagamento="{{ e.pagamento|e }}" data-recebido="{{ (e.recebido_por if e.recebido_por is defined else \'\')|e }}" onclick="imprimirCupom({{ e.id }}, this)"><svg viewBox="0 0 24 24" fill="#16a34a"><path d="M19 8h-1V3c0-1.104-.896-2-2-2H8C6.896 1 6 1.896 6 3v5H5C2.794 8 1 9.794 1 12v6c0 2.206 1.794 4 4 4h2v-3h10v3h2c2.206 0 4-1.794 4-4v-6c0-2.206-1.794-4-4-4zM8 3h8v5H8V3zm8 14H8v-4h8v4z"/></svg></button><form action="{{ url_for(\'excluir_entrega\', id=e.id) }}" method="POST" style="display:inline;" onsubmit="return confirm(\'Tem certeza que deseja excluir esta entrega?\');"><button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir"><svg viewBox="0 0 24 24" fill="#b91c1c"><path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/></svg></button></form></div></td>\n</tr>\n'
-    return render_template_string(row_tpl, e=e, tem_coop=bool(e.cooperado_id), to_brasilia=to_brasilia, tem_comprovante=tem_comprovante, token_rastreio=token_rastreio)
-
-
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
@@ -4967,7 +4950,6 @@ def cadastrar_entrega():
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
-            entrega = Entrega.query.options(joinedload(Entrega.cooperado)).get(entrega.id)
             return jsonify(
                 ok=True,
                 message=msg,
@@ -4977,19 +4959,6 @@ def cadastrar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
-                kpis=_admin_kpis_payload(),
-                linha_html=_render_admin_row_html(entrega),
-                entrega={
-                    'id': entrega.id,
-                    'cliente': entrega.cliente,
-                    'bairro': entrega.bairro,
-                    'valor': float(entrega.valor or 0),
-                    'cooperado_id': entrega.cooperado_id,
-                    'cooperado_nome': (entrega.cooperado.nome if entrega.cooperado else None),
-                    'status': entrega.status,
-                    'status_pagamento': entrega.status_pagamento,
-                    'pagamento': entrega.pagamento,
-                }
             )
 
         return redirect_back_to_admin()
@@ -5091,7 +5060,6 @@ def agendar_entrega():
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
-            entrega = Entrega.query.options(joinedload(Entrega.cooperado)).get(entrega.id)
             return jsonify(
                 ok=True,
                 message=msg,
@@ -5101,19 +5069,6 @@ def agendar_entrega():
                 status=entrega.status,
                 status_pagamento=entrega.status_pagamento,
                 cooperado_id=entrega.cooperado_id,
-                kpis=_admin_kpis_payload(),
-                linha_html=_render_admin_row_html(entrega),
-                entrega={
-                    'id': entrega.id,
-                    'cliente': entrega.cliente,
-                    'bairro': entrega.bairro,
-                    'valor': float(entrega.valor or 0),
-                    'cooperado_id': entrega.cooperado_id,
-                    'cooperado_nome': (entrega.cooperado.nome if entrega.cooperado else None),
-                    'status': entrega.status,
-                    'status_pagamento': entrega.status_pagamento,
-                    'pagamento': entrega.pagamento,
-                }
             )
 
         return redirect_back_to_admin()
