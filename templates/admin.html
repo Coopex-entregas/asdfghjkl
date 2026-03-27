@@ -72,10 +72,10 @@
     }
     .topbar{
       width:100%;
-      padding:10px 14px;
+      padding:14px 18px;
       display:grid;
-      grid-template-columns:auto minmax(0,1fr) auto auto;
-      gap:10px;
+      grid-template-columns:auto 1fr auto auto;
+      gap:14px;
       align-items:center;
     }
     .brand{
@@ -131,29 +131,29 @@
     .menu-btn.open span:nth-child(2){opacity:0}
     .menu-btn.open span:nth-child(3){transform:translateY(-6px) rotate(-45deg)}
 
-    .kpis{display:grid;grid-template-columns:minmax(120px,136px) repeat(3,minmax(138px,1fr));gap:8px;align-items:stretch;justify-content:end}
+    .kpis{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}
     .kpi{
-      min-width:0;
-      padding:6px 10px;
-      border:1px solid rgba(255,255,255,.30);
+      min-width:160px;
+      padding:8px 12px;
+      border:1px solid rgba(255,255,255,.35);
       border-radius:14px;
-      background:rgba(255,255,255,.12);
-      box-shadow:0 8px 16px rgba(0,0,0,.09) inset;
-      min-height:56px;
+      background:rgba(255,255,255,.14);
+      box-shadow:0 10px 18px rgba(0,0,0,.10) inset;
     }
-    .kpi small{display:block;opacity:.92;font-weight:800;font-size:.82rem;line-height:1.05}
-    .kpi span{display:block;font-weight:900;font-size:1.05rem;line-height:1.05;margin-top:2px}
+    .kpi small{display:block;opacity:.95;font-weight:800}
+    .kpi span{display:block;font-weight:900;font-size:1.18rem;line-height:1.1}
 
-    .diag-mini{display:grid;grid-template-columns:1fr;gap:3px;align-content:center;justify-items:start;min-width:0;padding:2px 0 0 0;margin-right:2px}
-    .diag-chip{display:grid;grid-template-columns:54px 1fr;align-items:center;gap:6px;min-height:16px;padding:0;border:none;background:transparent;color:#fff;font-size:.66rem;font-weight:800;white-space:nowrap;box-shadow:none;line-height:1.05}
-    .diag-chip b{font-size:.7rem;font-weight:900;padding:2px 7px;border-radius:999px;border:1px solid rgba(255,255,255,.26);background:rgba(255,255,255,.12);box-shadow:0 4px 10px rgba(0,0,0,.06) inset}
-    .diag-chip.bad b{background:rgba(239,68,68,.18);border-color:rgba(255,255,255,.24)}
-    .diag-chip.warn b{background:rgba(245,158,11,.18);border-color:rgba(255,255,255,.24)}
-    .diag-chip.good b{background:rgba(16,185,129,.18);border-color:rgba(255,255,255,.24)}
-    @media (max-width:1200px){
-      .kpis{grid-template-columns:1fr 1fr;justify-content:stretch}
-      .diag-mini{grid-column:1 / -1;order:-1;padding-bottom:4px}
-    }
+    .diag-mini{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:158px;max-width:170px;margin-right:8px;line-height:1}
+    .diag-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:18px;padding:0;border:0;background:transparent;color:#f8fbff;font-size:.67rem;font-weight:600;white-space:nowrap;box-shadow:none;letter-spacing:.01em}
+    .diag-chip .diag-label{opacity:.86;font-weight:700}
+    .diag-chip .diag-value{font-weight:700;opacity:.98}
+    .diag-chip .diag-sep{opacity:.45;margin:0 3px}
+    .diag-chip .diag-rate{font-weight:800;text-transform:lowercase}
+    .diag-chip.bad .diag-rate{color:#fecaca}
+    .diag-chip.warn .diag-rate{color:#fde68a}
+    .diag-chip.good .diag-rate{color:#bbf7d0}
+    .diag-chip.normal .diag-rate{color:#dbeafe}
+    @media (max-width:980px){.diag-mini{min-width:140px;max-width:160px}}
 
     .logout{
       color:#fff;
@@ -718,10 +718,10 @@
 
       <div class="kpis">
         <div class="diag-mini" aria-label="Diagnóstico rápido">
-          <span class="diag-chip" id="diagPing">Página <b>--</b></span>
-          <span class="diag-chip" id="diagHealth">Servidor <b>--</b></span>
-          <span class="diag-chip" id="diagAction">Operação <b>--</b></span>
-          <span class="diag-chip" id="diagConn">Conexão <b>--</b></span>
+          <span class="diag-chip" id="diagPing"><span class="diag-label">Página</span><span class="diag-value">--</span></span>
+          <span class="diag-chip" id="diagHealth"><span class="diag-label">Servidor</span><span class="diag-value">--</span></span>
+          <span class="diag-chip" id="diagAction"><span class="diag-label">Operação</span><span class="diag-value">--</span></span>
+          <span class="diag-chip" id="diagConn"><span class="diag-label">Conexão</span><span class="diag-value">--</span></span>
         </div>
         <div class="kpi"><small>Entregas do Dia</small><span>{{ estatisticas.total_dia }}</span></div>
         <div class="kpi"><small>Do Mês</small><span>{{ estatisticas.total_mes }}</span></div>
@@ -1238,59 +1238,105 @@
       const healthEl = document.getElementById('diagHealth');
       const actionEl = document.getElementById('diagAction');
       const connEl = document.getElementById('diagConn');
+      const NAV_KEY = '__cx_pending_action_start';
 
-      function setChip(el, label, value, cls){
-        if(!el) return;
-        el.classList.remove('good','warn','bad');
-        if(cls) el.classList.add(cls);
-        el.innerHTML = label + ' <b>' + value + '</b>';
-      }
-      function clsByMs(ms){
+      function classByMs(ms){
         if(!Number.isFinite(ms)) return '';
         if(ms <= 180) return 'good';
-        if(ms <= 450) return 'warn';
+        if(ms <= 450) return 'normal';
+        if(ms <= 900) return 'warn';
         return 'bad';
+      }
+      function ratingText(ms){
+        if(!Number.isFinite(ms)) return '--';
+        if(ms <= 180) return 'bom';
+        if(ms <= 450) return 'normal';
+        if(ms <= 900) return 'lento';
+        return 'pesado';
+      }
+      function setChip(el, label, value, cls){
+        if(!el) return;
+        el.classList.remove('good','normal','warn','bad');
+        if(cls) el.classList.add(cls);
+        const labelEl = el.querySelector('.diag-label');
+        const valueEl = el.querySelector('.diag-value');
+        if(labelEl) labelEl.textContent = label;
+        if(valueEl) valueEl.innerHTML = value;
+      }
+      function fmtMetric(ms){
+        if(!Number.isFinite(ms)) return '--';
+        return `${ratingText(ms)} <span class="diag-sep">·</span> ${Math.round(ms)}ms`;
+      }
+      function fmtConn(c){
+        if(!c) return 'n/d';
+        const parts=[];
+        if(c.effectiveType) parts.push(String(c.effectiveType));
+        if(Number.isFinite(c.downlink)) parts.push(String(c.downlink).replace(/\.0$/, '') + 'Mb');
+        return parts.join(' ') || 'ok';
       }
       async function medirPing(){
         const t0 = performance.now();
         try{
           await fetch(window.location.pathname + '?_p=' + Date.now(), {method:'HEAD', cache:'no-store'});
-          const ms = Math.round(performance.now() - t0);
-          setChip(pingEl, 'Página', ms + 'ms', clsByMs(ms));
+          const ms = performance.now() - t0;
+          setChip(pingEl, 'Página', fmtMetric(ms), classByMs(ms));
         }catch(e){
-          setChip(pingEl, 'Página', 'erro', 'bad');
+          setChip(pingEl, 'Página', 'pesado <span class="diag-sep">·</span> erro', 'bad');
         }
       }
       async function medirHealth(){
         const t0 = performance.now();
         try{
-          const r = await fetch('/healthz?_h=' + Date.now(), {cache:'no-store'});
-          const ms = Math.round(performance.now() - t0);
-          setChip(healthEl, 'Servidor', (r.ok ? ms + 'ms' : 'falha'), r.ok ? clsByMs(ms) : 'bad');
+          const r = await fetch('/healthz?_h=' + Date.now(), {method:'GET', cache:'no-store'});
+          const ms = performance.now() - t0;
+          if(!r.ok) throw new Error('health');
+          setChip(healthEl, 'Servidor', fmtMetric(ms), classByMs(ms));
         }catch(e){
-          setChip(healthEl, 'Servidor', 'erro', 'bad');
+          setChip(healthEl, 'Servidor', 'pesado <span class="diag-sep">·</span> erro', 'bad');
         }
       }
       function medirRede(){
         try{
           const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
           if(!c){ setChip(connEl, 'Conexão', 'n/d', ''); return; }
-          const txt = [c.effectiveType || '', Number.isFinite(c.downlink) ? (c.downlink + 'Mb') : ''].filter(Boolean).join(' ');
-          let cls = '';
           const et = String(c.effectiveType || '').toLowerCase();
-          if(et === '4g') cls = 'good'; else if(et === '3g') cls = 'warn'; else if(et) cls = 'bad';
-          setChip(connEl, 'Conexão', txt || 'ok', cls);
-        }catch(e){ setChip(connEl, 'Conexão', 'erro', 'bad'); }
+          let cls = 'normal';
+          if(et === '4g') cls = 'good';
+          else if(et === '3g') cls = 'warn';
+          else if(et && et !== 'unknown') cls = 'bad';
+          const status = cls==='good' ? 'bom' : cls==='warn' ? 'lento' : cls==='bad' ? 'pesado' : 'normal';
+          setChip(connEl, 'Conexão', `${status} <span class="diag-sep">·</span> ${fmtConn(c)}`, cls);
+        }catch(e){ setChip(connEl, 'Conexão', 'pesado <span class="diag-sep">·</span> erro', 'bad'); }
       }
-      window.__markActionStart = function(){ window.__actionPerfStart = performance.now(); };
+      window.__markActionStart = function(){
+        window.__actionPerfStart = performance.now();
+        try{ sessionStorage.setItem(NAV_KEY, String(Date.now())); }catch(e){}
+      };
       window.__markActionEnd = function(){
         const t0 = window.__actionPerfStart;
         if(!Number.isFinite(t0)) return;
-        const ms = Math.round(performance.now() - t0);
-        setChip(actionEl, 'Operação', ms + 'ms', clsByMs(ms));
+        const ms = performance.now() - t0;
+        setChip(actionEl, 'Operação', fmtMetric(ms), classByMs(ms));
+        window.__actionPerfStart = null;
+        try{ sessionStorage.removeItem(NAV_KEY); }catch(e){}
+      };
+      window.__markActionFail = function(){
+        setChip(actionEl, 'Operação', 'pesado <span class="diag-sep">·</span> falha', 'bad');
+        window.__actionPerfStart = null;
+        try{ sessionStorage.removeItem(NAV_KEY); }catch(e){}
       };
       window.addEventListener('DOMContentLoaded', function(){
         setChip(actionEl, 'Operação', '--', '');
+        try{
+          const started = Number(sessionStorage.getItem(NAV_KEY) || '');
+          if(Number.isFinite(started) && started > 0){
+            const delta = Date.now() - started;
+            if(delta > 0 && delta < 120000){
+              setChip(actionEl, 'Operação', fmtMetric(delta), classByMs(delta));
+            }
+            sessionStorage.removeItem(NAV_KEY);
+          }
+        }catch(e){}
         medirRede();
         medirPing();
         medirHealth();
@@ -1314,16 +1360,17 @@
 
       ev.preventDefault();
       try{
+        window.__markActionStart&&window.__markActionStart();
         const fd = new FormData(form);
         fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
-          .then(res=>{
+          .then(async res=>{
             if(!res.ok) throw new Error('Falha ao atualizar.');
             window.__markActionEnd&&window.__markActionEnd();
             showToast('<strong>Atualizado com sucesso.</strong>');
-            setTimeout(()=> location.reload(), 350);
           })
-          .catch(()=> showToast('<strong>Não foi possível atualizar agora.</strong>'));
+          .catch(()=>{ window.__markActionFail&&window.__markActionFail(); showToast('<strong>Não foi possível atualizar agora.</strong>'); });
       }catch(e){
+        window.__markActionFail&&window.__markActionFail();
         showToast('<strong>Não foi possível atualizar agora.</strong>');
       }
     });
