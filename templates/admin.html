@@ -143,12 +143,17 @@
     .kpi small{display:block;opacity:.95;font-weight:800}
     .kpi span{display:block;font-weight:900;font-size:1.18rem;line-height:1.1}
 
-    .diag-mini{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-left:2px}
-    .diag-chip{display:inline-flex;align-items:center;gap:5px;height:28px;padding:0 8px;border-radius:999px;border:1px solid rgba(255,255,255,.34);background:rgba(255,255,255,.12);color:#fff;font-size:.74rem;font-weight:900;white-space:nowrap;box-shadow:0 8px 16px rgba(0,0,0,.08) inset}
-    .diag-chip b{font-size:.76rem}
-    .diag-chip.bad{background:rgba(239,68,68,.18);border-color:rgba(255,255,255,.28)}
-    .diag-chip.warn{background:rgba(245,158,11,.18);border-color:rgba(255,255,255,.28)}
-    .diag-chip.good{background:rgba(16,185,129,.18);border-color:rgba(255,255,255,.28)}
+    .diag-mini{display:flex;flex-direction:column;align-items:flex-start;justify-content:center;gap:3px;min-width:158px;max-width:170px;margin-right:8px;line-height:1}
+    .diag-chip{display:flex;align-items:center;justify-content:space-between;gap:8px;width:100%;min-height:18px;padding:0;border:0;background:transparent;color:#f8fbff;font-size:.67rem;font-weight:600;white-space:nowrap;box-shadow:none;letter-spacing:.01em}
+    .diag-chip .diag-label{opacity:.86;font-weight:700}
+    .diag-chip .diag-value{font-weight:700;opacity:.98}
+    .diag-chip .diag-sep{opacity:.45;margin:0 3px}
+    .diag-chip .diag-rate{font-weight:800;text-transform:lowercase}
+    .diag-chip.bad .diag-rate{color:#fecaca}
+    .diag-chip.warn .diag-rate{color:#fde68a}
+    .diag-chip.good .diag-rate{color:#bbf7d0}
+    .diag-chip.normal .diag-rate{color:#dbeafe}
+    @media (max-width:980px){.diag-mini{min-width:140px;max-width:160px}}
 
     .logout{
       color:#fff;
@@ -712,13 +717,13 @@
       </div>
 
       <div class="kpis">
-        <div class="kpi"><small>Entregas do Dia</small><span id="kpiTotalDia">{{ estatisticas.total_dia }}</span></div>
         <div class="diag-mini" aria-label="Diagnóstico rápido">
-          <span class="diag-chip" id="diagPing">Ping <b>--</b></span>
-          <span class="diag-chip" id="diagHealth">Srv <b>--</b></span>
-          <span class="diag-chip" id="diagAction">Ação <b>--</b></span>
-          <span class="diag-chip" id="diagConn">Rede <b>--</b></span>
+          <span class="diag-chip" id="diagPing"><span class="diag-label">Página</span><span class="diag-value">--</span></span>
+          <span class="diag-chip" id="diagHealth"><span class="diag-label">Servidor</span><span class="diag-value">--</span></span>
+          <span class="diag-chip" id="diagAction"><span class="diag-label">Operação</span><span class="diag-value">--</span></span>
+          <span class="diag-chip" id="diagConn"><span class="diag-label">Conexão</span><span class="diag-value">--</span></span>
         </div>
+        <div class="kpi"><small>Entregas do Dia</small><span id="kpiTotalDia">{{ estatisticas.total_dia }}</span></div>
         <div class="kpi"><small>Do Mês</small><span id="kpiTotalMes">{{ estatisticas.total_mes }}</span></div>
         <div class="kpi"><small>Do Ano</small><span id="kpiTotalAno">{{ estatisticas.total_ano }}</span></div>
       </div>
@@ -833,12 +838,12 @@
         <div class="filters-bar">
           <div class="filters-top">
             <div class="quick-left">
-              <button class="btn" type="button" onclick="window.__markActionStart&&window.__markActionStart('Nova entrega');window.location.href='{{ url_for('cadastrar_entrega') }}'">
+              <button class="btn" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('cadastrar_entrega') }}'">
                 + Nova entrega
               </button>
             </div>
 
-            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" onsubmit="window.__markActionStart&&window.__markActionStart('Filtrar')">
+            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" onsubmit="window.__markActionStart&&window.__markActionStart()">
               <div class="field">
                 <label for="cooperado">Cooperado</label>
                 <select name="cooperado_id" id="cooperado">
@@ -883,7 +888,7 @@
           </div>
 
           <div class="filters-actions">
-            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart('Cooperado');window.location.href='{{ url_for('agendar_entrega') }}'">
+            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
               + Agendar entrega
             </button>
             <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="false">
@@ -1233,68 +1238,105 @@
       const healthEl = document.getElementById('diagHealth');
       const actionEl = document.getElementById('diagAction');
       const connEl = document.getElementById('diagConn');
+      const NAV_KEY = '__cx_pending_action_start';
 
-      function setChip(el, label, value, cls){
-        if(!el) return;
-        el.classList.remove('good','warn','bad');
-        if(cls) el.classList.add(cls);
-        el.innerHTML = label + ' <b>' + value + '</b>';
-      }
-      function clsByMs(ms){
+      function classByMs(ms){
         if(!Number.isFinite(ms)) return '';
         if(ms <= 180) return 'good';
-        if(ms <= 450) return 'warn';
+        if(ms <= 450) return 'normal';
+        if(ms <= 900) return 'warn';
         return 'bad';
+      }
+      function ratingText(ms){
+        if(!Number.isFinite(ms)) return '--';
+        if(ms <= 180) return 'bom';
+        if(ms <= 450) return 'normal';
+        if(ms <= 900) return 'lento';
+        return 'pesado';
+      }
+      function setChip(el, label, value, cls){
+        if(!el) return;
+        el.classList.remove('good','normal','warn','bad');
+        if(cls) el.classList.add(cls);
+        const labelEl = el.querySelector('.diag-label');
+        const valueEl = el.querySelector('.diag-value');
+        if(labelEl) labelEl.textContent = label;
+        if(valueEl) valueEl.innerHTML = value;
+      }
+      function fmtMetric(ms){
+        if(!Number.isFinite(ms)) return '--';
+        return `${ratingText(ms)} <span class="diag-sep">·</span> ${Math.round(ms)}ms`;
+      }
+      function fmtConn(c){
+        if(!c) return 'n/d';
+        const parts=[];
+        if(c.effectiveType) parts.push(String(c.effectiveType));
+        if(Number.isFinite(c.downlink)) parts.push(String(c.downlink).replace(/\.0$/, '') + 'Mb');
+        return parts.join(' ') || 'ok';
       }
       async function medirPing(){
         const t0 = performance.now();
         try{
           await fetch(window.location.pathname + '?_p=' + Date.now(), {method:'HEAD', cache:'no-store'});
-          const ms = Math.round(performance.now() - t0);
-          setChip(pingEl, 'Ping', ms + 'ms', clsByMs(ms));
+          const ms = performance.now() - t0;
+          setChip(pingEl, 'Página', fmtMetric(ms), classByMs(ms));
         }catch(e){
-          setChip(pingEl, 'Ping', 'erro', 'bad');
+          setChip(pingEl, 'Página', 'pesado <span class="diag-sep">·</span> erro', 'bad');
         }
       }
       async function medirHealth(){
         const t0 = performance.now();
         try{
-          const r = await fetch('/healthz?_h=' + Date.now(), {cache:'no-store'});
-          const ms = Math.round(performance.now() - t0);
-          setChip(healthEl, 'Srv', (r.ok ? ms + 'ms' : 'falha'), r.ok ? clsByMs(ms) : 'bad');
+          const r = await fetch('/healthz?_h=' + Date.now(), {method:'GET', cache:'no-store'});
+          const ms = performance.now() - t0;
+          if(!r.ok) throw new Error('health');
+          setChip(healthEl, 'Servidor', fmtMetric(ms), classByMs(ms));
         }catch(e){
-          setChip(healthEl, 'Srv', 'erro', 'bad');
+          setChip(healthEl, 'Servidor', 'pesado <span class="diag-sep">·</span> erro', 'bad');
         }
       }
       function medirRede(){
         try{
           const c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-          if(!c){ setChip(connEl, 'Rede', 'n/d', ''); return; }
-          const txt = [c.effectiveType || '', Number.isFinite(c.downlink) ? (c.downlink + 'Mb') : ''].filter(Boolean).join(' ');
-          let cls = '';
+          if(!c){ setChip(connEl, 'Conexão', 'n/d', ''); return; }
           const et = String(c.effectiveType || '').toLowerCase();
-          if(et === '4g') cls = 'good'; else if(et === '3g') cls = 'warn'; else if(et) cls = 'bad';
-          setChip(connEl, 'Rede', txt || 'ok', cls);
-        }catch(e){ setChip(connEl, 'Rede', 'erro', 'bad'); }
+          let cls = 'normal';
+          if(et === '4g') cls = 'good';
+          else if(et === '3g') cls = 'warn';
+          else if(et && et !== 'unknown') cls = 'bad';
+          const status = cls==='good' ? 'bom' : cls==='warn' ? 'lento' : cls==='bad' ? 'pesado' : 'normal';
+          setChip(connEl, 'Conexão', `${status} <span class="diag-sep">·</span> ${fmtConn(c)}`, cls);
+        }catch(e){ setChip(connEl, 'Conexão', 'pesado <span class="diag-sep">·</span> erro', 'bad'); }
       }
-      window.__markActionStart = function(nome){
+      window.__markActionStart = function(){
         window.__actionPerfStart = performance.now();
-        window.__actionPerfName = nome || 'Operação';
+        try{ sessionStorage.setItem(NAV_KEY, String(Date.now())); }catch(e){}
       };
-      window.__markActionEnd = function(nome){
+      window.__markActionEnd = function(){
         const t0 = window.__actionPerfStart;
-        const label = nome || window.__actionPerfName || 'Operação';
-        if(!Number.isFinite(t0)) {
-          setChip(actionEl, label, '--', '');
-          return;
-        }
-        const ms = Math.round(performance.now() - t0);
-        setChip(actionEl, label, ms + 'ms', clsByMs(ms));
+        if(!Number.isFinite(t0)) return;
+        const ms = performance.now() - t0;
+        setChip(actionEl, 'Operação', fmtMetric(ms), classByMs(ms));
         window.__actionPerfStart = null;
-        window.__actionPerfName = null;
+        try{ sessionStorage.removeItem(NAV_KEY); }catch(e){}
+      };
+      window.__markActionFail = function(){
+        setChip(actionEl, 'Operação', 'pesado <span class="diag-sep">·</span> falha', 'bad');
+        window.__actionPerfStart = null;
+        try{ sessionStorage.removeItem(NAV_KEY); }catch(e){}
       };
       window.addEventListener('DOMContentLoaded', function(){
         setChip(actionEl, 'Operação', '--', '');
+        try{
+          const started = Number(sessionStorage.getItem(NAV_KEY) || '');
+          if(Number.isFinite(started) && started > 0){
+            const delta = Date.now() - started;
+            if(delta > 0 && delta < 120000){
+              setChip(actionEl, 'Operação', fmtMetric(delta), classByMs(delta));
+            }
+            sessionStorage.removeItem(NAV_KEY);
+          }
+        }catch(e){}
         medirRede();
         medirPing();
         medirHealth();
@@ -1305,7 +1347,33 @@
       });
     })();
 
-    // Ações legadas desativadas nesta versão: usamos edição inline sem recarregar a página.
+    document.addEventListener('click', (ev)=>{
+      const st = ev.target.closest?.('.js-toggle-pagto, .js-toggle-entrega');
+      if(!st) return;
+      const form = st.closest?.('form');
+      if(!form) return;
+
+      const confirmar = st.classList.contains('js-toggle-pagto')
+        ? 'Confirmar pagamento como PAGO?'
+        : 'Confirmar entrega como ENTREGUE?';
+      if(!confirm(confirmar)) return;
+
+      ev.preventDefault();
+      try{
+        window.__markActionStart&&window.__markActionStart();
+        const fd = new FormData(form);
+        fetch(form.action, { method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} })
+          .then(async res=>{
+            if(!res.ok) throw new Error('Falha ao atualizar.');
+            window.__markActionEnd&&window.__markActionEnd();
+            showToast('<strong>Atualizado com sucesso.</strong>');
+          })
+          .catch(()=>{ window.__markActionFail&&window.__markActionFail(); showToast('<strong>Não foi possível atualizar agora.</strong>'); });
+      }catch(e){
+        window.__markActionFail&&window.__markActionFail();
+        showToast('<strong>Não foi possível atualizar agora.</strong>');
+      }
+    });
 
     function removerDaFilaPorNome(nome){
       try{
@@ -1401,7 +1469,7 @@
             .then(()=>{
               if(coopId) removerDaFilaPorNome(nomeEscolhido);
               window.__markActionEnd&&window.__markActionEnd();
-              refreshAdminKpis(); showToast('<strong>Cooperado atualizado.</strong>');
+              showToast('<strong>Cooperado atualizado.</strong>');
             })
             .catch(()=> showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>'));
         }catch(e){
@@ -1444,21 +1512,6 @@
       }
     }
 
-    async function refreshAdminKpis(){
-      try{
-        const r = await fetch('/api/admin/kpis', {headers:{'X-Requested-With':'fetch'}});
-        if(!r.ok) return;
-        const data = await r.json();
-        if(!data || !data.ok) return;
-        const dia = document.getElementById('kpiTotalDia');
-        const mes = document.getElementById('kpiTotalMes');
-        const ano = document.getElementById('kpiTotalAno');
-        if(dia) dia.textContent = data.total_dia ?? dia.textContent;
-        if(mes) mes.textContent = data.total_mes ?? mes.textContent;
-        if(ano) ano.textContent = data.total_ano ?? ano.textContent;
-      }catch(e){}
-    }
-
     function makePillStatus(st){
       st = (st||'').toLowerCase();
       if(st === 'agendado') return '<span class="pill blue">Agendado</span>';
@@ -1470,6 +1523,22 @@
       if(sp === 'pago') return '<span class="pill green">Pago</span>';
       return '<span class="pill red">Pendente</span>';
     }
+
+    async function atualizarKPIsAdmin(){
+      try{
+        const r = await fetch('/api/admin/kpis', { headers:{'X-Requested-With':'fetch'} });
+        if(!r.ok) return;
+        const j = await r.json();
+        if(!j || !j.ok) return;
+        const d = document.getElementById('kpiTotalDia');
+        const m = document.getElementById('kpiTotalMes');
+        const a = document.getElementById('kpiTotalAno');
+        if(d) d.textContent = j.total_dia ?? d.textContent;
+        if(m) m.textContent = j.total_mes ?? m.textContent;
+        if(a) a.textContent = j.total_ano ?? a.textContent;
+      }catch(e){}
+    }
+
 
     document.addEventListener('click', (ev)=>{
       const el = ev.target.closest?.('.status-editable');
@@ -1501,7 +1570,7 @@
 
       async function salvar(){
         const st = sel.value || 'pendente';
-        window.__markActionStart&&window.__markActionStart('Status');
+        window.__markActionStart&&window.__markActionStart();
         const res = await salvarInlineEntrega(idEntrega, {status: st});
         const span = document.createElement('span');
         span.className='status-editable';
@@ -1513,7 +1582,7 @@
 
         if(res && res.ok){
           window.__markActionEnd&&window.__markActionEnd();
-          refreshAdminKpis(); showToast('<strong>Status atualizado.</strong>');
+          showToast('<strong>Status atualizado.</strong>');
         }else{
           showToast('<strong>Não foi possível atualizar o status agora.</strong>');
         }
@@ -1552,7 +1621,7 @@
 
       async function salvar(){
         const sp = sel.value || 'pendente';
-        window.__markActionStart&&window.__markActionStart('Pagamento');
+        window.__markActionStart&&window.__markActionStart();
         const res = await salvarInlineEntrega(idEntrega, {status_pagamento: sp});
         const span = document.createElement('span');
         span.className='pagamento-editable';
@@ -1564,7 +1633,7 @@
 
         if(res && res.ok){
           window.__markActionEnd&&window.__markActionEnd();
-          refreshAdminKpis(); showToast('<strong>Pagamento atualizado.</strong>');
+          showToast('<strong>Pagamento atualizado.</strong>');
         }else{
           showToast('<strong>Não foi possível atualizar o pagamento agora.</strong>');
         }
@@ -1641,13 +1710,13 @@
         input.parentNode.replaceChild(span, input);
         if(!shouldSave) return;
 
-        window.__markActionStart&&window.__markActionStart('Valor');
+        window.__markActionStart&&window.__markActionStart();
         const ok = await salvarValorEntrega(idEntrega, novo);
         if(ok){
           window.__markActionEnd&&window.__markActionEnd();
-          refreshAdminKpis(); showToast('<strong>Valor atualizado.</strong>');
+          showToast('<strong>Valor atualizado.</strong>');
         }else{
-          showToast('<strong>Não foi possível atualizar o valor agora.</strong>');
+          window.location.href = `/editar_entrega/${idEntrega}`;
         }
       }
 
