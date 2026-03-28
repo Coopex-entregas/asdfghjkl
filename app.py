@@ -936,7 +936,7 @@ import os
 # CONFIG DE TEMPOS (para NÃO dar NameError)
 # Ajuste os valores como quiser. Também aceita env vars no Render.
 # -------------------------------------------------------------------
-OFFLINE_AFTER_SEC = int(os.getenv("OFFLINE_AFTER_SEC", "120"))  # 2 min sem ping => offline
+OFFLINE_AFTER_SEC = int(os.getenv("OFFLINE_AFTER_SEC", "420"))  # 2 min sem ping => offline
 IDLE_AFTER_SEC    = int(os.getenv("IDLE_AFTER_SEC", "300"))     # 5 min sem movimento => ocioso
 # Se velocidade >= isso, considera "em movimento"
 MOVING_SPEED_KMH = float(os.getenv("MOVING_SPEED_KMH", "3.0"))
