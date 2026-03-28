@@ -3,6 +3,7 @@ import io
 import re
 import json
 import random
+import secrets
 from flask_socketio import SocketIO, join_room, leave_room
 import unicodedata
 from datetime import datetime, timedelta, time, date
@@ -17,7 +18,7 @@ from flask import (
 )
 from flask_login import LoginManager, login_user, logout_user, current_user, login_required
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import func, or_, case
+from sqlalchemy import func, or_, case, inspect
 from sqlalchemy.orm import joinedload
 from sqlalchemy.sql import text
 from sqlalchemy.exc import IntegrityError
@@ -303,6 +304,7 @@ class Cooperado(db.Model):
     nome = db.Column(db.String(100), nullable=False)
     senha_hash = db.Column(db.String(128), nullable=False)
     ativo = db.Column(db.Boolean, nullable=False, default=True)
+    app_token = db.Column(db.String(120), unique=True, nullable=True, index=True)
 
     # NOVOS CAMPOS PARA RASTREIO EM TEMPO REAL
     last_lat = db.Column(db.Float, nullable=True)
@@ -322,6 +324,28 @@ class Cooperado(db.Model):
 
     def check_senha(self, senha):
         return check_password_hash(self.senha_hash, senha)
+
+    def ensure_app_token(self):
+        if not self.app_token:
+            self.app_token = secrets.token_urlsafe(32)
+
+
+class LocalizacaoCooperado(db.Model):
+    __tablename__ = 'localizacao_cooperado'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=False, unique=True, index=True)
+    latitude = db.Column(db.Float, nullable=True)
+    longitude = db.Column(db.Float, nullable=True)
+    accuracy = db.Column(db.Float, nullable=True)
+    speed = db.Column(db.Float, nullable=True)
+    heading = db.Column(db.Float, nullable=True)
+    online = db.Column(db.Boolean, default=False, index=True)
+    fonte = db.Column(db.String(30), default='android_native')
+    atualizado_em = db.Column(db.DateTime, default=datetime.utcnow, index=True)
+
+    cooperado = db.relationship('Cooperado')
+
 
 
 class Cliente(db.Model):
@@ -1764,12 +1788,43 @@ def ir_principal_escala():
         return redirect(url_for('retornar_admin_principal'))
     return redirect(_build_principal_sso_url(tipo='supervisao', principal_user='SUPERVISAO', next_path='/admin?tab=escalas'))
 
+def ensure_mobile_tracking_schema():
+    """
+    Garante a coluna app_token em cooperado e a tabela localizacao_cooperado,
+    sem depender de migração externa.
+    """
+    try:
+        db.create_all()
+    except Exception:
+        pass
+
+    try:
+        insp = inspect(db.engine)
+        cols = {c["name"] for c in insp.get_columns("cooperado")}
+    except Exception:
+        cols = set()
+
+    if "app_token" not in cols:
+        try:
+            db.session.execute(text("ALTER TABLE cooperado ADD COLUMN app_token VARCHAR(120)"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    try:
+        db.session.execute(text("CREATE UNIQUE INDEX IF NOT EXISTS ix_cooperado_app_token ON cooperado (app_token)"))
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
 # =========================================================
 @app.route('/', methods=['GET', 'POST'])
 @app.route('/login', methods=['GET', 'POST'])
 def login():
+    ensure_mobile_tracking_schema()
     if request.method == 'POST':
         usuario = (request.form.get('usuario') or '').strip()
         senha = request.form.get('senha') or ''
@@ -1806,6 +1861,12 @@ def login():
                     return render_template('login.html', now=lambda: datetime.now(BRAZIL_TZ))
                 except TemplateNotFound:
                     pass
+
+            cooperado.ensure_app_token()
+            try:
+                db.session.commit()
+            except Exception:
+                db.session.rollback()
 
             session.clear()
             session['user_id'] = cooperado.id
@@ -1877,6 +1938,12 @@ def api_mobile_login_cooperado():
     if not getattr(coop, 'ativo', True):
         return jsonify(ok=False, msg='Usuário inativo. Fale com a supervisão.'), 403
 
+    coop.ensure_app_token()
+    try:
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
     # usa a mesma sessão do site (cookie), assim o app pode reaproveitar
     session.clear()
     session['user_id'] = coop.id
@@ -1892,6 +1959,7 @@ def api_mobile_login_cooperado():
             "id": coop.id,
             "nome": coop.nome,
             "ativo": bool(coop.ativo),
+            "app_token": coop.app_token,
         }
     )
 
@@ -1906,6 +1974,10 @@ def logout():
         coop = Cooperado.query.get(uid)
         if coop:
             coop.online = False
+            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+            if loc:
+                loc.online = False
+                loc.atualizado_em = datetime.utcnow()
             db.session.commit()
 
     session.clear()
@@ -3089,6 +3161,14 @@ def painel_cooperado():
         return redirect(url_for('login'))
 
     user_id = session['user_id']
+    ensure_mobile_tracking_schema()
+    coop = Cooperado.query.get(user_id)
+    if coop and not getattr(coop, 'app_token', None):
+        coop.ensure_app_token()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
 
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
@@ -3235,6 +3315,9 @@ def painel_cooperado():
             {'num':5,'nome':'Maio'},{'num':6,'nome':'Junho'},{'num':7,'nome':'Julho'},{'num':8,'nome':'Agosto'},
             {'num':9,'nome':'Setembro'},{'num':10,'nome':'Outubro'},{'num':11,'nome':'Novembro'},{'num':12,'nome':'Dezembro'},
         ],
+        coop=coop,
+        cooperado_id=user_id,
+        app_token=(coop.app_token if coop else ''),
     )
 
 @app.route("/cooperado/verificar_nova_entrega")
@@ -3490,6 +3573,119 @@ def cooperado_aceitar_corrida():
 
     db.session.commit()
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
+
+
+@app.post('/api/app/localizacao')
+def api_app_localizacao():
+    ensure_mobile_tracking_schema()
+
+    data = request.get_json(silent=True) or {}
+
+    auth = (request.headers.get('Authorization') or '').strip()
+    token = ''
+    if auth.lower().startswith('bearer '):
+        token = auth[7:].strip()
+
+    user_id = str(data.get('user_id') or '').strip()
+    lat = data.get('latitude')
+    lng = data.get('longitude')
+    accuracy = data.get('accuracy')
+    speed = data.get('speed')
+    heading = data.get('heading')
+    source = (data.get('source') or 'android_native').strip()
+
+    if not token:
+        return jsonify({'ok': False, 'error': 'token ausente'}), 401
+
+    coop = Cooperado.query.filter_by(app_token=token).first()
+    if not coop:
+        return jsonify({'ok': False, 'error': 'token inválido'}), 401
+
+    if user_id and str(coop.id) != user_id:
+        return jsonify({'ok': False, 'error': 'user_id não confere'}), 403
+
+    try:
+        lat = float(lat)
+        lng = float(lng)
+    except (TypeError, ValueError):
+        return jsonify({'ok': False, 'error': 'latitude/longitude inválidas'}), 400
+
+    try:
+        acc = float(accuracy) if accuracy is not None else None
+    except (TypeError, ValueError):
+        acc = None
+    try:
+        spd = float(speed) if speed is not None else None
+    except (TypeError, ValueError):
+        spd = None
+    try:
+        hdg = float(heading) if heading is not None else None
+    except (TypeError, ValueError):
+        hdg = None
+
+    coop.last_lat = lat
+    coop.last_lng = lng
+    coop.last_ping = datetime.utcnow()
+    coop.online = True
+    coop.last_accuracy_m = acc
+    coop.last_heading = hdg
+    coop.last_speed_kmh = (spd * 3.6) if spd is not None and spd < 120 else spd
+
+    if coop.last_speed_kmh is not None and coop.last_speed_kmh >= MOVING_SPEED_KMH:
+        coop.last_moving_at = datetime.utcnow()
+
+    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+    if not loc:
+        loc = LocalizacaoCooperado(cooperado_id=coop.id)
+        db.session.add(loc)
+
+    loc.latitude = lat
+    loc.longitude = lng
+    loc.accuracy = acc
+    loc.speed = coop.last_speed_kmh
+    loc.heading = hdg
+    loc.online = True
+    loc.fonte = source
+    loc.atualizado_em = datetime.utcnow()
+
+    db.session.commit()
+    emitir_posicao_motoboy(coop, lat, lng, coop.last_speed_kmh)
+    return jsonify({'ok': True, 'cooperado_id': coop.id}), 200
+
+
+@app.get('/api/cooperado/localizacao_status')
+def api_cooperado_localizacao_status():
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify({'ok': False, 'error': 'Não autorizado'}), 403
+
+    cooperado_id = session['user_id']
+    coop = Cooperado.query.get_or_404(cooperado_id)
+    agora = datetime.utcnow()
+
+    if not coop.last_ping or coop.last_lat is None or coop.last_lng is None:
+        return jsonify({
+            'ok': True,
+            'tem_localizacao': False,
+            'online': False,
+            'mensagem': 'Aguardando localização...'
+        })
+
+    delta = (agora - coop.last_ping).total_seconds()
+    online = bool(coop.online) and delta <= OFFLINE_AFTER_SEC
+
+    return jsonify({
+        'ok': True,
+        'tem_localizacao': True,
+        'online': online,
+        'latitude': coop.last_lat,
+        'longitude': coop.last_lng,
+        'accuracy': coop.last_accuracy_m,
+        'speed': coop.last_speed_kmh,
+        'heading': coop.last_heading,
+        'atualizado_em': to_brasilia(coop.last_ping).strftime('%d/%m/%Y %H:%M:%S') if coop.last_ping else '',
+        'mensagem': 'Localização ativa' if online else 'Aguardando nova localização...'
+    })
+
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
 def cooperado_atualizar_localizacao():
