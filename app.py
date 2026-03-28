@@ -967,37 +967,12 @@ def calc_status_cooperado(c):
     last_ping = _to_utc_aware(getattr(c, "last_ping", None))
     last_moving_at = _to_utc_aware(getattr(c, "last_moving_at", None))
 
-   
-def calc_status_cooperado(c):
-    """
-    Online só depende do flag 'online'.
-    Só fica offline se o sistema marcar offline no logout
-    ou se algum processo administrativo fizer isso manualmente.
-    """
-    is_online = bool(getattr(c, "online", False))
-
-    if not is_online:
-        return (False, None, "offline")
-
-    last_ping = _to_utc_aware(getattr(c, "last_ping", None))
-    last_moving_at = _to_utc_aware(getattr(c, "last_moving_at", None))
-    now_utc = datetime.now(timezone.utc)
-
-    if last_moving_at:
-        idle_seconds = int((now_utc - last_moving_at).total_seconds())
-    elif last_ping:
-        idle_seconds = int((now_utc - last_ping).total_seconds())
-    else:
-        idle_seconds = 0
-
-    em_corrida = bool(getattr(c, "em_corrida", False) or getattr(c, "ocupado", False))
-    if em_corrida:
-        return (True, idle_seconds, "em_corrida")
-
-    if idle_seconds >= IDLE_AFTER_SEC:
-        return (True, idle_seconds, "ocioso")
-
-    return (True, idle_seconds, "livre")
+    # ONLINE “REAL” = ping recente
+    is_online = bool(getattr(c, "online", False)) and (last_ping is not None)
+    if is_online:
+        delta = (now_utc - last_ping).total_seconds()
+        if delta > OFFLINE_AFTER_SEC:
+            is_online = False
 
     if not is_online:
         return (False, None, "offline")
