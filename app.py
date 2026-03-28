@@ -942,11 +942,13 @@ IDLE_AFTER_SEC    = int(os.getenv("IDLE_AFTER_SEC", "300"))     # 5 min sem movi
 MOVING_SPEED_KMH = float(os.getenv("MOVING_SPEED_KMH", "3.0"))
 
 # Ajustes mais equilibrados para reduzir localização fantasma sem travar atualização real
-LOCATION_MAX_ACCEPTABLE_ACCURACY_M = float(os.getenv("LOCATION_MAX_ACCEPTABLE_ACCURACY_M", "120"))
-LOCATION_STATIONARY_SPEED_KMH = float(os.getenv("LOCATION_STATIONARY_SPEED_KMH", "1.2"))
-LOCATION_STATIONARY_DRIFT_M = float(os.getenv("LOCATION_STATIONARY_DRIFT_M", "6"))
-LOCATION_LOW_CONFIDENCE_DRIFT_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_DRIFT_M", "18"))
-LOCATION_LOW_CONFIDENCE_ACCURACY_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_ACCURACY_M", "45"))
+LOCATION_MAX_ACCEPTABLE_ACCURACY_M = float(os.getenv("LOCATION_MAX_ACCEPTABLE_ACCURACY_M", "90"))
+LOCATION_STATIONARY_SPEED_KMH = float(os.getenv("LOCATION_STATIONARY_SPEED_KMH", "2.0"))
+LOCATION_STATIONARY_DRIFT_M = float(os.getenv("LOCATION_STATIONARY_DRIFT_M", "12"))
+LOCATION_LOW_CONFIDENCE_DRIFT_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_DRIFT_M", "25"))
+LOCATION_LOW_CONFIDENCE_ACCURACY_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_ACCURACY_M", "22"))
+LOCATION_VERY_LOW_SPEED_KMH = float(os.getenv("LOCATION_VERY_LOW_SPEED_KMH", "0.8"))
+LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35"))
 
 def _haversine_m(lat1, lng1, lat2, lng2):
     try:
@@ -969,11 +971,24 @@ def _should_accept_location_update(prev_lat, prev_lng, new_lat, new_lng, accurac
     dist_m = _haversine_m(prev_lat, prev_lng, new_lat, new_lng)
     speed_kmh = float(speed_kmh or 0.0)
 
-    if speed_kmh <= LOCATION_STATIONARY_SPEED_KMH and dist_m < LOCATION_STATIONARY_DRIFT_M:
-        return False, 'parado_sem_deslocamento', dist_m
+    # Segura bem mais quando o aparelho parece parado.
+    # Usa a própria accuracy para definir quanto "desvio" ainda é ruído.
+    if speed_kmh <= LOCATION_VERY_LOW_SPEED_KMH:
+        dynamic_hold_m = max(
+            LOCATION_STATIONARY_DRIFT_M,
+            min(LOCATION_STRONG_HOLD_MAX_M, float(accuracy or 0.0) * 1.10)
+        )
+        if dist_m < dynamic_hold_m:
+            return False, 'parado_ruido_gps', dist_m
 
-    if accuracy is not None and accuracy >= LOCATION_LOW_CONFIDENCE_ACCURACY_M and speed_kmh <= LOCATION_STATIONARY_SPEED_KMH and dist_m < LOCATION_LOW_CONFIDENCE_DRIFT_M:
-        return False, 'drift_baixa_confianca', dist_m
+    # Em velocidade baixa, ainda segura drift médio quando a precisão vier ruim.
+    if speed_kmh <= LOCATION_STATIONARY_SPEED_KMH:
+        dynamic_low_conf_m = max(
+            LOCATION_LOW_CONFIDENCE_DRIFT_M,
+            min(LOCATION_STRONG_HOLD_MAX_M, float(accuracy or 0.0) * 0.90)
+        )
+        if accuracy is not None and accuracy >= LOCATION_LOW_CONFIDENCE_ACCURACY_M and dist_m < dynamic_low_conf_m:
+            return False, 'drift_baixa_confianca', dist_m
 
     return True, 'aceito', dist_m
 
