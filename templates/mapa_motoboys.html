@@ -1,945 +1,378 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <title>Mapa de Motoboys - COOPEX</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-
-  <!-- Leaflet CSS -->
-  <link rel="stylesheet"
-        href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
-        integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
-        crossorigin=""/>
-
+  <meta charset="utf-8">
+  <title>Mapa de motoboys</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root{
-      /* COOPEX: Azul Royal + Branco */
-      --royal:#0B4BD6;
-      --royal2:#083AA8;
+      --royal:#1346d8;
+      --royal-2:#0d36ad;
+      --royal-3:#1f5bff;
       --white:#ffffff;
-      --ink:#0b1220;
-      --muted:#4b5563;
-      --line:rgba(11,75,214,.18);
-      --shadow: 0 18px 55px rgba(11,75,214,.12);
+      --ink:#0f172a;
+      --muted:#5b6b8c;
+      --line:rgba(19,70,216,.14);
+      --glass:rgba(255,255,255,.72);
+      --glass-2:rgba(255,255,255,.56);
+      --shadow:0 18px 60px rgba(19,70,216,.16);
+      --shadow-soft:0 10px 28px rgba(15,23,42,.10);
       --green:#16a34a;
-      --red:#dc2626;
+      --red:#e03131;
       --amber:#d97706;
     }
     *{box-sizing:border-box}
     html,body{height:100%}
     body{
       margin:0;
-      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
-      background:
-        radial-gradient(900px 420px at 15% -10%, rgba(11,75,214,.20), transparent 60%),
-        radial-gradient(900px 420px at 95% 0%, rgba(8,58,168,.16), transparent 60%),
-        #F6F9FF;
+      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--ink);
+      background:
+        radial-gradient(1200px 420px at 10% -10%, rgba(31,91,255,.22), transparent 60%),
+        radial-gradient(900px 380px at 95% 0%, rgba(19,70,216,.18), transparent 60%),
+        linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%);
       overflow:hidden;
     }
-
-    /* TOPBAR */
+    #map{position:fixed; inset:0; z-index:1}
     .topbar{
-      height:68px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      padding: 10px 14px;
-      background: linear-gradient(90deg, var(--royal2), var(--royal));
-      color: var(--white);
-      box-shadow: 0 12px 30px rgba(0,0,0,.12);
+      position:fixed; left:18px; right:18px; top:18px; z-index:800;
+      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
+      padding:14px 16px; border-radius:24px; border:1px solid var(--line);
+      background:var(--glass); backdrop-filter:blur(16px);
+      box-shadow:var(--shadow);
     }
-    .brand{display:flex; gap:10px; align-items:center;}
-    .logo{
-      width:44px;height:44px;border-radius:14px;
-      background: rgba(255,255,255,.18);
-      border: 1px solid rgba(255,255,255,.28);
-      display:flex;align-items:center;justify-content:center;
-      font-weight:1000;
-      letter-spacing:.5px;
+    .titlebox{min-width:210px; flex:1}
+    .eyebrow{font-size:.74rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--royal)}
+    .title{font-size:1.05rem; font-weight:1000; margin-top:2px}
+    .subtitle{font-size:.82rem; color:var(--muted); margin-top:2px}
+    .kpis{display:flex; gap:8px; flex-wrap:wrap}
+    .chip{display:flex; align-items:center; gap:8px; min-height:42px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:var(--glass-2); font-size:.84rem; font-weight:900; color:#13357c}
+    .dot{width:10px; height:10px; border-radius:999px}
+    .dot.green{background:var(--green)} .dot.red{background:var(--red)} .dot.amber{background:var(--amber)}
+    .glass-btn, .glass-select, .glass-input{
+      height:44px; border-radius:16px; border:1px solid var(--line); backdrop-filter:blur(12px);
+      box-shadow:var(--shadow-soft); font:inherit;
     }
-    .titlewrap{display:flex;flex-direction:column;line-height:1.05}
-    .title{font-weight:1000;font-size:14px;letter-spacing:.2px}
-    .sub{font-size:12px;opacity:.9}
-
-    .actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
-    .chip{
-      display:inline-flex;gap:8px;align-items:center;
-      padding: 7px 10px;border-radius:999px;
-      background: rgba(255,255,255,.16);
-      border: 1px solid rgba(255,255,255,.22);
-      font-weight:1000;font-size:12px;
-      user-select:none;
-      white-space:nowrap;
+    .glass-btn{
+      background:linear-gradient(180deg,rgba(25,88,255,.16),rgba(19,70,216,.10));
+      color:var(--royal-2); padding:0 14px; font-weight:900; cursor:pointer;
+      display:inline-flex; align-items:center; gap:8px; text-decoration:none;
     }
-    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
-    .dot.g{background:var(--green)}
-    .dot.r{background:var(--red)}
-    .dot.a{background:var(--amber)}
-
-    .btn{
-      height:40px;
-      border-radius:14px;
-      border:1px solid rgba(255,255,255,.30);
-      background: rgba(255,255,255,.16);
-      color: var(--white);
-      font-weight:1000;
-      padding: 0 12px;
-      cursor:pointer;
-      display:inline-flex;align-items:center;gap:8px;
-      transition: transform .08s ease, background .15s ease;
-      user-select:none;
-      white-space:nowrap;
+    .glass-btn:hover{transform:translateY(-1px); background:linear-gradient(180deg,rgba(25,88,255,.20),rgba(19,70,216,.12))}
+    .glass-btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3)); color:#fff; border-color:rgba(19,70,216,.22)}
+    .glass-btn.white{background:rgba(255,255,255,.78)}
+    .glass-select,.glass-input{
+      background:rgba(255,255,255,.82); color:var(--ink); padding:0 14px; min-width:180px; outline:none;
     }
-    .btn:hover{transform: translateY(-1px); background: rgba(255,255,255,.22)}
-    .btn.ghost{
-      background: rgba(255,255,255,.10);
-      border-color: rgba(255,255,255,.22);
+    .toolbar-right{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-left:auto}
+    .floating-panel{
+      position:fixed; left:18px; bottom:18px; z-index:800; width:min(410px,calc(100vw - 36px));
+      border-radius:24px; border:1px solid var(--line); background:var(--glass);
+      backdrop-filter:blur(18px); box-shadow:var(--shadow); overflow:hidden;
     }
-    .btn.danger{
-      background: rgba(220,38,38,.22);
-      border-color: rgba(255,255,255,.22);
-    }
-    .btn.small{height:36px;border-radius:12px;font-size:12px;padding:0 10px}
-
-    .chip strong{font-size:13px;line-height:1}
-    .rec-indicator{
-      display:none;
-      align-items:center;
-      gap:8px;
-      padding: 7px 10px;
-      border-radius:999px;
-      background: rgba(220,38,38,.18);
-      border: 1px solid rgba(255,255,255,.24);
-      font-weight:1000;
-      font-size:12px;
-      white-space:nowrap;
-    }
-    .rec-indicator.on{display:inline-flex}
-    .rec-pulse{
-      width:10px;height:10px;border-radius:999px;background:#fff;
-      box-shadow:0 0 0 0 rgba(255,255,255,.9);
-      animation: recPulse 1.25s infinite;
-    }
-    @keyframes recPulse{
-      0%{ box-shadow:0 0 0 0 rgba(255,255,255,.75); }
-      70%{ box-shadow:0 0 0 8px rgba(255,255,255,0); }
-      100%{ box-shadow:0 0 0 0 rgba(255,255,255,0); }
-    }
-
-    /* LAYOUT */
-    .wrap{
-      height: calc(100% - 68px);
-      display:grid;
-      grid-template-columns: 1fr 360px;
-    }
-    .mapwrap{position:relative; padding: 12px;}
-    #map{
-      height: 100%;
-      width: 100%;
-      border-radius: 22px;
-      border: 2px solid rgba(11,75,214,.20);
-      box-shadow: var(--shadow);
-      background:#e5e7eb;
-      overflow:hidden;
-    }
-
-    .mapbar{
-      position:absolute; top: 22px; left: 22px; right: 22px;
-      z-index: 600;
-      display:flex; gap:10px; flex-wrap:wrap; align-items:center;
-      padding: 10px;
-      border-radius: 18px;
-      border: 1px solid rgba(11,75,214,.18);
-      background: rgba(255,255,255,.88);
-      backdrop-filter: blur(10px);
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-    }
-    .mapbar select,.mapbar input{
-      height: 40px;
-      border-radius: 14px;
-      border: 1px solid rgba(11,75,214,.20);
-      background: #fff;
-      color: var(--ink);
-      font-weight: 1000;
-      padding: 0 12px;
-      outline:none;
-      min-width: 210px;
-    }
-    .mapbar input{min-width: 180px}
-    .mapbar .spacer{flex:1}
-    .mapbar .btnw{
-      height:40px;border-radius:14px;border:1px solid rgba(11,75,214,.20);
-      background: rgba(11,75,214,.10);
-      color: var(--royal2);
-      font-weight: 1000;
-      padding: 0 12px;
-      cursor:pointer;
-      display:inline-flex;align-items:center;gap:8px;
-    }
-    .mapbar .btnw:hover{background: rgba(11,75,214,.14)}
-
-    .hint{
-      position:absolute; bottom: 22px; left: 22px;
-      z-index: 600;
-      padding: 10px 12px;
-      border-radius: 16px;
-      border: 1px solid rgba(11,75,214,.18);
-      background: rgba(255,255,255,.90);
-      color: var(--muted);
-      font-weight: 900;
-      font-size: 12px;
-      backdrop-filter: blur(10px);
-      max-width: 650px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.08);
-    }
-
-    /* SIDEBAR */
-    .side{
-      border-left: 1px solid rgba(11,75,214,.14);
-      padding: 12px;
-      overflow:hidden;
-      display:flex;
-      flex-direction:column;
-      gap:10px;
-      background: rgba(255,255,255,.55);
-    }
-    .panel{
-      background: #fff;
-      border: 1px solid rgba(11,75,214,.14);
-      border-radius: 20px;
-      padding: 12px;
-      box-shadow: 0 10px 30px rgba(0,0,0,.06);
-    }
-    .panel h3{
-      margin:0 0 10px;
-      font-size: 13px;
-      font-weight: 1000;
-      display:flex; align-items:center; justify-content:space-between;
-      color: var(--royal2);
-    }
-    .tiny{font-size: 11px; color: #6b7280; font-weight: 900}
-
-    .searchrow{display:flex; gap:8px}
-    .searchrow input{
-      flex:1;
-      height:40px;
-      border-radius: 14px;
-      border: 1px solid rgba(11,75,214,.18);
-      background: #fff;
-      color: var(--ink);
-      font-weight: 1000;
-      padding: 0 12px;
-      outline:none;
-    }
-    .filters{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
-    .tag{
-      padding: 7px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(11,75,214,.18);
-      background: rgba(11,75,214,.06);
-      font-size: 12px;
-      font-weight: 1000;
-      cursor:pointer;
-      user-select:none;
-      color: var(--royal2);
-    }
-    .tag.active{background: rgba(11,75,214,.14); border-color: rgba(11,75,214,.28)}
-
-    .list{
-      margin-top:10px;
-      overflow:auto;
-      max-height: calc(100vh - 68px - 330px);
-      padding-right: 4px;
-    }
+    .panel-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px 8px}
+    .panel-title{font-size:.98rem; font-weight:1000}
+    .panel-sub{font-size:.8rem; color:var(--muted)}
+    .panel-body{padding:0 12px 12px}
+    .search-row{display:flex; gap:8px; margin:8px 4px 10px}
+    .seg{display:flex; gap:8px; overflow:auto; padding:0 4px 8px}
+    .seg button{white-space:nowrap}
+    .list{max-height:min(44vh,420px); overflow:auto; padding:2px 4px 4px}
     .card{
-      border: 1px solid rgba(11,75,214,.16);
-      background: rgba(11,75,214,.05);
-      border-radius: 16px;
-      padding: 10px;
-      margin-bottom: 8px;
-      cursor:pointer;
-      transition: transform .08s ease, background .15s ease;
+      background:rgba(255,255,255,.84); border:1px solid rgba(19,70,216,.10); border-radius:18px;
+      padding:12px; margin-bottom:8px; cursor:pointer; box-shadow:0 8px 22px rgba(15,23,42,.06)
     }
-    .card:hover{transform: translateY(-1px); background: rgba(11,75,214,.08)}
-    .row{display:flex; align-items:center; justify-content:space-between; gap:10px}
-    .name{font-weight: 1100; font-size: 13px; color: var(--ink)}
-    .pill{
-      font-size: 11px;
-      font-weight: 1100;
-      padding: 4px 9px;
-      border-radius: 999px;
-      border: 1px solid rgba(11,75,214,.18);
-      background: rgba(11,75,214,.06);
-      color: var(--ink);
-    }
-    .pill.green{background: rgba(22,163,74,.12); border-color: rgba(22,163,74,.22)}
-    .pill.red{background: rgba(220,38,38,.12); border-color: rgba(220,38,38,.22)}
-    .pill.amber{background: rgba(217,119,6,.12); border-color: rgba(217,119,6,.22)}
-    .meta{margin-top:6px; font-size: 12px; color: #475569; font-weight: 900}
-
-    @media (max-width: 980px){
-      body{overflow:auto}
-      .wrap{grid-template-columns: 1fr; grid-template-rows: 62vh auto}
-      .side{border-left:none; border-top:1px solid rgba(11,75,214,.14)}
-      .list{max-height: 40vh}
-    }
-
+    .card:hover{border-color:rgba(19,70,216,.22); transform:translateY(-1px)}
+    .row{display:flex; justify-content:space-between; gap:12px; align-items:flex-start}
+    .name{font-weight:1000; font-size:.95rem}
+    .meta{margin-top:5px; font-size:.8rem; color:var(--muted); line-height:1.35}
+    .status{display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; font-size:.75rem; font-weight:900; border:1px solid var(--line)}
+    .status.online{color:#0f7a41; background:rgba(22,163,74,.10); border-color:rgba(22,163,74,.18)}
+    .status.busy{color:#9a3412; background:rgba(217,119,6,.12); border-color:rgba(217,119,6,.18)}
+    .status.offline{color:#7f1d1d; background:rgba(224,49,49,.10); border-color:rgba(224,49,49,.18)}
+    .mini-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
+    .hint{position:fixed; right:18px; bottom:18px; z-index:800; max-width:min(400px,calc(100vw - 36px)); padding:14px 16px; border-radius:20px; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(16px); box-shadow:var(--shadow); font-size:.82rem; color:var(--muted)}
     .leaflet-control-attribution{display:none}
-    .leaflet-control-zoom a{border-radius: 12px !important}
-    .leaflet-popup-content-wrapper{
-      background: #fff;
-      color: var(--ink);
-      border:1px solid rgba(11,75,214,.16);
-      border-radius: 16px;
-      box-shadow: 0 14px 40px rgba(0,0,0,.15);
-    }
-    .leaflet-popup-tip{background: #fff}
-
-    /* Toast erro visível */
-    .toast{
-      position: fixed;
-      bottom: 18px;
-      right: 18px;
-      z-index: 9999;
-      padding: 12px 14px;
-      border-radius: 14px;
-      border: 1px solid rgba(220,38,38,.25);
-      background: rgba(220,38,38,.12);
-      color: #7f1d1d;
-      font-weight: 1000;
-      display:none;
-      max-width: 520px;
-      box-shadow: 0 12px 30px rgba(0,0,0,.10);
+    .leaflet-popup-content-wrapper{border-radius:18px; border:1px solid rgba(19,70,216,.14); box-shadow:0 18px 45px rgba(15,23,42,.16)}
+    .leaflet-popup-content{margin:14px 14px 12px}
+    .leaflet-popup-tip{background:#fff}
+    .map-popup-title{font-weight:1000; font-size:.95rem; margin-bottom:4px}
+    .map-popup-sub{font-size:.8rem; color:var(--muted); margin-bottom:10px}
+    .map-popup-actions{display:flex; gap:8px; flex-wrap:wrap}
+    .marker-pin{display:flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:999px; border:3px solid #fff; box-shadow:0 0 0 7px rgba(19,70,216,.08), 0 10px 18px rgba(15,23,42,.18)}
+    .marker-pin.online{background:var(--royal)}
+    .marker-pin.busy{background:var(--amber)}
+    .marker-pin.offline{background:var(--red)}
+    @media (max-width:980px){
+      .topbar{left:12px; right:12px; top:12px; padding:12px}
+      .floating-panel{left:12px; right:12px; width:auto; bottom:12px}
+      .hint{display:none}
+      .toolbar-right{width:100%; margin-left:0}
+      .glass-input{min-width:130px}
+      .glass-select{min-width:150px}
     }
   </style>
 </head>
 <body>
-  <div class="topbar">
-    <div class="brand">
-      <div class="logo">CX</div>
-      <div class="titlewrap">
-        <div class="title">MAPA DE MOTOBOYS — COOPEX</div>
-        <div class="sub">Monitoramento em tempo real • histórico salvo no sistema</div>
-      </div>
+  <div id="map"></div>
+
+  <section class="topbar">
+    <div class="titlebox">
+      <div class="eyebrow">Monitoramento ao vivo</div>
+      <div class="title">Mapa de motoboys</div>
+      <div class="subtitle">Azul royal, vidro leve e operação rápida. O trajeto só aparece no replay.</div>
     </div>
-
-    <div class="actions">
-      <span class="chip"><span class="dot g"></span> ONLINE <strong id="countOnline">0</strong></span>
-      <span class="chip"><span class="dot r"></span> OFFLINE <strong id="countOffline">0</strong></span>
-      <span class="chip"><span class="dot a"></span> EM CORRIDA <strong id="countBusy">0</strong></span>
-      <span class="rec-indicator" id="recIndicator"><span class="rec-pulse"></span> GRAVANDO ROTA</span>
-
-      <!-- botões com onclick (fallback) -->
-      <button class="btn" onclick="window.__fitAll && window.__fitAll()">Enquadrar</button>
-      <button class="btn ghost" onclick="window.__clearFollow && window.__clearFollow()">Parar seguir</button>
-      <button class="btn ghost" onclick="window.__startRoute && window.__startRoute()">Gravar rota</button>
-      <button class="btn ghost" onclick="window.__stopRoute && window.__stopRoute()">Parar rota</button>
-      <button class="btn ghost" onclick="window.__saveRouteHistory && window.__saveRouteHistory()">Salvar no sistema</button>
-      <button class="btn ghost" onclick="window.__downloadRoute && window.__downloadRoute()">Exportar GeoJSON</button>
-      <button class="btn danger" onclick="window.close()">Fechar</button>
+    <div class="kpis">
+      <div class="chip"><span class="dot green"></span>Online <strong id="countOnline">0</strong></div>
+      <div class="chip"><span class="dot amber"></span>Em corrida <strong id="countBusy">0</strong></div>
+      <div class="chip"><span class="dot red"></span>Offline <strong id="countOffline">0</strong></div>
     </div>
-  </div>
-
-  <div class="wrap">
-    <div class="mapwrap">
-      <div class="mapbar">
-        <select id="selMotoboy">
-          <option value="">Selecionar motoboy (seguir)</option>
-        </select>
-
-        <select id="selFiltro">
-          <option value="todos">Todos</option>
-          <option value="online">Somente online</option>
-          <option value="offline">Somente offline</option>
-          <option value="em_corrida">Somente em corrida</option>
-        </select>
-
-        <input id="inpBusca" placeholder="Buscar por nome..." autocomplete="off" />
-
-        <div class="spacer"></div>
-
-        <button class="btnw" id="btnCenterNatal" type="button">Centralizar Natal</button>
-        <button class="btnw" id="btnReload" type="button">Atualizar</button>
-      </div>
-
-      <div id="map"></div>
-
-      <div class="hint">
-        Selecione um motoboy para seguir. Arrastar ou dar zoom pausa o follow. A rota gravada continua acompanhando o deslocamento enquanto o motoboy se move.
-      </div>
+    <div class="toolbar-right">
+      <select id="statusFilter" class="glass-select">
+        <option value="todos">Todos</option>
+        <option value="online">Online</option>
+        <option value="em_corrida">Em corrida</option>
+        <option value="offline">Offline</option>
+      </select>
+      <input id="searchInput" class="glass-input" placeholder="Buscar cooperado..." autocomplete="off">
+      <button class="glass-btn white" id="btnFitAll" type="button">Enquadrar</button>
+      <button class="glass-btn white" id="btnMaps" type="button">Abrir no Maps</button>
+      <button class="glass-btn white" id="btnStreet" type="button">Ver rua</button>
+      <a class="glass-btn" href="/trajetos">Trajetos</a>
+      <button class="glass-btn primary" id="btnReload" type="button">Atualizar</button>
     </div>
+  </section>
 
-    <aside class="side">
-      <div class="panel">
-        <h3>Motoboys <span class="tiny"><span id="lblCounts">0 no mapa</span> • <span id="lblUpdated">—</span></span></h3>
-        <div class="searchrow">
-          <input id="inpBuscaSide" placeholder="Buscar..." autocomplete="off"/>
-        </div>
-        <div class="filters">
-          <div class="tag active" data-status="todos">Todos</div>
-          <div class="tag" data-status="online">Online</div>
-          <div class="tag" data-status="em_corrida">Em corrida</div>
-          <div class="tag" data-status="offline">Offline</div>
-        </div>
-        <div class="list" id="list"></div>
+  <section class="floating-panel">
+    <div class="panel-head">
+      <div>
+        <div class="panel-title">Cooperados no mapa</div>
+        <div class="panel-sub" id="panelInfo">Selecione um cooperado para centralizar e abrir ações.</div>
       </div>
-
-      <div class="panel">
-        <h3>Detalhes</h3>
-        <div class="tiny" id="details">Selecione um motoboy para ver detalhes e acompanhamento.</div>
+      <button class="glass-btn white" id="btnClearFocus" type="button">Limpar foco</button>
+    </div>
+    <div class="panel-body">
+      <div class="seg">
+        <button class="glass-btn primary filter-btn" data-status="todos" type="button">Todos</button>
+        <button class="glass-btn filter-btn" data-status="online" type="button">Online</button>
+        <button class="glass-btn filter-btn" data-status="em_corrida" type="button">Em corrida</button>
+        <button class="glass-btn filter-btn" data-status="offline" type="button">Offline</button>
       </div>
-    </aside>
-  </div>
+      <div class="list" id="motoboyList"></div>
+    </div>
+  </section>
 
-  <div class="toast" id="toast"></div>
+  <aside class="hint">Clique no cooperado para centralizar. “Abrir no Maps” abre o ponto exato no Google Maps. “Ver rua” tenta abrir a visualização de rua no mesmo local.</aside>
 
-  <!-- Leaflet JS -->
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
-          integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
-          crossorigin=""></script>
-
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-    function toast(msg){
-      const t = document.getElementById("toast");
-      if(!t) return;
-      t.textContent = msg;
-      t.style.display = "block";
-      setTimeout(()=>{ t.style.display="none"; }, 7000);
-    }
-
-    // Seed: sem depender de filtros do jinja (evita quebrar template)
-    const motoboysSeed = {% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %};
-    const seedArray = Array.isArray(motoboysSeed) ? motoboysSeed : [];
-
-    const MAPTILER_KEY = "bSeKIro6dKQKEDRrIUee";
-    const MAPTILER_STYLE = "streets-v4";
-    const DATA_ENDPOINT = "/mapa_motoboys?format=json";
-    const POLL_MS = 3500;
-
-    const defaultCenter = [-5.79448, -35.211]; // Natal/RN
+    const DATA_ENDPOINT = '/mapa_motoboys?format=json';
+    const POLL_MS = 5000;
+    const defaultCenter = [-5.79448, -35.211];
+    const defaultZoom = 12;
     const $ = (id)=>document.getElementById(id);
-
-    function norm(t){
-      return (t||"").toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    }
-    function safe(v){ return (v===null || v===undefined) ? "" : String(v); }
-
-    function parseTimeToMs(ts){
-      if(!ts) return null;
-      const d = new Date(String(ts).trim());
-      return isNaN(d.getTime()) ? null : d.getTime();
-    }
-    function haversineKm(lat1, lon1, lat2, lon2){
-      const R = 6371;
-      const toRad = x => x*Math.PI/180;
-      const dLat = toRad(lat2-lat1);
-      const dLon = toRad(lon2-lon1);
-      const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(dLon/2)**2;
-      return 2*R*Math.asin(Math.sqrt(a));
-    }
-
-    // Push pin SVG base64 (estilo profissional)
-    function svgToDataUrl(svg){
-      const encoded = btoa(unescape(encodeURIComponent(svg)));
-      return "data:image/svg+xml;base64," + encoded;
-    }
-    function pushPinSvg(color){
-      return `
-      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="50" viewBox="0 0 34 50">
-        <defs>
-          <radialGradient id="pinGlow" cx="35%" cy="30%" r="70%">
-            <stop offset="0%" stop-color="#ffffff" stop-opacity=".95"/>
-            <stop offset="18%" stop-color="${color}" stop-opacity=".98"/>
-            <stop offset="100%" stop-color="${color}" stop-opacity="1"/>
-          </radialGradient>
-          <linearGradient id="pinMetal" x1="0" x2="0" y1="0" y2="1">
-            <stop offset="0%" stop-color="#d9dee7"/>
-            <stop offset="100%" stop-color="#7d8796"/>
-          </linearGradient>
-        </defs>
-        <ellipse cx="17" cy="11.5" rx="10.8" ry="10.8" fill="url(#pinGlow)" stroke="rgba(255,255,255,.82)" stroke-width="1.25"/>
-        <ellipse cx="13.2" cy="7.9" rx="3.1" ry="2.25" fill="rgba(255,255,255,.68)"/>
-        <rect x="16.1" y="21.2" width="1.8" height="22.5" rx="1" fill="url(#pinMetal)"/>
-        <path d="M17 42.2 L14.8 49.2 L19.2 42.2 Z" fill="#6b7280"/>
-      </svg>`;
-    }
-    function iconFor(status, size){
-      const zSize = size || 30;
-      const h = Math.round(zSize*50/34);
-      let color = "#dc2626";
-      if(status === "em_corrida") color = "#f59e0b";
-      if(status === "online") color = "#16a34a";
-      return L.icon({
-        iconUrl: svgToDataUrl(pushPinSvg(color)),
-        iconSize: [zSize, h],
-        iconAnchor: [Math.round(zSize/2), h-1],
-        popupAnchor: [0, -h+10]
-      });
-    }
-    function sizeByZoom(z){
-      if(z >= 17) return 34;
-      if(z >= 15) return 31;
-      if(z >= 13) return 29;
-      return 27;
-    }
-
-    // MAP INIT
-    let map;
-    try{
-      map = L.map("map", { zoomControl: true }).setView(defaultCenter, 12);
-      L.tileLayer(
-        `https://api.maptiler.com/maps/${MAPTILER_STYLE}/{z}/{x}/{y}.png?key=${MAPTILER_KEY}`,
-        { tileSize: 512, zoomOffset: -1, maxZoom: 20, attribution: "&copy; OpenStreetMap &copy; MapTiler" }
-      ).addTo(map);
-    }catch(e){
-      console.error(e);
-      toast("Erro ao iniciar o mapa. Verifique internet/MapTiler.");
-    }
+    const map = L.map('map', {zoomControl:true, preferCanvas:true}).setView(defaultCenter, defaultZoom);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:20}).addTo(map);
 
     const markers = new Map();
-    const trails = new Map();
-    const lastPoint = new Map();
+    let currentItems = [];
+    let focusedId = null;
+    let activeStatus = 'todos';
 
-    let followId = "";
-    let followActive = false;
+    function norm(v){ return (v||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
+    function fmt(v, fallback='—'){ return (v===null || v===undefined || v==='') ? fallback : String(v); }
+    function mapsUrl(lat,lng){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
+    function streetUrl(lat,lng){ return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`; }
+    function replayUrl(id){ return `/trajetos/replay/${id}`; }
 
-    let routeRecording = false;
-    let recordedId = "";
-    let recordedPoints = [];
-    let recordedStartMs = 0;
-    let historyRouteLayer = null;
-    let historyFilterToday = true;
-
-    if(map){
-      map.on("dragstart zoomstart", ()=>{ if(followActive){ followActive=false; updateDetails(); } });
-      map.on("zoomend", ()=>{
-        const s = sizeByZoom(map.getZoom());
-        markers.forEach((mk)=>{
-          const st = mk.options.__status || "offline";
-          mk.setIcon(iconFor(st, s));
-        });
+    function statusLabel(item){
+      if(item.status === 'em_corrida') return 'Em corrida';
+      if(item.online) return 'Online';
+      return 'Offline';
+    }
+    function statusClass(item){
+      if(item.status === 'em_corrida') return 'busy';
+      if(item.online) return 'online';
+      return 'offline';
+    }
+    function markerColor(item){
+      if(item.status === 'em_corrida') return 'busy';
+      if(item.online) return 'online';
+      return 'offline';
+    }
+    function zIndexFor(item){
+      if(item.status === 'em_corrida') return 3000;
+      if(item.online) return 2000;
+      return 1000;
+    }
+    function makeIcon(item){
+      const cls = markerColor(item);
+      return L.divIcon({
+        className:'',
+        html:`<div class="marker-pin ${cls}"></div>`,
+        iconSize:[20,20],
+        iconAnchor:[10,10],
+        popupAnchor:[0,-10]
       });
     }
-
-    function statusFromItem(m){
-      const s = (m.status || "").toString();
-      if(s === "livre") return "online";
-      if(s === "em_corrida") return "em_corrida";
-      if(s === "offline") return "offline";
-      if(typeof m.online === "boolean") return m.online ? "online" : "offline";
-      return s || "offline";
-    }
-
-    function popupHtml(m, speedKmh){
-      const nome = safe(m.nome || m.name || "Motoboy");
-      const st = statusFromItem(m);
-      const stLabel = st === "online" ? "ONLINE" : (st === "em_corrida" ? "EM CORRIDA" : "OFFLINE");
-      const last = safe(m.ultima_atualizacao || m.last_seen || m.updated_at || "—");
+    function popupHtml(item){
+      const lat = Number(item.lat), lng = Number(item.lng);
       return `
-        <div style="min-width:240px">
-          <div style="font-weight:1000;font-size:14px;margin-bottom:6px;color:#083AA8">${nome}</div>
-          <div style="font-size:12px;font-weight:1000;margin-bottom:6px">${stLabel}</div>
-          <div style="font-size:12px;font-weight:900;color:#111827">Velocidade: <b>${speedKmh !== null ? speedKmh.toFixed(1) : "—"}</b> ${speedKmh !== null ? "km/h" : ""}</div>
-          <div style="font-size:12px;font-weight:900;color:#374151">Última atualização: <b>${last}</b></div>
-        </div>
-      `;
+        <div class="map-popup-title">${fmt(item.nome)}</div>
+        <div class="map-popup-sub">${statusLabel(item)} • Atualizado: ${fmt(item.ultima_atualizacao)}</div>
+        <div class="map-popup-sub">Lat/Lng: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
+        <div class="map-popup-sub">Precisão/velocidade: ${fmt(item.accuracy_m || item.accuracy,'—')} • ${fmt(item.velocidade,'0')} km/h</div>
+        <div class="map-popup-actions">
+          <a class="glass-btn primary" target="_blank" rel="noopener" href="${mapsUrl(lat,lng)}">Maps</a>
+          <a class="glass-btn" target="_blank" rel="noopener" href="${streetUrl(lat,lng)}">Rua</a>
+          <a class="glass-btn" href="/trajetos?cooperado_id=${encodeURIComponent(item.id)}">Trajetos</a>
+        </div>`;
     }
-
-    function addTrailPoint(id, lat, lng){
-      const key = "trail_" + id;
-      let pl = trails.get(key);
-      if(!pl && map){
-        pl = L.polyline([[lat,lng]], { color: "#0B4BD6", weight: 5, opacity: .9 }).addTo(map);
-        trails.set(key, pl);
-      }else if(pl){
-        const ll = pl.getLatLngs();
-        ll.push([lat,lng]);
-        if(ll.length > 140) ll.shift();
-        pl.setLatLngs(ll);
+    function upsertMarker(item){
+      if(!isFinite(Number(item.lat)) || !isFinite(Number(item.lng))) return;
+      const latlng = [Number(item.lat), Number(item.lng)];
+      let marker = markers.get(item.id);
+      if(!marker){
+        marker = L.marker(latlng, {icon: makeIcon(item), zIndexOffset: zIndexFor(item)}).addTo(map);
+        marker.on('click', ()=> focusItem(item.id, true));
+        markers.set(item.id, marker);
+      } else {
+        marker.setLatLng(latlng);
+        marker.setIcon(makeIcon(item));
+        marker.setZIndexOffset(zIndexFor(item));
       }
+      marker.item = item;
+      marker.bindPopup(popupHtml(item));
+      const shouldShow = matchFilters(item);
+      if(shouldShow && !map.hasLayer(marker)) marker.addTo(map);
+      if(!shouldShow && map.hasLayer(marker)) map.removeLayer(marker);
     }
-    function clearTrails(){
-      trails.forEach((pl)=>{ try{ map && map.removeLayer(pl); }catch(e){} });
-      trails.clear();
-    }
-
-    function upsertMarker(m){
-      const id = String(m.id ?? m.cooperado_id ?? m.user_id ?? "");
-      const lat = Number(m.lat);
-      const lng = Number(m.lng);
-      if(!id || !isFinite(lat) || !isFinite(lng) || !map) return;
-
-      const st = statusFromItem(m);
-
-      let speedKmh = null;
-      const fromField = (m.speed_kmh ?? m.speed ?? null);
-      if(fromField !== null && fromField !== undefined && isFinite(Number(fromField))){
-        speedKmh = Number(fromField);
-      }else{
-        const prev = lastPoint.get(id);
-        const tMs = parseTimeToMs(m.ultima_atualizacao || m.last_seen || m.updated_at) || Date.now();
-        if(prev && prev.tMs && tMs && (tMs > prev.tMs)){
-          const km = haversineKm(prev.lat, prev.lng, lat, lng);
-          const hours = (tMs - prev.tMs)/3600000;
-          if(hours > 0){
-            speedKmh = km / hours;
-            if(speedKmh > 130) speedKmh = 130;
-          }
-        }
-        lastPoint.set(id, {lat, lng, tMs});
-      }
-
-      const size = sizeByZoom(map.getZoom());
-      let mk = markers.get(id);
-      if(!mk){
-        mk = L.marker([lat,lng], { icon: iconFor(st, size) }).addTo(map);
-        mk.on("click", ()=>{
-          followId = id;
-          followActive = true;
-          updateDetails();
-        });
-        markers.set(id, mk);
-      }else{
-        mk.setLatLng([lat,lng]);
-        mk.setIcon(iconFor(st, size));
-      }
-
-      mk.options.__status = st;
-      mk.options.__nome = safe(m.nome || m.name || "Motoboy");
-      mk.options.__speed = speedKmh;
-      mk.bindPopup(popupHtml(m, speedKmh));
-
-      if(followId && id === followId){
-        addTrailPoint(id, lat, lng);
-        if(routeRecording && recordedId === id){
-          recordedPoints.push({lat, lng, tMs: Date.now()});
-        }
-      }
-    }
-
-    function tickFollow(){
-      if(!followActive || !followId || !map) return;
-      const mk = markers.get(followId);
-      if(!mk) return;
-      map.panTo(mk.getLatLng(), { animate:true, duration: 0.6 });
-    }
-    setInterval(tickFollow, 900);
-
-    function fitAll(){
-      if(!map) return;
-      const ll = [];
-      markers.forEach((mk)=> ll.push(mk.getLatLng()));
-      if(ll.length) map.fitBounds(L.latLngBounds(ll).pad(0.2));
-      else map.setView(defaultCenter, 12);
-    }
-
-    function applyFilter(arr, statusFilter, search){
-      const s = norm(search || "");
-      return arr.filter(m=>{
-        const st = statusFromItem(m);
-        if(statusFilter && statusFilter !== "todos"){
-          if(statusFilter === "online" && st !== "online") return false;
-          if(statusFilter === "offline" && st !== "offline") return false;
-          if(statusFilter === "em_corrida" && st !== "em_corrida") return false;
-        }
-        if(s){
-          const n = norm(m.nome || m.name || "");
-          if(!n.includes(s)) return false;
-        }
-        return true;
+    function sortItems(items){
+      return [...items].sort((a,b)=>{
+        const pa = a.status === 'em_corrida' ? 0 : (a.online ? 1 : 2);
+        const pb = b.status === 'em_corrida' ? 0 : (b.online ? 1 : 2);
+        if(pa !== pb) return pa - pb;
+        return (a.nome||'').localeCompare(b.nome||'', 'pt-BR');
       });
     }
-
-    function updateCounters(arr){
-      const counts = {online:0, offline:0, em_corrida:0};
-      arr.forEach(m=>{
-        const st = statusFromItem(m);
-        if(st === "online") counts.online += 1;
-        else if(st === "em_corrida") counts.em_corrida += 1;
-        else counts.offline += 1;
-      });
-      const total = arr.length;
-      const setTxt = (id, v)=>{ const el=$(id); if(el) el.textContent = String(v); };
-      setTxt("countOnline", counts.online);
-      setTxt("countOffline", counts.offline);
-      setTxt("countBusy", counts.em_corrida);
-      const lbl = $("lblCounts");
-      if(lbl) lbl.textContent = `${total} no mapa`;
+    function matchFilters(item){
+      const q = norm($('searchInput').value);
+      const okStatus = activeStatus === 'todos' || item.status === activeStatus || (activeStatus === 'online' && item.online && item.status !== 'em_corrida');
+      const okText = !q || norm(item.nome).includes(q) || norm(item.endereco).includes(q);
+      return okStatus && okText;
     }
-
-    function renderSelect(arr){
-      const sel = $("selMotoboy");
-      if(!sel) return;
-      const cur = sel.value;
-      sel.innerHTML = `<option value="">Selecionar motoboy (seguir)</option>` + arr
-        .map(m=>{
-          const id = safe(m.id ?? m.cooperado_id ?? m.user_id);
-          const nm = safe(m.nome || m.name || "Motoboy");
-          return `<option value="${id}">${nm}</option>`;
-        }).join("");
-      if(cur) sel.value = cur;
-    }
-
-    function renderList(arr){
-      const list = $("list");
-      if(!list) return;
-      list.innerHTML = "";
-      if(!arr.length){
-        list.innerHTML = `<div class="tiny">Nenhum motoboy encontrado.</div>`;
+    function filteredItems(){ return sortItems(currentItems.filter(matchFilters)); }
+    function renderList(){
+      const list = $('motoboyList');
+      const items = filteredItems();
+      list.innerHTML = '';
+      if(!items.length){
+        list.innerHTML = '<div class="card"><div class="name">Nenhum cooperado no filtro atual.</div></div>';
         return;
       }
-      arr.forEach(m=>{
-        const id = safe(m.id ?? m.cooperado_id ?? m.user_id);
-        const nm = safe(m.nome || m.name || "Motoboy");
-        const st = statusFromItem(m);
-        const last = safe(m.ultima_atualizacao || m.last_seen || m.updated_at || "");
-        const card = document.createElement("div");
-        card.className = "card";
-        card.innerHTML = `
+      items.forEach(item=>{
+        const div = document.createElement('div');
+        div.className = 'card';
+        div.innerHTML = `
           <div class="row">
-            <div class="name">${nm}</div>
-            ${st==="online" ? `<span class="pill green">ONLINE</span>` : (st==="em_corrida" ? `<span class="pill amber">EM CORRIDA</span>` : `<span class="pill red">OFFLINE</span>`)}
+            <div>
+              <div class="name">${fmt(item.nome)}</div>
+              <div class="meta">${fmt(item.endereco,'Sem endereço')} • Atualizado: ${fmt(item.ultima_atualizacao)}</div>
+            </div>
+            <span class="status ${statusClass(item)}">${statusLabel(item)}</span>
           </div>
-          <div class="meta">${last ? ("Última: " + last) : "—"}</div>
-        `;
-        card.addEventListener("click", ()=>{
-          setFollow(id);
-          const sel = $("selMotoboy");
-          if(sel) sel.value = id;
-        });
-        list.appendChild(card);
+          <div class="meta">Velocidade: ${fmt(item.velocidade,'0')} km/h • Coordenada: ${Number(item.lat).toFixed(5)}, ${Number(item.lng).toFixed(5)}</div>
+          <div class="mini-actions">
+            <button class="glass-btn primary" type="button" data-action="focus">Focar</button>
+            <button class="glass-btn white" type="button" data-action="maps">Maps</button>
+            <button class="glass-btn white" type="button" data-action="street">Rua</button>
+            <button class="glass-btn white" type="button" data-action="trajetos">Trajetos</button>
+          </div>`;
+        div.querySelector('[data-action="focus"]').onclick = ()=> focusItem(item.id, true);
+        div.querySelector('[data-action="maps"]').onclick = ()=> window.open(mapsUrl(item.lat, item.lng), '_blank', 'noopener');
+        div.querySelector('[data-action="street"]').onclick = ()=> window.open(streetUrl(item.lat, item.lng), '_blank', 'noopener');
+        div.querySelector('[data-action="trajetos"]').onclick = ()=> window.location.href = `/trajetos?cooperado_id=${encodeURIComponent(item.id)}`;
+        div.onclick = (ev)=>{ if(ev.target.closest('button')) return; focusItem(item.id, true); };
+        list.appendChild(div);
       });
     }
-
-    function updateDetails(){
-      const el = $("details");
-      if(!el) return;
-      if(!followId){
-        el.textContent = "Selecione um motoboy para ver detalhes e acompanhamento.";
-        return;
-      }
-      const mk = markers.get(followId);
-      if(!mk){
-        el.textContent = "Motoboy não encontrado no mapa.";
-        return;
-      }
-      const nome = mk.options.__nome || "Motoboy";
-      const st = mk.options.__status || "offline";
-      const speed = mk.options.__speed;
-      const ll = mk.getLatLng();
-      el.innerHTML = `
-        <div style="display:flex;gap:10px;align-items:center;justify-content:space-between">
-          <div style="font-weight:1000">${nome}</div>
-          ${st==="online" ? `<span class="pill green">ONLINE</span>` : (st==="em_corrida" ? `<span class="pill amber">EM CORRIDA</span>` : `<span class="pill red">OFFLINE</span>`)}
-        </div>
-        <div class="meta">Follow: <b>${followActive ? "ATIVO" : "PAUSADO"}</b></div>
-        <div class="meta">Velocidade: <b>${(speed !== null && speed !== undefined) ? speed.toFixed(1) : "—"}</b> ${(speed !== null && speed !== undefined) ? "km/h" : ""}</div>
-        <div class="meta">Latitude: <b>${ll.lat.toFixed(5)}</b> • Longitude: <b>${ll.lng.toFixed(5)}</b></div>
-      `;
+    function updateCounters(items){
+      const online = items.filter(x=>x.online && x.status !== 'em_corrida').length;
+      const busy = items.filter(x=>x.status === 'em_corrida').length;
+      const offline = items.filter(x=>!x.online).length;
+      $('countOnline').textContent = online;
+      $('countBusy').textContent = busy;
+      $('countOffline').textContent = offline;
+      $('panelInfo').textContent = focusedId ? `Cooperado #${focusedId} em foco. Clique em Maps ou Rua para abrir a posição.` : `${items.length} cooperado(s) carregado(s).`;
     }
-
-    function setFollow(id){
-      followId = id || "";
-      followActive = !!followId;
-      clearTrails();
-      if(followId && map){
-        const mk = markers.get(followId);
-        if(mk){
-          map.setView(mk.getLatLng(), Math.max(map.getZoom(), 16), { animate:true });
-          mk.openPopup();
-        }
-      }
-      updateDetails();
-      loadHistory();
+    function fitAll(){
+      const visible = filteredItems().map(it=>[Number(it.lat), Number(it.lng)]).filter(v=>isFinite(v[0])&&isFinite(v[1]));
+      if(!visible.length){ map.setView(defaultCenter, defaultZoom); return; }
+      map.fitBounds(L.latLngBounds(visible), {padding:[50,50]});
     }
-
-    // Expor funções para onclick (fallback)
-    window.__fitAll = fitAll;
-    window.__clearFollow = function(){ followActive=false; followId=""; const sel=$("selMotoboy"); if(sel) sel.value=""; clearTrails(); updateDetails(); };
-    window.__startRoute = function(){
-      if(!followId){ alert("Selecione um motoboy para gravar a rota."); return; }
-      routeRecording = true; recordedId = followId; recordedPoints = []; recordedStartMs = Date.now();
-      const mk = markers.get(recordedId);
-      if(mk){ const ll = mk.getLatLng(); recordedPoints.push({lat: ll.lat, lng: ll.lng, tMs: recordedStartMs}); }
-      const rec=$("recIndicator"); if(rec) rec.classList.add("on");
-      toast("Gravação iniciada.");
-    };
-    window.__stopRoute = function(){
-      routeRecording = false;
-      const rec=$("recIndicator"); if(rec) rec.classList.remove("on");
-      toast(`Gravação parada. ${recordedPoints.length} pontos.`);
-    };
-    function buildGeoJsonFromRecorded(){
-      return {
-        type:"FeatureCollection",
-        features:[{
-          type:"Feature",
-          properties:{ id: recordedId || "", createdAt: new Date().toISOString() },
-          geometry:{ type:"LineString", coordinates: recordedPoints.map(p=>[p.lng, p.lat]) }
-        }]
-      };
+    function focusItem(id, openPopup){
+      focusedId = id;
+      const marker = markers.get(id);
+      const item = currentItems.find(x=>String(x.id)===String(id));
+      if(!marker || !item) return;
+      map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 17), {duration:.7});
+      if(openPopup) marker.openPopup();
+      $('panelInfo').textContent = `${fmt(item.nome)} • ${statusLabel(item)} • ${fmt(item.ultima_atualizacao)}`;
     }
-    window.__downloadRoute = function(){
-      if(recordedPoints.length < 2){ alert("Rota curta demais para baixar."); return; }
-      const blob = new Blob([JSON.stringify(buildGeoJsonFromRecorded(), null, 2)], {type:"application/geo+json"});
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `rota_${(recordedId||"motoboy")}_${Date.now()}.geojson`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      setTimeout(()=>URL.revokeObjectURL(url), 2000);
-    };
-    window.__saveRouteHistory = async function(){
-      if(recordedPoints.length < 2){ alert("Rota curta demais para salvar."); return; }
-      try{
-        const resp = await fetch('/api/trajetos/salvar', {
-          method:'POST',
-          headers:{'Content-Type':'application/json'},
-          body: JSON.stringify({ cooperado_id: Number(recordedId), pontos: recordedPoints })
-        });
-        const data = await resp.json().catch(()=>({}));
-        if(!resp.ok || !data.ok) throw new Error(data.error || ('HTTP '+resp.status));
-        toast(`Histórico salvo #${data.id}`);
-        await loadHistory();
-      }catch(e){
-        console.error(e);
-        alert('Não foi possível salvar o histórico.');
-      }
-    };
-    async function loadHistory(){
-      const list = $("historyList");
-      const info = $("historyInfo");
-      if(list) list.innerHTML = '<div class="tiny">Carregando...</div>';
-      try{
-        const params = new URLSearchParams();
-        params.set('limit','40');
-        if(followId) params.set('cooperado_id', String(followId));
-        if(historyFilterToday){
-          const now = new Date();
-          const y = now.getFullYear();
-          const m = String(now.getMonth()+1).padStart(2,'0');
-          const d = String(now.getDate()).padStart(2,'0');
-          const iso = `${y}-${m}-${d}`;
-          params.set('data_inicio', iso);
-          params.set('data_fim', iso);
-        }
-        const resp = await fetch('/api/trajetos/historico?' + params.toString(), {cache:'no-store'});
-        const data = await resp.json();
-        if(!resp.ok || !data.ok) throw new Error(data.error || ('HTTP '+resp.status));
-        const itens = Array.isArray(data.itens) ? data.itens : [];
-        if(info) info.textContent = itens.length ? `${itens.length} rota(s) ${followId ? 'do motoboy selecionado' : 'encontradas'}` : 'Nenhuma rota salva';
-        if(!list) return;
-        if(!itens.length){ list.innerHTML = '<div class="tiny">Nenhuma rota salva.</div>'; return; }
-        list.innerHTML = '';
-        itens.forEach(it=>{
-          const div = document.createElement('div');
-          div.className = 'card';
-          div.innerHTML = `
-            <div class="row"><div class="name">${safe(it.nome || 'Motoboy')}</div><span class="pill green">#${it.id}</span></div>
-            <div class="meta">${safe(it.inicio || '')}</div>
-            <div class="meta">${(it.distancia_km||0).toFixed ? it.distancia_km.toFixed(2) : it.distancia_km} km • ${it.duracao_min} min • ${it.velocidade_media_kmh} km/h</div>
-            <div style="display:flex;gap:8px;margin-top:8px"><button class="btnw hist-view" data-id="${it.id}">Ver no mapa</button><button class="btnw hist-down" data-id="${it.id}">Baixar</button></div>
-          `;
-          list.appendChild(div);
-        });
-        list.querySelectorAll('.hist-view').forEach(btn=> btn.addEventListener('click', ()=> viewHistoryRoute(btn.dataset.id)));
-        list.querySelectorAll('.hist-down').forEach(btn=> btn.addEventListener('click', ()=> { window.open(`/api/trajetos/${btn.dataset.id}/geojson`, '_blank'); }));
-      }catch(e){
-        console.error(e);
-        if(info) info.textContent = 'Erro ao carregar histórico';
-        if(list) list.innerHTML = '<div class="tiny">Falha ao carregar histórico.</div>';
-      }
-    }
-    async function viewHistoryRoute(id){
-      try{
-        const resp = await fetch(`/api/trajetos/${id}`, {cache:'no-store'});
-        const data = await resp.json();
-        if(!resp.ok || !data.ok) throw new Error(data.error || ('HTTP '+resp.status));
-        const item = data.item || {};
-        const pts = Array.isArray(item.pontos) ? item.pontos : [];
-        if(pts.length < 2){ alert('Rota sem pontos suficientes.'); return; }
-        const latlngs = pts.map(p=> [Number(p.lat), Number(p.lng)]).filter(v=> isFinite(v[0]) && isFinite(v[1]));
-        if(historyRouteLayer && map){ try{ map.removeLayer(historyRouteLayer); }catch(e){} }
-        historyRouteLayer = L.polyline(latlngs, {color:'#dc2626', weight:6, opacity:.92}).addTo(map);
-        map.fitBounds(historyRouteLayer.getBounds().pad(0.15));
-        toast(`Rota #${item.id} carregada no mapa.`);
-      }catch(e){
-        console.error(e);
-        alert('Não foi possível abrir a rota.');
-      }
-    }
-
+    function clearFocus(){ focusedId = null; $('panelInfo').textContent = `${currentItems.length} cooperado(s) carregado(s).`; fitAll(); }
     async function fetchData(){
       try{
-        const r = await fetch(DATA_ENDPOINT, { cache:"no-store" });
-        if(!r.ok) throw new Error("HTTP " + r.status);
+        const r = await fetch(DATA_ENDPOINT, {cache:'no-store'});
+        if(!r.ok) throw new Error('HTTP ' + r.status);
         const data = await r.json();
-        const arr = Array.isArray(data) ? data : (Array.isArray(data.motoboys) ? data.motoboys : []);
-        arr.forEach(upsertMarker);
-
-        const filtro = ($("selFiltro") && $("selFiltro").value) ? $("selFiltro").value : "todos";
-        const q = ($("inpBusca") && $("inpBusca").value) ? $("inpBusca").value : "";
-        const q2 = ($("inpBuscaSide") && $("inpBuscaSide").value) ? $("inpBuscaSide").value : "";
-        const filtered = applyFilter(arr, filtro, (q || q2));
-
-        renderSelect(filtered);
-        renderList(filtered);
-        updateCounters(arr);
-        const lbl = $("lblUpdated");
-        if(lbl) lbl.textContent = "Atualizado: " + new Date().toLocaleTimeString();
-        updateDetails();
-      }catch(e){
-        console.warn("Falha ao buscar mapa:", e);
-      }
+        currentItems = Array.isArray(data) ? sortItems(data) : [];
+        currentItems.forEach(upsertMarker);
+        for(const [id, marker] of markers.entries()){
+          if(!currentItems.some(x=>String(x.id)===String(id)) && map.hasLayer(marker)) map.removeLayer(marker);
+        }
+        renderList();
+        updateCounters(currentItems);
+        if(focusedId){
+          const still = currentItems.find(x=>String(x.id)===String(focusedId));
+          if(still){ focusItem(focusedId, false); }
+        }
+      }catch(err){ console.warn(err); }
     }
 
-    // DOM wiring
-    window.addEventListener("DOMContentLoaded", ()=>{
-      const sel = $("selMotoboy");
-      if(sel) sel.addEventListener("change", (e)=> setFollow(e.target.value));
-
-      const f = $("selFiltro");
-      if(f) f.addEventListener("change", ()=> fetchData());
-
-      const b1 = $("inpBusca");
-      if(b1) b1.addEventListener("input", ()=> fetchData());
-
-      const b2 = $("inpBuscaSide");
-      if(b2) b2.addEventListener("input", ()=> fetchData());
-
-      const reload = $("btnReload");
-      if(reload) reload.addEventListener("click", ()=> fetchData());
-
-      const nat = $("btnCenterNatal");
-      if(nat) nat.addEventListener("click", ()=>{ if(map) map.setView(defaultCenter, 12, {animate:true}); });
-
-      const hr = $("btnHistoryReload");
-      if(hr) hr.addEventListener("click", ()=> loadHistory());
-      const ht = $("btnHistoryToday");
-      if(ht) ht.addEventListener("click", ()=>{ historyFilterToday = !historyFilterToday; ht.textContent = historyFilterToday ? 'Hoje' : 'Todos'; loadHistory(); });
-
-      document.querySelectorAll(".tag").forEach(tag=>{
-        tag.addEventListener("click", ()=>{
-          document.querySelectorAll(".tag").forEach(t=>t.classList.remove("active"));
-          tag.classList.add("active");
-          if($("selFiltro")) $("selFiltro").value = tag.dataset.status;
-          fetchData();
-        });
-      });
-
-      // seed
-      seedArray.forEach(upsertMarker);
-      setTimeout(()=>fitAll(), 450);
-      setTimeout(()=>fetchData(), 900);
-      setInterval(()=>fetchData(), POLL_MS);
-      renderSelect(seedArray);
-      renderList(seedArray);
-      updateCounters(seedArray);
-      loadHistory();
+    document.querySelectorAll('.filter-btn').forEach(btn=>{
+      btn.onclick = ()=>{
+        activeStatus = btn.dataset.status;
+        $('statusFilter').value = activeStatus;
+        document.querySelectorAll('.filter-btn').forEach(b=> b.classList.toggle('primary', b===btn));
+        renderList();
+        currentItems.forEach(upsertMarker);
+        updateCounters(currentItems);
+      };
     });
+    $('statusFilter').onchange = ()=>{
+      activeStatus = $('statusFilter').value;
+      document.querySelectorAll('.filter-btn').forEach(b=> b.classList.toggle('primary', b.dataset.status===activeStatus));
+      renderList(); currentItems.forEach(upsertMarker); updateCounters(currentItems);
+    };
+    $('searchInput').oninput = ()=>{ renderList(); currentItems.forEach(upsertMarker); };
+    $('btnFitAll').onclick = fitAll;
+    $('btnReload').onclick = fetchData;
+    $('btnClearFocus').onclick = clearFocus;
+    $('btnMaps').onclick = ()=>{
+      const item = currentItems.find(x=>String(x.id)===String(focusedId));
+      if(!item) return alert('Selecione um cooperado primeiro.');
+      window.open(mapsUrl(item.lat, item.lng), '_blank', 'noopener');
+    };
+    $('btnStreet').onclick = ()=>{
+      const item = currentItems.find(x=>String(x.id)===String(focusedId));
+      if(!item) return alert('Selecione um cooperado primeiro.');
+      window.open(streetUrl(item.lat, item.lng), '_blank', 'noopener');
+    };
+
+    fetchData();
+    fitAll();
+    setInterval(fetchData, POLL_MS);
   </script>
 </body>
 </html>
