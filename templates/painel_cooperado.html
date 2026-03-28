@@ -119,7 +119,7 @@
     }
   </style>
 </head>
-<body>
+<body data-user-id="{{ cooperado_id }}">
   <header class="hero">
     <div class="hero-top">
       <div class="brand">
@@ -138,6 +138,15 @@
   {% set hoje = now().strftime('%Y-%m-%d') if now is defined else '' %}
 
   <main class="app panel">
+      <section class="section-card" id="gpsStatusCard" style="margin-bottom:14px">
+        <div class="section-head" style="margin-bottom:0">
+          <div>
+            <h2 style="font-size:1.05rem;margin:0">Rastreamento</h2>
+            <div class="muted" id="gpsStatusText" style="margin-top:6px">Aguardando localização...</div>
+          </div>
+          <div class="chip-brand" id="gpsStatusBadge">GPS</div>
+        </div>
+      </section>
     <section class="filters-card">
       <form id="form-filtros" method="get">
         <div class="filters-grid">
@@ -578,13 +587,85 @@
 
     updateSummary(); applyTableFilter(); buildYearPills(); buildCharts();
 
+    const gpsStatusText = document.getElementById('gpsStatusText');
+    const gpsStatusBadge = document.getElementById('gpsStatusBadge');
+
+    function paintWaiting(msg){
+      if (gpsStatusText) gpsStatusText.textContent = msg || 'Aguardando localização...';
+      if (gpsStatusBadge){ gpsStatusBadge.textContent = 'GPS'; gpsStatusBadge.style.background = '#fff8e8'; gpsStatusBadge.style.color = '#d68200'; }
+    }
+    function paintOk(msg){
+      if (gpsStatusText) gpsStatusText.textContent = msg || 'Localização ativa';
+      if (gpsStatusBadge){ gpsStatusBadge.textContent = 'ATIVO'; gpsStatusBadge.style.background = '#eef9f2'; gpsStatusBadge.style.color = '#169c5a'; }
+    }
+    function paintOff(msg){
+      if (gpsStatusText) gpsStatusText.textContent = msg || 'Aguardando nova localização...';
+      if (gpsStatusBadge){ gpsStatusBadge.textContent = 'OFF'; gpsStatusBadge.style.background = '#fff1f1'; gpsStatusBadge.style.color = '#e03131'; }
+    }
+
     let gpsBooted = false, gpsWatchId = null, lastGpsSentAt = 0, lastGpsCoords = null;
     function distanceMeters(a,b){ if(!a || !b) return Infinity; const R=6371000,toRad=n=>n*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lng-a.lng),lat1=toRad(a.lat),lat2=toRad(b.lat); const x=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x)); }
     async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(!force && lastGpsCoords && moved < 20 && (now-lastGpsSentAt) < 15000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
-    function forceLogout(){ window.location.href = `{{ url_for('logout') }}`; }
+    function forceLogout(){
+      try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
+      window.location.href = `{{ url_for('logout') }}`;
+    }
+    function syncAndroidLogin(){
+      try{
+        if(window.AndroidBridge){
+          window.AndroidBridge.saveLoginData("{{ cooperado_id }}","{{ app_token or '' }}");
+          window.AndroidBridge.markLoggedIn();
+        }
+      }catch(_){}
+    }
     function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:15000, timeout:20000 }); }
-    async function requireLocation(){ if(gpsBooted) return; gpsBooted = true; if(!navigator.geolocation){ alert('Seu dispositivo não suporta localização.'); forceLogout(); return; } try{ if(navigator.permissions && navigator.permissions.query){ const status = await navigator.permissions.query({ name:'geolocation' }); status.onchange = () => { if(status.state !== 'granted') forceLogout(); }; if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; } if(status.state === 'granted'){ startGpsWatch(); return; } } navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:15000, maximumAge:0 }); }catch(_){ forceLogout(); } }
-    document.addEventListener('DOMContentLoaded', () => requireLocation());
+    async function requireLocation(){
+      if(gpsBooted) return; gpsBooted = true;
+      syncAndroidLogin();
+
+      if(window.AndroidBridge){
+        // no app nativo, o serviço Android é o principal responsável pelo rastreio em segundo plano
+        paintWaiting('Aguardando localização do app...');
+        return;
+      }
+
+      if(!navigator.geolocation){ alert('Seu dispositivo não suporta localização.'); forceLogout(); return; }
+      try{
+        if(navigator.permissions && navigator.permissions.query){
+          const status = await navigator.permissions.query({ name:'geolocation' });
+          status.onchange = () => { if(status.state !== 'granted') forceLogout(); };
+          if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; }
+          if(status.state === 'granted'){ startGpsWatch(); return; }
+        }
+        navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:15000, maximumAge:0 });
+      }catch(_){ forceLogout(); }
+    }
+
+    async function fetchGpsStatus(){
+      try{
+        const r = await fetch(`{{ url_for('api_cooperado_localizacao_status') }}`, {headers:{'Accept':'application/json'}, cache:'no-store'});
+        const data = await r.json();
+        if(!data || !data.ok){ paintWaiting('Aguardando localização...'); return; }
+        if(!data.tem_localizacao){ paintWaiting(data.mensagem || 'Aguardando localização...'); return; }
+        if(data.online) paintOk((data.mensagem || 'Localização ativa') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
+        else paintOff((data.mensagem || 'Aguardando nova localização...') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
+      }catch(_){
+        paintWaiting('Aguardando localização...');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+      requireLocation();
+      fetchGpsStatus();
+      setInterval(fetchGpsStatus, 10000);
+      const sairBtn = document.querySelector('.hero-exit');
+      if (sairBtn){
+        sairBtn.addEventListener('click', function(){
+          try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
+        });
+      }
+    });
+
   </script>
 </body>
 </html>
