@@ -941,6 +941,42 @@ IDLE_AFTER_SEC    = int(os.getenv("IDLE_AFTER_SEC", "300"))     # 5 min sem movi
 # Se velocidade >= isso, considera "em movimento"
 MOVING_SPEED_KMH = float(os.getenv("MOVING_SPEED_KMH", "3.0"))
 
+# Ajustes mais equilibrados para reduzir localização fantasma sem travar atualização real
+LOCATION_MAX_ACCEPTABLE_ACCURACY_M = float(os.getenv("LOCATION_MAX_ACCEPTABLE_ACCURACY_M", "120"))
+LOCATION_STATIONARY_SPEED_KMH = float(os.getenv("LOCATION_STATIONARY_SPEED_KMH", "1.2"))
+LOCATION_STATIONARY_DRIFT_M = float(os.getenv("LOCATION_STATIONARY_DRIFT_M", "6"))
+LOCATION_LOW_CONFIDENCE_DRIFT_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_DRIFT_M", "18"))
+LOCATION_LOW_CONFIDENCE_ACCURACY_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_ACCURACY_M", "45"))
+
+def _haversine_m(lat1, lng1, lat2, lng2):
+    try:
+        from math import radians, sin, cos, sqrt, atan2
+        r = 6371000.0
+        dlat = radians(float(lat2) - float(lat1))
+        dlng = radians(float(lng2) - float(lng1))
+        a = sin(dlat / 2) ** 2 + cos(radians(float(lat1))) * cos(radians(float(lat2))) * sin(dlng / 2) ** 2
+        return 2 * r * atan2(sqrt(a), sqrt(1 - a))
+    except Exception:
+        return 0.0
+
+def _should_accept_location_update(prev_lat, prev_lng, new_lat, new_lng, accuracy, speed_kmh):
+    if prev_lat is None or prev_lng is None:
+        return True, 'primeiro_ponto', None
+
+    if accuracy is not None and accuracy > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
+        return False, 'accuracy_ruim', None
+
+    dist_m = _haversine_m(prev_lat, prev_lng, new_lat, new_lng)
+    speed_kmh = float(speed_kmh or 0.0)
+
+    if speed_kmh <= LOCATION_STATIONARY_SPEED_KMH and dist_m < LOCATION_STATIONARY_DRIFT_M:
+        return False, 'parado_sem_deslocamento', dist_m
+
+    if accuracy is not None and accuracy >= LOCATION_LOW_CONFIDENCE_ACCURACY_M and speed_kmh <= LOCATION_STATIONARY_SPEED_KMH and dist_m < LOCATION_LOW_CONFIDENCE_DRIFT_M:
+        return False, 'drift_baixa_confianca', dist_m
+
+    return True, 'aceito', dist_m
+
 
 def _to_utc_aware(dt):
     """
@@ -3586,11 +3622,21 @@ def api_app_localizacao():
     if auth.lower().startswith('bearer '):
         token = auth[7:].strip()
 
+    if not token:
+        token = (
+            str(data.get('app_token') or '').strip() or
+            str(data.get('token') or '').strip() or
+            str(request.args.get('app_token') or '').strip() or
+            str(request.args.get('token') or '').strip()
+        )
+
     user_id = str(data.get('user_id') or '').strip()
-    lat = data.get('latitude')
-    lng = data.get('longitude')
+
+    lat = data.get('latitude', data.get('lat'))
+    lng = data.get('longitude', data.get('lng'))
     accuracy = data.get('accuracy')
     speed = data.get('speed')
+    speed_mps = data.get('speed_mps')
     heading = data.get('heading')
     source = (data.get('source') or 'android_native').strip()
 
@@ -3614,43 +3660,75 @@ def api_app_localizacao():
         acc = float(accuracy) if accuracy is not None else None
     except (TypeError, ValueError):
         acc = None
+
     try:
-        spd = float(speed) if speed is not None else None
+        if speed_mps is not None:
+            spd = float(speed_mps) * 3.6
+        elif speed is not None:
+            spd_raw = float(speed)
+            spd = (spd_raw * 3.6) if spd_raw < 120 else spd_raw
+        else:
+            spd = None
     except (TypeError, ValueError):
         spd = None
+
     try:
         hdg = float(heading) if heading is not None else None
     except (TypeError, ValueError):
         hdg = None
 
-    coop.last_lat = lat
-    coop.last_lng = lng
-    coop.last_ping = datetime.utcnow()
+    agora = datetime.utcnow()
+
+    prev_lat = coop.last_lat
+    prev_lng = coop.last_lng
+    accepted, reason, dist_m = _should_accept_location_update(prev_lat, prev_lng, lat, lng, acc, spd)
+
+    coop.last_ping = agora
     coop.online = True
     coop.last_accuracy_m = acc
     coop.last_heading = hdg
-    coop.last_speed_kmh = (spd * 3.6) if spd is not None and spd < 120 else spd
+    coop.last_speed_kmh = spd
 
-    if coop.last_speed_kmh is not None and coop.last_speed_kmh >= MOVING_SPEED_KMH:
-        coop.last_moving_at = datetime.utcnow()
+    moving_now = (spd is not None and spd >= MOVING_SPEED_KMH)
+    if moving_now:
+        coop.last_moving_at = agora
 
     loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
     if not loc:
         loc = LocalizacaoCooperado(cooperado_id=coop.id)
         db.session.add(loc)
 
-    loc.latitude = lat
-    loc.longitude = lng
+    if accepted:
+        coop.last_lat = lat
+        coop.last_lng = lng
+
+        loc.latitude = lat
+        loc.longitude = lng
+    else:
+        if loc.latitude is None and loc.longitude is None and prev_lat is not None and prev_lng is not None:
+            loc.latitude = prev_lat
+            loc.longitude = prev_lng
+
     loc.accuracy = acc
     loc.speed = coop.last_speed_kmh
     loc.heading = hdg
     loc.online = True
     loc.fonte = source
-    loc.atualizado_em = datetime.utcnow()
+    loc.atualizado_em = agora
 
     db.session.commit()
-    emitir_posicao_motoboy(coop, lat, lng, coop.last_speed_kmh)
-    return jsonify({'ok': True, 'cooperado_id': coop.id}), 200
+
+    lat_emit = coop.last_lat if coop.last_lat is not None else lat
+    lng_emit = coop.last_lng if coop.last_lng is not None else lng
+    emitir_posicao_motoboy(coop, lat_emit, lng_emit, coop.last_speed_kmh)
+
+    return jsonify({
+        'ok': True,
+        'cooperado_id': coop.id,
+        'accepted': bool(accepted),
+        'reason': reason,
+        'dist_m': round(float(dist_m or 0.0), 2) if dist_m is not None else None
+    }), 200
 
 
 @app.get('/api/cooperado/localizacao_status')
@@ -3660,29 +3738,48 @@ def api_cooperado_localizacao_status():
 
     cooperado_id = session['user_id']
     coop = Cooperado.query.get_or_404(cooperado_id)
+    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado_id).first()
     agora = datetime.utcnow()
 
-    if not coop.last_ping or coop.last_lat is None or coop.last_lng is None:
+    ping = coop.last_ping
+    lat = coop.last_lat
+    lng = coop.last_lng
+    accuracy = coop.last_accuracy_m
+    speed = coop.last_speed_kmh
+    heading = coop.last_heading
+    online_flag = bool(coop.online)
+
+    # fallback: usa a tabela de localização se os campos do cooperado ainda não refletiram
+    if loc and (ping is None or lat is None or lng is None):
+        ping = loc.atualizado_em
+        lat = loc.latitude
+        lng = loc.longitude
+        accuracy = loc.accuracy
+        speed = loc.speed
+        heading = loc.heading
+        online_flag = bool(loc.online)
+
+    if not ping or lat is None or lng is None:
         return jsonify({
             'ok': True,
             'tem_localizacao': False,
             'online': False,
-            'mensagem': 'Aguardando localização...'
+            'mensagem': 'Sincronizando localização do app...'
         })
 
-    delta = (agora - coop.last_ping).total_seconds()
-    online = bool(coop.online) and delta <= OFFLINE_AFTER_SEC
+    delta = (agora - ping).total_seconds()
+    online = bool(online_flag) and delta <= OFFLINE_AFTER_SEC
 
     return jsonify({
         'ok': True,
         'tem_localizacao': True,
         'online': online,
-        'latitude': coop.last_lat,
-        'longitude': coop.last_lng,
-        'accuracy': coop.last_accuracy_m,
-        'speed': coop.last_speed_kmh,
-        'heading': coop.last_heading,
-        'atualizado_em': to_brasilia(coop.last_ping).strftime('%d/%m/%Y %H:%M:%S') if coop.last_ping else '',
+        'latitude': lat,
+        'longitude': lng,
+        'accuracy': accuracy,
+        'speed': speed,
+        'heading': heading,
+        'atualizado_em': to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S') if ping else '',
         'mensagem': 'Localização ativa' if online else 'Aguardando nova localização...'
     })
 
