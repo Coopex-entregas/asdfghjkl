@@ -17,8 +17,8 @@
     .app{max-width:980px;margin:0 auto;padding:0 16px 28px}
     .hero{background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;border-radius:0 0 28px 28px;box-shadow:0 14px 34px rgba(35,57,154,.25);padding:14px 14px 16px;position:sticky;top:0;z-index:10}
     .hero-top{display:flex;align-items:center;justify-content:space-between;gap:10px}
-    .brand{display:flex;align-items:center;gap:12px;min-width:0}
-    .brand-badge{width:44px;height:44px;border-radius:16px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.18);display:flex;align-items:center;justify-content:center;font-size:1.15rem;font-weight:800;box-shadow:inset 0 1px 0 rgba(255,255,255,.12)}
+    .brand{display:flex;align-items:center;gap:10px;min-width:0}
+    .brand-dot{width:12px;height:12px;border-radius:999px;background:#19c266;box-shadow:0 0 0 4px rgba(25,194,102,.18)}
     .brand small{display:block;font-size:.72rem;font-weight:800;letter-spacing:.08em;opacity:.88}
     .brand strong{display:block;font-size:1.03rem;line-height:1.1}
     .hero-right{display:flex;align-items:stretch;gap:10px}
@@ -40,24 +40,25 @@
     .tab-btn.active{background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;box-shadow:0 8px 20px rgba(35,57,154,.22)}
     .tab-panel{display:none} .tab-panel.active{display:block}
     .section-card{padding:14px}
-    .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:14px;flex-wrap:wrap}
+    .section-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px;flex-wrap:wrap}
     .section-head h2{margin:0;font-size:clamp(1.2rem,2vw,1.55rem)}
     .chip-brand{padding:9px 14px;border-radius:999px;background:#eef2ff;color:var(--royal-1);font-weight:800;font-size:.9rem}
-    .metrics-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
-    .metric{padding:16px 14px}
-    .metric .label{font-size:.82rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
-    .metric .value{font-size:clamp(1.3rem,2vw,2rem);font-weight:800;margin:8px 0 6px}
-    .metric .sub{font-size:.92rem;color:var(--muted)}
+    .metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px}
+    .metric{padding:14px 12px}
+    .metric .label{font-size:.76rem;color:var(--muted);font-weight:800;text-transform:uppercase;letter-spacing:.04em}
+    .metric .value{font-size:clamp(1.08rem,1.8vw,1.55rem);font-weight:800;margin:6px 0 4px}
+    .metric .sub{font-size:.82rem;color:var(--muted)}
     .metric.good{background:linear-gradient(180deg,#f4fff8,#f0fbf4);border-color:#c7efd7}
     .metric.good .value{color:var(--good)}
     .metric.warn{background:linear-gradient(180deg,#fffaf1,#fff6e8);border-color:#f4dfb8}
     .metric.warn .value{color:var(--warn)}
     .metric.bad{background:linear-gradient(180deg,#fff7f7,#fff1f1);border-color:#f5d4d4}
     .metric.bad .value{color:var(--bad)}
-    .metric.primary{grid-column:1/-1;background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;border:none;box-shadow:var(--shadow)}
+    .metric.primary{background:linear-gradient(135deg,var(--royal-1),var(--royal-2));color:#fff;border:none;box-shadow:var(--shadow)}
     .metric.primary .label,.metric.primary .sub,.metric.primary .value{color:#fff}
     .metric.clickable{cursor:pointer}
-    .quick-row{display:grid;grid-template-columns:repeat(2,1fr);gap:12px;margin-top:12px}
+    .metric.compact .sub{display:none}
+    .quick-row{display:none}
     .chart-top{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:14px}
     .year-pills,.period-pills{display:flex;gap:8px;flex-wrap:wrap}
     .pill-btn{border:none;padding:10px 14px;border-radius:999px;background:#eef2ff;color:var(--royal-1);font-weight:800;cursor:pointer}
@@ -107,7 +108,7 @@
     }
     @media (max-width:640px){
       .filters-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 46px}
-      .icon-btn{width:46px} .metrics-grid,.quick-row{grid-template-columns:1fr 1fr} .section-card{padding:12px}
+      .icon-btn{width:46px} .metrics-grid{grid-template-columns:1fr 1fr} .section-card{padding:12px}
       table,thead,tbody,tr,td,th{display:block;width:100%} thead{display:none} .table-card{padding:6px 6px 8px}
       tbody tr{display:block;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-soft);margin:10px 0;overflow:hidden}
       tbody td{display:grid;grid-template-columns:42% 58%;gap:8px;text-align:left;padding:10px 12px;border-top:1px solid #f1f4ff}
@@ -123,6 +124,7 @@
   <header class="hero">
     <div class="hero-top">
       <div class="brand">
+        <span class="brand-dot" aria-hidden="true"></span>
         <div>
           <small>COOPEX</small>
         </div>
@@ -138,15 +140,7 @@
   {% set hoje = now().strftime('%Y-%m-%d') if now is defined else '' %}
 
   <main class="app panel">
-      <section class="section-card" id="gpsStatusCard" style="margin-bottom:14px">
-        <div class="section-head" style="margin-bottom:0">
-          <div>
-            <h2 style="font-size:1.05rem;margin:0">Rastreamento</h2>
-            <div class="muted" id="gpsStatusText" style="margin-top:6px">Aguardando localização...</div>
-          </div>
-          <div class="chip-brand" id="gpsStatusBadge">GPS</div>
-        </div>
-      </section>
+
     <section class="filters-card">
       <form id="form-filtros" method="get">
         <div class="filters-grid">
@@ -171,23 +165,21 @@
       </nav>
     </section>
 
-    <section id="tab-resumo" class="tab-panel active">
+    
+<section id="tab-resumo" class="tab-panel active">
       <div class="section-card">
-        <div class="section-head"><h2>Resumo</h2><div class="chip-brand">Coopex</div></div>
         <div class="metrics-grid">
-          <div class="metric good"><div class="label">Receita</div><div class="value" id="resumo-receita">R$ 0,00</div><div class="sub">Soma de todas as entregas filtradas</div></div>
-          <div class="metric warn"><div class="label">Quantidade de entregas</div><div class="value" id="resumo-quantidade">0</div><div class="sub">Quantidade dentro do filtro aplicado</div></div>
-          <div class="metric bad clickable" id="card-pendencias"><div class="label">Pendências</div><div class="value" id="resumo-pendencias">R$ 0,00</div><div class="sub">Toque para ver as entregas pendentes</div></div>
-          <div class="metric primary"><div class="label">Total recebido</div><div class="value" id="resumo-recebido">R$ 0,00</div><div class="sub">Valor marcado como pago dentro do filtro</div></div>
-        </div>
-        <div class="quick-row">
-          <div class="metric"><div class="label">Ticket médio</div><div class="value" id="resumo-ticket">R$ 0,00</div><div class="sub">Média por entrega filtrada</div></div>
-          <div class="metric"><div class="label">Melhor forma de pagamento</div><div class="value" id="resumo-melhor-pgto">-</div><div class="sub">Forma mais usada no filtro</div></div>
+          <div class="metric primary compact"><div class="label">Receita da semana</div><div class="value" id="semana-receita">R$ 0,00</div><div class="sub">Semana vigente</div></div>
+          <div class="metric good compact"><div class="label">Entregas da semana</div><div class="value" id="semana-quantidade">0</div><div class="sub">Semana vigente</div></div>
+          <div class="metric compact"><div class="label">Receita do mês</div><div class="value" id="mes-receita">R$ 0,00</div><div class="sub">Mês vigente</div></div>
+          <div class="metric warn compact"><div class="label">Entregas do mês</div><div class="value" id="mes-quantidade">0</div><div class="sub">Mês vigente</div></div>
+          <div class="metric compact"><div class="label">Receita do ano</div><div class="value" id="ano-receita">R$ 0,00</div><div class="sub">Ano vigente</div></div>
+          <div class="metric bad clickable compact" id="card-pendencias"><div class="label">Pendências</div><div class="value" id="resumo-pendencias">R$ 0,00</div><div class="sub">Toque para ver</div></div>
         </div>
       </div>
     </section>
 
-    <section id="tab-producao" class="tab-panel">
+    <section id="tab-producao class="tab-panel">
       <div class="section-card">
         <div class="section-head"><h2>Produção</h2><div class="chip-brand" id="table-count">0 entregas</div></div>
 
@@ -242,7 +234,7 @@
 
     <section id="tab-graficos" class="tab-panel">
       <div class="section-card">
-        <div class="section-head"><h2>Gráficos</h2><div class="chip-brand" id="best-year-chip">Melhor ano: -</div></div>
+        <div class="section-head"><div class="chip-brand" id="best-year-chip">Ano base: -</div></div>
         <div class="chart-top">
           <div class="year-pills" id="year-pills"></div>
           <div class="period-pills">
@@ -286,13 +278,26 @@
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     const rows = Array.from(document.querySelectorAll('.entrega-row'));
     const allDeliveries = rows.map(row => ({
-      id: row.dataset.id, cliente: row.dataset.cliente, valor: Number(row.dataset.valor || 0),
+      id: row.dataset.id,
+      cliente: row.dataset.cliente,
+      valor: Number(row.dataset.valor || 0),
       pagamento: (row.dataset.pagamento || '-').toLowerCase(),
       statusPagamento: (row.dataset.statusPagamento || 'pendente').toLowerCase(),
       statusEntrega: (row.dataset.statusEntrega || 'pendente').toLowerCase(),
-      data: row.dataset.data || '', hora: row.dataset.hora || ''
+      data: row.dataset.data || '',
+      hora: row.dataset.hora || ''
     }));
-    const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
+
+    const today = new Date();
+    today.setHours(12, 0, 0, 0);
+
+    const state = {
+      selectedTab:'tab-resumo',
+      tableFilter:'todas',
+      year: today.getFullYear(),
+      period:'ano',
+      entregaIdModal:null
+    };
 
     const tabs = document.querySelectorAll('.tab-btn');
     tabs.forEach(btn => btn.addEventListener('click', () => {
@@ -303,31 +308,70 @@
       state.selectedTab = btn.dataset.tab;
     }));
 
-    const parseDate = (str) => { if (!str) return null; const [y,m,d] = str.split('-').map(Number); return new Date(y, (m||1)-1, d||1, 12, 0, 0, 0); };
-    const getYear = (d) => d ? d.getFullYear() : null;
-    const getMonthIndex = (d) => d ? d.getMonth() : null;
-    const getWeekLabel = (d) => { const start = new Date(d); start.setHours(0,0,0,0); start.setDate(start.getDate() - ((start.getDay() + 6) % 7)); const end = new Date(start); end.setDate(start.getDate() + 6); const fmt = (x) => `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}`; return `${fmt(start)} a ${fmt(end)}`; };
+    const parseDate = (str) => {
+      if (!str) return null;
+      const [y,m,d] = str.split('-').map(Number);
+      return new Date(y, (m || 1) - 1, d || 1, 12, 0, 0, 0);
+    };
+
+    const startOfWeek = (date) => {
+      const d = new Date(date);
+      const diff = (d.getDay() + 6) % 7;
+      d.setDate(d.getDate() - diff);
+      d.setHours(0,0,0,0);
+      return d;
+    };
+    const endOfWeek = (date) => {
+      const d = startOfWeek(date);
+      d.setDate(d.getDate() + 6);
+      d.setHours(23,59,59,999);
+      return d;
+    };
+    const startOfMonth = (date) => new Date(date.getFullYear(), date.getMonth(), 1, 0, 0, 0, 0);
+    const endOfMonth = (date) => new Date(date.getFullYear(), date.getMonth() + 1, 0, 23, 59, 59, 999);
+    const startOfYear = (date) => new Date(date.getFullYear(), 0, 1, 0, 0, 0, 0);
+    const endOfYear = (date) => new Date(date.getFullYear(), 11, 31, 23, 59, 59, 999);
+    const sameDate = (a, b) => a && b && a.toISOString().slice(0,10) === b.toISOString().slice(0,10);
+    const isBetween = (date, start, end) => date && date >= start && date <= end;
+    const getYear = (date) => date ? date.getFullYear() : null;
+    const getMonthIndex = (date) => date ? date.getMonth() : null;
+    const getWeekLabel = (date) => {
+      const start = startOfWeek(date);
+      const end = endOfWeek(date);
+      const fmt = (x) => `${String(x.getDate()).padStart(2,'0')}/${String(x.getMonth()+1).padStart(2,'0')}`;
+      return `${fmt(start)} a ${fmt(end)}`;
+    };
+    const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
     function summarize(deliveries){
-      const receita = deliveries.reduce((s,d)=>s+d.valor,0);
-      const recebido = deliveries.filter(d => d.statusPagamento === 'pago').reduce((s,d)=>s+d.valor,0);
-      const pendencias = deliveries.filter(d => d.statusPagamento !== 'pago').reduce((s,d)=>s+d.valor,0);
+      const receita = deliveries.reduce((sum, item) => sum + item.valor, 0);
+      const recebido = deliveries.filter(item => item.statusPagamento === 'pago').reduce((sum, item) => sum + item.valor, 0);
+      const pendencias = deliveries.filter(item => item.statusPagamento !== 'pago').reduce((sum, item) => sum + item.valor, 0);
       const qtd = deliveries.length;
-      const ticket = qtd ? receita / qtd : 0;
-      const payCount = {};
-      deliveries.forEach(d => { const k = d.pagamento || '-'; payCount[k] = (payCount[k] || 0) + 1; });
-      let melhorPgto = '-'; let melhorQtd = -1;
-      Object.entries(payCount).forEach(([k,v]) => { if (v > melhorQtd) { melhorQtd = v; melhorPgto = k; } });
-      return { receita, recebido, pendencias, qtd, ticket, melhorPgto };
+      return { receita, recebido, pendencias, qtd };
     }
 
-    function formatPaymentLabel(v){
-      const raw = (v || '').toLowerCase();
-      if (raw.includes('pix cooper')) return 'Pix Cooperativa';
-      if (raw === 'pix') return 'Pix';
-      if (raw.includes('din')) return 'Dinheiro';
-      if (raw.includes('comanda')) return 'Comanda';
-      return v ? v.charAt(0).toUpperCase() + v.slice(1) : '-';
+    function getInputRange(){
+      const startInput = document.getElementById('f-inicio');
+      const endInput = document.getElementById('f-fim');
+      const start = parseDate(startInput ? startInput.value : '');
+      const end = parseDate(endInput ? endInput.value : '');
+      if (!start || !end) return null;
+      const endAdjusted = new Date(end);
+      endAdjusted.setHours(23,59,59,999);
+      return { start, end: endAdjusted };
+    }
+
+    function hasExplicitFilter(){
+      const range = getInputRange();
+      if (!range) return false;
+      const startToday = sameDate(range.start, today);
+      const endToday = sameDate(range.end, today);
+      return !(startToday && endToday);
+    }
+
+    function deliveriesByDateRange(start, end){
+      return allDeliveries.filter(item => isBetween(parseDate(item.data), start, end));
     }
 
     function visibleDeliveries(){
@@ -338,16 +382,20 @@
       });
     }
 
-    function updateSummary(){
-      const s = summarize(visibleDeliveries());
-      document.getElementById('hero-receita').textContent = money(s.receita);
-      document.getElementById('hero-entregas').textContent = String(s.qtd);
-      document.getElementById('resumo-receita').textContent = money(s.receita);
-      document.getElementById('resumo-quantidade').textContent = String(s.qtd);
-      document.getElementById('resumo-pendencias').textContent = money(s.pendencias);
-      document.getElementById('resumo-recebido').textContent = money(s.recebido);
-      document.getElementById('resumo-ticket').textContent = money(s.ticket);
-      document.getElementById('resumo-melhor-pgto').textContent = formatPaymentLabel(s.melhorPgto);
+    function renderPeriodCards(){
+      const weekly = summarize(deliveriesByDateRange(startOfWeek(today), endOfWeek(today)));
+      const monthly = summarize(deliveriesByDateRange(startOfMonth(today), endOfMonth(today)));
+      const yearly = summarize(deliveriesByDateRange(startOfYear(today), endOfYear(today)));
+
+      document.getElementById('semana-receita').textContent = money(weekly.receita);
+      document.getElementById('semana-quantidade').textContent = String(weekly.qtd);
+      document.getElementById('mes-receita').textContent = money(monthly.receita);
+      document.getElementById('mes-quantidade').textContent = String(monthly.qtd);
+      document.getElementById('ano-receita').textContent = money(yearly.receita);
+      document.getElementById('resumo-pendencias').textContent = money(yearly.pendencias);
+
+      document.getElementById('hero-receita').textContent = money(monthly.receita);
+      document.getElementById('hero-entregas').textContent = String(monthly.qtd);
     }
 
     const filterButtons = document.querySelectorAll('.small-filter');
@@ -355,14 +403,17 @@
       filterButtons.forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       state.tableFilter = btn.dataset.filter;
-      applyTableFilter(); updateSummary(); buildCharts();
+      applyTableFilter();
+      buildCharts();
     }));
 
     function applyTableFilter(){
       let count = 0;
       rows.forEach(row => {
         const status = row.dataset.statusPagamento;
-        const show = state.tableFilter === 'todas' || (state.tableFilter === 'pago' && status === 'pago') || (state.tableFilter === 'pendente' && status !== 'pago');
+        const show = state.tableFilter === 'todas'
+          || (state.tableFilter === 'pago' && status === 'pago')
+          || (state.tableFilter === 'pendente' && status !== 'pago');
         row.style.display = show ? '' : 'none';
         count += show ? 1 : 0;
       });
@@ -376,12 +427,18 @@
 
     async function togglePagamento(btn){
       if (btn.dataset.busy === '1') return;
-      btn.dataset.busy = '1'; btn.disabled = true;
+      btn.dataset.busy = '1';
+      btn.disabled = true;
       const id = btn.dataset.id;
       try {
-        const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id), { method:'POST', headers:{'Content-Type':'application/json','X-Requested-With':'fetch'}, body: JSON.stringify({}) });
+        const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id), {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body: JSON.stringify({})
+        });
         const data = await resp.json();
         if (!resp.ok) throw new Error(data.error || 'Falha ao alterar pagamento');
+
         const novo = (data.status_pagamento || 'pendente').toLowerCase();
         const tr = btn.closest('tr');
         tr.dataset.statusPagamento = novo;
@@ -392,7 +449,8 @@
       } catch (e) {
         alert(e.message || 'Erro ao alterar pagamento');
       } finally {
-        btn.dataset.busy = '0'; btn.disabled = false;
+        btn.dataset.busy = '0';
+        btn.disabled = false;
       }
     }
 
@@ -423,7 +481,9 @@
     }
 
     recebimentoFotoInput.addEventListener('change', () => {
-      recebimentoFotoNome.textContent = recebimentoFotoInput.files && recebimentoFotoInput.files[0] ? recebimentoFotoInput.files[0].name : 'Nenhuma foto selecionada';
+      recebimentoFotoNome.textContent = recebimentoFotoInput.files && recebimentoFotoInput.files[0]
+        ? recebimentoFotoInput.files[0].name
+        : 'Nenhuma foto selecionada';
     });
     btnCancelarRecebimento.addEventListener('click', fecharModalRecebimento);
     overlay.addEventListener('click', (e) => { if (e.target === overlay) fecharModalRecebimento(); });
@@ -432,12 +492,14 @@
     async function confirmarRecebimentoModal(){
       const id = state.entregaIdModal;
       if (!id) return;
+
       const nome = (recebidoPorInput.value || '').trim();
       const foto = recebimentoFotoInput.files && recebimentoFotoInput.files[0] ? recebimentoFotoInput.files[0] : null;
       if (!nome && !foto) {
         alert('Informe o nome, envie uma foto, ou use os dois.');
         return;
       }
+
       btnConfirmarRecebimento.disabled = true;
       try {
         const fd = new FormData();
@@ -446,9 +508,11 @@
           fd.append('foto', foto);
           fd.append('foto_recebimento', foto);
         }
+
         const resp = await fetch(`{{ url_for('cooperado_marcar_entregue', id=0) }}`.replace('0', id), { method:'POST', body:fd });
         const data = await resp.json().catch(() => ({}));
         if (!resp.ok || data.ok === false) throw new Error(data.error || 'Falha ao marcar entregue');
+
         const tr = document.querySelector(`tr.entrega-row[data-id="${id}"]`);
         const btn = tr ? tr.querySelector('[data-role="entrega"]') : null;
         if (tr) tr.dataset.statusEntrega = 'entregue';
@@ -472,11 +536,14 @@
       const id = btn.dataset.id;
       const tr = btn.closest('tr');
       const entregue = tr.dataset.statusEntrega === 'entregue';
+
       if (!entregue) {
         abrirModalRecebimento(id);
         return;
       }
-      btn.dataset.busy = '1'; btn.disabled = true;
+
+      btn.dataset.busy = '1';
+      btn.disabled = true;
       try {
         const fd = new FormData();
         fd.append('status', 'pendente');
@@ -484,12 +551,15 @@
         const resp = await fetch(`{{ url_for('editar_entrega', id=0) }}`.replace('0', id), { method:'POST', body:fd });
         if (!resp.ok) throw new Error('Falha ao voltar entrega para pendente');
         tr.dataset.statusEntrega = 'pendente';
-        btn.textContent = 'Pendente'; btn.classList.remove('entregue'); btn.classList.add('pendente');
+        btn.textContent = 'Pendente';
+        btn.classList.remove('entregue');
+        btn.classList.add('pendente');
         syncRowState(tr);
       } catch (e) {
         alert(e.message || 'Erro ao alterar entrega');
       } finally {
-        btn.dataset.busy = '0'; btn.disabled = false;
+        btn.dataset.busy = '0';
+        btn.disabled = false;
       }
     }
 
@@ -500,172 +570,176 @@
       if (!item) return;
       item.statusPagamento = tr.dataset.statusPagamento;
       item.statusEntrega = tr.dataset.statusEntrega;
-      updateSummary(); applyTableFilter(); buildCharts();
+      renderPeriodCards();
+      applyTableFilter();
+      buildCharts();
     }
 
     document.querySelectorAll('[data-role="pgto"]').forEach(btn => btn.addEventListener('click', () => togglePagamento(btn)));
     document.querySelectorAll('[data-role="entrega"]').forEach(btn => btn.addEventListener('click', () => toggleEntrega(btn)));
 
     let chartValor, chartPagamento, chartEntregas, chartAno;
-    const years = Array.from(new Set(allDeliveries.map(d => getYear(parseDate(d.data))).filter(Boolean))).sort();
-    state.year = years[years.length - 1] || new Date().getFullYear();
+
+    const availableYears = Array.from(new Set(allDeliveries.map(item => getYear(parseDate(item.data))).filter(Boolean))).sort((a, b) => a - b);
+    if (availableYears.length && !availableYears.includes(state.year)) {
+      state.year = availableYears[availableYears.length - 1];
+    }
 
     function buildYearPills(){
-      const host = document.getElementById('year-pills'); host.innerHTML = '';
-      if (!years.length) { host.innerHTML = '<span class="muted">Sem anos disponíveis</span>'; return; }
-      years.forEach(y => {
+      const host = document.getElementById('year-pills');
+      host.innerHTML = '';
+      if (!availableYears.length) {
+        host.innerHTML = '<span class="muted">Sem anos disponíveis</span>';
+        return;
+      }
+      availableYears.forEach(year => {
         const btn = document.createElement('button');
-        btn.type = 'button'; btn.className = 'pill-btn' + (y === state.year ? ' active' : ''); btn.textContent = y;
-        btn.addEventListener('click', () => { state.year = y; buildYearPills(); buildCharts(); });
+        btn.type = 'button';
+        btn.className = 'pill-btn' + (year === state.year ? ' active' : '');
+        btn.textContent = year;
+        btn.addEventListener('click', () => {
+          state.year = year;
+          buildYearPills();
+          buildCharts();
+        });
         host.appendChild(btn);
       });
     }
 
     document.querySelectorAll('.period-pills .pill-btn').forEach(btn => btn.addEventListener('click', () => {
       document.querySelectorAll('.period-pills .pill-btn').forEach(x => x.classList.remove('active'));
-      btn.classList.add('active'); state.period = btn.dataset.period; buildCharts();
+      btn.classList.add('active');
+      state.period = btn.dataset.period;
+      buildCharts();
     }));
 
-    function deliveriesForYear(){ return visibleDeliveries().filter(d => getYear(parseDate(d.data)) === state.year); }
+    function getChartSourceDeliveries(){
+      const base = visibleDeliveries();
+      if (hasExplicitFilter()) {
+        const range = getInputRange();
+        return base.filter(item => isBetween(parseDate(item.data), range.start, range.end));
+      }
+      return base.filter(item => getYear(parseDate(item.data)) === state.year);
+    }
 
     function aggregateByPeriod(deliveries){
-      const mapValor = new Map(), mapQtd = new Map();
-      deliveries.forEach(d => {
-        const date = parseDate(d.data); if (!date) return;
+      const valueMap = new Map();
+      const qtyMap = new Map();
+
+      deliveries.forEach(item => {
+        const date = parseDate(item.data);
+        if (!date) return;
+
         let label = '';
         if (state.period === 'ano') label = String(getYear(date));
-        else if (state.period === 'mes') label = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][getMonthIndex(date)];
+        else if (state.period === 'mes') label = monthNames[getMonthIndex(date)];
         else label = getWeekLabel(date);
-        mapValor.set(label, (mapValor.get(label) || 0) + d.valor);
-        mapQtd.set(label, (mapQtd.get(label) || 0) + 1);
+
+        valueMap.set(label, (valueMap.get(label) || 0) + item.valor);
+        qtyMap.set(label, (qtyMap.get(label) || 0) + 1);
       });
-      return { labels:Array.from(mapValor.keys()), valores:Array.from(mapValor.values()), quantidades:Array.from(mapQtd.values()) };
+
+      return {
+        labels: Array.from(valueMap.keys()),
+        valores: Array.from(valueMap.values()),
+        quantidades: Array.from(qtyMap.values())
+      };
     }
 
     function aggregatePayments(deliveries){
       const counts = { 'pix':0, 'dinheiro':0, 'comanda':0, 'pix cooperativa':0, 'outros':0 };
-      deliveries.forEach(d => {
-        const pg = (d.pagamento || '').toLowerCase();
+      deliveries.forEach(item => {
+        const pg = (item.pagamento || '').toLowerCase();
         if (pg.includes('pix cooper')) counts['pix cooperativa'] += 1;
         else if (pg === 'pix') counts['pix'] += 1;
         else if (pg.includes('din')) counts['dinheiro'] += 1;
         else if (pg.includes('comanda')) counts['comanda'] += 1;
         else counts['outros'] += 1;
       });
-      return { labels:['Pix','Dinheiro','Comanda','Pix Cooperativa','Outros'], data:[counts['pix'], counts['dinheiro'], counts['comanda'], counts['pix cooperativa'], counts['outros']] };
+
+      return {
+        labels:['Pix','Dinheiro','Comanda','Pix Cooperativa','Outros'],
+        data:[counts['pix'], counts['dinheiro'], counts['comanda'], counts['pix cooperativa'], counts['outros']]
+      };
     }
 
-    function aggregateYearComparison(){
+    function aggregateYearComparison(deliveries){
       const annual = {};
-      visibleDeliveries().forEach(d => {
-        const y = getYear(parseDate(d.data)); if (!y) return;
-        annual[y] = annual[y] || { valor:0, qtd:0 };
-        annual[y].valor += d.valor; annual[y].qtd += 1;
+      deliveries.forEach(item => {
+        const year = getYear(parseDate(item.data));
+        if (!year) return;
+        annual[year] = annual[year] || { valor:0, qtd:0 };
+        annual[year].valor += item.valor;
+        annual[year].qtd += 1;
       });
+
       const labels = Object.keys(annual).sort();
-      const valores = labels.map(y => annual[y].valor);
-      const quantidades = labels.map(y => annual[y].qtd);
-      let bestYear = '-', bestValue = -1;
-      labels.forEach((y, idx) => { if (valores[idx] > bestValue) { bestValue = valores[idx]; bestYear = y; } });
-      document.getElementById('best-year-chip').textContent = `Melhor ano: ${bestYear}`;
+      const valores = labels.map(year => annual[year].valor);
+      const quantidades = labels.map(year => annual[year].qtd);
       return { labels, valores, quantidades };
     }
 
-    function destroyCharts(){ [chartValor, chartPagamento, chartEntregas, chartAno].forEach(c => c && c.destroy()); }
+    function destroyCharts(){
+      [chartValor, chartPagamento, chartEntregas, chartAno].forEach(chart => chart && chart.destroy());
+    }
 
     function buildCharts(){
       destroyCharts();
-      const dataYear = deliveriesForYear();
-      const series = aggregateByPeriod(dataYear);
-      const pay = aggregatePayments(dataYear);
-      const annual = aggregateYearComparison();
-      chartValor = new Chart(document.getElementById('chartValor'), { type:'bar', data:{ labels:series.labels, datasets:[{ label:'Valor', data:series.valores, borderRadius:10 }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ display:false } } } });
-      chartPagamento = new Chart(document.getElementById('chartPagamento'), { type:'doughnut', data:{ labels:pay.labels, datasets:[{ data:pay.data }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' } } } });
-      chartEntregas = new Chart(document.getElementById('chartEntregas'), { type:'line', data:{ labels:series.labels, datasets:[{ label:'Entregas', data:series.quantidades, tension:.28, fill:false }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ display:false } } } });
-      chartAno = new Chart(document.getElementById('chartAno'), { type:'bar', data:{ labels:annual.labels, datasets:[{ label:'Valor', data:annual.valores, yAxisID:'y' }, { label:'Entregas', data:annual.quantidades, yAxisID:'y1' }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{ mode:'index', intersect:false }, scales:{ y:{ beginAtZero:true }, y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false } } } } });
-    }
 
-    updateSummary(); applyTableFilter(); buildYearPills(); buildCharts();
+      const sourceDeliveries = getChartSourceDeliveries();
+      const series = aggregateByPeriod(sourceDeliveries);
+      const pay = aggregatePayments(sourceDeliveries);
+      const annual = aggregateYearComparison(visibleDeliveries());
 
-    const gpsStatusText = document.getElementById('gpsStatusText');
-    const gpsStatusBadge = document.getElementById('gpsStatusBadge');
+      const explicit = hasExplicitFilter();
+      document.getElementById('best-year-chip').textContent = explicit
+        ? 'Período filtrado'
+        : `Ano base: ${state.year}`;
 
-    function paintWaiting(msg){
-      if (gpsStatusText) gpsStatusText.textContent = msg || 'Aguardando localização...';
-      if (gpsStatusBadge){ gpsStatusBadge.textContent = 'GPS'; gpsStatusBadge.style.background = '#fff8e8'; gpsStatusBadge.style.color = '#d68200'; }
-    }
-    function paintOk(msg){
-      if (gpsStatusText) gpsStatusText.textContent = msg || 'Localização ativa';
-      if (gpsStatusBadge){ gpsStatusBadge.textContent = 'ATIVO'; gpsStatusBadge.style.background = '#eef9f2'; gpsStatusBadge.style.color = '#169c5a'; }
-    }
-    function paintOff(msg){
-      if (gpsStatusText) gpsStatusText.textContent = msg || 'Aguardando nova localização...';
-      if (gpsStatusBadge){ gpsStatusBadge.textContent = 'OFF'; gpsStatusBadge.style.background = '#fff1f1'; gpsStatusBadge.style.color = '#e03131'; }
-    }
+      chartValor = new Chart(document.getElementById('chartValor'), {
+        type:'bar',
+        data:{ labels:series.labels, datasets:[{ label:'Valor', data:series.valores, borderRadius:10 }] },
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ display:false } } }
+      });
 
-    let gpsBooted = false, gpsWatchId = null, lastGpsSentAt = 0, lastGpsCoords = null;
-    function distanceMeters(a,b){ if(!a || !b) return Infinity; const R=6371000,toRad=n=>n*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lng-a.lng),lat1=toRad(a.lat),lat2=toRad(b.lat); const x=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x)); }
-    async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(!force && lastGpsCoords && moved < 20 && (now-lastGpsSentAt) < 15000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
-    function forceLogout(){
-      try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
-      window.location.href = `{{ url_for('logout') }}`;
-    }
-    function syncAndroidLogin(){
-      try{
-        if(window.AndroidBridge){
-          window.AndroidBridge.saveLoginData("{{ cooperado_id }}","{{ app_token or '' }}");
-          window.AndroidBridge.markLoggedIn();
+      chartPagamento = new Chart(document.getElementById('chartPagamento'), {
+        type:'doughnut',
+        data:{ labels:pay.labels, datasets:[{ data:pay.data }] },
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ position:'bottom' } } }
+      });
+
+      chartEntregas = new Chart(document.getElementById('chartEntregas'), {
+        type:'line',
+        data:{ labels:series.labels, datasets:[{ label:'Entregas', data:series.quantidades, tension:.28, fill:false }] },
+        options:{ responsive:true, maintainAspectRatio:false, animation:false, plugins:{ legend:{ display:false } } }
+      });
+
+      chartAno = new Chart(document.getElementById('chartAno'), {
+        type:'bar',
+        data:{
+          labels:annual.labels,
+          datasets:[
+            { label:'Valor', data:annual.valores, yAxisID:'y' },
+            { label:'Entregas', data:annual.quantidades, yAxisID:'y1' }
+          ]
+        },
+        options:{
+          responsive:true,
+          maintainAspectRatio:false,
+          animation:false,
+          interaction:{ mode:'index', intersect:false },
+          scales:{
+            y:{ beginAtZero:true },
+            y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false } }
+          }
         }
-      }catch(_){}
-    }
-    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:15000, timeout:20000 }); }
-    async function requireLocation(){
-      if(gpsBooted) return; gpsBooted = true;
-      syncAndroidLogin();
-
-      if(window.AndroidBridge){
-        // no app nativo, o serviço Android é o principal responsável pelo rastreio em segundo plano
-        paintWaiting('Aguardando localização do app...');
-        return;
-      }
-
-      if(!navigator.geolocation){ alert('Seu dispositivo não suporta localização.'); forceLogout(); return; }
-      try{
-        if(navigator.permissions && navigator.permissions.query){
-          const status = await navigator.permissions.query({ name:'geolocation' });
-          status.onchange = () => { if(status.state !== 'granted') forceLogout(); };
-          if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; }
-          if(status.state === 'granted'){ startGpsWatch(); return; }
-        }
-        navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:15000, maximumAge:0 });
-      }catch(_){ forceLogout(); }
+      });
     }
 
-    async function fetchGpsStatus(){
-      try{
-        const r = await fetch(`{{ url_for('api_cooperado_localizacao_status') }}`, {headers:{'Accept':'application/json'}, cache:'no-store'});
-        const data = await r.json();
-        if(!data || !data.ok){ paintWaiting('Aguardando localização...'); return; }
-        if(!data.tem_localizacao){ paintWaiting(data.mensagem || 'Aguardando localização...'); return; }
-        if(data.online) paintOk((data.mensagem || 'Localização ativa') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
-        else paintOff((data.mensagem || 'Aguardando nova localização...') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
-      }catch(_){
-        paintWaiting('Aguardando localização...');
-      }
-    }
-
-    document.addEventListener('DOMContentLoaded', () => {
-      requireLocation();
-      fetchGpsStatus();
-      setInterval(fetchGpsStatus, 10000);
-      const sairBtn = document.querySelector('.hero-exit');
-      if (sairBtn){
-        sairBtn.addEventListener('click', function(){
-          try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
-        });
-      }
-    });
-
+    renderPeriodCards();
+    applyTableFilter();
+    buildYearPills();
+    buildCharts();
   </script>
 </body>
 </html>
