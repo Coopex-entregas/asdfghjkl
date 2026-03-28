@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8">
+  <title>Replay do trajeto</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
+  <style>
+    :root{--royal:#1346d8;--royal-2:#0d36ad;--royal-3:#1f5bff;--ink:#0f172a;--muted:#62728f;--line:rgba(19,70,216,.14);--glass:rgba(255,255,255,.75);--shadow:0 18px 55px rgba(19,70,216,.16);--soft:0 10px 24px rgba(15,23,42,.08)}
+    *{box-sizing:border-box} html,body{height:100%}
+    body{margin:0;font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;background:radial-gradient(1000px 360px at 8% -10%, rgba(31,91,255,.20), transparent 60%), radial-gradient(900px 360px at 100% 0%, rgba(19,70,216,.14), transparent 60%), linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%);color:var(--ink)}
+    #map{position:fixed; inset:0; z-index:1}
+    .top{position:fixed; top:18px; left:18px; right:18px; z-index:700; display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; padding:14px 16px; border-radius:24px; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(16px); box-shadow:var(--shadow)}
+    .eyebrow{font-size:.74rem;font-weight:900;letter-spacing:.12em;text-transform:uppercase;color:var(--royal)}
+    .title{font-size:1.1rem;font-weight:1000;margin-top:2px}
+    .sub{font-size:.84rem;color:var(--muted);margin-top:2px}
+    .actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+    .btn,.range{height:44px;border-radius:16px;border:1px solid var(--line);font:inherit;box-shadow:var(--soft)}
+    .btn{padding:0 14px;background:rgba(255,255,255,.84);color:var(--royal-2);font-weight:900;display:inline-flex;align-items:center;gap:8px;text-decoration:none;cursor:pointer}
+    .btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3));color:#fff}
+    .range{width:220px}
+    .bottom{position:fixed; left:18px; bottom:18px; z-index:700; max-width:min(440px,calc(100vw - 36px)); padding:14px 16px; border-radius:22px; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(18px); box-shadow:var(--shadow)}
+    .metric{font-size:.86rem;color:var(--muted);margin-top:4px}
+    .leaflet-control-attribution{display:none}
+    @media(max-width:760px){.top{left:12px;right:12px;top:12px}.bottom{left:12px;right:12px;bottom:12px;max-width:none}.range{width:160px}}
+  </style>
+</head>
+<body>
+  <div id="map"></div>
+  <section class="top">
+    <div>
+      <div class="eyebrow">Replay do trajeto</div>
+      <div class="title">{{ cooperado_nome or 'Cooperado' }}</div>
+      <div class="sub">O trajeto aparece aqui em animação. O mapa ao vivo continua limpo.</div>
+    </div>
+    <div class="actions">
+      <a class="btn" href="/trajetos">Trajetos</a>
+      <button class="btn" id="btnPrev" type="button">Voltar</button>
+      <button class="btn primary" id="btnPlay" type="button">Play</button>
+      <button class="btn" id="btnPause" type="button">Pausar</button>
+      <input class="range" id="scrubber" type="range" min="0" max="100" value="0">
+      <button class="btn" id="btnMaps" type="button">Maps</button>
+      <button class="btn primary" id="btnVideo" type="button">Baixar vídeo</button>
+    </div>
+  </section>
+  <section class="bottom">
+    <div><strong id="titleInfo">Carregando replay...</strong></div>
+    <div class="metric" id="metaInfo">Preparando os dados do trajeto.</div>
+  </section>
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+  <script>
+    const TRAJETO_ID = {{ trajeto_id|int }};
+    const map = L.map('map', {zoomControl:true, preferCanvas:true});
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:20}).addTo(map);
+    let pathLayer = null, passedLayer = null, marker = null, points = [], timer = null, playIndex = 0;
+    let mediaRecorder = null, chunks = [], captureStream = null;
+    const $ = (id)=>document.getElementById(id);
+    function mapsUrl(lat,lng){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
+    function fmt(v){ return (v===null||v===undefined||v==='') ? '—' : String(v); }
+
+    function stopPlayback(){ if(timer){ clearInterval(timer); timer = null; } }
+    function drawAt(index){
+      if(!points.length) return;
+      playIndex = Math.max(0, Math.min(index, points.length - 1));
+      const passed = points.slice(0, playIndex + 1).map(p=>[p.lat, p.lng]);
+      if(passedLayer) passedLayer.setLatLngs(passed);
+      if(marker) marker.setLatLng([points[playIndex].lat, points[playIndex].lng]);
+      $('scrubber').value = points.length > 1 ? Math.round((playIndex / (points.length - 1)) * 100) : 0;
+      $('metaInfo').textContent = `Ponto ${playIndex + 1} de ${points.length} • ${fmt(points[playIndex].when)}`;
+    }
+    function play(){
+      stopPlayback();
+      timer = setInterval(()=>{
+        if(playIndex >= points.length - 1){ stopPlayback(); return; }
+        drawAt(playIndex + 1);
+      }, 220);
+    }
+    async function loadReplay(){
+      const r = await fetch(`/api/trajetos/${TRAJETO_ID}`, {cache:'no-store'});
+      const data = await r.json();
+      if(!r.ok || !data.ok) throw new Error(data.error || ('HTTP ' + r.status));
+      const item = data.item || {};
+      points = (item.pontos || []).map((p,i)=>({lat:Number(p.lat), lng:Number(p.lng), when:p.tMs ? new Date(Number(p.tMs)).toLocaleString('pt-BR') : `Ponto ${i+1}`})).filter(p=>isFinite(p.lat)&&isFinite(p.lng));
+      if(points.length < 2) throw new Error('Trajeto sem pontos suficientes.');
+      const line = points.map(p=>[p.lat,p.lng]);
+      pathLayer = L.polyline(line, {color:'#9bb7ff', weight:6, opacity:.75}).addTo(map);
+      passedLayer = L.polyline([line[0]], {color:'#1346d8', weight:7, opacity:.98}).addTo(map);
+      marker = L.circleMarker(line[0], {radius:9, color:'#fff', weight:3, fillColor:'#1346d8', fillOpacity:1}).addTo(map);
+      map.fitBounds(pathLayer.getBounds().pad(0.12));
+      $('titleInfo').textContent = `${fmt(item.nome)} • ${fmt(item.distancia_km)} km • ${fmt(item.duracao_min)} min`;
+      $('metaInfo').textContent = `${fmt(item.inicio)} → ${fmt(item.fim)}`;
+      drawAt(0);
+      $('btnMaps').onclick = ()=>{ const p = points[playIndex] || points[0]; window.open(mapsUrl(p.lat,p.lng), '_blank', 'noopener'); };
+    }
+
+    $('btnPlay').onclick = play;
+    $('btnPause').onclick = stopPlayback;
+    $('btnPrev').onclick = ()=> history.back();
+    $('scrubber').oninput = ()=>{ const idx = Math.round((Number($('scrubber').value)/100) * (points.length - 1)); drawAt(idx); stopPlayback(); };
+    $('btnVideo').onclick = async ()=>{
+      try{
+        const canvas = document.querySelector('.leaflet-pane.leaflet-map-pane')?.closest('div');
+        const target = document.querySelector('.leaflet-container');
+        if(!target || !target.captureStream){ alert('Seu navegador não suporta captura deste mapa.'); return; }
+        stopPlayback(); drawAt(0);
+        chunks = [];
+        captureStream = target.captureStream(25);
+        mediaRecorder = new MediaRecorder(captureStream, {mimeType:'video/webm;codecs=vp9,opus'});
+        mediaRecorder.ondataavailable = e=>{ if(e.data && e.data.size>0) chunks.push(e.data); };
+        mediaRecorder.onstop = ()=>{
+          const blob = new Blob(chunks, {type:'video/webm'});
+          const url = URL.createObjectURL(blob);
+          const a = document.createElement('a');
+          a.href = url; a.download = `trajeto_${TRAJETO_ID}.webm`; document.body.appendChild(a); a.click(); a.remove();
+          setTimeout(()=>URL.revokeObjectURL(url), 2000);
+        };
+        mediaRecorder.start();
+        play();
+        setTimeout(()=>{ stopPlayback(); if(mediaRecorder && mediaRecorder.state !== 'inactive') mediaRecorder.stop(); }, Math.max(3000, points.length * 230));
+      }catch(err){ alert('Não foi possível gerar o vídeo.'); console.error(err); }
+    };
+
+    loadReplay().catch(err=>{ $('titleInfo').textContent = 'Falha ao carregar replay'; $('metaInfo').textContent = err.message || 'Erro'; console.error(err); });
+  </script>
+</body>
+</html>
