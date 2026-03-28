@@ -4528,14 +4528,17 @@ def api_per_km():
 # =========================================================
 # TRAJETOS (HISTÓRICO POR COOPERADO / PERÍODO)
 # =========================================================
-@app.route('/trajetos')
-def trajetos():
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
 
-    # Limpa automaticamente trajetos com mais de 31 dias (sempre mantém último mês)
+# =========================================================
+# TRAJETOS (HISTÓRICO / EXPORTAÇÃO / REPLAY)
+# =========================================================
+TRAJETO_RETENTION_DAYS = 31
+TRAJETO_SAMPLE_MIN_SECONDS = 3
+TRAJETO_SAMPLE_MIN_DISTANCE_M = 8.0
+
+def _cleanup_old_trajetos():
     try:
-        limite_utc = datetime.utcnow() - timedelta(days=31)
+        limite_utc = datetime.utcnow() - timedelta(days=TRAJETO_RETENTION_DAYS)
         (
             Trajeto.query
             .filter(Trajeto.inicio < limite_utc)
@@ -4545,21 +4548,84 @@ def trajetos():
     except Exception:
         db.session.rollback()
 
+def _compress_trajeto_points(points):
+    pts = []
+    for p in (points or []):
+        try:
+            lat = float(p.get('lat'))
+            lng = float(p.get('lng'))
+            tms = int(p.get('tMs') or p.get('timestamp') or 0)
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                continue
+            pts.append({'lat': lat, 'lng': lng, 'tMs': tms})
+        except Exception:
+            continue
+
+    if len(pts) < 2:
+        return []
+
+    pts.sort(key=lambda x: int(x.get('tMs') or 0))
+    compact = [pts[0]]
+    last = pts[0]
+    for p in pts[1:-1]:
+        dt_sec = max(0, (int(p.get('tMs') or 0) - int(last.get('tMs') or 0))) / 1000.0
+        dist_m = _trajeto_haversine_m(last['lat'], last['lng'], p['lat'], p['lng'])
+        if dt_sec >= TRAJETO_SAMPLE_MIN_SECONDS or dist_m >= TRAJETO_SAMPLE_MIN_DISTANCE_M:
+            compact.append(p)
+            last = p
+    compact.append(pts[-1])
+
+    final_pts = []
+    prev = None
+    for p in compact:
+        if prev and abs(prev['lat'] - p['lat']) < 1e-7 and abs(prev['lng'] - p['lng']) < 1e-7:
+            prev['tMs'] = p['tMs']
+            continue
+        final_pts.append(dict(p))
+        prev = final_pts[-1]
+    return final_pts
+
+def _trajeto_payload_item(t, include_points=False):
+    try:
+        pontos = json.loads(t.pontos_json or '[]')
+    except Exception:
+        pontos = []
+    item = {
+        'id': t.id,
+        'cooperado_id': t.cooperado_id,
+        'nome': t.cooperado.nome if t.cooperado else '',
+        'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
+        'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
+        'inicio_iso': to_brasilia(t.inicio).isoformat() if t.inicio else '',
+        'fim_iso': to_brasilia(t.fim).isoformat() if t.fim else '',
+        'distancia_km': round((t.distancia_m or 0.0) / 1000.0, 3),
+        'duracao_min': round((t.duracao_s or 0) / 60.0, 1),
+        'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
+        'pontos_count': len(pontos),
+    }
+    if include_points:
+        item['pontos'] = pontos
+    return item
+
+@app.route('/trajetos')
+def trajetos():
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    _cleanup_old_trajetos()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     cooperado_id = request.args.get('cooperado_id', 'todos')
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
 
     q = Trajeto.query.options(joinedload(Trajeto.cooperado))
-
-    # Período padrão: últimos 30 dias em horário de Brasília
     hoje_brt = datetime.now(BRAZIL_TZ).date()
+
     if not data_inicio and not data_fim:
         di_default = hoje_brt - timedelta(days=29)
         di_utc, _ = local_date_window_to_utc_range(di_default)
         _, df_utc = local_date_window_to_utc_range(hoje_brt)
         q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
-
         data_inicio = di_default.isoformat()
         data_fim = hoje_brt.isoformat()
     else:
@@ -4578,15 +4644,14 @@ def trajetos():
         except ValueError:
             pass
 
-    trajetos_list = q.order_by(Trajeto.inicio.desc()).limit(2000).all()
-
-    # KPIs gerais
+    trajetos_list = q.order_by(Trajeto.inicio.desc()).limit(1000).all()
     total_km = sum((t.distancia_m or 0.0) for t in trajetos_list) / 1000.0
     total_horas = sum((t.duracao_s or 0) for t in trajetos_list) / 3600.0
     vel_media_geral = (total_km / total_horas) if total_horas > 0 else 0.0
 
-    return render_template(
+    return render_or_string(
         'trajetos.html',
+        '<h2>Trajetos</h2>',
         trajetos=trajetos_list,
         cooperados=cooperados,
         cooperado_id=cooperado_id,
@@ -4604,12 +4669,12 @@ def trajetos_exportar():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
+    _cleanup_old_trajetos()
     cooperado_id = request.args.get('cooperado_id', 'todos')
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
 
     q = Trajeto.query.options(joinedload(Trajeto.cooperado))
-
     hoje_brt = datetime.now(BRAZIL_TZ).date()
     if not data_inicio and not data_fim:
         di_default = hoje_brt - timedelta(days=29)
@@ -4633,58 +4698,27 @@ def trajetos_exportar():
             pass
 
     trajetos_list = q.order_by(Trajeto.inicio.asc()).all()
-
     rows = []
     for t in trajetos_list:
-        ini_local = to_brasilia(t.inicio) if t.inicio else None
-        fim_local = to_brasilia(t.fim) if t.fim else None
         rows.append({
+            'ID': t.id,
             'Cooperado': t.cooperado.nome if t.cooperado else '',
-            'Início (Brasília)': ini_local.strftime('%d/%m/%Y %H:%M:%S') if ini_local else '',
-            'Fim (Brasília)': fim_local.strftime('%d/%m/%Y %H:%M:%S') if fim_local else '',
-            'Duração (min)': round((t.duracao_s or 0) / 60.0, 1),
-            'Distância (km)': round((t.distancia_m or 0.0) / 1000.0, 3),
+            'Início (Brasília)': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
+            'Fim (Brasília)': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
+            'Duração (min)': round((t.duracao_s or 0)/60.0, 1),
+            'Distância (km)': round((t.distancia_m or 0.0)/1000.0, 3),
             'Velocidade média (km/h)': round(t.velocidade_media_kmh or 0.0, 1),
-            'Origem (lat,lng)': (
-                f"{t.origem_lat:.6f},{t.origem_lng:.6f}"
-                if t.origem_lat is not None and t.origem_lng is not None
-                else ''
-            ),
-            'Destino (lat,lng)': (
-                f"{t.destino_lat:.6f},{t.destino_lng:.6f}"
-                if t.destino_lat is not None and t.destino_lng is not None
-                else ''
-            ),
         })
 
     df_out = pd.DataFrame(rows)
-
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        sheet = 'Trajetos'
-        df_out.to_excel(writer, index=False, sheet_name=sheet)
-        ws = writer.sheets[sheet]
-
-        widths = [26, 22, 22, 14, 16, 22, 20, 20]
-        for i, w in enumerate(widths[:len(df_out.columns)]):
+        df_out.to_excel(writer, index=False, sheet_name='Trajetos')
+        ws = writer.sheets['Trajetos']
+        for i, w in enumerate([8, 28, 22, 22, 14, 16, 22]):
             ws.set_column(i, i, w)
-
-        money_fmt = writer.book.add_format({'num_format': '#,##0.000'})
-        vel_fmt = writer.book.add_format({'num_format': '#,##0.0'})
-        cols = list(df_out.columns)
-        if 'Distância (km)' in cols:
-            idx = cols.index('Distância (km)')
-            ws.set_column(idx, idx, 16, money_fmt)
-        if 'Velocidade média (km/h)' in cols:
-            idx = cols.index('Velocidade média (km/h)')
-            ws.set_column(idx, idx, 22, vel_fmt)
-
     output.seek(0)
     return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
-
-from flask import request, jsonify
-
-
 
 @app.route('/api/trajetos/salvar', methods=['POST'])
 def api_trajetos_salvar():
@@ -4695,6 +4729,7 @@ def api_trajetos_salvar():
         db.create_all()
     except Exception:
         pass
+    _cleanup_old_trajetos()
 
     data = request.get_json(silent=True) or {}
     try:
@@ -4708,27 +4743,12 @@ def api_trajetos_salvar():
     if not cooperado:
         return jsonify(ok=False, error='Cooperado não encontrado'), 404
 
-    pontos = data.get('pontos') or []
-    if not isinstance(pontos, list) or len(pontos) < 2:
-        return jsonify(ok=False, error='Rota curta demais para salvar'), 400
-
-    pts = []
-    for p in pontos:
-        try:
-            lat = float(p.get('lat'))
-            lng = float(p.get('lng'))
-            tms = int(p.get('tMs') or p.get('timestamp') or 0)
-            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-                continue
-            pts.append({'lat': lat, 'lng': lng, 'tMs': tms})
-        except Exception:
-            continue
+    pts = _compress_trajeto_points(data.get('pontos') or [])
     if len(pts) < 2:
-        return jsonify(ok=False, error='Pontos inválidos'), 400
+        return jsonify(ok=False, error='Rota curta demais para salvar'), 400
 
     try:
         metricas = _trajeto_metricas_from_points(pts)
-
         try:
             inicio = datetime.utcfromtimestamp((pts[0].get('tMs') or 0) / 1000.0)
         except Exception:
@@ -4759,27 +4779,22 @@ def api_trajetos_salvar():
             db.session.rollback()
         except Exception:
             pass
-        try:
-            current_app.logger.exception('Falha ao salvar trajeto')
-        except Exception:
-            pass
         return jsonify(ok=False, error=f'Falha ao salvar histórico: {e}'), 500
-
 
 @app.route('/api/trajetos/historico')
 def api_trajetos_historico():
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
 
+    _cleanup_old_trajetos()
     try:
-        limit = max(1, min(100, int(request.args.get('limit', 30))))
+        limit = max(1, min(500, int(request.args.get('limit', 60))))
     except Exception:
-        limit = 30
+        limit = 60
 
     q = Trajeto.query.options(joinedload(Trajeto.cooperado))
-
     cooperado_id = request.args.get('cooperado_id')
-    if cooperado_id:
+    if cooperado_id and cooperado_id != 'todos':
         try:
             q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
         except Exception:
@@ -4799,43 +4814,15 @@ def api_trajetos_historico():
     except Exception:
         pass
 
-    itens = []
-    for t in q.order_by(Trajeto.inicio.desc()).limit(limit).all():
-        itens.append({
-            'id': t.id,
-            'cooperado_id': t.cooperado_id,
-            'nome': t.cooperado.nome if t.cooperado else '',
-            'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
-            'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
-            'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
-            'duracao_min': round((t.duracao_s or 0)/60.0, 1),
-            'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
-        })
+    itens = [_trajeto_payload_item(t, include_points=False) for t in q.order_by(Trajeto.inicio.desc()).limit(limit).all()]
     return jsonify(ok=True, itens=itens)
-
 
 @app.route('/api/trajetos/<int:trajeto_id>')
 def api_trajetos_detalhe(trajeto_id):
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-
     t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
-    try:
-        pontos = json.loads(t.pontos_json or '[]')
-    except Exception:
-        pontos = []
-    return jsonify(ok=True, item={
-        'id': t.id,
-        'cooperado_id': t.cooperado_id,
-        'nome': t.cooperado.nome if t.cooperado else '',
-        'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
-        'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
-        'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
-        'duracao_min': round((t.duracao_s or 0)/60.0, 1),
-        'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
-        'pontos': pontos,
-    })
-
+    return jsonify(ok=True, item=_trajeto_payload_item(t, include_points=True))
 
 @app.route('/api/trajetos/<int:trajeto_id>/geojson')
 def api_trajetos_geojson(trajeto_id):
@@ -4847,6 +4834,7 @@ def api_trajetos_geojson(trajeto_id):
         pontos = json.loads(t.pontos_json or '[]')
     except Exception:
         pontos = []
+
     geo = {
         'type': 'FeatureCollection',
         'features': [{
@@ -4873,55 +4861,72 @@ def api_trajetos_geojson(trajeto_id):
         headers={'Content-Disposition': f'attachment; filename=trajeto_{t.id}.geojson'}
     )
 
+@app.route('/api/trajetos/<int:trajeto_id>/download')
+def api_trajetos_download(trajeto_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    payload = _trajeto_payload_item(t, include_points=True)
+    return current_app.response_class(
+        json.dumps(payload, ensure_ascii=False, indent=2),
+        mimetype='application/json',
+        headers={'Content-Disposition': f'attachment; filename=trajeto_{t.id}.coopextrajeto.json'}
+    )
+
+@app.route('/trajetos/replay/<int:trajeto_id>')
+def trajetos_replay(trajeto_id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    return render_or_string(
+        'trajeto_replay.html',
+        '<h2>Replay de trajeto</h2>',
+        trajeto=_trajeto_payload_item(t, include_points=True),
+        trajeto_id=trajeto_id,
+    )
+
 
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
+    _cleanup_old_trajetos()
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
 
     for c in cooperados:
-        if c.last_lat is not None and c.last_lng is not None:
-            # ---- MONTA STATUS PRO MAPA ----
-            # ajusta esses campos conforme o teu modelo:
-            #   c.online -> app ligado?
-            #   c.em_corrida ou c.ocupado -> está em entrega?
-            online = bool(getattr(c, "online", False))
-            em_corrida = bool(getattr(c, "em_corrida", False) or getattr(c, "ocupado", False))
+        if c.last_lat is None or c.last_lng is None:
+            continue
 
-            if not online:
-                status = "offline"
-            elif em_corrida:
-                status = "em_corrida"
-            else:
-                status = "livre"
+        is_online, idle_s, status_str = calc_status_cooperado(c)
+        status_weight = 3 if status_str == 'em_corrida' else 2 if bool(is_online) else 1
 
-            is_online, idle_s, status_str = calc_status_cooperado(c)
+        motoboys_js.append({
+            "id": c.id,
+            "nome": c.nome,
+            "lat": float(c.last_lat),
+            "lng": float(c.last_lng),
+            "online": bool(is_online),
+            "status": status_str,
+            "status_weight": status_weight,
+            "idle_seconds": idle_s,
+            "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
+            "heading": float(getattr(c, "last_heading", 0) or 0),
+            "accuracy_m": float(getattr(c, "last_accuracy_m", 0) or 0),
+            "ultima_atualizacao": (to_brasilia(c.last_ping).strftime('%d/%m/%Y %H:%M:%S') if c.last_ping else ""),
+            "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
+            "observacao": getattr(c, "observacao", "") or ""
+        })
 
-            motoboys_js.append({
-                "id": c.id,
-                "nome": c.nome,
-                "lat": float(c.last_lat),
-                "lng": float(c.last_lng),
-                "online": bool(is_online),
-                "status": status_str,
-                "idle_seconds": idle_s,
-                "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
-                "ultima_atualizacao": (to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""),
-                "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
-                "observacao": getattr(c, "observacao", "") or ""
-            })
+    motoboys_js.sort(key=lambda x: (-int(x.get("status_weight", 0)), (x.get("nome") or "").lower()))
 
-    # 👇 Se for chamada via fetch (admin embutido) → JSON
     if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
         resp = jsonify(motoboys_js)
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
 
-    # 👇 Se for acesso normal (mapa em tela cheia) → HTML usando esse mesmo motoboys_js
-    return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
+    return render_or_string('mapa_motoboys.html', '<h2>Mapa</h2>', motoboys_js=motoboys_js)
 
 
 # =========================================================
