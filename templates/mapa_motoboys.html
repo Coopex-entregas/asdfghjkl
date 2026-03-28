@@ -2,115 +2,100 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Mapa de motoboys</title>
+  <title>Mapa dos motoboys</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root{
-      --royal:#1346d8;
-      --royal-2:#0d36ad;
-      --royal-3:#1f5bff;
-      --white:#ffffff;
-      --ink:#0f172a;
-      --muted:#5b6b8c;
-      --line:rgba(19,70,216,.14);
-      --glass:rgba(255,255,255,.72);
-      --glass-2:rgba(255,255,255,.56);
-      --shadow:0 18px 60px rgba(19,70,216,.16);
-      --shadow-soft:0 10px 28px rgba(15,23,42,.10);
-      --green:#16a34a;
-      --red:#e03131;
-      --amber:#d97706;
+      --royal:#1248dc; --royal-2:#0d35ad; --royal-3:#2361ff; --bg:#eef4ff; --ink:#10213f; --muted:#62759d;
+      --line:rgba(18,72,220,.16); --glass:rgba(255,255,255,.72); --white:#fff;
+      --shadow:0 22px 60px rgba(18,72,220,.14); --soft:0 10px 24px rgba(16,33,63,.08);
+      --green:#17a55a; --orange:#d87a00; --red:#d43838;
     }
-    *{box-sizing:border-box}
-    html,body{height:100%}
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1200px 420px at 10% -10%, rgba(31,91,255,.22), transparent 60%),
-        radial-gradient(900px 380px at 95% 0%, rgba(19,70,216,.18), transparent 60%),
-        linear-gradient(180deg,#f8fbff 0%,#eef4ff 100%);
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
+      background:radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.22), transparent 60%),
+                 radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.16), transparent 60%),
+                 linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
     }
     #map{position:fixed; inset:0; z-index:1}
     .topbar{
-      position:fixed; left:18px; right:18px; top:18px; z-index:800;
-      display:flex; align-items:center; gap:12px; flex-wrap:wrap;
-      padding:14px 16px; border-radius:24px; border:1px solid var(--line);
-      background:var(--glass); backdrop-filter:blur(16px);
-      box-shadow:var(--shadow);
+      position:fixed; left:16px; right:16px; top:16px; z-index:700;
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      padding:14px 16px; border-radius:26px; border:1px solid var(--line); background:var(--glass);
+      backdrop-filter:blur(18px); box-shadow:var(--shadow);
     }
-    .titlebox{min-width:210px; flex:1}
-    .eyebrow{font-size:.74rem; font-weight:900; letter-spacing:.12em; text-transform:uppercase; color:var(--royal)}
-    .title{font-size:1.05rem; font-weight:1000; margin-top:2px}
-    .subtitle{font-size:.82rem; color:var(--muted); margin-top:2px}
-    .kpis{display:flex; gap:8px; flex-wrap:wrap}
-    .chip{display:flex; align-items:center; gap:8px; min-height:42px; padding:0 14px; border-radius:999px; border:1px solid var(--line); background:var(--glass-2); font-size:.84rem; font-weight:900; color:#13357c}
-    .dot{width:10px; height:10px; border-radius:999px}
-    .dot.green{background:var(--green)} .dot.red{background:var(--red)} .dot.amber{background:var(--amber)}
-    .glass-btn, .glass-select, .glass-input{
-      height:44px; border-radius:16px; border:1px solid var(--line); backdrop-filter:blur(12px);
-      box-shadow:var(--shadow-soft); font:inherit;
+    .eyebrow{font-size:.74rem; letter-spacing:.12em; font-weight:900; text-transform:uppercase; color:var(--royal)}
+    .title{font-size:1.2rem; font-weight:1000; margin-top:2px}
+    .sub{font-size:.86rem; color:var(--muted); margin-top:2px}
+    .controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+    .btn,.input,.select{
+      height:44px; border-radius:16px; border:1px solid var(--line); font:inherit; box-shadow:var(--soft);
+      background:rgba(255,255,255,.84);
     }
-    .glass-btn{
-      background:linear-gradient(180deg,rgba(25,88,255,.16),rgba(19,70,216,.10));
-      color:var(--royal-2); padding:0 14px; font-weight:900; cursor:pointer;
-      display:inline-flex; align-items:center; gap:8px; text-decoration:none;
+    .btn{
+      padding:0 14px; color:var(--royal-2); font-weight:900; cursor:pointer; text-decoration:none;
+      display:inline-flex; align-items:center; gap:8px;
     }
-    .glass-btn:hover{transform:translateY(-1px); background:linear-gradient(180deg,rgba(25,88,255,.20),rgba(19,70,216,.12))}
-    .glass-btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3)); color:#fff; border-color:rgba(19,70,216,.22)}
-    .glass-btn.white{background:rgba(255,255,255,.78)}
-    .glass-select,.glass-input{
-      background:rgba(255,255,255,.82); color:var(--ink); padding:0 14px; min-width:180px; outline:none;
+    .btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3)); color:#fff}
+    .btn:hover{transform:translateY(-1px)}
+    .input,.select{padding:0 14px; color:var(--ink); outline:none}
+    .input{width:190px}
+    .select{min-width:170px}
+    .floating{
+      position:fixed; left:16px; right:16px; bottom:16px; z-index:700;
+      display:grid; grid-template-columns:1.2fr auto; gap:12px; align-items:end;
+      pointer-events:none;
     }
-    .toolbar-right{display:flex; gap:8px; flex-wrap:wrap; align-items:center; margin-left:auto}
-    .floating-panel{
-      position:fixed; left:18px; bottom:18px; z-index:800; width:min(410px,calc(100vw - 36px));
-      border-radius:24px; border:1px solid var(--line); background:var(--glass);
-      backdrop-filter:blur(18px); box-shadow:var(--shadow); overflow:hidden;
+    .panel,.chips{pointer-events:auto; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(16px); box-shadow:var(--shadow)}
+    .chips{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+      border-radius:24px; padding:12px 14px;
     }
-    .panel-head{display:flex; align-items:center; justify-content:space-between; gap:12px; padding:14px 16px 8px}
-    .panel-title{font-size:.98rem; font-weight:1000}
-    .panel-sub{font-size:.8rem; color:var(--muted)}
-    .panel-body{padding:0 12px 12px}
-    .search-row{display:flex; gap:8px; margin:8px 4px 10px}
-    .seg{display:flex; gap:8px; overflow:auto; padding:0 4px 8px}
-    .seg button{white-space:nowrap}
-    .list{max-height:min(44vh,420px); overflow:auto; padding:2px 4px 4px}
-    .card{
-      background:rgba(255,255,255,.84); border:1px solid rgba(19,70,216,.10); border-radius:18px;
-      padding:12px; margin-bottom:8px; cursor:pointer; box-shadow:0 8px 22px rgba(15,23,42,.06)
+    .chip{
+      display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:999px;
+      background:rgba(255,255,255,.86); border:1px solid var(--line); font-weight:900; font-size:.86rem; box-shadow:var(--soft);
     }
-    .card:hover{border-color:rgba(19,70,216,.22); transform:translateY(-1px)}
-    .row{display:flex; justify-content:space-between; gap:12px; align-items:flex-start}
-    .name{font-weight:1000; font-size:.95rem}
-    .meta{margin-top:5px; font-size:.8rem; color:var(--muted); line-height:1.35}
-    .status{display:inline-flex; align-items:center; gap:6px; padding:5px 10px; border-radius:999px; font-size:.75rem; font-weight:900; border:1px solid var(--line)}
-    .status.online{color:#0f7a41; background:rgba(22,163,74,.10); border-color:rgba(22,163,74,.18)}
-    .status.busy{color:#9a3412; background:rgba(217,119,6,.12); border-color:rgba(217,119,6,.18)}
-    .status.offline{color:#7f1d1d; background:rgba(224,49,49,.10); border-color:rgba(224,49,49,.18)}
-    .mini-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:10px}
-    .hint{position:fixed; right:18px; bottom:18px; z-index:800; max-width:min(400px,calc(100vw - 36px)); padding:14px 16px; border-radius:20px; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(16px); box-shadow:var(--shadow); font-size:.82rem; color:var(--muted)}
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .dot.green{background:var(--green)} .dot.orange{background:var(--orange)} .dot.red{background:var(--red)}
+    .panel{
+      max-width:480px; border-radius:28px; padding:14px 16px;
+    }
+    .panel h3{margin:0 0 4px; font-size:1rem}
+    .muted{color:var(--muted); font-size:.85rem}
+    .kv{display:grid; grid-template-columns:auto 1fr; gap:8px 12px; margin-top:12px; font-size:.9rem}
+    .kv b{color:var(--royal-2)}
+    .mini-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
+    .mini-actions .btn{height:40px; border-radius:14px}
+    .listpill{
+      max-width:100%; display:flex; gap:8px; overflow:auto; padding-bottom:2px;
+    }
+    .person{
+      min-width:180px; padding:10px 12px; border-radius:18px; border:1px solid var(--line);
+      background:rgba(255,255,255,.86); box-shadow:var(--soft); cursor:pointer;
+    }
+    .person strong{display:block; font-size:.92rem}
+    .person small{display:block; margin-top:3px; color:var(--muted)}
     .leaflet-control-attribution{display:none}
-    .leaflet-popup-content-wrapper{border-radius:18px; border:1px solid rgba(19,70,216,.14); box-shadow:0 18px 45px rgba(15,23,42,.16)}
+    .leaflet-popup-content-wrapper{
+      border-radius:18px; border:1px solid var(--line); box-shadow:var(--shadow); background:#fff; color:var(--ink)
+    }
     .leaflet-popup-content{margin:14px 14px 12px}
-    .leaflet-popup-tip{background:#fff}
-    .map-popup-title{font-weight:1000; font-size:.95rem; margin-bottom:4px}
-    .map-popup-sub{font-size:.8rem; color:var(--muted); margin-bottom:10px}
-    .map-popup-actions{display:flex; gap:8px; flex-wrap:wrap}
-    .marker-pin{display:flex; align-items:center; justify-content:center; width:20px; height:20px; border-radius:999px; border:3px solid #fff; box-shadow:0 0 0 7px rgba(19,70,216,.08), 0 10px 18px rgba(15,23,42,.18)}
-    .marker-pin.online{background:var(--royal)}
-    .marker-pin.busy{background:var(--amber)}
-    .marker-pin.offline{background:var(--red)}
-    @media (max-width:980px){
-      .topbar{left:12px; right:12px; top:12px; padding:12px}
-      .floating-panel{left:12px; right:12px; width:auto; bottom:12px}
-      .hint{display:none}
-      .toolbar-right{width:100%; margin-left:0}
-      .glass-input{min-width:130px}
-      .glass-select{min-width:150px}
+    .popup-title{font-size:1rem; font-weight:1000; color:var(--royal-2)}
+    .badge{
+      display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; font-size:.78rem;
+      font-weight:900; border:1px solid var(--line); margin-right:6px; margin-top:8px;
+    }
+    .badge.green{background:rgba(23,165,90,.10)} .badge.orange{background:rgba(216,122,0,.12)} .badge.red{background:rgba(212,56,56,.12)}
+    @media(max-width:900px){
+      .floating{grid-template-columns:1fr}
+      .panel{max-width:none}
+      .topbar{left:12px; right:12px; top:12px}
+      .floating{left:12px; right:12px; bottom:12px}
+      .controls{width:100%}
+      .input{width:100%}
     }
   </style>
 </head>
@@ -118,261 +103,239 @@
   <div id="map"></div>
 
   <section class="topbar">
-    <div class="titlebox">
+    <div>
       <div class="eyebrow">Monitoramento ao vivo</div>
-      <div class="title">Mapa de motoboys</div>
-      <div class="subtitle">Azul royal, vidro leve e operação rápida. O trajeto só aparece no replay.</div>
+      <div class="title">Mapa dos motoboys</div>
+      <div class="sub">Azul royal, visual limpo, sem trilha no mapa principal. O replay fica separado.</div>
     </div>
-    <div class="kpis">
-      <div class="chip"><span class="dot green"></span>Online <strong id="countOnline">0</strong></div>
-      <div class="chip"><span class="dot amber"></span>Em corrida <strong id="countBusy">0</strong></div>
-      <div class="chip"><span class="dot red"></span>Offline <strong id="countOffline">0</strong></div>
-    </div>
-    <div class="toolbar-right">
-      <select id="statusFilter" class="glass-select">
+    <div class="controls">
+      <input id="search" class="input" placeholder="Buscar cooperado">
+      <select id="statusFilter" class="select">
         <option value="todos">Todos</option>
-        <option value="online">Online</option>
         <option value="em_corrida">Em corrida</option>
+        <option value="livre">Online livre</option>
         <option value="offline">Offline</option>
       </select>
-      <input id="searchInput" class="glass-input" placeholder="Buscar cooperado..." autocomplete="off">
-      <button class="glass-btn white" id="btnFitAll" type="button">Enquadrar</button>
-      <button class="glass-btn white" id="btnMaps" type="button">Abrir no Maps</button>
-      <button class="glass-btn white" id="btnStreet" type="button">Ver rua</button>
-      <a class="glass-btn" href="/trajetos">Trajetos</a>
-      <button class="glass-btn primary" id="btnReload" type="button">Atualizar</button>
+      <button id="btnReload" class="btn" type="button">Atualizar</button>
+      <button id="btnFit" class="btn" type="button">Enquadrar</button>
+      <a class="btn" href="/trajetos">Trajetos</a>
+      <a class="btn primary" href="{{ url_for('admin') }}">Voltar</a>
     </div>
   </section>
 
-  <section class="floating-panel">
-    <div class="panel-head">
-      <div>
-        <div class="panel-title">Cooperados no mapa</div>
-        <div class="panel-sub" id="panelInfo">Selecione um cooperado para centralizar e abrir ações.</div>
-      </div>
-      <button class="glass-btn white" id="btnClearFocus" type="button">Limpar foco</button>
+  <section class="floating">
+    <div class="chips">
+      <span class="chip"><span class="dot orange"></span> Em corrida <strong id="countBusy">0</strong></span>
+      <span class="chip"><span class="dot green"></span> Online <strong id="countOnline">0</strong></span>
+      <span class="chip"><span class="dot red"></span> Offline <strong id="countOffline">0</strong></span>
+      <div class="listpill" id="quickList"></div>
     </div>
-    <div class="panel-body">
-      <div class="seg">
-        <button class="glass-btn primary filter-btn" data-status="todos" type="button">Todos</button>
-        <button class="glass-btn filter-btn" data-status="online" type="button">Online</button>
-        <button class="glass-btn filter-btn" data-status="em_corrida" type="button">Em corrida</button>
-        <button class="glass-btn filter-btn" data-status="offline" type="button">Offline</button>
+    <aside class="panel">
+      <h3 id="infoName">Selecione um motoboy</h3>
+      <div class="muted" id="infoSubtitle">Ao clicar em cima do marcador aparece quem ele é, km/h, status e botões para Maps.</div>
+      <div class="kv">
+        <b>Status</b><span id="infoStatus">—</span>
+        <b>Velocidade</b><span id="infoSpeed">—</span>
+        <b>Entregas abertas</b><span id="infoDeliveries">—</span>
+        <b>Atualizado</b><span id="infoUpdated">—</span>
       </div>
-      <div class="list" id="motoboyList"></div>
-    </div>
+      <div class="mini-actions">
+        <button id="btnFollow" class="btn primary" type="button">Seguir</button>
+        <button id="btnMaps" class="btn" type="button">Abrir no Maps</button>
+        <button id="btnStreet" class="btn" type="button">Ver rua</button>
+        <button id="btnReplay" class="btn" type="button">Trajetos</button>
+      </div>
+    </aside>
   </section>
-
-  <aside class="hint">Clique no cooperado para centralizar. “Abrir no Maps” abre o ponto exato no Google Maps. “Ver rua” tenta abrir a visualização de rua no mesmo local.</aside>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
+    const seed = Array.isArray({% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %}) ? {% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %} : [];
     const DATA_ENDPOINT = '/mapa_motoboys?format=json';
     const POLL_MS = 5000;
-    const defaultCenter = [-5.79448, -35.211];
-    const defaultZoom = 12;
-    const $ = (id)=>document.getElementById(id);
-    const map = L.map('map', {zoomControl:true, preferCanvas:true}).setView(defaultCenter, defaultZoom);
+    const map = L.map('map', {preferCanvas:true, zoomControl:true}).setView([-5.79448, -35.211], 12);
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:20}).addTo(map);
 
     const markers = new Map();
-    let currentItems = [];
-    let focusedId = null;
-    let activeStatus = 'todos';
+    let allItems = seed.slice();
+    let selected = null;
+    let followId = null;
+    let timer = null;
 
-    function norm(v){ return (v||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase(); }
-    function fmt(v, fallback='—'){ return (v===null || v===undefined || v==='') ? fallback : String(v); }
+    const $ = id => document.getElementById(id);
+    const norm = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const fmt = v => (v===null||v===undefined||v==='') ? '—' : String(v);
+
     function mapsUrl(lat,lng){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
     function streetUrl(lat,lng){ return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`; }
-    function replayUrl(id){ return `/trajetos/replay/${id}`; }
 
     function statusLabel(item){
       if(item.status === 'em_corrida') return 'Em corrida';
-      if(item.online) return 'Online';
+      if(item.status === 'livre') return 'Online livre';
       return 'Offline';
     }
-    function statusClass(item){
-      if(item.status === 'em_corrida') return 'busy';
-      if(item.online) return 'online';
-      return 'offline';
+    function statusColor(item){
+      if(item.status === 'em_corrida') return '#d87a00';
+      if(item.status === 'livre') return '#17a55a';
+      return '#d43838';
     }
-    function markerColor(item){
-      if(item.status === 'em_corrida') return 'busy';
-      if(item.online) return 'online';
-      return 'offline';
+    function priority(item){
+      if(item.status === 'em_corrida') return 3;
+      if(item.status === 'livre') return 2;
+      return 1;
     }
-    function zIndexFor(item){
-      if(item.status === 'em_corrida') return 3000;
-      if(item.online) return 2000;
-      return 1000;
+    function pinSvg(color){
+      return `
+      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="46" viewBox="0 0 34 46">
+        <path d="M17 1C8.7 1 2 7.7 2 16c0 12 15 29 15 29s15-17 15-29C32 7.7 25.3 1 17 1z" fill="${color}" stroke="#ffffff" stroke-width="2.2"/>
+        <circle cx="17" cy="16" r="6.6" fill="#ffffff"/>
+      </svg>`;
     }
-    function makeIcon(item){
-      const cls = markerColor(item);
-      return L.divIcon({
-        className:'',
-        html:`<div class="marker-pin ${cls}"></div>`,
-        iconSize:[20,20],
-        iconAnchor:[10,10],
-        popupAnchor:[0,-10]
+    function iconFor(item){
+      const color = statusColor(item);
+      return L.icon({
+        iconUrl:'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(pinSvg(color)))),
+        iconSize:[34,46], iconAnchor:[17,46], popupAnchor:[0,-38]
       });
     }
+
     function popupHtml(item){
-      const lat = Number(item.lat), lng = Number(item.lng);
       return `
-        <div class="map-popup-title">${fmt(item.nome)}</div>
-        <div class="map-popup-sub">${statusLabel(item)} • Atualizado: ${fmt(item.ultima_atualizacao)}</div>
-        <div class="map-popup-sub">Lat/Lng: ${lat.toFixed(6)}, ${lng.toFixed(6)}</div>
-        <div class="map-popup-sub">Precisão/velocidade: ${fmt(item.accuracy_m || item.accuracy,'—')} • ${fmt(item.velocidade,'0')} km/h</div>
-        <div class="map-popup-actions">
-          <a class="glass-btn primary" target="_blank" rel="noopener" href="${mapsUrl(lat,lng)}">Maps</a>
-          <a class="glass-btn" target="_blank" rel="noopener" href="${streetUrl(lat,lng)}">Rua</a>
-          <a class="glass-btn" href="/trajetos?cooperado_id=${encodeURIComponent(item.id)}">Trajetos</a>
+        <div class="popup-title">${item.nome || 'Cooperado'}</div>
+        <div>
+          <span class="badge ${item.status==='em_corrida'?'orange':item.status==='livre'?'green':'red'}">${statusLabel(item)}</span>
+          <span class="badge">${Number(item.entregas_abertas||0)} entrega(s)</span>
+        </div>
+        <div style="margin-top:10px;line-height:1.55">
+          <div><strong>Km/h:</strong> ${Number(item.velocidade||0).toFixed(1)}</div>
+          <div><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
+          <div><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0)+' m' : '—'}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <a href="${mapsUrl(item.lat,item.lng)}" target="_blank" rel="noopener" class="badge">Maps</a>
+          <a href="${streetUrl(item.lat,item.lng)}" target="_blank" rel="noopener" class="badge">Ver rua</a>
         </div>`;
     }
-    function upsertMarker(item){
-      if(!isFinite(Number(item.lat)) || !isFinite(Number(item.lng))) return;
-      const latlng = [Number(item.lat), Number(item.lng)];
-      let marker = markers.get(item.id);
-      if(!marker){
-        marker = L.marker(latlng, {icon: makeIcon(item), zIndexOffset: zIndexFor(item)}).addTo(map);
-        marker.on('click', ()=> focusItem(item.id, true));
-        markers.set(item.id, marker);
-      } else {
-        marker.setLatLng(latlng);
-        marker.setIcon(makeIcon(item));
-        marker.setZIndexOffset(zIndexFor(item));
-      }
-      marker.item = item;
-      marker.bindPopup(popupHtml(item));
-      const shouldShow = matchFilters(item);
-      if(shouldShow && !map.hasLayer(marker)) marker.addTo(map);
-      if(!shouldShow && map.hasLayer(marker)) map.removeLayer(marker);
+
+    function setInfo(item){
+      selected = item || null;
+      $('infoName').textContent = item ? item.nome : 'Selecione um motoboy';
+      $('infoSubtitle').textContent = item ? 'Clique no popup para abrir no Google Maps ou ver a rua.' : 'Ao clicar em cima do marcador aparece quem ele é, km/h, status e botões para Maps.';
+      $('infoStatus').textContent = item ? statusLabel(item) : '—';
+      $('infoSpeed').textContent = item ? `${Number(item.velocidade||0).toFixed(1)} km/h` : '—';
+      $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas||0)) : '—';
+      $('infoUpdated').textContent = item ? fmt(item.ultima_atualizacao) : '—';
     }
-    function sortItems(items){
-      return [...items].sort((a,b)=>{
-        const pa = a.status === 'em_corrida' ? 0 : (a.online ? 1 : 2);
-        const pb = b.status === 'em_corrida' ? 0 : (b.online ? 1 : 2);
-        if(pa !== pb) return pa - pb;
-        return (a.nome||'').localeCompare(b.nome||'', 'pt-BR');
+
+    function filteredItems(){
+      const q = norm($('search').value);
+      const sf = $('statusFilter').value;
+      return allItems.filter(item=>{
+        if(sf !== 'todos' && item.status !== sf) return false;
+        if(q && !norm(item.nome).includes(q)) return false;
+        return true;
       });
     }
-    function matchFilters(item){
-      const q = norm($('searchInput').value);
-      const okStatus = activeStatus === 'todos' || item.status === activeStatus || (activeStatus === 'online' && item.online && item.status !== 'em_corrida');
-      const okText = !q || norm(item.nome).includes(q) || norm(item.endereco).includes(q);
-      return okStatus && okText;
+
+    function rebuildQuickList(items){
+      const el = $('quickList'); el.innerHTML = '';
+      items.slice(0, 10).forEach(item=>{
+        const d = document.createElement('div');
+        d.className = 'person';
+        d.innerHTML = `<strong>${item.nome}</strong><small>${statusLabel(item)} • ${Number(item.velocidade||0).toFixed(1)} km/h • ${Number(item.entregas_abertas||0)} entrega(s)</small>`;
+        d.onclick = ()=>focusItem(item.id, true);
+        el.appendChild(d);
+      });
     }
-    function filteredItems(){ return sortItems(currentItems.filter(matchFilters)); }
-    function renderList(){
-      const list = $('motoboyList');
-      const items = filteredItems();
-      list.innerHTML = '';
-      if(!items.length){
-        list.innerHTML = '<div class="card"><div class="name">Nenhum cooperado no filtro atual.</div></div>';
-        return;
-      }
+
+    function refreshCounts(items){
+      $('countBusy').textContent = items.filter(i=>i.status==='em_corrida').length;
+      $('countOnline').textContent = items.filter(i=>i.status==='livre').length;
+      $('countOffline').textContent = items.filter(i=>i.status==='offline').length;
+    }
+
+    function renderMarkers(items){
+      const ids = new Set(items.map(i=>String(i.id)));
+      Array.from(markers.keys()).forEach(id=>{
+        if(!ids.has(String(id))){
+          map.removeLayer(markers.get(id)); markers.delete(id);
+        }
+      });
       items.forEach(item=>{
-        const div = document.createElement('div');
-        div.className = 'card';
-        div.innerHTML = `
-          <div class="row">
-            <div>
-              <div class="name">${fmt(item.nome)}</div>
-              <div class="meta">${fmt(item.endereco,'Sem endereço')} • Atualizado: ${fmt(item.ultima_atualizacao)}</div>
-            </div>
-            <span class="status ${statusClass(item)}">${statusLabel(item)}</span>
-          </div>
-          <div class="meta">Velocidade: ${fmt(item.velocidade,'0')} km/h • Coordenada: ${Number(item.lat).toFixed(5)}, ${Number(item.lng).toFixed(5)}</div>
-          <div class="mini-actions">
-            <button class="glass-btn primary" type="button" data-action="focus">Focar</button>
-            <button class="glass-btn white" type="button" data-action="maps">Maps</button>
-            <button class="glass-btn white" type="button" data-action="street">Rua</button>
-            <button class="glass-btn white" type="button" data-action="trajetos">Trajetos</button>
-          </div>`;
-        div.querySelector('[data-action="focus"]').onclick = ()=> focusItem(item.id, true);
-        div.querySelector('[data-action="maps"]').onclick = ()=> window.open(mapsUrl(item.lat, item.lng), '_blank', 'noopener');
-        div.querySelector('[data-action="street"]').onclick = ()=> window.open(streetUrl(item.lat, item.lng), '_blank', 'noopener');
-        div.querySelector('[data-action="trajetos"]').onclick = ()=> window.location.href = `/trajetos?cooperado_id=${encodeURIComponent(item.id)}`;
-        div.onclick = (ev)=>{ if(ev.target.closest('button')) return; focusItem(item.id, true); };
-        list.appendChild(div);
+        let marker = markers.get(item.id);
+        if(!marker){
+          marker = L.marker([item.lat,item.lng], {icon:iconFor(item), zIndexOffset: priority(item)*1000}).addTo(map);
+          marker.on('click', ()=>{ setInfo(item); marker.bindPopup(popupHtml(item)).openPopup(); });
+          markers.set(item.id, marker);
+        }else{
+          marker.setLatLng([item.lat,item.lng]);
+          marker.setIcon(iconFor(item));
+          marker.setZIndexOffset(priority(item)*1000 + Number(item.entregas_abertas||0));
+          marker.off('click');
+          marker.on('click', ()=>{ setInfo(item); marker.bindPopup(popupHtml(item)).openPopup(); });
+        }
       });
+      refreshCounts(items);
+      rebuildQuickList(items);
+      if(selected){
+        const newer = items.find(i=>String(i.id)===String(selected.id));
+        if(newer) setInfo(newer);
+      }
+      if(followId){
+        const f = items.find(i=>String(i.id)===String(followId));
+        if(f) map.panTo([f.lat,f.lng], {animate:true, duration:.8});
+      }
     }
-    function updateCounters(items){
-      const online = items.filter(x=>x.online && x.status !== 'em_corrida').length;
-      const busy = items.filter(x=>x.status === 'em_corrida').length;
-      const offline = items.filter(x=>!x.online).length;
-      $('countOnline').textContent = online;
-      $('countBusy').textContent = busy;
-      $('countOffline').textContent = offline;
-      $('panelInfo').textContent = focusedId ? `Cooperado #${focusedId} em foco. Clique em Maps ou Rua para abrir a posição.` : `${items.length} cooperado(s) carregado(s).`;
-    }
-    function fitAll(){
-      const visible = filteredItems().map(it=>[Number(it.lat), Number(it.lng)]).filter(v=>isFinite(v[0])&&isFinite(v[1]));
-      if(!visible.length){ map.setView(defaultCenter, defaultZoom); return; }
-      map.fitBounds(L.latLngBounds(visible), {padding:[50,50]});
-    }
+
     function focusItem(id, openPopup){
-      focusedId = id;
-      const marker = markers.get(id);
-      const item = currentItems.find(x=>String(x.id)===String(id));
-      if(!marker || !item) return;
-      map.flyTo(marker.getLatLng(), Math.max(map.getZoom(), 17), {duration:.7});
-      if(openPopup) marker.openPopup();
-      $('panelInfo').textContent = `${fmt(item.nome)} • ${statusLabel(item)} • ${fmt(item.ultima_atualizacao)}`;
+      const item = allItems.find(i=>String(i.id)===String(id));
+      const marker = markers.get(item && item.id);
+      if(!item || !marker) return;
+      setInfo(item);
+      map.setView([item.lat,item.lng], Math.max(map.getZoom(), 17), {animate:true});
+      if(openPopup) marker.bindPopup(popupHtml(item)).openPopup();
     }
-    function clearFocus(){ focusedId = null; $('panelInfo').textContent = `${currentItems.length} cooperado(s) carregado(s).`; fitAll(); }
+
     async function fetchData(){
       try{
-        const r = await fetch(DATA_ENDPOINT, {cache:'no-store'});
-        if(!r.ok) throw new Error('HTTP ' + r.status);
-        const data = await r.json();
-        currentItems = Array.isArray(data) ? sortItems(data) : [];
-        currentItems.forEach(upsertMarker);
-        for(const [id, marker] of markers.entries()){
-          if(!currentItems.some(x=>String(x.id)===String(id)) && map.hasLayer(marker)) map.removeLayer(marker);
-        }
-        renderList();
-        updateCounters(currentItems);
-        if(focusedId){
-          const still = currentItems.find(x=>String(x.id)===String(focusedId));
-          if(still){ focusItem(focusedId, false); }
-        }
-      }catch(err){ console.warn(err); }
+        const resp = await fetch(DATA_ENDPOINT, {cache:'no-store'});
+        const data = await resp.json();
+        allItems = (Array.isArray(data)?data:[]).sort((a,b)=>{
+          const pa = priority(a), pb = priority(b);
+          if(pa!==pb) return pb-pa;
+          return (Number(b.entregas_abertas||0)-Number(a.entregas_abertas||0)) || (a.nome||'').localeCompare(b.nome||'');
+        });
+        const items = filteredItems();
+        renderMarkers(items);
+      }catch(err){ console.error(err); }
     }
 
-    document.querySelectorAll('.filter-btn').forEach(btn=>{
-      btn.onclick = ()=>{
-        activeStatus = btn.dataset.status;
-        $('statusFilter').value = activeStatus;
-        document.querySelectorAll('.filter-btn').forEach(b=> b.classList.toggle('primary', b===btn));
-        renderList();
-        currentItems.forEach(upsertMarker);
-        updateCounters(currentItems);
-      };
-    });
-    $('statusFilter').onchange = ()=>{
-      activeStatus = $('statusFilter').value;
-      document.querySelectorAll('.filter-btn').forEach(b=> b.classList.toggle('primary', b.dataset.status===activeStatus));
-      renderList(); currentItems.forEach(upsertMarker); updateCounters(currentItems);
-    };
-    $('searchInput').oninput = ()=>{ renderList(); currentItems.forEach(upsertMarker); };
-    $('btnFitAll').onclick = fitAll;
-    $('btnReload').onclick = fetchData;
-    $('btnClearFocus').onclick = clearFocus;
-    $('btnMaps').onclick = ()=>{
-      const item = currentItems.find(x=>String(x.id)===String(focusedId));
-      if(!item) return alert('Selecione um cooperado primeiro.');
-      window.open(mapsUrl(item.lat, item.lng), '_blank', 'noopener');
-    };
-    $('btnStreet').onclick = ()=>{
-      const item = currentItems.find(x=>String(x.id)===String(focusedId));
-      if(!item) return alert('Selecione um cooperado primeiro.');
-      window.open(streetUrl(item.lat, item.lng), '_blank', 'noopener');
-    };
+    function fitAll(){
+      const items = filteredItems();
+      if(!items.length) return;
+      const bounds = L.latLngBounds(items.map(i=>[i.lat,i.lng]));
+      map.fitBounds(bounds.pad(0.18));
+    }
 
-    fetchData();
-    fitAll();
-    setInterval(fetchData, POLL_MS);
+    $('btnReload').onclick = fetchData;
+    $('btnFit').onclick = fitAll;
+    $('search').oninput = ()=> renderMarkers(filteredItems());
+    $('statusFilter').onchange = ()=> renderMarkers(filteredItems());
+    $('btnFollow').onclick = ()=>{
+      if(!selected) return;
+      followId = String(selected.id);
+      focusItem(followId, true);
+    };
+    $('btnMaps').onclick = ()=>{ if(selected) window.open(mapsUrl(selected.lat,selected.lng), '_blank', 'noopener'); };
+    $('btnStreet').onclick = ()=>{ if(selected) window.open(streetUrl(selected.lat,selected.lng), '_blank', 'noopener'); };
+    $('btnReplay').onclick = ()=>{ window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : ''); };
+
+    map.on('dragstart zoomstart', ()=>{ followId = null; });
+
+    allItems = seed.slice().sort((a,b)=>priority(b)-priority(a));
+    renderMarkers(filteredItems());
+    if(allItems.length) fitAll();
+    timer = setInterval(fetchData, POLL_MS);
   </script>
 </body>
 </html>
