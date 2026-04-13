@@ -3867,6 +3867,8 @@ def api_app_localizacao():
         'cooperado_id': coop.id
     }), 200
 
+from datetime import datetime, timezone
+
 @app.get('/api/cooperado/localizacao_status')
 def api_cooperado_localizacao_status():
     if session.get('user_id') is None or session.get('is_admin'):
@@ -3875,7 +3877,6 @@ def api_cooperado_localizacao_status():
     cooperado_id = session['user_id']
     coop = Cooperado.query.get_or_404(cooperado_id)
     loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado_id).first()
-    agora = datetime.utcnow()
 
     ping = coop.last_ping
     lat = coop.last_lat
@@ -3901,9 +3902,15 @@ def api_cooperado_localizacao_status():
             'tem_localizacao': False,
             'online': False,
             'mensagem': 'Sincronizando localização do app...'
-        })
+        }), 200
 
-    delta = (agora - ping).total_seconds()
+    if ping.tzinfo is None:
+        ping_utc = ping.replace(tzinfo=timezone.utc)
+    else:
+        ping_utc = ping.astimezone(timezone.utc)
+
+    agora = datetime.now(timezone.utc)
+    delta = (agora - ping_utc).total_seconds()
     online = bool(online_flag) and delta <= OFFLINE_AFTER_SEC
 
     return jsonify({
@@ -3917,7 +3924,7 @@ def api_cooperado_localizacao_status():
         'heading': heading,
         'atualizado_em': to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S') if ping else '',
         'mensagem': 'Localização ativa' if online else 'Aguardando nova localização...'
-    })
+    }), 200
 
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
