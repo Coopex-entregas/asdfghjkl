@@ -3824,12 +3824,10 @@ def api_app_localizacao():
 
     agora = datetime.utcnow()
 
-    prev_lat = coop.last_lat
-    prev_lng = coop.last_lng
-    accepted, reason, dist_m = _should_accept_location_update(prev_lat, prev_lng, lat, lng, acc, spd)
-
     coop.last_ping = agora
     coop.online = True
+    coop.last_lat = lat
+    coop.last_lng = lng
     coop.last_accuracy_m = acc
     coop.last_heading = hdg
     coop.last_speed_kmh = spd
@@ -3843,19 +3841,10 @@ def api_app_localizacao():
         loc = LocalizacaoCooperado(cooperado_id=coop.id)
         db.session.add(loc)
 
-    if accepted:
-        coop.last_lat = lat
-        coop.last_lng = lng
-
-        loc.latitude = lat
-        loc.longitude = lng
-    else:
-        if loc.latitude is None and loc.longitude is None and prev_lat is not None and prev_lng is not None:
-            loc.latitude = prev_lat
-            loc.longitude = prev_lng
-
+    loc.latitude = lat
+    loc.longitude = lng
     loc.accuracy = acc
-    loc.speed = coop.last_speed_kmh
+    loc.speed = spd
     loc.heading = hdg
     loc.online = True
     loc.fonte = source
@@ -3864,27 +3853,19 @@ def api_app_localizacao():
     db.session.commit()
 
     try:
-        lat_track = coop.last_lat if coop.last_lat is not None else lat
-        lng_track = coop.last_lng if coop.last_lng is not None else lng
-        _append_point_to_active_trajeto(coop.id, lat_track, lng_track, agora)
+        _append_point_to_active_trajeto(coop.id, lat, lng, agora)
     except Exception:
         try:
             db.session.rollback()
         except Exception:
             pass
 
-    lat_emit = coop.last_lat if coop.last_lat is not None else lat
-    lng_emit = coop.last_lng if coop.last_lng is not None else lng
-    emitir_posicao_motoboy(coop, lat_emit, lng_emit, coop.last_speed_kmh)
+    emitir_posicao_motoboy(coop, lat, lng, spd)
 
     return jsonify({
         'ok': True,
-        'cooperado_id': coop.id,
-        'accepted': bool(accepted),
-        'reason': reason,
-        'dist_m': round(float(dist_m or 0.0), 2) if dist_m is not None else None
+        'cooperado_id': coop.id
     }), 200
-
 
 @app.get('/api/cooperado/localizacao_status')
 def api_cooperado_localizacao_status():
