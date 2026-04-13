@@ -3958,60 +3958,81 @@ def cooperado_atualizar_localizacao():
     except (TypeError, ValueError):
         return jsonify({'status': 'erro', 'msg': 'Lat/Lng inválidos'}), 400
 
-    # speed pode vir em m/s (Geolocation API) OU km/h (se você mandar assim)
+    # velocidade pode vir em m/s, km/h, ou no campo speed
     speed_mps = data.get('speed_mps', None)
-    speed_kmh = data.get('velocidade', None)  # compatível com seu campo atual
+    speed_kmh = data.get('velocidade', None)
+    speed_raw = data.get('speed', None)
 
     # heading/accuracy opcionais
     heading = data.get('heading', None)
     accuracy = data.get('accuracy', None)
 
-    # normaliza velocidade
+    # normaliza velocidade para km/h
     v_kmh = None
     try:
         if speed_mps is not None:
             v_kmh = float(speed_mps) * 3.6
         elif speed_kmh is not None:
             v_kmh = float(speed_kmh)
+        elif speed_raw is not None:
+            v_kmh = float(speed_raw) * 3.6
     except (TypeError, ValueError):
         v_kmh = None
 
-    # salva no banco
+    agora = datetime.utcnow()
+
+    # salva no cooperado
     cooperado.last_lat = lat
     cooperado.last_lng = lng
-    cooperado.last_ping = datetime.utcnow()
+    cooperado.last_ping = agora
     cooperado.online = True
-
     cooperado.last_speed_kmh = v_kmh
+
     try:
         cooperado.last_heading = float(heading) if heading is not None else None
     except (TypeError, ValueError):
         cooperado.last_heading = None
+
     try:
         cooperado.last_accuracy_m = float(accuracy) if accuracy is not None else None
     except (TypeError, ValueError):
         cooperado.last_accuracy_m = None
 
-    # marca “último movimento”
+    # marca último movimento
     if v_kmh is not None and v_kmh >= MOVING_SPEED_KMH:
-        cooperado.last_moving_at = datetime.utcnow()
+        cooperado.last_moving_at = agora
+
+    # salva também na tabela de localização, se existir
+    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado.id).first()
+    if not loc:
+        loc = LocalizacaoCooperado(cooperado_id=cooperado.id)
+        db.session.add(loc)
+
+    loc.latitude = lat
+    loc.longitude = lng
+    loc.accuracy = cooperado.last_accuracy_m
+    loc.speed = v_kmh
+    loc.heading = cooperado.last_heading
+    loc.online = True
+    loc.fonte = 'android_native' if request.headers.get('X-App-Native') else 'html5'
+    loc.atualizado_em = agora
 
     db.session.commit()
 
     try:
-        lat_track = cooperado.last_lat if cooperado.last_lat is not None else lat
-        lng_track = cooperado.last_lng if cooperado.last_lng is not None else lng
-        _append_point_to_active_trajeto(cooperado.id, lat_track, lng_track, datetime.utcnow())
+        _append_point_to_active_trajeto(cooperado.id, lat, lng, agora)
     except Exception:
         try:
             db.session.rollback()
         except Exception:
             pass
 
-    # emite para o painel em tempo real (adicione campos no payload, item 4)
-    emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
+    try:
+        emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
+    except Exception:
+        pass
 
-    return jsonify({'status': 'ok'})
+    return jsonify({'status': 'ok'}), 200
 
 
 # Recusar via API (AJAX/Fetch com JSON)
