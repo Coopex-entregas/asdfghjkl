@@ -10,17 +10,16 @@
       --royal:#1248dc;
       --royal-2:#0d35ad;
       --royal-3:#2361ff;
-      --bg:#eef4ff;
       --ink:#10213f;
       --muted:#62759d;
-      --line:rgba(18,72,220,.16);
-      --glass:rgba(255,255,255,.86);
-      --white:#fff;
+      --line:rgba(18,72,220,.14);
+      --glass:rgba(255,255,255,.92);
       --shadow:0 18px 50px rgba(18,72,220,.14);
       --soft:0 8px 20px rgba(16,33,63,.08);
       --green:#17a55a;
       --orange:#d87a00;
       --red:#d43838;
+      --radius:22px;
     }
 
     *{box-sizing:border-box}
@@ -30,11 +29,8 @@
       margin:0;
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--ink);
-      background:
-        radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.20), transparent 60%),
-        radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.14), transparent 60%),
-        linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
+      background:#eef4ff;
     }
 
     #map{
@@ -44,41 +40,39 @@
       background:#eef4ff;
     }
 
-    /* Camada geral NÃO bloqueia o mapa */
-    .ui-layer{
+    .layout{
       position:fixed;
       inset:12px;
       z-index:700;
+      display:grid;
+      grid-template-columns:360px 1fr;
+      gap:12px;
       pointer-events:none;
     }
 
-    .card{
+    .sidebar,
+    .topbar-wrap,
+    .info-wrap{
       pointer-events:auto;
+    }
+
+    .card{
       background:var(--glass);
       border:1px solid var(--line);
-      border-radius:22px;
+      border-radius:var(--radius);
       backdrop-filter:blur(14px);
       box-shadow:var(--shadow);
     }
 
-    /* topo compacto */
-    .topbar{
-      position:absolute;
-      top:0;
-      left:0;
-      right:0;
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
+    .sidebar{
+      display:grid;
+      grid-template-rows:auto auto auto minmax(0,1fr);
       gap:12px;
-      flex-wrap:wrap;
-      padding:12px 14px;
+      min-height:0;
+      max-height:calc(100vh - 24px);
     }
 
-    .top-left{
-      min-width:260px;
-      max-width:520px;
-    }
+    .brand-card{padding:16px 18px}
 
     .eyebrow{
       font-size:.74rem;
@@ -101,48 +95,9 @@
       line-height:1.35;
     }
 
-    .top-right{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      align-items:center;
-      justify-content:flex-end;
-      max-width:100%;
-    }
-
-    .filter-chip,
-    .small-btn{
-      height:40px;
-      padding:0 14px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--royal-2);
-      font:inherit;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:var(--soft);
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      white-space:nowrap;
-    }
-
-    .filter-chip.active,
-    .small-btn.primary{
-      background:linear-gradient(135deg,var(--royal),var(--royal-3));
-      color:#fff;
-      border:none;
-    }
-
-    /* busca lateral compacta */
-    .search-box{
-      position:absolute;
-      top:112px;
-      left:0;
-      width:min(360px, calc(100vw - 24px));
+    .search-card{
       padding:12px;
+      position:relative;
     }
 
     .label{
@@ -173,7 +128,7 @@
       border:1px solid var(--line);
       border-radius:16px;
       box-shadow:var(--shadow);
-      max-height:250px;
+      max-height:220px;
       overflow:auto;
     }
 
@@ -226,38 +181,33 @@
       border:none;
     }
 
-    /* kpis pequenos */
-    .kpis{
-      position:absolute;
-      top:112px;
-      right:0;
-      display:flex;
+    .stats-card{
+      padding:12px;
+      display:grid;
       gap:8px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-      max-width:min(560px, calc(100vw - 24px));
     }
 
-    .kpi{
-      min-width:120px;
-      padding:10px 12px;
+    .stat{
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:16px;
+      padding:12px 13px;
+      box-shadow:var(--soft);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
     }
 
-    .kpi .k{
+    .stat-left{
       display:flex;
       align-items:center;
       gap:8px;
-      font-size:.8rem;
-      color:var(--muted);
       font-weight:900;
-      text-transform:uppercase;
+      font-size:.9rem;
     }
 
-    .kpi .v{
-      margin-top:4px;
-      font-size:1.18rem;
-      font-weight:1000;
-    }
+    .stat strong{font-size:1.1rem}
 
     .dot{
       width:10px;
@@ -271,71 +221,42 @@
     .dot.orange{background:var(--orange)}
     .dot.red{background:var(--red)}
 
-    /* painel selecionado no rodapé, compacto */
-    .bottom-panel{
-      position:absolute;
-      left:0;
-      bottom:0;
-      width:min(430px, calc(100vw - 24px));
-      padding:14px 16px;
-    }
-
-    .bottom-panel h3{
-      margin:0 0 4px;
-      font-size:1rem;
-    }
-
-    .muted{
-      color:var(--muted);
-      font-size:.84rem;
-    }
-
-    .kv{
-      display:grid;
-      grid-template-columns:auto 1fr;
-      gap:8px 12px;
-      margin-top:12px;
-      font-size:.9rem;
-    }
-
-    .kv b{color:var(--royal-2)}
-
-    .mini-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:14px;
-    }
-
-    .mini-btn{
-      height:38px;
-      padding:0 12px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--ink);
-      font:inherit;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:var(--soft);
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-    }
-
-    /* lista curta flutuante, não ocupa a tela toda */
-    .quick-list{
-      position:absolute;
-      right:0;
-      bottom:0;
-      width:min(430px, calc(100vw - 24px));
-      max-height:38vh;
+    .list-card{
       padding:10px;
       display:flex;
       flex-direction:column;
+      min-height:0;
+      overflow:hidden;
+    }
+
+    .list-head{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      padding:6px 6px 10px;
+    }
+
+    .list-head h3{
+      margin:0;
+      font-size:1rem;
+    }
+
+    .list-head small{
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .person-list{
+      overflow-y:auto;
+      overflow-x:hidden;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
       gap:8px;
-      overflow:auto;
+      padding:2px;
+      overscroll-behavior:contain;
+      -webkit-overflow-scrolling:touch;
     }
 
     .person{
@@ -405,6 +326,109 @@
       background:linear-gradient(90deg, rgba(212,56,56,.12) 0 58%, rgba(216,122,0,.12) 58% 100%);
     }
 
+    .main{
+      position:relative;
+      min-width:0;
+      min-height:0;
+      pointer-events:none;
+    }
+
+    .topbar-wrap{
+      position:absolute;
+      top:0;
+      right:0;
+      max-width:100%;
+    }
+
+    .topbar{
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:flex-end;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .filter-chip,
+    .small-btn{
+      height:40px;
+      padding:0 14px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--royal-2);
+      font:inherit;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:var(--soft);
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      white-space:nowrap;
+      pointer-events:auto;
+    }
+
+    .filter-chip.active,
+    .small-btn.primary{
+      background:linear-gradient(135deg,var(--royal),var(--royal-3));
+      color:#fff;
+      border:none;
+    }
+
+    .info-wrap{
+      position:absolute;
+      right:0;
+      bottom:0;
+      width:min(390px,100%);
+    }
+
+    .info-card{padding:14px 16px}
+
+    .info-card h3{
+      margin:0 0 4px;
+      font-size:1rem;
+    }
+
+    .muted{
+      color:var(--muted);
+      font-size:.84rem;
+    }
+
+    .kv{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:8px 12px;
+      margin-top:12px;
+      font-size:.9rem;
+    }
+
+    .kv b{color:var(--royal-2)}
+
+    .mini-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    .mini-btn{
+      height:38px;
+      padding:0 12px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      font:inherit;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:var(--soft);
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
     .leaflet-control-attribution{display:none}
 
     .leaflet-control-zoom{
@@ -412,8 +436,8 @@
       box-shadow:var(--shadow) !important;
       overflow:hidden;
       border-radius:16px !important;
-      margin-top:88px !important;
-      margin-right:14px !important;
+      margin-top:16px !important;
+      margin-right:16px !important;
     }
 
     .leaflet-control-zoom a{
@@ -470,38 +494,33 @@
       font-weight:900;
     }
 
-    @media (max-width:900px){
-      .topbar{
-        position:static;
-        width:100%;
-      }
-
-      .search-box,
-      .kpis,
-      .bottom-panel,
-      .quick-list{
-        position:static;
-        width:100%;
-        max-width:none;
-        margin-top:10px;
-      }
-
-      .ui-layer{
+    @media (max-width:980px){
+      .layout{
+        grid-template-columns:1fr;
         overflow:auto;
       }
 
-      .quick-list{
+      .sidebar{
         max-height:none;
       }
 
-      .leaflet-control-zoom{
-        margin-top:14px !important;
+      .main{
+        min-height:320px;
+      }
+
+      .topbar-wrap,
+      .info-wrap{
+        position:static;
+        margin-top:12px;
       }
     }
 
     @media (max-width:640px){
-      .top-right{
-        width:100%;
+      .search-actions{
+        grid-template-columns:1fr;
+      }
+
+      .topbar{
         justify-content:flex-start;
       }
 
@@ -509,81 +528,88 @@
       .small-btn{
         flex:1 1 auto;
       }
-
-      .search-actions{
-        grid-template-columns:1fr;
-      }
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div class="ui-layer">
-    <section class="card topbar">
-      <div class="top-left">
+  <div class="layout">
+    <aside class="sidebar">
+      <section class="card brand-card">
         <div class="eyebrow">Monitoramento ao vivo</div>
         <div class="title">Mapa dos motoboys</div>
-        <div class="sub">Busca rápida, filtros corretos e mapa livre para arrastar, clicar e usar zoom.</div>
-      </div>
+        <div class="sub">Zoom fixo onde você deixar. Só segue quando você mandar.</div>
+      </section>
 
-      <div class="top-right">
-        <button type="button" class="filter-chip active" data-filter="todos">Todos</button>
-        <button type="button" class="filter-chip" data-filter="online">Online</button>
-        <button type="button" class="filter-chip" data-filter="com_entrega">Com entrega</button>
-        <button type="button" class="filter-chip" data-filter="offline">Offline</button>
-        <a class="small-btn" href="/trajetos">Trajetos</a>
-        <a class="small-btn primary" href="{{ url_for('admin') }}">Voltar</a>
-      </div>
-    </section>
+      <section class="card search-card">
+        <label class="label" for="searchInput">Buscar cooperado</label>
+        <input id="searchInput" class="input" type="text" autocomplete="off" placeholder="Digite o nome do motoboy">
+        <div id="autocompleteList" class="autocomplete"></div>
 
-    <section class="card search-box">
-      <label class="label" for="searchInput">Buscar cooperado</label>
-      <input id="searchInput" class="input" type="text" autocomplete="off" placeholder="Digite o nome do motoboy">
-      <div id="autocompleteList" class="autocomplete"></div>
+        <div class="search-actions">
+          <button id="btnFollowSelected" class="action-btn primary" type="button">Seguir</button>
+          <button id="btnClearFollow" class="action-btn" type="button">Parar</button>
+          <button id="btnFitAll" class="action-btn" type="button">Enquadrar</button>
+          <button id="btnRefresh" class="action-btn" type="button">Atualizar</button>
+        </div>
+      </section>
 
-      <div class="search-actions">
-        <button id="btnFollowSelected" class="action-btn primary" type="button">Seguir</button>
-        <button id="btnClearFollow" class="action-btn" type="button">Parar</button>
-        <button id="btnFitAll" class="action-btn" type="button">Enquadrar</button>
-        <button id="btnRefresh" class="action-btn" type="button">Atualizar</button>
-      </div>
-    </section>
+      <section class="card stats-card">
+        <div class="stat">
+          <div class="stat-left"><span class="dot green"></span> Online</div>
+          <strong id="countOnline">0</strong>
+        </div>
+        <div class="stat">
+          <div class="stat-left"><span class="dot orange"></span> Com entrega</div>
+          <strong id="countBusy">0</strong>
+        </div>
+        <div class="stat">
+          <div class="stat-left"><span class="dot red"></span> Offline</div>
+          <strong id="countOffline">0</strong>
+        </div>
+      </section>
 
-    <section class="kpis">
-      <div class="card kpi">
-        <div class="k"><span class="dot green"></span> Online</div>
-        <div class="v" id="countOnline">0</div>
-      </div>
-      <div class="card kpi">
-        <div class="k"><span class="dot orange"></span> Com entrega</div>
-        <div class="v" id="countBusy">0</div>
-      </div>
-      <div class="card kpi">
-        <div class="k"><span class="dot red"></span> Offline</div>
-        <div class="v" id="countOffline">0</div>
-      </div>
-    </section>
-
-    <aside class="card bottom-panel">
-      <h3 id="infoName">Selecione um motoboy</h3>
-      <div class="muted" id="infoSubtitle">Clique em um marcador ou escolha na lista.</div>
-
-      <div class="kv">
-        <b>Status</b><span id="infoStatus">—</span>
-        <b>Velocidade</b><span id="infoSpeed">—</span>
-        <b>Entregas abertas</b><span id="infoDeliveries">—</span>
-        <b>Atualizado</b><span id="infoUpdated">—</span>
-      </div>
-
-      <div class="mini-actions">
-        <button id="btnMaps" class="mini-btn" type="button">Abrir no Maps</button>
-        <button id="btnStreet" class="mini-btn" type="button">Ver rua</button>
-        <button id="btnReplay" class="mini-btn" type="button">Trajetos</button>
-      </div>
+      <section class="card list-card">
+        <div class="list-head">
+          <h3>Cooperados</h3>
+          <small id="listMeta">0 exibidos</small>
+        </div>
+        <div id="personList" class="person-list"></div>
+      </section>
     </aside>
 
-    <section id="personList" class="quick-list"></section>
+    <section class="main">
+      <div class="topbar-wrap">
+        <section class="card topbar">
+          <button type="button" class="filter-chip active" data-filter="todos">Todos</button>
+          <button type="button" class="filter-chip" data-filter="online">Online</button>
+          <button type="button" class="filter-chip" data-filter="com_entrega">Com entrega</button>
+          <button type="button" class="filter-chip" data-filter="offline">Offline</button>
+          <a class="small-btn" href="/trajetos">Trajetos</a>
+          <a class="small-btn primary" href="{{ url_for('admin') }}">Voltar</a>
+        </section>
+      </div>
+
+      <div class="info-wrap">
+        <aside class="card info-card">
+          <h3 id="infoName">Selecione um motoboy</h3>
+          <div class="muted" id="infoSubtitle">Clique em um marcador ou escolha na lista.</div>
+
+          <div class="kv">
+            <b>Status</b><span id="infoStatus">—</span>
+            <b>Entregas abertas</b><span id="infoDeliveries">—</span>
+            <b>Atualizado</b><span id="infoUpdated">—</span>
+          </div>
+
+          <div class="mini-actions">
+            <button id="btnMaps" class="mini-btn" type="button">Abrir no Maps</button>
+            <button id="btnStreet" class="mini-btn" type="button">Ver rua</button>
+            <button id="btnReplay" class="mini-btn" type="button">Trajetos</button>
+          </div>
+        </aside>
+      </div>
+    </section>
   </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
@@ -611,11 +637,6 @@
       updateWhenIdle: true,
       keepBuffer: 8
     }).addTo(map);
-
-    setTimeout(() => map.invalidateSize(), 200);
-    window.addEventListener('resize', () => {
-      setTimeout(() => map.invalidateSize(), 120);
-    });
 
     const markers = new Map();
     let allItems = seed.slice();
@@ -647,7 +668,6 @@
     function visualState(item){
       const online = isOnline(item);
       const busy = isBusy(item);
-
       if (online && busy) return 'online_busy';
       if (online && !busy) return 'online_free';
       if (!online && busy) return 'offline_busy';
@@ -678,6 +698,12 @@
       return 1;
     }
 
+    function safeSpeedText(item){
+      const v = Number(item.velocidade);
+      if (!Number.isFinite(v) || v <= 0) return '';
+      return `${v.toFixed(1)} km/h`;
+    }
+
     function markerSvg(item){
       const state = visualState(item);
 
@@ -686,7 +712,6 @@
       let halo = 'rgba(23,165,90,.16)';
 
       if (state === 'online_busy'){
-        base = '#17a55a';
         accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
       } else if (state === 'offline_busy'){
         base = '#d43838';
@@ -717,10 +742,11 @@
     }
 
     function popupHtml(item){
+      const speed = safeSpeedText(item);
       return `
         <div class="popup-title">${item.nome || 'Cooperado'}</div>
         <div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div>
-        <div class="popup-row"><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
+        ${speed ? `<div class="popup-row"><strong>Velocidade:</strong> ${speed}</div>` : ''}
         <div class="popup-row"><strong>Entregas abertas:</strong> ${Number(item.entregas_abertas || 0)}</div>
         <div class="popup-row"><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
         <div class="popup-row"><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
@@ -734,11 +760,9 @@
 
     function setInfo(item){
       selected = item || null;
-
       $('infoName').textContent = item ? item.nome : 'Selecione um motoboy';
       $('infoSubtitle').textContent = item ? 'Use seguir para acompanhar em tempo real.' : 'Clique em um marcador ou escolha na lista.';
       $('infoStatus').textContent = item ? statusLabel(item) : '—';
-      $('infoSpeed').textContent = item ? `${Number(item.velocidade || 0).toFixed(1)} km/h` : '—';
       $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
       $('infoUpdated').textContent = item ? fmt(item.ultima_atualizacao) : '—';
 
@@ -807,6 +831,7 @@
 
     function buildList(items){
       const host = $('personList');
+      $('listMeta').textContent = `${items.length} exibidos`;
 
       if (!items.length){
         host.innerHTML = `
@@ -818,15 +843,21 @@
         return;
       }
 
-      host.innerHTML = items.slice(0, 10).map(item => `
-        <div class="person ${selected && String(selected.id) === String(item.id) ? 'active' : ''}" data-id="${item.id}">
-          <div class="person-top">
-            <strong>${item.nome}</strong>
-            <span class="badge ${badgeClass(item)}">${statusLabel(item)}</span>
+      host.innerHTML = items.map(item => {
+        const speed = safeSpeedText(item);
+        return `
+          <div class="person ${selected && String(selected.id) === String(item.id) ? 'active' : ''}" data-id="${item.id}">
+            <div class="person-top">
+              <strong>${item.nome}</strong>
+              <span class="badge ${badgeClass(item)}">${statusLabel(item)}</span>
+            </div>
+            <small>
+              ${speed ? speed + ' • ' : ''}
+              ${Number(item.entregas_abertas || 0)} entrega(s) • ${fmt(item.ultima_atualizacao)}
+            </small>
           </div>
-          <small>${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s) • ${fmt(item.ultima_atualizacao)}</small>
-        </div>
-      `).join('');
+        `;
+      }).join('');
 
       host.querySelectorAll('.person').forEach(el => {
         el.addEventListener('click', () => focusItem(el.dataset.id, true));
@@ -862,20 +893,8 @@
           marker.setLatLng([item.lat, item.lng]);
           marker.setIcon(iconFor(item));
           marker.setZIndexOffset(priority(item) * 1000 + Number(item.entregas_abertas || 0));
-          marker.off('click');
-          marker.on('click', () => {
-            setInfo(item);
-            marker.bindPopup(popupHtml(item)).openPopup();
-          });
         }
       });
-
-      if (followId){
-        const f = allItems.find(i => String(i.id) === String(followId));
-        if (f){
-          map.panTo([f.lat, f.lng], { animate:true, duration:.8 });
-        }
-      }
     }
 
     function renderAll(){
@@ -913,7 +932,6 @@
 
       const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
       map.fitBounds(bounds.pad(0.16), { maxZoom: 18 });
-      setTimeout(() => map.invalidateSize(), 120);
     }
 
     async function fetchData(){
@@ -930,10 +948,18 @@
 
         if (selected){
           const newer = allItems.find(i => String(i.id) === String(selected.id));
-          if (newer) selected = newer;
+          selected = newer || null;
+          if (newer) setInfo(newer);
         }
 
         renderAll();
+
+        if (followId){
+          const followed = allItems.find(i => String(i.id) === String(followId));
+          if (followed){
+            map.panTo([followed.lat, followed.lng], { animate:true, duration:0.8 });
+          }
+        }
       } catch(err){
         console.error(err);
       }
@@ -981,14 +1007,6 @@
 
     $('btnReplay').addEventListener('click', () => {
       window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
-    });
-
-    map.on('dragstart', () => {
-      followId = null;
-    });
-
-    map.on('zoomend moveend', () => {
-      setTimeout(() => map.invalidateSize(), 50);
     });
 
     allItems = seed.slice().sort((a, b) => {
