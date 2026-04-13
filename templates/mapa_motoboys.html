@@ -10,12 +10,10 @@
       --royal:#1248dc;
       --royal-2:#0d35ad;
       --royal-3:#2361ff;
-      --bg:#eef4ff;
       --ink:#10213f;
       --muted:#62759d;
       --line:rgba(18,72,220,.14);
       --glass:rgba(255,255,255,.90);
-      --white:#fff;
       --shadow:0 18px 50px rgba(18,72,220,.14);
       --soft:0 8px 20px rgba(16,33,63,.08);
       --green:#17a55a;
@@ -31,11 +29,8 @@
       margin:0;
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--ink);
-      background:
-        radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.20), transparent 60%),
-        radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.14), transparent 60%),
-        linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
+      background:#eef4ff;
     }
 
     #map{
@@ -77,9 +72,7 @@
       max-height:calc(100vh - 24px);
     }
 
-    .brand-card{
-      padding:16px 18px;
-    }
+    .brand-card{padding:16px 18px}
 
     .eyebrow{
       font-size:.74rem;
@@ -214,9 +207,7 @@
       font-size:.9rem;
     }
 
-    .stat strong{
-      font-size:1.1rem;
-    }
+    .stat strong{font-size:1.1rem}
 
     .dot{
       width:10px;
@@ -392,9 +383,7 @@
       width:min(390px,100%);
     }
 
-    .info-card{
-      padding:14px 16px;
-    }
+    .info-card{padding:14px 16px}
 
     .info-card h3{
       margin:0 0 4px;
@@ -550,7 +539,7 @@
       <section class="card brand-card">
         <div class="eyebrow">Monitoramento ao vivo</div>
         <div class="title">Mapa dos motoboys</div>
-        <div class="sub">Zoom fixo onde você deixar. Segue só quando você mandar.</div>
+        <div class="sub">Zoom fixo onde você deixar. Só segue quando você mandar.</div>
       </section>
 
       <section class="card search-card">
@@ -648,11 +637,6 @@
       updateWhenIdle: true,
       keepBuffer: 8
     }).addTo(map);
-
-    setTimeout(() => map.invalidateSize(), 200);
-    window.addEventListener('resize', () => {
-      setTimeout(() => map.invalidateSize(), 120);
-    });
 
     const markers = new Map();
     let allItems = seed.slice();
@@ -952,8 +936,8 @@
 
     async function fetchData(preserveView = true){
       try{
-        const center = map.getCenter();
-        const zoom = map.getZoom();
+        const currentCenter = map.getCenter();
+        const currentZoom = map.getZoom();
 
         const resp = await fetch(DATA_ENDPOINT, { cache:'no-store' });
         const data = await resp.json();
@@ -976,10 +960,10 @@
         if (followId){
           const followed = allItems.find(i => String(i.id) === String(followId));
           if (followed){
-            map.setView([followed.lat, followed.lng], zoom, { animate:false });
+            map.setView([followed.lat, followed.lng], currentZoom, { animate:false });
           }
         } else if (preserveView){
-          map.setView(center, zoom, { animate:false });
+          map.setView(currentCenter, currentZoom, { animate:false });
         }
       } catch(err){
         console.error(err);
@@ -1028,10 +1012,6 @@
 
     $('btnReplay').addEventListener('click', () => {
       window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
-    });
-
-    map.on('dragstart zoomstart', () => {
-      if (followId) followId = null;
     });
 
     allItems = seed.slice().sort((a, b) => {
