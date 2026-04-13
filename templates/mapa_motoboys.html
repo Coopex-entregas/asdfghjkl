@@ -2,26 +2,25 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Mapa dos Motoboys</title>
+  <title>Mapa dos motoboys</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root{
-      --royal:#1550e8;
-      --royal-2:#103fc2;
-      --royal-3:#3e72ff;
+      --royal:#1248dc;
+      --royal-2:#0d35ad;
+      --royal-3:#2361ff;
       --bg:#eef4ff;
-      --ink:#132443;
-      --muted:#66789f;
-      --line:rgba(21,80,232,.14);
+      --ink:#10213f;
+      --muted:#62759d;
+      --line:rgba(18,72,220,.16);
       --glass:rgba(255,255,255,.78);
-      --panel:#ffffff;
-      --green:#18a45b;
-      --orange:#d88408;
-      --red:#de3e3e;
-      --shadow:0 20px 55px rgba(17,54,154,.14);
-      --soft:0 10px 25px rgba(18,36,67,.08);
-      --radius:24px;
+      --white:#fff;
+      --shadow:0 18px 50px rgba(18,72,220,.14);
+      --soft:0 8px 20px rgba(16,33,63,.08);
+      --green:#17a55a;
+      --orange:#d87a00;
+      --red:#d43838;
     }
 
     *{box-sizing:border-box}
@@ -32,7 +31,8 @@
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(1000px 360px at 0% 0%, rgba(62,114,255,.16), transparent 60%),
+        radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.20), transparent 60%),
+        radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.14), transparent 60%),
         linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
     }
@@ -41,23 +41,30 @@
       position:fixed;
       inset:0;
       z-index:1;
-      background:#edf3ff;
+      background:#eef4ff;
     }
 
-    .shell{
+    .app-shell{
       position:fixed;
-      inset:16px;
-      z-index:800;
-      pointer-events:none;
+      inset:14px;
+      z-index:700;
       display:grid;
-      grid-template-columns:380px minmax(0,1fr);
+      grid-template-columns:340px minmax(0,1fr);
       gap:14px;
+      pointer-events:none;
     }
 
     .sidebar,
-    .toptools,
-    .floating-kpis{
+    .main-overlay{
       pointer-events:auto;
+    }
+
+    .card{
+      background:var(--glass);
+      border:1px solid var(--line);
+      border-radius:24px;
+      backdrop-filter:blur(16px);
+      box-shadow:var(--shadow);
     }
 
     .sidebar{
@@ -67,89 +74,93 @@
       min-height:0;
     }
 
-    .card{
-      background:var(--glass);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      backdrop-filter:blur(16px);
-      box-shadow:var(--shadow);
-    }
-
     .brand-card{
       padding:16px 18px;
     }
 
     .eyebrow{
       font-size:.74rem;
+      letter-spacing:.12em;
       font-weight:900;
       text-transform:uppercase;
-      letter-spacing:.12em;
       color:var(--royal);
     }
 
     .title{
-      margin-top:4px;
-      font-size:1.35rem;
+      font-size:1.22rem;
       font-weight:1000;
-      letter-spacing:-.02em;
+      margin-top:4px;
     }
 
     .sub{
-      margin-top:4px;
-      font-size:.9rem;
+      font-size:.88rem;
       color:var(--muted);
+      margin-top:4px;
       line-height:1.35;
     }
 
-    .toolbar-card{
+    .search-card{
       padding:14px;
-    }
-
-    .field{
       position:relative;
-      margin-bottom:10px;
     }
-
-    .field:last-child{margin-bottom:0}
 
     .label{
       display:block;
       font-size:.8rem;
-      font-weight:800;
       color:var(--muted);
-      margin-bottom:6px;
+      font-weight:800;
+      margin:0 0 6px;
     }
 
-    .input,
-    .select,
-    .btn{
+    .input{
       width:100%;
       height:46px;
       border-radius:16px;
       border:1px solid var(--line);
-      background:rgba(255,255,255,.92);
-      color:var(--ink);
+      background:#fff;
+      padding:0 14px;
       font:inherit;
+      color:var(--ink);
+      outline:none;
       box-shadow:var(--soft);
     }
 
-    .input,
-    .select{
-      padding:0 14px;
-      outline:none;
-    }
-
-    .btn{
-      cursor:pointer;
-      font-weight:900;
-      color:var(--royal-2);
+    .autocomplete{
+      display:none;
+      position:absolute;
+      left:14px;
+      right:14px;
+      top:88px;
       background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      max-height:260px;
+      overflow:auto;
+      z-index:999;
     }
 
-    .btn.primary{
-      background:linear-gradient(135deg,var(--royal),var(--royal-3));
-      color:#fff;
-      border:none;
+    .autocomplete.open{display:block}
+
+    .ac-item{
+      padding:12px 14px;
+      border-top:1px solid #edf2ff;
+      cursor:pointer;
+    }
+
+    .ac-item:first-child{border-top:none}
+    .ac-item:hover{background:#f6f9ff}
+
+    .ac-item strong{
+      display:block;
+      font-size:.93rem;
+    }
+
+    .ac-item small{
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:.81rem;
     }
 
     .btn-row{
@@ -159,75 +170,53 @@
       margin-top:10px;
     }
 
-    .autocomplete{
-      position:absolute;
-      left:0;
-      right:0;
-      top:74px;
+    .btn{
+      height:44px;
+      border:none;
+      border-radius:15px;
       background:#fff;
-      border:1px solid var(--line);
-      border-radius:18px;
-      box-shadow:var(--shadow);
-      overflow:hidden;
-      display:none;
-      max-height:270px;
-      overflow-y:auto;
-      z-index:1000;
-    }
-
-    .autocomplete.open{display:block}
-
-    .autocomplete-item{
-      padding:12px 14px;
-      border-top:1px solid #edf2ff;
+      color:var(--royal-2);
+      font:inherit;
+      font-weight:900;
       cursor:pointer;
-      background:#fff;
+      border:1px solid var(--line);
+      box-shadow:var(--soft);
     }
 
-    .autocomplete-item:first-child{border-top:none}
-    .autocomplete-item:hover{background:#f5f8ff}
-    .autocomplete-item strong{
-      display:block;
-      font-size:.95rem;
-    }
-    .autocomplete-item small{
-      display:block;
-      margin-top:4px;
-      color:var(--muted);
-      font-size:.82rem;
+    .btn.primary{
+      background:linear-gradient(135deg,var(--royal),var(--royal-3));
+      color:#fff;
+      border:none;
     }
 
     .stats-card{
-      padding:14px;
-    }
-
-    .stats-grid{
+      padding:12px;
       display:grid;
-      grid-template-columns:1fr;
-      gap:10px;
+      gap:8px;
     }
 
     .stat{
-      background:rgba(255,255,255,.92);
+      background:#fff;
       border:1px solid var(--line);
       border-radius:18px;
       padding:12px 13px;
       box-shadow:var(--soft);
-    }
-
-    .stat-top{
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
     }
 
-    .stat-name{
+    .stat-left{
       display:flex;
       align-items:center;
       gap:8px;
-      font-size:.9rem;
       font-weight:900;
+      font-size:.9rem;
+    }
+
+    .stat strong{
+      font-size:1.1rem;
     }
 
     .dot{
@@ -242,25 +231,20 @@
     .dot.orange{background:var(--orange)}
     .dot.red{background:var(--red)}
 
-    .stat-value{
-      font-size:1.18rem;
-      font-weight:1000;
-      color:var(--ink);
-    }
-
     .list-card{
       padding:10px;
-      min-height:0;
       display:flex;
       flex-direction:column;
+      min-height:0;
+      overflow:hidden;
     }
 
     .list-head{
-      padding:8px 8px 10px;
       display:flex;
       align-items:center;
       justify-content:space-between;
       gap:10px;
+      padding:6px 6px 10px;
     }
 
     .list-head h3{
@@ -275,11 +259,11 @@
 
     .list{
       overflow:auto;
-      padding:2px;
-      min-height:0;
       display:flex;
       flex-direction:column;
       gap:8px;
+      min-height:0;
+      padding:2px;
     }
 
     .person{
@@ -289,81 +273,77 @@
       padding:12px;
       box-shadow:var(--soft);
       cursor:pointer;
-      transition:.15s ease;
     }
 
-    .person:hover{transform:translateY(-1px)}
     .person.active{
-      border-color:rgba(21,80,232,.35);
-      box-shadow:0 10px 25px rgba(21,80,232,.12);
+      border-color:rgba(18,72,220,.34);
+      box-shadow:0 10px 24px rgba(18,72,220,.12);
     }
 
     .person-top{
       display:flex;
       align-items:center;
       justify-content:space-between;
-      gap:10px;
+      gap:8px;
     }
 
     .person strong{
-      font-size:.95rem;
       display:block;
+      font-size:.94rem;
     }
 
     .person small{
       display:block;
+      margin-top:5px;
       color:var(--muted);
-      margin-top:4px;
       line-height:1.35;
+      font-size:.82rem;
     }
 
-    .mini-badge{
+    .badge{
       display:inline-flex;
       align-items:center;
-      gap:6px;
+      justify-content:center;
+      min-height:28px;
+      padding:4px 9px;
       border-radius:999px;
-      padding:6px 9px;
       font-size:.75rem;
       font-weight:900;
       border:1px solid var(--line);
       white-space:nowrap;
     }
 
-    .mini-badge.green{
+    .badge.green{
       color:var(--green);
-      background:rgba(24,164,91,.08);
+      background:rgba(23,165,90,.10);
     }
 
-    .mini-badge.orange{
-      color:var(--orange);
-      background:rgba(216,132,8,.10);
-    }
-
-    .mini-badge.red{
+    .badge.red{
       color:var(--red);
-      background:rgba(222,62,62,.10);
+      background:rgba(212,56,56,.10);
     }
 
-    .mini-badge.mix-go{
-      color:#356130;
-      background:linear-gradient(90deg, rgba(24,164,91,.12) 0 58%, rgba(216,132,8,.12) 58% 100%);
+    .badge.mix-go{
+      color:#3d5a26;
+      background:linear-gradient(90deg, rgba(23,165,90,.12) 0 58%, rgba(216,122,0,.12) 58% 100%);
     }
 
-    .mini-badge.mix-ro{
-      color:#744232;
-      background:linear-gradient(90deg, rgba(222,62,62,.12) 0 58%, rgba(216,132,8,.12) 58% 100%);
+    .badge.mix-ro{
+      color:#7c4032;
+      background:linear-gradient(90deg, rgba(212,56,56,.12) 0 58%, rgba(216,122,0,.12) 58% 100%);
     }
 
-    .toptools{
+    .main-overlay{
       display:flex;
       flex-direction:column;
       justify-content:space-between;
       min-width:0;
+      gap:12px;
     }
 
     .topbar{
       margin-left:auto;
-      width:min(780px,100%);
+      width:min(760px,100%);
       padding:12px;
       display:flex;
       align-items:center;
@@ -382,13 +362,14 @@
     .filter-chip{
       height:42px;
       padding:0 14px;
+      border:none;
       border-radius:999px;
-      border:1px solid var(--line);
       background:#fff;
+      color:var(--royal-2);
       font:inherit;
       font-weight:900;
-      color:var(--royal-2);
       cursor:pointer;
+      border:1px solid var(--line);
       box-shadow:var(--soft);
     }
 
@@ -427,55 +408,63 @@
       border:none;
     }
 
-    .floating-kpis{
+    .bottom-panel{
       margin-left:auto;
-      width:min(780px,100%);
-      display:grid;
-      grid-template-columns:repeat(3,1fr);
-      gap:10px;
-      align-self:end;
+      width:min(500px,100%);
+      padding:14px 16px;
     }
 
-    .floating-kpi{
-      background:var(--glass);
-      border:1px solid var(--line);
-      border-radius:20px;
-      backdrop-filter:blur(16px);
-      box-shadow:var(--shadow);
-      padding:12px 14px;
+    .bottom-panel h3{
+      margin:0 0 4px;
+      font-size:1rem;
     }
 
-    .floating-kpi .k{
-      font-size:.78rem;
+    .bottom-panel .muted{
       color:var(--muted);
-      font-weight:900;
-      text-transform:uppercase;
-      letter-spacing:.04em;
+      font-size:.84rem;
     }
 
-    .floating-kpi .v{
-      margin-top:4px;
-      font-size:1.35rem;
-      font-weight:1000;
+    .kv{
+      display:grid;
+      grid-template-columns:auto 1fr;
+      gap:8px 12px;
+      margin-top:12px;
+      font-size:.9rem;
+    }
+
+    .kv b{color:var(--royal-2)}
+
+    .mini-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:14px;
+    }
+
+    .mini-actions .small-btn{
+      height:40px;
+      border-radius:12px;
     }
 
     .leaflet-control-attribution{display:none}
+
     .leaflet-control-zoom{
       border:none !important;
       box-shadow:var(--shadow) !important;
       overflow:hidden;
       border-radius:16px !important;
     }
+
     .leaflet-control-zoom a{
-      width:38px !important;
-      height:38px !important;
-      line-height:38px !important;
+      width:40px !important;
+      height:40px !important;
+      line-height:40px !important;
       color:var(--ink) !important;
       border:none !important;
     }
 
     .leaflet-popup-content-wrapper{
-      border-radius:20px;
+      border-radius:18px;
       border:1px solid var(--line);
       box-shadow:var(--shadow);
       background:#fff;
@@ -484,20 +473,19 @@
 
     .leaflet-popup-content{
       margin:14px;
-      min-width:230px;
+      min-width:220px;
     }
 
     .popup-title{
       font-size:1rem;
       font-weight:1000;
       color:var(--royal-2);
-      margin-bottom:6px;
+      margin-bottom:8px;
     }
 
     .popup-row{
-      font-size:.9rem;
       margin-top:6px;
-      color:var(--ink);
+      font-size:.9rem;
     }
 
     .popup-actions{
@@ -521,38 +509,23 @@
       font-weight:900;
     }
 
-    @media (max-width:1180px){
-      .shell{
-        grid-template-columns:340px minmax(0,1fr);
-      }
-    }
-
     @media (max-width:980px){
-      .shell{
-        inset:12px;
+      .app-shell{
         grid-template-columns:1fr;
-        grid-template-rows:auto 1fr;
-      }
-
-      .toptools{
-        order:-1;
-      }
-
-      .topbar,
-      .floating-kpis{
-        width:100%;
+        inset:12px;
       }
 
       .sidebar{
         max-height:48vh;
       }
+
+      .topbar,
+      .bottom-panel{
+        width:100%;
+      }
     }
 
     @media (max-width:640px){
-      .topbar{
-        padding:10px;
-      }
-
       .filters,
       .actions{
         width:100%;
@@ -561,15 +534,14 @@
       .filter-chip,
       .small-btn{
         flex:1 1 auto;
-        justify-content:center;
       }
 
-      .floating-kpis{
+      .btn-row{
         grid-template-columns:1fr;
       }
 
       .sidebar{
-        max-height:52vh;
+        max-height:54vh;
       }
     }
   </style>
@@ -577,24 +549,22 @@
 <body>
   <div id="map"></div>
 
-  <div class="shell">
+  <div class="app-shell">
     <aside class="sidebar">
       <section class="card brand-card">
         <div class="eyebrow">Monitoramento ao vivo</div>
-        <div class="title">Mapa dos Motoboys</div>
-        <div class="sub">Busca rápida, acompanhamento em tempo real e visual leve para seguir cooperados sem bagunça na tela.</div>
+        <div class="title">Mapa dos motoboys</div>
+        <div class="sub">Busca rápida com lista suspensa, filtros corretos e acompanhamento leve em tempo real.</div>
       </section>
 
-      <section class="card toolbar-card">
-        <div class="field">
-          <label class="label" for="searchInput">Buscar cooperado</label>
-          <input id="searchInput" class="input" type="text" autocomplete="off" placeholder="Digite o nome do motoboy">
-          <div id="autocompleteList" class="autocomplete"></div>
-        </div>
+      <section class="card search-card">
+        <label class="label" for="searchInput">Buscar cooperado</label>
+        <input id="searchInput" class="input" type="text" autocomplete="off" placeholder="Digite o nome do motoboy">
+        <div id="autocompleteList" class="autocomplete"></div>
 
         <div class="btn-row">
-          <button id="btnFollowSelected" class="btn primary" type="button">Seguir selecionado</button>
-          <button id="btnClearFollow" class="btn" type="button">Parar de seguir</button>
+          <button id="btnFollowSelected" class="btn primary" type="button">Seguir</button>
+          <button id="btnClearFollow" class="btn" type="button">Parar</button>
         </div>
 
         <div class="btn-row">
@@ -604,27 +574,17 @@
       </section>
 
       <section class="card stats-card">
-        <div class="stats-grid">
-          <div class="stat">
-            <div class="stat-top">
-              <div class="stat-name"><span class="dot green"></span> Online</div>
-              <div class="stat-value" id="countOnline">0</div>
-            </div>
-          </div>
-
-          <div class="stat">
-            <div class="stat-top">
-              <div class="stat-name"><span class="dot orange"></span> Com entrega</div>
-              <div class="stat-value" id="countBusy">0</div>
-            </div>
-          </div>
-
-          <div class="stat">
-            <div class="stat-top">
-              <div class="stat-name"><span class="dot red"></span> Offline</div>
-              <div class="stat-value" id="countOffline">0</div>
-            </div>
-          </div>
+        <div class="stat">
+          <div class="stat-left"><span class="dot green"></span> Online</div>
+          <strong id="countOnline">0</strong>
+        </div>
+        <div class="stat">
+          <div class="stat-left"><span class="dot orange"></span> Com entrega</div>
+          <strong id="countBusy">0</strong>
+        </div>
+        <div class="stat">
+          <div class="stat-left"><span class="dot red"></span> Offline</div>
+          <strong id="countOffline">0</strong>
         </div>
       </section>
 
@@ -637,7 +597,7 @@
       </section>
     </aside>
 
-    <section class="toptools">
+    <section class="main-overlay">
       <div class="card topbar">
         <div class="filters">
           <button type="button" class="filter-chip active" data-filter="todos">Todos</button>
@@ -652,20 +612,23 @@
         </div>
       </div>
 
-      <div class="floating-kpis">
-        <div class="floating-kpi">
-          <div class="k">Selecionado</div>
-          <div class="v" id="selectedName">Nenhum</div>
+      <aside class="card bottom-panel">
+        <h3 id="infoName">Selecione um motoboy</h3>
+        <div class="muted" id="infoSubtitle">Clique na lista, use a busca ou toque no marcador no mapa.</div>
+
+        <div class="kv">
+          <b>Status</b><span id="infoStatus">—</span>
+          <b>Velocidade</b><span id="infoSpeed">—</span>
+          <b>Entregas abertas</b><span id="infoDeliveries">—</span>
+          <b>Atualizado</b><span id="infoUpdated">—</span>
         </div>
-        <div class="floating-kpi">
-          <div class="k">Status</div>
-          <div class="v" id="selectedStatus">—</div>
+
+        <div class="mini-actions">
+          <button id="btnMaps" class="small-btn" type="button">Abrir no Maps</button>
+          <button id="btnStreet" class="small-btn" type="button">Ver rua</button>
+          <button id="btnReplay" class="small-btn" type="button">Trajetos</button>
         </div>
-        <div class="floating-kpi">
-          <div class="k">Entregas abertas</div>
-          <div class="v" id="selectedDeliveries">—</div>
-        </div>
-      </div>
+      </aside>
     </section>
   </div>
 
@@ -681,13 +644,12 @@
     const map = L.map('map', {
       preferCanvas: true,
       zoomControl: true,
-      zoomSnap: 0.25,
-      zoomDelta: 0.5,
       minZoom: 3,
-      maxZoom: 21
+      maxZoom: 21,
+      zoomSnap: 0.25
     }).setView([-5.79448, -35.211], 12);
 
-    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+    const tiles = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       minZoom: 3,
       maxZoom: 22,
       maxNativeZoom: 19,
@@ -708,9 +670,9 @@
     let currentFilter = 'todos';
     let timer = null;
 
-    const $ = (id) => document.getElementById(id);
-    const norm = (s) => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const fmt = (v) => (v === null || v === undefined || v === '') ? '—' : String(v);
+    const $ = id => document.getElementById(id);
+    const norm = s => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const fmt = v => (v === null || v === undefined || v === '') ? '—' : String(v);
 
     function mapsUrl(lat, lng){
       return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -765,34 +727,32 @@
     function markerSvg(item){
       const state = visualState(item);
 
-      let base = '#18a45b';
-      let accent = null;
-      let halo = 'rgba(24,164,91,.16)';
+      let base = '#17a55a';
+      let accent = '';
+      let halo = 'rgba(23,165,90,.16)';
 
       if (state === 'online_busy'){
-        base = '#18a45b';
-        accent = '#d88408';
-        halo = 'rgba(24,164,91,.16)';
+        base = '#17a55a';
+        accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
+        halo = 'rgba(23,165,90,.16)';
       } else if (state === 'online_free'){
-        base = '#18a45b';
-        accent = null;
-        halo = 'rgba(24,164,91,.16)';
+        base = '#17a55a';
+        halo = 'rgba(23,165,90,.16)';
       } else if (state === 'offline_busy'){
-        base = '#de3e3e';
-        accent = '#d88408';
-        halo = 'rgba(222,62,62,.16)';
+        base = '#d43838';
+        accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
+        halo = 'rgba(212,56,56,.16)';
       } else {
-        base = '#de3e3e';
-        accent = null;
-        halo = 'rgba(222,62,62,.16)';
+        base = '#d43838';
+        halo = 'rgba(212,56,56,.16)';
       }
 
       return `
         <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
           <circle cx="12" cy="12" r="11" fill="${halo}"/>
-          <circle cx="12" cy="12" r="7.2" fill="${base}" stroke="#ffffff" stroke-width="2"/>
-          <circle cx="12" cy="12" r="2.15" fill="#ffffff"/>
-          ${accent ? `<circle cx="18" cy="6" r="4" fill="${accent}" stroke="#ffffff" stroke-width="1.5"/>` : ''}
+          <circle cx="12" cy="12" r="7.4" fill="${base}" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="12" cy="12" r="2.1" fill="#ffffff"/>
+          ${accent}
         </svg>
       `;
     }
@@ -809,7 +769,7 @@
     function popupHtml(item){
       return `
         <div class="popup-title">${item.nome || 'Cooperado'}</div>
-        <div><span class="mini-badge ${badgeClass(item)}">${statusLabel(item)}</span></div>
+        <div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div>
         <div class="popup-row"><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
         <div class="popup-row"><strong>Entregas abertas:</strong> ${Number(item.entregas_abertas || 0)}</div>
         <div class="popup-row"><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
@@ -822,11 +782,17 @@
       `;
     }
 
-    function setSelected(item){
+    function setInfo(item){
       selected = item || null;
-      $('selectedName').textContent = item ? item.nome : 'Nenhum';
-      $('selectedStatus').textContent = item ? statusLabel(item) : '—';
-      $('selectedDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
+
+      $('infoName').textContent = item ? item.nome : 'Selecione um motoboy';
+      $('infoSubtitle').textContent = item
+        ? 'Use seguir para acompanhar em tempo real.'
+        : 'Clique na lista, use a busca ou toque no marcador no mapa.';
+      $('infoStatus').textContent = item ? statusLabel(item) : '—';
+      $('infoSpeed').textContent = item ? `${Number(item.velocidade || 0).toFixed(1)} km/h` : '—';
+      $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
+      $('infoUpdated').textContent = item ? fmt(item.ultima_atualizacao) : '—';
 
       document.querySelectorAll('.person').forEach(el => {
         el.classList.toggle('active', item && String(el.dataset.id) === String(item.id));
@@ -845,10 +811,10 @@
       });
     }
 
-    function refreshCounters(itemsBase = allItems){
-      $('countOnline').textContent = itemsBase.filter(i => isOnline(i)).length;
-      $('countBusy').textContent = itemsBase.filter(i => isBusy(i)).length;
-      $('countOffline').textContent = itemsBase.filter(i => !isOnline(i)).length;
+    function refreshCounters(){
+      $('countOnline').textContent = allItems.filter(i => isOnline(i)).length;
+      $('countBusy').textContent = allItems.filter(i => isBusy(i)).length;
+      $('countOffline').textContent = allItems.filter(i => !isOnline(i)).length;
     }
 
     function buildAutocomplete(){
@@ -861,9 +827,7 @@
         return;
       }
 
-      const matches = allItems
-        .filter(i => norm(i.nome).includes(q))
-        .slice(0, 8);
+      const matches = allItems.filter(i => norm(i.nome).includes(q)).slice(0, 8);
 
       if (!matches.length){
         host.classList.remove('open');
@@ -872,7 +836,7 @@
       }
 
       host.innerHTML = matches.map(item => `
-        <div class="autocomplete-item" data-id="${item.id}">
+        <div class="ac-item" data-id="${item.id}">
           <strong>${item.nome}</strong>
           <small>${statusLabel(item)} • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
         </div>
@@ -880,7 +844,7 @@
 
       host.classList.add('open');
 
-      host.querySelectorAll('.autocomplete-item').forEach(el => {
+      host.querySelectorAll('.ac-item').forEach(el => {
         el.addEventListener('click', () => {
           const id = el.dataset.id;
           const item = allItems.find(i => String(i.id) === String(id));
@@ -911,24 +875,22 @@
         <div class="person ${selected && String(selected.id) === String(item.id) ? 'active' : ''}" data-id="${item.id}">
           <div class="person-top">
             <strong>${item.nome}</strong>
-            <span class="mini-badge ${badgeClass(item)}">${statusLabel(item)}</span>
+            <span class="badge ${badgeClass(item)}">${statusLabel(item)}</span>
           </div>
           <small>${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s) • ${fmt(item.ultima_atualizacao)}</small>
         </div>
       `).join('');
 
       host.querySelectorAll('.person').forEach(el => {
-        el.addEventListener('click', () => {
-          focusItem(el.dataset.id, true);
-        });
+        el.addEventListener('click', () => focusItem(el.dataset.id, true));
       });
     }
 
     function renderMarkers(items){
-      const visibleIds = new Set(items.map(i => String(i.id)));
+      const ids = new Set(items.map(i => String(i.id)));
 
       Array.from(markers.keys()).forEach(id => {
-        if (!visibleIds.has(String(id))){
+        if (!ids.has(String(id))){
           map.removeLayer(markers.get(id));
           markers.delete(id);
         }
@@ -944,7 +906,7 @@
           }).addTo(map);
 
           marker.on('click', () => {
-            setSelected(item);
+            setInfo(item);
             marker.bindPopup(popupHtml(item)).openPopup();
           });
 
@@ -955,50 +917,46 @@
           marker.setZIndexOffset(priority(item) * 1000 + Number(item.entregas_abertas || 0));
           marker.off('click');
           marker.on('click', () => {
-            setSelected(item);
+            setInfo(item);
             marker.bindPopup(popupHtml(item)).openPopup();
           });
         }
       });
 
-      if (selected){
-        const newer = allItems.find(i => String(i.id) === String(selected.id));
-        if (newer) setSelected(newer);
-      }
-
       if (followId){
-        const followed = allItems.find(i => String(i.id) === String(followId));
-        if (followed){
-          map.panTo([followed.lat, followed.lng], { animate:true, duration:.8 });
+        const f = allItems.find(i => String(i.id) === String(followId));
+        if (f){
+          map.panTo([f.lat, f.lng], { animate:true, duration:.8 });
         }
       }
     }
 
     function renderAll(){
       const items = filteredItems();
-      refreshCounters(allItems);
+      refreshCounters();
       buildList(items);
       renderMarkers(items);
       buildAutocomplete();
     }
 
-    function focusItem(id, openPopup = false){
+    function focusItem(id, openPopup){
       const item = allItems.find(i => String(i.id) === String(id));
       if (!item) return;
 
-      setSelected(item);
+      setInfo(item);
 
-      const marker = markers.get(item.id);
+      let marker = markers.get(item.id);
       if (!marker){
         renderAll();
+        marker = markers.get(item.id);
       }
 
-      const readyMarker = markers.get(item.id);
-      if (!readyMarker) return;
+      if (!marker) return;
 
       map.setView([item.lat, item.lng], Math.max(map.getZoom(), 18), { animate:true });
+
       if (openPopup){
-        readyMarker.bindPopup(popupHtml(item)).openPopup();
+        marker.bindPopup(popupHtml(item)).openPopup();
       }
     }
 
@@ -1008,8 +966,7 @@
 
       const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
       map.fitBounds(bounds.pad(0.16), { maxZoom: 18 });
-
-      setTimeout(() => map.invalidateSize(), 100);
+      setTimeout(() => map.invalidateSize(), 120);
     }
 
     async function fetchData(){
@@ -1030,7 +987,7 @@
         }
 
         renderAll();
-      } catch (err){
+      } catch(err){
         console.error(err);
       }
     }
@@ -1069,15 +1026,22 @@
       followId = null;
     });
 
-    $('btnFitAll').addEventListener('click', () => {
-      fitAll();
+    $('btnFitAll').addEventListener('click', fitAll);
+    $('btnRefresh').addEventListener('click', fetchData);
+
+    $('btnMaps').addEventListener('click', () => {
+      if (selected) window.open(mapsUrl(selected.lat, selected.lng), '_blank', 'noopener');
     });
 
-    $('btnRefresh').addEventListener('click', () => {
-      fetchData();
+    $('btnStreet').addEventListener('click', () => {
+      if (selected) window.open(streetUrl(selected.lat, selected.lng), '_blank', 'noopener');
     });
 
-    map.on('dragstart zoomstart', () => {
+    $('btnReplay').addEventListener('click', () => {
+      window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
+    });
+
+    map.on('dragstart', () => {
       followId = null;
     });
 
