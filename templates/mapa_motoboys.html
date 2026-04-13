@@ -7,19 +7,10 @@
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root{
-      --royal:#1248dc;
-      --royal-2:#0d35ad;
-      --royal-3:#2361ff;
-      --ink:#10213f;
-      --muted:#62759d;
-      --line:rgba(18,72,220,.14);
-      --glass:rgba(255,255,255,.92);
-      --shadow:0 18px 50px rgba(18,72,220,.14);
-      --soft:0 8px 20px rgba(16,33,63,.08);
-      --green:#17a55a;
-      --orange:#d87a00;
-      --red:#d43838;
-      --radius:22px;
+      --royal:#1248dc; --royal-2:#0d35ad; --royal-3:#2361ff; --bg:#eef4ff; --ink:#10213f; --muted:#62759d;
+      --line:rgba(18,72,220,.16); --glass:rgba(255,255,255,.72); --white:#fff;
+      --shadow:0 22px 60px rgba(18,72,220,.14); --soft:0 10px 24px rgba(16,33,63,.08);
+      --green:#17a55a; --orange:#d87a00; --red:#d43838;
     }
 
     *{box-sizing:border-box}
@@ -29,588 +20,190 @@
       margin:0;
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--ink);
+      background:
+        radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.22), transparent 60%),
+        radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.16), transparent 60%),
+        linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
-      background:#eef4ff;
     }
 
-    #map{
-      position:fixed;
-      inset:0;
-      z-index:1;
-      background:#eef4ff;
+    #map{position:fixed; inset:0; z-index:1}
+
+    .topbar{
+      position:fixed; left:16px; right:16px; top:16px; z-index:700;
+      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
+      padding:14px 16px; border-radius:26px; border:1px solid var(--line); background:var(--glass);
+      backdrop-filter:blur(18px); box-shadow:var(--shadow);
     }
 
-    .layout{
-      position:fixed;
-      inset:12px;
-      z-index:700;
-      display:grid;
-      grid-template-columns:360px 1fr;
-      gap:12px;
+    .eyebrow{font-size:.74rem; letter-spacing:.12em; font-weight:900; text-transform:uppercase; color:var(--royal)}
+    .title{font-size:1.2rem; font-weight:1000; margin-top:2px}
+    .sub{font-size:.86rem; color:var(--muted); margin-top:2px}
+
+    .controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
+
+    .btn,.input,.select{
+      height:44px; border-radius:16px; border:1px solid var(--line); font:inherit; box-shadow:var(--soft);
+      background:rgba(255,255,255,.84);
+    }
+
+    .btn{
+      padding:0 14px; color:var(--royal-2); font-weight:900; cursor:pointer; text-decoration:none;
+      display:inline-flex; align-items:center; gap:8px;
+    }
+
+    .btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3)); color:#fff}
+    .btn:hover{transform:translateY(-1px)}
+
+    .input,.select{padding:0 14px; color:var(--ink); outline:none}
+    .input{width:190px}
+    .select{min-width:170px}
+
+    .floating{
+      position:fixed; left:16px; right:16px; bottom:16px; z-index:700;
+      display:grid; grid-template-columns:1.2fr auto; gap:12px; align-items:end;
       pointer-events:none;
     }
 
-    .sidebar,
-    .topbar-wrap,
-    .info-wrap{
+    .panel,.chips{
       pointer-events:auto;
-    }
-
-    .card{
+      border:1px solid var(--line);
       background:var(--glass);
-      border:1px solid var(--line);
-      border-radius:var(--radius);
-      backdrop-filter:blur(14px);
+      backdrop-filter:blur(16px);
       box-shadow:var(--shadow);
     }
 
-    .sidebar{
-      display:grid;
-      grid-template-rows:auto auto auto minmax(0,1fr);
-      gap:12px;
-      min-height:0;
-      max-height:calc(100vh - 24px);
+    .chips{
+      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start;
+      border-radius:24px; padding:12px 14px;
     }
 
-    .brand-card{padding:16px 18px}
-
-    .eyebrow{
-      font-size:.74rem;
-      letter-spacing:.12em;
-      font-weight:900;
-      text-transform:uppercase;
-      color:var(--royal);
+    .chip{
+      display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:999px;
+      background:rgba(255,255,255,.86); border:1px solid var(--line); font-weight:900; font-size:.86rem; box-shadow:var(--soft);
     }
 
-    .title{
-      font-size:1.18rem;
-      font-weight:1000;
-      margin-top:4px;
-    }
-
-    .sub{
-      font-size:.84rem;
-      color:var(--muted);
-      margin-top:4px;
-      line-height:1.35;
-    }
-
-    .search-card{
-      padding:12px;
-      position:relative;
-    }
-
-    .label{
-      display:block;
-      font-size:.8rem;
-      color:var(--muted);
-      font-weight:800;
-      margin:0 0 6px;
-    }
-
-    .input{
-      width:100%;
-      height:44px;
-      border-radius:15px;
-      border:1px solid var(--line);
-      background:#fff;
-      padding:0 14px;
-      font:inherit;
-      color:var(--ink);
-      outline:none;
-      box-shadow:var(--soft);
-    }
-
-    .autocomplete{
-      display:none;
-      margin-top:8px;
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:16px;
-      box-shadow:var(--shadow);
-      max-height:220px;
-      overflow:auto;
-    }
-
-    .autocomplete.open{display:block}
-
-    .ac-item{
-      padding:11px 12px;
-      border-top:1px solid #edf2ff;
-      cursor:pointer;
-    }
-
-    .ac-item:first-child{border-top:none}
-    .ac-item:hover{background:#f6f9ff}
-
-    .ac-item strong{
-      display:block;
-      font-size:.92rem;
-    }
-
-    .ac-item small{
-      display:block;
-      margin-top:4px;
-      color:var(--muted);
-      font-size:.81rem;
-    }
-
-    .search-actions{
-      display:grid;
-      grid-template-columns:1fr 1fr;
-      gap:8px;
-      margin-top:10px;
-    }
-
-    .action-btn{
-      height:42px;
-      border:none;
-      border-radius:14px;
-      background:#fff;
-      color:var(--royal-2);
-      font:inherit;
-      font-weight:900;
-      cursor:pointer;
-      border:1px solid var(--line);
-      box-shadow:var(--soft);
-    }
-
-    .action-btn.primary{
-      background:linear-gradient(135deg,var(--royal),var(--royal-3));
-      color:#fff;
-      border:none;
-    }
-
-    .stats-card{
-      padding:12px;
-      display:grid;
-      gap:8px;
-    }
-
-    .stat{
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:12px 13px;
-      box-shadow:var(--soft);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-    }
-
-    .stat-left{
-      display:flex;
-      align-items:center;
-      gap:8px;
-      font-weight:900;
-      font-size:.9rem;
-    }
-
-    .stat strong{font-size:1.1rem}
-
-    .dot{
-      width:10px;
-      height:10px;
-      border-radius:999px;
-      display:inline-block;
-      flex:0 0 auto;
-    }
-
+    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
     .dot.green{background:var(--green)}
     .dot.orange{background:var(--orange)}
     .dot.red{background:var(--red)}
 
-    .list-card{
-      padding:10px;
-      display:flex;
-      flex-direction:column;
-      min-height:0;
-      overflow:hidden;
+    .panel{
+      max-width:480px; border-radius:28px; padding:14px 16px;
     }
 
-    .list-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
-      padding:6px 6px 10px;
-    }
-
-    .list-head h3{
-      margin:0;
-      font-size:1rem;
-    }
-
-    .list-head small{
-      color:var(--muted);
-      font-weight:700;
-    }
-
-    .person-list{
-      overflow-y:auto;
-      overflow-x:hidden;
-      min-height:0;
-      display:flex;
-      flex-direction:column;
-      gap:8px;
-      padding:2px;
-      overscroll-behavior:contain;
-      -webkit-overflow-scrolling:touch;
-    }
-
-    .person{
-      background:#fff;
-      border:1px solid var(--line);
-      border-radius:16px;
-      padding:11px 12px;
-      box-shadow:var(--soft);
-      cursor:pointer;
-    }
-
-    .person.active{
-      border-color:rgba(18,72,220,.34);
-      box-shadow:0 10px 24px rgba(18,72,220,.12);
-    }
-
-    .person-top{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:8px;
-    }
-
-    .person strong{
-      display:block;
-      font-size:.92rem;
-    }
-
-    .person small{
-      display:block;
-      margin-top:5px;
-      color:var(--muted);
-      line-height:1.35;
-      font-size:.81rem;
-    }
-
-    .badge{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-height:26px;
-      padding:4px 9px;
-      border-radius:999px;
-      font-size:.74rem;
-      font-weight:900;
-      border:1px solid var(--line);
-      white-space:nowrap;
-    }
-
-    .badge.green{
-      color:var(--green);
-      background:rgba(23,165,90,.10);
-    }
-
-    .badge.red{
-      color:var(--red);
-      background:rgba(212,56,56,.10);
-    }
-
-    .badge.mix-go{
-      color:#3d5a26;
-      background:linear-gradient(90deg, rgba(23,165,90,.12) 0 58%, rgba(216,122,0,.12) 58% 100%);
-    }
-
-    .badge.mix-ro{
-      color:#7c4032;
-      background:linear-gradient(90deg, rgba(212,56,56,.12) 0 58%, rgba(216,122,0,.12) 58% 100%);
-    }
-
-    .main{
-      position:relative;
-      min-width:0;
-      min-height:0;
-      pointer-events:none;
-    }
-
-    .topbar-wrap{
-      position:absolute;
-      top:0;
-      right:0;
-      max-width:100%;
-    }
-
-    .topbar{
-      padding:12px;
-      display:flex;
-      align-items:center;
-      justify-content:flex-end;
-      gap:8px;
-      flex-wrap:wrap;
-    }
-
-    .filter-chip,
-    .small-btn{
-      height:40px;
-      padding:0 14px;
-      border-radius:999px;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--royal-2);
-      font:inherit;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:var(--soft);
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      white-space:nowrap;
-      pointer-events:auto;
-    }
-
-    .filter-chip.active,
-    .small-btn.primary{
-      background:linear-gradient(135deg,var(--royal),var(--royal-3));
-      color:#fff;
-      border:none;
-    }
-
-    .info-wrap{
-      position:absolute;
-      right:0;
-      bottom:0;
-      width:min(390px,100%);
-    }
-
-    .info-card{padding:14px 16px}
-
-    .info-card h3{
-      margin:0 0 4px;
-      font-size:1rem;
-    }
-
-    .muted{
-      color:var(--muted);
-      font-size:.84rem;
-    }
+    .panel h3{margin:0 0 4px; font-size:1rem}
+    .muted{color:var(--muted); font-size:.85rem}
 
     .kv{
-      display:grid;
-      grid-template-columns:auto 1fr;
-      gap:8px 12px;
-      margin-top:12px;
-      font-size:.9rem;
+      display:grid; grid-template-columns:auto 1fr; gap:8px 12px; margin-top:12px; font-size:.9rem
     }
 
     .kv b{color:var(--royal-2)}
 
-    .mini-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:14px;
+    .mini-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
+    .mini-actions .btn{height:40px; border-radius:14px}
+
+    .listpill{
+      max-width:100%; display:flex; gap:8px; overflow:auto; padding-bottom:2px;
     }
 
-    .mini-btn{
-      height:38px;
-      padding:0 12px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:#fff;
-      color:var(--ink);
-      font:inherit;
-      font-weight:900;
-      cursor:pointer;
-      box-shadow:var(--soft);
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
+    .person{
+      min-width:180px; padding:10px 12px; border-radius:18px; border:1px solid var(--line);
+      background:rgba(255,255,255,.86); box-shadow:var(--soft); cursor:pointer;
     }
+
+    .person strong{display:block; font-size:.92rem}
+    .person small{display:block; margin-top:3px; color:var(--muted)}
 
     .leaflet-control-attribution{display:none}
 
-    .leaflet-control-zoom{
-      border:none !important;
-      box-shadow:var(--shadow) !important;
-      overflow:hidden;
-      border-radius:16px !important;
-      margin-top:16px !important;
-      margin-right:16px !important;
-    }
-
-    .leaflet-control-zoom a{
-      width:40px !important;
-      height:40px !important;
-      line-height:40px !important;
-      color:var(--ink) !important;
-      border:none !important;
-    }
-
     .leaflet-popup-content-wrapper{
-      border-radius:18px;
-      border:1px solid var(--line);
-      box-shadow:var(--shadow);
-      background:#fff;
-      color:var(--ink);
+      border-radius:18px; border:1px solid var(--line); box-shadow:var(--shadow); background:#fff; color:var(--ink)
     }
 
-    .leaflet-popup-content{
-      margin:14px;
-      min-width:220px;
+    .leaflet-popup-content{margin:14px 14px 12px}
+    .popup-title{font-size:1rem; font-weight:1000; color:var(--royal-2)}
+
+    .badge{
+      display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; font-size:.78rem;
+      font-weight:900; border:1px solid var(--line); margin-right:6px; margin-top:8px;
     }
 
-    .popup-title{
-      font-size:1rem;
-      font-weight:1000;
-      color:var(--royal-2);
-      margin-bottom:8px;
+    .badge.green{background:rgba(23,165,90,.10)}
+    .badge.orange{background:rgba(216,122,0,.12)}
+    .badge.red{background:rgba(212,56,56,.12)}
+
+    .badge.mix-go{
+      background:linear-gradient(90deg, rgba(23,165,90,.12) 0 55%, rgba(216,122,0,.12) 55% 100%);
     }
 
-    .popup-row{
-      margin-top:6px;
-      font-size:.9rem;
+    .badge.mix-ro{
+      background:linear-gradient(90deg, rgba(212,56,56,.12) 0 55%, rgba(216,122,0,.12) 55% 100%);
     }
 
-    .popup-actions{
-      display:flex;
-      gap:8px;
-      flex-wrap:wrap;
-      margin-top:12px;
-    }
-
-    .popup-actions a{
-      text-decoration:none;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      padding:8px 10px;
-      border-radius:12px;
-      border:1px solid var(--line);
-      background:#f8fbff;
-      color:var(--royal-2);
-      font-size:.82rem;
-      font-weight:900;
-    }
-
-    @media (max-width:980px){
-      .layout{
-        grid-template-columns:1fr;
-        overflow:auto;
-      }
-
-      .sidebar{
-        max-height:none;
-      }
-
-      .main{
-        min-height:320px;
-      }
-
-      .topbar-wrap,
-      .info-wrap{
-        position:static;
-        margin-top:12px;
-      }
-    }
-
-    @media (max-width:640px){
-      .search-actions{
-        grid-template-columns:1fr;
-      }
-
-      .topbar{
-        justify-content:flex-start;
-      }
-
-      .filter-chip,
-      .small-btn{
-        flex:1 1 auto;
-      }
+    @media(max-width:900px){
+      .floating{grid-template-columns:1fr}
+      .panel{max-width:none}
+      .topbar{left:12px; right:12px; top:12px}
+      .floating{left:12px; right:12px; bottom:12px}
+      .controls{width:100%}
+      .input{width:100%}
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <div class="layout">
-    <aside class="sidebar">
-      <section class="card brand-card">
-        <div class="eyebrow">Monitoramento ao vivo</div>
-        <div class="title">Mapa dos motoboys</div>
-        <div class="sub">Zoom fixo onde você deixar. Só segue quando você mandar.</div>
-      </section>
+  <section class="topbar">
+    <div>
+      <div class="eyebrow">Monitoramento ao vivo</div>
+      <div class="title">Mapa dos motoboys</div>
+      <div class="sub">Marcadores discretos, leitura rápida de online, offline e entregas em aberto.</div>
+    </div>
 
-      <section class="card search-card">
-        <label class="label" for="searchInput">Buscar cooperado</label>
-        <input id="searchInput" class="input" type="text" autocomplete="off" placeholder="Digite o nome do motoboy">
-        <div id="autocompleteList" class="autocomplete"></div>
+    <div class="controls">
+      <input id="search" class="input" placeholder="Buscar cooperado">
+      <select id="statusFilter" class="select">
+        <option value="todos">Todos</option>
+        <option value="em_corrida">Com entrega</option>
+        <option value="livre">Online livre</option>
+        <option value="offline">Offline</option>
+      </select>
+      <button id="btnReload" class="btn" type="button">Atualizar</button>
+      <button id="btnFit" class="btn" type="button">Enquadrar</button>
+      <a class="btn" href="/trajetos">Trajetos</a>
+      <a class="btn primary" href="{{ url_for('admin') }}">Voltar</a>
+    </div>
+  </section>
 
-        <div class="search-actions">
-          <button id="btnFollowSelected" class="action-btn primary" type="button">Seguir</button>
-          <button id="btnClearFollow" class="action-btn" type="button">Parar</button>
-          <button id="btnFitAll" class="action-btn" type="button">Enquadrar</button>
-          <button id="btnRefresh" class="action-btn" type="button">Atualizar</button>
-        </div>
-      </section>
+  <section class="floating">
+    <div class="chips">
+      <span class="chip"><span class="dot orange"></span> Com entrega <strong id="countBusy">0</strong></span>
+      <span class="chip"><span class="dot green"></span> Online livre <strong id="countOnline">0</strong></span>
+      <span class="chip"><span class="dot red"></span> Offline <strong id="countOffline">0</strong></span>
+      <div class="listpill" id="quickList"></div>
+    </div>
 
-      <section class="card stats-card">
-        <div class="stat">
-          <div class="stat-left"><span class="dot green"></span> Online</div>
-          <strong id="countOnline">0</strong>
-        </div>
-        <div class="stat">
-          <div class="stat-left"><span class="dot orange"></span> Com entrega</div>
-          <strong id="countBusy">0</strong>
-        </div>
-        <div class="stat">
-          <div class="stat-left"><span class="dot red"></span> Offline</div>
-          <strong id="countOffline">0</strong>
-        </div>
-      </section>
+    <aside class="panel">
+      <h3 id="infoName">Selecione um motoboy</h3>
+      <div class="muted" id="infoSubtitle">Ao clicar no marcador aparece o status combinado e os atalhos do mapa.</div>
 
-      <section class="card list-card">
-        <div class="list-head">
-          <h3>Cooperados</h3>
-          <small id="listMeta">0 exibidos</small>
-        </div>
-        <div id="personList" class="person-list"></div>
-      </section>
+      <div class="kv">
+        <b>Status</b><span id="infoStatus">—</span>
+        <b>Velocidade</b><span id="infoSpeed">—</span>
+        <b>Entregas abertas</b><span id="infoDeliveries">—</span>
+        <b>Atualizado</b><span id="infoUpdated">—</span>
+      </div>
+
+      <div class="mini-actions">
+        <button id="btnFollow" class="btn primary" type="button">Seguir</button>
+        <button id="btnMaps" class="btn" type="button">Abrir no Maps</button>
+        <button id="btnStreet" class="btn" type="button">Ver rua</button>
+        <button id="btnReplay" class="btn" type="button">Trajetos</button>
+      </div>
     </aside>
-
-    <section class="main">
-      <div class="topbar-wrap">
-        <section class="card topbar">
-          <button type="button" class="filter-chip active" data-filter="todos">Todos</button>
-          <button type="button" class="filter-chip" data-filter="online">Online</button>
-          <button type="button" class="filter-chip" data-filter="com_entrega">Com entrega</button>
-          <button type="button" class="filter-chip" data-filter="offline">Offline</button>
-          <a class="small-btn" href="/trajetos">Trajetos</a>
-          <a class="small-btn primary" href="{{ url_for('admin') }}">Voltar</a>
-        </section>
-      </div>
-
-      <div class="info-wrap">
-        <aside class="card info-card">
-          <h3 id="infoName">Selecione um motoboy</h3>
-          <div class="muted" id="infoSubtitle">Clique em um marcador ou escolha na lista.</div>
-
-          <div class="kv">
-            <b>Status</b><span id="infoStatus">—</span>
-            <b>Entregas abertas</b><span id="infoDeliveries">—</span>
-            <b>Atualizado</b><span id="infoUpdated">—</span>
-          </div>
-
-          <div class="mini-actions">
-            <button id="btnMaps" class="mini-btn" type="button">Abrir no Maps</button>
-            <button id="btnStreet" class="mini-btn" type="button">Ver rua</button>
-            <button id="btnReplay" class="mini-btn" type="button">Trajetos</button>
-          </div>
-        </aside>
-      </div>
-    </section>
-  </div>
+  </section>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
@@ -621,28 +214,16 @@
     const DATA_ENDPOINT = '/mapa_motoboys?format=json';
     const POLL_MS = 2000;
 
-    const map = L.map('map', {
-      preferCanvas: true,
-      zoomControl: true,
-      minZoom: 3,
-      maxZoom: 21,
-      zoomSnap: 0.25
-    }).setView([-5.79448, -35.211], 12);
+    const map = L.map('map', { preferCanvas:true, zoomControl:true }).setView([-5.79448, -35.211], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      minZoom: 3,
-      maxZoom: 22,
-      maxNativeZoom: 19,
-      updateWhenZooming: false,
-      updateWhenIdle: true,
-      keepBuffer: 8
+      maxZoom:20
     }).addTo(map);
 
     const markers = new Map();
     let allItems = seed.slice();
     let selected = null;
     let followId = null;
-    let currentFilter = 'todos';
     let timer = null;
 
     const $ = id => document.getElementById(id);
@@ -666,8 +247,9 @@
     }
 
     function visualState(item){
-      const online = isOnline(item);
       const busy = isBusy(item);
+      const online = isOnline(item);
+
       if (online && busy) return 'online_busy';
       if (online && !busy) return 'online_free';
       if (!online && busy) return 'offline_busy';
@@ -677,12 +259,12 @@
     function statusLabel(item){
       const state = visualState(item);
       if (state === 'online_busy') return 'Online com entrega';
-      if (state === 'online_free') return 'Online';
+      if (state === 'online_free') return 'Online livre';
       if (state === 'offline_busy') return 'Offline com entrega';
       return 'Offline';
     }
 
-    function badgeClass(item){
+    function statusBadgeClass(item){
       const state = visualState(item);
       if (state === 'online_busy') return 'mix-go';
       if (state === 'online_free') return 'green';
@@ -698,62 +280,73 @@
       return 1;
     }
 
-    function safeSpeedText(item){
-      const v = Number(item.velocidade);
-      if (!Number.isFinite(v) || v <= 0) return '';
-      return `${v.toFixed(1)} km/h`;
-    }
-
     function markerSvg(item){
       const state = visualState(item);
 
       let base = '#17a55a';
-      let accent = '';
-      let halo = 'rgba(23,165,90,.16)';
+      let accent = null;
+      let halo = 'rgba(23,165,90,.18)';
 
       if (state === 'online_busy'){
-        accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
+        base = '#17a55a';
+        accent = '#d87a00';
+        halo = 'rgba(23,165,90,.18)';
+      } else if (state === 'online_free'){
+        base = '#17a55a';
+        accent = null;
+        halo = 'rgba(23,165,90,.18)';
       } else if (state === 'offline_busy'){
         base = '#d43838';
-        accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
-        halo = 'rgba(212,56,56,.16)';
-      } else if (state === 'offline_free'){
+        accent = '#d87a00';
+        halo = 'rgba(212,56,56,.18)';
+      } else {
         base = '#d43838';
-        halo = 'rgba(212,56,56,.16)';
+        accent = null;
+        halo = 'rgba(212,56,56,.18)';
       }
 
+      const accentCircle = accent
+        ? `<circle cx="22" cy="6" r="4.5" fill="${accent}" stroke="#ffffff" stroke-width="1.6"/>`
+        : '';
+
+      const deliveryRing = isBusy(item)
+        ? `<circle cx="14" cy="14" r="11.5" fill="none" stroke="rgba(216,122,0,.20)" stroke-width="1.8"/>`
+        : '';
+
       return `
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="11" fill="${halo}"/>
-          <circle cx="12" cy="12" r="7.4" fill="${base}" stroke="#ffffff" stroke-width="2"/>
-          <circle cx="12" cy="12" r="2.1" fill="#ffffff"/>
-          ${accent}
-        </svg>
-      `;
+      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
+        <circle cx="14" cy="14" r="13" fill="${halo}"/>
+        ${deliveryRing}
+        <circle cx="14" cy="14" r="8.8" fill="${base}" stroke="#ffffff" stroke-width="2.2"/>
+        <circle cx="14" cy="14" r="2.4" fill="#ffffff"/>
+        ${accentCircle}
+      </svg>`;
     }
 
     function iconFor(item){
       return L.icon({
         iconUrl: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))),
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-        popupAnchor: [0, -12]
+        iconSize: [28, 28],
+        iconAnchor: [14, 14],
+        popupAnchor: [0, -14]
       });
     }
 
     function popupHtml(item){
-      const speed = safeSpeedText(item);
       return `
         <div class="popup-title">${item.nome || 'Cooperado'}</div>
-        <div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div>
-        ${speed ? `<div class="popup-row"><strong>Velocidade:</strong> ${speed}</div>` : ''}
-        <div class="popup-row"><strong>Entregas abertas:</strong> ${Number(item.entregas_abertas || 0)}</div>
-        <div class="popup-row"><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
-        <div class="popup-row"><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
-        <div class="popup-actions">
-          <a href="${mapsUrl(item.lat, item.lng)}" target="_blank" rel="noopener">Maps</a>
-          <a href="${streetUrl(item.lat, item.lng)}" target="_blank" rel="noopener">Ver rua</a>
-          <a href="/trajetos?cooperado_id=${item.id}">Trajetos</a>
+        <div>
+          <span class="badge ${statusBadgeClass(item)}">${statusLabel(item)}</span>
+          <span class="badge">${Number(item.entregas_abertas || 0)} entrega(s)</span>
+        </div>
+        <div style="margin-top:10px;line-height:1.55">
+          <div><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
+          <div><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
+          <div><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
+        </div>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
+          <a href="${mapsUrl(item.lat, item.lng)}" target="_blank" rel="noopener" class="badge">Maps</a>
+          <a href="${streetUrl(item.lat, item.lng)}" target="_blank" rel="noopener" class="badge">Ver rua</a>
         </div>
       `;
     }
@@ -761,107 +354,48 @@
     function setInfo(item){
       selected = item || null;
       $('infoName').textContent = item ? item.nome : 'Selecione um motoboy';
-      $('infoSubtitle').textContent = item ? 'Use seguir para acompanhar em tempo real.' : 'Clique em um marcador ou escolha na lista.';
+      $('infoSubtitle').textContent = item
+        ? 'Marcador discreto com leitura combinada de online/offline e entrega em aberto.'
+        : 'Ao clicar no marcador aparece o status combinado e os atalhos do mapa.';
       $('infoStatus').textContent = item ? statusLabel(item) : '—';
+      $('infoSpeed').textContent = item ? `${Number(item.velocidade || 0).toFixed(1)} km/h` : '—';
       $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
       $('infoUpdated').textContent = item ? fmt(item.ultima_atualizacao) : '—';
-
-      document.querySelectorAll('.person').forEach(el => {
-        el.classList.toggle('active', item && String(el.dataset.id) === String(item.id));
-      });
     }
 
     function filteredItems(){
-      const q = norm($('searchInput').value);
+      const q = norm($('search').value);
+      const sf = $('statusFilter').value;
 
       return allItems.filter(item => {
-        if (currentFilter === 'online' && !isOnline(item)) return false;
-        if (currentFilter === 'com_entrega' && !isBusy(item)) return false;
-        if (currentFilter === 'offline' && isOnline(item)) return false;
+        if (sf === 'em_corrida' && !isBusy(item)) return false;
+        if (sf === 'livre' && visualState(item) !== 'online_free') return false;
+        if (sf === 'offline' && !String(item.status).includes('offline')) return false;
         if (q && !norm(item.nome).includes(q)) return false;
         return true;
       });
     }
 
-    function refreshCounters(){
-      $('countOnline').textContent = allItems.filter(i => isOnline(i)).length;
-      $('countBusy').textContent = allItems.filter(i => isBusy(i)).length;
-      $('countOffline').textContent = allItems.filter(i => !isOnline(i)).length;
-    }
+    function rebuildQuickList(items){
+      const el = $('quickList');
+      el.innerHTML = '';
 
-    function buildAutocomplete(){
-      const host = $('autocompleteList');
-      const q = norm($('searchInput').value).trim();
-
-      if (!q){
-        host.classList.remove('open');
-        host.innerHTML = '';
-        return;
-      }
-
-      const matches = allItems.filter(i => norm(i.nome).includes(q)).slice(0, 8);
-
-      if (!matches.length){
-        host.classList.remove('open');
-        host.innerHTML = '';
-        return;
-      }
-
-      host.innerHTML = matches.map(item => `
-        <div class="ac-item" data-id="${item.id}">
+      items.slice(0, 10).forEach(item => {
+        const d = document.createElement('div');
+        d.className = 'person';
+        d.innerHTML = `
           <strong>${item.nome}</strong>
-          <small>${statusLabel(item)} • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
-        </div>
-      `).join('');
-
-      host.classList.add('open');
-
-      host.querySelectorAll('.ac-item').forEach(el => {
-        el.addEventListener('click', () => {
-          const id = el.dataset.id;
-          const item = allItems.find(i => String(i.id) === String(id));
-          if (!item) return;
-          $('searchInput').value = item.nome;
-          host.classList.remove('open');
-          renderAll();
-          focusItem(item.id, true);
-        });
+          <small>${statusLabel(item)} • ${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
+        `;
+        d.onclick = () => focusItem(item.id, true);
+        el.appendChild(d);
       });
     }
 
-    function buildList(items){
-      const host = $('personList');
-      $('listMeta').textContent = `${items.length} exibidos`;
-
-      if (!items.length){
-        host.innerHTML = `
-          <div class="person" style="cursor:default">
-            <strong>Nenhum cooperado encontrado</strong>
-            <small>Tente ajustar a busca ou o filtro.</small>
-          </div>
-        `;
-        return;
-      }
-
-      host.innerHTML = items.map(item => {
-        const speed = safeSpeedText(item);
-        return `
-          <div class="person ${selected && String(selected.id) === String(item.id) ? 'active' : ''}" data-id="${item.id}">
-            <div class="person-top">
-              <strong>${item.nome}</strong>
-              <span class="badge ${badgeClass(item)}">${statusLabel(item)}</span>
-            </div>
-            <small>
-              ${speed ? speed + ' • ' : ''}
-              ${Number(item.entregas_abertas || 0)} entrega(s) • ${fmt(item.ultima_atualizacao)}
-            </small>
-          </div>
-        `;
-      }).join('');
-
-      host.querySelectorAll('.person').forEach(el => {
-        el.addEventListener('click', () => focusItem(el.dataset.id, true));
-      });
+    function refreshCounts(items){
+      $('countBusy').textContent = items.filter(i => isBusy(i)).length;
+      $('countOnline').textContent = items.filter(i => visualState(i) === 'online_free').length;
+      $('countOffline').textContent = items.filter(i => !isOnline(i)).length;
     }
 
     function renderMarkers(items){
@@ -880,7 +414,7 @@
         if (!marker){
           marker = L.marker([item.lat, item.lng], {
             icon: iconFor(item),
-            zIndexOffset: priority(item) * 1000 + Number(item.entregas_abertas || 0)
+            zIndexOffset: priority(item) * 1000
           }).addTo(map);
 
           marker.on('click', () => {
@@ -893,45 +427,37 @@
           marker.setLatLng([item.lat, item.lng]);
           marker.setIcon(iconFor(item));
           marker.setZIndexOffset(priority(item) * 1000 + Number(item.entregas_abertas || 0));
+          marker.off('click');
+          marker.on('click', () => {
+            setInfo(item);
+            marker.bindPopup(popupHtml(item)).openPopup();
+          });
         }
       });
-    }
 
-    function renderAll(){
-      const items = filteredItems();
-      refreshCounters();
-      buildList(items);
-      renderMarkers(items);
-      buildAutocomplete();
+      refreshCounts(items);
+      rebuildQuickList(items);
+
+      if (selected){
+        const newer = items.find(i => String(i.id) === String(selected.id));
+        if (newer) setInfo(newer);
+      }
+
+      if (followId){
+        const f = items.find(i => String(i.id) === String(followId));
+        if (f) map.panTo([f.lat, f.lng], { animate:true, duration:.8 });
+      }
     }
 
     function focusItem(id, openPopup){
       const item = allItems.find(i => String(i.id) === String(id));
-      if (!item) return;
+      const marker = markers.get(item && item.id);
+      if (!item || !marker) return;
 
       setInfo(item);
+      map.setView([item.lat, item.lng], Math.max(map.getZoom(), 17), { animate:true });
 
-      let marker = markers.get(item.id);
-      if (!marker){
-        renderAll();
-        marker = markers.get(item.id);
-      }
-
-      if (!marker) return;
-
-      map.setView([item.lat, item.lng], Math.max(map.getZoom(), 18), { animate:true });
-
-      if (openPopup){
-        marker.bindPopup(popupHtml(item)).openPopup();
-      }
-    }
-
-    function fitAll(){
-      const items = filteredItems();
-      if (!items.length) return;
-
-      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
-      map.fitBounds(bounds.pad(0.16), { maxZoom: 18 });
+      if (openPopup) marker.bindPopup(popupHtml(item)).openPopup();
     }
 
     async function fetchData(){
@@ -946,81 +472,51 @@
             || (a.nome || '').localeCompare(b.nome || '');
         });
 
-        if (selected){
-          const newer = allItems.find(i => String(i.id) === String(selected.id));
-          selected = newer || null;
-          if (newer) setInfo(newer);
-        }
-
-        renderAll();
-
-        if (followId){
-          const followed = allItems.find(i => String(i.id) === String(followId));
-          if (followed){
-            map.panTo([followed.lat, followed.lng], { animate:true, duration:0.8 });
-          }
-        }
-      } catch(err){
+        renderMarkers(filteredItems());
+      }catch(err){
         console.error(err);
       }
     }
 
-    document.querySelectorAll('.filter-chip').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        renderAll();
-      });
-    });
+    function fitAll(){
+      const items = filteredItems();
+      if (!items.length) return;
 
-    $('searchInput').addEventListener('input', renderAll);
-    $('searchInput').addEventListener('focus', buildAutocomplete);
+      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
+      map.fitBounds(bounds.pad(0.18));
+    }
 
-    document.addEventListener('click', (e) => {
-      const host = $('autocompleteList');
-      if (!host.contains(e.target) && e.target !== $('searchInput')){
-        host.classList.remove('open');
-      }
-    });
+    $('btnReload').onclick = fetchData;
+    $('btnFit').onclick = fitAll;
+    $('search').oninput = () => renderMarkers(filteredItems());
+    $('statusFilter').onchange = () => renderMarkers(filteredItems());
 
-    $('btnFollowSelected').addEventListener('click', () => {
+    $('btnFollow').onclick = () => {
       if (!selected) return;
       followId = String(selected.id);
-      focusItem(selected.id, true);
-    });
+      focusItem(followId, true);
+    };
 
-    $('btnClearFollow').addEventListener('click', () => {
+    $('btnMaps').onclick = () => {
+      if (selected) window.open(mapsUrl(selected.lat, selected.lng), '_blank', 'noopener');
+    };
+
+    $('btnStreet').onclick = () => {
+      if (selected) window.open(streetUrl(selected.lat, selected.lng), '_blank', 'noopener');
+    };
+
+    $('btnReplay').onclick = () => {
+      window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
+    };
+
+    map.on('dragstart zoomstart', () => {
       followId = null;
     });
 
-    $('btnFitAll').addEventListener('click', fitAll);
-    $('btnRefresh').addEventListener('click', fetchData);
+    allItems = seed.slice().sort((a, b) => priority(b) - priority(a));
+    renderMarkers(filteredItems());
 
-    $('btnMaps').addEventListener('click', () => {
-      if (selected) window.open(mapsUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    });
-
-    $('btnStreet').addEventListener('click', () => {
-      if (selected) window.open(streetUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    });
-
-    $('btnReplay').addEventListener('click', () => {
-      window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
-    });
-
-    allItems = seed.slice().sort((a, b) => {
-      const pa = priority(a), pb = priority(b);
-      if (pa !== pb) return pb - pa;
-      return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0))
-        || (a.nome || '').localeCompare(b.nome || '');
-    });
-
-    renderAll();
-
-    if (allItems.length){
-      fitAll();
-    }
+    if (allItems.length) fitAll();
 
     timer = setInterval(fetchData, POLL_MS);
   </script>
