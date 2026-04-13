@@ -12,136 +12,83 @@
       --shadow:0 22px 60px rgba(18,72,220,.14); --soft:0 10px 24px rgba(16,33,63,.08);
       --green:#17a55a; --orange:#d87a00; --red:#d43838;
     }
-
-    *{box-sizing:border-box}
-    html,body{height:100%}
-
+    *{box-sizing:border-box} html,body{height:100%}
     body{
-      margin:0;
-      font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
-      color:var(--ink);
-      background:
-        radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.22), transparent 60%),
-        radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.16), transparent 60%),
-        linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
+      margin:0; font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--ink);
+      background:radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.22), transparent 60%),
+                 radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.16), transparent 60%),
+                 linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
     }
-
     #map{position:fixed; inset:0; z-index:1}
-
     .topbar{
       position:fixed; left:16px; right:16px; top:16px; z-index:700;
       display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
       padding:14px 16px; border-radius:26px; border:1px solid var(--line); background:var(--glass);
       backdrop-filter:blur(18px); box-shadow:var(--shadow);
     }
-
     .eyebrow{font-size:.74rem; letter-spacing:.12em; font-weight:900; text-transform:uppercase; color:var(--royal)}
     .title{font-size:1.2rem; font-weight:1000; margin-top:2px}
     .sub{font-size:.86rem; color:var(--muted); margin-top:2px}
-
     .controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-
     .btn,.input,.select{
       height:44px; border-radius:16px; border:1px solid var(--line); font:inherit; box-shadow:var(--soft);
       background:rgba(255,255,255,.84);
     }
-
     .btn{
       padding:0 14px; color:var(--royal-2); font-weight:900; cursor:pointer; text-decoration:none;
       display:inline-flex; align-items:center; gap:8px;
     }
-
     .btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3)); color:#fff}
     .btn:hover{transform:translateY(-1px)}
-
     .input,.select{padding:0 14px; color:var(--ink); outline:none}
     .input{width:190px}
     .select{min-width:170px}
-
     .floating{
       position:fixed; left:16px; right:16px; bottom:16px; z-index:700;
       display:grid; grid-template-columns:1.2fr auto; gap:12px; align-items:end;
       pointer-events:none;
     }
-
-    .panel,.chips{
-      pointer-events:auto;
-      border:1px solid var(--line);
-      background:var(--glass);
-      backdrop-filter:blur(16px);
-      box-shadow:var(--shadow);
-    }
-
+    .panel,.chips{pointer-events:auto; border:1px solid var(--line); background:var(--glass); backdrop-filter:blur(16px); box-shadow:var(--shadow)}
     .chips{
       display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start;
       border-radius:24px; padding:12px 14px;
     }
-
     .chip{
       display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:999px;
       background:rgba(255,255,255,.86); border:1px solid var(--line); font-weight:900; font-size:.86rem; box-shadow:var(--soft);
     }
-
     .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
-    .dot.green{background:var(--green)}
-    .dot.orange{background:var(--orange)}
-    .dot.red{background:var(--red)}
-
+    .dot.green{background:var(--green)} .dot.orange{background:var(--orange)} .dot.red{background:var(--red)}
     .panel{
       max-width:480px; border-radius:28px; padding:14px 16px;
     }
-
     .panel h3{margin:0 0 4px; font-size:1rem}
     .muted{color:var(--muted); font-size:.85rem}
-
-    .kv{
-      display:grid; grid-template-columns:auto 1fr; gap:8px 12px; margin-top:12px; font-size:.9rem
-    }
-
+    .kv{display:grid; grid-template-columns:auto 1fr; gap:8px 12px; margin-top:12px; font-size:.9rem}
     .kv b{color:var(--royal-2)}
-
     .mini-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
     .mini-actions .btn{height:40px; border-radius:14px}
-
     .listpill{
       max-width:100%; display:flex; gap:8px; overflow:auto; padding-bottom:2px;
     }
-
     .person{
       min-width:180px; padding:10px 12px; border-radius:18px; border:1px solid var(--line);
       background:rgba(255,255,255,.86); box-shadow:var(--soft); cursor:pointer;
     }
-
     .person strong{display:block; font-size:.92rem}
     .person small{display:block; margin-top:3px; color:var(--muted)}
-
     .leaflet-control-attribution{display:none}
-
     .leaflet-popup-content-wrapper{
       border-radius:18px; border:1px solid var(--line); box-shadow:var(--shadow); background:#fff; color:var(--ink)
     }
-
     .leaflet-popup-content{margin:14px 14px 12px}
     .popup-title{font-size:1rem; font-weight:1000; color:var(--royal-2)}
-
     .badge{
       display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; font-size:.78rem;
       font-weight:900; border:1px solid var(--line); margin-right:6px; margin-top:8px;
     }
-
-    .badge.green{background:rgba(23,165,90,.10)}
-    .badge.orange{background:rgba(216,122,0,.12)}
-    .badge.red{background:rgba(212,56,56,.12)}
-
-    .badge.mix-go{
-      background:linear-gradient(90deg, rgba(23,165,90,.12) 0 55%, rgba(216,122,0,.12) 55% 100%);
-    }
-
-    .badge.mix-ro{
-      background:linear-gradient(90deg, rgba(212,56,56,.12) 0 55%, rgba(216,122,0,.12) 55% 100%);
-    }
-
+    .badge.green{background:rgba(23,165,90,.10)} .badge.orange{background:rgba(216,122,0,.12)} .badge.red{background:rgba(212,56,56,.12)}
     @media(max-width:900px){
       .floating{grid-template-columns:1fr}
       .panel{max-width:none}
@@ -159,14 +106,13 @@
     <div>
       <div class="eyebrow">Monitoramento ao vivo</div>
       <div class="title">Mapa dos motoboys</div>
-      <div class="sub">Marcadores discretos, leitura rápida de online, offline e entregas em aberto.</div>
+      <div class="sub">Azul royal, visual limpo, sem trilha no mapa principal. O replay fica separado.</div>
     </div>
-
     <div class="controls">
       <input id="search" class="input" placeholder="Buscar cooperado">
       <select id="statusFilter" class="select">
         <option value="todos">Todos</option>
-        <option value="em_corrida">Com entrega</option>
+        <option value="em_corrida">Em corrida</option>
         <option value="livre">Online livre</option>
         <option value="offline">Offline</option>
       </select>
@@ -179,23 +125,20 @@
 
   <section class="floating">
     <div class="chips">
-      <span class="chip"><span class="dot orange"></span> Com entrega <strong id="countBusy">0</strong></span>
-      <span class="chip"><span class="dot green"></span> Online livre <strong id="countOnline">0</strong></span>
+      <span class="chip"><span class="dot orange"></span> Em corrida <strong id="countBusy">0</strong></span>
+      <span class="chip"><span class="dot green"></span> Online <strong id="countOnline">0</strong></span>
       <span class="chip"><span class="dot red"></span> Offline <strong id="countOffline">0</strong></span>
       <div class="listpill" id="quickList"></div>
     </div>
-
     <aside class="panel">
       <h3 id="infoName">Selecione um motoboy</h3>
-      <div class="muted" id="infoSubtitle">Ao clicar no marcador aparece o status combinado e os atalhos do mapa.</div>
-
+      <div class="muted" id="infoSubtitle">Ao clicar em cima do marcador aparece quem ele é, km/h, status e botões para Maps.</div>
       <div class="kv">
         <b>Status</b><span id="infoStatus">—</span>
         <b>Velocidade</b><span id="infoSpeed">—</span>
         <b>Entregas abertas</b><span id="infoDeliveries">—</span>
         <b>Atualizado</b><span id="infoUpdated">—</span>
       </div>
-
       <div class="mini-actions">
         <button id="btnFollow" class="btn primary" type="button">Seguir</button>
         <button id="btnMaps" class="btn" type="button">Abrir no Maps</button>
@@ -207,18 +150,11 @@
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
-    const seed = Array.isArray({% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %})
-      ? {% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %}
-      : [];
-
+    const seed = Array.isArray({% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %}) ? {% if motoboys_js is defined %}{{ motoboys_js|tojson|safe }}{% else %}[]{% endif %} : [];
     const DATA_ENDPOINT = '/mapa_motoboys?format=json';
-    const POLL_MS = 2000;
-
-    const map = L.map('map', { preferCanvas:true, zoomControl:true }).setView([-5.79448, -35.211], 12);
-
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:20
-    }).addTo(map);
+    const POLL_MS = 5000;
+    const map = L.map('map', {preferCanvas:true, zoomControl:true}).setView([-5.79448, -35.211], 12);
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {maxZoom:20}).addTo(map);
 
     const markers = new Map();
     let allItems = seed.slice();
@@ -227,108 +163,39 @@
     let timer = null;
 
     const $ = id => document.getElementById(id);
-    const norm = s => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const fmt = v => (v === null || v === undefined || v === '') ? '—' : String(v);
+    const norm = s => (s||'').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const fmt = v => (v===null||v===undefined||v==='') ? '—' : String(v);
 
-    function mapsUrl(lat, lng){
-      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    }
-
-    function streetUrl(lat, lng){
-      return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
-    }
-
-    function isBusy(item){
-      return Number(item.entregas_abertas || 0) > 0 || item.status === 'em_corrida';
-    }
-
-    function isOnline(item){
-      return item.status === 'livre' || item.status === 'em_corrida';
-    }
-
-    function visualState(item){
-      const busy = isBusy(item);
-      const online = isOnline(item);
-
-      if (online && busy) return 'online_busy';
-      if (online && !busy) return 'online_free';
-      if (!online && busy) return 'offline_busy';
-      return 'offline_free';
-    }
+    function mapsUrl(lat,lng){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
+    function streetUrl(lat,lng){ return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`; }
 
     function statusLabel(item){
-      const state = visualState(item);
-      if (state === 'online_busy') return 'Online com entrega';
-      if (state === 'online_free') return 'Online livre';
-      if (state === 'offline_busy') return 'Offline com entrega';
+      if(item.status === 'em_corrida') return 'Em corrida';
+      if(item.status === 'livre') return 'Online livre';
       return 'Offline';
     }
-
-    function statusBadgeClass(item){
-      const state = visualState(item);
-      if (state === 'online_busy') return 'mix-go';
-      if (state === 'online_free') return 'green';
-      if (state === 'offline_busy') return 'mix-ro';
-      return 'red';
+    function statusColor(item){
+      if(item.status === 'em_corrida') return '#d87a00';
+      if(item.status === 'livre') return '#17a55a';
+      return '#d43838';
     }
-
     function priority(item){
-      const state = visualState(item);
-      if (state === 'online_busy') return 4;
-      if (state === 'online_free') return 3;
-      if (state === 'offline_busy') return 2;
+      if(item.status === 'em_corrida') return 3;
+      if(item.status === 'livre') return 2;
       return 1;
     }
-
-    function markerSvg(item){
-      const state = visualState(item);
-
-      let base = '#17a55a';
-      let accent = null;
-      let halo = 'rgba(23,165,90,.18)';
-
-      if (state === 'online_busy'){
-        base = '#17a55a';
-        accent = '#d87a00';
-        halo = 'rgba(23,165,90,.18)';
-      } else if (state === 'online_free'){
-        base = '#17a55a';
-        accent = null;
-        halo = 'rgba(23,165,90,.18)';
-      } else if (state === 'offline_busy'){
-        base = '#d43838';
-        accent = '#d87a00';
-        halo = 'rgba(212,56,56,.18)';
-      } else {
-        base = '#d43838';
-        accent = null;
-        halo = 'rgba(212,56,56,.18)';
-      }
-
-      const accentCircle = accent
-        ? `<circle cx="22" cy="6" r="4.5" fill="${accent}" stroke="#ffffff" stroke-width="1.6"/>`
-        : '';
-
-      const deliveryRing = isBusy(item)
-        ? `<circle cx="14" cy="14" r="11.5" fill="none" stroke="rgba(216,122,0,.20)" stroke-width="1.8"/>`
-        : '';
-
+    function pinSvg(color){
       return `
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-        <circle cx="14" cy="14" r="13" fill="${halo}"/>
-        ${deliveryRing}
-        <circle cx="14" cy="14" r="8.8" fill="${base}" stroke="#ffffff" stroke-width="2.2"/>
-        <circle cx="14" cy="14" r="2.4" fill="#ffffff"/>
-        ${accentCircle}
+      <svg xmlns="http://www.w3.org/2000/svg" width="34" height="46" viewBox="0 0 34 46">
+        <path d="M17 1C8.7 1 2 7.7 2 16c0 12 15 29 15 29s15-17 15-29C32 7.7 25.3 1 17 1z" fill="${color}" stroke="#ffffff" stroke-width="2.2"/>
+        <circle cx="17" cy="16" r="6.6" fill="#ffffff"/>
       </svg>`;
     }
-
     function iconFor(item){
+      const color = statusColor(item);
       return L.icon({
-        iconUrl: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))),
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14]
+        iconUrl:'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(pinSvg(color)))),
+        iconSize:[34,46], iconAnchor:[17,46], popupAnchor:[0,-38]
       });
     }
 
@@ -336,188 +203,138 @@
       return `
         <div class="popup-title">${item.nome || 'Cooperado'}</div>
         <div>
-          <span class="badge ${statusBadgeClass(item)}">${statusLabel(item)}</span>
-          <span class="badge">${Number(item.entregas_abertas || 0)} entrega(s)</span>
+          <span class="badge ${item.status==='em_corrida'?'orange':item.status==='livre'?'green':'red'}">${statusLabel(item)}</span>
+          <span class="badge">${Number(item.entregas_abertas||0)} entrega(s)</span>
         </div>
         <div style="margin-top:10px;line-height:1.55">
-          <div><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
+          <div><strong>Km/h:</strong> ${Number(item.velocidade||0).toFixed(1)}</div>
           <div><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
-          <div><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
+          <div><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0)+' m' : '—'}</div>
         </div>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-          <a href="${mapsUrl(item.lat, item.lng)}" target="_blank" rel="noopener" class="badge">Maps</a>
-          <a href="${streetUrl(item.lat, item.lng)}" target="_blank" rel="noopener" class="badge">Ver rua</a>
-        </div>
-      `;
+          <a href="${mapsUrl(item.lat,item.lng)}" target="_blank" rel="noopener" class="badge">Maps</a>
+          <a href="${streetUrl(item.lat,item.lng)}" target="_blank" rel="noopener" class="badge">Ver rua</a>
+        </div>`;
     }
 
     function setInfo(item){
       selected = item || null;
       $('infoName').textContent = item ? item.nome : 'Selecione um motoboy';
-      $('infoSubtitle').textContent = item
-        ? 'Marcador discreto com leitura combinada de online/offline e entrega em aberto.'
-        : 'Ao clicar no marcador aparece o status combinado e os atalhos do mapa.';
+      $('infoSubtitle').textContent = item ? 'Clique no popup para abrir no Google Maps ou ver a rua.' : 'Ao clicar em cima do marcador aparece quem ele é, km/h, status e botões para Maps.';
       $('infoStatus').textContent = item ? statusLabel(item) : '—';
-      $('infoSpeed').textContent = item ? `${Number(item.velocidade || 0).toFixed(1)} km/h` : '—';
-      $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
+      $('infoSpeed').textContent = item ? `${Number(item.velocidade||0).toFixed(1)} km/h` : '—';
+      $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas||0)) : '—';
       $('infoUpdated').textContent = item ? fmt(item.ultima_atualizacao) : '—';
     }
 
     function filteredItems(){
       const q = norm($('search').value);
       const sf = $('statusFilter').value;
-
-      return allItems.filter(item => {
-        if (sf === 'em_corrida' && !isBusy(item)) return false;
-        if (sf === 'livre' && visualState(item) !== 'online_free') return false;
-        if (sf === 'offline' && !String(item.status).includes('offline')) return false;
-        if (q && !norm(item.nome).includes(q)) return false;
+      return allItems.filter(item=>{
+        if(sf !== 'todos' && item.status !== sf) return false;
+        if(q && !norm(item.nome).includes(q)) return false;
         return true;
       });
     }
 
     function rebuildQuickList(items){
-      const el = $('quickList');
-      el.innerHTML = '';
-
-      items.slice(0, 10).forEach(item => {
+      const el = $('quickList'); el.innerHTML = '';
+      items.slice(0, 10).forEach(item=>{
         const d = document.createElement('div');
         d.className = 'person';
-        d.innerHTML = `
-          <strong>${item.nome}</strong>
-          <small>${statusLabel(item)} • ${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
-        `;
-        d.onclick = () => focusItem(item.id, true);
+        d.innerHTML = `<strong>${item.nome}</strong><small>${statusLabel(item)} • ${Number(item.velocidade||0).toFixed(1)} km/h • ${Number(item.entregas_abertas||0)} entrega(s)</small>`;
+        d.onclick = ()=>focusItem(item.id, true);
         el.appendChild(d);
       });
     }
 
     function refreshCounts(items){
-      $('countBusy').textContent = items.filter(i => isBusy(i)).length;
-      $('countOnline').textContent = items.filter(i => visualState(i) === 'online_free').length;
-      $('countOffline').textContent = items.filter(i => !isOnline(i)).length;
+      $('countBusy').textContent = items.filter(i=>i.status==='em_corrida').length;
+      $('countOnline').textContent = items.filter(i=>i.status==='livre').length;
+      $('countOffline').textContent = items.filter(i=>i.status==='offline').length;
     }
 
     function renderMarkers(items){
-      const ids = new Set(items.map(i => String(i.id)));
-
-      Array.from(markers.keys()).forEach(id => {
-        if (!ids.has(String(id))){
-          map.removeLayer(markers.get(id));
-          markers.delete(id);
+      const ids = new Set(items.map(i=>String(i.id)));
+      Array.from(markers.keys()).forEach(id=>{
+        if(!ids.has(String(id))){
+          map.removeLayer(markers.get(id)); markers.delete(id);
         }
       });
-
-      items.forEach(item => {
+      items.forEach(item=>{
         let marker = markers.get(item.id);
-
-        if (!marker){
-          marker = L.marker([item.lat, item.lng], {
-            icon: iconFor(item),
-            zIndexOffset: priority(item) * 1000
-          }).addTo(map);
-
-          marker.on('click', () => {
-            setInfo(item);
-            marker.bindPopup(popupHtml(item)).openPopup();
-          });
-
+        if(!marker){
+          marker = L.marker([item.lat,item.lng], {icon:iconFor(item), zIndexOffset: priority(item)*1000}).addTo(map);
+          marker.on('click', ()=>{ setInfo(item); marker.bindPopup(popupHtml(item)).openPopup(); });
           markers.set(item.id, marker);
-        } else {
-          marker.setLatLng([item.lat, item.lng]);
+        }else{
+          marker.setLatLng([item.lat,item.lng]);
           marker.setIcon(iconFor(item));
-          marker.setZIndexOffset(priority(item) * 1000 + Number(item.entregas_abertas || 0));
+          marker.setZIndexOffset(priority(item)*1000 + Number(item.entregas_abertas||0));
           marker.off('click');
-          marker.on('click', () => {
-            setInfo(item);
-            marker.bindPopup(popupHtml(item)).openPopup();
-          });
+          marker.on('click', ()=>{ setInfo(item); marker.bindPopup(popupHtml(item)).openPopup(); });
         }
       });
-
       refreshCounts(items);
       rebuildQuickList(items);
-
-      if (selected){
-        const newer = items.find(i => String(i.id) === String(selected.id));
-        if (newer) setInfo(newer);
+      if(selected){
+        const newer = items.find(i=>String(i.id)===String(selected.id));
+        if(newer) setInfo(newer);
       }
-
-      if (followId){
-        const f = items.find(i => String(i.id) === String(followId));
-        if (f) map.panTo([f.lat, f.lng], { animate:true, duration:.8 });
+      if(followId){
+        const f = items.find(i=>String(i.id)===String(followId));
+        if(f) map.panTo([f.lat,f.lng], {animate:true, duration:.8});
       }
     }
 
     function focusItem(id, openPopup){
-      const item = allItems.find(i => String(i.id) === String(id));
+      const item = allItems.find(i=>String(i.id)===String(id));
       const marker = markers.get(item && item.id);
-      if (!item || !marker) return;
-
+      if(!item || !marker) return;
       setInfo(item);
-      map.setView([item.lat, item.lng], Math.max(map.getZoom(), 17), { animate:true });
-
-      if (openPopup) marker.bindPopup(popupHtml(item)).openPopup();
+      map.setView([item.lat,item.lng], Math.max(map.getZoom(), 17), {animate:true});
+      if(openPopup) marker.bindPopup(popupHtml(item)).openPopup();
     }
 
     async function fetchData(){
       try{
-        const resp = await fetch(DATA_ENDPOINT, { cache:'no-store' });
+        const resp = await fetch(DATA_ENDPOINT, {cache:'no-store'});
         const data = await resp.json();
-
-        allItems = (Array.isArray(data) ? data : []).sort((a, b) => {
+        allItems = (Array.isArray(data)?data:[]).sort((a,b)=>{
           const pa = priority(a), pb = priority(b);
-          if (pa !== pb) return pb - pa;
-          return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0))
-            || (a.nome || '').localeCompare(b.nome || '');
+          if(pa!==pb) return pb-pa;
+          return (Number(b.entregas_abertas||0)-Number(a.entregas_abertas||0)) || (a.nome||'').localeCompare(b.nome||'');
         });
-
-        renderMarkers(filteredItems());
-      }catch(err){
-        console.error(err);
-      }
+        const items = filteredItems();
+        renderMarkers(items);
+      }catch(err){ console.error(err); }
     }
 
     function fitAll(){
       const items = filteredItems();
-      if (!items.length) return;
-
-      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
+      if(!items.length) return;
+      const bounds = L.latLngBounds(items.map(i=>[i.lat,i.lng]));
       map.fitBounds(bounds.pad(0.18));
     }
 
     $('btnReload').onclick = fetchData;
     $('btnFit').onclick = fitAll;
-    $('search').oninput = () => renderMarkers(filteredItems());
-    $('statusFilter').onchange = () => renderMarkers(filteredItems());
-
-    $('btnFollow').onclick = () => {
-      if (!selected) return;
+    $('search').oninput = ()=> renderMarkers(filteredItems());
+    $('statusFilter').onchange = ()=> renderMarkers(filteredItems());
+    $('btnFollow').onclick = ()=>{
+      if(!selected) return;
       followId = String(selected.id);
       focusItem(followId, true);
     };
+    $('btnMaps').onclick = ()=>{ if(selected) window.open(mapsUrl(selected.lat,selected.lng), '_blank', 'noopener'); };
+    $('btnStreet').onclick = ()=>{ if(selected) window.open(streetUrl(selected.lat,selected.lng), '_blank', 'noopener'); };
+    $('btnReplay').onclick = ()=>{ window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : ''); };
 
-    $('btnMaps').onclick = () => {
-      if (selected) window.open(mapsUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    };
+    map.on('dragstart zoomstart', ()=>{ followId = null; });
 
-    $('btnStreet').onclick = () => {
-      if (selected) window.open(streetUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    };
-
-    $('btnReplay').onclick = () => {
-      window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
-    };
-
-    map.on('dragstart zoomstart', () => {
-      followId = null;
-    });
-
-    allItems = seed.slice().sort((a, b) => priority(b) - priority(a));
+    allItems = seed.slice().sort((a,b)=>priority(b)-priority(a));
     renderMarkers(filteredItems());
-
-    if (allItems.length) fitAll();
-
+    if(allItems.length) fitAll();
     timer = setInterval(fetchData, POLL_MS);
   </script>
 </body>
