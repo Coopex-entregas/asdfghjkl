@@ -14,7 +14,8 @@
       --ink:#10213f;
       --muted:#62759d;
       --line:rgba(18,72,220,.14);
-      --glass:rgba(255,255,255,.88);
+      --glass:rgba(255,255,255,.90);
+      --white:#fff;
       --shadow:0 18px 50px rgba(18,72,220,.14);
       --soft:0 8px 20px rgba(16,33,63,.08);
       --green:#17a55a;
@@ -55,8 +56,8 @@
     }
 
     .sidebar,
-    .overlay-top,
-    .info-card{
+    .topbar-wrap,
+    .info-wrap{
       pointer-events:auto;
     }
 
@@ -341,7 +342,7 @@
       pointer-events:none;
     }
 
-    .overlay-top{
+    .topbar-wrap{
       position:absolute;
       top:0;
       right:0;
@@ -384,11 +385,14 @@
       border:none;
     }
 
-    .info-card{
+    .info-wrap{
       position:absolute;
       right:0;
       bottom:0;
-      width:min(390px, 100%);
+      width:min(390px,100%);
+    }
+
+    .info-card{
       padding:14px 16px;
     }
 
@@ -515,8 +519,8 @@
         min-height:320px;
       }
 
-      .overlay-top,
-      .info-card{
+      .topbar-wrap,
+      .info-wrap{
         position:static;
         margin-top:12px;
       }
@@ -546,7 +550,7 @@
       <section class="card brand-card">
         <div class="eyebrow">Monitoramento ao vivo</div>
         <div class="title">Mapa dos motoboys</div>
-        <div class="sub">Mapa estável, lista rolando normal e seguimento sem conflito com o mapa.</div>
+        <div class="sub">Zoom fixo onde você deixar. Segue só quando você mandar.</div>
       </section>
 
       <section class="card search-card">
@@ -587,7 +591,7 @@
     </aside>
 
     <section class="main">
-      <div class="overlay-top">
+      <div class="topbar-wrap">
         <section class="card topbar">
           <button type="button" class="filter-chip active" data-filter="todos">Todos</button>
           <button type="button" class="filter-chip" data-filter="online">Online</button>
@@ -598,22 +602,24 @@
         </section>
       </div>
 
-      <aside class="card info-card">
-        <h3 id="infoName">Selecione um motoboy</h3>
-        <div class="muted" id="infoSubtitle">Clique em um marcador ou escolha na lista.</div>
+      <div class="info-wrap">
+        <aside class="card info-card">
+          <h3 id="infoName">Selecione um motoboy</h3>
+          <div class="muted" id="infoSubtitle">Clique em um marcador ou escolha na lista.</div>
 
-        <div class="kv">
-          <b>Status</b><span id="infoStatus">—</span>
-          <b>Entregas abertas</b><span id="infoDeliveries">—</span>
-          <b>Atualizado</b><span id="infoUpdated">—</span>
-        </div>
+          <div class="kv">
+            <b>Status</b><span id="infoStatus">—</span>
+            <b>Entregas abertas</b><span id="infoDeliveries">—</span>
+            <b>Atualizado</b><span id="infoUpdated">—</span>
+          </div>
 
-        <div class="mini-actions">
-          <button id="btnMaps" class="mini-btn" type="button">Abrir no Maps</button>
-          <button id="btnStreet" class="mini-btn" type="button">Ver rua</button>
-          <button id="btnReplay" class="mini-btn" type="button">Trajetos</button>
-        </div>
-      </aside>
+          <div class="mini-actions">
+            <button id="btnMaps" class="mini-btn" type="button">Abrir no Maps</button>
+            <button id="btnStreet" class="mini-btn" type="button">Ver rua</button>
+            <button id="btnReplay" class="mini-btn" type="button">Trajetos</button>
+          </div>
+        </aside>
+      </div>
     </section>
   </div>
 
@@ -678,7 +684,6 @@
     function visualState(item){
       const online = isOnline(item);
       const busy = isBusy(item);
-
       if (online && busy) return 'online_busy';
       if (online && !busy) return 'online_free';
       if (!online && busy) return 'offline_busy';
@@ -945,7 +950,7 @@
       map.fitBounds(bounds.pad(0.16), { maxZoom: 18 });
     }
 
-    async function fetchData(keepView = true){
+    async function fetchData(preserveView = true){
       try{
         const center = map.getCenter();
         const zoom = map.getZoom();
@@ -969,11 +974,11 @@
         renderAll();
 
         if (followId){
-          const f = allItems.find(i => String(i.id) === String(followId));
-          if (f){
-            map.setView([f.lat, f.lng], Math.max(zoom, 17), { animate:false });
+          const followed = allItems.find(i => String(i.id) === String(followId));
+          if (followed){
+            map.setView([followed.lat, followed.lng], zoom, { animate:false });
           }
-        } else if (keepView){
+        } else if (preserveView){
           map.setView(center, zoom, { animate:false });
         }
       } catch(err){
@@ -1025,7 +1030,7 @@
       window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
     });
 
-    map.on('dragstart', () => {
+    map.on('dragstart zoomstart', () => {
       if (followId) followId = null;
     });
 
