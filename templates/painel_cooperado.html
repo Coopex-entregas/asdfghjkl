@@ -602,7 +602,7 @@
         }
       }catch(_){}
     }
-    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:1000, timeout:7000 }); }
+    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:true, maximumAge:1000, timeout:7000 }); }
     async function requireLocation(){
       if(gpsBooted) return; gpsBooted = true;
       syncAndroidLogin();
@@ -621,7 +621,7 @@
           if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; }
           if(status.state === 'granted'){ startGpsWatch(); return; }
         }
-        navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:8000, maximumAge:0 });
+        navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:true, timeout:8000, maximumAge:0 });
       }catch(_){ forceLogout(); }
     }
 
