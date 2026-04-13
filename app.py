@@ -4034,8 +4034,6 @@ def cooperado_atualizar_localizacao():
 
     return jsonify({'status': 'ok'}), 200
 
-
-# Recusar via API (AJAX/Fetch com JSON)
 @app.route('/cooperado/api/recusar', methods=['POST'])
 def cooperado_recusar_corrida():
     if session.get('user_id') is None or session.get('is_admin'):
