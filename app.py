@@ -3940,9 +3940,9 @@ def cooperado_atualizar_localizacao():
     except (TypeError, ValueError):
         return jsonify({'status': 'erro', 'msg': 'Lat/Lng inválidos'}), 400
 
-    # speed pode vir em m/s (Geolocation API) OU km/h (se você mandar assim)
+    # speed pode vir em m/s (Geolocation API) OU km/h
     speed_mps = data.get('speed_mps', None)
-    speed_kmh = data.get('velocidade', None)  # compatível com seu campo atual
+    speed_kmh = data.get('velocidade', None)
 
     # heading/accuracy opcionais
     heading = data.get('heading', None)
@@ -3958,42 +3958,42 @@ def cooperado_atualizar_localizacao():
     except (TypeError, ValueError):
         v_kmh = None
 
+    agora = datetime.utcnow()
+
     # salva no banco
     cooperado.last_lat = lat
     cooperado.last_lng = lng
-    cooperado.last_ping = datetime.utcnow()
+    cooperado.last_ping = agora
     cooperado.online = True
-
     cooperado.last_speed_kmh = v_kmh
+
     try:
         cooperado.last_heading = float(heading) if heading is not None else None
     except (TypeError, ValueError):
         cooperado.last_heading = None
+
     try:
         cooperado.last_accuracy_m = float(accuracy) if accuracy is not None else None
     except (TypeError, ValueError):
         cooperado.last_accuracy_m = None
 
-    # marca “último movimento”
+    # marca último movimento
     if v_kmh is not None and v_kmh >= MOVING_SPEED_KMH:
-        cooperado.last_moving_at = datetime.utcnow()
+        cooperado.last_moving_at = agora
 
     db.session.commit()
 
     try:
-        lat_track = cooperado.last_lat if cooperado.last_lat is not None else lat
-        lng_track = cooperado.last_lng if cooperado.last_lng is not None else lng
-        _append_point_to_active_trajeto(cooperado.id, lat_track, lng_track, datetime.utcnow())
+        _append_point_to_active_trajeto(cooperado.id, lat, lng, agora)
     except Exception:
         try:
             db.session.rollback()
         except Exception:
             pass
 
-    # emite para o painel em tempo real (adicione campos no payload, item 4)
     emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
 
-    return jsonify({'status': 'ok'})
+    return jsonify({'status': 'ok'}), 200
 
 
 # Recusar via API (AJAX/Fetch com JSON)
