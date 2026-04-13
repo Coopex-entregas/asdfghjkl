@@ -589,7 +589,7 @@
 
     let gpsBooted = false, gpsWatchId = null, lastGpsSentAt = 0, lastGpsCoords = null;
     function distanceMeters(a,b){ if(!a || !b) return Infinity; const R=6371000,toRad=n=>n*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lng-a.lng),lat1=toRad(a.lat),lat2=toRad(b.lat); const x=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x)); }
-    async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(!force && lastGpsCoords && moved < 6 && (now-lastGpsSentAt) < 5000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
+    async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(!force && lastGpsCoords && moved < 20 && (now-lastGpsSentAt) < 15000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
     function forceLogout(){
       try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
       window.location.href = `{{ url_for('logout') }}`;
@@ -602,7 +602,7 @@
         }
       }catch(_){}
     }
-    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:2000, timeout:8000 }); }
+    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:15000, timeout:20000 }); }
     async function requireLocation(){
       if(gpsBooted) return; gpsBooted = true;
       syncAndroidLogin();
@@ -641,7 +641,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       requireLocation();
       fetchGpsStatus();
-      setInterval(fetchGpsStatus, 3000);
+      setInterval(fetchGpsStatus, 10000);
       const sairBtn = document.querySelector('.hero-exit');
       if (sairBtn){
         sairBtn.addEventListener('click', function(){
