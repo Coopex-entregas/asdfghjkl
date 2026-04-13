@@ -578,22 +578,82 @@
     const gpsStatusDot = document.getElementById('gpsStatusDot');
 
     function paintWaiting(msg){
-      if (gpsStatusDot){ gpsStatusDot.style.background = '#d68200'; gpsStatusDot.style.boxShadow = '0 0 0 3px rgba(214,130,0,.18)'; }
-    }
-    function paintOk(msg){
-      if (gpsStatusDot){ gpsStatusDot.style.background = '#169c5a'; gpsStatusDot.style.boxShadow = '0 0 0 3px rgba(22,156,90,.18)'; }
-    }
-    function paintOff(msg){
-      if (gpsStatusDot){ gpsStatusDot.style.background = '#e03131'; gpsStatusDot.style.boxShadow = '0 0 0 3px rgba(224,49,49,.18)'; }
+      if (gpsStatusDot){
+        gpsStatusDot.style.background = '#d68200';
+        gpsStatusDot.style.boxShadow = '0 0 0 3px rgba(214,130,0,.18)';
+      }
     }
 
-    let gpsBooted = false, gpsWatchId = null, lastGpsSentAt = 0, lastGpsCoords = null;
-    function distanceMeters(a,b){ if(!a || !b) return Infinity; const R=6371000,toRad=n=>n*Math.PI/180,dLat=toRad(b.lat-a.lat),dLon=toRad(b.lng-a.lng),lat1=toRad(a.lat),lat2=toRad(b.lat); const x=Math.sin(dLat/2)**2 + Math.cos(lat1)*Math.cos(lat2)*Math.sin(dLon/2)**2; return 2*R*Math.atan2(Math.sqrt(x), Math.sqrt(1-x)); }
-    async function sendPosition(lat,lng,accuracy,heading,speed,force=false){ const now=Date.now(), current={lat,lng}, moved=distanceMeters(lastGpsCoords,current); if(!force && lastGpsCoords && moved < 20 && (now-lastGpsSentAt) < 15000) return; lastGpsCoords=current; lastGpsSentAt=now; try{ await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`,{ method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ lat,lng,accuracy,heading,speed }) }); }catch(_){} }
+    function paintOk(msg){
+      if (gpsStatusDot){
+        gpsStatusDot.style.background = '#169c5a';
+        gpsStatusDot.style.boxShadow = '0 0 0 3px rgba(22,156,90,.18)';
+      }
+    }
+
+    function paintOff(msg){
+      if (gpsStatusDot){
+        gpsStatusDot.style.background = '#e03131';
+        gpsStatusDot.style.boxShadow = '0 0 0 3px rgba(224,49,49,.18)';
+      }
+    }
+
+    let gpsBooted = false;
+    let gpsWatchId = null;
+    let lastGpsSentAt = 0;
+    let lastGpsCoords = null;
+
+    function distanceMeters(a, b){
+      if (!a || !b) return Infinity;
+      const R = 6371000;
+      const toRad = n => n * Math.PI / 180;
+      const dLat = toRad(b.lat - a.lat);
+      const dLon = toRad(b.lng - a.lng);
+      const lat1 = toRad(a.lat);
+      const lat2 = toRad(b.lat);
+      const x = Math.sin(dLat / 2) ** 2 + Math.cos(lat1) * Math.cos(lat2) * Math.sin(dLon / 2) ** 2;
+      return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+    }
+
+    async function sendPosition(lat, lng, accuracy, heading, speed, force = false){
+      const now = Date.now();
+      const current = { lat, lng };
+      const moved = distanceMeters(lastGpsCoords, current);
+
+      if (!force && lastGpsCoords && moved < 5 && (now - lastGpsSentAt) < 5000){
+        return;
+      }
+
+      lastGpsCoords = current;
+      lastGpsSentAt = now;
+
+      try{
+        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Cache-Control': 'no-store'
+          },
+          body: JSON.stringify({
+            lat: lat,
+            lng: lng,
+            accuracy: accuracy,
+            heading: heading,
+            speed: speed
+          })
+        });
+      }catch(_){}
+    }
+
     function forceLogout(){
-      try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
+      try{
+        if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){
+          window.AndroidBridge.logout();
+        }
+      }catch(_){}
       window.location.href = `{{ url_for('logout') }}`;
     }
+
     function syncAndroidLogin(){
       try{
         if(window.AndroidBridge){
@@ -602,37 +662,140 @@
         }
       }catch(_){}
     }
-    function startGpsWatch(){ if(gpsWatchId !== null || !navigator.geolocation) return; gpsWatchId = navigator.geolocation.watchPosition((pos)=>sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed),(err)=>{ if(err && err.code===1){ alert('Para usar o painel, a localização deve permanecer ativada.'); forceLogout(); } },{ enableHighAccuracy:false, maximumAge:15000, timeout:20000 }); }
+
+    function startGpsWatch(){
+      if (gpsWatchId !== null || !navigator.geolocation) return;
+
+      gpsWatchId = navigator.geolocation.watchPosition(
+        (pos) => {
+          sendPosition(
+            pos.coords.latitude,
+            pos.coords.longitude,
+            pos.coords.accuracy,
+            pos.coords.heading,
+            pos.coords.speed
+          );
+        },
+        (err) => {
+          if (err && err.code === 1){
+            alert('Para usar o painel, a localização deve permanecer ativada.');
+            forceLogout();
+          }
+        },
+        {
+          enableHighAccuracy: true,
+          maximumAge: 1000,
+          timeout: 7000
+        }
+      );
+    }
+
     async function requireLocation(){
-      if(gpsBooted) return; gpsBooted = true;
+      if (gpsBooted) return;
+      gpsBooted = true;
+
       syncAndroidLogin();
 
-      if(window.AndroidBridge){
-        // no app nativo, o serviço Android é o principal responsável pelo rastreio em segundo plano
-        paintWaiting('Aguardando localização do app...');
+      if (window.AndroidBridge){
+        paintWaiting('Aguardando localização...');
+      }
+
+      if (!navigator.geolocation){
+        alert('Seu dispositivo não suporta localização.');
+        forceLogout();
         return;
       }
 
-      if(!navigator.geolocation){ alert('Seu dispositivo não suporta localização.'); forceLogout(); return; }
       try{
-        if(navigator.permissions && navigator.permissions.query){
+        if (navigator.permissions && navigator.permissions.query){
           const status = await navigator.permissions.query({ name:'geolocation' });
-          status.onchange = () => { if(status.state !== 'granted') forceLogout(); };
-          if(status.state === 'denied'){ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); return; }
-          if(status.state === 'granted'){ startGpsWatch(); return; }
+          status.onchange = () => {
+            if (status.state !== 'granted') forceLogout();
+          };
+
+          if (status.state === 'denied'){
+            alert('Para usar o painel, é obrigatório permitir a localização.');
+            forceLogout();
+            return;
+          }
+
+          if (status.state === 'granted'){
+            navigator.geolocation.getCurrentPosition(
+              (pos) => {
+                sendPosition(
+                  pos.coords.latitude,
+                  pos.coords.longitude,
+                  pos.coords.accuracy,
+                  pos.coords.heading,
+                  pos.coords.speed,
+                  true
+                );
+                startGpsWatch();
+              },
+              () => {
+                alert('Para usar o painel, é obrigatório permitir a localização.');
+                forceLogout();
+              },
+              {
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 0
+              }
+            );
+            return;
+          }
         }
-        navigator.geolocation.getCurrentPosition((pos)=>{ sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true); startGpsWatch(); },()=>{ alert('Para usar o painel, é obrigatório permitir a localização.'); forceLogout(); },{ enableHighAccuracy:false, timeout:15000, maximumAge:0 });
-      }catch(_){ forceLogout(); }
+
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            sendPosition(
+              pos.coords.latitude,
+              pos.coords.longitude,
+              pos.coords.accuracy,
+              pos.coords.heading,
+              pos.coords.speed,
+              true
+            );
+            startGpsWatch();
+          },
+          () => {
+            alert('Para usar o painel, é obrigatório permitir a localização.');
+            forceLogout();
+          },
+          {
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0
+          }
+        );
+      }catch(_){
+        forceLogout();
+      }
     }
 
     async function fetchGpsStatus(){
       try{
-        const r = await fetch(`{{ url_for('api_cooperado_localizacao_status') }}`, {headers:{'Accept':'application/json'}, cache:'no-store'});
+        const r = await fetch(`{{ url_for('api_cooperado_localizacao_status') }}`, {
+          headers:{ 'Accept':'application/json' },
+          cache:'no-store'
+        });
         const data = await r.json();
-        if(!data || !data.ok){ paintWaiting('Aguardando localização...'); return; }
-        if(!data.tem_localizacao){ paintWaiting(data.mensagem || 'Aguardando localização...'); return; }
-        if(data.online) paintOk((data.mensagem || 'Localização ativa') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
-        else paintOff((data.mensagem || 'Aguardando nova localização...') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
+
+        if(!data || !data.ok){
+          paintWaiting('Aguardando localização...');
+          return;
+        }
+
+        if(!data.tem_localizacao){
+          paintWaiting(data.mensagem || 'Aguardando localização...');
+          return;
+        }
+
+        if(data.online){
+          paintOk((data.mensagem || 'Localização ativa') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
+        }else{
+          paintOff((data.mensagem || 'Aguardando nova localização...') + (data.atualizado_em ? ' • ' + data.atualizado_em : ''));
+        }
       }catch(_){
         paintWaiting('Aguardando localização...');
       }
@@ -641,15 +804,19 @@
     document.addEventListener('DOMContentLoaded', () => {
       requireLocation();
       fetchGpsStatus();
-      setInterval(fetchGpsStatus, 10000);
+      setInterval(fetchGpsStatus, 3000);
+
       const sairBtn = document.querySelector('.hero-exit');
       if (sairBtn){
         sairBtn.addEventListener('click', function(){
-          try{ if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){ window.AndroidBridge.logout(); } }catch(_){}
+          try{
+            if(window.AndroidBridge && typeof window.AndroidBridge.logout === 'function'){
+              window.AndroidBridge.logout();
+            }
+          }catch(_){}
         });
       }
     });
-
   </script>
 </body>
 </html>
