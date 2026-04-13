@@ -2,15 +2,26 @@
 <html lang="pt-BR">
 <head>
   <meta charset="utf-8">
-  <title>Mapa dos motoboys</title>
+  <title>Mapa dos Motoboys</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin="">
   <style>
     :root{
-      --royal:#1248dc; --royal-2:#0d35ad; --royal-3:#2361ff; --bg:#eef4ff; --ink:#10213f; --muted:#62759d;
-      --line:rgba(18,72,220,.16); --glass:rgba(255,255,255,.72); --white:#fff;
-      --shadow:0 22px 60px rgba(18,72,220,.14); --soft:0 10px 24px rgba(16,33,63,.08);
-      --green:#17a55a; --orange:#d87a00; --red:#d43838;
+      --royal:#1550e8;
+      --royal-2:#103fc2;
+      --royal-3:#3e72ff;
+      --bg:#eef4ff;
+      --ink:#132443;
+      --muted:#66789f;
+      --line:rgba(21,80,232,.14);
+      --glass:rgba(255,255,255,.78);
+      --panel:#ffffff;
+      --green:#18a45b;
+      --orange:#d88408;
+      --red:#de3e3e;
+      --shadow:0 20px 55px rgba(17,54,154,.14);
+      --soft:0 10px 25px rgba(18,36,67,.08);
+      --radius:24px;
     }
 
     *{box-sizing:border-box}
@@ -21,189 +32,642 @@
       font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--ink);
       background:
-        radial-gradient(1000px 360px at 8% -10%, rgba(35,97,255,.22), transparent 60%),
-        radial-gradient(900px 360px at 100% 0%, rgba(18,72,220,.16), transparent 60%),
+        radial-gradient(1000px 360px at 0% 0%, rgba(62,114,255,.16), transparent 60%),
         linear-gradient(180deg,#f8fbff 0%, var(--bg) 100%);
       overflow:hidden;
     }
 
-    #map{position:fixed; inset:0; z-index:1}
-
-    .topbar{
-      position:fixed; left:16px; right:16px; top:16px; z-index:700;
-      display:flex; gap:12px; align-items:center; justify-content:space-between; flex-wrap:wrap;
-      padding:14px 16px; border-radius:26px; border:1px solid var(--line); background:var(--glass);
-      backdrop-filter:blur(18px); box-shadow:var(--shadow);
+    #map{
+      position:fixed;
+      inset:0;
+      z-index:1;
+      background:#edf3ff;
     }
 
-    .eyebrow{font-size:.74rem; letter-spacing:.12em; font-weight:900; text-transform:uppercase; color:var(--royal)}
-    .title{font-size:1.2rem; font-weight:1000; margin-top:2px}
-    .sub{font-size:.86rem; color:var(--muted); margin-top:2px}
-
-    .controls{display:flex; gap:8px; align-items:center; flex-wrap:wrap}
-
-    .btn,.input,.select{
-      height:44px; border-radius:16px; border:1px solid var(--line); font:inherit; box-shadow:var(--soft);
-      background:rgba(255,255,255,.84);
-    }
-
-    .btn{
-      padding:0 14px; color:var(--royal-2); font-weight:900; cursor:pointer; text-decoration:none;
-      display:inline-flex; align-items:center; gap:8px;
-    }
-
-    .btn.primary{background:linear-gradient(135deg,var(--royal),var(--royal-3)); color:#fff}
-    .btn:hover{transform:translateY(-1px)}
-
-    .input,.select{padding:0 14px; color:var(--ink); outline:none}
-    .input{width:190px}
-    .select{min-width:170px}
-
-    .floating{
-      position:fixed; left:16px; right:16px; bottom:16px; z-index:700;
-      display:grid; grid-template-columns:1.2fr auto; gap:12px; align-items:end;
+    .shell{
+      position:fixed;
+      inset:16px;
+      z-index:800;
       pointer-events:none;
+      display:grid;
+      grid-template-columns:380px minmax(0,1fr);
+      gap:14px;
     }
 
-    .panel,.chips{
+    .sidebar,
+    .toptools,
+    .floating-kpis{
       pointer-events:auto;
-      border:1px solid var(--line);
+    }
+
+    .sidebar{
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height:0;
+    }
+
+    .card{
       background:var(--glass);
+      border:1px solid var(--line);
+      border-radius:var(--radius);
       backdrop-filter:blur(16px);
       box-shadow:var(--shadow);
     }
 
-    .chips{
-      display:flex; gap:8px; flex-wrap:wrap; align-items:center; justify-content:flex-start;
-      border-radius:24px; padding:12px 14px;
+    .brand-card{
+      padding:16px 18px;
     }
 
-    .chip{
-      display:inline-flex; align-items:center; gap:8px; padding:9px 12px; border-radius:999px;
-      background:rgba(255,255,255,.86); border:1px solid var(--line); font-weight:900; font-size:.86rem; box-shadow:var(--soft);
+    .eyebrow{
+      font-size:.74rem;
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.12em;
+      color:var(--royal);
     }
 
-    .dot{width:10px;height:10px;border-radius:999px;display:inline-block}
+    .title{
+      margin-top:4px;
+      font-size:1.35rem;
+      font-weight:1000;
+      letter-spacing:-.02em;
+    }
+
+    .sub{
+      margin-top:4px;
+      font-size:.9rem;
+      color:var(--muted);
+      line-height:1.35;
+    }
+
+    .toolbar-card{
+      padding:14px;
+    }
+
+    .field{
+      position:relative;
+      margin-bottom:10px;
+    }
+
+    .field:last-child{margin-bottom:0}
+
+    .label{
+      display:block;
+      font-size:.8rem;
+      font-weight:800;
+      color:var(--muted);
+      margin-bottom:6px;
+    }
+
+    .input,
+    .select,
+    .btn{
+      width:100%;
+      height:46px;
+      border-radius:16px;
+      border:1px solid var(--line);
+      background:rgba(255,255,255,.92);
+      color:var(--ink);
+      font:inherit;
+      box-shadow:var(--soft);
+    }
+
+    .input,
+    .select{
+      padding:0 14px;
+      outline:none;
+    }
+
+    .btn{
+      cursor:pointer;
+      font-weight:900;
+      color:var(--royal-2);
+      background:#fff;
+    }
+
+    .btn.primary{
+      background:linear-gradient(135deg,var(--royal),var(--royal-3));
+      color:#fff;
+      border:none;
+    }
+
+    .btn-row{
+      display:grid;
+      grid-template-columns:1fr 1fr;
+      gap:8px;
+      margin-top:10px;
+    }
+
+    .autocomplete{
+      position:absolute;
+      left:0;
+      right:0;
+      top:74px;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      box-shadow:var(--shadow);
+      overflow:hidden;
+      display:none;
+      max-height:270px;
+      overflow-y:auto;
+      z-index:1000;
+    }
+
+    .autocomplete.open{display:block}
+
+    .autocomplete-item{
+      padding:12px 14px;
+      border-top:1px solid #edf2ff;
+      cursor:pointer;
+      background:#fff;
+    }
+
+    .autocomplete-item:first-child{border-top:none}
+    .autocomplete-item:hover{background:#f5f8ff}
+    .autocomplete-item strong{
+      display:block;
+      font-size:.95rem;
+    }
+    .autocomplete-item small{
+      display:block;
+      margin-top:4px;
+      color:var(--muted);
+      font-size:.82rem;
+    }
+
+    .stats-card{
+      padding:14px;
+    }
+
+    .stats-grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:10px;
+    }
+
+    .stat{
+      background:rgba(255,255,255,.92);
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:12px 13px;
+      box-shadow:var(--soft);
+    }
+
+    .stat-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .stat-name{
+      display:flex;
+      align-items:center;
+      gap:8px;
+      font-size:.9rem;
+      font-weight:900;
+    }
+
+    .dot{
+      width:10px;
+      height:10px;
+      border-radius:999px;
+      display:inline-block;
+      flex:0 0 auto;
+    }
+
     .dot.green{background:var(--green)}
     .dot.orange{background:var(--orange)}
     .dot.red{background:var(--red)}
 
-    .panel{
-      max-width:480px; border-radius:28px; padding:14px 16px;
+    .stat-value{
+      font-size:1.18rem;
+      font-weight:1000;
+      color:var(--ink);
     }
 
-    .panel h3{margin:0 0 4px; font-size:1rem}
-    .muted{color:var(--muted); font-size:.85rem}
-
-    .kv{
-      display:grid; grid-template-columns:auto 1fr; gap:8px 12px; margin-top:12px; font-size:.9rem
+    .list-card{
+      padding:10px;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
     }
 
-    .kv b{color:var(--royal-2)}
+    .list-head{
+      padding:8px 8px 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
 
-    .mini-actions{display:flex; gap:8px; flex-wrap:wrap; margin-top:14px}
-    .mini-actions .btn{height:40px; border-radius:14px}
+    .list-head h3{
+      margin:0;
+      font-size:1rem;
+    }
 
-    .listpill{
-      max-width:100%; display:flex; gap:8px; overflow:auto; padding-bottom:2px;
+    .list-head small{
+      color:var(--muted);
+      font-weight:700;
+    }
+
+    .list{
+      overflow:auto;
+      padding:2px;
+      min-height:0;
+      display:flex;
+      flex-direction:column;
+      gap:8px;
     }
 
     .person{
-      min-width:180px; padding:10px 12px; border-radius:18px; border:1px solid var(--line);
-      background:rgba(255,255,255,.86); box-shadow:var(--soft); cursor:pointer;
+      background:#fff;
+      border:1px solid var(--line);
+      border-radius:18px;
+      padding:12px;
+      box-shadow:var(--soft);
+      cursor:pointer;
+      transition:.15s ease;
     }
 
-    .person strong{display:block; font-size:.92rem}
-    .person small{display:block; margin-top:3px; color:var(--muted)}
+    .person:hover{transform:translateY(-1px)}
+    .person.active{
+      border-color:rgba(21,80,232,.35);
+      box-shadow:0 10px 25px rgba(21,80,232,.12);
+    }
+
+    .person-top{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+    }
+
+    .person strong{
+      font-size:.95rem;
+      display:block;
+    }
+
+    .person small{
+      display:block;
+      color:var(--muted);
+      margin-top:4px;
+      line-height:1.35;
+    }
+
+    .mini-badge{
+      display:inline-flex;
+      align-items:center;
+      gap:6px;
+      border-radius:999px;
+      padding:6px 9px;
+      font-size:.75rem;
+      font-weight:900;
+      border:1px solid var(--line);
+      white-space:nowrap;
+    }
+
+    .mini-badge.green{
+      color:var(--green);
+      background:rgba(24,164,91,.08);
+    }
+
+    .mini-badge.orange{
+      color:var(--orange);
+      background:rgba(216,132,8,.10);
+    }
+
+    .mini-badge.red{
+      color:var(--red);
+      background:rgba(222,62,62,.10);
+    }
+
+    .mini-badge.mix-go{
+      color:#356130;
+      background:linear-gradient(90deg, rgba(24,164,91,.12) 0 58%, rgba(216,132,8,.12) 58% 100%);
+    }
+
+    .mini-badge.mix-ro{
+      color:#744232;
+      background:linear-gradient(90deg, rgba(222,62,62,.12) 0 58%, rgba(216,132,8,.12) 58% 100%);
+    }
+
+    .toptools{
+      display:flex;
+      flex-direction:column;
+      justify-content:space-between;
+      min-width:0;
+    }
+
+    .topbar{
+      margin-left:auto;
+      width:min(780px,100%);
+      padding:12px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:10px;
+      flex-wrap:wrap;
+    }
+
+    .filters{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      align-items:center;
+    }
+
+    .filter-chip{
+      height:42px;
+      padding:0 14px;
+      border-radius:999px;
+      border:1px solid var(--line);
+      background:#fff;
+      font:inherit;
+      font-weight:900;
+      color:var(--royal-2);
+      cursor:pointer;
+      box-shadow:var(--soft);
+    }
+
+    .filter-chip.active{
+      background:linear-gradient(135deg,var(--royal),var(--royal-3));
+      color:#fff;
+      border:none;
+    }
+
+    .actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+    }
+
+    .small-btn{
+      height:42px;
+      padding:0 14px;
+      border-radius:14px;
+      border:1px solid var(--line);
+      background:#fff;
+      color:var(--ink);
+      font:inherit;
+      font-weight:900;
+      cursor:pointer;
+      box-shadow:var(--soft);
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+    }
+
+    .small-btn.primary{
+      background:linear-gradient(135deg,var(--royal),var(--royal-3));
+      color:#fff;
+      border:none;
+    }
+
+    .floating-kpis{
+      margin-left:auto;
+      width:min(780px,100%);
+      display:grid;
+      grid-template-columns:repeat(3,1fr);
+      gap:10px;
+      align-self:end;
+    }
+
+    .floating-kpi{
+      background:var(--glass);
+      border:1px solid var(--line);
+      border-radius:20px;
+      backdrop-filter:blur(16px);
+      box-shadow:var(--shadow);
+      padding:12px 14px;
+    }
+
+    .floating-kpi .k{
+      font-size:.78rem;
+      color:var(--muted);
+      font-weight:900;
+      text-transform:uppercase;
+      letter-spacing:.04em;
+    }
+
+    .floating-kpi .v{
+      margin-top:4px;
+      font-size:1.35rem;
+      font-weight:1000;
+    }
 
     .leaflet-control-attribution{display:none}
+    .leaflet-control-zoom{
+      border:none !important;
+      box-shadow:var(--shadow) !important;
+      overflow:hidden;
+      border-radius:16px !important;
+    }
+    .leaflet-control-zoom a{
+      width:38px !important;
+      height:38px !important;
+      line-height:38px !important;
+      color:var(--ink) !important;
+      border:none !important;
+    }
 
     .leaflet-popup-content-wrapper{
-      border-radius:18px; border:1px solid var(--line); box-shadow:var(--shadow); background:#fff; color:var(--ink)
+      border-radius:20px;
+      border:1px solid var(--line);
+      box-shadow:var(--shadow);
+      background:#fff;
+      color:var(--ink);
     }
 
-    .leaflet-popup-content{margin:14px 14px 12px}
-    .popup-title{font-size:1rem; font-weight:1000; color:var(--royal-2)}
-
-    .badge{
-      display:inline-flex; align-items:center; gap:6px; padding:5px 9px; border-radius:999px; font-size:.78rem;
-      font-weight:900; border:1px solid var(--line); margin-right:6px; margin-top:8px;
+    .leaflet-popup-content{
+      margin:14px;
+      min-width:230px;
     }
 
-    .badge.green{background:rgba(23,165,90,.10)}
-    .badge.orange{background:rgba(216,122,0,.12)}
-    .badge.red{background:rgba(212,56,56,.12)}
-
-    .badge.mix-go{
-      background:linear-gradient(90deg, rgba(23,165,90,.12) 0 55%, rgba(216,122,0,.12) 55% 100%);
+    .popup-title{
+      font-size:1rem;
+      font-weight:1000;
+      color:var(--royal-2);
+      margin-bottom:6px;
     }
 
-    .badge.mix-ro{
-      background:linear-gradient(90deg, rgba(212,56,56,.12) 0 55%, rgba(216,122,0,.12) 55% 100%);
+    .popup-row{
+      font-size:.9rem;
+      margin-top:6px;
+      color:var(--ink);
     }
 
-    @media(max-width:900px){
-      .floating{grid-template-columns:1fr}
-      .panel{max-width:none}
-      .topbar{left:12px; right:12px; top:12px}
-      .floating{left:12px; right:12px; bottom:12px}
-      .controls{width:100%}
-      .input{width:100%}
+    .popup-actions{
+      display:flex;
+      gap:8px;
+      flex-wrap:wrap;
+      margin-top:12px;
+    }
+
+    .popup-actions a{
+      text-decoration:none;
+      display:inline-flex;
+      align-items:center;
+      justify-content:center;
+      padding:8px 10px;
+      border-radius:12px;
+      border:1px solid var(--line);
+      background:#f8fbff;
+      color:var(--royal-2);
+      font-size:.82rem;
+      font-weight:900;
+    }
+
+    @media (max-width:1180px){
+      .shell{
+        grid-template-columns:340px minmax(0,1fr);
+      }
+    }
+
+    @media (max-width:980px){
+      .shell{
+        inset:12px;
+        grid-template-columns:1fr;
+        grid-template-rows:auto 1fr;
+      }
+
+      .toptools{
+        order:-1;
+      }
+
+      .topbar,
+      .floating-kpis{
+        width:100%;
+      }
+
+      .sidebar{
+        max-height:48vh;
+      }
+    }
+
+    @media (max-width:640px){
+      .topbar{
+        padding:10px;
+      }
+
+      .filters,
+      .actions{
+        width:100%;
+      }
+
+      .filter-chip,
+      .small-btn{
+        flex:1 1 auto;
+        justify-content:center;
+      }
+
+      .floating-kpis{
+        grid-template-columns:1fr;
+      }
+
+      .sidebar{
+        max-height:52vh;
+      }
     }
   </style>
 </head>
 <body>
   <div id="map"></div>
 
-  <section class="topbar">
-    <div>
-      <div class="eyebrow">Monitoramento ao vivo</div>
-      <div class="title">Mapa dos motoboys</div>
-      <div class="sub">Marcadores discretos, leitura rápida de online, offline e entregas em aberto.</div>
-    </div>
+  <div class="shell">
+    <aside class="sidebar">
+      <section class="card brand-card">
+        <div class="eyebrow">Monitoramento ao vivo</div>
+        <div class="title">Mapa dos Motoboys</div>
+        <div class="sub">Busca rápida, acompanhamento em tempo real e visual leve para seguir cooperados sem bagunça na tela.</div>
+      </section>
 
-    <div class="controls">
-      <input id="search" class="input" placeholder="Buscar cooperado">
-      <select id="statusFilter" class="select">
-        <option value="todos">Todos</option>
-        <option value="em_corrida">Com entrega</option>
-        <option value="livre">Online livre</option>
-        <option value="offline">Offline</option>
-      </select>
-      <button id="btnReload" class="btn" type="button">Atualizar</button>
-      <button id="btnFit" class="btn" type="button">Enquadrar</button>
-      <a class="btn" href="/trajetos">Trajetos</a>
-      <a class="btn primary" href="{{ url_for('admin') }}">Voltar</a>
-    </div>
-  </section>
+      <section class="card toolbar-card">
+        <div class="field">
+          <label class="label" for="searchInput">Buscar cooperado</label>
+          <input id="searchInput" class="input" type="text" autocomplete="off" placeholder="Digite o nome do motoboy">
+          <div id="autocompleteList" class="autocomplete"></div>
+        </div>
 
-  <section class="floating">
-    <div class="chips">
-      <span class="chip"><span class="dot orange"></span> Com entrega <strong id="countBusy">0</strong></span>
-      <span class="chip"><span class="dot green"></span> Online livre <strong id="countOnline">0</strong></span>
-      <span class="chip"><span class="dot red"></span> Offline <strong id="countOffline">0</strong></span>
-      <div class="listpill" id="quickList"></div>
-    </div>
+        <div class="btn-row">
+          <button id="btnFollowSelected" class="btn primary" type="button">Seguir selecionado</button>
+          <button id="btnClearFollow" class="btn" type="button">Parar de seguir</button>
+        </div>
 
-    <aside class="panel">
-      <h3 id="infoName">Selecione um motoboy</h3>
-      <div class="muted" id="infoSubtitle">Ao clicar no marcador aparece o status combinado e os atalhos do mapa.</div>
+        <div class="btn-row">
+          <button id="btnFitAll" class="btn" type="button">Enquadrar</button>
+          <button id="btnRefresh" class="btn" type="button">Atualizar</button>
+        </div>
+      </section>
 
-      <div class="kv">
-        <b>Status</b><span id="infoStatus">—</span>
-        <b>Velocidade</b><span id="infoSpeed">—</span>
-        <b>Entregas abertas</b><span id="infoDeliveries">—</span>
-        <b>Atualizado</b><span id="infoUpdated">—</span>
-      </div>
+      <section class="card stats-card">
+        <div class="stats-grid">
+          <div class="stat">
+            <div class="stat-top">
+              <div class="stat-name"><span class="dot green"></span> Online</div>
+              <div class="stat-value" id="countOnline">0</div>
+            </div>
+          </div>
 
-      <div class="mini-actions">
-        <button id="btnFollow" class="btn primary" type="button">Seguir</button>
-        <button id="btnMaps" class="btn" type="button">Abrir no Maps</button>
-        <button id="btnStreet" class="btn" type="button">Ver rua</button>
-        <button id="btnReplay" class="btn" type="button">Trajetos</button>
-      </div>
+          <div class="stat">
+            <div class="stat-top">
+              <div class="stat-name"><span class="dot orange"></span> Com entrega</div>
+              <div class="stat-value" id="countBusy">0</div>
+            </div>
+          </div>
+
+          <div class="stat">
+            <div class="stat-top">
+              <div class="stat-name"><span class="dot red"></span> Offline</div>
+              <div class="stat-value" id="countOffline">0</div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="card list-card">
+        <div class="list-head">
+          <h3>Cooperados</h3>
+          <small id="listMeta">0 exibidos</small>
+        </div>
+        <div class="list" id="personList"></div>
+      </section>
     </aside>
-  </section>
+
+    <section class="toptools">
+      <div class="card topbar">
+        <div class="filters">
+          <button type="button" class="filter-chip active" data-filter="todos">Todos</button>
+          <button type="button" class="filter-chip" data-filter="online">Online</button>
+          <button type="button" class="filter-chip" data-filter="com_entrega">Com entrega</button>
+          <button type="button" class="filter-chip" data-filter="offline">Offline</button>
+        </div>
+
+        <div class="actions">
+          <a class="small-btn" href="/trajetos">Trajetos</a>
+          <a class="small-btn primary" href="{{ url_for('admin') }}">Voltar</a>
+        </div>
+      </div>
+
+      <div class="floating-kpis">
+        <div class="floating-kpi">
+          <div class="k">Selecionado</div>
+          <div class="v" id="selectedName">Nenhum</div>
+        </div>
+        <div class="floating-kpi">
+          <div class="k">Status</div>
+          <div class="v" id="selectedStatus">—</div>
+        </div>
+        <div class="floating-kpi">
+          <div class="k">Entregas abertas</div>
+          <div class="v" id="selectedDeliveries">—</div>
+        </div>
+      </div>
+    </section>
+  </div>
 
   <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
   <script>
@@ -214,21 +678,39 @@
     const DATA_ENDPOINT = '/mapa_motoboys?format=json';
     const POLL_MS = 2000;
 
-    const map = L.map('map', { preferCanvas:true, zoomControl:true }).setView([-5.79448, -35.211], 12);
+    const map = L.map('map', {
+      preferCanvas: true,
+      zoomControl: true,
+      zoomSnap: 0.25,
+      zoomDelta: 0.5,
+      minZoom: 3,
+      maxZoom: 21
+    }).setView([-5.79448, -35.211], 12);
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-      maxZoom:20
+    const tileLayer = L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+      minZoom: 3,
+      maxZoom: 22,
+      maxNativeZoom: 19,
+      updateWhenZooming: false,
+      updateWhenIdle: true,
+      keepBuffer: 8
     }).addTo(map);
+
+    setTimeout(() => map.invalidateSize(), 200);
+    window.addEventListener('resize', () => {
+      setTimeout(() => map.invalidateSize(), 120);
+    });
 
     const markers = new Map();
     let allItems = seed.slice();
     let selected = null;
     let followId = null;
+    let currentFilter = 'todos';
     let timer = null;
 
-    const $ = id => document.getElementById(id);
-    const norm = s => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
-    const fmt = v => (v === null || v === undefined || v === '') ? '—' : String(v);
+    const $ = (id) => document.getElementById(id);
+    const norm = (s) => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+    const fmt = (v) => (v === null || v === undefined || v === '') ? '—' : String(v);
 
     function mapsUrl(lat, lng){
       return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
@@ -247,8 +729,8 @@
     }
 
     function visualState(item){
-      const busy = isBusy(item);
       const online = isOnline(item);
+      const busy = isBusy(item);
 
       if (online && busy) return 'online_busy';
       if (online && !busy) return 'online_free';
@@ -259,12 +741,12 @@
     function statusLabel(item){
       const state = visualState(item);
       if (state === 'online_busy') return 'Online com entrega';
-      if (state === 'online_free') return 'Online livre';
+      if (state === 'online_free') return 'Online';
       if (state === 'offline_busy') return 'Offline com entrega';
       return 'Offline';
     }
 
-    function statusBadgeClass(item){
+    function badgeClass(item){
       const state = visualState(item);
       if (state === 'online_busy') return 'mix-go';
       if (state === 'online_free') return 'green';
@@ -283,126 +765,170 @@
     function markerSvg(item){
       const state = visualState(item);
 
-      let base = '#17a55a';
+      let base = '#18a45b';
       let accent = null;
-      let halo = 'rgba(23,165,90,.18)';
+      let halo = 'rgba(24,164,91,.16)';
 
       if (state === 'online_busy'){
-        base = '#17a55a';
-        accent = '#d87a00';
-        halo = 'rgba(23,165,90,.18)';
+        base = '#18a45b';
+        accent = '#d88408';
+        halo = 'rgba(24,164,91,.16)';
       } else if (state === 'online_free'){
-        base = '#17a55a';
+        base = '#18a45b';
         accent = null;
-        halo = 'rgba(23,165,90,.18)';
+        halo = 'rgba(24,164,91,.16)';
       } else if (state === 'offline_busy'){
-        base = '#d43838';
-        accent = '#d87a00';
-        halo = 'rgba(212,56,56,.18)';
+        base = '#de3e3e';
+        accent = '#d88408';
+        halo = 'rgba(222,62,62,.16)';
       } else {
-        base = '#d43838';
+        base = '#de3e3e';
         accent = null;
-        halo = 'rgba(212,56,56,.18)';
+        halo = 'rgba(222,62,62,.16)';
       }
 
-      const accentCircle = accent
-        ? `<circle cx="22" cy="6" r="4.5" fill="${accent}" stroke="#ffffff" stroke-width="1.6"/>`
-        : '';
-
-      const deliveryRing = isBusy(item)
-        ? `<circle cx="14" cy="14" r="11.5" fill="none" stroke="rgba(216,122,0,.20)" stroke-width="1.8"/>`
-        : '';
-
       return `
-      <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 28 28">
-        <circle cx="14" cy="14" r="13" fill="${halo}"/>
-        ${deliveryRing}
-        <circle cx="14" cy="14" r="8.8" fill="${base}" stroke="#ffffff" stroke-width="2.2"/>
-        <circle cx="14" cy="14" r="2.4" fill="#ffffff"/>
-        ${accentCircle}
-      </svg>`;
+        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
+          <circle cx="12" cy="12" r="11" fill="${halo}"/>
+          <circle cx="12" cy="12" r="7.2" fill="${base}" stroke="#ffffff" stroke-width="2"/>
+          <circle cx="12" cy="12" r="2.15" fill="#ffffff"/>
+          ${accent ? `<circle cx="18" cy="6" r="4" fill="${accent}" stroke="#ffffff" stroke-width="1.5"/>` : ''}
+        </svg>
+      `;
     }
 
     function iconFor(item){
       return L.icon({
         iconUrl: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))),
-        iconSize: [28, 28],
-        iconAnchor: [14, 14],
-        popupAnchor: [0, -14]
+        iconSize: [24, 24],
+        iconAnchor: [12, 12],
+        popupAnchor: [0, -12]
       });
     }
 
     function popupHtml(item){
       return `
         <div class="popup-title">${item.nome || 'Cooperado'}</div>
-        <div>
-          <span class="badge ${statusBadgeClass(item)}">${statusLabel(item)}</span>
-          <span class="badge">${Number(item.entregas_abertas || 0)} entrega(s)</span>
-        </div>
-        <div style="margin-top:10px;line-height:1.55">
-          <div><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
-          <div><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
-          <div><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
-        </div>
-        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:12px">
-          <a href="${mapsUrl(item.lat, item.lng)}" target="_blank" rel="noopener" class="badge">Maps</a>
-          <a href="${streetUrl(item.lat, item.lng)}" target="_blank" rel="noopener" class="badge">Ver rua</a>
+        <div><span class="mini-badge ${badgeClass(item)}">${statusLabel(item)}</span></div>
+        <div class="popup-row"><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
+        <div class="popup-row"><strong>Entregas abertas:</strong> ${Number(item.entregas_abertas || 0)}</div>
+        <div class="popup-row"><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
+        <div class="popup-row"><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
+        <div class="popup-actions">
+          <a href="${mapsUrl(item.lat, item.lng)}" target="_blank" rel="noopener">Maps</a>
+          <a href="${streetUrl(item.lat, item.lng)}" target="_blank" rel="noopener">Ver rua</a>
+          <a href="/trajetos?cooperado_id=${item.id}">Trajetos</a>
         </div>
       `;
     }
 
-    function setInfo(item){
+    function setSelected(item){
       selected = item || null;
-      $('infoName').textContent = item ? item.nome : 'Selecione um motoboy';
-      $('infoSubtitle').textContent = item
-        ? 'Marcador discreto com leitura combinada de online/offline e entrega em aberto.'
-        : 'Ao clicar no marcador aparece o status combinado e os atalhos do mapa.';
-      $('infoStatus').textContent = item ? statusLabel(item) : '—';
-      $('infoSpeed').textContent = item ? `${Number(item.velocidade || 0).toFixed(1)} km/h` : '—';
-      $('infoDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
-      $('infoUpdated').textContent = item ? fmt(item.ultima_atualizacao) : '—';
+      $('selectedName').textContent = item ? item.nome : 'Nenhum';
+      $('selectedStatus').textContent = item ? statusLabel(item) : '—';
+      $('selectedDeliveries').textContent = item ? String(Number(item.entregas_abertas || 0)) : '—';
+
+      document.querySelectorAll('.person').forEach(el => {
+        el.classList.toggle('active', item && String(el.dataset.id) === String(item.id));
+      });
     }
 
     function filteredItems(){
-      const q = norm($('search').value);
-      const sf = $('statusFilter').value;
+      const q = norm($('searchInput').value);
 
       return allItems.filter(item => {
-        if (sf === 'em_corrida' && !isBusy(item)) return false;
-        if (sf === 'livre' && visualState(item) !== 'online_free') return false;
-        if (sf === 'offline' && !String(item.status).includes('offline')) return false;
+        if (currentFilter === 'online' && !isOnline(item)) return false;
+        if (currentFilter === 'com_entrega' && !isBusy(item)) return false;
+        if (currentFilter === 'offline' && isOnline(item)) return false;
         if (q && !norm(item.nome).includes(q)) return false;
         return true;
       });
     }
 
-    function rebuildQuickList(items){
-      const el = $('quickList');
-      el.innerHTML = '';
+    function refreshCounters(itemsBase = allItems){
+      $('countOnline').textContent = itemsBase.filter(i => isOnline(i)).length;
+      $('countBusy').textContent = itemsBase.filter(i => isBusy(i)).length;
+      $('countOffline').textContent = itemsBase.filter(i => !isOnline(i)).length;
+    }
 
-      items.slice(0, 10).forEach(item => {
-        const d = document.createElement('div');
-        d.className = 'person';
-        d.innerHTML = `
+    function buildAutocomplete(){
+      const host = $('autocompleteList');
+      const q = norm($('searchInput').value).trim();
+
+      if (!q){
+        host.classList.remove('open');
+        host.innerHTML = '';
+        return;
+      }
+
+      const matches = allItems
+        .filter(i => norm(i.nome).includes(q))
+        .slice(0, 8);
+
+      if (!matches.length){
+        host.classList.remove('open');
+        host.innerHTML = '';
+        return;
+      }
+
+      host.innerHTML = matches.map(item => `
+        <div class="autocomplete-item" data-id="${item.id}">
           <strong>${item.nome}</strong>
-          <small>${statusLabel(item)} • ${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
-        `;
-        d.onclick = () => focusItem(item.id, true);
-        el.appendChild(d);
+          <small>${statusLabel(item)} • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
+        </div>
+      `).join('');
+
+      host.classList.add('open');
+
+      host.querySelectorAll('.autocomplete-item').forEach(el => {
+        el.addEventListener('click', () => {
+          const id = el.dataset.id;
+          const item = allItems.find(i => String(i.id) === String(id));
+          if (!item) return;
+          $('searchInput').value = item.nome;
+          host.classList.remove('open');
+          renderAll();
+          focusItem(item.id, true);
+        });
       });
     }
 
-    function refreshCounts(items){
-      $('countBusy').textContent = items.filter(i => isBusy(i)).length;
-      $('countOnline').textContent = items.filter(i => visualState(i) === 'online_free').length;
-      $('countOffline').textContent = items.filter(i => !isOnline(i)).length;
+    function buildList(items){
+      const host = $('personList');
+      $('listMeta').textContent = `${items.length} exibidos`;
+
+      if (!items.length){
+        host.innerHTML = `
+          <div class="person" style="cursor:default">
+            <strong>Nenhum cooperado encontrado</strong>
+            <small>Tente ajustar a busca ou o filtro.</small>
+          </div>
+        `;
+        return;
+      }
+
+      host.innerHTML = items.map(item => `
+        <div class="person ${selected && String(selected.id) === String(item.id) ? 'active' : ''}" data-id="${item.id}">
+          <div class="person-top">
+            <strong>${item.nome}</strong>
+            <span class="mini-badge ${badgeClass(item)}">${statusLabel(item)}</span>
+          </div>
+          <small>${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s) • ${fmt(item.ultima_atualizacao)}</small>
+        </div>
+      `).join('');
+
+      host.querySelectorAll('.person').forEach(el => {
+        el.addEventListener('click', () => {
+          focusItem(el.dataset.id, true);
+        });
+      });
     }
 
     function renderMarkers(items){
-      const ids = new Set(items.map(i => String(i.id)));
+      const visibleIds = new Set(items.map(i => String(i.id)));
 
       Array.from(markers.keys()).forEach(id => {
-        if (!ids.has(String(id))){
+        if (!visibleIds.has(String(id))){
           map.removeLayer(markers.get(id));
           markers.delete(id);
         }
@@ -414,11 +940,11 @@
         if (!marker){
           marker = L.marker([item.lat, item.lng], {
             icon: iconFor(item),
-            zIndexOffset: priority(item) * 1000
+            zIndexOffset: priority(item) * 1000 + Number(item.entregas_abertas || 0)
           }).addTo(map);
 
           marker.on('click', () => {
-            setInfo(item);
+            setSelected(item);
             marker.bindPopup(popupHtml(item)).openPopup();
           });
 
@@ -429,35 +955,61 @@
           marker.setZIndexOffset(priority(item) * 1000 + Number(item.entregas_abertas || 0));
           marker.off('click');
           marker.on('click', () => {
-            setInfo(item);
+            setSelected(item);
             marker.bindPopup(popupHtml(item)).openPopup();
           });
         }
       });
 
-      refreshCounts(items);
-      rebuildQuickList(items);
-
       if (selected){
-        const newer = items.find(i => String(i.id) === String(selected.id));
-        if (newer) setInfo(newer);
+        const newer = allItems.find(i => String(i.id) === String(selected.id));
+        if (newer) setSelected(newer);
       }
 
       if (followId){
-        const f = items.find(i => String(i.id) === String(followId));
-        if (f) map.panTo([f.lat, f.lng], { animate:true, duration:.8 });
+        const followed = allItems.find(i => String(i.id) === String(followId));
+        if (followed){
+          map.panTo([followed.lat, followed.lng], { animate:true, duration:.8 });
+        }
       }
     }
 
-    function focusItem(id, openPopup){
+    function renderAll(){
+      const items = filteredItems();
+      refreshCounters(allItems);
+      buildList(items);
+      renderMarkers(items);
+      buildAutocomplete();
+    }
+
+    function focusItem(id, openPopup = false){
       const item = allItems.find(i => String(i.id) === String(id));
-      const marker = markers.get(item && item.id);
-      if (!item || !marker) return;
+      if (!item) return;
 
-      setInfo(item);
-      map.setView([item.lat, item.lng], Math.max(map.getZoom(), 17), { animate:true });
+      setSelected(item);
 
-      if (openPopup) marker.bindPopup(popupHtml(item)).openPopup();
+      const marker = markers.get(item.id);
+      if (!marker){
+        renderAll();
+      }
+
+      const readyMarker = markers.get(item.id);
+      if (!readyMarker) return;
+
+      map.setView([item.lat, item.lng], Math.max(map.getZoom(), 18), { animate:true });
+      if (openPopup){
+        readyMarker.bindPopup(popupHtml(item)).openPopup();
+      }
+    }
+
+    function fitAll(){
+      const items = filteredItems();
+      if (!items.length) return;
+
+      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
+      map.fitBounds(bounds.pad(0.16), { maxZoom: 18 });
+
+      setTimeout(() => map.invalidateSize(), 100);
     }
 
     async function fetchData(){
@@ -472,51 +1024,79 @@
             || (a.nome || '').localeCompare(b.nome || '');
         });
 
-        renderMarkers(filteredItems());
-      }catch(err){
+        if (selected){
+          const newer = allItems.find(i => String(i.id) === String(selected.id));
+          if (newer) selected = newer;
+        }
+
+        renderAll();
+      } catch (err){
         console.error(err);
       }
     }
 
-    function fitAll(){
-      const items = filteredItems();
-      if (!items.length) return;
+    document.querySelectorAll('.filter-chip').forEach(btn => {
+      btn.addEventListener('click', () => {
+        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        currentFilter = btn.dataset.filter;
+        renderAll();
+      });
+    });
 
-      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
-      map.fitBounds(bounds.pad(0.18));
-    }
+    $('searchInput').addEventListener('input', () => {
+      renderAll();
+    });
 
-    $('btnReload').onclick = fetchData;
-    $('btnFit').onclick = fitAll;
-    $('search').oninput = () => renderMarkers(filteredItems());
-    $('statusFilter').onchange = () => renderMarkers(filteredItems());
+    $('searchInput').addEventListener('focus', () => {
+      buildAutocomplete();
+    });
 
-    $('btnFollow').onclick = () => {
+    document.addEventListener('click', (e) => {
+      const host = $('autocompleteList');
+      if (!host.contains(e.target) && e.target !== $('searchInput')){
+        host.classList.remove('open');
+      }
+    });
+
+    $('btnFollowSelected').addEventListener('click', () => {
       if (!selected) return;
       followId = String(selected.id);
-      focusItem(followId, true);
-    };
+      focusItem(selected.id, true);
+    });
 
-    $('btnMaps').onclick = () => {
-      if (selected) window.open(mapsUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    };
+    $('btnClearFollow').addEventListener('click', () => {
+      followId = null;
+    });
 
-    $('btnStreet').onclick = () => {
-      if (selected) window.open(streetUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    };
+    $('btnFitAll').addEventListener('click', () => {
+      fitAll();
+    });
 
-    $('btnReplay').onclick = () => {
-      window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
-    };
+    $('btnRefresh').addEventListener('click', () => {
+      fetchData();
+    });
 
     map.on('dragstart zoomstart', () => {
       followId = null;
     });
 
-    allItems = seed.slice().sort((a, b) => priority(b) - priority(a));
-    renderMarkers(filteredItems());
+    map.on('zoomend moveend', () => {
+      setTimeout(() => map.invalidateSize(), 50);
+    });
 
-    if (allItems.length) fitAll();
+    allItems = seed.slice().sort((a, b) => {
+      const pa = priority(a), pb = priority(b);
+      if (pa !== pb) return pb - pa;
+      return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0))
+        || (a.nome || '').localeCompare(b.nome || '');
+    });
+
+    renderAll();
+
+    if (allItems.length){
+      fitAll();
+    }
 
     timer = setInterval(fetchData, POLL_MS);
   </script>
