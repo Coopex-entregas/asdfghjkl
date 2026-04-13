@@ -499,6 +499,12 @@
       }
     }
 
+    #personList,
+    .quick-list,
+    .person{
+      display:none !important;
+    }
+
     @media (max-width:640px){
       .top-right{
         width:100%;
@@ -805,33 +811,7 @@
       });
     }
 
-    function buildList(items){
-      const host = $('personList');
-
-      if (!items.length){
-        host.innerHTML = `
-          <div class="person" style="cursor:default">
-            <strong>Nenhum cooperado encontrado</strong>
-            <small>Tente ajustar a busca ou o filtro.</small>
-          </div>
-        `;
-        return;
-      }
-
-      host.innerHTML = items.slice(0, 10).map(item => `
-        <div class="person ${selected && String(selected.id) === String(item.id) ? 'active' : ''}" data-id="${item.id}">
-          <div class="person-top">
-            <strong>${item.nome}</strong>
-            <span class="badge ${badgeClass(item)}">${statusLabel(item)}</span>
-          </div>
-          <small>${Number(item.velocidade || 0).toFixed(1)} km/h • ${Number(item.entregas_abertas || 0)} entrega(s) • ${fmt(item.ultima_atualizacao)}</small>
-        </div>
-      `).join('');
-
-      host.querySelectorAll('.person').forEach(el => {
-        el.addEventListener('click', () => focusItem(el.dataset.id, true));
-      });
-    }
+    function buildList(items){ return; }
 
     function renderMarkers(items){
       const ids = new Set(items.map(i => String(i.id)));
@@ -881,7 +861,6 @@
     function renderAll(){
       const items = filteredItems();
       refreshCounters();
-      buildList(items);
       renderMarkers(items);
       buildAutocomplete();
     }
@@ -985,10 +964,6 @@
 
     map.on('dragstart', () => {
       followId = null;
-    });
-
-    map.on('zoomend moveend', () => {
-      setTimeout(() => map.invalidateSize(), 50);
     });
 
     allItems = seed.slice().sort((a, b) => {
