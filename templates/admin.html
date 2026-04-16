@@ -1902,12 +1902,14 @@
       var inpColeta = document.getElementById('cupomColeta');
       var inpEntrega = document.getElementById('cupomEntrega');
       var inpAt = document.getElementById('cupomAtendente');
+      var inpCnpjEmpresa = document.getElementById('cupomCnpjEmpresa');
 
       var inpRec = document.getElementById('cupomRecebido');
       if(inpCliente) inpCliente.value = d?.cliente || '';
       if(inpColeta)  inpColeta.value  = d?.endereco || '';
       if(inpEntrega) inpEntrega.value = '';
       if(inpAt)      inpAt.value      = '';
+      if(inpCnpjEmpresa) inpCnpjEmpresa.value = d?.cnpjEmpresa || '';
       if(inpRec)     inpRec.value     = d?.recebido || '';
     }
 
@@ -1925,6 +1927,7 @@
       var recebido = (mode === 'editado') ? (edits.recebido || d.recebido || '') : (d.recebido || '');
       var coleta = (mode === 'editado') ? (edits.coleta || '') : '';
       var entrega = (mode === 'editado') ? (edits.entrega || '') : '';
+      var cnpjEmpresa = (mode === 'editado') ? (edits.cnpjEmpresa || d.cnpjEmpresa || '') : (d.cnpjEmpresa || '');
 
       function row(label, value){
         return '<div class="row"><div class="k">'+ __esc(label) +'</div><div class="v">'+ __esc(value || '-') +'</div></div>';
@@ -1941,6 +1944,7 @@
 
       var atendenteLinha = atendente ? row('ATENDENTE:', atendente) : '';
       var recebidoLinha = recebido ? row('RECEBIDO POR:', recebido) : '';
+      var cnpjEmpresaLinha = cnpjEmpresa ? row('CNPJ EMPRESA:', cnpjEmpresa) : '';
 
       // Layout 2 colunas (rótulo esquerda / valor direita), com total bem alinhado
       var html =
@@ -1954,6 +1958,7 @@
         '.logo{max-width:62mm; margin:0 auto 6px; display:block;}' +
         '.title{font-weight:800;font-size:16px;margin:2px 0;}' +
         '.sub{font-size:11px; opacity:.88;}' +
+        '.coopLine{font-size:10.5px; line-height:1.35; text-align:center; margin:1px 0;}' +
         '.hr{border-top:1px dashed #000; margin:8px 0;}' +
         '.row{display:flex; justify-content:space-between; gap:10px; font-size:12.5px; margin:3px 0;}' +
         '.k{font-weight:700; flex:0 0 auto;}' +
@@ -1967,6 +1972,10 @@
         '<div class="ticket">' +
           '<div class="center">' +
             '<img class="logo" src="'+ logoUrl +'" alt="COOPEX">' +
+            '<div class="coopLine"><strong>COOPERATIVA DE TRABALHADORES DE ENTREGAS DO RIO GRANDE DO NORTE - COOPEX</strong></div>' +
+            '<div class="coopLine">CNPJ: 05 289.938/0001-97</div>' +
+            '<div class="coopLine">Rua: José Freire De Souza 22 - Lagoa Nova Natal-RN, Cep: 59075-140</div>' +
+            '<div class="coopLine">Fone/WhatsApp (84) 3234-9025 / 3231-5623 / 98111-0706</div>' +
             '<div class="title">CUPOM NÃO FISCAL</div>' +
             '<div class="sub">Comprovante de Entrega</div>' +
           '</div>' +
@@ -1978,6 +1987,7 @@
           blocoEndereco +
           row('MOTOBOY:', d.cooperado || '-') +
           row('FORMA PGTO:', d.formaPgto || '-') +
+          cnpjEmpresaLinha +
           atendenteLinha +
           recebidoLinha +
           '<div class="hr"></div>' +
@@ -2019,7 +2029,8 @@
           horaAtribuida: botao.dataset.hora_atribuida || botao.dataset.horaAtribuida || '-',
           cooperado: botao.dataset.cooperado || '-',
           formaPgto: botao.dataset.pagamento || botao.dataset.formaPgto || '-',
-          recebido: botao.dataset.recebido || ''
+          recebido: botao.dataset.recebido || '',
+          cnpjEmpresa: botao.dataset.cnpjEmpresa || botao.dataset.cnpj_empresa || ''
         
         };
 
@@ -2073,7 +2084,8 @@
             coleta: (document.getElementById('cupomColeta')||{}).value || '',
             entrega: (document.getElementById('cupomEntrega')||{}).value || '',
             atendente: (document.getElementById('cupomAtendente')||{}).value || '',
-            recebido: (document.getElementById('cupomRecebido')||{}).value || ''
+            recebido: (document.getElementById('cupomRecebido')||{}).value || '',
+            cnpjEmpresa: (document.getElementById('cupomCnpjEmpresa')||{}).value || ''
           };
           var html = __buildCupomHtml(__cupomTmpDados, 'editado', edits);
           if(window.__printHtmlTM20X){ window.__printHtmlTM20X(html); } else { alert("Impressão não disponível: função de impressão não carregou."); }
@@ -2114,6 +2126,10 @@
             <div class="field">
               <label>Quem recebeu</label>
               <input type="text" id="cupomRecebido" placeholder="Nome de quem recebeu" />
+            </div>
+            <div class="field">
+              <label>CNPJ da empresa</label>
+              <input type="text" id="cupomCnpjEmpresa" placeholder="CNPJ da empresa que está pedindo" />
             </div>
             <div class="field" style="grid-column:1/-1;">
               <label>Coleta (endereço)</label>
@@ -2201,39 +2217,52 @@
         document.body.appendChild(iframe);
       }
 
-      // Garante que a página não fique "presa" sem rolagem
       document.body.classList.remove('locked');
 
       var w = iframe.contentWindow;
       var d = iframe.contentDocument || w.document;
 
-      // escrever o cupom
       d.open();
       d.write(htmlDoc);
       d.close();
 
-      // tentar imprimir imediatamente (mantém o gesto do clique)
-      try{ w.focus(); }catch(e){}
-      try{ w.print(); }catch(e){ console.error(e); alert('Falha ao imprimir.'); }
+      var imprimirUmaVez = function(){
+        if(imprimirUmaVez.__done) return;
+        imprimirUmaVez.__done = true;
+        try{ w.focus(); }catch(e){}
+        try{ w.print(); }catch(e){ console.error(e); alert('Falha ao imprimir.'); }
+      };
 
-      // fallback: re-tenta após carregar imagens (logo/qr), sem atrapalhar o 1º print
       try{
         var imgs = Array.from(d.images || []);
-        if(imgs.length){
-          var done = 0;
-          var retry = function(){
-            done++;
-            if(done >= imgs.length){
-              try{ w.focus(); w.print(); }catch(_){}
-            }
-          };
-          imgs.forEach(function(img){
-            if(img.complete) return retry();
-            img.addEventListener('load', retry, {once:true});
-            img.addEventListener('error', retry, {once:true});
-          });
+        if(!imgs.length){
+          imprimirUmaVez();
+          return;
         }
-      }catch(e){}
+
+        var pendentes = 0;
+        imgs.forEach(function(img){ if(!img.complete) pendentes++; });
+
+        if(pendentes === 0){
+          imprimirUmaVez();
+          return;
+        }
+
+        var finalizar = function(){
+          pendentes--;
+          if(pendentes <= 0) imprimirUmaVez();
+        };
+
+        imgs.forEach(function(img){
+          if(img.complete) return;
+          img.addEventListener('load', finalizar, {once:true});
+          img.addEventListener('error', finalizar, {once:true});
+        });
+
+        setTimeout(imprimirUmaVez, 2500);
+      }catch(e){
+        imprimirUmaVez();
+      }
     }catch(e){
       console.error(e);
       alert('Erro ao imprimir o cupom.');
