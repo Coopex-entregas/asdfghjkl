@@ -620,7 +620,7 @@
       const current = { lat, lng };
       const moved = distanceMeters(lastGpsCoords, current);
 
-      if (!force && lastGpsCoords && moved < 4 && (now - lastGpsSentAt) < 2000){
+      if (!force && lastGpsCoords && moved < 4 && (now - lastGpsSentAt) < 5000){
         return;
       }
 
@@ -805,7 +805,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       requireLocation();
       fetchGpsStatus();
-      setInterval(fetchGpsStatus, 3000);
+      setInterval(fetchGpsStatus, 15000);
 
       const sairBtn = document.querySelector('.hero-exit');
       if (sairBtn){
