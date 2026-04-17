@@ -3756,11 +3756,21 @@ def cooperado_aceitar_corrida():
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 
-@app.post('/api/app/localizacao')
+@app.route('/api/app/localizacao', methods=['GET', 'POST'])
+@app.route('/api/iphone/traccar', methods=['GET', 'POST'])
 def api_app_localizacao():
     ensure_mobile_tracking_schema()
 
-    data = request.get_json(silent=True) or {}
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        data = {}
+
+    payload = {}
+    try:
+        payload.update(request.values.to_dict(flat=True))
+    except Exception:
+        pass
+    payload.update(data)
 
     auth = (request.headers.get('Authorization') or '').strip()
     token = ''
@@ -3769,21 +3779,35 @@ def api_app_localizacao():
 
     if not token:
         token = (
-            str(data.get('app_token') or '').strip() or
-            str(data.get('token') or '').strip() or
+            str(payload.get('app_token') or '').strip() or
+            str(payload.get('token') or '').strip() or
             str(request.args.get('app_token') or '').strip() or
             str(request.args.get('token') or '').strip()
         )
 
-    user_id = str(data.get('user_id') or '').strip()
+    user_id = str(payload.get('user_id') or '').strip()
 
-    lat = data.get('latitude', data.get('lat'))
-    lng = data.get('longitude', data.get('lng'))
-    accuracy = data.get('accuracy')
-    speed = data.get('speed')
-    speed_mps = data.get('speed_mps')
-    heading = data.get('heading')
-    source = (data.get('source') or 'android_native').strip()
+    lat = (
+        payload.get('latitude') or
+        payload.get('lat') or
+        payload.get('latitudeE7')
+    )
+    lng = (
+        payload.get('longitude') or
+        payload.get('lon') or
+        payload.get('lng') or
+        payload.get('longitudeE7')
+    )
+    accuracy = payload.get('accuracy') or payload.get('horizontalAccuracy')
+    speed = payload.get('speed')
+    speed_mps = payload.get('speed_mps')
+    heading = payload.get('heading') or payload.get('bearing') or payload.get('course')
+    source = (payload.get('source') or '').strip()
+    if not source:
+        if request.path == '/api/iphone/traccar':
+            source = 'iphone_traccar'
+        else:
+            source = 'android_native'
 
     if not token:
         return jsonify({'ok': False, 'error': 'token ausente'}), 401
@@ -3798,18 +3822,21 @@ def api_app_localizacao():
     try:
         lat = float(lat)
         lng = float(lng)
+        if abs(lat) > 90000000 or abs(lng) > 180000000:
+            lat = lat / 1e7
+            lng = lng / 1e7
     except (TypeError, ValueError):
         return jsonify({'ok': False, 'error': 'latitude/longitude inválidas'}), 400
 
     try:
-        acc = float(accuracy) if accuracy is not None else None
+        acc = float(accuracy) if accuracy not in (None, '') else None
     except (TypeError, ValueError):
         acc = None
 
     try:
-        if speed_mps is not None:
+        if speed_mps not in (None, ''):
             spd = float(speed_mps) * 3.6
-        elif speed is not None:
+        elif speed not in (None, ''):
             spd_raw = float(speed)
             spd = (spd_raw * 3.6) if spd_raw < 120 else spd_raw
         else:
@@ -3818,53 +3845,94 @@ def api_app_localizacao():
         spd = None
 
     try:
-        hdg = float(heading) if heading is not None else None
+        hdg = float(heading) if heading not in (None, '') else None
     except (TypeError, ValueError):
         hdg = None
+
+    aceitar, motivo, _dist = _should_accept_location_update(
+        coop.last_lat, coop.last_lng, lat, lng, acc, spd
+    )
 
     agora = datetime.utcnow()
 
     coop.last_ping = agora
     coop.online = True
-    coop.last_lat = lat
-    coop.last_lng = lng
-    coop.last_accuracy_m = acc
-    coop.last_heading = hdg
-    coop.last_speed_kmh = spd
 
-    moving_now = (spd is not None and spd >= MOVING_SPEED_KMH)
-    if moving_now:
-        coop.last_moving_at = agora
+    if aceitar:
+        coop.last_lat = lat
+        coop.last_lng = lng
+        coop.last_accuracy_m = acc
+        coop.last_heading = hdg
+        coop.last_speed_kmh = spd
 
-    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
-    if not loc:
-        loc = LocalizacaoCooperado(cooperado_id=coop.id)
-        db.session.add(loc)
+        moving_now = (spd is not None and spd >= MOVING_SPEED_KMH)
+        if moving_now:
+            coop.last_moving_at = agora
 
-    loc.latitude = lat
-    loc.longitude = lng
-    loc.accuracy = acc
-    loc.speed = spd
-    loc.heading = hdg
-    loc.online = True
-    loc.fonte = source
-    loc.atualizado_em = agora
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+        if not loc:
+            loc = LocalizacaoCooperado(cooperado_id=coop.id)
+            db.session.add(loc)
+
+        loc.latitude = lat
+        loc.longitude = lng
+        loc.accuracy = acc
+        loc.speed = spd
+        loc.heading = hdg
+        loc.online = True
+        loc.fonte = source
+        loc.atualizado_em = agora
 
     db.session.commit()
 
-    try:
-        _append_point_to_active_trajeto(coop.id, lat, lng, agora)
-    except Exception:
+    if aceitar:
         try:
-            db.session.rollback()
+            _append_point_to_active_trajeto(coop.id, lat, lng, agora)
         except Exception:
-            pass
+            try:
+                db.session.rollback()
+            except Exception:
+                pass
 
-    emitir_posicao_motoboy(coop, lat, lng, spd)
+        emitir_posicao_motoboy(coop, lat, lng, spd)
 
     return jsonify({
         'ok': True,
-        'cooperado_id': coop.id
+        'cooperado_id': coop.id,
+        'aceito': bool(aceitar),
+        'motivo': (motivo if not aceitar else 'ok'),
+        'source': source,
+    }), 200
+
+
+@app.get('/api/iphone/traccar_config')
+def api_iphone_traccar_config():
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify({'ok': False, 'error': 'Não autorizado'}), 403
+
+    coop = Cooperado.query.get_or_404(session['user_id'])
+    if not getattr(coop, 'app_token', None):
+        coop.ensure_app_token()
+        try:
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+
+    base_url = request.url_root.rstrip('/')
+    tracking_url = f"{base_url}/api/iphone/traccar?token={coop.app_token}"
+
+    return jsonify({
+        'ok': True,
+        'cooperado_id': coop.id,
+        'nome': coop.nome,
+        'app_token': coop.app_token,
+        'tracking_url': tracking_url,
+        'source': 'iphone_traccar',
+        'instrucoes': [
+            'No Traccar Client, cole a tracking_url em Server URL.',
+            'Permita localização sempre no iPhone.',
+            'Não feche o app deslizando para cima.',
+        ]
     }), 200
 
 from datetime import datetime, timezone
