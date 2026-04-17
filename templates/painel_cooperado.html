@@ -620,7 +620,7 @@
       const current = { lat, lng };
       const moved = distanceMeters(lastGpsCoords, current);
 
-      if (!force && lastGpsCoords && moved < 4 && (now - lastGpsSentAt) < 3000){
+      if (!force && lastGpsCoords && moved < 8 && (now - lastGpsSentAt) < 5000){
         return;
       }
 
@@ -684,8 +684,8 @@
         },
         {
           enableHighAccuracy: true,
-          maximumAge: 1000,
-          timeout: 7000
+          maximumAge: 2000,
+          timeout: 10000
         }
       );
     }
@@ -805,7 +805,7 @@
     document.addEventListener('DOMContentLoaded', () => {
       requireLocation();
       fetchGpsStatus();
-      setInterval(fetchGpsStatus, 5000);
+      setInterval(fetchGpsStatus, 8000);
 
       const sairBtn = document.querySelector('.hero-exit');
       if (sairBtn){
