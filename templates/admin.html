@@ -1899,10 +1899,10 @@
       form.style.display = 'block';
 
       var inpCliente = document.getElementById('cupomCliente');
+      var inpCnpjEmpresa = document.getElementById('cupomCnpjEmpresa');
       var inpColeta = document.getElementById('cupomColeta');
       var inpEntrega = document.getElementById('cupomEntrega');
       var inpAt = document.getElementById('cupomAtendente');
-      var inpCnpjEmpresa = document.getElementById('cupomCnpjEmpresa');
 
       var inpRec = document.getElementById('cupomRecebido');
       if(inpCliente) inpCliente.value = d?.cliente || '';
@@ -1923,11 +1923,11 @@
       var qrFallback = "https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=" + encodeURIComponent(reviewUrl);
 
       var cliente = (mode === 'editado') ? (edits.cliente || d.cliente) : d.cliente;
+      var cnpjEmpresa = (mode === 'editado') ? (edits.cnpjEmpresa || d.cnpjEmpresa || '') : (d.cnpjEmpresa || '');
       var atendente = (mode === 'editado') ? (edits.atendente || '') : '';
       var recebido = (mode === 'editado') ? (edits.recebido || d.recebido || '') : (d.recebido || '');
       var coleta = (mode === 'editado') ? (edits.coleta || '') : '';
       var entrega = (mode === 'editado') ? (edits.entrega || '') : '';
-      var cnpjEmpresa = (mode === 'editado') ? (edits.cnpjEmpresa || d.cnpjEmpresa || '') : (d.cnpjEmpresa || '');
 
       function row(label, value){
         return '<div class="row"><div class="k">'+ __esc(label) +'</div><div class="v">'+ __esc(value || '-') +'</div></div>';
@@ -1984,10 +1984,10 @@
           row('DATA:', d.data || '-') +
           row('HORA:', d.horaPedido || '-') +
           row('CLIENTE:', cliente || '-') +
+          cnpjEmpresaLinha +
           blocoEndereco +
           row('MOTOBOY:', d.cooperado || '-') +
           row('FORMA PGTO:', d.formaPgto || '-') +
-          cnpjEmpresaLinha +
           atendenteLinha +
           recebidoLinha +
           '<div class="hr"></div>' +
