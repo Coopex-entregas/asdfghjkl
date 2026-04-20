@@ -603,9 +603,6 @@
     let lastGpsSentAt = 0;
     let lastGpsCoords = null;
 
-    const GPS_INTERVAL_MS = 4000;
-    const GPS_MIN_MOVE_M = 12;
-
     function distanceMeters(a, b){
       if (!a || !b) return Infinity;
       const R = 6371000;
@@ -623,11 +620,7 @@
       const current = { lat, lng };
       const moved = distanceMeters(lastGpsCoords, current);
 
-      if (!force && lastGpsCoords && moved < GPS_MIN_MOVE_M && (now - lastGpsSentAt) < GPS_INTERVAL_MS){
-        return;
-      }
-
-      if (!force && (now - lastGpsSentAt) < GPS_INTERVAL_MS){
+      if (!force && lastGpsCoords && moved < 8 && (now - lastGpsSentAt) < 5000){
         return;
       }
 
@@ -690,8 +683,8 @@
           }
         },
         {
-          enableHighAccuracy: false,
-          maximumAge: 4000,
+          enableHighAccuracy: true,
+          maximumAge: 2000,
           timeout: 10000
         }
       );
@@ -745,9 +738,9 @@
                 forceLogout();
               },
               {
-                enableHighAccuracy: false,
-                timeout: 10000,
-                maximumAge: 4000
+                enableHighAccuracy: true,
+                timeout: 8000,
+                maximumAge: 0
               }
             );
             return;
@@ -771,9 +764,9 @@
             forceLogout();
           },
           {
-            enableHighAccuracy: false,
-            timeout: 10000,
-            maximumAge: 4000
+            enableHighAccuracy: true,
+            timeout: 8000,
+            maximumAge: 0
           }
         );
       }catch(_){
