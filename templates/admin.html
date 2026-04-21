@@ -917,9 +917,8 @@
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Cliente / dados</th>
-                  <th>Bairro</th>
-                  <th>Endereços</th>
+                  <th>Cliente</th>
+                  <th>Endereço</th>
                   <th>Valor</th>
                   <th>Data<br>e<br>Dia</th>
                   <th>Hora<br>Pedido</th>
@@ -948,20 +947,14 @@
                     </span>
                   </td>
 
+                  <td>{{ e.cliente }}</td>
                   <td>
-                    <div style="font-weight:900">{{ e.cliente }}</div>
-                    <div class="small" style="white-space:normal;line-height:1.35;margin-top:4px">
-                      {% if e.contato_coleta %}<div>Coleta: <a href="tel:{{ e.telefone_coleta }}">{{ e.contato_coleta }}{% if e.telefone_coleta %} • {{ e.telefone_coleta }}{% endif %}</a></div>{% endif %}
-                      {% if e.contato_entrega %}<div>Recebe: <a href="tel:{{ e.telefone_entrega }}">{{ e.contato_entrega }}{% if e.telefone_entrega %} • {{ e.telefone_entrega }}{% endif %}</a></div>{% endif %}
-                      {% if e.observacao_entrega %}<div><strong>Obs:</strong> {{ e.observacao_entrega }}</div>{% endif %}
-                    </div>
-                  </td>
-                  <td>{{ e.bairro }}</td>
-                  <td>
-                    <div class="small" style="white-space:normal;line-height:1.35">
-                      <div><strong>Coleta:</strong> {{ e.origem_endereco }}</div>
-                      <div><strong>Entrega:</strong> {{ e.destino_endereco }}</div>
-                      {% if e.paradas_lista %}<div><strong>Paradas:</strong> {% for p in e.paradas_lista %}<div>{{ loop.index }}. {{ p.get('endereco') or p.get('bairro') or '-' }}{% if p.get('nome') %} • {{ p.get('nome') }}{% endif %}{% if p.get('telefone') %} • {{ p.get('telefone') }}{% endif %}</div>{% endfor %}</div>{% endif %}
+                    <div style="font-weight:800">{{ e.endereco_resumo if e.endereco_resumo is defined else (e.endereco if e.endereco is defined and e.endereco else '-') }}</div>
+                    <div class="small" style="margin-top:4px;line-height:1.35">
+                      {% if e.contato_coleta is defined and e.contato_coleta %}<strong>Coleta:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}<br>{% endif %}
+                      {% if e.contato_entrega is defined and e.contato_entrega %}<strong>Receber:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}<br>{% endif %}
+                      {% if e.paradas_lista is defined and e.paradas_lista %}<strong>Paradas:</strong> {{ e.paradas_lista|length }}<br>{% endif %}
+                      {% if e.observacao_entrega is defined and e.observacao_entrega %}<strong>Obs:</strong> {{ e.observacao_entrega }}{% endif %}
                     </div>
                   </td>
 
@@ -1040,7 +1033,6 @@
                     {% if tem_coop and st_ent not in ['recebido','entregue'] %}
                       {% set rastreio_link = url_for('rastreio_publico', token=token_rastreio(e.id), _external=True) %}
                       <a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>
-                      {% if e.origem_endereco or e.destino_endereco %}<div class="small" style="margin-top:6px"><a target="_blank" rel="noopener" href="https://www.google.com/maps/dir/?api=1&travelmode=driving&origin={{ (e.origem_endereco or e.bairro)|urlencode }}&destination={{ (e.destino_endereco or e.bairro)|urlencode }}{% if e.paradas_lista %}&waypoints={% for p in e.paradas_lista %}{{ (p.get('endereco') or p.get('bairro') or '')|urlencode }}{% if not loop.last %}|{% endif %}{% endfor %}{% endif %}">Rota</a></div>{% endif %}
                     {% elif tem_coop %}
                       <span class="small">Encerrado</span>
                     {% else %}
@@ -1068,7 +1060,7 @@
                         data-id="{{ e.id }}"
                         data-cliente="{{ e.cliente|e }}"
                         data-bairro="{{ e.bairro|e }}"
-                        data-endereco="{{ (e.endereco if e.endereco is defined and e.endereco else '-')|e }}"
+                        data-endereco="{{ (e.endereco_resumo if e.endereco_resumo is defined else (e.endereco if e.endereco is defined and e.endereco else '-'))|e }}"
                         data-valor="{{ '%.2f'|format(e.valor) }}"
                         data-data="{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}"
                         data-hora_pedido="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}"
