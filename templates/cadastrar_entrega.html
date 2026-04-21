@@ -110,49 +110,35 @@
 
     <div id="clienteMeta" class="client-meta"></div>
 
-    
-    <label for="coleta_endereco">Endereço de Coleta:</label>
-    <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número e referência">
+    <label for="coleta_endereco">Endereço da coleta:</label>
+    <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número, complemento">
 
-    <label for="coleta_bairro">Bairro da Coleta:</label>
+    <label for="coleta_bairro">Bairro da coleta:</label>
     <input id="coleta_bairro" name="coleta_bairro" type="text" placeholder="Bairro da coleta">
 
-    <label for="coleta_contato">Contato da Coleta:</label>
-    <input id="coleta_contato" name="coleta_contato" type="text" placeholder="Quem entregar na coleta">
+    <label for="coleta_contato">Contato da coleta:</label>
+    <input id="coleta_contato" name="coleta_contato" type="text" placeholder="Quem entregar / local">
 
-    <label for="coleta_telefone">Telefone da Coleta:</label>
-    <input id="coleta_telefone" name="coleta_telefone" type="text" placeholder="Telefone da coleta">
+    <label for="coleta_fone">Telefone da coleta:</label>
+    <input id="coleta_fone" name="coleta_fone" type="text" placeholder="(84) 9xxxx-xxxx">
 
-    <label for="entrega_endereco">Endereço de Entrega:</label>
-    <input id="entrega_endereco" name="entrega_endereco" type="text" placeholder="Rua, número e referência">
+    <label for="entrega_endereco">Endereço da entrega:</label>
+    <input id="entrega_endereco" name="entrega_endereco" type="text" placeholder="Rua, número, complemento">
 
-    <label for="entrega_bairro">Bairro da Entrega:</label>
-    <input id="entrega_bairro" name="entrega_bairro" type="text" placeholder="Bairro da entrega">
+    <label for="bairro">Bairro da entrega:</label>
+    <input id="bairro" name="bairro" type="text" placeholder="Digite o bairro da entrega" required>
 
-    <label for="entrega_contato">Quem vai Receber:</label>
+    <label for="entrega_contato">Quem vai receber:</label>
     <input id="entrega_contato" name="entrega_contato" type="text" placeholder="Nome de quem vai receber">
 
-    <label for="entrega_telefone">Telefone de Quem Vai Receber:</label>
-    <input id="entrega_telefone" name="entrega_telefone" type="text" placeholder="Telefone de quem vai receber">
+    <label for="entrega_fone">Telefone de quem vai receber:</label>
+    <input id="entrega_fone" name="entrega_fone" type="text" placeholder="(84) 9xxxx-xxxx">
 
     <label for="observacao">Observação:</label>
     <input id="observacao" name="observacao" type="text" placeholder="Observação da entrega">
 
-    <label>Parada 1:</label>
-    <input name="parada_1_endereco" type="text" placeholder="Endereço da parada 1">
-    <input name="parada_1_nome" type="text" placeholder="Quem procurar na parada 1">
-    <input name="parada_1_telefone" type="text" placeholder="Telefone da parada 1">
-    <input name="parada_1_lembrete" type="text" placeholder="Lembrete da parada 1">
-
-    <label>Parada 2:</label>
-    <input name="parada_2_endereco" type="text" placeholder="Endereço da parada 2">
-    <input name="parada_2_nome" type="text" placeholder="Quem procurar na parada 2">
-    <input name="parada_2_telefone" type="text" placeholder="Telefone da parada 2">
-    <input name="parada_2_lembrete" type="text" placeholder="Lembrete da parada 2">
-
-
-    <label for="bairro">Bairro principal:</label>
-    <input id="bairro" name="bairro" type="text" placeholder="Digite o bairro principal da entrega" required>
+    <div id="stopsWrap"></div>
+    <button type="button" id="btnAddStop">+ Adicionar parada</button>
 
     <label for="valor">Valor (R$):</label>
     <input id="valor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required>
@@ -185,10 +171,6 @@
     const resultados = document.getElementById('resultados');
     const clienteId = document.getElementById('cliente_id');
     const bairro = document.getElementById('bairro');
-    const coletaEndereco = document.getElementById('coleta_endereco');
-    const coletaBairro = document.getElementById('coleta_bairro');
-    const coletaContato = document.getElementById('coleta_contato');
-    const coletaTelefone = document.getElementById('coleta_telefone');
     const clienteMeta = document.getElementById('clienteMeta');
     const loadingBusca = document.getElementById('loadingBusca');
 
@@ -270,12 +252,11 @@
       inputCliente.value = item.nome || '';
       clienteId.value = item.id || '';
       setMeta(item);
-      if (coletaEndereco && !coletaEndereco.value) coletaEndereco.value = item.endereco || '';
-      if (coletaBairro && !coletaBairro.value) coletaBairro.value = item.bairro_origem || '';
-      if (coletaContato && !coletaContato.value) coletaContato.value = item.nome || '';
-      if (coletaTelefone && !coletaTelefone.value) coletaTelefone.value = item.telefone || '';
-      if (bairro && !bairro.value) bairro.value = item.bairro_origem || '';
       showResultados(false);
+      if(!document.getElementById('coleta_endereco').value) document.getElementById('coleta_endereco').value = item.endereco || '';
+      if(!document.getElementById('coleta_bairro').value) document.getElementById('coleta_bairro').value = item.bairro_origem || '';
+      if(!document.getElementById('coleta_contato').value) document.getElementById('coleta_contato').value = item.nome || '';
+      if(!document.getElementById('coleta_fone').value) document.getElementById('coleta_fone').value = item.telefone || '';
       bairro.focus();
     }
 
@@ -347,6 +328,18 @@
         showResultados(false);
       }
     });
+
+    const stopsWrap = document.getElementById('stopsWrap');
+    const btnAddStop = document.getElementById('btnAddStop');
+    function addStop(){
+      const idx = stopsWrap.children.length + 1;
+      const div = document.createElement('div');
+      div.style.cssText = 'padding:10px;border:1px solid var(--borda);border-radius:10px;margin-bottom:10px;background:#f8fbff';
+      div.innerHTML = `<label>Parada ${idx} - Endereço</label><input name="stop_endereco[]" type="text" placeholder="Endereço da parada" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><label>Quem procurar</label><input name="stop_nome[]" type="text" placeholder="Nome" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><label>Telefone</label><input name="stop_fone[]" type="text" placeholder="Telefone" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><label>Observação</label><input name="stop_obs[]" type="text" placeholder="Observação" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><button type="button" style="background:#fff;color:#0033aa;border:1px solid #cbd5e1">Remover parada</button>`;
+      div.querySelector('button').addEventListener('click', ()=>div.remove());
+      stopsWrap.appendChild(div);
+    }
+    btnAddStop.addEventListener('click', addStop);
 
     document.getElementById('valor').addEventListener('blur', (e) => {
       const raw = String(e.target.value || '').trim();
