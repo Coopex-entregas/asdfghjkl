@@ -645,6 +645,75 @@ class Entrega(db.Model):
         return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
 
 
+
+# =========================================================
+# HELPERS VISUAIS DAS ENTREGAS
+# =========================================================
+def _json_dict(raw):
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+def _json_paradas_lista(raw):
+    data = _json_dict(raw)
+    stops = data.get('stops') or data.get('paradas') or []
+    return stops if isinstance(stops, list) else []
+
+def _fmt_endereco_json(data, fallback='-'):
+    if not data:
+        return fallback
+    partes = []
+    for k in ('endereco', 'rua'):
+        v = (data.get(k) or '').strip() if isinstance(data.get(k), str) else data.get(k)
+        if v:
+            partes.append(str(v))
+            break
+    numero = data.get('numero')
+    if numero and partes:
+        partes[0] = f"{partes[0]}, {numero}"
+    bairro = data.get('bairro')
+    ref = data.get('ref') or data.get('referencia')
+    if bairro:
+        partes.append(str(bairro))
+    if ref:
+        partes.append(str(ref))
+    return ' • '.join([p for p in partes if p]) or fallback
+
+def enriquecer_entrega(e):
+    origem = _json_dict(getattr(e, 'origem_json', None))
+    destino = _json_dict(getattr(e, 'destino_json', None))
+    paradas = _json_paradas_lista(getattr(e, 'paradas_json', None))
+    e.origem_extra = origem
+    e.destino_extra = destino
+    e.paradas_lista = paradas
+    e.origem_endereco = _fmt_endereco_json(origem, e.bairro or '-')
+    e.destino_endereco = _fmt_endereco_json(destino, e.bairro or '-')
+    e.contato_coleta = origem.get('contato') or origem.get('nome') or ''
+    e.telefone_coleta = origem.get('telefone') or ''
+    e.contato_entrega = destino.get('contato') or destino.get('nome') or ''
+    e.telefone_entrega = destino.get('telefone') or ''
+    e.recebe_dinheiro_em = destino.get('recebe_dinheiro_em') or ''
+    e.observacao_entrega = destino.get('observacao') or origem.get('observacao') or ''
+    e.paradas_texto = ' | '.join(
+        _fmt_endereco_json(p, '-') if isinstance(p, dict) else str(p)
+        for p in paradas
+    ) if paradas else ''
+    e.endereco_resumo = f"{e.origem_endereco} → {e.destino_endereco}"
+    return e
+
+def _haversine_m(lat1, lng1, lat2, lng2):
+    from math import radians, sin, cos, sqrt, atan2
+    R = 6371000.0
+    dlat = radians(float(lat2) - float(lat1))
+    dlng = radians(float(lng2) - float(lng1))
+    a = sin(dlat/2)**2 + cos(radians(float(lat1))) * cos(radians(float(lat2))) * sin(dlng/2)**2
+    return 2 * R * atan2(sqrt(a), sqrt(1 - a))
+
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
 # =========================================================
@@ -2564,7 +2633,12 @@ def api_cliente_cotar_entrega():
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
     except Exception as e:
-        return jsonify({'ok': False, 'erro': str(e)}), 400
+        return jsonify({
+            'ok': False,
+            'erro': str(e),
+            'permite_solicitar_sem_preco': True,
+            'mensagem_cliente': 'Valor será informado pela cooperativa após análise do serviço.'
+        }), 200
 
     meios = []
     if cli.saldo_atual is not None and cli.saldo_atual >= preco:
@@ -2581,153 +2655,122 @@ def api_cliente_cotar_entrega():
     })
 
 
+
 @app.route('/api/cliente/solicitar-entrega', methods=['POST'])
 @cliente_required
 def api_cliente_solicitar_entrega():
-    """
-    Cliente faz o pedido de entrega.
-
-    JSON esperado:
-    {
-      "coleta":  {...},
-      "entrega": {...},
-      "paradas": ["Rua X - Bairro Y", ...],     # opcional
-      "meio_pagamento": "CREDITO" | "PIX" | "DINHEIRO",
-      "apenas_simular": false
-    }
-
-    Regras:
-    - Recalcula o preço pela tabela PrecoRota (coleta.bairro -> entrega.bairro).
-    - Se apenas_simular = true, NÃO cria entrega, só devolve preço e formas de pgto.
-    - Se meio_pagamento == CREDITO e saldo < preço => erro 400 (cliente escolhe outra forma).
-    - Se meio_pagamento == CREDITO e saldo suficiente => cria entrega + consome crédito
-      usando consumir_credito_em_entrega (vinculado à entrega).
-    """
     cli = _cliente_atual()
     data = request.get_json(silent=True) or {}
 
     coleta = data.get('coleta') or {}
     entrega_dest = data.get('entrega') or {}
     paradas_lista = data.get('paradas') or []
-
+    observacao = (data.get('observacao') or '').strip() or None
     meio_pagamento = (data.get('meio_pagamento') or '').upper()
-    apenas_simular = bool(data.get('apenas_simular'))
 
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
     bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
 
-    # 1) Calcula preço
+    preco_calculado = None
     try:
-        preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
-    except Exception as e:
-        return jsonify({'ok': False, 'erro': str(e)}), 400
+        preco_calculado = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
+    except Exception:
+        preco_calculado = None
 
-    # 2) Simulação apenas (não cria nada no banco)
-    if apenas_simular:
-        meios = []
-        if cli.saldo_atual is not None and cli.saldo_atual >= preco:
-            meios.append('CREDITO')
-        meios.extend(['PIX', 'DINHEIRO'])
+    preco_solicitado = data.get('preco_estimado')
+    try:
+        preco_solicitado = float(preco_solicitado) if preco_solicitado not in (None, '', 'null') else None
+    except Exception:
+        preco_solicitado = None
 
-        return jsonify({
-            'ok': True,
-            'simulacao': True,
-            'preco': preco,
-            'cliente_saldo_atual': float(cli.saldo_atual or 0),
-            'meios_pagamento': meios,
-        })
+    preco_final = preco_calculado if preco_calculado is not None else (preco_solicitado if preco_solicitado is not None else 0.0)
 
-    # 3) Define meio de pagamento padrão
     if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
-        if cli.saldo_atual is not None and cli.saldo_atual >= preco:
+        if preco_calculado is not None and cli.saldo_atual is not None and cli.saldo_atual >= preco_final:
             meio_pagamento = 'CREDITO'
         else:
             meio_pagamento = 'PIX'
 
-    # 4) Se for CREDITO, exige saldo total
-    if meio_pagamento == 'CREDITO':
-        if cli.saldo_atual is None or cli.saldo_atual < preco:
-            return jsonify({
-                'ok': False,
-                'erro': 'Crédito insuficiente para essa entrega. Escolha outra forma de pagamento.'
-            }), 400
+    if meio_pagamento == 'CREDITO' and preco_calculado is not None:
+        if cli.saldo_atual is None or cli.saldo_atual < preco_final:
+            return jsonify({'ok': False, 'erro': 'Crédito insuficiente para essa entrega. Escolha outra forma de pagamento.'}), 400
 
     try:
-        # Sempre salva data_envio como UTC naive (padrão do sistema)
         data_envio_utc = datetime.utcnow()
 
-        # JSONs com origem / destino / paradas
-        origem_json_dict = {
-            "endereco": coleta.get('endereco'),
-            "bairro": bairro_coleta,
-            "ref": coleta.get('referencia') or coleta.get('ref'),
-            "lat": coleta.get('lat'),
-            "lng": coleta.get('lng'),
+        origem_extra = {
+            "contato": coleta.get('contato'),
+            "telefone": coleta.get('telefone'),
+            "observacao": observacao,
+            "numero": coleta.get('numero'),
+            "complemento": coleta.get('complemento'),
         }
-        destino_json_dict = {
-            "endereco": entrega_dest.get('endereco'),
-            "bairro": bairro_entrega,
-            "ref": entrega_dest.get('referencia') or entrega_dest.get('ref'),
-            "lat": entrega_dest.get('lat'),
-            "lng": entrega_dest.get('lng'),
-        }
-        paradas_json_dict = {
-            "stops": paradas_lista
-        }
-
-        # Campos da Entrega compatíveis com o seu model atual
-        campos = {
-            'cliente_id': cli.id,
-            'cliente': cli.nome,          # texto para o admin enxergar
-            'bairro': bairro_entrega,     # você só tem 1 campo de bairro na Entrega
-            'valor': preco,
-            'data_envio': data_envio_utc,
-            'status': 'pendente',
-            'status_pagamento': 'pago' if meio_pagamento == 'CREDITO' else 'pendente',
-            'pagamento': meio_pagamento.capitalize(),  # "Credito", "Pix", "Dinheiro"
-            'origem_json': json.dumps(origem_json_dict, ensure_ascii=False),
-            'destino_json': json.dumps(destino_json_dict, ensure_ascii=False),
-            'paradas_json': json.dumps(paradas_json_dict, ensure_ascii=False),
-            # status_corrida fica com default 'pendente'
+        destino_extra = {
+            "contato": entrega_dest.get('contato'),
+            "telefone": entrega_dest.get('telefone'),
+            "recebe_dinheiro_em": data.get('recebe_dinheiro_em'),
+            "observacao": observacao,
+            "numero": entrega_dest.get('numero'),
+            "complemento": entrega_dest.get('complemento'),
+            "valor_adicional_servico": data.get('valor_adicional_servico'),
+            "tempo_adicional_segundos": data.get('tempo_adicional_segundos'),
         }
 
-        entrega_obj = Entrega(**campos)
+        entrega_obj = Entrega(
+            cliente=cli.nome,
+            cliente_id=cli.id,
+            bairro=bairro_entrega or bairro_coleta or '-',
+            valor=float(preco_final or 0),
+            data_envio=data_envio_utc,
+            status='pendente',
+            status_pagamento='pago' if (meio_pagamento == 'CREDITO' and preco_calculado is not None) else 'pendente',
+            pagamento=(meio_pagamento.capitalize() if meio_pagamento else 'Pix'),
+        )
+        entrega_obj.set_origem(
+            endereco=coleta.get('endereco'),
+            bairro=bairro_coleta,
+            ref=coleta.get('referencia') or coleta.get('ref'),
+            lat=coleta.get('lat'),
+            lng=coleta.get('lng'),
+            extra=origem_extra
+        )
+        entrega_obj.set_destino(
+            endereco=entrega_dest.get('endereco'),
+            bairro=bairro_entrega,
+            ref=entrega_dest.get('referencia') or entrega_dest.get('ref'),
+            lat=entrega_dest.get('lat'),
+            lng=entrega_dest.get('lng'),
+            extra=destino_extra
+        )
+        entrega_obj.set_paradas(paradas_lista)
+
         db.session.add(entrega_obj)
-        db.session.flush()  # garante entrega_obj.id
+        db.session.flush()
 
-        # 5) Se pagamento for CREDITO, consome o crédito de forma oficial
-        if meio_pagamento == 'CREDITO':
-            # Aqui usamos sua função nova, que:
-            # - cria CreditoMovimento debito
-            # - atualiza saldo do cliente via atualizar_saldo_credito_cliente
-            # - preenche entrega.credito_usado, status_pagamento, pagamento, etc.
+        if meio_pagamento == 'CREDITO' and preco_calculado is not None:
             valor_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
             if valor_consumido <= 0:
-                # Se por algum motivo não conseguiu consumir, aborta com erro
                 db.session.rollback()
-                return jsonify({
-                    'ok': False,
-                    'erro': 'Falha ao consumir crédito. Tente novamente ou escolha outra forma de pagamento.'
-                }), 500
+                return jsonify({'ok': False, 'erro': 'Falha ao consumir crédito. Escolha outra forma de pagamento.'}), 500
 
         db.session.commit()
-
+        emitir_atualizacao_entrega(entrega_obj, 'criada')
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Erro ao solicitar entrega')
-        return jsonify({
-            'ok': False,
-            'erro': f'Erro ao solicitar entrega: {e.__class__.__name__}'
-        }), 500
+        return jsonify({'ok': False, 'erro': f'Erro ao solicitar entrega: {e.__class__.__name__}'}), 500
 
     return jsonify({
         'ok': True,
         'entrega_id': entrega_obj.id,
-        'preco': preco,
+        'preco': float(preco_final or 0),
+        'preco_confirmado': preco_calculado is not None,
         'meio_pagamento': meio_pagamento,
         'status_pagamento': entrega_obj.status_pagamento,
         'comprovante_url': url_for('cliente_comprovante', entrega_id=entrega_obj.id),
+        'mensagem_cliente': 'Pedido enviado com sucesso.'
     })
+
 
 
 
@@ -2735,38 +2778,28 @@ def api_cliente_solicitar_entrega():
 # 7) COMPROVANTE DA ENTREGA PARA O CLIENTE
 # =========================================================
 
+
 @app.route('/cliente/comprovante/<int:entrega_id>')
 @cliente_required
 def cliente_comprovante(entrega_id):
-    """
-    Mostra o comprovante de uma entrega específica para o cliente.
-    Só deixa ver se a entrega for do próprio cliente.
-    """
     cli = _cliente_atual()
-
     entrega = (
         Entrega.query
         .filter(Entrega.id == entrega_id, Entrega.cliente_id == cli.id)
         .first_or_404()
     )
-
+    info = comprovante_info(entrega.id)
+    if info and info.get("filename"):
+        fp = os.path.join(COMPROVANTE_DIR, info["filename"])
+        if os.path.exists(fp):
+            return send_file(fp)
     movs = (
         CreditoMovimento.query
-        .filter(
-            CreditoMovimento.cliente_id == cli.id,
-            CreditoMovimento.entrega_id == entrega.id
-        )
+        .filter(CreditoMovimento.cliente_id == cli.id, CreditoMovimento.entrega_id == entrega.id)
         .order_by(CreditoMovimento.id.desc())
         .all()
     )
-
-    return render_template(
-        'cliente_comprovante.html',
-        cli=cli,
-        entrega=entrega,
-        movs=movs,
-        to_brasilia=to_brasilia
-    )
+    return render_template('cliente_comprovante.html', cli=cli, entrega=entrega, movs=movs, to_brasilia=to_brasilia)
 
 # =========================================================
 # RASTREAMENTO (PÚBLICO / CLIENTE)
@@ -3067,32 +3100,49 @@ def rastreamento():
 
 
 @app.get('/api/rastreamento/<codigo>')
+
 def api_rastreamento(codigo):
-    """
-    API JSON para apps externos / site do cliente.
-    Usa o ID da entrega como código de rastreio.
-    """
     if not codigo.isdigit():
         return jsonify(ok=False, erro="Código inválido. Use apenas números."), 400
-
     entrega = Entrega.query.get(int(codigo))
     if not entrega:
         return jsonify(ok=False, erro="Entrega não encontrada."), 404
 
+    entrega = enriquecer_entrega(entrega)
     eventos = montar_eventos_rastreamento(entrega)
 
     def _dt(dt):
         return to_brasilia(dt).isoformat() if dt else None
 
-    try:
-        origem_extra = json.loads(entrega.origem_json) if entrega.origem_json else None
-    except Exception:
-        origem_extra = None
+    motoboy_pos = None
+    if entrega.cooperado and entrega.cooperado.last_lat is not None and entrega.cooperado.last_lng is not None:
+        motoboy_pos = {"lat": float(entrega.cooperado.last_lat), "lng": float(entrega.cooperado.last_lng)}
 
+    fase = 'aguardando'
+    alerta_cliente = 'Pedido recebido pela cooperativa.'
+    if entrega.cooperado:
+        fase = 'motoboy_atribuido'
+        alerta_cliente = f'Motoboy {entrega.cooperado.nome} atribuído ao pedido.'
+    if (entrega.status_corrida or '').lower() in ['aceita']:
+        fase = 'a_caminho_coleta'
+        alerta_cliente = 'O motoboy está a caminho da coleta.'
+    if (entrega.status_corrida or '').lower() in ['coletado', 'em_rota', 'em_andamento']:
+        fase = 'em_rota'
+        alerta_cliente = 'A entrega foi coletada e está em rota.'
     try:
-        destino_extra = json.loads(entrega.destino_json) if entrega.destino_json else None
+        if motoboy_pos and entrega.destino_extra.get('lat') is not None and entrega.destino_extra.get('lng') is not None and fase == 'em_rota':
+            d = _haversine_m(motoboy_pos['lat'], motoboy_pos['lng'], entrega.destino_extra.get('lat'), entrega.destino_extra.get('lng'))
+            if d <= 800:
+                fase = 'terminando'
+                alerta_cliente = 'O motoboy está terminando a rota e seguindo para você.'
+            if d <= 180:
+                fase = 'chegando'
+                alerta_cliente = 'O motoboy está chegando ao destino.'
     except Exception:
-        destino_extra = None
+        pass
+    if (entrega.status or '').lower() in ['entregue', 'recebido', 'finalizada', 'concluida', 'concluída']:
+        fase = 'concluida'
+        alerta_cliente = 'Entrega concluída.'
 
     return jsonify({
         "ok": True,
@@ -3101,21 +3151,27 @@ def api_rastreamento(codigo):
         "bairro": entrega.bairro,
         "valor": float(entrega.valor or 0),
         "status": entrega.status,
+        "status_corrida": entrega.status_corrida,
         "status_pagamento": entrega.status_pagamento,
         "pagamento": entrega.pagamento,
         "cooperado": (entrega.cooperado.nome if entrega.cooperado else None),
+        "cooperado_nome": (entrega.cooperado.nome if entrega.cooperado else None),
         "data_envio": _dt(entrega.data_envio),
         "data_atribuida": _dt(entrega.data_atribuida),
-        "origem_extra": origem_extra,
-        "destino_extra": destino_extra,
+        "origem_extra": entrega.origem_extra,
+        "destino_extra": entrega.destino_extra,
+        "paradas_extra": {"stops": entrega.paradas_lista},
+        "motoboy_pos": motoboy_pos,
+        "fase": fase,
+        "alerta_cliente": alerta_cliente,
+        "comprovante_url": url_for('cliente_comprovante', entrega_id=entrega.id),
         "eventos": [
             {
                 "titulo": ev["titulo"],
                 "descricao": ev["descricao"],
                 "quando": ev["quando"].isoformat() if ev["quando"] else None,
                 "icone": ev.get("icone")
-            }
-            for ev in eventos
+            } for ev in eventos
         ]
     })
 
@@ -3209,6 +3265,7 @@ def admin():
 
     cooperados_js = [{"id": c.id, "nome": c.nome} for c in cooperados]
 
+    entregas = [enriquecer_entrega(e) for e in entregas]
     html = render_template(
         'admin.html',
         entregas=entregas,
@@ -3479,6 +3536,7 @@ def painel_cooperado():
     )
     total_pendente = max(0.0, total_geral - total_pago)
 
+    entregas = [enriquecer_entrega(e) for e in entregas]
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
@@ -5364,6 +5422,7 @@ def api_busca_clientes_entrega():
     })
 
 
+
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
@@ -5374,13 +5433,15 @@ def cadastrar_entrega():
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
         bairro = (request.form.get('bairro') or '').strip()
-        valor_raw = (request.form.get('valor') or '0').strip().replace('.', '').replace(',', '.') if ',' in (request.form.get('valor') or '') and (request.form.get('valor') or '').count(',') == 1 else (request.form.get('valor') or '0').strip().replace(',', '.')
+        valor_bruto = (request.form.get('valor') or '0').strip()
+        valor_raw = valor_bruto.replace('.', '').replace(',', '.') if ',' in valor_bruto and valor_bruto.count(',') == 1 else valor_bruto.replace(',', '.')
         try:
             valor = float(valor_raw or 0)
         except Exception:
             valor = 0.0
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
+        observacao = (request.form.get('observacao') or '').strip()
 
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
@@ -5389,15 +5450,37 @@ def cadastrar_entrega():
         if not cli and cliente_nome:
             cli = _find_cliente_by_nome(cliente_nome)
 
+        origem_endereco = (request.form.get('origem_endereco') or '').strip() or (cli.endereco if cli and cli.endereco else '')
+        origem_bairro = (request.form.get('origem_bairro') or '').strip() or (cli.bairro_origem if cli and cli.bairro_origem else '')
+        origem_contato = (request.form.get('origem_contato') or '').strip() or (cli.nome if cli else '')
+        origem_telefone = (request.form.get('origem_telefone') or '').strip() or (cli.telefone if cli else '')
+
+        destino_endereco = (request.form.get('destino_endereco') or '').strip()
+        destino_bairro = (request.form.get('destino_bairro') or '').strip() or bairro
+        destino_contato = (request.form.get('destino_contato') or '').strip()
+        destino_telefone = (request.form.get('destino_telefone') or '').strip()
+
+        paradas = []
+        for idx in range(1, 6):
+            end = (request.form.get(f'parada_{idx}_endereco') or '').strip()
+            nome = (request.form.get(f'parada_{idx}_nome') or '').strip()
+            fone = (request.form.get(f'parada_{idx}_telefone') or '').strip()
+            lembrete = (request.form.get(f'parada_{idx}_lembrete') or '').strip()
+            if end or nome or fone or lembrete:
+                paradas.append({'endereco': end, 'nome': nome, 'telefone': fone, 'ref': lembrete})
+
         entrega = Entrega(
             cliente=cliente_nome,
-            bairro=bairro,
+            bairro=destino_bairro or bairro or '-',
             valor=valor,
             data_envio=datetime.utcnow(),
             status_pagamento='pendente',
             status='pendente',
             pagamento=pagamento
         )
+        entrega.set_origem(endereco=origem_endereco, bairro=origem_bairro, extra={'contato': origem_contato, 'telefone': origem_telefone, 'observacao': observacao})
+        entrega.set_destino(endereco=destino_endereco, bairro=destino_bairro, extra={'contato': destino_contato, 'telefone': destino_telefone, 'observacao': observacao})
+        entrega.set_paradas(paradas)
 
         if cli:
             entrega.cliente_id = cli.id
@@ -5413,8 +5496,6 @@ def cadastrar_entrega():
 
         db.session.commit()
 
-        print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
-
         credito_consumido = 0.0
         erro_credito = False
         msg = 'Entrega cadastrada!'
@@ -5425,53 +5506,30 @@ def cadastrar_entrega():
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
                 credito_consumido = float(valor_consumido or 0.0)
                 if credito_consumido > 0:
-                    msg = (
-                        f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} '
-                        f'de crédito do cliente.'
-                    )
+                    msg = f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} de crédito do cliente.'
                     msg_category = 'success'
                 else:
-                    msg = (
-                        'Entrega cadastrada! (nenhum crédito foi consumido para '
-                        'este cliente).'
-                    )
+                    msg = 'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).'
                     msg_category = 'info'
             else:
-                msg = (
-                    'Entrega cadastrada! (nenhum crédito foi consumido para '
-                    'este cliente).'
-                )
+                msg = 'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).'
                 msg_category = 'info'
         except Exception as ex:
-            app.logger.exception(
-                "Falha ao consumir crédito na entrega %s: %s", entrega.id, ex
-            )
+            app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
             erro_credito = True
-            msg = (
-                'Entrega cadastrada, mas houve erro ao tentar consumir crédito '
-                'automaticamente.'
-            )
+            msg = 'Entrega cadastrada, mas houve erro ao tentar consumir crédito automaticamente.'
             msg_category = 'warning'
 
         flash(msg, msg_category)
-
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
-            return jsonify(
-                ok=True,
-                message=msg,
-                erro_credito=erro_credito,
-                credito_consumido=credito_consumido,
-                entrega_id=entrega.id,
-                status=entrega.status,
-                status_pagamento=entrega.status_pagamento,
-                cooperado_id=entrega.cooperado_id,
-            )
+            return jsonify(ok=True, message=msg, erro_credito=erro_credito, credito_consumido=credito_consumido, entrega_id=entrega.id, status=entrega.status, status_pagamento=entrega.status_pagamento, cooperado_id=entrega.cooperado_id)
 
         return redirect_back_to_admin()
 
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
+
 
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
