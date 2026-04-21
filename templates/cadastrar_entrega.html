@@ -110,35 +110,37 @@
 
     <div id="clienteMeta" class="client-meta"></div>
 
-    <label for="coleta_endereco">Endereço da coleta:</label>
-    <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número, complemento">
+    <label for="origem_endereco">Endereço de coleta:</label>
+    <input id="origem_endereco" name="origem_endereco" type="text" placeholder="Rua, número, complemento">
 
-    <label for="coleta_bairro">Bairro da coleta:</label>
-    <input id="coleta_bairro" name="coleta_bairro" type="text" placeholder="Bairro da coleta">
+    <label for="origem_bairro">Bairro da coleta:</label>
+    <input id="origem_bairro" name="origem_bairro" type="text" placeholder="Bairro da coleta">
 
-    <label for="coleta_contato">Contato da coleta:</label>
-    <input id="coleta_contato" name="coleta_contato" type="text" placeholder="Quem entregar / local">
+    <label for="origem_contato">Contato da coleta:</label>
+    <input id="origem_contato" name="origem_contato" type="text" placeholder="Nome de quem vai entregar">
 
-    <label for="coleta_fone">Telefone da coleta:</label>
-    <input id="coleta_fone" name="coleta_fone" type="text" placeholder="(84) 9xxxx-xxxx">
+    <label for="origem_telefone">Telefone da coleta:</label>
+    <input id="origem_telefone" name="origem_telefone" type="text" placeholder="(84) 9xxxx-xxxx">
 
-    <label for="entrega_endereco">Endereço da entrega:</label>
-    <input id="entrega_endereco" name="entrega_endereco" type="text" placeholder="Rua, número, complemento">
+    <label for="destino_endereco">Endereço de entrega:</label>
+    <input id="destino_endereco" name="destino_endereco" type="text" placeholder="Rua, número, complemento" required>
 
     <label for="bairro">Bairro da entrega:</label>
     <input id="bairro" name="bairro" type="text" placeholder="Digite o bairro da entrega" required>
 
-    <label for="entrega_contato">Quem vai receber:</label>
-    <input id="entrega_contato" name="entrega_contato" type="text" placeholder="Nome de quem vai receber">
+    <input id="destino_bairro" name="destino_bairro" type="hidden">
 
-    <label for="entrega_fone">Telefone de quem vai receber:</label>
-    <input id="entrega_fone" name="entrega_fone" type="text" placeholder="(84) 9xxxx-xxxx">
+    <label for="destino_contato">Contato de quem vai receber:</label>
+    <input id="destino_contato" name="destino_contato" type="text" placeholder="Nome de quem vai receber">
+
+    <label for="destino_telefone">Telefone de quem vai receber:</label>
+    <input id="destino_telefone" name="destino_telefone" type="text" placeholder="(84) 9xxxx-xxxx">
+
+    <label for="paradas_texto">Paradas (uma por linha):</label>
+    <textarea id="paradas_texto" name="paradas_texto" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;min-height:90px;" placeholder="Rua da parada 1&#10;Rua da parada 2"></textarea>
 
     <label for="observacao">Observação:</label>
-    <input id="observacao" name="observacao" type="text" placeholder="Observação da entrega">
-
-    <div id="stopsWrap"></div>
-    <button type="button" id="btnAddStop">+ Adicionar parada</button>
+    <textarea id="observacao" name="observacao" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;min-height:90px;" placeholder="Observações da entrega"></textarea>
 
     <label for="valor">Valor (R$):</label>
     <input id="valor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required>
@@ -202,6 +204,15 @@
         <div><strong>Saldo:</strong> <span class="${saldo > 0 ? 'badge-ok' : 'badge-warn'}">R$ ${saldo.toFixed(2).replace('.', ',')}</span></div>
       `;
       clienteMeta.style.display = 'block';
+
+      const origemEndereco = document.getElementById('origem_endereco');
+      const origemBairro = document.getElementById('origem_bairro');
+      const origemContato = document.getElementById('origem_contato');
+      const origemTelefone = document.getElementById('origem_telefone');
+      if (origemEndereco && !origemEndereco.value) origemEndereco.value = item.endereco || '';
+      if (origemBairro && !origemBairro.value) origemBairro.value = item.bairro_origem || '';
+      if (origemContato && !origemContato.value) origemContato.value = item.nome || '';
+      if (origemTelefone && !origemTelefone.value) origemTelefone.value = item.telefone || '';
     }
 
     function renderItems(items){
@@ -253,10 +264,6 @@
       clienteId.value = item.id || '';
       setMeta(item);
       showResultados(false);
-      if(!document.getElementById('coleta_endereco').value) document.getElementById('coleta_endereco').value = item.endereco || '';
-      if(!document.getElementById('coleta_bairro').value) document.getElementById('coleta_bairro').value = item.bairro_origem || '';
-      if(!document.getElementById('coleta_contato').value) document.getElementById('coleta_contato').value = item.nome || '';
-      if(!document.getElementById('coleta_fone').value) document.getElementById('coleta_fone').value = item.telefone || '';
       bairro.focus();
     }
 
@@ -329,18 +336,6 @@
       }
     });
 
-    const stopsWrap = document.getElementById('stopsWrap');
-    const btnAddStop = document.getElementById('btnAddStop');
-    function addStop(){
-      const idx = stopsWrap.children.length + 1;
-      const div = document.createElement('div');
-      div.style.cssText = 'padding:10px;border:1px solid var(--borda);border-radius:10px;margin-bottom:10px;background:#f8fbff';
-      div.innerHTML = `<label>Parada ${idx} - Endereço</label><input name="stop_endereco[]" type="text" placeholder="Endereço da parada" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><label>Quem procurar</label><input name="stop_nome[]" type="text" placeholder="Nome" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><label>Telefone</label><input name="stop_fone[]" type="text" placeholder="Telefone" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><label>Observação</label><input name="stop_obs[]" type="text" placeholder="Observação" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:10px"><button type="button" style="background:#fff;color:#0033aa;border:1px solid #cbd5e1">Remover parada</button>`;
-      div.querySelector('button').addEventListener('click', ()=>div.remove());
-      stopsWrap.appendChild(div);
-    }
-    btnAddStop.addEventListener('click', addStop);
-
     document.getElementById('valor').addEventListener('blur', (e) => {
       const raw = String(e.target.value || '').trim();
       if(!raw) return;
@@ -353,3 +348,5 @@
   </script>
 </body>
 </html>
+
+<script>document.getElementById('bairro')?.addEventListener('input', function(){var x=document.getElementById('destino_bairro'); if(x) x.value=this.value;});</script>
