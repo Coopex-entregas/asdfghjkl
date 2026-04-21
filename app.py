@@ -145,6 +145,57 @@ def _patch_admin_top_link(html: str) -> str:
     return html2
 
 
+
+
+def _safe_json_obj(raw):
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+def _format_delivery_address(data, fallback='-'):
+    if not data:
+        return fallback
+    endereco = (data.get('endereco') or data.get('address') or '').strip()
+    bairro = (data.get('bairro') or '').strip()
+    ref = (data.get('ref') or data.get('referencia') or '').strip()
+    partes = [p for p in [endereco, bairro, ref] if p]
+    return ' • '.join(partes) if partes else fallback
+
+def _normalize_stop_list(paradas_json):
+    data = _safe_json_obj(paradas_json)
+    stops = data.get('stops') or data.get('paradas') or []
+    if not isinstance(stops, list):
+        stops = []
+    return stops
+
+def _decorate_entrega(e):
+    origem = _safe_json_obj(getattr(e, 'origem_json', None))
+    destino = _safe_json_obj(getattr(e, 'destino_json', None))
+    stops = _normalize_stop_list(getattr(e, 'paradas_json', None))
+    e.origem_extra = origem
+    e.destino_extra = destino
+    e.paradas_lista = stops
+    e.origem_endereco = _format_delivery_address(origem, e.bairro or '-')
+    e.destino_endereco = _format_delivery_address(destino, e.bairro or '-')
+    e.contato_coleta = (origem.get('contato') or origem.get('nome') or '')
+    e.telefone_coleta = (origem.get('telefone') or '')
+    e.contato_entrega = (destino.get('contato') or destino.get('nome') or '')
+    e.telefone_entrega = (destino.get('telefone') or '')
+    e.observacao_entrega = (origem.get('observacao') or destino.get('observacao') or '')
+    if not e.observacao_entrega:
+        try:
+            pj = _safe_json_obj(getattr(e, 'paradas_json', None))
+            e.observacao_entrega = pj.get('observacao') or ''
+        except Exception:
+            e.observacao_entrega = ''
+    e.paradas_texto = ' | '.join([_format_delivery_address(p, p.get('bairro') or '-') for p in stops]) if stops else ''
+    return e
+
 # =========================================================
 # COMPROVANTE DE ENTREGA (FOTO) — armazenado por 7 dias
 # =========================================================
@@ -644,58 +695,6 @@ class Entrega(db.Model):
     def __repr__(self):
         return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
 
-
-
-def _json_load_any(raw):
-    if not raw:
-        return {}
-    if isinstance(raw, dict):
-        return raw
-    try:
-        return json.loads(raw)
-    except Exception:
-        return {}
-
-def _enriquecer_entrega_dados(e):
-    origem = _json_load_any(getattr(e, 'origem_json', None))
-    destino = _json_load_any(getattr(e, 'destino_json', None))
-    paradas_root = _json_load_any(getattr(e, 'paradas_json', None))
-    paradas = paradas_root.get('stops') if isinstance(paradas_root, dict) else []
-    if not isinstance(paradas, list):
-        paradas = []
-
-    def _fmt_end(d, fallback='-'):
-        if not isinstance(d, dict):
-            return fallback
-        parts = []
-        for key in ('endereco', 'bairro', 'ref'):
-            val = (d.get(key) or '').strip() if isinstance(d.get(key), str) else d.get(key)
-            if val:
-                parts.append(str(val))
-        return ' • '.join(parts) if parts else fallback
-
-    e.origem_extra = origem
-    e.destino_extra = destino
-    e.paradas_extra = paradas_root if isinstance(paradas_root, dict) else {'stops': paradas}
-    e.paradas_lista = paradas
-    e.origem_endereco = _fmt_end(origem, e.bairro or '-')
-    e.destino_endereco = _fmt_end(destino, e.bairro or '-')
-    e.contato_coleta = (origem.get('contato') or origem.get('nome') or '').strip() if isinstance(origem, dict) else ''
-    e.telefone_coleta = (origem.get('telefone') or '').strip() if isinstance(origem, dict) else ''
-    e.contato_entrega = (destino.get('contato') or destino.get('nome') or '').strip() if isinstance(destino, dict) else ''
-    e.telefone_entrega = (destino.get('telefone') or '').strip() if isinstance(destino, dict) else ''
-    e.observacao_entrega = ((origem.get('observacao_geral') or destino.get('observacao_geral') or '') if isinstance(origem, dict) and isinstance(destino, dict) else '')
-    e.recebe_dinheiro_em = (destino.get('recebe_dinheiro_em') or '') if isinstance(destino, dict) else ''
-    e.paradas_texto = ' | '.join([str((p.get('endereco') or p.get('bairro') or p.get('ref') or '-')).strip() for p in paradas if isinstance(p, dict)])
-    return e
-
-def _haversine_meters(lat1, lon1, lat2, lon2):
-    from math import radians, sin, cos, sqrt, atan2
-    R = 6371000.0
-    dlat = radians(float(lat2) - float(lat1))
-    dlon = radians(float(lon2) - float(lon1))
-    a = sin(dlat/2)**2 + cos(radians(float(lat1))) * cos(radians(float(lat2))) * sin(dlon/2)**2
-    return 2 * R * atan2(sqrt(a), sqrt(1-a))
 
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
@@ -2615,8 +2614,8 @@ def api_cliente_cotar_entrega():
 
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
-    except Exception as e:
-        return jsonify({'ok': False, 'erro': str(e)}), 400
+    except Exception:
+        preco = 0.0
 
     meios = []
     if cli.saldo_atual is not None and cli.saldo_atual >= preco:
@@ -2625,7 +2624,7 @@ def api_cliente_cotar_entrega():
 
     return jsonify({
         'ok': True,
-        'preco': preco,
+        'preco': float(entrega_obj.valor or 0),
         'moeda': 'BRL',
         'cliente_saldo_atual': float(cli.saldo_atual or 0),
         'pode_usar_credito': 'CREDITO' in meios,
@@ -2635,8 +2634,26 @@ def api_cliente_cotar_entrega():
 
 @app.route('/api/cliente/solicitar-entrega', methods=['POST'])
 @cliente_required
-
 def api_cliente_solicitar_entrega():
+    """
+    Cliente faz o pedido de entrega.
+
+    JSON esperado:
+    {
+      "coleta":  {...},
+      "entrega": {...},
+      "paradas": ["Rua X - Bairro Y", ...],     # opcional
+      "meio_pagamento": "CREDITO" | "PIX" | "DINHEIRO",
+      "apenas_simular": false
+    }
+
+    Regras:
+    - Recalcula o preço pela tabela PrecoRota (coleta.bairro -> entrega.bairro).
+    - Se apenas_simular = true, NÃO cria entrega, só devolve preço e formas de pgto.
+    - Se meio_pagamento == CREDITO e saldo < preço => erro 400 (cliente escolhe outra forma).
+    - Se meio_pagamento == CREDITO e saldo suficiente => cria entrega + consome crédito
+      usando consumir_credito_em_entrega (vinculado à entrega).
+    """
     cli = _cliente_atual()
     data = request.get_json(silent=True) or {}
 
@@ -2644,47 +2661,44 @@ def api_cliente_solicitar_entrega():
     entrega_dest = data.get('entrega') or {}
     paradas_lista = data.get('paradas') or []
     observacao = (data.get('observacao') or '').strip()
-    meio_pagamento = (data.get('meio_pagamento') or '').upper().strip()
+    preco_informado = data.get('preco_estimado')
+
+    meio_pagamento = (data.get('meio_pagamento') or '').upper()
     apenas_simular = bool(data.get('apenas_simular'))
 
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
     bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
 
-    preco = None
-    erro_preco = None
+    # 1) Calcula preço
     try:
-        preco = float(_calcular_preco_bairros(bairro_coleta, bairro_entrega))
-    except Exception as e:
-        erro_preco = str(e)
-        preco = None
+        preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
+    except Exception:
+        preco = 0.0
 
+    # 2) Simulação apenas (não cria nada no banco)
     if apenas_simular:
-        meios = ['PIX', 'DINHEIRO']
-        if preco is not None and cli.saldo_atual is not None and cli.saldo_atual >= preco:
-            meios.insert(0, 'CREDITO')
+        meios = []
+        if cli.saldo_atual is not None and cli.saldo_atual >= preco:
+            meios.append('CREDITO')
+        meios.extend(['PIX', 'DINHEIRO'])
+
         return jsonify({
             'ok': True,
             'simulacao': True,
-            'preco': preco,
-            'preco_indisponivel': preco is None,
-            'msg': 'Valor não cadastrado. A cooperativa informará o valor.' if preco is None else 'Cotação calculada com sucesso.',
-            'erro_tabela': erro_preco,
+            'preco': float(entrega_obj.valor or 0),
             'cliente_saldo_atual': float(cli.saldo_atual or 0),
             'meios_pagamento': meios,
         })
 
-    if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO', 'PIX (COOPERATIVA)', 'COMANDA'):
-        meio_pagamento = 'PIX'
+    # 3) Define meio de pagamento padrão
+    if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
+        if cli.saldo_atual is not None and cli.saldo_atual >= preco:
+            meio_pagamento = 'CREDITO'
+        else:
+            meio_pagamento = 'PIX'
 
-    preco_estimado = data.get('preco_estimado')
-    try:
-        preco_estimado = float(preco_estimado) if preco_estimado not in (None, '', False) else None
-    except Exception:
-        preco_estimado = None
-
-    valor_final = float(preco if preco is not None else (preco_estimado if preco_estimado is not None else 0.0))
-
-    if meio_pagamento == 'CREDITO' and preco is not None:
+    # 4) Se for CREDITO, exige saldo total
+    if meio_pagamento == 'CREDITO':
         if cli.saldo_atual is None or cli.saldo_atual < preco:
             return jsonify({
                 'ok': False,
@@ -2692,8 +2706,10 @@ def api_cliente_solicitar_entrega():
             }), 400
 
     try:
+        # Sempre salva data_envio como UTC naive (padrão do sistema)
         data_envio_utc = datetime.utcnow()
 
+        # JSONs com origem / destino / paradas
         origem_json_dict = {
             "endereco": coleta.get('endereco'),
             "bairro": bairro_coleta,
@@ -2702,7 +2718,7 @@ def api_cliente_solicitar_entrega():
             "lng": coleta.get('lng'),
             "contato": coleta.get('contato'),
             "telefone": coleta.get('telefone'),
-            "observacao_geral": observacao or None,
+            "observacao": observacao,
         }
         destino_json_dict = {
             "endereco": entrega_dest.get('endereco'),
@@ -2712,48 +2728,42 @@ def api_cliente_solicitar_entrega():
             "lng": entrega_dest.get('lng'),
             "contato": entrega_dest.get('contato'),
             "telefone": entrega_dest.get('telefone'),
-            "recebe_dinheiro_em": data.get('recebe_dinheiro_em'),
-            "observacao_geral": observacao or None,
+            "observacao": observacao,
+        }
+        paradas_json_dict = {
+            "stops": paradas_lista,
+            "observacao": observacao
         }
 
-        stops = []
-        for p in paradas_lista:
-            if isinstance(p, dict):
-                stops.append({
-                    "endereco": p.get('endereco') or p.get('address'),
-                    "bairro": p.get('bairro'),
-                    "ref": p.get('lembrete') or p.get('ref'),
-                    "nome": p.get('nome'),
-                    "telefone": p.get('telefone'),
-                    "lat": p.get('lat'),
-                    "lng": p.get('lng'),
-                })
-            elif p:
-                stops.append({"endereco": str(p)})
-        paradas_json_dict = {"stops": stops, "observacao_geral": observacao or None}
-
-        campos = dict(
-            cliente=cli.nome,
-            bairro=bairro_entrega or bairro_coleta or '',
-            valor=valor_final,
-            data_envio=data_envio_utc,
-            status_pagamento='pendente',
-            status='pendente',
-            pagamento=meio_pagamento,
-            cliente_id=cli.id,
-            origem_json=json.dumps(origem_json_dict, ensure_ascii=False),
-            destino_json=json.dumps(destino_json_dict, ensure_ascii=False),
-            paradas_json=json.dumps(paradas_json_dict, ensure_ascii=False),
-            status_corrida='pendente',
-        )
+        # Campos da Entrega compatíveis com o seu model atual
+        campos = {
+            'cliente_id': cli.id,
+            'cliente': cli.nome,          # texto para o admin enxergar
+            'bairro': bairro_entrega,     # você só tem 1 campo de bairro na Entrega
+            'valor': float(preco_informado or preco or 0),
+            'data_envio': data_envio_utc,
+            'status': 'pendente',
+            'status_pagamento': 'pago' if meio_pagamento == 'CREDITO' else 'pendente',
+            'pagamento': meio_pagamento.capitalize(),  # "Credito", "Pix", "Dinheiro"
+            'origem_json': json.dumps(origem_json_dict, ensure_ascii=False),
+            'destino_json': json.dumps(destino_json_dict, ensure_ascii=False),
+            'paradas_json': json.dumps(paradas_json_dict, ensure_ascii=False),
+            # status_corrida fica com default 'pendente'
+        }
 
         entrega_obj = Entrega(**campos)
         db.session.add(entrega_obj)
-        db.session.flush()
+        db.session.flush()  # garante entrega_obj.id
 
-        if meio_pagamento == 'CREDITO' and preco is not None:
+        # 5) Se pagamento for CREDITO, consome o crédito de forma oficial
+        if meio_pagamento == 'CREDITO':
+            # Aqui usamos sua função nova, que:
+            # - cria CreditoMovimento debito
+            # - atualiza saldo do cliente via atualizar_saldo_credito_cliente
+            # - preenche entrega.credito_usado, status_pagamento, pagamento, etc.
             valor_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
             if valor_consumido <= 0:
+                # Se por algum motivo não conseguiu consumir, aborta com erro
                 db.session.rollback()
                 return jsonify({
                     'ok': False,
@@ -2761,7 +2771,6 @@ def api_cliente_solicitar_entrega():
                 }), 500
 
         db.session.commit()
-        emitir_atualizacao_entrega(entrega_obj, 'criada')
 
     except Exception as e:
         db.session.rollback()
@@ -2774,15 +2783,11 @@ def api_cliente_solicitar_entrega():
     return jsonify({
         'ok': True,
         'entrega_id': entrega_obj.id,
-        'preco': preco,
-        'preco_indisponivel': preco is None,
-        'valor_final': float(entrega_obj.valor or 0),
-        'msg': 'Pedido criado. Valor será informado pela cooperativa.' if preco is None else 'Pedido criado com sucesso.',
+        'preco': float(entrega_obj.valor or 0),
         'meio_pagamento': meio_pagamento,
         'status_pagamento': entrega_obj.status_pagamento,
         'comprovante_url': url_for('cliente_comprovante', entrega_id=entrega_obj.id),
     })
-
 
 
 
@@ -3122,8 +3127,11 @@ def rastreamento():
 
 
 @app.get('/api/rastreamento/<codigo>')
-
 def api_rastreamento(codigo):
+    """
+    API JSON para apps externos / site do cliente.
+    Usa o ID da entrega como código de rastreio.
+    """
     if not codigo.isdigit():
         return jsonify(ok=False, erro="Código inválido. Use apenas números."), 400
 
@@ -3131,67 +3139,34 @@ def api_rastreamento(codigo):
     if not entrega:
         return jsonify(ok=False, erro="Entrega não encontrada."), 404
 
+    entrega = _decorate_entrega(entrega)
     eventos = montar_eventos_rastreamento(entrega)
-    origem_extra = _json_load_any(entrega.origem_json)
-    destino_extra = _json_load_any(entrega.destino_json)
-    paradas_extra = _json_load_any(entrega.paradas_json)
-    cooperado = entrega.cooperado
-
-    motoboy_pos = None
-    if cooperado and getattr(cooperado, 'last_lat', None) is not None and getattr(cooperado, 'last_lng', None) is not None:
-        motoboy_pos = {'lat': float(cooperado.last_lat), 'lng': float(cooperado.last_lng)}
-
-    fase = 'aguardando_atribuicao'
-    alerta = 'Aguardando atribuição do motoboy.'
-    if cooperado:
-        fase = 'motoboy_atribuido'
-        alerta = f'Motoboy {cooperado.nome} atribuído ao pedido.'
-    if (entrega.status_corrida or '').lower() in ['aceita']:
-        fase = 'a_caminho_coleta'
-        alerta = 'O motoboy está a caminho da coleta.'
-    if (entrega.status_corrida or '').lower() in ['coletado', 'em_rota', 'em_andamento']:
-        fase = 'em_rota'
-        alerta = 'Sua entrega já foi coletada e está em rota.'
-    try:
-        if motoboy_pos and destino_extra.get('lat') is not None and destino_extra.get('lng') is not None and (entrega.status_corrida or '').lower() in ['coletado', 'em_rota', 'em_andamento']:
-            d_dest = _haversine_meters(motoboy_pos['lat'], motoboy_pos['lng'], destino_extra.get('lat'), destino_extra.get('lng'))
-            if d_dest <= 800:
-                fase = 'proximo'
-                alerta = 'O motoboy está próximo do destino.'
-            if d_dest <= 180:
-                fase = 'chegando'
-                alerta = 'O motoboy está chegando ao destino.'
-    except Exception:
-        pass
-
-    status_final = (entrega.status or '').lower() in ['recebido', 'entregue', 'concluido', 'concluida'] or (entrega.status_corrida or '').lower() == 'finalizada'
-    if status_final:
-        fase = 'concluida'
-        alerta = 'Entrega concluída.'
 
     def _dt(dt):
         return to_brasilia(dt).isoformat() if dt else None
 
+    motoboy_pos = None
+    if entrega.cooperado and getattr(entrega.cooperado, 'last_lat', None) is not None and getattr(entrega.cooperado, 'last_lng', None) is not None:
+        motoboy_pos = {"lat": float(entrega.cooperado.last_lat), "lng": float(entrega.cooperado.last_lng)}
+
+    status_final = (entrega.status or '').lower() in ['recebido','entregue']
     return jsonify({
         "ok": True,
         "entrega_id": entrega.id,
         "cliente": entrega.cliente,
         "bairro": entrega.bairro,
         "valor": float(entrega.valor or 0),
-        "status": entrega.status,
-        "status_corrida": entrega.status_corrida,
+        "status": 'entregue' if status_final else (entrega.status or 'pendente'),
         "status_pagamento": entrega.status_pagamento,
         "pagamento": entrega.pagamento,
-        "cooperado": (cooperado.nome if cooperado else None),
-        "cooperado_nome": (cooperado.nome if cooperado else None),
+        "cooperado": (entrega.cooperado.nome if entrega.cooperado else None),
+        "cooperado_nome": (entrega.cooperado.nome if entrega.cooperado else None),
         "data_envio": _dt(entrega.data_envio),
         "data_atribuida": _dt(entrega.data_atribuida),
-        "origem_extra": origem_extra,
-        "destino_extra": destino_extra,
-        "paradas_extra": paradas_extra,
-        "motoboy_pos": motoboy_pos,
-        "fase": fase,
-        "alerta_cliente": alerta,
+        "origem_extra": entrega.origem_extra,
+        "destino_extra": entrega.destino_extra,
+        "paradas_extra": {"stops": entrega.paradas_lista, "observacao": entrega.observacao_entrega},
+        "motoboy_pos": motoboy_pos if entrega.cooperado_id and not status_final else None,
         "comprovante_url": url_for('cliente_comprovante', entrega_id=entrega.id),
         "eventos": [
             {
@@ -3203,7 +3178,6 @@ def api_rastreamento(codigo):
             for ev in eventos
         ]
     })
-
 
 
 # =========================================================
@@ -3264,7 +3238,7 @@ def admin():
     )
     nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
     atribuidos = [e for e in entregas_all if e.cooperado_id]
-    entregas = nao_atribuidos + atribuidos
+    entregas = [_decorate_entrega(e) for e in (nao_atribuidos + atribuidos)]
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
@@ -3555,7 +3529,7 @@ def painel_cooperado():
         .order_by(Entrega.data_envio.desc())
         .all()
     )
-    entregas = [_enriquecer_entrega_dados(e) for e in entregas]
+    entregas = [_decorate_entrega(e) for e in entregas]
 
     # Totais
     total_geral = sum(float(e.valor or 0) for e in entregas)
@@ -4240,12 +4214,6 @@ def api_mobile_cooperado_corridas():
             "status_corrida": e.status_corrida,
             "status": e.status,
             "status_pagamento": e.status_pagamento,
-            "contato_coleta": origem.get("contato") or origem.get("nome") or "",
-            "telefone_coleta": origem.get("telefone") or "",
-            "contato_entrega": destino.get("contato") or destino.get("nome") or "",
-            "telefone_entrega": destino.get("telefone") or "",
-            "paradas": (_parse_json_field(e.paradas_json).get("stops") or []),
-            "observacao": (origem.get("observacao_geral") or destino.get("observacao_geral") or ""),
         })
 
     return jsonify(ok=True, corridas=corridas)
@@ -5458,7 +5426,6 @@ def api_busca_clientes_entrega():
 
 
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
-
 def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
@@ -5476,6 +5443,26 @@ def cadastrar_entrega():
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
         observacao = (request.form.get('observacao') or '').strip()
+        coleta_end = (request.form.get('coleta_endereco') or '').strip()
+        coleta_bairro = (request.form.get('coleta_bairro') or '').strip()
+        coleta_contato = (request.form.get('coleta_contato') or '').strip()
+        coleta_fone = (request.form.get('coleta_fone') or '').strip()
+        entrega_end = (request.form.get('entrega_endereco') or '').strip()
+        entrega_bairro = (request.form.get('entrega_bairro') or '').strip()
+        entrega_contato = (request.form.get('entrega_contato') or '').strip()
+        entrega_fone = (request.form.get('entrega_fone') or '').strip()
+        stops = []
+        stop_enderecos = request.form.getlist('stop_endereco[]')
+        stop_nomes = request.form.getlist('stop_nome[]')
+        stop_fones = request.form.getlist('stop_fone[]')
+        stop_refs = request.form.getlist('stop_obs[]')
+        for i, end in enumerate(stop_enderecos):
+            end = (end or '').strip()
+            nome = (stop_nomes[i] if i < len(stop_nomes) else '') or ''
+            fone = (stop_fones[i] if i < len(stop_fones) else '') or ''
+            obs = (stop_refs[i] if i < len(stop_refs) else '') or ''
+            if end or nome or fone or obs:
+                stops.append({'endereco': end, 'nome': nome.strip(), 'telefone': fone.strip(), 'ref': obs.strip()})
 
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
@@ -5484,51 +5471,9 @@ def cadastrar_entrega():
         if not cli and cliente_nome:
             cli = _find_cliente_by_nome(cliente_nome)
 
-        coleta_end = (request.form.get('coleta_endereco') or '').strip()
-        coleta_bairro = (request.form.get('coleta_bairro') or '').strip()
-        coleta_contato = (request.form.get('coleta_contato') or '').strip()
-        coleta_telefone = (request.form.get('coleta_telefone') or '').strip()
-
-        entrega_end = (request.form.get('entrega_endereco') or '').strip()
-        entrega_bairro = (request.form.get('entrega_bairro') or '').strip() or bairro
-        entrega_contato = (request.form.get('entrega_contato') or '').strip()
-        entrega_telefone = (request.form.get('entrega_telefone') or '').strip()
-
-        if cli:
-            if not coleta_end:
-                coleta_end = (cli.endereco or '').strip()
-            if not coleta_bairro:
-                coleta_bairro = (cli.bairro_origem or '').strip()
-            if not coleta_contato:
-                coleta_contato = cli.nome
-            if not coleta_telefone:
-                coleta_telefone = (cli.telefone or '').strip()
-
-        paradas = []
-        idx = 1
-        while True:
-            p_end = (request.form.get(f'parada_{idx}_endereco') or '').strip()
-            p_nome = (request.form.get(f'parada_{idx}_nome') or '').strip()
-            p_fone = (request.form.get(f'parada_{idx}_telefone') or '').strip()
-            p_ref = (request.form.get(f'parada_{idx}_lembrete') or '').strip()
-            if not any([p_end, p_nome, p_fone, p_ref]):
-                if idx > 20:
-                    break
-                idx += 1
-                if idx > 10 and not request.form.get(f'parada_{idx}_endereco'):
-                    break
-                continue
-            paradas.append({
-                'endereco': p_end,
-                'nome': p_nome,
-                'telefone': p_fone,
-                'ref': p_ref,
-            })
-            idx += 1
-
         entrega = Entrega(
             cliente=cliente_nome,
-            bairro=entrega_bairro or coleta_bairro or bairro,
+            bairro=bairro,
             valor=valor,
             data_envio=datetime.utcnow(),
             status_pagamento='pendente',
@@ -5538,19 +5483,17 @@ def cadastrar_entrega():
 
         if cli:
             entrega.cliente_id = cli.id
+            if not coleta_end and (cli.endereco or cli.bairro_origem):
+                coleta_end = (cli.endereco or '').strip()
+                coleta_bairro = (cli.bairro_origem or '').strip()
+                if not coleta_contato:
+                    coleta_contato = cli.nome or ''
+                if not coleta_fone:
+                    coleta_fone = cli.telefone or ''
 
-        entrega.set_origem(
-            endereco=coleta_end or None,
-            bairro=coleta_bairro or None,
-            extra={'contato': coleta_contato or None, 'telefone': coleta_telefone or None, 'observacao_geral': observacao or None}
-        )
-        entrega.set_destino(
-            endereco=entrega_end or None,
-            bairro=entrega_bairro or None,
-            extra={'contato': entrega_contato or None, 'telefone': entrega_telefone or None, 'observacao_geral': observacao or None}
-        )
-        if paradas:
-            entrega.set_paradas(paradas)
+        entrega.set_origem(endereco=coleta_end or None, bairro=coleta_bairro or None, extra={'contato': coleta_contato or None, 'telefone': coleta_fone or None, 'observacao': observacao or None})
+        entrega.set_destino(endereco=entrega_end or None, bairro=entrega_bairro or bairro or None, extra={'contato': entrega_contato or None, 'telefone': entrega_fone or None, 'observacao': observacao or None})
+        entrega.set_paradas(stops)
 
         if cooperado_id:
             entrega.cooperado_id = int(cooperado_id)
@@ -5563,6 +5506,8 @@ def cadastrar_entrega():
 
         db.session.commit()
 
+        print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
+
         credito_consumido = 0.0
         erro_credito = False
         msg = 'Entrega cadastrada!'
@@ -5573,24 +5518,53 @@ def cadastrar_entrega():
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
                 credito_consumido = float(valor_consumido or 0.0)
                 if credito_consumido > 0:
-                    msg = f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} de crédito do cliente.'
+                    msg = (
+                        f'Entrega cadastrada! Consumiu R$ {credito_consumido:.2f} '
+                        f'de crédito do cliente.'
+                    )
                     msg_category = 'success'
                 else:
-                    msg = 'Entrega cadastrada! (nenhum crédito foi consumido para este cliente).'
+                    msg = (
+                        'Entrega cadastrada! (nenhum crédito foi consumido para '
+                        'este cliente).'
+                    )
+                    msg_category = 'info'
             else:
-                msg = 'Entrega cadastrada!'
+                msg = (
+                    'Entrega cadastrada! (nenhum crédito foi consumido para '
+                    'este cliente).'
+                )
+                msg_category = 'info'
         except Exception as ex:
-            app.logger.exception("Falha ao consumir crédito na entrega %s: %s", entrega.id, ex)
+            app.logger.exception(
+                "Falha ao consumir crédito na entrega %s: %s", entrega.id, ex
+            )
             erro_credito = True
-            msg = 'Entrega cadastrada, mas houve falha ao processar crédito.'
+            msg = (
+                'Entrega cadastrada, mas houve erro ao tentar consumir crédito '
+                'automaticamente.'
+            )
             msg_category = 'warning'
 
-        emitir_atualizacao_entrega(entrega, 'criada')
         flash(msg, msg_category)
-        return redirect(url_for('admin'))
+
+        emitir_atualizacao_entrega(entrega, 'criada')
+
+        if _wants_json():
+            return jsonify(
+                ok=True,
+                message=msg,
+                erro_credito=erro_credito,
+                credito_consumido=credito_consumido,
+                entrega_id=entrega.id,
+                status=entrega.status,
+                status_pagamento=entrega.status_pagamento,
+                cooperado_id=entrega.cooperado_id,
+            )
+
+        return redirect_back_to_admin()
 
     return render_template('cadastrar_entrega.html', cooperados=cooperados)
-
 
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
@@ -5633,6 +5607,13 @@ def agendar_entrega():
 
         if cli:
             entrega.cliente_id = cli.id
+            if not coleta_end and (cli.endereco or cli.bairro_origem):
+                coleta_end = (cli.endereco or '').strip()
+                coleta_bairro = (cli.bairro_origem or '').strip()
+                if not coleta_contato:
+                    coleta_contato = cli.nome or ''
+                if not coleta_fone:
+                    coleta_fone = cli.telefone or ''
 
         db.session.add(entrega)
 
