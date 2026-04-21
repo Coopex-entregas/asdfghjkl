@@ -948,9 +948,22 @@
                     </span>
                   </td>
 
-                  <td>{{ e.cliente }}</td>
+                  <td>
+                    <div style="font-weight:800">{{ e.cliente }}</div>
+                    {% if e.contato_coleta or e.telefone_coleta %}
+                    <div class="small">Coleta: {{ e.contato_coleta or '-' }}{% if e.telefone_coleta %} • {{ e.telefone_coleta }}{% endif %}</div>
+                    {% endif %}
+                    {% if e.contato_entrega or e.telefone_entrega %}
+                    <div class="small">Entrega: {{ e.contato_entrega or '-' }}{% if e.telefone_entrega %} • {{ e.telefone_entrega }}{% endif %}</div>
+                    {% endif %}
+                    {% if e.observacao_entrega %}<div class="small">Obs: {{ e.observacao_entrega }}</div>{% endif %}
+                  </td>
                   <td>{{ e.bairro }}</td>
-                  <td>{{ e.endereco if e.endereco is defined and e.endereco else '-' }}</td>
+                  <td style="min-width:280px;white-space:normal">
+                    <div><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
+                    <div><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
+                    {% if e.paradas_texto is defined and e.paradas_texto %}<div><strong>Paradas:</strong> {{ e.paradas_texto }}</div>{% endif %}
+                  </td>
 
                   <td>
                     <span class="value-editable"
