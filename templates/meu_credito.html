@@ -739,7 +739,7 @@
           <div class="list" id="timeline"></div>
 
           <div class="row" style="margin-top:10px">
-            <button class="btn btn-ghost" id="btnNovoPedido" type="button">Novo pedido</button>
+            <button class="btn btn-ghost" id="btnNovoPedido" type="button">Solicitar nova entrega</button>
           </div>
         </div>
       </section>
@@ -1236,7 +1236,8 @@ async function quoteAll(){
   await ensureCoords("entrega");
 
   if(!state.coleta.lat || !state.entrega.lat){
-    $("quoteNote").textContent = "Não consegui obter coordenadas. Você ainda pode solicitar e a cooperativa confirmará o valor.";
+    $("quoteNote").textContent = "Não consegui obter coordenadas. Use sugestões/autocomplete ou CEP+Número.";
+    return;
   }
 
   setBadge("Cotando…");
@@ -1257,16 +1258,20 @@ async function quoteAll(){
 
   if(r && r.ok){
     setOnline(true);
-    applyQuote(r.preco, r.distancia_km, r.duracao_min, "backend");
+    if(r.preco != null){
+      applyQuote(r.preco, r.distancia_km, r.duracao_min, "backend");
+      $("quoteNote").textContent = r.msg || "Cotação calculada pelo sistema.";
+    }else{
+      state.quote.ok = true;
+      state.quote.preco = null;
+      state.quote.dist_km = r.distancia_km ?? null;
+      state.quote.dur_min = r.duracao_min ?? null;
+      $("precoValor").textContent = "A informar";
+      $("precoMeta").textContent = "Valor será informado pela cooperativa.";
+      $("quoteNote").textContent = r.msg || "Valor não cadastrado. Você pode solicitar mesmo assim.";
+    }
     setBadge("OK", true);
-    $("quoteNote").textContent = "Cotação calculada pelo sistema.";
     return;
-  }
-  if(r && r.permite_solicitar_sem_preco){
-    state.quote = { ok:false, preco: state.quote.preco ?? 0, dist_km: state.quote.dist_km ?? null, dur_min: state.quote.dur_min ?? null, fonte:"sem_preco", msg:r.mensagem_cliente || r.erro };
-    $("precoTxt").textContent = "A informar";
-    $("quoteNote").textContent = r.mensagem_cliente || "Valor será informado pela cooperativa após análise do serviço.";
-    setBadge("A informar", true);
   }
 
   // 2) fallback visual via OSRM (rota real) — isso evita ficar “travado”, mas o CERTO é consertar o Python.
@@ -1346,8 +1351,6 @@ async function solicitar(){
       lat: state.coleta.lat, lng: state.coleta.lng,
       contato: ($("coleta_contato").value||"").trim() || null,
       telefone: ($("coleta_fone").value||"").trim() || null,
-      numero: state.coleta.num || null,
-      complemento: state.coleta.comp || null,
     },
     entrega:{
       bairro: state.entrega.bairro || null,
@@ -1355,15 +1358,12 @@ async function solicitar(){
       lat: state.entrega.lat, lng: state.entrega.lng,
       contato: ($("entrega_contato").value||"").trim() || null,
       telefone: ($("entrega_fone").value||"").trim() || null,
-      numero: state.entrega.num || null,
-      complemento: state.entrega.comp || null,
     },
     paradas: readStops(),
     observacao: ($("obs").value||"").trim() || null,
     meio_pagamento: normMeioPagamento($("pagamento").value),
-    recebe_dinheiro_em: (document.querySelector('input[name="recebe_dinheiro_em"]:checked')||{}).value || null,
     // opcional: ajuda seu back-end se você quiser aceitar:
-    preco_estimado: state.quote.preco ?? null,
+    preco_estimado: (state.quote.preco ?? null),
     distancia_km: state.quote.dist_km ?? null,
     duracao_min: state.quote.dur_min ?? null,
   };
@@ -1392,8 +1392,8 @@ async function solicitar(){
   }
 
   $("trackCode").textContent = state.entregaId;
-  if (r.comprovante_url) { $("btnComprovante").dataset.url = r.comprovante_url; }
   setStep(6);
+  if ($("sheet")) $("sheet").classList.remove("expanded");
   startTracking();
 }
 
@@ -1483,22 +1483,20 @@ async function pollTracking(){
 
   const st = tr.status || "aguardando";
   $("trackStatus").textContent = cooperado ? String(st) : "Aguardando atribuição…";
-  $("trackNote").textContent = tr.alerta_cliente || ""; 
-  if (tr.comprovante_url) { $("btnComprovante").dataset.url = tr.comprovante_url; }
 
   const pay = tr.pagamento || "—";
   const stp = String(tr.status_pagamento||"pendente").toLowerCase()==="pago" ? "Pago" : "Pendente";
   $("trackPay").textContent = `${pay} • ${stp}`;
 
-  // rota (se vier do back-end)
+  // rota apenas quando tiver coordenadas reais do back-end
   const ox = tr.origem_extra || null;
   const dx = tr.destino_extra || null;
-  const orig = (ox && ox.lat!=null && ox.lng!=null) ? [Number(ox.lat), Number(ox.lng)] : (state.coleta.lat ? [state.coleta.lat,state.coleta.lng] : null);
-  const dest = (dx && dx.lat!=null && dx.lng!=null) ? [Number(dx.lat), Number(dx.lng)] : (state.entrega.lat ? [state.entrega.lat,state.entrega.lng] : null);
+  const orig = (ox && ox.lat!=null && ox.lng!=null) ? [Number(ox.lat), Number(ox.lng)] : null;
+  const dest = (dx && dx.lat!=null && dx.lng!=null) ? [Number(dx.lat), Number(dx.lng)] : null;
   if(orig && dest) setRoute(orig, dest);
 
-  // posição do motoboy
-  const pos = pickMotoPos(tr);
+  // posição real do motoboy só após atribuição
+  const pos = cooperado ? pickMotoPos(tr) : null;
   if(pos) setMoto(pos);
 
   renderTimeline(tr);
@@ -1566,9 +1564,10 @@ function wireButtons(){
     state.map.fitBounds(bb, { animate:true, duration:.6 });
   });
 
-  $("btnComprovante").addEventListener("click", ()=>{
-    const url = $("btnComprovante").dataset.url || (state.entregaId ? API.comprovante(state.entregaId) : "");
-    if(!url){ alert("Sem comprovante."); return; }
+  $("btnComprovante").addEventListener("click", async ()=>{
+    if(!state.entregaId){ alert("Sem código."); return; }
+    const tr = await safeJSON(API.tracking(state.entregaId));
+    const url = (tr && tr.comprovante_url) ? tr.comprovante_url : API.comprovante(state.entregaId);
     window.open(url, "_blank", "noopener");
   });
 
@@ -1579,7 +1578,9 @@ function wireButtons(){
     $("trackMoto").textContent="—";
     $("trackStatus").textContent="Aguardando…";
     $("trackPay").textContent="—";
+    $("trackNote").textContent="Preencha os dados para uma nova solicitação.";
     $("timeline").innerHTML="";
+    if ($("sheet")) $("sheet").classList.add("expanded");
     setStep(1);
   });
 }
