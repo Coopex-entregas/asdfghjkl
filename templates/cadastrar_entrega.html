@@ -22,7 +22,7 @@
     form{
       background:var(--card); padding:22px; border-radius:12px;
       box-shadow:0 0 15px rgba(0,0,0,.08);
-      width:100%; max-width:460px;
+      width:100%; max-width:760px;
       border:1px solid var(--borda);
     }
     label{ display:block; margin:10px 0 6px; font-weight:bold; }
@@ -39,7 +39,7 @@
     button:hover{ background:var(--azul-2); }
     small.hint{ display:block; margin:-6px 0 12px; color:#555; }
     .top-actions{
-      width:100%; max-width:460px; display:flex; justify-content:space-between;
+      width:100%; max-width:760px; display:flex; justify-content:space-between;
       gap:10px; margin-bottom:10px;
     }
     a.link{ color:var(--azul); text-decoration:none; }
@@ -110,7 +110,41 @@
 
     <div id="clienteMeta" class="client-meta"></div>
 
-    <label for="bairro">Bairro da entrega:</label>
+    
+    <label for="origem_endereco">Endereço de coleta:</label>
+    <input id="origem_endereco" name="origem_endereco" type="text" placeholder="Endereço de coleta">
+    <label for="origem_bairro">Bairro da coleta:</label>
+    <input id="origem_bairro" name="origem_bairro" type="text" placeholder="Bairro da coleta">
+    <label for="origem_contato">Contato da coleta:</label>
+    <input id="origem_contato" name="origem_contato" type="text" placeholder="Nome de quem entrega">
+    <label for="origem_telefone">Telefone da coleta:</label>
+    <input id="origem_telefone" name="origem_telefone" type="text" placeholder="Telefone da coleta">
+
+    <label for="destino_endereco">Endereço da entrega:</label>
+    <input id="destino_endereco" name="destino_endereco" type="text" placeholder="Endereço da entrega">
+    <label for="destino_bairro">Bairro da entrega:</label>
+    <input id="destino_bairro" name="destino_bairro" type="text" placeholder="Bairro da entrega">
+    <label for="destino_contato">Contato da entrega:</label>
+    <input id="destino_contato" name="destino_contato" type="text" placeholder="Nome de quem recebe">
+    <label for="destino_telefone">Telefone da entrega:</label>
+    <input id="destino_telefone" name="destino_telefone" type="text" placeholder="Telefone da entrega">
+
+    <label for="observacao">Observação:</label>
+    <input id="observacao" name="observacao" type="text" placeholder="Observação da entrega">
+
+    <label>Paradas (opcional):</label>
+    <input name="parada_1_endereco" type="text" placeholder="Parada 1 - Endereço">
+    <input name="parada_1_nome" type="text" placeholder="Parada 1 - Quem procurar">
+    <input name="parada_1_telefone" type="text" placeholder="Parada 1 - Telefone">
+    <input name="parada_1_lembrete" type="text" placeholder="Parada 1 - Lembrete">
+
+    <input name="parada_2_endereco" type="text" placeholder="Parada 2 - Endereço">
+    <input name="parada_2_nome" type="text" placeholder="Parada 2 - Quem procurar">
+    <input name="parada_2_telefone" type="text" placeholder="Parada 2 - Telefone">
+    <input name="parada_2_lembrete" type="text" placeholder="Parada 2 - Lembrete">
+
+
+    <label for="bairro">Bairro principal / filtro:</label>
     <input id="bairro" name="bairro" type="text" placeholder="Digite o bairro da entrega" required>
 
     <label for="valor">Valor (R$):</label>
@@ -174,6 +208,16 @@
         <div><strong>Endereço:</strong> ${esc(item.endereco || '—')}</div>
         <div><strong>Saldo:</strong> <span class="${saldo > 0 ? 'badge-ok' : 'badge-warn'}">R$ ${saldo.toFixed(2).replace('.', ',')}</span></div>
       `;
+      const oe = document.getElementById('origem_endereco');
+      const ob = document.getElementById('origem_bairro');
+      const oc = document.getElementById('origem_contato');
+      const ot = document.getElementById('origem_telefone');
+      if (oe && !oe.value) oe.value = item.endereco || '';
+      if (ob && !ob.value) ob.value = item.bairro_origem || '';
+      if (oc && !oc.value) oc.value = item.nome || '';
+      if (ot && !ot.value) ot.value = item.telefone || '';
+      const bairroEntrega = document.getElementById('bairro');
+      if (bairroEntrega && !bairroEntrega.value && item.bairro_origem) bairroEntrega.value = item.bairro_origem || '';
       clienteMeta.style.display = 'block';
     }
 
