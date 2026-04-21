@@ -763,7 +763,7 @@
                 {% endif %}
                 • Valor: R$ {{ '%.2f'|format(e.valor or 0) | replace('.', ',') }}
                 • Pagamento: {{ (e.pagamento or '-') }}
-                • Status: {{ (e.status or 'pendente')|capitalize }}
+                • Status: {{ (e.status or 'pendente')|capitalize }}{% if (e.status or '')|lower in ['recebido','entregue'] %} • Concluída{% else %} • Em andamento{% endif %}
               </small>
             </div>
             <div class="right">
@@ -1276,7 +1276,7 @@ async function quoteAll(){
     applyQuote(preco, dist_km, dur_min, "osrm_front_fallback");
     setBadge("Estimado", true);
 
-    const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Valor não cadastrado; a cooperativa informará o valor.";
+    const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : 'Valor será informado pela cooperativa.';
     $("quoteNote").textContent = msg;
     return;
   }
@@ -1465,13 +1465,15 @@ async function pollTracking(){
 
   setOnline(true);
 
+  if(!tr || !tr.ok){ return; }
+
   // “ao atribuir o cooperado o cliente já recebe e começa rastrear”
   // Aqui: se cooperado vier vazio, continua “Aguardando motoboy”
   const cooperado = tr.cooperado || tr.cooperado_nome || tr.motoboy || null;
   $("trackMoto").textContent = cooperado ? String(cooperado) : "Aguardando motoboy…";
 
-  const st = tr.status || "aguardando";
-  $("trackStatus").textContent = cooperado ? String(st) : "Aguardando atribuição…";
+  const st = tr.alerta_cliente || tr.status || "aguardando";
+  $("trackStatus").textContent = cooperado ? String(st) : "Aguardando motoboy…";
 
   const pay = tr.pagamento || "—";
   const stp = String(tr.status_pagamento||"pendente").toLowerCase()==="pago" ? "Pago" : "Pendente";
