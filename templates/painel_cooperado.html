@@ -191,7 +191,7 @@
           <table id="tabela-entregas">
             <thead>
               <tr>
-                <th>Cliente / dados</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Hora</th><th>Status pgto</th><th>Status entrega</th><th>Rota</th>
+                <th>Cliente</th><th>Endereços</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Hora</th><th>Status pgto</th><th>Status entrega</th><th>Rota</th>
               </tr>
             </thead>
             <tbody>
@@ -206,25 +206,25 @@
                   data-status-pagamento="{{ 'pago' if pago else 'pendente' }}"
                   data-status-entrega="{{ 'entregue' if entregue else 'pendente' }}"
                   data-data="{{ to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else '' }}"
-                  data-hora="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '' }}"
-                  data-origem="{{ e.origem_endereco if e.origem_endereco is defined else '' }}"
-                  data-destino="{{ e.destino_endereco if e.destino_endereco is defined else '' }}"
-                  data-contato-coleta="{{ e.contato_coleta if e.contato_coleta is defined else '' }}"
-                  data-fone-coleta="{{ e.telefone_coleta if e.telefone_coleta is defined else '' }}"
-                  data-contato-entrega="{{ e.contato_entrega if e.contato_entrega is defined else '' }}"
-                  data-fone-entrega="{{ e.telefone_entrega if e.telefone_entrega is defined else '' }}"
-                  data-observacao="{{ e.observacao_entrega if e.observacao_entrega is defined else '' }}"
-                  data-paradas="{% if e.paradas_lista is defined and e.paradas_lista %}{% for p in e.paradas_lista %}{{ ((p.get('endereco') or p.get('bairro') or '') if p is mapping else p)|replace('|','/') }}{% if not loop.last %} | {% endif %}{% endfor %}{% endif %}">
+                  data-hora="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '' }}" data-origem="{{ e.origem_endereco if e.origem_endereco is defined else '' }}" data-destino="{{ e.destino_endereco if e.destino_endereco is defined else '' }}" data-paradas="{{ e.paradas_texto if e.paradas_texto is defined else '' }}">
                 <td data-label="Cliente">
                   <div style="font-weight:800">{{ e.cliente or '-' }}</div>
-                  <div class="muted" style="font-size:.84rem;line-height:1.35;margin-top:4px">
-                    {% if e.contato_coleta is defined and e.contato_coleta %}<strong>Coleta:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}<br>{% endif %}
-                    {% if e.contato_entrega is defined and e.contato_entrega %}<strong>Receber:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}<br>{% endif %}
-                    <strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}<br>
-                    <strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}<br>
-                    {% if e.paradas_lista is defined and e.paradas_lista %}<strong>Paradas:</strong> {{ e.paradas_lista|length }}<br>{% endif %}
-                    {% if e.observacao_entrega is defined and e.observacao_entrega %}<strong>Obs:</strong> {{ e.observacao_entrega }}{% endif %}
-                  </div>
+                  {% if e.contato_coleta is defined and e.contato_coleta %}
+                    <div class="muted" style="white-space:normal">Coleta: {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}</div>
+                  {% endif %}
+                  {% if e.contato_entrega is defined and e.contato_entrega %}
+                    <div class="muted" style="white-space:normal">Entrega: {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}</div>
+                  {% endif %}
+                  {% if e.observacao_entrega is defined and e.observacao_entrega %}
+                    <div style="margin-top:4px;font-weight:700;color:#2949e6;white-space:normal">Obs: {{ e.observacao_entrega }}</div>
+                  {% endif %}
+                </td>
+                <td data-label="Endereços">
+                  <div style="white-space:normal"><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
+                  <div style="white-space:normal"><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
+                  {% if e.paradas_texto is defined and e.paradas_texto %}
+                    <div class="muted" style="white-space:normal"><strong>Paradas:</strong> {{ e.paradas_texto }}</div>
+                  {% endif %}
                 </td>
                 <td data-label="Pagamento">{{ e.pagamento or '-' }}</td>
                 <td data-label="Valor" class="valor">R$ {{ '%.2f'|format(e.valor or 0)|replace('.',',') }}</td>
@@ -237,11 +237,11 @@
                   <button class="status {{ 'entregue' if entregue else 'pendente' }}" data-role="entrega" data-id="{{ e.id }}">{{ 'Entregue' if entregue else 'Pendente' }}</button>
                 </td>
                 <td data-label="Rota">
-                  <button type="button" class="status" data-role="maps" data-id="{{ e.id }}" style="min-width:0;background:#eef2ff;color:#2949e6;">Maps</button>
+                  <button class="status" style="min-width:0;background:#eef2ff;color:#2949e6" type="button" data-role="maps" data-id="{{ e.id }}">Maps</button>
                 </td>
               </tr>
               {% else %}
-              <tr><td colspan="8" class="empty">Nenhuma entrega encontrada.</td></tr>
+              <tr><td colspan="9" class="empty">Nenhuma entrega encontrada.</td></tr>
               {% endfor %}
             </tbody>
           </table>
@@ -299,11 +299,7 @@
       pagamento: (row.dataset.pagamento || '-').toLowerCase(),
       statusPagamento: (row.dataset.statusPagamento || 'pendente').toLowerCase(),
       statusEntrega: (row.dataset.statusEntrega || 'pendente').toLowerCase(),
-      data: row.dataset.data || '', hora: row.dataset.hora || '',
-      origem: row.dataset.origem || '', destino: row.dataset.destino || '',
-      contatoColeta: row.dataset.contatoColeta || '', foneColeta: row.dataset.foneColeta || '',
-      contatoEntrega: row.dataset.contatoEntrega || '', foneEntrega: row.dataset.foneEntrega || '',
-      observacao: row.dataset.observacao || '', paradas: row.dataset.paradas || ''
+      data: row.dataset.data || '', hora: row.dataset.hora || ''
     }));
     const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
 
@@ -515,16 +511,20 @@
       updateSummary(); applyTableFilter(); buildCharts();
     }
 
-    document.querySelectorAll('[data-role="pgto"]').forEach(btn => btn.addEventListener('click', () => togglePagamento(btn)));
-    document.querySelectorAll('[data-role="entrega"]').forEach(btn => btn.addEventListener('click', () => toggleEntrega(btn)));
     function abrirEntregaNoMaps(btn){
       const tr = btn.closest('tr');
       if (!tr) return;
       const pontos = [];
-      if (tr.dataset.origem) pontos.push(tr.dataset.origem);
-      if (tr.dataset.paradas) tr.dataset.paradas.split('|').map(x => x.trim()).filter(Boolean).forEach(p => pontos.push(p));
-      if (tr.dataset.destino) pontos.push(tr.dataset.destino);
-      if (!pontos.length) { alert('Sem rota disponível para esta entrega.'); return; }
+      const origem = tr.dataset.origem || '';
+      const destino = tr.dataset.destino || '';
+      const paradas = (tr.dataset.paradas || '').split('|').map(x => x.trim()).filter(Boolean);
+      if (origem) pontos.push(origem);
+      paradas.forEach(p => pontos.push(p));
+      if (destino) pontos.push(destino);
+      if (!pontos.length) {
+        alert('Sem rota disponível para esta entrega.');
+        return;
+      }
       const origin = encodeURIComponent(pontos[0]);
       const destination = encodeURIComponent(pontos[pontos.length - 1]);
       const waypoints = pontos.slice(1, -1).map(p => encodeURIComponent(p)).join('|');
@@ -532,6 +532,9 @@
       if (waypoints) url += `&waypoints=${waypoints}`;
       window.open(url, '_blank', 'noopener');
     }
+
+    document.querySelectorAll('[data-role="pgto"]').forEach(btn => btn.addEventListener('click', () => togglePagamento(btn)));
+    document.querySelectorAll('[data-role="entrega"]').forEach(btn => btn.addEventListener('click', () => toggleEntrega(btn)));
     document.querySelectorAll('[data-role="maps"]').forEach(btn => btn.addEventListener('click', () => abrirEntregaNoMaps(btn)));
 
     let chartValor, chartPagamento, chartEntregas, chartAno;
