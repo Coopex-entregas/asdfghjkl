@@ -950,20 +950,17 @@
 
                   <td>
                     <div style="font-weight:800">{{ e.cliente }}</div>
-                    {% if e.contato_coleta or e.telefone_coleta %}
-                    <div class="small">Coleta: {{ e.contato_coleta or '-' }}{% if e.telefone_coleta %} • {{ e.telefone_coleta }}{% endif %}</div>
-                    {% endif %}
-                    {% if e.contato_entrega or e.telefone_entrega %}
-                    <div class="small">Entrega: {{ e.contato_entrega or '-' }}{% if e.telefone_entrega %} • {{ e.telefone_entrega }}{% endif %}</div>
-                    {% endif %}
-                    {% if e.observacao_entrega %}<div class="small">Obs: {{ e.observacao_entrega }}</div>{% endif %}
+                    <div class="small" style="white-space:normal;line-height:1.35">
+                      Coleta: {{ e.origem_endereco if e.origem_endereco is defined else '-' }}<br>
+                      Entrega: {{ e.destino_endereco if e.destino_endereco is defined else '-' }}<br>
+                      {% if e.paradas_texto is defined and e.paradas_texto %}Paradas: {{ e.paradas_texto }}<br>{% endif %}
+                      {% if e.contato_coleta is defined and e.contato_coleta %}Coleta: {{ e.contato_coleta }}{% if e.telefone_coleta %} • {{ e.telefone_coleta }}{% endif %}<br>{% endif %}
+                      {% if e.contato_entrega is defined and e.contato_entrega %}Recebe: {{ e.contato_entrega }}{% if e.telefone_entrega %} • {{ e.telefone_entrega }}{% endif %}<br>{% endif %}
+                      {% if e.observacao_entrega is defined and e.observacao_entrega %}Obs: {{ e.observacao_entrega }}{% endif %}
+                    </div>
                   </td>
-                  <td>{{ e.bairro }}</td>
-                  <td style="min-width:280px;white-space:normal">
-                    <div><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
-                    <div><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
-                    {% if e.paradas_texto is defined and e.paradas_texto %}<div><strong>Paradas:</strong> {{ e.paradas_texto }}</div>{% endif %}
-                  </td>
+                  <td>{{ e.destino_endereco if e.destino_endereco is defined else e.bairro }}</td>
+                  <td>{{ e.origem_endereco if e.origem_endereco is defined else (e.endereco if e.endereco is defined and e.endereco else '-') }}</td>
 
                   <td>
                     <span class="value-editable"
@@ -1067,7 +1064,7 @@
                         data-id="{{ e.id }}"
                         data-cliente="{{ e.cliente|e }}"
                         data-bairro="{{ e.bairro|e }}"
-                        data-endereco="{{ (e.endereco if e.endereco is defined and e.endereco else '-')|e }}"
+                        data-endereco="{{ (e.destino_endereco if e.destino_endereco is defined else (e.endereco if e.endereco is defined and e.endereco else '-'))|e }}" data-coleta="{{ (e.origem_endereco if e.origem_endereco is defined else '-')|e }}" data-paradas="{{ (e.paradas_texto if e.paradas_texto is defined else '')|e }}" data-contato_coleta="{{ ((e.contato_coleta ~ (' • ' ~ e.telefone_coleta if e.telefone_coleta else '')) if e.contato_coleta is defined and e.contato_coleta else '')|e }}" data-contato_entrega="{{ ((e.contato_entrega ~ (' • ' ~ e.telefone_entrega if e.telefone_entrega else '')) if e.contato_entrega is defined and e.contato_entrega else '')|e }}" data-observacao="{{ (e.observacao_entrega if e.observacao_entrega is defined else '')|e }}"
                         data-valor="{{ '%.2f'|format(e.valor) }}"
                         data-data="{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}"
                         data-hora_pedido="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}"
