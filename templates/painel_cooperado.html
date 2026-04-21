@@ -182,8 +182,8 @@
         <div class="table-toolbar">
           <div class="left">
             <button type="button" class="small-filter active" data-filter="todas">Todas</button>
-            <button type="button" class="small-filter" data-filter="pendente">Pendentes</button>
-            <button type="button" class="small-filter" data-filter="pago">Pagas</button>
+            <button type="button" class="small-filter" data-filter="pendente">Em andamento</button>
+            <button type="button" class="small-filter" data-filter="pago">Finalizadas</button>
           </div>
         </div>
 
@@ -191,7 +191,7 @@
           <table id="tabela-entregas">
             <thead>
               <tr>
-                <th>Entrega</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Hora</th><th>Status pgto</th><th>Status entrega</th><th>Rota</th>
+                <th>Cliente / dados</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Hora</th><th>Status pgto</th><th>Status entrega</th><th>Rota</th>
               </tr>
             </thead>
             <tbody>
@@ -206,16 +206,24 @@
                   data-status-pagamento="{{ 'pago' if pago else 'pendente' }}"
                   data-status-entrega="{{ 'entregue' if entregue else 'pendente' }}"
                   data-data="{{ to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else '' }}"
-                  data-hora="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '' }}" data-origem="{{ e.origem_endereco|default('') }}" data-destino="{{ e.destino_endereco|default('') }}" data-paradas="{{ e.paradas_texto|default('') }}" data-observacao="{{ e.observacao_entrega|default('') }}" data-contato-coleta="{{ ((e.contato_coleta ~ (' • ' ~ e.telefone_coleta if e.telefone_coleta else '')) if e.contato_coleta else '') }}" data-contato-entrega="{{ ((e.contato_entrega ~ (' • ' ~ e.telefone_entrega if e.telefone_entrega else '')) if e.contato_entrega else '') }}">
-                <td data-label="Entrega">
-                  <div style="font-weight:900">{{ e.cliente or '-' }}</div>
-                  <div class="muted" style="font-size:.85rem;line-height:1.35;margin-top:4px">
-                    <div><strong>Coleta:</strong> {{ e.origem_endereco|default('-') }}</div>
-                    <div><strong>Entrega:</strong> {{ e.destino_endereco|default('-') }}</div>
-                    {% if e.contato_coleta %}<div><strong>Contato coleta:</strong> <a href="tel:{{ e.telefone_coleta }}">{{ e.contato_coleta }}{% if e.telefone_coleta %} • {{ e.telefone_coleta }}{% endif %}</a></div>{% endif %}
-                    {% if e.contato_entrega %}<div><strong>Contato entrega:</strong> <a href="tel:{{ e.telefone_entrega }}">{{ e.contato_entrega }}{% if e.telefone_entrega %} • {{ e.telefone_entrega }}{% endif %}</a></div>{% endif %}
-                    {% if e.paradas_lista %}<div><strong>Paradas:</strong> {% for p in e.paradas_lista %}<div>{{ loop.index }}. {{ p.get('endereco') or p.get('bairro') or '-' }}{% if p.get('nome') %} • {{ p.get('nome') }}{% endif %}{% if p.get('telefone') %} • {{ p.get('telefone') }}{% endif %}</div>{% endfor %}</div>{% endif %}
-                    {% if e.observacao_entrega %}<div style="color:#0f35b5;font-weight:800"><strong>Obs:</strong> {{ e.observacao_entrega }}</div>{% endif %}
+                  data-hora="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '' }}"
+                  data-origem="{{ e.origem_endereco if e.origem_endereco is defined else '' }}"
+                  data-destino="{{ e.destino_endereco if e.destino_endereco is defined else '' }}"
+                  data-contato-coleta="{{ e.contato_coleta if e.contato_coleta is defined else '' }}"
+                  data-fone-coleta="{{ e.telefone_coleta if e.telefone_coleta is defined else '' }}"
+                  data-contato-entrega="{{ e.contato_entrega if e.contato_entrega is defined else '' }}"
+                  data-fone-entrega="{{ e.telefone_entrega if e.telefone_entrega is defined else '' }}"
+                  data-observacao="{{ e.observacao_entrega if e.observacao_entrega is defined else '' }}"
+                  data-paradas="{% if e.paradas_lista is defined and e.paradas_lista %}{% for p in e.paradas_lista %}{{ ((p.get('endereco') or p.get('bairro') or '') if p is mapping else p)|replace('|','/') }}{% if not loop.last %} | {% endif %}{% endfor %}{% endif %}">
+                <td data-label="Cliente">
+                  <div style="font-weight:800">{{ e.cliente or '-' }}</div>
+                  <div class="muted" style="font-size:.84rem;line-height:1.35;margin-top:4px">
+                    {% if e.contato_coleta is defined and e.contato_coleta %}<strong>Coleta:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}<br>{% endif %}
+                    {% if e.contato_entrega is defined and e.contato_entrega %}<strong>Receber:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}<br>{% endif %}
+                    <strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}<br>
+                    <strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}<br>
+                    {% if e.paradas_lista is defined and e.paradas_lista %}<strong>Paradas:</strong> {{ e.paradas_lista|length }}<br>{% endif %}
+                    {% if e.observacao_entrega is defined and e.observacao_entrega %}<strong>Obs:</strong> {{ e.observacao_entrega }}{% endif %}
                   </div>
                 </td>
                 <td data-label="Pagamento">{{ e.pagamento or '-' }}</td>
@@ -225,9 +233,11 @@
                 <td data-label="Status pgto">
                   <button class="status {{ 'pago' if pago else 'pendente' }}" data-role="pgto" data-id="{{ e.id }}">{{ 'Pago' if pago else 'Pendente' }}</button>
                 </td>
-                <td data-label="Rota"><button class="status" data-role="maps" data-id="{{ e.id }}" style="min-width:0;background:#eef2ff;color:#2949e6">Rota</button></td>
                 <td data-label="Status entrega">
                   <button class="status {{ 'entregue' if entregue else 'pendente' }}" data-role="entrega" data-id="{{ e.id }}">{{ 'Entregue' if entregue else 'Pendente' }}</button>
+                </td>
+                <td data-label="Rota">
+                  <button type="button" class="status" data-role="maps" data-id="{{ e.id }}" style="min-width:0;background:#eef2ff;color:#2949e6;">Maps</button>
                 </td>
               </tr>
               {% else %}
@@ -289,7 +299,11 @@
       pagamento: (row.dataset.pagamento || '-').toLowerCase(),
       statusPagamento: (row.dataset.statusPagamento || 'pendente').toLowerCase(),
       statusEntrega: (row.dataset.statusEntrega || 'pendente').toLowerCase(),
-      data: row.dataset.data || '', hora: row.dataset.hora || ''
+      data: row.dataset.data || '', hora: row.dataset.hora || '',
+      origem: row.dataset.origem || '', destino: row.dataset.destino || '',
+      contatoColeta: row.dataset.contatoColeta || '', foneColeta: row.dataset.foneColeta || '',
+      contatoEntrega: row.dataset.contatoEntrega || '', foneEntrega: row.dataset.foneEntrega || '',
+      observacao: row.dataset.observacao || '', paradas: row.dataset.paradas || ''
     }));
     const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
 
@@ -331,8 +345,9 @@
 
     function visibleDeliveries(){
       return allDeliveries.filter(item => {
-        if (state.tableFilter === 'pago') return item.statusPagamento === 'pago';
-        if (state.tableFilter === 'pendente') return item.statusPagamento !== 'pago';
+        const finalizada = item.statusEntrega === 'entregue';
+        if (state.tableFilter === 'pago') return finalizada;
+        if (state.tableFilter === 'pendente') return !finalizada;
         return true;
       });
     }
@@ -358,8 +373,8 @@
     function applyTableFilter(){
       let count = 0;
       rows.forEach(row => {
-        const status = row.dataset.statusPagamento;
-        const show = state.tableFilter === 'todas' || (state.tableFilter === 'pago' && status === 'pago') || (state.tableFilter === 'pendente' && status !== 'pago');
+        const finalizada = row.dataset.statusEntrega === 'entregue';
+        const show = state.tableFilter === 'todas' || (state.tableFilter === 'pago' && finalizada) || (state.tableFilter === 'pendente' && !finalizada);
         row.style.display = show ? '' : 'none';
         count += show ? 1 : 0;
       });
@@ -502,23 +517,22 @@
 
     document.querySelectorAll('[data-role="pgto"]').forEach(btn => btn.addEventListener('click', () => togglePagamento(btn)));
     document.querySelectorAll('[data-role="entrega"]').forEach(btn => btn.addEventListener('click', () => toggleEntrega(btn)));
-
-    function abrirMaps(btn){
+    function abrirEntregaNoMaps(btn){
       const tr = btn.closest('tr');
-      if(!tr) return;
+      if (!tr) return;
       const pontos = [];
-      if(tr.dataset.origem) pontos.push(tr.dataset.origem);
-      (tr.dataset.paradas || '').split('|').map(x => x.trim()).filter(Boolean).forEach(p => pontos.push(p));
-      if(tr.dataset.destino) pontos.push(tr.dataset.destino);
-      if(!pontos.length){ alert('Sem endereços para rota.'); return; }
+      if (tr.dataset.origem) pontos.push(tr.dataset.origem);
+      if (tr.dataset.paradas) tr.dataset.paradas.split('|').map(x => x.trim()).filter(Boolean).forEach(p => pontos.push(p));
+      if (tr.dataset.destino) pontos.push(tr.dataset.destino);
+      if (!pontos.length) { alert('Sem rota disponível para esta entrega.'); return; }
       const origin = encodeURIComponent(pontos[0]);
-      const destination = encodeURIComponent(pontos[pontos.length-1]);
-      const waypoints = pontos.slice(1,-1).map(encodeURIComponent).join('|');
+      const destination = encodeURIComponent(pontos[pontos.length - 1]);
+      const waypoints = pontos.slice(1, -1).map(p => encodeURIComponent(p)).join('|');
       let url = `https://www.google.com/maps/dir/?api=1&travelmode=driving&origin=${origin}&destination=${destination}`;
-      if(waypoints) url += `&waypoints=${waypoints}`;
+      if (waypoints) url += `&waypoints=${waypoints}`;
       window.open(url, '_blank', 'noopener');
     }
-    document.querySelectorAll('[data-role="maps"]').forEach(btn => btn.addEventListener('click', () => abrirMaps(btn)));
+    document.querySelectorAll('[data-role="maps"]').forEach(btn => btn.addEventListener('click', () => abrirEntregaNoMaps(btn)));
 
     let chartValor, chartPagamento, chartEntregas, chartAno;
     const years = Array.from(new Set(allDeliveries.map(d => getYear(parseDate(d.data))).filter(Boolean))).sort();
