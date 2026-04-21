@@ -819,7 +819,7 @@ const API = {
 
 /* ========= CONFIG ========= */
 const KM_FALLBACK = 2.00;      // seu valor por KM
-const POLL_MS = 3000;
+const POLL_MS = 2500;
 
 /* ========= UTIL ========= */
 const $ = (id) => document.getElementById(id);
@@ -1276,8 +1276,8 @@ async function quoteAll(){
     applyQuote(preco, dist_km, dur_min, "osrm_front_fallback");
     setBadge("Estimado", true);
 
-    const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Seu servidor não retornou preço. Usando estimativa por KM.";
-    $("quoteNote").textContent = msg + " (Sugestão: aplicar o patch do Python abaixo.)";
+    const msg = (r && (r.erro || r.msg)) ? (r.erro || r.msg) : "Valor não cadastrado; a cooperativa informará o valor.";
+    $("quoteNote").textContent = msg;
     return;
   }
 
