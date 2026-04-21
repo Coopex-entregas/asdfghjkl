@@ -85,88 +85,75 @@
     <a class="link" href="{{ url_for('clientes') }}">⚙️ Gerenciar Clientes</a>
   </div>
 
-  <form method="POST" action="{{ url_for('cadastrar_entrega') }}" autocomplete="off">
-    <input type="hidden" id="cliente_id" name="cliente_id" />
+  
+<form method="POST" action="{{ url_for('cadastrar_entrega') }}" autocomplete="off">
+  <input type="hidden" id="cliente_id" name="cliente_id" />
 
-    <label for="cliente_manual">Cliente:</label>
-    <input
-      id="cliente_manual"
-      name="cliente"
-      type="text"
-      placeholder="Digite nome do cliente ou telefone"
-      required
-      autocomplete="off"
-      aria-autocomplete="list"
-      aria-controls="resultados"
-    />
-    <div class="search-hint">
-      🔎 Busca leve conforme digita
-      <span class="pill">sem lista suspensa pesada</span>
-      <span class="pill">nome</span>
-      <span class="pill">telefone</span>
-    </div>
-    <div id="loadingBusca" class="loading">Buscando clientes...</div>
-    <div id="resultados" class="result-list" role="listbox" aria-label="Resultados de clientes"></div>
+  <label for="cliente_manual">Cliente:</label>
+  <input id="cliente_manual" name="cliente" type="text" placeholder="Digite nome do cliente ou telefone" required autocomplete="off" aria-autocomplete="list" aria-controls="resultados" />
+  <div class="search-hint">🔎 Busca leve conforme digita <span class="pill">nome</span><span class="pill">telefone</span></div>
+  <div id="loadingBusca" class="loading">Buscando clientes...</div>
+  <div id="resultados" class="result-list" role="listbox" aria-label="Resultados de clientes"></div>
+  <div id="clienteMeta" class="client-meta"></div>
 
-    <div id="clienteMeta" class="client-meta"></div>
+  <label for="coleta_endereco">Endereço da coleta:</label>
+  <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número, complemento">
 
-    <label for="origem_endereco">Endereço de coleta:</label>
-    <input id="origem_endereco" name="origem_endereco" type="text" placeholder="Rua, número, complemento">
+  <label for="coleta_bairro">Bairro da coleta:</label>
+  <input id="coleta_bairro" name="coleta_bairro" type="text" placeholder="Bairro da coleta">
 
-    <label for="origem_bairro">Bairro da coleta:</label>
-    <input id="origem_bairro" name="origem_bairro" type="text" placeholder="Bairro da coleta">
+  <label for="coleta_contato">Contato da coleta:</label>
+  <input id="coleta_contato" name="coleta_contato" type="text" placeholder="Nome de quem entrega">
 
-    <label for="origem_contato">Contato da coleta:</label>
-    <input id="origem_contato" name="origem_contato" type="text" placeholder="Nome de quem vai entregar">
+  <label for="coleta_telefone">Telefone da coleta:</label>
+  <input id="coleta_telefone" name="coleta_telefone" type="text" placeholder="Telefone da coleta">
 
-    <label for="origem_telefone">Telefone da coleta:</label>
-    <input id="origem_telefone" name="origem_telefone" type="text" placeholder="(84) 9xxxx-xxxx">
+  <label for="entrega_endereco">Endereço da entrega:</label>
+  <input id="entrega_endereco" name="entrega_endereco" type="text" placeholder="Rua, número, complemento">
 
-    <label for="destino_endereco">Endereço de entrega:</label>
-    <input id="destino_endereco" name="destino_endereco" type="text" placeholder="Rua, número, complemento" required>
+  <label for="entrega_bairro">Bairro da entrega:</label>
+  <input id="entrega_bairro" name="entrega_bairro" type="text" placeholder="Bairro da entrega">
 
-    <label for="bairro">Bairro da entrega:</label>
-    <input id="bairro" name="bairro" type="text" placeholder="Digite o bairro da entrega" required>
+  <label for="bairro">Bairro principal:</label>
+  <input id="bairro" name="bairro" type="text" placeholder="Será usado para estatísticas">
 
-    <input id="destino_bairro" name="destino_bairro" type="hidden">
+  <label for="entrega_contato">Quem vai receber:</label>
+  <input id="entrega_contato" name="entrega_contato" type="text" placeholder="Nome de quem recebe">
 
-    <label for="destino_contato">Contato de quem vai receber:</label>
-    <input id="destino_contato" name="destino_contato" type="text" placeholder="Nome de quem vai receber">
+  <label for="entrega_telefone">Telefone de quem recebe:</label>
+  <input id="entrega_telefone" name="entrega_telefone" type="text" placeholder="Telefone de quem recebe">
 
-    <label for="destino_telefone">Telefone de quem vai receber:</label>
-    <input id="destino_telefone" name="destino_telefone" type="text" placeholder="(84) 9xxxx-xxxx">
+  <label for="paradas">Paradas (uma por linha):</label>
+  <input id="paradas" name="paradas" type="text" placeholder="Ex.: Loja X | Farmácia Y" />
+  <small class="hint">Use o separador | entre paradas ou escreva uma por linha se preferir.</small>
 
-    <label for="paradas_texto">Paradas (uma por linha):</label>
-    <textarea id="paradas_texto" name="paradas_texto" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;min-height:90px;" placeholder="Rua da parada 1&#10;Rua da parada 2"></textarea>
+  <label for="observacao">Observação:</label>
+  <input id="observacao" name="observacao" type="text" placeholder="Observações da entrega">
 
-    <label for="observacao">Observação:</label>
-    <textarea id="observacao" name="observacao" style="width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;min-height:90px;" placeholder="Observações da entrega"></textarea>
+  <label for="valor">Valor (R$):</label>
+  <input id="valor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required>
 
-    <label for="valor">Valor (R$):</label>
-    <input id="valor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required>
+  <label for="pagamento">Forma de Pagamento:</label>
+  <select id="pagamento" name="pagamento" required>
+    <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
+    <option value="Dinheiro">Dinheiro</option>
+    <option value="Pix">Pix</option>
+    <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
+    <option value="Comanda">Comanda</option>
+  </select>
+  <small class="hint">Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo do cliente.</small>
 
-    <label for="pagamento">Forma de Pagamento:</label>
-    <select id="pagamento" name="pagamento" required>
-      <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
-      <option value="Dinheiro">Dinheiro</option>
-      <option value="Pix">Pix</option>
-      <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
-      <option value="Comanda">Comanda</option>
-    </select>
-    <small class="hint">
-      Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo do cliente.
-    </small>
+  <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
+  <select id="cooperado_id" name="cooperado_id">
+    <option value="">-- Nenhum --</option>
+    {% for c in cooperados %}
+      <option value="{{ c.id }}">{{ c.nome }}</option>
+    {% endfor %}
+  </select>
 
-    <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
-    <select id="cooperado_id" name="cooperado_id">
-      <option value="">-- Nenhum --</option>
-      {% for c in cooperados %}
-        <option value="{{ c.id }}">{{ c.nome }}</option>
-      {% endfor %}
-    </select>
+  <button type="submit">Cadastrar</button>
+</form>
 
-    <button type="submit">Cadastrar</button>
-  </form>
 
   <script>
     const inputCliente = document.getElementById('cliente_manual');
@@ -204,15 +191,6 @@
         <div><strong>Saldo:</strong> <span class="${saldo > 0 ? 'badge-ok' : 'badge-warn'}">R$ ${saldo.toFixed(2).replace('.', ',')}</span></div>
       `;
       clienteMeta.style.display = 'block';
-
-      const origemEndereco = document.getElementById('origem_endereco');
-      const origemBairro = document.getElementById('origem_bairro');
-      const origemContato = document.getElementById('origem_contato');
-      const origemTelefone = document.getElementById('origem_telefone');
-      if (origemEndereco && !origemEndereco.value) origemEndereco.value = item.endereco || '';
-      if (origemBairro && !origemBairro.value) origemBairro.value = item.bairro_origem || '';
-      if (origemContato && !origemContato.value) origemContato.value = item.nome || '';
-      if (origemTelefone && !origemTelefone.value) origemTelefone.value = item.telefone || '';
     }
 
     function renderItems(items){
@@ -263,8 +241,13 @@
       inputCliente.value = item.nome || '';
       clienteId.value = item.id || '';
       setMeta(item);
+      if (document.getElementById('coleta_endereco') && item.endereco) document.getElementById('coleta_endereco').value = item.endereco || '';
+      if (document.getElementById('coleta_bairro') && item.bairro_origem) document.getElementById('coleta_bairro').value = item.bairro_origem || '';
+      if (document.getElementById('coleta_contato')) document.getElementById('coleta_contato').value = item.nome || '';
+      if (document.getElementById('coleta_telefone')) document.getElementById('coleta_telefone').value = item.telefone || '';
+      if (document.getElementById('bairro') && item.bairro_origem && !document.getElementById('bairro').value) document.getElementById('bairro').value = item.bairro_origem || '';
       showResultados(false);
-      bairro.focus();
+      (document.getElementById('entrega_endereco') || bairro).focus();
     }
 
     async function buscarClientes(q){
@@ -348,5 +331,3 @@
   </script>
 </body>
 </html>
-
-<script>document.getElementById('bairro')?.addEventListener('input', function(){var x=document.getElementById('destino_bairro'); if(x) x.value=this.value;});</script>
