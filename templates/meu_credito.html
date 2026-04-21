@@ -739,7 +739,7 @@
           <div class="list" id="timeline"></div>
 
           <div class="row" style="margin-top:10px">
-            <button class="btn btn-ghost" id="btnNovoPedido" type="button">Solicitar nova entrega</button>
+            <button class="btn btn-ghost" id="btnNovoPedido" type="button">Novo pedido</button>
           </div>
         </div>
       </section>
@@ -819,7 +819,7 @@ const API = {
 
 /* ========= CONFIG ========= */
 const KM_FALLBACK = 2.00;      // seu valor por KM
-const POLL_MS = 2500;
+const POLL_MS = 3000;
 
 /* ========= UTIL ========= */
 const $ = (id) => document.getElementById(id);
@@ -1258,19 +1258,9 @@ async function quoteAll(){
 
   if(r && r.ok){
     setOnline(true);
-    if(r.preco != null){
-      applyQuote(r.preco, r.distancia_km, r.duracao_min, "backend");
-      $("quoteNote").textContent = r.msg || "Cotação calculada pelo sistema.";
-    }else{
-      state.quote.ok = true;
-      state.quote.preco = null;
-      state.quote.dist_km = r.distancia_km ?? null;
-      state.quote.dur_min = r.duracao_min ?? null;
-      $("precoValor").textContent = "A informar";
-      $("precoMeta").textContent = "Valor será informado pela cooperativa.";
-      $("quoteNote").textContent = r.msg || "Valor não cadastrado. Você pode solicitar mesmo assim.";
-    }
+    applyQuote(r.preco, r.distancia_km, r.duracao_min, "backend");
     setBadge("OK", true);
+    $("quoteNote").textContent = "Cotação calculada pelo sistema.";
     return;
   }
 
@@ -1363,7 +1353,7 @@ async function solicitar(){
     observacao: ($("obs").value||"").trim() || null,
     meio_pagamento: normMeioPagamento($("pagamento").value),
     // opcional: ajuda seu back-end se você quiser aceitar:
-    preco_estimado: (state.quote.preco ?? null),
+    preco_estimado: state.quote.preco ?? null,
     distancia_km: state.quote.dist_km ?? null,
     duracao_min: state.quote.dur_min ?? null,
   };
@@ -1393,7 +1383,6 @@ async function solicitar(){
 
   $("trackCode").textContent = state.entregaId;
   setStep(6);
-  if ($("sheet")) $("sheet").classList.remove("expanded");
   startTracking();
 }
 
@@ -1488,15 +1477,15 @@ async function pollTracking(){
   const stp = String(tr.status_pagamento||"pendente").toLowerCase()==="pago" ? "Pago" : "Pendente";
   $("trackPay").textContent = `${pay} • ${stp}`;
 
-  // rota apenas quando tiver coordenadas reais do back-end
+  // rota (se vier do back-end)
   const ox = tr.origem_extra || null;
   const dx = tr.destino_extra || null;
-  const orig = (ox && ox.lat!=null && ox.lng!=null) ? [Number(ox.lat), Number(ox.lng)] : null;
-  const dest = (dx && dx.lat!=null && dx.lng!=null) ? [Number(dx.lat), Number(dx.lng)] : null;
+  const orig = (ox && ox.lat!=null && ox.lng!=null) ? [Number(ox.lat), Number(ox.lng)] : (state.coleta.lat ? [state.coleta.lat,state.coleta.lng] : null);
+  const dest = (dx && dx.lat!=null && dx.lng!=null) ? [Number(dx.lat), Number(dx.lng)] : (state.entrega.lat ? [state.entrega.lat,state.entrega.lng] : null);
   if(orig && dest) setRoute(orig, dest);
 
-  // posição real do motoboy só após atribuição
-  const pos = cooperado ? pickMotoPos(tr) : null;
+  // posição do motoboy
+  const pos = pickMotoPos(tr);
   if(pos) setMoto(pos);
 
   renderTimeline(tr);
@@ -1564,11 +1553,9 @@ function wireButtons(){
     state.map.fitBounds(bb, { animate:true, duration:.6 });
   });
 
-  $("btnComprovante").addEventListener("click", async ()=>{
+  $("btnComprovante").addEventListener("click", ()=>{
     if(!state.entregaId){ alert("Sem código."); return; }
-    const tr = await safeJSON(API.tracking(state.entregaId));
-    const url = (tr && tr.comprovante_url) ? tr.comprovante_url : API.comprovante(state.entregaId);
-    window.open(url, "_blank", "noopener");
+    window.open(API.comprovante(state.entregaId), "_blank", "noopener");
   });
 
   $("btnNovoPedido").addEventListener("click", ()=>{
@@ -1578,9 +1565,7 @@ function wireButtons(){
     $("trackMoto").textContent="—";
     $("trackStatus").textContent="Aguardando…";
     $("trackPay").textContent="—";
-    $("trackNote").textContent="Preencha os dados para uma nova solicitação.";
     $("timeline").innerHTML="";
-    if ($("sheet")) $("sheet").classList.add("expanded");
     setStep(1);
   });
 }
