@@ -80,6 +80,19 @@
     .status{display:inline-flex;align-items:center;justify-content:center;min-width:104px;padding:8px 12px;border-radius:999px;font-weight:800;font-size:.82rem;border:none;cursor:pointer}
     .status.pago,.status.entregue{background:#eaf9f0;color:var(--good)}
     .status.pendente{background:#fff1f1;color:var(--bad)}
+    .mobile-card-wrap{display:grid;gap:10px}
+    .mobile-box{border-radius:16px;padding:12px;border:1px solid var(--line)}
+    .mobile-box.cliente{background:#f2fff6;border-color:#cfead9}
+    .mobile-box.entrega{background:#fff4f4;border-color:#f1d1d1}
+    .mobile-box h4{margin:0 0 8px;font-size:.92rem;color:#18316f}
+    .mobile-line{font-size:.94rem;line-height:1.3;white-space:normal;word-break:break-word;margin:5px 0}
+    .mobile-line strong{color:#1f2d5a}
+    .click-tel{color:#2949e6;text-decoration:none;font-weight:800}
+    .click-tel:hover{text-decoration:underline}
+    .card-top{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:12px 12px 8px}
+    .card-top .cliente-nome{font-size:1rem;font-weight:900;color:#16254b}
+    .delivery-card-active{background:linear-gradient(180deg,#fff5f5 0%, #fff0f0 100%);border-color:#f3cccc !important;box-shadow:0 10px 24px rgba(196,48,48,.10) !important}
+    .delivery-card-finished{background:linear-gradient(180deg,#f3fff7 0%, #eefcf3 100%);border-color:#cdeed7 !important;box-shadow:0 10px 24px rgba(22,156,90,.10) !important}
     .upload-card{padding:12px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
     .upload-card strong{font-size:.96rem}
     .upload-card small{display:block;color:var(--muted);margin-top:4px}
@@ -109,10 +122,9 @@
       .filters-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr) 46px}
       .icon-btn{width:46px} .metrics-grid,.quick-row{grid-template-columns:1fr 1fr;gap:10px} .section-card{padding:10px}
       table,thead,tbody,tr,td,th{display:block;width:100%} thead{display:none} .table-card{padding:6px 6px 8px}
-      tbody tr{display:block;background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:var(--shadow-soft);margin:10px 0;overflow:hidden}
-      tbody td{display:grid;grid-template-columns:42% 58%;gap:8px;text-align:left;padding:10px 12px;border-top:1px solid #f1f4ff}
-      tbody td:first-child{border-top:none}
-      tbody td::before{content:attr(data-label);font-weight:800;color:#3b4a74;font-size:.82rem}
+      tbody tr{display:block;background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow-soft);margin:12px 0;overflow:hidden}
+      tbody td{display:block;text-align:left;padding:0;border-top:none}
+      tbody td::before{display:none}
       .status{min-width:0;width:max-content}
       .hero-right{display:grid;grid-template-columns:1fr 1fr auto;gap:6px}
       .modal{width:min(96vw, 100%);padding:14px}
@@ -190,9 +202,7 @@
         <div class="table-card">
           <table id="tabela-entregas">
             <thead>
-              <tr>
-                <th>Cliente</th><th>Endereços</th><th>Pagamento</th><th>Valor</th><th>Data</th><th>Hora</th><th>Status pgto</th><th>Status entrega</th><th>Rota</th>
-              </tr>
+              <tr><th>Entrega</th></tr>
             </thead>
             <tbody>
               {% for e in entregas %}
@@ -207,37 +217,44 @@
                   data-status-entrega="{{ 'entregue' if entregue else 'pendente' }}"
                   data-data="{{ to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else '' }}"
                   data-hora="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '' }}" data-origem="{{ e.origem_endereco if e.origem_endereco is defined else '' }}" data-destino="{{ e.destino_endereco if e.destino_endereco is defined else '' }}" data-paradas="{{ e.paradas_texto if e.paradas_texto is defined else '' }}">
-                <td data-label="Cliente">
-                  <div style="font-weight:800">{{ e.cliente or '-' }}</div>
-                  {% if e.contato_coleta is defined and e.contato_coleta %}
-                    <div class="muted" style="white-space:normal">Coleta: {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}</div>
-                  {% endif %}
-                  {% if e.contato_entrega is defined and e.contato_entrega %}
-                    <div class="muted" style="white-space:normal">Entrega: {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}</div>
-                  {% endif %}
-                  {% if e.observacao_entrega is defined and e.observacao_entrega %}
-                    <div style="margin-top:4px;font-weight:700;color:#2949e6;white-space:normal">Obs: {{ e.observacao_entrega }}</div>
-                  {% endif %}
-                </td>
-                <td data-label="Endereços">
-                  <div style="white-space:normal"><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
-                  <div style="white-space:normal"><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
-                  {% if e.paradas_texto is defined and e.paradas_texto %}
-                    <div class="muted" style="white-space:normal"><strong>Paradas:</strong> {{ e.paradas_texto }}</div>
-                  {% endif %}
-                </td>
-                <td data-label="Pagamento">{{ e.pagamento or '-' }}</td>
-                <td data-label="Valor" class="valor">R$ {{ '%.2f'|format(e.valor or 0)|replace('.',',') }}</td>
-                <td data-label="Data">{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}</td>
-                <td data-label="Hora">{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</td>
-                <td data-label="Status pgto">
-                  <button class="status {{ 'pago' if pago else 'pendente' }}" data-role="pgto" data-id="{{ e.id }}">{{ 'Pago' if pago else 'Pendente' }}</button>
-                </td>
-                <td data-label="Status entrega">
-                  <button class="status {{ 'entregue' if entregue else 'pendente' }}" data-role="entrega" data-id="{{ e.id }}">{{ 'Entregue' if entregue else 'Pendente' }}</button>
-                </td>
-                <td data-label="Rota">
-                  <button class="status" style="min-width:0;background:#eef2ff;color:#2949e6" type="button" data-role="maps" data-id="{{ e.id }}">Maps</button>
+                <td colspan="9" data-label="Entrega">
+                  <div class="mobile-card-wrap">
+                    <div class="card-top">
+                      <div class="cliente-nome">{{ e.cliente or '-' }}</div>
+                      <div class="valor">R$ {{ '%.2f'|format(e.valor or 0)|replace('.',',') }}</div>
+                    </div>
+
+                    <div class="mobile-box cliente">
+                      <h4>Dados do cliente</h4>
+                      {% if e.contato_coleta is defined and e.contato_coleta %}
+                        <div class="mobile-line"><strong>Cliente:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a class="click-tel" href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}</div>
+                      {% endif %}
+                      {% if e.contato_entrega is defined and e.contato_entrega %}
+                        <div class="mobile-line"><strong>Receber:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a class="click-tel" href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}</div>
+                      {% endif %}
+                      {% if e.observacao_entrega is defined and e.observacao_entrega %}
+                        <div class="mobile-line"><strong>Observação:</strong> {{ e.observacao_entrega }}</div>
+                      {% endif %}
+                    </div>
+
+                    <div class="mobile-box entrega">
+                      <h4>Dados da entrega</h4>
+                      <div class="mobile-line"><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
+                      <div class="mobile-line"><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
+                      {% if e.paradas_texto is defined and e.paradas_texto %}
+                        <div class="mobile-line"><strong>Paradas:</strong> {{ e.paradas_texto }}</div>
+                      {% endif %}
+                    </div>
+
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px;">
+                      <div class="mobile-line"><strong>Pagamento:</strong> {{ e.pagamento or '-' }}</div>
+                      <div class="mobile-line"><strong>Data:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}</div>
+                      <div class="mobile-line"><strong>Hora:</strong> {{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</div>
+                      <div class="mobile-line"><strong>Status pgto:</strong> <button class="status {{ 'pago' if pago else 'pendente' }}" data-role="pgto" data-id="{{ e.id }}">{{ 'Pago' if pago else 'Pendente' }}</button></div>
+                      <div class="mobile-line"><strong>Status entrega:</strong> <button class="status {{ 'entregue' if entregue else 'pendente' }}" data-role="entrega" data-id="{{ e.id }}">{{ 'Entregue' if entregue else 'Pendente' }}</button></div>
+                      <div class="mobile-line"><strong>Rota:</strong> <button class="status" style="min-width:0;background:#eef2ff;color:#2949e6" type="button" data-role="maps" data-id="{{ e.id }}">Maps</button></div>
+                    </div>
+                  </div>
                 </td>
               </tr>
               {% else %}
@@ -366,6 +383,14 @@
       applyTableFilter(); updateSummary(); buildCharts();
     }));
 
+    function paintDeliveryCards(){
+      rows.forEach(row => {
+        row.classList.remove('delivery-card-active','delivery-card-finished');
+        const finalizada = row.dataset.statusEntrega === 'entregue';
+        row.classList.add(finalizada ? 'delivery-card-finished' : 'delivery-card-active');
+      });
+    }
+
     function applyTableFilter(){
       let count = 0;
       rows.forEach(row => {
@@ -375,6 +400,7 @@
         count += show ? 1 : 0;
       });
       document.getElementById('table-count').textContent = `${count} entrega${count === 1 ? '' : 's'}`;
+      paintDeliveryCards();
     }
 
     document.getElementById('card-pendencias').addEventListener('click', () => {
@@ -616,7 +642,7 @@
       chartAno = new Chart(document.getElementById('chartAno'), { type:'bar', data:{ labels:annual.labels, datasets:[{ label:'Valor', data:annual.valores, yAxisID:'y' }, { label:'Entregas', data:annual.quantidades, yAxisID:'y1' }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{ mode:'index', intersect:false }, scales:{ y:{ beginAtZero:true }, y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false } } } } });
     }
 
-    updateSummary(); applyTableFilter(); buildYearPills(); buildCharts();
+    updateSummary(); applyTableFilter(); buildYearPills(); buildCharts(); paintDeliveryCards();
 
     const gpsStatusText = null;
     const gpsStatusBadge = null;
