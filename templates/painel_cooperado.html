@@ -227,26 +227,32 @@
                     <div class="mobile-box cliente">
                       <h4>Dados do cliente</h4>
                       {% if e.contato_coleta is defined and e.contato_coleta %}
-                        <div class="mobile-line"><strong>Cliente:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a class="click-tel" href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}</div>
+                        <div class="mobile-line"><strong>Quem envia:</strong> {{ e.contato_coleta }}</div>
                       {% endif %}
+                      {% if e.telefone_coleta is defined and e.telefone_coleta %}
+                        <div class="mobile-line"><strong>Telefone:</strong> <a class="click-tel" href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a></div>
+                      {% endif %}
+                      <div class="mobile-line"><strong>Endereço de coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
+                    </div>
+
+                    <div class="mobile-box entrega {{ 'cliente' if entregue else 'entrega' }}">
+                      <h4>Dados de quem recebe</h4>
                       {% if e.contato_entrega is defined and e.contato_entrega %}
-                        <div class="mobile-line"><strong>Receber:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a class="click-tel" href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}</div>
+                        <div class="mobile-line"><strong>Quem recebe:</strong> {{ e.contato_entrega }}</div>
+                      {% endif %}
+                      {% if e.telefone_entrega is defined and e.telefone_entrega %}
+                        <div class="mobile-line"><strong>Telefone:</strong> <a class="click-tel" href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a></div>
+                      {% endif %}
+                      <div class="mobile-line"><strong>Endereço de entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
+                      {% if e.paradas_texto is defined and e.paradas_texto %}
+                        <div class="mobile-line"><strong>Paradas:</strong> {{ e.paradas_texto }}</div>
                       {% endif %}
                       {% if e.observacao_entrega is defined and e.observacao_entrega %}
                         <div class="mobile-line"><strong>Observação:</strong> {{ e.observacao_entrega }}</div>
                       {% endif %}
                     </div>
 
-                    <div class="mobile-box entrega">
-                      <h4>Dados da entrega</h4>
-                      <div class="mobile-line"><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
-                      <div class="mobile-line"><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
-                      {% if e.paradas_texto is defined and e.paradas_texto %}
-                        <div class="mobile-line"><strong>Paradas:</strong> {{ e.paradas_texto }}</div>
-                      {% endif %}
-                    </div>
-
-                    <div style="display:grid;grid-template-columns:1fr;gap:8px;padding:0 12px 12px;">
+                    <div class="mobile-box {{ 'cliente' if entregue else 'entrega' }}" style="margin:0 12px 12px;">
                       <div class="mobile-line"><strong>Pagamento:</strong> {{ e.pagamento or '-' }}</div>
                       <div class="mobile-line"><strong>Data:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}</div>
                       <div class="mobile-line"><strong>Hora:</strong> {{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</div>
