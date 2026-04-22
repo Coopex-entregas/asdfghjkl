@@ -11,70 +11,39 @@
       --ok:#16a34a; --warn:#b45309;
     }
     *{box-sizing:border-box}
-    body{
-      font-family: Arial, sans-serif;
-      background:var(--bg);
-      color:var(--texto);
-      display:flex; flex-direction:column; align-items:center;
-      padding:20px;
-    }
-    h1{ color:var(--azul); margin-bottom:18px; }
-    form{
-      background:var(--card); padding:22px; border-radius:12px;
-      box-shadow:0 0 15px rgba(0,0,0,.08);
-      width:100%; max-width:460px;
-      border:1px solid var(--borda);
-    }
-    label{ display:block; margin:10px 0 6px; font-weight:bold; }
+    body{font-family:Arial,sans-serif;background:var(--bg);color:var(--texto);display:flex;flex-direction:column;align-items:center;padding:20px}
+    h1{color:var(--azul);margin-bottom:18px}
+    form{background:var(--card);padding:22px;border-radius:12px;box-shadow:0 0 15px rgba(0,0,0,.08);width:100%;max-width:520px;border:1px solid var(--borda)}
+    label{display:block;margin:10px 0 6px;font-weight:bold}
     input[type="text"], input[type="number"], select{
-      width:100%; padding:10px; border:1px solid #cbd5e1; border-radius:8px;
-      margin-bottom:14px; background:#fff; outline:none;
+      width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;margin-bottom:14px;background:#fff;outline:none;
     }
-    input:focus, select:focus{ border-color:var(--azul); box-shadow:0 0 0 3px #0033aa22; }
-    button{
-      width:100%; padding:12px; border:none; border-radius:10px;
-      background:var(--azul); color:#fff; font-size:16px; cursor:pointer;
-      margin-top:4px;
-    }
-    button:hover{ background:var(--azul-2); }
-    small.hint{ display:block; margin:-6px 0 12px; color:#555; }
-    .top-actions{
-      width:100%; max-width:460px; display:flex; justify-content:space-between;
-      gap:10px; margin-bottom:10px;
-    }
-    a.link{ color:var(--azul); text-decoration:none; }
-    a.link:hover{ text-decoration:underline }
-    .search-hint{
-      font-size:12px; color:var(--muted); margin:4px 0 6px;
-      display:flex; align-items:center; gap:6px; flex-wrap:wrap;
-    }
-    .pill{
-      padding:2px 8px; border-radius:999px; background:#f8fafc; border:1px solid #e2e8f0;
-      font-size:11px; color:#475569;
-    }
-    .result-list{
-      border:1px solid var(--borda);
-      background:#fff; border-radius:10px; padding:6px;
-      margin:-2px 0 14px; max-height:260px; overflow:auto; display:none;
-    }
-    .result-item{
-      display:flex; align-items:center; justify-content:space-between;
-      padding:10px; border-radius:8px; cursor:pointer;
-    }
-    .result-item + .result-item{ border-top:1px dashed #eef2ff; }
-    .result-item:hover, .result-item.active{ background:var(--chip); }
-    .result-main{ display:flex; flex-direction:column; gap:2px; min-width:0; }
-    .result-nome{ font-weight:600; }
-    .result-sub{ font-size:12px; color:var(--muted); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-    .empty{ padding:10px; color:var(--muted); text-align:center; }
-    .client-meta{
-      display:none; margin:-4px 0 14px; padding:10px; border-radius:10px;
-      background:#f8fbff; border:1px solid var(--borda); font-size:13px;
-    }
-    .client-meta strong{ color:var(--azul) }
-    .badge-ok{ color:var(--ok); font-weight:700; }
-    .badge-warn{ color:var(--warn); font-weight:700; }
-    .loading{ font-size:12px; color:var(--muted); margin-top:-8px; margin-bottom:10px; display:none; }
+    input:focus, select:focus{border-color:var(--azul);box-shadow:0 0 0 3px #0033aa22}
+    button{width:100%;padding:12px;border:none;border-radius:10px;background:var(--azul);color:#fff;font-size:16px;cursor:pointer;margin-top:4px}
+    button:hover{background:var(--azul-2)}
+    button.alt{background:#eef3ff;color:var(--azul);border:1px solid #cdd8ff}
+    button.alt:hover{background:#e1ebff}
+    small.hint{display:block;margin:-6px 0 12px;color:#555}
+    .top-actions{width:100%;max-width:520px;display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
+    a.link{color:var(--azul);text-decoration:none} a.link:hover{text-decoration:underline}
+    .search-hint{font-size:12px;color:var(--muted);margin:4px 0 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+    .pill{padding:2px 8px;border-radius:999px;background:#f8fafc;border:1px solid #e2e8f0;font-size:11px;color:#475569}
+    .result-list{border:1px solid var(--borda);background:#fff;border-radius:10px;padding:6px;margin:-2px 0 14px;max-height:260px;overflow:auto;display:none}
+    .result-item{display:flex;align-items:center;justify-content:space-between;padding:10px;border-radius:8px;cursor:pointer}
+    .result-item + .result-item{border-top:1px dashed #eef2ff}
+    .result-item:hover,.result-item.active{background:var(--chip)}
+    .result-main{display:flex;flex-direction:column;gap:2px;min-width:0}
+    .result-nome{font-weight:600}
+    .result-sub{font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .empty{padding:10px;color:var(--muted);text-align:center}
+    .client-meta,.flash-box{display:none;margin:-4px 0 14px;padding:10px;border-radius:10px;background:#f8fbff;border:1px solid var(--borda);font-size:13px}
+    .client-meta strong,.flash-box strong{color:var(--azul)}
+    .badge-ok{color:var(--ok);font-weight:700}.badge-warn{color:var(--warn);font-weight:700}
+    .loading{font-size:12px;color:var(--muted);margin-top:-8px;margin-bottom:10px;display:none}
+    .actions-grid{display:none}
+    .footer-actions{display:flex;justify-content:flex-end;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .footer-actions button{width:auto;min-width:170px;margin-top:0}
+    @media (max-width:560px){.footer-actions{flex-direction:column}.footer-actions button{width:100%}}
   </style>
 </head>
 <body>
@@ -85,75 +54,79 @@
     <a class="link" href="{{ url_for('clientes') }}">⚙️ Gerenciar Clientes</a>
   </div>
 
-  
-<form method="POST" action="{{ url_for('cadastrar_entrega') }}" autocomplete="off">
-  <input type="hidden" id="cliente_id" name="cliente_id" />
+  <form method="POST" action="{{ url_for('cadastrar_entrega') }}" autocomplete="off">
+    <input type="hidden" id="cliente_id" name="cliente_id" />
+    <div id="flashBox" class="flash-box"></div>
 
-  <label for="cliente_manual">Cliente:</label>
-  <input id="cliente_manual" name="cliente" type="text" placeholder="Digite nome do cliente ou telefone" required autocomplete="off" aria-autocomplete="list" aria-controls="resultados" />
-  <div class="search-hint">🔎 Busca leve conforme digita <span class="pill">nome</span><span class="pill">telefone</span></div>
-  <div id="loadingBusca" class="loading">Buscando clientes...</div>
-  <div id="resultados" class="result-list" role="listbox" aria-label="Resultados de clientes"></div>
-  <div id="clienteMeta" class="client-meta"></div>
+    <label for="cliente_manual">Cliente:</label>
+    <input id="cliente_manual" name="cliente" type="text" placeholder="Digite nome do cliente ou telefone" required autocomplete="off" aria-autocomplete="list" aria-controls="resultados" />
+    <div class="search-hint">🔎 Busca leve conforme digita <span class="pill">nome</span><span class="pill">telefone</span></div>
+    <div id="loadingBusca" class="loading">Buscando clientes...</div>
+    <div id="resultados" class="result-list" role="listbox" aria-label="Resultados de clientes"></div>
+    <div id="clienteMeta" class="client-meta"></div>
 
-  <label for="coleta_endereco">Endereço da coleta:</label>
-  <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número, complemento">
 
-  <label for="coleta_bairro">Bairro da coleta:</label>
-  <input id="coleta_bairro" name="coleta_bairro" type="text" placeholder="Bairro da coleta">
+    <label for="coleta_endereco">Endereço da coleta:</label>
+    <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número, complemento">
 
-  <label for="coleta_contato">Contato da coleta:</label>
-  <input id="coleta_contato" name="coleta_contato" type="text" placeholder="Nome de quem entrega">
+    <label for="coleta_bairro">Bairro da coleta:</label>
+    <input id="coleta_bairro" name="coleta_bairro" type="text" placeholder="Bairro da coleta">
 
-  <label for="coleta_telefone">Telefone da coleta:</label>
-  <input id="coleta_telefone" name="coleta_telefone" type="text" placeholder="Telefone da coleta">
+    <label for="coleta_contato">Contato da coleta:</label>
+    <input id="coleta_contato" name="coleta_contato" type="text" placeholder="Nome de quem entrega">
 
-  <label for="entrega_endereco">Endereço da entrega:</label>
-  <input id="entrega_endereco" name="entrega_endereco" type="text" placeholder="Rua, número, complemento">
+    <label for="coleta_telefone">Telefone da coleta:</label>
+    <input id="coleta_telefone" name="coleta_telefone" type="text" placeholder="Telefone da coleta">
 
-  <label for="entrega_bairro">Bairro da entrega:</label>
-  <input id="entrega_bairro" name="entrega_bairro" type="text" placeholder="Bairro da entrega">
+    <label for="entrega_endereco">Endereço da entrega:</label>
+    <input id="entrega_endereco" name="entrega_endereco" type="text" placeholder="Rua, número, complemento">
 
-  <label for="bairro">Bairro principal:</label>
-  <input id="bairro" name="bairro" type="text" placeholder="Será usado para estatísticas">
+    <label for="entrega_bairro">Bairro da entrega:</label>
+    <input id="entrega_bairro" name="entrega_bairro" type="text" placeholder="Bairro da entrega">
 
-  <label for="entrega_contato">Quem vai receber:</label>
-  <input id="entrega_contato" name="entrega_contato" type="text" placeholder="Nome de quem recebe">
+    <label for="bairro">Bairro principal:</label>
+    <input id="bairro" name="bairro" type="text" placeholder="Será usado para estatísticas">
 
-  <label for="entrega_telefone">Telefone de quem recebe:</label>
-  <input id="entrega_telefone" name="entrega_telefone" type="text" placeholder="Telefone de quem recebe">
+    <label for="entrega_contato">Quem vai receber:</label>
+    <input id="entrega_contato" name="entrega_contato" type="text" placeholder="Nome de quem recebe">
 
-  <label for="paradas">Paradas (uma por linha):</label>
-  <input id="paradas" name="paradas" type="text" placeholder="Ex.: Loja X | Farmácia Y" />
-  <small class="hint">Use o separador | entre paradas ou escreva uma por linha se preferir.</small>
+    <label for="entrega_telefone">Telefone de quem recebe:</label>
+    <input id="entrega_telefone" name="entrega_telefone" type="text" placeholder="Telefone de quem recebe">
 
-  <label for="observacao">Observação:</label>
-  <input id="observacao" name="observacao" type="text" placeholder="Observações da entrega">
+    <label for="paradas">Paradas (uma por linha):</label>
+    <input id="paradas" name="paradas" type="text" placeholder="Ex.: Loja X | Farmácia Y" />
+    <small class="hint">Use o separador | entre paradas ou escreva uma por linha se preferir.</small>
 
-  <label for="valor">Valor (R$):</label>
-  <input id="valor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required>
+    <label for="observacao">Observação:</label>
+    <input id="observacao" name="observacao" type="text" placeholder="Observações da entrega">
 
-  <label for="pagamento">Forma de Pagamento:</label>
-  <select id="pagamento" name="pagamento" required>
-    <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
-    <option value="Dinheiro">Dinheiro</option>
-    <option value="Pix">Pix</option>
-    <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
-    <option value="Comanda">Comanda</option>
-  </select>
-  <small class="hint">Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo do cliente.</small>
+    <label for="valor">Valor (R$):</label>
+    <input id="valor" name="valor" type="text" inputmode="decimal" placeholder="Ex.: 12,50" required>
 
-  <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
-  <select id="cooperado_id" name="cooperado_id">
-    <option value="">-- Nenhum --</option>
-    {% for c in cooperados %}
-      <option value="{{ c.id }}">{{ c.nome }}</option>
-    {% endfor %}
-  </select>
+    <label for="pagamento">Forma de Pagamento:</label>
+    <select id="pagamento" name="pagamento" required>
+      <option value="CREDITO_AUTO">Crédito automático (usar saldo do cliente)</option>
+      <option value="Dinheiro">Dinheiro</option>
+      <option value="Pix">Pix</option>
+      <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
+      <option value="Comanda">Comanda</option>
+    </select>
+    <small class="hint">Se deixar em <strong>Crédito automático</strong>, o sistema tenta usar o saldo do cliente.</small>
 
-  <button type="submit">Cadastrar</button>
-</form>
+    <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
+    <select id="cooperado_id" name="cooperado_id">
+      <option value="">-- Nenhum --</option>
+      {% for c in cooperados %}
+        <option value="{{ c.id }}">{{ c.nome }}</option>
+      {% endfor %}
+    </select>
 
+    <div class="footer-actions">
+      <button type="submit">Cadastrar entrega</button>
+      <button type="button" class="alt" id="btnCadastrarCliente">Cadastrar cliente</button>
+      <button type="button" class="alt" id="btnPrecificarBairro">Precificar bairro</button>
+    </div>
+  </form>
 
   <script>
     const inputCliente = document.getElementById('cliente_manual');
@@ -162,18 +135,63 @@
     const bairro = document.getElementById('bairro');
     const clienteMeta = document.getElementById('clienteMeta');
     const loadingBusca = document.getElementById('loadingBusca');
+    const flashBox = document.getElementById('flashBox');
+
+
+    function persistFormState(){
+      const ids = [
+        'cliente_manual','cliente_id','coleta_endereco','coleta_bairro','coleta_contato','coleta_telefone',
+        'entrega_endereco','entrega_bairro','bairro','entrega_contato','entrega_telefone',
+        'paradas','observacao','valor','pagamento','cooperado_id'
+      ];
+      const data = {};
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if (el) data[id] = el.value || '';
+      });
+      localStorage.setItem('coopex_cadastrar_entrega_draft', JSON.stringify(data));
+    }
+
+    function restoreFormState(){
+      try{
+        const raw = localStorage.getItem('coopex_cadastrar_entrega_draft');
+        if(!raw) return;
+        const data = JSON.parse(raw);
+        Object.entries(data).forEach(([id,val]) => {
+          const el = document.getElementById(id);
+          if(el && !el.value) el.value = val || '';
+        });
+      }catch(_){}
+    }
+
+    function bindPersist(){
+      const ids = [
+        'cliente_manual','coleta_endereco','coleta_bairro','coleta_contato','coleta_telefone',
+        'entrega_endereco','entrega_bairro','bairro','entrega_contato','entrega_telefone',
+        'paradas','observacao','valor','pagamento','cooperado_id'
+      ];
+      ids.forEach(id => {
+        const el = document.getElementById(id);
+        if(el){
+          el.addEventListener('input', persistFormState);
+          el.addEventListener('change', persistFormState);
+        }
+      });
+    }
+
 
     let debounceTimer = null;
     let activeIndex = -1;
     let currentItems = [];
     let lastAbort = null;
 
-    function esc(s){
-      return String(s || '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
-    }
-
-    function showResultados(show){
-      resultados.style.display = show ? 'block' : 'none';
+    function esc(s){ return String(s || '').replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch])); }
+    function showResultados(show){ resultados.style.display = show ? 'block' : 'none'; }
+    function showFlash(msg, kind='info'){
+      flashBox.innerHTML = `<strong>${kind === 'ok' ? 'OK:' : 'Aviso:'}</strong> ${esc(msg)}`;
+      flashBox.style.display = 'block';
+      flashBox.style.borderColor = kind === 'ok' ? '#cfead9' : '#f8d7a5';
+      flashBox.style.background = kind === 'ok' ? '#f2fff6' : '#fff7ea';
     }
 
     function setMeta(item){
@@ -197,32 +215,20 @@
       currentItems = items || [];
       activeIndex = -1;
       resultados.innerHTML = '';
-
       if(!currentItems.length){
         resultados.innerHTML = '<div class="empty">Nenhum cliente encontrado.</div>';
         showResultados(true);
         return;
       }
-
       currentItems.forEach((item, idx) => {
         const div = document.createElement('div');
         div.className = 'result-item';
         div.dataset.index = idx;
-        div.innerHTML = `
-          <div class="result-main">
-            <div class="result-nome">${esc(item.nome)}</div>
-            <div class="result-sub">${esc(item.telefone || '—')} • ${esc(item.bairro_origem || 'sem bairro')}</div>
-          </div>
-          <div class="pill">Selecionar</div>
-        `;
-        div.addEventListener('mousedown', (e) => {
-          e.preventDefault();
-          escolher(item);
-        });
+        div.innerHTML = `<div class="result-main"><div class="result-nome">${esc(item.nome)}</div><div class="result-sub">${esc(item.telefone || '—')} • ${esc(item.bairro_origem || 'sem bairro')}</div></div><div class="pill">Selecionar</div>`;
+        div.addEventListener('mousedown', (e) => { e.preventDefault(); escolher(item); });
         div.addEventListener('mousemove', () => setActive(idx));
         resultados.appendChild(div);
       });
-
       showResultados(true);
     }
 
@@ -232,9 +238,7 @@
       if(idx >= 0 && idx < nodes.length){
         nodes[idx].classList.add('active');
         activeIndex = idx;
-      } else {
-        activeIndex = -1;
-      }
+      } else activeIndex = -1;
     }
 
     function escolher(item){
@@ -246,6 +250,7 @@
       if (document.getElementById('coleta_contato')) document.getElementById('coleta_contato').value = item.nome || '';
       if (document.getElementById('coleta_telefone')) document.getElementById('coleta_telefone').value = item.telefone || '';
       if (document.getElementById('bairro') && item.bairro_origem && !document.getElementById('bairro').value) document.getElementById('bairro').value = item.bairro_origem || '';
+      persistFormState();
       showResultados(false);
       (document.getElementById('entrega_endereco') || bairro).focus();
     }
@@ -253,7 +258,6 @@
     async function buscarClientes(q){
       if(lastAbort){ lastAbort.abort(); }
       lastAbort = new AbortController();
-
       loadingBusca.style.display = 'block';
       try{
         const resp = await fetch(`{{ url_for('api_busca_clientes_entrega') }}?q=${encodeURIComponent(q)}&limit=12`, {
@@ -261,15 +265,10 @@
           headers: { 'X-Requested-With': 'fetch' }
         });
         const data = await resp.json();
-        if(!data.ok){
-          renderItems([]);
-          return;
-        }
+        if(!data.ok){ renderItems([]); return; }
         renderItems(data.items || []);
       }catch(err){
-        if(err.name !== 'AbortError'){
-          renderItems([]);
-        }
+        if(err.name !== 'AbortError'){ renderItems([]); }
       }finally{
         loadingBusca.style.display = 'none';
       }
@@ -279,44 +278,29 @@
       clienteId.value = '';
       setMeta(null);
       const q = inputCliente.value.trim();
-
       clearTimeout(debounceTimer);
-
-      if(q.length < 2){
-        showResultados(false);
-        resultados.innerHTML = '';
-        return;
-      }
-
+      if(q.length < 2){ showResultados(false); resultados.innerHTML = ''; return; }
       debounceTimer = setTimeout(() => buscarClientes(q), 180);
     });
 
     inputCliente.addEventListener('keydown', (e) => {
       const items = resultados.querySelectorAll('.result-item');
       if(!items.length || resultados.style.display === 'none') return;
-
       if(e.key === 'ArrowDown'){
         e.preventDefault();
         const next = activeIndex < items.length - 1 ? activeIndex + 1 : 0;
-        setActive(next);
-        items[next].scrollIntoView({ block:'nearest' });
+        setActive(next); items[next].scrollIntoView({ block:'nearest' });
       } else if(e.key === 'ArrowUp'){
         e.preventDefault();
         const prev = activeIndex > 0 ? activeIndex - 1 : items.length - 1;
-        setActive(prev);
-        items[prev].scrollIntoView({ block:'nearest' });
+        setActive(prev); items[prev].scrollIntoView({ block:'nearest' });
       } else if(e.key === 'Enter' && activeIndex >= 0){
-        e.preventDefault();
-        escolher(currentItems[activeIndex]);
-      } else if(e.key === 'Escape'){
-        showResultados(false);
-      }
+        e.preventDefault(); escolher(currentItems[activeIndex]);
+      } else if(e.key === 'Escape'){ showResultados(false); }
     });
 
     document.addEventListener('click', (e) => {
-      if(!resultados.contains(e.target) && e.target !== inputCliente){
-        showResultados(false);
-      }
+      if(!resultados.contains(e.target) && e.target !== inputCliente) showResultados(false);
     });
 
     document.getElementById('valor').addEventListener('blur', (e) => {
@@ -324,10 +308,63 @@
       if(!raw) return;
       const normalizado = raw.replace(/\s+/g,'').replace('.', '').replace(',', '.');
       const num = Number(normalizado);
-      if(!Number.isNaN(num)){
-        e.target.value = num.toFixed(2).replace('.', ',');
+      if(!Number.isNaN(num)) e.target.value = num.toFixed(2).replace('.', ',');
+    });
+
+    document.getElementById('btnCadastrarCliente').addEventListener('click', async () => {
+      const payload = {
+        nome: inputCliente.value.trim(),
+        telefone: document.getElementById('coleta_telefone').value.trim(),
+        bairro_origem: document.getElementById('coleta_bairro').value.trim(),
+        endereco: document.getElementById('coleta_endereco').value.trim()
+      };
+      if(!payload.nome){
+        showFlash('Informe o nome do cliente antes de cadastrar.', 'warn');
+        inputCliente.focus();
+        return;
+      }
+      const resp = await fetch(`{{ url_for('api_clientes_quick_create') }}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+        body: JSON.stringify(payload)
+      });
+      const data = await resp.json().catch(() => ({}));
+      if(resp.ok && data.ok){
+        showFlash(data.message || 'Cliente cadastrado com sucesso.', 'ok');
+        if(data.cliente) escolher(data.cliente);
+        persistFormState();
+      }else{
+        showFlash(data.error || 'Cliente já cadastrado.', 'warn');
+        if(data.cliente) escolher(data.cliente);
+        persistFormState();
       }
     });
+
+    document.getElementById('btnPrecificarBairro').addEventListener('click', async () => {
+      const origem = document.getElementById('coleta_bairro').value.trim();
+      const destino = document.getElementById('entrega_bairro').value.trim() || document.getElementById('bairro').value.trim();
+      const valor = document.getElementById('valor').value.trim();
+      if(!origem || !destino || !valor){
+        showFlash('Preencha bairro de coleta, bairro de entrega e valor para precificar.', 'warn');
+        return;
+      }
+      const resp = await fetch(`{{ url_for('api_precos_quick_create') }}`, {
+        method:'POST',
+        headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+        body: JSON.stringify({ origem, destino, valor })
+      });
+      const data = await resp.json().catch(() => ({}));
+      if(resp.ok && data.ok){
+        showFlash(data.message || 'Rota precificada com sucesso.', 'ok');
+        persistFormState();
+      }else{
+        showFlash(data.error || 'Bairro já cadastrado.', 'warn');
+        persistFormState();
+      }
+    });
+    restoreFormState();
+    bindPersist();
+    persistFormState();
   </script>
 </body>
 </html>
