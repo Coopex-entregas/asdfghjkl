@@ -246,7 +246,7 @@
                       {% endif %}
                     </div>
 
-                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;padding:0 12px 12px;">
+                    <div style="display:grid;grid-template-columns:1fr;gap:8px;padding:0 12px 12px;">
                       <div class="mobile-line"><strong>Pagamento:</strong> {{ e.pagamento or '-' }}</div>
                       <div class="mobile-line"><strong>Data:</strong> {{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}</div>
                       <div class="mobile-line"><strong>Hora:</strong> {{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}</div>
