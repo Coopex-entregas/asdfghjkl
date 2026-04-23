@@ -315,23 +315,6 @@
   </div>
 
   <script>
-    const graphBaseData = [
-      {% for e in (entregas_graficos or []) %}
-      {
-        id: {{ e.id|int }},
-        cliente: {{ (e.cliente or '')|tojson }},
-        valor: {{ (e.valor or 0)|float }},
-        pagamento: {{ ((e.pagamento or '-')|lower)|tojson }},
-        statusPagamento: {{ ((e.status_pagamento or 'pendente')|lower)|tojson }},
-        statusEntrega: {{ ('entregue' if (e.status or '') in ['recebido','entregue'] else 'pendente')|tojson }},
-        data: {{ (to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else '')|tojson }},
-        hora: {{ (to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '')|tojson }}
-      }{% if not loop.last %},{% endif %}
-      {% endfor %}
-    ];
-  </script>
-
-  <script>
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     const rows = Array.from(document.querySelectorAll('.entrega-row'));
     const allDeliveries = rows.map(row => ({
@@ -345,18 +328,31 @@
       hora: row.dataset.hora || ''
     }));
 
-    const graphBase = Array.isArray(graphBaseData) ? graphBaseData : [];
+    const graphBase = Array.isArray(window.__graphBaseData) ? window.__graphBaseData : allDeliveries.slice();
 
-    const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
+    const queryTab = {{ request.args.get('tab', 'tab-resumo')|tojson }};
+    const queryStatusPgto = {{ request.args.get('status_pgto', 'todas')|tojson }};
+    const state = {
+      selectedTab: (queryTab || 'tab-resumo'),
+      tableFilter: (queryStatusPgto === 'pendente' ? 'pendente' : 'todas'),
+      year:null,
+      period:'semana',
+      entregaIdModal:null
+    };
 
     const tabs = document.querySelectorAll('.tab-btn');
-    tabs.forEach(btn => btn.addEventListener('click', () => {
+    function activateTab(tabName){
       tabs.forEach(b => b.classList.remove('active'));
       document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      const btn = document.querySelector(`.tab-btn[data-tab="${tabName}"]`) || document.querySelector('.tab-btn[data-tab="tab-resumo"]');
+      if (!btn) return;
       btn.classList.add('active');
       const panel = document.getElementById(btn.dataset.tab);
       if (panel) panel.classList.add('active');
       state.selectedTab = btn.dataset.tab;
+    }
+    tabs.forEach(btn => btn.addEventListener('click', () => {
+      activateTab(btn.dataset.tab);
     }));
 
     const parseDate = (str) => { if (!str) return null; const [y,m,d] = str.split('-').map(Number); return new Date(y, (m||1)-1, d||1, 12, 0, 0, 0); };
@@ -398,7 +394,7 @@
 
     function updateSummary(){
       const s = summarize(visibleDeliveries());
-      const pendenciasTodas = (graphBase || [])
+      const pendenciasTodas = graphBase
         .filter(d => String(d.statusPagamento || '').toLowerCase() !== 'pago')
         .reduce((acc, d) => acc + Number(d.valor || 0), 0);
       document.getElementById('hero-receita').textContent = money(s.receita);
@@ -410,11 +406,16 @@
     }
 
     const filterButtons = document.querySelectorAll('.small-filter');
-    filterButtons.forEach(btn => btn.addEventListener('click', () => {
+    function activateFilter(filterName){
       filterButtons.forEach(b => b.classList.remove('active'));
+      const btn = document.querySelector(`.small-filter[data-filter="${filterName}"]`) || document.querySelector('.small-filter[data-filter="todas"]');
+      if (!btn) return;
       btn.classList.add('active');
       state.tableFilter = btn.dataset.filter;
       applyTableFilter(); updateSummary(); buildCharts();
+    }
+    filterButtons.forEach(btn => btn.addEventListener('click', () => {
+      activateFilter(btn.dataset.filter);
     }));
 
     function paintDeliveryCards(){
@@ -441,8 +442,11 @@
     }
 
     document.getElementById('card-pendencias').addEventListener('click', () => {
-      document.querySelector('.tab-btn[data-tab="tab-producao"]').click();
-      document.querySelector('.small-filter[data-filter="pendente"]').click();
+      const url = new URL(window.location.href);
+      url.searchParams.set('status_pgto', 'pendente');
+      url.searchParams.set('todas_datas', '1');
+      url.searchParams.set('tab', 'tab-producao');
+      window.location.href = url.toString();
     });
 
     async function togglePagamento(btn){
@@ -620,7 +624,7 @@
       btn.classList.add('active'); state.period = btn.dataset.period; buildCharts();
     }));
 
-    function deliveriesForYear(){ return (graphBase || []).filter(d => getYear(parseDate(d.data)) === state.year); }
+    function deliveriesForYear(){ return graphBase.filter(d => getYear(parseDate(d.data)) === state.year); }
 
     function aggregateByPeriod(deliveries){
       const mapValor = new Map(), mapQtd = new Map();
@@ -651,7 +655,7 @@
 
     function aggregateYearComparison(){
       const annual = {};
-      (graphBase || []).forEach(d => {
+      graphBase.forEach(d => {
         const y = getYear(parseDate(d.data)); if (!y) return;
         annual[y] = annual[y] || { valor:0, qtd:0 };
         annual[y].valor += d.valor; annual[y].qtd += 1;
@@ -679,7 +683,7 @@
       chartAno = new Chart(document.getElementById('chartAno'), { type:'bar', data:{ labels:annual.labels, datasets:[{ label:'Valor', data:annual.valores, yAxisID:'y' }, { label:'Entregas', data:annual.quantidades, yAxisID:'y1' }] }, options:{ responsive:true, maintainAspectRatio:false, animation:false, interaction:{ mode:'index', intersect:false }, scales:{ y:{ beginAtZero:true }, y1:{ beginAtZero:true, position:'right', grid:{ drawOnChartArea:false } } } } });
     }
 
-    updateSummary(); applyTableFilter(); buildYearPills(); buildCharts(); paintDeliveryCards();
+    activateTab(state.selectedTab || 'tab-resumo'); buildYearPills(); activateFilter(state.tableFilter || 'todas'); paintDeliveryCards();
 
     const gpsStatusText = null;
     const gpsStatusBadge = null;
