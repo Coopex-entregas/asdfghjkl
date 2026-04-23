@@ -3412,7 +3412,6 @@ def admin_baixar_comprovante(entrega_id):
 # ================================
 @app.route('/painel_cooperado')
 def painel_cooperado():
-    # Cooperado logado = precisa ter user_id na sessão E NÃO ser admin
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
 
@@ -3431,11 +3430,54 @@ def painel_cooperado():
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
     todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
 
-    # Base de consultas: entregas desse cooperado
     base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
-    # ========== CORRIDAS EM ABERTO / EM ANDAMENTO ==========
-    # Qualquer corrida que ainda não esteja finalizada
+    def _parse_json_field(raw):
+        if not raw:
+            return {}
+        if isinstance(raw, dict):
+            return raw
+        try:
+            return json.loads(raw)
+        except Exception:
+            return {}
+
+    def _enriquecer_entrega_local(e):
+        origem = _parse_json_field(getattr(e, 'origem_json', None))
+        destino = _parse_json_field(getattr(e, 'destino_json', None))
+        paradas = _parse_json_field(getattr(e, 'paradas_json', None))
+
+        e.origem_endereco = (
+            origem.get('endereco')
+            or origem.get('address')
+            or (origem.get('rua') and f"{origem.get('rua')} {origem.get('numero', '')}".strip())
+            or origem.get('bairro')
+            or e.bairro
+            or 'Origem não informada'
+        )
+        e.destino_endereco = (
+            destino.get('endereco')
+            or destino.get('address')
+            or (destino.get('rua') and f"{destino.get('rua')} {destino.get('numero', '')}".strip())
+            or destino.get('bairro')
+            or 'Destino não informado'
+        )
+        e.origem_bairro = origem.get('bairro') or ''
+        e.destino_bairro = destino.get('bairro') or ''
+        e.contato_coleta = origem.get('contato') or ''
+        e.telefone_coleta = origem.get('telefone') or ''
+        e.contato_entrega = destino.get('contato') or ''
+        e.telefone_entrega = destino.get('telefone') or ''
+        e.observacao_entrega = destino.get('observacao_geral') or origem.get('observacao_geral') or ''
+        stops = paradas.get('stops') or paradas.get('paradas') or []
+        e.paradas_lista = stops if isinstance(stops, list) else []
+        e.paradas_texto = ' | '.join(
+            (p.get('endereco') or p.get('bairro') or '').strip()
+            for p in e.paradas_lista if isinstance(p, dict) and ((p.get('endereco') or p.get('bairro') or '').strip())
+        )
+        return e
+
+    # Corridas em aberto / andamento
     corridas_query = (
         base_q
         .filter(
@@ -3448,60 +3490,22 @@ def painel_cooperado():
         )
         .order_by(Entrega.data_envio.desc())
     )
-
     corridas_raw = corridas_query.all()
-
-    def _parse_json_field(raw):
-        """Tenta fazer json.loads, se vier string; se der erro, devolve {}."""
-        if not raw:
-            return {}
-        if isinstance(raw, dict):
-            return raw
-        try:
-            return json.loads(raw)
-        except Exception:
-            return {}
-
     corridas = []
     for e in corridas_raw:
-        origem = _parse_json_field(e.origem_json)
-        destino = _parse_json_field(e.destino_json)
-        paradas = _parse_json_field(e.paradas_json)
-
-        origem_endereco = (
-            origem.get('endereco')
-            or origem.get('address')
-            or (origem.get('rua') and f"{origem.get('rua')} {origem.get('numero', '')}".strip())
-            or e.bairro
-            or 'Origem não informada'
-        )
-
-        destino_endereco = (
-            destino.get('endereco')
-            or destino.get('address')
-            or (destino.get('rua') and f"{destino.get('rua')} {destino.get('numero', '')}".strip())
-            or 'Destino não informado'
-        )
-
-        origem_bairro = origem.get('bairro') or ''
-        destino_bairro = destino.get('bairro') or ''
-
-        # Lista simples de paradas intermediárias
-        waypoints = paradas.get('stops') or paradas.get('paradas') or []
-
+        e = _enriquecer_entrega_local(e)
         corridas.append({
             "obj": e,
-            "origem_endereco": origem_endereco,
-            "destino_endereco": destino_endereco,
-            "origem_bairro": origem_bairro,
-            "destino_bairro": destino_bairro,
-            "waypoints": waypoints,
+            "origem_endereco": e.origem_endereco,
+            "destino_endereco": e.destino_endereco,
+            "origem_bairro": e.origem_bairro,
+            "destino_bairro": e.destino_bairro,
+            "waypoints": e.paradas_lista,
         })
 
-    # ========== HISTÓRICO (TABELA) ==========
+    # Histórico (tabela) -> mantém filtro de período para não pesar
     query = base_q
 
-    # Filtro por status de pagamento
     if status_pgto == 'pago':
         query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
     elif status_pgto == 'pendente':
@@ -3510,54 +3514,57 @@ def painel_cooperado():
             (func.lower(Entrega.status_pagamento) == 'pendente')
         )
 
-    # Filtros de data
-    # Regra de desempenho + uso:
-    # - padrão continua sendo dia atual
-    # - mas, ao pedir PENDENTES sem informar datas, mostra todas as pendentes
     aplicar_filtro_padrao_hoje = (not todas_datas_flag and not inicio and not fim and status_pgto != 'pendente')
 
     if aplicar_filtro_padrao_hoje:
         hoje_brasil = datetime.now(BRAZIL_TZ).date()
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
-        query = query.filter(
-            Entrega.data_envio >= inicio_utc,
-            Entrega.data_envio <= fim_utc
-        )
+        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
     if not todas_datas_flag:
-        # Data inicial
         if inicio:
             di = datetime.strptime(inicio, "%Y-%m-%d").date()
             inicio_utc, _ = local_date_window_to_utc_range(di)
             query = query.filter(Entrega.data_envio >= inicio_utc)
-
-        # Data final
         if fim:
             df_ = datetime.strptime(fim, "%Y-%m-%d").date()
             _, fim_utc = local_date_window_to_utc_range(df_)
             query = query.filter(Entrega.data_envio <= fim_utc)
 
-    # Ordenação e carregamento do cooperado (se precisar no template)
     entregas = (
         query
         .options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
         .all()
     )
-    entregas = [_enriquecer_entrega(e) for e in entregas]
+    entregas = [_enriquecer_entrega_local(e) for e in entregas]
 
-    # Totais
-    total_geral = sum(float(e.valor or 0) for e in entregas)
-    total_pago = sum(
-        float(e.valor or 0)
-        for e in entregas
-        if (e.status_pagamento or '').lower() == 'pago'
+    # Base completa do cooperado para gráficos e pendências
+    entregas_base_completa = (
+        base_q
+        .options(joinedload(Entrega.cooperado))
+        .order_by(Entrega.data_envio.desc())
+        .all()
     )
+    entregas_base_completa = [_enriquecer_entrega_local(e) for e in entregas_base_completa]
+
+    # Pendências de pagamento independentes da data
+    pendencias_pagamento = [
+        e for e in entregas_base_completa
+        if (e.status_pagamento or '').lower() != 'pago'
+    ]
+
+    total_geral = sum(float(e.valor or 0) for e in entregas)
+    total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
     total_pendente = max(0.0, total_geral - total_pago)
+    total_pendente_geral = sum(float(e.valor or 0) for e in pendencias_pagamento)
 
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
+        entregas_graficos=entregas_base_completa,
+        pendencias_pagamento=pendencias_pagamento,
+        total_pendente_geral=total_pendente_geral,
         corridas=corridas,
         total_geral=total_geral,
         total_pago=total_pago,
@@ -3570,10 +3577,10 @@ def painel_cooperado():
         meses_ano=[
             {'num':1,'nome':'Janeiro'},{'num':2,'nome':'Fevereiro'},{'num':3,'nome':'Março'},{'num':4,'nome':'Abril'},
             {'num':5,'nome':'Maio'},{'num':6,'nome':'Junho'},{'num':7,'nome':'Julho'},{'num':8,'nome':'Agosto'},
-            {'num':9,'nome':'Setembro'},{'num':10,'nome':'Outubro'},{'num':11,'nome':'Novembro'},{'num':12,'nome':'Dezembro'},
+            {'num':9,'nome':'Setembro'},{'num':10,'nome':'Outubro'},{'num':11,'nome':'Novembro'},{'num':12,'nome':'Dezembro'}
         ],
-        coop=coop,
         cooperado_id=user_id,
+        now=lambda: datetime.now(BRAZIL_TZ),
         app_token=(coop.app_token if coop else ''),
     )
 
