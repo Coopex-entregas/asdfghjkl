@@ -315,6 +315,23 @@
   </div>
 
   <script>
+    const graphBaseData = [
+      {% for e in (entregas_graficos or []) %}
+      {
+        id: {{ e.id|int }},
+        cliente: {{ (e.cliente or '')|tojson }},
+        valor: {{ (e.valor or 0)|float }},
+        pagamento: {{ ((e.pagamento or '-')|lower)|tojson }},
+        statusPagamento: {{ ((e.status_pagamento or 'pendente')|lower)|tojson }},
+        statusEntrega: {{ ('entregue' if (e.status or '') in ['recebido','entregue'] else 'pendente')|tojson }},
+        data: {{ (to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else '')|tojson }},
+        hora: {{ (to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '')|tojson }}
+      }{% if not loop.last %},{% endif %}
+      {% endfor %}
+    ];
+  </script>
+
+  <script>
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     const rows = Array.from(document.querySelectorAll('.entrega-row'));
     const allDeliveries = rows.map(row => ({
@@ -328,7 +345,7 @@
       hora: row.dataset.hora || ''
     }));
 
-    const graphBase = Array.isArray(window.__graphBaseData) ? window.__graphBaseData : allDeliveries.slice();
+    const graphBase = Array.isArray(graphBaseData) ? graphBaseData : [];
 
     const state = { selectedTab:'tab-resumo', tableFilter:'todas', year:null, period:'semana', entregaIdModal:null };
 
@@ -381,7 +398,7 @@
 
     function updateSummary(){
       const s = summarize(visibleDeliveries());
-      const pendenciasTodas = graphBase
+      const pendenciasTodas = (graphBase || [])
         .filter(d => String(d.statusPagamento || '').toLowerCase() !== 'pago')
         .reduce((acc, d) => acc + Number(d.valor || 0), 0);
       document.getElementById('hero-receita').textContent = money(s.receita);
@@ -603,7 +620,7 @@
       btn.classList.add('active'); state.period = btn.dataset.period; buildCharts();
     }));
 
-    function deliveriesForYear(){ return graphBase.filter(d => getYear(parseDate(d.data)) === state.year); }
+    function deliveriesForYear(){ return (graphBase || []).filter(d => getYear(parseDate(d.data)) === state.year); }
 
     function aggregateByPeriod(deliveries){
       const mapValor = new Map(), mapQtd = new Map();
@@ -634,7 +651,7 @@
 
     function aggregateYearComparison(){
       const annual = {};
-      graphBase.forEach(d => {
+      (graphBase || []).forEach(d => {
         const y = getYear(parseDate(d.data)); if (!y) return;
         annual[y] = annual[y] || { valor:0, qtd:0 };
         annual[y].valor += d.valor; annual[y].qtd += 1;
