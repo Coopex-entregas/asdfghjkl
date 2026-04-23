@@ -164,6 +164,11 @@
       }catch(_){}
     }
 
+
+    function clearFormState(){
+      localStorage.removeItem('coopex_cadastrar_entrega_draft');
+    }
+
     function bindPersist(){
       const ids = [
         'cliente_manual','coleta_endereco','coleta_bairro','coleta_contato','coleta_telefone',
@@ -362,6 +367,13 @@
         persistFormState();
       }
     });
+    const formEntrega = document.querySelector('form');
+    if(formEntrega){
+      formEntrega.addEventListener('submit', () => {
+        clearFormState();
+      });
+    }
+
     restoreFormState();
     bindPersist();
     persistFormState();
