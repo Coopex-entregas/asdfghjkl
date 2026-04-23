@@ -5700,43 +5700,15 @@ def agendar_entrega():
 
     if request.method == 'POST':
         cliente_nome = (request.form.get('cliente') or '').strip()
-        bairro = (request.form.get('bairro') or '').strip()
-        pagamento = (request.form.get('pagamento') or '').strip()
-        data_str = (request.form.get('data') or '').strip()  # 'YYYY-MM-DDTHH:MM'
-        status_entrega = (request.form.get('status_entrega') or 'pendente').strip()
-        status_pagamento = (request.form.get('status_pagamento') or 'pendente').strip().lower()
+        bairro = request.form.get('bairro')
+        valor = float(request.form.get('valor') or 0)
+        data_str = request.form.get('data')  # 'YYYY-MM-DDTHH:MM'
+        status_entrega = request.form.get('status_entrega')
+        status_pagamento = request.form.get('status_pagamento')
         cooperado_id = request.form.get('cooperado_id')
+        pagamento = (request.form.get('pagamento') or '').strip()
 
-        coleta_endereco = (request.form.get('coleta_endereco') or '').strip()
-        coleta_bairro = (request.form.get('coleta_bairro') or '').strip()
-        coleta_contato = (request.form.get('coleta_contato') or '').strip()
-        coleta_telefone = (request.form.get('coleta_telefone') or '').strip()
-
-        entrega_endereco = (request.form.get('entrega_endereco') or '').strip()
-        entrega_bairro = (request.form.get('entrega_bairro') or '').strip()
-        entrega_contato = (request.form.get('entrega_contato') or '').strip()
-        entrega_telefone = (request.form.get('entrega_telefone') or '').strip()
-
-        observacao = (request.form.get('observacao') or '').strip()
-        paradas_raw = (request.form.get('paradas') or '').strip()
-
-        try:
-            valor_raw = (request.form.get('valor') or '0').strip()
-            valor_norm = valor_raw.replace('.', '').replace(',', '.') if (',' in valor_raw and valor_raw.count(',') == 1) else valor_raw.replace(',', '.')
-            valor = float(valor_norm or 0)
-        except Exception:
-            flash('Valor inválido.')
-            return redirect(url_for('agendar_entrega'))
-
-        if not data_str:
-            flash('Informe a data e hora da entrega.')
-            return redirect(url_for('agendar_entrega'))
-
-        try:
-            data_envio = parse_local_datetime_to_utc_naive(data_str)
-        except Exception:
-            flash('Data/hora inválida.')
-            return redirect(url_for('agendar_entrega'))
+        data_envio = parse_local_datetime_to_utc_naive(data_str)
 
         cliente_id_form = request.form.get('cliente_id', type=int)
         cli = None
@@ -5744,7 +5716,6 @@ def agendar_entrega():
             cli = Cliente.query.get(cliente_id_form)
         if not cli and cliente_nome:
             cli = _find_cliente_by_nome(cliente_nome)
-
         if cli:
             if not coleta_endereco:
                 coleta_endereco = (cli.endereco or '').strip()
@@ -5754,54 +5725,17 @@ def agendar_entrega():
                 coleta_contato = (cli.nome or '').strip()
             if not coleta_telefone:
                 coleta_telefone = (cli.telefone or '').strip()
-            if not cliente_nome:
-                cliente_nome = (cli.nome or '').strip()
-
-        if not coleta_endereco and not coleta_bairro:
-            flash('Informe o endereço ou o bairro da coleta.')
-            return redirect(url_for('agendar_entrega'))
-
-        if not entrega_endereco and not entrega_bairro and not bairro:
-            flash('Informe o endereço ou o bairro da entrega.')
-            return redirect(url_for('agendar_entrega'))
-
-        bairro_final = (bairro or entrega_bairro or coleta_bairro or '').strip()
 
         entrega = Entrega(
-            cliente=cliente_nome or 'Cliente',
-            bairro=bairro_final,
+            cliente=cliente_nome,
+            bairro=bairro,
             valor=valor,
             data_envio=data_envio,
             cooperado_id=int(cooperado_id) if cooperado_id else None,
             status=(status_entrega or 'pendente'),
             status_pagamento=(status_pagamento or 'pendente').lower(),
-            pagamento=pagamento or 'Dinheiro'
+            pagamento=pagamento
         )
-
-        entrega.origem_json = json.dumps({
-            'endereco': coleta_endereco,
-            'bairro': coleta_bairro,
-            'contato': coleta_contato,
-            'telefone': coleta_telefone,
-        }, ensure_ascii=False)
-
-        entrega.destino_json = json.dumps({
-            'endereco': entrega_endereco,
-            'bairro': entrega_bairro or bairro_final,
-            'contato': entrega_contato,
-            'telefone': entrega_telefone,
-            'observacao_geral': observacao,
-        }, ensure_ascii=False)
-
-        stops = []
-        if paradas_raw:
-            for bloco in paradas_raw.split('
-'):
-                for parte in bloco.split('|'):
-                    parte = (parte or '').strip()
-                    if parte:
-                        stops.append({'endereco': parte})
-        entrega.paradas_json = json.dumps({'stops': stops}, ensure_ascii=False)
 
         if cli:
             entrega.cliente_id = cli.id
@@ -5809,7 +5743,6 @@ def agendar_entrega():
         db.session.add(entrega)
 
         if cooperado_id:
-            entrega.data_atribuida = datetime.utcnow()
             ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
 
         db.session.commit()
@@ -5819,6 +5752,7 @@ def agendar_entrega():
         msg = 'Entrega agendada!'
         msg_category = 'info'
 
+        # Tenta consumir crédito e mostra o resultado
         try:
             if pagamento_usa_credito(entrega.pagamento):
                 valor_consumido = consumir_credito_em_entrega(entrega.id)
@@ -5854,6 +5788,8 @@ def agendar_entrega():
             msg_category = 'warning'
 
         flash(msg, msg_category)
+
+        # 🔴 EMITE PARA O PAINEL EM TEMPO REAL (entrega agendada)
         emitir_atualizacao_entrega(entrega, 'criada')
 
         if _wants_json():
