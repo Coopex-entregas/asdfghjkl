@@ -194,8 +194,8 @@
         <div class="table-toolbar">
           <div class="left">
             <button type="button" class="small-filter active" data-filter="todas">Todas</button>
-            <button type="button" class="small-filter" data-filter="pendente">Em andamento</button>
-            <button type="button" class="small-filter" data-filter="pago">Finalizadas</button>
+            <button type="button" class="small-filter" data-filter="pendente">Pendentes de pagamento</button>
+            <button type="button" class="small-filter" data-filter="pago">Entregues</button>
           </div>
         </div>
 
@@ -365,19 +365,21 @@
     function visibleDeliveries(){
       return allDeliveries.filter(item => {
         const finalizada = item.statusEntrega === 'entregue';
+        const pgtoPendente = item.statusPagamento !== 'pago';
         if (state.tableFilter === 'pago') return finalizada;
-        if (state.tableFilter === 'pendente') return !finalizada;
+        if (state.tableFilter === 'pendente') return pgtoPendente;
         return true;
       });
     }
 
     function updateSummary(){
       const s = summarize(visibleDeliveries());
+      const pendenciasTodas = summarize(allDeliveries).pendencias;
       document.getElementById('hero-receita').textContent = money(s.receita);
       document.getElementById('hero-entregas').textContent = String(s.qtd);
       document.getElementById('resumo-receita').textContent = money(s.receita);
       document.getElementById('resumo-quantidade').textContent = String(s.qtd);
-      document.getElementById('resumo-pendencias').textContent = money(s.pendencias);
+      document.getElementById('resumo-pendencias').textContent = money(pendenciasTodas);
       document.getElementById('resumo-recebido').textContent = money(s.recebido);
     }
 
@@ -401,7 +403,10 @@
       let count = 0;
       rows.forEach(row => {
         const finalizada = row.dataset.statusEntrega === 'entregue';
-        const show = state.tableFilter === 'todas' || (state.tableFilter === 'pago' && finalizada) || (state.tableFilter === 'pendente' && !finalizada);
+        const pgtoPendente = (row.dataset.statusPagamento || 'pendente') !== 'pago';
+        const show = state.tableFilter === 'todas'
+          || (state.tableFilter === 'pago' && finalizada)
+          || (state.tableFilter === 'pendente' && pgtoPendente);
         row.style.display = show ? '' : 'none';
         count += show ? 1 : 0;
       });
