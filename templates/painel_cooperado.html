@@ -194,8 +194,8 @@
         <div class="table-toolbar">
           <div class="left">
             <button type="button" class="small-filter active" data-filter="todas">Todas</button>
-            <button type="button" class="small-filter" data-filter="pendente">Pendentes de pagamento</button>
-            <button type="button" class="small-filter" data-filter="pago">Entregues</button>
+            <button type="button" class="small-filter" data-filter="pendente">Em andamento</button>
+            <button type="button" class="small-filter" data-filter="pago">Finalizadas</button>
           </div>
         </div>
 
@@ -284,9 +284,9 @@
           </div>
         </div>
         <div class="charts-grid">
-          <div class="chart-card"><h3>Valor por período</h3><div class="chart-wrap"><canvas id="chartValor"></canvas></div><div class="chart-meta">Valores conforme o período escolhido.</div></div>
+          <div class="chart-card"><h3>Valor por período</h3><div class="chart-wrap"><canvas id="chartValor"></canvas></div><div class="chart-meta">Gráfico independente do filtro de datas da tela.</div></div>
           <div class="chart-card"><h3>Quantidade por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPagamento"></canvas></div><div class="chart-meta">Pix, Dinheiro, Comanda e Pix Cooperativa.</div></div>
-          <div class="chart-card"><h3>Entregas por período</h3><div class="chart-wrap"><canvas id="chartEntregas"></canvas></div><div class="chart-meta">Quantidade de entregas do período selecionado.</div></div>
+          <div class="chart-card"><h3>Entregas por período</h3><div class="chart-wrap"><canvas id="chartEntregas"></canvas></div><div class="chart-meta">Semanal, mensal e anual usando a base completa carregada.</div></div>
           <div class="chart-card"><h3>Resumo anual</h3><div class="chart-wrap"><canvas id="chartAno"></canvas></div><div class="chart-meta">Comparativo dos anos presentes nos dados carregados.</div></div>
         </div>
       </div>
@@ -365,21 +365,19 @@
     function visibleDeliveries(){
       return allDeliveries.filter(item => {
         const finalizada = item.statusEntrega === 'entregue';
-        const pgtoPendente = item.statusPagamento !== 'pago';
         if (state.tableFilter === 'pago') return finalizada;
-        if (state.tableFilter === 'pendente') return pgtoPendente;
+        if (state.tableFilter === 'pendente') return !finalizada;
         return true;
       });
     }
 
     function updateSummary(){
       const s = summarize(visibleDeliveries());
-      const pendenciasTodas = summarize(allDeliveries).pendencias;
       document.getElementById('hero-receita').textContent = money(s.receita);
       document.getElementById('hero-entregas').textContent = String(s.qtd);
       document.getElementById('resumo-receita').textContent = money(s.receita);
       document.getElementById('resumo-quantidade').textContent = String(s.qtd);
-      document.getElementById('resumo-pendencias').textContent = money(pendenciasTodas);
+      document.getElementById('resumo-pendencias').textContent = money(s.pendencias);
       document.getElementById('resumo-recebido').textContent = money(s.recebido);
     }
 
@@ -403,10 +401,7 @@
       let count = 0;
       rows.forEach(row => {
         const finalizada = row.dataset.statusEntrega === 'entregue';
-        const pgtoPendente = (row.dataset.statusPagamento || 'pendente') !== 'pago';
-        const show = state.tableFilter === 'todas'
-          || (state.tableFilter === 'pago' && finalizada)
-          || (state.tableFilter === 'pendente' && pgtoPendente);
+        const show = state.tableFilter === 'todas' || (state.tableFilter === 'pago' && finalizada) || (state.tableFilter === 'pendente' && !finalizada);
         row.style.display = show ? '' : 'none';
         count += show ? 1 : 0;
       });
@@ -594,7 +589,7 @@
       btn.classList.add('active'); state.period = btn.dataset.period; buildCharts();
     }));
 
-    function deliveriesForYear(){ return visibleDeliveries().filter(d => getYear(parseDate(d.data)) === state.year); }
+    function deliveriesForYear(){ return allDeliveries.filter(d => getYear(parseDate(d.data)) === state.year); }
 
     function aggregateByPeriod(deliveries){
       const mapValor = new Map(), mapQtd = new Map();
@@ -625,7 +620,7 @@
 
     function aggregateYearComparison(){
       const annual = {};
-      visibleDeliveries().forEach(d => {
+      allDeliveries.forEach(d => {
         const y = getYear(parseDate(d.data)); if (!y) return;
         annual[y] = annual[y] || { valor:0, qtd:0 };
         annual[y].valor += d.valor; annual[y].qtd += 1;
