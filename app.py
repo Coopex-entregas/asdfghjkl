@@ -5702,7 +5702,7 @@ def agendar_entrega():
         cliente_nome = (request.form.get('cliente') or '').strip()
         bairro = (request.form.get('bairro') or '').strip()
         pagamento = (request.form.get('pagamento') or '').strip()
-        data_str = (request.form.get('data') or '').strip()
+        data_str = (request.form.get('data') or '').strip()  # 'YYYY-MM-DDTHH:MM'
         status_entrega = (request.form.get('status_entrega') or 'pendente').strip()
         status_pagamento = (request.form.get('status_pagamento') or 'pendente').strip().lower()
         cooperado_id = request.form.get('cooperado_id')
@@ -5717,23 +5717,25 @@ def agendar_entrega():
         entrega_contato = (request.form.get('entrega_contato') or '').strip()
         entrega_telefone = (request.form.get('entrega_telefone') or '').strip()
 
-        paradas_raw = (request.form.get('paradas') or '').strip()
         observacao = (request.form.get('observacao') or '').strip()
+        paradas_raw = (request.form.get('paradas') or '').strip()
 
         try:
-            valor = float((request.form.get('valor') or '0').replace('.', '').replace(',', '.'))
+            valor_raw = (request.form.get('valor') or '0').strip()
+            valor_norm = valor_raw.replace('.', '').replace(',', '.') if (',' in valor_raw and valor_raw.count(',') == 1) else valor_raw.replace(',', '.')
+            valor = float(valor_norm or 0)
         except Exception:
-            flash('Valor inválido.', 'warning')
+            flash('Valor inválido.')
             return redirect(url_for('agendar_entrega'))
 
         if not data_str:
-            flash('Informe a data e hora do agendamento.', 'warning')
+            flash('Informe a data e hora da entrega.')
             return redirect(url_for('agendar_entrega'))
 
         try:
             data_envio = parse_local_datetime_to_utc_naive(data_str)
         except Exception:
-            flash('Data/hora inválida.', 'warning')
+            flash('Data/hora inválida.')
             return redirect(url_for('agendar_entrega'))
 
         cliente_id_form = request.form.get('cliente_id', type=int)
@@ -5752,16 +5754,15 @@ def agendar_entrega():
                 coleta_contato = (cli.nome or '').strip()
             if not coleta_telefone:
                 coleta_telefone = (cli.telefone or '').strip()
-
-        if not cliente_nome and cli:
-            cliente_nome = (cli.nome or '').strip()
+            if not cliente_nome:
+                cliente_nome = (cli.nome or '').strip()
 
         if not coleta_endereco and not coleta_bairro:
-            flash('Informe o endereço ou o bairro da coleta.', 'warning')
+            flash('Informe o endereço ou o bairro da coleta.')
             return redirect(url_for('agendar_entrega'))
 
         if not entrega_endereco and not entrega_bairro and not bairro:
-            flash('Informe o endereço ou o bairro da entrega.', 'warning')
+            flash('Informe o endereço ou o bairro da entrega.')
             return redirect(url_for('agendar_entrega'))
 
         bairro_final = (bairro or entrega_bairro or coleta_bairro or '').strip()
@@ -5794,13 +5795,12 @@ def agendar_entrega():
 
         stops = []
         if paradas_raw:
-            partes = []
             for bloco in paradas_raw.split('
 '):
-                partes.extend([x.strip() for x in bloco.split('|') if x.strip()])
-            for linha in partes:
-                stops.append({'endereco': linha})
-
+                for parte in bloco.split('|'):
+                    parte = (parte or '').strip()
+                    if parte:
+                        stops.append({'endereco': parte})
         entrega.paradas_json = json.dumps({'stops': stops}, ensure_ascii=False)
 
         if cli:
