@@ -1073,6 +1073,13 @@ LOCATION_LOW_CONFIDENCE_ACCURACY_M = float(os.getenv("LOCATION_LOW_CONFIDENCE_AC
 LOCATION_VERY_LOW_SPEED_KMH = float(os.getenv("LOCATION_VERY_LOW_SPEED_KMH", "0.8"))
 LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35"))
 
+# Controle de carga da API de localização.
+# Evita que vários celulares travem o login/admin no Render.
+LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "4"))
+LOCATION_MIN_TRAJETO_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_TRAJETO_INTERVAL_SEC", "12"))
+LOCATION_MIN_DISTANCE_FORCE_SAVE_M = float(os.getenv("LOCATION_MIN_DISTANCE_FORCE_SAVE_M", "20"))
+
+
 def _haversine_m(lat1, lng1, lat2, lng2):
     try:
         from math import radians, sin, cos, sqrt, atan2
@@ -3841,7 +3848,16 @@ def cooperado_aceitar_corrida():
 
 @app.post('/api/app/localizacao')
 def api_app_localizacao():
-    ensure_mobile_tracking_schema()
+    """
+    API leve para localização do APK.
+
+    Correções principais:
+    - NÃO roda db.create_all()/inspect a cada localização.
+    - Limita gravação por cooperado a cada X segundos.
+    - Ignora ruído de GPS parado.
+    - Evita gravar trajeto em todo ping.
+    - Só emite socket quando realmente salva ponto aceito.
+    """
 
     data = request.get_json(silent=True) or {}
 
@@ -3858,42 +3874,39 @@ def api_app_localizacao():
             str(request.args.get('token') or '').strip()
         )
 
-    user_id = str(data.get('user_id') or '').strip()
-
-    lat = data.get('latitude', data.get('lat'))
-    lng = data.get('longitude', data.get('lng'))
-    accuracy = data.get('accuracy')
-    speed = data.get('speed')
-    speed_mps = data.get('speed_mps')
-    heading = data.get('heading')
-    source = (data.get('source') or 'android_native').strip()
-
     if not token:
         return jsonify({'ok': False, 'error': 'token ausente'}), 401
 
-    coop = Cooperado.query.filter_by(app_token=token).first()
-    if not coop:
-        return jsonify({'ok': False, 'error': 'token inválido'}), 401
+    user_id = str(data.get('user_id') or '').strip()
 
-    if user_id and str(coop.id) != user_id:
-        return jsonify({'ok': False, 'error': 'user_id não confere'}), 403
+    lat_raw = data.get('latitude', data.get('lat'))
+    lng_raw = data.get('longitude', data.get('lng'))
+    accuracy_raw = data.get('accuracy')
+    speed_raw = data.get('speed')
+    speed_mps_raw = data.get('speed_mps')
+    heading_raw = data.get('heading')
+    source = (data.get('source') or 'android_native').strip()[:30]
 
     try:
-        lat = float(lat)
-        lng = float(lng)
+        lat = float(lat_raw)
+        lng = float(lng_raw)
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            return jsonify({'ok': False, 'error': 'latitude/longitude fora da faixa'}), 400
     except (TypeError, ValueError):
         return jsonify({'ok': False, 'error': 'latitude/longitude inválidas'}), 400
 
     try:
-        acc = float(accuracy) if accuracy is not None else None
+        acc = float(accuracy_raw) if accuracy_raw is not None else None
     except (TypeError, ValueError):
         acc = None
 
     try:
-        if speed_mps is not None:
-            spd = float(speed_mps) * 3.6
-        elif speed is not None:
-            spd_raw = float(speed)
+        if speed_mps_raw is not None:
+            spd = float(speed_mps_raw) * 3.6
+        elif speed_raw is not None:
+            spd_raw = float(speed_raw)
+            # Se vier abaixo de 120, tratamos como m/s vindo do Android.
+            # Se vier acima, assumimos que já está em km/h.
             spd = (spd_raw * 3.6) if spd_raw < 120 else spd_raw
         else:
             spd = None
@@ -3901,56 +3914,149 @@ def api_app_localizacao():
         spd = None
 
     try:
-        hdg = float(heading) if heading is not None else None
+        hdg = float(heading_raw) if heading_raw is not None else None
     except (TypeError, ValueError):
         hdg = None
 
     agora = datetime.utcnow()
 
-    coop.last_ping = agora
-    coop.online = True
-    coop.last_lat = lat
-    coop.last_lng = lng
-    coop.last_accuracy_m = acc
-    coop.last_heading = hdg
-    coop.last_speed_kmh = spd
-
-    moving_now = (spd is not None and spd >= MOVING_SPEED_KMH)
-    if moving_now:
-        coop.last_moving_at = agora
-
-    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
-    if not loc:
-        loc = LocalizacaoCooperado(cooperado_id=coop.id)
-        db.session.add(loc)
-
-    loc.latitude = lat
-    loc.longitude = lng
-    loc.accuracy = acc
-    loc.speed = spd
-    loc.heading = hdg
-    loc.online = True
-    loc.fonte = source
-    loc.atualizado_em = agora
-
-    db.session.commit()
-
     try:
-        _append_point_to_active_trajeto(coop.id, lat, lng, agora)
+        coop = Cooperado.query.filter_by(app_token=token).first()
+        if not coop:
+            return jsonify({'ok': False, 'error': 'token inválido'}), 401
+
+        if user_id and str(coop.id) != user_id:
+            return jsonify({'ok': False, 'error': 'user_id não confere'}), 403
+
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+        if not loc:
+            loc = LocalizacaoCooperado(cooperado_id=coop.id)
+            db.session.add(loc)
+            db.session.flush()
+
+        # 1) Trava principal: se o mesmo cooperado acabou de enviar,
+        # não grava de novo. Isso protege login, admin e banco.
+        ultimo_ping = coop.last_ping or loc.atualizado_em
+        if ultimo_ping:
+            try:
+                segundos = (agora - ultimo_ping).total_seconds()
+            except Exception:
+                segundos = LOCATION_MIN_SAVE_INTERVAL_SEC
+
+            if segundos < LOCATION_MIN_SAVE_INTERVAL_SEC:
+                return jsonify({
+                    'ok': True,
+                    'cooperado_id': coop.id,
+                    'ignored': True,
+                    'motivo': 'intervalo_minimo',
+                    'min_interval_sec': LOCATION_MIN_SAVE_INTERVAL_SEC
+                }), 200
+
+        prev_lat = coop.last_lat if coop.last_lat is not None else loc.latitude
+        prev_lng = coop.last_lng if coop.last_lng is not None else loc.longitude
+
+        # 2) Filtro de ruído de GPS.
+        aceito, motivo, dist_m = _should_accept_location_update(
+            prev_lat,
+            prev_lng,
+            lat,
+            lng,
+            acc,
+            spd
+        )
+
+        # Se for ruído, atualiza apenas "online/last_ping", sem trocar lat/lng.
+        # Assim o cooperado continua online, mas o marcador não fica pulando.
+        if not aceito:
+            coop.last_ping = agora
+            coop.online = True
+
+            loc.online = True
+            loc.fonte = source
+            loc.atualizado_em = agora
+
+            db.session.commit()
+
+            return jsonify({
+                'ok': True,
+                'cooperado_id': coop.id,
+                'aceito': False,
+                'motivo': motivo,
+                'dist_m': round(float(dist_m or 0), 2)
+            }), 200
+
+        moving_now = (spd is not None and spd >= MOVING_SPEED_KMH)
+
+        coop.last_ping = agora
+        coop.online = True
+        coop.last_lat = lat
+        coop.last_lng = lng
+        coop.last_accuracy_m = acc
+        coop.last_heading = hdg
+        coop.last_speed_kmh = spd
+
+        if moving_now:
+            coop.last_moving_at = agora
+
+        loc.latitude = lat
+        loc.longitude = lng
+        loc.accuracy = acc
+        loc.speed = spd
+        loc.heading = hdg
+        loc.online = True
+        loc.fonte = source
+        loc.atualizado_em = agora
+
+        db.session.commit()
+
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            current_app.logger.exception('Falha em /api/app/localizacao')
+        except Exception:
+            pass
+        return jsonify({'ok': False, 'error': 'falha ao salvar localização'}), 500
+
+    # 3) Trajeto é pesado porque lê/grava JSON. Não grave em todo ping.
+    # Grava só quando passou intervalo maior ou quando houve deslocamento relevante.
+    deve_gravar_trajeto = False
+    try:
+        if moving_now:
+            deve_gravar_trajeto = True
+
+        if dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M:
+            deve_gravar_trajeto = True
+
+        if ultimo_ping:
+            segundos_trajeto = (agora - ultimo_ping).total_seconds()
+            if segundos_trajeto < LOCATION_MIN_TRAJETO_INTERVAL_SEC and not (
+                dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M
+            ):
+                deve_gravar_trajeto = False
+
+        if deve_gravar_trajeto:
+            _append_point_to_active_trajeto(coop.id, lat, lng, agora)
     except Exception:
         try:
             db.session.rollback()
         except Exception:
             pass
 
-    emitir_posicao_motoboy(coop, lat, lng, spd)
+    # 4) Socket só depois de salvar ponto aceito.
+    try:
+        emitir_posicao_motoboy(coop, lat, lng, spd)
+    except Exception:
+        pass
 
     return jsonify({
         'ok': True,
-        'cooperado_id': coop.id
+        'cooperado_id': coop.id,
+        'aceito': True
     }), 200
 
-from datetime import datetime, timezone
 
 @app.get('/api/cooperado/localizacao_status')
 def api_cooperado_localizacao_status():
