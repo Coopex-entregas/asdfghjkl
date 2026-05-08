@@ -2458,30 +2458,26 @@ def cliente_required(view_func):
 @app.route('/meu-credito')
 def meu_credito():
     """
-    Tela pública de solicitação do cliente.
-    - Cliente logado vê histórico e pode usar crédito.
-    - Cliente sem cadastro consegue pedir como AVULSO.
-    Isso evita a tela branca/redirect feio dentro do quadro do site.
+    Página pública de solicitação COOPEX.
+    - Cliente cadastrado pode estar logado e usar crédito.
+    - Cliente avulso pode pedir sem cadastro.
     """
-    cli = None
+    cli = _cliente_atual_optional()
+    cid = cli.id if cli else None
+
     movs = []
     entregas = []
-
-    cid = session.get('cliente_id')
-    if session.get('is_cliente') and cid:
-        cli = Cliente.query.get(cid)
-
     if cli:
         movs = (
             CreditoMovimento.query
-            .filter(CreditoMovimento.cliente_id == cli.id)
+            .filter(CreditoMovimento.cliente_id == cid)
             .order_by(CreditoMovimento.id.desc())
             .limit(20)
             .all()
         )
         entregas = (
             Entrega.query
-            .filter(Entrega.cliente_id == cli.id)
+            .filter(Entrega.cliente_id == cid)
             .order_by(Entrega.data_envio.desc())
             .limit(20)
             .all()
@@ -2500,12 +2496,16 @@ def meu_credito():
     return render_template(
         "meu_credito.html",
         cli=cli,
+        cliente_logado=bool(cli),
+        saldo_cliente=float(cli.saldo_atual or 0) if cli else 0.0,
         movs=movs,
         entregas=entregas,
         bairros=bairros,
         pix_chave=pix_chave,
+        whatsapp_comprovante="84981110706",
         to_brasilia=to_brasilia
     )
+
 
 def _json_dict_safe(raw):
     if not raw:
@@ -2582,10 +2582,30 @@ def _cliente_atual():
     return cli
 
 
+def _cliente_atual_optional():
+    """Retorna o cliente logado, se houver. Para pedido avulso, retorna None."""
+    cid = session.get('cliente_id')
+    if not cid:
+        return None
+    try:
+        return Cliente.query.get(int(cid))
+    except Exception:
+        return None
+
+
+def _bairro_key(s):
+    s = (s or '').strip().lower()
+    s = unicodedata.normalize('NFD', s)
+    s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')
+    s = re.sub(r'\s+', ' ', s)
+    return s
+
+
 def _calcular_preco_bairros(bairro_origem, bairro_destino):
     """
-    Calcula o preço da rota usando a tabela PrecoRota.
-    Usa origem/destino normalizados (_norm).
+    Calcula o preço pela tabela PrecoRota.
+    Corrigido para comparar sem acento, sem diferença de maiúscula/minúscula
+    e também aceitar a rota inversa quando a tabela foi cadastrada em apenas um sentido.
     """
     if not bairro_origem or not bairro_destino:
         raise ValueError('Bairros de coleta e entrega são obrigatórios.')
@@ -2593,6 +2613,7 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
     bo = _norm(bairro_origem)
     bd = _norm(bairro_destino)
 
+    # 1) busca direta no banco, rápida
     rota = (
         PrecoRota.query
         .filter(func.lower(PrecoRota.origem) == bo.lower(),
@@ -2600,10 +2621,28 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
         .first()
     )
 
+    # 2) se não achar, compara normalizado em Python
+    #    isso resolve diferença de acento, espaços e cadastro com letras diferentes.
+    if not rota:
+        bo_key = _bairro_key(bo)
+        bd_key = _bairro_key(bd)
+        todas = PrecoRota.query.all()
+
+        for r in todas:
+            if _bairro_key(r.origem) == bo_key and _bairro_key(r.destino) == bd_key:
+                rota = r
+                break
+
+        # 3) fallback: aceita rota inversa quando só foi cadastrada uma direção.
+        if not rota:
+            for r in todas:
+                if _bairro_key(r.origem) == bd_key and _bairro_key(r.destino) == bo_key:
+                    rota = r
+                    break
+
     if not rota:
         raise ValueError('Não existe preço configurado para essa rota.')
 
-    # Tenta descobrir o campo de valor na tabela
     preco = None
     for campo in ('valor', 'preco', 'preco_total'):
         if hasattr(rota, campo):
@@ -2613,16 +2652,15 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
     if preco is None:
         raise RuntimeError('Campo de preço não encontrado na tabela de preços.')
 
-    return float(preco)
+    return float(preco or 0)
 
 
 @app.route('/api/cliente/cotar-entrega', methods=['POST'])
 def api_cliente_cotar_entrega():
-    """
-    Cotação pública. Não exige login para o pedido avulso.
-    Se o cliente estiver logado, também informa se pode usar crédito.
-    """
+    """Cotação pública: funciona para cadastrado e avulso."""
+    cli = _cliente_atual_optional()
     data = request.get_json(silent=True) or {}
+
     coleta = data.get('coleta') or {}
     entrega = data.get('entrega') or {}
 
@@ -2632,19 +2670,13 @@ def api_cliente_cotar_entrega():
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
         valor_a_informar = False
-        msg = 'Cotação calculada pela tabela cadastrada.'
     except Exception:
         preco = None
         valor_a_informar = True
-        msg = 'Valor será informado pela cooperativa após análise da rota.'
-
-    cli = None
-    if session.get('is_cliente') and session.get('cliente_id'):
-        cli = Cliente.query.get(session.get('cliente_id'))
 
     saldo = float(cli.saldo_atual or 0) if cli else 0.0
     meios = []
-    if cli and (preco is not None) and saldo >= float(preco):
+    if cli and (preco is not None) and saldo >= float(preco or 0):
         meios.append('CREDITO')
     meios.extend(['PIX', 'DINHEIRO'])
 
@@ -2657,83 +2689,41 @@ def api_cliente_cotar_entrega():
         'cliente_saldo_atual': saldo,
         'pode_usar_credito': 'CREDITO' in meios,
         'meios_pagamento': meios,
-        'msg': msg
+        'msg': 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
     })
-
-
-def _cliente_avulso_get_or_create(nome: str, telefone: str, email: str = ''):
-    """Cria ou reaproveita cliente sem senha para pedido avulso."""
-    nome = (nome or '').strip()
-    telefone = _norm_phone(telefone or '')
-    email = (email or '').strip().lower()
-
-    cli = None
-    if telefone:
-        cli = Cliente.query.filter(Cliente.telefone == telefone).first()
-    if not cli and email:
-        cli = Cliente.query.filter(func.lower(Cliente.email) == email.lower()).first()
-
-    if cli:
-        if nome:
-            cli.nome = nome
-        if telefone:
-            cli.telefone = telefone
-        if email and not cli.email:
-            cli.email = email
-        return cli
-
-    cli = Cliente(
-        nome=nome or 'Cliente avulso',
-        telefone=telefone or None,
-        email=email or None,
-        saldo_atual=0.0
-    )
-    db.session.add(cli)
-    db.session.flush()
-    return cli
 
 
 @app.route('/api/cliente/solicitar-entrega', methods=['POST'])
 def api_cliente_solicitar_entrega():
     """
-    Cria entrega tanto para cliente cadastrado quanto para pedido avulso.
-    O pedido avulso não exige senha nem cadastro prévio.
+    Cria pedido de entrega para cliente cadastrado ou avulso.
+    Para avulso, não exige login: salva nome/WhatsApp no JSON da entrega.
     """
+    cli = _cliente_atual_optional()
     data = request.get_json(silent=True) or {}
+
+    cliente_info = data.get('cliente') or {}
+    nome_cliente = (cliente_info.get('nome') or data.get('cliente_nome') or (cli.nome if cli else '') or '').strip()
+    whatsapp_cliente = (cliente_info.get('whatsapp') or data.get('cliente_whatsapp') or '').strip()
+    email_cliente = (cliente_info.get('email') or data.get('cliente_email') or '').strip()
+
+    if not cli and (not nome_cliente or not whatsapp_cliente):
+        return jsonify({'ok': False, 'erro': 'Informe nome e WhatsApp para pedir como avulso.'}), 400
 
     coleta = data.get('coleta') or {}
     entrega_dest = data.get('entrega') or {}
     paradas_lista = data.get('paradas') or []
-    observacao = (data.get('observacao') or '').strip()
+    if not isinstance(paradas_lista, list):
+        paradas_lista = []
 
-    meio_pagamento = (data.get('meio_pagamento') or '').upper()
+    observacao = (data.get('observacao') or '').strip()
+    meio_pagamento = (data.get('meio_pagamento') or '').upper().replace('É', 'E')
     apenas_simular = bool(data.get('apenas_simular'))
+    recebe_dinheiro_em = (data.get('recebe_dinheiro_em') or '').strip().lower()
 
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
     bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
 
-    # cliente logado ou avulso
-    cli = None
-    cliente_logado = bool(session.get('is_cliente') and session.get('cliente_id'))
-    if cliente_logado:
-        cli = Cliente.query.get(session.get('cliente_id'))
-
-    if not cli:
-        avulso = data.get('cliente_avulso') or {}
-        nome_avulso = (avulso.get('nome') or data.get('nome') or '').strip()
-        telefone_avulso = (avulso.get('telefone') or data.get('telefone') or '').strip()
-        email_avulso = (avulso.get('email') or data.get('email') or '').strip().lower()
-
-        if not nome_avulso or not telefone_avulso:
-            return jsonify({
-                'ok': False,
-                'erro': 'Para pedir como avulso, informe nome e WhatsApp.'
-            }), 400
-
-        cli = _cliente_avulso_get_or_create(nome_avulso, telefone_avulso, email_avulso)
-        cliente_logado = False
-
-    # preço pela tabela; se não existir, salva valor 0 e admin precifica depois
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
         valor_a_informar = False
@@ -2741,10 +2731,11 @@ def api_cliente_solicitar_entrega():
         preco = None
         valor_a_informar = True
 
+    saldo = float(cli.saldo_atual or 0) if cli else 0.0
+
     if apenas_simular:
-        saldo = float(cli.saldo_atual or 0) if cliente_logado else 0.0
         meios = []
-        if cliente_logado and (preco is not None) and saldo >= float(preco):
+        if cli and (preco is not None) and saldo >= float(preco or 0):
             meios.append('CREDITO')
         meios.extend(['PIX', 'DINHEIRO'])
         return jsonify({
@@ -2752,23 +2743,23 @@ def api_cliente_solicitar_entrega():
             'simulacao': True,
             'preco': preco,
             'valor_a_informar': valor_a_informar,
+            'cliente_logado': bool(cli),
             'cliente_saldo_atual': saldo,
             'meios_pagamento': meios,
+            'msg': 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
         })
 
     if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
         meio_pagamento = 'PIX'
 
-    # Avulso não usa crédito interno
-    if meio_pagamento == 'CREDITO' and not cliente_logado:
-        meio_pagamento = 'PIX'
-
     if meio_pagamento == 'CREDITO':
-        if (preco is None) or cli.saldo_atual is None or float(cli.saldo_atual or 0) < float(preco):
-            return jsonify({
-                'ok': False,
-                'erro': 'Crédito insuficiente para essa entrega. Escolha PIX ou dinheiro.'
-            }), 400
+        if not cli:
+            return jsonify({'ok': False, 'erro': 'Para usar crédito é necessário entrar como cliente cadastrado.'}), 400
+        if (preco is None) or saldo < float(preco or 0):
+            return jsonify({'ok': False, 'erro': 'Crédito insuficiente para essa entrega. Escolha Pix ou Dinheiro.'}), 400
+
+    if meio_pagamento == 'DINHEIRO' and recebe_dinheiro_em not in ('coleta', 'entrega'):
+        return jsonify({'ok': False, 'erro': 'Informe se o dinheiro será recebido na coleta ou na entrega.'}), 400
 
     try:
         data_envio_utc = datetime.utcnow()
@@ -2781,6 +2772,10 @@ def api_cliente_solicitar_entrega():
             "lng": coleta.get('lng'),
             "contato": coleta.get('contato'),
             "telefone": coleta.get('telefone'),
+            "cliente_nome": nome_cliente,
+            "cliente_whatsapp": whatsapp_cliente,
+            "cliente_email": email_cliente,
+            "pedido_tipo": "cadastrado" if cli else "avulso",
         }
         destino_json_dict = {
             "endereco": entrega_dest.get('endereco'),
@@ -2790,32 +2785,31 @@ def api_cliente_solicitar_entrega():
             "lng": entrega_dest.get('lng'),
             "contato": entrega_dest.get('contato'),
             "telefone": entrega_dest.get('telefone'),
-            "recebe_dinheiro_em": data.get('recebe_dinheiro_em'),
+            "recebe_dinheiro_em": recebe_dinheiro_em if meio_pagamento == 'DINHEIRO' else None,
         }
         paradas_json_dict = {
-            "stops": paradas_lista if isinstance(paradas_lista, list) else [],
+            "stops": paradas_lista,
             "observacao": observacao,
-            "servico": data.get('servico'),
-            "pedido_avulso": not cliente_logado,
+            "valor_a_informar": bool(valor_a_informar),
+            "preco_estimado": float(preco or 0),
+            "meio_pagamento": meio_pagamento,
         }
 
-        nome_para_admin = cli.nome or 'Cliente avulso'
-        if not cliente_logado:
-            nome_para_admin = f'{nome_para_admin} (Avulso)'
+        campos = {
+            'cliente_id': cli.id if cli else None,
+            'cliente': nome_cliente,
+            'bairro': bairro_entrega or bairro_coleta or 'A confirmar',
+            'valor': float(preco or 0),
+            'data_envio': data_envio_utc,
+            'status': 'pendente',
+            'status_pagamento': 'pago' if meio_pagamento == 'CREDITO' else 'pendente',
+            'pagamento': meio_pagamento.capitalize(),
+            'origem_json': json.dumps(origem_json_dict, ensure_ascii=False),
+            'destino_json': json.dumps(destino_json_dict, ensure_ascii=False),
+            'paradas_json': json.dumps(paradas_json_dict, ensure_ascii=False),
+        }
 
-        entrega_obj = Entrega(
-            cliente_id=cli.id,
-            cliente=nome_para_admin,
-            bairro=bairro_entrega or '-',
-            valor=float(preco or 0),
-            data_envio=data_envio_utc,
-            status='pendente',
-            status_pagamento='pago' if meio_pagamento == 'CREDITO' else 'pendente',
-            pagamento=meio_pagamento.capitalize(),
-            origem_json=json.dumps(origem_json_dict, ensure_ascii=False),
-            destino_json=json.dumps(destino_json_dict, ensure_ascii=False),
-            paradas_json=json.dumps(paradas_json_dict, ensure_ascii=False),
-        )
+        entrega_obj = Entrega(**campos)
         db.session.add(entrega_obj)
         db.session.flush()
 
@@ -2823,32 +2817,14 @@ def api_cliente_solicitar_entrega():
             valor_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
             if valor_consumido <= 0:
                 db.session.rollback()
-                return jsonify({
-                    'ok': False,
-                    'erro': 'Falha ao consumir crédito. Tente novamente ou escolha PIX/dinheiro.'
-                }), 500
+                return jsonify({'ok': False, 'erro': 'Falha ao consumir crédito. Tente Pix ou Dinheiro.'}), 500
 
         db.session.commit()
 
-        try:
-            emitir_atualizacao_entrega(entrega_obj, 'criada')
-        except Exception:
-            pass
-
-    except IntegrityError as e:
-        db.session.rollback()
-        current_app.logger.exception('Erro de integridade ao solicitar entrega')
-        return jsonify({
-            'ok': False,
-            'erro': 'Não foi possível salvar o pedido. Verifique se o e-mail já está cadastrado ou tente informar apenas o WhatsApp.'
-        }), 400
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Erro ao solicitar entrega')
-        return jsonify({
-            'ok': False,
-            'erro': f'Erro ao solicitar entrega: {e.__class__.__name__}'
-        }), 500
+        return jsonify({'ok': False, 'erro': f'Erro ao solicitar entrega: {e.__class__.__name__}'}), 500
 
     return jsonify({
         'ok': True,
@@ -2856,10 +2832,27 @@ def api_cliente_solicitar_entrega():
         'preco': preco,
         'meio_pagamento': meio_pagamento,
         'status_pagamento': entrega_obj.status_pagamento,
-        'comprovante_url': url_for('cliente_comprovante', entrega_id=entrega_obj.id),
         'valor_a_informar': valor_a_informar,
-        'msg': 'Pedido enviado com sucesso. A COOPEX vai acompanhar a solicitação.'
+        'cliente_logado': bool(cli),
+        'msg': 'Pedido enviado para a supervisão.',
     })
+
+
+@app.route('/api/cliente/solicitar-credito', methods=['POST'])
+def api_cliente_solicitar_credito():
+    """Retorna link de WhatsApp para o cliente solicitar compra de crédito antecipado."""
+    data = request.get_json(silent=True) or {}
+    nome = ((data.get('nome') or '')).strip()
+    whatsapp = ((data.get('whatsapp') or '')).strip()
+    valor = ((data.get('valor') or '')).strip()
+    if not nome or not whatsapp:
+        return jsonify({'ok': False, 'erro': 'Informe nome e WhatsApp.'}), 400
+    texto = f"Olá, quero comprar crédito antecipado COOPEX para usar em entregas futuras. Nome: {nome}. WhatsApp: {whatsapp}."
+    if valor:
+        texto += f" Valor desejado: R$ {valor}."
+    from urllib.parse import quote
+    url = "https://wa.me/5584981110706?text=" + quote(texto)
+    return jsonify({'ok': True, 'whatsapp_url': url})
 
 
 # =========================================================
