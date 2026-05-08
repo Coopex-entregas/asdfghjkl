@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Sistema de solicitação COOPEX</title>
+  <title>Solicitar entrega COOPEX</title>
   <style>
     :root{
       --royal:#0047C7;
@@ -23,9 +23,6 @@
     html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg)}
     body{padding:10px}
     .wrap{width:100%;max-width:1160px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
-    .top{background:linear-gradient(135deg,var(--royal2),var(--royal));color:#fff;padding:18px 22px}
-    .top small{display:block;font-size:13px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;opacity:.95}
-    .top h1{margin:6px 0 0;font-size:25px;line-height:1.05;font-weight:900}
     .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 22px 8px;background:#fff}
     .tab{height:46px;border-radius:14px;border:1px solid var(--line);background:#f8fbff;color:var(--royal2);font-weight:900;cursor:pointer;font-size:14px}
     .tab.active{background:var(--royal2);color:#fff;border-color:var(--royal2)}
@@ -50,16 +47,11 @@
     .stop{border:1px solid var(--line);border-radius:16px;padding:12px;margin-top:10px;background:#fbfdff}.stop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-weight:900;color:var(--royal2)}
     .result{display:none;border:1px solid #b7ebc6;background:#f0fff4;color:#064e3b;border-radius:14px;padding:12px;font-weight:800;line-height:1.35;margin-top:12px}.error{display:none;border:1px solid #ffd2cc;background:#fff1f0;color:#9f1b14;border-radius:14px;padding:12px;font-weight:800;margin-top:12px}
     .compact{max-width:720px}.hidden{display:none!important}
-    @media(max-width:760px){body{padding:0}.wrap{border-radius:0;border-left:0;border-right:0}.top{padding:15px}.top h1{font-size:21px}.tabs{grid-template-columns:1fr 1fr;padding:12px}.content{padding:8px 12px 18px}.grid,.grid-3{grid-template-columns:1fr}.btnrow .btn{width:100%}}
+    @media(max-width:760px){body{padding:0}.wrap{border-radius:0;border-left:0;border-right:0}.tabs{grid-template-columns:1fr 1fr;padding:12px}.content{padding:8px 12px 18px}.grid,.grid-3{grid-template-columns:1fr}.btnrow .btn{width:100%}}
   </style>
 </head>
 <body>
   <main class="wrap">
-    <header class="top">
-      <small>Sistema de solicitação COOPEX</small>
-      <h1>Peça sua entrega pelo celular ou pelo computador</h1>
-    </header>
-
     <nav class="tabs">
       <button class="tab active" type="button" data-tab="pedido">Pedir como avulso</button>
       <button class="tab" type="button" data-tab="credito">Comprar crédito</button>
@@ -113,9 +105,22 @@
 
           <div class="box">
             <div class="legend"><span class="num">5</span>Pagamento e observação</div>
-            <div class="quote"><span>Valor pela tabela de preços</span><strong id="valorCotacao">Informe os bairros</strong></div>
+            <div class="quote"><span>Valor da entrega</span><strong id="valorCotacao">Informe os dados</strong></div><div class="note" id="origemPrecoBox" style="display:none"></div>
+            {% if cliente_logado %}
+            <div class="note" id="saldoCreditoBox">
+              Crédito disponível: <strong id="saldoCredito">R$ {{ '%.2f'|format(saldo_cliente or 0)|replace('.', ',') }}</strong>
+            </div>
+            <div class="field">
+              <label style="display:flex;align-items:center;gap:9px;margin:0;font-size:14px;color:#003399">
+                <input type="checkbox" id="usar_credito" style="width:18px;min-height:18px;padding:0">
+                Usar meu crédito disponível nesta entrega
+              </label>
+            </div>
+            <div class="note" id="creditoCalcBox" style="display:none"></div>
+            {% endif %}
+
             <div class="grid">
-              <div class="field"><label>Forma de pagamento <span class="req">*</span></label><select id="pagamento" required><option value="PIX">Pix</option><option value="DINHEIRO">Dinheiro</option>{% if cliente_logado %}<option value="CREDITO">Usar crédito disponível</option>{% endif %}</select></div>
+              <div class="field"><label>Forma de pagamento / complemento <span class="req">*</span></label><select id="pagamento" required><option value="PIX">Pix</option><option value="DINHEIRO">Dinheiro</option></select></div>
               <div class="field moneybox" id="moneyBox"><label>Onde o entregador receberá?</label><select id="recebe_dinheiro_em"><option value="">Selecione</option><option value="coleta">Na coleta</option><option value="entrega">Na entrega</option></select></div>
             </div>
             <div class="note pixnote" id="pixNote">No Pix, o entregador será enviado mediante o envio do comprovante de pagamento para a COOPEX.</div>
@@ -172,6 +177,8 @@ const API_RASTREIO_BASE = "/api/rastreamento/";
 const WPP_COMPROVANTE = "5584981110706";
 let precoAtual = null;
 let valorAInformar = true;
+const CLIENTE_LOGADO = {{ 'true' if cliente_logado else 'false' }};
+const SALDO_CLIENTE_INICIAL = {{ '%.2f'|format(saldo_cliente or 0) }};
 const $ = id => document.getElementById(id);
 function show(el){el.style.display='block'} function hide(el){el.style.display='none'}
 function onlyDigits(v){return String(v||'').replace(/\D/g,'')}
@@ -180,15 +187,137 @@ function fullWpp(num){let d=onlyDigits(num); if(d && !d.startsWith('55')) d='55'
 function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$('sec-'+name).classList.add('active')}
 document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
 function getPedidoBase(){return {cliente:{nome:$('cliente_nome').value.trim(),whatsapp:$('cliente_whatsapp').value.trim(),email:$('cliente_email').value.trim()},coleta:{contato:$('coleta_contato').value.trim(),telefone:$('coleta_telefone').value.trim(),endereco:$('coleta_endereco').value.trim(),bairro:$('coleta_bairro').value.trim(),referencia:$('coleta_ref').value.trim()},entrega:{contato:$('entrega_contato').value.trim(),telefone:$('entrega_telefone').value.trim(),endereco:$('entrega_endereco').value.trim(),bairro:$('entrega_bairro').value.trim(),referencia:$('entrega_ref').value.trim()}}}
-async function cotar(){const p=getPedidoBase(); if(!p.coleta.bairro||!p.entrega.bairro){$('valorCotacao').textContent='Informe os bairros';return} try{const r=await fetch(API_COTAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coleta:p.coleta,entrega:p.entrega,apenas_simular:true})});const j=await r.json(); if(j.ok && j.preco!==null && j.preco!==undefined){precoAtual=j.preco;valorAInformar=false;$('valorCotacao').textContent=money(j.preco)}else{precoAtual=null;valorAInformar=true;$('valorCotacao').textContent='Valor a confirmar'}}catch(e){$('valorCotacao').textContent='Valor a confirmar'}}
-['coleta_bairro','entrega_bairro'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(window.__cot);window.__cot=setTimeout(cotar,450)}));
-function updatePagamento(){const p=$('pagamento').value; if(p==='PIX'){show($('pixNote'));$('pixButtons').style.display='flex';const msg=encodeURIComponent('Olá, segue comprovante de pagamento Pix da minha solicitação COOPEX.');$('btnComprovantePix').href=`https://wa.me/${WPP_COMPROVANTE}?text=${msg}`}else{hide($('pixNote'));$('pixButtons').style.display='none'} if(p==='DINHEIRO'){show($('moneyBox'))}else{hide($('moneyBox'));$('recebe_dinheiro_em').value=''}}
+async function cotar(){
+  const p=getPedidoBase();
+  if(!p.coleta.bairro||!p.entrega.bairro){
+    $('valorCotacao').textContent='Informe os dados'; if($('origemPrecoBox')) $('origemPrecoBox').style.display='none';
+    precoAtual=null; valorAInformar=true; atualizarCreditoBox(); return;
+  }
+  try{
+    const r=await fetch(API_COTAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coleta:p.coleta,entrega:p.entrega,paradas:readParadas(),apenas_simular:true})});
+    const j=await r.json();
+    if(j.ok && j.preco!==null && j.preco!==undefined){
+      precoAtual=Number(j.preco); valorAInformar=false; $('valorCotacao').textContent=money(precoAtual);
+      if($('origemPrecoBox')){
+        if(j.origem_preco === 'km'){
+          $('origemPrecoBox').style.display='block';
+          $('origemPrecoBox').innerHTML=`Valor calculado pelo trajeto real de rua: <strong>${Number(j.distancia_km||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km</strong> x <strong>${money(j.per_km||2)}</strong> por km.`;
+        }else if(j.origem_preco === 'tabela'){
+          $('origemPrecoBox').style.display='block';
+          $('origemPrecoBox').innerHTML='Valor encontrado na tabela de preços cadastrada.';
+        }else{
+          $('origemPrecoBox').style.display='none';
+        }
+      }
+      if(CLIENTE_LOGADO && typeof j.cliente_saldo_atual !== 'undefined'){
+        window.__saldoClienteAtual=Number(j.cliente_saldo_atual||0);
+      }
+    }else{
+      precoAtual=null; valorAInformar=true; $('valorCotacao').textContent='Valor a confirmar';
+      if($('origemPrecoBox')){ $('origemPrecoBox').style.display='block'; $('origemPrecoBox').innerHTML='Não encontrei preço cadastrado e não consegui calcular o trajeto real. A COOPEX confirma o valor.'; }
+    }
+  }catch(e){precoAtual=null; valorAInformar=true; $('valorCotacao').textContent='Valor a confirmar'}
+  atualizarCreditoBox(); updatePagamento();
+}
+['coleta_endereco','coleta_bairro','entrega_endereco','entrega_bairro'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(window.__cot);window.__cot=setTimeout(cotar,450)}));
+
+function creditoMarcado(){return CLIENTE_LOGADO && $('usar_credito') && $('usar_credito').checked}
+function saldoAtualCliente(){return Number(window.__saldoClienteAtual ?? SALDO_CLIENTE_INICIAL ?? 0)}
+function faltaAposCredito(){
+  if(!creditoMarcado() || precoAtual===null || valorAInformar) return null;
+  return Math.max(0, Number(precoAtual||0) - saldoAtualCliente());
+}
+function atualizarCreditoBox(){
+  if(!CLIENTE_LOGADO || !$('creditoCalcBox')) return;
+  const box=$('creditoCalcBox');
+  if(!creditoMarcado()){box.style.display='none'; box.innerHTML=''; return;}
+  if(precoAtual===null || valorAInformar){
+    box.style.display='block';
+    box.innerHTML='O valor ainda será confirmado pela supervisão. O crédito só será abatido quando o valor estiver definido.';
+    return;
+  }
+  const saldo=saldoAtualCliente();
+  const usar=Math.min(saldo, precoAtual);
+  const falta=Math.max(0, precoAtual - saldo);
+  box.style.display='block';
+  if(falta<=0){
+    box.innerHTML=`Será usado <strong>${money(usar)}</strong> do seu crédito. Não será necessário complemento.`;
+  }else{
+    box.innerHTML=`Será usado <strong>${money(usar)}</strong> do seu crédito. Falta complementar <strong>${money(falta)}</strong> em Pix ou Dinheiro.`;
+  }
+}
+function updatePagamento(){
+  atualizarCreditoBox();
+  const p=$('pagamento').value;
+  const falta=faltaAposCredito();
+  const creditoPagaTudo = creditoMarcado() && falta!==null && falta<=0;
+
+  if(creditoPagaTudo){
+    hide($('pixNote')); $('pixButtons').style.display='none'; hide($('moneyBox')); $('recebe_dinheiro_em').value=''; return;
+  }
+
+  if(p==='PIX'){
+    show($('pixNote')); $('pixButtons').style.display='flex';
+    const msg=encodeURIComponent('Olá, segue comprovante de pagamento Pix da minha solicitação COOPEX.');
+    $('btnComprovantePix').href=`https://wa.me/${WPP_COMPROVANTE}?text=${msg}`;
+  }else{hide($('pixNote')); $('pixButtons').style.display='none'}
+
+  if(p==='DINHEIRO'){show($('moneyBox'))}else{hide($('moneyBox')); $('recebe_dinheiro_em').value=''}
+}
+if(CLIENTE_LOGADO && $('usar_credito')) $('usar_credito').addEventListener('change',updatePagamento);
 $('pagamento').addEventListener('change',updatePagamento);updatePagamento();
 let paradaN=0;
-$('btnAddParada').addEventListener('click',()=>{paradaN++; const div=document.createElement('div'); div.className='stop'; div.innerHTML=`<div class="stop-head"><span>Parada ${paradaN}</span><button class="btn danger" type="button">Remover</button></div><div class="grid"><div class="field"><label>Nome/contato da parada</label><input class="p_contato" placeholder="Quem entrega ou recebe"></div><div class="field"><label>Telefone da parada</label><input class="p_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div></div><div class="field"><label>Endereço da parada</label><input class="p_endereco" placeholder="Rua, número, complemento"></div><div class="grid"><div class="field"><label>Bairro da parada</label><input class="p_bairro" list="lista_bairros" placeholder="Ex.: Tirol"></div><div class="field"><label>Referência da parada</label><input class="p_ref" placeholder="Ex.: portaria, loja, casa"></div></div>`; div.querySelector('button').onclick=()=>div.remove(); $('paradasWrap').appendChild(div);});
+$('btnAddParada').addEventListener('click',()=>{
+  paradaN++;
+  const div=document.createElement('div');
+  div.className='stop';
+  div.innerHTML=`<div class="stop-head"><span>Parada ${paradaN}</span><button class="btn danger" type="button">Remover</button></div><div class="grid"><div class="field"><label>Nome/contato da parada</label><input class="p_contato" placeholder="Quem entrega ou recebe"></div><div class="field"><label>Telefone da parada</label><input class="p_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div></div><div class="field"><label>Endereço da parada</label><input class="p_endereco" placeholder="Rua, número, complemento"></div><div class="grid"><div class="field"><label>Bairro da parada</label><input class="p_bairro" list="lista_bairros" placeholder="Ex.: Tirol"></div><div class="field"><label>Referência da parada</label><input class="p_ref" placeholder="Ex.: portaria, loja, casa"></div></div>`;
+  div.querySelector('button').onclick=()=>{div.remove(); cotar();};
+  div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>{clearTimeout(window.__cot);window.__cot=setTimeout(cotar,650)}));
+  $('paradasWrap').appendChild(div);
+});
 function readParadas(){return Array.from(document.querySelectorAll('.stop')).map((d,i)=>({ordem:i+1,contato:d.querySelector('.p_contato').value.trim(),telefone:d.querySelector('.p_telefone').value.trim(),endereco:d.querySelector('.p_endereco').value.trim(),bairro:d.querySelector('.p_bairro').value.trim(),referencia:d.querySelector('.p_ref').value.trim()})).filter(p=>p.endereco||p.bairro||p.contato||p.telefone||p.referencia)}
-function validate(){const p=getPedidoBase(); if(!p.cliente.nome||!p.cliente.whatsapp||!p.coleta.endereco||!p.coleta.bairro||!p.entrega.endereco||!p.entrega.bairro){return 'Preencha nome, WhatsApp, coleta e entrega.'} if($('pagamento').value==='DINHEIRO'&&!$('recebe_dinheiro_em').value){return 'Informe se o dinheiro será recebido na coleta ou na entrega.'} return ''}
-$('formPedido').addEventListener('submit',async ev=>{ev.preventDefault(); hide($('okBox'));hide($('errBox')); const erro=validate(); if(erro){$('errBox').textContent=erro;show($('errBox'));return} await cotar(); const base=getPedidoBase(); const payload={...base,paradas:readParadas(),observacao:$('observacao').value.trim(),meio_pagamento:$('pagamento').value,recebe_dinheiro_em:$('recebe_dinheiro_em').value,preco_estimado:precoAtual}; $('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando...'; try{const r=await fetch(API_SOLICITAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const j=await r.json(); if(!j.ok){throw new Error(j.erro||'Não foi possível solicitar.')} $('okBox').innerHTML=`Pedido enviado com sucesso.<br>Código da entrega: <strong>${j.entrega_id}</strong><br>Valor: <strong>${j.valor_a_informar?'A confirmar':money(j.preco)}</strong>`;show($('okBox'));$('codigoConsulta').value=j.entrega_id; if($('pagamento').value==='PIX'){$('okBox').innerHTML += `<br><br><a class="btn green" target="_blank" href="https://wa.me/${WPP_COMPROVANTE}?text=${encodeURIComponent('Olá, segue comprovante Pix da entrega #' + j.entrega_id + '.')}">Enviar comprovante pelo WhatsApp</a>`}}catch(e){$('errBox').textContent=e.message;show($('errBox'))}finally{$('btnEnviar').disabled=false;$('btnEnviar').textContent='Solicitar entrega'}});
+function validate(){
+  const p=getPedidoBase();
+  if(!p.cliente.nome||!p.cliente.whatsapp||!p.coleta.endereco||!p.coleta.bairro||!p.entrega.endereco||!p.entrega.bairro){return 'Preencha nome, WhatsApp, coleta e entrega.'}
+  const falta=faltaAposCredito();
+  const precisaComplemento = !creditoMarcado() || falta===null || falta>0;
+  if(precisaComplemento && $('pagamento').value==='DINHEIRO'&&!$('recebe_dinheiro_em').value){return 'Informe se o dinheiro será recebido na coleta ou na entrega.'}
+  return ''
+}
+$('formPedido').addEventListener('submit',async ev=>{
+  ev.preventDefault(); hide($('okBox')); hide($('errBox'));
+  const erro=validate(); if(erro){$('errBox').textContent=erro;show($('errBox'));return}
+  await cotar();
+  const base=getPedidoBase();
+  const falta=faltaAposCredito();
+  const creditoPagaTudo = creditoMarcado() && falta!==null && falta<=0;
+  const payload={
+    ...base,
+    paradas:readParadas(),
+    observacao:$('observacao').value.trim(),
+    usar_credito: creditoMarcado(),
+    meio_pagamento: creditoPagaTudo ? 'CREDITO' : $('pagamento').value,
+    complemento_pagamento: creditoMarcado() && !creditoPagaTudo ? $('pagamento').value : '',
+    recebe_dinheiro_em: creditoPagaTudo ? '' : $('recebe_dinheiro_em').value,
+    preco_estimado:precoAtual
+  };
+  $('btnEnviar').disabled=true; $('btnEnviar').textContent='Enviando...';
+  try{
+    const r=await fetch(API_SOLICITAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    const j=await r.json(); if(!j.ok){throw new Error(j.erro||'Não foi possível solicitar.')}
+    let html=`Pedido enviado com sucesso.<br>Código da entrega: <strong>${j.entrega_id}</strong><br>Valor: <strong>${j.valor_a_informar?'A confirmar':money(j.preco)}</strong>`; if(j.origem_preco==='km'){html += `<br>Cálculo: <strong>${Number(j.distancia_km||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km x ${money(j.per_km||2)}</strong>`;}
+    if(j.credito_usado && Number(j.credito_usado)>0){
+      html += `<br>Crédito usado: <strong>${money(j.credito_usado)}</strong>`;
+      html += `<br>Complemento: <strong>${j.valor_complemento>0?money(j.valor_complemento):'Não necessário'}</strong>`;
+    }
+    $('okBox').innerHTML=html; show($('okBox')); $('codigoConsulta').value=j.entrega_id;
+    if((payload.meio_pagamento==='PIX') || (payload.complemento_pagamento==='PIX')){
+      $('okBox').innerHTML += `<br><br><a class="btn green" target="_blank" href="https://wa.me/${WPP_COMPROVANTE}?text=${encodeURIComponent('Olá, segue comprovante Pix da entrega #' + j.entrega_id + '.')}">Enviar comprovante pelo WhatsApp</a>`;
+    }
+  }catch(e){$('errBox').textContent=e.message;show($('errBox'))}
+  finally{$('btnEnviar').disabled=false;$('btnEnviar').textContent='Solicitar entrega'}
+});
 $('btnComprarCredito').addEventListener('click',async()=>{const nome=$('cred_nome').value.trim()||$('cliente_nome').value.trim();const whatsapp=$('cred_whatsapp').value.trim()||$('cliente_whatsapp').value.trim();const valor=$('cred_valor').value.trim(); if(!nome||!whatsapp){alert('Informe nome e WhatsApp.');return} const r=await fetch(API_CREDITO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,whatsapp,valor})});const j=await r.json(); if(j.ok){window.open(j.whatsapp_url,'_blank')}else{alert(j.erro||'Não foi possível gerar o pedido.')}});
 $('btnConsultar').addEventListener('click',async()=>{hide($('consultaBox'));hide($('consultaErr'));const cod=onlyDigits($('codigoConsulta').value);if(!cod){$('consultaErr').textContent='Informe o código da entrega.';show($('consultaErr'));return}try{const r=await fetch(API_RASTREIO_BASE+cod);const j=await r.json();if(!j.ok)throw new Error(j.erro||'Entrega não encontrada.');$('consultaBox').innerHTML=`Status: <strong>${j.status||'pendente'}</strong><br>Motoboy: <strong>${j.cooperado||'Aguardando atribuição'}</strong><br>Pagamento: <strong>${j.pagamento||'-'} • ${j.status_pagamento||'pendente'}</strong><br>Valor: <strong>${money(j.valor||0)}</strong>`;show($('consultaBox'))}catch(e){$('consultaErr').textContent=e.message;show($('consultaErr'))}});
 </script>
