@@ -2456,30 +2456,38 @@ def cliente_required(view_func):
 
 
 @app.route('/meu-credito')
-@cliente_required
 def meu_credito():
-    cid = session['cliente_id']
-    cli = Cliente.query.get_or_404(cid)
+    """
+    Tela pública de solicitação do cliente.
+    - Cliente logado vê histórico e pode usar crédito.
+    - Cliente sem cadastro consegue pedir como AVULSO.
+    Isso evita a tela branca/redirect feio dentro do quadro do site.
+    """
+    cli = None
+    movs = []
+    entregas = []
 
-    # Movimentações de crédito do cliente
-    movs = (
-        CreditoMovimento.query
-        .filter(CreditoMovimento.cliente_id == cid)
-        .order_by(CreditoMovimento.id.desc())
-        .all()
-    )
+    cid = session.get('cliente_id')
+    if session.get('is_cliente') and cid:
+        cli = Cliente.query.get(cid)
 
-    # Últimas entregas do cliente (para "comprovante")
-    entregas = (
-        Entrega.query
-        .filter(Entrega.cliente_id == cid)
-        .order_by(Entrega.data_envio.desc())
-        .limit(20)
-        .all()
-    )
-    entregas = [_enriquecer_entrega(e) for e in entregas]
+    if cli:
+        movs = (
+            CreditoMovimento.query
+            .filter(CreditoMovimento.cliente_id == cli.id)
+            .order_by(CreditoMovimento.id.desc())
+            .limit(20)
+            .all()
+        )
+        entregas = (
+            Entrega.query
+            .filter(Entrega.cliente_id == cli.id)
+            .order_by(Entrega.data_envio.desc())
+            .limit(20)
+            .all()
+        )
+        entregas = [_enriquecer_entrega(e) for e in entregas]
 
-    # Bairros disponíveis (a partir da tabela de preços)
     rotas = PrecoRota.query.all()
     bairros = sorted({
         _norm(r.origem) for r in rotas if _norm(r.origem)
@@ -2498,8 +2506,6 @@ def meu_credito():
         pix_chave=pix_chave,
         to_brasilia=to_brasilia
     )
-
-
 
 def _json_dict_safe(raw):
     if not raw:
@@ -2611,19 +2617,12 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
 
 
 @app.route('/api/cliente/cotar-entrega', methods=['POST'])
-@cliente_required
 def api_cliente_cotar_entrega():
     """
-    Recebe JSON com:
-    {
-      "coleta":  {"bairro": "...", "endereco": "...", ...},
-      "entrega": {"bairro": "...", "endereco": "...", ...}
-    }
-    e devolve o preço e meios de pagamento disponíveis.
+    Cotação pública. Não exige login para o pedido avulso.
+    Se o cliente estiver logado, também informa se pode usar crédito.
     """
-    cli = _cliente_atual()
     data = request.get_json(silent=True) or {}
-
     coleta = data.get('coleta') or {}
     entrega = data.get('entrega') or {}
 
@@ -2633,12 +2632,19 @@ def api_cliente_cotar_entrega():
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
         valor_a_informar = False
-    except Exception as e:
+        msg = 'Cotação calculada pela tabela cadastrada.'
+    except Exception:
         preco = None
         valor_a_informar = True
+        msg = 'Valor será informado pela cooperativa após análise da rota.'
 
+    cli = None
+    if session.get('is_cliente') and session.get('cliente_id'):
+        cli = Cliente.query.get(session.get('cliente_id'))
+
+    saldo = float(cli.saldo_atual or 0) if cli else 0.0
     meios = []
-    if (preco is not None) and cli.saldo_atual is not None and cli.saldo_atual >= preco:
+    if cli and (preco is not None) and saldo >= float(preco):
         meios.append('CREDITO')
     meios.extend(['PIX', 'DINHEIRO'])
 
@@ -2647,41 +2653,58 @@ def api_cliente_cotar_entrega():
         'preco': preco,
         'valor_a_informar': valor_a_informar,
         'moeda': 'BRL',
-        'cliente_saldo_atual': float(cli.saldo_atual or 0),
+        'cliente_logado': bool(cli),
+        'cliente_saldo_atual': saldo,
         'pode_usar_credito': 'CREDITO' in meios,
         'meios_pagamento': meios,
-        'msg': 'Valor será informado pela cooperativa.' if valor_a_informar else ''
+        'msg': msg
     })
 
 
+def _cliente_avulso_get_or_create(nome: str, telefone: str, email: str = ''):
+    """Cria ou reaproveita cliente sem senha para pedido avulso."""
+    nome = (nome or '').strip()
+    telefone = _norm_phone(telefone or '')
+    email = (email or '').strip().lower()
+
+    cli = None
+    if telefone:
+        cli = Cliente.query.filter(Cliente.telefone == telefone).first()
+    if not cli and email:
+        cli = Cliente.query.filter(func.lower(Cliente.email) == email.lower()).first()
+
+    if cli:
+        if nome:
+            cli.nome = nome
+        if telefone:
+            cli.telefone = telefone
+        if email and not cli.email:
+            cli.email = email
+        return cli
+
+    cli = Cliente(
+        nome=nome or 'Cliente avulso',
+        telefone=telefone or None,
+        email=email or None,
+        saldo_atual=0.0
+    )
+    db.session.add(cli)
+    db.session.flush()
+    return cli
+
+
 @app.route('/api/cliente/solicitar-entrega', methods=['POST'])
-@cliente_required
 def api_cliente_solicitar_entrega():
     """
-    Cliente faz o pedido de entrega.
-
-    JSON esperado:
-    {
-      "coleta":  {...},
-      "entrega": {...},
-      "paradas": ["Rua X - Bairro Y", ...],     # opcional
-      "meio_pagamento": "CREDITO" | "PIX" | "DINHEIRO",
-      "apenas_simular": false
-    }
-
-    Regras:
-    - Recalcula o preço pela tabela PrecoRota (coleta.bairro -> entrega.bairro).
-    - Se apenas_simular = true, NÃO cria entrega, só devolve preço e formas de pgto.
-    - Se meio_pagamento == CREDITO e saldo < preço => erro 400 (cliente escolhe outra forma).
-    - Se meio_pagamento == CREDITO e saldo suficiente => cria entrega + consome crédito
-      usando consumir_credito_em_entrega (vinculado à entrega).
+    Cria entrega tanto para cliente cadastrado quanto para pedido avulso.
+    O pedido avulso não exige senha nem cadastro prévio.
     """
-    cli = _cliente_atual()
     data = request.get_json(silent=True) or {}
 
     coleta = data.get('coleta') or {}
     entrega_dest = data.get('entrega') or {}
     paradas_lista = data.get('paradas') or []
+    observacao = (data.get('observacao') or '').strip()
 
     meio_pagamento = (data.get('meio_pagamento') or '').upper()
     apenas_simular = bool(data.get('apenas_simular'))
@@ -2689,49 +2712,67 @@ def api_cliente_solicitar_entrega():
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
     bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
 
-    # 1) Calcula preço
+    # cliente logado ou avulso
+    cli = None
+    cliente_logado = bool(session.get('is_cliente') and session.get('cliente_id'))
+    if cliente_logado:
+        cli = Cliente.query.get(session.get('cliente_id'))
+
+    if not cli:
+        avulso = data.get('cliente_avulso') or {}
+        nome_avulso = (avulso.get('nome') or data.get('nome') or '').strip()
+        telefone_avulso = (avulso.get('telefone') or data.get('telefone') or '').strip()
+        email_avulso = (avulso.get('email') or data.get('email') or '').strip().lower()
+
+        if not nome_avulso or not telefone_avulso:
+            return jsonify({
+                'ok': False,
+                'erro': 'Para pedir como avulso, informe nome e WhatsApp.'
+            }), 400
+
+        cli = _cliente_avulso_get_or_create(nome_avulso, telefone_avulso, email_avulso)
+        cliente_logado = False
+
+    # preço pela tabela; se não existir, salva valor 0 e admin precifica depois
     try:
         preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
         valor_a_informar = False
-    except Exception as e:
+    except Exception:
         preco = None
         valor_a_informar = True
 
-    # 2) Simulação apenas (não cria nada no banco)
     if apenas_simular:
+        saldo = float(cli.saldo_atual or 0) if cliente_logado else 0.0
         meios = []
-        if (preco is not None) and cli.saldo_atual is not None and cli.saldo_atual >= preco:
+        if cliente_logado and (preco is not None) and saldo >= float(preco):
             meios.append('CREDITO')
         meios.extend(['PIX', 'DINHEIRO'])
-
         return jsonify({
             'ok': True,
             'simulacao': True,
             'preco': preco,
-            'cliente_saldo_atual': float(cli.saldo_atual or 0),
+            'valor_a_informar': valor_a_informar,
+            'cliente_saldo_atual': saldo,
             'meios_pagamento': meios,
         })
 
-    # 3) Define meio de pagamento padrão
     if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
-        if (preco is not None) and cli.saldo_atual is not None and cli.saldo_atual >= preco:
-            meio_pagamento = 'CREDITO'
-        else:
-            meio_pagamento = 'PIX'
+        meio_pagamento = 'PIX'
 
-    # 4) Se for CREDITO, exige saldo total
+    # Avulso não usa crédito interno
+    if meio_pagamento == 'CREDITO' and not cliente_logado:
+        meio_pagamento = 'PIX'
+
     if meio_pagamento == 'CREDITO':
-        if (preco is None) or cli.saldo_atual is None or cli.saldo_atual < preco:
+        if (preco is None) or cli.saldo_atual is None or float(cli.saldo_atual or 0) < float(preco):
             return jsonify({
                 'ok': False,
-                'erro': 'Crédito insuficiente para essa entrega. Escolha outra forma de pagamento.'
+                'erro': 'Crédito insuficiente para essa entrega. Escolha PIX ou dinheiro.'
             }), 400
 
     try:
-        # Sempre salva data_envio como UTC naive (padrão do sistema)
         data_envio_utc = datetime.utcnow()
 
-        # JSONs com origem / destino / paradas
         origem_json_dict = {
             "endereco": coleta.get('endereco'),
             "bairro": bairro_coleta,
@@ -2752,47 +2793,55 @@ def api_cliente_solicitar_entrega():
             "recebe_dinheiro_em": data.get('recebe_dinheiro_em'),
         }
         paradas_json_dict = {
-            "stops": paradas_lista,
-            "observacao": observacao
+            "stops": paradas_lista if isinstance(paradas_lista, list) else [],
+            "observacao": observacao,
+            "servico": data.get('servico'),
+            "pedido_avulso": not cliente_logado,
         }
 
-        # Campos da Entrega compatíveis com o seu model atual
-        campos = {
-            'cliente_id': cli.id,
-            'cliente': cli.nome,          # texto para o admin enxergar
-            'bairro': bairro_entrega,     # você só tem 1 campo de bairro na Entrega
-            'valor': float(preco or 0),
-            'data_envio': data_envio_utc,
-            'status': 'pendente',
-            'status_pagamento': 'pago' if meio_pagamento == 'CREDITO' else 'pendente',
-            'pagamento': meio_pagamento.capitalize(),  # "Credito", "Pix", "Dinheiro"
-            'origem_json': json.dumps(origem_json_dict, ensure_ascii=False),
-            'destino_json': json.dumps(destino_json_dict, ensure_ascii=False),
-            'paradas_json': json.dumps(paradas_json_dict, ensure_ascii=False),
-            # status_corrida fica com default 'pendente'
-        }
+        nome_para_admin = cli.nome or 'Cliente avulso'
+        if not cliente_logado:
+            nome_para_admin = f'{nome_para_admin} (Avulso)'
 
-        entrega_obj = Entrega(**campos)
+        entrega_obj = Entrega(
+            cliente_id=cli.id,
+            cliente=nome_para_admin,
+            bairro=bairro_entrega or '-',
+            valor=float(preco or 0),
+            data_envio=data_envio_utc,
+            status='pendente',
+            status_pagamento='pago' if meio_pagamento == 'CREDITO' else 'pendente',
+            pagamento=meio_pagamento.capitalize(),
+            origem_json=json.dumps(origem_json_dict, ensure_ascii=False),
+            destino_json=json.dumps(destino_json_dict, ensure_ascii=False),
+            paradas_json=json.dumps(paradas_json_dict, ensure_ascii=False),
+        )
         db.session.add(entrega_obj)
-        db.session.flush()  # garante entrega_obj.id
+        db.session.flush()
 
-        # 5) Se pagamento for CREDITO, consome o crédito de forma oficial
         if meio_pagamento == 'CREDITO':
-            # Aqui usamos sua função nova, que:
-            # - cria CreditoMovimento debito
-            # - atualiza saldo do cliente via atualizar_saldo_credito_cliente
-            # - preenche entrega.credito_usado, status_pagamento, pagamento, etc.
             valor_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
             if valor_consumido <= 0:
-                # Se por algum motivo não conseguiu consumir, aborta com erro
                 db.session.rollback()
                 return jsonify({
                     'ok': False,
-                    'erro': 'Falha ao consumir crédito. Tente novamente ou escolha outra forma de pagamento.'
+                    'erro': 'Falha ao consumir crédito. Tente novamente ou escolha PIX/dinheiro.'
                 }), 500
 
         db.session.commit()
 
+        try:
+            emitir_atualizacao_entrega(entrega_obj, 'criada')
+        except Exception:
+            pass
+
+    except IntegrityError as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro de integridade ao solicitar entrega')
+        return jsonify({
+            'ok': False,
+            'erro': 'Não foi possível salvar o pedido. Verifique se o e-mail já está cadastrado ou tente informar apenas o WhatsApp.'
+        }), 400
     except Exception as e:
         db.session.rollback()
         current_app.logger.exception('Erro ao solicitar entrega')
@@ -2809,8 +2858,8 @@ def api_cliente_solicitar_entrega():
         'status_pagamento': entrega_obj.status_pagamento,
         'comprovante_url': url_for('cliente_comprovante', entrega_id=entrega_obj.id),
         'valor_a_informar': valor_a_informar,
+        'msg': 'Pedido enviado com sucesso. A COOPEX vai acompanhar a solicitação.'
     })
-
 
 
 # =========================================================
