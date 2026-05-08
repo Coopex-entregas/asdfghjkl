@@ -1,257 +1,196 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Solicitar entrega · COOPEX</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Sistema de solicitação COOPEX</title>
   <style>
     :root{
-      --royal:#003399;
-      --royal2:#0757d8;
-      --green:#008060;
+      --royal:#0047C7;
+      --royal2:#003399;
+      --green:#058c62;
       --bg:#f3f7ff;
       --card:#ffffff;
-      --text:#0b1b3d;
+      --line:#cfe0ff;
+      --text:#071d49;
       --muted:#667085;
-      --line:#d8e5ff;
-      --danger:#c62828;
-      --warn:#b7791f;
-      --shadow:0 18px 45px rgba(0,51,153,.14);
+      --danger:#d92d20;
+      --warn:#b54708;
+      --shadow:0 14px 34px rgba(0,51,153,.13);
+      --radius:18px;
     }
     *{box-sizing:border-box}
-    html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;background:var(--bg);color:var(--text)}
-    body{padding:14px}
-    .app{max-width:1120px;margin:0 auto;display:grid;grid-template-columns:1.15fr .85fr;gap:16px;align-items:start}
-    .hero,.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}
-    .hero-top{padding:20px 22px;background:linear-gradient(135deg,var(--royal),var(--royal2));color:#fff}
-    .hero-top small{display:block;font-weight:800;opacity:.9;letter-spacing:.3px;text-transform:uppercase}
-    .hero-top h1{margin:6px 0 0;font-size:27px;line-height:1.12}
-    .hero-body{padding:18px 22px}
-    .tabs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:16px}
-    .tab{border:1px solid var(--line);background:#f8fbff;color:var(--royal);border-radius:14px;padding:12px 10px;font-weight:900;cursor:pointer}
-    .tab.active{background:var(--royal);color:#fff;border-color:var(--royal)}
+    html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg)}
+    body{padding:10px}
+    .wrap{width:100%;max-width:1160px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:20px;overflow:hidden;box-shadow:var(--shadow)}
+    .top{background:linear-gradient(135deg,var(--royal2),var(--royal));color:#fff;padding:18px 22px}
+    .top small{display:block;font-size:13px;font-weight:900;letter-spacing:.6px;text-transform:uppercase;opacity:.95}
+    .top h1{margin:6px 0 0;font-size:25px;line-height:1.05;font-weight:900}
+    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;padding:14px 22px 8px;background:#fff}
+    .tab{height:46px;border-radius:14px;border:1px solid var(--line);background:#f8fbff;color:var(--royal2);font-weight:900;cursor:pointer;font-size:14px}
+    .tab.active{background:var(--royal2);color:#fff;border-color:var(--royal2)}
+    .content{padding:10px 22px 22px}
     .section{display:none}.section.active{display:block}
-    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
-    .field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.field label{font-size:13px;color:var(--muted);font-weight:800}.req{color:var(--danger)}
-    input,select,textarea{width:100%;border:1px solid var(--line);background:#fff;border-radius:13px;padding:13px 12px;font-size:15px;font-weight:700;color:var(--text);outline:none}
-    textarea{min-height:90px;resize:vertical;font-weight:600}input:focus,select:focus,textarea:focus{border-color:var(--royal2);box-shadow:0 0 0 4px rgba(0,51,153,.10)}
-    .box-title{font-size:15px;font-weight:950;margin:14px 0 10px;color:var(--royal);display:flex;align-items:center;gap:8px}.box-title span{background:#eaf1ff;border:1px solid var(--line);width:28px;height:28px;border-radius:10px;display:grid;place-items:center}
-    .notice{border:1px dashed #9db8ff;background:#f6f9ff;color:#10377e;border-radius:15px;padding:12px 14px;font-size:14px;font-weight:700;line-height:1.35;margin:10px 0}
-    .actions{display:flex;gap:10px;margin-top:12px}.btn{border:0;border-radius:15px;padding:14px 16px;font-weight:950;cursor:pointer;text-align:center;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px}.btn-primary{background:linear-gradient(135deg,var(--royal2),var(--royal));color:#fff;box-shadow:0 12px 26px rgba(0,51,153,.24)}.btn-ghost{background:#fff;color:var(--royal);border:1px solid var(--line)}.btn-green{background:var(--green);color:#fff}.btn:disabled{opacity:.55;cursor:not-allowed}
-    .result{display:none;margin-top:12px;border-radius:16px;padding:14px;border:1px solid var(--line);background:#f8fbff}.result.ok{display:block;border-color:#b7e4d1;background:#f1fff8}.result.warn{display:block;border-color:#f4d28d;background:#fffaf0}.result.err{display:block;border-color:#ffc6c6;background:#fff5f5;color:#9b1c1c}.result strong{display:block;margin-bottom:3px}
-    .side{display:flex;flex-direction:column;gap:16px}.side .card{padding:18px}.side h2{margin:0 0 10px;font-size:19px;color:var(--royal)}.muted{color:var(--muted);font-size:14px;line-height:1.4}.status{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}.stat{border:1px solid var(--line);border-radius:15px;padding:12px;background:#f8fbff}.stat small{display:block;color:var(--muted);font-weight:900}.stat strong{font-size:18px}.history{display:flex;flex-direction:column;gap:10px}.item{border:1px solid var(--line);border-radius:14px;padding:11px;background:#fff}.item strong{display:block}.item small{color:var(--muted);line-height:1.35}.hidden{display:none!important}.topline{display:flex;justify-content:space-between;gap:10px;align-items:center;margin-bottom:12px}.pill{display:inline-flex;align-items:center;border-radius:999px;background:#eaf1ff;color:var(--royal);padding:8px 11px;font-size:12px;font-weight:950}.logout{font-size:13px;color:var(--royal);font-weight:800;text-decoration:none}.auth-form{max-width:520px}.mini-link{color:var(--royal);font-weight:800;text-decoration:none}.loading{position:fixed;inset:auto 14px 14px auto;background:#0b1b3d;color:#fff;border-radius:999px;padding:10px 13px;font-size:13px;font-weight:900;display:none;z-index:50}.loading.on{display:block}
-    @media(max-width:860px){body{padding:10px}.app{grid-template-columns:1fr}.hero-top h1{font-size:23px}.grid,.grid3{grid-template-columns:1fr}.tabs{grid-template-columns:1fr}.actions{flex-direction:column}.side{order:-1}.side .card.account{display:block}.status{grid-template-columns:1fr 1fr}}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+    .grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:12px}
+    .box{border:1px solid var(--line);border-radius:var(--radius);padding:14px;background:#fff;box-shadow:0 8px 18px rgba(0,51,153,.05);margin-bottom:12px}
+    .legend{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-weight:900;color:var(--royal2)}
+    .num{width:26px;height:26px;border-radius:9px;background:#e9f1ff;border:1px solid var(--line);display:grid;place-items:center;color:var(--royal2);font-weight:900}
+    label{display:block;font-size:13px;color:#56627a;font-weight:900;margin:0 0 6px}
+    input,select,textarea{width:100%;border:1px solid var(--line);border-radius:12px;min-height:43px;padding:10px 12px;font-size:14px;font-weight:700;color:var(--text);outline:none;background:#fff}
+    textarea{height:74px;resize:vertical}
+    input:focus,select:focus,textarea:focus{border-color:var(--royal);box-shadow:0 0 0 4px rgba(0,71,199,.10)}
+    .field{margin-bottom:10px}.req{color:var(--danger)}
+    .btnrow{display:flex;gap:10px;flex-wrap:wrap;margin-top:10px}
+    .btn{border:0;border-radius:13px;min-height:44px;padding:0 16px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:14px}
+    .primary{background:var(--royal2);color:#fff}.green{background:var(--green);color:#fff}.ghost{background:#f8fbff;color:var(--royal2);border:1px solid var(--line)}.danger{background:#fff1f0;color:var(--danger);border:1px solid #ffd2cc}
+    .note{border:1px dashed #9bbcff;background:#f7fbff;border-radius:14px;padding:10px 12px;font-size:13px;line-height:1.35;font-weight:800;color:#003399;margin-bottom:12px}
+    .pixnote{border-color:#9fe3ca;background:#effdf7;color:#075e45;display:none}
+    .moneybox{display:none}.quote{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:14px;padding:12px;background:#f8fbff;font-weight:900;margin-bottom:12px}.quote span{color:var(--muted);font-size:13px}.quote strong{font-size:19px;color:var(--royal2)}
+    .stop{border:1px solid var(--line);border-radius:16px;padding:12px;margin-top:10px;background:#fbfdff}.stop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-weight:900;color:var(--royal2)}
+    .result{display:none;border:1px solid #b7ebc6;background:#f0fff4;color:#064e3b;border-radius:14px;padding:12px;font-weight:800;line-height:1.35;margin-top:12px}.error{display:none;border:1px solid #ffd2cc;background:#fff1f0;color:#9f1b14;border-radius:14px;padding:12px;font-weight:800;margin-top:12px}
+    .compact{max-width:720px}.hidden{display:none!important}
+    @media(max-width:760px){body{padding:0}.wrap{border-radius:0;border-left:0;border-right:0}.top{padding:15px}.top h1{font-size:21px}.tabs{grid-template-columns:1fr 1fr;padding:12px}.content{padding:8px 12px 18px}.grid,.grid-3{grid-template-columns:1fr}.btnrow .btn{width:100%}}
   </style>
 </head>
 <body>
-  <div class="loading" id="loading">Processando…</div>
-  <main class="app">
-    <section class="hero">
-      <div class="hero-top">
-        <small>Sistema de solicitação COOPEX</small>
-        <h1>Peça sua entrega pelo celular ou pelo computador</h1>
-      </div>
-      <div class="hero-body">
-        <div class="tabs" id="tabs">
-          <button class="tab active" data-tab="avulso" type="button">Pedir como avulso</button>
-          <button class="tab" data-tab="login" type="button">Entrar</button>
-          <button class="tab" data-tab="cadastro" type="button">Cadastrar</button>
-        </div>
+  <main class="wrap">
+    <header class="top">
+      <small>Sistema de solicitação COOPEX</small>
+      <h1>Peça sua entrega pelo celular ou pelo computador</h1>
+    </header>
 
-        <section id="tab-avulso" class="section active">
-          <div class="notice">
-            O cliente pode pedir sem cadastro. Basta informar nome, WhatsApp, coleta e entrega. O cadastro é opcional para acompanhar histórico e usar crédito.
-          </div>
-          <form id="pedidoForm" autocomplete="off">
-            {% if not cli %}
-            <div class="box-title"><span>1</span> Dados do cliente</div>
-            <div class="grid">
-              <div class="field"><label>Nome do cliente <b class="req">*</b></label><input id="av_nome" name="av_nome" placeholder="Ex.: Maria Silva" required></div>
-              <div class="field"><label>WhatsApp <b class="req">*</b></label><input id="av_telefone" name="av_telefone" inputmode="tel" placeholder="(84) 9 9999-9999" required></div>
+    <nav class="tabs">
+      <button class="tab active" type="button" data-tab="pedido">Pedir como avulso</button>
+      <button class="tab" type="button" data-tab="credito">Comprar crédito</button>
+      <button class="tab" type="button" data-tab="consulta">Consultar pedido</button>
+      <button class="tab" type="button" data-tab="acesso">Entrar/Cadastrar</button>
+    </nav>
+
+    <section class="content">
+      <div id="sec-pedido" class="section active">
+        <form id="formPedido" autocomplete="off">
+          <div class="box">
+            <div class="legend"><span class="num">1</span>Dados do cliente</div>
+            <div class="grid-3">
+              <div class="field"><label>Nome do cliente <span class="req">*</span></label><input id="cliente_nome" required placeholder="Ex.: Maria Silva" value="{{ cli.nome if cli else '' }}"></div>
+              <div class="field"><label>WhatsApp <span class="req">*</span></label><input id="cliente_whatsapp" required inputmode="tel" placeholder="(84) 9 9999-9999"></div>
+              <div class="field"><label>E-mail opcional</label><input id="cliente_email" inputmode="email" placeholder="email@exemplo.com" value="{{ cli.email if cli and cli.email else '' }}"></div>
             </div>
-            <div class="field"><label>E-mail opcional</label><input id="av_email" name="av_email" inputmode="email" placeholder="email@exemplo.com"></div>
-            {% endif %}
+          </div>
 
-            <div class="box-title"><span>2</span> Coleta</div>
+          <div class="box">
+            <div class="legend"><span class="num">2</span>Coleta</div>
             <div class="grid">
               <div class="field"><label>Nome/contato na coleta</label><input id="coleta_contato" placeholder="Quem vai entregar o item"></div>
-              <div class="field"><label>Telefone da coleta</label><input id="coleta_fone" inputmode="tel" placeholder="WhatsApp ou telefone"></div>
+              <div class="field"><label>Telefone da coleta</label><input id="coleta_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div>
             </div>
-            <div class="field"><label>Endereço de coleta <b class="req">*</b></label><input id="coleta_end" placeholder="Rua, número, complemento" required></div>
+            <div class="field"><label>Endereço de coleta <span class="req">*</span></label><input id="coleta_endereco" required placeholder="Rua, número, complemento"></div>
             <div class="grid">
-              <div class="field"><label>Bairro de coleta <b class="req">*</b></label><input id="coleta_bairro" list="bairros" required></div>
+              <div class="field"><label>Bairro de coleta <span class="req">*</span></label><input id="coleta_bairro" required list="lista_bairros" placeholder="Ex.: Candelária"></div>
               <div class="field"><label>Referência da coleta</label><input id="coleta_ref" placeholder="Ex.: portaria, loja, casa"></div>
             </div>
+          </div>
 
-            <div class="box-title"><span>3</span> Entrega</div>
+          <div class="box">
+            <div class="legend"><span class="num">3</span>Entrega</div>
             <div class="grid">
-              <div class="field"><label>Nome/contato que recebe</label><input id="entrega_contato" placeholder="Quem vai receber"></div>
-              <div class="field"><label>Telefone de quem recebe</label><input id="entrega_fone" inputmode="tel" placeholder="WhatsApp ou telefone"></div>
+              <div class="field"><label>Nome/contato na entrega</label><input id="entrega_contato" placeholder="Quem vai receber"></div>
+              <div class="field"><label>Telefone da entrega</label><input id="entrega_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div>
             </div>
-            <div class="field"><label>Endereço de entrega <b class="req">*</b></label><input id="entrega_end" placeholder="Rua, número, complemento" required></div>
+            <div class="field"><label>Endereço de entrega <span class="req">*</span></label><input id="entrega_endereco" required placeholder="Rua, número, complemento"></div>
             <div class="grid">
-              <div class="field"><label>Bairro de entrega <b class="req">*</b></label><input id="entrega_bairro" list="bairros" required></div>
-              <div class="field"><label>Referência da entrega</label><input id="entrega_ref" placeholder="Ex.: próximo a..."></div>
+              <div class="field"><label>Bairro de entrega <span class="req">*</span></label><input id="entrega_bairro" required list="lista_bairros" placeholder="Ex.: Tirol"></div>
+              <div class="field"><label>Referência da entrega</label><input id="entrega_ref" placeholder="Ex.: próximo ao mercado"></div>
             </div>
+          </div>
 
-            <div class="box-title"><span>4</span> Detalhes</div>
-            <div class="grid3">
-              <div class="field"><label>Tipo de serviço</label><select id="servico"><option value="entrega">Entrega comum</option><option value="documento">Documento</option><option value="compra">Compra/coleta</option><option value="outro">Outro</option></select></div>
-              <div class="field"><label>Pagamento</label><select id="pagamento"><option value="PIX">Pix</option><option value="DINHEIRO">Dinheiro</option>{% if cli %}<option value="CREDITO">Crédito COOPEX</option>{% endif %}</select></div>
-              <div class="field"><label>Parada opcional</label><input id="parada" placeholder="Endereço/bairro da parada"></div>
-            </div>
-            <div class="field"><label>Observação</label><textarea id="obs" placeholder="Informe detalhes importantes para a supervisão"></textarea></div>
-            <datalist id="bairros">{% for b in bairros %}<option value="{{ b }}">{% endfor %}</datalist>
-            <div class="actions">
-              <button class="btn btn-ghost" type="button" id="btnCotar">Verificar valor</button>
-              <button class="btn btn-primary" type="submit" id="btnEnviar">Solicitar agora</button>
-            </div>
-            <div class="result" id="resultado"></div>
-          </form>
-        </section>
+          <div class="box">
+            <div class="legend"><span class="num">4</span>Paradas adicionais</div>
+            <div class="btnrow"><button class="btn ghost" type="button" id="btnAddParada">+ Adicionar parada</button></div>
+            <div id="paradasWrap"></div>
+          </div>
 
-        <section id="tab-login" class="section">
-          <form method="POST" action="{{ url_for('login') }}" class="auth-form" autocomplete="off">
-            <input type="hidden" name="next" value="{{ url_for('meu_credito') }}">
-            <div class="box-title"><span>✓</span> Acessar conta</div>
-            <div class="field"><label>Usuário ou e-mail</label><input name="usuario" required placeholder="Digite seu usuário ou e-mail"></div>
-            <div class="field"><label>Senha</label><input type="password" name="senha" required placeholder="Digite sua senha"></div>
-            <button class="btn btn-primary" type="submit">Entrar</button>
-            <p class="muted">Não é obrigatório entrar para pedir. Use “Pedir como avulso” quando quiser solicitar sem cadastro.</p>
-          </form>
-        </section>
+          <div class="box">
+            <div class="legend"><span class="num">5</span>Pagamento e observação</div>
+            <div class="quote"><span>Valor pela tabela de preços</span><strong id="valorCotacao">Informe os bairros</strong></div>
+            <div class="grid">
+              <div class="field"><label>Forma de pagamento <span class="req">*</span></label><select id="pagamento" required><option value="PIX">Pix</option><option value="DINHEIRO">Dinheiro</option>{% if cliente_logado %}<option value="CREDITO">Usar crédito disponível</option>{% endif %}</select></div>
+              <div class="field moneybox" id="moneyBox"><label>Onde o entregador receberá?</label><select id="recebe_dinheiro_em"><option value="">Selecione</option><option value="coleta">Na coleta</option><option value="entrega">Na entrega</option></select></div>
+            </div>
+            <div class="note pixnote" id="pixNote">No Pix, o entregador será enviado mediante o envio do comprovante de pagamento para a COOPEX.</div>
+            <div class="btnrow" id="pixButtons" style="display:none"><a class="btn green" id="btnComprovantePix" target="_blank" rel="noopener">Enviar comprovante de pagamento</a></div>
+            <div class="field"><label>Observação</label><textarea id="observacao" placeholder="Detalhes do pedido, cuidado com o item, melhor horário, etc."></textarea></div>
+            <div class="btnrow"><button class="btn primary" type="submit" id="btnEnviar">Solicitar entrega</button></div>
+            <div class="result" id="okBox"></div><div class="error" id="errBox"></div>
+          </div>
+        </form>
+      </div>
 
-        <section id="tab-cadastro" class="section">
-          <form method="POST" action="{{ url_for('cliente_primeiro_acesso') }}" class="auth-form" autocomplete="off">
-            <input type="hidden" name="perfil" value="cliente">
-            <input type="hidden" name="next" value="{{ url_for('meu_credito') }}">
-            <div class="box-title"><span>+</span> Criar cadastro de cliente</div>
-            <div class="field"><label>Nome completo</label><input name="nome" required></div>
-            <div class="grid">
-              <div class="field"><label>E-mail</label><input name="email" inputmode="email" required></div>
-              <div class="field"><label>WhatsApp</label><input name="telefone" inputmode="tel" required></div>
-            </div>
-            <div class="field"><label>Nome de usuário</label><input name="usuario" required></div>
-            <div class="grid">
-              <div class="field"><label>Senha</label><input type="password" name="senha" minlength="6" required></div>
-              <div class="field"><label>Confirmar senha</label><input type="password" name="senha_conf" minlength="6" required></div>
-            </div>
-            <button class="btn btn-green" type="submit">Criar conta</button>
-          </form>
-        </section>
+      <div id="sec-credito" class="section compact">
+        <div class="box">
+          <div class="legend"><span class="num">$</span>Comprar crédito antecipado</div>
+          <div class="grid">
+            <div class="field"><label>Nome <span class="req">*</span></label><input id="cred_nome" placeholder="Nome do cliente" value="{{ cli.nome if cli else '' }}"></div>
+            <div class="field"><label>WhatsApp <span class="req">*</span></label><input id="cred_whatsapp" inputmode="tel" placeholder="(84) 9 9999-9999"></div>
+          </div>
+          <div class="field"><label>Valor que deseja comprar</label><input id="cred_valor" inputmode="decimal" placeholder="Ex.: 100,00"></div>
+          <div class="btnrow"><button class="btn green" type="button" id="btnComprarCredito">Pedir compra de crédito pelo WhatsApp</button></div>
+        </div>
+      </div>
+
+      <div id="sec-consulta" class="section compact">
+        <div class="box">
+          <div class="legend"><span class="num">?</span>Consultar pedido</div>
+          <div class="field"><label>Código da entrega</label><input id="codigoConsulta" inputmode="numeric" placeholder="Ex.: 33196"></div>
+          <div class="btnrow"><button class="btn ghost" type="button" id="btnConsultar">Consultar status</button></div>
+          <div class="result" id="consultaBox"></div><div class="error" id="consultaErr"></div>
+        </div>
+      </div>
+
+      <div id="sec-acesso" class="section compact">
+        <div class="box">
+          <div class="legend"><span class="num">✓</span>Acesso do cliente</div>
+          <div class="note">O cadastro é opcional. Cliente cadastrado pode acompanhar histórico e usar crédito disponível.</div>
+          <div class="btnrow">
+            <a class="btn primary" href="{{ url_for('login') }}">Entrar</a>
+            <a class="btn ghost" href="{{ url_for('cliente_primeiro_acesso') }}">Cadastrar</a>
+          </div>
+          {% if cliente_logado %}<div class="note" style="margin-top:12px">Cliente logado. Saldo disponível: R$ {{ '%.2f'|format(saldo_cliente or 0)|replace('.', ',') }}</div>{% endif %}
+        </div>
       </div>
     </section>
-
-    <aside class="side">
-      <div class="card account">
-        <div class="topline">
-          <span class="pill">COOPEX Entregas</span>
-          {% if cli %}<a class="logout" href="{{ url_for('cliente_logout') }}">Sair</a>{% endif %}
-        </div>
-        <h2>{% if cli %}Olá, {{ cli.nome }}{% else %}Atendimento rápido{% endif %}</h2>
-        <p class="muted">Use o formulário para enviar sua solicitação. A supervisão receberá no sistema e poderá atribuir um cooperado.</p>
-        <div class="status">
-          <div class="stat"><small>Pedido</small><strong>Avulso ou cadastrado</strong></div>
-          <div class="stat"><small>Acesso</small><strong>Celular e PC</strong></div>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Consultar pedido</h2>
-        <div class="field"><label>Código da entrega</label><input id="codigoBusca" inputmode="numeric" placeholder="Ex.: 123"></div>
-        <button class="btn btn-ghost" type="button" id="btnBuscar">Consultar status</button>
-        <div class="result" id="rastResultado"></div>
-      </div>
-
-      {% if cli %}
-      <div class="card">
-        <h2>Últimas entregas</h2>
-        <div class="history">
-          {% for e in entregas %}
-          <div class="item">
-            <strong>#{{ e.id }} — R$ {{ '%.2f'|format(e.valor or 0)|replace('.', ',') }}</strong>
-            <small>{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else 'Data não informada' }} • {{ e.status or 'pendente' }} • {{ e.pagamento or '-' }}</small>
-          </div>
-          {% else %}
-          <p class="muted">Nenhuma entrega registrada ainda.</p>
-          {% endfor %}
-        </div>
-      </div>
-      {% endif %}
-    </aside>
   </main>
 
+  <datalist id="lista_bairros">{% for b in bairros %}<option value="{{ b }}">{% endfor %}</datalist>
+
 <script>
-const $ = (id)=>document.getElementById(id);
-const moneyBR = (n)=> Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-const logged = {{ 'true' if cli else 'false' }};
-const API = {
-  cotar: "{{ url_for('api_cliente_cotar_entrega') }}",
-  solicitar: "{{ url_for('api_cliente_solicitar_entrega') }}",
-  trackBase: "{{ url_for('api_rastreamento', codigo=0) }}"
-};
-function load(on){ $('loading').classList.toggle('on', !!on); }
-function showResult(el, type, title, msg){ el.className='result '+type; el.innerHTML='<strong>'+title+'</strong><div>'+msg+'</div>'; }
-function tab(name){ document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name)); document.querySelectorAll('.section').forEach(s=>s.classList.remove('active')); $('tab-'+name).classList.add('active'); }
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>tab(b.dataset.tab)));
-function payload(){
-  const paradas = $('parada').value.trim() ? [{endereco:$('parada').value.trim()}] : [];
-  const p = {
-    cliente_avulso: logged ? null : {nome:$('av_nome').value.trim(), telefone:$('av_telefone').value.trim(), email:$('av_email').value.trim()},
-    servico:$('servico').value,
-    coleta:{endereco:$('coleta_end').value.trim(), bairro:$('coleta_bairro').value.trim(), ref:$('coleta_ref').value.trim(), contato:$('coleta_contato').value.trim(), telefone:$('coleta_fone').value.trim()},
-    entrega:{endereco:$('entrega_end').value.trim(), bairro:$('entrega_bairro').value.trim(), ref:$('entrega_ref').value.trim(), contato:$('entrega_contato').value.trim(), telefone:$('entrega_fone').value.trim()},
-    paradas:paradas,
-    observacao:$('obs').value.trim(),
-    meio_pagamento:$('pagamento').value
-  };
-  return p;
-}
-async function postJSON(url, data){ const r=await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)}); const j=await r.json().catch(()=>({ok:false,erro:'Resposta inválida do servidor'})); if(!r.ok && j.ok!==false) j.ok=false; return j; }
-async function cotar(){
-  const form=$('pedidoForm'); if(!form.reportValidity()) return null;
-  load(true);
-  try{
-    const r=await postJSON(API.cotar, payload());
-    if(r.ok){
-      if(r.valor_a_informar) showResult($('resultado'),'warn','Valor a confirmar','A rota foi enviada sem preço automático. A COOPEX informará o valor pela supervisão.');
-      else showResult($('resultado'),'ok','Valor encontrado','Valor previsto: '+moneyBR(r.preco));
-      return r;
-    }
-    showResult($('resultado'),'err','Erro', r.erro||r.msg||'Não foi possível cotar.');
-    return null;
-  }catch(e){ showResult($('resultado'),'err','Falha de conexão','Verifique sua internet e tente novamente.'); return null; }
-  finally{ load(false); }
-}
-$('btnCotar').addEventListener('click', cotar);
-$('pedidoForm').addEventListener('submit', async (ev)=>{
-  ev.preventDefault();
-  const form=$('pedidoForm'); if(!form.reportValidity()) return;
-  load(true); $('btnEnviar').disabled=true;
-  try{
-    const r=await postJSON(API.solicitar, payload());
-    if(r.ok){
-      const valor = r.valor_a_informar ? 'Valor será informado pela COOPEX.' : ('Valor: '+moneyBR(r.preco));
-      showResult($('resultado'),'ok','Pedido enviado','Código da entrega: <b>'+r.entrega_id+'</b><br>'+valor+'<br>Guarde esse código para consultar o status.');
-      form.reset();
-    }else{
-      showResult($('resultado'),'err','Não foi possível enviar', r.erro||r.msg||'Confira os dados e tente novamente.');
-    }
-  }catch(e){ showResult($('resultado'),'err','Falha de conexão','Não foi possível falar com o servidor.'); }
-  finally{ load(false); $('btnEnviar').disabled=false; }
-});
-$('btnBuscar').addEventListener('click', async ()=>{
-  const cod=$('codigoBusca').value.trim(); if(!cod){ showResult($('rastResultado'),'err','Informe o código','Digite o número da entrega.'); return; }
-  load(true);
-  try{
-    const url=API.trackBase.replace(/0$/, cod);
-    const r=await fetch(url).then(x=>x.json());
-    if(!r.ok){ showResult($('rastResultado'),'err','Não encontrado', r.erro||'Código não localizado.'); return; }
-    const coop = r.cooperado ? r.cooperado : 'Aguardando cooperado';
-    showResult($('rastResultado'),'ok','Status da entrega','#'+r.entrega_id+' • '+(r.status||'pendente')+'<br>Motoboy: '+coop+'<br>Pagamento: '+(r.pagamento||'-')+' • '+(r.status_pagamento||'pendente'));
-  }catch(e){ showResult($('rastResultado'),'err','Falha de conexão','Tente novamente.'); }
-  finally{ load(false); }
-});
+const API_COTAR = "{{ url_for('api_cliente_cotar_entrega') }}";
+const API_SOLICITAR = "{{ url_for('api_cliente_solicitar_entrega') }}";
+const API_CREDITO = "{{ url_for('api_cliente_solicitar_credito') }}";
+const API_RASTREIO_BASE = "/api/rastreamento/";
+const WPP_COMPROVANTE = "5584981110706";
+let precoAtual = null;
+let valorAInformar = true;
+const $ = id => document.getElementById(id);
+function show(el){el.style.display='block'} function hide(el){el.style.display='none'}
+function onlyDigits(v){return String(v||'').replace(/\D/g,'')}
+function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function fullWpp(num){let d=onlyDigits(num); if(d && !d.startsWith('55')) d='55'+d; return d}
+function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$('sec-'+name).classList.add('active')}
+document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
+function getPedidoBase(){return {cliente:{nome:$('cliente_nome').value.trim(),whatsapp:$('cliente_whatsapp').value.trim(),email:$('cliente_email').value.trim()},coleta:{contato:$('coleta_contato').value.trim(),telefone:$('coleta_telefone').value.trim(),endereco:$('coleta_endereco').value.trim(),bairro:$('coleta_bairro').value.trim(),referencia:$('coleta_ref').value.trim()},entrega:{contato:$('entrega_contato').value.trim(),telefone:$('entrega_telefone').value.trim(),endereco:$('entrega_endereco').value.trim(),bairro:$('entrega_bairro').value.trim(),referencia:$('entrega_ref').value.trim()}}}
+async function cotar(){const p=getPedidoBase(); if(!p.coleta.bairro||!p.entrega.bairro){$('valorCotacao').textContent='Informe os bairros';return} try{const r=await fetch(API_COTAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coleta:p.coleta,entrega:p.entrega,apenas_simular:true})});const j=await r.json(); if(j.ok && j.preco!==null && j.preco!==undefined){precoAtual=j.preco;valorAInformar=false;$('valorCotacao').textContent=money(j.preco)}else{precoAtual=null;valorAInformar=true;$('valorCotacao').textContent='Valor a confirmar'}}catch(e){$('valorCotacao').textContent='Valor a confirmar'}}
+['coleta_bairro','entrega_bairro'].forEach(id=>$(id).addEventListener('input',()=>{clearTimeout(window.__cot);window.__cot=setTimeout(cotar,450)}));
+function updatePagamento(){const p=$('pagamento').value; if(p==='PIX'){show($('pixNote'));$('pixButtons').style.display='flex';const msg=encodeURIComponent('Olá, segue comprovante de pagamento Pix da minha solicitação COOPEX.');$('btnComprovantePix').href=`https://wa.me/${WPP_COMPROVANTE}?text=${msg}`}else{hide($('pixNote'));$('pixButtons').style.display='none'} if(p==='DINHEIRO'){show($('moneyBox'))}else{hide($('moneyBox'));$('recebe_dinheiro_em').value=''}}
+$('pagamento').addEventListener('change',updatePagamento);updatePagamento();
+let paradaN=0;
+$('btnAddParada').addEventListener('click',()=>{paradaN++; const div=document.createElement('div'); div.className='stop'; div.innerHTML=`<div class="stop-head"><span>Parada ${paradaN}</span><button class="btn danger" type="button">Remover</button></div><div class="grid"><div class="field"><label>Nome/contato da parada</label><input class="p_contato" placeholder="Quem entrega ou recebe"></div><div class="field"><label>Telefone da parada</label><input class="p_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div></div><div class="field"><label>Endereço da parada</label><input class="p_endereco" placeholder="Rua, número, complemento"></div><div class="grid"><div class="field"><label>Bairro da parada</label><input class="p_bairro" list="lista_bairros" placeholder="Ex.: Tirol"></div><div class="field"><label>Referência da parada</label><input class="p_ref" placeholder="Ex.: portaria, loja, casa"></div></div>`; div.querySelector('button').onclick=()=>div.remove(); $('paradasWrap').appendChild(div);});
+function readParadas(){return Array.from(document.querySelectorAll('.stop')).map((d,i)=>({ordem:i+1,contato:d.querySelector('.p_contato').value.trim(),telefone:d.querySelector('.p_telefone').value.trim(),endereco:d.querySelector('.p_endereco').value.trim(),bairro:d.querySelector('.p_bairro').value.trim(),referencia:d.querySelector('.p_ref').value.trim()})).filter(p=>p.endereco||p.bairro||p.contato||p.telefone||p.referencia)}
+function validate(){const p=getPedidoBase(); if(!p.cliente.nome||!p.cliente.whatsapp||!p.coleta.endereco||!p.coleta.bairro||!p.entrega.endereco||!p.entrega.bairro){return 'Preencha nome, WhatsApp, coleta e entrega.'} if($('pagamento').value==='DINHEIRO'&&!$('recebe_dinheiro_em').value){return 'Informe se o dinheiro será recebido na coleta ou na entrega.'} return ''}
+$('formPedido').addEventListener('submit',async ev=>{ev.preventDefault(); hide($('okBox'));hide($('errBox')); const erro=validate(); if(erro){$('errBox').textContent=erro;show($('errBox'));return} await cotar(); const base=getPedidoBase(); const payload={...base,paradas:readParadas(),observacao:$('observacao').value.trim(),meio_pagamento:$('pagamento').value,recebe_dinheiro_em:$('recebe_dinheiro_em').value,preco_estimado:precoAtual}; $('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando...'; try{const r=await fetch(API_SOLICITAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const j=await r.json(); if(!j.ok){throw new Error(j.erro||'Não foi possível solicitar.')} $('okBox').innerHTML=`Pedido enviado com sucesso.<br>Código da entrega: <strong>${j.entrega_id}</strong><br>Valor: <strong>${j.valor_a_informar?'A confirmar':money(j.preco)}</strong>`;show($('okBox'));$('codigoConsulta').value=j.entrega_id; if($('pagamento').value==='PIX'){$('okBox').innerHTML += `<br><br><a class="btn green" target="_blank" href="https://wa.me/${WPP_COMPROVANTE}?text=${encodeURIComponent('Olá, segue comprovante Pix da entrega #' + j.entrega_id + '.')}">Enviar comprovante pelo WhatsApp</a>`}}catch(e){$('errBox').textContent=e.message;show($('errBox'))}finally{$('btnEnviar').disabled=false;$('btnEnviar').textContent='Solicitar entrega'}});
+$('btnComprarCredito').addEventListener('click',async()=>{const nome=$('cred_nome').value.trim()||$('cliente_nome').value.trim();const whatsapp=$('cred_whatsapp').value.trim()||$('cliente_whatsapp').value.trim();const valor=$('cred_valor').value.trim(); if(!nome||!whatsapp){alert('Informe nome e WhatsApp.');return} const r=await fetch(API_CREDITO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,whatsapp,valor})});const j=await r.json(); if(j.ok){window.open(j.whatsapp_url,'_blank')}else{alert(j.erro||'Não foi possível gerar o pedido.')}});
+$('btnConsultar').addEventListener('click',async()=>{hide($('consultaBox'));hide($('consultaErr'));const cod=onlyDigits($('codigoConsulta').value);if(!cod){$('consultaErr').textContent='Informe o código da entrega.';show($('consultaErr'));return}try{const r=await fetch(API_RASTREIO_BASE+cod);const j=await r.json();if(!j.ok)throw new Error(j.erro||'Entrega não encontrada.');$('consultaBox').innerHTML=`Status: <strong>${j.status||'pendente'}</strong><br>Motoboy: <strong>${j.cooperado||'Aguardando atribuição'}</strong><br>Pagamento: <strong>${j.pagamento||'-'} • ${j.status_pagamento||'pendente'}</strong><br>Valor: <strong>${money(j.valor||0)}</strong>`;show($('consultaBox'))}catch(e){$('consultaErr').textContent=e.message;show($('consultaErr'))}});
 </script>
 </body>
 </html>
