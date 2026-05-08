@@ -2660,47 +2660,130 @@ def _ponto_bairro(ponto):
 
 
 def _ponto_endereco(ponto):
+    """Monta endereço completo para geocodificação/rota real."""
     if not isinstance(ponto, dict):
         return ''
-    endereco = (ponto.get('endereco') or ponto.get('address') or '').strip()
+
+    endereco = (ponto.get('endereco') or ponto.get('logradouro') or ponto.get('rua') or ponto.get('address') or '').strip()
+    numero = (ponto.get('numero') or ponto.get('n') or '').strip()
     bairro = _ponto_bairro(ponto)
-    if endereco and bairro and _bairro_key(bairro) not in _bairro_key(endereco):
-        return f"{endereco}, {bairro}, Natal, RN, Brasil"
+    cidade = (ponto.get('cidade') or ponto.get('municipio') or ponto.get('city') or ponto.get('town') or '').strip()
+    uf = (ponto.get('uf') or ponto.get('estado') or 'RN').strip()
+    cep = (ponto.get('cep') or ponto.get('postcode') or '').strip()
+
+    partes = []
     if endereco:
-        return f"{endereco}, Natal, RN, Brasil"
+        partes.append(f"{endereco}, {numero}" if numero else endereco)
     if bairro:
-        return f"{bairro}, Natal, RN, Brasil"
-    return ''
+        partes.append(bairro)
+    if cidade:
+        partes.append(cidade)
+    if uf:
+        partes.append(uf)
+    if cep:
+        partes.append(cep)
+    partes.append('Brasil')
+
+    texto = ', '.join([x for x in partes if x])
+    return texto.strip(', ')
 
 
-def _geocodificar_endereco_osm(endereco):
-    """Geocodifica usando Nominatim/OpenStreetMap com timeout curto."""
-    endereco = (endereco or '').strip()
-    if not endereco:
-        return None
+def _nominatim_search(q, limit=5, addressdetails=1):
+    """Busca endereço no Nominatim, priorizando Natal/Parnamirim/RN."""
+    q = (q or '').strip()
+    if not q:
+        return []
     try:
         from urllib.parse import urlencode
         from urllib.request import Request, urlopen
         params = urlencode({
-            'q': endereco,
+            'q': q,
             'format': 'json',
-            'limit': 1,
+            'limit': int(limit),
             'countrycodes': 'br',
-            'addressdetails': 0,
+            'addressdetails': int(addressdetails),
+            'dedupe': 1,
+            # Região aproximada Natal/Parnamirim/Grande Natal.
+            'viewbox': '-35.36,-5.68,-35.10,-6.02',
+            'bounded': 0,
         })
         url = 'https://nominatim.openstreetmap.org/search?' + params
         req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0 contato@coopex'})
-        with urlopen(req, timeout=5) as resp:
+        with urlopen(req, timeout=6) as resp:
             arr = json.loads(resp.read().decode('utf-8') or '[]')
-        if not arr:
-            return None
-        return (float(arr[0]['lat']), float(arr[0]['lon']))
+        return arr if isinstance(arr, list) else []
     except Exception as e:
         try:
-            current_app.logger.warning(f'Falha geocodificar endereço: {e}')
+            current_app.logger.warning(f'Falha buscar endereço Nominatim: {e}')
         except Exception:
             pass
+        return []
+
+
+def _geocodificar_endereco_osm(endereco):
+    """Geocodifica usando endereço completo. Retorna (lat,lng) ou None."""
+    endereco = (endereco or '').strip()
+    if not endereco:
         return None
+    arr = _nominatim_search(endereco, limit=1, addressdetails=0)
+    if not arr:
+        # Segunda tentativa reforçando RN, sem forçar Natal.
+        arr = _nominatim_search(f"{endereco}, Rio Grande do Norte, Brasil", limit=1, addressdetails=0)
+    if not arr:
+        return None
+    try:
+        return (float(arr[0]['lat']), float(arr[0]['lon']))
+    except Exception:
+        return None
+
+
+def _nominatim_addr_value(addr, *keys):
+    if not isinstance(addr, dict):
+        return ''
+    for k in keys:
+        v = addr.get(k)
+        if v:
+            return str(v)
+    return ''
+
+
+@app.route('/api/cliente/buscar-endereco', methods=['GET'])
+def api_cliente_buscar_endereco():
+    """Autocomplete público de endereço para o Meu Crédito."""
+    q = (request.args.get('q') or '').strip()
+    if len(q) < 3:
+        return jsonify({'ok': True, 'resultados': []})
+
+    # Ajuda o Nominatim a localizar dentro do RN quando o usuário digita só rua/bairro.
+    busca = q if any(x in _bairro_key(q) for x in ['brasil', 'rio grande do norte', 'rn', 'natal', 'parnamirim']) else f"{q}, RN, Brasil"
+    arr = _nominatim_search(busca, limit=6, addressdetails=1)
+
+    resultados = []
+    vistos = set()
+    for item in arr:
+        addr = item.get('address') or {}
+        estado = _nominatim_addr_value(addr, 'state')
+        uf = 'RN' if ('rio grande do norte' in _bairro_key(estado) or not estado) else estado
+        cidade = _nominatim_addr_value(addr, 'city', 'town', 'municipality', 'village', 'county')
+        bairro = _nominatim_addr_value(addr, 'suburb', 'neighbourhood', 'quarter', 'city_district', 'borough')
+        rua = _nominatim_addr_value(addr, 'road', 'pedestrian', 'residential', 'footway', 'path')
+        cep = _nominatim_addr_value(addr, 'postcode')
+        display = item.get('display_name') or ', '.join([x for x in [rua, bairro, cidade, uf] if x])
+        key = (_bairro_key(display), str(item.get('lat')), str(item.get('lon')))
+        if key in vistos:
+            continue
+        vistos.add(key)
+        resultados.append({
+            'display': display,
+            'endereco': rua or display.split(',')[0],
+            'bairro': bairro,
+            'cidade': cidade,
+            'uf': uf,
+            'cep': cep,
+            'lat': item.get('lat'),
+            'lng': item.get('lon'),
+        })
+    return jsonify({'ok': True, 'resultados': resultados})
 
 
 def _rota_real_osrm_km(coordenadas):
@@ -2951,7 +3034,11 @@ def api_cliente_solicitar_entrega():
 
         origem_json_dict = {
             "endereco": coleta.get('endereco'),
+            "numero": coleta.get('numero'),
             "bairro": bairro_coleta,
+            "cidade": coleta.get('cidade'),
+            "uf": coleta.get('uf') or 'RN',
+            "cep": coleta.get('cep'),
             "ref": coleta.get('referencia') or coleta.get('ref'),
             "lat": coleta.get('lat'),
             "lng": coleta.get('lng'),
@@ -2964,7 +3051,11 @@ def api_cliente_solicitar_entrega():
         }
         destino_json_dict = {
             "endereco": entrega_dest.get('endereco'),
+            "numero": entrega_dest.get('numero'),
             "bairro": bairro_entrega,
+            "cidade": entrega_dest.get('cidade'),
+            "uf": entrega_dest.get('uf') or 'RN',
+            "cep": entrega_dest.get('cep'),
             "ref": entrega_dest.get('referencia') or entrega_dest.get('ref'),
             "lat": entrega_dest.get('lat'),
             "lng": entrega_dest.get('lng'),
