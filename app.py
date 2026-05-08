@@ -1793,17 +1793,18 @@ else:
 
 
 def get_per_km():
-    # ordem: DB -> ENV -> 3.00
+    # ordem: DB -> ENV -> 2.00
+    # Esse valor aparece/é alterado na aba Tabelas e Rotas pelo endpoint /api/perkm.
     v = _get_param("per_km", None)
     if v is not None:
         try:
-            return float(v)
+            return float(str(v).replace(',', '.'))
         except Exception:
             pass
     try:
-        return float(os.getenv("PER_KM", "3.00"))
+        return float(os.getenv("PER_KM", "2.00"))
     except Exception:
-        return 3.00
+        return 2.00
 
 
 def set_per_km(novo_valor: float):
@@ -2601,19 +2602,20 @@ def _bairro_key(s):
     return s
 
 
-def _calcular_preco_bairros(bairro_origem, bairro_destino):
+def _buscar_preco_rota_tabela(bairro_origem, bairro_destino):
     """
-    Calcula o preço pela tabela PrecoRota.
-    Corrigido para comparar sem acento, sem diferença de maiúscula/minúscula
-    e também aceitar a rota inversa quando a tabela foi cadastrada em apenas um sentido.
+    Busca preço cadastrado na tabela PrecoRota.
+    Retorna float ou None. Compara sem acento, sem diferença de maiúscula/minúscula
+    e aceita rota inversa quando só foi cadastrada uma direção.
     """
     if not bairro_origem or not bairro_destino:
-        raise ValueError('Bairros de coleta e entrega são obrigatórios.')
+        return None
 
     bo = _norm(bairro_origem)
     bd = _norm(bairro_destino)
+    if not bo or not bd:
+        return None
 
-    # 1) busca direta no banco, rápida
     rota = (
         PrecoRota.query
         .filter(func.lower(PrecoRota.origem) == bo.lower(),
@@ -2621,19 +2623,14 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
         .first()
     )
 
-    # 2) se não achar, compara normalizado em Python
-    #    isso resolve diferença de acento, espaços e cadastro com letras diferentes.
     if not rota:
         bo_key = _bairro_key(bo)
         bd_key = _bairro_key(bd)
         todas = PrecoRota.query.all()
-
         for r in todas:
             if _bairro_key(r.origem) == bo_key and _bairro_key(r.destino) == bd_key:
                 rota = r
                 break
-
-        # 3) fallback: aceita rota inversa quando só foi cadastrada uma direção.
         if not rota:
             for r in todas:
                 if _bairro_key(r.origem) == bd_key and _bairro_key(r.destino) == bo_key:
@@ -2641,18 +2638,179 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
                     break
 
     if not rota:
-        raise ValueError('Não existe preço configurado para essa rota.')
+        return None
 
-    preco = None
     for campo in ('valor', 'preco', 'preco_total'):
         if hasattr(rota, campo):
-            preco = getattr(rota, campo)
-            break
+            return float(getattr(rota, campo) or 0)
+    return None
 
+
+def _calcular_preco_bairros(bairro_origem, bairro_destino):
+    preco = _buscar_preco_rota_tabela(bairro_origem, bairro_destino)
     if preco is None:
-        raise RuntimeError('Campo de preço não encontrado na tabela de preços.')
-
+        raise ValueError('Não existe preço configurado para essa rota.')
     return float(preco or 0)
+
+
+def _ponto_bairro(ponto):
+    if not isinstance(ponto, dict):
+        return ''
+    return (ponto.get('bairro') or ponto.get('bairro_origem') or ponto.get('bairro_destino') or '').strip()
+
+
+def _ponto_endereco(ponto):
+    if not isinstance(ponto, dict):
+        return ''
+    endereco = (ponto.get('endereco') or ponto.get('address') or '').strip()
+    bairro = _ponto_bairro(ponto)
+    if endereco and bairro and _bairro_key(bairro) not in _bairro_key(endereco):
+        return f"{endereco}, {bairro}, Natal, RN, Brasil"
+    if endereco:
+        return f"{endereco}, Natal, RN, Brasil"
+    if bairro:
+        return f"{bairro}, Natal, RN, Brasil"
+    return ''
+
+
+def _geocodificar_endereco_osm(endereco):
+    """Geocodifica usando Nominatim/OpenStreetMap com timeout curto."""
+    endereco = (endereco or '').strip()
+    if not endereco:
+        return None
+    try:
+        from urllib.parse import urlencode
+        from urllib.request import Request, urlopen
+        params = urlencode({
+            'q': endereco,
+            'format': 'json',
+            'limit': 1,
+            'countrycodes': 'br',
+            'addressdetails': 0,
+        })
+        url = 'https://nominatim.openstreetmap.org/search?' + params
+        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0 contato@coopex'})
+        with urlopen(req, timeout=5) as resp:
+            arr = json.loads(resp.read().decode('utf-8') or '[]')
+        if not arr:
+            return None
+        return (float(arr[0]['lat']), float(arr[0]['lon']))
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha geocodificar endereço: {e}')
+        except Exception:
+            pass
+        return None
+
+
+def _rota_real_osrm_km(coordenadas):
+    """Calcula rota de rua pelo OSRM. coordenadas: [(lat, lng), ...]."""
+    if not coordenadas or len(coordenadas) < 2:
+        return None
+    try:
+        from urllib.request import Request, urlopen
+        coords = ';'.join([f"{float(lng)},{float(lat)}" for lat, lng in coordenadas])
+        url = f'https://router.project-osrm.org/route/v1/driving/{coords}?overview=false&alternatives=false&steps=false'
+        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0'})
+        with urlopen(req, timeout=7) as resp:
+            data = json.loads(resp.read().decode('utf-8') or '{}')
+        routes = data.get('routes') or []
+        if not routes:
+            return None
+        distancia_m = float(routes[0].get('distance') or 0)
+        if distancia_m <= 0:
+            return None
+        return distancia_m / 1000.0
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha calcular rota OSRM: {e}')
+        except Exception:
+            pass
+        return None
+
+
+def _calcular_rota_real_km(coleta, entrega, paradas=None):
+    pontos = []
+    if isinstance(coleta, dict):
+        pontos.append(coleta)
+    for p in (paradas or []):
+        if isinstance(p, dict) and (_ponto_endereco(p) or _ponto_bairro(p)):
+            pontos.append(p)
+    if isinstance(entrega, dict):
+        pontos.append(entrega)
+
+    coordenadas = []
+    for p in pontos:
+        lat = p.get('lat') if isinstance(p, dict) else None
+        lng = p.get('lng') if isinstance(p, dict) else None
+        try:
+            if lat is not None and lng is not None and str(lat) != '' and str(lng) != '':
+                coordenadas.append((float(lat), float(lng)))
+                continue
+        except Exception:
+            pass
+        coord = _geocodificar_endereco_osm(_ponto_endereco(p))
+        if not coord:
+            return None
+        coordenadas.append(coord)
+
+    return _rota_real_osrm_km(coordenadas)
+
+
+def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None):
+    pontos = [coleta] + [p for p in (paradas or []) if isinstance(p, dict) and _ponto_bairro(p)] + [entrega]
+    if len(pontos) < 2:
+        return None
+    total = 0.0
+    for i in range(len(pontos) - 1):
+        b1 = _ponto_bairro(pontos[i])
+        b2 = _ponto_bairro(pontos[i + 1])
+        preco = _buscar_preco_rota_tabela(b1, b2)
+        if preco is None:
+            return None
+        total += float(preco or 0)
+    return round(total, 2)
+
+
+def _calcular_cotacao_entrega(coleta, entrega, paradas=None):
+    """
+    Ordem correta:
+    1) Tenta preço cadastrado na tabela/rotas.
+       - Sem parada: origem -> destino.
+       - Com parada: soma os trechos cadastrados.
+    2) Se faltar cadastro, calcula rota real de rua pelo OSRM e multiplica pelo R$/km
+       configurado em Tabelas e Rotas (/api/perkm).
+    3) Se não conseguir calcular a rota, retorna valor a confirmar.
+    """
+    paradas = paradas or []
+    preco_tabela = _calcular_preco_por_trechos_tabela(coleta, entrega, paradas)
+    if preco_tabela is not None:
+        return {
+            'preco': float(preco_tabela),
+            'valor_a_informar': False,
+            'origem_preco': 'tabela',
+            'distancia_km': None,
+            'per_km': float(get_per_km()),
+        }
+
+    distancia_km = _calcular_rota_real_km(coleta, entrega, paradas)
+    per_km = float(get_per_km())
+    if distancia_km is not None and distancia_km > 0:
+        return {
+            'preco': round(float(distancia_km) * per_km, 2),
+            'valor_a_informar': False,
+            'origem_preco': 'km',
+            'distancia_km': round(float(distancia_km), 2),
+            'per_km': per_km,
+        }
+
+    return {
+        'preco': None,
+        'valor_a_informar': True,
+        'origem_preco': 'confirmar',
+        'distancia_km': None,
+        'per_km': per_km,
+    }
 
 
 @app.route('/api/cliente/cotar-entrega', methods=['POST'])
@@ -2663,20 +2821,17 @@ def api_cliente_cotar_entrega():
 
     coleta = data.get('coleta') or {}
     entrega = data.get('entrega') or {}
+    paradas_lista = data.get('paradas') or []
+    if not isinstance(paradas_lista, list):
+        paradas_lista = []
 
-    bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
-    bairro_entrega = entrega.get('bairro') or entrega.get('bairro_destino')
-
-    try:
-        preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
-        valor_a_informar = False
-    except Exception:
-        preco = None
-        valor_a_informar = True
+    cot = _calcular_cotacao_entrega(coleta, entrega, paradas_lista)
+    preco = cot.get('preco')
+    valor_a_informar = bool(cot.get('valor_a_informar'))
 
     saldo = float(cli.saldo_atual or 0) if cli else 0.0
     meios = []
-    if cli and (preco is not None) and saldo >= float(preco or 0):
+    if cli and (preco is not None) and saldo > 0:
         meios.append('CREDITO')
     meios.extend(['PIX', 'DINHEIRO'])
 
@@ -2684,10 +2839,15 @@ def api_cliente_cotar_entrega():
         'ok': True,
         'preco': preco,
         'valor_a_informar': valor_a_informar,
+        'origem_preco': cot.get('origem_preco'),
+        'distancia_km': cot.get('distancia_km'),
+        'per_km': cot.get('per_km'),
         'moeda': 'BRL',
         'cliente_logado': bool(cli),
         'cliente_saldo_atual': saldo,
         'pode_usar_credito': 'CREDITO' in meios,
+        'valor_credito_utilizavel': float(min(float(saldo or 0), float(preco or 0))) if preco is not None else 0.0,
+        'valor_complemento': float(max(0, float(preco or 0) - float(saldo or 0))) if preco is not None else None,
         'meios_pagamento': meios,
         'msg': 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
     })
@@ -2718,24 +2878,23 @@ def api_cliente_solicitar_entrega():
 
     observacao = (data.get('observacao') or '').strip()
     meio_pagamento = (data.get('meio_pagamento') or '').upper().replace('É', 'E')
+    usar_credito = bool(data.get('usar_credito')) or meio_pagamento == 'CREDITO'
+    complemento_pagamento = (data.get('complemento_pagamento') or '').upper().replace('É', 'E')
     apenas_simular = bool(data.get('apenas_simular'))
     recebe_dinheiro_em = (data.get('recebe_dinheiro_em') or '').strip().lower()
 
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
     bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
 
-    try:
-        preco = _calcular_preco_bairros(bairro_coleta, bairro_entrega)
-        valor_a_informar = False
-    except Exception:
-        preco = None
-        valor_a_informar = True
+    cot = _calcular_cotacao_entrega(coleta, entrega_dest, paradas_lista)
+    preco = cot.get('preco')
+    valor_a_informar = bool(cot.get('valor_a_informar'))
 
     saldo = float(cli.saldo_atual or 0) if cli else 0.0
 
     if apenas_simular:
         meios = []
-        if cli and (preco is not None) and saldo >= float(preco or 0):
+        if cli and (preco is not None) and saldo > 0:
             meios.append('CREDITO')
         meios.extend(['PIX', 'DINHEIRO'])
         return jsonify({
@@ -2743,22 +2902,48 @@ def api_cliente_solicitar_entrega():
             'simulacao': True,
             'preco': preco,
             'valor_a_informar': valor_a_informar,
+            'origem_preco': cot.get('origem_preco'),
+            'distancia_km': cot.get('distancia_km'),
+            'per_km': cot.get('per_km'),
             'cliente_logado': bool(cli),
             'cliente_saldo_atual': saldo,
+            'valor_credito_utilizavel': float(min(float(saldo or 0), float(preco or 0))) if preco is not None else 0.0,
+            'valor_complemento': float(max(0, float(preco or 0) - float(saldo or 0))) if preco is not None else None,
             'meios_pagamento': meios,
             'msg': 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
         })
 
     if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
         meio_pagamento = 'PIX'
+    if complemento_pagamento not in ('PIX', 'DINHEIRO'):
+        complemento_pagamento = ''
 
-    if meio_pagamento == 'CREDITO':
+    valor_credito_usar = 0.0
+    valor_complemento = float(preco or 0)
+
+    if usar_credito:
         if not cli:
             return jsonify({'ok': False, 'erro': 'Para usar crédito é necessário entrar como cliente cadastrado.'}), 400
-        if (preco is None) or saldo < float(preco or 0):
-            return jsonify({'ok': False, 'erro': 'Crédito insuficiente para essa entrega. Escolha Pix ou Dinheiro.'}), 400
+        if preco is None:
+            return jsonify({'ok': False, 'erro': 'Para usar crédito, o valor da entrega precisa estar definido.'}), 400
+        if saldo <= 0:
+            return jsonify({'ok': False, 'erro': 'Você não possui crédito disponível para usar nesta entrega.'}), 400
 
-    if meio_pagamento == 'DINHEIRO' and recebe_dinheiro_em not in ('coleta', 'entrega'):
+        valor_credito_usar = float(min(float(saldo or 0), float(preco or 0)))
+        valor_complemento = float(max(0, float(preco or 0) - valor_credito_usar))
+
+        if valor_complemento <= 0:
+            meio_pagamento = 'CREDITO'
+            complemento_pagamento = ''
+        else:
+            if not complemento_pagamento:
+                complemento_pagamento = meio_pagamento if meio_pagamento in ('PIX', 'DINHEIRO') else ''
+            if complemento_pagamento not in ('PIX', 'DINHEIRO'):
+                return jsonify({'ok': False, 'erro': 'Crédito insuficiente. Escolha Pix ou Dinheiro para complementar.'}), 400
+            meio_pagamento = 'CREDITO_' + complemento_pagamento
+
+    exige_dinheiro = (meio_pagamento == 'DINHEIRO') or (usar_credito and complemento_pagamento == 'DINHEIRO')
+    if exige_dinheiro and recebe_dinheiro_em not in ('coleta', 'entrega'):
         return jsonify({'ok': False, 'erro': 'Informe se o dinheiro será recebido na coleta ou na entrega.'}), 400
 
     try:
@@ -2785,14 +2970,21 @@ def api_cliente_solicitar_entrega():
             "lng": entrega_dest.get('lng'),
             "contato": entrega_dest.get('contato'),
             "telefone": entrega_dest.get('telefone'),
-            "recebe_dinheiro_em": recebe_dinheiro_em if meio_pagamento == 'DINHEIRO' else None,
+            "recebe_dinheiro_em": recebe_dinheiro_em if (meio_pagamento == 'DINHEIRO' or meio_pagamento == 'CREDITO_DINHEIRO') else None,
         }
         paradas_json_dict = {
             "stops": paradas_lista,
             "observacao": observacao,
             "valor_a_informar": bool(valor_a_informar),
             "preco_estimado": float(preco or 0),
+            "origem_preco": cot.get('origem_preco'),
+            "distancia_km": cot.get('distancia_km'),
+            "per_km": cot.get('per_km'),
             "meio_pagamento": meio_pagamento,
+            "usar_credito": bool(usar_credito),
+            "credito_previsto": float(valor_credito_usar or 0),
+            "complemento_pagamento": complemento_pagamento,
+            "valor_complemento": float(valor_complemento or 0),
         }
 
         campos = {
@@ -2802,8 +2994,13 @@ def api_cliente_solicitar_entrega():
             'valor': float(preco or 0),
             'data_envio': data_envio_utc,
             'status': 'pendente',
-            'status_pagamento': 'pago' if meio_pagamento == 'CREDITO' else 'pendente',
-            'pagamento': meio_pagamento.capitalize(),
+            'status_pagamento': 'pago' if (usar_credito and valor_complemento <= 0) else 'pendente',
+            'pagamento': (
+                'Crédito' if meio_pagamento == 'CREDITO' else
+                'Crédito + Pix' if meio_pagamento == 'CREDITO_PIX' else
+                'Crédito + Dinheiro' if meio_pagamento == 'CREDITO_DINHEIRO' else
+                meio_pagamento.capitalize()
+            ),
             'origem_json': json.dumps(origem_json_dict, ensure_ascii=False),
             'destino_json': json.dumps(destino_json_dict, ensure_ascii=False),
             'paradas_json': json.dumps(paradas_json_dict, ensure_ascii=False),
@@ -2813,11 +3010,19 @@ def api_cliente_solicitar_entrega():
         db.session.add(entrega_obj)
         db.session.flush()
 
-        if meio_pagamento == 'CREDITO':
-            valor_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
-            if valor_consumido <= 0:
+        credito_consumido = Decimal('0.00')
+        if usar_credito:
+            credito_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=False)
+            if credito_consumido <= 0:
                 db.session.rollback()
-                return jsonify({'ok': False, 'erro': 'Falha ao consumir crédito. Tente Pix ou Dinheiro.'}), 500
+                return jsonify({'ok': False, 'erro': 'Falha ao consumir crédito. Escolha Pix ou Dinheiro.'}), 500
+
+            entrega_obj = Entrega.query.get(entrega_obj.id)
+            if Decimal(str(credito_consumido)) >= Decimal(str(preco or 0)):
+                entrega_obj.status_pagamento = 'pago'
+            else:
+                entrega_obj.status_pagamento = 'pendente'
+            db.session.add(entrega_obj)
 
         db.session.commit()
 
@@ -2830,10 +3035,15 @@ def api_cliente_solicitar_entrega():
         'ok': True,
         'entrega_id': entrega_obj.id,
         'preco': preco,
+        'origem_preco': cot.get('origem_preco'),
+        'distancia_km': cot.get('distancia_km'),
+        'per_km': cot.get('per_km'),
         'meio_pagamento': meio_pagamento,
         'status_pagamento': entrega_obj.status_pagamento,
         'valor_a_informar': valor_a_informar,
         'cliente_logado': bool(cli),
+        'credito_usado': float(entrega_obj.credito_usado or 0),
+        'valor_complemento': float(max(0, float(preco or 0) - float(entrega_obj.credito_usado or 0))) if preco is not None else 0.0,
         'msg': 'Pedido enviado para a supervisão.',
     })
 
