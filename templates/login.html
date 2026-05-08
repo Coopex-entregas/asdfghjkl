@@ -26,7 +26,6 @@
             <button class="btn btn-primary" type="submit">Entrar</button>
           </form>
           <a class="link" href="{{ url_for('meu_credito') }}">Pedir entrega sem cadastro</a>
-          <p class="muted">Administrador, cooperado e cliente usam a mesma tela. O cliente também pode pedir como avulso sem criar conta.</p>
         </section>
         <section class="pane" id="pane-signup">
           <form method="POST" action="{{ url_for('cliente_primeiro_acesso') }}" autocomplete="off">
