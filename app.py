@@ -4510,7 +4510,11 @@ def cooperado_finalizar_entrega():
     if hasattr(entrega, "hora_finalizada"):
         entrega.hora_finalizada = datetime.utcnow()
 
-    # status_pagamento continua pendente, motoboy marca depois
+    # Marca como entregue/recebido no campo principal usado pelo cliente/admin.
+    entrega.status = 'recebido'
+    entrega.status_corrida = 'finalizada'
+    entrega.recebido_por = recebida_por
+    # status_pagamento continua conforme regra financeira do admin
     db.session.commit()
 
     entrega_dict = {
@@ -6821,8 +6825,11 @@ def atribuir_cooperado(id):
             entrega.cooperado_id = coop.id
             entrega.data_atribuida = datetime.utcnow()
 
-            # chave do fluxo: entrega atribuída, aguardando aceite do cooperado
-            entrega.status_corrida = 'pendente'
+            # fluxo atualizado: ao atribuir no admin, a entrega já aparece para o cooperado.
+            # Não exige confirmação de coleta; o cooperado só precisa marcar quando ENTREGOU.
+            entrega.status_corrida = 'aceita'
+            if (entrega.status or '').lower() in ('', 'pendente', 'aguardando', 'aguardando entregador', 'criado'):
+                entrega.status = 'em_andamento'
         else:
             entrega.cooperado_id = None
             entrega.data_atribuida = None
@@ -7155,7 +7162,7 @@ def _pedido_to_json(entrega):
     status = entrega.status or ''
     if not entrega.cooperado and _norm(status) not in ('entregue', 'cancelado'):
         status = 'aguardando entregador'
-    elif entrega.cooperado and _norm(status) in ('pendente', 'aguardando', 'aguardando entregador', 'criado'):
+    elif entrega.cooperado and _norm(status) in ('pendente', 'aguardando', 'aguardando entregador', 'criado', 'em andamento', 'em_andamento'):
         status = 'entregador atribuído'
     return {
         'id': entrega.id,
@@ -7360,7 +7367,7 @@ def api_pedidos_tracking(pedido_id):
     status = e.status or ''
     if not e.cooperado and _norm(status) not in ('entregue', 'cancelado'):
         status = 'aguardando entregador'
-    elif e.cooperado and _norm(status) in ('pendente', 'aguardando entregador', 'criado'):
+    elif e.cooperado and _norm(status) in ('pendente', 'aguardando', 'aguardando entregador', 'criado', 'em andamento', 'em_andamento'):
         status = 'entregador atribuído'
     return jsonify(ok=True,
         id=e.id,
@@ -7379,17 +7386,26 @@ def api_pedidos_tracking(pedido_id):
 def cliente_comprovante_publico(entrega_id):
     entrega = Entrega.query.get_or_404(entrega_id)
     if not _entrega_esta_paga(entrega):
-        return render_template_string('<h2>Comprovante indisponível</h2><p>O comprovante só pode ser emitido após a entrega constar como paga.</p>'), 403
+        return render_template_string("""
+<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comprovante indisponível</title>
+<style>body{font-family:Arial,sans-serif;background:#f3f7ff;margin:0;padding:20px;color:#071d49}.box{max-width:520px;margin:40px auto;background:#fff;border:1px solid #cfe0ff;border-radius:18px;padding:22px;box-shadow:0 12px 34px rgba(0,51,153,.13)}h2{margin:0 0 8px;color:#003399}.btn{display:inline-flex;margin-top:14px;background:#003399;color:white;text-decoration:none;padding:12px 16px;border-radius:12px;font-weight:900}</style>
+</head><body><div class="box"><h2>Comprovante indisponível</h2><p>O comprovante só pode ser emitido depois que a entrega constar como paga no sistema.</p><a class="btn" href="javascript:window.close()">Fechar</a></div></body></html>
+"""), 403
+
     e = _enriquecer_entrega(entrega)
-    logo = url_for('static', filename='logo.png')
+    logo = url_for('static', filename='logo_coopex.png')
+    data_str = to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-'
+    hora_str = to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-'
+    valor_fmt = ('%.2f' % float(e.valor or 0)).replace('.', ',')
+    cooperado_nome = e.cooperado.nome if e.cooperado else 'Sem Cooperado'
     return render_template_string("""
 <!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Comprovante COOPEX #{{ e.id }}</title>
-<style>body{font-family:Arial,sans-serif;background:#f3f7ff;margin:0;padding:20px;color:#071d49}.card{max-width:760px;margin:auto;background:white;border:1px solid #cfe0ff;border-radius:18px;padding:22px;box-shadow:0 12px 34px rgba(0,51,153,.13)}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:2px solid #003399;padding-bottom:14px}.brand{font-size:28px;font-weight:900;color:#003399}.ok{background:#e9fff4;color:#067647;border:1px solid #a7f3d0;padding:8px 12px;border-radius:999px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.box{border:1px solid #d6e2ff;border-radius:14px;padding:12px;background:#f8fbff}.box small{display:block;color:#667085;font-weight:800;margin-bottom:4px}.valor{font-size:24px;font-weight:900;color:#003399}.footer{margin-top:18px;font-size:12px;color:#667085;text-align:center}.btn{display:inline-flex;margin-top:14px;background:#003399;color:white;text-decoration:none;padding:12px 16px;border-radius:12px;font-weight:900}@media print{.btn{display:none}body{background:white}.card{box-shadow:none}}</style>
-</head><body><div class="card"><div class="top"><div><div class="brand">COOPEX</div><div>Comprovante de entrega</div></div><span class="ok">PAGO</span></div>
-<div class="grid"><div class="box"><small>Código</small><strong>#{{ e.id }}</strong></div><div class="box"><small>Data</small><strong>{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</strong></div><div class="box"><small>Cliente</small><strong>{{ e.cliente }}</strong></div><div class="box"><small>Pagamento</small><strong>{{ e.pagamento }} — {{ e.status_pagamento }}</strong></div><div class="box"><small>Coleta</small><strong>{{ e.origem_endereco }}</strong></div><div class="box"><small>Entrega</small><strong>{{ e.destino_endereco }}</strong></div><div class="box"><small>Status</small><strong>{{ e.status or 'pendente' }}</strong></div><div class="box"><small>Valor</small><div class="valor">R$ {{ '%.2f'|format(e.valor or 0)|replace('.', ',') }}</div></div></div>
-<a class="btn" href="javascript:window.print()">Imprimir / salvar PDF</a><div class="footer">COOPEX Entregas — comprovante emitido pelo sistema.</div></div></body></html>
-""", e=e, to_brasilia=to_brasilia)
+<title>Cupom COOPEX #{{ e.id }}</title>
+<style>
+html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#eef3ff}.page{min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:18px}.ticket{width:80mm;max-width:100%;padding:6mm 5mm;background:#fff;border-radius:12px;box-shadow:0 18px 44px rgba(12,38,140,.18)}.center{text-align:center}.logo{max-width:62mm;max-height:28mm;margin:0 auto 6px;display:block;object-fit:contain}.title{font-weight:800;font-size:16px;margin:2px 0}.sub{font-size:11px;opacity:.88}.coopLine{font-size:10.5px;line-height:1.35;text-align:center;margin:1px 0}.hr{border-top:1px dashed #000;margin:8px 0}.row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin:3px 0}.k{font-weight:700;flex:0 0 auto}.v{font-weight:700;text-align:right;flex:1 1 auto;word-break:break-word}.totalRow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;font-size:15px;font-weight:800}.totalRow .v{font-size:16px}.small{font-size:11px;opacity:.9}.btns{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}.btn{display:inline-flex;background:#003399;color:white;text-decoration:none;padding:12px 16px;border-radius:12px;font-weight:900;border:0;cursor:pointer}.btn.alt{background:#fff;color:#003399;border:1px solid #cfe0ff}@media print{body,.page{background:#fff;padding:0}.ticket{box-shadow:none;border-radius:0}.btns{display:none}}
+</style></head><body><div class="page"><div><div class="ticket"><div class="center"><img class="logo" src="{{ logo }}" alt="COOPEX" onerror="this.style.display='none'"><div class="coopLine"><strong>COOPERATIVA DE TRABALHADORES DE ENTREGAS DO RIO GRANDE DO NORTE - COOPEX</strong></div><div class="coopLine">CNPJ: 05 289.938/0001-97</div><div class="coopLine">Rua: José Freire De Souza 22 - Lagoa Nova Natal-RN, Cep: 59075-140</div><div class="coopLine">Fone/WhatsApp (84) 3234-9025 / 3231-5623 / 98111-0706</div><div class="title">CUPOM NÃO FISCAL</div><div class="sub">Comprovante de Entrega</div></div><div class="hr"></div><div class="row"><div class="k">PEDIDO:</div><div class="v">#{{ e.id }}</div></div><div class="row"><div class="k">DATA:</div><div class="v">{{ data_str }}</div></div><div class="row"><div class="k">HORA:</div><div class="v">{{ hora_str }}</div></div><div class="row"><div class="k">CLIENTE:</div><div class="v">{{ e.cliente }}</div></div><div class="row"><div class="k">COLETA:</div><div class="v">{{ e.origem_endereco or '-' }}</div></div><div class="row"><div class="k">ENTREGA:</div><div class="v">{{ e.destino_endereco or '-' }}</div></div><div class="row"><div class="k">MOTOBOY:</div><div class="v">{{ cooperado_nome }}</div></div><div class="row"><div class="k">FORMA PGTO:</div><div class="v">{{ e.pagamento or '-' }}</div></div>{% if e.recebido_por %}<div class="row"><div class="k">RECEBIDO POR:</div><div class="v">{{ e.recebido_por }}</div></div>{% endif %}<div class="hr"></div><div class="totalRow"><div class="k">TOTAL:</div><div class="v">R$ {{ valor_fmt }}</div></div><div class="hr"></div><div class="small" style="text-align:center">Obrigado por escolher a <strong>COOPEX</strong>!</div></div><div class="btns"><button class="btn" onclick="window.print()">Imprimir / salvar PDF</button><button class="btn alt" onclick="window.close()">Fechar</button></div></div></div></body></html>
+""", e=e, logo=logo, data_str=data_str, hora_str=hora_str, valor_fmt=valor_fmt, cooperado_nome=cooperado_nome)
 
 
 
@@ -8293,10 +8309,8 @@ def api_entrega_atribuida():
         Entrega.query
         .filter(
             Entrega.cooperado_id == cooperado_id,
-            # só entregas que ainda não foram concluídas
             (Entrega.status == None) |
             (~func.lower(Entrega.status).in_(['recebido', 'entregue'])),
-            # e que ainda estão pendentes ou recém aceitas
             (Entrega.status_corrida == None) |
             (Entrega.status_corrida.in_(['pendente', 'aceita']))
         )
@@ -8307,12 +8321,26 @@ def api_entrega_atribuida():
     if not entrega:
         return jsonify({'tem': False})
 
+    e = _enriquecer_entrega(entrega)
+    origem = e.origem_extra or {}
+    destino = e.destino_extra or {}
     return jsonify({
         'tem': True,
-        'id': entrega.id,
-        'cliente': entrega.cliente,
-        'valor': float(entrega.valor or 0),
-        'status_corrida': entrega.status_corrida,
+        'id': e.id,
+        'cliente': e.cliente,
+        'valor': float(e.valor or 0),
+        'status_corrida': e.status_corrida,
+        'status': e.status,
+        'pagamento': e.pagamento,
+        'status_pagamento': e.status_pagamento,
+        'origem_endereco': e.origem_endereco,
+        'destino_endereco': e.destino_endereco,
+        'origem_bairro': origem.get('bairro') or '',
+        'destino_bairro': destino.get('bairro') or e.bairro,
+        'lat_origem': origem.get('lat'),
+        'lng_origem': origem.get('lng'),
+        'lat_destino': destino.get('lat'),
+        'lng_destino': destino.get('lng'),
     })
 
 
