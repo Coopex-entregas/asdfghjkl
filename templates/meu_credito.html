@@ -1,163 +1,1243 @@
+<!-- templates/meu_credito.html (REAL)
+     Requisitos:
+     - Leaflet/OSM via CDN
+     - Endpoints Flask (abaixo)
+     - Tracking real: motoboy atualiza lat/lng no banco
+-->
 <!DOCTYPE html>
 <html lang="pt-br">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-  <title>Solicitar entrega COOPEX</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Meu Crédito — Cliente</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+
+  <link
+    rel="stylesheet"
+    href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
+    integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY="
+    crossorigin
+  />
+
   <style>
-    :root{--royal:#003399;--green:#058c62;--bg:#f3f7ff;--card:#fff;--line:#cfe0ff;--text:#071d49;--muted:#667085;--danger:#d92d20;--shadow:0 14px 34px rgba(0,51,153,.13);--radius:16px}
-    *{box-sizing:border-box} html,body{margin:0;min-height:100%;font-family:Arial,Helvetica,sans-serif;color:var(--text);background:var(--bg)} body{padding:8px}
-    .wrap{width:100%;max-width:1160px;margin:0 auto;background:#fff;border:1px solid var(--line);border-radius:18px;overflow:visible;box-shadow:var(--shadow)}
-    .tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;padding:12px 16px 6px;background:#fff;border-radius:18px 18px 0 0}.tab{height:43px;border-radius:12px;border:1px solid var(--line);background:#f8fbff;color:var(--royal);font-weight:900;cursor:pointer;font-size:13px}.tab.active{background:var(--royal);color:#fff;border-color:var(--royal)}
-    .content{padding:8px 16px 18px}.section{display:none}.section.active{display:block}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.grid-3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px}.grid-4{display:grid;grid-template-columns:1.7fr .65fr 1fr .75fr;gap:10px}
-    .box{border:1px solid var(--line);border-radius:var(--radius);padding:12px;background:#fff;box-shadow:0 8px 18px rgba(0,51,153,.05);margin-bottom:10px}.legend{display:flex;align-items:center;gap:8px;margin-bottom:10px;font-weight:900;color:var(--royal)}.num{width:25px;height:25px;border-radius:8px;background:#e9f1ff;border:1px solid var(--line);display:grid;place-items:center;color:var(--royal);font-weight:900}
-    label{display:block;font-size:12px;color:#56627a;font-weight:900;margin:0 0 5px}.field{margin-bottom:8px;position:relative}.req{color:var(--danger)} input,select,textarea{width:100%;border:1px solid var(--line);border-radius:11px;min-height:40px;padding:9px 11px;font-size:14px;font-weight:700;color:var(--text);outline:none;background:#fff} textarea{height:64px;resize:vertical} input:focus,select:focus,textarea:focus{border-color:var(--royal);box-shadow:0 0 0 4px rgba(0,51,153,.10)}
-    .btnrow{display:flex;gap:9px;flex-wrap:wrap;margin-top:8px}.btn{border:0;border-radius:12px;min-height:42px;padding:0 15px;font-weight:900;cursor:pointer;text-decoration:none;display:inline-flex;align-items:center;justify-content:center;gap:8px;font-size:13px}.primary{background:var(--royal);color:#fff}.green{background:var(--green);color:#fff}.ghost{background:#f8fbff;color:var(--royal);border:1px solid var(--line)}.danger{background:#fff1f0;color:var(--danger);border:1px solid #ffd2cc}
-    .note{border:1px dashed #9bbcff;background:#f7fbff;border-radius:13px;padding:9px 11px;font-size:12.5px;line-height:1.35;font-weight:800;color:#003399;margin-bottom:10px}.pixnote{border-color:#9fe3ca;background:#effdf7;color:#075e45;display:none}.moneybox{display:none}.quote{display:flex;align-items:center;justify-content:space-between;gap:10px;border:1px solid var(--line);border-radius:13px;padding:10px;background:#f8fbff;font-weight:900;margin-bottom:10px}.quote span{color:var(--muted);font-size:12.5px}.quote strong{font-size:18px;color:var(--royal)}
-    .stop{border:1px solid var(--line);border-radius:14px;padding:10px;margin-top:8px;background:#fbfdff}.stop-head{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;font-weight:900;color:var(--royal)}.result{display:none;border:1px solid #b7ebc6;background:#f0fff4;color:#064e3b;border-radius:13px;padding:11px;font-weight:800;line-height:1.35;margin-top:10px}.error{display:none;border:1px solid #ffd2cc;background:#fff1f0;color:#9f1b14;border-radius:13px;padding:11px;font-weight:800;margin-top:10px}.compact{max-width:760px}.hidden{display:none!important}
-    .sug{position:absolute;left:0;right:0;top:calc(100% + 4px);z-index:9999;background:#fff;border:1px solid var(--line);border-radius:12px;box-shadow:0 14px 30px rgba(0,51,153,.16);overflow:hidden;display:none;max-height:260px;overflow-y:auto}.sug button{width:100%;border:0;background:#fff;text-align:left;padding:10px 11px;cursor:pointer;border-bottom:1px solid #edf3ff;font-weight:800;color:#0b1d49}.sug button:hover{background:#f5f9ff}.sug small{display:block;color:#667085;margin-top:2px;font-weight:700;line-height:1.25}
-    .minihelp{font-size:11.5px;color:#667085;font-weight:700;margin-top:4px;line-height:1.25}.locked{background:#f7f9fc;color:#475467}
-    @media(max-width:900px){.grid-4{grid-template-columns:1fr 1fr}.grid-3{grid-template-columns:1fr 1fr}}
-    @media(max-width:700px){body{padding:0}.wrap{border-radius:0;border-left:0;border-right:0}.tabs{grid-template-columns:1fr 1fr;padding:10px}.content{padding:8px 10px 16px}.grid,.grid-3,.grid-4{grid-template-columns:1fr}.btnrow .btn{width:100%}}
+    :root{
+      --royal:#003399;
+      --royal-2:#255BFF;
+      --royal-3:#0B2B7A;
+
+      --bg:#F4F7FF;
+      --card:#FFFFFF;
+      --text:#0B1020;
+      --muted:#667085;
+
+      --line:#D6E2FF;
+      --ok:#12B981;
+      --warn:#F59E0B;
+      --bad:#EF4444;
+
+      --shadow: 0 16px 40px rgba(10, 25, 80, .10);
+      --shadow2: 0 10px 28px rgba(10, 25, 80, .08);
+      --radius: 18px;
+      --radius2: 26px;
+
+      --tap: 52px;
+      --max: 1180px;
+    }
+
+    *{ box-sizing:border-box; }
+    html,body{ height:100%; }
+    body{
+      margin:0;
+      font-family:Inter, system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      background: radial-gradient(1000px 520px at 10% -10%, rgba(37, 91, 255, .16), transparent 60%),
+                  radial-gradient(900px 560px at 95% 0%, rgba(0, 51, 153, .14), transparent 55%),
+                  var(--bg);
+      color:var(--text);
+    }
+
+    a{ color:inherit; text-decoration:none; }
+    button, input, select, textarea{ font-family:inherit; }
+    .wrap{
+      max-width:var(--max);
+      margin:0 auto;
+      padding:18px 16px 92px;
+    }
+
+    .topbar{
+      position:sticky; top:0; z-index:20;
+      background: linear-gradient(180deg, rgba(244,247,255,.92), rgba(244,247,255,.68));
+      backdrop-filter: blur(10px);
+      border-bottom:1px solid rgba(214,226,255,.7);
+    }
+    .topbar-inner{
+      max-width:var(--max);
+      margin:0 auto;
+      padding:14px 16px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+    }
+    .brand{ display:flex; flex-direction:column; gap:2px; }
+    .brand .title{
+      font-size:15px;font-weight:900;letter-spacing:.2px;color:var(--royal);
+      line-height:1.05;text-transform:uppercase;
+    }
+    .brand .sub{ font-size:12px;color:var(--muted);font-weight:600; }
+
+    .pill{
+      display:flex;align-items:center;gap:10px;
+      padding:10px 12px;border-radius:999px;
+      background:linear-gradient(180deg, #fff, #F7FAFF);
+      border:1px solid var(--line);
+      box-shadow:var(--shadow2);
+      min-height:44px;
+    }
+    .pill .dot{
+      width:10px;height:10px;border-radius:999px;
+      background:var(--warn);
+      box-shadow:0 0 0 6px rgba(245,158,11,.14);
+    }
+    .pill .meta{ display:flex; flex-direction:column; line-height:1.1; }
+    .pill .meta small{ color:var(--muted); font-weight:700; font-size:11px; }
+    .pill .meta strong{ font-size:13px; }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 420px 1fr;
+      gap:16px;
+      margin-top:16px;
+    }
+    @media (max-width: 980px){ .grid{ grid-template-columns: 1fr; } }
+
+    .card{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.92));
+      border:1px solid rgba(214,226,255,.9);
+      border-radius:var(--radius2);
+      box-shadow:var(--shadow);
+      overflow:hidden;
+    }
+    .card-h{
+      padding:16px 16px 12px;
+      display:flex;align-items:flex-start;justify-content:space-between;gap:12px;
+      border-bottom:1px solid rgba(214,226,255,.7);
+      background: radial-gradient(520px 220px at 20% 0%, rgba(37, 91, 255, .12), transparent 60%);
+    }
+    .card-h h2{ margin:0;font-size:15px;font-weight:900;letter-spacing:.2px;color:var(--royal); }
+    .card-h p{ margin:6px 0 0;color:var(--muted);font-size:12px;font-weight:600;line-height:1.3; }
+    .card-b{ padding:14px 16px 16px; }
+
+    .balance{
+      display:flex;gap:12px;align-items:stretch;
+    }
+    .balance .big{
+      flex:1;padding:14px;border-radius:18px;
+      border:1px solid rgba(214,226,255,.9);
+      background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
+      position:relative;overflow:hidden;
+    }
+    .balance .big:before{
+      content:"";position:absolute;inset:-70px -90px auto auto;width:220px;height:220px;
+      background: radial-gradient(circle at 30% 30%, rgba(37, 91, 255, .35), transparent 60%);
+      transform: rotate(20deg);pointer-events:none;
+    }
+    .balance .big small{ display:block;color:var(--muted);font-weight:800;font-size:12px;letter-spacing:.2px; }
+    .balance .big .val{ margin-top:8px;font-size:26px;font-weight:900;color:var(--royal);letter-spacing:-.5px; }
+    .balance .big .hint{ margin-top:8px;font-size:12px;color:var(--muted);font-weight:600; }
+    .balance .actions{ display:flex;flex-direction:column;gap:10px;min-width:150px; }
+
+    .btn{
+      height:var(--tap);border:0;border-radius:16px;padding:0 14px;
+      font-weight:900;letter-spacing:.2px;cursor:pointer;
+      display:flex;align-items:center;justify-content:center;gap:10px;
+      transition: transform .12s ease, box-shadow .12s ease, filter .12s ease;
+      user-select:none;-webkit-tap-highlight-color:transparent;
+    }
+    .btn:active{ transform: translateY(1px) scale(.99); }
+    .btn-primary{
+      color:#fff;background: linear-gradient(180deg, var(--royal-2), var(--royal));
+      box-shadow: 0 16px 30px rgba(0, 51, 153, .24);
+    }
+    .btn-ghost{
+      color:var(--royal);background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
+      border:1px solid var(--line);box-shadow: var(--shadow2);
+    }
+    .btn-danger{
+      color:#fff;background: linear-gradient(180deg, #FF5A5A, #EF4444);
+      box-shadow: 0 16px 30px rgba(239,68,68,.20);
+    }
+
+    .row{ display:flex; gap:10px; }
+    .row > *{ flex:1; }
+
+    .field{ display:flex; flex-direction:column; gap:7px; margin-bottom:10px; }
+    .field label{ font-size:12px;color:var(--muted);font-weight:800;letter-spacing:.15px; }
+    .input, .select, .textarea{
+      height:46px;border-radius:14px;border:1px solid rgba(214,226,255,.95);
+      background: linear-gradient(180deg, #fff, #F8FBFF);
+      padding:0 12px;outline:none;font-weight:700;color:var(--text);
+      box-shadow: inset 0 1px 0 rgba(255,255,255,.65);
+      transition: box-shadow .12s ease, border-color .12s ease;
+    }
+    .textarea{ height:84px;padding:10px 12px;resize:none;line-height:1.3;font-weight:650; }
+    .input:focus, .select:focus, .textarea:focus{
+      border-color: rgba(37, 91, 255, .55);
+      box-shadow: 0 0 0 5px rgba(37, 91, 255, .12);
+    }
+
+    .tabs{
+      display:flex;gap:8px;padding:10px;
+      background: rgba(244,247,255,.75);
+      border:1px solid rgba(214,226,255,.85);
+      border-radius: 999px;margin:12px 0 14px;
+    }
+    .tab{
+      flex:1;height:44px;border-radius:999px;border:1px solid transparent;
+      background:transparent;cursor:pointer;font-weight:900;color:var(--royal);
+      letter-spacing:.2px;transition: .12s ease;
+    }
+    .tab.active{
+      background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
+      border-color: rgba(214,226,255,.95);
+      box-shadow: var(--shadow2);
+    }
+
+    .statusbar{
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      padding:12px 14px;border:1px solid rgba(214,226,255,.92);
+      background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
+      border-radius:18px;
+    }
+    .badge{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;
+      font-size:12px;font-weight:900;letter-spacing:.2px;
+      border:1px solid rgba(214,226,255,.9);background:#fff;color:var(--royal);white-space:nowrap;
+    }
+    .badge .b-dot{
+      width:9px;height:9px;border-radius:999px;background:var(--warn);
+      box-shadow:0 0 0 6px rgba(245,158,11,.14);
+    }
+    .kv{ display:flex;flex-direction:column;gap:2px;line-height:1.15; }
+    .kv small{ color:var(--muted); font-weight:800; font-size:11px; }
+    .kv strong{ font-size:13px; }
+
+    .list{ margin-top:12px; display:flex; flex-direction:column; gap:10px; }
+    .item{
+      padding:12px 12px;border-radius:18px;border:1px solid rgba(214,226,255,.92);
+      background: linear-gradient(180deg, #FFFFFF, #F8FBFF);
+      display:flex;gap:10px;align-items:flex-start;
+    }
+    .item .ic{
+      width:38px;height:38px;border-radius:14px;
+      background: radial-gradient(16px 16px at 30% 30%, rgba(37, 91, 255, .35), rgba(37, 91, 255, .12));
+      border:1px solid rgba(214,226,255,.9);
+      display:grid;place-items:center;color:var(--royal);font-weight:900;flex:0 0 auto;
+    }
+    .item .tx{ flex:1; }
+    .item .tx strong{ display:block; font-size:13px; }
+    .item .tx small{ color:var(--muted); font-weight:650; }
+    .item .right{ flex:0 0 auto; display:flex; flex-direction:column; align-items:flex-end; gap:6px; }
+    .chip{
+      display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;
+      font-size:11px;font-weight:900;border:1px solid rgba(214,226,255,.9);
+      background:#fff;color:var(--royal);white-space:nowrap;
+    }
+
+    .map-card{ position:relative; min-height: 620px; }
+    #map{ height: 100%; min-height: 620px; width:100%; border-radius: var(--radius2); }
+
+    .overlay{
+      position:absolute;left:14px;right:14px;bottom:14px;z-index:500;
+      pointer-events:none;
+    }
+    .sheet{
+      pointer-events:auto;border-radius: 24px;border:1px solid rgba(214,226,255,.9);
+      background: linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.92));
+      box-shadow: var(--shadow);overflow:hidden;
+    }
+    .sheet-h{
+      padding:12px 14px 10px;
+      display:flex;align-items:center;justify-content:space-between;gap:10px;
+      border-bottom:1px solid rgba(214,226,255,.65);
+    }
+    .grab{ width:54px;height:6px;border-radius:999px;background: rgba(102,112,133,.25);margin:0 auto 8px; }
+    .sheet-h .left{ display:flex;flex-direction:column;gap:2px;line-height:1.15; }
+    .sheet-h .left strong{ font-size:13px; }
+    .sheet-h .left small{ font-size:11px;color:var(--muted);font-weight:700; }
+    .sheet-b{
+      padding:12px 14px 14px;
+      display:grid;grid-template-columns: 1.1fr .9fr;gap:10px;align-items:center;
+    }
+    @media (max-width: 520px){ .sheet-b{ grid-template-columns: 1fr; } }
+    .sheet-b .cta{ display:flex; gap:10px; }
+
+    .bottom-nav{
+      position:fixed;left:0;right:0;bottom:0;z-index:40;
+      background: linear-gradient(180deg, rgba(244,247,255,.62), rgba(244,247,255,.92));
+      backdrop-filter: blur(10px);
+      border-top:1px solid rgba(214,226,255,.8);
+    }
+    .bottom-nav .inner{
+      max-width:var(--max);margin:0 auto;display:flex;gap:10px;padding:10px 12px;
+    }
+    .navbtn{
+      flex:1;height:56px;border-radius:18px;border:1px solid transparent;background:transparent;
+      display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;
+      cursor:pointer;font-weight:900;color:var(--royal);
+    }
+    .navbtn.active{
+      background: linear-gradient(180deg, #fff, #F7FAFF);
+      border-color: rgba(214,226,255,.95);
+      box-shadow: var(--shadow2);
+    }
+    .navbtn .mini{ font-size:10px;color:var(--muted);font-weight:800;letter-spacing:.2px; }
+
+    .hide{ display:none !important; }
+    .hr{ height:1px; background:rgba(214,226,255,.9); margin:12px 0; border-radius:999px; }
+    .note{
+      padding:10px 12px;border-radius:16px;border:1px dashed rgba(37, 91, 255, .35);
+      background: rgba(37, 91, 255, .06);
+      color: rgba(11,43,122,.95);
+      font-size:12px;font-weight:650;line-height:1.35;
+    }
+
+    .leaflet-control-zoom a{
+      border-radius:14px !important;
+      border:1px solid rgba(214,226,255,.9) !important;
+      box-shadow: var(--shadow2) !important;
+      background: linear-gradient(180deg, #fff, #F7FAFF) !important;
+      color: var(--royal) !important;
+    }
+    .leaflet-container{
+      border:1px solid rgba(214,226,255,.85);
+      box-shadow: var(--shadow);
+    }
+
+    .mini-card{border:1px solid rgba(214,226,255,.92);border-radius:18px;background:linear-gradient(180deg,#fff,#f8fbff);padding:12px;margin:10px 0;}
+    .mini-title{font-weight:900;color:var(--royal);font-size:13px;margin-bottom:8px;display:flex;align-items:center;justify-content:space-between;gap:8px;}
+    .mini-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;}
+    @media(max-width:520px){.mini-grid{grid-template-columns:1fr}}
+    .copyline{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    .copykey{font-family:ui-monospace,monospace;font-weight:900;background:#fff;border:1px solid var(--line);border-radius:12px;padding:9px 10px;color:var(--royal);}
+    .success-box{border:1px solid #a7f3d0;background:#ecfdf5;color:#065f46;border-radius:16px;padding:12px;margin-top:12px;font-size:13px;font-weight:750;line-height:1.4;}
+    .warn-box{border:1px solid #fde68a;background:#fffbeb;color:#92400e;border-radius:16px;padding:12px;margin-top:12px;font-size:13px;font-weight:750;line-height:1.4;}
+    .hist-item{padding:12px;border:1px solid rgba(214,226,255,.92);background:linear-gradient(180deg,#fff,#f8fbff);border-radius:16px;margin-top:10px;}
+    .hist-item strong{color:var(--royal)}
+
   </style>
 </head>
+
 <body>
-  <main class="wrap">
-    <nav class="tabs">
-      <button class="tab active" type="button" data-tab="pedido">Pedir como avulso</button>
-      <button class="tab" type="button" data-tab="credito">Comprar crédito</button>
-      <button class="tab" type="button" data-tab="consulta">Consultar pedido</button>
-      <button class="tab" type="button" data-tab="acesso">Entrar/Cadastrar</button>
-    </nav>
-
-    <section class="content">
-      <div id="sec-pedido" class="section active">
-        <form id="formPedido" autocomplete="off">
-          <div class="box">
-            <div class="legend"><span class="num">1</span>Dados do cliente</div>
-            <div class="grid-3">
-              <div class="field"><label>Nome do cliente <span class="req">*</span></label><input id="cliente_nome" required placeholder="Ex.: Maria Silva" value="{{ cli.nome if cli else '' }}"></div>
-              <div class="field"><label>WhatsApp <span class="req">*</span></label><input id="cliente_whatsapp" required inputmode="tel" placeholder="(84) 9 9999-9999"></div>
-              <div class="field"><label>E-mail opcional</label><input id="cliente_email" inputmode="email" placeholder="email@exemplo.com" value="{{ cli.email if cli and cli.email else '' }}"></div>
-            </div>
-          </div>
-
-          <div class="box">
-            <div class="legend"><span class="num">2</span>Coleta</div>
-            <div class="grid">
-              <div class="field"><label>Nome/contato na coleta</label><input id="coleta_contato" placeholder="Quem vai entregar o item"></div>
-              <div class="field"><label>Telefone da coleta</label><input id="coleta_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div>
-            </div>
-            <div class="grid-4">
-              <div class="field"><label>Rua/avenida da coleta <span class="req">*</span></label><input id="coleta_endereco" required placeholder="Digite a rua e escolha na lista"><div class="sug" id="sug_coleta"></div><div class="minihelp">Digite pelo menos 3 letras. Ao escolher, o sistema preenche bairro, cidade, CEP e usa o ponto correto no mapa.</div></div>
-              <div class="field"><label>Número <span class="req">*</span></label><input id="coleta_numero" required placeholder="Nº"></div>
-              <div class="field"><label>Bairro <span class="req">*</span></label><input id="coleta_bairro" required list="lista_bairros" placeholder="Bairro"></div>
-              <div class="field"><label>CEP</label><input id="coleta_cep" inputmode="numeric" placeholder="CEP"></div>
-            </div>
-            <div class="grid">
-              <div class="field"><label>Cidade</label><input id="coleta_cidade" placeholder="Natal ou Parnamirim"></div>
-              <div class="field"><label>Referência da coleta</label><input id="coleta_ref" placeholder="Ex.: portaria, loja, casa"></div>
-            </div>
-            <input type="hidden" id="coleta_lat"><input type="hidden" id="coleta_lng"><input type="hidden" id="coleta_uf" value="RN">
-          </div>
-
-          <div class="box">
-            <div class="legend"><span class="num">3</span>Entrega</div>
-            <div class="grid">
-              <div class="field"><label>Nome/contato na entrega</label><input id="entrega_contato" placeholder="Quem vai receber"></div>
-              <div class="field"><label>Telefone da entrega</label><input id="entrega_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div>
-            </div>
-            <div class="grid-4">
-              <div class="field"><label>Rua/avenida da entrega <span class="req">*</span></label><input id="entrega_endereco" required placeholder="Digite a rua e escolha na lista"><div class="sug" id="sug_entrega"></div><div class="minihelp">Use o endereço completo para calcular o trajeto real de rua quando não houver preço cadastrado por bairro.</div></div>
-              <div class="field"><label>Número <span class="req">*</span></label><input id="entrega_numero" required placeholder="Nº"></div>
-              <div class="field"><label>Bairro <span class="req">*</span></label><input id="entrega_bairro" required list="lista_bairros" placeholder="Bairro"></div>
-              <div class="field"><label>CEP</label><input id="entrega_cep" inputmode="numeric" placeholder="CEP"></div>
-            </div>
-            <div class="grid">
-              <div class="field"><label>Cidade</label><input id="entrega_cidade" placeholder="Natal ou Parnamirim"></div>
-              <div class="field"><label>Referência da entrega</label><input id="entrega_ref" placeholder="Ex.: próximo ao mercado"></div>
-            </div>
-            <input type="hidden" id="entrega_lat"><input type="hidden" id="entrega_lng"><input type="hidden" id="entrega_uf" value="RN">
-          </div>
-
-          <div class="box">
-            <div class="legend"><span class="num">4</span>Paradas adicionais</div>
-            <div class="btnrow"><button class="btn ghost" type="button" id="btnAddParada">+ Adicionar parada</button></div>
-            <div id="paradasWrap"></div>
-          </div>
-
-          <div class="box">
-            <div class="legend"><span class="num">5</span>Pagamento e observação</div>
-            <div class="quote"><span>Valor da entrega</span><strong id="valorCotacao">Informe os dados</strong></div><div class="note" id="origemPrecoBox" style="display:none"></div>
-            {% if cliente_logado %}
-            <div class="note" id="saldoCreditoBox">Crédito disponível: <strong id="saldoCredito">R$ {{ '%.2f'|format(saldo_cliente or 0)|replace('.', ',') }}</strong></div>
-            <div class="field"><label style="display:flex;align-items:center;gap:9px;margin:0;font-size:14px;color:#003399"><input type="checkbox" id="usar_credito" style="width:18px;min-height:18px;padding:0">Usar meu crédito disponível nesta entrega</label></div>
-            <div class="note" id="creditoCalcBox" style="display:none"></div>
-            {% endif %}
-            <div class="grid"><div class="field"><label>Forma de pagamento / complemento <span class="req">*</span></label><select id="pagamento" required><option value="PIX">Pix</option><option value="DINHEIRO">Dinheiro</option></select></div><div class="field moneybox" id="moneyBox"><label>Onde o entregador receberá?</label><select id="recebe_dinheiro_em"><option value="">Selecione</option><option value="coleta">Na coleta</option><option value="entrega">Na entrega</option></select></div></div>
-            <div class="note pixnote" id="pixNote">No Pix, o entregador será enviado mediante o envio do comprovante de pagamento para a COOPEX.</div>
-            <div class="btnrow" id="pixButtons" style="display:none"><a class="btn green" id="btnComprovantePix" target="_blank" rel="noopener">Enviar comprovante de pagamento</a></div>
-            <div class="field"><label>Observação</label><textarea id="observacao" placeholder="Detalhes do pedido, cuidado com o item, melhor horário, etc."></textarea></div>
-            <div class="btnrow"><button class="btn primary" type="submit" id="btnEnviar">Solicitar entrega</button></div><div class="result" id="okBox"></div><div class="error" id="errBox"></div>
-          </div>
-        </form>
+  <div class="topbar">
+    <div class="topbar-inner">
+      <div class="brand">
+        <div class="title">Meu Crédito</div>
+        <div class="sub" id="welcomeSub">Olá, {{ cli.nome if cli else 'cliente' }}.</div>
       </div>
 
-      <div id="sec-credito" class="section compact"><div class="box"><div class="legend"><span class="num">$</span>Comprar crédito antecipado</div><div class="grid"><div class="field"><label>Nome <span class="req">*</span></label><input id="cred_nome" placeholder="Nome do cliente" value="{{ cli.nome if cli else '' }}"></div><div class="field"><label>WhatsApp <span class="req">*</span></label><input id="cred_whatsapp" inputmode="tel" placeholder="(84) 9 9999-9999"></div></div><div class="field"><label>Valor que deseja comprar</label><input id="cred_valor" inputmode="decimal" placeholder="Ex.: 100,00"></div><div class="btnrow"><button class="btn green" type="button" id="btnComprarCredito">Pedir compra de crédito pelo WhatsApp</button></div></div></div>
-      <div id="sec-consulta" class="section compact"><div class="box"><div class="legend"><span class="num">?</span>Consultar pedido</div><div class="field"><label>Código da entrega</label><input id="codigoConsulta" inputmode="numeric" placeholder="Ex.: 33196"></div><div class="btnrow"><button class="btn ghost" type="button" id="btnConsultar">Consultar status</button></div><div class="result" id="consultaBox"></div><div class="error" id="consultaErr"></div></div></div>
-      <div id="sec-acesso" class="section compact"><div class="box"><div class="legend"><span class="num">✓</span>Acesso do cliente</div><div class="note">O cadastro é opcional. Cliente cadastrado pode acompanhar histórico e usar crédito disponível.</div><div class="btnrow"><a class="btn primary" href="{{ url_for('login') }}">Entrar</a><a class="btn ghost" href="{{ url_for('cliente_primeiro_acesso') }}">Cadastrar</a></div>{% if cliente_logado %}<div class="note" style="margin-top:12px">Cliente logado. Saldo disponível: R$ {{ '%.2f'|format(saldo_cliente or 0)|replace('.', ',') }}</div>{% endif %}</div></div>
-    </section>
-  </main>
+      <div class="pill" title="Status do app">
+        <span class="dot" id="onlineDot"></span>
+        <div class="meta">
+          <small>CONEXÃO</small>
+          <strong id="onlineText">Conectando…</strong>
+        </div>
+      </div>
+    </div>
+  </div>
 
-  <datalist id="lista_bairros">{% for b in bairros %}<option value="{{ b }}">{% endfor %}</datalist>
-<script>
-const API_COTAR = "{{ url_for('api_cliente_cotar_entrega') }}";
-const API_SOLICITAR = "{{ url_for('api_cliente_solicitar_entrega') }}";
-const API_CREDITO = "{{ url_for('api_cliente_solicitar_credito') }}";
-const API_BUSCAR_ENDERECO = "{{ url_for('api_cliente_buscar_endereco') }}";
-const API_RASTREIO_BASE = "/api/rastreamento/";
-const WPP_COMPROVANTE = "5584981110706";
-let precoAtual = null, valorAInformar = true, paradaN = 0;
-const CLIENTE_LOGADO = {{ 'true' if cliente_logado else 'false' }};
-const SALDO_CLIENTE_INICIAL = {{ '%.2f'|format(saldo_cliente or 0) }};
-const $ = id => document.getElementById(id);
-function show(el){if(el)el.style.display='block'} function hide(el){if(el)el.style.display='none'}
-function onlyDigits(v){return String(v||'').replace(/\D/g,'')} function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
-function setTab(name){document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));document.querySelectorAll('.section').forEach(s=>s.classList.remove('active'));$('sec-'+name).classList.add('active')}
-document.querySelectorAll('.tab').forEach(b=>b.addEventListener('click',()=>setTab(b.dataset.tab)));
-function debounceCotar(ms=650){clearTimeout(window.__cot);window.__cot=setTimeout(cotar,ms)}
-function clearCoords(prefix){$(prefix+'_lat').value='';$(prefix+'_lng').value=''}
-function ponto(prefix){return {contato:$(prefix+'_contato')?.value.trim()||'',telefone:$(prefix+'_telefone')?.value.trim()||'',endereco:$(prefix+'_endereco').value.trim(),numero:$(prefix+'_numero').value.trim(),bairro:$(prefix+'_bairro').value.trim(),cidade:$(prefix+'_cidade').value.trim(),uf:$(prefix+'_uf').value.trim()||'RN',cep:$(prefix+'_cep').value.trim(),referencia:$(prefix+'_ref').value.trim(),lat:$(prefix+'_lat').value.trim(),lng:$(prefix+'_lng').value.trim()}}
-function getPedidoBase(){return {cliente:{nome:$('cliente_nome').value.trim(),whatsapp:$('cliente_whatsapp').value.trim(),email:$('cliente_email').value.trim()},coleta:ponto('coleta'),entrega:ponto('entrega')}}
-function enderecoCompletoOk(p){return p.endereco && p.numero && p.bairro}
-async function buscarEndereco(q){const r=await fetch(API_BUSCAR_ENDERECO+'?q='+encodeURIComponent(q)); const j=await r.json(); return (j.ok && Array.isArray(j.resultados)) ? j.resultados : []}
-function setupAuto(prefix){
-  const inp=$(prefix+'_endereco'), sug=$('sug_'+prefix);
-  inp.addEventListener('input',()=>{ clearCoords(prefix); const q=inp.value.trim(); if(q.length<3){sug.style.display='none'; debounceCotar(); return;} clearTimeout(inp.__t); inp.__t=setTimeout(async()=>{try{const arr=await buscarEndereco(q); sug.innerHTML=''; if(!arr.length){sug.style.display='none'; return;} arr.forEach(item=>{const b=document.createElement('button'); b.type='button'; b.innerHTML=`${item.endereco||item.display}<small>${item.bairro||''}${item.cidade?' • '+item.cidade:''}${item.cep?' • CEP '+item.cep:''}</small>`; b.onclick=()=>{inp.value=item.endereco||item.display||inp.value; $(prefix+'_bairro').value=item.bairro||$(prefix+'_bairro').value; $(prefix+'_cidade').value=item.cidade||$(prefix+'_cidade').value; $(prefix+'_cep').value=item.cep||$(prefix+'_cep').value; $(prefix+'_uf').value=item.uf||'RN'; $(prefix+'_lat').value=item.lat||''; $(prefix+'_lng').value=item.lng||''; sug.style.display='none'; debounceCotar(200);}; sug.appendChild(b);}); sug.style.display='block';}catch(e){sug.style.display='none'}},350); debounceCotar(); });
-  document.addEventListener('click',e=>{ if(!sug.contains(e.target) && e.target!==inp) sug.style.display='none'; });
-  [prefix+'_numero',prefix+'_bairro',prefix+'_cidade',prefix+'_cep',prefix+'_ref'].forEach(id=>$(id).addEventListener('input',()=>debounceCotar()));
-}
-setupAuto('coleta'); setupAuto('entrega');
-async function cotar(){
-  const p=getPedidoBase();
-  if(!p.coleta.bairro || !p.entrega.bairro){$('valorCotacao').textContent='Informe os dados'; hide($('origemPrecoBox')); precoAtual=null; valorAInformar=true; atualizarCreditoBox(); return;}
-  try{const r=await fetch(API_COTAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({coleta:p.coleta,entrega:p.entrega,paradas:readParadas(),apenas_simular:true})}); const j=await r.json();
-    if(j.ok && j.preco!==null && j.preco!==undefined){precoAtual=Number(j.preco); valorAInformar=false; $('valorCotacao').textContent=money(precoAtual); if(j.origem_preco==='km'){show($('origemPrecoBox')); $('origemPrecoBox').innerHTML=`Valor calculado pelo trajeto real de rua: <strong>${Number(j.distancia_km||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km</strong> x <strong>${money(j.per_km||2)}</strong> por km.`;} else if(j.origem_preco==='tabela'){show($('origemPrecoBox')); $('origemPrecoBox').innerHTML='Valor encontrado na tabela de preços cadastrada por bairro/rota.';} else hide($('origemPrecoBox')); if(CLIENTE_LOGADO && typeof j.cliente_saldo_atual!=='undefined') window.__saldoClienteAtual=Number(j.cliente_saldo_atual||0);
-    }else{precoAtual=null; valorAInformar=true; $('valorCotacao').textContent='Valor a confirmar'; show($('origemPrecoBox')); $('origemPrecoBox').innerHTML='Não encontrei preço cadastrado e não consegui calcular por endereço. Escolha o endereço na lista e informe o número, bairro e cidade.';}
-  }catch(e){precoAtual=null; valorAInformar=true; $('valorCotacao').textContent='Valor a confirmar';}
-  atualizarCreditoBox(); updatePagamento();
-}
-function creditoMarcado(){return CLIENTE_LOGADO && $('usar_credito') && $('usar_credito').checked} function saldoAtualCliente(){return Number(window.__saldoClienteAtual ?? SALDO_CLIENTE_INICIAL ?? 0)}
-function faltaAposCredito(){if(!creditoMarcado() || precoAtual===null || valorAInformar) return null; return Math.max(0, Number(precoAtual||0)-saldoAtualCliente())}
-function atualizarCreditoBox(){if(!CLIENTE_LOGADO || !$('creditoCalcBox')) return; const box=$('creditoCalcBox'); if(!creditoMarcado()){hide(box);box.innerHTML='';return;} if(precoAtual===null||valorAInformar){show(box);box.innerHTML='O valor ainda será confirmado. O crédito só será abatido quando o valor estiver definido.';return;} const saldo=saldoAtualCliente(), usar=Math.min(saldo,precoAtual), falta=Math.max(0,precoAtual-saldo); show(box); box.innerHTML=falta<=0?`Será usado <strong>${money(usar)}</strong> do seu crédito. Não será necessário complemento.`:`Será usado <strong>${money(usar)}</strong> do seu crédito. Falta complementar <strong>${money(falta)}</strong> em Pix ou Dinheiro.`}
-function updatePagamento(){atualizarCreditoBox(); const p=$('pagamento').value, falta=faltaAposCredito(), creditoPagaTudo=creditoMarcado()&&falta!==null&&falta<=0; if(creditoPagaTudo){hide($('pixNote'));$('pixButtons').style.display='none';hide($('moneyBox'));$('recebe_dinheiro_em').value='';return;} if(p==='PIX'){show($('pixNote'));$('pixButtons').style.display='flex';$('btnComprovantePix').href=`https://wa.me/${WPP_COMPROVANTE}?text=${encodeURIComponent('Olá, segue comprovante de pagamento Pix da minha solicitação COOPEX.')}`;}else{hide($('pixNote'));$('pixButtons').style.display='none'} if(p==='DINHEIRO'){show($('moneyBox'))}else{hide($('moneyBox'));$('recebe_dinheiro_em').value=''}}
-if(CLIENTE_LOGADO && $('usar_credito')) $('usar_credito').addEventListener('change',updatePagamento); $('pagamento').addEventListener('change',updatePagamento); updatePagamento();
-$('btnAddParada').addEventListener('click',()=>{paradaN++; const div=document.createElement('div'); div.className='stop'; div.dataset.idx=paradaN; div.innerHTML=`<div class="stop-head"><span>Parada ${paradaN}</span><button class="btn danger" type="button">Remover</button></div><div class="grid"><div class="field"><label>Nome/contato da parada</label><input class="p_contato" placeholder="Quem entrega ou recebe"></div><div class="field"><label>Telefone da parada</label><input class="p_telefone" inputmode="tel" placeholder="WhatsApp ou telefone"></div></div><div class="grid-4"><div class="field"><label>Rua/avenida da parada</label><input class="p_endereco" placeholder="Digite a rua e escolha na lista"><div class="sug"></div></div><div class="field"><label>Número</label><input class="p_numero" placeholder="Nº"></div><div class="field"><label>Bairro da parada</label><input class="p_bairro" list="lista_bairros" placeholder="Bairro"></div><div class="field"><label>CEP</label><input class="p_cep" inputmode="numeric" placeholder="CEP"></div></div><div class="grid"><div class="field"><label>Cidade</label><input class="p_cidade" placeholder="Natal ou Parnamirim"></div><div class="field"><label>Referência da parada</label><input class="p_ref" placeholder="Ex.: portaria, loja, casa"></div></div><input type="hidden" class="p_lat"><input type="hidden" class="p_lng"><input type="hidden" class="p_uf" value="RN">`; div.querySelector('.danger').onclick=()=>{div.remove();cotar();}; const end=div.querySelector('.p_endereco'), sug=div.querySelector('.sug'); end.addEventListener('input',()=>{div.querySelector('.p_lat').value='';div.querySelector('.p_lng').value=''; const q=end.value.trim(); if(q.length<3){sug.style.display='none';debounceCotar();return;} clearTimeout(end.__t); end.__t=setTimeout(async()=>{const arr=await buscarEndereco(q); sug.innerHTML=''; arr.forEach(item=>{const b=document.createElement('button');b.type='button';b.innerHTML=`${item.endereco||item.display}<small>${item.bairro||''}${item.cidade?' • '+item.cidade:''}${item.cep?' • CEP '+item.cep:''}</small>`;b.onclick=()=>{end.value=item.endereco||item.display; div.querySelector('.p_bairro').value=item.bairro||''; div.querySelector('.p_cidade').value=item.cidade||''; div.querySelector('.p_cep').value=item.cep||''; div.querySelector('.p_uf').value=item.uf||'RN'; div.querySelector('.p_lat').value=item.lat||''; div.querySelector('.p_lng').value=item.lng||''; sug.style.display='none';debounceCotar(200)};sug.appendChild(b)});sug.style.display=arr.length?'block':'none';},350);debounceCotar();}); div.querySelectorAll('input').forEach(inp=>inp.addEventListener('input',()=>debounceCotar())); $('paradasWrap').appendChild(div);});
-function readParadas(){return Array.from(document.querySelectorAll('.stop')).map((d,i)=>({ordem:i+1,contato:d.querySelector('.p_contato').value.trim(),telefone:d.querySelector('.p_telefone').value.trim(),endereco:d.querySelector('.p_endereco').value.trim(),numero:d.querySelector('.p_numero').value.trim(),bairro:d.querySelector('.p_bairro').value.trim(),cidade:d.querySelector('.p_cidade').value.trim(),uf:d.querySelector('.p_uf').value.trim()||'RN',cep:d.querySelector('.p_cep').value.trim(),referencia:d.querySelector('.p_ref').value.trim(),lat:d.querySelector('.p_lat').value.trim(),lng:d.querySelector('.p_lng').value.trim()})).filter(p=>p.endereco||p.bairro||p.contato||p.telefone||p.referencia)}
-function validate(){const p=getPedidoBase(); if(!p.cliente.nome||!p.cliente.whatsapp) return 'Preencha nome e WhatsApp.'; if(!enderecoCompletoOk(p.coleta)||!enderecoCompletoOk(p.entrega)) return 'Preencha rua, número e bairro da coleta e da entrega.'; const falta=faltaAposCredito(), precisaComplemento=!creditoMarcado()||falta===null||falta>0; if(precisaComplemento&&$('pagamento').value==='DINHEIRO'&&!$('recebe_dinheiro_em').value) return 'Informe se o dinheiro será recebido na coleta ou na entrega.'; return ''}
-$('formPedido').addEventListener('submit',async ev=>{ev.preventDefault();hide($('okBox'));hide($('errBox'));const erro=validate();if(erro){$('errBox').textContent=erro;show($('errBox'));return} await cotar(); const base=getPedidoBase(), falta=faltaAposCredito(), creditoPagaTudo=creditoMarcado()&&falta!==null&&falta<=0; const payload={...base,paradas:readParadas(),observacao:$('observacao').value.trim(),usar_credito:creditoMarcado(),meio_pagamento:creditoPagaTudo?'CREDITO':$('pagamento').value,complemento_pagamento:creditoMarcado()&&!creditoPagaTudo?$('pagamento').value:'',recebe_dinheiro_em:creditoPagaTudo?'':$('recebe_dinheiro_em').value,preco_estimado:precoAtual}; $('btnEnviar').disabled=true;$('btnEnviar').textContent='Enviando...'; try{const r=await fetch(API_SOLICITAR,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});const j=await r.json();if(!j.ok)throw new Error(j.erro||'Não foi possível solicitar.');let html=`Pedido enviado com sucesso.<br>Código da entrega: <strong>${j.entrega_id}</strong><br>Valor: <strong>${j.valor_a_informar?'A confirmar':money(j.preco)}</strong>`; if(j.origem_preco==='km')html+=`<br>Cálculo: <strong>${Number(j.distancia_km||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})} km x ${money(j.per_km||2)}</strong>`; if(j.credito_usado&&Number(j.credito_usado)>0){html+=`<br>Crédito usado: <strong>${money(j.credito_usado)}</strong><br>Complemento: <strong>${j.valor_complemento>0?money(j.valor_complemento):'Não necessário'}</strong>`} $('okBox').innerHTML=html;show($('okBox'));$('codigoConsulta').value=j.entrega_id; if((payload.meio_pagamento==='PIX')||(payload.complemento_pagamento==='PIX')){$('okBox').innerHTML+=`<br><br><a class="btn green" target="_blank" href="https://wa.me/${WPP_COMPROVANTE}?text=${encodeURIComponent('Olá, segue comprovante Pix da entrega #' + j.entrega_id + '.')}">Enviar comprovante pelo WhatsApp</a>`}}catch(e){$('errBox').textContent=e.message;show($('errBox'))}finally{$('btnEnviar').disabled=false;$('btnEnviar').textContent='Solicitar entrega'}});
-$('btnComprarCredito').addEventListener('click',async()=>{const nome=$('cred_nome').value.trim()||$('cliente_nome').value.trim(), whatsapp=$('cred_whatsapp').value.trim()||$('cliente_whatsapp').value.trim(), valor=$('cred_valor').value.trim(); if(!nome||!whatsapp){alert('Informe nome e WhatsApp.');return} const r=await fetch(API_CREDITO,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome,whatsapp,valor})});const j=await r.json(); if(j.ok)window.open(j.whatsapp_url,'_blank');else alert(j.erro||'Não foi possível gerar o pedido.')});
-$('btnConsultar').addEventListener('click',async()=>{hide($('consultaBox'));hide($('consultaErr'));const cod=onlyDigits($('codigoConsulta').value);if(!cod){$('consultaErr').textContent='Informe o código da entrega.';show($('consultaErr'));return}try{const r=await fetch(API_RASTREIO_BASE+cod);const j=await r.json();if(!j.ok)throw new Error(j.erro||'Entrega não encontrada.');$('consultaBox').innerHTML=`Status: <strong>${j.status||'pendente'}</strong><br>Motoboy: <strong>${j.cooperado||'Aguardando atribuição'}</strong><br>Pagamento: <strong>${j.pagamento||'-'} • ${j.status_pagamento||'pendente'}</strong><br>Valor: <strong>${money(j.valor||0)}</strong>`;show($('consultaBox'))}catch(e){$('consultaErr').textContent=e.message;show($('consultaErr'))}});
-</script>
+  <div class="wrap">
+    <div class="grid">
+
+      <!-- COLUNA ESQUERDA -->
+      <div class="card">
+        <div class="card-h">
+          <div>
+            <h2>Sua carteira</h2>
+            <p>Saldo, pedidos e recargas. Use o mapa para rastrear o motoboy em tempo real.</p>
+          </div>
+          <span class="badge" id="badgePedido">
+            <span class="b-dot" id="badgeDot"></span>
+            <span id="badgeTxt">Carregando…</span>
+          </span>
+        </div>
+
+        <div class="card-b">
+          <div class="balance">
+            <div class="big">
+              <small>SALDO DISPONÍVEL</small>
+              <div class="val" id="saldoVal">R$ {{ '%.2f'|format((cli.saldo_atual if cli else 0) or 0) | replace('.', ',') }}</div>
+              <div class="hint" id="saldoHint">Você pode comprar crédito ou usar no pagamento do pedido.</div>
+            </div>
+            <div class="actions">
+              <button class="btn btn-primary" id="btnIrRecarga" type="button">Comprar crédito</button>
+              <button class="btn btn-ghost" id="btnIrPedido" type="button">Fazer pedido</button>
+            </div>
+          </div>
+
+          <div class="tabs" role="tablist" aria-label="Seções do cliente">
+            <button class="tab active" data-tab="pedido" type="button">Pedido</button>
+            <button class="tab" data-tab="rastreio" type="button">Rastreio</button>
+            <button class="tab" data-tab="credito" type="button">Crédito</button>
+            <button class="tab" data-tab="historico" type="button">Histórico</button>
+          </div>
+
+          <!-- TAB: PEDIDO -->
+          <section id="tab-pedido">
+            <div class="statusbar">
+              <div class="kv">
+                <small>ESTIMATIVA</small>
+                <strong id="etaTxt">—</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>VALOR</small>
+                <strong id="precoTxt">—</strong>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            {% if cliente_logado %}
+            <div class="mini-card">
+              <div class="mini-title"><span>Endereços de coleta salvos</span><button class="btn btn-ghost" style="height:38px;padding:0 10px" id="btnSalvarEndereco" type="button">Salvar coleta</button></div>
+              <div class="field" style="margin-bottom:8px">
+                <label for="enderecoSalvo">Escolher endereço salvo</label>
+                <select class="select" id="enderecoSalvo">
+                  <option value="">Preencher manualmente</option>
+                  {% for end in enderecos_salvos or [] %}
+                  <option value="{{ end.id }}" data-json='{{ end|tojson }}'>{{ end.apelido }}{% if end.padrao %} — padrão{% endif %} • {{ end.endereco }}{% if end.bairro %}, {{ end.bairro }}{% endif %}</option>
+                  {% endfor %}
+                </select>
+              </div>
+              <div class="mini-grid">
+                <input class="input" id="apelidoEndereco" placeholder="Apelido. Ex.: Loja, Casa, Depósito">
+                <label style="display:flex;align-items:center;gap:8px;font-size:12px;font-weight:900;color:var(--royal)"><input type="checkbox" id="enderecoPadrao" style="width:18px;height:18px"> Salvar como padrão</label>
+              </div>
+            </div>
+            {% endif %}
+
+            <div class="row">
+              <div class="field">
+                <label for="origem">Coleta (endereço)</label>
+                <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="bairroOrigem">Bairro da coleta</label>
+                <input class="input" id="bairroOrigem" placeholder="Preenche automático quando possível">
+              </div>
+              <div class="field">
+                <label for="cidadeOrigem">Cidade da coleta</label>
+                <input class="input" id="cidadeOrigem" placeholder="Natal, Parnamirim...">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="destino">Entrega (endereço)</label>
+                <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
+              </div>
+            </div>
+            <div class="row">
+              <div class="field">
+                <label for="bairroDestino">Bairro da entrega</label>
+                <input class="input" id="bairroDestino" placeholder="Preenche automático quando possível">
+              </div>
+              <div class="field">
+                <label for="cidadeDestino">Cidade da entrega</label>
+                <input class="input" id="cidadeDestino" placeholder="Natal, Parnamirim...">
+              </div>
+            </div>
+
+            <div class="row">
+              <div class="field">
+                <label for="tipo">Tipo de pedido</label>
+                <select class="select" id="tipo">
+                  <option value="entrega">Entrega padrão</option>
+                  <option value="coleta_entrega">Coletar e entregar</option>
+                  <option value="entrega_expressa">Entrega expressa</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="pagamento">Pagamento</label>
+                <select class="select" id="pagamento">
+                  <option value="credito">Usar crédito</option>
+                  <option value="pix">Pix (na hora)</option>
+                  <option value="cartao">Cartão (na hora)</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="field">
+              <label for="obs">Observações</label>
+              <textarea class="textarea" id="obs" placeholder="Ponto de referência, número do apto, instruções para o motoboy..."></textarea>
+            </div>
+
+            <div class="row">
+              <button class="btn btn-ghost" id="btnUsarLocal" type="button">Usar minha localização</button>
+              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar motoboy</button>
+            </div>
+
+            <div class="mini-card" id="pixBoxPedido" style="display:none">
+              <div class="mini-title">Pagamento via Pix</div>
+              <div class="copyline">
+                <span>Chave Pix:</span>
+                <span class="copykey" id="pixChavePedido">{{ pix_chave or '84981110706' }}</span>
+                <button class="btn btn-ghost" style="height:38px;padding:0 10px" id="btnCopiarPixPedido" type="button">Copiar</button>
+              </div>
+              <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:8px">Após pagar, envie o comprovante para liberação/baixa do pagamento.</div>
+            </div>
+
+            <div class="note" style="margin-top:12px" id="notePedido">
+              Este pedido é registrado no sistema e aparecerá para atribuição. Após solicitar, guarde o número do pedido para consultar o andamento.
+            </div>
+            <div id="pedidoSucessoBox"></div>
+          </section>
+
+          <!-- TAB: RASTREIO -->
+          <section id="tab-rastreio" class="hide">
+            <div class="statusbar">
+              <div class="kv">
+                <small>STATUS</small>
+                <strong id="statusTxt">—</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>MOTOBOY</small>
+                <strong id="motoTxt">—</strong>
+              </div>
+            </div>
+
+            <div class="list" id="timeline"></div>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <button class="btn btn-ghost" id="btnCentralizar" type="button">Centralizar no mapa</button>
+              <button class="btn btn-danger" id="btnCancelar" type="button">Cancelar pedido</button>
+            </div>
+
+            <div class="note" style="margin-top:12px">
+              O mapa mostra: coleta, entrega e posição do motoboy. Atualiza por polling (tempo real do seu banco).
+            </div>
+          </section>
+
+          <!-- TAB: CRÉDITO -->
+          <section id="tab-credito" class="hide">
+            <div class="statusbar">
+              <div class="kv">
+                <small>RECARGA RÁPIDA</small>
+                <strong>Escolha um valor</strong>
+              </div>
+              <div class="kv" style="text-align:right;">
+                <small>MÉTODO</small>
+                <strong id="metodoTxt">Pix</strong>
+              </div>
+            </div>
+
+            <div class="hr"></div>
+
+            <div class="row">
+              <div class="field">
+                <label for="valorRecarga">Valor (R$)</label>
+                <input class="input" id="valorRecarga" inputmode="decimal" placeholder="Ex.: 30,00">
+              </div>
+              <div class="field">
+                <label for="metodoRecarga">Método</label>
+                <select class="select" id="metodoRecarga">
+                  <option value="pix">Pix</option>
+                  <option value="cartao">Cartão</option>
+                </select>
+              </div>
+            </div>
+
+            <div class="row" style="margin-bottom:10px;">
+              <button class="btn btn-ghost recargaPreset" data-v="20" type="button">R$ 20</button>
+              <button class="btn btn-ghost recargaPreset" data-v="30" type="button">R$ 30</button>
+              <button class="btn btn-ghost recargaPreset" data-v="50" type="button">R$ 50</button>
+            </div>
+
+            <button class="btn btn-primary" id="btnGerarRecarga" type="button">Gerar cobrança</button>
+
+            <div class="hr"></div>
+
+            <div class="note" id="boxCobranca">
+              Ao gerar cobrança, o sistema cria uma solicitação de recarga. No Pix, será exibida a chave e referência; no Cartão, você integra o seu provedor.
+            </div>
+          </section>
+
+
+          <!-- TAB: HISTÓRICO -->
+          <section id="tab-historico" class="hide">
+            {% if cliente_logado %}
+            <div class="statusbar">
+              <div class="kv">
+                <small>HISTÓRICO</small>
+                <strong>Consultar pedidos por dia</strong>
+              </div>
+            </div>
+            <div class="hr"></div>
+            <div class="row">
+              <div class="field">
+                <label for="histData">Data</label>
+                <input class="input" id="histData" type="date">
+              </div>
+              <div class="field">
+                <label>&nbsp;</label>
+                <button class="btn btn-primary" id="btnBuscarHistorico" type="button">Buscar</button>
+              </div>
+            </div>
+            <div id="historicoLista" class="list"></div>
+            {% else %}
+            <div class="warn-box">O histórico fica disponível para clientes cadastrados. Para pedido avulso, guarde o número do pedido exibido ao finalizar.</div>
+            {% endif %}
+          </section>
+        </div>
+      </div>
+
+      <!-- COLUNA DIREITA: MAPA -->
+      <div class="card map-card">
+        <div id="map"></div>
+
+        <div class="overlay">
+          <div class="sheet">
+            <div class="grab"></div>
+            <div class="sheet-h">
+              <div class="left">
+                <strong id="sheetTitle">Mapa de rastreio</strong>
+                <small id="sheetSub">Coleta, entrega e motoboy em tempo real.</small>
+              </div>
+              <span class="chip" id="chipETA">ETA —</span>
+            </div>
+            <div class="sheet-b">
+              <div>
+                <div class="kv">
+                  <small>PEDIDO</small>
+                  <strong id="pedidoRef">—</strong>
+                </div>
+                <div style="height:8px"></div>
+                <div class="kv">
+                  <small>ENDEREÇOS</small>
+                  <strong id="addrMini">—</strong>
+                </div>
+              </div>
+              <div class="cta">
+                <button class="btn btn-ghost" id="btnAbrirRastreio" type="button">Abrir rastreio</button>
+                <button class="btn btn-primary" id="btnNovoPedido" type="button">Novo pedido</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <div class="bottom-nav">
+    <div class="inner">
+      <button class="navbtn active" data-tab="pedido" type="button">
+        <div>Pedido</div>
+        <div class="mini">solicitar</div>
+      </button>
+      <button class="navbtn" data-tab="rastreio" type="button">
+        <div>Rastreio</div>
+        <div class="mini">mapa</div>
+      </button>
+      <button class="navbtn" data-tab="credito" type="button">
+        <div>Crédito</div>
+        <div class="mini">recarga</div>
+      </button>
+      <button class="navbtn" data-tab="historico" type="button">
+        <div>Histórico</div>
+        <div class="mini">pedidos</div>
+      </button>
+    </div>
+  </div>
+
+  <script
+    src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
+    integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
+    crossorigin
+  ></script>
+
+  <script>
+    /***********************
+     * ENDPOINTS REAIS (Flask)
+     ***********************/
+    const API = {
+      me:         "{{ url_for('api_cliente_me') }}",
+      saldo:      "{{ url_for('api_credito_saldo') }}",
+      recarga:    "{{ url_for('api_credito_recarga') }}",
+      pedido:     "{{ url_for('api_pedidos_criar') }}",
+      pedidoAtivo:"{{ url_for('api_pedidos_ativo') }}",
+      cancelar:   (id) => "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}".replace("/0", `/${id}`),
+      tracking:   (id) => "{{ url_for('api_pedidos_tracking', pedido_id=0) }}".replace("/0", `/${id}`),
+      enderecos:  "{{ url_for('api_cliente_enderecos') }}",
+      enderecoPadrao: (id) => "{{ url_for('api_cliente_endereco_padrao', endereco_id=0) }}".replace("/0", `/${id}`),
+      historico:  "{{ url_for('api_cliente_historico') }}",
+      comprovantePublico: (id) => "{{ url_for('cliente_comprovante_publico', entrega_id=0) }}".replace("/0", `/${id}`),
+    };
+
+    const POLL_MS = 3000;
+
+    /***********************
+     * UTIL
+     ***********************/
+    const moneyBR = (n) => (Number(n||0)).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+    const $ = (id)=>document.getElementById(id);
+
+    function setOnline(flag){
+      const dot = $("onlineDot");
+      const txt = $("onlineText");
+      dot.style.background = flag ? "var(--ok)" : "var(--bad)";
+      dot.style.boxShadow = flag ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(239,68,68,.14)";
+      txt.textContent = flag ? "Online" : "Offline";
+    }
+
+    async function safeJSON(url, opts){
+      try{
+        const r = await fetch(url, opts);
+        if(!r.ok) throw new Error("HTTP "+r.status);
+        return await r.json();
+      }catch(e){
+        return null;
+      }
+    }
+
+    function parseBRL(v){
+      const s = (v||"").trim().replace(/\./g,"").replace(",",".");
+      const n = Number(s);
+      return Number.isFinite(n) ? n : 0;
+    }
+
+    /***********************
+     * STATE
+     ***********************/
+    const state = {
+      cliente: { nome:"Cliente" },
+      saldo: 0,
+      pedido: null, // {id, origemTxt, destinoTxt, valor, status, eta_min, motoboyNome}
+      lastTracking: null
+    };
+
+    /***********************
+     * MAPA
+     ***********************/
+    let map, mOrigem, mDestino, mMoto, routeLine;
+
+    function initMap(){
+      const natal = [-5.7945, -35.2110];
+      map = L.map("map", { zoomControl:true }).setView(natal, 13);
+
+      L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {
+        maxZoom: 19,
+        attribution: "&copy; OpenStreetMap"
+      }).addTo(map);
+
+      const mk = (label, color) => L.divIcon({
+        className: "",
+        html: `
+          <div style="
+              width:42px;height:42px;border-radius:18px;
+              background:linear-gradient(180deg,#fff,#F7FAFF);
+              border:1px solid rgba(214,226,255,.95);
+              box-shadow:0 16px 30px rgba(10,25,80,.12);
+              display:grid;place-items:center;position:relative;">
+            <div style="width:12px;height:12px;border-radius:999px;background:${color};box-shadow:0 0 0 8px ${color}22;"></div>
+            <div style="
+              position:absolute;left:50%;top:100%;
+              transform:translate(-50%,-4px) rotate(45deg);
+              width:12px;height:12px;background:linear-gradient(180deg,#fff,#F7FAFF);
+              border-left:1px solid rgba(214,226,255,.95);
+              border-bottom:1px solid rgba(214,226,255,.95);
+              border-bottom-left-radius:3px;"></div>
+          </div>
+          <div style="
+              margin-top:6px;background:rgba(255,255,255,.92);
+              border:1px solid rgba(214,226,255,.9);
+              color:var(--royal);
+              padding:6px 10px;border-radius:999px;
+              font-weight:900;font-size:11px;display:inline-block;
+              box-shadow:0 10px 20px rgba(10,25,80,.08);
+            ">${label}</div>
+        `,
+        iconSize: [120, 56],
+        iconAnchor: [22, 42]
+      });
+
+      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
+      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
+      mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+
+      routeLine = L.polyline([natal, natal], { weight:5, opacity:.9 }).addTo(map);
+    }
+
+    function setRoute(orig, dest){
+      mOrigem.setLatLng(orig);
+      mDestino.setLatLng(dest);
+      routeLine.setLatLngs([orig, dest]);
+      const b = L.latLngBounds([orig, dest]).pad(0.25);
+      map.fitBounds(b, { animate:true, duration:0.6 });
+    }
+
+    function setMoto(pos){
+      mMoto.setLatLng(pos);
+    }
+
+    /***********************
+     * UI
+     ***********************/
+    function setTab(tab){
+      document.querySelectorAll(".tab").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+      document.querySelectorAll(".navbtn").forEach(b=> b.classList.toggle("active", b.dataset.tab===tab));
+      $("tab-pedido").classList.toggle("hide", tab!=="pedido");
+      $("tab-rastreio").classList.toggle("hide", tab!=="rastreio");
+      $("tab-credito").classList.toggle("hide", tab!=="credito");
+    }
+
+    function setSaldo(n){
+      state.saldo = Number(n||0);
+      $("saldoVal").textContent = moneyBR(state.saldo);
+      $("saldoHint").textContent = state.saldo > 0
+        ? "Use seu crédito para pagar pedidos com mais rapidez."
+        : "Saldo zerado. Faça uma recarga para pedir com crédito.";
+    }
+
+    function setEstimativa(valor, eta){
+      $("precoTxt").textContent = valor != null ? moneyBR(valor) : "—";
+      $("etaTxt").textContent = eta != null ? `${eta} min` : "—";
+      $("chipETA").textContent = eta != null ? `ETA ${eta} min` : "ETA —";
+    }
+
+    function setBadge(){
+      const dot = $("badgeDot");
+      const txt = $("badgeTxt");
+
+      if(!state.pedido){
+        dot.style.background = "var(--warn)";
+        dot.style.boxShadow = "0 0 0 6px rgba(245,158,11,.14)";
+        txt.textContent = "Sem pedido ativo";
+        $("statusTxt").textContent = "Sem pedido ativo";
+        $("motoTxt").textContent = "—";
+        $("pedidoRef").textContent = "—";
+        $("addrMini").textContent = "—";
+        setEstimativa(null, null);
+        return;
+      }
+
+      const st = state.pedido.status || "Em andamento";
+      txt.textContent = st;
+      const ok = /entreg/i.test(st);
+      dot.style.background = ok ? "var(--ok)" : "var(--warn)";
+      dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
+
+      $("statusTxt").textContent = st;
+      $("motoTxt").textContent = state.pedido.motoboyNome || "—";
+      $("pedidoRef").textContent = state.pedido.id || "—";
+      $("addrMini").textContent = `${state.pedido.origemTxt || "—"} → ${state.pedido.destinoTxt || "—"}`;
+      setEstimativa(state.pedido.valor, state.pedido.eta_min);
+    }
+
+    function renderTimeline(){
+      const wrap = $("timeline");
+      wrap.innerHTML = "";
+
+      if(!state.pedido){
+        wrap.innerHTML = `
+          <div class="item">
+            <div class="ic">1</div>
+            <div class="tx">
+              <strong>Crie um pedido</strong>
+              <small>Quando houver pedido ativo, o rastreio abre com status e ETA.</small>
+            </div>
+            <div class="right"><span class="chip">Aguardando</span></div>
+          </div>
+        `;
+        return;
+      }
+
+      const steps = [
+        {k:"Criado",    d:"Pedido criado e aguardando atribuição."},
+        {k:"Atribuído", d:"Motoboy atribuído e a caminho da coleta."},
+        {k:"Coleta",    d:"Motoboy no local de coleta."},
+        {k:"Em rota",   d:"Em rota para entrega."},
+        {k:"Entregue",  d:"Entrega concluída."},
+      ];
+
+      const status = (state.pedido.status||"Criado").toLowerCase();
+      const idx =
+        status.includes("entreg") ? 4 :
+        status.includes("rota") || status.includes("andamento") ? 3 :
+        status.includes("colet") ? 2 :
+        status.includes("atribu") ? 1 : 0;
+
+      steps.forEach((s,i)=>{
+        const done = i < idx;
+        const cur  = i === idx;
+        const chip = done ? "Concluído" : (cur ? "Agora" : "Pendente");
+        const dot = done ? "var(--ok)" : (cur ? "var(--warn)" : "rgba(102,112,133,.28)");
+
+        wrap.insertAdjacentHTML("beforeend", `
+          <div class="item">
+            <div class="ic" style="background: radial-gradient(16px 16px at 30% 30%, ${dot}55, ${dot}22);">${i+1}</div>
+            <div class="tx">
+              <strong>${s.k}</strong>
+              <small>${s.d}</small>
+            </div>
+            <div class="right"><span class="chip">${chip}</span></div>
+          </div>
+        `);
+      });
+    }
+
+    /***********************
+     * API: carregamento e polling
+     ***********************/
+    function normalizePedido(p){
+      return {
+        id: String(p.id),
+        origemTxt: p.origem_txt || "",
+        destinoTxt: p.destino_txt || "",
+        valor: Number(p.valor || 0),
+        status: p.status || "Criado",
+        eta_min: (p.eta_min != null ? Number(p.eta_min) : null),
+        motoboyNome: p.motoboy_nome || ""
+      };
+    }
+
+    async function loadInitial(){
+      const me = await safeJSON(API.me);
+      const saldo = await safeJSON(API.saldo);
+      const ativo = await safeJSON(API.pedidoAtivo);
+
+      const ok = !!(me && saldo && ativo);
+      setOnline(ok);
+
+      if(me?.ok){
+        state.cliente = me.cliente;
+        $("welcomeSub").textContent = `Olá, ${state.cliente.nome || "Cliente"}.`;
+      }
+      if(saldo?.ok) setSaldo(saldo.saldo);
+
+      if(ativo?.ok && ativo.pedido){
+        state.pedido = normalizePedido(ativo.pedido);
+        setBadge();
+        renderTimeline();
+        await applyTrackingFromAPI(state.pedido.id);
+        startPolling();
+      }else{
+        state.pedido = null;
+        setBadge();
+        renderTimeline();
+      }
+
+      $("badgeTxt").textContent = state.pedido ? (state.pedido.status || "Em andamento") : "Sem pedido ativo";
+    }
+
+    async function applyTrackingFromAPI(pedidoId){
+      const data = await safeJSON(API.tracking(pedidoId));
+      if(!data || !data.ok) return;
+
+      // Atualiza texto/status
+      if(state.pedido){
+        state.pedido.status = data.status || state.pedido.status;
+        state.pedido.eta_min = (data.eta_min != null ? data.eta_min : state.pedido.eta_min);
+        state.pedido.motoboyNome = (data.motoboy?.nome || state.pedido.motoboyNome);
+
+        if(data.origem?.txt) state.pedido.origemTxt = data.origem.txt;
+        if(data.destino?.txt) state.pedido.destinoTxt = data.destino.txt;
+        if(data.valor != null) state.pedido.valor = Number(data.valor);
+      }
+
+      setBadge();
+      renderTimeline();
+
+      // Atualiza mapa (se tiver coordenadas)
+      const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
+      const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
+      const moto = (data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
+
+      if(orig && dest) setRoute(orig, dest);
+      if(moto) setMoto(moto);
+    }
+
+    let pollTimer = null;
+    function startPolling(){
+      if(pollTimer) clearInterval(pollTimer);
+      pollTimer = setInterval(async ()=>{
+        if(!state.pedido){
+          const ativo = await safeJSON(API.pedidoAtivo);
+          if(ativo?.ok && ativo.pedido){
+            state.pedido = normalizePedido(ativo.pedido);
+            setBadge();
+            renderTimeline();
+          }else{
+            return;
+          }
+        }
+        await applyTrackingFromAPI(state.pedido.id);
+      }, POLL_MS);
+    }
+
+    /***********************
+     * AÇÕES
+     ***********************/
+    function wireTabs(){
+      document.querySelectorAll(".tab").forEach(b=> b.addEventListener("click", ()=>setTab(b.dataset.tab)));
+      document.querySelectorAll(".navbtn").forEach(b=> b.addEventListener("click", ()=>setTab(b.dataset.tab)));
+
+      $("btnIrRecarga").addEventListener("click", ()=>setTab("credito"));
+      $("btnIrPedido").addEventListener("click", ()=>setTab("pedido"));
+      $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
+      $("btnNovoPedido").addEventListener("click", ()=>{
+        setTab("pedido");
+        $("origem").focus();
+      });
+    }
+
+
+    function saveLastPedidoLocal(pedido){
+      try{ localStorage.setItem('coopex_ultimo_pedido', JSON.stringify({id:pedido.id, quando:Date.now()})); }catch(e){}
+    }
+    function getLastPedidoLocal(){
+      try{ return JSON.parse(localStorage.getItem('coopex_ultimo_pedido') || 'null'); }catch(e){ return null; }
+    }
+    function showPedidoSuccess(res){
+      const pedido = res.pedido || {};
+      const id = pedido.id || res.entrega_id || res.codigo;
+      const pix = (res.pix_chave || $('pixChavePedido')?.textContent || '84981110706');
+      const comprovante = API.comprovantePublico(id);
+      $('pedidoSucessoBox').innerHTML = `
+        <div class="success-box">
+          Pedido enviado com sucesso.<br>
+          <strong>Guarde este número para consultar o andamento:</strong> <span style="font-size:18px">#${id}</span><br>
+          Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
+          ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="navigator.clipboard.writeText('${pix}')">Copiar Pix</button>` : ''}
+          <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+            <button class="btn btn-ghost" style="height:40px" type="button" onclick="setTab('rastreio')">Acompanhar pedido</button>
+            <a class="btn btn-ghost" style="height:40px" href="${comprovante}" target="_blank">Comprovante quando pago</a>
+          </div>
+        </div>`;
+    }
+    function applyEnderecoSalvo(obj){
+      if(!obj) return;
+      $('origem').value = [obj.endereco, obj.numero].filter(Boolean).join(', ');
+      if($('bairroOrigem')) $('bairroOrigem').value = obj.bairro || '';
+      if($('cidadeOrigem')) $('cidadeOrigem').value = obj.cidade || '';
+      window.__ORIG_LAT = obj.lat || null;
+      window.__ORIG_LNG = obj.lng || null;
+    }
+    async function salvarEnderecoColeta(){
+      const endereco = $('origem').value.trim();
+      if(!endereco){ alert('Preencha o endereço de coleta antes de salvar.'); return; }
+      const payload = {
+        apelido: $('apelidoEndereco')?.value.trim() || 'Coleta',
+        endereco,
+        bairro: $('bairroOrigem')?.value.trim() || '',
+        cidade: $('cidadeOrigem')?.value.trim() || '',
+        uf:'RN',
+        lat: window.__ORIG_LAT || null,
+        lng: window.__ORIG_LNG || null,
+        padrao: !!$('enderecoPadrao')?.checked
+      };
+      const r = await safeJSON(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(!r || !r.ok){ alert(r?.erro || 'Não foi possível salvar o endereço.'); return; }
+      alert('Endereço salvo. Recarregue a página para aparecer na lista, ou continue usando este endereço.');
+    }
+    async function carregarHistorico(){
+      const wrap = $('historicoLista');
+      if(!wrap) return;
+      wrap.innerHTML = '<div class="note">Carregando histórico...</div>';
+      const data = $('histData')?.value || '';
+      const r = await safeJSON(API.historico + (data ? ('?data='+encodeURIComponent(data)) : ''));
+      if(!r || !r.ok){ wrap.innerHTML = '<div class="warn-box">Não foi possível carregar o histórico.</div>'; return; }
+      if(!r.entregas || !r.entregas.length){ wrap.innerHTML = '<div class="note">Nenhum pedido encontrado para essa consulta.</div>'; return; }
+      wrap.innerHTML = r.entregas.map(e=>`
+        <div class="hist-item">
+          <strong>#${e.id}</strong> — ${e.data}<br>
+          ${e.origem || '-'} → ${e.destino || '-'}<br>
+          Valor: <strong>${moneyBR(e.valor)}</strong> • Status: <strong>${e.status}</strong> • Pagamento: <strong>${e.status_pagamento}</strong><br>
+          ${e.pago ? `<a class="btn btn-ghost" style="height:38px;margin-top:8px" target="_blank" href="${e.comprovante_url}">Abrir comprovante</a>` : `<div style="margin-top:8px;color:var(--muted);font-size:12px;font-weight:800">Comprovante disponível após constar como pago.</div>`}
+        </div>`).join('');
+    }
+
+    function wirePedido(){
+      if($("pagamento")) $("pagamento").addEventListener("change", ()=>{$("pixBoxPedido").style.display = ($("pagamento").value === "pix") ? "block" : "none";});
+      if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>navigator.clipboard.writeText($("pixChavePedido").textContent.trim()).then(()=>alert("Chave Pix copiada.")));
+      if($("btnSalvarEndereco")) $("btnSalvarEndereco").addEventListener("click", salvarEnderecoColeta);
+      if($("enderecoSalvo")) $("enderecoSalvo").addEventListener("change", ()=>{ const opt=$("enderecoSalvo").selectedOptions[0]; if(opt && opt.dataset.json){ try{ applyEnderecoSalvo(JSON.parse(opt.dataset.json)); }catch(e){} } });
+      if($("btnBuscarHistorico")) $("btnBuscarHistorico").addEventListener("click", carregarHistorico);
+      const ultimo = getLastPedidoLocal();
+      if(ultimo && ultimo.id && !state.pedido){
+        $('pedidoSucessoBox').innerHTML = `<div class="warn-box">Último pedido deste aparelho: <strong>#${ultimo.id}</strong>. <button class="btn btn-ghost" style="height:36px;margin-left:8px;display:inline-flex" type="button" onclick="state.pedido={id:String(${ultimo.id}),status:'Criado'};setTab('rastreio');applyTrackingFromAPI(${ultimo.id});startPolling();">Recuperar rastreio</button></div>`;
+      }
+      $("btnUsarLocal").addEventListener("click", async ()=>{
+        if(!navigator.geolocation){
+          alert("Geolocalização não suportada neste navegador.");
+          return;
+        }
+        navigator.geolocation.getCurrentPosition((pos)=>{
+          const lat = pos.coords.latitude;
+          const lng = pos.coords.longitude;
+          $("origem").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
+          // Opcional: você pode mandar essas coords junto no pedido (backend aceita).
+          window.__ORIG_LAT = lat;
+          window.__ORIG_LNG = lng;
+        }, ()=>{
+          alert("Não foi possível obter sua localização. Verifique permissões.");
+        }, { enableHighAccuracy:true, timeout:8000 });
+      });
+
+      $("btnCriarPedido").addEventListener("click", async ()=>{
+        const origemTxt = $("origem").value.trim();
+        const destinoTxt = $("destino").value.trim();
+        const tipo = $("tipo").value;
+        const pagamento = $("pagamento").value;
+        const obs = $("obs").value.trim();
+
+        if(!origemTxt || !destinoTxt){
+          alert("Informe os endereços de coleta e entrega.");
+          return;
+        }
+
+        const payload = {
+          origem_txt: origemTxt,
+          destino_txt: destinoTxt,
+          tipo,
+          pagamento,
+          obs,
+          origem_lat: (window.__ORIG_LAT ?? null),
+          origem_lng: (window.__ORIG_LNG ?? null),
+          coleta: {endereco: origemTxt, bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", uf:"RN", lat:(window.__ORIG_LAT ?? null), lng:(window.__ORIG_LNG ?? null)},
+          entrega: {endereco: destinoTxt, bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", uf:"RN"},
+        };
+
+        const res = await safeJSON(API.pedido, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify(payload)
+        });
+
+        if(!res || !res.ok){
+          alert(res?.msg || "Não foi possível criar o pedido.");
+          return;
+        }
+
+        setOnline(true);
+        state.pedido = normalizePedido(res.pedido);
+        saveLastPedidoLocal(state.pedido);
+        showPedidoSuccess(res);
+        setBadge();
+        renderTimeline();
+        setTab("rastreio");
+
+        await applyTrackingFromAPI(state.pedido.id);
+        startPolling();
+      });
+    }
+
+    function wireRastreio(){
+      $("btnCentralizar").addEventListener("click", ()=>{
+        const o = mOrigem.getLatLng();
+        const d = mDestino.getLatLng();
+        const b = L.latLngBounds([o,d]).pad(0.25);
+        map.fitBounds(b, { animate:true, duration:0.6 });
+      });
+
+      $("btnCancelar").addEventListener("click", async ()=>{
+        if(!state.pedido){
+          alert("Não há pedido ativo para cancelar.");
+          return;
+        }
+        if(!confirm("Deseja cancelar o pedido ativo?")) return;
+
+        const r = await safeJSON(API.cancelar(state.pedido.id), { method:"POST" });
+        if(!r || !r.ok){
+          alert(r?.msg || "Não foi possível cancelar.");
+          return;
+        }
+
+        state.pedido = null;
+        setBadge();
+        renderTimeline();
+        setTab("pedido");
+      });
+    }
+
+    function wireCredito(){
+      $("metodoRecarga").addEventListener("change", ()=>{
+        $("metodoTxt").textContent = $("metodoRecarga").value === "pix" ? "Pix" : "Cartão";
+      });
+
+      document.querySelectorAll(".recargaPreset").forEach(b=>{
+        b.addEventListener("click", ()=> $("valorRecarga").value = (b.dataset.v || "").replace(".", ","));
+      });
+
+      $("btnGerarRecarga").addEventListener("click", async ()=>{
+        const valor = parseBRL($("valorRecarga").value);
+        const metodo = $("metodoRecarga").value;
+
+        if(!valor || valor <= 0){
+          alert("Informe um valor válido para recarga.");
+          return;
+        }
+
+        const r = await safeJSON(API.recarga, {
+          method:"POST",
+          headers:{ "Content-Type":"application/json" },
+          body: JSON.stringify({ valor, metodo })
+        });
+
+        if(!r || !r.ok){
+          alert(r?.msg || "Não foi possível gerar a recarga.");
+          return;
+        }
+
+        setOnline(true);
+
+        // Atualiza UI do box (Pix real por chave + referência; Cartão depende do provedor)
+        if(metodo === "pix"){
+          $("boxCobranca").innerHTML = `
+            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+            Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
+            <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
+            <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
+            <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || ("RECARGA-"+r.recarga_id)}</span><br>
+            <div style="margin-top:10px">Após o pagamento, a recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
+          `;
+        } else {
+          $("boxCobranca").innerHTML = `
+            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+            Método: <strong>Cartão</strong>.<br>
+            <div style="margin-top:10px">
+              Integração necessária: seu backend deve retornar um <strong>checkout_url</strong> do provedor e você redireciona o cliente.
+            </div>
+            ${r.checkout_url ? `<div style="margin-top:10px"><a class="btn btn-primary" style="height:44px" href="${r.checkout_url}">Pagar agora</a></div>` : ""}
+          `;
+        }
+
+        // Atualiza saldo (pode não mudar até aprovação; mesmo assim mostramos o saldo atual do backend)
+        const s = await safeJSON(API.saldo);
+        if(s?.ok) setSaldo(s.saldo);
+      });
+    }
+
+    /***********************
+     * BOOT
+     ***********************/
+    initMap();
+    wireTabs();
+    wirePedido();
+    wireRastreio();
+    wireCredito();
+    loadInitial();
+    if($("histData")){ $("histData").value = new Date().toISOString().slice(0,10); }
+
+    $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
+    $("btnNovoPedido").addEventListener("click", ()=>setTab("pedido"));
+  </script>
 </body>
 </html>
