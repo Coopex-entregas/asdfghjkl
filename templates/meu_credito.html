@@ -468,7 +468,7 @@
             <div class="row">
               <div class="field" style="flex:2">
                 <label for="origem">Coleta (CEP ou rua/avenida)</label>
-                <input class="input" id="origem" placeholder="Digite rua, CEP ou local. Ex.: Natal Shopping" autocomplete="street-address">
+                <input class="input" id="origem" placeholder="Pesquise como no Google: rua, CEP, Natal Shopping, loja, cartório..." autocomplete="off">
                 <div id="sugOrigem" class="sugbox"></div>
                 <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
               </div>
@@ -477,7 +477,7 @@
                 <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
               </div>
             </div>
-            <div class="note" style="margin-top:-2px">Digite rua, CEP ou nome do local cadastrado no Maps. As sugestões aparecem enquanto digita. Para rua/CEP, preencha o número para ajustar a localização exata.</div>
+            <div class="note" style="margin-top:-2px">Digite como no Google Maps: rua, CEP, nome de loja, Natal Shopping, Correio em Natal, Cartório em Natal etc. Ao clicar na sugestão, o sistema preenche endereço, número, bairro, cidade, CEP e localização quando o Google retornar esses dados.</div>
 
             <div class="row">
               <div class="field">
@@ -493,7 +493,7 @@
             <div class="row">
               <div class="field" style="flex:2">
                 <label for="destino">Entrega (CEP ou rua/avenida)</label>
-                <input class="input" id="destino" placeholder="Digite rua, CEP ou local. Ex.: Cartório, Correios" autocomplete="street-address">
+                <input class="input" id="destino" placeholder="Pesquise como no Google: Correio em Natal, cartório, loja, rua..." autocomplete="off">
                 <div id="sugDestino" class="sugbox"></div>
                 <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
               </div>
@@ -1322,7 +1322,7 @@
     function fillAddress(prefix, item){
       if(!item) return;
       const numeroId = prefix === 'origem' ? 'numeroOrigem' : 'numeroDestino';
-      const enderecoLimpo = item.endereco || item.display || '';
+      const enderecoLimpo = item.endereco || item.display || ''; // endereço físico; local/loja fica reconhecível na sugestão
       if($(prefix)) $(prefix).value = enderecoLimpo;
       if($(numeroId) && item.numero) $(numeroId).value = item.numero || '';
       if($(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino')) $(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino').value = item.bairro || '';
@@ -1371,7 +1371,7 @@
       box.innerHTML = arr.map((it,i)=>{
         const temNumero = !!(it.numero || numeroDoPrefixo(prefix));
         const ehLocal = !!(it.place_name && it.fonte === 'google');
-        const selo = ehLocal ? 'Local do Google' : (temNumero ? 'Endereço exato' : 'Informe o número para ajustar');
+        const selo = ehLocal ? 'Local cadastrado no Google Maps' : (temNumero ? 'Endereço exato com número' : 'Escolha a sugestão; se for rua, informe o número para cravar o ponto');
         return `<button type="button" data-i="${i}">${it.display || it.endereco}<small>${[it.bairro,it.cidade,it.uf,it.cep,it.fonte==='google'?'Google Maps':'',selo].filter(Boolean).join(' • ')}</small></button>`;
       }).join('');
       box.style.display='block';
@@ -1434,7 +1434,7 @@
       wrap.insertAdjacentHTML('beforeend', `
         <div class="stop-card" data-stop="${i}">
           <div class="stop-head"><span>Parada ${i+1}</span><button class="btn btn-ghost btnRemoveParada" type="button">Remover</button></div>
-          <div class="row"><div class="field" style="flex:2"><label>Rua/avenida da parada</label><input class="input p_endereco" placeholder="Ex.: Cartório, Correios, cliente intermediário"></div><div class="field" style="flex:.7"><label>Número</label><input class="input p_numero" placeholder="Nº" inputmode="numeric"></div></div>
+          <div class="row"><div class="field" style="flex:2"><label>Rua/avenida/local da parada</label><input class="input p_endereco" placeholder="Pesquise como no Google: Correio em Natal, cartório, loja..." autocomplete="off"><div class="sugbox p_sug"></div></div><div class="field" style="flex:.7"><label>Número</label><input class="input p_numero" placeholder="Nº" inputmode="numeric"></div></div>
           <div class="row"><div class="field"><label>Bairro</label><input class="input p_bairro" placeholder="Bairro"></div><div class="field"><label>Cidade</label><input class="input p_cidade" placeholder="Cidade"></div></div>
           <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option></select><div class="minihelp" style="font-size:11.5px;color:var(--muted);font-weight:750;margin-top:4px">Se marcar serviço, informe nessa parada o endereço do local do serviço. O valor será trajeto até a parada + serviço cadastrado.</div></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
           <input type="hidden" class="p_lat"><input type="hidden" class="p_lng">
@@ -1445,13 +1445,42 @@
       }
       card.querySelector('.btnRemoveParada').onclick=()=>{ card.remove(); atualizarCotacao(); };
       card.querySelectorAll('input,select').forEach(el=>el.addEventListener('change', atualizarCotacao));
+      function preencherParada(it){
+        if(!it) return;
+        card.querySelector('.p_endereco').value=it.endereco||it.display||'';
+        if(card.querySelector('.p_numero') && it.numero) card.querySelector('.p_numero').value=it.numero||'';
+        card.querySelector('.p_bairro').value=it.bairro||'';
+        card.querySelector('.p_cidade').value=it.cidade||'';
+        card.querySelector('.p_lat').value=it.lat||'';
+        card.querySelector('.p_lng').value=it.lng||'';
+        const sug=card.querySelector('.p_sug'); if(sug) sug.style.display='none';
+        atualizarCotacao();
+      }
+      async function buscarParadaSugestoes(){
+        const q=card.querySelector('.p_endereco').value.trim();
+        const sug=card.querySelector('.p_sug');
+        if(q.length<3){ if(sug) sug.style.display='none'; return; }
+        const params = new URLSearchParams({q:q, numero:card.querySelector('.p_numero')?.value.trim()||'', bairro:card.querySelector('.p_bairro')?.value.trim()||'', cidade:card.querySelector('.p_cidade')?.value.trim()||''});
+        const r=await safeJSON(API.buscarEndereco+'?'+params.toString());
+        const arr=r?.resultados||[];
+        if(!arr.length){ if(sug) sug.style.display='none'; return; }
+        if(sug){
+          sug.innerHTML = arr.map((it,idx)=>`<button type="button" data-i="${idx}">${it.display||it.endereco||q}<small>${[it.bairro,it.cidade,it.uf,it.cep,it.fonte==='google'?'Google Maps':''].filter(Boolean).join(' • ')}</small></button>`).join('');
+          sug.style.display='block';
+          sug.querySelectorAll('button').forEach(btn=>btn.onclick=()=>preencherParada(arr[Number(btn.dataset.i)]));
+        }
+      }
       async function buscarParadaExata(){
         const q=card.querySelector('.p_endereco').value.trim(); if(q.length<3) return;
         const params = new URLSearchParams({q:q, numero:card.querySelector('.p_numero')?.value.trim()||'', bairro:card.querySelector('.p_bairro')?.value.trim()||'', cidade:card.querySelector('.p_cidade')?.value.trim()||''});
         const r=await safeJSON(API.buscarEndereco+'?'+params.toString()); const it=r?.resultados?.[0];
-        if(it){ card.querySelector('.p_endereco').value=it.endereco||it.display||q; if(card.querySelector('.p_numero') && it.numero) card.querySelector('.p_numero').value=it.numero||''; card.querySelector('.p_bairro').value=it.bairro||''; card.querySelector('.p_cidade').value=it.cidade||''; card.querySelector('.p_lat').value=it.lat||''; card.querySelector('.p_lng').value=it.lng||''; atualizarCotacao(); }
+        if(it) preencherParada(it);
       }
-      card.querySelector('.p_endereco').addEventListener('blur', buscarParadaExata);
+      let stopTimer=null;
+      card.querySelector('.p_endereco').addEventListener('input', ()=>{ clearTimeout(stopTimer); stopTimer=setTimeout(buscarParadaSugestoes, 450); });
+      card.querySelector('.p_endereco').addEventListener('focus', buscarParadaSugestoes);
+      card.querySelector('.p_endereco').addEventListener('blur', ()=>setTimeout(()=>{ const sug=card.querySelector('.p_sug'); if(sug) sug.style.display='none'; }, 350));
+      card.querySelector('.p_numero')?.addEventListener('input', ()=>{ clearTimeout(stopTimer); stopTimer=setTimeout(buscarParadaExata, 500); });
       card.querySelector('.p_numero')?.addEventListener('blur', buscarParadaExata);
       card.querySelector('.p_numero')?.addEventListener('change', buscarParadaExata);
       card.querySelector('.p_servico')?.addEventListener('change', atualizarCotacao);
