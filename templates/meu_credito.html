@@ -366,6 +366,16 @@
       .payment-row{grid-template-columns:1fr;}
     }
 
+
+    /* v18: Cliente não vê mapa; acompanhamento por status, previsão e mensagem de chegada */
+    .grid{grid-template-columns:minmax(320px, 760px) !important;justify-content:center;}
+    .map-card{display:none !important;}
+    .arrival-alert{display:none;margin:12px 0;padding:18px;border-radius:22px;background:linear-gradient(180deg,#003399,#255BFF);color:#fff;box-shadow:0 18px 40px rgba(0,51,153,.25);font-size:18px;font-weight:950;text-align:center;line-height:1.25;}
+    .arrival-alert.show{display:block;animation:pulseArrival 1.15s ease-in-out infinite;}
+    @keyframes pulseArrival{0%,100%{transform:scale(1)}50%{transform:scale(1.015)}}
+    .tracking-summary{margin-top:12px;padding:14px;border-radius:18px;border:1px solid rgba(214,226,255,.95);background:linear-gradient(180deg,#fff,#F8FBFF);}
+    .tracking-summary strong{color:var(--royal)}
+
   </style>
 </head>
 
@@ -395,7 +405,7 @@
         <div class="card-h">
           <div>
             <h2>Sua carteira</h2>
-            <p>Saldo, pedidos e recargas. Solicite entregas, acompanhe no mapa e compre crédito por Pix.</p>
+            <p>Saldo, pedidos e recargas. Solicite entregas, acompanhe a previsão e compre crédito por Pix.</p>
           </div>
           <span class="badge" id="badgePedido">
             <span class="b-dot" id="badgeDot"></span>
@@ -600,17 +610,24 @@
               </div>
             </div>
 
+            <div class="arrival-alert" id="arrivalAlert">O entregador está chegando!</div>
+            <div class="tracking-summary" id="trackingSummary">
+              <strong>Previsão:</strong> <span id="trackingEtaTxt">—</span><br>
+              <strong>Distância aproximada:</strong> <span id="trackingDistTxt">—</span><br>
+              <strong>Entregador:</strong> <span id="trackingMotoTxt">—</span>
+            </div>
+
             <div class="list" id="timeline"></div>
 
             <div class="hr"></div>
 
             <div class="row">
-              <button class="btn btn-ghost" id="btnCentralizar" type="button">Centralizar no mapa</button>
+              <button class="btn btn-ghost" id="btnCentralizar" type="button">Atualizar previsão</button>
               <button class="btn btn-danger" id="btnCancelar" type="button">Cancelar pedido</button>
             </div>
 
             <div class="note" style="margin-top:12px">
-              O mapa mostra coleta, entrega, percurso e posição do entregador após atribuição. Atualiza automaticamente pelo sistema.
+              Acompanhamento por status e previsão. Quando o entregador for atribuído, o sistema mostra o nome e calcula a previsão até a entrega.
             </div>
           </section>
 
@@ -979,6 +996,10 @@
         $("pedidoRef").textContent = "—";
         $("addrMini").textContent = "—";
         setEstimativa(null, null);
+        if($('trackingEtaTxt')) $('trackingEtaTxt').textContent = '—';
+        if($('trackingDistTxt')) $('trackingDistTxt').textContent = '—';
+        if($('trackingMotoTxt')) $('trackingMotoTxt').textContent = '—';
+        if($('arrivalAlert')) $('arrivalAlert').classList.remove('show');
         return;
       }
 
@@ -1006,7 +1027,7 @@
             <div class="ic">1</div>
             <div class="tx">
               <strong>Crie um pedido</strong>
-              <small>Quando houver pedido ativo, o mapa mostra status, previsão e entregador atribuído.</small>
+              <small>Quando houver pedido ativo, esta tela mostra status, previsão e entregador atribuído.</small>
             </div>
             <div class="right"><span class="chip">Aguardando</span></div>
           </div>
@@ -1016,8 +1037,8 @@
 
       const steps = [
         {k:"Aguardando entregador", d:"Pedido recebido. A supervisão está procurando/atribuindo um entregador."},
-        {k:"Entregador atribuído", d:"Entregador definido. O mapa passa a mostrar a posição do entregador."},
-        {k:"Entregue", d:"Entrega concluída. A rota do entregador não fica mais disponível."},
+        {k:"Entregador atribuído", d:"Entregador definido. A previsão passa a acompanhar o deslocamento do entregador."},
+        {k:"Entregue", d:"Entrega concluída. A previsão fica encerrada."},
       ];
 
       const status = (state.pedido.status||"Aguardando entregador").toLowerCase();
@@ -1088,6 +1109,24 @@
       $("badgeTxt").textContent = state.pedido ? (state.pedido.status || "Em andamento") : "Sem pedido ativo";
     }
 
+
+    function atualizarResumoRastreio(data){
+      try{
+        const eta = data?.eta_min;
+        const dist = data?.distancia_km;
+        const motoNome = data?.motoboy?.nome || (state.pedido?.motoboyNome || 'Aguardando atribuição');
+        if($('trackingEtaTxt')) $('trackingEtaTxt').textContent = eta != null ? (eta + ' min') : (data?.motoboy?.nome ? 'Calculando...' : 'Procurando entregador');
+        if($('trackingDistTxt')) $('trackingDistTxt').textContent = dist != null ? (Number(dist).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1}) + ' km') : '—';
+        if($('trackingMotoTxt')) $('trackingMotoTxt').textContent = motoNome || 'Aguardando atribuição';
+        const chegando = !!(data?.chegando || (eta != null && Number(eta) <= 3) || (dist != null && Number(dist) <= 2));
+        const alertBox = $('arrivalAlert');
+        if(alertBox){
+          alertBox.classList.toggle('show', chegando);
+          alertBox.innerHTML = chegando ? '🚀 O entregador está chegando!<br><small>Fique atento para receber a entrega.</small>' : 'O entregador está chegando!';
+        }
+      }catch(e){}
+    }
+
     async function applyTrackingFromAPI(pedidoId){
       const data = await safeJSON(API.tracking(pedidoId));
       if(!data || !data.ok) return;
@@ -1105,8 +1144,9 @@
 
       setBadge();
       renderTimeline();
+      atualizarResumoRastreio(data);
 
-      // Atualiza mapa (se tiver coordenadas)
+      // Atualização de coordenadas mantida internamente, mas o cliente não vê mapa nesta versão.
       const delivered = (data.status||'').toLowerCase().includes('entreg');
       const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
       const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
@@ -1167,7 +1207,7 @@
 
       $("btnIrRecarga").addEventListener("click", ()=>setTab("credito"));
       $("btnIrPedido").addEventListener("click", ()=>setTab("pedido"));
-      $("btnAbrirRastreio").addEventListener("click", ()=>centralizarMapaPedido());
+      $("btnAbrirRastreio").addEventListener("click", ()=>atualizarPrevisaoPedido());
       $("btnNovoPedido").addEventListener("click", ()=>{
         setTab("pedido");
         $("origem").focus();
@@ -1216,7 +1256,7 @@
           Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
           ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="copiarTextoSeguro('${pix}', 'Chave Pix copiada com sucesso.')">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-ghost" style="height:40px" type="button" onclick="centralizarMapaPedido()">Centralizar no mapa</button>
+            <button class="btn btn-ghost" style="height:40px" type="button" onclick="atualizarPrevisaoPedido()">Atualizar previsão</button>
             ${$('pagamento').value === 'pix' ? `<a class="btn btn-primary" style="height:40px" target="_blank" href="https://wa.me/5584981110706?text=${encodeURIComponent('Olá, segue comprovante de pagamento do pedido COOPEX #' + id)}">Enviar comprovante</a>` : ''}
             <a class="btn btn-ghost" style="height:40px" href="${comprovante}" target="_blank">Comprovante quando pago</a>
           </div>
@@ -1452,7 +1492,7 @@
       setTab('pedido');
       setBadge();
       renderTimeline();
-      $('pedidoSucessoBox').innerHTML = `<div class="success-box">Pedido recuperado com sucesso.<br><strong>Número:</strong> #${codigo}<br>O mapa será atualizado automaticamente quando houver entregador atribuído e localização ativa.</div>`;
+      $('pedidoSucessoBox').innerHTML = `<div class="success-box">Pedido recuperado com sucesso.<br><strong>Número:</strong> #${codigo}<br>A previsão será atualizada automaticamente quando houver entregador atribuído e localização ativa.</div>`;
       await applyTrackingFromAPI(codigo);
       startPolling();
       alert('Pedido recuperado com sucesso.');
@@ -1559,6 +1599,15 @@
         if(pts.length === 1){ map.setView(pts[0], 16); }
         else if(pts.length){ map.fitBounds(L.latLngBounds(pts).pad(0.25), {animate:true, duration:0.6}); }
       }catch(e){}
+    }
+
+    async function atualizarPrevisaoPedido(){
+      if(state.pedido && state.pedido.id){
+        await applyTrackingFromAPI(state.pedido.id);
+        alert('Previsão atualizada.');
+      }else{
+        alert('Nenhum pedido ativo para atualizar.');
+      }
     }
 
     function wireRastreio(){
@@ -1671,7 +1720,7 @@
     setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 350);
     if($("histData")){ $("histData").value = new Date().toISOString().slice(0,10); }
 
-    $("btnAbrirRastreio").addEventListener("click", ()=>centralizarMapaPedido());
+    $("btnAbrirRastreio").addEventListener("click", ()=>atualizarPrevisaoPedido());
     $("btnNovoPedido").addEventListener("click", ()=>setTab("pedido"));
   </script>
 </body>
