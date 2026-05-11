@@ -2829,7 +2829,10 @@ def _google_addr_to_result(item, fallback_display=''):
     cep = _google_component_value(comps, 'postal_code')
     nome_local = (item.get('name') or '').strip()
     formatted = (item.get('formatted_address') or fallback_display or '').strip()
-    endereco = rua or nome_local or (formatted.split(',')[0] if formatted else '')
+    # Para local comercial (loja, shopping, cartório, Correios), o nome do local fica em place_name,
+    # mas o campo endereço deve receber a rua/endereço físico para admin e cooperado.
+    primeira_linha = (formatted.split(',')[0].strip() if formatted else '')
+    endereco = rua or primeira_linha or nome_local
     display = formatted or ', '.join([x for x in [nome_local or endereco, numero, bairro, cidade, uf, cep] if x])
     return {
         'display': display,
@@ -2913,6 +2916,71 @@ def _google_places_autocomplete(q, limit=6):
         try: current_app.logger.warning(f'Falha Google Places Autocomplete: {e}')
         except Exception: pass
         return []
+
+
+def _google_places_text_search(q, limit=8):
+    """Busca de locais igual ao Google Maps: aceita 'correio em natal', 'cartório lagoa nova',
+    nome de loja, shopping, clínica, empresa etc. Retorna dados completos quando o local existir no Google.
+    """
+    key = _google_maps_api_key()
+    if not key or not q:
+        return []
+    try:
+        from urllib.parse import urlencode
+        termo = q
+        if 'natal' not in _norm(termo) and 'parnamirim' not in _norm(termo):
+            termo = termo + ', Natal RN'
+        params = urlencode({
+            'query': termo,
+            'key': key,
+            'language': 'pt-BR',
+            'region': 'br',
+            'location': '-5.7945,-35.2110',
+            'radius': '65000',
+        })
+        data = _http_json('https://maps.googleapis.com/maps/api/place/textsearch/json?' + params, timeout=8)
+        if data.get('status') not in ('OK', 'ZERO_RESULTS'):
+            try: current_app.logger.warning('Google Places Text Search status: %s', data.get('status'))
+            except Exception: pass
+        out = []
+        vistos = set()
+        for item in (data.get('results') or [])[:limit]:
+            pid = item.get('place_id')
+            det = _google_place_details(pid) if pid else None
+            r = det or _google_addr_to_result(item)
+            if not r:
+                continue
+            nome = (item.get('name') or r.get('place_name') or '').strip()
+            if nome:
+                r['place_name'] = r.get('place_name') or nome
+                end = r.get('display') or item.get('formatted_address') or ''
+                r['display'] = f'{nome} — {end}' if end and nome not in end else (end or nome)
+            r['fonte'] = 'google'
+            k = (_norm(r.get('display')), str(r.get('lat')), str(r.get('lng')))
+            if k in vistos:
+                continue
+            vistos.add(k)
+            out.append(r)
+        return out
+    except Exception as e:
+        try: current_app.logger.warning(f'Falha Google Places Text Search: {e}')
+        except Exception: pass
+        return []
+
+
+def _merge_endereco_results(*listas, limit=10):
+    out = []
+    vistos = set()
+    for lista in listas:
+        for r in lista or []:
+            k = (_norm(r.get('display') or r.get('endereco')), str(r.get('lat') or ''), str(r.get('lng') or ''))
+            if not k[0] or k in vistos:
+                continue
+            vistos.add(k)
+            out.append(r)
+            if len(out) >= limit:
+                return out
+    return out
 
 
 def _google_place_details(place_id):
@@ -3114,22 +3182,27 @@ def api_cliente_buscar_endereco():
 
     resultados = []
 
-    # Com número: prioridade máxima para Google Geocoding, porque é a localização exata.
+    # Com número: prioridade máxima para Google Geocoding, porque é a localização exata da rua + número.
+    # Ex.: CEP 59062040 + número 1000 -> busca o ponto real no Google, não só o centro do CEP.
     if numero:
-        busca_exata = ', '.join([x for x in [q, numero, bairro_req, cidade_req, 'RN', 'Brasil'] if x])
-        resultados = _google_geocode_full(busca_exata, limit=6)
+        busca_exata = ', '.join([x for x in [q, numero, bairro_req, cidade_req, 'Natal RN', 'Brasil'] if x])
+        resultados = _merge_endereco_results(
+            _google_geocode_full(busca_exata, limit=6),
+            _google_places_text_search(busca_exata, limit=6),
+            limit=8
+        )
         if resultados:
             return jsonify({'ok': True, 'resultados': resultados})
 
-    # Sem número: estilo Google Maps, mostra sugestões de ruas e locais cadastrados.
-    # Isso permite digitar "Natal Shopping", nome de loja, cartório, Correios etc.
-    resultados = _google_places_autocomplete(q, limit=6)
-    if resultados:
-        return jsonify({'ok': True, 'resultados': resultados})
-
-    # Se não houver Places, tenta Google Geocode como alternativa.
-    busca_google = ', '.join([x for x in [q, bairro_req, cidade_req, 'RN', 'Brasil'] if x])
-    resultados = _google_geocode_full(busca_google, limit=6)
+    # Sem número: funciona como pesquisa do Google Maps.
+    # Exemplos válidos: "correio em natal", "cartório lagoa nova", "Natal Shopping", nome de loja, clínica etc.
+    busca_google = ', '.join([x for x in [q, bairro_req, cidade_req, 'Natal RN', 'Brasil'] if x])
+    resultados = _merge_endereco_results(
+        _google_places_text_search(q, limit=8),
+        _google_places_autocomplete(q, limit=8),
+        _google_geocode_full(busca_google, limit=8),
+        limit=10
+    )
     if resultados:
         return jsonify({'ok': True, 'resultados': resultados})
 
@@ -3304,9 +3377,9 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=Fa
 
     Retorno agora é percentual em BLOCO PRÓPRIO no Preços e Rotas.
     - Não é serviço fixo.
-    - O retorno é calculado sobre o valor da última entrega/último trecho.
+    - O retorno é calculado sobre o valor do último trecho de deslocamento, sem incluir serviços.
     - Se for apenas coleta -> entrega, usa essa única entrega como base.
-    - Ex.: último trecho R$ 20,00 e retorno 50% = acréscimo de R$ 10,00.
+    - Ex.: trecho R$ 12,00 + Cartório R$ 13,00 e retorno 50% = acréscimo de R$ 6,00.
     """
     paradas = paradas or []
     pontos = [coleta] + [p for p in paradas if isinstance(p, dict) and (_ponto_bairro(p) or _ponto_endereco(p))] + [entrega]
@@ -3332,18 +3405,18 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=Fa
         if servico and _norm(servico) != 'retorno':
             servico_valor = float(_buscar_preco_servico(servico) or 0)
 
-        # A base do retorno é o VALOR TOTAL DA ÚLTIMA ENTREGA/TRECHO.
-        # Ex.: último trecho B -> C = R$ 13,00 e serviço final = R$ 0,00; retorno 50% = R$ 6,50.
-        # Se o último trecho tiver serviço agregado, esse serviço entra na base do retorno.
+        # A entrega pode ter serviço agregado (Cartório, Correios, Compras),
+        # mas o RETORNO NÃO usa o valor do serviço como base.
+        # Base do retorno = somente o valor do ÚLTIMO TRECHO de deslocamento.
+        # Ex.: A -> B = R$ 12,00 + Cartório R$ 13,00, retorno 50% => retorno R$ 6,00.
         trecho_total = trecho_valor + servico_valor
-        ultimo_trecho_valor = trecho_total
+        ultimo_trecho_valor = trecho_valor
         total += trecho_total
 
     if retorno:
         pct = _buscar_percentual_retorno()
-        # Retorno é acréscimo percentual sobre o valor da ÚLTIMA entrega/trecho.
-        # Ex.: A -> B = 12, B -> C = 13, retorno 50% => acrescenta 6,50.
-        # Se for só A -> B = 20, retorno 50% => acrescenta 10,00.
+        # Retorno é acréscimo percentual sobre o valor da ÚLTIMA entrega/trecho,
+        # sem somar Cartório, Correios, Compras ou outro serviço fixo.
         total += float(ultimo_trecho_valor or 0) * (pct / 100.0)
 
     return round(total, 2)
@@ -3387,17 +3460,13 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
         subtotal_sem_retorno = valor_base + valor_servicos
 
         # Para cálculo por KM, o retorno também segue a regra: percentual sobre
-        # a última entrega/último trecho, não sobre o total de todos os trechos.
+        # a última entrega/último trecho, sem incluir Cartório, Correios, Compras
+        # ou qualquer serviço fixo no valor-base do retorno.
         ultimo_trecho_base = valor_base
         try:
             ultimo_km = _calcular_ultimo_trecho_real_km(coleta, entrega, paradas)
             if ultimo_km is not None and ultimo_km > 0:
                 ultimo_trecho_base = float(ultimo_km) * per_km
-                # Se o destino final tiver serviço fixo, ele faz parte do valor da última entrega.
-                if isinstance(entrega, dict):
-                    serv_final = (entrega.get('servico') or entrega.get('tipo_servico') or entrega.get('tipo') or '').strip()
-                    if serv_final and _norm(serv_final) != 'retorno':
-                        ultimo_trecho_base += float(_buscar_preco_servico(serv_final) or 0)
         except Exception:
             ultimo_trecho_base = valor_base
 
