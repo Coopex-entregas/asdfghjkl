@@ -6973,91 +6973,134 @@ def api_credito_recarga():
 
 @app.post('/api/pedidos/criar')
 def api_pedidos_criar():
-    cli = _cliente_atual_optional()
-    data = request.get_json(silent=True) or {}
-
-    origem = data.get('coleta') or {}
-    destino = data.get('entrega') or {}
-    paradas = data.get('paradas') or []
-    if not isinstance(paradas, list):
-        paradas = []
-
-    if not origem:
-        origem = {'endereco': (data.get('origem_txt') or '').strip(), 'lat': data.get('origem_lat'), 'lng': data.get('origem_lng')}
-    if not destino:
-        destino = {'endereco': (data.get('destino_txt') or '').strip(), 'lat': data.get('destino_lat'), 'lng': data.get('destino_lng')}
-
-    origem_txt = _ponto_endereco(origem) or (data.get('origem_txt') or '').strip()
-    destino_txt = _ponto_endereco(destino) or (data.get('destino_txt') or '').strip()
-    if not origem_txt or not destino_txt:
-        return jsonify(ok=False, msg='Informe coleta e entrega.'), 400
-
-    cot = _calcular_cotacao_entrega(origem, destino, paradas)
-    preco = float(cot.get('preco') or 0)
-
-    pagamento_in = _norm(data.get('pagamento') or data.get('meio_pagamento') or 'pix')
-    if pagamento_in not in ('credito', 'pix', 'dinheiro'):
-        pagamento_in = 'pix'
-
-    recebe_dinheiro_em = _norm(data.get('recebe_dinheiro_em') or '')
-    if pagamento_in == 'dinheiro' and recebe_dinheiro_em not in ('coleta', 'entrega'):
-        return jsonify(ok=False, msg='Informe se o dinheiro será recebido na coleta ou na entrega.'), 400
-
-    if pagamento_in == 'credito' and not cli:
-        return jsonify(ok=False, msg='Para usar crédito, entre como cliente cadastrado.'), 400
-
-    pagamento = 'Crédito' if pagamento_in == 'credito' else 'Pix' if pagamento_in == 'pix' else 'Dinheiro'
-    status_pg = 'pago' if pagamento_in == 'credito' else 'pendente'
-    credito_usado = 0.0
-
-    origem_dict = {
-        **origem,
-        'endereco': origem.get('endereco') or data.get('origem_txt'),
-        'cliente_nome': cli.nome if cli else data.get('cliente_nome'),
-    }
-    destino_dict = {
-        **destino,
-        'endereco': destino.get('endereco') or data.get('destino_txt'),
-        'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else None,
-    }
-    paradas_dict = {
-        'stops': paradas,
-        'observacao': data.get('obs') or data.get('observacao') or '',
-        'origem_preco': cot.get('origem_preco'),
-        'distancia_km': cot.get('distancia_km'),
-        'per_km': cot.get('per_km'),
-        'meio_pagamento': pagamento,
-        'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else '',
-    }
-
-    entrega = Entrega(
-        cliente_id=cli.id if cli else None,
-        cliente=(cli.nome if cli else (data.get('cliente_nome') or 'Cliente avulso')),
-        bairro=(destino.get('bairro') or origem.get('bairro') or 'A confirmar'),
-        valor=preco,
-        data_envio=datetime.utcnow(),
-        status='aguardando entregador',
-        status_pagamento=status_pg,
-        pagamento=pagamento,
-        origem_json=json.dumps(origem_dict, ensure_ascii=False),
-        destino_json=json.dumps(destino_dict, ensure_ascii=False),
-        paradas_json=json.dumps(paradas_dict, ensure_ascii=False),
-        credito_usado=credito_usado,
-    )
-    db.session.add(entrega)
-    db.session.commit()
+    """
+    Cria pedido pelo Meu Crédito, inclusive pedido avulso.
+    Retorna JSON com erro real quando falhar, para o HTML não exibir alerta genérico.
+    """
     try:
-        emitir_atualizacao_entrega(entrega, 'criada')
-    except Exception:
-        pass
-    return jsonify(
-        ok=True,
-        pedido=_pedido_to_json(entrega),
-        entrega_id=entrega.id,
-        codigo=entrega.id,
-        pix_chave=get_pix_chave() or '84981110706',
-        msg='Pedido enviado. Aguarde a atribuição do entregador.'
-    )
+        cli = _cliente_atual_optional()
+        data = request.get_json(silent=True) or {}
+
+        origem = data.get('coleta') or {}
+        destino = data.get('entrega') or {}
+        paradas = data.get('paradas') or []
+        if not isinstance(origem, dict):
+            origem = {}
+        if not isinstance(destino, dict):
+            destino = {}
+        if not isinstance(paradas, list):
+            paradas = []
+
+        if not origem:
+            origem = {
+                'endereco': (data.get('origem_txt') or '').strip(),
+                'bairro': (data.get('bairro_origem') or '').strip(),
+                'cidade': (data.get('cidade_origem') or '').strip(),
+                'uf': 'RN',
+                'lat': data.get('origem_lat'),
+                'lng': data.get('origem_lng'),
+            }
+        if not destino:
+            destino = {
+                'endereco': (data.get('destino_txt') or '').strip(),
+                'bairro': (data.get('bairro_destino') or '').strip(),
+                'cidade': (data.get('cidade_destino') or '').strip(),
+                'uf': 'RN',
+                'lat': data.get('destino_lat'),
+                'lng': data.get('destino_lng'),
+            }
+
+        origem_txt = _ponto_endereco(origem) or (data.get('origem_txt') or '').strip()
+        destino_txt = _ponto_endereco(destino) or (data.get('destino_txt') or '').strip()
+        if not origem_txt or not destino_txt:
+            return jsonify(ok=False, msg='Informe o endereço de coleta e o endereço de entrega.'), 400
+
+        # Pagamento permitido: Pix, Dinheiro ou Crédito para cliente logado.
+        pagamento_in = _norm(data.get('pagamento') or data.get('meio_pagamento') or 'pix')
+        if pagamento_in not in ('credito', 'pix', 'dinheiro'):
+            pagamento_in = 'pix'
+
+        recebe_dinheiro_em = _norm(data.get('recebe_dinheiro_em') or '')
+        if pagamento_in == 'dinheiro' and recebe_dinheiro_em not in ('coleta', 'entrega'):
+            return jsonify(ok=False, msg='Informe se o dinheiro será recebido na coleta ou na entrega.'), 400
+
+        if pagamento_in == 'credito' and not cli:
+            return jsonify(ok=False, msg='Para usar crédito, entre como cliente cadastrado.'), 400
+
+        cot = _calcular_cotacao_entrega(origem, destino, paradas)
+        preco = cot.get('preco')
+        valor_final = float(preco or 0)
+
+        pagamento = 'Crédito' if pagamento_in == 'credito' else 'Pix' if pagamento_in == 'pix' else 'Dinheiro'
+        status_pg = 'pago' if pagamento_in == 'credito' else 'pendente'
+
+        origem_dict = {
+            **origem,
+            'endereco': origem.get('endereco') or data.get('origem_txt') or origem_txt,
+            'cliente_nome': cli.nome if cli else data.get('cliente_nome'),
+            'cliente_whatsapp': data.get('cliente_whatsapp') or data.get('whatsapp') or '',
+            'pedido_tipo': 'cadastrado' if cli else 'avulso',
+        }
+        destino_dict = {
+            **destino,
+            'endereco': destino.get('endereco') or data.get('destino_txt') or destino_txt,
+            'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else None,
+        }
+        paradas_dict = {
+            'stops': paradas,
+            'observacao': data.get('obs') or data.get('observacao') or '',
+            'valor_a_informar': bool(cot.get('valor_a_informar')),
+            'preco_estimado': valor_final,
+            'origem_preco': cot.get('origem_preco'),
+            'distancia_km': cot.get('distancia_km'),
+            'per_km': cot.get('per_km'),
+            'meio_pagamento': pagamento,
+            'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else '',
+        }
+
+        entrega = Entrega(
+            cliente_id=cli.id if cli else None,
+            cliente=(cli.nome if cli else (data.get('cliente_nome') or 'Cliente avulso')),
+            bairro=(destino.get('bairro') or origem.get('bairro') or 'A confirmar'),
+            valor=valor_final,
+            data_envio=datetime.utcnow(),
+            status='aguardando entregador',
+            status_pagamento=status_pg,
+            pagamento=pagamento,
+            origem_json=json.dumps(origem_dict, ensure_ascii=False),
+            destino_json=json.dumps(destino_dict, ensure_ascii=False),
+            paradas_json=json.dumps(paradas_dict, ensure_ascii=False),
+            credito_usado=0.0,
+        )
+        db.session.add(entrega)
+        db.session.commit()
+
+        try:
+            emitir_atualizacao_entrega(entrega, 'criada')
+        except Exception:
+            pass
+
+        return jsonify(
+            ok=True,
+            pedido=_pedido_to_json(entrega),
+            entrega_id=entrega.id,
+            codigo=entrega.id,
+            preco=valor_final,
+            valor_a_informar=bool(cot.get('valor_a_informar')),
+            pix_chave=get_pix_chave() or '84981110706',
+            msg='Pedido enviado. Aguarde a atribuição do entregador.'
+        )
+
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            current_app.logger.exception('Erro ao criar pedido pelo Meu Crédito')
+        except Exception:
+            pass
+        return jsonify(ok=False, msg=f'Erro ao criar pedido: {e.__class__.__name__}. Verifique os logs do Render.'), 500
 
 @app.get('/api/pedidos/ativo')
 def api_pedidos_ativo():
