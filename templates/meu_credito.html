@@ -211,6 +211,13 @@
       background: linear-gradient(180deg, #FFFFFF, #F7FAFF);
       border-radius:18px;
     }
+    .statusbar.statusbar-green{
+      border-color:rgba(18,185,129,.42);
+      background:linear-gradient(180deg,#ecfff7,#f7fffb);
+      box-shadow:0 10px 26px rgba(18,185,129,.12);
+    }
+    .statusbar.statusbar-green .kv small{color:#047857;}
+    .statusbar.statusbar-green .kv strong{color:#065f46;font-size:18px;}
     .badge{
       display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;
       font-size:12px;font-weight:900;letter-spacing:.2px;
@@ -434,16 +441,7 @@
 
           <!-- TAB: PEDIDO -->
           <section id="tab-pedido">
-            <div class="statusbar">
-              <div class="kv">
-                <small>ESTIMATIVA</small>
-                <strong id="etaTxt">—</strong>
-              </div>
-              <div class="kv" style="text-align:right;">
-                <small>VALOR</small>
-                <strong id="precoTxt">—</strong>
-              </div>
-            </div>
+            <div class="note" style="margin-bottom:10px">Preencha os dados do pedido. A previsão e o valor aparecem em verde perto do botão de solicitar.</div>
 
             <div class="hr"></div>
 
@@ -465,6 +463,20 @@
               </div>
             </div>
             {% endif %}
+            <div class="mini-card" id="dadosSolicitanteBox">
+              <div class="mini-title">Dados de quem está pedindo</div>
+              <div class="row">
+                <div class="field">
+                  <label for="clienteNomePedido">Nome de quem solicita</label>
+                  <input class="input" id="clienteNomePedido" placeholder="Ex.: Maria Silva" value="{{ cli.nome if cli else '' }}">
+                </div>
+                <div class="field">
+                  <label for="clienteWhatsappPedido">WhatsApp de quem solicita</label>
+                  <input class="input" id="clienteWhatsappPedido" inputmode="tel" placeholder="Ex.: (84) 99999-9999" value="{{ cli.telefone if cli and cli.telefone else '' }}">
+                </div>
+              </div>
+            </div>
+
             <div class="row payment-row">
               <div class="field">
                 <label for="tipo">Tipo de pedido</label>
@@ -488,51 +500,92 @@
             <div class="note" id="servicoResumoBaixo" style="margin-top:-2px">
               Escolha o tipo do pedido antes de preencher o endereço. Se for Cartório, Correios ou Compras, informe o endereço do local onde o cooperado deve realizar o serviço.
             </div>
-            <div class="row">
-              <div class="field" style="flex:2">
-                <label for="origem">Coleta (CEP ou rua/avenida)</label>
-                <input class="input" id="origem" placeholder="Pesquise como no Google: rua, CEP, Natal Shopping, loja, cartório..." autocomplete="off">
-                <div id="sugOrigem" class="sugbox"></div>
-                <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
+            <div class="mini-card">
+              <div class="mini-title">Coleta</div>
+              <div class="row">
+                <div class="field">
+                  <label for="coletaContato">Nome de quem entrega na coleta</label>
+                  <input class="input" id="coletaContato" placeholder="Ex.: Loja, atendente ou responsável">
+                </div>
+                <div class="field">
+                  <label for="coletaTelefone">Telefone da coleta</label>
+                  <input class="input" id="coletaTelefone" inputmode="tel" placeholder="Ex.: (84) 99999-9999">
+                </div>
               </div>
-              <div class="field" style="flex:.7">
-                <label for="numeroOrigem">Número</label>
-                <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
+              <div class="row">
+                <div class="field" style="flex:2">
+                  <label for="origem">Coleta (CEP, rua, local ou estabelecimento)</label>
+                  <input class="input" id="origem" placeholder="Pesquise como no Google: rua, CEP, Natal Shopping, loja, cartório..." autocomplete="off">
+                  <div id="sugOrigem" class="sugbox"></div>
+                  <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
+                </div>
+                <div class="field" style="flex:.7">
+                  <label for="numeroOrigem">Número</label>
+                  <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="bairroOrigem">Bairro da coleta</label>
+                  <input class="input" id="bairroOrigem" placeholder="Preenche automático quando possível">
+                </div>
+                <div class="field">
+                  <label for="cidadeOrigem">Cidade da coleta</label>
+                  <input class="input" id="cidadeOrigem" placeholder="Natal, Parnamirim...">
+                </div>
+                <div class="field">
+                  <label for="cepOrigem">CEP da coleta</label>
+                  <input class="input" id="cepOrigem" inputmode="numeric" placeholder="CEP quando houver">
+                </div>
+              </div>
+              <div class="field">
+                <label for="refOrigem">Referência da coleta</label>
+                <input class="input" id="refOrigem" placeholder="Ex.: portaria, loja, casa, sala...">
               </div>
             </div>
             <div class="note" style="margin-top:-2px">Digite como no Google Maps: rua, CEP, nome de loja, Natal Shopping, Correio em Natal, Cartório em Natal etc. Ao clicar na sugestão, o sistema preenche endereço, número, bairro, cidade, CEP e localização quando o Google retornar esses dados.</div>
 
-            <div class="row">
-              <div class="field">
-                <label for="bairroOrigem">Bairro da coleta</label>
-                <input class="input" id="bairroOrigem" placeholder="Preenche automático quando possível">
+            <div class="mini-card">
+              <div class="mini-title">Entrega</div>
+              <div class="row">
+                <div class="field">
+                  <label for="entregaContato">Nome de quem recebe</label>
+                  <input class="input" id="entregaContato" placeholder="Ex.: Cliente, loja ou responsável">
+                </div>
+                <div class="field">
+                  <label for="entregaTelefone">Telefone de quem recebe</label>
+                  <input class="input" id="entregaTelefone" inputmode="tel" placeholder="Ex.: (84) 99999-9999">
+                </div>
+              </div>
+              <div class="row">
+                <div class="field" style="flex:2">
+                  <label for="destino">Entrega (CEP, rua, local ou estabelecimento)</label>
+                  <input class="input" id="destino" placeholder="Pesquise como no Google: Correio em Natal, cartório, loja, rua..." autocomplete="off">
+                  <div id="sugDestino" class="sugbox"></div>
+                  <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
+                </div>
+                <div class="field" style="flex:.7">
+                  <label for="numeroDestino">Número</label>
+                  <input class="input" id="numeroDestino" placeholder="Ex.: 200" inputmode="numeric" autocomplete="address-line2">
+                </div>
+              </div>
+              <div class="row">
+                <div class="field">
+                  <label for="bairroDestino">Bairro da entrega</label>
+                  <input class="input" id="bairroDestino" placeholder="Preenche automático quando possível">
+                </div>
+                <div class="field">
+                  <label for="cidadeDestino">Cidade da entrega</label>
+                  <input class="input" id="cidadeDestino" placeholder="Natal, Parnamirim...">
+                </div>
+                <div class="field">
+                  <label for="cepDestino">CEP da entrega</label>
+                  <input class="input" id="cepDestino" inputmode="numeric" placeholder="CEP quando houver">
+                </div>
               </div>
               <div class="field">
-                <label for="cidadeOrigem">Cidade da coleta</label>
-                <input class="input" id="cidadeOrigem" placeholder="Natal, Parnamirim...">
-              </div>
-            </div>
-
-            <div class="row">
-              <div class="field" style="flex:2">
-                <label for="destino">Entrega (CEP ou rua/avenida)</label>
-                <input class="input" id="destino" placeholder="Pesquise como no Google: Correio em Natal, cartório, loja, rua..." autocomplete="off">
-                <div id="sugDestino" class="sugbox"></div>
-                <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
-              </div>
-              <div class="field" style="flex:.7">
-                <label for="numeroDestino">Número</label>
-                <input class="input" id="numeroDestino" placeholder="Ex.: 200" inputmode="numeric" autocomplete="address-line2">
-              </div>
-            </div>
-            <div class="row">
-              <div class="field">
-                <label for="bairroDestino">Bairro da entrega</label>
-                <input class="input" id="bairroDestino" placeholder="Preenche automático quando possível">
-              </div>
-              <div class="field">
-                <label for="cidadeDestino">Cidade da entrega</label>
-                <input class="input" id="cidadeDestino" placeholder="Natal, Parnamirim...">
+                <label for="refDestino">Referência da entrega</label>
+                <input class="input" id="refDestino" placeholder="Ex.: apartamento, portaria, loja, sala...">
               </div>
             </div>
 
@@ -555,9 +608,15 @@
               </label>
             </div>
 
+            <div class="field">
+              <label for="obs">Observações</label>
+              <textarea class="textarea" id="obs" placeholder="Ponto de referência, número do apto, instruções para o motoboy..."></textarea>
+            </div>
+
+
             <div class="mini-card" id="resumoValorBaixo">
               <div class="mini-title">Resumo do valor</div>
-              <div class="statusbar" style="margin-top:8px">
+              <div class="statusbar statusbar-green" style="margin-top:8px">
                 <div class="kv">
                   <small>PREVISÃO</small>
                   <strong id="etaTxtBottom">—</strong>
@@ -570,13 +629,8 @@
               <div id="retornoResumoTxt" class="note" style="margin-top:10px;font-size:12px">Sem retorno.</div>
             </div>
 
-            <div class="field">
-              <label for="obs">Observações</label>
-              <textarea class="textarea" id="obs" placeholder="Ponto de referência, número do apto, instruções para o motoboy..."></textarea>
-            </div>
-
             <div class="row">
-              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar motoboy</button>
+              <button class="btn btn-primary" id="btnCriarPedido" type="button">Solicitar entrega</button>
             </div>
 
             <div class="mini-card" id="pixBoxPedido" style="display:none">
@@ -1350,6 +1404,7 @@
       if($(numeroId) && item.numero) $(numeroId).value = item.numero || '';
       if($(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino')) $(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino').value = item.bairro || '';
       if($(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino')) $(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino').value = item.cidade || '';
+      if($(prefix === 'origem' ? 'cepOrigem' : 'cepDestino')) $(prefix === 'origem' ? 'cepOrigem' : 'cepDestino').value = item.cep || '';
 
       // Rua/CEP só vira ponto exato quando tiver número.
       // Local cadastrado no Google Maps (shopping, loja, cartório etc.) já pode marcar direto.
@@ -1521,8 +1576,8 @@
       if(!$('origem')?.value.trim() || !$('destino')?.value.trim()) return;
       const payload={
         tipo: $('tipo')?.value || 'coleta_entrega',
-        coleta:{endereco:$('origem')?.value.trim()||'',numero:$('numeroOrigem')?.value.trim()||'',bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
-        entrega:{endereco:$('destino')?.value.trim()||'',numero:$('numeroDestino')?.value.trim()||'',bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
+        coleta:{endereco:$('origem')?.value.trim()||'',numero:$('numeroOrigem')?.value.trim()||'',bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',cep:$('cepOrigem')?.value.trim()||'',referencia:$('refOrigem')?.value.trim()||'',contato:$('coletaContato')?.value.trim()||'',telefone:$('coletaTelefone')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
+        entrega:{endereco:$('destino')?.value.trim()||'',numero:$('numeroDestino')?.value.trim()||'',bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',cep:$('cepDestino')?.value.trim()||'',referencia:$('refDestino')?.value.trim()||'',contato:$('entregaContato')?.value.trim()||'',telefone:$('entregaTelefone')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
         paradas:readParadas(),
         retorno: !!$('comRetorno')?.checked,
         com_retorno: !!$('comRetorno')?.checked
@@ -1649,6 +1704,14 @@
           alert("Informe os endereços de coleta e entrega.");
           return;
         }
+        if(!$("clienteNomePedido")?.value.trim() || !$("clienteWhatsappPedido")?.value.trim()){
+          alert("Informe nome e WhatsApp de quem está pedindo.");
+          return;
+        }
+        if(!$("entregaContato")?.value.trim() || !$("entregaTelefone")?.value.trim()){
+          alert("Informe nome e telefone de quem vai receber.");
+          return;
+        }
 
         if(pagamento === 'dinheiro' && !document.querySelector('input[name="recebeDinheiroEm"]:checked')){
           alert('Informe se o dinheiro será recebido na coleta ou na entrega.');
@@ -1667,8 +1730,11 @@
           observacao: obs,
           origem_lat: ($("origemLat")?.value || window.__ORIG_LAT || null),
           origem_lng: ($("origemLng")?.value || window.__ORIG_LNG || null),
-          coleta: {endereco: origemRua, numero: $("numeroOrigem")?.value.trim() || "", bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", uf:"RN", lat:($("origemLat")?.value || window.__ORIG_LAT || null), lng:($("origemLng")?.value || window.__ORIG_LNG || null)},
-          entrega: {endereco: destinoRua, numero: $("numeroDestino")?.value.trim() || "", bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", uf:"RN", lat:($("destinoLat")?.value || window.__DEST_LAT || null), lng:($("destinoLng")?.value || window.__DEST_LNG || null)},
+          cliente: {nome: $("clienteNomePedido")?.value.trim() || state.cliente?.nome || "", whatsapp: $("clienteWhatsappPedido")?.value.trim() || state.cliente?.telefone || ""},
+          cliente_nome: $("clienteNomePedido")?.value.trim() || state.cliente?.nome || "",
+          cliente_whatsapp: $("clienteWhatsappPedido")?.value.trim() || state.cliente?.telefone || "",
+          coleta: {endereco: origemRua, numero: $("numeroOrigem")?.value.trim() || "", bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", cep: $("cepOrigem")?.value.trim() || "", referencia: $("refOrigem")?.value.trim() || "", contato: $("coletaContato")?.value.trim() || "", telefone: $("coletaTelefone")?.value.trim() || "", uf:"RN", lat:($("origemLat")?.value || window.__ORIG_LAT || null), lng:($("origemLng")?.value || window.__ORIG_LNG || null)},
+          entrega: {endereco: destinoRua, numero: $("numeroDestino")?.value.trim() || "", bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", cep: $("cepDestino")?.value.trim() || "", referencia: $("refDestino")?.value.trim() || "", contato: $("entregaContato")?.value.trim() || "", telefone: $("entregaTelefone")?.value.trim() || "", uf:"RN", lat:($("destinoLat")?.value || window.__DEST_LAT || null), lng:($("destinoLng")?.value || window.__DEST_LNG || null)},
           paradas: readParadas()
         };
 
