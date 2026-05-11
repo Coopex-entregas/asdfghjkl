@@ -269,10 +269,10 @@
       <!-- SERVIÇOS FIXOS -->
       <section id="tab-servicos" class="card section">
         <h2 style="margin:0 0 8px">Serviços fixos</h2>
-        <p style="color:var(--muted);margin-top:0">Cadastre valores fixos para Cartório, Correios, Compras, Retorno e outros serviços. O pedido do cliente soma o valor do serviço quando ele for selecionado.</p>
+        <p style="color:var(--muted);margin-top:0">Cadastre valores fixos para Cartório, Correios, Compras e outros serviços. Para o serviço chamado Retorno, informe percentual, não reais. Exemplo: Retorno = 50 cobra 50% do último trecho antes do retorno.</p>
         <div class="grid cols-3">
           <div><label>Serviço</label><input id="servNome" placeholder="Ex.: Cartório"></div>
-          <div><label>Valor (R$)</label><input id="servValor" inputmode="decimal" placeholder="Ex.: 20,00"></div>
+          <div><label>Valor / Percentual</label><input id="servValor" inputmode="decimal" placeholder="Ex.: Cartório 20,00 | Retorno 50"></div>
           <div><label>&nbsp;</label><button class="btn primary" id="btnSalvarServico" type="button">Salvar serviço</button></div>
         </div>
         <div style="overflow:auto;margin-top:12px">
@@ -698,7 +698,12 @@ async function reloadServicos(){
 function renderServicos(){
   const tb=$$('#tbodyServicos'); if(!tb) return;
   if(!SERVICOS.length){ tb.innerHTML='<tr><td colspan="4">Nenhum serviço cadastrado.</td></tr>'; return; }
-  tb.innerHTML=SERVICOS.map(s=>`<tr><td>${s.nome}</td><td>${moeda(s.valor)}</td><td>${s.ativo?'Ativo':'Inativo'}</td><td><button class="btn" onclick="editarServico(${s.id})">Editar</button> <button class="btn" onclick="excluirServico(${s.id})">Excluir</button></td></tr>`).join('');
+  tb.innerHTML=SERVICOS.map(s=>{
+    const isRetorno = norm(s.nome)==='retorno';
+    const valorLabel = isRetorno ? (Number(s.valor||0).toFixed(2).replace('.', ',') + '%') : moeda(s.valor);
+    const nomeLabel = isRetorno ? `${s.nome} <small style="color:var(--muted);font-weight:800">(percentual sobre o último trecho)</small>` : s.nome;
+    return `<tr><td>${nomeLabel}</td><td>${valorLabel}</td><td>${s.ativo?'Ativo':'Inativo'}</td><td><button class="btn" onclick="editarServico(${s.id})">Editar</button> <button class="btn" onclick="excluirServico(${s.id})">Excluir</button></td></tr>`;
+  }).join('');
 }
 function editarServico(id){ const s=SERVICOS.find(x=>x.id===id); if(!s) return; $$('#servNome').value=s.nome; $$('#servValor').value=String(Number(s.valor||0).toFixed(2)).replace('.',','); }
 async function salvarServico(){
