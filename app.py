@@ -4165,17 +4165,15 @@ def painel_cooperado():
         paradas = _parse_json_field(getattr(e, 'paradas_json', None))
 
         e.origem_endereco = (
-            origem.get('endereco')
+            _ponto_endereco(origem)
             or origem.get('address')
-            or (origem.get('rua') and f"{origem.get('rua')} {origem.get('numero', '')}".strip())
             or origem.get('bairro')
             or e.bairro
             or 'Origem não informada'
         )
         e.destino_endereco = (
-            destino.get('endereco')
+            _ponto_endereco(destino)
             or destino.get('address')
-            or (destino.get('rua') and f"{destino.get('rua')} {destino.get('numero', '')}".strip())
             or destino.get('bairro')
             or 'Destino não informado'
         )
@@ -5031,14 +5029,14 @@ def api_mobile_cooperado_corridas():
         destino = _parse_json_field(e.destino_json)
 
         origem_endereco = (
-            origem.get('endereco')
+            _ponto_endereco(origem)
             or origem.get('address')
             or origem.get('bairro')
             or e.bairro
             or 'Origem não informada'
         )
         destino_endereco = (
-            destino.get('endereco')
+            _ponto_endereco(destino)
             or destino.get('address')
             or destino.get('bairro')
             or e.bairro
@@ -5056,6 +5054,12 @@ def api_mobile_cooperado_corridas():
             "status_corrida": e.status_corrida,
             "status": e.status,
             "status_pagamento": e.status_pagamento,
+            "origem_lat": origem.get('lat'),
+            "origem_lng": origem.get('lng'),
+            "destino_lat": destino.get('lat'),
+            "destino_lng": destino.get('lng'),
+            "origem_numero": origem.get('numero') or '',
+            "destino_numero": destino.get('numero') or '',
         })
 
     return jsonify(ok=True, corridas=corridas)
@@ -6836,6 +6840,17 @@ def atribuir_cooperado(id):
             entrega.status_corrida = None
 
         db.session.commit()
+        try:
+            emitir_atualizacao_entrega(entrega, 'atribuida' if entrega.cooperado_id else 'desatribuida')
+            if entrega.cooperado_id:
+                socketio.emit('nova_corrida_cooperado', {
+                    'entrega_id': entrega.id,
+                    'cooperado_id': entrega.cooperado_id,
+                    'status_corrida': entrega.status_corrida,
+                    'status': entrega.status,
+                }, room=f'cooperado_{entrega.cooperado_id}')
+        except Exception:
+            pass
         msg = 'Entrega atribuída com sucesso!'
         flash(msg, 'success')
 
@@ -7369,6 +7384,20 @@ def api_pedidos_tracking(pedido_id):
         status = 'aguardando entregador'
     elif e.cooperado and _norm(status) in ('pendente', 'aguardando', 'aguardando entregador', 'criado', 'em andamento', 'em_andamento'):
         status = 'entregador atribuído'
+
+    motoboy_lat = None
+    motoboy_lng = None
+    if e.cooperado:
+        motoboy_lat = getattr(e.cooperado, 'last_lat', None)
+        motoboy_lng = getattr(e.cooperado, 'last_lng', None)
+        try:
+            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=e.cooperado.id).first()
+            if loc and loc.latitude is not None and loc.longitude is not None:
+                motoboy_lat = loc.latitude
+                motoboy_lng = loc.longitude
+        except Exception:
+            pass
+
     return jsonify(ok=True,
         id=e.id,
         status=status,
@@ -7376,7 +7405,7 @@ def api_pedidos_tracking(pedido_id):
         origem={'txt': e.origem_endereco, 'lat': origem.get('lat'), 'lng': origem.get('lng')},
         destino={'txt': e.destino_endereco, 'lat': destino.get('lat'), 'lng': destino.get('lng')},
         paradas=paradas,
-        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': getattr(e.cooperado, 'last_lat', None) if e.cooperado else None, 'lng': getattr(e.cooperado, 'last_lng', None) if e.cooperado else None},
+        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng},
         eta_min=None,
         pago=_entrega_esta_paga(e),
         comprovante_url=url_for('cliente_comprovante_publico', entrega_id=e.id) if _entrega_esta_paga(e) else ''
