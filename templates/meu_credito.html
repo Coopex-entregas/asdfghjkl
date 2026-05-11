@@ -1466,11 +1466,17 @@
       const payload={
         coleta:{endereco:$('origem')?.value.trim()||'',numero:$('numeroOrigem')?.value.trim()||'',bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
         entrega:{endereco:$('destino')?.value.trim()||'',numero:$('numeroDestino')?.value.trim()||'',bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
-        paradas:readParadas()
+        paradas:readParadas(),
+        retorno: !!$('comRetorno')?.checked,
+        com_retorno: !!$('comRetorno')?.checked
       };
       const r=await safeJSON(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
       if(r?.ok){ setEstimativa(r.preco, null); }
     }
+
+      if($('comRetorno')){
+        $('comRetorno').addEventListener('change', atualizarCotacao);
+      }
 
 
     async function recuperarPedidoPorCodigo(codigo){
