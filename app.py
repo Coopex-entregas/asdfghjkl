@@ -3437,6 +3437,22 @@ def api_cliente_cotar_entrega():
     if not isinstance(paradas_lista, list):
         paradas_lista = []
 
+    # Tipo de pedido também entra na COTAÇÃO.
+    # Coleta/Entrega não soma serviço. Cartório/Correios/Compras somam
+    # o valor cadastrado em Preços e Rotas junto com o trecho até o endereço informado.
+    tipo_pedido = _norm(data.get('tipo') or data.get('pedido_tipo') or '')
+    tipo_servico_map = {
+        'cartorio': 'Cartório',
+        'correios': 'Correios',
+        'correio': 'Correios',
+        'compras': 'Compras',
+        'compra': 'Compras',
+    }
+    servico_tipo = tipo_servico_map.get(tipo_pedido, '')
+    if servico_tipo and isinstance(entrega, dict) and not (entrega.get('servico') or entrega.get('tipo_servico')):
+        entrega = dict(entrega)
+        entrega['servico'] = servico_tipo
+
     cot = _calcular_cotacao_entrega(coleta, entrega, paradas_lista, retorno=bool(data.get('retorno') or data.get('com_retorno')))
     preco = cot.get('preco')
     valor_a_informar = bool(cot.get('valor_a_informar'))
