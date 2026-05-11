@@ -368,7 +368,7 @@
         <div class="card-h">
           <div>
             <h2>Sua carteira</h2>
-            <p>Saldo, pedidos e recargas. Use o mapa para rastrear o motoboy em tempo real.</p>
+            <p>Saldo, pedidos e recargas. Solicite entregas, acompanhe no mapa e compre crédito por Pix.</p>
           </div>
           <span class="badge" id="badgePedido">
             <span class="b-dot" id="badgeDot"></span>
@@ -391,7 +391,6 @@
 
           <div class="tabs" role="tablist" aria-label="Seções do cliente">
             <button class="tab active" data-tab="pedido" type="button">Pedido</button>
-            <button class="tab" data-tab="rastreio" type="button">Rastreio</button>
             <button class="tab" data-tab="credito" type="button">Crédito</button>
             <button class="tab" data-tab="historico" type="button">Histórico</button>
           </div>
@@ -432,8 +431,8 @@
 
             <div class="row">
               <div class="field" style="flex:2">
-                <label for="origem">Coleta (rua/avenida)</label>
-                <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais" autocomplete="street-address">
+                <label for="origem">Coleta (CEP ou rua/avenida)</label>
+                <input class="input" id="origem" placeholder="Digite o CEP ou rua. Ex.: 59073-090 / Av. Prudente de Morais" autocomplete="street-address">
                 <div id="sugOrigem" class="sugbox"></div>
                 <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
               </div>
@@ -442,7 +441,7 @@
                 <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
               </div>
             </div>
-            <div class="note" style="margin-top:-2px">Para localização mais exata, informe rua e número. Se necessário, arraste o marcador no mapa para ajustar o ponto correto.</div>
+            <div class="note" style="margin-top:-2px">Para localização exata, informe CEP ou rua e depois preencha o número. O sistema busca o ponto pelo número; se necessário, arraste o marcador no mapa.</div>
 
             <div class="row">
               <div class="field">
@@ -457,8 +456,8 @@
 
             <div class="row">
               <div class="field" style="flex:2">
-                <label for="destino">Entrega (rua/avenida)</label>
-                <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa" autocomplete="street-address">
+                <label for="destino">Entrega (CEP ou rua/avenida)</label>
+                <input class="input" id="destino" placeholder="Digite o CEP ou rua. Ex.: 59073-090 / Rua João Pessoa" autocomplete="street-address">
                 <div id="sugDestino" class="sugbox"></div>
                 <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
               </div>
@@ -649,8 +648,8 @@
             <div class="grab"></div>
             <div class="sheet-h">
               <div class="left">
-                <strong id="sheetTitle">Mapa de rastreio</strong>
-                <small id="sheetSub">Coleta, entrega e motoboy em tempo real.</small>
+                <strong id="sheetTitle">Mapa do pedido</strong>
+                <small id="sheetSub">Coleta, entrega e entregador quando for atribuído.</small>
               </div>
               <span class="chip" id="chipETA">ETA —</span>
             </div>
@@ -667,7 +666,7 @@
                 </div>
               </div>
               <div class="cta">
-                <button class="btn btn-ghost" id="btnAbrirRastreio" type="button">Abrir rastreio</button>
+                <button class="btn btn-ghost" id="btnAbrirRastreio" type="button">Centralizar mapa</button>
                 <button class="btn btn-primary" id="btnNovoPedido" type="button">Novo pedido</button>
               </div>
             </div>
@@ -683,10 +682,6 @@
       <button class="navbtn active" data-tab="pedido" type="button">
         <div>Pedido</div>
         <div class="mini">solicitar</div>
-      </button>
-      <button class="navbtn" data-tab="rastreio" type="button">
-        <div>Rastreio</div>
-        <div class="mini">mapa</div>
       </button>
       <button class="navbtn" data-tab="credito" type="button">
         <div>Crédito</div>
@@ -903,6 +898,7 @@
         txt.textContent = "Sem pedido ativo";
         $("statusTxt").textContent = "Sem pedido ativo";
         $("motoTxt").textContent = "—";
+        if($("sheetSub")) $("sheetSub").textContent = "Coleta, entrega e entregador quando for atribuído.";
         $("pedidoRef").textContent = "—";
         $("addrMini").textContent = "—";
         setEstimativa(null, null);
@@ -916,7 +912,8 @@
       dot.style.boxShadow = ok ? "0 0 0 6px rgba(18,185,129,.14)" : "0 0 0 6px rgba(245,158,11,.14)";
 
       $("statusTxt").textContent = st;
-      $("motoTxt").textContent = state.pedido.motoboyNome || "—";
+      $("motoTxt").textContent = state.pedido.motoboyNome || "Aguardando atribuição";
+      if($("sheetSub")) $("sheetSub").textContent = state.pedido.motoboyNome ? ("Entregador: " + state.pedido.motoboyNome) : "Aguardando atribuição do entregador.";
       $("pedidoRef").textContent = state.pedido.id || "—";
       $("addrMini").textContent = `${state.pedido.origemTxt || "—"} → ${state.pedido.destinoTxt || "—"}`;
       setEstimativa(state.pedido.valor, state.pedido.eta_min);
@@ -942,18 +939,14 @@
 
       const steps = [
         {k:"Aguardando entregador", d:"Pedido recebido. A supervisão está procurando/atribuindo um entregador."},
-        {k:"Entregador atribuído", d:"Entregador definido. Agora você pode acompanhar a rota."},
-        {k:"Coleta", d:"Entregador a caminho ou no local de coleta."},
-        {k:"Em rota", d:"Pedido em deslocamento para entrega."},
+        {k:"Entregador atribuído", d:"Entregador definido. O mapa passa a mostrar a posição do entregador."},
         {k:"Entregue", d:"Entrega concluída. A rota do entregador não fica mais disponível."},
       ];
 
       const status = (state.pedido.status||"Aguardando entregador").toLowerCase();
       const idx =
-        status.includes("entreg") ? 4 :
-        status.includes("rota") || status.includes("andamento") ? 3 :
-        status.includes("colet") ? 2 :
-        status.includes("atribu") || status.includes("aceita") || (state.pedido.motoboyNome||'') ? 1 : 0;
+        status.includes("entreg") || status.includes("recebid") || status.includes("finaliz") ? 2 :
+        status.includes("rota") || status.includes("andamento") || status.includes("atribu") || status.includes("aceita") || (state.pedido.motoboyNome||'') ? 1 : 0;
 
       steps.forEach((s,i)=>{
         const done = i < idx;
@@ -1077,7 +1070,7 @@
 
       $("btnIrRecarga").addEventListener("click", ()=>setTab("credito"));
       $("btnIrPedido").addEventListener("click", ()=>setTab("pedido"));
-      $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
+      $("btnAbrirRastreio").addEventListener("click", ()=>centralizarMapaPedido());
       $("btnNovoPedido").addEventListener("click", ()=>{
         setTab("pedido");
         $("origem").focus();
@@ -1103,7 +1096,7 @@
           Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
           ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="navigator.clipboard.writeText('${pix}')">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-            <button class="btn btn-ghost" style="height:40px" type="button" onclick="setTab('rastreio')">Acompanhar pedido</button>
+            <button class="btn btn-ghost" style="height:40px" type="button" onclick="centralizarMapaPedido()">Centralizar no mapa</button>
             ${$('pagamento').value === 'pix' ? `<a class="btn btn-primary" style="height:40px" target="_blank" href="https://wa.me/5584981110706?text=${encodeURIComponent('Olá, segue comprovante de pagamento do pedido COOPEX #' + id)}">Enviar comprovante</a>` : ''}
             <a class="btn btn-ghost" style="height:40px" href="${comprovante}" target="_blank">Comprovante quando pago</a>
           </div>
@@ -1302,7 +1295,7 @@
       if($("btnBuscarHistorico")) $("btnBuscarHistorico").addEventListener("click", carregarHistorico);
       const ultimo = getLastPedidoLocal();
       if(ultimo && ultimo.id && !state.pedido){
-        $('pedidoSucessoBox').innerHTML = `<div class="warn-box">Último pedido deste aparelho: <strong>#${ultimo.id}</strong>. <button class="btn btn-ghost" style="height:36px;margin-left:8px;display:inline-flex" type="button" onclick="state.pedido={id:String(${ultimo.id}),status:'Criado'};setTab('rastreio');applyTrackingFromAPI(${ultimo.id});startPolling();">Recuperar rastreio</button></div>`;
+        $('pedidoSucessoBox').innerHTML = `<div class="warn-box">Último pedido deste aparelho: <strong>#${ultimo.id}</strong>. <button class="btn btn-ghost" style="height:36px;margin-left:8px;display:inline-flex" type="button" onclick="state.pedido={id:String(${ultimo.id}),status:'Criado'};setTab('pedido');applyTrackingFromAPI(${ultimo.id});startPolling();">Recuperar rastreio</button></div>`;
       }
       $("btnUsarLocal").addEventListener("click", async ()=>{
         if(!navigator.geolocation){ alert("Geolocalização não suportada neste navegador."); return; }
@@ -1365,11 +1358,21 @@
         showPedidoSuccess(res);
         setBadge();
         renderTimeline();
-        setTab("rastreio");
+        setTab("pedido");
 
         await applyTrackingFromAPI(state.pedido.id);
         startPolling();
       });
+    }
+
+    function centralizarMapaPedido(){
+      try{
+        const pts=[];
+        if(mOrigem) pts.push(mOrigem.getLatLng());
+        if(mDestino) pts.push(mDestino.getLatLng());
+        if(mMoto && mMoto.options.opacity !== 0) pts.push(mMoto.getLatLng());
+        if(pts.length){ map.fitBounds(L.latLngBounds(pts).pad(0.25), {animate:true, duration:0.6}); }
+      }catch(e){}
     }
 
     function wireRastreio(){
@@ -1479,7 +1482,7 @@
     loadInitial();
     if($("histData")){ $("histData").value = new Date().toISOString().slice(0,10); }
 
-    $("btnAbrirRastreio").addEventListener("click", ()=>setTab("rastreio"));
+    $("btnAbrirRastreio").addEventListener("click", ()=>centralizarMapaPedido());
     $("btnNovoPedido").addEventListener("click", ()=>setTab("pedido"));
   </script>
 </body>
