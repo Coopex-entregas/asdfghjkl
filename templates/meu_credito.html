@@ -814,10 +814,11 @@
       mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF"), draggable:true }).addTo(map);
       mDestino = L.marker(natal, { icon: mk("Entrega", "#003399"), draggable:true }).addTo(map);
       mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+      mMoto.setOpacity(0); // não mostra motoboy antes da atribuição
       mOrigem.on('dragend', ()=>reverseToFields('origem', mOrigem.getLatLng().lat, mOrigem.getLatLng().lng));
       mDestino.on('dragend', ()=>reverseToFields('destino', mDestino.getLatLng().lat, mDestino.getLatLng().lng));
 
-      routeLine = L.polyline([natal, natal], { weight:5, opacity:.9 }).addTo(map);
+      routeLine = L.polyline([natal, natal], { weight:5, opacity:0 }).addTo(map);
     }
 
     let stopMarkers = [];
@@ -846,7 +847,12 @@
     function hideRouteAfterDelivered(){
       try{ routeLine.setStyle({opacity:0}); mMoto.setOpacity(0); clearStopMarkers(); }catch(e){}
     }
-    function showRouteMarkers(){ try{ routeLine.setStyle({opacity:.9}); mMoto.setOpacity(1); }catch(e){} }
+    function showRouteMarkers(hasMotoboy){
+      try{
+        routeLine.setStyle({opacity:.9});
+        mMoto.setOpacity(hasMotoboy ? 1 : 0);
+      }catch(e){}
+    }
 
     function setMoto(pos){
       mMoto.setLatLng(pos);
@@ -1011,7 +1017,7 @@
       if(state.pedido){
         state.pedido.status = data.status || state.pedido.status;
         state.pedido.eta_min = (data.eta_min != null ? data.eta_min : state.pedido.eta_min);
-        state.pedido.motoboyNome = (data.motoboy?.nome || state.pedido.motoboyNome);
+        state.pedido.motoboyNome = (data.motoboy?.nome || "");
 
         if(data.origem?.txt) state.pedido.origemTxt = data.origem.txt;
         if(data.destino?.txt) state.pedido.destinoTxt = data.destino.txt;
@@ -1025,11 +1031,12 @@
       const delivered = (data.status||'').toLowerCase().includes('entreg');
       const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
       const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
-      const moto = (data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
+      const temMotoboyNome = !!(data.motoboy && String(data.motoboy.nome||'').trim());
+      const moto = (temMotoboyNome && data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
       const stops = Array.isArray(data.paradas) ? data.paradas : [];
 
       if(delivered){ hideRouteAfterDelivered(); return; }
-      showRouteMarkers();
+      showRouteMarkers(!!moto);
       if(orig && dest) setRoute(orig, dest, stops);
       if(moto) setMoto(moto);
     }
@@ -1306,7 +1313,7 @@
         });
 
         if(!res || !res.ok){
-          alert(res?.msg || res?.erro || res?.error || "Não foi possível criar o pedido.");
+          alert(res?.msg || res?.erro || res?.error || "Não foi possível criar o pedido. Atualize também o app.py no Render, pois o HTML depende da rota de pedido corrigida.");
           return;
         }
 
