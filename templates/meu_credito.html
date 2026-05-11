@@ -455,14 +455,6 @@
               </div>
             </div>
             {% endif %}
-
-            <div class="mini-card" id="localizacaoBox">
-              <div class="mini-title"><span>Localização da coleta</span></div>
-              <button class="btn btn-ghost" id="btnUsarLocal" type="button" style="width:100%">Usar minha localização para preencher a coleta</button>
-              <button class="btn btn-ghost" id="btnAbrirLocalizacaoNovaAba" type="button" style="width:100%;margin-top:8px;display:none">Abrir em nova aba para permitir localização</button>
-              <div id="localizacaoStatus" class="note" style="margin-top:8px">Toque para tentar preencher automaticamente. Se não funcionar, preencha CEP ou rua e número manualmente.</div>
-            </div>
-
             <div class="row">
               <div class="field" style="flex:2">
                 <label for="origem">Coleta (CEP ou rua/avenida)</label>
@@ -475,7 +467,7 @@
                 <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
               </div>
             </div>
-            <div class="note" style="margin-top:-2px">Digite o endereço ou um local cadastrado no Maps. As sugestões aparecem enquanto digita. Para rua/CEP, a localização exata só é ajustada depois que preencher o número.</div>
+            <div class="note" style="margin-top:-2px">Digite rua, CEP ou nome do local cadastrado no Maps. As sugestões aparecem enquanto digita. Para rua/CEP, preencha o número para ajustar a localização exata.</div>
 
             <div class="row">
               <div class="field">
@@ -696,7 +688,7 @@
 
       <!-- COLUNA DIREITA: MAPA -->
       <div class="card map-card">
-        <div id="map"></div><div class="map-help" id="mapHelp">O mapa é apenas para acompanhar a entrega. O endereço correto é enviado para o admin e para o entregador com rua, número, bairro, cidade e CEP quando informado.</div>
+        <div id="map"></div><div class="map-help" id="mapHelp">O mapa acompanha a entrega. O endereço correto é buscado pelo Maps quando informado com rua/local, número, bairro, cidade e CEP.</div>
 
         <div class="overlay">
           <div class="sheet">
@@ -767,6 +759,7 @@
       pedidoAtivo:"{{ url_for('api_pedidos_ativo') }}",
       cancelar:   (id) => "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}".replace("/0", `/${id}`),
       tracking:   (id) => "{{ url_for('api_pedidos_tracking', pedido_id=0) }}".replace("/0", `/${id}`),
+      motoboyPos: (id) => "/api/pedidos/" + encodeURIComponent(id) + "/motoboy-pos",
       enderecos:  "{{ url_for('api_cliente_enderecos') }}",
       enderecoPadrao: (id) => "{{ url_for('api_cliente_endereco_padrao', endereco_id=0) }}".replace("/0", `/${id}`),
       historico:  "{{ url_for('api_cliente_historico') }}",
@@ -870,9 +863,17 @@
         iconAnchor: [22, 42]
       });
 
+
+      const mkMotoLogo = () => L.divIcon({
+        className:"",
+        html:`<div style="width:48px;height:48px;border-radius:20px;background:#fff;border:2px solid #12B981;box-shadow:0 18px 35px rgba(10,25,80,.18);display:grid;place-items:center;overflow:hidden"><img src="/static/logo_coopex.png" onerror="this.style.display='none';this.parentNode.innerHTML='🏍️'" style="max-width:40px;max-height:40px;object-fit:contain"></div><div style="margin-top:6px;background:#fff;border:1px solid rgba(18,185,129,.35);color:#075e45;padding:6px 10px;border-radius:999px;font-weight:900;font-size:11px;display:inline-block;box-shadow:0 10px 20px rgba(10,25,80,.08)">Entregador</div>`,
+        iconSize:[120,64],
+        iconAnchor:[24,48]
+      });
+
       mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF"), draggable:false }).addTo(map);
       mDestino = L.marker(natal, { icon: mk("Entrega", "#003399"), draggable:false }).addTo(map);
-      mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+      mMoto    = L.marker(natal, { icon: mkMotoLogo() }).addTo(map);
       // Não mostra marcadores enquanto não existe pedido ou endereço confirmado.
       mOrigem.setOpacity(0);
       mDestino.setOpacity(0);
@@ -1110,7 +1111,15 @@
       const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
       const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
       const temMotoboyNome = !!(data.motoboy && String(data.motoboy.nome||'').trim());
-      const moto = (temMotoboyNome && data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
+      let moto = (temMotoboyNome && data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
+      if(temMotoboyNome && !moto && API.motoboyPos){
+        const pos = await safeJSON(API.motoboyPos(pedidoId));
+        if(pos?.ok && pos.motoboy?.lat != null && pos.motoboy?.lng != null){
+          moto = [pos.motoboy.lat, pos.motoboy.lng];
+          data.motoboy.lat = pos.motoboy.lat;
+          data.motoboy.lng = pos.motoboy.lng;
+        }
+      }
       const stops = Array.isArray(data.paradas) ? data.paradas : [];
 
       if(delivered){ hideRouteAfterDelivered(); return; }
@@ -1166,6 +1175,29 @@
     }
 
 
+
+    function copiarTextoSeguro(texto, mensagem){
+      texto = String(texto || '').trim();
+      mensagem = mensagem || 'Copiado com sucesso.';
+      if(!texto) return;
+      const ok = () => alert(mensagem);
+      if(navigator.clipboard && window.isSecureContext){
+        navigator.clipboard.writeText(texto).then(ok).catch(()=>{
+          const ta=document.createElement('textarea');
+          ta.value=texto; ta.style.position='fixed'; ta.style.opacity='0';
+          document.body.appendChild(ta); ta.focus(); ta.select();
+          try{ document.execCommand('copy'); ok(); }catch(e){ alert('Não consegui copiar. Copie manualmente: '+texto); }
+          ta.remove();
+        });
+      }else{
+        const ta=document.createElement('textarea');
+        ta.value=texto; ta.style.position='fixed'; ta.style.opacity='0';
+        document.body.appendChild(ta); ta.focus(); ta.select();
+        try{ document.execCommand('copy'); ok(); }catch(e){ alert('Não consegui copiar. Copie manualmente: '+texto); }
+        ta.remove();
+      }
+    }
+
     function saveLastPedidoLocal(pedido){
       try{ localStorage.setItem('coopex_ultimo_pedido', JSON.stringify({id:pedido.id, quando:Date.now()})); }catch(e){}
     }
@@ -1182,7 +1214,7 @@
           Pedido realizado com sucesso.<br>
           <strong>Guarde este número para consultar o andamento:</strong> <span style="font-size:18px">#${id}</span><br>
           Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
-          ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="navigator.clipboard.writeText('${pix}').then(()=>alert('Chave Pix copiada com sucesso.'))">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
+          ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="copiarTextoSeguro('${pix}', 'Chave Pix copiada com sucesso.')">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-ghost" style="height:40px" type="button" onclick="centralizarMapaPedido()">Centralizar no mapa</button>
             ${$('pagamento').value === 'pix' ? `<a class="btn btn-primary" style="height:40px" target="_blank" href="https://wa.me/5584981110706?text=${encodeURIComponent('Olá, segue comprovante de pagamento do pedido COOPEX #' + id)}">Enviar comprovante</a>` : ''}
@@ -1435,7 +1467,7 @@
       };
       if($("pagamento")) $("pagamento").addEventListener("change", updatePagamentoUI);
       updatePagamentoUI();
-      if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>navigator.clipboard.writeText($("pixChavePedido").textContent.trim()).then(()=>alert("Chave Pix copiada com sucesso.")));
+      if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>copiarTextoSeguro($("pixChavePedido").textContent.trim(), "Chave Pix copiada com sucesso."));
       if($("btnRecuperarPedidoManual")) $("btnRecuperarPedidoManual").addEventListener("click", ()=>recuperarPedidoPorCodigo($("codigoRecuperarPedido")?.value || ""));
       if($("codigoRecuperarPedido")) $("codigoRecuperarPedido").addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); recuperarPedidoPorCodigo($("codigoRecuperarPedido")?.value || ""); } });
       ["origem","destino","numeroOrigem","numeroDestino","bairroOrigem","bairroDestino","cidadeOrigem","cidadeDestino"].forEach(id=>$(id)?.addEventListener('change', atualizarCotacao));
@@ -1454,103 +1486,7 @@
         box.style.background = tipo === 'erro' ? '#fff1f0' : tipo === 'ok' ? '#f0fff4' : '#f7fbff';
         box.style.color = tipo === 'erro' ? '#991b1b' : tipo === 'ok' ? '#064e3b' : '#003399';
       }
-
-      function mostrarBotaoNovaAbaSeIframe(){
-        try{
-          const btn = $('btnAbrirLocalizacaoNovaAba');
-          if(!btn) return;
-          const emIframe = window.self !== window.top;
-          btn.style.display = emIframe ? 'flex' : 'none';
-          btn.onclick = ()=> window.open(window.location.href, '_blank', 'noopener,noreferrer');
-          if(emIframe){
-            setLocalizacaoStatus('Esta tela está aberta dentro de outra página. Alguns navegadores bloqueiam a localização dentro desse modo. Se a permissão não aparecer, abra em nova aba.', 'aviso');
-          }
-        }catch(e){}
-      }
-      mostrarBotaoNovaAbaSeIframe();
-
-      async function pedirLocalizacaoColeta(){
-        if(!navigator.geolocation){
-          setLocalizacaoStatus('Este navegador não permite geolocalização. Preencha a coleta manualmente.', 'erro');
-          alert('Este navegador não permite geolocalização.');
-          return;
-        }
-        if(!window.isSecureContext){
-          setLocalizacaoStatus('A localização só funciona em conexão segura HTTPS. Abra o sistema pelo link https do Render.', 'erro');
-          alert('A localização só funciona em conexão segura HTTPS.');
-          return;
-        }
-
-        const btn = $('btnUsarLocal');
-        const oldTxt = btn ? btn.textContent : '';
-        if(btn){ btn.disabled = true; btn.textContent = 'Pedindo permissão...'; }
-        setLocalizacaoStatus('Aguardando autorização do navegador. Quando aparecer a pergunta de localização, clique em Permitir.', 'aviso');
-
-        try{
-          if(navigator.permissions && navigator.permissions.query){
-            try{
-              const perm = await navigator.permissions.query({name:'geolocation'});
-              if(perm.state === 'denied'){
-                setLocalizacaoStatus('Não consegui usar a localização automática. Preencha CEP ou rua e número abaixo.', 'aviso');
-                try{ $('origem')?.focus(); }catch(e){}
-                if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
-                return;
-              }
-            }catch(e){}
-          }
-
-          navigator.geolocation.getCurrentPosition(async (pos)=>{
-            try{
-              const lat = pos.coords.latitude;
-              const lng = pos.coords.longitude;
-              setLocalizacaoStatus('Localização autorizada. Buscando rua, bairro e cidade...', 'aviso');
-              const r = await safeJSON(API.reverseEndereco + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
-              if(!r?.ok || !r.endereco || !(r.endereco.endereco || r.endereco.display)){
-                setLocalizacaoStatus('Localização encontrada, mas não foi possível converter em endereço com segurança. Preencha a coleta manualmente.', 'erro');
-                alert('Localização encontrada, mas não consegui encontrar o endereço com segurança. Preencha manualmente.');
-                return;
-              }
-              fillAddress('origem', r.endereco);
-              if(window.mOrigem && window.map){
-                mOrigem.setLatLng([lat,lng]);
-                map.setView([lat,lng], 17);
-              }
-              if(!r.endereco.numero){
-                setLocalizacaoStatus('Localização preenchida. Confira a rua e informe o número para o sistema ajustar o ponto exato.', 'ok');
-                alert('Localização preenchida. Informe o número para ajustar o ponto exato.');
-                $('numeroOrigem')?.focus();
-              }else{
-                setLocalizacaoStatus('Localização da coleta preenchida com sucesso.', 'ok');
-                alert('Localização da coleta preenchida com sucesso.');
-              }
-              atualizarCotacao();
-            }catch(e){
-              setLocalizacaoStatus('A localização foi obtida, mas houve erro ao preencher o endereço. Preencha manualmente.', 'erro');
-              alert('A localização foi obtida, mas houve erro ao preencher o endereço.');
-            }finally{
-              if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
-            }
-          }, (err)=>{
-            let msg = 'Não foi possível obter sua localização.';
-            if(err && err.code === 1){
-              msg = 'A permissão de localização foi negada ou bloqueada. Clique no cadeado do navegador, libere Localização para este site e recarregue a página.';
-            }else if(err && err.code === 2){
-              msg = 'O aparelho não conseguiu identificar sua posição agora. Ative o GPS/localização e tente novamente.';
-            }else if(err && err.code === 3){
-              msg = 'O tempo para obter a localização expirou. Ative o GPS e tente novamente em local aberto.';
-            }
-            setLocalizacaoStatus('Não consegui usar a localização automática. Preencha CEP ou rua e número abaixo.', 'aviso');
-            try{ $('origem')?.focus(); }catch(e){}
-            if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
-          }, { enableHighAccuracy:true, timeout:25000, maximumAge:0 });
-        }catch(e){
-          setLocalizacaoStatus('Não consegui usar a localização automática. Preencha CEP ou rua e número abaixo.', 'aviso');
-          try{ $('origem')?.focus(); }catch(e){}
-          if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
-        }
-      }
-
-      if($('btnUsarLocal')) $('btnUsarLocal').addEventListener('click', pedirLocalizacaoColeta);
+      // Localização automática removida: coleta deve ser preenchida por CEP/rua/local + número.
 
       $("btnCriarPedido").addEventListener("click", async ()=>{
         const origemRua = $("origem").value.trim();
@@ -1603,6 +1539,7 @@
         state.pedido = normalizePedido(res.pedido);
         saveLastPedidoLocal(state.pedido);
         showPedidoSuccess(res);
+        alert("Pedido realizado com sucesso.");
         setBadge();
         renderTimeline();
         setTab("pedido");
