@@ -3191,6 +3191,13 @@ def _calcular_rota_real_km(coleta, entrega, paradas=None):
     return _rota_real_osrm_km(coordenadas)
 
 
+def _calcular_ultimo_trecho_real_km(coleta, entrega, paradas=None):
+    paradas = paradas or []
+    pontos = [coleta] + [p for p in paradas if isinstance(p, dict) and (_ponto_bairro(p) or _ponto_endereco(p))] + [entrega]
+    if len(pontos) < 2:
+        return None
+    return _calcular_rota_real_km(pontos[-2], pontos[-1], [])
+
 
 def _buscar_preco_servico(nome_servico):
     nome_key = _norm(nome_servico)
@@ -3206,11 +3213,32 @@ def _buscar_preco_servico(nome_servico):
     return 0.0
 
 
-def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None):
+def _buscar_percentual_retorno():
+    """
+    Usa o cadastro de Serviços Fixos em Preços e Rotas.
+    O serviço chamado "Retorno" não é valor em reais: é percentual.
+    Ex.: Retorno = 50 significa cobrar 50% do último trecho antes do retorno.
+    """
+    pct = _buscar_preco_servico('Retorno')
+    try:
+        pct = float(pct or 0)
+    except Exception:
+        pct = 0.0
+    if pct < 0:
+        pct = 0.0
+    return pct
+
+
+def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=False):
     """
     Soma por trechos: coleta -> paradas -> entrega final.
-    Primeiro usa preço cadastrado por bairro/rota. Se faltar qualquer trecho, retorna None para cair no cálculo por km.
-    Também soma serviço fixo informado na parada/destino e o serviço "Retorno" quando volta ao bairro de origem.
+
+    Retorno agora é percentual, não valor fixo:
+    - Cadastre em Preços e Rotas > Serviços Fixos o serviço "Retorno".
+    - O número cadastrado em Retorno é percentual.
+    - Ex.: Retorno = 50 cobra 50% do último trecho antes do retorno.
+    - Se for só coleta -> entrega, usa esse único trecho como base.
+    - Se houver paradas, usa o trecho da penúltima parada/local até o último destino.
     """
     paradas = paradas or []
     pontos = [coleta] + [p for p in paradas if isinstance(p, dict) and (_ponto_bairro(p) or _ponto_endereco(p))] + [entrega]
@@ -3218,6 +3246,8 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None):
         return None
 
     total = 0.0
+    ultimo_trecho_valor = 0.0
+
     for i in range(len(pontos) - 1):
         atual = pontos[i]
         prox = pontos[i + 1]
@@ -3226,21 +3256,23 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None):
         preco = _buscar_preco_rota_tabela(b1, b2)
         if preco is None:
             return None
-        total += float(preco or 0)
+
+        trecho_valor = float(preco or 0)
+        ultimo_trecho_valor = trecho_valor
+        total += trecho_valor
 
         servico = (prox.get('servico') or prox.get('tipo_servico') or prox.get('tipo') or '').strip() if isinstance(prox, dict) else ''
-        if servico:
+        if servico and _norm(servico) != 'retorno':
             total += _buscar_preco_servico(servico)
 
-    bairro_inicial = _norm(_ponto_bairro(coleta))
-    bairro_final = _norm(_ponto_bairro(entrega))
-    if bairro_inicial and bairro_final and bairro_inicial == bairro_final:
-        total += _buscar_preco_servico('Retorno')
+    if retorno:
+        pct = _buscar_percentual_retorno()
+        total += ultimo_trecho_valor * (pct / 100.0)
 
     return round(total, 2)
 
 
-def _calcular_cotacao_entrega(coleta, entrega, paradas=None):
+def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
     """
     Ordem correta:
     1) Tenta preço cadastrado na tabela/rotas.
@@ -3251,7 +3283,7 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None):
     3) Se não conseguir calcular a rota, retorna valor a confirmar.
     """
     paradas = paradas or []
-    preco_tabela = _calcular_preco_por_trechos_tabela(coleta, entrega, paradas)
+    preco_tabela = _calcular_preco_por_trechos_tabela(coleta, entrega, paradas, retorno=retorno)
     if preco_tabela is not None:
         return {
             'preco': float(preco_tabela),
@@ -3259,17 +3291,26 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None):
             'origem_preco': 'tabela',
             'distancia_km': None,
             'per_km': float(get_per_km()),
+            'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
         }
 
     distancia_km = _calcular_rota_real_km(coleta, entrega, paradas)
     per_km = float(get_per_km())
     if distancia_km is not None and distancia_km > 0:
+        valor_base = float(distancia_km) * per_km
+        valor_retorno = 0.0
+        if retorno:
+            ultimo_km = _calcular_ultimo_trecho_real_km(coleta, entrega, paradas)
+            if ultimo_km is not None and ultimo_km > 0:
+                valor_retorno = (float(ultimo_km) * per_km) * (_buscar_percentual_retorno() / 100.0)
         return {
-            'preco': round(float(distancia_km) * per_km, 2),
+            'preco': round(valor_base + valor_retorno, 2),
             'valor_a_informar': False,
             'origem_preco': 'km',
             'distancia_km': round(float(distancia_km), 2),
             'per_km': per_km,
+            'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
+            'retorno_valor': round(valor_retorno, 2),
         }
 
     return {
@@ -3293,7 +3334,7 @@ def api_cliente_cotar_entrega():
     if not isinstance(paradas_lista, list):
         paradas_lista = []
 
-    cot = _calcular_cotacao_entrega(coleta, entrega, paradas_lista)
+    cot = _calcular_cotacao_entrega(coleta, entrega, paradas_lista, retorno=bool(data.get('retorno') or data.get('com_retorno')))
     preco = cot.get('preco')
     valor_a_informar = bool(cot.get('valor_a_informar'))
 
@@ -3353,8 +3394,9 @@ def api_cliente_solicitar_entrega():
 
     bairro_coleta = coleta.get('bairro') or coleta.get('bairro_origem')
     bairro_entrega = entrega_dest.get('bairro') or entrega_dest.get('bairro_destino')
+    retorno = bool(data.get('retorno') or data.get('com_retorno'))
 
-    cot = _calcular_cotacao_entrega(coleta, entrega_dest, paradas_lista)
+    cot = _calcular_cotacao_entrega(coleta, entrega_dest, paradas_lista, retorno=retorno)
     preco = cot.get('preco')
     valor_a_informar = bool(cot.get('valor_a_informar'))
 
@@ -3461,6 +3503,8 @@ def api_cliente_solicitar_entrega():
             "credito_previsto": float(valor_credito_usar or 0),
             "complemento_pagamento": complemento_pagamento,
             "valor_complemento": float(valor_complemento or 0),
+            "retorno": bool(retorno),
+            "retorno_percentual": _buscar_percentual_retorno() if retorno else 0,
         }
 
         campos = {
@@ -7293,21 +7337,15 @@ def api_pedidos_criar():
         if servico_tipo and not (destino.get('servico') or destino.get('tipo_servico')):
             destino['servico'] = servico_tipo
 
-        # Retorno: calcula Coleta -> destino/paradas -> Coleta.
-        # O endereço de retorno é automaticamente o endereço de coleta.
+        # Retorno: o endereço de retorno é a própria coleta, mas o preço NÃO é uma rota nova.
+        # O valor do retorno é percentual sobre o último trecho antes do retorno.
+        # Ex.: Retorno cadastrado como 50 = cobra 50% do valor do último trecho.
         retorno = bool(data.get('retorno') or data.get('com_retorno'))
         origem_calc = dict(origem)
         destino_calc = dict(destino)
         paradas_calc = list(paradas)
-        if retorno:
-            parada_destino_original = dict(destino_calc)
-            parada_destino_original.setdefault('servico', servico_tipo or parada_destino_original.get('servico') or '')
-            paradas_calc.append(parada_destino_original)
-            destino_calc = dict(origem_calc)
-            destino_calc['servico'] = 'Retorno'
-            destino_calc['tipo_servico'] = 'Retorno'
 
-        cot = _calcular_cotacao_entrega(origem_calc, destino_calc, paradas_calc)
+        cot = _calcular_cotacao_entrega(origem_calc, destino_calc, paradas_calc, retorno=retorno)
         preco = cot.get('preco')
         valor_final = float(preco or 0)
 
@@ -7338,6 +7376,8 @@ def api_pedidos_criar():
             'per_km': cot.get('per_km'),
             'meio_pagamento': pagamento,
             'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else '',
+            'retorno': bool(retorno),
+            'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
         }
 
         entrega = Entrega(
@@ -7370,6 +7410,8 @@ def api_pedidos_criar():
             preco=valor_final,
             valor_a_informar=bool(cot.get('valor_a_informar')),
             pix_chave=get_pix_chave() or '84981110706',
+            retorno=bool(retorno),
+            retorno_percentual=_buscar_percentual_retorno() if retorno else 0,
             msg='Pedido realizado com sucesso. Aguarde a atribuição do entregador.'
         )
 
