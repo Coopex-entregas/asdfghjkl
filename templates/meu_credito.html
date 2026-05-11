@@ -590,7 +590,7 @@
             </div>
 
             <div class="note" style="margin-top:12px">
-              O mapa mostra: coleta, entrega e posição do motoboy. Atualiza por polling (tempo real do seu banco).
+              O mapa mostra coleta, entrega, percurso e posição do entregador após atribuição. Atualiza automaticamente pelo sistema.
             </div>
           </section>
 
@@ -668,7 +668,7 @@
 
       <!-- COLUNA DIREITA: MAPA -->
       <div class="card map-card">
-        <div id="map"></div><div class="map-help" id="mapHelp">O mapa é apenas para acompanhar a entrega. O local exato é definido pelos campos de endereço e número.</div>
+        <div id="map"></div><div class="map-help" id="mapHelp">O mapa é apenas para acompanhar a entrega. O endereço correto é enviado para o admin e para o entregador com rua, número, bairro, cidade e CEP quando informado.</div>
 
         <div class="overlay">
           <div class="sheet">
@@ -854,24 +854,31 @@
 
     let stopMarkers = [];
     function clearStopMarkers(){ stopMarkers.forEach(m=>{ try{ map.removeLayer(m); }catch(e){} }); stopMarkers=[]; }
-    function setRoute(orig, dest, stops){
+    function setRoute(orig, dest, stops, rotaPontos){
       stops = Array.isArray(stops) ? stops : [];
+      rotaPontos = Array.isArray(rotaPontos) ? rotaPontos : [];
       mOrigem.setLatLng(orig);
       mDestino.setLatLng(dest);
       clearStopMarkers();
-      const pts = [orig];
+      const ptsMarcadores = [orig];
       stops.forEach((p,i)=>{
         if(p && p.lat != null && p.lng != null){
           const ll=[Number(p.lat), Number(p.lng)];
-          pts.push(ll);
+          ptsMarcadores.push(ll);
           const mkStop = L.marker(ll, {draggable:false}).addTo(map).bindTooltip('Parada '+(i+1));
           stopMarkers.push(mkStop);
         }
       });
-      pts.push(dest);
+      ptsMarcadores.push(dest);
+
+      const rotaLimpa = rotaPontos
+        .filter(p=>Array.isArray(p) && p.length>=2 && isFinite(Number(p[0])) && isFinite(Number(p[1])))
+        .map(p=>[Number(p[0]), Number(p[1])]);
+      const linha = rotaLimpa.length >= 2 ? rotaLimpa : ptsMarcadores;
       routeLine.setStyle({opacity:.9});
-      routeLine.setLatLngs(pts);
-      const b = L.latLngBounds(pts).pad(0.25);
+      routeLine.setLatLngs(linha);
+      const todos = linha.concat(ptsMarcadores);
+      const b = L.latLngBounds(todos).pad(0.25);
       map.fitBounds(b, { animate:true, duration:0.6 });
     }
     function hideRouteAfterDelivered(){
@@ -1064,9 +1071,14 @@
       const stops = Array.isArray(data.paradas) ? data.paradas : [];
 
       if(delivered){ hideRouteAfterDelivered(); return; }
-      if(orig && dest) setRoute(orig, dest, stops);
-      if(moto){ setMoto(moto); showRouteMarkers(true); }
-      else { showRouteMarkers(false); }
+      if(orig && dest) setRoute(orig, dest, stops, data.rota_pontos || []);
+      if(moto){
+        setMoto(moto);
+        showRouteMarkers(true);
+        if($('sheetSub')) $('sheetSub').textContent = 'Entregador: ' + (data.motoboy?.nome || '') + ' — percurso atualizado no mapa.';
+      } else {
+        showRouteMarkers(false);
+      }
       if(temMotoboyNome && !moto && $('sheetSub')) $('sheetSub').textContent = 'Entregador: ' + data.motoboy.nome + ' — aguardando localização do aparelho.';
     }
 
@@ -1227,7 +1239,7 @@
         box.style.display='none';
         return;
       }
-      box.innerHTML = arr.map((it,i)=>`<button type="button" data-i="${i}">${it.endereco || it.display}<small>${[it.bairro,it.cidade,it.uf,it.cep].filter(Boolean).join(' • ')}</small></button>`).join('');
+      box.innerHTML = arr.map((it,i)=>`<button type="button" data-i="${i}">${it.display || it.endereco}<small>${[it.bairro,it.cidade,it.uf,it.cep,it.fonte==='google'?'Google':''].filter(Boolean).join(' • ')}</small></button>`).join('');
       box.style.display='block';
       box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ fillAddress(prefix, arr[Number(b.dataset.i)]); box.style.display='none'; });
     }
