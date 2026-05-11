@@ -5510,7 +5510,7 @@ def precos_rotas():
 
 @app.route("/api/precos", methods=["GET"], endpoint="api_list_precos")
 def api_list_precos():
-    if not session.get("is_admin"):
+    if not session.get("is_admin") and not session.get("is_master"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
     q = request.args.get("q", "", type=str).strip()
@@ -5548,7 +5548,7 @@ def api_list_precos():
 
 @app.route("/api/precos", methods=["POST"], endpoint="api_upsert_preco")
 def api_upsert_preco():
-    if not session.get("is_admin"):
+    if not session.get("is_admin") and not session.get("is_master"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
     data = request.get_json(silent=True) or {}
@@ -5597,7 +5597,7 @@ def api_upsert_preco():
 
 @app.route("/api/precos/<int:item_id>", methods=["DELETE"], endpoint="api_delete_preco")
 def api_delete_preco(item_id):
-    if not session.get("is_admin"):
+    if not session.get("is_admin") and not session.get("is_master"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
     it = PrecoRota.query.get(item_id)
@@ -5614,7 +5614,7 @@ def api_delete_preco(item_id):
 
 @app.route("/api/precos/ajustes", methods=["PATCH"], endpoint="api_ajustes")
 def api_ajustes():
-    if not session.get("is_admin"):
+    if not session.get("is_admin") and not session.get("is_master"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
     data = request.get_json(silent=True) or {}
@@ -5671,7 +5671,7 @@ def api_ajustes():
 
 @app.route("/api/perkm", methods=["POST"], endpoint="api_per_km")
 def api_per_km():
-    if not session.get("is_admin"):
+    if not session.get("is_admin") and not session.get("is_master"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
     data = request.get_json(silent=True) or {}
@@ -6186,7 +6186,7 @@ def _parse_money_to_float(v) -> float:
 
 @app.route("/api/entregas/<int:entrega_id>/valor", methods=["PATCH"])
 def api_update_entrega_valor(entrega_id):
-    if not session.get("is_admin"):
+    if not session.get("is_admin") and not session.get("is_master"):
         return jsonify({"ok": False, "error": "unauthorized"}), 401
 
     e = Entrega.query.get_or_404(entrega_id)
@@ -7707,12 +7707,48 @@ def api_pedidos_tracking(pedido_id):
         origem={'txt': e.origem_endereco, 'lat': origem.get('lat'), 'lng': origem.get('lng')},
         destino={'txt': e.destino_endereco, 'lat': destino.get('lat'), 'lng': destino.get('lng')},
         paradas=paradas,
-        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng, 'localizacao_disponivel': bool(motoboy_lat is not None and motoboy_lng is not None)},
+        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng, 'localizacao_disponivel': bool(motoboy_lat is not None and motoboy_lng is not None), 'logo': url_for('static', filename='logo_coopex.png')},
         eta_min=eta_min,
         rota_pontos=rota_pontos,
         pago=_entrega_esta_paga(e),
         comprovante_url=url_for('cliente_comprovante_publico', entrega_id=e.id) if _entrega_esta_paga(e) else ''
     )
+
+
+@app.get('/api/pedidos/<int:pedido_id>/motoboy-pos')
+def api_pedido_motoboy_pos(pedido_id):
+    e = Entrega.query.get(pedido_id)
+    if not e:
+        return jsonify(ok=False, msg='Pedido não encontrado.'), 404
+    if _norm(e.status or '') in ('entregue','recebido','cancelado'):
+        return jsonify(ok=True, encerrado=True, motoboy=None)
+    coop = e.cooperado
+    if not coop:
+        return jsonify(ok=True, motoboy=None, msg='Aguardando entregador.')
+    lat = getattr(coop, 'last_lat', None)
+    lng = getattr(coop, 'last_lng', None)
+    when = getattr(coop, 'last_ping', None)
+    try:
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+        if loc and loc.latitude is not None and loc.longitude is not None:
+            lat = loc.latitude
+            lng = loc.longitude
+            when = loc.atualizado_em or when
+    except Exception:
+        pass
+    quando = None
+    try:
+        if when:
+            quando = to_brasilia(when).strftime('%d/%m/%Y %H:%M:%S')
+    except Exception:
+        pass
+    return jsonify(ok=True, motoboy={
+        'nome': coop.nome,
+        'lat': float(lat) if lat is not None else None,
+        'lng': float(lng) if lng is not None else None,
+        'quando_local': quando,
+        'logo': url_for('static', filename='logo_coopex.png')
+    })
 
 @app.get('/cliente/comprovante-publico/<int:entrega_id>')
 def cliente_comprovante_publico(entrega_id):
