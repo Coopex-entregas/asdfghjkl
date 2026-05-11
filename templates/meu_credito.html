@@ -533,6 +533,7 @@
                   <option value="cartorio">Cartório</option>
                   <option value="compras">Compras</option>
                 </select>
+                <div id="tipoServicoAviso" class="warn-box" style="display:none;margin-top:8px;padding:10px;font-size:12px;line-height:1.35"></div>
               </div>
               <div class="field">
                 <label for="pagamento">Pagamento</label>
@@ -1254,6 +1255,8 @@
           Pedido realizado com sucesso.<br>
           <strong>Guarde este número para consultar o andamento:</strong> <span style="font-size:18px">#${id}</span><br>
           Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
+          <strong>Status:</strong> Procurando entregador / aguardando atribuição.<br>
+          <strong>Previsão:</strong> será calculada automaticamente quando o entregador for atribuído e estiver com localização ativa.<br>
           ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="copiarTextoSeguro('${pix}', 'Chave Pix copiada com sucesso.')">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-ghost" style="height:40px" type="button" onclick="atualizarPrevisaoPedido()">Atualizar previsão</button>
@@ -1433,7 +1436,7 @@
           <div class="stop-head"><span>Parada ${i+1}</span><button class="btn btn-ghost btnRemoveParada" type="button">Remover</button></div>
           <div class="row"><div class="field" style="flex:2"><label>Rua/avenida da parada</label><input class="input p_endereco" placeholder="Ex.: Cartório, Correios, cliente intermediário"></div><div class="field" style="flex:.7"><label>Número</label><input class="input p_numero" placeholder="Nº" inputmode="numeric"></div></div>
           <div class="row"><div class="field"><label>Bairro</label><input class="input p_bairro" placeholder="Bairro"></div><div class="field"><label>Cidade</label><input class="input p_cidade" placeholder="Cidade"></div></div>
-          <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option></select></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
+          <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option></select><div class="minihelp" style="font-size:11.5px;color:var(--muted);font-weight:750;margin-top:4px">Se marcar serviço, informe nessa parada o endereço do local do serviço. O valor será trajeto até a parada + serviço cadastrado.</div></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
           <input type="hidden" class="p_lat"><input type="hidden" class="p_lng">
         </div>`);
       const card = wrap.querySelector(`.stop-card[data-stop="${i}"]`);
@@ -1451,6 +1454,7 @@
       card.querySelector('.p_endereco').addEventListener('blur', buscarParadaExata);
       card.querySelector('.p_numero')?.addEventListener('blur', buscarParadaExata);
       card.querySelector('.p_numero')?.addEventListener('change', buscarParadaExata);
+      card.querySelector('.p_servico')?.addEventListener('change', atualizarCotacao);
       atualizarCotacao();
     }
     function readParadas(){
@@ -1464,6 +1468,7 @@
       const origemTxt=enderecoCompleto('origem'), destinoTxt=enderecoCompleto('destino');
       if(!$('origem')?.value.trim() || !$('destino')?.value.trim()) return;
       const payload={
+        tipo: $('tipo')?.value || 'coleta_entrega',
         coleta:{endereco:$('origem')?.value.trim()||'',numero:$('numeroOrigem')?.value.trim()||'',bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
         entrega:{endereco:$('destino')?.value.trim()||'',numero:$('numeroDestino')?.value.trim()||'',bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
         paradas:readParadas(),
@@ -1503,6 +1508,37 @@
       startPolling();
       alert('Pedido recuperado com sucesso.');
     }
+    function atualizarAvisoTipoPedido(){
+      const tipo = $('tipo')?.value || 'coleta_entrega';
+      const box = $('tipoServicoAviso');
+      if(!box) return;
+      const nomes = {correios:'Correios', cartorio:'Cartório', compras:'Compras'};
+      if(tipo === 'coleta_entrega'){
+        box.style.display = 'none';
+        box.innerHTML = '';
+        return;
+      }
+      const nome = nomes[tipo] || 'serviço';
+      box.style.display = 'block';
+      box.innerHTML = `<strong>${nome}:</strong> coloque no campo <strong>Endereço da entrega</strong> o endereço do local onde o cooperado deve ir para realizar o serviço. O sistema vai somar o valor do trajeto até esse endereço + o valor cadastrado de ${nome} em Preços e Rotas.`;
+    }
+
+    function limparFormularioPedidoDepoisDeSolicitar(){
+      const ids = ['origem','numeroOrigem','bairroOrigem','cidadeOrigem','destino','numeroDestino','bairroDestino','cidadeDestino','obs'];
+      ids.forEach(id=>{ const el=$(id); if(el) el.value=''; });
+      ['origemLat','origemLng','destinoLat','destinoLng'].forEach(id=>{ const el=$(id); if(el) el.value=''; });
+      window.__ORIG_LAT=null; window.__ORIG_LNG=null; window.__DEST_LAT=null; window.__DEST_LNG=null;
+      if($('tipo')) $('tipo').value='coleta_entrega';
+      if($('pagamento')) $('pagamento').value='pix';
+      if($('comRetorno')) $('comRetorno').checked=false;
+      document.querySelectorAll('input[name="recebeDinheiroEm"]').forEach(r=>r.checked=false);
+      const wrap=$('paradasWrap'); if(wrap) wrap.innerHTML='';
+      if($('pixBoxPedido')) $('pixBoxPedido').style.display = 'block';
+      if($('dinheiroBoxPedido')) $('dinheiroBoxPedido').style.display = 'none';
+      atualizarAvisoTipoPedido();
+      setEstimativa(null, null);
+    }
+
     function wirePedido(){
       wireAddressSearch();
       if($("btnAddParada")) $("btnAddParada").addEventListener("click", ()=>addParada());
@@ -1512,6 +1548,8 @@
         if($("dinheiroBoxPedido")) $("dinheiroBoxPedido").style.display = (v === "dinheiro") ? "block" : "none";
       };
       if($("pagamento")) $("pagamento").addEventListener("change", updatePagamentoUI);
+      if($("tipo")) $("tipo").addEventListener("change", ()=>{ atualizarAvisoTipoPedido(); atualizarCotacao(); });
+      atualizarAvisoTipoPedido();
       updatePagamentoUI();
       if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>copiarTextoSeguro($("pixChavePedido").textContent.trim(), "Chave Pix copiada com sucesso."));
       if($("btnRecuperarPedidoManual")) $("btnRecuperarPedidoManual").addEventListener("click", ()=>recuperarPedidoPorCodigo($("codigoRecuperarPedido")?.value || ""));
@@ -1585,6 +1623,7 @@
         state.pedido = normalizePedido(res.pedido);
         saveLastPedidoLocal(state.pedido);
         showPedidoSuccess(res);
+        limparFormularioPedidoDepoisDeSolicitar();
         alert("Pedido realizado com sucesso.");
         setBadge();
         renderTimeline();
