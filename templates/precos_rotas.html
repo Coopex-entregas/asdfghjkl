@@ -17,7 +17,7 @@
   </style>
 </head>
 <body>
-<header class="no-print"><div class="top"><div><div class="brand">COOPEX — Preços e Rotas</div><div class="sub">Tabela por bairro, valor por km, serviços e retorno percentual</div></div><div class="spacer"></div><a class="btn white" href="{{ url_for('admin') }}">← Voltar ao Admin</a></div></header>
+<header class="no-print"><div class="top"><div><div class="brand">COOPEX — Preços e Rotas</div><div class="sub">Tabela por bairro, valor por km, serviços e bloco próprio de retorno (%)</div></div><div class="spacer"></div><a class="btn white" href="{{ url_for('admin') }}">← Voltar ao Admin</a></div></header>
 <main>
   <div class="tabs no-print">
     <button class="tab active" data-tab="rotas">Rotas por bairro</button>
@@ -35,11 +35,20 @@
         <div class="row"><div class="field"><label>Valor por km quando não houver rota cadastrada</label><input id="perKm" inputmode="decimal" value="{{ '%.2f' % per_km }}"></div><button class="btn ghost" id="btnSalvarKm" type="button">Salvar KM</button></div>
       </div>
       <div id="formServicos" class="hidden">
-        <div class="field"><label>Serviço</label><input id="servNome" placeholder="Ex.: Cartório, Correios, Compras, Retorno"></div>
-        <div class="field"><label id="servValorLabel">Valor (R$) ou percentual do retorno</label><input id="servValor" inputmode="decimal" placeholder="Ex.: 13,00 ou 50 para Retorno"></div>
+        <div class="note"><strong>Retorno é separado.</strong> Não cadastre retorno como serviço. Use o bloco exclusivo abaixo para definir a porcentagem do retorno.</div>
+
+        <div style="border:1px solid var(--line);border-radius:18px;padding:12px;margin-bottom:14px;background:#f8fbff">
+          <h2 style="font-size:15px;margin:0 0 10px;color:var(--royal)">Retorno (%)</h2>
+          <div class="field"><label>Porcentagem do retorno</label><input id="retornoPercentual" inputmode="decimal" placeholder="Ex.: 50"></div>
+          <button class="btn primary" id="btnSalvarRetorno" type="button" style="width:100%">Salvar percentual do retorno</button>
+          <div class="note"><strong>Como funciona:</strong> quando o cliente marcar retorno, o sistema pega o valor já calculado da entrega e acrescenta esta porcentagem. Ex.: entrega R$ 20,00 e retorno 50% = acrescenta R$ 10,00, total R$ 30,00.</div>
+        </div>
+
+        <div class="field"><label>Serviço</label><input id="servNome" placeholder="Ex.: Cartório, Correios, Compras"></div>
+        <div class="field"><label id="servValorLabel">Valor do serviço (R$)</label><input id="servValor" inputmode="decimal" placeholder="Ex.: 13,00"></div>
         <label style="display:flex;gap:8px;align-items:center;margin-bottom:10px;color:var(--royal)"><input type="checkbox" id="servAtivo" checked style="width:18px;height:18px"> Serviço ativo</label>
         <button class="btn primary" id="btnSalvarServico" style="width:100%">Salvar serviço</button>
-        <div class="note"><strong>Retorno:</strong> cadastre o serviço com nome <strong>Retorno</strong> e coloque a porcentagem. Ex.: 50 significa cobrar 50% do último trecho antes do retorno.</div>
+        <div class="note">Serviços fixos são adicionais como <strong>Cartório</strong>, <strong>Correios</strong> e <strong>Compras</strong>. O retorno fica somente no bloco acima.</div>
       </div>
     </div></section>
     <section class="card"><div class="head"><h2 class="screen-title" id="tableTitle">Rotas cadastradas</h2><div class="print-area print-head"><h1 id="printTitle">Tabela de Entregas COOPEX</h1><p>Valores por bairro em ordem alfabética</p></div></div><div class="body">
@@ -47,9 +56,9 @@
         <div class="toolbar no-print"><input class="search" id="busca" placeholder="Buscar bairro ou valor"><button class="btn ghost" id="btnAtualizar">Atualizar</button><span class="stat">Registros: <b id="statTotal">0</b></span><span class="stat">Bairros: <b id="statBairros">0</b></span></div>
         <table><thead><tr><th>Origem</th><th>Destino</th><th>Valor</th><th class="no-print">Ações</th></tr></thead><tbody id="tbodyRotas"></tbody></table>
       </section>
-      <section id="tabServicos" class="hidden"><div class="toolbar no-print"><button class="btn ghost" id="btnAtualizarServicos">Atualizar serviços</button></div><table><thead><tr><th>Serviço</th><th>Valor / Percentual</th><th>Status</th><th class="no-print">Ações</th></tr></thead><tbody id="tbodyServicos"></tbody></table></section>
-      <section id="tabExportar" class="hidden">
-        <div class="row no-print"><div class="field"><label>Gerar tabela saindo de</label><select id="exportOrigem"></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="btnExportPdf">Gerar PDF / Imprimir</button></div></div>
+      <section id="tabServicos" class="hidden"><div class="toolbar no-print"><button class="btn ghost" id="btnAtualizarServicos">Atualizar serviços</button></div><table><thead><tr><th>Serviço</th><th>Valor</th><th>Status</th><th class="no-print">Ações</th></tr></thead><tbody id="tbodyServicos"></tbody></table></section>
+      <section id="tabExportar" class="hidden no-print">
+        <div class="row"><div class="field"><label>Gerar tabela saindo de</label><select id="exportOrigem"></select></div><div class="field"><label>&nbsp;</label><button class="btn primary" id="btnExportPdf">Gerar PDF / Imprimir</button></div></div>
         <div class="note">A tabela sai assim: <strong>Saindo de Lagoa Nova</strong>, bairros em ordem alfabética à esquerda e valores à direita. Para salvar em PDF, clique em imprimir e escolha “Salvar como PDF”.</div>
         <div id="exportPreview"></div>
       </section>
@@ -58,7 +67,7 @@
 </main>
 <datalist id="dlBairros"></datalist>
 <script>
-const API={list:"{{ url_for('api_list_precos') }}",upsert:"{{ url_for('api_upsert_preco') }}",delBase:"{{ url_for('api_delete_preco', item_id=0) }}".replace('/0','/'),perkm:"{{ url_for('api_per_km') }}",servicos:'/api/servicos'};
+const API={list:"{{ url_for('api_list_precos') }}",upsert:"{{ url_for('api_upsert_preco') }}",delBase:"{{ url_for('api_delete_preco', item_id=0) }}".replace('/0','/'),perkm:"{{ url_for('api_per_km') }}",servicos:'/api/servicos',retorno:'/api/retorno-percentual'};
 let rotas=[], servicos=[], bairros=[]; const $=id=>document.getElementById(id);
 function money(v){return 'R$ '+Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2})}
 function parseBR(v){return Number(String(v||'0').replace(/\./g,'').replace(',','.'))||0}
@@ -72,12 +81,14 @@ async function delRota(id){if(!confirm('Excluir esta rota?'))return;await jfetch
 async function saveRota(){const payload={origem:$('origem').value,destino:$('destino').value,valor:parseBR($('valor').value)};await jfetch(API.upsert,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});$('valor').value='';await loadRotas();alert('Rota salva com sucesso.');}
 async function saveKm(){await jfetch(API.perkm,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({per_km:parseBR($('perKm').value)})});alert('Valor por km salvo.');}
 async function loadServicos(){const j=await jfetch(API.servicos);servicos=j.items||[];renderServicos();}
-function renderServicos(){const tb=$('tbodyServicos');tb.innerHTML=servicos.map(s=>{const isRet=norm(s.nome)==='retorno';return `<tr><td><strong>${s.nome}</strong>${isRet?' <span class="pill">percentual</span>':''}</td><td class="money">${isRet?Number(s.valor||0).toLocaleString('pt-BR')+'%':money(s.valor)}</td><td>${s.ativo?'<span class="pill">Ativo</span>':'Inativo'}</td><td class="no-print"><button class="btn ghost" onclick="editServico(${s.id})">Editar</button> <button class="btn danger" onclick="delServico(${s.id})">Excluir</button></td></tr>`}).join('')||'<tr><td colspan="4">Nenhum serviço cadastrado.</td></tr>';}
+function renderServicos(){const tb=$('tbodyServicos');tb.innerHTML=servicos.filter(s=>norm(s.nome)!=='retorno').map(s=>`<tr><td><strong>${s.nome}</strong></td><td class="money">${money(s.valor)}</td><td>${s.ativo?'<span class="pill">Ativo</span>':'Inativo'}</td><td class="no-print"><button class="btn ghost" onclick="editServico(${s.id})">Editar</button> <button class="btn danger" onclick="delServico(${s.id})">Excluir</button></td></tr>`).join('')||'<tr><td colspan="4">Nenhum serviço cadastrado.</td></tr>';}
 function editServico(id){const s=servicos.find(x=>x.id===id);if(!s)return;setTab('servicos');$('servNome').value=s.nome;$('servValor').value=Number(s.valor||0).toString().replace('.',',');$('servAtivo').checked=!!s.ativo;}
 async function delServico(id){if(!confirm('Excluir serviço?'))return;await jfetch(API.servicos+'/'+id,{method:'DELETE'});await loadServicos();}
 async function saveServico(){await jfetch(API.servicos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({nome:$('servNome').value,valor:parseBR($('servValor').value),ativo:$('servAtivo').checked})});$('servNome').value='';$('servValor').value='';$('servAtivo').checked=true;await loadServicos();alert('Serviço salvo com sucesso.');}
+async function loadRetorno(){try{const j=await jfetch(API.retorno);$('retornoPercentual').value=Number(j.retorno_percentual||0).toLocaleString('pt-BR',{maximumFractionDigits:2});}catch(e){$('retornoPercentual').value='0';}}
+async function saveRetorno(){await jfetch(API.retorno,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({retorno_percentual:parseBR($('retornoPercentual').value)})});alert('Percentual do retorno salvo com sucesso.');await loadRetorno();}
 function renderExportOptions(){const sel=$('exportOrigem');sel.innerHTML=bairros.map(b=>`<option value="${b}">${b}</option>`).join('');renderExportPreview();}
 function renderExportPreview(){const origem=$('exportOrigem').value||bairros[0]||'';const linhas=rotas.filter(r=>norm(r.origem)===norm(origem)).sort((a,b)=>a.destino.localeCompare(b.destino,'pt-BR'));$('exportPreview').innerHTML=`<div class="print-area print-head"><h1>Saindo de ${origem}</h1><p>COOPEX — Tabela de Preços</p></div><table><thead><tr><th>Bairro destino</th><th>Valor</th></tr></thead><tbody>${linhas.map(r=>`<tr><td>${r.destino}</td><td class="money">${money(r.valor)}</td></tr>`).join('')||'<tr><td colspan="2">Sem rotas para essa origem.</td></tr>'}</tbody></table>`; $('printTitle').textContent='Saindo de '+origem;}
 function exportPdf(){renderExportPreview();setTimeout(()=>window.print(),100)}
-document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));$('btnSalvarRota').onclick=saveRota;$('btnSalvarKm').onclick=saveKm;$('btnAtualizar').onclick=loadRotas;$('busca').oninput=()=>{clearTimeout(window.__q);window.__q=setTimeout(loadRotas,300)};$('btnSalvarServico').onclick=saveServico;$('btnAtualizarServicos').onclick=loadServicos;$('exportOrigem').onchange=renderExportPreview;$('btnExportPdf').onclick=exportPdf;loadRotas().then(loadServicos).catch(e=>alert(e.message));
+document.querySelectorAll('.tab').forEach(b=>b.onclick=()=>setTab(b.dataset.tab));$('btnSalvarRota').onclick=saveRota;$('btnSalvarKm').onclick=saveKm;$('btnAtualizar').onclick=loadRotas;$('busca').oninput=()=>{clearTimeout(window.__q);window.__q=setTimeout(loadRotas,300)};$('btnSalvarServico').onclick=saveServico;$('btnSalvarRetorno').onclick=saveRetorno;$('btnAtualizarServicos').onclick=loadServicos;$('exportOrigem').onchange=renderExportPreview;$('btnExportPdf').onclick=exportPdf;loadRotas().then(loadServicos).then(loadRetorno).catch(e=>alert(e.message));
 </script></body></html>
