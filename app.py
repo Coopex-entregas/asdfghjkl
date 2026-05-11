@@ -2752,280 +2752,31 @@ def _ponto_bairro(ponto):
 
 
 def _ponto_endereco(ponto):
-    """Monta endereço completo para geocodificação/rota real."""
+    """Monta endereço completo: rua, número, bairro, cidade, UF e CEP."""
     if not isinstance(ponto, dict):
         return ''
-
-    endereco = (ponto.get('endereco') or ponto.get('logradouro') or ponto.get('rua') or ponto.get('address') or '').strip()
+    endereco = (ponto.get('endereco') or ponto.get('address') or ponto.get('rua') or ponto.get('logradouro') or '').strip()
     numero = (ponto.get('numero') or ponto.get('n') or '').strip()
-    bairro = _ponto_bairro(ponto)
-    cidade = (ponto.get('cidade') or ponto.get('municipio') or ponto.get('city') or ponto.get('town') or '').strip()
-    uf = (ponto.get('uf') or ponto.get('estado') or 'RN').strip()
-    cep = (ponto.get('cep') or ponto.get('postcode') or '').strip()
-
+    bairro = (ponto.get('bairro') or '').strip()
+    cidade = (ponto.get('cidade') or ponto.get('localidade') or '').strip()
+    uf = (ponto.get('uf') or 'RN').strip()
+    cep = (ponto.get('cep') or '').strip()
+    # evita duplicar número quando o endereço já veio com número
+    if endereco and numero and numero not in endereco:
+        endereco = f"{endereco}, {numero}"
     partes = []
-    if endereco:
-        partes.append(f"{endereco}, {numero}" if numero else endereco)
-    if bairro:
-        partes.append(bairro)
-    if cidade:
-        partes.append(cidade)
-    if uf:
-        partes.append(uf)
-    if cep:
-        partes.append(cep)
-    partes.append('Brasil')
-
-    texto = ', '.join([x for x in partes if x])
-    return texto.strip(', ')
-
-
-def _nominatim_search(q, limit=5, addressdetails=1):
-    """Busca endereço no Nominatim, priorizando Natal/Parnamirim/RN."""
-    q = (q or '').strip()
-    if not q:
-        return []
-    try:
-        from urllib.parse import urlencode
-        from urllib.request import Request, urlopen
-        params = urlencode({
-            'q': q,
-            'format': 'json',
-            'limit': int(limit),
-            'countrycodes': 'br',
-            'addressdetails': int(addressdetails),
-            'dedupe': 1,
-            # Região aproximada Natal/Parnamirim/Grande Natal.
-            'viewbox': '-35.36,-5.68,-35.10,-6.02',
-            'bounded': 0,
-        })
-        url = 'https://nominatim.openstreetmap.org/search?' + params
-        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0 contato@coopex'})
-        with urlopen(req, timeout=6) as resp:
-            arr = json.loads(resp.read().decode('utf-8') or '[]')
-        return arr if isinstance(arr, list) else []
-    except Exception as e:
-        try:
-            current_app.logger.warning(f'Falha buscar endereço Nominatim: {e}')
-        except Exception:
-            pass
-        return []
-
-
-def _geocodificar_endereco_osm(endereco):
-    """Geocodifica usando endereço completo. Retorna (lat,lng) ou None."""
-    endereco = (endereco or '').strip()
-    if not endereco:
-        return None
-    arr = _nominatim_search(endereco, limit=1, addressdetails=0)
-    if not arr:
-        # Segunda tentativa reforçando RN, sem forçar Natal.
-        arr = _nominatim_search(f"{endereco}, Rio Grande do Norte, Brasil", limit=1, addressdetails=0)
-    if not arr:
-        return None
-    try:
-        return (float(arr[0]['lat']), float(arr[0]['lon']))
-    except Exception:
-        return None
-
-
-def _nominatim_addr_value(addr, *keys):
-    if not isinstance(addr, dict):
-        return ''
-    for k in keys:
-        v = addr.get(k)
-        if v:
-            return str(v)
-    return ''
-
-
-def _google_maps_api_key():
-    """Chave opcional para geocodificação precisa pelo Google Maps."""
-    return (os.getenv('GOOGLE_MAPS_API_KEY') or os.getenv('GOOGLE_GEOCODING_API_KEY') or '').strip()
-
-
-def _google_component(components, *types):
-    if not isinstance(components, list):
-        return ''
-    wanted = set(types)
-    for c in components:
-        c_types = set(c.get('types') or [])
-        if wanted.intersection(c_types):
-            return str(c.get('long_name') or c.get('short_name') or '')
-    return ''
-
-
-def _google_geocode_full(q, *, limit=5):
-    """
-    Geocodifica pelo Google Maps quando a chave estiver configurada.
-    Isso dá melhor precisão quando o cliente informa RUA + NÚMERO.
-    Retorna lista no mesmo padrão usado pelo HTML.
-    """
-    key = _google_maps_api_key()
-    q = (q or '').strip()
-    if not key or not q:
-        return []
-    try:
-        from urllib.parse import urlencode
-        from urllib.request import Request, urlopen
-        params = urlencode({
-            'address': q,
-            'key': key,
-            'region': 'br',
-            'language': 'pt-BR',
-            'components': 'country:BR|administrative_area:RN',
-        })
-        url = 'https://maps.googleapis.com/maps/api/geocode/json?' + params
-        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0'})
-        with urlopen(req, timeout=7) as resp:
-            data = json.loads(resp.read().decode('utf-8') or '{}')
-        if data.get('status') not in ('OK', 'ZERO_RESULTS'):
-            try:
-                current_app.logger.warning(f"Google Geocode status={data.get('status')} error={data.get('error_message')}")
-            except Exception:
-                pass
-        out = []
-        for item in (data.get('results') or [])[:int(limit)]:
-            comps = item.get('address_components') or []
-            loc = ((item.get('geometry') or {}).get('location') or {})
-            numero = _google_component(comps, 'street_number')
-            rua = _google_component(comps, 'route')
-            bairro = _google_component(comps, 'sublocality_level_1', 'sublocality', 'neighborhood', 'political')
-            cidade = _google_component(comps, 'administrative_area_level_2', 'locality')
-            uf = _google_component(comps, 'administrative_area_level_1') or 'RN'
-            cep = _google_component(comps, 'postal_code')
-            formatted = item.get('formatted_address') or ', '.join([x for x in [rua, numero, bairro, cidade, uf, cep] if x])
-            out.append({
-                'display': formatted,
-                'endereco': rua or formatted,
-                'numero': numero,
-                'bairro': bairro,
-                'cidade': cidade,
-                'uf': 'RN' if _norm(uf) in ('rn','rio grande do norte') else uf,
-                'cep': cep,
-                'lat': loc.get('lat'),
-                'lng': loc.get('lng'),
-                'fonte': 'google',
-                'precisao': (item.get('geometry') or {}).get('location_type') or '',
-                'exato': ((item.get('geometry') or {}).get('location_type') in ('ROOFTOP','RANGE_INTERPOLATED')),
-            })
-        return out
-    except Exception as e:
-        try:
-            current_app.logger.warning(f'Falha Google Geocode: {e}')
-        except Exception:
-            pass
-        return []
-
-
-def _google_reverse_geocode(lat, lng):
-    key = _google_maps_api_key()
-    if not key:
-        return None
-    try:
-        from urllib.parse import urlencode
-        from urllib.request import Request, urlopen
-        params = urlencode({'latlng': f'{float(lat)},{float(lng)}', 'key': key, 'language': 'pt-BR', 'region': 'br'})
-        url = 'https://maps.googleapis.com/maps/api/geocode/json?' + params
-        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0'})
-        with urlopen(req, timeout=7) as resp:
-            data = json.loads(resp.read().decode('utf-8') or '{}')
-        if data.get('status') != 'OK' or not data.get('results'):
-            return None
-        item = data['results'][0]
-        comps = item.get('address_components') or []
-        loc = ((item.get('geometry') or {}).get('location') or {})
-        numero = _google_component(comps, 'street_number')
-        rua = _google_component(comps, 'route')
-        bairro = _google_component(comps, 'sublocality_level_1', 'sublocality', 'neighborhood', 'political')
-        cidade = _google_component(comps, 'administrative_area_level_2', 'locality')
-        uf = _google_component(comps, 'administrative_area_level_1') or 'RN'
-        cep = _google_component(comps, 'postal_code')
-        formatted = item.get('formatted_address') or ', '.join([x for x in [rua, numero, bairro, cidade, uf, cep] if x])
-        return {
-            'display': formatted,
-            'endereco': rua or formatted,
-            'numero': numero,
-            'bairro': bairro,
-            'cidade': cidade,
-            'uf': 'RN' if _norm(uf) in ('rn','rio grande do norte') else uf,
-            'cep': cep,
-            'lat': loc.get('lat') or lat,
-            'lng': loc.get('lng') or lng,
-            'fonte': 'google',
-        }
-    except Exception as e:
-        try:
-            current_app.logger.warning(f'Falha Google Reverse Geocode: {e}')
-        except Exception:
-            pass
-        return None
-
-
-def _viacep_lookup(cep: str, numero: str = ''):
-    """Busca CEP no ViaCEP e, quando houver número, tenta localizar o ponto exato via Google Maps."""
-    digits = re.sub(r'\D+', '', str(cep or ''))
-    if len(digits) != 8:
-        return None
-    try:
-        from urllib.request import Request, urlopen
-        url = f'https://viacep.com.br/ws/{digits}/json/'
-        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0'})
-        with urlopen(req, timeout=6) as resp:
-            data = json.loads(resp.read().decode('utf-8') or '{}')
-        if not data or data.get('erro'):
-            return None
-        logradouro = (data.get('logradouro') or '').strip()
-        bairro = (data.get('bairro') or '').strip()
-        cidade = (data.get('localidade') or '').strip()
-        uf = (data.get('uf') or 'RN').strip() or 'RN'
-        cep_fmt = (data.get('cep') or digits).strip()
-        endereco_base = ', '.join([x for x in [logradouro, bairro, cidade, uf, cep_fmt] if x])
-
-        lat = lng = None
-        numero_limpo = str(numero or '').strip()
-
-        # Se tiver número, tenta o ponto exato pelo Google Maps primeiro.
-        if numero_limpo:
-            q_google = ', '.join([x for x in [logradouro, numero_limpo, bairro, cidade, uf, cep_fmt, 'Brasil'] if x])
-            gres = _google_geocode_full(q_google, limit=1)
-            if gres:
-                g = gres[0]
-                lat, lng = g.get('lat'), g.get('lng')
-                if g.get('bairro'):
-                    bairro = g.get('bairro')
-                if g.get('cidade'):
-                    cidade = g.get('cidade')
-
-        # Fallback público: coordenada aproximada da rua/bairro/cidade.
-        if lat is None or lng is None:
-            try:
-                qgeo = ', '.join([x for x in [logradouro, numero_limpo, bairro, cidade, uf, 'Brasil'] if x])
-                arr = _nominatim_search(qgeo, limit=1, addressdetails=1) if qgeo else []
-                if arr:
-                    lat = arr[0].get('lat')
-                    lng = arr[0].get('lon')
-            except Exception:
-                lat = lng = None
-
-        return {
-            'display': ', '.join([x for x in [logradouro, numero_limpo, bairro, cidade, uf, cep_fmt] if x]) or endereco_base,
-            'endereco': logradouro or endereco_base,
-            'numero': numero_limpo,
-            'bairro': bairro,
-            'cidade': cidade,
-            'uf': uf,
-            'cep': cep_fmt,
-            'lat': lat,
-            'lng': lng,
-            'fonte': 'viacep_google' if numero_limpo and _google_maps_api_key() else 'viacep',
-        }
-    except Exception as e:
-        try:
-            current_app.logger.warning(f'Falha ViaCEP {cep}: {e}')
-        except Exception:
-            pass
-        return None
+    if endereco: partes.append(endereco)
+    if bairro: partes.append(bairro)
+    cidade_uf = ''
+    if cidade and uf:
+        cidade_uf = f"{cidade}/{uf}"
+    elif cidade:
+        cidade_uf = cidade
+    elif uf:
+        cidade_uf = uf
+    if cidade_uf: partes.append(cidade_uf)
+    if cep: partes.append(f"CEP {cep}")
+    return ' • '.join([p for p in partes if p])
 
 
 @app.route('/api/cliente/buscar-endereco', methods=['GET'])
@@ -7631,12 +7382,19 @@ def api_pedidos_tracking(pedido_id):
         motoboy_lat = getattr(e.cooperado, 'last_lat', None)
         motoboy_lng = getattr(e.cooperado, 'last_lng', None)
         try:
+            # A tabela localizacao_cooperado é a fonte principal do app nativo/web.
             loc = LocalizacaoCooperado.query.filter_by(cooperado_id=e.cooperado.id).first()
             if loc and loc.latitude is not None and loc.longitude is not None:
                 motoboy_lat = loc.latitude
                 motoboy_lng = loc.longitude
         except Exception:
             pass
+        # Garante conversão segura para JSON/mapa.
+        try:
+            motoboy_lat = float(motoboy_lat) if motoboy_lat is not None else None
+            motoboy_lng = float(motoboy_lng) if motoboy_lng is not None else None
+        except Exception:
+            motoboy_lat = motoboy_lng = None
 
     # Monta previsão e percurso real do entregador até coleta/entrega.
     # Se houver GOOGLE_MAPS_API_KEY, usa Google Directions; senão usa OSRM como fallback.
