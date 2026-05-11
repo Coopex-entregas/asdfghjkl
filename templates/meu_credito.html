@@ -327,6 +327,18 @@
     .hist-item{padding:12px;border:1px solid rgba(214,226,255,.92);background:linear-gradient(180deg,#fff,#f8fbff);border-radius:16px;margin-top:10px;}
     .hist-item strong{color:var(--royal)}
 
+
+
+    /* COOPEX APP: endereço, paradas e pagamento */
+    .sugbox{display:none;margin-top:6px;border:1px solid rgba(214,226,255,.95);border-radius:14px;background:#fff;box-shadow:0 16px 30px rgba(10,25,80,.12);overflow:hidden;max-height:240px;overflow-y:auto;z-index:9999;position:relative}
+    .sugbox button{width:100%;border:0;background:#fff;text-align:left;padding:10px 12px;cursor:pointer;border-bottom:1px solid rgba(214,226,255,.75);font-weight:800;color:var(--text)}
+    .sugbox button:hover{background:#F4F7FF}.sugbox small{display:block;color:var(--muted);font-weight:700;margin-top:3px;line-height:1.25}
+    .pay-box{display:none;margin-top:10px;padding:12px;border-radius:18px;border:1px solid rgba(214,226,255,.92);background:linear-gradient(180deg,#fff,#F8FBFF)}
+    .radio-line{display:flex;gap:8px;align-items:center;font-size:13px;font-weight:900;color:var(--royal);margin:8px 0}.radio-line input{width:18px;height:18px;flex:0 0 auto}
+    .stop-card{border:1px solid rgba(214,226,255,.92);border-radius:20px;background:linear-gradient(180deg,#fff,#F8FBFF);padding:12px;margin:10px 0;box-shadow:var(--shadow2)}
+    .stop-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;color:var(--royal);font-weight:900}.stop-head button{height:34px;padding:0 10px;border-radius:12px}
+    .map-help{position:absolute;top:12px;left:12px;right:12px;z-index:450;background:rgba(255,255,255,.94);border:1px solid rgba(214,226,255,.95);border-radius:18px;padding:10px 12px;color:var(--royal);font-size:12px;font-weight:900;box-shadow:var(--shadow2);pointer-events:none}
+    @media(max-width:640px){.map-help{font-size:11px;top:8px;left:8px;right:8px}.stop-card{padding:10px}.row{flex-direction:column}}
   </style>
 </head>
 
@@ -422,6 +434,8 @@
               <div class="field">
                 <label for="origem">Coleta (endereço)</label>
                 <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
+                <div id="sugOrigem" class="sugbox"></div>
+                <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
               </div>
             </div>
 
@@ -440,6 +454,8 @@
               <div class="field">
                 <label for="destino">Entrega (endereço)</label>
                 <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
+                <div id="sugDestino" class="sugbox"></div>
+                <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
               </div>
             </div>
             <div class="row">
@@ -451,6 +467,17 @@
                 <label for="cidadeDestino">Cidade da entrega</label>
                 <input class="input" id="cidadeDestino" placeholder="Natal, Parnamirim...">
               </div>
+            </div>
+
+            <div class="mini-card" id="paradasBox">
+              <div class="mini-title">
+                <span>Paradas adicionais</span>
+                <button class="btn btn-ghost" style="height:38px;padding:0 10px" id="btnAddParada" type="button">+ Adicionar parada</button>
+              </div>
+              <div style="font-size:12px;color:var(--muted);font-weight:700;margin-bottom:8px">
+                A rota soma por trecho: Coleta → Parada 1 → Parada 2 → Entrega. Pode adicionar quantas paradas precisar.
+              </div>
+              <div id="paradasWrap"></div>
             </div>
 
             <div class="row">
@@ -465,9 +492,9 @@
               <div class="field">
                 <label for="pagamento">Pagamento</label>
                 <select class="select" id="pagamento">
-                  <option value="credito">Usar crédito</option>
-                  <option value="pix">Pix (na hora)</option>
-                  <option value="cartao">Cartão (na hora)</option>
+                  {% if cliente_logado %}<option value="credito">Usar crédito</option>{% endif %}
+                  <option value="pix">Pix</option>
+                  <option value="dinheiro">Dinheiro</option>
                 </select>
               </div>
             </div>
@@ -489,11 +516,18 @@
                 <span class="copykey" id="pixChavePedido">{{ pix_chave or '84981110706' }}</span>
                 <button class="btn btn-ghost" style="height:38px;padding:0 10px" id="btnCopiarPixPedido" type="button">Copiar</button>
               </div>
-              <div style="font-size:12px;color:var(--muted);font-weight:700;margin-top:8px">Após pagar, envie o comprovante para liberação/baixa do pagamento.</div>
+              <div style="font-size:12px;color:var(--muted);font-weight:800;margin-top:8px;color:#9a3412">O entregador só será enviado mediante o envio do comprovante de pagamento pelo WhatsApp.</div>
+              <a class="btn btn-primary" id="btnEnviarComprovantePedido" style="height:42px;margin-top:10px" target="_blank" rel="noopener" href="https://wa.me/5584981110706?text=Ol%C3%A1%2C%20segue%20comprovante%20de%20pagamento%20do%20pedido%20COOPEX.">Enviar comprovante pelo WhatsApp</a>
+            </div>
+
+            <div class="pay-box" id="dinheiroBoxPedido">
+              <div class="mini-title">Pagamento em dinheiro</div>
+              <label class="radio-line"><input type="radio" name="recebeDinheiroEm" value="coleta"> O cooperado recebe na coleta</label>
+              <label class="radio-line"><input type="radio" name="recebeDinheiroEm" value="entrega"> O cooperado recebe na entrega</label>
             </div>
 
             <div class="note" style="margin-top:12px" id="notePedido">
-              Este pedido é registrado no sistema e aparecerá para atribuição. Após solicitar, guarde o número do pedido para consultar o andamento.
+              Este pedido é registrado no sistema e aparecerá para atribuição. Guarde o número do pedido para consultar o andamento. Aceitamos somente Pix ou Dinheiro.
             </div>
             <div id="pedidoSucessoBox"></div>
           </section>
@@ -549,7 +583,6 @@
                 <label for="metodoRecarga">Método</label>
                 <select class="select" id="metodoRecarga">
                   <option value="pix">Pix</option>
-                  <option value="cartao">Cartão</option>
                 </select>
               </div>
             </div>
@@ -565,7 +598,7 @@
             <div class="hr"></div>
 
             <div class="note" id="boxCobranca">
-              Ao gerar cobrança, o sistema cria uma solicitação de recarga. No Pix, será exibida a chave e referência; no Cartão, você integra o seu provedor.
+              Ao gerar cobrança, o sistema cria uma solicitação de recarga. No Pix, será exibida a chave e referência. Após pagar, envie o comprovante pelo WhatsApp da COOPEX.
             </div>
           </section>
 
@@ -600,7 +633,7 @@
 
       <!-- COLUNA DIREITA: MAPA -->
       <div class="card map-card">
-        <div id="map"></div>
+        <div id="map"></div><div class="map-help" id="mapHelp">Você pode arrastar os marcadores de coleta, parada e entrega para ajustar o ponto exato.</div>
 
         <div class="overlay">
           <div class="sheet">
@@ -679,6 +712,9 @@
       enderecoPadrao: (id) => "{{ url_for('api_cliente_endereco_padrao', endereco_id=0) }}".replace("/0", `/${id}`),
       historico:  "{{ url_for('api_cliente_historico') }}",
       comprovantePublico: (id) => "{{ url_for('cliente_comprovante_publico', entrega_id=0) }}".replace("/0", `/${id}`),
+      buscarEndereco: "{{ url_for('api_cliente_buscar_endereco') }}",
+      reverseEndereco: "{{ url_for('api_cliente_reverse_endereco') }}",
+      cotar: "{{ url_for('api_cliente_cotar_entrega') }}",
     };
 
     const POLL_MS = 3000;
@@ -768,20 +804,42 @@
         iconAnchor: [22, 42]
       });
 
-      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF") }).addTo(map);
-      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399") }).addTo(map);
+      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF"), draggable:true }).addTo(map);
+      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399"), draggable:true }).addTo(map);
       mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
+      mOrigem.on('dragend', ()=>reverseToFields('origem', mOrigem.getLatLng().lat, mOrigem.getLatLng().lng));
+      mDestino.on('dragend', ()=>reverseToFields('destino', mDestino.getLatLng().lat, mDestino.getLatLng().lng));
 
       routeLine = L.polyline([natal, natal], { weight:5, opacity:.9 }).addTo(map);
     }
 
-    function setRoute(orig, dest){
+    let stopMarkers = [];
+    function clearStopMarkers(){ stopMarkers.forEach(m=>{ try{ map.removeLayer(m); }catch(e){} }); stopMarkers=[]; }
+    function setRoute(orig, dest, stops){
+      stops = Array.isArray(stops) ? stops : [];
       mOrigem.setLatLng(orig);
       mDestino.setLatLng(dest);
-      routeLine.setLatLngs([orig, dest]);
-      const b = L.latLngBounds([orig, dest]).pad(0.25);
+      clearStopMarkers();
+      const pts = [orig];
+      stops.forEach((p,i)=>{
+        if(p && p.lat != null && p.lng != null){
+          const ll=[Number(p.lat), Number(p.lng)];
+          pts.push(ll);
+          const mkStop = L.marker(ll, {draggable:true}).addTo(map).bindTooltip('Parada '+(i+1));
+          mkStop.on('dragend', ()=>reverseStopFromMarker(i, mkStop.getLatLng().lat, mkStop.getLatLng().lng));
+          stopMarkers.push(mkStop);
+        }
+      });
+      pts.push(dest);
+      routeLine.setStyle({opacity:.9});
+      routeLine.setLatLngs(pts);
+      const b = L.latLngBounds(pts).pad(0.25);
       map.fitBounds(b, { animate:true, duration:0.6 });
     }
+    function hideRouteAfterDelivered(){
+      try{ routeLine.setStyle({opacity:0}); mMoto.setOpacity(0); clearStopMarkers(); }catch(e){}
+    }
+    function showRouteMarkers(){ try{ routeLine.setStyle({opacity:.9}); mMoto.setOpacity(1); }catch(e){} }
 
     function setMoto(pos){
       mMoto.setLatLng(pos);
@@ -796,6 +854,7 @@
       $("tab-pedido").classList.toggle("hide", tab!=="pedido");
       $("tab-rastreio").classList.toggle("hide", tab!=="rastreio");
       $("tab-credito").classList.toggle("hide", tab!=="credito");
+      if($("tab-historico")) $("tab-historico").classList.toggle("hide", tab!=="historico");
     }
 
     function setSaldo(n){
@@ -860,19 +919,19 @@
       }
 
       const steps = [
-        {k:"Criado",    d:"Pedido criado e aguardando atribuição."},
-        {k:"Atribuído", d:"Motoboy atribuído e a caminho da coleta."},
-        {k:"Coleta",    d:"Motoboy no local de coleta."},
-        {k:"Em rota",   d:"Em rota para entrega."},
-        {k:"Entregue",  d:"Entrega concluída."},
+        {k:"Aguardando entregador", d:"Pedido recebido. A supervisão está procurando/atribuindo um entregador."},
+        {k:"Entregador atribuído", d:"Entregador definido. Agora você pode acompanhar a rota."},
+        {k:"Coleta", d:"Entregador a caminho ou no local de coleta."},
+        {k:"Em rota", d:"Pedido em deslocamento para entrega."},
+        {k:"Entregue", d:"Entrega concluída. A rota do entregador não fica mais disponível."},
       ];
 
-      const status = (state.pedido.status||"Criado").toLowerCase();
+      const status = (state.pedido.status||"Aguardando entregador").toLowerCase();
       const idx =
         status.includes("entreg") ? 4 :
         status.includes("rota") || status.includes("andamento") ? 3 :
         status.includes("colet") ? 2 :
-        status.includes("atribu") ? 1 : 0;
+        status.includes("atribu") || status.includes("aceita") || (state.pedido.motoboyNome||'') ? 1 : 0;
 
       steps.forEach((s,i)=>{
         const done = i < idx;
@@ -956,11 +1015,15 @@
       renderTimeline();
 
       // Atualiza mapa (se tiver coordenadas)
+      const delivered = (data.status||'').toLowerCase().includes('entreg');
       const orig = (data.origem?.lat != null && data.origem?.lng != null) ? [data.origem.lat, data.origem.lng] : null;
       const dest = (data.destino?.lat != null && data.destino?.lng != null) ? [data.destino.lat, data.destino.lng] : null;
       const moto = (data.motoboy?.lat != null && data.motoboy?.lng != null) ? [data.motoboy.lat, data.motoboy.lng] : null;
+      const stops = Array.isArray(data.paradas) ? data.paradas : [];
 
-      if(orig && dest) setRoute(orig, dest);
+      if(delivered){ hideRouteAfterDelivered(); return; }
+      showRouteMarkers();
+      if(orig && dest) setRoute(orig, dest, stops);
       if(moto) setMoto(moto);
     }
 
@@ -1015,9 +1078,10 @@
           Pedido enviado com sucesso.<br>
           <strong>Guarde este número para consultar o andamento:</strong> <span style="font-size:18px">#${id}</span><br>
           Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
-          ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="navigator.clipboard.writeText('${pix}')">Copiar Pix</button>` : ''}
+          ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="navigator.clipboard.writeText('${pix}')">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
           <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
             <button class="btn btn-ghost" style="height:40px" type="button" onclick="setTab('rastreio')">Acompanhar pedido</button>
+            ${$('pagamento').value === 'pix' ? `<a class="btn btn-primary" style="height:40px" target="_blank" href="https://wa.me/5584981110706?text=${encodeURIComponent('Olá, segue comprovante de pagamento do pedido COOPEX #' + id)}">Enviar comprovante</a>` : ''}
             <a class="btn btn-ghost" style="height:40px" href="${comprovante}" target="_blank">Comprovante quando pago</a>
           </div>
         </div>`;
@@ -1027,8 +1091,8 @@
       $('origem').value = [obj.endereco, obj.numero].filter(Boolean).join(', ');
       if($('bairroOrigem')) $('bairroOrigem').value = obj.bairro || '';
       if($('cidadeOrigem')) $('cidadeOrigem').value = obj.cidade || '';
-      window.__ORIG_LAT = obj.lat || null;
-      window.__ORIG_LNG = obj.lng || null;
+      setHiddenCoord('origem', obj.lat || null, obj.lng || null);
+      if(obj.lat && obj.lng){ mOrigem.setLatLng([Number(obj.lat), Number(obj.lng)]); map.setView([Number(obj.lat), Number(obj.lng)], 16); }
     }
     async function salvarEnderecoColeta(){
       const endereco = $('origem').value.trim();
@@ -1039,8 +1103,8 @@
         bairro: $('bairroOrigem')?.value.trim() || '',
         cidade: $('cidadeOrigem')?.value.trim() || '',
         uf:'RN',
-        lat: window.__ORIG_LAT || null,
-        lng: window.__ORIG_LNG || null,
+        lat: $("origemLat")?.value || window.__ORIG_LAT || null,
+        lng: $("origemLng")?.value || window.__ORIG_LNG || null,
         padrao: !!$('enderecoPadrao')?.checked
       };
       const r = await safeJSON(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -1064,9 +1128,121 @@
         </div>`).join('');
     }
 
+    /***********************
+     * ENDEREÇO, MAPA E PARADAS
+     ***********************/
+    let geoTimers = {};
+    function setHiddenCoord(prefix, lat, lng){
+      if($(prefix+'Lat')) $(prefix+'Lat').value = (lat ?? '');
+      if($(prefix+'Lng')) $(prefix+'Lng').value = (lng ?? '');
+      if(prefix === 'origem'){ window.__ORIG_LAT = lat; window.__ORIG_LNG = lng; }
+      if(prefix === 'destino'){ window.__DEST_LAT = lat; window.__DEST_LNG = lng; }
+    }
+    function fillAddress(prefix, item){
+      if(!item) return;
+      const end = [item.endereco || item.display || '', item.numero || ''].filter(Boolean).join(', ');
+      if($(prefix)) $(prefix).value = end || item.display || '';
+      if($(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino')) $(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino').value = item.bairro || '';
+      if($(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino')) $(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino').value = item.cidade || '';
+      if(item.lat != null && item.lng != null){
+        setHiddenCoord(prefix, Number(item.lat), Number(item.lng));
+        if(prefix === 'origem') mOrigem.setLatLng([Number(item.lat), Number(item.lng)]);
+        if(prefix === 'destino') mDestino.setLatLng([Number(item.lat), Number(item.lng)]);
+      }
+      atualizarCotacao();
+    }
+    async function buscarEndereco(prefix){
+      const input = $(prefix); const box = $('sug'+(prefix==='origem'?'Origem':'Destino'));
+      if(!input || !box) return;
+      const q = input.value.trim();
+      if(q.length < 3){ box.style.display='none'; return; }
+      const r = await safeJSON(API.buscarEndereco + '?q=' + encodeURIComponent(q));
+      const arr = r?.resultados || [];
+      if(!arr.length){ box.style.display='none'; return; }
+      box.innerHTML = arr.map((it,i)=>`<button type="button" data-i="${i}">${it.endereco || it.display}<small>${[it.bairro,it.cidade,it.uf,it.cep].filter(Boolean).join(' • ')}</small></button>`).join('');
+      box.style.display='block';
+      box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ fillAddress(prefix, arr[Number(b.dataset.i)]); box.style.display='none'; });
+    }
+    async function reverseToFields(prefix, lat, lng){
+      const r = await safeJSON(API.reverseEndereco + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
+      if(r?.ok && r.endereco){ fillAddress(prefix, r.endereco); }
+      else { setHiddenCoord(prefix, lat, lng); atualizarCotacao(); }
+    }
+    async function reverseStopFromMarker(i, lat, lng){
+      const card = document.querySelector(`.stop-card[data-stop="${i}"]`);
+      if(!card) return;
+      const r = await safeJSON(API.reverseEndereco + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
+      card.querySelector('.p_lat').value = lat; card.querySelector('.p_lng').value = lng;
+      if(r?.ok && r.endereco){
+        card.querySelector('.p_endereco').value = r.endereco.endereco || r.endereco.display || '';
+        card.querySelector('.p_bairro').value = r.endereco.bairro || '';
+        card.querySelector('.p_cidade').value = r.endereco.cidade || '';
+      }
+      atualizarCotacao();
+    }
+    function wireAddressSearch(){
+      ['origem','destino'].forEach(prefix=>{
+        const input=$(prefix); if(!input) return;
+        input.addEventListener('input', ()=>{ clearTimeout(geoTimers[prefix]); geoTimers[prefix]=setTimeout(()=>buscarEndereco(prefix), 450); });
+        input.addEventListener('blur', ()=>setTimeout(()=>{ const box=$('sug'+(prefix==='origem'?'Origem':'Destino')); if(box) box.style.display='none'; }, 250));
+      });
+    }
+    let paradaSeq = 0;
+    function addParada(data){
+      const i = paradaSeq++;
+      const wrap = $('paradasWrap'); if(!wrap) return;
+      wrap.insertAdjacentHTML('beforeend', `
+        <div class="stop-card" data-stop="${i}">
+          <div class="stop-head"><span>Parada ${i+1}</span><button class="btn btn-ghost btnRemoveParada" type="button">Remover</button></div>
+          <div class="field"><label>Endereço da parada</label><input class="input p_endereco" placeholder="Ex.: Cartório, Correios, cliente intermediário"></div>
+          <div class="row"><div class="field"><label>Bairro</label><input class="input p_bairro" placeholder="Bairro"></div><div class="field"><label>Cidade</label><input class="input p_cidade" placeholder="Cidade"></div></div>
+          <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option><option>Retorno</option></select></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
+          <input type="hidden" class="p_lat"><input type="hidden" class="p_lng">
+        </div>`);
+      const card = wrap.querySelector(`.stop-card[data-stop="${i}"]`);
+      if(data){
+        card.querySelector('.p_endereco').value=data.endereco||''; card.querySelector('.p_bairro').value=data.bairro||''; card.querySelector('.p_cidade').value=data.cidade||''; card.querySelector('.p_lat').value=data.lat||''; card.querySelector('.p_lng').value=data.lng||'';
+      }
+      card.querySelector('.btnRemoveParada').onclick=()=>{ card.remove(); atualizarCotacao(); };
+      card.querySelectorAll('input,select').forEach(el=>el.addEventListener('change', atualizarCotacao));
+      card.querySelector('.p_endereco').addEventListener('blur', async ()=>{
+        const q=card.querySelector('.p_endereco').value.trim(); if(q.length<3) return;
+        const r=await safeJSON(API.buscarEndereco+'?q='+encodeURIComponent(q)); const it=r?.resultados?.[0];
+        if(it){ card.querySelector('.p_endereco').value=it.endereco||it.display||q; card.querySelector('.p_bairro').value=it.bairro||''; card.querySelector('.p_cidade').value=it.cidade||''; card.querySelector('.p_lat').value=it.lat||''; card.querySelector('.p_lng').value=it.lng||''; atualizarCotacao(); }
+      });
+      atualizarCotacao();
+    }
+    function readParadas(){
+      return Array.from(document.querySelectorAll('#paradasWrap .stop-card')).map(c=>({
+        endereco:c.querySelector('.p_endereco')?.value.trim()||'', bairro:c.querySelector('.p_bairro')?.value.trim()||'', cidade:c.querySelector('.p_cidade')?.value.trim()||'', uf:'RN',
+        referencia:c.querySelector('.p_ref')?.value.trim()||'', servico:c.querySelector('.p_servico')?.value.trim()||'',
+        lat:c.querySelector('.p_lat')?.value.trim()||null, lng:c.querySelector('.p_lng')?.value.trim()||null
+      })).filter(p=>p.endereco||p.bairro||p.servico);
+    }
+    async function atualizarCotacao(){
+      const origemTxt=$('origem')?.value.trim()||'', destinoTxt=$('destino')?.value.trim()||'';
+      if(!origemTxt || !destinoTxt) return;
+      const payload={
+        coleta:{endereco:origemTxt,bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
+        entrega:{endereco:destinoTxt,bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
+        paradas:readParadas()
+      };
+      const r=await safeJSON(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+      if(r?.ok){ setEstimativa(r.preco, null); }
+    }
+
     function wirePedido(){
-      if($("pagamento")) $("pagamento").addEventListener("change", ()=>{$("pixBoxPedido").style.display = ($("pagamento").value === "pix") ? "block" : "none";});
+      wireAddressSearch();
+      if($("btnAddParada")) $("btnAddParada").addEventListener("click", ()=>addParada());
+      const updatePagamentoUI = ()=>{
+        const v = $("pagamento")?.value;
+        if($("pixBoxPedido")) $("pixBoxPedido").style.display = (v === "pix") ? "block" : "none";
+        if($("dinheiroBoxPedido")) $("dinheiroBoxPedido").style.display = (v === "dinheiro") ? "block" : "none";
+      };
+      if($("pagamento")) $("pagamento").addEventListener("change", updatePagamentoUI);
+      updatePagamentoUI();
       if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>navigator.clipboard.writeText($("pixChavePedido").textContent.trim()).then(()=>alert("Chave Pix copiada.")));
+      ["origem","destino","bairroOrigem","bairroDestino","cidadeOrigem","cidadeDestino"].forEach(id=>$(id)?.addEventListener('change', atualizarCotacao));
       if($("btnSalvarEndereco")) $("btnSalvarEndereco").addEventListener("click", salvarEnderecoColeta);
       if($("enderecoSalvo")) $("enderecoSalvo").addEventListener("change", ()=>{ const opt=$("enderecoSalvo").selectedOptions[0]; if(opt && opt.dataset.json){ try{ applyEnderecoSalvo(JSON.parse(opt.dataset.json)); }catch(e){} } });
       if($("btnBuscarHistorico")) $("btnBuscarHistorico").addEventListener("click", carregarHistorico);
@@ -1075,20 +1251,13 @@
         $('pedidoSucessoBox').innerHTML = `<div class="warn-box">Último pedido deste aparelho: <strong>#${ultimo.id}</strong>. <button class="btn btn-ghost" style="height:36px;margin-left:8px;display:inline-flex" type="button" onclick="state.pedido={id:String(${ultimo.id}),status:'Criado'};setTab('rastreio');applyTrackingFromAPI(${ultimo.id});startPolling();">Recuperar rastreio</button></div>`;
       }
       $("btnUsarLocal").addEventListener("click", async ()=>{
-        if(!navigator.geolocation){
-          alert("Geolocalização não suportada neste navegador.");
-          return;
-        }
-        navigator.geolocation.getCurrentPosition((pos)=>{
-          const lat = pos.coords.latitude;
-          const lng = pos.coords.longitude;
-          $("origem").value = `Minha localização (${lat.toFixed(5)}, ${lng.toFixed(5)})`;
-          // Opcional: você pode mandar essas coords junto no pedido (backend aceita).
-          window.__ORIG_LAT = lat;
-          window.__ORIG_LNG = lng;
-        }, ()=>{
-          alert("Não foi possível obter sua localização. Verifique permissões.");
-        }, { enableHighAccuracy:true, timeout:8000 });
+        if(!navigator.geolocation){ alert("Geolocalização não suportada neste navegador."); return; }
+        navigator.geolocation.getCurrentPosition(async (pos)=>{
+          const lat = pos.coords.latitude, lng = pos.coords.longitude;
+          mOrigem.setLatLng([lat,lng]); map.setView([lat,lng], 17);
+          await reverseToFields('origem', lat, lng);
+          alert("Localização encontrada. Confira o endereço e arraste o marcador no mapa se quiser ajustar o ponto exato.");
+        }, ()=>{ alert("Não foi possível obter sua localização. Verifique permissões."); }, { enableHighAccuracy:true, timeout:10000 });
       });
 
       $("btnCriarPedido").addEventListener("click", async ()=>{
@@ -1103,16 +1272,24 @@
           return;
         }
 
+        if(pagamento === 'dinheiro' && !document.querySelector('input[name="recebeDinheiroEm"]:checked')){
+          alert('Informe se o dinheiro será recebido na coleta ou na entrega.');
+          return;
+        }
         const payload = {
           origem_txt: origemTxt,
           destino_txt: destinoTxt,
           tipo,
           pagamento,
+          meio_pagamento: pagamento,
+          recebe_dinheiro_em: document.querySelector('input[name="recebeDinheiroEm"]:checked')?.value || '',
           obs,
-          origem_lat: (window.__ORIG_LAT ?? null),
-          origem_lng: (window.__ORIG_LNG ?? null),
-          coleta: {endereco: origemTxt, bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", uf:"RN", lat:(window.__ORIG_LAT ?? null), lng:(window.__ORIG_LNG ?? null)},
-          entrega: {endereco: destinoTxt, bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", uf:"RN"},
+          observacao: obs,
+          origem_lat: ($("origemLat")?.value || window.__ORIG_LAT || null),
+          origem_lng: ($("origemLng")?.value || window.__ORIG_LNG || null),
+          coleta: {endereco: origemTxt, bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", uf:"RN", lat:($("origemLat")?.value || window.__ORIG_LAT || null), lng:($("origemLng")?.value || window.__ORIG_LNG || null)},
+          entrega: {endereco: destinoTxt, bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", uf:"RN", lat:($("destinoLat")?.value || window.__DEST_LAT || null), lng:($("destinoLng")?.value || window.__DEST_LNG || null)},
+          paradas: readParadas()
         };
 
         const res = await safeJSON(API.pedido, {
@@ -1169,7 +1346,7 @@
 
     function wireCredito(){
       $("metodoRecarga").addEventListener("change", ()=>{
-        $("metodoTxt").textContent = $("metodoRecarga").value === "pix" ? "Pix" : "Cartão";
+        $("metodoTxt").textContent = "Pix";
       });
 
       document.querySelectorAll(".recargaPreset").forEach(b=>{
@@ -1198,26 +1375,16 @@
 
         setOnline(true);
 
-        // Atualiza UI do box (Pix real por chave + referência; Cartão depende do provedor)
-        if(metodo === "pix"){
-          $("boxCobranca").innerHTML = `
-            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-            Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
-            <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
-            <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
-            <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || ("RECARGA-"+r.recarga_id)}</span><br>
-            <div style="margin-top:10px">Após o pagamento, a recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
-          `;
-        } else {
-          $("boxCobranca").innerHTML = `
-            <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-            Método: <strong>Cartão</strong>.<br>
-            <div style="margin-top:10px">
-              Integração necessária: seu backend deve retornar um <strong>checkout_url</strong> do provedor e você redireciona o cliente.
-            </div>
-            ${r.checkout_url ? `<div style="margin-top:10px"><a class="btn btn-primary" style="height:44px" href="${r.checkout_url}">Pagar agora</a></div>` : ""}
-          `;
-        }
+        // Atualiza UI do box (Pix real por chave + referência)
+        $("boxCobranca").innerHTML = `
+          <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
+          Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
+          <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
+          <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
+          <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || ("RECARGA-"+r.recarga_id)}</span><br>
+          <div style="margin-top:10px">Após o pagamento, envie o comprovante pelo WhatsApp <strong>84 98111-0706</strong>. A recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
+          <a class="btn btn-primary" style="height:42px;margin-top:10px" target="_blank" rel="noopener" href="https://wa.me/5584981110706?text=${encodeURIComponent('Olá, segue comprovante da recarga COOPEX #' + r.recarga_id)}">Enviar comprovante</a>
+        `;
 
         // Atualiza saldo (pode não mudar até aprovação; mesmo assim mostramos o saldo atual do backend)
         const s = await safeJSON(API.saldo);
