@@ -517,7 +517,7 @@
             <div class="mini-card" id="retornoBox">
               <label style="display:flex;align-items:flex-start;gap:10px;font-size:13px;font-weight:900;color:var(--royal)">
                 <input type="checkbox" id="comRetorno" style="width:20px;height:20px;flex:0 0 auto">
-                <span>Com retorno para o endereço da coleta<br><small style="font-weight:750;color:var(--muted)">Ao marcar, o sistema soma o retorno e usa automaticamente a coleta como endereço final do retorno.</small></span>
+                <span>Com retorno para o endereço da coleta<br><small style="font-weight:750;color:var(--muted)">Ao marcar, o sistema cobra o percentual de retorno cadastrado em Preços e Rotas, usando como base o último trecho antes do retorno.</small></span>
               </label>
             </div>
 
@@ -1302,7 +1302,7 @@
           <div class="stop-head"><span>Parada ${i+1}</span><button class="btn btn-ghost btnRemoveParada" type="button">Remover</button></div>
           <div class="row"><div class="field" style="flex:2"><label>Rua/avenida da parada</label><input class="input p_endereco" placeholder="Ex.: Cartório, Correios, cliente intermediário"></div><div class="field" style="flex:.7"><label>Número</label><input class="input p_numero" placeholder="Nº" inputmode="numeric"></div></div>
           <div class="row"><div class="field"><label>Bairro</label><input class="input p_bairro" placeholder="Bairro"></div><div class="field"><label>Cidade</label><input class="input p_cidade" placeholder="Cidade"></div></div>
-          <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option><option>Retorno</option></select></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
+          <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option></select></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
           <input type="hidden" class="p_lat"><input type="hidden" class="p_lng">
         </div>`);
       const card = wrap.querySelector(`.stop-card[data-stop="${i}"]`);
