@@ -2959,6 +2959,55 @@ def _viacep_lookup(cep_digits, numero=''):
     except Exception:
         return None
 
+
+def _geocodificar_endereco_osm(endereco):
+    """
+    Geocodifica endereço usado no cálculo de rota/km.
+    Prioridade:
+      1) Google Geocoding, quando GOOGLE_MAPS_API_KEY estiver configurada.
+      2) Nominatim/OSM como fallback.
+
+    Retorna tupla (lat, lng) ou None.
+    """
+    q = (endereco or '').strip()
+    if not q:
+        return None
+
+    # O endereço interno às vezes vem separado por " • ". Google/OSM entendem melhor com vírgulas.
+    q_busca = re.sub(r'\s*•\s*', ', ', q)
+    if 'Brasil' not in q_busca and 'Brazil' not in q_busca:
+        q_busca = q_busca + ', Brasil'
+
+    # Google primeiro: melhor para número exato e locais comerciais cadastrados no Maps.
+    try:
+        g = _google_geocode_full(q_busca, limit=1)
+        if g:
+            lat = g[0].get('lat')
+            lng = g[0].get('lng')
+            if lat not in (None, '') and lng not in (None, ''):
+                return (float(lat), float(lng))
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha geocodificar Google fallback: {e}')
+        except Exception:
+            pass
+
+    # Fallback público. Pode não cravar o número como o Google, mas evita quebrar o pedido.
+    try:
+        arr = _nominatim_search(q_busca, limit=1, addressdetails=1)
+        if arr:
+            lat = arr[0].get('lat')
+            lng = arr[0].get('lon')
+            if lat not in (None, '') and lng not in (None, ''):
+                return (float(lat), float(lng))
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha geocodificar OSM fallback: {e}')
+        except Exception:
+            pass
+
+    return None
+
 def _ponto_bairro(ponto):
     if not isinstance(ponto, dict):
         return ''
