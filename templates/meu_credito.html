@@ -431,13 +431,18 @@
             {% endif %}
 
             <div class="row">
-              <div class="field">
-                <label for="origem">Coleta (endereço)</label>
-                <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais, 1000" autocomplete="street-address">
+              <div class="field" style="flex:2">
+                <label for="origem">Coleta (rua/avenida)</label>
+                <input class="input" id="origem" placeholder="Ex.: Av. Prudente de Morais" autocomplete="street-address">
                 <div id="sugOrigem" class="sugbox"></div>
                 <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
               </div>
+              <div class="field" style="flex:.7">
+                <label for="numeroOrigem">Número</label>
+                <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
+              </div>
             </div>
+            <div class="note" style="margin-top:-2px">Para localização mais exata, informe rua e número. Se necessário, arraste o marcador no mapa para ajustar o ponto correto.</div>
 
             <div class="row">
               <div class="field">
@@ -451,11 +456,15 @@
             </div>
 
             <div class="row">
-              <div class="field">
-                <label for="destino">Entrega (endereço)</label>
-                <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa, 200" autocomplete="street-address">
+              <div class="field" style="flex:2">
+                <label for="destino">Entrega (rua/avenida)</label>
+                <input class="input" id="destino" placeholder="Ex.: Rua João Pessoa" autocomplete="street-address">
                 <div id="sugDestino" class="sugbox"></div>
                 <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
+              </div>
+              <div class="field" style="flex:.7">
+                <label for="numeroDestino">Número</label>
+                <input class="input" id="numeroDestino" placeholder="Ex.: 200" inputmode="numeric" autocomplete="address-line2">
               </div>
             </div>
             <div class="row">
@@ -1102,7 +1111,8 @@
     }
     function applyEnderecoSalvo(obj){
       if(!obj) return;
-      $('origem').value = [obj.endereco, obj.numero].filter(Boolean).join(', ');
+      $('origem').value = obj.endereco || '';
+      if($('numeroOrigem')) $('numeroOrigem').value = obj.numero || '';
       if($('bairroOrigem')) $('bairroOrigem').value = obj.bairro || '';
       if($('cidadeOrigem')) $('cidadeOrigem').value = obj.cidade || '';
       setHiddenCoord('origem', obj.lat || null, obj.lng || null);
@@ -1114,6 +1124,7 @@
       const payload = {
         apelido: $('apelidoEndereco')?.value.trim() || 'Coleta',
         endereco,
+        numero: $('numeroOrigem')?.value.trim() || '',
         bairro: $('bairroOrigem')?.value.trim() || '',
         cidade: $('cidadeOrigem')?.value.trim() || '',
         uf:'RN',
@@ -1154,8 +1165,10 @@
     }
     function fillAddress(prefix, item){
       if(!item) return;
-      const end = [item.endereco || item.display || '', item.numero || ''].filter(Boolean).join(', ');
-      if($(prefix)) $(prefix).value = end || item.display || '';
+      const numeroId = prefix === 'origem' ? 'numeroOrigem' : 'numeroDestino';
+      const enderecoLimpo = item.endereco || item.display || '';
+      if($(prefix)) $(prefix).value = enderecoLimpo;
+      if($(numeroId) && item.numero) $(numeroId).value = item.numero || '';
       if($(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino')) $(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino').value = item.bairro || '';
       if($(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino')) $(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino').value = item.cidade || '';
       if(item.lat != null && item.lng != null){
@@ -1165,14 +1178,35 @@
       }
       atualizarCotacao();
     }
+    function numeroDoPrefixo(prefix){
+      return (prefix === 'origem' ? $('numeroOrigem')?.value : $('numeroDestino')?.value || '').trim();
+    }
+    function bairroDoPrefixo(prefix){
+      return (prefix === 'origem' ? $('bairroOrigem')?.value : $('bairroDestino')?.value || '').trim();
+    }
+    function cidadeDoPrefixo(prefix){
+      return (prefix === 'origem' ? $('cidadeOrigem')?.value : $('cidadeDestino')?.value || '').trim();
+    }
+    function enderecoCompleto(prefix){
+      const rua = $(prefix)?.value.trim() || '';
+      const numero = numeroDoPrefixo(prefix);
+      return [rua, numero].filter(Boolean).join(', ');
+    }
     async function buscarEndereco(prefix){
       const input = $(prefix); const box = $('sug'+(prefix==='origem'?'Origem':'Destino'));
       if(!input || !box) return;
       const q = input.value.trim();
       if(q.length < 3){ box.style.display='none'; return; }
-      const r = await safeJSON(API.buscarEndereco + '?q=' + encodeURIComponent(q));
+      const params = new URLSearchParams({q:q, numero:numeroDoPrefixo(prefix), bairro:bairroDoPrefixo(prefix), cidade:cidadeDoPrefixo(prefix)});
+      const r = await safeJSON(API.buscarEndereco + '?' + params.toString());
       const arr = r?.resultados || [];
       if(!arr.length){ box.style.display='none'; return; }
+      const soCep = q.replace(/\D/g,'').length === 8;
+      if(soCep && arr.length === 1){
+        fillAddress(prefix, arr[0]);
+        box.style.display='none';
+        return;
+      }
       box.innerHTML = arr.map((it,i)=>`<button type="button" data-i="${i}">${it.endereco || it.display}<small>${[it.bairro,it.cidade,it.uf,it.cep].filter(Boolean).join(' • ')}</small></button>`).join('');
       box.style.display='block';
       box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ fillAddress(prefix, arr[Number(b.dataset.i)]); box.style.display='none'; });
@@ -1197,8 +1231,13 @@
     function wireAddressSearch(){
       ['origem','destino'].forEach(prefix=>{
         const input=$(prefix); if(!input) return;
+        const numeroInput = $(prefix === 'origem' ? 'numeroOrigem' : 'numeroDestino');
         input.addEventListener('input', ()=>{ clearTimeout(geoTimers[prefix]); geoTimers[prefix]=setTimeout(()=>buscarEndereco(prefix), 450); });
-        input.addEventListener('blur', ()=>setTimeout(()=>{ const box=$('sug'+(prefix==='origem'?'Origem':'Destino')); if(box) box.style.display='none'; }, 250));
+        input.addEventListener('blur', ()=>setTimeout(()=>{ const box=$('sug'+(prefix==='origem'?'Origem':'Destino')); if(box) box.style.display='none'; }, 350));
+        if(numeroInput){
+          numeroInput.addEventListener('change', ()=>{ buscarEndereco(prefix); atualizarCotacao(); });
+          numeroInput.addEventListener('blur', ()=>{ buscarEndereco(prefix); atualizarCotacao(); });
+        }
       });
     }
     let paradaSeq = 0;
@@ -1208,37 +1247,38 @@
       wrap.insertAdjacentHTML('beforeend', `
         <div class="stop-card" data-stop="${i}">
           <div class="stop-head"><span>Parada ${i+1}</span><button class="btn btn-ghost btnRemoveParada" type="button">Remover</button></div>
-          <div class="field"><label>Endereço da parada</label><input class="input p_endereco" placeholder="Ex.: Cartório, Correios, cliente intermediário"></div>
+          <div class="row"><div class="field" style="flex:2"><label>Rua/avenida da parada</label><input class="input p_endereco" placeholder="Ex.: Cartório, Correios, cliente intermediário"></div><div class="field" style="flex:.7"><label>Número</label><input class="input p_numero" placeholder="Nº" inputmode="numeric"></div></div>
           <div class="row"><div class="field"><label>Bairro</label><input class="input p_bairro" placeholder="Bairro"></div><div class="field"><label>Cidade</label><input class="input p_cidade" placeholder="Cidade"></div></div>
           <div class="row"><div class="field"><label>Serviço</label><select class="select p_servico"><option value="">Somente parada/entrega</option><option>Cartório</option><option>Correios</option><option>Compras</option><option>Retorno</option></select></div><div class="field"><label>Referência</label><input class="input p_ref" placeholder="Referência"></div></div>
           <input type="hidden" class="p_lat"><input type="hidden" class="p_lng">
         </div>`);
       const card = wrap.querySelector(`.stop-card[data-stop="${i}"]`);
       if(data){
-        card.querySelector('.p_endereco').value=data.endereco||''; card.querySelector('.p_bairro').value=data.bairro||''; card.querySelector('.p_cidade').value=data.cidade||''; card.querySelector('.p_lat').value=data.lat||''; card.querySelector('.p_lng').value=data.lng||'';
+        card.querySelector('.p_endereco').value=data.endereco||''; if(card.querySelector('.p_numero')) card.querySelector('.p_numero').value=data.numero||''; card.querySelector('.p_bairro').value=data.bairro||''; card.querySelector('.p_cidade').value=data.cidade||''; card.querySelector('.p_lat').value=data.lat||''; card.querySelector('.p_lng').value=data.lng||'';
       }
       card.querySelector('.btnRemoveParada').onclick=()=>{ card.remove(); atualizarCotacao(); };
       card.querySelectorAll('input,select').forEach(el=>el.addEventListener('change', atualizarCotacao));
       card.querySelector('.p_endereco').addEventListener('blur', async ()=>{
         const q=card.querySelector('.p_endereco').value.trim(); if(q.length<3) return;
-        const r=await safeJSON(API.buscarEndereco+'?q='+encodeURIComponent(q)); const it=r?.resultados?.[0];
-        if(it){ card.querySelector('.p_endereco').value=it.endereco||it.display||q; card.querySelector('.p_bairro').value=it.bairro||''; card.querySelector('.p_cidade').value=it.cidade||''; card.querySelector('.p_lat').value=it.lat||''; card.querySelector('.p_lng').value=it.lng||''; atualizarCotacao(); }
+        const params = new URLSearchParams({q:q, numero:card.querySelector('.p_numero')?.value.trim()||'', bairro:card.querySelector('.p_bairro')?.value.trim()||'', cidade:card.querySelector('.p_cidade')?.value.trim()||''});
+        const r=await safeJSON(API.buscarEndereco+'?'+params.toString()); const it=r?.resultados?.[0];
+        if(it){ card.querySelector('.p_endereco').value=it.endereco||it.display||q; if(card.querySelector('.p_numero') && it.numero) card.querySelector('.p_numero').value=it.numero||''; card.querySelector('.p_bairro').value=it.bairro||''; card.querySelector('.p_cidade').value=it.cidade||''; card.querySelector('.p_lat').value=it.lat||''; card.querySelector('.p_lng').value=it.lng||''; atualizarCotacao(); }
       });
       atualizarCotacao();
     }
     function readParadas(){
       return Array.from(document.querySelectorAll('#paradasWrap .stop-card')).map(c=>({
-        endereco:c.querySelector('.p_endereco')?.value.trim()||'', bairro:c.querySelector('.p_bairro')?.value.trim()||'', cidade:c.querySelector('.p_cidade')?.value.trim()||'', uf:'RN',
+        endereco:c.querySelector('.p_endereco')?.value.trim()||'', numero:c.querySelector('.p_numero')?.value.trim()||'', bairro:c.querySelector('.p_bairro')?.value.trim()||'', cidade:c.querySelector('.p_cidade')?.value.trim()||'', uf:'RN',
         referencia:c.querySelector('.p_ref')?.value.trim()||'', servico:c.querySelector('.p_servico')?.value.trim()||'',
         lat:c.querySelector('.p_lat')?.value.trim()||null, lng:c.querySelector('.p_lng')?.value.trim()||null
       })).filter(p=>p.endereco||p.bairro||p.servico);
     }
     async function atualizarCotacao(){
-      const origemTxt=$('origem')?.value.trim()||'', destinoTxt=$('destino')?.value.trim()||'';
-      if(!origemTxt || !destinoTxt) return;
+      const origemTxt=enderecoCompleto('origem'), destinoTxt=enderecoCompleto('destino');
+      if(!$('origem')?.value.trim() || !$('destino')?.value.trim()) return;
       const payload={
-        coleta:{endereco:origemTxt,bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
-        entrega:{endereco:destinoTxt,bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
+        coleta:{endereco:$('origem')?.value.trim()||'',numero:$('numeroOrigem')?.value.trim()||'',bairro:$('bairroOrigem')?.value.trim()||'',cidade:$('cidadeOrigem')?.value.trim()||'',uf:'RN',lat:$('origemLat')?.value||window.__ORIG_LAT||null,lng:$('origemLng')?.value||window.__ORIG_LNG||null},
+        entrega:{endereco:$('destino')?.value.trim()||'',numero:$('numeroDestino')?.value.trim()||'',bairro:$('bairroDestino')?.value.trim()||'',cidade:$('cidadeDestino')?.value.trim()||'',uf:'RN',lat:$('destinoLat')?.value||window.__DEST_LAT||null,lng:$('destinoLng')?.value||window.__DEST_LNG||null},
         paradas:readParadas()
       };
       const r=await safeJSON(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
@@ -1256,7 +1296,7 @@
       if($("pagamento")) $("pagamento").addEventListener("change", updatePagamentoUI);
       updatePagamentoUI();
       if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>navigator.clipboard.writeText($("pixChavePedido").textContent.trim()).then(()=>alert("Chave Pix copiada.")));
-      ["origem","destino","bairroOrigem","bairroDestino","cidadeOrigem","cidadeDestino"].forEach(id=>$(id)?.addEventListener('change', atualizarCotacao));
+      ["origem","destino","numeroOrigem","numeroDestino","bairroOrigem","bairroDestino","cidadeOrigem","cidadeDestino"].forEach(id=>$(id)?.addEventListener('change', atualizarCotacao));
       if($("btnSalvarEndereco")) $("btnSalvarEndereco").addEventListener("click", salvarEnderecoColeta);
       if($("enderecoSalvo")) $("enderecoSalvo").addEventListener("change", ()=>{ const opt=$("enderecoSalvo").selectedOptions[0]; if(opt && opt.dataset.json){ try{ applyEnderecoSalvo(JSON.parse(opt.dataset.json)); }catch(e){} } });
       if($("btnBuscarHistorico")) $("btnBuscarHistorico").addEventListener("click", carregarHistorico);
@@ -1275,13 +1315,15 @@
       });
 
       $("btnCriarPedido").addEventListener("click", async ()=>{
-        const origemTxt = $("origem").value.trim();
-        const destinoTxt = $("destino").value.trim();
+        const origemRua = $("origem").value.trim();
+        const destinoRua = $("destino").value.trim();
+        const origemTxt = enderecoCompleto('origem');
+        const destinoTxt = enderecoCompleto('destino');
         const tipo = $("tipo").value;
         const pagamento = $("pagamento").value;
         const obs = $("obs").value.trim();
 
-        if(!origemTxt || !destinoTxt){
+        if(!origemRua || !destinoRua){
           alert("Informe os endereços de coleta e entrega.");
           return;
         }
@@ -1301,8 +1343,8 @@
           observacao: obs,
           origem_lat: ($("origemLat")?.value || window.__ORIG_LAT || null),
           origem_lng: ($("origemLng")?.value || window.__ORIG_LNG || null),
-          coleta: {endereco: origemTxt, bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", uf:"RN", lat:($("origemLat")?.value || window.__ORIG_LAT || null), lng:($("origemLng")?.value || window.__ORIG_LNG || null)},
-          entrega: {endereco: destinoTxt, bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", uf:"RN", lat:($("destinoLat")?.value || window.__DEST_LAT || null), lng:($("destinoLng")?.value || window.__DEST_LNG || null)},
+          coleta: {endereco: origemRua, numero: $("numeroOrigem")?.value.trim() || "", bairro: $("bairroOrigem")?.value.trim() || "", cidade: $("cidadeOrigem")?.value.trim() || "", uf:"RN", lat:($("origemLat")?.value || window.__ORIG_LAT || null), lng:($("origemLng")?.value || window.__ORIG_LNG || null)},
+          entrega: {endereco: destinoRua, numero: $("numeroDestino")?.value.trim() || "", bairro: $("bairroDestino")?.value.trim() || "", cidade: $("cidadeDestino")?.value.trim() || "", uf:"RN", lat:($("destinoLat")?.value || window.__DEST_LAT || null), lng:($("destinoLng")?.value || window.__DEST_LNG || null)},
           paradas: readParadas()
         };
 
