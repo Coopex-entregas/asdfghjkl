@@ -460,13 +460,13 @@
               <div class="mini-title"><span>Localização da coleta</span></div>
               <button class="btn btn-ghost" id="btnUsarLocal" type="button" style="width:100%">Usar minha localização para preencher a coleta</button>
               <button class="btn btn-ghost" id="btnAbrirLocalizacaoNovaAba" type="button" style="width:100%;margin-top:8px;display:none">Abrir em nova aba para permitir localização</button>
-              <div id="localizacaoStatus" class="note" style="margin-top:8px">Ao tocar no botão, o navegador deve abrir a permissão de localização. Autorize para preencher a coleta automaticamente.</div>
+              <div id="localizacaoStatus" class="note" style="margin-top:8px">Toque para tentar preencher automaticamente. Se não funcionar, preencha CEP ou rua e número manualmente.</div>
             </div>
 
             <div class="row">
               <div class="field" style="flex:2">
                 <label for="origem">Coleta (CEP ou rua/avenida)</label>
-                <input class="input" id="origem" placeholder="Digite o CEP ou rua. Ex.: 59073-090 / Av. Prudente de Morais" autocomplete="street-address">
+                <input class="input" id="origem" placeholder="Digite rua, CEP ou local. Ex.: Natal Shopping" autocomplete="street-address">
                 <div id="sugOrigem" class="sugbox"></div>
                 <input type="hidden" id="origemLat"><input type="hidden" id="origemLng">
               </div>
@@ -475,7 +475,7 @@
                 <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
               </div>
             </div>
-            <div class="note" style="margin-top:-2px">Para localização exata, informe CEP ou rua/avenida e preencha o número. O sistema buscará pelo Maps usando rua + número. O mapa é apenas para acompanhar a entrega; o cliente não precisa mexer no mapa.</div>
+            <div class="note" style="margin-top:-2px">Digite o endereço ou um local cadastrado no Maps. As sugestões aparecem enquanto digita. Para rua/CEP, a localização exata só é ajustada depois que preencher o número.</div>
 
             <div class="row">
               <div class="field">
@@ -491,7 +491,7 @@
             <div class="row">
               <div class="field" style="flex:2">
                 <label for="destino">Entrega (CEP ou rua/avenida)</label>
-                <input class="input" id="destino" placeholder="Digite o CEP ou rua. Ex.: 59073-090 / Rua João Pessoa" autocomplete="street-address">
+                <input class="input" id="destino" placeholder="Digite rua, CEP ou local. Ex.: Cartório, Correios" autocomplete="street-address">
                 <div id="sugDestino" class="sugbox"></div>
                 <input type="hidden" id="destinoLat"><input type="hidden" id="destinoLng">
               </div>
@@ -1252,7 +1252,12 @@
       if($(numeroId) && item.numero) $(numeroId).value = item.numero || '';
       if($(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino')) $(prefix === 'origem' ? 'bairroOrigem' : 'bairroDestino').value = item.bairro || '';
       if($(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino')) $(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino').value = item.cidade || '';
-      if(item.lat != null && item.lng != null){
+
+      // Rua/CEP só vira ponto exato quando tiver número.
+      // Local cadastrado no Google Maps (shopping, loja, cartório etc.) já pode marcar direto.
+      const temNumero = !!(item.numero || numeroDoPrefixo(prefix));
+      const ehLocalGoogle = !!(item.place_name && item.fonte === 'google');
+      if(item.lat != null && item.lng != null && (temNumero || ehLocalGoogle)){
         setHiddenCoord(prefix, Number(item.lat), Number(item.lng));
         if(prefix === 'origem'){ mOrigem.setOpacity(1); mOrigem.setLatLng([Number(item.lat), Number(item.lng)]); }
         if(prefix === 'destino'){ mDestino.setOpacity(1); mDestino.setLatLng([Number(item.lat), Number(item.lng)]); }
@@ -1288,7 +1293,12 @@
         box.style.display='none';
         return;
       }
-      box.innerHTML = arr.map((it,i)=>`<button type="button" data-i="${i}">${it.display || it.endereco}<small>${[it.bairro,it.cidade,it.uf,it.cep,it.fonte==='google'?'Google':''].filter(Boolean).join(' • ')}</small></button>`).join('');
+      box.innerHTML = arr.map((it,i)=>{
+        const temNumero = !!(it.numero || numeroDoPrefixo(prefix));
+        const ehLocal = !!(it.place_name && it.fonte === 'google');
+        const selo = ehLocal ? 'Local do Google' : (temNumero ? 'Endereço exato' : 'Informe o número para ajustar');
+        return `<button type="button" data-i="${i}">${it.display || it.endereco}<small>${[it.bairro,it.cidade,it.uf,it.cep,it.fonte==='google'?'Google Maps':'',selo].filter(Boolean).join(' • ')}</small></button>`;
+      }).join('');
       box.style.display='block';
       box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ fillAddress(prefix, arr[Number(b.dataset.i)]); box.style.display='none'; });
     }
@@ -1481,8 +1491,8 @@
             try{
               const perm = await navigator.permissions.query({name:'geolocation'});
               if(perm.state === 'denied'){
-                setLocalizacaoStatus('A localização está bloqueada para este site. No Chrome, clique no cadeado ao lado do endereço, entre em Permissões e libere Localização. Depois recarregue a página.', 'erro');
-                alert('A localização está bloqueada para este site. Libere a permissão de localização no navegador e recarregue a página.');
+                setLocalizacaoStatus('Não consegui usar a localização automática. Preencha CEP ou rua e número abaixo.', 'aviso');
+                try{ $('origem')?.focus(); }catch(e){}
                 if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
                 return;
               }
@@ -1529,13 +1539,13 @@
             }else if(err && err.code === 3){
               msg = 'O tempo para obter a localização expirou. Ative o GPS e tente novamente em local aberto.';
             }
-            setLocalizacaoStatus(msg, 'erro');
-            alert(msg);
+            setLocalizacaoStatus('Não consegui usar a localização automática. Preencha CEP ou rua e número abaixo.', 'aviso');
+            try{ $('origem')?.focus(); }catch(e){}
             if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
           }, { enableHighAccuracy:true, timeout:25000, maximumAge:0 });
         }catch(e){
-          setLocalizacaoStatus('Não foi possível abrir a solicitação de localização. Verifique as permissões do navegador.', 'erro');
-          alert('Não foi possível abrir a solicitação de localização. Verifique as permissões do navegador.');
+          setLocalizacaoStatus('Não consegui usar a localização automática. Preencha CEP ou rua e número abaixo.', 'aviso');
+          try{ $('origem')?.focus(); }catch(e){}
           if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
         }
       }
