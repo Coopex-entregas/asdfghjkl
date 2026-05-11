@@ -139,13 +139,17 @@
        data-end-upsert="{{ url_for('api_upsert_preco') }}"
        data-end-delete="{{ url_for('api_delete_preco', item_id=0)[:-1] }}"
        data-end-ajustes="{{ url_for('api_ajustes') }}"
-       data-end-perkm="{{ url_for('api_per_km') }}">
+       data-end-perkm="{{ url_for('api_per_km') }}"
+       data-end-servicos="{{ url_for('api_list_servicos') }}"
+       data-end-servicos-upsert="{{ url_for('api_upsert_servico') }}"
+       data-end-servicos-delete="{{ url_for('api_delete_servico', item_id=0)[:-1] }}">
 
     <aside class="sidebar">
       <nav class="nav" aria-label="Navegação">
         <a href="#tab-consulta" data-gotab class="active">Consultar por Bairros</a>
         <a href="#tab-endereco" data-gotab>Endereço/CEP (Rotas)</a>
         <a href="#tab-cadastro" data-gotab>Cadastrar/Editar</a>
+        <a href="#tab-servicos" data-gotab>Serviços Fixos</a>
         <a href="#tab-ajustes" data-gotab>Ajustes em Massa</a>
         <a href="#tab-dados" data-gotab>Dados</a>
         <a href="#tab-testes" data-gotab>Testes</a>
@@ -262,6 +266,20 @@
         </div>
       </section>
 
+      <!-- SERVIÇOS FIXOS -->
+      <section id="tab-servicos" class="card section">
+        <h2 style="margin:0 0 8px">Serviços fixos</h2>
+        <p style="color:var(--muted);margin-top:0">Cadastre valores fixos para Cartório, Correios, Compras, Retorno e outros serviços. O pedido do cliente soma o valor do serviço quando ele for selecionado.</p>
+        <div class="grid cols-3">
+          <div><label>Serviço</label><input id="servNome" placeholder="Ex.: Cartório"></div>
+          <div><label>Valor (R$)</label><input id="servValor" inputmode="decimal" placeholder="Ex.: 20,00"></div>
+          <div><label>&nbsp;</label><button class="btn primary" id="btnSalvarServico" type="button">Salvar serviço</button></div>
+        </div>
+        <div style="overflow:auto;margin-top:12px">
+          <table class="table"><thead><tr><th>Serviço</th><th>Valor</th><th>Status</th><th>Ações</th></tr></thead><tbody id="tbodyServicos"><tr><td colspan="4">Carregando...</td></tr></tbody></table>
+        </div>
+      </section>
+
       <!-- AJUSTES -->
       <section id="tab-ajustes" class="card section">
         <h2 style="margin:0 0 8px">Ajustes em massa</h2>
@@ -365,6 +383,9 @@ const END_UPSERT  = ROOT.dataset.endUpsert;
 const END_DELETE0 = ROOT.dataset.endDelete; // prefixo sem o último 0
 const END_AJUSTES = ROOT.dataset.endAjustes;
 const END_PERKM   = ROOT.dataset.endPerkm;
+const END_SERVICOS = ROOT.dataset.endServicos;
+const END_SERVICOS_UPSERT = ROOT.dataset.endServicosUpsert;
+const END_SERVICOS_DELETE0 = ROOT.dataset.endServicosDelete;
 
 function toast(msg){
   const el = $$('#toast'); el.textContent = msg; el.classList.add('show');
@@ -664,6 +685,31 @@ function onMapClick(e){ if(!streetEnabled) return; openStreetAt(e.latlng.lat, e.
   const iv = setInterval(()=>{ if(map){ map.on('click', onMapClick); clearInterval(iv);} }, 200);
 })();
 
+
+/* ======== Serviços Fixos ======== */
+let SERVICOS=[];
+async function reloadServicos(){
+  if(!END_SERVICOS) return;
+  try{
+    const r=await fetch(END_SERVICOS,{credentials:'same-origin'}); const j=await r.json();
+    SERVICOS=j.items||[]; renderServicos();
+  }catch(e){ const tb=$$('#tbodyServicos'); if(tb) tb.innerHTML='<tr><td colspan="4">Falha ao carregar.</td></tr>'; }
+}
+function renderServicos(){
+  const tb=$$('#tbodyServicos'); if(!tb) return;
+  if(!SERVICOS.length){ tb.innerHTML='<tr><td colspan="4">Nenhum serviço cadastrado.</td></tr>'; return; }
+  tb.innerHTML=SERVICOS.map(s=>`<tr><td>${s.nome}</td><td>${moeda(s.valor)}</td><td>${s.ativo?'Ativo':'Inativo'}</td><td><button class="btn" onclick="editarServico(${s.id})">Editar</button> <button class="btn" onclick="excluirServico(${s.id})">Excluir</button></td></tr>`).join('');
+}
+function editarServico(id){ const s=SERVICOS.find(x=>x.id===id); if(!s) return; $$('#servNome').value=s.nome; $$('#servValor').value=String(Number(s.valor||0).toFixed(2)).replace('.',','); }
+async function salvarServico(){
+  const nome=$$('#servNome').value.trim(), valor=parseValor($$('#servValor').value);
+  if(!nome || !Number.isFinite(valor)){ alert('Informe serviço e valor.'); return; }
+  const r=await fetch(END_SERVICOS_UPSERT,{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({nome,valor,ativo:true})});
+  const j=await r.json(); if(!r.ok||j.error){ alert(j.error||'Falha ao salvar serviço.'); return; }
+  $$('#servNome').value=''; $$('#servValor').value=''; toast('Serviço salvo!'); await reloadServicos();
+}
+async function excluirServico(id){ if(!confirm('Excluir este serviço?')) return; const r=await fetch(END_SERVICOS_DELETE0+id,{method:'DELETE',credentials:'same-origin'}); const j=await r.json(); if(!r.ok||j.error){ alert(j.error||'Falha ao excluir.'); return; } toast('Serviço excluído.'); await reloadServicos(); }
+
 /* ======== Eventos ======== */
 $$('#btnConsultar').addEventListener('click', consultar);
 $$('#btnExportar').addEventListener('click', exportarJSON);
@@ -675,6 +721,8 @@ $$('#btnSalvar').addEventListener('click', upsertComb);
 $$('#btnLimpar').addEventListener('click',()=> { $$('#cOrigem').value=''; $$('#cDestino').value=''; $$('#cValor').value=''; });
 $$('#filtroTabela').addEventListener('input', renderTabela);
 $$('#cValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ upsertComb(); }});
+if($$('#btnSalvarServico')) $$('#btnSalvarServico').addEventListener('click', salvarServico);
+if($$('#servValor')) $$('#servValor').addEventListener('keydown', (e)=>{ if(e.key==='Enter'){ salvarServico(); }});
 
 $$('#cepOrigem').addEventListener('blur',()=> preencherPorCEP($$('#cepOrigem'), $$('#endOrigem'), '#sugOrigem'));
 $$('#cepDestino').addEventListener('blur',()=> preencherPorCEP($$('#cepDestino'), $$('#endDestino'), '#sugDestino'));
@@ -736,6 +784,7 @@ $$('#btnRunTests').addEventListener('click', runTests);
 /* ======== Init ======== */
 (async function init(){
   await reloadLista();
+  await reloadServicos();
   $$('#outPerKm').value = Number(perKm||3).toFixed(2);
 })();
 </script>
