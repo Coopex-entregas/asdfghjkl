@@ -2890,6 +2890,7 @@ def _google_geocode_full(q, *, limit=5):
                 'lng': loc.get('lng'),
                 'fonte': 'google',
                 'precisao': (item.get('geometry') or {}).get('location_type') or '',
+                'exato': ((item.get('geometry') or {}).get('location_type') in ('ROOFTOP','RANGE_INTERPOLATED')),
             })
         return out
     except Exception as e:
@@ -7261,7 +7262,35 @@ def api_pedidos_criar():
         if pagamento_in == 'credito' and not cli:
             return jsonify(ok=False, msg='Para usar crédito, entre como cliente cadastrado.'), 400
 
-        cot = _calcular_cotacao_entrega(origem, destino, paradas)
+        # Tipo de pedido pode acrescentar valor de serviço fixo cadastrado em Preços e Rotas.
+        # Ex.: Cartório, Correios, Compras. A comparação ignora acento/maiúsculas.
+        tipo_pedido = _norm(data.get('tipo') or data.get('pedido_tipo') or '')
+        tipo_servico_map = {
+            'cartorio': 'Cartório',
+            'correios': 'Correios',
+            'correio': 'Correios',
+            'compras': 'Compras',
+            'compra': 'Compras',
+        }
+        servico_tipo = tipo_servico_map.get(tipo_pedido, '')
+        if servico_tipo and not (destino.get('servico') or destino.get('tipo_servico')):
+            destino['servico'] = servico_tipo
+
+        # Retorno: calcula Coleta -> destino/paradas -> Coleta.
+        # O endereço de retorno é automaticamente o endereço de coleta.
+        retorno = bool(data.get('retorno') or data.get('com_retorno'))
+        origem_calc = dict(origem)
+        destino_calc = dict(destino)
+        paradas_calc = list(paradas)
+        if retorno:
+            parada_destino_original = dict(destino_calc)
+            parada_destino_original.setdefault('servico', servico_tipo or parada_destino_original.get('servico') or '')
+            paradas_calc.append(parada_destino_original)
+            destino_calc = dict(origem_calc)
+            destino_calc['servico'] = 'Retorno'
+            destino_calc['tipo_servico'] = 'Retorno'
+
+        cot = _calcular_cotacao_entrega(origem_calc, destino_calc, paradas_calc)
         preco = cot.get('preco')
         valor_final = float(preco or 0)
 
@@ -7275,13 +7304,15 @@ def api_pedidos_criar():
             'cliente_whatsapp': data.get('cliente_whatsapp') or data.get('whatsapp') or '',
             'pedido_tipo': 'cadastrado' if cli else 'avulso',
         }
+        destino_store = destino_calc if 'destino_calc' in locals() else destino
+        paradas_store = paradas_calc if 'paradas_calc' in locals() else paradas
         destino_dict = {
-            **destino,
-            'endereco': destino.get('endereco') or data.get('destino_txt') or destino_txt,
+            **destino_store,
+            'endereco': destino_store.get('endereco') or data.get('destino_txt') or _ponto_endereco(destino_store) or destino_txt,
             'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else None,
         }
         paradas_dict = {
-            'stops': paradas,
+            'stops': paradas_store,
             'observacao': data.get('obs') or data.get('observacao') or '',
             'valor_a_informar': bool(cot.get('valor_a_informar')),
             'preco_estimado': valor_final,
@@ -7322,7 +7353,7 @@ def api_pedidos_criar():
             preco=valor_final,
             valor_a_informar=bool(cot.get('valor_a_informar')),
             pix_chave=get_pix_chave() or '84981110706',
-            msg='Pedido enviado. Aguarde a atribuição do entregador.'
+            msg='Pedido realizado com sucesso. Aguarde a atribuição do entregador.'
         )
 
     except Exception as e:
@@ -7405,7 +7436,7 @@ def api_pedidos_tracking(pedido_id):
         origem={'txt': e.origem_endereco, 'lat': origem.get('lat'), 'lng': origem.get('lng')},
         destino={'txt': e.destino_endereco, 'lat': destino.get('lat'), 'lng': destino.get('lng')},
         paradas=paradas,
-        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng},
+        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng, 'localizacao_disponivel': bool(motoboy_lat is not None and motoboy_lng is not None)},
         eta_min=None,
         pago=_entrega_esta_paga(e),
         comprovante_url=url_for('cliente_comprovante_publico', entrega_id=e.id) if _entrega_esta_paga(e) else ''
