@@ -2666,6 +2666,30 @@ def _entrega_endereco_linha(data, fallback='-'):
     partes = [x for x in [linha1, local, ref] if x]
     return ' — '.join(partes) if partes else fallback
 
+
+def _servico_nome_exibicao(data):
+    if not isinstance(data, dict):
+        return ''
+    raw = (data.get('servico') or data.get('tipo_servico') or data.get('tipo') or '').strip()
+    key = _norm(raw)
+    mapa = {
+        'cartorio': 'Cartório',
+        'correios': 'Correios',
+        'correio': 'Correios',
+        'compras': 'Compras',
+        'compra': 'Compras',
+        'retorno': 'Retorno',
+    }
+    return mapa.get(key, raw)
+
+
+def _parada_linha_exibicao(data, fallback=''):
+    linha = _entrega_endereco_linha(data, fallback)
+    serv = _servico_nome_exibicao(data)
+    if serv and _norm(serv) != 'retorno':
+        return f"{serv}: {linha}" if linha else serv
+    return linha
+
 def _normalizar_paradas(raw):
     data = _json_dict_safe(raw)
     paradas = data.get('stops') or data.get('paradas') or []
@@ -2683,7 +2707,7 @@ def _enriquecer_entrega(e):
     e.paradas_extra = paradas_data
     e.paradas_lista = paradas
     e.origem_endereco = _entrega_endereco_linha(origem, e.bairro or '-')
-    e.destino_endereco = _entrega_endereco_linha(destino, e.bairro or '-')
+    e.destino_endereco = _parada_linha_exibicao(destino, e.bairro or '-')
     e.endereco_resumo = f"{e.origem_endereco} → {e.destino_endereco}"
 
     e.contato_coleta = (origem.get('contato') or origem.get('nome') or '').strip()
@@ -2693,10 +2717,15 @@ def _enriquecer_entrega(e):
     e.recebe_dinheiro_em = (destino.get('recebe_dinheiro_em') or '').strip()
     e.observacao_entrega = (paradas_data.get('observacao') or '').strip()
 
-    e.paradas_texto = ' | '.join([
-        _entrega_endereco_linha(p, '')
-        for p in paradas if isinstance(p, dict) and _entrega_endereco_linha(p, '')
-    ])
+    partes_paradas = [
+        _parada_linha_exibicao(p, '')
+        for p in paradas if isinstance(p, dict) and _parada_linha_exibicao(p, '')
+    ]
+    if bool(paradas_data.get('retorno')):
+        partes_paradas.append('Retorno: ' + (_entrega_endereco_linha(origem, e.bairro or '-') or 'endereço da coleta'))
+    else:
+        partes_paradas.append('Sem retorno')
+    e.paradas_texto = ' | '.join([x for x in partes_paradas if x])
     return e
 
 def _haversine_m(lat1, lng1, lat2, lng2):
@@ -4422,7 +4451,8 @@ def painel_cooperado():
             or 'Origem não informada'
         )
         e.destino_endereco = (
-            _ponto_endereco(destino)
+            _parada_linha_exibicao(destino, '')
+            or _ponto_endereco(destino)
             or destino.get('address')
             or destino.get('bairro')
             or 'Destino não informado'
@@ -4436,10 +4466,17 @@ def painel_cooperado():
         e.observacao_entrega = destino.get('observacao_geral') or origem.get('observacao_geral') or ''
         stops = paradas.get('stops') or paradas.get('paradas') or []
         e.paradas_lista = stops if isinstance(stops, list) else []
-        e.paradas_texto = ' | '.join(
-            (p.get('endereco') or p.get('bairro') or '').strip()
-            for p in e.paradas_lista if isinstance(p, dict) and ((p.get('endereco') or p.get('bairro') or '').strip())
-        )
+        partes_paradas = []
+        for p in e.paradas_lista:
+            if isinstance(p, dict):
+                linha = _parada_linha_exibicao(p, '')
+                if linha:
+                    partes_paradas.append(linha)
+        if bool(paradas.get('retorno')):
+            partes_paradas.append('Retorno: ' + (_entrega_endereco_linha(origem, e.bairro or '-') or 'endereço da coleta'))
+        else:
+            partes_paradas.append('Sem retorno')
+        e.paradas_texto = ' | '.join([x for x in partes_paradas if x])
         return e
 
     # Corridas em aberto / andamento
