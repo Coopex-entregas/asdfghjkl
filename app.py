@@ -1853,6 +1853,36 @@ def set_per_km(novo_valor: float):
     _set_param("per_km", f"{float(novo_valor):.2f}")
     return get_per_km()
 
+
+def get_retorno_percentual():
+    """
+    Percentual único do retorno, separado dos serviços fixos.
+    Ex.: 50 = acrescenta 50% sobre o valor já calculado da entrega.
+    """
+    v = _get_param("retorno_percentual", None)
+    if v is not None:
+        try:
+            n = float(str(v).replace(',', '.'))
+            return max(0.0, n)
+        except Exception:
+            pass
+    try:
+        n = float(os.getenv("RETORNO_PERCENTUAL", "0"))
+        return max(0.0, n)
+    except Exception:
+        return 0.0
+
+
+def set_retorno_percentual(novo_valor: float):
+    try:
+        n = float(novo_valor or 0)
+    except Exception:
+        n = 0.0
+    if n < 0:
+        n = 0.0
+    _set_param("retorno_percentual", f"{n:.2f}")
+    return get_retorno_percentual()
+
 def get_pix_chave():
     return _get_param("pix_chave", "") or ""
 
@@ -3247,19 +3277,8 @@ def _buscar_preco_servico(nome_servico):
 
 
 def _buscar_percentual_retorno():
-    """
-    Usa o cadastro de Serviços Fixos em Preços e Rotas.
-    O serviço chamado "Retorno" não é valor em reais: é percentual.
-    Ex.: Retorno = 50 significa cobrar 50% do último trecho antes do retorno.
-    """
-    pct = _buscar_preco_servico('Retorno')
-    try:
-        pct = float(pct or 0)
-    except Exception:
-        pct = 0.0
-    if pct < 0:
-        pct = 0.0
-    return pct
+    """Percentual do retorno configurado em bloco próprio em Preços e Rotas."""
+    return get_retorno_percentual()
 
 
 def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=False):
@@ -3291,16 +3310,24 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=Fa
             return None
 
         trecho_valor = float(preco or 0)
-        ultimo_trecho_valor = trecho_valor
-        total += trecho_valor
 
         servico = (prox.get('servico') or prox.get('tipo_servico') or prox.get('tipo') or '').strip() if isinstance(prox, dict) else ''
+        servico_valor = 0.0
         if servico and _norm(servico) != 'retorno':
-            total += _buscar_preco_servico(servico)
+            servico_valor = float(_buscar_preco_servico(servico) or 0)
+
+        # A base do retorno é o VALOR TOTAL DA ÚLTIMA ENTREGA/TRECHO.
+        # Ex.: último trecho B -> C = R$ 13,00 e serviço final = R$ 0,00; retorno 50% = R$ 6,50.
+        # Se o último trecho tiver serviço agregado, esse serviço entra na base do retorno.
+        trecho_total = trecho_valor + servico_valor
+        ultimo_trecho_valor = trecho_total
+        total += trecho_total
 
     if retorno:
         pct = _buscar_percentual_retorno()
-        total += ultimo_trecho_valor * (pct / 100.0)
+        # Retorno é acréscimo percentual sobre o valor já calculado da entrega.
+        # Ex.: entrega R$ 20,00 e retorno 50% => acrescenta R$ 10,00.
+        total += total * (pct / 100.0)
 
     return round(total, 2)
 
@@ -3331,19 +3358,29 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
     per_km = float(get_per_km())
     if distancia_km is not None and distancia_km > 0:
         valor_base = float(distancia_km) * per_km
+
+        # Soma serviços fixos cadastrados nas paradas e no destino final.
+        valor_servicos = 0.0
+        for p in list(paradas or []) + [entrega]:
+            if isinstance(p, dict):
+                servico = (p.get('servico') or p.get('tipo_servico') or p.get('tipo') or '').strip()
+                if servico and _norm(servico) != 'retorno':
+                    valor_servicos += float(_buscar_preco_servico(servico) or 0)
+
+        subtotal_sem_retorno = valor_base + valor_servicos
         valor_retorno = 0.0
         if retorno:
-            ultimo_km = _calcular_ultimo_trecho_real_km(coleta, entrega, paradas)
-            if ultimo_km is not None and ultimo_km > 0:
-                valor_retorno = (float(ultimo_km) * per_km) * (_buscar_percentual_retorno() / 100.0)
+            valor_retorno = subtotal_sem_retorno * (_buscar_percentual_retorno() / 100.0)
+
         return {
-            'preco': round(valor_base + valor_retorno, 2),
+            'preco': round(subtotal_sem_retorno + valor_retorno, 2),
             'valor_a_informar': False,
             'origem_preco': 'km',
             'distancia_km': round(float(distancia_km), 2),
             'per_km': per_km,
             'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
             'retorno_valor': round(valor_retorno, 2),
+            'valor_servicos': round(valor_servicos, 2),
         }
 
     return {
@@ -5684,6 +5721,25 @@ def api_per_km():
     novo = set_per_km(v)
     return jsonify({"ok": True, "per_km": float(novo)})
 
+
+@app.route("/api/retorno-percentual", methods=["GET", "POST"], endpoint="api_retorno_percentual")
+def api_retorno_percentual():
+    if not session.get("is_admin") and not session.get("is_master"):
+        return jsonify({"ok": False, "error": "unauthorized"}), 401
+
+    if request.method == "GET":
+        return jsonify({"ok": True, "retorno_percentual": float(get_retorno_percentual())})
+
+    data = request.get_json(silent=True) or {}
+    v = data.get("retorno_percentual", data.get("percentual", 0))
+    try:
+        v = float(str(v).replace(',', '.'))
+    except Exception:
+        return jsonify({"ok": False, "error": "Percentual de retorno inválido."}), 400
+
+    novo = set_retorno_percentual(v)
+    return jsonify({"ok": True, "retorno_percentual": float(novo)})
+
 # =========================================================
 # TRAJETOS (HISTÓRICO POR COOPERADO / PERÍODO)
 # =========================================================
@@ -7630,6 +7686,24 @@ def _entregas_anteriores_rota(entrega):
     except Exception:
         return []
 
+
+def _distancia_rota_pontos_km(pontos):
+    """Calcula a distância aproximada da rota em km a partir de pontos [[lat,lng], ...]."""
+    try:
+        pts = pontos or []
+        total_m = 0.0
+        prev = None
+        for p in pts:
+            if not p or len(p) < 2:
+                continue
+            lat = float(p[0]); lng = float(p[1])
+            if prev:
+                total_m += _haversine_m(prev[0], prev[1], lat, lng)
+            prev = (lat, lng)
+        return round(total_m / 1000.0, 2) if total_m > 0 else None
+    except Exception:
+        return None
+
 @app.get('/api/pedidos/<int:pedido_id>/tracking')
 def api_pedidos_tracking(pedido_id):
     entrega = Entrega.query.get(pedido_id)
@@ -7709,6 +7783,8 @@ def api_pedidos_tracking(pedido_id):
         paradas=paradas,
         motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng, 'localizacao_disponivel': bool(motoboy_lat is not None and motoboy_lng is not None), 'logo': url_for('static', filename='logo_coopex.png')},
         eta_min=eta_min,
+        distancia_km=_distancia_rota_pontos_km(rota_pontos),
+        chegando=bool((eta_min is not None and eta_min <= 3) or ((_distancia_rota_pontos_km(rota_pontos) or 9999) <= 2)),
         rota_pontos=rota_pontos,
         pago=_entrega_esta_paga(e),
         comprovante_url=url_for('cliente_comprovante_publico', entrega_id=e.id) if _entrega_esta_paga(e) else ''
