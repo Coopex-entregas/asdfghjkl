@@ -2745,6 +2745,220 @@ def _calcular_preco_bairros(bairro_origem, bairro_destino):
     return float(preco or 0)
 
 
+
+
+# =========================================================
+# GOOGLE MAPS / PLACES + FALLBACKS DE ENDEREÇO
+# =========================================================
+def _google_maps_api_key():
+    return (os.environ.get('GOOGLE_MAPS_API_KEY') or os.environ.get('GOOGLE_API_KEY') or '').strip()
+
+
+def _http_json(url, timeout=7, headers=None):
+    from urllib.request import Request, urlopen
+    req = Request(url, headers=headers or {'User-Agent': 'CoopexEntregas/1.0'})
+    with urlopen(req, timeout=timeout) as resp:
+        return json.loads(resp.read().decode('utf-8') or '{}')
+
+
+def _google_component_value(components, *types):
+    wanted = set(types)
+    for c in components or []:
+        tps = set(c.get('types') or [])
+        if wanted.intersection(tps):
+            return (c.get('long_name') or c.get('short_name') or '').strip()
+    return ''
+
+
+def _google_addr_to_result(item, fallback_display=''):
+    comps = item.get('address_components') or []
+    geom = item.get('geometry') or {}
+    loc = geom.get('location') or {}
+    rua = _google_component_value(comps, 'route')
+    numero = _google_component_value(comps, 'street_number')
+    bairro = _google_component_value(comps, 'sublocality_level_1', 'sublocality', 'neighborhood', 'political')
+    cidade = _google_component_value(comps, 'administrative_area_level_2', 'locality')
+    uf = _google_component_value(comps, 'administrative_area_level_1') or 'RN'
+    cep = _google_component_value(comps, 'postal_code')
+    nome_local = (item.get('name') or '').strip()
+    formatted = (item.get('formatted_address') or fallback_display or '').strip()
+    endereco = rua or nome_local or (formatted.split(',')[0] if formatted else '')
+    display = formatted or ', '.join([x for x in [nome_local or endereco, numero, bairro, cidade, uf, cep] if x])
+    return {
+        'display': display,
+        'endereco': endereco,
+        'numero': numero,
+        'bairro': bairro,
+        'cidade': cidade,
+        'uf': uf,
+        'cep': cep,
+        'lat': loc.get('lat'),
+        'lng': loc.get('lng'),
+        'fonte': 'google',
+        'place_name': nome_local,
+    }
+
+
+def _google_geocode_full(q, limit=6):
+    key = _google_maps_api_key()
+    if not key or not q:
+        return []
+    try:
+        from urllib.parse import urlencode
+        params = urlencode({
+            'address': q,
+            'key': key,
+            'region': 'br',
+            'language': 'pt-BR',
+            'components': 'country:BR|administrative_area:RN',
+        })
+        data = _http_json('https://maps.googleapis.com/maps/api/geocode/json?' + params, timeout=8)
+        if data.get('status') not in ('OK', 'ZERO_RESULTS'):
+            try: current_app.logger.warning('Google Geocode status: %s', data.get('status'))
+            except Exception: pass
+        out = []
+        vistos = set()
+        for item in (data.get('results') or [])[:limit]:
+            r = _google_addr_to_result(item)
+            k = (r.get('display'), r.get('lat'), r.get('lng'))
+            if k in vistos: continue
+            vistos.add(k)
+            out.append(r)
+        return out
+    except Exception as e:
+        try: current_app.logger.warning(f'Falha Google Geocode: {e}')
+        except Exception: pass
+        return []
+
+
+def _google_places_autocomplete(q, limit=6):
+    """Sugestões estilo Google Maps enquanto digita: endereço, loja, shopping, cartório, Correios etc."""
+    key = _google_maps_api_key()
+    if not key or not q:
+        return []
+    try:
+        from urllib.parse import urlencode
+        params = urlencode({
+            'input': q,
+            'key': key,
+            'language': 'pt-BR',
+            'components': 'country:br',
+            'location': '-5.7945,-35.2110',
+            'radius': '60000',
+        })
+        data = _http_json('https://maps.googleapis.com/maps/api/place/autocomplete/json?' + params, timeout=8)
+        preds = data.get('predictions') or []
+        out = []
+        for pr in preds[:limit]:
+            desc = (pr.get('description') or '').strip()
+            pid = pr.get('place_id')
+            if not desc or not pid:
+                continue
+            det = _google_place_details(pid)
+            if det:
+                # mantém o nome/descrição que o cliente reconhece na lista
+                det['display'] = det.get('display') or desc
+                out.append(det)
+            else:
+                out.append({'display': desc, 'endereco': desc.split(',')[0], 'fonte': 'google', 'place_id': pid})
+        return out
+    except Exception as e:
+        try: current_app.logger.warning(f'Falha Google Places Autocomplete: {e}')
+        except Exception: pass
+        return []
+
+
+def _google_place_details(place_id):
+    key = _google_maps_api_key()
+    if not key or not place_id:
+        return None
+    try:
+        from urllib.parse import urlencode
+        params = urlencode({
+            'place_id': place_id,
+            'key': key,
+            'language': 'pt-BR',
+            'fields': 'name,formatted_address,address_component,geometry',
+        })
+        data = _http_json('https://maps.googleapis.com/maps/api/place/details/json?' + params, timeout=8)
+        res = data.get('result') or {}
+        if not res:
+            return None
+        return _google_addr_to_result(res)
+    except Exception as e:
+        try: current_app.logger.warning(f'Falha Google Place Details: {e}')
+        except Exception: pass
+        return None
+
+
+def _google_reverse_geocode(lat, lng):
+    key = _google_maps_api_key()
+    if not key:
+        return None
+    try:
+        from urllib.parse import urlencode
+        params = urlencode({'latlng': f'{float(lat)},{float(lng)}', 'key': key, 'language': 'pt-BR', 'region': 'br'})
+        data = _http_json('https://maps.googleapis.com/maps/api/geocode/json?' + params, timeout=8)
+        results = data.get('results') or []
+        if not results:
+            return None
+        return _google_addr_to_result(results[0])
+    except Exception as e:
+        try: current_app.logger.warning(f'Falha Google Reverse Geocode: {e}')
+        except Exception: pass
+        return None
+
+
+def _nominatim_addr_value(addr, *keys):
+    for k in keys:
+        v = (addr or {}).get(k)
+        if v:
+            return str(v).strip()
+    return ''
+
+
+def _nominatim_search(q, limit=6, addressdetails=1):
+    try:
+        from urllib.parse import urlencode
+        params = urlencode({'q': q, 'format': 'json', 'limit': limit, 'addressdetails': addressdetails, 'countrycodes': 'br'})
+        return _http_json('https://nominatim.openstreetmap.org/search?' + params, timeout=8, headers={'User-Agent': 'CoopexEntregas/1.0 contato@coopex'}) or []
+    except Exception:
+        return []
+
+
+def _viacep_lookup(cep_digits, numero=''):
+    try:
+        data = _http_json(f'https://viacep.com.br/ws/{cep_digits}/json/', timeout=7)
+        if data.get('erro'):
+            return None
+        rua = (data.get('logradouro') or '').strip()
+        bairro = (data.get('bairro') or '').strip()
+        cidade = (data.get('localidade') or '').strip()
+        uf = (data.get('uf') or 'RN').strip()
+        cep = (data.get('cep') or cep_digits).strip()
+        # Sem número, ViaCEP só informa rua/bairro. Não marca coordenada exata.
+        result = {
+            'display': ', '.join([x for x in [rua, numero, bairro, cidade, uf, f'CEP {cep}'] if x]),
+            'endereco': rua,
+            'numero': numero or '',
+            'bairro': bairro,
+            'cidade': cidade,
+            'uf': uf,
+            'cep': cep,
+            'fonte': 'viacep',
+        }
+        # Com número, tenta Google para cravar o ponto da rua + número.
+        if numero:
+            q = ', '.join([x for x in [rua, numero, bairro, cidade, uf, 'Brasil'] if x])
+            g = _google_geocode_full(q, limit=1)
+            if g:
+                g[0]['cep'] = g[0].get('cep') or cep
+                g[0]['numero'] = g[0].get('numero') or numero
+                return g[0]
+        return result
+    except Exception:
+        return None
+
 def _ponto_bairro(ponto):
     if not isinstance(ponto, dict):
         return ''
@@ -2781,7 +2995,12 @@ def _ponto_endereco(ponto):
 
 @app.route('/api/cliente/buscar-endereco', methods=['GET'])
 def api_cliente_buscar_endereco():
-    """Autocomplete público de endereço para o Meu Crédito."""
+    """
+    Autocomplete do cliente.
+    - Enquanto digita: mostra sugestões do Google Places/Maps quando houver chave.
+    - Só considera ponto exato quando vier número ou quando for um estabelecimento/local cadastrado no Maps.
+    - CEP sem número preenche rua/bairro/cidade, mas não força coordenada exata.
+    """
     q = (request.args.get('q') or '').strip()
     numero = (request.args.get('numero') or '').strip()
     bairro_req = (request.args.get('bairro') or '').strip()
@@ -2789,26 +3008,39 @@ def api_cliente_buscar_endereco():
     if len(q) < 3:
         return jsonify({'ok': True, 'resultados': []})
 
-    # Se digitou CEP, usa ViaCEP primeiro e, se houver número, tenta coordenada exata.
     cep_digits = re.sub(r'\D+', '', q)
+
+    # CEP: ViaCEP primeiro. Se já tiver número, geocodifica rua + número pelo Google.
     if len(cep_digits) == 8:
         cep_result = _viacep_lookup(cep_digits, numero=numero)
         if cep_result:
             return jsonify({'ok': True, 'resultados': [cep_result]})
 
-    partes_google = [q, numero, bairro_req, cidade_req, 'RN', 'Brasil']
-    busca_completa = ', '.join([x for x in partes_google if x])
-
-    # Quando houver chave do Google, usa Google primeiro para acertar rua + número.
-    gres = _google_geocode_full(busca_completa, limit=6)
-    if gres:
-        return jsonify({'ok': True, 'resultados': gres})
-
-    # Ajuda o Nominatim a localizar dentro do RN quando o usuário digita só rua/bairro.
-    busca = busca_completa if any(x in _bairro_key(busca_completa) for x in ['brasil', 'rio grande do norte', 'rn', 'natal', 'parnamirim']) else f"{busca_completa}, RN, Brasil"
-    arr = _nominatim_search(busca, limit=6, addressdetails=1)
-
     resultados = []
+
+    # Com número: prioridade máxima para Google Geocoding, porque é a localização exata.
+    if numero:
+        busca_exata = ', '.join([x for x in [q, numero, bairro_req, cidade_req, 'RN', 'Brasil'] if x])
+        resultados = _google_geocode_full(busca_exata, limit=6)
+        if resultados:
+            return jsonify({'ok': True, 'resultados': resultados})
+
+    # Sem número: estilo Google Maps, mostra sugestões de ruas e locais cadastrados.
+    # Isso permite digitar "Natal Shopping", nome de loja, cartório, Correios etc.
+    resultados = _google_places_autocomplete(q, limit=6)
+    if resultados:
+        return jsonify({'ok': True, 'resultados': resultados})
+
+    # Se não houver Places, tenta Google Geocode como alternativa.
+    busca_google = ', '.join([x for x in [q, bairro_req, cidade_req, 'RN', 'Brasil'] if x])
+    resultados = _google_geocode_full(busca_google, limit=6)
+    if resultados:
+        return jsonify({'ok': True, 'resultados': resultados})
+
+    # Fallback público sem Google. Pode ser menos preciso.
+    busca = busca_google
+    arr = _nominatim_search(busca, limit=6, addressdetails=1)
+    saida = []
     vistos = set()
     for item in arr:
         addr = item.get('address') or {}
@@ -2818,24 +3050,25 @@ def api_cliente_buscar_endereco():
         bairro = _nominatim_addr_value(addr, 'suburb', 'neighbourhood', 'quarter', 'city_district', 'borough')
         rua = _nominatim_addr_value(addr, 'road', 'pedestrian', 'residential', 'footway', 'path')
         cep = _nominatim_addr_value(addr, 'postcode')
+        numero_osm = _nominatim_addr_value(addr, 'house_number')
         display = item.get('display_name') or ', '.join([x for x in [rua, bairro, cidade, uf] if x])
         key = (_bairro_key(display), str(item.get('lat')), str(item.get('lon')))
         if key in vistos:
             continue
         vistos.add(key)
-        numero = _nominatim_addr_value(addr, 'house_number')
-        resultados.append({
+        saida.append({
             'display': display,
             'endereco': rua or display.split(',')[0],
-            'numero': numero,
+            'numero': numero_osm,
             'bairro': bairro,
             'cidade': cidade,
             'uf': uf,
             'cep': cep,
-            'lat': item.get('lat'),
-            'lng': item.get('lon'),
+            'lat': item.get('lat') if (numero or numero_osm) else None,
+            'lng': item.get('lon') if (numero or numero_osm) else None,
+            'fonte': 'osm'
         })
-    return jsonify({'ok': True, 'resultados': resultados})
+    return jsonify({'ok': True, 'resultados': saida})
 
 
 @app.route('/api/cliente/reverse-endereco', methods=['GET'])
