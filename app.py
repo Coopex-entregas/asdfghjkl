@@ -1928,6 +1928,23 @@ class PrecoServico(db.Model):
             "ativo": bool(self.ativo),
         }
 
+
+def _ensure_precos_rotas_schema():
+    """Garante as tabelas usadas em Preços e Rotas antes das APIs responderem.
+    Isso evita falha/Failed to fetch após deploy novo quando a tabela ainda não foi criada.
+    """
+    try:
+        db.create_all()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def _admin_api_ok():
+    return bool(session.get("is_admin") or session.get("is_master"))
+
 # =========================================================
 # HELPERS GENÉRICOS / SEGURANÇA / REDIRECT
 # =========================================================
@@ -3285,12 +3302,11 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=Fa
     """
     Soma por trechos: coleta -> paradas -> entrega final.
 
-    Retorno agora é percentual, não valor fixo:
-    - Cadastre em Preços e Rotas > Serviços Fixos o serviço "Retorno".
-    - O número cadastrado em Retorno é percentual.
-    - Ex.: Retorno = 50 cobra 50% do último trecho antes do retorno.
-    - Se for só coleta -> entrega, usa esse único trecho como base.
-    - Se houver paradas, usa o trecho da penúltima parada/local até o último destino.
+    Retorno agora é percentual em BLOCO PRÓPRIO no Preços e Rotas.
+    - Não é serviço fixo.
+    - O retorno é calculado sobre o valor da última entrega/último trecho.
+    - Se for apenas coleta -> entrega, usa essa única entrega como base.
+    - Ex.: último trecho R$ 20,00 e retorno 50% = acréscimo de R$ 10,00.
     """
     paradas = paradas or []
     pontos = [coleta] + [p for p in paradas if isinstance(p, dict) and (_ponto_bairro(p) or _ponto_endereco(p))] + [entrega]
@@ -3325,9 +3341,10 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=Fa
 
     if retorno:
         pct = _buscar_percentual_retorno()
-        # Retorno é acréscimo percentual sobre o valor já calculado da entrega.
-        # Ex.: entrega R$ 20,00 e retorno 50% => acrescenta R$ 10,00.
-        total += total * (pct / 100.0)
+        # Retorno é acréscimo percentual sobre o valor da ÚLTIMA entrega/trecho.
+        # Ex.: A -> B = 12, B -> C = 13, retorno 50% => acrescenta 6,50.
+        # Se for só A -> B = 20, retorno 50% => acrescenta 10,00.
+        total += float(ultimo_trecho_valor or 0) * (pct / 100.0)
 
     return round(total, 2)
 
@@ -3368,9 +3385,25 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
                     valor_servicos += float(_buscar_preco_servico(servico) or 0)
 
         subtotal_sem_retorno = valor_base + valor_servicos
+
+        # Para cálculo por KM, o retorno também segue a regra: percentual sobre
+        # a última entrega/último trecho, não sobre o total de todos os trechos.
+        ultimo_trecho_base = valor_base
+        try:
+            ultimo_km = _calcular_ultimo_trecho_real_km(coleta, entrega, paradas)
+            if ultimo_km is not None and ultimo_km > 0:
+                ultimo_trecho_base = float(ultimo_km) * per_km
+                # Se o destino final tiver serviço fixo, ele faz parte do valor da última entrega.
+                if isinstance(entrega, dict):
+                    serv_final = (entrega.get('servico') or entrega.get('tipo_servico') or entrega.get('tipo') or '').strip()
+                    if serv_final and _norm(serv_final) != 'retorno':
+                        ultimo_trecho_base += float(_buscar_preco_servico(serv_final) or 0)
+        except Exception:
+            ultimo_trecho_base = valor_base
+
         valor_retorno = 0.0
         if retorno:
-            valor_retorno = subtotal_sem_retorno * (_buscar_percentual_retorno() / 100.0)
+            valor_retorno = float(ultimo_trecho_base or 0) * (_buscar_percentual_retorno() / 100.0)
 
         return {
             'preco': round(subtotal_sem_retorno + valor_retorno, 2),
@@ -5547,8 +5580,9 @@ def precos_rotas():
 
 @app.route("/api/precos", methods=["GET"], endpoint="api_list_precos")
 def api_list_precos():
-    if not session.get("is_admin") and not session.get("is_master"):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _admin_api_ok():
+        return jsonify({"ok": False, "error": "Sessão expirada. Faça login novamente."}), 401
+    _ensure_precos_rotas_schema()
 
     q = request.args.get("q", "", type=str).strip()
     query = PrecoRota.query
@@ -5585,8 +5619,9 @@ def api_list_precos():
 
 @app.route("/api/precos", methods=["POST"], endpoint="api_upsert_preco")
 def api_upsert_preco():
-    if not session.get("is_admin") and not session.get("is_master"):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _admin_api_ok():
+        return jsonify({"ok": False, "error": "Sessão expirada. Faça login novamente."}), 401
+    _ensure_precos_rotas_schema()
 
     data = request.get_json(silent=True) or {}
     origem = _norm(data.get("origem"))
@@ -5634,8 +5669,9 @@ def api_upsert_preco():
 
 @app.route("/api/precos/<int:item_id>", methods=["DELETE"], endpoint="api_delete_preco")
 def api_delete_preco(item_id):
-    if not session.get("is_admin") and not session.get("is_master"):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _admin_api_ok():
+        return jsonify({"ok": False, "error": "Sessão expirada. Faça login novamente."}), 401
+    _ensure_precos_rotas_schema()
 
     it = PrecoRota.query.get(item_id)
     if not it:
@@ -5708,8 +5744,9 @@ def api_ajustes():
 
 @app.route("/api/perkm", methods=["POST"], endpoint="api_per_km")
 def api_per_km():
-    if not session.get("is_admin") and not session.get("is_master"):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _admin_api_ok():
+        return jsonify({"ok": False, "error": "Sessão expirada. Faça login novamente."}), 401
+    _ensure_precos_rotas_schema()
 
     data = request.get_json(silent=True) or {}
     v = data.get("per_km", None)
@@ -5724,8 +5761,9 @@ def api_per_km():
 
 @app.route("/api/retorno-percentual", methods=["GET", "POST"], endpoint="api_retorno_percentual")
 def api_retorno_percentual():
-    if not session.get("is_admin") and not session.get("is_master"):
-        return jsonify({"ok": False, "error": "unauthorized"}), 401
+    if not _admin_api_ok():
+        return jsonify({"ok": False, "error": "Sessão expirada. Faça login novamente."}), 401
+    _ensure_precos_rotas_schema()
 
     if request.method == "GET":
         return jsonify({"ok": True, "retorno_percentual": float(get_retorno_percentual())})
@@ -7855,15 +7893,17 @@ html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;b
 
 @app.get('/api/servicos')
 def api_list_servicos():
-    if not session.get('is_admin') and not session.get('is_master'):
-        abort(403)
+    if not _admin_api_ok():
+        return jsonify(ok=False, error='Sessão expirada. Faça login novamente.'), 401
+    _ensure_precos_rotas_schema()
     itens = PrecoServico.query.order_by(PrecoServico.nome.asc()).all()
     return jsonify(ok=True, items=[x.to_dict() for x in itens])
 
 @app.post('/api/servicos')
 def api_upsert_servico():
-    if not session.get('is_admin') and not session.get('is_master'):
-        abort(403)
+    if not _admin_api_ok():
+        return jsonify(ok=False, error='Sessão expirada. Faça login novamente.'), 401
+    _ensure_precos_rotas_schema()
     data = request.get_json(silent=True) or {}
     nome = (data.get('nome') or '').strip()
     valor_raw = str(data.get('valor') or '0').strip().replace('.', '').replace(',', '.')
@@ -7890,8 +7930,9 @@ def api_upsert_servico():
 
 @app.delete('/api/servicos/<int:item_id>')
 def api_delete_servico(item_id):
-    if not session.get('is_admin') and not session.get('is_master'):
-        abort(403)
+    if not _admin_api_ok():
+        return jsonify(ok=False, error='Sessão expirada. Faça login novamente.'), 401
+    _ensure_precos_rotas_schema()
     item = PrecoServico.query.get_or_404(item_id)
     db.session.delete(item)
     db.session.commit()
