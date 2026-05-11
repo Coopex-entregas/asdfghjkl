@@ -2594,13 +2594,30 @@ def _json_dict_safe(raw):
         return {}
 
 def _entrega_endereco_linha(data, fallback='-'):
+    """
+    Mostra endereço completo para admin, cooperado e cliente.
+    Inclui número e CEP quando vierem do Google/ViaCEP ou forem digitados pelo cliente.
+    """
     if not data:
         return fallback
-    endereco = (data.get('endereco') or data.get('address') or '').strip()
-    bairro = (data.get('bairro') or '').strip()
+    if not isinstance(data, dict):
+        return fallback
+
+    endereco = (data.get('endereco') or data.get('logradouro') or data.get('rua') or data.get('address') or '').strip()
+    numero = (data.get('numero') or data.get('n') or data.get('number') or '').strip()
+    bairro = (data.get('bairro') or data.get('neighborhood') or '').strip()
+    cidade = (data.get('cidade') or data.get('municipio') or data.get('city') or '').strip()
+    uf = (data.get('uf') or data.get('estado') or '').strip()
+    cep = (data.get('cep') or data.get('postcode') or '').strip()
     ref = (data.get('ref') or data.get('referencia') or '').strip()
-    partes = [x for x in [endereco, bairro, ref] if x]
-    return ' • '.join(partes) if partes else fallback
+
+    linha1 = endereco
+    if linha1 and numero:
+        linha1 = f"{linha1}, {numero}"
+
+    local = ' • '.join([x for x in [bairro, cidade, uf, cep] if x])
+    partes = [x for x in [linha1, local, ref] if x]
+    return ' — '.join(partes) if partes else fallback
 
 def _normalizar_paradas(raw):
     data = _json_dict_safe(raw)
@@ -2630,8 +2647,8 @@ def _enriquecer_entrega(e):
     e.observacao_entrega = (paradas_data.get('observacao') or '').strip()
 
     e.paradas_texto = ' | '.join([
-        (p.get('endereco') or p.get('bairro') or p.get('nome') or '').strip()
-        for p in paradas if isinstance(p, dict) and ((p.get('endereco') or p.get('bairro') or p.get('nome') or '').strip())
+        _entrega_endereco_linha(p, '')
+        for p in paradas if isinstance(p, dict) and _entrega_endereco_linha(p, '')
     ])
     return e
 
@@ -7388,6 +7405,156 @@ def api_pedidos_cancelar(pedido_id):
     db.session.commit()
     return jsonify(ok=True)
 
+
+
+def _decode_google_polyline(polyline_str):
+    """Decodifica overview_polyline do Google Directions para [[lat,lng], ...]."""
+    if not polyline_str:
+        return []
+    index = lat = lng = 0
+    coordinates = []
+    try:
+        while index < len(polyline_str):
+            result = shift = 0
+            while True:
+                b = ord(polyline_str[index]) - 63
+                index += 1
+                result |= (b & 0x1f) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            dlat = ~(result >> 1) if (result & 1) else (result >> 1)
+            lat += dlat
+            result = shift = 0
+            while True:
+                b = ord(polyline_str[index]) - 63
+                index += 1
+                result |= (b & 0x1f) << shift
+                shift += 5
+                if b < 0x20:
+                    break
+            dlng = ~(result >> 1) if (result & 1) else (result >> 1)
+            lng += dlng
+            coordinates.append([lat / 1e5, lng / 1e5])
+    except Exception:
+        return []
+    return coordinates
+
+
+def _rota_google_directions(pontos):
+    """Retorna (eta_min, pontos_rota) usando Google Directions quando houver chave."""
+    key = _google_maps_api_key()
+    pontos = [p for p in (pontos or []) if p and p.get('lat') is not None and p.get('lng') is not None]
+    if not key or len(pontos) < 2:
+        return None, []
+    try:
+        from urllib.parse import urlencode
+        from urllib.request import Request, urlopen
+        origin = f"{float(pontos[0]['lat'])},{float(pontos[0]['lng'])}"
+        destination = f"{float(pontos[-1]['lat'])},{float(pontos[-1]['lng'])}"
+        waypoints = []
+        for p in pontos[1:-1][:23]:
+            waypoints.append(f"{float(p['lat'])},{float(p['lng'])}")
+        params = {
+            'origin': origin,
+            'destination': destination,
+            'key': key,
+            'language': 'pt-BR',
+            'region': 'br',
+            'mode': 'driving',
+        }
+        if waypoints:
+            params['waypoints'] = '|'.join(waypoints)
+        url = 'https://maps.googleapis.com/maps/api/directions/json?' + urlencode(params)
+        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0'})
+        with urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode('utf-8') or '{}')
+        if data.get('status') != 'OK' or not data.get('routes'):
+            return None, []
+        rota = data['routes'][0]
+        dur_s = 0
+        for leg in rota.get('legs') or []:
+            dur_s += int(((leg.get('duration') or {}).get('value')) or 0)
+        pts = _decode_google_polyline(((rota.get('overview_polyline') or {}).get('points')))
+        eta_min = int(round(dur_s / 60.0)) if dur_s else None
+        return eta_min, pts
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha Google Directions: {e}')
+        except Exception:
+            pass
+        return None, []
+
+
+def _rota_osrm(pontos):
+    """Fallback sem Google: estima duração e geometria pelo OSRM público."""
+    pontos = [p for p in (pontos or []) if p and p.get('lat') is not None and p.get('lng') is not None]
+    if len(pontos) < 2:
+        return None, []
+    try:
+        from urllib.request import Request, urlopen
+        coords = ';'.join([f"{float(p['lng'])},{float(p['lat'])}" for p in pontos[:25]])
+        url = f'https://router.project-osrm.org/route/v1/driving/{coords}?overview=full&geometries=geojson&steps=false'
+        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0'})
+        with urlopen(req, timeout=8) as resp:
+            data = json.loads(resp.read().decode('utf-8') or '{}')
+        routes = data.get('routes') or []
+        if not routes:
+            return None, []
+        r = routes[0]
+        eta_min = int(round(float(r.get('duration') or 0) / 60.0)) if r.get('duration') else None
+        coords = (((r.get('geometry') or {}).get('coordinates')) or [])
+        pts = [[lat, lng] for lng, lat in coords]
+        return eta_min, pts
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha OSRM route: {e}')
+        except Exception:
+            pass
+        return None, []
+
+
+def _ponto_latlng_dict(p):
+    if not isinstance(p, dict):
+        return None
+    try:
+        if p.get('lat') is None or p.get('lng') is None:
+            return None
+        return {'lat': float(p.get('lat')), 'lng': float(p.get('lng'))}
+    except Exception:
+        return None
+
+
+def _entregas_anteriores_rota(entrega):
+    """
+    Monta pontos de entregas atribuídas ao mesmo cooperado antes desta,
+    para a previsão considerar o que ele ainda pode ter antes de chegar na coleta atual.
+    Como não existe confirmação de coleta, usa origem e destino das entregas anteriores pendentes.
+    """
+    if not entrega or not entrega.cooperado_id:
+        return []
+    try:
+        q = (Entrega.query
+             .filter(Entrega.cooperado_id == entrega.cooperado_id,
+                     Entrega.id != entrega.id,
+                     Entrega.status.notin_(['entregue','recebido','cancelado'])))
+        if entrega.data_atribuida:
+            q = q.filter(or_(Entrega.data_atribuida == None, Entrega.data_atribuida <= entrega.data_atribuida))
+        else:
+            q = q.filter(Entrega.data_envio <= entrega.data_envio)
+        anteriores = q.order_by(Entrega.data_atribuida.asc().nullsfirst(), Entrega.data_envio.asc(), Entrega.id.asc()).limit(5).all()
+        pts = []
+        for ant in anteriores:
+            oo = _json_dict_safe(getattr(ant, 'origem_json', None))
+            dd = _json_dict_safe(getattr(ant, 'destino_json', None))
+            o = _ponto_latlng_dict(oo)
+            d = _ponto_latlng_dict(dd)
+            if o: pts.append(o)
+            if d: pts.append(d)
+        return pts
+    except Exception:
+        return []
+
 @app.get('/api/pedidos/<int:pedido_id>/tracking')
 def api_pedidos_tracking(pedido_id):
     entrega = Entrega.query.get(pedido_id)
@@ -7429,6 +7596,28 @@ def api_pedidos_tracking(pedido_id):
         except Exception:
             pass
 
+    # Monta previsão e percurso real do entregador até coleta/entrega.
+    # Se houver GOOGLE_MAPS_API_KEY, usa Google Directions; senão usa OSRM como fallback.
+    rota_pontos = []
+    eta_min = None
+    if e.cooperado and motoboy_lat is not None and motoboy_lng is not None and _norm(status) not in ('entregue', 'recebido', 'cancelado'):
+        pontos_rota = [{'lat': motoboy_lat, 'lng': motoboy_lng}]
+        pontos_rota.extend(_entregas_anteriores_rota(e))
+        o_ll = _ponto_latlng_dict(origem)
+        if o_ll:
+            pontos_rota.append(o_ll)
+        for p in paradas:
+            p_ll = _ponto_latlng_dict(p)
+            if p_ll:
+                pontos_rota.append(p_ll)
+        d_ll = _ponto_latlng_dict(destino)
+        if d_ll:
+            pontos_rota.append(d_ll)
+
+        eta_min, rota_pontos = _rota_google_directions(pontos_rota)
+        if eta_min is None or not rota_pontos:
+            eta_min, rota_pontos = _rota_osrm(pontos_rota)
+
     return jsonify(ok=True,
         id=e.id,
         status=status,
@@ -7437,7 +7626,8 @@ def api_pedidos_tracking(pedido_id):
         destino={'txt': e.destino_endereco, 'lat': destino.get('lat'), 'lng': destino.get('lng')},
         paradas=paradas,
         motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': motoboy_lat, 'lng': motoboy_lng, 'localizacao_disponivel': bool(motoboy_lat is not None and motoboy_lng is not None)},
-        eta_min=None,
+        eta_min=eta_min,
+        rota_pontos=rota_pontos,
         pago=_entrega_esta_paga(e),
         comprovante_url=url_for('cliente_comprovante_publico', entrega_id=e.id) if _entrega_esta_paga(e) else ''
     )
@@ -9585,19 +9775,33 @@ def api_rastreio_pos(token):
         return jsonify(ok=False, error="ended"), 410
 
     coop = getattr(e, "cooperado", None)
-    if not coop or coop.last_lat is None or coop.last_lng is None:
+    lat = lng = None
+    when = None
+    if coop:
+        lat = getattr(coop, 'last_lat', None)
+        lng = getattr(coop, 'last_lng', None)
+        when = getattr(coop, 'last_ping', None)
+        try:
+            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+            if loc and loc.latitude is not None and loc.longitude is not None:
+                lat = loc.latitude
+                lng = loc.longitude
+                when = loc.atualizado_em or when
+        except Exception:
+            pass
+    if not coop or lat is None or lng is None:
         return jsonify(ok=True, lat=None, lng=None, cooperado=(coop.nome if coop else None), quando_local=None)
 
     when_local = None
     try:
-        if coop.last_ping:
-            when_local = to_brasilia(coop.last_ping).strftime("%d/%m/%Y %H:%M:%S")
+        if when:
+            when_local = to_brasilia(when).strftime("%d/%m/%Y %H:%M:%S")
     except Exception:
         when_local = None
 
     return jsonify(ok=True,
-                   lat=float(coop.last_lat),
-                   lng=float(coop.last_lng),
+                   lat=float(lat),
+                   lng=float(lng),
                    cooperado=coop.nome,
                    quando_local=when_local)
 
