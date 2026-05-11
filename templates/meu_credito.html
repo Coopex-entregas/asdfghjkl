@@ -441,7 +441,7 @@
                 <input class="input" id="numeroOrigem" placeholder="Ex.: 1000" inputmode="numeric" autocomplete="address-line2">
               </div>
             </div>
-            <div class="note" style="margin-top:-2px">Para localização exata, informe CEP ou rua e depois preencha o número. O sistema busca o ponto pelo número; se necessário, arraste o marcador no mapa.</div>
+            <div class="note" style="margin-top:-2px">Para localização exata, informe CEP ou rua/avenida e preencha o número. O sistema buscará pelo Maps usando rua + número; o mapa é apenas para acompanhar a entrega.</div>
 
             <div class="row">
               <div class="field">
@@ -815,12 +815,12 @@
         iconAnchor: [22, 42]
       });
 
-      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF"), draggable:true }).addTo(map);
-      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399"), draggable:true }).addTo(map);
+      mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF"), draggable:false }).addTo(map);
+      mDestino = L.marker(natal, { icon: mk("Entrega", "#003399"), draggable:false }).addTo(map);
       mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
       mMoto.setOpacity(0); // não mostra motoboy antes da atribuição
-      mOrigem.on('dragend', ()=>reverseToFields('origem', mOrigem.getLatLng().lat, mOrigem.getLatLng().lng));
-      mDestino.on('dragend', ()=>reverseToFields('destino', mDestino.getLatLng().lat, mDestino.getLatLng().lng));
+      // O mapa é para acompanhamento do entregador. O ponto exato é definido pelos campos CEP/Rua + Número.
+      // Não exige que o cliente arraste marcador no mapa.
 
       routeLine = L.polyline([natal, natal], { weight:5, opacity:0 }).addTo(map);
     }
@@ -837,8 +837,7 @@
         if(p && p.lat != null && p.lng != null){
           const ll=[Number(p.lat), Number(p.lng)];
           pts.push(ll);
-          const mkStop = L.marker(ll, {draggable:true}).addTo(map).bindTooltip('Parada '+(i+1));
-          mkStop.on('dragend', ()=>reverseStopFromMarker(i, mkStop.getLatLng().lat, mkStop.getLatLng().lng));
+          const mkStop = L.marker(ll, {draggable:false}).addTo(map).bindTooltip('Parada '+(i+1));
           stopMarkers.push(mkStop);
         }
       });
@@ -1204,6 +1203,21 @@
       box.style.display='block';
       box.querySelectorAll('button').forEach(b=>b.onclick=()=>{ fillAddress(prefix, arr[Number(b.dataset.i)]); box.style.display='none'; });
     }
+    async function buscarEnderecoExato(prefix){
+      const input = $(prefix);
+      if(!input) return;
+      const q = input.value.trim();
+      const numero = numeroDoPrefixo(prefix);
+      if(q.length < 3 || !numero) return;
+      const params = new URLSearchParams({q:q, numero:numero, bairro:bairroDoPrefixo(prefix), cidade:cidadeDoPrefixo(prefix)});
+      const r = await safeJSON(API.buscarEndereco + '?' + params.toString());
+      const it = r?.resultados?.[0];
+      if(it){
+        fillAddress(prefix, it);
+        const box = $('sug'+(prefix==='origem'?'Origem':'Destino'));
+        if(box) box.style.display='none';
+      }
+    }
     async function reverseToFields(prefix, lat, lng){
       const r = await safeJSON(API.reverseEndereco + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
       if(r?.ok && r.endereco){ fillAddress(prefix, r.endereco); }
@@ -1226,10 +1240,14 @@
         const input=$(prefix); if(!input) return;
         const numeroInput = $(prefix === 'origem' ? 'numeroOrigem' : 'numeroDestino');
         input.addEventListener('input', ()=>{ clearTimeout(geoTimers[prefix]); geoTimers[prefix]=setTimeout(()=>buscarEndereco(prefix), 450); });
-        input.addEventListener('blur', ()=>setTimeout(()=>{ const box=$('sug'+(prefix==='origem'?'Origem':'Destino')); if(box) box.style.display='none'; }, 350));
+        input.addEventListener('blur', ()=>{
+          setTimeout(()=>{ const box=$('sug'+(prefix==='origem'?'Origem':'Destino')); if(box) box.style.display='none'; }, 350);
+          if(numeroDoPrefixo(prefix)) setTimeout(()=>buscarEnderecoExato(prefix), 150);
+        });
         if(numeroInput){
-          numeroInput.addEventListener('change', ()=>{ buscarEndereco(prefix); atualizarCotacao(); });
-          numeroInput.addEventListener('blur', ()=>{ buscarEndereco(prefix); atualizarCotacao(); });
+          numeroInput.addEventListener('input', ()=>{ clearTimeout(geoTimers[prefix]); geoTimers[prefix]=setTimeout(()=>buscarEnderecoExato(prefix), 500); });
+          numeroInput.addEventListener('change', ()=>{ buscarEnderecoExato(prefix); atualizarCotacao(); });
+          numeroInput.addEventListener('blur', ()=>{ buscarEnderecoExato(prefix); atualizarCotacao(); });
         }
       });
     }
@@ -1251,12 +1269,15 @@
       }
       card.querySelector('.btnRemoveParada').onclick=()=>{ card.remove(); atualizarCotacao(); };
       card.querySelectorAll('input,select').forEach(el=>el.addEventListener('change', atualizarCotacao));
-      card.querySelector('.p_endereco').addEventListener('blur', async ()=>{
+      async function buscarParadaExata(){
         const q=card.querySelector('.p_endereco').value.trim(); if(q.length<3) return;
         const params = new URLSearchParams({q:q, numero:card.querySelector('.p_numero')?.value.trim()||'', bairro:card.querySelector('.p_bairro')?.value.trim()||'', cidade:card.querySelector('.p_cidade')?.value.trim()||''});
         const r=await safeJSON(API.buscarEndereco+'?'+params.toString()); const it=r?.resultados?.[0];
         if(it){ card.querySelector('.p_endereco').value=it.endereco||it.display||q; if(card.querySelector('.p_numero') && it.numero) card.querySelector('.p_numero').value=it.numero||''; card.querySelector('.p_bairro').value=it.bairro||''; card.querySelector('.p_cidade').value=it.cidade||''; card.querySelector('.p_lat').value=it.lat||''; card.querySelector('.p_lng').value=it.lng||''; atualizarCotacao(); }
-      });
+      }
+      card.querySelector('.p_endereco').addEventListener('blur', buscarParadaExata);
+      card.querySelector('.p_numero')?.addEventListener('blur', buscarParadaExata);
+      card.querySelector('.p_numero')?.addEventListener('change', buscarParadaExata);
       atualizarCotacao();
     }
     function readParadas(){
@@ -1303,7 +1324,7 @@
           const lat = pos.coords.latitude, lng = pos.coords.longitude;
           mOrigem.setLatLng([lat,lng]); map.setView([lat,lng], 17);
           await reverseToFields('origem', lat, lng);
-          alert("Localização encontrada. Confira o endereço e arraste o marcador no mapa se quiser ajustar o ponto exato.");
+          alert("Localização encontrada. Confira o endereço e preencha o número para o sistema buscar o ponto exato pelo Maps.");
         }, ()=>{ alert("Não foi possível obter sua localização. Verifique permissões."); }, { enableHighAccuracy:true, timeout:10000 });
       });
 
