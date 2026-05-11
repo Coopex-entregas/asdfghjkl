@@ -593,12 +593,12 @@
               <button class="btn btn-ghost recargaPreset" data-v="50" type="button">R$ 50</button>
             </div>
 
-            <button class="btn btn-primary" id="btnGerarRecarga" type="button">Gerar cobrança</button>
+            <button class="btn btn-primary" id="btnGerarRecarga" type="button">Enviar pedido com comprovante pelo WhatsApp</button>
 
             <div class="hr"></div>
 
             <div class="note" id="boxCobranca">
-              Ao gerar cobrança, o sistema cria uma solicitação de recarga. No Pix, será exibida a chave e referência. Após pagar, envie o comprovante pelo WhatsApp da COOPEX.
+              Para comprar crédito, informe o valor, faça o Pix e envie o pedido pelo WhatsApp junto com o comprovante de pagamento. O crédito só será colocado no sistema mediante envio e conferência do comprovante pelo administrador.
             </div>
           </section>
 
@@ -736,10 +736,17 @@
     async function safeJSON(url, opts){
       try{
         const r = await fetch(url, opts);
-        if(!r.ok) throw new Error("HTTP "+r.status);
-        return await r.json();
+        let j = null;
+        try{ j = await r.json(); }catch(_){ j = null; }
+        if(!r.ok){
+          return {
+            ok:false,
+            msg:(j && (j.msg || j.erro || j.error)) ? (j.msg || j.erro || j.error) : ("Erro HTTP " + r.status)
+          };
+        }
+        return j;
       }catch(e){
-        return null;
+        return { ok:false, msg:"Falha de conexão com o servidor. Verifique a internet ou se o sistema está online." };
       }
     }
 
@@ -1299,7 +1306,7 @@
         });
 
         if(!res || !res.ok){
-          alert(res?.msg || "Não foi possível criar o pedido.");
+          alert(res?.msg || res?.erro || res?.error || "Não foi possível criar o pedido.");
           return;
         }
 
@@ -1345,6 +1352,9 @@
     }
 
     function wireCredito(){
+      const WPP_COOPEX = "5584981110706";
+      const PIX_CHAVE = "{{ pix_chave or '84981110706' }}";
+
       $("metodoRecarga").addEventListener("change", ()=>{
         $("metodoTxt").textContent = "Pix";
       });
@@ -1355,40 +1365,57 @@
 
       $("btnGerarRecarga").addEventListener("click", async ()=>{
         const valor = parseBRL($("valorRecarga").value);
-        const metodo = $("metodoRecarga").value;
 
         if(!valor || valor <= 0){
           alert("Informe um valor válido para recarga.");
           return;
         }
 
-        const r = await safeJSON(API.recarga, {
-          method:"POST",
-          headers:{ "Content-Type":"application/json" },
-          body: JSON.stringify({ valor, metodo })
-        });
+        const clienteNome = state?.cliente?.nome || "Cliente";
+        const valorTxt = moneyBR(valor);
+        const referencia = "RECARGA-" + Date.now().toString().slice(-8);
 
-        if(!r || !r.ok){
-          alert(r?.msg || "Não foi possível gerar a recarga.");
-          return;
-        }
+        const msg =
+          "Olá, quero comprar crédito na COOPEX e estou enviando o comprovante de pagamento.%0A%0A" +
+          "Cliente: " + encodeURIComponent(clienteNome) + "%0A" +
+          "Valor solicitado: " + encodeURIComponent(valorTxt) + "%0A" +
+          "Forma de pagamento: Pix%0A" +
+          "Chave Pix: " + encodeURIComponent(PIX_CHAVE) + "%0A" +
+          "Referência: " + encodeURIComponent(referencia) + "%0A%0A" +
+          "Solicito o lançamento do crédito mediante conferência do comprovante de pagamento anexado nesta conversa.";
+
+        const link = "https://wa.me/" + WPP_COOPEX + "?text=" + msg;
 
         setOnline(true);
 
-        // Atualiza UI do box (Pix real por chave + referência)
         $("boxCobranca").innerHTML = `
-          <strong>Solicitação criada (#${r.recarga_id}).</strong><br>
-          Pague via Pix para a chave abaixo e use a referência (se aplicável).<br><br>
-          <strong>Chave Pix:</strong> <span style="font-family:ui-monospace,monospace;">${r.pix_chave}</span><br>
-          <strong>Valor:</strong> ${moneyBR(r.valor)}<br>
-          <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${r.referencia || ("RECARGA-"+r.recarga_id)}</span><br>
-          <div style="margin-top:10px">Após o pagamento, envie o comprovante pelo WhatsApp <strong>84 98111-0706</strong>. A recarga fica como <strong>Pendente</strong> até aprovação no painel administrativo.</div>
-          <a class="btn btn-primary" style="height:42px;margin-top:10px" target="_blank" rel="noopener" href="https://wa.me/5584981110706?text=${encodeURIComponent('Olá, segue comprovante da recarga COOPEX #' + r.recarga_id)}">Enviar comprovante</a>
+          <strong>Pedido de crédito pronto para envio.</strong><br>
+          Faça o Pix e envie pelo WhatsApp junto com o comprovante de pagamento. O crédito será colocado no sistema somente após a conferência do comprovante pelo administrador.<br><br>
+          <strong>Chave Pix:</strong> <span id="pixChaveRecarga" style="font-family:ui-monospace,monospace;">${PIX_CHAVE}</span><br>
+          <strong>Valor:</strong> ${valorTxt}<br>
+          <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${referencia}</span><br>
+          <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+            <button class="btn btn-ghost" style="height:42px" id="btnCopiarPixRecarga" type="button">Copiar chave Pix</button>
+            <a class="btn btn-primary" style="height:42px" target="_blank" rel="noopener" href="${link}">Enviar pedido com comprovante</a>
+          </div>
+          <div style="margin-top:10px;font-size:12px;color:#9a3412;font-weight:900">
+            O crédito só será colocado no sistema mediante envio do comprovante de pagamento e conferência do administrador.
+          </div>
         `;
 
-        // Atualiza saldo (pode não mudar até aprovação; mesmo assim mostramos o saldo atual do backend)
-        const s = await safeJSON(API.saldo);
-        if(s?.ok) setSaldo(s.saldo);
+        const btnCopy = $("btnCopiarPixRecarga");
+        if(btnCopy){
+          btnCopy.addEventListener("click", async ()=>{
+            try{
+              await navigator.clipboard.writeText(PIX_CHAVE);
+              alert("Chave Pix copiada.");
+            }catch(_){
+              alert("Chave Pix: " + PIX_CHAVE);
+            }
+          });
+        }
+
+        window.open(link, "_blank", "noopener");
       });
     }
 
