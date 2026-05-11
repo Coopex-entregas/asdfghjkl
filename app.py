@@ -375,6 +375,48 @@ class Cliente(db.Model):
         return check_password_hash(self.senha_hash, senha)
 
 
+class ClienteEndereco(db.Model):
+    __tablename__ = 'cliente_endereco'
+
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id', ondelete='CASCADE'), nullable=False, index=True)
+    apelido = db.Column(db.String(80), nullable=False, default='Endereço')
+    contato = db.Column(db.String(120), nullable=True)
+    telefone = db.Column(db.String(30), nullable=True)
+    endereco = db.Column(db.String(255), nullable=False)
+    numero = db.Column(db.String(30), nullable=True)
+    bairro = db.Column(db.String(100), nullable=True, index=True)
+    cidade = db.Column(db.String(100), nullable=True)
+    uf = db.Column(db.String(2), nullable=True, default='RN')
+    cep = db.Column(db.String(20), nullable=True)
+    referencia = db.Column(db.String(255), nullable=True)
+    lat = db.Column(db.Float, nullable=True)
+    lng = db.Column(db.Float, nullable=True)
+    padrao = db.Column(db.Boolean, nullable=False, default=False)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+    atualizado_em = db.Column(db.DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+
+    cliente = db.relationship('Cliente', backref=db.backref('enderecos_salvos', lazy=True, cascade='all, delete-orphan'))
+
+    def to_dict(self):
+        return {
+            'id': self.id,
+            'apelido': self.apelido or 'Endereço',
+            'contato': self.contato or '',
+            'telefone': self.telefone or '',
+            'endereco': self.endereco or '',
+            'numero': self.numero or '',
+            'bairro': self.bairro or '',
+            'cidade': self.cidade or '',
+            'uf': self.uf or 'RN',
+            'cep': self.cep or '',
+            'referencia': self.referencia or '',
+            'lat': self.lat,
+            'lng': self.lng,
+            'padrao': bool(self.padrao),
+        }
+
+
 class Entrega(db.Model):
     __tablename__ = 'entrega'
 
@@ -1836,11 +1878,38 @@ class PrecoRota(db.Model):
             "valor": float(self.valor),
         }
 
+
+
+class PrecoServico(db.Model):
+    __tablename__ = "preco_servico"
+
+    id = db.Column(db.Integer, primary_key=True)
+    nome = db.Column(db.String(120), nullable=False, unique=True, index=True)
+    valor = db.Column(db.Numeric(10, 2), nullable=False, default=0)
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
+    criado_em = db.Column(db.DateTime, default=_now_brt)
+    atualizado_em = db.Column(db.DateTime, default=_now_brt, onupdate=_now_brt)
+
+    def to_dict(self):
+        return {
+            "id": self.id,
+            "nome": self.nome,
+            "valor": float(self.valor or 0),
+            "ativo": bool(self.ativo),
+        }
+
 # =========================================================
 # HELPERS GENÉRICOS / SEGURANÇA / REDIRECT
 # =========================================================
 def _norm(s: str) -> str:
-    return (s or "").strip()
+    """Normaliza textos para comparação: sem acento, sem diferença entre maiúscula/minúscula e sem espaços duplicados."""
+    s = str(s or '').strip()
+    s = unicodedata.normalize('NFD', s)
+    s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')
+    s = s.lower()
+    s = re.sub(r'[^a-z0-9\s]', ' ', s)
+    s = re.sub(r'\s+', ' ', s).strip()
+    return s
 
 
 def _ci_equal(a: str, b: str) -> bool:
@@ -2468,6 +2537,7 @@ def meu_credito():
 
     movs = []
     entregas = []
+    enderecos_salvos = []
     if cli:
         movs = (
             CreditoMovimento.query
@@ -2484,6 +2554,10 @@ def meu_credito():
             .all()
         )
         entregas = [_enriquecer_entrega(e) for e in entregas]
+        try:
+            enderecos_salvos = [x.to_dict() for x in ClienteEndereco.query.filter_by(cliente_id=cid).order_by(ClienteEndereco.padrao.desc(), ClienteEndereco.apelido.asc()).all()]
+        except Exception:
+            enderecos_salvos = []
 
     rotas = PrecoRota.query.all()
     bairros = sorted({
@@ -2504,6 +2578,7 @@ def meu_credito():
         bairros=bairros,
         pix_chave=pix_chave,
         whatsapp_comprovante="84981110706",
+        enderecos_salvos=enderecos_salvos,
         to_brasilia=to_brasilia
     )
 
@@ -2786,6 +2861,52 @@ def api_cliente_buscar_endereco():
     return jsonify({'ok': True, 'resultados': resultados})
 
 
+@app.route('/api/cliente/reverse-endereco', methods=['GET'])
+def api_cliente_reverse_endereco():
+    """Converte latitude/longitude em endereço, bairro e cidade para o cliente não ver coordenadas."""
+    lat = (request.args.get('lat') or '').strip()
+    lng = (request.args.get('lng') or '').strip()
+    try:
+        lat_f = float(lat); lng_f = float(lng)
+    except Exception:
+        return jsonify({'ok': False, 'erro': 'Coordenadas inválidas.'}), 400
+    try:
+        from urllib.parse import urlencode
+        from urllib.request import Request, urlopen
+        params = urlencode({'lat': lat_f, 'lon': lng_f, 'format': 'json', 'addressdetails': 1, 'zoom': 18})
+        url = 'https://nominatim.openstreetmap.org/reverse?' + params
+        req = Request(url, headers={'User-Agent': 'CoopexEntregas/1.0 contato@coopex'})
+        with urlopen(req, timeout=6) as resp:
+            item = json.loads(resp.read().decode('utf-8') or '{}')
+        addr = item.get('address') or {}
+        rua = _nominatim_addr_value(addr, 'road', 'pedestrian', 'residential', 'footway', 'path')
+        numero = _nominatim_addr_value(addr, 'house_number')
+        bairro = _nominatim_addr_value(addr, 'suburb', 'neighbourhood', 'quarter', 'city_district', 'borough')
+        cidade = _nominatim_addr_value(addr, 'city', 'town', 'municipality', 'village', 'county')
+        cep = _nominatim_addr_value(addr, 'postcode')
+        estado = _nominatim_addr_value(addr, 'state')
+        uf = 'RN' if ('rio grande do norte' in _norm(estado) or not estado) else estado
+        display = item.get('display_name') or ', '.join([x for x in [rua, numero, bairro, cidade, uf] if x])
+        endereco = ', '.join([x for x in [rua, numero] if x]) or display
+        return jsonify({'ok': True, 'endereco': {
+            'display': display,
+            'endereco': endereco,
+            'numero': numero,
+            'bairro': bairro,
+            'cidade': cidade,
+            'uf': uf,
+            'cep': cep,
+            'lat': lat_f,
+            'lng': lng_f,
+        }})
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha reverse endereço Nominatim: {e}')
+        except Exception:
+            pass
+        return jsonify({'ok': False, 'erro': 'Não foi possível localizar o endereço.'}), 500
+
+
 def _rota_real_osrm_km(coordenadas):
     """Calcula rota de rua pelo OSRM. coordenadas: [(lat, lng), ...]."""
     if not coordenadas or len(coordenadas) < 2:
@@ -2840,18 +2961,52 @@ def _calcular_rota_real_km(coleta, entrega, paradas=None):
     return _rota_real_osrm_km(coordenadas)
 
 
+
+def _buscar_preco_servico(nome_servico):
+    nome_key = _norm(nome_servico)
+    if not nome_key:
+        return 0.0
+    try:
+        servicos = PrecoServico.query.filter_by(ativo=True).all()
+    except Exception:
+        return 0.0
+    for serv in servicos:
+        if _norm(serv.nome) == nome_key:
+            return float(serv.valor or 0)
+    return 0.0
+
+
 def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None):
-    pontos = [coleta] + [p for p in (paradas or []) if isinstance(p, dict) and _ponto_bairro(p)] + [entrega]
+    """
+    Soma por trechos: coleta -> paradas -> entrega final.
+    Primeiro usa preço cadastrado por bairro/rota. Se faltar qualquer trecho, retorna None para cair no cálculo por km.
+    Também soma serviço fixo informado na parada/destino e o serviço "Retorno" quando volta ao bairro de origem.
+    """
+    paradas = paradas or []
+    pontos = [coleta] + [p for p in paradas if isinstance(p, dict) and (_ponto_bairro(p) or _ponto_endereco(p))] + [entrega]
     if len(pontos) < 2:
         return None
+
     total = 0.0
     for i in range(len(pontos) - 1):
-        b1 = _ponto_bairro(pontos[i])
-        b2 = _ponto_bairro(pontos[i + 1])
+        atual = pontos[i]
+        prox = pontos[i + 1]
+        b1 = _ponto_bairro(atual)
+        b2 = _ponto_bairro(prox)
         preco = _buscar_preco_rota_tabela(b1, b2)
         if preco is None:
             return None
         total += float(preco or 0)
+
+        servico = (prox.get('servico') or prox.get('tipo_servico') or prox.get('tipo') or '').strip() if isinstance(prox, dict) else ''
+        if servico:
+            total += _buscar_preco_servico(servico)
+
+    bairro_inicial = _norm(_ponto_bairro(coleta))
+    bairro_final = _norm(_ponto_bairro(entrega))
+    if bairro_inicial and bairro_final and bairro_inicial == bairro_final:
+        total += _buscar_preco_servico('Retorno')
+
     return round(total, 2)
 
 
@@ -6665,6 +6820,368 @@ def api_cliente_saldo():
     })
 
 
+
+# =========================================================
+# APIs DO MEU CRÉDITO — cliente, endereços, histórico, pedido e comprovante
+# =========================================================
+@app.get('/api/cliente/me')
+@cliente_required
+def api_cliente_me():
+    cli = _cliente_atual()
+    return jsonify(ok=True, cliente={
+        'id': cli.id,
+        'nome': cli.nome,
+        'telefone': cli.telefone,
+        'email': cli.email,
+        'username': cli.username,
+    })
+
+@app.get('/api/cliente/saldo-json')
+@cliente_required
+def api_credito_saldo():
+    return api_cliente_saldo()
+
+@app.route('/api/cliente/enderecos', methods=['GET', 'POST'])
+@cliente_required
+def api_cliente_enderecos():
+    cli = _cliente_atual()
+    if request.method == 'GET':
+        itens = ClienteEndereco.query.filter_by(cliente_id=cli.id).order_by(ClienteEndereco.padrao.desc(), ClienteEndereco.apelido.asc()).all()
+        return jsonify(ok=True, enderecos=[x.to_dict() for x in itens])
+
+    data = request.get_json(silent=True) or {}
+    endereco = (data.get('endereco') or data.get('origem') or '').strip()
+    if not endereco:
+        return jsonify(ok=False, erro='Informe o endereço.'), 400
+
+    padrao = bool(data.get('padrao'))
+    if padrao:
+        ClienteEndereco.query.filter_by(cliente_id=cli.id, padrao=True).update({'padrao': False})
+
+    item = ClienteEndereco(
+        cliente_id=cli.id,
+        apelido=(data.get('apelido') or 'Coleta').strip()[:80],
+        contato=(data.get('contato') or '').strip() or None,
+        telefone=(data.get('telefone') or '').strip() or None,
+        endereco=endereco,
+        numero=(data.get('numero') or '').strip() or None,
+        bairro=(data.get('bairro') or '').strip() or None,
+        cidade=(data.get('cidade') or '').strip() or None,
+        uf=(data.get('uf') or 'RN').strip()[:2] or 'RN',
+        cep=(data.get('cep') or '').strip() or None,
+        referencia=(data.get('referencia') or data.get('ref') or '').strip() or None,
+        lat=float(data.get('lat')) if str(data.get('lat') or '').strip() else None,
+        lng=float(data.get('lng')) if str(data.get('lng') or '').strip() else None,
+        padrao=padrao,
+    )
+    db.session.add(item)
+    db.session.commit()
+    return jsonify(ok=True, endereco=item.to_dict())
+
+@app.post('/api/cliente/enderecos/<int:endereco_id>/padrao')
+@cliente_required
+def api_cliente_endereco_padrao(endereco_id):
+    cli = _cliente_atual()
+    item = ClienteEndereco.query.filter_by(id=endereco_id, cliente_id=cli.id).first_or_404()
+    ClienteEndereco.query.filter_by(cliente_id=cli.id, padrao=True).update({'padrao': False})
+    item.padrao = True
+    db.session.add(item)
+    db.session.commit()
+    return jsonify(ok=True)
+
+@app.delete('/api/cliente/enderecos/<int:endereco_id>')
+@cliente_required
+def api_cliente_endereco_delete(endereco_id):
+    cli = _cliente_atual()
+    item = ClienteEndereco.query.filter_by(id=endereco_id, cliente_id=cli.id).first_or_404()
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify(ok=True)
+
+@app.get('/api/cliente/historico')
+@cliente_required
+def api_cliente_historico():
+    cli = _cliente_atual()
+    data_ref = (request.args.get('data') or '').strip()
+    q = Entrega.query.filter(Entrega.cliente_id == cli.id)
+    if data_ref:
+        try:
+            d = datetime.strptime(data_ref, '%Y-%m-%d').date()
+            ini, fim = local_date_window_to_utc_range(d)
+            q = q.filter(Entrega.data_envio >= ini, Entrega.data_envio <= fim)
+        except Exception:
+            return jsonify(ok=False, erro='Data inválida.'), 400
+    itens = q.order_by(Entrega.data_envio.desc()).limit(80).all()
+    out = []
+    for e in itens:
+        e = _enriquecer_entrega(e)
+        pago = _entrega_esta_paga(e)
+        out.append({
+            'id': e.id,
+            'data': to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '',
+            'cliente': e.cliente,
+            'origem': getattr(e, 'origem_endereco', ''),
+            'destino': getattr(e, 'destino_endereco', ''),
+            'valor': float(e.valor or 0),
+            'status': e.status or 'pendente',
+            'status_pagamento': e.status_pagamento or 'pendente',
+            'pagamento': e.pagamento or '',
+            'pago': pago,
+            'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
+        })
+    return jsonify(ok=True, entregas=out)
+
+
+def _entrega_esta_paga(entrega):
+    st = _norm(getattr(entrega, 'status_pagamento', '') or '')
+    pag = _norm(getattr(entrega, 'pagamento', '') or '')
+    return st == 'pago' or (pag.startswith('credito') and st != 'pendente')
+
+
+def _pedido_to_json(entrega):
+    entrega = _enriquecer_entrega(entrega)
+    status = entrega.status or ''
+    if not entrega.cooperado and _norm(status) not in ('entregue', 'cancelado'):
+        status = 'aguardando entregador'
+    elif entrega.cooperado and _norm(status) in ('pendente', 'aguardando entregador', 'criado'):
+        status = 'entregador atribuído'
+    return {
+        'id': entrega.id,
+        'origem_txt': getattr(entrega, 'origem_endereco', '') or '',
+        'destino_txt': getattr(entrega, 'destino_endereco', '') or entrega.bairro or '',
+        'valor': float(entrega.valor or 0),
+        'status': status,
+        'eta_min': None,
+        'motoboy_nome': entrega.cooperado.nome if entrega.cooperado else '',
+    }
+
+@app.post('/api/cliente/recarga')
+@cliente_required
+def api_credito_recarga():
+    cli = _cliente_atual()
+    data = request.get_json(silent=True) or {}
+    valor = data.get('valor') or 0
+    try:
+        valor = float(valor)
+    except Exception:
+        valor = 0
+    if valor <= 0:
+        return jsonify(ok=False, msg='Informe um valor válido.'), 400
+    referencia = 'RECARGA-' + datetime.utcnow().strftime('%Y%m%d%H%M%S')
+    # Mantém a solicitação por WhatsApp para não criar crédito automaticamente sem aprovação.
+    return jsonify(ok=True, recarga_id=referencia, valor=valor, pix_chave=get_pix_chave() or '84981110706', referencia=referencia)
+
+@app.post('/api/pedidos/criar')
+def api_pedidos_criar():
+    cli = _cliente_atual_optional()
+    data = request.get_json(silent=True) or {}
+
+    origem = data.get('coleta') or {}
+    destino = data.get('entrega') or {}
+    paradas = data.get('paradas') or []
+    if not isinstance(paradas, list):
+        paradas = []
+
+    if not origem:
+        origem = {'endereco': (data.get('origem_txt') or '').strip(), 'lat': data.get('origem_lat'), 'lng': data.get('origem_lng')}
+    if not destino:
+        destino = {'endereco': (data.get('destino_txt') or '').strip(), 'lat': data.get('destino_lat'), 'lng': data.get('destino_lng')}
+
+    origem_txt = _ponto_endereco(origem) or (data.get('origem_txt') or '').strip()
+    destino_txt = _ponto_endereco(destino) or (data.get('destino_txt') or '').strip()
+    if not origem_txt or not destino_txt:
+        return jsonify(ok=False, msg='Informe coleta e entrega.'), 400
+
+    cot = _calcular_cotacao_entrega(origem, destino, paradas)
+    preco = float(cot.get('preco') or 0)
+
+    pagamento_in = _norm(data.get('pagamento') or data.get('meio_pagamento') or 'pix')
+    if pagamento_in not in ('credito', 'pix', 'dinheiro'):
+        pagamento_in = 'pix'
+
+    recebe_dinheiro_em = _norm(data.get('recebe_dinheiro_em') or '')
+    if pagamento_in == 'dinheiro' and recebe_dinheiro_em not in ('coleta', 'entrega'):
+        return jsonify(ok=False, msg='Informe se o dinheiro será recebido na coleta ou na entrega.'), 400
+
+    if pagamento_in == 'credito' and not cli:
+        return jsonify(ok=False, msg='Para usar crédito, entre como cliente cadastrado.'), 400
+
+    pagamento = 'Crédito' if pagamento_in == 'credito' else 'Pix' if pagamento_in == 'pix' else 'Dinheiro'
+    status_pg = 'pago' if pagamento_in == 'credito' else 'pendente'
+    credito_usado = 0.0
+
+    origem_dict = {
+        **origem,
+        'endereco': origem.get('endereco') or data.get('origem_txt'),
+        'cliente_nome': cli.nome if cli else data.get('cliente_nome'),
+    }
+    destino_dict = {
+        **destino,
+        'endereco': destino.get('endereco') or data.get('destino_txt'),
+        'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else None,
+    }
+    paradas_dict = {
+        'stops': paradas,
+        'observacao': data.get('obs') or data.get('observacao') or '',
+        'origem_preco': cot.get('origem_preco'),
+        'distancia_km': cot.get('distancia_km'),
+        'per_km': cot.get('per_km'),
+        'meio_pagamento': pagamento,
+        'recebe_dinheiro_em': recebe_dinheiro_em if pagamento_in == 'dinheiro' else '',
+    }
+
+    entrega = Entrega(
+        cliente_id=cli.id if cli else None,
+        cliente=(cli.nome if cli else (data.get('cliente_nome') or 'Cliente avulso')),
+        bairro=(destino.get('bairro') or origem.get('bairro') or 'A confirmar'),
+        valor=preco,
+        data_envio=datetime.utcnow(),
+        status='aguardando entregador',
+        status_pagamento=status_pg,
+        pagamento=pagamento,
+        origem_json=json.dumps(origem_dict, ensure_ascii=False),
+        destino_json=json.dumps(destino_dict, ensure_ascii=False),
+        paradas_json=json.dumps(paradas_dict, ensure_ascii=False),
+        credito_usado=credito_usado,
+    )
+    db.session.add(entrega)
+    db.session.commit()
+    try:
+        emitir_atualizacao_entrega(entrega, 'criada')
+    except Exception:
+        pass
+    return jsonify(
+        ok=True,
+        pedido=_pedido_to_json(entrega),
+        entrega_id=entrega.id,
+        codigo=entrega.id,
+        pix_chave=get_pix_chave() or '84981110706',
+        msg='Pedido enviado. Aguarde a atribuição do entregador.'
+    )
+
+@app.get('/api/pedidos/ativo')
+def api_pedidos_ativo():
+    cli = _cliente_atual_optional()
+    if not cli:
+        return jsonify(ok=True, pedido=None)
+    entrega = (Entrega.query.filter(Entrega.cliente_id == cli.id, Entrega.status.notin_(['entregue', 'cancelado']))
+               .order_by(Entrega.data_envio.desc()).first())
+    return jsonify(ok=True, pedido=_pedido_to_json(entrega) if entrega else None)
+
+@app.post('/api/pedidos/<int:pedido_id>/cancelar')
+def api_pedidos_cancelar(pedido_id):
+    cli = _cliente_atual_optional()
+    q = Entrega.query.filter(Entrega.id == pedido_id)
+    if cli:
+        q = q.filter(Entrega.cliente_id == cli.id)
+    entrega = q.first_or_404()
+    entrega.status = 'cancelado'
+    db.session.add(entrega)
+    db.session.commit()
+    return jsonify(ok=True)
+
+@app.get('/api/pedidos/<int:pedido_id>/tracking')
+def api_pedidos_tracking(pedido_id):
+    entrega = Entrega.query.get(pedido_id)
+    if not entrega:
+        return jsonify(ok=False, msg='Pedido não encontrado.'), 404
+    e = _enriquecer_entrega(entrega)
+    origem = e.origem_extra or {}
+    destino = e.destino_extra or {}
+    paradas = []
+    try:
+        raw = json.loads(e.paradas_json or '{}')
+        for p in raw.get('stops') or []:
+            if isinstance(p, dict):
+                paradas.append({
+                    'txt': _ponto_endereco(p),
+                    'lat': p.get('lat'),
+                    'lng': p.get('lng'),
+                    'bairro': p.get('bairro'),
+                    'servico': p.get('servico') or p.get('tipo_servico') or '',
+                })
+    except Exception:
+        paradas = []
+    status = e.status or ''
+    if not e.cooperado and _norm(status) not in ('entregue', 'cancelado'):
+        status = 'aguardando entregador'
+    elif e.cooperado and _norm(status) in ('pendente', 'aguardando entregador', 'criado'):
+        status = 'entregador atribuído'
+    return jsonify(ok=True,
+        id=e.id,
+        status=status,
+        valor=float(e.valor or 0),
+        origem={'txt': e.origem_endereco, 'lat': origem.get('lat'), 'lng': origem.get('lng')},
+        destino={'txt': e.destino_endereco, 'lat': destino.get('lat'), 'lng': destino.get('lng')},
+        paradas=paradas,
+        motoboy={'nome': e.cooperado.nome if e.cooperado else '', 'lat': getattr(e.cooperado, 'last_lat', None) if e.cooperado else None, 'lng': getattr(e.cooperado, 'last_lng', None) if e.cooperado else None},
+        eta_min=None,
+        pago=_entrega_esta_paga(e),
+        comprovante_url=url_for('cliente_comprovante_publico', entrega_id=e.id) if _entrega_esta_paga(e) else ''
+    )
+
+@app.get('/cliente/comprovante-publico/<int:entrega_id>')
+def cliente_comprovante_publico(entrega_id):
+    entrega = Entrega.query.get_or_404(entrega_id)
+    if not _entrega_esta_paga(entrega):
+        return render_template_string('<h2>Comprovante indisponível</h2><p>O comprovante só pode ser emitido após a entrega constar como paga.</p>'), 403
+    e = _enriquecer_entrega(entrega)
+    logo = url_for('static', filename='logo.png')
+    return render_template_string("""
+<!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Comprovante COOPEX #{{ e.id }}</title>
+<style>body{font-family:Arial,sans-serif;background:#f3f7ff;margin:0;padding:20px;color:#071d49}.card{max-width:760px;margin:auto;background:white;border:1px solid #cfe0ff;border-radius:18px;padding:22px;box-shadow:0 12px 34px rgba(0,51,153,.13)}.top{display:flex;justify-content:space-between;gap:16px;align-items:center;border-bottom:2px solid #003399;padding-bottom:14px}.brand{font-size:28px;font-weight:900;color:#003399}.ok{background:#e9fff4;color:#067647;border:1px solid #a7f3d0;padding:8px 12px;border-radius:999px;font-weight:900}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:18px}.box{border:1px solid #d6e2ff;border-radius:14px;padding:12px;background:#f8fbff}.box small{display:block;color:#667085;font-weight:800;margin-bottom:4px}.valor{font-size:24px;font-weight:900;color:#003399}.footer{margin-top:18px;font-size:12px;color:#667085;text-align:center}.btn{display:inline-flex;margin-top:14px;background:#003399;color:white;text-decoration:none;padding:12px 16px;border-radius:12px;font-weight:900}@media print{.btn{display:none}body{background:white}.card{box-shadow:none}}</style>
+</head><body><div class="card"><div class="top"><div><div class="brand">COOPEX</div><div>Comprovante de entrega</div></div><span class="ok">PAGO</span></div>
+<div class="grid"><div class="box"><small>Código</small><strong>#{{ e.id }}</strong></div><div class="box"><small>Data</small><strong>{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '-' }}</strong></div><div class="box"><small>Cliente</small><strong>{{ e.cliente }}</strong></div><div class="box"><small>Pagamento</small><strong>{{ e.pagamento }} — {{ e.status_pagamento }}</strong></div><div class="box"><small>Coleta</small><strong>{{ e.origem_endereco }}</strong></div><div class="box"><small>Entrega</small><strong>{{ e.destino_endereco }}</strong></div><div class="box"><small>Status</small><strong>{{ e.status or 'pendente' }}</strong></div><div class="box"><small>Valor</small><div class="valor">R$ {{ '%.2f'|format(e.valor or 0)|replace('.', ',') }}</div></div></div>
+<a class="btn" href="javascript:window.print()">Imprimir / salvar PDF</a><div class="footer">COOPEX Entregas — comprovante emitido pelo sistema.</div></div></body></html>
+""", e=e, to_brasilia=to_brasilia)
+
+
+
+@app.get('/api/servicos')
+def api_list_servicos():
+    if not session.get('is_admin') and not session.get('is_master'):
+        abort(403)
+    itens = PrecoServico.query.order_by(PrecoServico.nome.asc()).all()
+    return jsonify(ok=True, items=[x.to_dict() for x in itens])
+
+@app.post('/api/servicos')
+def api_upsert_servico():
+    if not session.get('is_admin') and not session.get('is_master'):
+        abort(403)
+    data = request.get_json(silent=True) or {}
+    nome = (data.get('nome') or '').strip()
+    valor_raw = str(data.get('valor') or '0').strip().replace('.', '').replace(',', '.')
+    ativo = bool(data.get('ativo', True))
+    if not nome:
+        return jsonify(ok=False, error='Informe o nome do serviço.'), 400
+    try:
+        valor = round(float(valor_raw), 2)
+    except Exception:
+        return jsonify(ok=False, error='Valor inválido.'), 400
+    item = None
+    for s in PrecoServico.query.all():
+        if _norm(s.nome) == _norm(nome):
+            item = s
+            break
+    if not item:
+        item = PrecoServico(nome=nome)
+        db.session.add(item)
+    item.nome = nome
+    item.valor = valor
+    item.ativo = ativo
+    db.session.commit()
+    return jsonify(ok=True, item=item.to_dict())
+
+@app.delete('/api/servicos/<int:item_id>')
+def api_delete_servico(item_id):
+    if not session.get('is_admin') and not session.get('is_master'):
+        abort(403)
+    item = PrecoServico.query.get_or_404(item_id)
+    db.session.delete(item)
+    db.session.commit()
+    return jsonify(ok=True)
+
 # =========================================================
 # CRÉDITOS (SUPERVISOR)
 # =========================================================
@@ -8438,6 +8955,7 @@ def criar_bd():
             "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)",
 
             "CREATE INDEX IF NOT EXISTS idx_cliente_nome_lower ON cliente ((lower(nome)))",
+            "CREATE INDEX IF NOT EXISTS idx_cliente_endereco_cliente_id ON cliente_endereco (cliente_id)",
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_username ON cliente (username)",
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_email ON cliente (email)",
 
