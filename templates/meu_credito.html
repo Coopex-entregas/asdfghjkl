@@ -339,6 +339,33 @@
     .stop-head{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px;color:var(--royal);font-weight:900}.stop-head button{height:34px;padding:0 10px;border-radius:12px}
     .map-help{position:absolute;top:12px;left:12px;right:12px;z-index:450;background:rgba(255,255,255,.94);border:1px solid rgba(214,226,255,.95);border-radius:18px;padding:10px 12px;color:var(--royal);font-size:12px;font-weight:900;box-shadow:var(--shadow2);pointer-events:none}
     @media(max-width:640px){.map-help{font-size:11px;top:8px;left:8px;right:8px}.stop-card{padding:10px}.row{flex-direction:column}}
+
+
+    /* AJUSTES V12: tela dentro do admin/iframe, PC e celular */
+    html,body{min-height:100%;height:auto;overflow:auto;}
+    body{overflow-x:hidden;}
+    .grid{align-items:start;grid-template-columns:minmax(360px,420px) minmax(0,1fr);}
+    .grid > .card:first-child{max-height:calc(100vh - 126px);overflow-y:auto;overflow-x:hidden;scrollbar-gutter:stable;border-radius:24px;}
+    .map-card{position:sticky;top:82px;height:calc(100vh - 126px);min-height:560px;overflow:hidden;}
+    #map{height:100%;min-height:100%;}
+    .field,.row > *{min-width:0;}
+    .input,.select,.textarea{width:100%;max-width:100%;min-width:0;}
+    .row{align-items:flex-start;}
+    #tab-pedido .row{flex-wrap:wrap;}
+    .payment-row{display:grid!important;grid-template-columns:1fr 1fr;gap:10px;align-items:start;}
+    .payment-row > .field{margin-bottom:10px;}
+    .sugbox{position:relative;z-index:99999;}
+    input,select,textarea,button{scroll-margin-top:90px;scroll-margin-bottom:110px;}
+    @media(max-width:980px){
+      .wrap{padding:12px 10px 92px;}
+      .grid{grid-template-columns:1fr;}
+      .grid > .card:first-child{max-height:none;overflow:visible;}
+      .map-card{position:relative;top:auto;height:520px;min-height:520px;}
+    }
+    @media(max-width:520px){
+      .payment-row{grid-template-columns:1fr;}
+    }
+
   </style>
 </head>
 
@@ -432,7 +459,8 @@
             <div class="mini-card" id="localizacaoBox">
               <div class="mini-title"><span>Localização da coleta</span></div>
               <button class="btn btn-ghost" id="btnUsarLocal" type="button" style="width:100%">Usar minha localização para preencher a coleta</button>
-              <div class="note" style="margin-top:8px">O navegador vai pedir permissão de localização. Quando encontrar, confira a rua e preencha o número para ajustar o ponto exato.</div>
+              <button class="btn btn-ghost" id="btnAbrirLocalizacaoNovaAba" type="button" style="width:100%;margin-top:8px;display:none">Abrir em nova aba para permitir localização</button>
+              <div id="localizacaoStatus" class="note" style="margin-top:8px">Ao tocar no botão, o navegador deve abrir a permissão de localização. Autorize para preencher a coleta automaticamente.</div>
             </div>
 
             <div class="row">
@@ -494,7 +522,7 @@
               <div id="paradasWrap"></div>
             </div>
 
-            <div class="row">
+            <div class="row payment-row">
               <div class="field">
                 <label for="tipo">Tipo de pedido</label>
                 <select class="select" id="tipo">
@@ -845,7 +873,10 @@
       mOrigem  = L.marker(natal, { icon: mk("Coleta", "#255BFF"), draggable:false }).addTo(map);
       mDestino = L.marker(natal, { icon: mk("Entrega", "#003399"), draggable:false }).addTo(map);
       mMoto    = L.marker(natal, { icon: mk("Motoboy", "#12B981") }).addTo(map);
-      mMoto.setOpacity(0); // não mostra motoboy antes da atribuição
+      // Não mostra marcadores enquanto não existe pedido ou endereço confirmado.
+      mOrigem.setOpacity(0);
+      mDestino.setOpacity(0);
+      mMoto.setOpacity(0);
       // O mapa é para acompanhamento do entregador. O ponto exato é definido pelos campos CEP/Rua + Número.
       // Não exige que o cliente arraste marcador no mapa.
 
@@ -857,6 +888,8 @@
     function setRoute(orig, dest, stops, rotaPontos){
       stops = Array.isArray(stops) ? stops : [];
       rotaPontos = Array.isArray(rotaPontos) ? rotaPontos : [];
+      mOrigem.setOpacity(1);
+      mDestino.setOpacity(1);
       mOrigem.setLatLng(orig);
       mDestino.setLatLng(dest);
       clearStopMarkers();
@@ -883,6 +916,15 @@
     }
     function hideRouteAfterDelivered(){
       try{ routeLine.setStyle({opacity:0}); mMoto.setOpacity(0); clearStopMarkers(); }catch(e){}
+    }
+    function hideMapPedido(){
+      try{
+        routeLine.setStyle({opacity:0});
+        mOrigem.setOpacity(0);
+        mDestino.setOpacity(0);
+        mMoto.setOpacity(0);
+        clearStopMarkers();
+      }catch(e){}
     }
     function showRouteMarkers(hasMotoboy){
       try{
@@ -926,6 +968,7 @@
       const txt = $("badgeTxt");
 
       if(!state.pedido){
+        hideMapPedido();
         dot.style.background = "var(--warn)";
         dot.style.boxShadow = "0 0 0 6px rgba(245,158,11,.14)";
         txt.textContent = "Sem pedido ativo";
@@ -1020,8 +1063,8 @@
       const saldo = await safeJSON(API.saldo);
       const ativo = await safeJSON(API.pedidoAtivo);
 
-      const ok = !!(me && saldo && ativo);
-      setOnline(ok);
+      // Pedido avulso pode receber 401 em dados de cliente/saldo. Isso não significa offline.
+      setOnline(navigator.onLine !== false);
 
       if(me?.ok){
         state.cliente = me.cliente;
@@ -1071,11 +1114,17 @@
       const stops = Array.isArray(data.paradas) ? data.paradas : [];
 
       if(delivered){ hideRouteAfterDelivered(); return; }
-      if(orig && dest) setRoute(orig, dest, stops, data.rota_pontos || []);
+      if(orig && dest){
+        setRoute(orig, dest, stops, data.rota_pontos || []);
+      }
       if(moto){
         setMoto(moto);
-        showRouteMarkers(true);
-        if($('sheetSub')) $('sheetSub').textContent = 'Entregador: ' + (data.motoboy?.nome || '') + ' — percurso atualizado no mapa.';
+        mMoto.setOpacity(1);
+        if(orig && dest){ showRouteMarkers(true); }
+        else { routeLine.setStyle({opacity:0}); }
+        try{ map.invalidateSize(); }catch(e){}
+        if(!orig || !dest){ map.setView(moto, 16); }
+        if($('sheetSub')) $('sheetSub').textContent = 'Entregador: ' + (data.motoboy?.nome || '') + ' — localização atualizada no mapa.';
       } else {
         showRouteMarkers(false);
       }
@@ -1205,8 +1254,8 @@
       if($(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino')) $(prefix === 'origem' ? 'cidadeOrigem' : 'cidadeDestino').value = item.cidade || '';
       if(item.lat != null && item.lng != null){
         setHiddenCoord(prefix, Number(item.lat), Number(item.lng));
-        if(prefix === 'origem') mOrigem.setLatLng([Number(item.lat), Number(item.lng)]);
-        if(prefix === 'destino') mDestino.setLatLng([Number(item.lat), Number(item.lng)]);
+        if(prefix === 'origem'){ mOrigem.setOpacity(1); mOrigem.setLatLng([Number(item.lat), Number(item.lng)]); }
+        if(prefix === 'destino'){ mDestino.setOpacity(1); mDestino.setLatLng([Number(item.lat), Number(item.lng)]); }
       }
       atualizarCotacao();
     }
@@ -1357,9 +1406,11 @@
         motoboy_nome: data.motoboy?.nome || ''
       });
       saveLastPedidoLocal(state.pedido);
+      setOnline(true);
       setTab('pedido');
       setBadge();
       renderTimeline();
+      $('pedidoSucessoBox').innerHTML = `<div class="success-box">Pedido recuperado com sucesso.<br><strong>Número:</strong> #${codigo}<br>O mapa será atualizado automaticamente quando houver entregador atribuído e localização ativa.</div>`;
       await applyTrackingFromAPI(codigo);
       startPolling();
       alert('Pedido recuperado com sucesso.');
@@ -1375,6 +1426,8 @@
       if($("pagamento")) $("pagamento").addEventListener("change", updatePagamentoUI);
       updatePagamentoUI();
       if($("btnCopiarPixPedido")) $("btnCopiarPixPedido").addEventListener("click", ()=>navigator.clipboard.writeText($("pixChavePedido").textContent.trim()).then(()=>alert("Chave Pix copiada com sucesso.")));
+      if($("btnRecuperarPedidoManual")) $("btnRecuperarPedidoManual").addEventListener("click", ()=>recuperarPedidoPorCodigo($("codigoRecuperarPedido")?.value || ""));
+      if($("codigoRecuperarPedido")) $("codigoRecuperarPedido").addEventListener("keydown", (ev)=>{ if(ev.key === "Enter"){ ev.preventDefault(); recuperarPedidoPorCodigo($("codigoRecuperarPedido")?.value || ""); } });
       ["origem","destino","numeroOrigem","numeroDestino","bairroOrigem","bairroDestino","cidadeOrigem","cidadeDestino"].forEach(id=>$(id)?.addEventListener('change', atualizarCotacao));
       if($("btnSalvarEndereco")) $("btnSalvarEndereco").addEventListener("click", salvarEnderecoColeta);
       if($("enderecoSalvo")) $("enderecoSalvo").addEventListener("change", ()=>{ const opt=$("enderecoSalvo").selectedOptions[0]; if(opt && opt.dataset.json){ try{ applyEnderecoSalvo(JSON.parse(opt.dataset.json)); }catch(e){} } });
@@ -1383,26 +1436,111 @@
       if(ultimo && ultimo.id && !state.pedido){
         $('pedidoSucessoBox').innerHTML = `<div class="warn-box">Último pedido deste aparelho: <strong>#${ultimo.id}</strong>. <button class="btn btn-ghost" style="height:36px;margin-left:8px;display:inline-flex" type="button" onclick=\"recuperarPedidoPorCodigo(${ultimo.id})\">Recuperar rastreio</button></div>`;
       }
-      $("btnUsarLocal").addEventListener("click", async ()=>{
-        if(!navigator.geolocation){ alert("Geolocalização não suportada neste navegador."); return; }
-        alert("O navegador vai pedir sua localização. Autorize para preencher a coleta automaticamente.");
-        navigator.geolocation.getCurrentPosition(async (pos)=>{
-          const lat = pos.coords.latitude, lng = pos.coords.longitude;
-          const r = await safeJSON(API.reverseEndereco + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
-          if(!r?.ok || !r.endereco || !(r.endereco.endereco || r.endereco.display)){
-            alert("Não consegui encontrar rua e número com segurança. Preencha o endereço manualmente.");
-            return;
+      function setLocalizacaoStatus(msg, tipo){
+        const box = $('localizacaoStatus');
+        if(!box) return;
+        box.innerHTML = msg;
+        box.style.borderColor = tipo === 'erro' ? '#fecaca' : tipo === 'ok' ? '#b7ebc6' : '#d6e2ff';
+        box.style.background = tipo === 'erro' ? '#fff1f0' : tipo === 'ok' ? '#f0fff4' : '#f7fbff';
+        box.style.color = tipo === 'erro' ? '#991b1b' : tipo === 'ok' ? '#064e3b' : '#003399';
+      }
+
+      function mostrarBotaoNovaAbaSeIframe(){
+        try{
+          const btn = $('btnAbrirLocalizacaoNovaAba');
+          if(!btn) return;
+          const emIframe = window.self !== window.top;
+          btn.style.display = emIframe ? 'flex' : 'none';
+          btn.onclick = ()=> window.open(window.location.href, '_blank', 'noopener,noreferrer');
+          if(emIframe){
+            setLocalizacaoStatus('Esta tela está aberta dentro de outra página. Alguns navegadores bloqueiam a localização dentro desse modo. Se a permissão não aparecer, abra em nova aba.', 'aviso');
           }
-          fillAddress('origem', r.endereco);
-          mOrigem.setLatLng([lat,lng]); map.setView([lat,lng], 17);
-          if(!r.endereco.numero){
-            alert("Localização encontrada, mas o número não veio automaticamente. Preencha o número para ajustar o ponto exato.");
-            $('numeroOrigem')?.focus();
-          }else{
-            alert("Localização da coleta preenchida com sucesso.");
+        }catch(e){}
+      }
+      mostrarBotaoNovaAbaSeIframe();
+
+      async function pedirLocalizacaoColeta(){
+        if(!navigator.geolocation){
+          setLocalizacaoStatus('Este navegador não permite geolocalização. Preencha a coleta manualmente.', 'erro');
+          alert('Este navegador não permite geolocalização.');
+          return;
+        }
+        if(!window.isSecureContext){
+          setLocalizacaoStatus('A localização só funciona em conexão segura HTTPS. Abra o sistema pelo link https do Render.', 'erro');
+          alert('A localização só funciona em conexão segura HTTPS.');
+          return;
+        }
+
+        const btn = $('btnUsarLocal');
+        const oldTxt = btn ? btn.textContent : '';
+        if(btn){ btn.disabled = true; btn.textContent = 'Pedindo permissão...'; }
+        setLocalizacaoStatus('Aguardando autorização do navegador. Quando aparecer a pergunta de localização, clique em Permitir.', 'aviso');
+
+        try{
+          if(navigator.permissions && navigator.permissions.query){
+            try{
+              const perm = await navigator.permissions.query({name:'geolocation'});
+              if(perm.state === 'denied'){
+                setLocalizacaoStatus('A localização está bloqueada para este site. No Chrome, clique no cadeado ao lado do endereço, entre em Permissões e libere Localização. Depois recarregue a página.', 'erro');
+                alert('A localização está bloqueada para este site. Libere a permissão de localização no navegador e recarregue a página.');
+                if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
+                return;
+              }
+            }catch(e){}
           }
-        }, ()=>{ alert("Não foi possível obter sua localização. Verifique se a permissão de localização está ativada."); }, { enableHighAccuracy:true, timeout:12000 });
-      });
+
+          navigator.geolocation.getCurrentPosition(async (pos)=>{
+            try{
+              const lat = pos.coords.latitude;
+              const lng = pos.coords.longitude;
+              setLocalizacaoStatus('Localização autorizada. Buscando rua, bairro e cidade...', 'aviso');
+              const r = await safeJSON(API.reverseEndereco + '?lat=' + encodeURIComponent(lat) + '&lng=' + encodeURIComponent(lng));
+              if(!r?.ok || !r.endereco || !(r.endereco.endereco || r.endereco.display)){
+                setLocalizacaoStatus('Localização encontrada, mas não foi possível converter em endereço com segurança. Preencha a coleta manualmente.', 'erro');
+                alert('Localização encontrada, mas não consegui encontrar o endereço com segurança. Preencha manualmente.');
+                return;
+              }
+              fillAddress('origem', r.endereco);
+              if(window.mOrigem && window.map){
+                mOrigem.setLatLng([lat,lng]);
+                map.setView([lat,lng], 17);
+              }
+              if(!r.endereco.numero){
+                setLocalizacaoStatus('Localização preenchida. Confira a rua e informe o número para o sistema ajustar o ponto exato.', 'ok');
+                alert('Localização preenchida. Informe o número para ajustar o ponto exato.');
+                $('numeroOrigem')?.focus();
+              }else{
+                setLocalizacaoStatus('Localização da coleta preenchida com sucesso.', 'ok');
+                alert('Localização da coleta preenchida com sucesso.');
+              }
+              atualizarCotacao();
+            }catch(e){
+              setLocalizacaoStatus('A localização foi obtida, mas houve erro ao preencher o endereço. Preencha manualmente.', 'erro');
+              alert('A localização foi obtida, mas houve erro ao preencher o endereço.');
+            }finally{
+              if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
+            }
+          }, (err)=>{
+            let msg = 'Não foi possível obter sua localização.';
+            if(err && err.code === 1){
+              msg = 'A permissão de localização foi negada ou bloqueada. Clique no cadeado do navegador, libere Localização para este site e recarregue a página.';
+            }else if(err && err.code === 2){
+              msg = 'O aparelho não conseguiu identificar sua posição agora. Ative o GPS/localização e tente novamente.';
+            }else if(err && err.code === 3){
+              msg = 'O tempo para obter a localização expirou. Ative o GPS e tente novamente em local aberto.';
+            }
+            setLocalizacaoStatus(msg, 'erro');
+            alert(msg);
+            if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
+          }, { enableHighAccuracy:true, timeout:25000, maximumAge:0 });
+        }catch(e){
+          setLocalizacaoStatus('Não foi possível abrir a solicitação de localização. Verifique as permissões do navegador.', 'erro');
+          alert('Não foi possível abrir a solicitação de localização. Verifique as permissões do navegador.');
+          if(btn){ btn.disabled = false; btn.textContent = oldTxt; }
+        }
+      }
+
+      if($('btnUsarLocal')) $('btnUsarLocal').addEventListener('click', pedirLocalizacaoColeta);
 
       $("btnCriarPedido").addEventListener("click", async ()=>{
         const origemRua = $("origem").value.trim();
@@ -1466,11 +1604,13 @@
 
     function centralizarMapaPedido(){
       try{
+        map.invalidateSize();
         const pts=[];
-        if(mOrigem) pts.push(mOrigem.getLatLng());
-        if(mDestino) pts.push(mDestino.getLatLng());
+        if(mOrigem && mOrigem.options.opacity !== 0) pts.push(mOrigem.getLatLng());
+        if(mDestino && mDestino.options.opacity !== 0) pts.push(mDestino.getLatLng());
         if(mMoto && mMoto.options.opacity !== 0) pts.push(mMoto.getLatLng());
-        if(pts.length){ map.fitBounds(L.latLngBounds(pts).pad(0.25), {animate:true, duration:0.6}); }
+        if(pts.length === 1){ map.setView(pts[0], 16); }
+        else if(pts.length){ map.fitBounds(L.latLngBounds(pts).pad(0.25), {animate:true, duration:0.6}); }
       }catch(e){}
     }
 
@@ -1579,6 +1719,9 @@
     wireRastreio();
     wireCredito();
     loadInitial();
+    window.addEventListener('online', ()=>setOnline(true));
+    window.addEventListener('offline', ()=>setOnline(false));
+    setTimeout(()=>{ try{ map.invalidateSize(); }catch(e){} }, 350);
     if($("histData")){ $("histData").value = new Date().toISOString().slice(0,10); }
 
     $("btnAbrirRastreio").addEventListener("click", ()=>centralizarMapaPedido());
