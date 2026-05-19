@@ -902,10 +902,18 @@
      * STATE
      ***********************/
     const state = {
-      cliente: { nome:"Cliente" },
-      saldo: 0,
+      cliente: {
+        id: {{ cli.id if cli else 'null' }},
+        nome: {{ (cli.nome if cli else 'Cliente')|tojson }},
+        telefone: {{ (cli.telefone if cli else '')|tojson }},
+        username: {{ (cli.username if cli else '')|tojson }},
+        email: {{ (cli.email if cli else '')|tojson }}
+      },
+      saldo: Number({{ (saldo_cliente if saldo_cliente is defined else (cli.saldo_atual if cli else 0)) or 0 }}),
       pedido: null, // {id, origemTxt, destinoTxt, valor, status, eta_min, motoboyNome}
-      lastTracking: null
+      lastTracking: null,
+      ultimaCotacao: null,
+      clienteLogado: {{ 'true' if cliente_logado else 'false' }}
     };
 
     /***********************
@@ -1043,9 +1051,11 @@
     function setSaldo(n){
       state.saldo = Number(n||0);
       $("saldoVal").textContent = moneyBR(state.saldo);
-      $("saldoHint").textContent = state.saldo > 0
-        ? "Use seu crédito para pagar pedidos com mais rapidez."
-        : "Saldo zerado. Faça uma recarga para pedir com crédito.";
+      $("saldoHint").textContent = state.saldo < 0
+        ? "Saldo negativo. As próximas recargas abatem esse valor."
+        : (state.saldo > 0
+          ? "Use seu crédito para pagar pedidos com mais rapidez."
+          : "Saldo zerado. Para pedir entrega, escolha Pix ou Dinheiro.");
     }
 
     function setEstimativa(valor, eta){
@@ -1327,11 +1337,18 @@
       const id = pedido.id || res.entrega_id || res.codigo;
       const pix = (res.pix_chave || $('pixChavePedido')?.textContent || '84981110706');
       const comprovante = API.comprovantePublico(id);
+      const creditoUsado = Number(res.credito_usado || pedido.credito_usado || 0);
+      const saldoAtual = (res.saldo_atual !== undefined && res.saldo_atual !== null) ? Number(res.saldo_atual) : null;
+      const blocoCredito = creditoUsado > 0
+        ? `<strong>Crédito consumido:</strong> ${moneyBR(creditoUsado)}<br>${saldoAtual !== null ? `<strong>Saldo após pedido:</strong> ${moneyBR(saldoAtual)}<br>` : ''}`
+        : '';
+      if(saldoAtual !== null) setSaldo(saldoAtual);
       $('pedidoSucessoBox').innerHTML = `
         <div class="success-box">
           Pedido realizado com sucesso.<br>
           <strong>Guarde este número para consultar o andamento:</strong> <span style="font-size:18px">#${id}</span><br>
           Valor: <strong>${moneyBR(pedido.valor || res.preco || 0)}</strong><br>
+          ${blocoCredito}
           <strong>Status:</strong> Procurando entregador / aguardando atribuição.<br>
           <strong>Previsão:</strong> será calculada automaticamente quando o entregador for atribuído e estiver com localização ativa.<br>
           ${$('pagamento').value === 'pix' ? `<br>Pix: <span class="copykey">${pix}</span> <button class="btn btn-ghost" style="height:34px;padding:0 10px;display:inline-flex" type="button" onclick="copiarTextoSeguro('${pix}', 'Chave Pix copiada com sucesso.')">Copiar Pix</button><br><span style="color:#9a3412;font-weight:900">O entregador será enviado mediante o envio do comprovante de pagamento.</span>` : ''}
@@ -1583,11 +1600,28 @@
         com_retorno: !!$('comRetorno')?.checked
       };
       const r=await safeJSON(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
-      if(r?.ok){ setEstimativa(r.preco, null); }
+      if(r?.ok){
+        state.ultimaCotacao = r;
+        if(typeof r.cliente_saldo_atual !== 'undefined') setSaldo(r.cliente_saldo_atual);
+        setEstimativa(r.preco, null);
+        const pg = $('pagamento');
+        if(pg && pg.value === 'credito' && r.pode_usar_credito === false && r.preco !== null){
+          $('pedidoSucessoBox').innerHTML = `<div class="warn-box">${r.msg || 'Saldo insuficiente para usar crédito. Escolha Pix ou Dinheiro.'}</div>`;
+        }
+      }
     }
 
       if($('comRetorno')){
         $('comRetorno').addEventListener('change', ()=>{ atualizarCotacao(); atualizarResumoRetornoBaixo(); });
+      }
+
+      if($('pagamento')){
+        $('pagamento').addEventListener('change', ()=>{
+          atualizarCotacao();
+          if($('pagamento').value === 'credito' && state.ultimaCotacao?.pode_usar_credito === false){
+            $('pedidoSucessoBox').innerHTML = `<div class="warn-box">${state.ultimaCotacao.msg || 'Saldo insuficiente para usar crédito. Escolha Pix ou Dinheiro.'}</div>`;
+          }
+        });
       }
 
 
@@ -1717,6 +1751,26 @@
           alert('Informe se o dinheiro será recebido na coleta ou na entrega.');
           return;
         }
+
+        if(pagamento === 'credito'){
+          await atualizarCotacao();
+          const cot = state.ultimaCotacao || {};
+          const precoCotado = Number(cot.preco || 0);
+          const saldoAtual = Number(state.saldo || 0);
+          if(!state.clienteLogado){
+            alert('Para usar crédito, entre como cliente cadastrado.');
+            return;
+          }
+          if(!precoCotado || cot.valor_a_informar){
+            alert('Para usar crédito, o valor da entrega precisa estar definido. Escolha Pix ou Dinheiro.');
+            return;
+          }
+          if(cot.pode_usar_credito === false || saldoAtual < precoCotado){
+            alert(cot.msg || `Saldo insuficiente para usar crédito. Seu saldo é ${moneyBR(saldoAtual)} e a entrega custa ${moneyBR(precoCotado)}. Escolha Pix ou Dinheiro.`);
+            return;
+          }
+        }
+
         const payload = {
           origem_txt: origemTxt,
           destino_txt: destinoTxt,
@@ -1816,16 +1870,39 @@
     function wireCredito(){
       const WPP_COOPEX = "5584981110706";
       const PIX_CHAVE = "{{ pix_chave or '84981110706' }}";
+      const CLIENTE_LOGADO = {{ 'true' if cli else 'false' }};
+      const LOGIN_CLIENTE_URL = "{{ url_for('cliente_login') }}";
+      const NOVO_CADASTRO_URL = "{{ url_for('login', signup=1) }}";
 
-      $("metodoRecarga").addEventListener("change", ()=>{
-        $("metodoTxt").textContent = "Pix";
-      });
+      if($("metodoRecarga")){
+        $("metodoRecarga").addEventListener("change", ()=>{
+          $("metodoTxt").textContent = "Pix";
+        });
+      }
 
       document.querySelectorAll(".recargaPreset").forEach(b=>{
         b.addEventListener("click", ()=> $("valorRecarga").value = (b.dataset.v || "").replace(".", ","));
       });
 
       $("btnGerarRecarga").addEventListener("click", async ()=>{
+        if(!CLIENTE_LOGADO || !state?.cliente?.id){
+          $("boxCobranca").innerHTML = `
+            <strong>Entre na conta para comprar crédito.</strong><br>
+            Para o crédito ficar no nome correto, o cliente precisa entrar com usuário e senha antes de gerar a recarga.<br><br>
+
+            <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
+              <a class="btn btn-primary" style="height:42px" href="${LOGIN_CLIENTE_URL}">Entrar</a>
+              <a class="btn btn-ghost" style="height:42px" href="${NOVO_CADASTRO_URL}">Criar cadastro</a>
+            </div>
+
+            <div style="margin-top:10px;font-size:12px;color:#9a3412;font-weight:900">
+              Sem login, o sistema não consegue ligar o crédito automaticamente ao cliente.
+            </div>
+          `;
+          setTab("credito");
+          return;
+        }
+
         const valor = parseBRL($("valorRecarga").value);
 
         if(!valor || valor <= 0){
@@ -1833,17 +1910,23 @@
           return;
         }
 
+        const clienteId = state?.cliente?.id || "";
         const clienteNome = state?.cliente?.nome || "Cliente";
+        const clienteTel = state?.cliente?.telefone || "";
         const valorTxt = moneyBR(valor);
-        const referencia = "RECARGA-" + Date.now().toString().slice(-8);
+        const referencia = "RECARGA-C" + clienteId + "-" + Date.now().toString().slice(-8);
+        const linkInterno = window.location.origin + "/creditos/novo?cliente_id=" + encodeURIComponent(clienteId) + "&referencia=" + encodeURIComponent(referencia);
 
         const msg =
           "Olá, quero comprar crédito na COOPEX e estou enviando o comprovante de pagamento.%0A%0A" +
           "Cliente: " + encodeURIComponent(clienteNome) + "%0A" +
+          "ID do cliente: " + encodeURIComponent(clienteId) + "%0A" +
+          "Telefone: " + encodeURIComponent(clienteTel || "Não informado") + "%0A" +
           "Valor solicitado: " + encodeURIComponent(valorTxt) + "%0A" +
           "Forma de pagamento: Pix%0A" +
           "Chave Pix: " + encodeURIComponent(PIX_CHAVE) + "%0A" +
-          "Referência: " + encodeURIComponent(referencia) + "%0A%0A" +
+          "Referência: " + encodeURIComponent(referencia) + "%0A" +
+          "Link interno para lançar: " + encodeURIComponent(linkInterno) + "%0A%0A" +
           "Solicito o lançamento do crédito mediante conferência do comprovante de pagamento anexado nesta conversa.";
 
         const link = "https://wa.me/" + WPP_COOPEX + "?text=" + msg;
@@ -1852,30 +1935,53 @@
 
         $("boxCobranca").innerHTML = `
           <strong>Pedido de crédito pronto para envio.</strong><br>
-          Faça o Pix e envie pelo WhatsApp junto com o comprovante de pagamento. O crédito será colocado no sistema somente após a conferência do comprovante pelo administrador.<br><br>
+          Faça o Pix e envie pelo WhatsApp junto com o comprovante de pagamento.
+          O crédito será colocado no sistema somente após a conferência do administrador.<br><br>
+
+          <strong>Cliente:</strong> ${clienteNome}<br>
+          <strong>ID do cliente:</strong> ${clienteId}<br>
           <strong>Chave Pix:</strong> <span id="pixChaveRecarga" style="font-family:ui-monospace,monospace;">${PIX_CHAVE}</span><br>
           <strong>Valor:</strong> ${valorTxt}<br>
           <strong>Referência:</strong> <span style="font-family:ui-monospace,monospace;">${referencia}</span><br>
+          <strong>Link interno para lançar:</strong><br>
+          <span style="font-family:ui-monospace,monospace;word-break:break-all;">${linkInterno}</span><br>
+
           <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:10px">
             <button class="btn btn-ghost" style="height:42px" id="btnCopiarPixRecarga" type="button">Copiar chave Pix</button>
+            <button class="btn btn-ghost" style="height:42px" id="btnCopiarLinkCredito" type="button">Copiar link interno</button>
             <a class="btn btn-primary" style="height:42px" target="_blank" rel="noopener" href="${link}">Enviar pedido com comprovante</a>
           </div>
+
           <div style="margin-top:10px;font-size:12px;color:#9a3412;font-weight:900">
             O crédito só será colocado no sistema mediante envio do comprovante de pagamento e conferência do administrador.
           </div>
         `;
 
-        const btnCopy = $("btnCopiarPixRecarga");
-        if(btnCopy){
-          btnCopy.addEventListener("click", async ()=>{
-            try{
-              await navigator.clipboard.writeText(PIX_CHAVE);
-              alert("Chave Pix copiada com sucesso.");
-            }catch(_){
-              alert("Chave Pix: " + PIX_CHAVE);
-            }
-          });
-        }
+        setTimeout(()=>{
+          const btnPix = $("btnCopiarPixRecarga");
+          if(btnPix){
+            btnPix.addEventListener("click", async ()=>{
+              try{
+                await navigator.clipboard.writeText(PIX_CHAVE);
+                btnPix.textContent = "Chave copiada!";
+              }catch(e){
+                alert("Chave Pix: " + PIX_CHAVE);
+              }
+            });
+          }
+
+          const btnLink = $("btnCopiarLinkCredito");
+          if(btnLink){
+            btnLink.addEventListener("click", async ()=>{
+              try{
+                await navigator.clipboard.writeText(linkInterno);
+                btnLink.textContent = "Link copiado!";
+              }catch(e){
+                alert(linkInterno);
+              }
+            });
+          }
+        }, 50);
 
         window.open(link, "_blank", "noopener");
       });
