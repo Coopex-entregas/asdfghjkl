@@ -1540,14 +1540,17 @@ def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
     return c
 
 
-def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True) -> Decimal:
+def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = False) -> Decimal:
     """
     Consome crédito na entrega.
 
-    - Se exigir_saldo_total=True (default):
+    - Padrão COOPEX: permite saldo negativo.
+      Se a entrega for maior que o saldo, o sistema debita o valor total da entrega
+      e o saldo do cliente fica negativo.
+
+    - Se exigir_saldo_total=True:
         * Só consome se o saldo do cliente cobrir TODO o valor que falta pagar.
-        * Se o saldo for menor que o valor da entrega, NÃO consome nada
-          e retorna Decimal("0.00") -> a rota deve pedir outra forma de pagamento.
+        * Mantido apenas para compatibilidade em casos especiais.
 
     - Atualiza:
         * saldo_atual do cliente (via movimentos + recálculo)
@@ -1589,7 +1592,13 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
     if exigir_saldo_total and saldo < faltante:
         return Decimal("0.00")
 
-    consumir_val = min(saldo, faltante)
+    # COOPEX: quando exigir_saldo_total=False, consome o valor total faltante,
+    # mesmo que o cliente não tenha saldo suficiente. Isso deixa o saldo negativo.
+    if exigir_saldo_total:
+        consumir_val = min(saldo, faltante)
+    else:
+        consumir_val = faltante
+
     if consumir_val <= 0:
         return Decimal("0.00")
 
@@ -1600,10 +1609,16 @@ def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = True
       cliente_id=cli.id,
       tipo="debito",
       valor=float(consumir_val),
-      referencia=f"Entrega #{e.id}",
-      entrega_id=e.id,   # 👈 AQUI SIM: vínculo da movimentação com a entrega
+      referencia=f"Entrega #{e.id} - consumo automático de crédito",
+      entrega_id=e.id,   # vínculo da movimentação com a entrega
     )
     db.session.add(mov)
+    db.session.flush()
+
+    # Guarda também o ID do movimento na própria entrega.
+    # Assim o extrato de crédito e a entrega ficam ligados dos dois lados.
+    e.credito_mov_id = mov.id
+    db.session.add(e)
     db.session.commit()
 
     # Atualiza saldo do cliente DEPOIS do débito
@@ -2303,67 +2318,156 @@ def _norm_phone(s: str) -> str:
     return digits
 
 
+def _is_json_request():
+    try:
+        return (
+            request.headers.get('X-Requested-With') == 'fetch'
+            or request.args.get('format') == 'json'
+            or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json')
+        )
+    except Exception:
+        return False
+
+
+def _find_cliente_by_telefone(telefone: str):
+    tel = _norm_phone(telefone or '')
+    if not tel:
+        return None
+
+    cli = Cliente.query.filter(Cliente.telefone == tel).first()
+    if cli:
+        return cli
+
+    # fallback para cadastros antigos com telefone salvo com máscara
+    for c in Cliente.query.filter(Cliente.telefone.isnot(None)).all():
+        if _norm_phone(c.telefone or '') == tel:
+            return c
+    return None
+
+
+def _find_cliente_by_email(email: str):
+    email = (email or '').strip().lower()
+    if not email:
+        return None
+    return Cliente.query.filter(func.lower(Cliente.email) == email).first()
+
+
+def _buscar_cliente_existente_para_cadastro(nome: str, telefone: str = '', email: str = ''):
+    """
+    Evita duplicar cliente:
+    1) tenta telefone;
+    2) tenta e-mail;
+    3) tenta nome normalizado, inclusive cliente cadastrado manualmente pelo admin.
+    """
+    cli = _find_cliente_by_telefone(telefone)
+    if cli:
+        return cli
+
+    cli = _find_cliente_by_email(email)
+    if cli:
+        return cli
+
+    if nome:
+        cli = _find_cliente_by_nome(nome)
+        if cli:
+            return cli
+
+    return None
+
+
+def _linkar_entregas_cliente_por_nome(cliente):
+    """
+    Liga entregas antigas ao cliente quando o nome bate.
+    Isso ajuda quando o cliente foi cadastrado pelo admin antes de criar login.
+    """
+    if not cliente or not (cliente.nome or '').strip():
+        return 0
+
+    alvo_full = normalize_letters_key(cliente.nome or '')
+    alvo_first = normalize_first_token(cliente.nome or '')
+    alteradas = 0
+
+    try:
+        pendentes = Entrega.query.filter(
+            (Entrega.cliente_id == None) | (Entrega.cliente_id.is_(None))
+        ).limit(5000).all()
+
+        for ent in pendentes:
+            nome_ent = ent.cliente or ''
+            if normalize_letters_key(nome_ent) == alvo_full or normalize_first_token(nome_ent) == alvo_first:
+                ent.cliente_id = cliente.id
+                alteradas += 1
+
+        if alteradas:
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        alteradas = 0
+
+    return alteradas
+
+
 @app.route('/cliente/primeiro_acesso', methods=['GET', 'POST'])
 def cliente_primeiro_acesso():
     # GET -> volta para tela de login já abrindo o painel de cadastro
     if request.method == 'GET':
         return redirect(url_for('login', signup=1))
 
-    # POST (form do card de primeiro acesso)
     nome = (request.form.get('nome') or '').strip()
-    username = (request.form.get('usuario') or '').strip()
+    username = (request.form.get('usuario') or request.form.get('username') or '').strip()
     email = (request.form.get('email') or '').strip().lower()
     telefone = _norm_phone(request.form.get('telefone') or '')
     senha = request.form.get('senha') or ''
     senha_conf = request.form.get('senha_conf') or ''
     next_url = request.form.get('next') or url_for('meu_credito')
 
-    # validações básicas
-    if not nome or not username or not email or not telefone or not senha:
-        flash('Preencha todos os campos obrigatórios.', 'error')
+    if not nome or not username or not telefone or not senha:
+        flash('Preencha nome, usuário, telefone e senha.', 'error')
         return redirect(url_for('login', signup=1))
 
     if senha != senha_conf:
         flash('As senhas não conferem.', 'error')
         return redirect(url_for('login', signup=1))
 
-    # usuário único
-    if Cliente.query.filter(func.lower(Cliente.username) == username.lower()).first():
+    # Se já existe cliente cadastrado pelo admin com mesmo nome/telefone/e-mail,
+    # o login será ligado ao mesmo cliente, sem duplicar.
+    cli = _buscar_cliente_existente_para_cadastro(nome, telefone, email)
+
+    usuario_existente = Cliente.query.filter(func.lower(Cliente.username) == username.lower()).first()
+    if usuario_existente and (not cli or usuario_existente.id != cli.id):
         flash('Nome de usuário já existe. Escolha outro.', 'error')
         return redirect(url_for('login', signup=1))
 
-    # e-mail único
-    if email and Cliente.query.filter(func.lower(Cliente.email) == email.lower()).first():
-        flash('Já existe um cadastro com este e-mail.', 'error')
+    email_existente = _find_cliente_by_email(email)
+    if email_existente and (not cli or email_existente.id != cli.id):
+        flash('Já existe outro cadastro com este e-mail.', 'error')
         return redirect(url_for('login', signup=1))
-
-    # tentar reaproveitar cliente existente pelo telefone ou nome
-    cli = None
-    if telefone:
-        cli = Cliente.query.filter(Cliente.telefone == telefone).first()
-    if not cli and nome:
-        cli = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
 
     if not cli:
         cli = Cliente(
             nome=nome,
             telefone=telefone,
-            email=email,
+            email=email or None,
             saldo_atual=0.0
         )
         db.session.add(cli)
         db.session.flush()
     else:
-        cli.nome = nome or cli.nome
+        # Mantém o mesmo cadastro já criado pelo admin.
+        if not cli.nome:
+            cli.nome = nome
         cli.telefone = telefone or cli.telefone
         cli.email = email or cli.email
 
     cli.username = username
     cli.set_senha(senha)
 
+    db.session.add(cli)
     db.session.commit()
 
-    # loga automaticamente
+    _linkar_entregas_cliente_por_nome(cli)
+    atualizar_saldo_credito_cliente(cli.id)
+
     session.clear()
     session['cliente_id'] = cli.id
     session['cliente_username'] = cli.username
@@ -2526,13 +2630,22 @@ def cliente_reset_senha(cliente_id):
 @app.route('/cliente/login', methods=['GET', 'POST'])
 def cliente_login():
     if request.method == 'POST':
-        username = (request.form.get('username') or '').strip()
+        username = (request.form.get('username') or request.form.get('usuario') or '').strip()
         senha = request.form.get('senha') or ''
         if not username or not senha:
-            flash('Informe usuário e senha.')
+            flash('Informe usuário/telefone/e-mail e senha.')
             return redirect(url_for('cliente_login'))
 
-        cli = Cliente.query.filter(func.lower(Cliente.username) == username.lower()).first()
+        ident = username.strip()
+        ident_lc = ident.lower()
+        tel = _norm_phone(ident)
+
+        cli = (
+            Cliente.query.filter(func.lower(Cliente.username) == ident_lc).first()
+            or Cliente.query.filter(func.lower(Cliente.email) == ident_lc).first()
+            or (_find_cliente_by_telefone(tel) if tel else None)
+        )
+
         if not cli or not cli.check_senha(senha):
             flash('Usuário ou senha inválidos.')
             return redirect(url_for('cliente_login'))
@@ -2541,12 +2654,16 @@ def cliente_login():
         session['cliente_username'] = cli.username
         session['cliente_nome'] = cli.nome
         session['is_cliente'] = True
+
+        _linkar_entregas_cliente_por_nome(cli)
+        atualizar_saldo_credito_cliente(cli.id)
+
         return redirect(url_for('meu_credito'))
 
     return render_or_string("cliente_login.html", """
     <h2>Login do Cliente</h2>
     <form method="post">
-      <div><label>Usuário</label><input name="username" required></div>
+      <div><label>Usuário, telefone ou e-mail</label><input name="username" required></div>
       <div><label>Senha</label><input type="password" name="senha" required></div>
       <button type="submit">Entrar</button>
     </form>
@@ -3556,10 +3673,19 @@ def api_cliente_cotar_entrega():
     valor_a_informar = bool(cot.get('valor_a_informar'))
 
     saldo = float(cli.saldo_atual or 0) if cli else 0.0
+    preco_float = float(preco or 0) if preco is not None else None
+    credito_cobre_total = bool(cli and preco_float is not None and saldo >= preco_float and preco_float > 0)
+
     meios = []
-    if cli and (preco is not None) and saldo > 0:
+    # No Meu Crédito, o cliente só pode escolher crédito se o saldo cobrir o valor total.
+    # Regra diferente do painel admin: no admin o crédito pode ficar negativo.
+    if credito_cobre_total:
         meios.append('CREDITO')
     meios.extend(['PIX', 'DINHEIRO'])
+
+    msg = 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
+    if cli and preco_float is not None and preco_float > 0 and saldo < preco_float:
+        msg = f'Saldo insuficiente para crédito. Seu saldo é R$ {saldo:.2f} e a entrega custa R$ {preco_float:.2f}. Escolha Pix ou Dinheiro.'
 
     return jsonify({
         'ok': True,
@@ -3571,11 +3697,12 @@ def api_cliente_cotar_entrega():
         'moeda': 'BRL',
         'cliente_logado': bool(cli),
         'cliente_saldo_atual': saldo,
-        'pode_usar_credito': 'CREDITO' in meios,
+        'pode_usar_credito': credito_cobre_total,
+        'credito_cobre_total': credito_cobre_total,
         'valor_credito_utilizavel': float(min(float(saldo or 0), float(preco or 0))) if preco is not None else 0.0,
         'valor_complemento': float(max(0, float(preco or 0) - float(saldo or 0))) if preco is not None else None,
         'meios_pagamento': meios,
-        'msg': 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
+        'msg': msg
     })
 
 
@@ -3620,8 +3747,10 @@ def api_cliente_solicitar_entrega():
     saldo = float(cli.saldo_atual or 0) if cli else 0.0
 
     if apenas_simular:
+        preco_float = float(preco or 0) if preco is not None else None
+        credito_cobre_total = bool(cli and preco_float is not None and saldo >= preco_float and preco_float > 0)
         meios = []
-        if cli and (preco is not None) and saldo > 0:
+        if credito_cobre_total:
             meios.append('CREDITO')
         meios.extend(['PIX', 'DINHEIRO'])
         return jsonify({
@@ -3634,10 +3763,12 @@ def api_cliente_solicitar_entrega():
             'per_km': cot.get('per_km'),
             'cliente_logado': bool(cli),
             'cliente_saldo_atual': saldo,
+            'pode_usar_credito': credito_cobre_total,
+            'credito_cobre_total': credito_cobre_total,
             'valor_credito_utilizavel': float(min(float(saldo or 0), float(preco or 0))) if preco is not None else 0.0,
             'valor_complemento': float(max(0, float(preco or 0) - float(saldo or 0))) if preco is not None else None,
             'meios_pagamento': meios,
-            'msg': 'Valor será confirmado pela supervisão.' if valor_a_informar else ''
+            'msg': ('Valor será confirmado pela supervisão.' if valor_a_informar else '') if credito_cobre_total or not cli or preco is None else f'Saldo insuficiente para crédito. Seu saldo é R$ {saldo:.2f} e a entrega custa R$ {float(preco or 0):.2f}. Escolha Pix ou Dinheiro.'
         })
 
     if meio_pagamento not in ('CREDITO', 'PIX', 'DINHEIRO'):
@@ -3653,21 +3784,19 @@ def api_cliente_solicitar_entrega():
             return jsonify({'ok': False, 'erro': 'Para usar crédito é necessário entrar como cliente cadastrado.'}), 400
         if preco is None:
             return jsonify({'ok': False, 'erro': 'Para usar crédito, o valor da entrega precisa estar definido.'}), 400
-        if saldo <= 0:
-            return jsonify({'ok': False, 'erro': 'Você não possui crédito disponível para usar nesta entrega.'}), 400
 
-        valor_credito_usar = float(min(float(saldo or 0), float(preco or 0)))
-        valor_complemento = float(max(0, float(preco or 0) - valor_credito_usar))
+        preco_float = float(preco or 0)
+        if saldo < preco_float:
+            return jsonify({
+                'ok': False,
+                'erro': f'Saldo insuficiente para usar crédito. Seu saldo é R$ {saldo:.2f} e a entrega custa R$ {preco_float:.2f}. Escolha Pix ou Dinheiro.'
+            }), 400
 
-        if valor_complemento <= 0:
-            meio_pagamento = 'CREDITO'
-            complemento_pagamento = ''
-        else:
-            if not complemento_pagamento:
-                complemento_pagamento = meio_pagamento if meio_pagamento in ('PIX', 'DINHEIRO') else ''
-            if complemento_pagamento not in ('PIX', 'DINHEIRO'):
-                return jsonify({'ok': False, 'erro': 'Crédito insuficiente. Escolha Pix ou Dinheiro para complementar.'}), 400
-            meio_pagamento = 'CREDITO_' + complemento_pagamento
+        # No Meu Crédito, só consome se o saldo cobrir todo o valor.
+        valor_credito_usar = preco_float
+        valor_complemento = 0.0
+        meio_pagamento = 'CREDITO'
+        complemento_pagamento = ''
 
     exige_dinheiro = (meio_pagamento == 'DINHEIRO') or (usar_credito and complemento_pagamento == 'DINHEIRO')
     if exige_dinheiro and recebe_dinheiro_em not in ('coleta', 'entrega'):
@@ -3749,7 +3878,7 @@ def api_cliente_solicitar_entrega():
 
         credito_consumido = Decimal('0.00')
         if usar_credito:
-            credito_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=False)
+            credito_consumido = consumir_credito_em_entrega(entrega_obj.id, exigir_saldo_total=True)
             if credito_consumido <= 0:
                 db.session.rollback()
                 return jsonify({'ok': False, 'erro': 'Falha ao consumir crédito. Escolha Pix ou Dinheiro.'}), 500
@@ -3779,6 +3908,7 @@ def api_cliente_solicitar_entrega():
         'status_pagamento': entrega_obj.status_pagamento,
         'valor_a_informar': valor_a_informar,
         'cliente_logado': bool(cli),
+        'saldo_atual': float((Cliente.query.get(cli.id).saldo_atual or 0.0) if cli else 0.0),
         'credito_usado': float(entrega_obj.credito_usado or 0),
         'valor_complemento': float(max(0, float(preco or 0) - float(entrega_obj.credito_usado or 0))) if preco is not None else 0.0,
         'msg': 'Pedido enviado para a supervisão.',
@@ -5488,9 +5618,17 @@ def clientes():
             flash('Informe o nome do cliente.')
             return redirect(url_for('clientes'))
 
-        existe = Cliente.query.filter(func.lower(Cliente.nome) == nome.lower()).first()
+        # Não duplica: se já existir pelo telefone ou pelo mesmo nome normalizado, atualiza o mesmo cadastro.
+        existe = _buscar_cliente_existente_para_cadastro(nome, telefone, '')
         if existe:
-            flash('Já existe um cliente com esse nome.')
+            existe.nome = existe.nome or nome
+            existe.telefone = telefone or existe.telefone
+            existe.bairro_origem = bairro_origem or existe.bairro_origem
+            existe.endereco = endereco or existe.endereco
+            db.session.add(existe)
+            db.session.commit()
+            _linkar_entregas_cliente_por_nome(existe)
+            flash('Cliente já existia. Atualizei o mesmo cadastro para não duplicar.')
             return redirect(url_for('clientes'))
 
         cl = Cliente(
@@ -5501,6 +5639,7 @@ def clientes():
         )
         db.session.add(cl)
         db.session.commit()
+        _linkar_entregas_cliente_por_nome(cl)
         flash('Cliente cadastrado!')
         return redirect(url_for('clientes'))
 
@@ -5535,6 +5674,11 @@ def clientes():
     hoje_local = datetime.now(BRAZIL_TZ).date()
     lista = []
     for cl in Cliente.query.order_by(Cliente.nome).all():
+        try:
+            _linkar_entregas_cliente_por_nome(cl)
+        except Exception:
+            pass
+
         k_full = normalize_letters_key(cl.nome or '')
         k_first = normalize_first_token(cl.nome or '')
 
@@ -5565,6 +5709,9 @@ def clientes():
             "telefone": cl.telefone,
             "bairro_origem": cl.bairro_origem,
             "endereco": getattr(cl, "endereco", None),
+            "saldo_atual": float(cl.saldo_atual or 0),
+            "tem_login": bool(cl.username and cl.senha_hash),
+            "username": cl.username or "",
             "total_pedidos": int(tot or 0),
             "ultimo_ymd": ultimo_ymd,
             "ultimo_br": ultimo_br,
@@ -5600,14 +5747,11 @@ def editar_cliente(id):
         flash('Informe o nome do cliente.')
         return redirect(url_for('clientes'))
 
-    existe = Cliente.query.filter(
-        func.lower(Cliente.nome) == nome.lower(),
-        Cliente.id != id
-    ).first()
-    if existe:
+    existe = _find_cliente_by_nome(nome)
+    if existe and existe.id != id:
         if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
-            return jsonify(ok=False, error='Já existe outro cliente com esse nome.'), 400
-        flash('Já existe outro cliente com esse nome.')
+            return jsonify(ok=False, error='Já existe outro cliente com esse nome. Use o cadastro existente para evitar duplicidade.'), 400
+        flash('Já existe outro cliente com esse nome. Use o cadastro existente para evitar duplicidade.')
         return redirect(url_for('clientes'))
 
     cl.nome = nome
@@ -5615,6 +5759,7 @@ def editar_cliente(id):
     cl.bairro_origem = bairro_origem
     cl.endereco = endereco or None
     db.session.commit()
+    _linkar_entregas_cliente_por_nome(cl)
 
     if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
         aggs = (
@@ -7598,8 +7743,18 @@ def api_pedidos_criar():
         preco = cot.get('preco')
         valor_final = float(preco or 0)
 
+        if pagamento_in == 'credito':
+            if preco is None:
+                return jsonify(ok=False, msg='Para usar crédito, o valor da entrega precisa estar definido.'), 400
+            saldo_atual = float(atualizar_saldo_credito_cliente(cli.id) or 0.0)
+            if saldo_atual < valor_final:
+                return jsonify(
+                    ok=False,
+                    msg=f'Saldo insuficiente para usar crédito. Seu saldo é R$ {saldo_atual:.2f} e a entrega custa R$ {valor_final:.2f}. Escolha Pix ou Dinheiro.'
+                ), 400
+
         pagamento = 'Crédito' if pagamento_in == 'credito' else 'Pix' if pagamento_in == 'pix' else 'Dinheiro'
-        status_pg = 'pago' if pagamento_in == 'credito' else 'pendente'
+        status_pg = 'pendente'
 
         origem_dict = {
             **origem,
@@ -7644,7 +7799,21 @@ def api_pedidos_criar():
             credito_usado=0.0,
         )
         db.session.add(entrega)
+        db.session.flush()
+
+        credito_consumido = Decimal('0.00')
+        if pagamento_in == 'credito':
+            credito_consumido = consumir_credito_em_entrega(entrega.id, exigir_saldo_total=True)
+            if credito_consumido <= 0:
+                db.session.rollback()
+                return jsonify(ok=False, msg='Saldo insuficiente para usar crédito. Escolha Pix ou Dinheiro.'), 400
+            entrega = Entrega.query.get(entrega.id)
+            entrega.status_pagamento = 'pago'
+            entrega.pagamento = 'Crédito'
+            db.session.add(entrega)
+
         db.session.commit()
+        saldo_pos = float((Cliente.query.get(cli.id).saldo_atual or 0.0) if cli else 0.0)
 
         try:
             emitir_atualizacao_entrega(entrega, 'criada')
@@ -7661,6 +7830,9 @@ def api_pedidos_criar():
             pix_chave=get_pix_chave() or '84981110706',
             retorno=bool(retorno),
             retorno_percentual=_buscar_percentual_retorno() if retorno else 0,
+            credito_usado=float(credito_consumido or 0),
+            saldo_atual=saldo_pos,
+            status_pagamento=entrega.status_pagamento,
             msg='Pedido realizado com sucesso. Aguarde a atribuição do entregador.'
         )
 
@@ -8203,30 +8375,62 @@ def creditos_novo():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
+    cliente_id_get = request.args.get('cliente_id', type=int)
+    cliente_nome_get = (request.args.get('cliente_nome') or '').strip()
+
+    cliente = Cliente.query.get(cliente_id_get) if cliente_id_get else None
+    if not cliente and cliente_nome_get:
+        cliente = _find_cliente_by_nome(cliente_nome_get)
+
     if request.method == 'POST':
         cliente_id = request.form.get('cliente_id', type=int)
+        cliente_nome = (request.form.get('cliente_nome') or '').strip()
         valor_bruto = request.form.get('valor', type=float)
         desconto_tipo = request.form.get('desconto_tipo', default='nenhum')
         desconto_valor = request.form.get('desconto_valor', type=float, default=0.0)
         motivo = request.form.get('motivo', default='')
+        referencia = (request.form.get('referencia') or '').strip()
         criado_por = session.get('user_nome', 'Supervisor')
 
+        cli = Cliente.query.get(cliente_id) if cliente_id else None
+        if not cli and cliente_nome:
+            cli = _find_cliente_by_nome(cliente_nome)
+
+        if not cli:
+            msg = 'Cliente não encontrado. Abra o crédito pela tela Clientes ou informe um ID válido.'
+            flash(msg, 'danger')
+            if _wants_json():
+                return jsonify(ok=False, message=msg), 400
+            return redirect(url_for('creditos_novo'))
+
         try:
-            registrar_credito(
-                cliente_id,
+            credito = registrar_credito(
+                cli.id,
                 valor_bruto,
                 desconto_tipo,
                 desconto_valor,
                 motivo,
                 criado_por
             )
-            msg = 'Crédito criado com sucesso.'
+
+            if referencia:
+                try:
+                    mov = CreditoMovimento.query.filter_by(credito_id=credito.id, tipo='credito').order_by(CreditoMovimento.id.desc()).first()
+                    if mov:
+                        mov.referencia = referencia
+                        db.session.add(mov)
+                        db.session.commit()
+                except Exception:
+                    db.session.rollback()
+
+            _linkar_entregas_cliente_por_nome(cli)
+            msg = f'Crédito criado com sucesso para {cli.nome}.'
             flash(msg, 'success')
 
             if _wants_json():
-                return jsonify(ok=True, message=msg, cliente_id=cliente_id)
+                return jsonify(ok=True, message=msg, cliente_id=cli.id)
 
-            return redirect(url_for('creditos', cliente_id=cliente_id))
+            return redirect(url_for('creditos', cliente_id=cli.id))
         except Exception as e:
             db.session.rollback()
             current_app.logger.exception('Erro ao criar crédito')
@@ -8236,7 +8440,13 @@ def creditos_novo():
             if _wants_json():
                 return jsonify(ok=False, message=msg), 500
 
-    return render_template('credito_form.html')
+    return render_template(
+        'credito_form.html',
+        credito=None,
+        cliente=cliente,
+        cliente_id=(cliente.id if cliente else cliente_id_get),
+        cliente_nome=cliente_nome_get
+    )
 
 
 @app.route('/creditos/<int:credito_id>/editar', methods=['GET', 'POST'])
@@ -9873,24 +10083,17 @@ def criar_bd():
                 .limit(5000)
                 .all()
             )
-            if pend:
-                nomes = {(e.cliente or '').strip().lower() for e in pend if (e.cliente or '').strip()}
-                if nomes:
-                    mapa = {
-                        c.nome.strip().lower(): c.id
-                        for c in Cliente.query.filter(
-                            func.lower(Cliente.nome).in_(list(nomes))
-                        ).all()
-                        if (c.nome or '').strip()
-                    }
-                    mudou = 0
-                    for e in pend:
-                        cid = mapa.get((e.cliente or '').strip().lower())
-                        if cid:
-                            e.cliente_id = cid
-                            mudou += 1
-                    if mudou:
-                        db.session.commit()
+            clientes_map = Cliente.query.all()
+            mudou = 0
+            for e in pend:
+                nome_ent = e.cliente or ''
+                for c in clientes_map:
+                    if normalize_letters_key(nome_ent) == normalize_letters_key(c.nome or ''):
+                        e.cliente_id = c.id
+                        mudou += 1
+                        break
+            if mudou:
+                db.session.commit()
         except Exception:
             db.session.rollback()
 
