@@ -9,6 +9,7 @@
       --royal:#0033cc; --royal-2:#2750ff;
       --bg:#f6f8ff; --card:#ffffff; --ink:#0a1b3f; --line:#e3e9ff;
       --r:14px; --shadow:0 8px 30px rgba(0,30,130,.08);
+      --danger:#b42318; --ok:#047857;
     }
     *{box-sizing:border-box}
     body{
@@ -17,11 +18,7 @@
       color:var(--ink);
       font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
     }
-    .wrap{
-      max-width:620px;
-      margin:30px auto;
-      padding:0 12px 24px;
-    }
+    .wrap{max-width:680px;margin:30px auto;padding:0 12px 24px}
     .card{
       background:var(--card);
       border:1px solid var(--line);
@@ -29,59 +26,32 @@
       box-shadow:var(--shadow);
       padding:18px 16px 16px;
     }
-    h2{margin:0 0 14px;font-size:1.1rem}
-    label{
-      display:block;
-      font-size:.86rem;
-      font-weight:700;
-      margin-bottom:4px;
-      color:#28409f;
-    }
+    h2{margin:0 0 14px;font-size:1.15rem;color:var(--royal)}
+    label{display:block;font-size:.86rem;font-weight:800;margin-bottom:4px;color:#28409f}
     input,select{
-      width:100%;
-      padding:9px 10px;
-      border-radius:12px;
-      border:1.5px solid #2f4de6;
-      font-size:.9rem;
-      font-weight:600;
+      width:100%;padding:10px 11px;border-radius:12px;border:1.5px solid #2f4de6;
+      font-size:.92rem;font-weight:650;background:#fff;
     }
-    input:focus,select:focus{
-      outline:none;
-      box-shadow:0 0 0 2px rgba(47,77,230,.2);
-    }
+    input:focus,select:focus{outline:none;box-shadow:0 0 0 2px rgba(47,77,230,.2)}
+    input[readonly]{background:#eef3ff;color:#0a1b3f}
     .row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px}
-    .col{flex:1 1 0;min-width:180px}
-    .actions{
-      display:flex;
-      gap:10px;
-      margin-top:14px;
-      flex-wrap:wrap;
-      justify-content:flex-end;
-    }
+    .col{flex:1 1 0;min-width:190px}
+    .actions{display:flex;gap:10px;margin-top:14px;flex-wrap:wrap;justify-content:flex-end}
     .btn{
-      border:none;
-      border-radius:999px;
-      padding:9px 16px;
-      font-weight:800;
-      cursor:pointer;
-      font-size:.9rem;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      text-decoration:none;
+      border:none;border-radius:999px;padding:10px 16px;font-weight:900;cursor:pointer;font-size:.92rem;
+      display:inline-flex;align-items:center;justify-content:center;text-decoration:none;
     }
-    .btn.primary{
-      background:linear-gradient(90deg,var(--royal),var(--royal-2));
-      color:#fff;
-      box-shadow:0 6px 16px rgba(0,50,200,.18);
+    .btn.primary{background:linear-gradient(90deg,var(--royal),var(--royal-2));color:#fff;box-shadow:0 6px 16px rgba(0,50,200,.18)}
+    .btn.secondary{background:#fff;color:#2347c7;border:1.5px solid #2f4de6}
+    .muted{font-size:.82rem;opacity:.78;margin-top:4px}
+    .money{font-weight:900;margin-top:4px;color:var(--royal);font-size:1.2rem}
+    .info,.danger,.ok{
+      border-radius:12px;padding:10px 12px;margin-bottom:12px;font-size:.88rem;font-weight:800;line-height:1.35;
     }
-    .btn.secondary{
-      background:#fff;
-      color:#2347c7;
-      border:1.5px solid #2f4de6;
-    }
-    .muted{font-size:.82rem;opacity:.8}
-    .money{font-weight:900;margin-top:4px}
+    .info{background:#eef6ff;border:1px solid #cfe1ff;color:#0a3a87}
+    .danger{background:#fff1f1;border:1px solid #ffcaca;color:var(--danger)}
+    .ok{background:#ecfdf3;border:1px solid #bbf7d0;color:var(--ok)}
+    code{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;background:#f4f7ff;border:1px solid #dbe6ff;border-radius:8px;padding:2px 6px}
   </style>
 </head>
 <body>
@@ -89,29 +59,53 @@
     <div class="card">
       <h2>{{ 'Editar' if credito else 'Novo' }} crédito</h2>
 
+      {% set ref_arg = request.args.get('referencia','') %}
+      {% set cid = cliente.id if cliente else (cliente_id if cliente_id else (credito.cliente_id if credito else '')) %}
+
+      {% if cliente %}
+        <div class="ok">
+          Cliente selecionado: {{ cliente.nome }} — ID {{ cliente.id }}
+          {% if cliente.telefone %}<br>Telefone: {{ cliente.telefone }}{% endif %}
+          {% if cliente.username %}<br>Login: {{ cliente.username }}{% endif %}
+        </div>
+      {% elif cid %}
+        <div class="danger">
+          Atenção: o cliente ID {{ cid }} não foi encontrado. Confira se esse cliente aparece na tela Clientes.
+        </div>
+      {% else %}
+        <div class="info">
+          Abra esta página pela tela <b>Clientes</b> ou use o link que veio no pedido de recarga.
+          Exemplo: <code>/creditos/novo?cliente_id=15</code>.
+        </div>
+      {% endif %}
+
       <form method="post">
         <div class="row">
           <div class="col">
-            <label>Cliente</label>
-            {% if credito %}
-              <!-- apenas exibe o ID do cliente; você pode trocar para nome se
-                   tiver acesso ao objeto cliente na view -->
-              <input type="text"
-                     value="ID {{ credito.cliente_id }}"
-                     disabled>
-              <div class="muted">Cliente fixo para este lançamento.</div>
-            {% else %}
-              <!-- usado se quiser aproveitar este form para novo crédito -->
-              <input type="number" name="cliente_id" required>
-            {% endif %}
+            <label>Cliente ID</label>
+            <input type="number" name="cliente_id" value="{{ cid }}" required>
+            <div class="muted">O crédito será lançado neste cliente.</div>
           </div>
 
           <div class="col">
+            <label>Nome do cliente</label>
+            <input type="text" name="cliente_nome" value="{{ cliente.nome if cliente else (cliente_nome if cliente_nome else '') }}" placeholder="Opcional se o ID estiver preenchido">
+            <div class="muted">Também busca por nome se não tiver ID.</div>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="col">
             <label>Valor bruto (R$)</label>
-            <input type="number" step="0.01" name="valor"
-                   id="valor_bruto"
+            <input type="number" step="0.01" name="valor" id="valor_bruto"
                    value="{{ '%.2f'|format(credito.valor_bruto)|replace('.',',') if credito else '' }}"
                    required>
+          </div>
+
+          <div class="col">
+            <label>Referência do comprovante</label>
+            <input type="text" name="referencia" value="{{ ref_arg }}" placeholder="Ex.: RECARGA-C15-12345678">
+            <div class="muted">Essa referência ficará no movimento do crédito.</div>
           </div>
         </div>
 
@@ -120,15 +114,14 @@
             <label>Tipo de desconto</label>
             {% set dt = (credito.desconto_tipo if credito else 'nenhum') %}
             <select name="desconto_tipo" id="desconto_tipo">
-              <option value="nenhum"     {{ 'selected' if dt=='nenhum' }}>Nenhum</option>
+              <option value="nenhum" {{ 'selected' if dt=='nenhum' }}>Nenhum</option>
               <option value="percentual" {{ 'selected' if dt=='percentual' }}>Percentual (%)</option>
-              <option value="real"       {{ 'selected' if dt=='real' }}>Valor (R$)</option>
+              <option value="real" {{ 'selected' if dt=='real' }}>Valor (R$)</option>
             </select>
           </div>
           <div class="col">
             <label>Valor do desconto</label>
-            <input type="number" step="0.01" name="desconto_valor"
-                   id="desconto_valor"
+            <input type="number" step="0.01" name="desconto_valor" id="desconto_valor"
                    value="{{ '%.2f'|format(credito.desconto_valor)|replace('.',',') if credito and credito.desconto_valor is not none else '0' }}">
             <div class="muted" id="hint-desconto">Informe % quando for percentual.</div>
           </div>
@@ -138,25 +131,21 @@
           <div class="col" style="flex:1 1 100%">
             <label>Motivo / observação</label>
             <input type="text" name="motivo"
-                   value="{{ credito.motivo if credito else '' }}"
+                   value="{{ credito.motivo if credito else 'Crédito via Pix confirmado' }}"
                    maxlength="180">
           </div>
         </div>
 
-        <!-- preview do valor final só visual (backend continua calculando) -->
         <div class="row">
           <div class="col">
-            <span class="muted">Valor final (após desconto)</span>
+            <span class="muted">Valor final após desconto</span>
             <div class="money" id="valor_final_view">R$ 0,00</div>
           </div>
         </div>
 
         <div class="actions">
-          <a class="btn secondary"
-             href="{{ url_for('creditos', cliente_id=(credito.cliente_id if credito else request.args.get('cliente_id'))) }}">
-            Cancelar
-          </a>
-          <button type="submit" class="btn primary">Salvar</button>
+          <a class="btn secondary" href="{{ url_for('creditos', cliente_id=cid) if cid else url_for('creditos') }}">Cancelar</a>
+          <button type="submit" class="btn primary">Salvar crédito</button>
         </div>
       </form>
     </div>
@@ -173,7 +162,6 @@
 
     function parseNumberPT(str){
       if(!str) return 0;
-      // aceita tanto 100,50 quanto 100.50
       str = String(str).replace(/\./g,'').replace(',', '.');
       const n = parseFloat(str);
       return isNaN(n) ? 0 : n;
@@ -203,11 +191,10 @@
 
     ['input','change','blur'].forEach(evt=>{
       $bruto.addEventListener(evt, calcFinal);
-      $tipo .addEventListener(evt, calcFinal);
-      $desc .addEventListener(evt, calcFinal);
+      $tipo.addEventListener(evt, calcFinal);
+      $desc.addEventListener(evt, calcFinal);
     });
 
-    // inicial
     calcFinal();
   </script>
 </body>
