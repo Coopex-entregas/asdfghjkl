@@ -4,7 +4,7 @@ import re
 import json
 import random
 import secrets
-from flask_socketio import SocketIO, join_room, leave_room
+from flask_socketio import SocketIO, join_room, leave_room, emit
 import unicodedata
 from datetime import datetime, timedelta, time, date
 from collections import Counter, defaultdict
@@ -1149,8 +1149,8 @@ LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35")
 
 # Controle de carga da API de localização.
 # Evita que vários celulares travem o login/admin no Render.
-LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "5"))
-LOCATION_MIN_TRAJETO_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_TRAJETO_INTERVAL_SEC", "60"))
+LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "2"))
+LOCATION_MIN_TRAJETO_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_TRAJETO_INTERVAL_SEC", "2"))
 LOCATION_MIN_DISTANCE_FORCE_SAVE_M = float(os.getenv("LOCATION_MIN_DISTANCE_FORCE_SAVE_M", "50"))
 _LOCATION_TOKEN_LAST_TS = {}  # token -> timestamp; evita bater no banco em todo ping
 
@@ -6468,6 +6468,7 @@ def _coopex_float_or_none(v):
 
 
 
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
@@ -6479,53 +6480,43 @@ def mapa_motoboys():
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
 
-    agora_utc = datetime.utcnow()
+    def _coord_valida_rn(lat, lng):
+        # Evita bug de marcador indo para o mar por coordenada invertida/ruim.
+        # Área ampla de RN/Natal/Parnamirim/interior.
+        try:
+            lat = float(lat)
+            lng = float(lng)
+            return (-7.5 <= lat <= -4.0) and (-39.0 <= lng <= -34.0)
+        except Exception:
+            return False
 
     for c in cooperados:
-        loc = None
-        try:
-            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=c.id).first()
-        except Exception:
-            loc = None
-
+        # fonte principal: campos do cooperado
         lat = c.last_lat
         lng = c.last_lng
         ping = c.last_ping
-        online_flag = bool(c.online)
-        speed = getattr(c, "last_speed_kmh", None)
-        accuracy = getattr(c, "last_accuracy_m", None)
-        heading = getattr(c, "last_heading", None)
-        fonte = ""
+        acc = getattr(c, "last_accuracy_m", None)
+        spd = getattr(c, "last_speed_kmh", None)
+        hdg = getattr(c, "last_heading", None)
 
-        if loc:
-            if lat is None and loc.latitude is not None:
-                lat = loc.latitude
-            if lng is None and loc.longitude is not None:
-                lng = loc.longitude
-            if ping is None and loc.atualizado_em is not None:
-                ping = loc.atualizado_em
-            online_flag = bool(online_flag or loc.online)
-            if speed is None:
-                speed = loc.speed
-            if accuracy is None:
-                accuracy = loc.accuracy
-            if heading is None:
-                heading = loc.heading
-            fonte = loc.fonte or ""
+        # fallback: tabela localizacao_cooperado
+        try:
+            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=c.id).first()
+            if loc and loc.latitude is not None and loc.longitude is not None:
+                # se o cooperado ainda não tem lat/lng ou a tabela é mais recente, usa a tabela
+                if lat is None or lng is None or (loc.atualizado_em and (not ping or loc.atualizado_em >= ping)):
+                    lat = loc.latitude
+                    lng = loc.longitude
+                    ping = loc.atualizado_em or ping
+                    acc = loc.accuracy
+                    spd = loc.speed
+                    hdg = loc.heading
+        except Exception:
+            pass
 
-        tem_localizacao = bool(lat is not None and lng is not None)
+        tem_localizacao = _coord_valida_rn(lat, lng)
 
-        is_online = False
-        segundos_sem_ping = None
-        if ping:
-            try:
-                segundos_sem_ping = (agora_utc - ping).total_seconds()
-            except Exception:
-                segundos_sem_ping = None
-            try:
-                is_online = bool(online_flag and segundos_sem_ping is not None and segundos_sem_ping <= OFFLINE_AFTER_SEC)
-            except Exception:
-                is_online = bool(online_flag)
+        is_online, idle_s, _status_calc = calc_status_cooperado(c)
 
         abertas_q = (
             Entrega.query
@@ -6544,46 +6535,32 @@ def mapa_motoboys():
             )
         )
 
-        try:
-            entregas_abertas = abertas_q.count()
-        except Exception:
-            entregas_abertas = 0
-
+        entregas_abertas = abertas_q.count()
         em_corrida = bool(is_online and entregas_abertas > 0)
 
-        if not tem_localizacao:
-            status = 'sem_localizacao'
-        elif em_corrida:
+        if em_corrida:
             status = 'em_corrida'
         elif is_online:
             status = 'livre'
         else:
             status = 'offline'
 
-        ultima = ""
-        if ping:
-            try:
-                ultima = to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S')
-            except Exception:
-                ultima = ""
-
         motoboys_js.append({
             "id": c.id,
             "nome": c.nome,
-            "lat": float(lat) if lat is not None else None,
-            "lng": float(lng) if lng is not None else None,
+            "lat": float(lat) if tem_localizacao else None,
+            "lng": float(lng) if tem_localizacao else None,
             "tem_localizacao": bool(tem_localizacao),
             "online": bool(is_online),
             "status": status,
-            "idle_seconds": segundos_sem_ping,
-            "velocidade": float(speed or 0),
-            "accuracy_m": float(accuracy or 0),
-            "heading": float(heading or 0),
-            "ultima_atualizacao": ultima,
+            "idle_seconds": idle_s,
+            "velocidade": float(spd or 0),
+            "accuracy_m": float(acc or 0),
+            "heading": float(hdg or 0),
+            "ultima_atualizacao": (to_brasilia(ping).strftime('%d/%m %H:%M:%S') if ping else ""),
             "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
             "observacao": getattr(c, "observacao", "") or "",
             "entregas_abertas": int(entregas_abertas),
-            "fonte": fonte,
         })
 
     def _sort_key(x):
