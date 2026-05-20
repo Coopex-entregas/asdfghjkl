@@ -6337,79 +6337,35 @@ def mapa_motoboys():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    motoboys_js = []
+    cooperados = (
+        Cooperado.query
+        .filter(Cooperado.ativo == True)
+        .order_by(Cooperado.nome.asc())
+        .all()
+    )
 
-    status_corrida_abertas = ['pendente', 'aceita']
-    status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
+    motoboys_js = [_coopex_payload_motoboy_mapa(c) for c in cooperados]
 
-    for c in cooperados:
-        if c.last_lat is None or c.last_lng is None:
-            continue
-
-        is_online, idle_s, _status_calc = calc_status_cooperado(c)
-
-        abertas_q = (
-            Entrega.query
-            .filter(Entrega.cooperado_id == c.id)
-            .filter(
-                or_(
-                    Entrega.status_corrida == None,
-                    Entrega.status_corrida.in_(status_corrida_abertas)
-                )
-            )
-            .filter(
-                or_(
-                    Entrega.status == None,
-                    ~func.lower(Entrega.status).in_(status_finalizados)
-                )
-            )
+    motoboys_js.sort(
+        key=lambda x: (
+            0 if x.get('status') == 'em_corrida' else
+            1 if x.get('status') == 'livre' else
+            2,
+            (x.get('nome') or '').lower()
         )
+    )
 
-        entregas_abertas = abertas_q.count()
-        em_corrida = bool(is_online and entregas_abertas > 0)
-
-        if em_corrida:
-            status = 'em_corrida'
-        elif is_online:
-            status = 'livre'
-        else:
-            status = 'offline'
-
-        motoboys_js.append({
-            "id": c.id,
-            "nome": c.nome,
-            "lat": float(c.last_lat),
-            "lng": float(c.last_lng),
-            "online": bool(is_online),
-            "status": status,
-            "idle_seconds": idle_s,
-            "velocidade": float(getattr(c, "last_speed_kmh", 0) or 0),
-            "accuracy_m": float(getattr(c, "last_accuracy_m", 0) or 0),
-            "heading": float(getattr(c, "last_heading", 0) or 0),
-            "ultima_atualizacao": (to_brasilia(c.last_ping).strftime('%d/%m %H:%M') if c.last_ping else ""),
-            "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
-            "observacao": getattr(c, "observacao", "") or "",
-            "entregas_abertas": int(entregas_abertas),
-        })
-
-    def _sort_key(x):
-        if x.get('status') == 'em_corrida':
-            prioridade = 0
-        elif x.get('online'):
-            prioridade = 1
-        else:
-            prioridade = 2
-        return (prioridade, -(x.get('entregas_abertas') or 0), (x.get('nome') or '').lower())
-
-    motoboys_js.sort(key=_sort_key)
-
-    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
+    if (
+        request.args.get('format') == 'json'
+        or request.headers.get('X-Requested-With') == 'fetch'
+        or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json')
+    ):
         resp = jsonify(motoboys_js)
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
 
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
+
 
 
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
@@ -9020,6 +8976,235 @@ def api_entrega_atribuida():
     })
 
 
+
+# =========================================================
+# CORREÇÕES COOPEX — NORMALIZAÇÃO, MAPA E COMPATIBILIDADE
+# =========================================================
+def _bairro_rota_display(valor):
+    try:
+        if '_dash_title_case' in globals():
+            return _dash_title_case(valor or 'Não informado') or 'Não informado'
+    except Exception:
+        pass
+
+    txt = str(valor or '').strip()
+    if not txt:
+        return 'Não informado'
+    txt = re.sub(r'\s+', ' ', txt)
+    try:
+        return txt[:1].upper() + txt[1:].lower() if txt.isupper() or txt.islower() else txt
+    except Exception:
+        return txt
+
+
+def _coopex_title_case(valor):
+    txt = str(valor or '').strip()
+    if not txt:
+        return ''
+    try:
+        if '_dash_title_case' in globals():
+            return _dash_title_case(txt)
+    except Exception:
+        pass
+
+    txt = re.sub(r'([a-zà-ÿ])([A-ZÀ-Ý])', r'\1 \2', txt)
+    txt = re.sub(r'[_/]+', ' ', txt)
+    txt = re.sub(r'\s+', ' ', txt).strip().lower()
+    pequenos = {'da', 'de', 'do', 'das', 'dos', 'e'}
+    partes = []
+    for i, p in enumerate(txt.split()):
+        if i > 0 and p in pequenos:
+            partes.append(p)
+        elif p in {'rn', 'sp', 'rj', 'mg', 'pb', 'pe'}:
+            partes.append(p.upper())
+        else:
+            partes.append(p.capitalize())
+    return ' '.join(partes)
+
+
+def _coopex_json_load_safe(raw):
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+
+def _coopex_normalizar_json_bairros(raw):
+    data = _coopex_json_load_safe(raw)
+    if not isinstance(data, dict):
+        return raw
+    mudou = False
+
+    for campo in ('bairro', 'bairro_origem', 'bairro_destino'):
+        if data.get(campo):
+            novo = _coopex_title_case(data.get(campo))
+            if data.get(campo) != novo:
+                data[campo] = novo
+                mudou = True
+
+    stops = data.get('stops') or data.get('paradas')
+    if isinstance(stops, list):
+        for p in stops:
+            if isinstance(p, dict):
+                for campo in ('bairro', 'bairro_origem', 'bairro_destino'):
+                    if p.get(campo):
+                        novo = _coopex_title_case(p.get(campo))
+                        if p.get(campo) != novo:
+                            p[campo] = novo
+                            mudou = True
+
+    return json.dumps(data, ensure_ascii=False) if mudou else raw
+
+
+def _coopex_online_recente(dt, limite_segundos=None):
+    try:
+        limite = int(limite_segundos or globals().get('OFFLINE_AFTER_SEC', 120))
+    except Exception:
+        limite = 120
+    if not dt:
+        return False
+    try:
+        if getattr(dt, 'tzinfo', None) is not None:
+            dt = dt.replace(tzinfo=None)
+        return (datetime.utcnow() - dt).total_seconds() <= limite
+    except Exception:
+        return False
+
+
+def _coopex_ultima_localizacao_cooperado(cooperado):
+    loc = None
+    try:
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado.id).first()
+    except Exception:
+        loc = None
+
+    lat = getattr(cooperado, 'last_lat', None)
+    lng = getattr(cooperado, 'last_lng', None)
+    atualizado_em = getattr(cooperado, 'last_ping', None)
+    accuracy = getattr(cooperado, 'last_accuracy_m', None)
+    speed = getattr(cooperado, 'last_speed_kmh', None)
+    heading = getattr(cooperado, 'last_heading', None)
+
+    if loc:
+        if loc.latitude is not None:
+            lat = loc.latitude
+        if loc.longitude is not None:
+            lng = loc.longitude
+        if loc.atualizado_em is not None:
+            atualizado_em = loc.atualizado_em
+        if loc.accuracy is not None:
+            accuracy = loc.accuracy
+        if loc.speed is not None:
+            speed = loc.speed
+        if loc.heading is not None:
+            heading = loc.heading
+
+    return {
+        'lat': lat,
+        'lng': lng,
+        'atualizado_em': atualizado_em,
+        'accuracy': accuracy,
+        'speed': speed,
+        'heading': heading,
+    }
+
+
+def _coopex_entregas_abertas_cooperado(cooperado_id):
+    try:
+        return Entrega.query.filter(
+            Entrega.cooperado_id == cooperado_id,
+            or_(
+                Entrega.status == None,
+                ~func.lower(func.coalesce(Entrega.status, '')).in_([
+                    'recebido',
+                    'entregue',
+                    'finalizado',
+                    'finalizada',
+                    'cancelado',
+                    'cancelada'
+                ])
+            )
+        ).count()
+    except Exception:
+        return 0
+
+
+def _coopex_payload_motoboy_mapa(cooperado):
+    loc = _coopex_ultima_localizacao_cooperado(cooperado)
+
+    lat = loc.get('lat')
+    lng = loc.get('lng')
+    atualizado_em = loc.get('atualizado_em')
+
+    try:
+        lat = float(lat) if lat is not None else None
+        lng = float(lng) if lng is not None else None
+    except Exception:
+        lat = None
+        lng = None
+
+    tem_localizacao = lat is not None and lng is not None
+    online = bool(tem_localizacao and _coopex_online_recente(atualizado_em))
+    abertas = _coopex_entregas_abertas_cooperado(cooperado.id)
+
+    if online and abertas > 0:
+        status = 'em_corrida'
+    elif online:
+        status = 'livre'
+    else:
+        status = 'offline'
+
+    ultima_txt = ''
+    try:
+        if atualizado_em:
+            ultima_txt = to_brasilia(atualizado_em).strftime('%d/%m/%Y %H:%M:%S')
+    except Exception:
+        ultima_txt = ''
+
+    return {
+        'id': cooperado.id,
+        'nome': _coopex_title_case(cooperado.nome or f'Cooperado {cooperado.id}'),
+        'ativo': bool(getattr(cooperado, 'ativo', True)),
+        'lat': lat,
+        'lng': lng,
+        'tem_localizacao': bool(tem_localizacao),
+        'online': bool(online),
+        'status': status,
+        'entregas_abertas': int(abertas or 0),
+        'velocidade': float(loc.get('speed') or 0),
+        'velocidade_kmh': float(loc.get('speed') or 0),
+        'heading': loc.get('heading'),
+        'accuracy_m': loc.get('accuracy'),
+        'ultima_atualizacao': ultima_txt or 'Sem localização enviada',
+    }
+
+
+def _coopex_limite_ranking():
+    raw = (request.args.get('limite_ranking') or '20').strip().lower()
+    if raw in ('todos', 'all', '0', 'sem_limite'):
+        return None, 'todos'
+    try:
+        n = int(raw)
+    except Exception:
+        n = 20
+    if n not in (20, 30, 50):
+        n = 20
+    return n, str(n)
+
+
+def _coopex_limitar_lista(lista, limite):
+    if limite is None:
+        return lista
+    try:
+        return list(lista or [])[:int(limite)]
+    except Exception:
+        return lista or []
+
+
 # =========================================================
 # ESTATÍSTICAS (ADMIN MASTER) — DASHBOARD GERENCIAL COOPEX
 # =========================================================
@@ -9582,6 +9767,13 @@ def estatisticas_cooperado():
         'destino': destino_f,
     }
 
+
+    limite_ranking, limite_ranking_label = _coopex_limite_ranking()
+    top_cooperados_total = len(top_cooperados)
+    top_contratos_total = len(top_contratos)
+    top_cooperados_view = _coopex_limitar_lista(top_cooperados, limite_ranking)
+    top_contratos_view = _coopex_limitar_lista(top_contratos, limite_ranking)
+
     return render_template(
         'estatisticas_cooperado.html',
         filtros=filtros,
@@ -9590,8 +9782,11 @@ def estatisticas_cooperado():
         cooperados=cooperados,
         grupos_cliente=grupos_cliente,
         nomes_clientes=nomes_clientes,
-        top_cooperados=top_cooperados,
-        top_contratos=top_contratos,
+        top_cooperados=top_cooperados_view,
+        top_contratos=top_contratos_view,
+        top_cooperados_total=top_cooperados_total,
+        top_contratos_total=top_contratos_total,
+        limite_ranking=limite_ranking_label,
         top_coleta=_dash_top_dict(coleta_counter, 10),
         top_entrega=_dash_top_dict(entrega_counter, 10),
         top_rotas_freq=[{'nome': k, 'qtd': v, 'valor': round(rota_val[k], 2)} for k, v in rota_counter.most_common(10)],
@@ -10205,6 +10400,47 @@ def relatorio_termico():
         to_brasilia=to_brasilia,
         total_relatorio=total_relatorio
     )
+
+
+# =========================================================
+# NORMALIZAÇÃO AUTOMÁTICA DE NOVOS CADASTROS COOPEX
+# =========================================================
+try:
+    from sqlalchemy import event as _coopex_sa_event
+
+    @_coopex_sa_event.listens_for(Cliente, 'before_insert')
+    @_coopex_sa_event.listens_for(Cliente, 'before_update')
+    def _coopex_normalizar_cliente(mapper, connection, target):
+        if getattr(target, 'nome', None):
+            target.nome = _coopex_title_case(target.nome)
+        if getattr(target, 'bairro_origem', None):
+            target.bairro_origem = _coopex_title_case(target.bairro_origem)
+
+    @_coopex_sa_event.listens_for(ClienteEndereco, 'before_insert')
+    @_coopex_sa_event.listens_for(ClienteEndereco, 'before_update')
+    def _coopex_normalizar_cliente_endereco(mapper, connection, target):
+        if getattr(target, 'bairro', None):
+            target.bairro = _coopex_title_case(target.bairro)
+        if getattr(target, 'cidade', None):
+            target.cidade = _coopex_title_case(target.cidade)
+
+    @_coopex_sa_event.listens_for(Entrega, 'before_insert')
+    @_coopex_sa_event.listens_for(Entrega, 'before_update')
+    def _coopex_normalizar_entrega(mapper, connection, target):
+        if getattr(target, 'cliente', None):
+            target.cliente = _coopex_title_case(target.cliente)
+        if getattr(target, 'bairro', None):
+            target.bairro = _coopex_title_case(target.bairro)
+        if getattr(target, 'origem_json', None):
+            target.origem_json = _coopex_normalizar_json_bairros(target.origem_json)
+        if getattr(target, 'destino_json', None):
+            target.destino_json = _coopex_normalizar_json_bairros(target.destino_json)
+        if getattr(target, 'paradas_json', None):
+            target.paradas_json = _coopex_normalizar_json_bairros(target.paradas_json)
+
+except Exception:
+    pass
+
 
 # =========================================================
 # BOOTSTRAP BANCO / DDL / ÍNDICES / BACKFILL
