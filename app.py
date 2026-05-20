@@ -6467,24 +6467,19 @@ def _coopex_float_or_none(v):
         return None
 
 
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    try:
-        _coopex_ensure_localizacao_rows()
-    except Exception:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-
-    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
 
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
+
+    agora_utc = datetime.utcnow()
 
     for c in cooperados:
         loc = None
@@ -6493,98 +6488,102 @@ def mapa_motoboys():
         except Exception:
             loc = None
 
-        lat = getattr(c, "last_lat", None)
-        lng = getattr(c, "last_lng", None)
-        ping = getattr(c, "last_ping", None)
+        lat = c.last_lat
+        lng = c.last_lng
+        ping = c.last_ping
+        online_flag = bool(c.online)
         speed = getattr(c, "last_speed_kmh", None)
         accuracy = getattr(c, "last_accuracy_m", None)
         heading = getattr(c, "last_heading", None)
+        fonte = ""
 
         if loc:
-            if lat is None:
+            if lat is None and loc.latitude is not None:
                 lat = loc.latitude
-            if lng is None:
+            if lng is None and loc.longitude is not None:
                 lng = loc.longitude
-            if ping is None:
+            if ping is None and loc.atualizado_em is not None:
                 ping = loc.atualizado_em
+            online_flag = bool(online_flag or loc.online)
             if speed is None:
                 speed = loc.speed
             if accuracy is None:
                 accuracy = loc.accuracy
             if heading is None:
                 heading = loc.heading
+            fonte = loc.fonte or ""
 
-        try:
-            is_online, idle_s, _status_calc = calc_status_cooperado(c)
-        except Exception:
-            is_online, idle_s, _status_calc = False, None, "offline"
+        tem_localizacao = bool(lat is not None and lng is not None)
 
-        try:
-            if (not is_online) and loc and loc.atualizado_em:
-                now_utc = datetime.now(timezone.utc)
-                lp = loc.atualizado_em
-                if lp.tzinfo is None:
-                    lp = lp.replace(tzinfo=timezone.utc)
-                else:
-                    lp = lp.astimezone(timezone.utc)
-                delta = (now_utc - lp).total_seconds()
-                if bool(loc.online) and delta <= OFFLINE_AFTER_SEC:
-                    is_online = True
-                    idle_s = int(delta)
-        except Exception:
-            pass
+        is_online = False
+        segundos_sem_ping = None
+        if ping:
+            try:
+                segundos_sem_ping = (agora_utc - ping).total_seconds()
+            except Exception:
+                segundos_sem_ping = None
+            try:
+                is_online = bool(online_flag and segundos_sem_ping is not None and segundos_sem_ping <= OFFLINE_AFTER_SEC)
+            except Exception:
+                is_online = bool(online_flag)
 
-        try:
-            abertas_q = (
-                Entrega.query
-                .filter(Entrega.cooperado_id == c.id)
-                .filter(
-                    or_(
-                        Entrega.status_corrida == None,
-                        Entrega.status_corrida.in_(status_corrida_abertas)
-                    )
-                )
-                .filter(
-                    or_(
-                        Entrega.status == None,
-                        ~func.lower(Entrega.status).in_(status_finalizados)
-                    )
+        abertas_q = (
+            Entrega.query
+            .filter(Entrega.cooperado_id == c.id)
+            .filter(
+                or_(
+                    Entrega.status_corrida == None,
+                    Entrega.status_corrida.in_(status_corrida_abertas)
                 )
             )
+            .filter(
+                or_(
+                    Entrega.status == None,
+                    ~func.lower(Entrega.status).in_(status_finalizados)
+                )
+            )
+        )
+
+        try:
             entregas_abertas = abertas_q.count()
         except Exception:
             entregas_abertas = 0
 
-        if bool(is_online) and int(entregas_abertas or 0) > 0:
+        em_corrida = bool(is_online and entregas_abertas > 0)
+
+        if not tem_localizacao:
+            status = 'sem_localizacao'
+        elif em_corrida:
             status = 'em_corrida'
-        elif bool(is_online):
+        elif is_online:
             status = 'livre'
         else:
             status = 'offline'
 
-        lat_f = _coopex_float_or_none(lat)
-        lng_f = _coopex_float_or_none(lng)
+        ultima = ""
+        if ping:
+            try:
+                ultima = to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S')
+            except Exception:
+                ultima = ""
 
         motoboys_js.append({
             "id": c.id,
             "nome": c.nome,
-            "lat": lat_f,
-            "lng": lng_f,
-            "latitude": lat_f,
-            "longitude": lng_f,
-            "tem_localizacao": bool(lat_f is not None and lng_f is not None),
+            "lat": float(lat) if lat is not None else None,
+            "lng": float(lng) if lng is not None else None,
+            "tem_localizacao": bool(tem_localizacao),
             "online": bool(is_online),
             "status": status,
-            "idle_seconds": idle_s,
+            "idle_seconds": segundos_sem_ping,
             "velocidade": float(speed or 0),
-            "velocidade_kmh": float(speed or 0),
             "accuracy_m": float(accuracy or 0),
             "heading": float(heading or 0),
-            "ultima_atualizacao": (to_brasilia(ping).strftime('%d/%m %H:%M') if ping else "Sem localização"),
+            "ultima_atualizacao": ultima,
             "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
             "observacao": getattr(c, "observacao", "") or "",
-            "entregas_abertas": int(entregas_abertas or 0),
-            "app_token": bool(getattr(c, "app_token", None)),
+            "entregas_abertas": int(entregas_abertas),
+            "fonte": fonte,
         })
 
     def _sort_key(x):
@@ -6592,8 +6591,10 @@ def mapa_motoboys():
             prioridade = 0
         elif x.get('online'):
             prioridade = 1
-        else:
+        elif x.get('tem_localizacao'):
             prioridade = 2
+        else:
+            prioridade = 3
         return (prioridade, -(x.get('entregas_abertas') or 0), (x.get('nome') or '').lower())
 
     motoboys_js.sort(key=_sort_key)
@@ -6604,7 +6605,6 @@ def mapa_motoboys():
         return resp
 
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
-
 
 
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
