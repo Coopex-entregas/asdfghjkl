@@ -1151,7 +1151,7 @@ LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35")
 # Evita que vários celulares travem o login/admin no Render.
 LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "2"))
 LOCATION_MIN_TRAJETO_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_TRAJETO_INTERVAL_SEC", "2"))
-LOCATION_MIN_DISTANCE_FORCE_SAVE_M = float(os.getenv("LOCATION_MIN_DISTANCE_FORCE_SAVE_M", "50"))
+LOCATION_MIN_DISTANCE_FORCE_SAVE_M = float(os.getenv("LOCATION_MIN_DISTANCE_FORCE_SAVE_M", "0"))
 _LOCATION_TOKEN_LAST_TS = {}  # token -> timestamp; evita bater no banco em todo ping
 
 
@@ -1167,33 +1167,33 @@ def _haversine_m(lat1, lng1, lat2, lng2):
         return 0.0
 
 def _should_accept_location_update(prev_lat, prev_lng, new_lat, new_lng, accuracy, speed_kmh):
-    if prev_lat is None or prev_lng is None:
-        return True, 'primeiro_ponto', None
+    """
+    Filtro leve para o mapa não travar:
+    - aceita praticamente toda localização válida;
+    - só rejeita coordenada impossível ou precisão muito ruim;
+    - NÃO segura o marcador parado por causa de drift/velocidade zerada.
+    """
+    try:
+        lat = float(new_lat)
+        lng = float(new_lng)
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            return False, 'coordenada_invalida', None
+    except Exception:
+        return False, 'coordenada_invalida', None
 
-    if accuracy is not None and accuracy > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
-        return False, 'accuracy_ruim', None
+    if accuracy is not None:
+        try:
+            if float(accuracy) > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
+                return False, 'accuracy_ruim', None
+        except Exception:
+            pass
 
-    dist_m = _haversine_m(prev_lat, prev_lng, new_lat, new_lng)
-    speed_kmh = float(speed_kmh or 0.0)
-
-    # Segura bem mais quando o aparelho parece parado.
-    # Usa a própria accuracy para definir quanto "desvio" ainda é ruído.
-    if speed_kmh <= LOCATION_VERY_LOW_SPEED_KMH:
-        dynamic_hold_m = max(
-            LOCATION_STATIONARY_DRIFT_M,
-            min(LOCATION_STRONG_HOLD_MAX_M, float(accuracy or 0.0) * 1.10)
-        )
-        if dist_m < dynamic_hold_m:
-            return False, 'parado_ruido_gps', dist_m
-
-    # Em velocidade baixa, ainda segura drift médio quando a precisão vier ruim.
-    if speed_kmh <= LOCATION_STATIONARY_SPEED_KMH:
-        dynamic_low_conf_m = max(
-            LOCATION_LOW_CONFIDENCE_DRIFT_M,
-            min(LOCATION_STRONG_HOLD_MAX_M, float(accuracy or 0.0) * 0.90)
-        )
-        if accuracy is not None and accuracy >= LOCATION_LOW_CONFIDENCE_ACCURACY_M and dist_m < dynamic_low_conf_m:
-            return False, 'drift_baixa_confianca', dist_m
+    dist_m = None
+    try:
+        if prev_lat is not None and prev_lng is not None:
+            dist_m = _haversine_m(prev_lat, prev_lng, new_lat, new_lng)
+    except Exception:
+        dist_m = None
 
     return True, 'aceito', dist_m
 
@@ -4988,16 +4988,8 @@ def cooperado_aceitar_corrida():
 @app.post('/api/app/localizacao')
 def api_app_localizacao():
     """
-    API leve para localização do APK.
-
-    Correções principais:
-    - NÃO roda db.create_all()/inspect a cada localização.
-    - Limita gravação por cooperado a cada X segundos.
-    - Ignora ruído de GPS parado.
-    - Evita gravar trajeto em todo ping.
-    - Só emite socket quando realmente salva ponto aceito.
+    Recebe localização do APK/WebView e salva para o mapa em tempo real.
     """
-
     data = request.get_json(silent=True) or {}
 
     auth = (request.headers.get('Authorization') or '').strip()
@@ -5039,13 +5031,14 @@ def api_app_localizacao():
     except (TypeError, ValueError):
         acc = None
 
+    if acc is not None and acc > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
+        return jsonify({'ok': True, 'ignored': True, 'motivo': 'accuracy_ruim'}), 200
+
     try:
         if speed_mps_raw is not None:
             spd = float(speed_mps_raw) * 3.6
         elif speed_raw is not None:
             spd_raw = float(speed_raw)
-            # Se vier abaixo de 120, tratamos como m/s vindo do Android.
-            # Se vier acima, assumimos que já está em km/h.
             spd = (spd_raw * 3.6) if spd_raw < 120 else spd_raw
         else:
             spd = None
@@ -5064,11 +5057,6 @@ def api_app_localizacao():
         if not coop:
             return jsonify({'ok': False, 'error': 'token inválido'}), 401
 
-        try:
-            _LOCATION_TOKEN_LAST_TS[token] = datetime.utcnow().timestamp()
-        except Exception:
-            pass
-
         if user_id and str(coop.id) != user_id:
             return jsonify({'ok': False, 'error': 'user_id não confere'}), 403
 
@@ -5078,76 +5066,17 @@ def api_app_localizacao():
             db.session.add(loc)
             db.session.flush()
 
-        # 1) Trava leve: evita excesso, mas NÃO congela o mapa.
-        # Se enviou há poucos segundos, só ignora quando praticamente não saiu do lugar.
-        ultimo_ping = coop.last_ping or loc.atualizado_em
-        prev_lat_intervalo = coop.last_lat if coop.last_lat is not None else loc.latitude
-        prev_lng_intervalo = coop.last_lng if coop.last_lng is not None else loc.longitude
-
-        if ultimo_ping:
-            try:
-                segundos = (agora - ultimo_ping).total_seconds()
-            except Exception:
-                segundos = LOCATION_MIN_SAVE_INTERVAL_SEC
-
-            dist_intervalo = 999999.0
-            try:
-                if prev_lat_intervalo is not None and prev_lng_intervalo is not None:
-                    dist_intervalo = _haversine_m(prev_lat_intervalo, prev_lng_intervalo, lat, lng)
-            except Exception:
-                dist_intervalo = 999999.0
-
-            if segundos < LOCATION_MIN_SAVE_INTERVAL_SEC and dist_intervalo < LOCATION_MIN_DISTANCE_FORCE_SAVE_M:
-                coop.last_ping = agora
-                coop.online = True
-                loc.online = True
-                loc.fonte = source
-                loc.atualizado_em = agora
-                db.session.commit()
-
-                return jsonify({
-                    'ok': True,
-                    'cooperado_id': coop.id,
-                    'ignored': True,
-                    'motivo': 'intervalo_minimo_sem_movimento',
-                    'dist_m': round(float(dist_intervalo or 0), 2),
-                    'min_interval_sec': LOCATION_MIN_SAVE_INTERVAL_SEC
-                }), 200
-
         prev_lat = coop.last_lat if coop.last_lat is not None else loc.latitude
         prev_lng = coop.last_lng if coop.last_lng is not None else loc.longitude
-
-        # 2) Filtro de ruído de GPS.
-        aceito, motivo, dist_m = _should_accept_location_update(
-            prev_lat,
-            prev_lng,
-            lat,
-            lng,
-            acc,
-            spd
-        )
-
-        # Se for ruído, atualiza apenas "online/last_ping", sem trocar lat/lng.
-        # Assim o cooperado continua online, mas o marcador não fica pulando.
+        aceito, motivo, dist_m = _should_accept_location_update(prev_lat, prev_lng, lat, lng, acc, spd)
         if not aceito:
             coop.last_ping = agora
             coop.online = True
-
             loc.online = True
             loc.fonte = source
             loc.atualizado_em = agora
-
             db.session.commit()
-
-            return jsonify({
-                'ok': True,
-                'cooperado_id': coop.id,
-                'aceito': False,
-                'motivo': motivo,
-                'dist_m': round(float(dist_m or 0), 2)
-            }), 200
-
-        moving_now = (spd is not None and spd >= MOVING_SPEED_KMH)
+            return jsonify({'ok': True, 'cooperado_id': coop.id, 'aceito': False, 'motivo': motivo}), 200
 
         coop.last_ping = agora
         coop.online = True
@@ -5156,9 +5085,7 @@ def api_app_localizacao():
         coop.last_accuracy_m = acc
         coop.last_heading = hdg
         coop.last_speed_kmh = spd
-
-        if moving_now:
-            coop.last_moving_at = agora
+        coop.last_moving_at = agora
 
         loc.latitude = lat
         loc.longitude = lng
@@ -5171,53 +5098,25 @@ def api_app_localizacao():
 
         db.session.commit()
 
-    except Exception as e:
         try:
-            db.session.rollback()
-        except Exception:
-            pass
-        try:
-            current_app.logger.exception('Falha em /api/app/localizacao')
-        except Exception:
-            pass
-        return jsonify({'ok': False, 'error': 'falha ao salvar localização'}), 500
-
-    # 3) Trajeto é pesado porque lê/grava JSON. Não grave em todo ping.
-    # Grava só quando passou intervalo maior ou quando houve deslocamento relevante.
-    deve_gravar_trajeto = False
-    try:
-        if moving_now:
-            deve_gravar_trajeto = True
-
-        if dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M:
-            deve_gravar_trajeto = True
-
-        if ultimo_ping:
-            segundos_trajeto = (agora - ultimo_ping).total_seconds()
-            if segundos_trajeto < LOCATION_MIN_TRAJETO_INTERVAL_SEC and not (
-                dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M
-            ):
-                deve_gravar_trajeto = False
-
-        if deve_gravar_trajeto:
             _append_point_to_active_trajeto(coop.id, lat, lng, agora)
-    except Exception:
+        except Exception:
+            try: db.session.rollback()
+            except Exception: pass
+
         try:
-            db.session.rollback()
+            emitir_posicao_motoboy(coop, lat, lng, spd)
         except Exception:
             pass
 
-    # 4) Socket só depois de salvar ponto aceito.
-    try:
-        emitir_posicao_motoboy(coop, lat, lng, spd)
-    except Exception:
-        pass
+        return jsonify({'ok': True, 'cooperado_id': coop.id, 'aceito': True, 'dist_m': round(float(dist_m or 0), 2)}), 200
 
-    return jsonify({
-        'ok': True,
-        'cooperado_id': coop.id,
-        'aceito': True
-    }), 200
+    except Exception:
+        try: db.session.rollback()
+        except Exception: pass
+        try: current_app.logger.exception('Falha em /api/app/localizacao')
+        except Exception: pass
+        return jsonify({'ok': False, 'error': 'falha ao salvar localização'}), 500
 
 
 @app.get('/api/cooperado/localizacao_status')
@@ -5290,23 +5189,20 @@ def cooperado_atualizar_localizacao():
 
     data = request.get_json(silent=True) or {}
 
-    # lat/lng obrigatórios
     try:
         lat = float(data.get('lat'))
         lng = float(data.get('lng'))
+        if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+            return jsonify({'status': 'erro', 'msg': 'Lat/Lng fora da faixa'}), 400
     except (TypeError, ValueError):
         return jsonify({'status': 'erro', 'msg': 'Lat/Lng inválidos'}), 400
 
-    # velocidade pode vir em m/s, km/h, ou no campo speed
     speed_mps = data.get('speed_mps', None)
     speed_kmh = data.get('velocidade', None)
     speed_raw = data.get('speed', None)
-
-    # heading/accuracy opcionais
     heading = data.get('heading', None)
     accuracy = data.get('accuracy', None)
 
-    # normaliza velocidade para km/h
     v_kmh = None
     try:
         if speed_mps is not None:
@@ -5314,34 +5210,34 @@ def cooperado_atualizar_localizacao():
         elif speed_kmh is not None:
             v_kmh = float(speed_kmh)
         elif speed_raw is not None:
-            v_kmh = float(speed_raw) * 3.6
+            sr = float(speed_raw)
+            v_kmh = sr * 3.6 if sr < 120 else sr
     except (TypeError, ValueError):
         v_kmh = None
 
+    try:
+        acc = float(accuracy) if accuracy is not None else None
+    except (TypeError, ValueError):
+        acc = None
+
+    if acc is not None and acc > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
+        return jsonify({'status': 'ok', 'ignored': True, 'motivo': 'accuracy_ruim'}), 200
+
     agora = datetime.utcnow()
 
-    # salva no cooperado
     cooperado.last_lat = lat
     cooperado.last_lng = lng
     cooperado.last_ping = agora
     cooperado.online = True
     cooperado.last_speed_kmh = v_kmh
+    cooperado.last_accuracy_m = acc
+    cooperado.last_moving_at = agora
 
     try:
         cooperado.last_heading = float(heading) if heading is not None else None
     except (TypeError, ValueError):
         cooperado.last_heading = None
 
-    try:
-        cooperado.last_accuracy_m = float(accuracy) if accuracy is not None else None
-    except (TypeError, ValueError):
-        cooperado.last_accuracy_m = None
-
-    # marca último movimento
-    if v_kmh is not None and v_kmh >= MOVING_SPEED_KMH:
-        cooperado.last_moving_at = agora
-
-    # salva também na tabela de localização, se existir
     loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado.id).first()
     if not loc:
         loc = LocalizacaoCooperado(cooperado_id=cooperado.id)
@@ -5361,10 +5257,8 @@ def cooperado_atualizar_localizacao():
     try:
         _append_point_to_active_trajeto(cooperado.id, lat, lng, agora)
     except Exception:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
+        try: db.session.rollback()
+        except Exception: pass
 
     try:
         emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
@@ -5373,7 +5267,8 @@ def cooperado_atualizar_localizacao():
 
     return jsonify({'status': 'ok'}), 200
 
-@app.route('/cooperado/api/recusar', methods=['POST'])
+
+@app.route('/cooperado/api/recusar' , methods=['POST'])
 def cooperado_recusar_corrida():
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 401
@@ -6476,109 +6371,127 @@ def mapa_motoboys():
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     motoboys_js = []
-
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
 
-    def _coord_valida_rn(lat, lng):
-        # Evita bug de marcador indo para o mar por coordenada invertida/ruim.
-        # Área ampla de RN/Natal/Parnamirim/interior.
+    def _coord_valida(lat, lng):
         try:
-            lat = float(lat)
-            lng = float(lng)
-            return (-7.5 <= lat <= -4.0) and (-39.0 <= lng <= -34.0)
+            lat = float(lat); lng = float(lng)
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                return False
+            return (-8.5 <= lat <= -3.0) and (-41.5 <= lng <= -32.5)
         except Exception:
             return False
 
-    for c in cooperados:
-        # fonte principal: campos do cooperado
-        lat = c.last_lat
-        lng = c.last_lng
-        ping = c.last_ping
-        acc = getattr(c, "last_accuracy_m", None)
-        spd = getattr(c, "last_speed_kmh", None)
-        hdg = getattr(c, "last_heading", None)
+    def _online_por_ping(ping, flag=True):
+        if not ping:
+            return False
+        try:
+            p = _to_utc_aware(ping)
+            return bool(flag) and ((datetime.now(timezone.utc) - p).total_seconds() <= OFFLINE_AFTER_SEC)
+        except Exception:
+            return False
 
-        # fallback: tabela localizacao_cooperado
+    def _tempo_sem_entrega(coop_id, online, abertas):
+        if not online or abertas:
+            return ''
+        try:
+            ultima = (Entrega.query.filter(Entrega.cooperado_id == coop_id)
+                      .order_by(func.coalesce(Entrega.data_atribuida, Entrega.data_envio).desc()).first())
+            if not ultima:
+                return 'Sem entrega registrada'
+            base = ultima.data_atribuida or ultima.data_envio
+            if not base:
+                return 'Sem entrega registrada'
+            segundos = int((datetime.now(timezone.utc) - _to_utc_aware(base)).total_seconds())
+            if segundos < 60:
+                return 'menos de 1 min sem entrega'
+            minutos = segundos // 60
+            if minutos < 60:
+                return f'{minutos} min sem entrega'
+            horas = minutos // 60
+            mins = minutos % 60
+            if horas < 24:
+                return f'{horas}h {mins}min sem entrega'
+            dias = horas // 24
+            return f'{dias} dia(s) sem entrega'
+        except Exception:
+            return ''
+
+    for c in cooperados:
+        lat = c.last_lat; lng = c.last_lng; ping = c.last_ping
+        acc = getattr(c, 'last_accuracy_m', None)
+        hdg = getattr(c, 'last_heading', None)
+        loc_online_flag = bool(getattr(c, 'online', False))
+
         try:
             loc = LocalizacaoCooperado.query.filter_by(cooperado_id=c.id).first()
-            if loc and loc.latitude is not None and loc.longitude is not None:
-                # se o cooperado ainda não tem lat/lng ou a tabela é mais recente, usa a tabela
-                if lat is None or lng is None or (loc.atualizado_em and (not ping or loc.atualizado_em >= ping)):
-                    lat = loc.latitude
-                    lng = loc.longitude
-                    ping = loc.atualizado_em or ping
-                    acc = loc.accuracy
-                    spd = loc.speed
-                    hdg = loc.heading
+            if loc:
+                loc_is_newer = bool(loc.atualizado_em and (not ping or loc.atualizado_em >= ping))
+                if loc.latitude is not None and loc.longitude is not None and (lat is None or lng is None or loc_is_newer):
+                    lat = loc.latitude; lng = loc.longitude; ping = loc.atualizado_em or ping
+                    acc = loc.accuracy; hdg = loc.heading; loc_online_flag = bool(loc.online)
+                elif loc.atualizado_em and not ping:
+                    ping = loc.atualizado_em; loc_online_flag = bool(loc.online)
         except Exception:
             pass
 
-        tem_localizacao = _coord_valida_rn(lat, lng)
+        tem_localizacao = _coord_valida(lat, lng)
+        online = _online_por_ping(ping, loc_online_flag or bool(getattr(c, 'online', False)))
 
-        is_online, idle_s, _status_calc = calc_status_cooperado(c)
+        entregas_abertas = (Entrega.query.filter(Entrega.cooperado_id == c.id)
+            .filter(or_(Entrega.status_corrida == None, Entrega.status_corrida.in_(status_corrida_abertas)))
+            .filter(or_(Entrega.status == None, ~func.lower(func.coalesce(Entrega.status, '')).in_(status_finalizados)))
+            .count())
 
-        abertas_q = (
-            Entrega.query
-            .filter(Entrega.cooperado_id == c.id)
-            .filter(
-                or_(
-                    Entrega.status_corrida == None,
-                    Entrega.status_corrida.in_(status_corrida_abertas)
-                )
-            )
-            .filter(
-                or_(
-                    Entrega.status == None,
-                    ~func.lower(Entrega.status).in_(status_finalizados)
-                )
-            )
-        )
-
-        entregas_abertas = abertas_q.count()
-        em_corrida = bool(is_online and entregas_abertas > 0)
-
-        if em_corrida:
+        if online and entregas_abertas > 0:
             status = 'em_corrida'
-        elif is_online:
+        elif online:
             status = 'livre'
         else:
             status = 'offline'
 
+        try:
+            ultima_txt = to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S') if ping else ''
+        except Exception:
+            ultima_txt = ''
+
+        nome = c.nome or f'Cooperado {c.id}'
+        try:
+            nome = _dash_title_case(nome)
+        except Exception:
+            pass
+
         motoboys_js.append({
-            "id": c.id,
-            "nome": c.nome,
-            "lat": float(lat) if tem_localizacao else None,
-            "lng": float(lng) if tem_localizacao else None,
-            "tem_localizacao": bool(tem_localizacao),
-            "online": bool(is_online),
-            "status": status,
-            "idle_seconds": idle_s,
-            "velocidade": float(spd or 0),
-            "accuracy_m": float(acc or 0),
-            "heading": float(hdg or 0),
-            "ultima_atualizacao": (to_brasilia(ping).strftime('%d/%m %H:%M:%S') if ping else ""),
-            "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
-            "observacao": getattr(c, "observacao", "") or "",
-            "entregas_abertas": int(entregas_abertas),
+            'id': c.id,
+            'nome': nome,
+            'lat': float(lat) if tem_localizacao else None,
+            'lng': float(lng) if tem_localizacao else None,
+            'tem_localizacao': bool(tem_localizacao),
+            'online': bool(online),
+            'status': status,
+            'idle_seconds': None,
+            'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
+            'accuracy_m': float(acc or 0),
+            'heading': float(hdg or 0),
+            'ultima_atualizacao': ultima_txt or 'Sem GPS enviado',
+            'endereco': getattr(c, 'zona', None) or getattr(c, 'bairro', None) or '',
+            'observacao': getattr(c, 'observacao', '') or '',
+            'entregas_abertas': int(entregas_abertas),
         })
 
     def _sort_key(x):
-        if x.get('status') == 'em_corrida':
-            prioridade = 0
-        elif x.get('online'):
-            prioridade = 1
-        elif x.get('tem_localizacao'):
-            prioridade = 2
-        else:
-            prioridade = 3
+        if x.get('status') == 'em_corrida': prioridade = 0
+        elif x.get('online'): prioridade = 1
+        elif x.get('tem_localizacao'): prioridade = 2
+        else: prioridade = 3
         return (prioridade, -(x.get('entregas_abertas') or 0), (x.get('nome') or '').lower())
 
     motoboys_js.sort(key=_sort_key)
 
     if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
         resp = jsonify(motoboys_js)
-        resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
+        resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return resp
 
     return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
