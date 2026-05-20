@@ -4300,6 +4300,154 @@ def admin():
     return _patch_admin_top_link(html)
 
 
+def _bairro_rota_display(valor):
+    txt = (valor or '').strip()
+    if not txt:
+        return ''
+    txt = re.sub(r'\s+', ' ', txt)
+    # Mantém acentos, mas melhora visual quando vier tudo minúsculo/maiúsculo.
+    return txt[:1].upper() + txt[1:].lower() if txt.isupper() or txt.islower() else txt
+
+def _bairro_rota_key(valor):
+    txt = _strip_accents(valor or '').lower()
+    txt = re.sub(r'[^a-z0-9\s]', ' ', txt)
+    return re.sub(r'\s+', ' ', txt).strip()
+
+def _bairro_origem_destino_entrega(e):
+    origem = _json_dict_safe(getattr(e, 'origem_json', None))
+    destino = _json_dict_safe(getattr(e, 'destino_json', None))
+
+    origem_bairro = (
+        origem.get('bairro') or
+        origem.get('bairro_origem') or
+        origem.get('localidade') or
+        ''
+    )
+
+    destino_bairro = (
+        destino.get('bairro') or
+        destino.get('bairro_destino') or
+        destino.get('localidade') or
+        getattr(e, 'bairro', '') or
+        ''
+    )
+
+    # Fallback para sistemas antigos onde só existia e.bairro.
+    if not origem_bairro:
+        origem_bairro = getattr(e, 'bairro', '') or 'Origem não informada'
+    if not destino_bairro:
+        destino_bairro = getattr(e, 'bairro', '') or 'Destino não informado'
+
+    return _bairro_rota_display(origem_bairro), _bairro_rota_display(destino_bairro)
+
+
+@app.route('/api/admin/bairros_em_aberto')
+def api_admin_bairros_em_aberto():
+    """
+    Monta uma lista pronta para WhatsApp com as rotas das entregas em aberto.
+
+    Regra:
+    - "em aberto" = entrega sem cooperado atribuído;
+    - respeita filtro de data atual do admin;
+    - se não houver data no filtro, usa o dia atual;
+    - agrupa por bairro de coleta + bairro de entrega;
+    - o número no início é a quantidade de entregas daquele mesmo trajeto.
+    """
+    if not session.get('is_admin') and not session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    cliente = (request.args.get('cliente') or '').strip()
+    endereco = (request.args.get('endereco') or '').strip()
+
+    hoje = datetime.now(BRAZIL_TZ).date()
+    query = Entrega.query
+
+    # Mesmo padrão do painel admin: sem filtro de data, mostra o dia atual.
+    if not data_inicio and not data_fim:
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
+        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
+
+    if data_inicio:
+        try:
+            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+            inicio_utc, _ = local_date_window_to_utc_range(di)
+            query = query.filter(Entrega.data_envio >= inicio_utc)
+        except Exception:
+            pass
+
+    if data_fim:
+        try:
+            df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+            _, fim_utc = local_date_window_to_utc_range(df_)
+            query = query.filter(Entrega.data_envio <= fim_utc)
+        except Exception:
+            pass
+
+    # Em aberto, seguindo a lógica visual do painel: sem cooperado atribuído.
+    query = query.filter(Entrega.cooperado_id == None)
+
+    # Não listar entregas já encerradas, caso alguma fique sem cooperado por edição.
+    query = query.filter(
+        (Entrega.status == None) |
+        (~func.lower(Entrega.status).in_(['recebido', 'entregue', 'cancelado', 'cancelada', 'finalizado', 'finalizada']))
+    )
+
+    if cliente:
+        like = f"%{cliente.lower()}%"
+        query = query.filter(func.lower(Entrega.cliente).like(like))
+
+    if endereco:
+        like_end = f"%{endereco.lower()}%"
+        query = query.filter(
+            or_(
+                func.lower(Entrega.bairro).like(like_end),
+                func.lower(func.coalesce(Entrega.origem_json, '')).like(like_end),
+                func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
+                func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
+            )
+        )
+
+    entregas_abertas = query.order_by(Entrega.data_envio.asc()).all()
+
+    grupos = {}
+    for e in entregas_abertas:
+        origem_bairro, destino_bairro = _bairro_origem_destino_entrega(e)
+
+        origem_key = _bairro_rota_key(origem_bairro)
+        destino_key = _bairro_rota_key(destino_bairro)
+        key = (origem_key, destino_key)
+
+        if key not in grupos:
+            grupos[key] = {
+                'origem': origem_bairro or 'Origem não informada',
+                'destino': destino_bairro or 'Destino não informado',
+                'quantidade': 0,
+            }
+        grupos[key]['quantidade'] += 1
+
+    itens = sorted(
+        grupos.values(),
+        key=lambda x: (_bairro_rota_key(x['origem']), _bairro_rota_key(x['destino']))
+    )
+
+    linhas = [
+        f"{int(item['quantidade']):02d} {item['origem']} para {item['destino']}"
+        for item in itens
+    ]
+
+    texto = "Entregas em aberto:\n\n" + ("\n".join(linhas) if linhas else "Nenhuma entrega em aberto no momento.")
+
+    return jsonify(
+        ok=True,
+        texto=texto,
+        total_entregas=sum(int(item['quantidade']) for item in itens),
+        total_rotas=len(itens),
+        itens=itens,
+    )
+
+
 @app.route('/api/admin/kpis')
 def api_admin_kpis():
     if not session.get('is_admin'):
@@ -4855,7 +5003,7 @@ def api_app_localizacao():
     - NÃO roda db.create_all()/inspect a cada localização.
     - Limita gravação por cooperado a cada X segundos.
     - Ignora ruído de GPS parado.
-    - Evita gravar trajeto em todo ping.
+    - Histórico de trajeto desativado: salva apenas a última localização.
     - Só emite socket quando realmente salva ponto aceito.
     """
 
@@ -5040,30 +5188,9 @@ def api_app_localizacao():
             pass
         return jsonify({'ok': False, 'error': 'falha ao salvar localização'}), 500
 
-    # 3) Trajeto é pesado porque lê/grava JSON. Não grave em todo ping.
-    # Grava só quando passou intervalo maior ou quando houve deslocamento relevante.
-    deve_gravar_trajeto = False
-    try:
-        if moving_now:
-            deve_gravar_trajeto = True
-
-        if dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M:
-            deve_gravar_trajeto = True
-
-        if ultimo_ping:
-            segundos_trajeto = (agora - ultimo_ping).total_seconds()
-            if segundos_trajeto < LOCATION_MIN_TRAJETO_INTERVAL_SEC and not (
-                dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M
-            ):
-                deve_gravar_trajeto = False
-
-        if deve_gravar_trajeto:
-            _append_point_to_active_trajeto(coop.id, lat, lng, agora)
-    except Exception:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
+    # 3) Histórico de trajeto DESATIVADO.
+    # Mantemos apenas a última localização do cooperado para acompanhamento em tempo real.
+    # Não grava pontos em Trajeto/pontos_json para não pesar banco, Render e painel.
 
     # 4) Socket só depois de salvar ponto aceito.
     try:
@@ -5216,13 +5343,7 @@ def cooperado_atualizar_localizacao():
 
     db.session.commit()
 
-    try:
-        _append_point_to_active_trajeto(cooperado.id, lat, lng, agora)
-    except Exception:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
+    # Histórico de trajeto desativado: não salva rota/pontos, apenas última posição.
 
     try:
         emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
@@ -5884,351 +6005,91 @@ def api_retorno_percentual():
     return jsonify({"ok": True, "retorno_percentual": float(novo)})
 
 # =========================================================
-# TRAJETOS (HISTÓRICO POR COOPERADO / PERÍODO)
+# TRAJETOS (HISTÓRICO DESATIVADO)
 # =========================================================
+def _trajetos_desativado_html():
+    return """<!doctype html>
+<html lang="pt-br">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Trajetos desativados</title>
+<style>
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#eef3ff;color:#10224d;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;box-sizing:border-box;}
+    .card{max-width:720px;width:100%;background:white;border-radius:22px;padding:28px;box-shadow:0 12px 35px rgba(0,40,130,.16);border:1px solid rgba(0,60,180,.12);}
+    .badge{display:inline-block;background:#0b43d9;color:white;border-radius:999px;padding:8px 14px;font-weight:800;font-size:13px;margin-bottom:14px;}
+    h1{margin:0 0 10px;font-size:28px;line-height:1.15;color:#07308f;}
+    p{font-size:16px;line-height:1.55;margin:8px 0;color:#23345f;}
+    .ok{margin-top:18px;background:#eaf7ef;border:1px solid #bfe8cc;color:#14532d;border-radius:14px;padding:12px 14px;font-weight:700;}
+    a{display:inline-block;margin-top:18px;text-decoration:none;background:#0b43d9;color:#fff;padding:11px 16px;border-radius:12px;font-weight:800;}
+</style>
+</head>
+<body>
+  <div class="card">
+    <div class="badge">COOPEX • Sistema leve</div>
+    <h1>Histórico de trajetos desativado</h1>
+    <p>A gravação de rotas e histórico de pontos foi desativada para deixar o sistema mais leve.</p>
+    <p>Agora o sistema mantém somente a <strong>última localização atual do cooperado</strong>, atualizada no máximo a cada 20 segundos.</p>
+    <div class="ok">O acompanhamento em tempo real continua funcionando no painel, mas sem salvar histórico de trajeto.</div>
+    <a href="/dashboard">Voltar ao painel</a>
+  </div>
+</body>
+</html>"""
+
+
+def _trajetos_desativado_json():
+    return jsonify(
+        ok=True,
+        desativado=True,
+        mensagem='Histórico de trajetos desativado. O sistema salva apenas a última localização atual do cooperado.'
+    )
+
+
 @app.route('/trajetos')
 def trajetos():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
+    return _trajetos_desativado_html(), 200
 
-    # Limpa automaticamente trajetos com mais de 31 dias (sempre mantém último mês)
-    try:
-        limite_utc = datetime.utcnow() - timedelta(days=31)
-        (
-            Trajeto.query
-            .filter(Trajeto.inicio < limite_utc)
-            .delete(synchronize_session=False)
-        )
-        db.session.commit()
-    except Exception:
-        db.session.rollback()
-
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-
-    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
-
-    # Período padrão: últimos 30 dias em horário de Brasília
-    hoje_brt = datetime.now(BRAZIL_TZ).date()
-    if not data_inicio and not data_fim:
-        di_default = hoje_brt - timedelta(days=29)
-        di_utc, _ = local_date_window_to_utc_range(di_default)
-        _, df_utc = local_date_window_to_utc_range(hoje_brt)
-        q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
-
-        data_inicio = di_default.isoformat()
-        data_fim = hoje_brt.isoformat()
-    else:
-        if data_inicio:
-            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-            di_utc, _ = local_date_window_to_utc_range(di)
-            q = q.filter(Trajeto.inicio >= di_utc)
-        if data_fim:
-            df = datetime.strptime(data_fim, "%Y-%m-%d").date()
-            _, df_utc = local_date_window_to_utc_range(df)
-            q = q.filter(Trajeto.inicio <= df_utc)
-
-    if cooperado_id and cooperado_id != 'todos':
-        try:
-            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
-        except ValueError:
-            pass
-
-    trajetos_list = q.order_by(Trajeto.inicio.desc()).limit(2000).all()
-
-    # KPIs gerais
-    total_km = sum((t.distancia_m or 0.0) for t in trajetos_list) / 1000.0
-    total_horas = sum((t.duracao_s or 0) for t in trajetos_list) / 3600.0
-    vel_media_geral = (total_km / total_horas) if total_horas > 0 else 0.0
-
-    return render_template(
-        'trajetos.html',
-        trajetos=trajetos_list,
-        cooperados=cooperados,
-        cooperado_id=cooperado_id,
-        data_inicio=data_inicio,
-        data_fim=data_fim,
-        total_km=total_km,
-        total_horas=total_horas,
-        vel_media_geral=vel_media_geral,
-        to_brasilia=to_brasilia,
-        now=lambda: datetime.now(BRAZIL_TZ),
-    )
 
 @app.route('/trajetos/exportar')
 def trajetos_exportar():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-
-    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
-
-    hoje_brt = datetime.now(BRAZIL_TZ).date()
-    if not data_inicio and not data_fim:
-        di_default = hoje_brt - timedelta(days=29)
-        di_utc, _ = local_date_window_to_utc_range(di_default)
-        _, df_utc = local_date_window_to_utc_range(hoje_brt)
-        q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
-    else:
-        if data_inicio:
-            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-            di_utc, _ = local_date_window_to_utc_range(di)
-            q = q.filter(Trajeto.inicio >= di_utc)
-        if data_fim:
-            df = datetime.strptime(data_fim, "%Y-%m-%d").date()
-            _, df_utc = local_date_window_to_utc_range(df)
-            q = q.filter(Trajeto.inicio <= df_utc)
-
-    if cooperado_id and cooperado_id != 'todos':
-        try:
-            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
-        except ValueError:
-            pass
-
-    trajetos_list = q.order_by(Trajeto.inicio.asc()).all()
-
-    rows = []
-    for t in trajetos_list:
-        ini_local = to_brasilia(t.inicio) if t.inicio else None
-        fim_local = to_brasilia(t.fim) if t.fim else None
-        rows.append({
-            'Cooperado': t.cooperado.nome if t.cooperado else '',
-            'Início (Brasília)': ini_local.strftime('%d/%m/%Y %H:%M:%S') if ini_local else '',
-            'Fim (Brasília)': fim_local.strftime('%d/%m/%Y %H:%M:%S') if fim_local else '',
-            'Duração (min)': round((t.duracao_s or 0) / 60.0, 1),
-            'Distância (km)': round((t.distancia_m or 0.0) / 1000.0, 3),
-            'Velocidade média (km/h)': round(t.velocidade_media_kmh or 0.0, 1),
-            'Origem (lat,lng)': (
-                f"{t.origem_lat:.6f},{t.origem_lng:.6f}"
-                if t.origem_lat is not None and t.origem_lng is not None
-                else ''
-            ),
-            'Destino (lat,lng)': (
-                f"{t.destino_lat:.6f},{t.destino_lng:.6f}"
-                if t.destino_lat is not None and t.destino_lng is not None
-                else ''
-            ),
-        })
-
-    df_out = pd.DataFrame(rows)
-
-    output = io.BytesIO()
-    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-        sheet = 'Trajetos'
-        df_out.to_excel(writer, index=False, sheet_name=sheet)
-        ws = writer.sheets[sheet]
-
-        widths = [26, 22, 22, 14, 16, 22, 20, 20]
-        for i, w in enumerate(widths[:len(df_out.columns)]):
-            ws.set_column(i, i, w)
-
-        money_fmt = writer.book.add_format({'num_format': '#,##0.000'})
-        vel_fmt = writer.book.add_format({'num_format': '#,##0.0'})
-        cols = list(df_out.columns)
-        if 'Distância (km)' in cols:
-            idx = cols.index('Distância (km)')
-            ws.set_column(idx, idx, 16, money_fmt)
-        if 'Velocidade média (km/h)' in cols:
-            idx = cols.index('Velocidade média (km/h)')
-            ws.set_column(idx, idx, 22, vel_fmt)
-
-    output.seek(0)
-    return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
-
-from flask import request, jsonify
-
+    return _trajetos_desativado_html(), 200
 
 
 @app.route('/api/trajetos/salvar', methods=['POST'])
 def api_trajetos_salvar():
+    # No-op proposital: não grava histórico, mas responde OK para não quebrar telas/apps antigos.
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-
-    try:
-        db.create_all()
-    except Exception:
-        pass
-
-    data = request.get_json(silent=True) or {}
-    try:
-        cooperado_id = int(data.get('cooperado_id') or 0)
-    except Exception:
-        cooperado_id = 0
-    if not cooperado_id:
-        return jsonify(ok=False, error='cooperado_id obrigatório'), 400
-
-    cooperado = Cooperado.query.get(cooperado_id)
-    if not cooperado:
-        return jsonify(ok=False, error='Cooperado não encontrado'), 404
-
-    pontos = data.get('pontos') or []
-    if not isinstance(pontos, list) or len(pontos) < 2:
-        return jsonify(ok=False, error='Rota curta demais para salvar'), 400
-
-    pts = []
-    for p in pontos:
-        try:
-            lat = float(p.get('lat'))
-            lng = float(p.get('lng'))
-            tms = int(p.get('tMs') or p.get('timestamp') or 0)
-            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
-                continue
-            pts.append({'lat': lat, 'lng': lng, 'tMs': tms})
-        except Exception:
-            continue
-    if len(pts) < 2:
-        return jsonify(ok=False, error='Pontos inválidos'), 400
-
-    try:
-        metricas = _trajeto_metricas_from_points(pts)
-
-        try:
-            inicio = datetime.utcfromtimestamp((pts[0].get('tMs') or 0) / 1000.0)
-        except Exception:
-            inicio = datetime.utcnow()
-        try:
-            fim = datetime.utcfromtimestamp((pts[-1].get('tMs') or 0) / 1000.0)
-        except Exception:
-            fim = None
-
-        traj = Trajeto(
-            cooperado_id=cooperado_id,
-            inicio=inicio or datetime.utcnow(),
-            fim=fim,
-            distancia_m=metricas['distancia_m'],
-            duracao_s=metricas['duracao_s'],
-            velocidade_media_kmh=metricas['velocidade_media_kmh'],
-            origem_lat=metricas['origem_lat'],
-            origem_lng=metricas['origem_lng'],
-            destino_lat=metricas['destino_lat'],
-            destino_lng=metricas['destino_lng'],
-            pontos_json=json.dumps(pts, ensure_ascii=False),
-        )
-        db.session.add(traj)
-        db.session.commit()
-        return jsonify(ok=True, id=traj.id, nome=cooperado.nome)
-    except Exception as e:
-        try:
-            db.session.rollback()
-        except Exception:
-            pass
-        try:
-            current_app.logger.exception('Falha ao salvar trajeto')
-        except Exception:
-            pass
-        return jsonify(ok=False, error=f'Falha ao salvar histórico: {e}'), 500
+    return _trajetos_desativado_json(), 200
 
 
 @app.route('/api/trajetos/historico')
 def api_trajetos_historico():
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-
-    try:
-        limit = max(1, min(100, int(request.args.get('limit', 30))))
-    except Exception:
-        limit = 30
-
-    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
-
-    cooperado_id = request.args.get('cooperado_id')
-    if cooperado_id:
-        try:
-            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
-        except Exception:
-            pass
-
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    try:
-        if data_inicio:
-            di = datetime.strptime(data_inicio, '%Y-%m-%d').date()
-            di_utc, _ = local_date_window_to_utc_range(di)
-            q = q.filter(Trajeto.inicio >= di_utc)
-        if data_fim:
-            df = datetime.strptime(data_fim, '%Y-%m-%d').date()
-            _, df_utc = local_date_window_to_utc_range(df)
-            q = q.filter(Trajeto.inicio <= df_utc)
-    except Exception:
-        pass
-
-    itens = []
-    for t in q.order_by(Trajeto.inicio.desc()).limit(limit).all():
-        itens.append({
-            'id': t.id,
-            'cooperado_id': t.cooperado_id,
-            'nome': t.cooperado.nome if t.cooperado else '',
-            'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
-            'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
-            'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
-            'duracao_min': round((t.duracao_s or 0)/60.0, 1),
-            'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
-        })
-    return jsonify(ok=True, itens=itens)
+    return jsonify(ok=True, desativado=True, itens=[], mensagem='Histórico de trajetos desativado.'), 200
 
 
 @app.route('/api/trajetos/<int:trajeto_id>')
 def api_trajetos_detalhe(trajeto_id):
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-
-    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
-    try:
-        pontos = json.loads(t.pontos_json or '[]')
-    except Exception:
-        pontos = []
-    return jsonify(ok=True, item={
-        'id': t.id,
-        'cooperado_id': t.cooperado_id,
-        'nome': t.cooperado.nome if t.cooperado else '',
-        'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
-        'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
-        'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
-        'duracao_min': round((t.duracao_s or 0)/60.0, 1),
-        'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
-        'pontos': pontos,
-    })
+    return jsonify(ok=True, desativado=True, item=None, mensagem='Histórico de trajetos desativado.'), 200
 
 
 @app.route('/api/trajetos/<int:trajeto_id>/geojson')
 def api_trajetos_geojson(trajeto_id):
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-
-    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
-    try:
-        pontos = json.loads(t.pontos_json or '[]')
-    except Exception:
-        pontos = []
-    geo = {
-        'type': 'FeatureCollection',
-        'features': [{
-            'type': 'Feature',
-            'properties': {
-                'id': t.id,
-                'cooperado_id': t.cooperado_id,
-                'nome': t.cooperado.nome if t.cooperado else '',
-                'inicio': t.inicio.isoformat() if t.inicio else None,
-                'fim': t.fim.isoformat() if t.fim else None,
-                'distancia_m': t.distancia_m or 0.0,
-                'duracao_s': t.duracao_s or 0,
-                'velocidade_media_kmh': t.velocidade_media_kmh or 0.0,
-            },
-            'geometry': {
-                'type': 'LineString',
-                'coordinates': [[float(p.get('lng')), float(p.get('lat'))] for p in pontos if p.get('lng') is not None and p.get('lat') is not None]
-            }
-        }]
-    }
+    geo = {'type': 'FeatureCollection', 'features': [], 'desativado': True, 'mensagem': 'Histórico de trajetos desativado.'}
     return current_app.response_class(
         json.dumps(geo, ensure_ascii=False, indent=2),
         mimetype='application/geo+json',
-        headers={'Content-Disposition': f'attachment; filename=trajeto_{t.id}.geojson'}
+        headers={'Content-Disposition': 'attachment; filename=trajetos_desativado.geojson'}
     )
 
 
@@ -6236,14 +6097,7 @@ def api_trajetos_geojson(trajeto_id):
 def trajetos_replay(trajeto_id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-
-    trajeto = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
-    return render_template(
-        'trajeto_replay.html',
-        trajeto_id=trajeto.id,
-        cooperado_nome=(trajeto.cooperado.nome if trajeto.cooperado else ''),
-        now=lambda: datetime.now(BRAZIL_TZ),
-    )
+    return _trajetos_desativado_html(), 200
 
 
 @app.route('/mapa_motoboys')
@@ -10023,8 +9877,61 @@ def handle_atualizar_entrega(data):
 
 
 # =========================================================
-# LINK DE RASTREIO (por entrega) — desativa ao concluir
+# LINK DE RASTREIO (por entrega) — STATUS LEVE PARA CLIENTE
 # =========================================================
+def _status_publico_entrega(entrega):
+    """
+    Status leve para o cliente.
+    Não mostra mapa e não consulta histórico de localização.
+    """
+    st = (getattr(entrega, 'status', None) or '').strip().lower()
+    sc = (getattr(entrega, 'status_corrida', None) or '').strip().lower()
+
+    concluidos = {'recebido', 'entregue', 'concluido', 'concluída', 'concluida', 'finalizado', 'finalizada'}
+    proximos = {'proximo', 'próximo', 'perto', 'chegando', 'entregador_proximo', 'motoboy_proximo'}
+    em_rota = {'aceita', 'em_rota', 'em rota', 'andamento', 'em_andamento', 'a_caminho', 'coletada', 'saiu_para_entrega'}
+
+    if st in concluidos or sc in concluidos:
+        return {
+            'codigo': 'concluido',
+            'titulo': 'Entrega concluída',
+            'mensagem': 'Sua entrega foi concluída com sucesso.',
+            'icone': '✅',
+            'percentual': 100,
+            'finalizada': True,
+        }
+
+    if sc in proximos or st in proximos:
+        return {
+            'codigo': 'proximo',
+            'titulo': 'O entregador está próximo',
+            'mensagem': 'O cooperado já está próximo do destino. Fique atento para receber a entrega.',
+            'icone': '📍',
+            'percentual': 85,
+            'finalizada': False,
+        }
+
+    if getattr(entrega, 'cooperado_id', None) or sc in em_rota or st in em_rota:
+        nome = entrega.cooperado.nome if getattr(entrega, 'cooperado', None) else 'O cooperado'
+        return {
+            'codigo': 'em_rota',
+            'titulo': 'Motoboy em rota',
+            'mensagem': f'{nome} já está em rota para realizar sua entrega.',
+            'icone': '🏍️',
+            'percentual': 60,
+            'finalizada': False,
+        }
+
+    return {
+        'codigo': 'aguardando',
+        'titulo': 'Aguardando motoboy',
+        'mensagem': 'Sua solicitação foi recebida e está aguardando a atribuição de um cooperado.',
+        'icone': '⏳',
+        'percentual': 25,
+        'finalizada': False,
+    }
+
+
 @app.get("/rastreio/<token>")
 def rastreio_publico(token):
     try:
@@ -10037,66 +9944,64 @@ def rastreio_publico(token):
     if not e:
         return "<h2>Entrega não encontrada.</h2>", 404
 
-    st = (e.status or "").lower()
-    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
-        return "<h2>Rastreio encerrado: entrega concluída.</h2>", 410
+    coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "")
+    status = _status_publico_entrega(e)
 
-    coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "Cooperado")
     html = f"""<!doctype html>
 <html lang="pt-br"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rastreio — Entrega #{entrega_id}</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Status da entrega #{entrega_id}</title>
 <style>
-  body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b1220;color:#fff}}
-  header{{padding:10px 12px;background:linear-gradient(90deg,#0b2cc2,#1a47ff);font-weight:800}}
-  #map{{height: calc(100vh - 54px); width:100%}}
-  .small{{opacity:.9;font-weight:700}}
+  body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#edf3ff;color:#0f224f;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;}}
+  .card{{width:100%;max-width:520px;background:#fff;border-radius:24px;box-shadow:0 18px 45px rgba(0,50,150,.16);overflow:hidden;border:1px solid rgba(0,60,180,.10);}}
+  .top{{background:linear-gradient(90deg,#0635c9,#0b63ff);color:#fff;padding:18px 20px;font-weight:900;}}
+  .body{{padding:26px 22px 22px;text-align:center;}}
+  .icone{{font-size:58px;line-height:1;margin-bottom:8px;}}
+  h1{{font-size:25px;margin:6px 0 10px;color:#07308f;}}
+  p{{font-size:16px;line-height:1.5;margin:0;color:#33415f;}}
+  .meta{{margin-top:18px;background:#f5f8ff;border-radius:16px;padding:12px;text-align:left;font-size:14px;color:#25365f;}}
+  .bar-wrap{{height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:22px 0 8px;}}
+  .bar{{height:100%;background:#0b63ff;width:{int(status.get('percentual') or 0)}%;transition:width .35s ease;}}
+  .small{{font-size:13px;color:#667085;margin-top:12px;}}
 </style>
 </head><body>
-<header>Rastreio em tempo real — Entrega #{entrega_id} <span class="small">({coop_nome})</span></header>
-<div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<div class="card">
+  <div class="top">COOPEX Entregas • Pedido #{entrega_id}</div>
+  <div class="body">
+    <div id="icone" class="icone">{status['icone']}</div>
+    <h1 id="titulo">{status['titulo']}</h1>
+    <p id="mensagem">{status['mensagem']}</p>
+    <div class="bar-wrap"><div id="bar" class="bar"></div></div>
+    <div class="meta">
+      <div><strong>Cliente:</strong> {e.cliente or '-'}</div>
+      <div><strong>Cooperado:</strong> <span id="coop">{coop_nome or 'Aguardando atribuição'}</span></div>
+      <div><strong>Última atualização:</strong> <span id="quando">agora</span></div>
+    </div>
+    <div class="small">Acompanhe por aqui. O mapa em tempo real foi desativado para deixar o sistema mais leve.</div>
+  </div>
+</div>
 <script>
   const token = {json.dumps(token)};
-  const map = L.map('map', {{ zoomControl:true }}).setView([-5.7945,-35.2110], 13);
-  L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{ maxZoom: 19 }}).addTo(map);
-  let marker = null;
-
-  async function pull(){{
+  async function atualizarStatus(){{
     try{{
       const r = await fetch('/api/rastreio_pos/'+encodeURIComponent(token), {{cache:'no-store'}});
-      if(r.status === 410){{
-        document.body.innerHTML = '<h2 style="padding:16px">Rastreio encerrado: entrega concluída.</h2>';
-        return;
-      }}
       const data = await r.json();
       if(!data.ok) return;
-
-      const lat = data.lat, lng = data.lng;
-      if(typeof lat !== 'number' || typeof lng !== 'number') return;
-
-      const txt = (data.cooperado || '') + ' • ' + (data.quando_local || '');
-      if(!marker){{
-        marker = L.circleMarker([lat,lng], {{
-          radius: 7,
-          weight: 2,
-          fillOpacity: 0.8
-        }}).addTo(map);
-        marker.bindTooltip(txt, {{direction:'top', sticky:true}});
-        map.setView([lat,lng], 15);
-      }} else {{
-        marker.setLatLng([lat,lng]);
-        marker.setTooltipContent(txt);
-      }}
+      document.getElementById('icone').textContent = data.icone || '📦';
+      document.getElementById('titulo').textContent = data.titulo || 'Acompanhando entrega';
+      document.getElementById('mensagem').textContent = data.mensagem || '';
+      document.getElementById('coop').textContent = data.cooperado || 'Aguardando atribuição';
+      document.getElementById('quando').textContent = data.quando_local || 'agora';
+      document.getElementById('bar').style.width = String(data.percentual || 0) + '%';
     }}catch(e){{}}
   }}
-  pull();
-  setInterval(pull, 5000);
+  atualizarStatus();
+  setInterval(atualizarStatus, 15000);
 </script>
 </body></html>"""
     return html
+
 
 @app.get("/api/rastreio_pos/<token>")
 def api_rastreio_pos(token):
@@ -10110,40 +10015,29 @@ def api_rastreio_pos(token):
     if not e:
         return jsonify(ok=False, error="not_found"), 404
 
-    st = (e.status or "").lower()
-    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
-        return jsonify(ok=False, error="ended"), 410
-
+    status = _status_publico_entrega(e)
     coop = getattr(e, "cooperado", None)
-    lat = lng = None
-    when = None
-    if coop:
-        lat = getattr(coop, 'last_lat', None)
-        lng = getattr(coop, 'last_lng', None)
-        when = getattr(coop, 'last_ping', None)
-        try:
-            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
-            if loc and loc.latitude is not None and loc.longitude is not None:
-                lat = loc.latitude
-                lng = loc.longitude
-                when = loc.atualizado_em or when
-        except Exception:
-            pass
-    if not coop or lat is None or lng is None:
-        return jsonify(ok=True, lat=None, lng=None, cooperado=(coop.nome if coop else None), quando_local=None)
 
-    when_local = None
+    quando_local = datetime.now(BRAZIL_TZ).strftime("%d/%m/%Y %H:%M:%S")
     try:
-        if when:
-            when_local = to_brasilia(when).strftime("%d/%m/%Y %H:%M:%S")
+        base_dt = e.data_atribuida or e.data_envio
+        if base_dt:
+            quando_local = to_brasilia(base_dt).strftime("%d/%m/%Y %H:%M:%S")
     except Exception:
-        when_local = None
+        pass
 
-    return jsonify(ok=True,
-                   lat=float(lat),
-                   lng=float(lng),
-                   cooperado=coop.nome,
-                   quando_local=when_local)
+    return jsonify(
+        ok=True,
+        entrega_id=e.id,
+        codigo=status['codigo'],
+        titulo=status['titulo'],
+        mensagem=status['mensagem'],
+        icone=status['icone'],
+        percentual=status['percentual'],
+        finalizada=status['finalizada'],
+        cooperado=(coop.nome if coop else None),
+        quando_local=quando_local,
+    )
 
 
 if __name__ == '__main__':
