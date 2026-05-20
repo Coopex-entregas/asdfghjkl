@@ -73,7 +73,13 @@
       .kpi-strip{left:8px;right:auto}
       .kpis-left{justify-content:flex-start}
     }
-  </style>
+  
+    .badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-weight:900;font-size:.78rem;border:1px solid transparent}
+    .badge.green{background:#e9f9f0;color:#117a43;border-color:#bdeccd}
+    .badge.red{background:#fff0f0;color:#b72525;border-color:#ffd0d0}
+    .badge.mix-go{background:linear-gradient(90deg,#e9f9f0 0 50%,#fff4df 50%);color:#175c37;border-color:#dce9c0}
+    .badge.mix-ro{background:linear-gradient(90deg,#fff0f0 0 50%,#fff4df 50%);color:#903322;border-color:#ffd8c8}
+</style>
 </head>
 <body>
   <div id="map"></div>
@@ -122,29 +128,28 @@
       : [];
 
     const DATA_ENDPOINT = '/mapa_motoboys?format=json';
-    const POLL_MS = 3000;
+    const POLL_MS = 2000;
 
     const map = L.map('map', {
       preferCanvas: true,
       zoomControl: true,
       minZoom: 3,
-      maxZoom: 21,
-      zoomSnap: 0.25
+      maxZoom: 20,
+      zoomSnap: 0.5,
+      wheelPxPerZoomLevel: 90
     }).setView([-5.79448, -35.211], 12);
 
     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
       minZoom: 3,
-      maxZoom: 22,
+      maxZoom: 20,
       maxNativeZoom: 19,
       updateWhenZooming: false,
       updateWhenIdle: true,
-      keepBuffer: 8
+      keepBuffer: 4,
+      noWrap: true
     }).addTo(map);
 
-    function invalidateMap(){
-      setTimeout(() => map.invalidateSize(), 120);
-    }
-
+    function invalidateMap(){ setTimeout(() => map.invalidateSize(), 120); }
     window.addEventListener('load', invalidateMap);
     window.addEventListener('resize', invalidateMap);
 
@@ -153,71 +158,23 @@
     let selected = null;
     let followId = null;
     let currentFilter = 'todos';
-    let timer = null;
+    let fetching = false;
 
     const $ = id => document.getElementById(id);
     const norm = s => (s || '').toString().normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
     const fmt = v => (v === null || v === undefined || v === '') ? '—' : String(v);
+    const hasCoord = item => item && item.lat !== null && item.lng !== null && isFinite(Number(item.lat)) && isFinite(Number(item.lng));
 
-    function moveMarkerSmooth(marker, latlng, duration = 1200){
-      const start = marker.getLatLng();
-      const end = L.latLng(latlng[0], latlng[1]);
-
-      if (!start || (start.lat === end.lat && start.lng === end.lng)){
-        marker.setLatLng(end);
-        return;
-      }
-
-      if (marker.__moveFrame){
-        cancelAnimationFrame(marker.__moveFrame);
-      }
-
-      const startedAt = performance.now();
-
-      function step(now){
-        const p = Math.min((now - startedAt) / duration, 1);
-        const eased = p < 0.5 ? 2 * p * p : 1 - Math.pow(-2 * p + 2, 2) / 2;
-        const lat = start.lat + (end.lat - start.lat) * eased;
-        const lng = start.lng + (end.lng - start.lng) * eased;
-        marker.setLatLng([lat, lng]);
-
-        if (p < 1){
-          marker.__moveFrame = requestAnimationFrame(step);
-        } else {
-          marker.__moveFrame = null;
-        }
-      }
-
-      marker.__moveFrame = requestAnimationFrame(step);
-    }
-
-
-    function mapsUrl(lat, lng){
-      return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`;
-    }
-
-    function streetUrl(lat, lng){
-      return `https://www.google.com/maps/@?api=1&map_action=pano&viewpoint=${lat},${lng}`;
-    }
-
-    function isBusy(item){
-      return Number(item.entregas_abertas || 0) > 0 || item.status === 'em_corrida';
-    }
-
-    function isOnline(item){
-      return item.status === 'livre' || item.status === 'em_corrida';
-    }
-
+    function mapsUrl(lat, lng){ return `https://www.google.com/maps/search/?api=1&query=${lat},${lng}`; }
+    function isBusy(item){ return Number(item.entregas_abertas || 0) > 0 || item.status === 'em_corrida'; }
+    function isOnline(item){ return item.status === 'livre' || item.status === 'em_corrida' || item.online === true; }
     function visualState(item){
-      const online = isOnline(item);
-      const busy = isBusy(item);
-
+      const online = isOnline(item), busy = isBusy(item);
       if (online && busy) return 'online_busy';
-      if (online && !busy) return 'online_free';
-      if (!online && busy) return 'offline_busy';
+      if (online) return 'online_free';
+      if (busy) return 'offline_busy';
       return 'offline_free';
     }
-
     function statusLabel(item){
       const state = visualState(item);
       if (state === 'online_busy') return 'Online com entrega';
@@ -225,7 +182,6 @@
       if (state === 'offline_busy') return 'Offline com entrega';
       return 'Offline';
     }
-
     function badgeClass(item){
       const state = visualState(item);
       if (state === 'online_busy') return 'mix-go';
@@ -233,7 +189,6 @@
       if (state === 'offline_busy') return 'mix-ro';
       return 'red';
     }
-
     function priority(item){
       const state = visualState(item);
       if (state === 'online_busy') return 4;
@@ -241,68 +196,24 @@
       if (state === 'offline_busy') return 2;
       return 1;
     }
-
     function markerSvg(item){
       const state = visualState(item);
-
-      let base = '#17a55a';
-      let accent = '';
-      let halo = 'rgba(23,165,90,.16)';
-
-      if (state === 'online_busy'){
-        base = '#17a55a';
-        accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
-      } else if (state === 'offline_busy'){
-        base = '#d43838';
-        accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
-        halo = 'rgba(212,56,56,.16)';
-      } else if (state === 'offline_free'){
-        base = '#d43838';
-        halo = 'rgba(212,56,56,.16)';
-      }
-
-      return `
-        <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24">
-          <circle cx="12" cy="12" r="11" fill="${halo}"/>
-          <circle cx="12" cy="12" r="7.4" fill="${base}" stroke="#ffffff" stroke-width="2"/>
-          <circle cx="12" cy="12" r="2.1" fill="#ffffff"/>
-          ${accent}
-        </svg>
-      `;
+      let base = '#17a55a', accent = '', halo = 'rgba(23,165,90,.16)';
+      if (state === 'online_busy') accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>';
+      else if (state === 'offline_busy'){ base = '#d43838'; accent = '<circle cx="18" cy="6" r="3.8" fill="#d87a00" stroke="#ffffff" stroke-width="1.4"/>'; halo = 'rgba(212,56,56,.16)'; }
+      else if (state === 'offline_free'){ base = '#d43838'; halo = 'rgba(212,56,56,.16)'; }
+      return `<svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="11" fill="${halo}"/><circle cx="12" cy="12" r="7.4" fill="${base}" stroke="#ffffff" stroke-width="2"/><circle cx="12" cy="12" r="2.1" fill="#ffffff"/>${accent}</svg>`;
     }
-
     function iconFor(item){
-      return L.icon({
-        iconUrl: 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))),
-        iconSize: [24, 24],
-        iconAnchor: [12, 12],
-        popupAnchor: [0, -12]
-      });
+      return L.icon({iconUrl:'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))), iconSize:[24,24], iconAnchor:[12,12], popupAnchor:[0,-12]});
     }
-
     function popupHtml(item){
-      return `
-        <div class="popup-title">${item.nome || 'Cooperado'}</div>
-        <div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div>
-        <div class="popup-row"><strong>Km/h:</strong> ${Number(item.velocidade || 0).toFixed(1)}</div>
-        <div class="popup-row"><strong>Entregas abertas:</strong> ${Number(item.entregas_abertas || 0)}</div>
-        <div class="popup-row"><strong>Atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>
-        <div class="popup-row"><strong>Precisão:</strong> ${item.accuracy_m ? Number(item.accuracy_m).toFixed(0) + ' m' : '—'}</div>
-        <div class="popup-actions">
-          <a href="${mapsUrl(item.lat, item.lng)}" target="_blank" rel="noopener">Maps</a>
-          <a href="${streetUrl(item.lat, item.lng)}" target="_blank" rel="noopener">Ver rua</a>
-          <a href="/trajetos?cooperado_id=${item.id}">Trajetos</a>
-        </div>
-      `;
+      const semEntrega = item.tempo_sem_entrega ? `<div class="popup-row"><strong>Tempo sem entrega:</strong> ${fmt(item.tempo_sem_entrega)}</div>` : '';
+      return `<div class="popup-title">${item.nome || 'Cooperado'}</div><div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div><div class="popup-row"><strong>Entregas pendentes:</strong> ${Number(item.entregas_abertas || 0)}</div><div class="popup-row"><strong>GPS atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>${semEntrega}<div class="popup-actions">${hasCoord(item) ? `<a href="${mapsUrl(item.lat,item.lng)}" target="_blank" rel="noopener">Abrir no Maps</a>` : ''}</div>`;
     }
-
-    function setInfo(item){
-      selected = item || null;
-    }
-
+    function setInfo(item){ selected = item || null; }
     function filteredItems(){
       const q = norm($('searchInput').value);
-
       return allItems.filter(item => {
         if (currentFilter === 'online' && !isOnline(item)) return false;
         if (currentFilter === 'com_entrega' && !isBusy(item)) return false;
@@ -311,230 +222,107 @@
         return true;
       });
     }
-
     function refreshCounters(){
       $('countOnline').textContent = allItems.filter(i => isOnline(i)).length;
       $('countBusy').textContent = allItems.filter(i => isBusy(i)).length;
       $('countOffline').textContent = allItems.filter(i => !isOnline(i)).length;
     }
-
     function buildAutocomplete(){
       const host = $('autocompleteList');
       const q = norm($('searchInput').value).trim();
-
-      if (!q){
-        host.classList.remove('open');
-        host.innerHTML = '';
-        return;
-      }
-
-      const matches = allItems.filter(i => norm(i.nome).includes(q)).slice(0, 8);
-
-      if (!matches.length){
-        host.classList.remove('open');
-        host.innerHTML = '';
-        return;
-      }
-
-      host.innerHTML = matches.map(item => `
-        <div class="ac-item" data-id="${item.id}">
-          <strong>${item.nome}</strong>
-          <small>${statusLabel(item)} • ${Number(item.entregas_abertas || 0)} entrega(s)</small>
-        </div>
-      `).join('');
-
+      if (!q){ host.classList.remove('open'); host.innerHTML = ''; return; }
+      const matches = allItems.filter(i => norm(i.nome).includes(q)).slice(0, 12);
+      if (!matches.length){ host.classList.remove('open'); host.innerHTML = ''; return; }
+      host.innerHTML = matches.map(item => `<div class="ac-item" data-id="${item.id}"><strong>${item.nome}</strong><small>${statusLabel(item)} • ${Number(item.entregas_abertas || 0)} entrega(s)${hasCoord(item) ? '' : ' • sem GPS ainda'}</small></div>`).join('');
       host.classList.add('open');
-
-      host.querySelectorAll('.ac-item').forEach(el => {
-        el.addEventListener('click', () => {
-          const id = el.dataset.id;
-          const item = allItems.find(i => String(i.id) === String(id));
-          if (!item) return;
-          $('searchInput').value = item.nome;
-          host.classList.remove('open');
-          renderAll();
-          focusItem(item.id, true);
-        });
-      });
+      host.querySelectorAll('.ac-item').forEach(el => el.addEventListener('click', () => {
+        const item = allItems.find(i => String(i.id) === String(el.dataset.id));
+        if (!item) return;
+        $('searchInput').value = item.nome;
+        host.classList.remove('open');
+        renderAll();
+        focusItem(item.id, true);
+      }));
     }
-
-    function buildList(items){ return; }
-
     function renderMarkers(items){
-      const ids = new Set(items.map(i => String(i.id)));
-
+      const coordItems = items.filter(hasCoord);
+      const ids = new Set(coordItems.map(i => String(i.id)));
       Array.from(markers.keys()).forEach(id => {
-        if (!ids.has(String(id))){
-          map.removeLayer(markers.get(id));
-          markers.delete(id);
-        }
+        if (!ids.has(String(id))){ map.removeLayer(markers.get(id)); markers.delete(id); }
       });
-
-      items.forEach(item => {
+      coordItems.forEach(item => {
         let marker = markers.get(item.id);
-
+        const latlng = [Number(item.lat), Number(item.lng)];
         if (!marker){
-          marker = L.marker([item.lat, item.lng], {
-            icon: iconFor(item),
-            zIndexOffset: priority(item) * 1000 + Number(item.entregas_abertas || 0)
-          }).addTo(map);
-
-          marker.on('click', () => {
-            setInfo(item);
-            marker.bindPopup(popupHtml(item)).openPopup();
-          });
-
+          marker = L.marker(latlng, {icon:iconFor(item), zIndexOffset:priority(item)*1000 + Number(item.entregas_abertas || 0)}).addTo(map);
           markers.set(item.id, marker);
         } else {
-          moveMarkerSmooth(marker, [item.lat, item.lng]);
+          marker.setLatLng(latlng);
           marker.setIcon(iconFor(item));
-          marker.setZIndexOffset(priority(item) * 1000 + Number(item.entregas_abertas || 0));
-          marker.off('click');
-          marker.on('click', () => {
-            setInfo(item);
-            marker.bindPopup(popupHtml(item)).openPopup();
-          });
+          marker.setZIndexOffset(priority(item)*1000 + Number(item.entregas_abertas || 0));
         }
+        marker.off('click mouseover');
+        marker.bindPopup(popupHtml(item));
+        marker.on('click', () => { setInfo(item); marker.openPopup(); });
+        marker.on('mouseover', () => { setInfo(item); marker.openPopup(); });
       });
-
       if (followId){
         const f = allItems.find(i => String(i.id) === String(followId));
-        if (f){
-          map.panTo([f.lat, f.lng], { animate:true, duration:.8 });
-        }
+        if (hasCoord(f)) map.panTo([Number(f.lat), Number(f.lng)], {animate:true, duration:.5});
       }
     }
-
-    function renderAll(){
-      const items = filteredItems();
-      refreshCounters();
-      renderMarkers(items);
-      buildAutocomplete();
-    }
-
+    function renderAll(){ refreshCounters(); renderMarkers(filteredItems()); buildAutocomplete(); }
     function focusItem(id, openPopup){
       const item = allItems.find(i => String(i.id) === String(id));
       if (!item) return;
-
       setInfo(item);
-
-      let marker = markers.get(item.id);
-      if (!marker){
-        renderAll();
-        marker = markers.get(item.id);
-      }
-
-      if (!marker) return;
-
-      map.setView([item.lat, item.lng], Math.max(map.getZoom(), 18), { animate:true });
-
-      if (openPopup){
-        marker.bindPopup(popupHtml(item)).openPopup();
-      }
+      if (!hasCoord(item)){ alert(`${item.nome || 'Cooperado'} ainda não tem GPS salvo. Ele aparece na busca, mas só terá marcador quando enviar localização.`); return; }
+      renderAll();
+      const marker = markers.get(item.id);
+      map.setView([Number(item.lat), Number(item.lng)], Math.max(map.getZoom(), 16), {animate:true});
+      if (openPopup && marker) marker.openPopup();
     }
-
     function fitAll(){
-      const items = filteredItems();
-      if (!items.length) return;
-
-      const bounds = L.latLngBounds(items.map(i => [i.lat, i.lng]));
-      map.fitBounds(bounds.pad(0.16), { maxZoom: 18 });
-      setTimeout(() => map.invalidateSize(), 120);
+      const coordItems = filteredItems().filter(hasCoord);
+      if (!coordItems.length) return;
+      map.fitBounds(L.latLngBounds(coordItems.map(i => [Number(i.lat), Number(i.lng)])).pad(0.16), {maxZoom:16});
+      invalidateMap();
     }
-
     async function fetchData(){
+      if (fetching) return;
+      fetching = true;
       try{
-        const resp = await fetch(DATA_ENDPOINT, { cache:'no-store' });
+        const resp = await fetch(DATA_ENDPOINT, {cache:'no-store', headers:{'Accept':'application/json'}});
         const data = await resp.json();
-
-        allItems = (Array.isArray(data) ? data : []).sort((a, b) => {
+        allItems = (Array.isArray(data) ? data : []).sort((a,b) => {
           const pa = priority(a), pb = priority(b);
           if (pa !== pb) return pb - pa;
-          return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0))
-            || (a.nome || '').localeCompare(b.nome || '');
+          return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0)) || (a.nome || '').localeCompare(b.nome || '');
         });
-
-        if (selected){
-          const newer = allItems.find(i => String(i.id) === String(selected.id));
-          if (newer) selected = newer;
-        }
-
+        if (selected){ const newer = allItems.find(i => String(i.id) === String(selected.id)); if (newer) selected = newer; }
         renderAll();
-      } catch(err){
-        console.error(err);
-      }
+      }catch(err){ console.error(err); }
+      finally{ fetching = false; }
     }
-
-    document.querySelectorAll('.filter-icon').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.filter-icon').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        currentFilter = btn.dataset.filter;
-        renderAll();
-      });
-    });
-
+    document.querySelectorAll('.filter-icon').forEach(btn => btn.addEventListener('click', () => {
+      document.querySelectorAll('.filter-icon').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active'); currentFilter = btn.dataset.filter; renderAll();
+    }));
     $('searchInput').addEventListener('input', renderAll);
     $('searchInput').addEventListener('focus', buildAutocomplete);
-
-    $('btnSearchFocus').addEventListener('click', () => {
-      const q = norm($('searchInput').value).trim();
-      if (!q) return;
-      const item = allItems.find(i => norm(i.nome).includes(q));
-      if (item) focusItem(item.id, true);
-    });
-
-    document.addEventListener('click', (e) => {
-      const host = $('autocompleteList');
-      if (!host.contains(e.target) && e.target !== $('searchInput')){
-        host.classList.remove('open');
-      }
-    });
-
-    $('btnFollowSelected').addEventListener('click', () => {
-      if (!selected) return;
-      followId = String(selected.id);
-      focusItem(selected.id, true);
-    });
-
-    $('btnClearFollow').addEventListener('click', () => {
-      followId = null;
-    });
-
+    $('btnSearchFocus').addEventListener('click', () => { const q = norm($('searchInput').value).trim(); if (!q) return; const item = allItems.find(i => norm(i.nome).includes(q)); if (item) focusItem(item.id, true); });
+    document.addEventListener('click', (e) => { const host = $('autocompleteList'); if (!host.contains(e.target) && e.target !== $('searchInput')) host.classList.remove('open'); });
+    $('btnFollowSelected').addEventListener('click', () => { if (!selected) return; followId = String(selected.id); focusItem(selected.id, true); });
+    $('btnClearFollow').addEventListener('click', () => { followId = null; });
     $('btnFitAll').addEventListener('click', fitAll);
     $('btnRefresh').addEventListener('click', fetchData);
-
-    if ($('btnMaps')) $('btnMaps').addEventListener('click', () => {
-      if (selected) window.open(mapsUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    });
-
-    if ($('btnStreet')) $('btnStreet').addEventListener('click', () => {
-      if (selected) window.open(streetUrl(selected.lat, selected.lng), '_blank', 'noopener');
-    });
-
-    if ($('btnReplay')) $('btnReplay').addEventListener('click', () => {
-      window.location.href = '/trajetos' + (selected ? `?cooperado_id=${selected.id}` : '');
-    });
-
-    map.on('dragstart', () => {
-      followId = null;
-    });
-
-    allItems = seed.slice().sort((a, b) => {
-      const pa = priority(a), pb = priority(b);
-      if (pa !== pb) return pb - pa;
-      return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0))
-        || (a.nome || '').localeCompare(b.nome || '');
-    });
-
+    map.on('dragstart zoomstart', () => { followId = null; });
+    allItems = seed.slice().sort((a,b) => { const pa = priority(a), pb = priority(b); if (pa !== pb) return pb - pa; return (Number(b.entregas_abertas || 0) - Number(a.entregas_abertas || 0)) || (a.nome || '').localeCompare(b.nome || ''); });
     renderAll();
+    if (allItems.filter(hasCoord).length) fitAll();
+    fetchData();
+    setInterval(fetchData, POLL_MS);
 
-    if (allItems.length){
-      fitAll();
-    }
-
-    timer = setInterval(fetchData, POLL_MS);
-  
-  </script>
+</script>
 </body>
 </html>
