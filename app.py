@@ -2175,6 +2175,63 @@ def ensure_mobile_tracking_schema():
         db.session.rollback()
 
 
+
+# =========================================================
+# COOPEX PATCH - GARANTIR COOPERADO NOVO NO MAPA AO LOGAR
+# =========================================================
+def _coopex_registrar_login_cooperado_no_mapa(coop, fonte="login_web"):
+    """
+    Garante que todo cooperado que logar apareça no mapa/lista,
+    mesmo antes de enviar a primeira localização válida.
+    """
+    if not coop:
+        return
+
+    try:
+        if not getattr(coop, "app_token", None):
+            coop.ensure_app_token()
+
+        agora = datetime.utcnow()
+
+        # Marca login recente no cooperado.
+        # A coordenada só será preenchida quando o app enviar localização.
+        coop.online = True
+        coop.last_ping = agora
+
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+        if not loc:
+            loc = LocalizacaoCooperado(
+                cooperado_id=coop.id,
+                latitude=getattr(coop, "last_lat", None),
+                longitude=getattr(coop, "last_lng", None),
+                accuracy=getattr(coop, "last_accuracy_m", None),
+                speed=getattr(coop, "last_speed_kmh", None),
+                heading=getattr(coop, "last_heading", None),
+                online=True,
+                fonte=fonte,
+                atualizado_em=agora
+            )
+            db.session.add(loc)
+        else:
+            loc.online = True
+            loc.fonte = fonte
+            loc.atualizado_em = agora
+
+            if loc.latitude is None and getattr(coop, "last_lat", None) is not None:
+                loc.latitude = coop.last_lat
+            if loc.longitude is None and getattr(coop, "last_lng", None) is not None:
+                loc.longitude = coop.last_lng
+
+        db.session.add(coop)
+        db.session.commit()
+
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
 # =========================================================
 # LOGIN ADMIN / COOPERADO / CLIENTE
 # =========================================================
@@ -2220,6 +2277,7 @@ def login():
                     pass
 
             cooperado.ensure_app_token()
+            _coopex_registrar_login_cooperado_no_mapa(cooperado, fonte="login_web")
             try:
                 db.session.commit()
             except Exception:
@@ -4490,12 +4548,16 @@ def painel_cooperado():
     user_id = session['user_id']
     ensure_mobile_tracking_schema()
     coop = Cooperado.query.get(user_id)
-    if coop and not getattr(coop, 'app_token', None):
-        coop.ensure_app_token()
+    if coop:
         try:
-            db.session.commit()
+            _coopex_registrar_login_cooperado_no_mapa(coop, fonte="painel_cooperado")
         except Exception:
-            db.session.rollback()
+            if not getattr(coop, 'app_token', None):
+                coop.ensure_app_token()
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
     if coop:
         marcar_cooperado_online(coop, 'painel_cooperado')
 
