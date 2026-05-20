@@ -1251,6 +1251,32 @@ def calc_status_cooperado(c):
     return (True, idle_seconds, "livre")
 
 
+
+def marcar_cooperado_online(cooperado, fonte='painel'):
+    """Marca presença online mesmo antes de chegar a primeira localização GPS."""
+    if not cooperado:
+        return
+    agora = datetime.utcnow()
+    try:
+        cooperado.online = True
+        cooperado.last_ping = agora
+        db.session.add(cooperado)
+
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado.id).first()
+        if not loc:
+            loc = LocalizacaoCooperado(cooperado_id=cooperado.id)
+            db.session.add(loc)
+        loc.online = True
+        loc.fonte = fonte
+        loc.atualizado_em = agora
+        db.session.add(loc)
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
 def local_date_window_to_utc_range(local_date: date):
     inicio_brasil = BRAZIL_TZ.localize(datetime.combine(local_date, time.min))
     fim_brasil = BRAZIL_TZ.localize(datetime.combine(local_date, time.max))
@@ -2198,6 +2224,7 @@ def login():
                 db.session.commit()
             except Exception:
                 db.session.rollback()
+            marcar_cooperado_online(cooperado, 'login_web')
 
             session.clear()
             session['user_id'] = cooperado.id
@@ -2274,6 +2301,7 @@ def api_mobile_login_cooperado():
         db.session.commit()
     except Exception:
         db.session.rollback()
+    marcar_cooperado_online(coop, 'login_mobile')
 
     # usa a mesma sessão do site (cookie), assim o app pode reaproveitar
     session.clear()
@@ -4453,6 +4481,8 @@ def painel_cooperado():
             db.session.commit()
         except Exception:
             db.session.rollback()
+    if coop:
+        marcar_cooperado_online(coop, 'painel_cooperado')
 
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
@@ -6278,6 +6308,30 @@ def trajetos_replay(trajeto_id):
     )
 
 
+
+@app.get('/api/admin/cooperados_online')
+def api_admin_cooperados_online():
+    """Lista leve para o admin ver quem está online, mesmo sem GPS ainda."""
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    itens = []
+    for c in Cooperado.query.order_by(Cooperado.nome.asc()).all():
+        is_online, idle_s, status_str = calc_status_cooperado(c)
+        itens.append({
+            'id': c.id,
+            'nome': c.nome,
+            'online': bool(is_online),
+            'status': status_str,
+            'tem_localizacao': bool(c.last_lat is not None and c.last_lng is not None),
+            'lat': float(c.last_lat) if c.last_lat is not None else None,
+            'lng': float(c.last_lng) if c.last_lng is not None else None,
+            'ultima_atualizacao': to_brasilia(c.last_ping).strftime('%d/%m/%Y %H:%M:%S') if c.last_ping else '',
+            'idle_seconds': idle_s,
+        })
+    return jsonify(ok=True, cooperados=itens)
+
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
@@ -6696,8 +6750,8 @@ def cadastrar_entrega():
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
     if request.method == 'POST':
-        cliente_nome = (request.form.get('cliente') or '').strip()
-        bairro = (request.form.get('bairro') or request.form.get('entrega_bairro') or '').strip()
+        cliente_nome = _dash_title_case((request.form.get('cliente') or '').strip())
+        bairro = _dash_title_case((request.form.get('bairro') or request.form.get('entrega_bairro') or '').strip())
         valor_raw = (request.form.get('valor') or '0').strip().replace('.', '').replace(',', '.') if ',' in (request.form.get('valor') or '') and (request.form.get('valor') or '').count(',') == 1 else (request.form.get('valor') or '0').strip().replace(',', '.')
         try:
             valor = float(valor_raw or 0)
@@ -6706,11 +6760,11 @@ def cadastrar_entrega():
         cooperado_id = request.form.get('cooperado_id')
         pagamento = (request.form.get('pagamento') or '').strip()
         coleta_endereco = (request.form.get('coleta_endereco') or '').strip()
-        coleta_bairro = (request.form.get('coleta_bairro') or '').strip()
+        coleta_bairro = _dash_title_case((request.form.get('coleta_bairro') or '').strip())
         coleta_contato = (request.form.get('coleta_contato') or '').strip()
         coleta_telefone = (request.form.get('coleta_telefone') or '').strip()
         entrega_endereco = (request.form.get('entrega_endereco') or '').strip()
-        entrega_bairro = (request.form.get('entrega_bairro') or '').strip()
+        entrega_bairro = _dash_title_case((request.form.get('entrega_bairro') or '').strip())
         entrega_contato = (request.form.get('entrega_contato') or '').strip()
         entrega_telefone = (request.form.get('entrega_telefone') or '').strip()
         observacao = (request.form.get('observacao') or '').strip()
@@ -6726,7 +6780,7 @@ def cadastrar_entrega():
             if not coleta_endereco:
                 coleta_endereco = (cli.endereco or '').strip()
             if not coleta_bairro:
-                coleta_bairro = (cli.bairro_origem or '').strip()
+                coleta_bairro = _dash_title_case((cli.bairro_origem or '').strip())
             if not coleta_contato:
                 coleta_contato = (cli.nome or '').strip()
             if not coleta_telefone:
@@ -6849,8 +6903,8 @@ def agendar_entrega():
     clientes_lista = Cliente.query.order_by(Cliente.nome).all()
 
     if request.method == 'POST':
-        cliente_nome = (request.form.get('cliente') or '').strip()
-        bairro = (request.form.get('bairro') or '').strip()
+        cliente_nome = _dash_title_case((request.form.get('cliente') or '').strip())
+        bairro = _dash_title_case((request.form.get('bairro') or '').strip())
         pagamento = (request.form.get('pagamento') or '').strip()
         data_str = (request.form.get('data') or '').strip()
         status_entrega = (request.form.get('status_entrega') or 'pendente').strip()
@@ -6858,12 +6912,12 @@ def agendar_entrega():
         cooperado_id = request.form.get('cooperado_id')
 
         coleta_endereco = (request.form.get('coleta_endereco') or '').strip()
-        coleta_bairro = (request.form.get('coleta_bairro') or '').strip()
+        coleta_bairro = _dash_title_case((request.form.get('coleta_bairro') or '').strip())
         coleta_contato = (request.form.get('coleta_contato') or '').strip()
         coleta_telefone = (request.form.get('coleta_telefone') or '').strip()
 
         entrega_endereco = (request.form.get('entrega_endereco') or '').strip()
-        entrega_bairro = (request.form.get('entrega_bairro') or '').strip()
+        entrega_bairro = _dash_title_case((request.form.get('entrega_bairro') or '').strip())
         entrega_contato = (request.form.get('entrega_contato') or '').strip()
         entrega_telefone = (request.form.get('entrega_telefone') or '').strip()
 
@@ -6902,7 +6956,7 @@ def agendar_entrega():
             if not coleta_endereco:
                 coleta_endereco = (cli.endereco or '').strip()
             if not coleta_bairro:
-                coleta_bairro = (cli.bairro_origem or '').strip()
+                coleta_bairro = _dash_title_case((cli.bairro_origem or '').strip())
             if not coleta_contato:
                 coleta_contato = (cli.nome or '').strip()
             if not coleta_telefone:
@@ -9008,12 +9062,61 @@ def _dash_bairro(data):
     ).strip()
 
 
+def _dash_text_key(valor):
+    txt = _strip_accents(str(valor or '')).lower()
+    txt = re.sub(r'[^a-z0-9\s]', ' ', txt)
+    return re.sub(r'\s+', ' ', txt).strip()
+
+
+def _dash_compact_key(valor):
+    return re.sub(r'\s+', '', _dash_text_key(valor))
+
+
+def _dash_title_case(valor):
+    txt = (valor or '').strip()
+    if not txt:
+        return ''
+    txt = txt.replace('->', ' ').replace('→', ' ')
+    txt = re.sub(r'[_/]+', ' ', txt)
+    txt = re.sub(r'([a-zà-ÿ])([A-ZÀ-Ý])', r'\1 \2', txt)
+    txt = re.sub(r'\s+', ' ', txt).strip().lower()
+    pequenos = {'da', 'de', 'do', 'das', 'dos', 'e'}
+    saida = []
+    for i, p in enumerate(txt.split()):
+        if i > 0 and p in pequenos:
+            saida.append(p)
+        elif p in {'rn', 'sp', 'rj', 'mg', 'pb', 'pe'}:
+            saida.append(p.upper())
+        else:
+            saida.append(p.capitalize())
+    return ' '.join(saida)
+
+
+def _dash_best_label(atual, novo):
+    atual = _dash_title_case(atual or '')
+    novo = _dash_title_case(novo or '')
+    if not atual:
+        return novo
+    def score(s):
+        return (s.count(' '), sum(1 for w in s.split() if len(w) > 2), len(s))
+    return novo if score(novo) > score(atual) else atual
+
+
+def _dash_canon_label(mapa, bruto, *, compact=False, fallback='Não informado'):
+    bruto = (bruto or '').strip() or fallback
+    chave = _dash_compact_key(bruto) if compact else _dash_text_key(bruto)
+    if not chave:
+        return fallback
+    mapa[chave] = _dash_best_label(mapa.get(chave, ''), bruto)
+    return mapa[chave]
+
+
 def _dash_origem_destino(e):
     origem = _dash_json(getattr(e, 'origem_json', None))
     destino = _dash_json(getattr(e, 'destino_json', None))
     bo = _dash_bairro(origem)
     bd = _dash_bairro(destino) or (getattr(e, 'bairro', '') or '').strip()
-    return (_bairro_rota_display(bo or 'Não informado'), _bairro_rota_display(bd or 'Não informado'))
+    return (_dash_title_case(bo or 'Não informado'), _dash_title_case(bd or 'Não informado'))
 
 
 def _dash_norm_cliente(nome):
@@ -9246,13 +9349,13 @@ def estatisticas_cooperado():
     entregas_raw = query.order_by(Entrega.data_envio.desc()).limit(12000).all()
 
     entregas = []
-    origem_key = _norm(origem_f)
-    destino_key = _norm(destino_f)
+    origem_key = _dash_compact_key(origem_f)
+    destino_key = _dash_compact_key(destino_f)
     for e in entregas_raw:
         bo, bd = _dash_origem_destino(e)
-        if origem_key and origem_key not in _norm(bo):
+        if origem_key and origem_key not in _dash_compact_key(bo):
             continue
-        if destino_key and destino_key not in _norm(bd):
+        if destino_key and destino_key not in _dash_compact_key(bd):
             continue
         e._dash_origem = bo
         e._dash_destino = bd
@@ -9268,20 +9371,19 @@ def estatisticas_cooperado():
     sem_cooperado = [e for e in abertas if not e.cooperado_id]
     atribuidas = [e for e in abertas if e.cooperado_id]
 
-    clientes_ativos = len({(e._dash_contrato or e.cliente or '').strip() for e in entregas if (e._dash_contrato or e.cliente or '').strip()})
+    clientes_ativos = len({_dash_text_key(e._dash_contrato or e.cliente or '') for e in entregas if _dash_text_key(e._dash_contrato or e.cliente or '')})
     cooperados_ativos = len({e.cooperado_id for e in entregas if e.cooperado_id})
 
-    # Operação parada há mais de 20 min / sem cooperado há mais de 10 min.
+    # Operação parada = pedido aberto lançado e ainda NÃO atribuído.
     now_utc = datetime.utcnow()
     paradas_20 = []
     sem_coop_10 = []
     for e in abertas:
-        base_dt = e.data_atribuida or e.data_envio
-        minutos = int((now_utc - base_dt).total_seconds() / 60) if base_dt else 0
-        if minutos >= 20:
-            paradas_20.append(e)
+        minutos = int((now_utc - e.data_envio).total_seconds() / 60) if e.data_envio else 0
         if not e.cooperado_id and minutos >= 10:
             sem_coop_10.append(e)
+        if not e.cooperado_id and minutos >= 20:
+            paradas_20.append(e)
 
     # Comparativo com período anterior.
     pdi, pdf = _dash_periodo_anterior(di, df)
@@ -9296,21 +9398,28 @@ def estatisticas_cooperado():
     coleta_counter = Counter(); entrega_counter = Counter(); rota_counter = Counter(); rota_val = defaultdict(float)
     pagamento_val = defaultdict(float); pagamento_qtd = defaultdict(int)
     dia_val = defaultdict(float); dia_qtd = defaultdict(int)
+    mapa_coop_nome = {}
+    mapa_contrato_nome = {}
+    mapa_bairro_origem = {}
+    mapa_bairro_destino = {}
 
     for e in entregas:
         valor = _dash_money(e.valor)
-        coop_nome = e.cooperado.nome if e.cooperado else 'Sem cooperado'
-        contrato = e._dash_contrato
-        bo = e._dash_origem
-        bd = e._dash_destino
+        coop_nome = _dash_canon_label(mapa_coop_nome, e.cooperado.nome if e.cooperado else 'Sem cooperado', fallback='Sem cooperado')
+        contrato = _dash_canon_label(mapa_contrato_nome, e._dash_contrato or e.cliente or 'Cliente não informado', fallback='Cliente não informado')
+        bo = _dash_canon_label(mapa_bairro_origem, e._dash_origem, compact=True)
+        bd = _dash_canon_label(mapa_bairro_destino, e._dash_destino, compact=True)
+        e._dash_origem = bo
+        e._dash_destino = bd
+        e._dash_contrato = contrato
         rota = f'{bo} → {bd}'
-        pgto = (e.pagamento or 'Não informado').strip() or 'Não informado'
+        pgto = _dash_title_case((e.pagamento or 'Não informado').strip() or 'Não informado')
         dt = to_brasilia(e.data_envio) if e.data_envio else None
         dlabel = dt.strftime('%d/%m') if dt else 'Sem data'
 
         coop_val[coop_nome] += valor
         coop_qtd[coop_nome] += 1
-        coop_clientes[coop_nome].add(contrato)
+        coop_clientes[coop_nome].add(_dash_text_key(contrato) or contrato)
         if (e.status_pagamento or '').lower() != 'pago':
             coop_pend[coop_nome] += 1
 
@@ -9331,7 +9440,7 @@ def estatisticas_cooperado():
         dia_qtd[dlabel] += 1
 
     top_cooperados = []
-    for nome, valor in sorted(coop_val.items(), key=lambda kv: kv[1], reverse=True)[:12]:
+    for nome, valor in sorted(coop_val.items(), key=lambda kv: kv[1], reverse=True):
         qtd = coop_qtd[nome]
         top_cooperados.append({
             'nome': nome,
@@ -9344,7 +9453,7 @@ def estatisticas_cooperado():
         })
 
     top_contratos = []
-    for nome, valor in sorted(contrato_val.items(), key=lambda kv: kv[1], reverse=True)[:12]:
+    for nome, valor in sorted(contrato_val.items(), key=lambda kv: kv[1], reverse=True):
         qtd = contrato_qtd[nome]
         # nomes vinculados quando for grupo
         vinculados = []
@@ -9456,7 +9565,7 @@ def estatisticas_cooperado():
     try:
         nomes_db = [x[0] for x in db.session.query(Cliente.nome).filter(Cliente.nome != None).order_by(Cliente.nome.asc()).limit(600).all()]
         nomes_ent = [x[0] for x in db.session.query(Entrega.cliente).filter(Entrega.cliente != None).group_by(Entrega.cliente).order_by(Entrega.cliente.asc()).limit(600).all()]
-        nomes_clientes = sorted({n for n in nomes_db + nomes_ent if (n or '').strip()}, key=lambda x: _norm(x))
+        nomes_clientes = sorted({_dash_title_case(n) for n in nomes_db + nomes_ent if (n or '').strip()}, key=lambda x: _norm(x))
     except Exception:
         nomes_clientes = []
 
@@ -9588,6 +9697,60 @@ def estatisticas_cooperado_exportar_xlsx():
 
     output.seek(0)
     return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
+
+
+
+@app.route('/admin/normalizar_nomes', methods=['GET', 'POST'])
+@master_required
+def admin_normalizar_nomes():
+    """Padroniza nomes de clientes e bairros já salvos no banco."""
+    atualizados = 0
+    try:
+        for c in Cliente.query.all():
+            novo_nome = _dash_title_case(c.nome)
+            novo_bairro = _dash_title_case(c.bairro_origem)
+            if (c.nome or '') != novo_nome:
+                c.nome = novo_nome; atualizados += 1
+            if (c.bairro_origem or '') != novo_bairro:
+                c.bairro_origem = novo_bairro; atualizados += 1
+
+        for ce in ClienteEndereco.query.all():
+            novo_bairro = _dash_title_case(ce.bairro)
+            if (ce.bairro or '') != novo_bairro:
+                ce.bairro = novo_bairro; atualizados += 1
+
+        for e in Entrega.query.all():
+            novo_cliente = _dash_title_case(e.cliente)
+            novo_bairro = _dash_title_case(e.bairro)
+            if (e.cliente or '') != novo_cliente:
+                e.cliente = novo_cliente; atualizados += 1
+            if (e.bairro or '') != novo_bairro:
+                e.bairro = novo_bairro; atualizados += 1
+
+            origem = _dash_json(getattr(e, 'origem_json', None))
+            destino = _dash_json(getattr(e, 'destino_json', None))
+            mudou_json = False
+            if isinstance(origem, dict):
+                nb = _dash_title_case(origem.get('bairro'))
+                if (origem.get('bairro') or '') != nb:
+                    origem['bairro'] = nb; mudou_json = True
+            if isinstance(destino, dict):
+                nb = _dash_title_case(destino.get('bairro'))
+                if (destino.get('bairro') or '') != nb:
+                    destino['bairro'] = nb; mudou_json = True
+            if mudou_json:
+                e.origem_json = json.dumps(origem, ensure_ascii=False)
+                e.destino_json = json.dumps(destino, ensure_ascii=False)
+                atualizados += 1
+
+        db.session.commit()
+        flash(f'Padronização concluída. {atualizados} campos atualizados.', 'success')
+    except Exception as ex:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao normalizar nomes')
+        flash(f'Erro ao normalizar nomes: {ex.__class__.__name__}', 'danger')
+
+    return redirect(url_for('estatisticas_cooperado'))
 
 
 @app.route('/exportar_xlsx')
