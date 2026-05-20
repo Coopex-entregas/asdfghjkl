@@ -897,6 +897,9 @@
             <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="false">
               Atribuídas de hoje
             </button>
+            <button class="btn alt" id="btnCopyOpenBairros" type="button">
+              Bairros em aberto
+            </button>
             <button class="btn alt" type="button" onclick="window.open('{{ url_for('mapa_motoboys') }}','_blank','noopener,noreferrer')">
               Mapa
             </button>
@@ -938,7 +941,9 @@
                 {% set tem_coop = (e.cooperado is not none) %}
                 {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
                 {% set st = e.status|lower if e.status else 'pendente' %}
-                <tr data-id="{{ e.id }}" class="{{ "row-assigned" if tem_coop else "row-open" }}" data-has-coop="{{ "1" if tem_coop else "0" }}">
+                {% set origem_bairro = (e.origem_extra.get('bairro') if e.origem_extra is defined and e.origem_extra else '') or e.bairro %}
+                {% set destino_bairro = (e.destino_extra.get('bairro') if e.destino_extra is defined and e.destino_extra else '') or e.bairro %}
+                <tr data-id="{{ e.id }}" class="{{ "row-assigned" if tem_coop else "row-open" }}" data-has-coop="{{ "1" if tem_coop else "0" }}" data-origem-bairro="{{ origem_bairro|e }}" data-destino-bairro="{{ destino_bairro|e }}">
                   <td>
                     <span class="id-with-dot">
                       <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
@@ -1213,6 +1218,102 @@
       }catch(e){}
     })();
 
+
+    function fallbackTextoBairrosEmAberto(){
+      const grupos = new Map();
+      document.querySelectorAll('tr.row-open').forEach((tr)=>{
+        if((tr.dataset.hasCoop || '') === '1') return;
+
+        const origem = (tr.dataset.origemBairro || '').trim() || 'Origem não informada';
+        const destino = (tr.dataset.destinoBairro || '').trim() || 'Destino não informado';
+
+        const key = origem.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'') + '||' +
+                    destino.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+
+        if(!grupos.has(key)){
+          grupos.set(key, {origem, destino, qtd:0});
+        }
+        grupos.get(key).qtd += 1;
+      });
+
+      const linhas = Array.from(grupos.values())
+        .sort((a,b)=> (a.origem + a.destino).localeCompare(b.origem + b.destino, 'pt-BR'))
+        .map(item => String(item.qtd).padStart(2, '0') + ' ' + item.origem + ' para ' + item.destino);
+
+      return 'Entregas em aberto:\n\n' + (linhas.length ? linhas.join('\n') : 'Nenhuma entrega em aberto no momento.');
+    }
+
+    async function copiarTextoAreaFallback(texto){
+      const ta = document.createElement('textarea');
+      ta.value = texto;
+      ta.setAttribute('readonly', 'readonly');
+      ta.style.position = 'fixed';
+      ta.style.left = '-9999px';
+      ta.style.top = '-9999px';
+      document.body.appendChild(ta);
+      ta.focus();
+      ta.select();
+      let ok = false;
+      try{ ok = document.execCommand('copy'); }catch(e){ ok = false; }
+      document.body.removeChild(ta);
+      return ok;
+    }
+
+    async function copiarBairrosEmAberto(){
+      const btn = document.getElementById('btnCopyOpenBairros');
+      const oldText = btn ? btn.textContent : '';
+      try{
+        if(btn){
+          btn.disabled = true;
+          btn.textContent = 'Copiando...';
+        }
+
+        let texto = '';
+        try{
+          const url = '/api/admin/bairros_em_aberto' + (window.location.search || '');
+          const res = await fetch(url, {
+            method: 'GET',
+            headers: {'X-Requested-With':'fetch', 'Accept':'application/json'}
+          });
+          const data = await res.json();
+          if(res.ok && data && data.ok && data.texto){
+            texto = data.texto;
+          }
+        }catch(e){}
+
+        if(!texto){
+          texto = fallbackTextoBairrosEmAberto();
+        }
+
+        let copiado = false;
+        if(navigator.clipboard && window.isSecureContext){
+          try{
+            await navigator.clipboard.writeText(texto);
+            copiado = true;
+          }catch(e){
+            copiado = false;
+          }
+        }
+
+        if(!copiado){
+          copiado = await copiarTextoAreaFallback(texto);
+        }
+
+        if(copiado){
+          showToast('Lista de bairros em aberto copiada para enviar no WhatsApp.');
+        }else{
+          showModal('Bairros em aberto', '<pre style="white-space:pre-wrap;text-align:left;margin:0">'+texto.replace(/[&<>"']/g, (m)=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m]))+'</pre>');
+        }
+      }catch(e){
+        showToast('Não foi possível copiar a lista agora.');
+      }finally{
+        if(btn){
+          btn.disabled = false;
+          btn.textContent = oldText || 'Bairros em aberto';
+        }
+      }
+    }
+
     window.addEventListener('DOMContentLoaded', function(){
       atualizarBadgeAbertas();
       try{
@@ -1236,6 +1337,11 @@
             document.body.classList.toggle('hide-assigned');
             syncAssignedUi();
           });
+        }
+
+        const btnBairros = document.getElementById('btnCopyOpenBairros');
+        if(btnBairros){
+          btnBairros.addEventListener('click', copiarBairrosEmAberto);
         }
       }catch(e){}
     });
