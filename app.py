@@ -417,6 +417,38 @@ class ClienteEndereco(db.Model):
         }
 
 
+# =========================================================
+# MODELS PARA AGRUPAR CLIENTES / CONTRATOS
+# =========================================================
+class GrupoCliente(db.Model):
+    __tablename__ = 'grupo_cliente'
+    id = db.Column(db.Integer, primary_key=True)
+    nome_grupo = db.Column(db.String(120), nullable=False, unique=True, index=True)
+    ativo = db.Column(db.Boolean, nullable=False, default=True)
+    criado_em = db.Column(db.DateTime, default=datetime.utcnow)
+
+    itens = db.relationship(
+        'GrupoClienteItem',
+        backref='grupo',
+        lazy=True,
+        cascade='all, delete-orphan'
+    )
+
+    def nomes_lista(self):
+        return [i.nome_cliente for i in (self.itens or []) if (i.nome_cliente or '').strip()]
+
+
+class GrupoClienteItem(db.Model):
+    __tablename__ = 'grupo_cliente_item'
+    id = db.Column(db.Integer, primary_key=True)
+    grupo_id = db.Column(db.Integer, db.ForeignKey('grupo_cliente.id', ondelete='CASCADE'), nullable=False, index=True)
+    nome_cliente = db.Column(db.String(160), nullable=False, index=True)
+    nome_norm = db.Column(db.String(180), nullable=False, index=True)
+
+    __table_args__ = (
+        db.UniqueConstraint('grupo_id', 'nome_norm', name='uq_grupo_cliente_item_nome'),
+    )
+
 class Entrega(db.Model):
     __tablename__ = 'entrega'
 
@@ -4300,154 +4332,6 @@ def admin():
     return _patch_admin_top_link(html)
 
 
-def _bairro_rota_display(valor):
-    txt = (valor or '').strip()
-    if not txt:
-        return ''
-    txt = re.sub(r'\s+', ' ', txt)
-    # Mantém acentos, mas melhora visual quando vier tudo minúsculo/maiúsculo.
-    return txt[:1].upper() + txt[1:].lower() if txt.isupper() or txt.islower() else txt
-
-def _bairro_rota_key(valor):
-    txt = _strip_accents(valor or '').lower()
-    txt = re.sub(r'[^a-z0-9\s]', ' ', txt)
-    return re.sub(r'\s+', ' ', txt).strip()
-
-def _bairro_origem_destino_entrega(e):
-    origem = _json_dict_safe(getattr(e, 'origem_json', None))
-    destino = _json_dict_safe(getattr(e, 'destino_json', None))
-
-    origem_bairro = (
-        origem.get('bairro') or
-        origem.get('bairro_origem') or
-        origem.get('localidade') or
-        ''
-    )
-
-    destino_bairro = (
-        destino.get('bairro') or
-        destino.get('bairro_destino') or
-        destino.get('localidade') or
-        getattr(e, 'bairro', '') or
-        ''
-    )
-
-    # Fallback para sistemas antigos onde só existia e.bairro.
-    if not origem_bairro:
-        origem_bairro = getattr(e, 'bairro', '') or 'Origem não informada'
-    if not destino_bairro:
-        destino_bairro = getattr(e, 'bairro', '') or 'Destino não informado'
-
-    return _bairro_rota_display(origem_bairro), _bairro_rota_display(destino_bairro)
-
-
-@app.route('/api/admin/bairros_em_aberto')
-def api_admin_bairros_em_aberto():
-    """
-    Monta uma lista pronta para WhatsApp com as rotas das entregas em aberto.
-
-    Regra:
-    - "em aberto" = entrega sem cooperado atribuído;
-    - respeita filtro de data atual do admin;
-    - se não houver data no filtro, usa o dia atual;
-    - agrupa por bairro de coleta + bairro de entrega;
-    - o número no início é a quantidade de entregas daquele mesmo trajeto.
-    """
-    if not session.get('is_admin') and not session.get('is_master'):
-        return jsonify(ok=False, error='unauthorized'), 401
-
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
-
-    hoje = datetime.now(BRAZIL_TZ).date()
-    query = Entrega.query
-
-    # Mesmo padrão do painel admin: sem filtro de data, mostra o dia atual.
-    if not data_inicio and not data_fim:
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
-        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
-
-    if data_inicio:
-        try:
-            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-            inicio_utc, _ = local_date_window_to_utc_range(di)
-            query = query.filter(Entrega.data_envio >= inicio_utc)
-        except Exception:
-            pass
-
-    if data_fim:
-        try:
-            df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
-            _, fim_utc = local_date_window_to_utc_range(df_)
-            query = query.filter(Entrega.data_envio <= fim_utc)
-        except Exception:
-            pass
-
-    # Em aberto, seguindo a lógica visual do painel: sem cooperado atribuído.
-    query = query.filter(Entrega.cooperado_id == None)
-
-    # Não listar entregas já encerradas, caso alguma fique sem cooperado por edição.
-    query = query.filter(
-        (Entrega.status == None) |
-        (~func.lower(Entrega.status).in_(['recebido', 'entregue', 'cancelado', 'cancelada', 'finalizado', 'finalizada']))
-    )
-
-    if cliente:
-        like = f"%{cliente.lower()}%"
-        query = query.filter(func.lower(Entrega.cliente).like(like))
-
-    if endereco:
-        like_end = f"%{endereco.lower()}%"
-        query = query.filter(
-            or_(
-                func.lower(Entrega.bairro).like(like_end),
-                func.lower(func.coalesce(Entrega.origem_json, '')).like(like_end),
-                func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
-                func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
-            )
-        )
-
-    entregas_abertas = query.order_by(Entrega.data_envio.asc()).all()
-
-    grupos = {}
-    for e in entregas_abertas:
-        origem_bairro, destino_bairro = _bairro_origem_destino_entrega(e)
-
-        origem_key = _bairro_rota_key(origem_bairro)
-        destino_key = _bairro_rota_key(destino_bairro)
-        key = (origem_key, destino_key)
-
-        if key not in grupos:
-            grupos[key] = {
-                'origem': origem_bairro or 'Origem não informada',
-                'destino': destino_bairro or 'Destino não informado',
-                'quantidade': 0,
-            }
-        grupos[key]['quantidade'] += 1
-
-    itens = sorted(
-        grupos.values(),
-        key=lambda x: (_bairro_rota_key(x['origem']), _bairro_rota_key(x['destino']))
-    )
-
-    linhas = [
-        f"{int(item['quantidade']):02d} {item['origem']} para {item['destino']}"
-        for item in itens
-    ]
-
-    texto = "Entregas em aberto:\n\n" + ("\n".join(linhas) if linhas else "Nenhuma entrega em aberto no momento.")
-
-    return jsonify(
-        ok=True,
-        texto=texto,
-        total_entregas=sum(int(item['quantidade']) for item in itens),
-        total_rotas=len(itens),
-        itens=itens,
-    )
-
-
 @app.route('/api/admin/kpis')
 def api_admin_kpis():
     if not session.get('is_admin'):
@@ -5003,7 +4887,7 @@ def api_app_localizacao():
     - NÃO roda db.create_all()/inspect a cada localização.
     - Limita gravação por cooperado a cada X segundos.
     - Ignora ruído de GPS parado.
-    - Histórico de trajeto desativado: salva apenas a última localização.
+    - Evita gravar trajeto em todo ping.
     - Só emite socket quando realmente salva ponto aceito.
     """
 
@@ -5188,9 +5072,30 @@ def api_app_localizacao():
             pass
         return jsonify({'ok': False, 'error': 'falha ao salvar localização'}), 500
 
-    # 3) Histórico de trajeto DESATIVADO.
-    # Mantemos apenas a última localização do cooperado para acompanhamento em tempo real.
-    # Não grava pontos em Trajeto/pontos_json para não pesar banco, Render e painel.
+    # 3) Trajeto é pesado porque lê/grava JSON. Não grave em todo ping.
+    # Grava só quando passou intervalo maior ou quando houve deslocamento relevante.
+    deve_gravar_trajeto = False
+    try:
+        if moving_now:
+            deve_gravar_trajeto = True
+
+        if dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M:
+            deve_gravar_trajeto = True
+
+        if ultimo_ping:
+            segundos_trajeto = (agora - ultimo_ping).total_seconds()
+            if segundos_trajeto < LOCATION_MIN_TRAJETO_INTERVAL_SEC and not (
+                dist_m is not None and float(dist_m or 0) >= LOCATION_MIN_DISTANCE_FORCE_SAVE_M
+            ):
+                deve_gravar_trajeto = False
+
+        if deve_gravar_trajeto:
+            _append_point_to_active_trajeto(coop.id, lat, lng, agora)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
     # 4) Socket só depois de salvar ponto aceito.
     try:
@@ -5343,7 +5248,13 @@ def cooperado_atualizar_localizacao():
 
     db.session.commit()
 
-    # Histórico de trajeto desativado: não salva rota/pontos, apenas última posição.
+    try:
+        _append_point_to_active_trajeto(cooperado.id, lat, lng, agora)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
     try:
         emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
@@ -6005,91 +5916,351 @@ def api_retorno_percentual():
     return jsonify({"ok": True, "retorno_percentual": float(novo)})
 
 # =========================================================
-# TRAJETOS (HISTÓRICO DESATIVADO)
+# TRAJETOS (HISTÓRICO POR COOPERADO / PERÍODO)
 # =========================================================
-def _trajetos_desativado_html():
-    return """<!doctype html>
-<html lang="pt-br">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Trajetos desativados</title>
-<style>
-    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#eef3ff;color:#10224d;display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;box-sizing:border-box;}
-    .card{max-width:720px;width:100%;background:white;border-radius:22px;padding:28px;box-shadow:0 12px 35px rgba(0,40,130,.16);border:1px solid rgba(0,60,180,.12);}
-    .badge{display:inline-block;background:#0b43d9;color:white;border-radius:999px;padding:8px 14px;font-weight:800;font-size:13px;margin-bottom:14px;}
-    h1{margin:0 0 10px;font-size:28px;line-height:1.15;color:#07308f;}
-    p{font-size:16px;line-height:1.55;margin:8px 0;color:#23345f;}
-    .ok{margin-top:18px;background:#eaf7ef;border:1px solid #bfe8cc;color:#14532d;border-radius:14px;padding:12px 14px;font-weight:700;}
-    a{display:inline-block;margin-top:18px;text-decoration:none;background:#0b43d9;color:#fff;padding:11px 16px;border-radius:12px;font-weight:800;}
-</style>
-</head>
-<body>
-  <div class="card">
-    <div class="badge">COOPEX • Sistema leve</div>
-    <h1>Histórico de trajetos desativado</h1>
-    <p>A gravação de rotas e histórico de pontos foi desativada para deixar o sistema mais leve.</p>
-    <p>Agora o sistema mantém somente a <strong>última localização atual do cooperado</strong>, atualizada no máximo a cada 20 segundos.</p>
-    <div class="ok">O acompanhamento em tempo real continua funcionando no painel, mas sem salvar histórico de trajeto.</div>
-    <a href="/dashboard">Voltar ao painel</a>
-  </div>
-</body>
-</html>"""
-
-
-def _trajetos_desativado_json():
-    return jsonify(
-        ok=True,
-        desativado=True,
-        mensagem='Histórico de trajetos desativado. O sistema salva apenas a última localização atual do cooperado.'
-    )
-
-
 @app.route('/trajetos')
 def trajetos():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    return _trajetos_desativado_html(), 200
 
+    # Limpa automaticamente trajetos com mais de 31 dias (sempre mantém último mês)
+    try:
+        limite_utc = datetime.utcnow() - timedelta(days=31)
+        (
+            Trajeto.query
+            .filter(Trajeto.inicio < limite_utc)
+            .delete(synchronize_session=False)
+        )
+        db.session.commit()
+    except Exception:
+        db.session.rollback()
+
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
+
+    # Período padrão: últimos 30 dias em horário de Brasília
+    hoje_brt = datetime.now(BRAZIL_TZ).date()
+    if not data_inicio and not data_fim:
+        di_default = hoje_brt - timedelta(days=29)
+        di_utc, _ = local_date_window_to_utc_range(di_default)
+        _, df_utc = local_date_window_to_utc_range(hoje_brt)
+        q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
+
+        data_inicio = di_default.isoformat()
+        data_fim = hoje_brt.isoformat()
+    else:
+        if data_inicio:
+            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+            di_utc, _ = local_date_window_to_utc_range(di)
+            q = q.filter(Trajeto.inicio >= di_utc)
+        if data_fim:
+            df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+            _, df_utc = local_date_window_to_utc_range(df)
+            q = q.filter(Trajeto.inicio <= df_utc)
+
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
+        except ValueError:
+            pass
+
+    trajetos_list = q.order_by(Trajeto.inicio.desc()).limit(2000).all()
+
+    # KPIs gerais
+    total_km = sum((t.distancia_m or 0.0) for t in trajetos_list) / 1000.0
+    total_horas = sum((t.duracao_s or 0) for t in trajetos_list) / 3600.0
+    vel_media_geral = (total_km / total_horas) if total_horas > 0 else 0.0
+
+    return render_template(
+        'trajetos.html',
+        trajetos=trajetos_list,
+        cooperados=cooperados,
+        cooperado_id=cooperado_id,
+        data_inicio=data_inicio,
+        data_fim=data_fim,
+        total_km=total_km,
+        total_horas=total_horas,
+        vel_media_geral=vel_media_geral,
+        to_brasilia=to_brasilia,
+        now=lambda: datetime.now(BRAZIL_TZ),
+    )
 
 @app.route('/trajetos/exportar')
 def trajetos_exportar():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    return _trajetos_desativado_html(), 200
+
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+
+    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
+
+    hoje_brt = datetime.now(BRAZIL_TZ).date()
+    if not data_inicio and not data_fim:
+        di_default = hoje_brt - timedelta(days=29)
+        di_utc, _ = local_date_window_to_utc_range(di_default)
+        _, df_utc = local_date_window_to_utc_range(hoje_brt)
+        q = q.filter(Trajeto.inicio >= di_utc, Trajeto.inicio <= df_utc)
+    else:
+        if data_inicio:
+            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+            di_utc, _ = local_date_window_to_utc_range(di)
+            q = q.filter(Trajeto.inicio >= di_utc)
+        if data_fim:
+            df = datetime.strptime(data_fim, "%Y-%m-%d").date()
+            _, df_utc = local_date_window_to_utc_range(df)
+            q = q.filter(Trajeto.inicio <= df_utc)
+
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
+        except ValueError:
+            pass
+
+    trajetos_list = q.order_by(Trajeto.inicio.asc()).all()
+
+    rows = []
+    for t in trajetos_list:
+        ini_local = to_brasilia(t.inicio) if t.inicio else None
+        fim_local = to_brasilia(t.fim) if t.fim else None
+        rows.append({
+            'Cooperado': t.cooperado.nome if t.cooperado else '',
+            'Início (Brasília)': ini_local.strftime('%d/%m/%Y %H:%M:%S') if ini_local else '',
+            'Fim (Brasília)': fim_local.strftime('%d/%m/%Y %H:%M:%S') if fim_local else '',
+            'Duração (min)': round((t.duracao_s or 0) / 60.0, 1),
+            'Distância (km)': round((t.distancia_m or 0.0) / 1000.0, 3),
+            'Velocidade média (km/h)': round(t.velocidade_media_kmh or 0.0, 1),
+            'Origem (lat,lng)': (
+                f"{t.origem_lat:.6f},{t.origem_lng:.6f}"
+                if t.origem_lat is not None and t.origem_lng is not None
+                else ''
+            ),
+            'Destino (lat,lng)': (
+                f"{t.destino_lat:.6f},{t.destino_lng:.6f}"
+                if t.destino_lat is not None and t.destino_lng is not None
+                else ''
+            ),
+        })
+
+    df_out = pd.DataFrame(rows)
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        sheet = 'Trajetos'
+        df_out.to_excel(writer, index=False, sheet_name=sheet)
+        ws = writer.sheets[sheet]
+
+        widths = [26, 22, 22, 14, 16, 22, 20, 20]
+        for i, w in enumerate(widths[:len(df_out.columns)]):
+            ws.set_column(i, i, w)
+
+        money_fmt = writer.book.add_format({'num_format': '#,##0.000'})
+        vel_fmt = writer.book.add_format({'num_format': '#,##0.0'})
+        cols = list(df_out.columns)
+        if 'Distância (km)' in cols:
+            idx = cols.index('Distância (km)')
+            ws.set_column(idx, idx, 16, money_fmt)
+        if 'Velocidade média (km/h)' in cols:
+            idx = cols.index('Velocidade média (km/h)')
+            ws.set_column(idx, idx, 22, vel_fmt)
+
+    output.seek(0)
+    return send_file(output, download_name='trajetos.xlsx', as_attachment=True)
+
+from flask import request, jsonify
+
 
 
 @app.route('/api/trajetos/salvar', methods=['POST'])
 def api_trajetos_salvar():
-    # No-op proposital: não grava histórico, mas responde OK para não quebrar telas/apps antigos.
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-    return _trajetos_desativado_json(), 200
+
+    try:
+        db.create_all()
+    except Exception:
+        pass
+
+    data = request.get_json(silent=True) or {}
+    try:
+        cooperado_id = int(data.get('cooperado_id') or 0)
+    except Exception:
+        cooperado_id = 0
+    if not cooperado_id:
+        return jsonify(ok=False, error='cooperado_id obrigatório'), 400
+
+    cooperado = Cooperado.query.get(cooperado_id)
+    if not cooperado:
+        return jsonify(ok=False, error='Cooperado não encontrado'), 404
+
+    pontos = data.get('pontos') or []
+    if not isinstance(pontos, list) or len(pontos) < 2:
+        return jsonify(ok=False, error='Rota curta demais para salvar'), 400
+
+    pts = []
+    for p in pontos:
+        try:
+            lat = float(p.get('lat'))
+            lng = float(p.get('lng'))
+            tms = int(p.get('tMs') or p.get('timestamp') or 0)
+            if not (-90 <= lat <= 90 and -180 <= lng <= 180):
+                continue
+            pts.append({'lat': lat, 'lng': lng, 'tMs': tms})
+        except Exception:
+            continue
+    if len(pts) < 2:
+        return jsonify(ok=False, error='Pontos inválidos'), 400
+
+    try:
+        metricas = _trajeto_metricas_from_points(pts)
+
+        try:
+            inicio = datetime.utcfromtimestamp((pts[0].get('tMs') or 0) / 1000.0)
+        except Exception:
+            inicio = datetime.utcnow()
+        try:
+            fim = datetime.utcfromtimestamp((pts[-1].get('tMs') or 0) / 1000.0)
+        except Exception:
+            fim = None
+
+        traj = Trajeto(
+            cooperado_id=cooperado_id,
+            inicio=inicio or datetime.utcnow(),
+            fim=fim,
+            distancia_m=metricas['distancia_m'],
+            duracao_s=metricas['duracao_s'],
+            velocidade_media_kmh=metricas['velocidade_media_kmh'],
+            origem_lat=metricas['origem_lat'],
+            origem_lng=metricas['origem_lng'],
+            destino_lat=metricas['destino_lat'],
+            destino_lng=metricas['destino_lng'],
+            pontos_json=json.dumps(pts, ensure_ascii=False),
+        )
+        db.session.add(traj)
+        db.session.commit()
+        return jsonify(ok=True, id=traj.id, nome=cooperado.nome)
+    except Exception as e:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            current_app.logger.exception('Falha ao salvar trajeto')
+        except Exception:
+            pass
+        return jsonify(ok=False, error=f'Falha ao salvar histórico: {e}'), 500
 
 
 @app.route('/api/trajetos/historico')
 def api_trajetos_historico():
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-    return jsonify(ok=True, desativado=True, itens=[], mensagem='Histórico de trajetos desativado.'), 200
+
+    try:
+        limit = max(1, min(100, int(request.args.get('limit', 30))))
+    except Exception:
+        limit = 30
+
+    q = Trajeto.query.options(joinedload(Trajeto.cooperado))
+
+    cooperado_id = request.args.get('cooperado_id')
+    if cooperado_id:
+        try:
+            q = q.filter(Trajeto.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    try:
+        if data_inicio:
+            di = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            di_utc, _ = local_date_window_to_utc_range(di)
+            q = q.filter(Trajeto.inicio >= di_utc)
+        if data_fim:
+            df = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            _, df_utc = local_date_window_to_utc_range(df)
+            q = q.filter(Trajeto.inicio <= df_utc)
+    except Exception:
+        pass
+
+    itens = []
+    for t in q.order_by(Trajeto.inicio.desc()).limit(limit).all():
+        itens.append({
+            'id': t.id,
+            'cooperado_id': t.cooperado_id,
+            'nome': t.cooperado.nome if t.cooperado else '',
+            'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
+            'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
+            'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
+            'duracao_min': round((t.duracao_s or 0)/60.0, 1),
+            'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
+        })
+    return jsonify(ok=True, itens=itens)
 
 
 @app.route('/api/trajetos/<int:trajeto_id>')
 def api_trajetos_detalhe(trajeto_id):
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-    return jsonify(ok=True, desativado=True, item=None, mensagem='Histórico de trajetos desativado.'), 200
+
+    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    try:
+        pontos = json.loads(t.pontos_json or '[]')
+    except Exception:
+        pontos = []
+    return jsonify(ok=True, item={
+        'id': t.id,
+        'cooperado_id': t.cooperado_id,
+        'nome': t.cooperado.nome if t.cooperado else '',
+        'inicio': to_brasilia(t.inicio).strftime('%d/%m/%Y %H:%M:%S') if t.inicio else '',
+        'fim': to_brasilia(t.fim).strftime('%d/%m/%Y %H:%M:%S') if t.fim else '',
+        'distancia_km': round((t.distancia_m or 0.0)/1000.0, 3),
+        'duracao_min': round((t.duracao_s or 0)/60.0, 1),
+        'velocidade_media_kmh': round(t.velocidade_media_kmh or 0.0, 1),
+        'pontos': pontos,
+    })
 
 
 @app.route('/api/trajetos/<int:trajeto_id>/geojson')
 def api_trajetos_geojson(trajeto_id):
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
-    geo = {'type': 'FeatureCollection', 'features': [], 'desativado': True, 'mensagem': 'Histórico de trajetos desativado.'}
+
+    t = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    try:
+        pontos = json.loads(t.pontos_json or '[]')
+    except Exception:
+        pontos = []
+    geo = {
+        'type': 'FeatureCollection',
+        'features': [{
+            'type': 'Feature',
+            'properties': {
+                'id': t.id,
+                'cooperado_id': t.cooperado_id,
+                'nome': t.cooperado.nome if t.cooperado else '',
+                'inicio': t.inicio.isoformat() if t.inicio else None,
+                'fim': t.fim.isoformat() if t.fim else None,
+                'distancia_m': t.distancia_m or 0.0,
+                'duracao_s': t.duracao_s or 0,
+                'velocidade_media_kmh': t.velocidade_media_kmh or 0.0,
+            },
+            'geometry': {
+                'type': 'LineString',
+                'coordinates': [[float(p.get('lng')), float(p.get('lat'))] for p in pontos if p.get('lng') is not None and p.get('lat') is not None]
+            }
+        }]
+    }
     return current_app.response_class(
         json.dumps(geo, ensure_ascii=False, indent=2),
         mimetype='application/geo+json',
-        headers={'Content-Disposition': 'attachment; filename=trajetos_desativado.geojson'}
+        headers={'Content-Disposition': f'attachment; filename=trajeto_{t.id}.geojson'}
     )
 
 
@@ -6097,7 +6268,14 @@ def api_trajetos_geojson(trajeto_id):
 def trajetos_replay(trajeto_id):
     if not session.get('is_admin'):
         return redirect(url_for('login'))
-    return _trajetos_desativado_html(), 200
+
+    trajeto = Trajeto.query.options(joinedload(Trajeto.cooperado)).get_or_404(trajeto_id)
+    return render_template(
+        'trajeto_replay.html',
+        trajeto_id=trajeto.id,
+        cooperado_nome=(trajeto.cooperado.nome if trajeto.cooperado else ''),
+        now=lambda: datetime.now(BRAZIL_TZ),
+    )
 
 
 @app.route('/mapa_motoboys')
@@ -8789,205 +8967,535 @@ def api_entrega_atribuida():
 
 
 # =========================================================
-# ESTATÍSTICAS (ADMIN MASTER)
+# ESTATÍSTICAS (ADMIN MASTER) — DASHBOARD GERENCIAL COOPEX
+# =========================================================
+# =========================================================
+# HELPERS DO DASHBOARD GERENCIAL
+# =========================================================
+def _dash_money(v):
+    try:
+        return float(v or 0)
+    except Exception:
+        return 0.0
+
+
+def _dash_pct(parte, total):
+    parte = _dash_money(parte)
+    total = _dash_money(total)
+    return round((parte / total * 100.0), 1) if total else 0.0
+
+
+def _dash_json(raw):
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        return json.loads(raw)
+    except Exception:
+        return {}
+
+
+def _dash_bairro(data):
+    if not isinstance(data, dict):
+        return ''
+    return (
+        data.get('bairro') or
+        data.get('bairro_origem') or
+        data.get('bairro_destino') or
+        data.get('neighborhood') or
+        ''
+    ).strip()
+
+
+def _dash_origem_destino(e):
+    origem = _dash_json(getattr(e, 'origem_json', None))
+    destino = _dash_json(getattr(e, 'destino_json', None))
+    bo = _dash_bairro(origem)
+    bd = _dash_bairro(destino) or (getattr(e, 'bairro', '') or '').strip()
+    return (_bairro_rota_display(bo or 'Não informado'), _bairro_rota_display(bd or 'Não informado'))
+
+
+def _dash_norm_cliente(nome):
+    return _norm(nome or '')
+
+
+def _dash_mapa_grupos():
+    """
+    Retorna:
+      mapa_nome_norm -> {'id': grupo.id, 'nome': grupo.nome_grupo}
+      lista_grupos -> grupos ativos
+    """
+    grupos = GrupoCliente.query.filter_by(ativo=True).order_by(GrupoCliente.nome_grupo.asc()).all()
+    mapa = {}
+    for g in grupos:
+        for it in g.itens:
+            k = _dash_norm_cliente(it.nome_cliente)
+            if k:
+                mapa[k] = {'id': g.id, 'nome': g.nome_grupo}
+    return mapa, grupos
+
+
+def _dash_contrato_nome(e, mapa_grupos):
+    nome = (getattr(e, 'cliente', '') or 'Cliente não informado').strip() or 'Cliente não informado'
+    g = mapa_grupos.get(_dash_norm_cliente(nome))
+    return g['nome'] if g else nome
+
+
+def _dash_aplica_periodo(periodo, data_inicio, data_fim):
+    hoje = datetime.now(BRAZIL_TZ).date()
+    periodo = (periodo or 'hoje').strip().lower()
+
+    if periodo == 'ontem':
+        d = hoje - timedelta(days=1)
+        return d, d, 'Ontem'
+    if periodo == '7dias':
+        return hoje - timedelta(days=6), hoje, 'Últimos 7 dias'
+    if periodo == 'semana':
+        ini = hoje - timedelta(days=hoje.weekday())
+        return ini, hoje, 'Semana atual'
+    if periodo == 'mes':
+        return hoje.replace(day=1), hoje, 'Mês atual'
+    if periodo == 'ano':
+        return hoje.replace(month=1, day=1), hoje, 'Ano atual'
+    if periodo == 'personalizado':
+        try:
+            di = datetime.strptime(data_inicio, '%Y-%m-%d').date() if data_inicio else hoje
+        except Exception:
+            di = hoje
+        try:
+            df = datetime.strptime(data_fim, '%Y-%m-%d').date() if data_fim else di
+        except Exception:
+            df = di
+        if df < di:
+            df = di
+        return di, df, periodo_legivel_str(di.isoformat(), df.isoformat())
+
+    return hoje, hoje, 'Hoje'
+
+
+def _dash_range_q(query, di, df):
+    ini_utc, _ = local_date_window_to_utc_range(di)
+    _, fim_utc = local_date_window_to_utc_range(df)
+    return query.filter(Entrega.data_envio >= ini_utc, Entrega.data_envio <= fim_utc)
+
+
+def _dash_bucket_dia(entregas):
+    cont = defaultdict(lambda: {'qtd': 0, 'valor': 0.0})
+    for e in entregas:
+        dt = to_brasilia(e.data_envio) if e.data_envio else None
+        if not dt:
+            continue
+        key = dt.strftime('%d/%m')
+        cont[key]['qtd'] += 1
+        cont[key]['valor'] += _dash_money(e.valor)
+    return [{'label': k, 'qtd': v['qtd'], 'valor': round(v['valor'], 2)} for k, v in cont.items()]
+
+
+def _dash_top_dict(counter, limit=8):
+    return [{'nome': k, 'qtd': int(v)} for k, v in counter.most_common(limit)]
+
+
+def _dash_top_valor(counter_val, counter_qtd=None, limit=8):
+    rows = []
+    for nome, valor in sorted(counter_val.items(), key=lambda kv: kv[1], reverse=True)[:limit]:
+        qtd = int((counter_qtd or {}).get(nome, 0))
+        rows.append({'nome': nome, 'valor': round(float(valor or 0), 2), 'qtd': qtd})
+    return rows
+
+
+def _dash_yoy_atual_anterior(valor_atual, valor_anterior):
+    if not valor_anterior:
+        return None
+    return round(((valor_atual - valor_anterior) / valor_anterior) * 100.0, 1)
+
+
+def _dash_periodo_anterior(di, df):
+    dias = (df - di).days + 1
+    prev_fim = di - timedelta(days=1)
+    prev_ini = prev_fim - timedelta(days=dias - 1)
+    return prev_ini, prev_fim
+
+
+# =========================================================
+# ROTAS PARA GERENCIAR GRUPOS DE CONTRATO NA MESMA TELA
+# =========================================================
+@app.post('/estatisticas_cooperado/grupos/salvar')
+@master_required
+def estatisticas_cooperado_grupo_salvar():
+    grupo_id = request.form.get('grupo_id', type=int)
+    nome_grupo = (request.form.get('nome_grupo') or '').strip()
+    nomes_raw = (request.form.get('nomes_clientes') or '').strip()
+
+    if not nome_grupo:
+        flash('Informe o nome do grupo/contrato.', 'danger')
+        return redirect(url_for('estatisticas_cooperado'))
+
+    nomes = []
+    for linha in re.split(r'[\n;,]+', nomes_raw):
+        nm = (linha or '').strip()
+        if nm and _dash_norm_cliente(nm):
+            nomes.append(nm)
+
+    if not nomes:
+        flash('Informe pelo menos um nome de cliente para vincular ao grupo.', 'danger')
+        return redirect(url_for('estatisticas_cooperado'))
+
+    try:
+        if grupo_id:
+            grupo = GrupoCliente.query.get_or_404(grupo_id)
+            grupo.nome_grupo = nome_grupo
+            GrupoClienteItem.query.filter_by(grupo_id=grupo.id).delete()
+        else:
+            grupo = GrupoCliente(nome_grupo=nome_grupo, ativo=True)
+            db.session.add(grupo)
+            db.session.flush()
+
+        vistos = set()
+        for nm in nomes:
+            k = _dash_norm_cliente(nm)
+            if not k or k in vistos:
+                continue
+            vistos.add(k)
+            db.session.add(GrupoClienteItem(grupo_id=grupo.id, nome_cliente=nm, nome_norm=k))
+
+        db.session.commit()
+        flash('Grupo de contrato salvo com sucesso.', 'success')
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao salvar grupo de cliente')
+        flash(f'Erro ao salvar grupo: {e.__class__.__name__}', 'danger')
+
+    return redirect(url_for('estatisticas_cooperado', grupo_id=grupo.id if 'grupo' in locals() else 'todos', periodo=request.form.get('periodo_back') or 'mes'))
+
+
+@app.post('/estatisticas_cooperado/grupos/<int:grupo_id>/excluir')
+@master_required
+def estatisticas_cooperado_grupo_excluir(grupo_id):
+    grupo = GrupoCliente.query.get_or_404(grupo_id)
+    try:
+        db.session.delete(grupo)
+        db.session.commit()
+        flash('Grupo removido.', 'success')
+    except Exception:
+        db.session.rollback()
+        flash('Não foi possível remover o grupo.', 'danger')
+    return redirect(url_for('estatisticas_cooperado', periodo=request.form.get('periodo_back') or 'mes'))
+
+
+# =========================================================
+# SUBSTITUA A ROTA ANTIGA /estatisticas_cooperado POR ESTA
 # =========================================================
 @app.route('/estatisticas_cooperado')
 @master_required
 def estatisticas_cooperado():
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
-    cooperado_id = request.args.get('cooperado_id', 'todos')
+    """Dashboard gerencial leve: Python resume, HTML só exibe."""
+    periodo = (request.args.get('periodo') or 'hoje').strip().lower()
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
-    status_pagamento = request.args.get('status_pagamento', 'todos')
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    grupo_id = request.args.get('grupo_id', 'todos')
     cliente = (request.args.get('cliente') or '').strip()
+    status_pagamento = request.args.get('status_pagamento', 'todos')
+    pagamento = request.args.get('pagamento', 'todos')
+    origem_f = (request.args.get('origem') or '').strip()
+    destino_f = (request.args.get('destino') or '').strip()
 
-    query = Entrega.query
-    if cooperado_id != 'todos':
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
-    if data_inicio:
-        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-        inicio_utc, _ = local_date_window_to_utc_range(di)
-        query = query.filter(Entrega.data_envio >= inicio_utc)
-    if data_fim:
-        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df_)
-        query = query.filter(Entrega.data_envio <= fim_utc)
+    di, df, periodo_legivel = _dash_aplica_periodo(periodo, data_inicio, data_fim)
+    data_inicio = di.isoformat()
+    data_fim = df.isoformat()
+
+    mapa_grupos, grupos_cliente = _dash_mapa_grupos()
+
+    query = Entrega.query.options(joinedload(Entrega.cooperado))
+    query = _dash_range_q(query, di, df)
+
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
     if status_pagamento and status_pagamento != 'todos':
         if status_pagamento == 'pago':
             query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
         elif status_pagamento == 'pendente':
-            query = query.filter(
-                (Entrega.status_pagamento == None) |
-                (func.lower(Entrega.status_pagamento) == 'pendente')
-            )
+            query = query.filter(or_(Entrega.status_pagamento == None, func.lower(Entrega.status_pagamento) == 'pendente'))
+
+    if pagamento and pagamento != 'todos':
+        query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')).like(f"%{pagamento.lower()}%"))
+
     if cliente:
         like = f"%{cliente.lower()}%"
-        query = query.filter(func.lower(Entrega.cliente).like(like))
+        query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).like(like))
 
-    entregas = query.options(joinedload(Entrega.cooperado)).order_by(Entrega.data_envio.asc()).all()
+    # Para grupo, filtra por nomes vinculados ao grupo.
+    if grupo_id and grupo_id != 'todos':
+        try:
+            gid = int(grupo_id)
+            itens = GrupoClienteItem.query.filter_by(grupo_id=gid).all()
+            nomes_norm = [it.nome_norm for it in itens if it.nome_norm]
+            if nomes_norm:
+                query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).in_(nomes_norm))
+            else:
+                query = query.filter(text('1=0'))
+        except Exception:
+            pass
+
+    # Busca inicial por período/status; filtros origem/destino em Python porque estão em JSON.
+    entregas_raw = query.order_by(Entrega.data_envio.desc()).limit(12000).all()
+
+    entregas = []
+    origem_key = _norm(origem_f)
+    destino_key = _norm(destino_f)
+    for e in entregas_raw:
+        bo, bd = _dash_origem_destino(e)
+        if origem_key and origem_key not in _norm(bo):
+            continue
+        if destino_key and destino_key not in _norm(bd):
+            continue
+        e._dash_origem = bo
+        e._dash_destino = bd
+        e._dash_contrato = _dash_contrato_nome(e, mapa_grupos)
+        entregas.append(e)
 
     total = len(entregas)
-    pagas = len([e for e in entregas if (e.status_pagamento or '').lower() == 'pago'])
-    pendentes = total - pagas
-    total_valor = sum(float(e.valor or 0) for e in entregas)
-    ticket_medio = (total_valor / total) if total > 0 else 0.0
+    valor_total = sum(_dash_money(e.valor) for e in entregas)
+    pagas = [e for e in entregas if (e.status_pagamento or '').lower() == 'pago']
+    pendentes_pgto = [e for e in entregas if (e.status_pagamento or '').lower() != 'pago']
+    concluidas = [e for e in entregas if (e.status or '').lower() in ('recebido', 'entregue', 'finalizado', 'finalizada')]
+    abertas = [e for e in entregas if (e.status or '').lower() not in ('recebido', 'entregue', 'finalizado', 'finalizada', 'cancelado', 'cancelada')]
+    sem_cooperado = [e for e in abertas if not e.cooperado_id]
+    atribuidas = [e for e in abertas if e.cooperado_id]
 
-    cont_dias = Counter()
+    clientes_ativos = len({(e._dash_contrato or e.cliente or '').strip() for e in entregas if (e._dash_contrato or e.cliente or '').strip()})
+    cooperados_ativos = len({e.cooperado_id for e in entregas if e.cooperado_id})
+
+    # Operação parada há mais de 20 min / sem cooperado há mais de 10 min.
+    now_utc = datetime.utcnow()
+    paradas_20 = []
+    sem_coop_10 = []
+    for e in abertas:
+        base_dt = e.data_atribuida or e.data_envio
+        minutos = int((now_utc - base_dt).total_seconds() / 60) if base_dt else 0
+        if minutos >= 20:
+            paradas_20.append(e)
+        if not e.cooperado_id and minutos >= 10:
+            sem_coop_10.append(e)
+
+    # Comparativo com período anterior.
+    pdi, pdf = _dash_periodo_anterior(di, df)
+    q_prev = _dash_range_q(Entrega.query, pdi, pdf)
+    prev_rows = q_prev.all()
+    prev_total = len(prev_rows)
+    prev_valor = sum(_dash_money(e.valor) for e in prev_rows)
+
+    # Contadores principais.
+    coop_val = defaultdict(float); coop_qtd = defaultdict(int); coop_pend = defaultdict(int); coop_clientes = defaultdict(set)
+    contrato_val = defaultdict(float); contrato_qtd = defaultdict(int); contrato_pend_val = defaultdict(float); contrato_credito = defaultdict(float)
+    coleta_counter = Counter(); entrega_counter = Counter(); rota_counter = Counter(); rota_val = defaultdict(float)
+    pagamento_val = defaultdict(float); pagamento_qtd = defaultdict(int)
+    dia_val = defaultdict(float); dia_qtd = defaultdict(int)
+
     for e in entregas:
-        dt_local = to_brasilia(e.data_envio)
-        if dt_local:
-            cont_dias[dt_local.date()] += 1
+        valor = _dash_money(e.valor)
+        coop_nome = e.cooperado.nome if e.cooperado else 'Sem cooperado'
+        contrato = e._dash_contrato
+        bo = e._dash_origem
+        bd = e._dash_destino
+        rota = f'{bo} → {bd}'
+        pgto = (e.pagamento or 'Não informado').strip() or 'Não informado'
+        dt = to_brasilia(e.data_envio) if e.data_envio else None
+        dlabel = dt.strftime('%d/%m') if dt else 'Sem data'
 
-    dia_top = {"data": None, "qtd": 0, "nome": "-"}
-    if cont_dias:
-        d, qtd = cont_dias.most_common(1)[0]
-        dia_top = {
-            "data": d.strftime('%Y-%m-%d'),
-            "qtd": qtd,
-            "nome": f"{d.strftime('%d/%m/%Y')} ({qtd})"
-        }
+        coop_val[coop_nome] += valor
+        coop_qtd[coop_nome] += 1
+        coop_clientes[coop_nome].add(contrato)
+        if (e.status_pagamento or '').lower() != 'pago':
+            coop_pend[coop_nome] += 1
 
-    cont_horas = Counter()
-    for e in entregas:
-        dt_local = to_brasilia(e.data_envio)
-        if dt_local:
-            cont_horas[dt_local.strftime('%H:00')] += 1
-    hora_pico = cont_horas.most_common(1)[0][0] if cont_horas else "-"
-    horas_pico_top3 = [f"{h} ({q})" for h, q in cont_horas.most_common(3)]
+        contrato_val[contrato] += valor
+        contrato_qtd[contrato] += 1
+        if (e.status_pagamento or '').lower() != 'pago':
+            contrato_pend_val[contrato] += valor
+        if pagamento_usa_credito(e.pagamento or '') or _dash_money(getattr(e, 'credito_usado', 0)) > 0:
+            contrato_credito[contrato] += _dash_money(getattr(e, 'credito_usado', 0)) or valor
 
-    cont_pgto = Counter([e.pagamento for e in entregas if e.pagamento])
-    pgto_top = cont_pgto.most_common(1)[0][0] if cont_pgto else "-"
+        coleta_counter[bo] += 1
+        entrega_counter[bd] += 1
+        rota_counter[rota] += 1
+        rota_val[rota] += valor
+        pagamento_val[pgto] += valor
+        pagamento_qtd[pgto] += 1
+        dia_val[dlabel] += valor
+        dia_qtd[dlabel] += 1
 
-    mapa_coop = defaultdict(lambda: {"qtd": 0, "total": 0.0})
-    total_geral_periodo = 0.0
-    for e in entregas:
-        nm = e.cooperado.nome if e.cooperado else "Sem Cooperado"
-        mapa_coop[nm]["qtd"] += 1
-        mapa_coop[nm]["total"] += float(e.valor or 0)
-        total_geral_periodo += float(e.valor or 0)
-
-    ranking_cooperados = []
-    for nome, dct in mapa_coop.items():
-        percent = (dct["total"] / total_geral_periodo * 100.0) if total_geral_periodo > 0 else 0.0
-        ranking_cooperados.append({
-            "nome": nome,
-            "qtd": dct["qtd"],
-            "total_valor": round(dct["total"], 2),
-            "percent": percent
+    top_cooperados = []
+    for nome, valor in sorted(coop_val.items(), key=lambda kv: kv[1], reverse=True)[:12]:
+        qtd = coop_qtd[nome]
+        top_cooperados.append({
+            'nome': nome,
+            'qtd': qtd,
+            'valor': round(valor, 2),
+            'ticket': round(valor / qtd, 2) if qtd else 0,
+            'pendentes': coop_pend[nome],
+            'clientes': len(coop_clientes[nome]),
+            'percentual': _dash_pct(valor, valor_total),
         })
-    ranking_cooperados.sort(key=lambda x: x["total_valor"], reverse=True)
 
-    cont_bairros = Counter([e.bairro for e in entregas if e.bairro])
-    ranking_bairros = [{"bairro": b, "qtd": q} for b, q in cont_bairros.most_common()]
+    top_contratos = []
+    for nome, valor in sorted(contrato_val.items(), key=lambda kv: kv[1], reverse=True)[:12]:
+        qtd = contrato_qtd[nome]
+        # nomes vinculados quando for grupo
+        vinculados = []
+        for g in grupos_cliente:
+            if g.nome_grupo == nome:
+                vinculados = g.nomes_lista()
+                break
+        top_contratos.append({
+            'nome': nome,
+            'qtd': qtd,
+            'valor': round(valor, 2),
+            'ticket': round(valor / qtd, 2) if qtd else 0,
+            'pendente_valor': round(contrato_pend_val[nome], 2),
+            'credito_usado': round(contrato_credito[nome], 2),
+            'vinculados': vinculados[:8],
+            'percentual': _dash_pct(valor, valor_total),
+        })
 
-    nomes_clientes = {e.cliente for e in entregas if e.cliente}
-    if nomes_clientes:
-        clientes_cadastrados = Cliente.query.filter(Cliente.nome.in_(list(nomes_clientes))).all()
-    else:
-        clientes_cadastrados = []
-    mapa_cliente = {c.nome: c for c in clientes_cadastrados}
+    credito_lancado = 0.0
+    credito_consumido = 0.0
+    credito_clientes = []
+    try:
+        cred_q = CreditoMovimento.query
+        # usa data/criado_em do movimento no mesmo período, sem quebrar se campos estiverem nulos
+        ini_utc, _ = local_date_window_to_utc_range(di)
+        _, fim_utc = local_date_window_to_utc_range(df)
+        movs = cred_q.filter(CreditoMovimento.criado_em >= ini_utc, CreditoMovimento.criado_em <= fim_utc).all()
+        credito_lancado = sum(_dash_money(m.valor) for m in movs if (m.tipo or '').lower() == 'credito')
+        credito_consumido = sum(_dash_money(m.valor) for m in movs if (m.tipo or '').lower() == 'debito')
 
-    cont_bairros_origem = Counter()
-    for e in entregas:
-        if not e.cliente:
-            continue
-        cl = mapa_cliente.get(e.cliente)
-        if cl and cl.bairro_origem:
-            cont_bairros_origem[(cl.bairro_origem or '').strip()] += 1
+        cli_rows = Cliente.query.order_by(Cliente.saldo_atual.desc()).limit(10).all()
+        for c in cli_rows:
+            saldo = _dash_money(getattr(c, 'saldo_atual', 0))
+            if saldo > 0:
+                credito_clientes.append({'nome': c.nome, 'saldo': round(saldo, 2), 'telefone': c.telefone or ''})
+    except Exception:
+        pass
 
-    ranking_bairros_origem = [
-        {"bairro": (b or 'Não informado'), "qtd": q}
-        for b, q in cont_bairros_origem.most_common()
-    ]
+    try:
+        credito_saldo_total = db.session.query(func.coalesce(func.sum(Cliente.saldo_atual), 0.0)).scalar() or 0.0
+        credito_clientes_baixo = Cliente.query.filter(Cliente.saldo_atual > 0, Cliente.saldo_atual <= 50).count()
+    except Exception:
+        credito_saldo_total = 0.0
+        credito_clientes_baixo = 0
 
-    ranking_pgto = [{"forma": f, "qtd": q} for f, q in cont_pgto.most_common()]
+    # Alertas inteligentes.
+    alertas = []
+    if sem_coop_10:
+        alertas.append({'tipo': 'danger', 'titulo': f'{len(sem_coop_10)} sem cooperado há +10 min', 'texto': 'Verificar atribuição imediata.'})
+    if paradas_20:
+        alertas.append({'tipo': 'warn', 'titulo': f'{len(paradas_20)} entregas paradas há +20 min', 'texto': 'Acompanhar andamento com os cooperados.'})
+    if pendentes_pgto:
+        alertas.append({'tipo': 'warn', 'titulo': f'R$ {sum(_dash_money(e.valor) for e in pendentes_pgto):,.2f} pendente'.replace(',', 'X').replace('.', ',').replace('X', '.'), 'texto': 'Há pagamento pendente no período.'})
+    if credito_clientes_baixo:
+        alertas.append({'tipo': 'info', 'titulo': f'{credito_clientes_baixo} clientes com saldo baixo', 'texto': 'Saldo entre R$ 0,01 e R$ 50,00.'})
+    if not alertas:
+        alertas.append({'tipo': 'ok', 'titulo': 'Operação sem alertas críticos', 'texto': 'Nenhum alerta relevante no recorte atual.'})
 
-    soma_por_cliente = defaultdict(lambda: {"qtd": 0, "total": 0.0})
-    for e in entregas:
-        if e.cliente:
-            soma_por_cliente[e.cliente]["qtd"] += 1
-            soma_por_cliente[e.cliente]["total"] += float(e.valor or 0)
-    ranking_clientes = [
-        {"cliente": c, "qtd": d["qtd"], "total": round(d["total"], 2)}
-        for c, d in sorted(soma_por_cliente.items(), key=lambda kv: kv[1]["total"], reverse=True)
-    ]
+    resumo_whatsapp = []
+    resumo_whatsapp.append(f'COOPEX - Resumo {periodo_legivel}')
+    resumo_whatsapp.append(f'Entregas: {total}')
+    resumo_whatsapp.append(f'Faturamento: R$ {valor_total:,.2f}'.replace(',', 'X').replace('.', ',').replace('X', '.'))
+    resumo_whatsapp.append(f'Sem cooperado: {len(sem_cooperado)}')
+    resumo_whatsapp.append(f'Pendentes pgto: {len(pendentes_pgto)}')
+    resumo_whatsapp.append('')
+    resumo_whatsapp.append('Rotas em aberto:')
+    abertas_rotas = Counter([f'{e._dash_origem} → {e._dash_destino}' for e in sem_cooperado])
+    for rota, qtd in abertas_rotas.most_common(10):
+        resumo_whatsapp.append(f'{qtd:02d} {rota}')
+    if not abertas_rotas:
+        resumo_whatsapp.append('Nenhuma rota sem cooperado no momento.')
 
-    dias_ordenados = sorted(list(cont_dias.keys()))
-    chart_entregas_labels = [d.strftime("%d/%m") for d in dias_ordenados]
-    chart_entregas_values = [cont_dias[d] for d in dias_ordenados]
-
-    chart_faturamento_labels = [r["nome"] for r in ranking_cooperados]
-    chart_faturamento_values = [r["total_valor"] for r in ranking_cooperados]
-
-    periodo_legivel = periodo_legivel_str(data_inicio, data_fim)
-
-    estatisticas = {
-        "total": total,
-        "pagas": pagas,
-        "pendentes": pendentes,
-        "total_valor": total_valor,
-        "ticket_medio": ticket_medio,
-        "dia_top": dia_top,
-        "hora_pico": hora_pico,
-        "pgto_top": pgto_top
+    resumo = {
+        'periodo_legivel': periodo_legivel,
+        'total_entregas': total,
+        'valor_total': round(valor_total, 2),
+        'ticket_medio': round(valor_total / total, 2) if total else 0,
+        'pagas': len(pagas),
+        'pendentes_pgto': len(pendentes_pgto),
+        'valor_pago': round(sum(_dash_money(e.valor) for e in pagas), 2),
+        'valor_pendente': round(sum(_dash_money(e.valor) for e in pendentes_pgto), 2),
+        'abertas': len(abertas),
+        'sem_cooperado': len(sem_cooperado),
+        'atribuidas': len(atribuidas),
+        'concluidas': len(concluidas),
+        'clientes_ativos': clientes_ativos,
+        'cooperados_ativos': cooperados_ativos,
+        'paradas_20': len(paradas_20),
+        'sem_coop_10': len(sem_coop_10),
+        'credito_lancado': round(credito_lancado, 2),
+        'credito_consumido': round(credito_consumido, 2),
+        'credito_saldo_total': round(float(credito_saldo_total or 0), 2),
+        'credito_clientes_baixo': int(credito_clientes_baixo or 0),
+        'comp_qtd_prev': prev_total,
+        'comp_valor_prev': round(prev_valor, 2),
+        'comp_qtd_pct': _dash_yoy_atual_anterior(total, prev_total),
+        'comp_valor_pct': _dash_yoy_atual_anterior(valor_total, prev_valor),
     }
 
-    por_ano_total = defaultdict(float)
-    por_ano_qtd = defaultdict(int)
-    for e in entregas:
-        dt_local = to_brasilia(e.data_envio)
-        if not dt_local:
-            continue
-        ano_local = dt_local.year
-        if ano_local < 2025:
-            continue
-        por_ano_qtd[ano_local] += 1
-        por_ano_total[ano_local] += float(e.valor or 0)
+    grafico_dia = [{'label': k, 'qtd': int(dia_qtd[k]), 'valor': round(dia_val[k], 2)} for k in dia_qtd.keys()]
+    grafico_cooperados = [{'label': r['nome'], 'valor': r['valor'], 'qtd': r['qtd']} for r in top_cooperados[:8]]
+    grafico_clientes = [{'label': r['nome'], 'valor': r['valor'], 'qtd': r['qtd']} for r in top_contratos[:8]]
+    grafico_pagamento = [{'label': k, 'valor': round(v, 2), 'qtd': int(pagamento_qtd[k])} for k, v in sorted(pagamento_val.items(), key=lambda kv: kv[1], reverse=True)]
 
-    if por_ano_total:
-        ultimo_ano = max(set(por_ano_total.keys()) | set(por_ano_qtd.keys()))
-    else:
-        ultimo_ano = max(2025, datetime.now(BRAZIL_TZ).year)
+    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
 
-    chart_ano_labels = list(range(2025, ultimo_ano + 1))
-    chart_ano_totais = []
-    chart_ano_qtd = []
-    chart_ano_ticket = []
-    for y in chart_ano_labels:
-        tot = float(por_ano_total.get(y, 0.0))
-        qtd = int(por_ano_qtd.get(y, 0))
-        tkt = (tot / qtd) if qtd else 0.0
-        chart_ano_totais.append(round(tot, 2))
-        chart_ano_qtd.append(qtd)
-        chart_ano_ticket.append(round(tkt, 2))
+    # Lista de clientes existentes para facilitar montagem dos grupos.
+    nomes_clientes = []
+    try:
+        nomes_db = [x[0] for x in db.session.query(Cliente.nome).filter(Cliente.nome != None).order_by(Cliente.nome.asc()).limit(600).all()]
+        nomes_ent = [x[0] for x in db.session.query(Entrega.cliente).filter(Entrega.cliente != None).group_by(Entrega.cliente).order_by(Entrega.cliente.asc()).limit(600).all()]
+        nomes_clientes = sorted({n for n in nomes_db + nomes_ent if (n or '').strip()}, key=lambda x: _norm(x))
+    except Exception:
+        nomes_clientes = []
+
+    filtros = {
+        'periodo': periodo,
+        'data_inicio': data_inicio,
+        'data_fim': data_fim,
+        'cooperado_id': cooperado_id,
+        'grupo_id': grupo_id,
+        'cliente': cliente,
+        'status_pagamento': status_pagamento,
+        'pagamento': pagamento,
+        'origem': origem_f,
+        'destino': destino_f,
+    }
 
     return render_template(
         'estatisticas_cooperado.html',
-        cooperados=cooperados,
-        cooperado_id=cooperado_id,
-        data_inicio=data_inicio,
-        data_fim=data_fim,
-        status_pagamento=status_pagamento,
-        cliente=cliente,
-        estatisticas=estatisticas,
-        ranking_cooperados=ranking_cooperados,
-        ranking_bairros=ranking_bairros,
-        ranking_bairros_origem=ranking_bairros_origem,
-        ranking_pgto=ranking_pgto,
-        ranking_clientes=ranking_clientes,
-        horas_pico_top3=horas_pico_top3,
-        chart_entregas_labels=chart_entregas_labels,
-        chart_entregas_values=chart_entregas_values,
-        chart_faturamento_labels=chart_faturamento_labels,
-        chart_faturamento_values=chart_faturamento_values,
+        filtros=filtros,
         periodo_legivel=periodo_legivel,
-        chart_ano_labels=chart_ano_labels,
-        chart_ano_totais=chart_ano_totais,
-        chart_ano_qtd=chart_ano_qtd,
-        chart_ano_ticket=chart_ano_ticket,
+        resumo=resumo,
+        cooperados=cooperados,
+        grupos_cliente=grupos_cliente,
+        nomes_clientes=nomes_clientes,
+        top_cooperados=top_cooperados,
+        top_contratos=top_contratos,
+        top_coleta=_dash_top_dict(coleta_counter, 10),
+        top_entrega=_dash_top_dict(entrega_counter, 10),
+        top_rotas_freq=[{'nome': k, 'qtd': v, 'valor': round(rota_val[k], 2)} for k, v in rota_counter.most_common(10)],
+        top_rotas_valor=_dash_top_valor(rota_val, rota_counter, 10),
+        grafico_dia=grafico_dia,
+        grafico_cooperados=grafico_cooperados,
+        grafico_clientes=grafico_clientes,
+        grafico_pagamento=grafico_pagamento,
+        credito_clientes=credito_clientes,
+        alertas=alertas,
+        resumo_whatsapp='\n'.join(resumo_whatsapp),
+        now=lambda: datetime.now(BRAZIL_TZ),
     )
-
-
 
 # =========================================================
 # EXPORTAÇÃO ESTATÍSTICAS (MASTER)
@@ -9877,61 +10385,8 @@ def handle_atualizar_entrega(data):
 
 
 # =========================================================
-# LINK DE RASTREIO (por entrega) — STATUS LEVE PARA CLIENTE
+# LINK DE RASTREIO (por entrega) — desativa ao concluir
 # =========================================================
-def _status_publico_entrega(entrega):
-    """
-    Status leve para o cliente.
-    Não mostra mapa e não consulta histórico de localização.
-    """
-    st = (getattr(entrega, 'status', None) or '').strip().lower()
-    sc = (getattr(entrega, 'status_corrida', None) or '').strip().lower()
-
-    concluidos = {'recebido', 'entregue', 'concluido', 'concluída', 'concluida', 'finalizado', 'finalizada'}
-    proximos = {'proximo', 'próximo', 'perto', 'chegando', 'entregador_proximo', 'motoboy_proximo'}
-    em_rota = {'aceita', 'em_rota', 'em rota', 'andamento', 'em_andamento', 'a_caminho', 'coletada', 'saiu_para_entrega'}
-
-    if st in concluidos or sc in concluidos:
-        return {
-            'codigo': 'concluido',
-            'titulo': 'Entrega concluída',
-            'mensagem': 'Sua entrega foi concluída com sucesso.',
-            'icone': '✅',
-            'percentual': 100,
-            'finalizada': True,
-        }
-
-    if sc in proximos or st in proximos:
-        return {
-            'codigo': 'proximo',
-            'titulo': 'O entregador está próximo',
-            'mensagem': 'O cooperado já está próximo do destino. Fique atento para receber a entrega.',
-            'icone': '📍',
-            'percentual': 85,
-            'finalizada': False,
-        }
-
-    if getattr(entrega, 'cooperado_id', None) or sc in em_rota or st in em_rota:
-        nome = entrega.cooperado.nome if getattr(entrega, 'cooperado', None) else 'O cooperado'
-        return {
-            'codigo': 'em_rota',
-            'titulo': 'Motoboy em rota',
-            'mensagem': f'{nome} já está em rota para realizar sua entrega.',
-            'icone': '🏍️',
-            'percentual': 60,
-            'finalizada': False,
-        }
-
-    return {
-        'codigo': 'aguardando',
-        'titulo': 'Aguardando motoboy',
-        'mensagem': 'Sua solicitação foi recebida e está aguardando a atribuição de um cooperado.',
-        'icone': '⏳',
-        'percentual': 25,
-        'finalizada': False,
-    }
-
-
 @app.get("/rastreio/<token>")
 def rastreio_publico(token):
     try:
@@ -9944,64 +10399,66 @@ def rastreio_publico(token):
     if not e:
         return "<h2>Entrega não encontrada.</h2>", 404
 
-    coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "")
-    status = _status_publico_entrega(e)
+    st = (e.status or "").lower()
+    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
+        return "<h2>Rastreio encerrado: entrega concluída.</h2>", 410
 
+    coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "Cooperado")
     html = f"""<!doctype html>
 <html lang="pt-br"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Status da entrega #{entrega_id}</title>
+<title>Rastreio — Entrega #{entrega_id}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
 <style>
-  body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#edf3ff;color:#0f224f;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:18px;box-sizing:border-box;}}
-  .card{{width:100%;max-width:520px;background:#fff;border-radius:24px;box-shadow:0 18px 45px rgba(0,50,150,.16);overflow:hidden;border:1px solid rgba(0,60,180,.10);}}
-  .top{{background:linear-gradient(90deg,#0635c9,#0b63ff);color:#fff;padding:18px 20px;font-weight:900;}}
-  .body{{padding:26px 22px 22px;text-align:center;}}
-  .icone{{font-size:58px;line-height:1;margin-bottom:8px;}}
-  h1{{font-size:25px;margin:6px 0 10px;color:#07308f;}}
-  p{{font-size:16px;line-height:1.5;margin:0;color:#33415f;}}
-  .meta{{margin-top:18px;background:#f5f8ff;border-radius:16px;padding:12px;text-align:left;font-size:14px;color:#25365f;}}
-  .bar-wrap{{height:12px;background:#e2e8f0;border-radius:999px;overflow:hidden;margin:22px 0 8px;}}
-  .bar{{height:100%;background:#0b63ff;width:{int(status.get('percentual') or 0)}%;transition:width .35s ease;}}
-  .small{{font-size:13px;color:#667085;margin-top:12px;}}
+  body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b1220;color:#fff}}
+  header{{padding:10px 12px;background:linear-gradient(90deg,#0b2cc2,#1a47ff);font-weight:800}}
+  #map{{height: calc(100vh - 54px); width:100%}}
+  .small{{opacity:.9;font-weight:700}}
 </style>
 </head><body>
-<div class="card">
-  <div class="top">COOPEX Entregas • Pedido #{entrega_id}</div>
-  <div class="body">
-    <div id="icone" class="icone">{status['icone']}</div>
-    <h1 id="titulo">{status['titulo']}</h1>
-    <p id="mensagem">{status['mensagem']}</p>
-    <div class="bar-wrap"><div id="bar" class="bar"></div></div>
-    <div class="meta">
-      <div><strong>Cliente:</strong> {e.cliente or '-'}</div>
-      <div><strong>Cooperado:</strong> <span id="coop">{coop_nome or 'Aguardando atribuição'}</span></div>
-      <div><strong>Última atualização:</strong> <span id="quando">agora</span></div>
-    </div>
-    <div class="small">Acompanhe por aqui. O mapa em tempo real foi desativado para deixar o sistema mais leve.</div>
-  </div>
-</div>
+<header>Rastreio em tempo real — Entrega #{entrega_id} <span class="small">({coop_nome})</span></header>
+<div id="map"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script>
   const token = {json.dumps(token)};
-  async function atualizarStatus(){{
+  const map = L.map('map', {{ zoomControl:true }}).setView([-5.7945,-35.2110], 13);
+  L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{ maxZoom: 19 }}).addTo(map);
+  let marker = null;
+
+  async function pull(){{
     try{{
       const r = await fetch('/api/rastreio_pos/'+encodeURIComponent(token), {{cache:'no-store'}});
+      if(r.status === 410){{
+        document.body.innerHTML = '<h2 style="padding:16px">Rastreio encerrado: entrega concluída.</h2>';
+        return;
+      }}
       const data = await r.json();
       if(!data.ok) return;
-      document.getElementById('icone').textContent = data.icone || '📦';
-      document.getElementById('titulo').textContent = data.titulo || 'Acompanhando entrega';
-      document.getElementById('mensagem').textContent = data.mensagem || '';
-      document.getElementById('coop').textContent = data.cooperado || 'Aguardando atribuição';
-      document.getElementById('quando').textContent = data.quando_local || 'agora';
-      document.getElementById('bar').style.width = String(data.percentual || 0) + '%';
+
+      const lat = data.lat, lng = data.lng;
+      if(typeof lat !== 'number' || typeof lng !== 'number') return;
+
+      const txt = (data.cooperado || '') + ' • ' + (data.quando_local || '');
+      if(!marker){{
+        marker = L.circleMarker([lat,lng], {{
+          radius: 7,
+          weight: 2,
+          fillOpacity: 0.8
+        }}).addTo(map);
+        marker.bindTooltip(txt, {{direction:'top', sticky:true}});
+        map.setView([lat,lng], 15);
+      }} else {{
+        marker.setLatLng([lat,lng]);
+        marker.setTooltipContent(txt);
+      }}
     }}catch(e){{}}
   }}
-  atualizarStatus();
-  setInterval(atualizarStatus, 15000);
+  pull();
+  setInterval(pull, 5000);
 </script>
 </body></html>"""
     return html
-
 
 @app.get("/api/rastreio_pos/<token>")
 def api_rastreio_pos(token):
@@ -10015,29 +10472,40 @@ def api_rastreio_pos(token):
     if not e:
         return jsonify(ok=False, error="not_found"), 404
 
-    status = _status_publico_entrega(e)
+    st = (e.status or "").lower()
+    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
+        return jsonify(ok=False, error="ended"), 410
+
     coop = getattr(e, "cooperado", None)
+    lat = lng = None
+    when = None
+    if coop:
+        lat = getattr(coop, 'last_lat', None)
+        lng = getattr(coop, 'last_lng', None)
+        when = getattr(coop, 'last_ping', None)
+        try:
+            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+            if loc and loc.latitude is not None and loc.longitude is not None:
+                lat = loc.latitude
+                lng = loc.longitude
+                when = loc.atualizado_em or when
+        except Exception:
+            pass
+    if not coop or lat is None or lng is None:
+        return jsonify(ok=True, lat=None, lng=None, cooperado=(coop.nome if coop else None), quando_local=None)
 
-    quando_local = datetime.now(BRAZIL_TZ).strftime("%d/%m/%Y %H:%M:%S")
+    when_local = None
     try:
-        base_dt = e.data_atribuida or e.data_envio
-        if base_dt:
-            quando_local = to_brasilia(base_dt).strftime("%d/%m/%Y %H:%M:%S")
+        if when:
+            when_local = to_brasilia(when).strftime("%d/%m/%Y %H:%M:%S")
     except Exception:
-        pass
+        when_local = None
 
-    return jsonify(
-        ok=True,
-        entrega_id=e.id,
-        codigo=status['codigo'],
-        titulo=status['titulo'],
-        mensagem=status['mensagem'],
-        icone=status['icone'],
-        percentual=status['percentual'],
-        finalizada=status['finalizada'],
-        cooperado=(coop.nome if coop else None),
-        quando_local=quando_local,
-    )
+    return jsonify(ok=True,
+                   lat=float(lat),
+                   lng=float(lng),
+                   cooperado=coop.nome,
+                   quando_local=when_local)
 
 
 if __name__ == '__main__':
