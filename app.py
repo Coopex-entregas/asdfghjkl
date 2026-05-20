@@ -2298,6 +2298,21 @@ def api_mobile_login_cooperado():
 
     coop.ensure_app_token()
     try:
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
+        if not loc:
+            loc = LocalizacaoCooperado(
+                cooperado_id=coop.id,
+                latitude=getattr(coop, "last_lat", None),
+                longitude=getattr(coop, "last_lng", None),
+                online=False,
+                fonte="login_mobile",
+                atualizado_em=datetime.utcnow()
+            )
+            db.session.add(loc)
+    except Exception:
+        pass
+
+    try:
         db.session.commit()
     except Exception:
         db.session.rollback()
@@ -6332,34 +6347,193 @@ def api_admin_cooperados_online():
     return jsonify(ok=True, cooperados=itens)
 
 
+
+# =========================================================
+# COOPEX PATCH V2 - COOPERADOS NOVOS NO MAPA
+# =========================================================
+def _coopex_ensure_localizacao_rows():
+    # Garante que todo cooperado tenha token e linha em localizacao_cooperado.
+    try:
+        for c in Cooperado.query.order_by(Cooperado.nome.asc()).all():
+            mudou = False
+            try:
+                if not getattr(c, "app_token", None):
+                    c.ensure_app_token()
+                    mudou = True
+            except Exception:
+                pass
+
+            try:
+                loc = LocalizacaoCooperado.query.filter_by(cooperado_id=c.id).first()
+                if not loc:
+                    loc = LocalizacaoCooperado(
+                        cooperado_id=c.id,
+                        latitude=getattr(c, "last_lat", None),
+                        longitude=getattr(c, "last_lng", None),
+                        accuracy=getattr(c, "last_accuracy_m", None),
+                        speed=getattr(c, "last_speed_kmh", None),
+                        heading=getattr(c, "last_heading", None),
+                        online=False,
+                        fonte="bootstrap",
+                        atualizado_em=getattr(c, "last_ping", None) or datetime.utcnow(),
+                    )
+                    db.session.add(loc)
+                    mudou = True
+            except Exception:
+                pass
+
+            if mudou:
+                db.session.add(c)
+
+        db.session.commit()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+
+
+def _coopex_float_or_none(v):
+    try:
+        if v is None or v == "":
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = (
-        Cooperado.query
-        .filter(Cooperado.ativo == True)
-        .order_by(Cooperado.nome.asc())
-        .all()
-    )
+    try:
+        _coopex_ensure_localizacao_rows()
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
 
-    motoboys_js = [_coopex_payload_motoboy_mapa(c) for c in cooperados]
+    cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
+    motoboys_js = []
 
-    motoboys_js.sort(
-        key=lambda x: (
-            0 if x.get('status') == 'em_corrida' else
-            1 if x.get('status') == 'livre' else
-            2,
-            (x.get('nome') or '').lower()
-        )
-    )
+    status_corrida_abertas = ['pendente', 'aceita']
+    status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
 
-    if (
-        request.args.get('format') == 'json'
-        or request.headers.get('X-Requested-With') == 'fetch'
-        or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json')
-    ):
+    for c in cooperados:
+        loc = None
+        try:
+            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=c.id).first()
+        except Exception:
+            loc = None
+
+        lat = getattr(c, "last_lat", None)
+        lng = getattr(c, "last_lng", None)
+        ping = getattr(c, "last_ping", None)
+        speed = getattr(c, "last_speed_kmh", None)
+        accuracy = getattr(c, "last_accuracy_m", None)
+        heading = getattr(c, "last_heading", None)
+
+        if loc:
+            if lat is None:
+                lat = loc.latitude
+            if lng is None:
+                lng = loc.longitude
+            if ping is None:
+                ping = loc.atualizado_em
+            if speed is None:
+                speed = loc.speed
+            if accuracy is None:
+                accuracy = loc.accuracy
+            if heading is None:
+                heading = loc.heading
+
+        try:
+            is_online, idle_s, _status_calc = calc_status_cooperado(c)
+        except Exception:
+            is_online, idle_s, _status_calc = False, None, "offline"
+
+        try:
+            if (not is_online) and loc and loc.atualizado_em:
+                now_utc = datetime.now(timezone.utc)
+                lp = loc.atualizado_em
+                if lp.tzinfo is None:
+                    lp = lp.replace(tzinfo=timezone.utc)
+                else:
+                    lp = lp.astimezone(timezone.utc)
+                delta = (now_utc - lp).total_seconds()
+                if bool(loc.online) and delta <= OFFLINE_AFTER_SEC:
+                    is_online = True
+                    idle_s = int(delta)
+        except Exception:
+            pass
+
+        try:
+            abertas_q = (
+                Entrega.query
+                .filter(Entrega.cooperado_id == c.id)
+                .filter(
+                    or_(
+                        Entrega.status_corrida == None,
+                        Entrega.status_corrida.in_(status_corrida_abertas)
+                    )
+                )
+                .filter(
+                    or_(
+                        Entrega.status == None,
+                        ~func.lower(Entrega.status).in_(status_finalizados)
+                    )
+                )
+            )
+            entregas_abertas = abertas_q.count()
+        except Exception:
+            entregas_abertas = 0
+
+        if bool(is_online) and int(entregas_abertas or 0) > 0:
+            status = 'em_corrida'
+        elif bool(is_online):
+            status = 'livre'
+        else:
+            status = 'offline'
+
+        lat_f = _coopex_float_or_none(lat)
+        lng_f = _coopex_float_or_none(lng)
+
+        motoboys_js.append({
+            "id": c.id,
+            "nome": c.nome,
+            "lat": lat_f,
+            "lng": lng_f,
+            "latitude": lat_f,
+            "longitude": lng_f,
+            "tem_localizacao": bool(lat_f is not None and lng_f is not None),
+            "online": bool(is_online),
+            "status": status,
+            "idle_seconds": idle_s,
+            "velocidade": float(speed or 0),
+            "velocidade_kmh": float(speed or 0),
+            "accuracy_m": float(accuracy or 0),
+            "heading": float(heading or 0),
+            "ultima_atualizacao": (to_brasilia(ping).strftime('%d/%m %H:%M') if ping else "Sem localização"),
+            "endereco": getattr(c, "zona", None) or getattr(c, "bairro", None) or "",
+            "observacao": getattr(c, "observacao", "") or "",
+            "entregas_abertas": int(entregas_abertas or 0),
+            "app_token": bool(getattr(c, "app_token", None)),
+        })
+
+    def _sort_key(x):
+        if x.get('status') == 'em_corrida':
+            prioridade = 0
+        elif x.get('online'):
+            prioridade = 1
+        else:
+            prioridade = 2
+        return (prioridade, -(x.get('entregas_abertas') or 0), (x.get('nome') or '').lower())
+
+    motoboys_js.sort(key=_sort_key)
+
+    if request.headers.get('X-Requested-With') == 'fetch' or request.args.get('format') == 'json' or (request.accept_mimetypes and request.accept_mimetypes.best == 'application/json'):
         resp = jsonify(motoboys_js)
         resp.headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0"
         return resp
