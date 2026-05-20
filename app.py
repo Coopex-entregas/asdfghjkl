@@ -1149,7 +1149,7 @@ LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35")
 
 # Controle de carga da API de localização.
 # Evita que vários celulares travem o login/admin no Render.
-LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "20"))
+LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "5"))
 LOCATION_MIN_TRAJETO_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_TRAJETO_INTERVAL_SEC", "60"))
 LOCATION_MIN_DISTANCE_FORCE_SAVE_M = float(os.getenv("LOCATION_MIN_DISTANCE_FORCE_SAVE_M", "50"))
 _LOCATION_TOKEN_LAST_TS = {}  # token -> timestamp; evita bater no banco em todo ping
@@ -5016,21 +5016,6 @@ def api_app_localizacao():
     if not token:
         return jsonify({'ok': False, 'error': 'token ausente'}), 401
 
-    # Proteção rápida: se o mesmo app mandou localização há poucos segundos,
-    # respondemos sem consultar o banco. Isso reduz travamento do Render.
-    try:
-        agora_ts_cache = datetime.utcnow().timestamp()
-        ultimo_ts_cache = _LOCATION_TOKEN_LAST_TS.get(token)
-        if ultimo_ts_cache and (agora_ts_cache - ultimo_ts_cache) < LOCATION_MIN_SAVE_INTERVAL_SEC:
-            return jsonify({
-                'ok': True,
-                'ignored': True,
-                'motivo': 'cache_intervalo_minimo',
-                'min_interval_sec': LOCATION_MIN_SAVE_INTERVAL_SEC
-            }), 200
-    except Exception:
-        pass
-
     user_id = str(data.get('user_id') or '').strip()
 
     lat_raw = data.get('latitude', data.get('lat'))
@@ -5093,21 +5078,39 @@ def api_app_localizacao():
             db.session.add(loc)
             db.session.flush()
 
-        # 1) Trava principal: se o mesmo cooperado acabou de enviar,
-        # não grava de novo. Isso protege login, admin e banco.
+        # 1) Trava leve: evita excesso, mas NÃO congela o mapa.
+        # Se enviou há poucos segundos, só ignora quando praticamente não saiu do lugar.
         ultimo_ping = coop.last_ping or loc.atualizado_em
+        prev_lat_intervalo = coop.last_lat if coop.last_lat is not None else loc.latitude
+        prev_lng_intervalo = coop.last_lng if coop.last_lng is not None else loc.longitude
+
         if ultimo_ping:
             try:
                 segundos = (agora - ultimo_ping).total_seconds()
             except Exception:
                 segundos = LOCATION_MIN_SAVE_INTERVAL_SEC
 
-            if segundos < LOCATION_MIN_SAVE_INTERVAL_SEC:
+            dist_intervalo = 999999.0
+            try:
+                if prev_lat_intervalo is not None and prev_lng_intervalo is not None:
+                    dist_intervalo = _haversine_m(prev_lat_intervalo, prev_lng_intervalo, lat, lng)
+            except Exception:
+                dist_intervalo = 999999.0
+
+            if segundos < LOCATION_MIN_SAVE_INTERVAL_SEC and dist_intervalo < LOCATION_MIN_DISTANCE_FORCE_SAVE_M:
+                coop.last_ping = agora
+                coop.online = True
+                loc.online = True
+                loc.fonte = source
+                loc.atualizado_em = agora
+                db.session.commit()
+
                 return jsonify({
                     'ok': True,
                     'cooperado_id': coop.id,
                     'ignored': True,
-                    'motivo': 'intervalo_minimo',
+                    'motivo': 'intervalo_minimo_sem_movimento',
+                    'dist_m': round(float(dist_intervalo or 0), 2),
                     'min_interval_sec': LOCATION_MIN_SAVE_INTERVAL_SEC
                 }), 200
 
