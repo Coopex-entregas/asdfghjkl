@@ -706,388 +706,568 @@
 
 </style>
 
-<!-- COOPEX_ADMIN_VISUAL_CLEAN_START -->
+
+
+
+<!-- COOPEX_ADMIN_VISUAL_V2_START -->
 <style>
-  :root{
-    --coopex-blue:#0b43d9;
-    --coopex-blue-2:#123fbd;
-    --coopex-blue-3:#052a92;
-    --coopex-light:#eef4ff;
-    --coopex-soft:#f7faff;
-    --coopex-line:#cfe0ff;
-    --coopex-text:#071d49;
-    --coopex-muted:#5b6b93;
-    --coopex-green:#18b86b;
-    --coopex-red:#df2636;
-    --coopex-orange:#f59e0b;
-    --coopex-shadow:0 14px 35px rgba(12,52,150,.10);
-    --coopex-radius:18px;
-  }
+/* =========================================================
+   COOPEX ADMIN VISUAL V2
+   Somente CSS. Não remove função nenhuma.
+   ========================================================= */
 
-  *{box-sizing:border-box}
-  html,body{
-    width:100%;
-    min-height:100%;
-    margin:0;
-    background:
-      radial-gradient(circle at top left, rgba(11,67,217,.10), transparent 34%),
-      linear-gradient(180deg,#f4f8ff 0%,#eaf1ff 100%) !important;
-    color:var(--coopex-text);
-    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
-    overflow-x:hidden;
-  }
+:root{
+  --cx-blue:#0b43d9;
+  --cx-blue-dark:#063399;
+  --cx-blue-soft:#eaf1ff;
+  --cx-bg:#eef4ff;
+  --cx-card:#ffffff;
+  --cx-line:#d7e4ff;
+  --cx-line-2:#edf3ff;
+  --cx-text:#10224d;
+  --cx-muted:#617197;
+  --cx-green:#16b36b;
+  --cx-red:#df2636;
+  --cx-yellow:#f59e0b;
+  --cx-radius:16px;
+  --cx-shadow:0 10px 24px rgba(13,55,145,.10);
+}
 
-  /* Topo mais limpo */
-  header,
-  .topbar,
-  .navbar,
-  .header,
-  .admin-header{
-    background:linear-gradient(90deg,var(--coopex-blue-3),var(--coopex-blue)) !important;
-    color:#fff !important;
-    box-shadow:0 10px 28px rgba(5,42,146,.18);
-  }
+*{box-sizing:border-box}
 
-  .top-link-btn,
-  .btn-top,
-  header a,
-  .topbar a{
-    border-radius:12px !important;
-  }
+html,body{
+  margin:0 !important;
+  width:100% !important;
+  max-width:100% !important;
+  overflow-x:hidden !important;
+  background:#edf3ff !important;
+  color:var(--cx-text) !important;
+  font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif !important;
+}
 
-  /* Área principal */
+/* ================= TOPO ================= */
+header,
+.topbar,
+.header,
+.navbar,
+.admin-header,
+.topo,
+#topo{
+  background:#0b43d9 !important;
+  background-image:none !important;
+  color:#fff !important;
+  min-height:76px !important;
+  box-shadow:0 8px 22px rgba(6,51,153,.18) !important;
+  border:0 !important;
+}
+
+header *,
+.topbar *,
+.header *,
+.navbar *,
+.admin-header *,
+.topo *{
+  color:inherit;
+}
+
+.top-link-btn,
+header a,
+.topbar a,
+.header a{
+  border:1px solid rgba(255,255,255,.36) !important;
+  background:rgba(255,255,255,.10) !important;
+  border-radius:12px !important;
+  color:#fff !important;
+  text-decoration:none !important;
+}
+
+/* ================= ESTRUTURA ================= */
+main,
+.container,
+.container-fluid,
+.wrap,
+.page-wrap,
+.content,
+.main{
+  width:100% !important;
+  max-width:100% !important;
+  padding-left:14px !important;
+  padding-right:14px !important;
+}
+
+.card,
+.box,
+.panel,
+.painel,
+.section,
+.admin-card,
+.entregas-card{
+  background:#fff !important;
+  border:1px solid var(--cx-line) !important;
+  border-radius:18px !important;
+  box-shadow:var(--cx-shadow) !important;
+  overflow:hidden !important;
+}
+
+/* Cabeçalho dos blocos sem gradiente pesado */
+.card-header,
+.box-header,
+.panel-heading,
+.section-title,
+.titulo-card,
+.entregas-title{
+  background:#0b43d9 !important;
+  background-image:none !important;
+  color:#fff !important;
+  border-radius:18px 18px 0 0 !important;
+  padding:13px 16px !important;
+  font-weight:900 !important;
+  border:0 !important;
+}
+
+/* ================= FILTROS ================= */
+label{
+  display:block;
+  font-size:11px !important;
+  font-weight:900 !important;
+  color:#183b8f !important;
+  letter-spacing:.02em;
+  margin-bottom:5px !important;
+}
+
+input,
+select,
+textarea{
+  min-height:36px !important;
+  height:auto !important;
+  border:1px solid #bfd2ff !important;
+  background:#fff !important;
+  color:#142754 !important;
+  border-radius:11px !important;
+  box-shadow:none !important;
+  outline:none !important;
+  font-weight:700 !important;
+}
+
+input:focus,
+select:focus,
+textarea:focus{
+  border-color:#0b43d9 !important;
+  box-shadow:0 0 0 3px rgba(11,67,217,.12) !important;
+}
+
+input::placeholder{
+  color:#7d8aab !important;
+  font-weight:700 !important;
+}
+
+/* ================= BOTÕES ================= */
+button,
+.btn,
+input[type="submit"],
+a.button{
+  border-radius:11px !important;
+  min-height:36px !important;
+  font-weight:900 !important;
+  border:1px solid transparent !important;
+  box-shadow:none !important;
+}
+
+button:hover,
+.btn:hover,
+input[type="submit"]:hover,
+a.button:hover{
+  filter:brightness(.98);
+  transform:translateY(-1px);
+}
+
+.btn-primary,
+button[type="submit"],
+input[type="submit"]{
+  background:#0b43d9 !important;
+  color:#fff !important;
+}
+
+.btn-success{
+  background:#16b36b !important;
+  color:#fff !important;
+}
+
+.btn-danger{
+  background:#df2636 !important;
+  color:#fff !important;
+}
+
+/* ================= TABELA ADMIN ================= */
+/* Essa parte é o que muda mais a tela que você mostrou. */
+.table-responsive,
+.table-wrap,
+.tabela-wrap,
+div:has(> table){
+  max-width:100% !important;
+}
+
+/* Caso o navegador suporte has, protege só tabelas grandes */
+.table-responsive,
+.table-wrap,
+.tabela-wrap{
+  overflow:auto !important;
+  border-radius:15px !important;
+  border:1px solid var(--cx-line) !important;
+  background:#fff !important;
+}
+
+table{
+  width:100% !important;
+  border-collapse:separate !important;
+  border-spacing:0 !important;
+  background:#fff !important;
+  font-size:12.5px !important;
+  color:#10224d !important;
+}
+
+/* Remove gradiente do topo da tabela */
+thead th,
+table thead th,
+table th{
+  background:#0a349f !important;
+  background-image:none !important;
+  color:#fff !important;
+  border:0 !important;
+  border-right:1px solid rgba(255,255,255,.12) !important;
+  padding:10px 8px !important;
+  line-height:1.15 !important;
+  text-align:center !important;
+  font-size:11.5px !important;
+  font-weight:900 !important;
+  white-space:nowrap !important;
+  position:sticky;
+  top:0;
+  z-index:5;
+}
+
+thead th:first-child,
+table th:first-child{
+  border-top-left-radius:14px !important;
+}
+
+thead th:last-child,
+table th:last-child{
+  border-top-right-radius:14px !important;
+  border-right:0 !important;
+}
+
+tbody td,
+table td{
+  background:#fff !important;
+  border-bottom:1px solid #e4ecff !important;
+  padding:8px 8px !important;
+  line-height:1.25 !important;
+  color:#183052 !important;
+  vertical-align:middle !important;
+}
+
+tbody tr:nth-child(even) td{
+  background:#f6f9ff !important;
+}
+
+tbody tr:hover td{
+  background:#ecf3ff !important;
+}
+
+/* Diminui excesso visual da linha e melhora leitura */
+tbody tr{
+  min-height:58px !important;
+}
+
+/* ID */
+table td:nth-child(1),
+table th:nth-child(1){
+  width:68px !important;
+  text-align:center !important;
+  color:#42557f !important;
+}
+
+/* Cliente */
+table td:nth-child(2),
+table th:nth-child(2){
+  min-width:170px !important;
+  font-weight:900 !important;
+}
+
+/* Endereço */
+table td:nth-child(3),
+table th:nth-child(3){
+  min-width:310px !important;
+  max-width:460px !important;
+  white-space:normal !important;
+  color:#253b66 !important;
+}
+
+/* Valor */
+table td:nth-child(4),
+table th:nth-child(4){
+  width:92px !important;
+  text-align:right !important;
+  font-weight:900 !important;
+}
+
+/* Data / horas */
+table td:nth-child(5),
+table th:nth-child(5){
+  width:86px !important;
+}
+table td:nth-child(6),
+table th:nth-child(6),
+table td:nth-child(7),
+table th:nth-child(7){
+  width:76px !important;
+  text-align:center !important;
+}
+
+/* Cooperado */
+table td:nth-child(8),
+table th:nth-child(8){
+  min-width:145px !important;
+  font-weight:900 !important;
+}
+
+/* Forma pgto */
+table td:nth-child(9),
+table th:nth-child(9){
+  width:105px !important;
+  text-align:center !important;
+}
+
+/* Status e pagamento */
+table td:nth-child(10),
+table th:nth-child(10),
+table td:nth-child(11),
+table th:nth-child(11){
+  width:105px !important;
+  text-align:center !important;
+}
+
+/* Recebido por */
+table td:nth-child(12),
+table th:nth-child(12){
+  width:126px !important;
+  text-align:center !important;
+}
+
+/* Rastreio */
+table td:nth-child(13),
+table th:nth-child(13){
+  width:92px !important;
+  text-align:center !important;
+}
+
+/* Ações */
+table td:nth-child(14),
+table th:nth-child(14){
+  min-width:150px !important;
+  text-align:center !important;
+}
+
+/* Badges de status mais leves */
+.badge,
+.chip,
+.pill,
+.tag,
+span[class*="pend"],
+span[class*="pago"],
+span[class*="status"]{
+  border-radius:999px !important;
+  padding:5px 10px !important;
+  font-size:11.5px !important;
+  font-weight:900 !important;
+}
+
+/* Botão abrir menor e limpo */
+table a,
+table button,
+table .btn{
+  min-height:30px !important;
+  padding:6px 10px !important;
+  border-radius:10px !important;
+  font-size:12px !important;
+}
+
+/* Ícones de ações menores */
+td a[href*="editar"],
+td button,
+td .btn{
+  vertical-align:middle !important;
+}
+
+/* ================= MODO ESCURO ================= */
+/* Funciona se o sistema atual usar body.dark, body.dark-mode, .dark-mode ou data-theme=dark */
+body.dark,
+body.dark-mode,
+body.modo-escuro,
+html.dark,
+html.dark-mode,
+[data-theme="dark"]{
+  background:#071126 !important;
+  color:#eaf1ff !important;
+}
+
+body.dark header,
+body.dark-mode header,
+body.modo-escuro header,
+html.dark header,
+html.dark-mode header,
+[data-theme="dark"] header,
+body.dark .topbar,
+body.dark-mode .topbar,
+body.modo-escuro .topbar{
+  background:#061a55 !important;
+  color:#fff !important;
+}
+
+body.dark .card,
+body.dark-mode .card,
+body.modo-escuro .card,
+html.dark .card,
+html.dark-mode .card,
+[data-theme="dark"] .card,
+body.dark .box,
+body.dark-mode .box,
+body.dark .panel,
+body.dark-mode .panel,
+body.dark .painel,
+body.dark-mode .painel,
+body.dark .section,
+body.dark-mode .section{
+  background:#0d1b35 !important;
+  border-color:#1e3a72 !important;
+  box-shadow:none !important;
+  color:#eaf1ff !important;
+}
+
+body.dark table,
+body.dark-mode table,
+body.modo-escuro table,
+html.dark table,
+html.dark-mode table,
+[data-theme="dark"] table{
+  background:#0d1b35 !important;
+  color:#eaf1ff !important;
+}
+
+body.dark thead th,
+body.dark-mode thead th,
+body.modo-escuro thead th,
+html.dark thead th,
+html.dark-mode thead th,
+[data-theme="dark"] thead th{
+  background:#08246d !important;
+  color:#fff !important;
+  border-right-color:rgba(255,255,255,.12) !important;
+}
+
+body.dark tbody td,
+body.dark-mode tbody td,
+body.modo-escuro tbody td,
+html.dark tbody td,
+html.dark-mode tbody td,
+[data-theme="dark"] tbody td{
+  background:#0d1b35 !important;
+  color:#e7eeff !important;
+  border-bottom-color:#1b315d !important;
+}
+
+body.dark tbody tr:nth-child(even) td,
+body.dark-mode tbody tr:nth-child(even) td,
+body.modo-escuro tbody tr:nth-child(even) td,
+html.dark tbody tr:nth-child(even) td,
+html.dark-mode tbody tr:nth-child(even) td,
+[data-theme="dark"] tbody tr:nth-child(even) td{
+  background:#101f3d !important;
+}
+
+body.dark tbody tr:hover td,
+body.dark-mode tbody tr:hover td,
+body.modo-escuro tbody tr:hover td,
+html.dark tbody tr:hover td,
+html.dark-mode tbody tr:hover td,
+[data-theme="dark"] tbody tr:hover td{
+  background:#132b57 !important;
+}
+
+body.dark input,
+body.dark select,
+body.dark textarea,
+body.dark-mode input,
+body.dark-mode select,
+body.dark-mode textarea,
+body.modo-escuro input,
+body.modo-escuro select,
+body.modo-escuro textarea,
+html.dark input,
+html.dark select,
+html.dark textarea,
+html.dark-mode input,
+html.dark-mode select,
+html.dark-mode textarea,
+[data-theme="dark"] input,
+[data-theme="dark"] select,
+[data-theme="dark"] textarea{
+  background:#0b1730 !important;
+  border-color:#2b4a88 !important;
+  color:#eaf1ff !important;
+}
+
+body.dark label,
+body.dark-mode label,
+body.modo-escuro label,
+html.dark label,
+html.dark-mode label,
+[data-theme="dark"] label{
+  color:#aac4ff !important;
+}
+
+body.dark input::placeholder,
+body.dark-mode input::placeholder,
+body.modo-escuro input::placeholder{
+  color:#8ea3d2 !important;
+}
+
+/* ================= MOBILE ================= */
+@media (max-width:900px){
   main,
-  .main,
-  .content,
-  .container,
-  .container-fluid,
-  .wrap,
-  .page-wrap{
-    max-width:none !important;
-  }
-
   .container,
   .container-fluid,
   .wrap,
   .page-wrap,
-  main{
-    padding-left:14px !important;
-    padding-right:14px !important;
-  }
-
-  /* Cards principais */
-  .card,
-  .box,
-  .painel,
-  .panel,
-  .section,
-  .admin-card{
-    border:1px solid rgba(147,177,245,.72) !important;
-    border-radius:var(--coopex-radius) !important;
-    background:rgba(255,255,255,.92) !important;
-    box-shadow:var(--coopex-shadow) !important;
-  }
-
-  /* Título do bloco das entregas */
-  .card-header,
-  .panel-heading,
-  .box-header,
-  .section-title{
-    background:linear-gradient(90deg,var(--coopex-blue-3),var(--coopex-blue)) !important;
-    color:#fff !important;
-    border-radius:var(--coopex-radius) var(--coopex-radius) 0 0 !important;
-    padding:14px 16px !important;
-    font-weight:900 !important;
-  }
-
-  /* Filtros mais compactos */
-  form,
-  .filters,
-  .filtros,
-  .filter-row{
-    gap:10px !important;
-  }
-
-  label{
-    font-size:12px !important;
-    font-weight:900 !important;
-    color:#163b91 !important;
-    letter-spacing:.02em;
-  }
-
-  input,
-  select,
-  textarea{
-    min-height:38px !important;
-    border:1px solid #bcd0ff !important;
-    border-radius:12px !important;
-    background:#fff !important;
-    color:#10224d !important;
-    font-weight:700;
-    outline:none !important;
-    box-shadow:none !important;
-  }
-
-  input:focus,
-  select:focus,
-  textarea:focus{
-    border-color:var(--coopex-blue) !important;
-    box-shadow:0 0 0 3px rgba(11,67,217,.12) !important;
-  }
-
-  input::placeholder{color:#7584a8 !important;font-weight:700}
-
-  /* Botões mais profissionais */
-  button,
-  .btn,
-  input[type="submit"],
-  a.button{
-    min-height:38px;
-    border-radius:12px !important;
-    border:1px solid rgba(255,255,255,.28);
-    font-weight:900 !important;
-    letter-spacing:-.01em;
-    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
-  }
-
-  button:hover,
-  .btn:hover,
-  input[type="submit"]:hover,
-  a.button:hover{
-    transform:translateY(-1px);
-    box-shadow:0 8px 18px rgba(11,67,217,.18);
-  }
-
-  .btn-primary,
-  .btn-azul,
-  .nova-entrega,
-  .btn-new,
-  button[type="submit"]{
-    background:linear-gradient(135deg,var(--coopex-blue),#275cf0) !important;
-    color:#fff !important;
-  }
-
-  .btn-success,
-  .btn-verde{
-    background:linear-gradient(135deg,#159b58,var(--coopex-green)) !important;
-    color:#fff !important;
-  }
-
-  .btn-danger,
-  .btn-red{
-    background:linear-gradient(135deg,#c71829,var(--coopex-red)) !important;
-    color:#fff !important;
-  }
-
-  /* Botões de ações grandes em grade, sem poluir */
-  .actions,
-  .acoes,
-  .quick-actions,
-  .botoes,
-  .button-row{
-    display:grid !important;
-    grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important;
-    gap:10px !important;
-    align-items:center;
-  }
-
-  .actions .btn,
-  .acoes .btn,
-  .quick-actions .btn,
-  .botoes .btn,
-  .button-row .btn{
-    width:100% !important;
-  }
-
-  /* Badges / chips */
-  .badge,
-  .chip,
-  .pill,
-  .tag{
-    border-radius:999px !important;
-    font-weight:900 !important;
-    padding:5px 10px !important;
-    border:1px solid rgba(11,67,217,.18);
-  }
-
-  /* Tabela mais compacta e organizada */
-  .table-wrap,
-  .table-responsive,
-  .tabela-wrap{
-    width:100%;
-    overflow:auto !important;
-    border-radius:16px !important;
-    border:1px solid #cfe0ff !important;
-    background:#fff;
+  .content,
+  .main{
+    padding-left:8px !important;
+    padding-right:8px !important;
   }
 
   table{
-    width:100% !important;
-    border-collapse:separate !important;
-    border-spacing:0 !important;
-    background:#fff !important;
-    font-size:13px !important;
+    font-size:11.5px !important;
   }
 
   thead th,
   table th{
-    position:sticky;
-    top:0;
-    z-index:3;
-    background:linear-gradient(90deg,#082a92,#174bd8) !important;
-    color:#fff !important;
-    padding:12px 10px !important;
-    text-align:center !important;
-    font-size:12px !important;
-    line-height:1.15 !important;
-    border:0 !important;
-    white-space:nowrap;
+    font-size:10.5px !important;
+    padding:9px 7px !important;
   }
 
   tbody td,
   table td{
-    padding:9px 10px !important;
-    border-bottom:1px solid #e4ecff !important;
-    vertical-align:middle !important;
-    color:#10224d !important;
+    padding:7px !important;
   }
 
-  tbody tr:nth-child(even) td{
-    background:#f8fbff !important;
+  table td:nth-child(3),
+  table th:nth-child(3){
+    min-width:260px !important;
   }
-
-  tbody tr:hover td{
-    background:#edf4ff !important;
-  }
-
-  /* Evita tabela vazia muito pesada visualmente */
-  tbody:empty::after{
-    content:"Nenhuma entrega encontrada para os filtros selecionados.";
-    display:block;
-    padding:22px;
-    color:#5b6b93;
-    font-weight:800;
-    text-align:center;
-  }
-
-  /* Colunas principais */
-  td:nth-child(1),
-  th:nth-child(1){
-    text-align:center !important;
-    font-weight:900;
-  }
-
-  td:nth-child(4),
-  th:nth-child(4){
-    text-align:right !important;
-    font-weight:900;
-  }
-
-  /* Cards/KPIs menores no topo */
-  .kpi,
-  .stat-card,
-  .metric-card{
-    border:1px solid rgba(255,255,255,.28) !important;
-    border-radius:16px !important;
-    background:rgba(255,255,255,.13) !important;
-    color:#fff !important;
-    padding:12px 16px !important;
-    min-width:135px;
-  }
-
-  .kpi strong,
-  .stat-card strong,
-  .metric-card strong{
-    font-size:22px !important;
-    line-height:1 !important;
-  }
-
-  /* Melhor alinhamento quando existir grid de filtros */
-  .filter-grid,
-  .filtros-grid{
-    display:grid !important;
-    grid-template-columns:1.05fr .9fr .9fr .9fr 1.2fr 1.5fr auto !important;
-    gap:10px !important;
-    align-items:end !important;
-  }
-
-  .filter-grid > *,
-  .filtros-grid > *{
-    min-width:0 !important;
-  }
-
-  /* Se o HTML usa linhas/cols comuns, deixa responsivo sem quebrar */
-  .row{
-    gap:10px;
-  }
-
-  /* Ocupa melhor a tela e remove excesso de área morta */
-  .entregas-card,
-  .admin-entregas,
-  #entregas,
-  #lista-entregas{
-    margin-top:18px !important;
-  }
-
-  /* Visual de alerta leve */
-  .alert,
-  .flash,
-  .message{
-    border-radius:14px !important;
-    border:1px solid #cfe0ff !important;
-    box-shadow:0 10px 24px rgba(12,52,150,.08);
-  }
-
-  /* Botão sair mantém destaque */
-  a[href*="logout"],
-  .logout,
-  .sair{
-    background:linear-gradient(135deg,#c71829,#ef3345) !important;
-    color:#fff !important;
-  }
-
-  /* Mobile/tablet */
-  @media (max-width:1100px){
-    .filter-grid,
-    .filtros-grid{
-      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
-    }
-    .container,
-    .container-fluid,
-    .wrap,
-    .page-wrap,
-    main{
-      padding-left:10px !important;
-      padding-right:10px !important;
-    }
-  }
-
-  @media (max-width:720px){
-    body{font-size:14px}
-    .filter-grid,
-    .filtros-grid{
-      grid-template-columns:1fr !important;
-    }
-    table{font-size:12px !important}
-    thead th, table th{font-size:11px !important;padding:10px 8px !important}
-    tbody td, table td{padding:8px !important}
-    .actions,
-    .acoes,
-    .quick-actions,
-    .botoes,
-    .button-row{
-      grid-template-columns:1fr !important;
-    }
-  }
-
-  /* Impressão */
-  @media print{
-    body{background:#fff !important}
-    header,.topbar,.navbar,.btn,button,.filters,.filtros{box-shadow:none !important}
-    .card,.box,.painel,.panel,.section,.admin-card{box-shadow:none !important}
-  }
+}
 </style>
-<!-- COOPEX_ADMIN_VISUAL_CLEAN_END -->
+<!-- COOPEX_ADMIN_VISUAL_V2_END -->
 
 </head>
 
