@@ -57,11 +57,13 @@
     .leaflet-control-zoom{border:none !important;box-shadow:var(--shadow) !important;overflow:hidden;border-radius:14px !important;margin-left:8px !important;margin-top:8px !important}
     .leaflet-control-zoom a{width:36px !important;height:36px !important;line-height:36px !important;color:var(--ink) !important;border:none !important}
     .leaflet-popup-content-wrapper{border-radius:18px;border:1px solid var(--line);box-shadow:var(--shadow);background:#fff;color:var(--ink)}
-    .leaflet-popup-content{margin:14px;min-width:220px}
-    .popup-title{font-size:1rem;font-weight:1000;color:var(--royal-2);margin-bottom:8px}
-    .popup-row{margin-top:6px;font-size:.9rem}
-    .popup-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}
-    .popup-actions a{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;padding:8px 10px;border-radius:12px;border:1px solid var(--line);background:#f8fbff;color:var(--royal-2);font-size:.82rem;font-weight:900}
+    .leaflet-popup-content-wrapper{border-radius:12px}
+    .leaflet-popup-tip{display:none}
+    .leaflet-popup-content{margin:8px 10px;min-width:150px;max-width:190px}
+    .popup-title{font-size:.82rem;font-weight:1000;color:var(--royal-2);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .popup-row{margin-top:3px;font-size:.72rem;line-height:1.18;color:#273a63}
+    .popup-actions{display:none}
+    .leaflet-popup-close-button{display:none !important}
     @media (max-width:760px){
       .top-mini{max-width:56vw;padding:7px 9px}
       .top-mini .sub{display:none}
@@ -74,7 +76,7 @@
       .kpis-left{justify-content:flex-start}
     }
   
-    .badge{display:inline-flex;align-items:center;justify-content:center;padding:6px 10px;border-radius:999px;font-weight:900;font-size:.78rem;border:1px solid transparent}
+    .badge{display:inline-flex;align-items:center;justify-content:center;padding:3px 7px;border-radius:999px;font-weight:900;font-size:.66rem;border:1px solid transparent}
     .badge.green{background:#e9f9f0;color:#117a43;border-color:#bdeccd}
     .badge.red{background:#fff0f0;color:#b72525;border-color:#ffd0d0}
     .badge.mix-go{background:linear-gradient(90deg,#e9f9f0 0 50%,#fff4df 50%);color:#175c37;border-color:#dce9c0}
@@ -208,8 +210,8 @@
       return L.icon({iconUrl:'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))), iconSize:[24,24], iconAnchor:[12,12], popupAnchor:[0,-12]});
     }
     function popupHtml(item){
-      const semEntrega = item.tempo_sem_entrega ? `<div class="popup-row"><strong>Tempo sem entrega:</strong> ${fmt(item.tempo_sem_entrega)}</div>` : '';
-      return `<div class="popup-title">${item.nome || 'Cooperado'}</div><div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div><div class="popup-row"><strong>Entregas pendentes:</strong> ${Number(item.entregas_abertas || 0)}</div><div class="popup-row"><strong>GPS atualizado:</strong> ${fmt(item.ultima_atualizacao)}</div>${semEntrega}<div class="popup-actions">${hasCoord(item) ? `<a href="${mapsUrl(item.lat,item.lng)}" target="_blank" rel="noopener">Abrir no Maps</a>` : ''}</div>`;
+      const semEntrega = item.tempo_sem_entrega ? `<div class="popup-row"><strong>Sem entrega:</strong> ${fmt(item.tempo_sem_entrega)}</div>` : '';
+      return `<div class="popup-title">${item.nome || 'Cooperado'}</div><div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div><div class="popup-row"><strong>Pendentes:</strong> ${Number(item.entregas_abertas || 0)}</div><div class="popup-row"><strong>GPS:</strong> ${fmt(item.ultima_atualizacao)}</div>${semEntrega}`;
     }
     function setInfo(item){ selected = item || null; }
     function filteredItems(){
@@ -261,10 +263,28 @@
           marker.setIcon(iconFor(item));
           marker.setZIndexOffset(priority(item)*1000 + Number(item.entregas_abertas || 0));
         }
-        marker.off('click mouseover');
-        marker.bindPopup(popupHtml(item));
-        marker.on('click', () => { setInfo(item); marker.openPopup(); });
-        marker.on('mouseover', () => { setInfo(item); marker.openPopup(); });
+        marker.off('click mouseover mouseout');
+        marker.bindPopup(popupHtml(item), {
+          closeButton:false,
+          autoClose:true,
+          closeOnClick:false,
+          autoPan:false,
+          offset:[0,-8],
+          className:'mini-hover-popup'
+        });
+        marker.on('mouseover', () => {
+          setInfo(item);
+          marker.openPopup();
+        });
+        marker.on('mouseout', () => {
+          marker.closePopup();
+        });
+        marker.on('click', () => {
+          setInfo(item);
+          followId = String(item.id);
+          marker.openPopup();
+          setTimeout(() => { try{ marker.closePopup(); }catch(e){} }, 1800);
+        });
       });
       if (followId){
         const f = allItems.find(i => String(i.id) === String(followId));
@@ -280,7 +300,7 @@
       renderAll();
       const marker = markers.get(item.id);
       map.setView([Number(item.lat), Number(item.lng)], Math.max(map.getZoom(), 16), {animate:true});
-      if (openPopup && marker) marker.openPopup();
+      if (openPopup && marker) { marker.openPopup(); setTimeout(() => { try{ marker.closePopup(); }catch(e){} }, 1800); }
     }
     function fitAll(){
       const coordItems = filteredItems().filter(hasCoord);
