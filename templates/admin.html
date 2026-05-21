@@ -705,6 +705,390 @@
 /* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
 
 </style>
+
+<!-- COOPEX_ADMIN_VISUAL_CLEAN_START -->
+<style>
+  :root{
+    --coopex-blue:#0b43d9;
+    --coopex-blue-2:#123fbd;
+    --coopex-blue-3:#052a92;
+    --coopex-light:#eef4ff;
+    --coopex-soft:#f7faff;
+    --coopex-line:#cfe0ff;
+    --coopex-text:#071d49;
+    --coopex-muted:#5b6b93;
+    --coopex-green:#18b86b;
+    --coopex-red:#df2636;
+    --coopex-orange:#f59e0b;
+    --coopex-shadow:0 14px 35px rgba(12,52,150,.10);
+    --coopex-radius:18px;
+  }
+
+  *{box-sizing:border-box}
+  html,body{
+    width:100%;
+    min-height:100%;
+    margin:0;
+    background:
+      radial-gradient(circle at top left, rgba(11,67,217,.10), transparent 34%),
+      linear-gradient(180deg,#f4f8ff 0%,#eaf1ff 100%) !important;
+    color:var(--coopex-text);
+    font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Arial,sans-serif;
+    overflow-x:hidden;
+  }
+
+  /* Topo mais limpo */
+  header,
+  .topbar,
+  .navbar,
+  .header,
+  .admin-header{
+    background:linear-gradient(90deg,var(--coopex-blue-3),var(--coopex-blue)) !important;
+    color:#fff !important;
+    box-shadow:0 10px 28px rgba(5,42,146,.18);
+  }
+
+  .top-link-btn,
+  .btn-top,
+  header a,
+  .topbar a{
+    border-radius:12px !important;
+  }
+
+  /* Área principal */
+  main,
+  .main,
+  .content,
+  .container,
+  .container-fluid,
+  .wrap,
+  .page-wrap{
+    max-width:none !important;
+  }
+
+  .container,
+  .container-fluid,
+  .wrap,
+  .page-wrap,
+  main{
+    padding-left:14px !important;
+    padding-right:14px !important;
+  }
+
+  /* Cards principais */
+  .card,
+  .box,
+  .painel,
+  .panel,
+  .section,
+  .admin-card{
+    border:1px solid rgba(147,177,245,.72) !important;
+    border-radius:var(--coopex-radius) !important;
+    background:rgba(255,255,255,.92) !important;
+    box-shadow:var(--coopex-shadow) !important;
+  }
+
+  /* Título do bloco das entregas */
+  .card-header,
+  .panel-heading,
+  .box-header,
+  .section-title{
+    background:linear-gradient(90deg,var(--coopex-blue-3),var(--coopex-blue)) !important;
+    color:#fff !important;
+    border-radius:var(--coopex-radius) var(--coopex-radius) 0 0 !important;
+    padding:14px 16px !important;
+    font-weight:900 !important;
+  }
+
+  /* Filtros mais compactos */
+  form,
+  .filters,
+  .filtros,
+  .filter-row{
+    gap:10px !important;
+  }
+
+  label{
+    font-size:12px !important;
+    font-weight:900 !important;
+    color:#163b91 !important;
+    letter-spacing:.02em;
+  }
+
+  input,
+  select,
+  textarea{
+    min-height:38px !important;
+    border:1px solid #bcd0ff !important;
+    border-radius:12px !important;
+    background:#fff !important;
+    color:#10224d !important;
+    font-weight:700;
+    outline:none !important;
+    box-shadow:none !important;
+  }
+
+  input:focus,
+  select:focus,
+  textarea:focus{
+    border-color:var(--coopex-blue) !important;
+    box-shadow:0 0 0 3px rgba(11,67,217,.12) !important;
+  }
+
+  input::placeholder{color:#7584a8 !important;font-weight:700}
+
+  /* Botões mais profissionais */
+  button,
+  .btn,
+  input[type="submit"],
+  a.button{
+    min-height:38px;
+    border-radius:12px !important;
+    border:1px solid rgba(255,255,255,.28);
+    font-weight:900 !important;
+    letter-spacing:-.01em;
+    transition:transform .12s ease, box-shadow .12s ease, opacity .12s ease;
+  }
+
+  button:hover,
+  .btn:hover,
+  input[type="submit"]:hover,
+  a.button:hover{
+    transform:translateY(-1px);
+    box-shadow:0 8px 18px rgba(11,67,217,.18);
+  }
+
+  .btn-primary,
+  .btn-azul,
+  .nova-entrega,
+  .btn-new,
+  button[type="submit"]{
+    background:linear-gradient(135deg,var(--coopex-blue),#275cf0) !important;
+    color:#fff !important;
+  }
+
+  .btn-success,
+  .btn-verde{
+    background:linear-gradient(135deg,#159b58,var(--coopex-green)) !important;
+    color:#fff !important;
+  }
+
+  .btn-danger,
+  .btn-red{
+    background:linear-gradient(135deg,#c71829,var(--coopex-red)) !important;
+    color:#fff !important;
+  }
+
+  /* Botões de ações grandes em grade, sem poluir */
+  .actions,
+  .acoes,
+  .quick-actions,
+  .botoes,
+  .button-row{
+    display:grid !important;
+    grid-template-columns:repeat(auto-fit,minmax(220px,1fr)) !important;
+    gap:10px !important;
+    align-items:center;
+  }
+
+  .actions .btn,
+  .acoes .btn,
+  .quick-actions .btn,
+  .botoes .btn,
+  .button-row .btn{
+    width:100% !important;
+  }
+
+  /* Badges / chips */
+  .badge,
+  .chip,
+  .pill,
+  .tag{
+    border-radius:999px !important;
+    font-weight:900 !important;
+    padding:5px 10px !important;
+    border:1px solid rgba(11,67,217,.18);
+  }
+
+  /* Tabela mais compacta e organizada */
+  .table-wrap,
+  .table-responsive,
+  .tabela-wrap{
+    width:100%;
+    overflow:auto !important;
+    border-radius:16px !important;
+    border:1px solid #cfe0ff !important;
+    background:#fff;
+  }
+
+  table{
+    width:100% !important;
+    border-collapse:separate !important;
+    border-spacing:0 !important;
+    background:#fff !important;
+    font-size:13px !important;
+  }
+
+  thead th,
+  table th{
+    position:sticky;
+    top:0;
+    z-index:3;
+    background:linear-gradient(90deg,#082a92,#174bd8) !important;
+    color:#fff !important;
+    padding:12px 10px !important;
+    text-align:center !important;
+    font-size:12px !important;
+    line-height:1.15 !important;
+    border:0 !important;
+    white-space:nowrap;
+  }
+
+  tbody td,
+  table td{
+    padding:9px 10px !important;
+    border-bottom:1px solid #e4ecff !important;
+    vertical-align:middle !important;
+    color:#10224d !important;
+  }
+
+  tbody tr:nth-child(even) td{
+    background:#f8fbff !important;
+  }
+
+  tbody tr:hover td{
+    background:#edf4ff !important;
+  }
+
+  /* Evita tabela vazia muito pesada visualmente */
+  tbody:empty::after{
+    content:"Nenhuma entrega encontrada para os filtros selecionados.";
+    display:block;
+    padding:22px;
+    color:#5b6b93;
+    font-weight:800;
+    text-align:center;
+  }
+
+  /* Colunas principais */
+  td:nth-child(1),
+  th:nth-child(1){
+    text-align:center !important;
+    font-weight:900;
+  }
+
+  td:nth-child(4),
+  th:nth-child(4){
+    text-align:right !important;
+    font-weight:900;
+  }
+
+  /* Cards/KPIs menores no topo */
+  .kpi,
+  .stat-card,
+  .metric-card{
+    border:1px solid rgba(255,255,255,.28) !important;
+    border-radius:16px !important;
+    background:rgba(255,255,255,.13) !important;
+    color:#fff !important;
+    padding:12px 16px !important;
+    min-width:135px;
+  }
+
+  .kpi strong,
+  .stat-card strong,
+  .metric-card strong{
+    font-size:22px !important;
+    line-height:1 !important;
+  }
+
+  /* Melhor alinhamento quando existir grid de filtros */
+  .filter-grid,
+  .filtros-grid{
+    display:grid !important;
+    grid-template-columns:1.05fr .9fr .9fr .9fr 1.2fr 1.5fr auto !important;
+    gap:10px !important;
+    align-items:end !important;
+  }
+
+  .filter-grid > *,
+  .filtros-grid > *{
+    min-width:0 !important;
+  }
+
+  /* Se o HTML usa linhas/cols comuns, deixa responsivo sem quebrar */
+  .row{
+    gap:10px;
+  }
+
+  /* Ocupa melhor a tela e remove excesso de área morta */
+  .entregas-card,
+  .admin-entregas,
+  #entregas,
+  #lista-entregas{
+    margin-top:18px !important;
+  }
+
+  /* Visual de alerta leve */
+  .alert,
+  .flash,
+  .message{
+    border-radius:14px !important;
+    border:1px solid #cfe0ff !important;
+    box-shadow:0 10px 24px rgba(12,52,150,.08);
+  }
+
+  /* Botão sair mantém destaque */
+  a[href*="logout"],
+  .logout,
+  .sair{
+    background:linear-gradient(135deg,#c71829,#ef3345) !important;
+    color:#fff !important;
+  }
+
+  /* Mobile/tablet */
+  @media (max-width:1100px){
+    .filter-grid,
+    .filtros-grid{
+      grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+    }
+    .container,
+    .container-fluid,
+    .wrap,
+    .page-wrap,
+    main{
+      padding-left:10px !important;
+      padding-right:10px !important;
+    }
+  }
+
+  @media (max-width:720px){
+    body{font-size:14px}
+    .filter-grid,
+    .filtros-grid{
+      grid-template-columns:1fr !important;
+    }
+    table{font-size:12px !important}
+    thead th, table th{font-size:11px !important;padding:10px 8px !important}
+    tbody td, table td{padding:8px !important}
+    .actions,
+    .acoes,
+    .quick-actions,
+    .botoes,
+    .button-row{
+      grid-template-columns:1fr !important;
+    }
+  }
+
+  /* Impressão */
+  @media print{
+    body{background:#fff !important}
+    header,.topbar,.navbar,.btn,button,.filters,.filtros{box-shadow:none !important}
+    .card,.box,.painel,.panel,.section,.admin-card{box-shadow:none !important}
+  }
+</style>
+<!-- COOPEX_ADMIN_VISUAL_CLEAN_END -->
+
 </head>
 
 <body>
