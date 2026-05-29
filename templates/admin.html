@@ -2720,30 +2720,66 @@ body.modo-escuro input::placeholder{
         </div>`;
     }
 
+    function cxSleep(ms){
+      return new Promise(resolve => setTimeout(resolve, ms));
+    }
+
     async function carregarSugestaoCooperado(box){
       if(!box || !box.dataset.entregaId) return;
-      try{
-        const data = await cxJson(`/api/entrega/${box.dataset.entregaId}/sugestao_cooperado`, {headers:{'X-Requested-With':'fetch'}});
-        renderSugestao(box, data.sugestao);
-      }catch(e){
-        box.innerHTML = '<span class="sug-empty">Erro ao calcular sugestão.</span>';
+
+      const entregaId = box.dataset.entregaId;
+      box.innerHTML = '<span class="sug-loading">Calculando sugestão...</span>';
+
+      for(let tentativa = 1; tentativa <= 3; tentativa++){
+        try{
+          const data = await cxJson(`/api/entrega/${entregaId}/sugestao_cooperado`, {
+            headers:{'X-Requested-With':'fetch'}
+          });
+          renderSugestao(box, data.sugestao);
+          return;
+        }catch(e){
+          if(tentativa < 3){
+            box.innerHTML = '<span class="sug-loading">Aguardando servidor...</span>';
+            await cxSleep(700 * tentativa);
+            continue;
+          }
+          box.innerHTML = '<span class="sug-empty">Não foi possível calcular agora. Atualize a página.</span>';
+        }
       }
     }
 
     async function carregarSugestoesCooperados(){
       const boxes = Array.from(document.querySelectorAll('.sugestao-coop[data-entrega-id]'));
       if(!boxes.length) return;
+
       const ids = boxes.map(b => b.dataset.entregaId).filter(Boolean);
-      try{
-        const data = await cxJson('/api/entregas/sugestoes_cooperados', {
-          method:'POST',
-          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
-          body:JSON.stringify({entrega_ids:ids})
-        });
-        const sugestoes = data.sugestoes || {};
-        boxes.forEach(box => renderSugestao(box, sugestoes[String(box.dataset.entregaId)] || null));
-      }catch(e){
-        boxes.forEach(box => { box.innerHTML = '<span class="sug-empty">Erro ao calcular sugestão.</span>'; });
+      boxes.forEach(box => {
+        box.innerHTML = '<span class="sug-loading">Calculando sugestão...</span>';
+      });
+
+      for(let tentativa = 1; tentativa <= 3; tentativa++){
+        try{
+          const data = await cxJson('/api/entregas/sugestoes_cooperados', {
+            method:'POST',
+            headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+            body:JSON.stringify({entrega_ids:ids})
+          });
+          const sugestoes = data.sugestoes || {};
+          boxes.forEach(box => renderSugestao(box, sugestoes[String(box.dataset.entregaId)] || null));
+          return;
+        }catch(e){
+          if(tentativa < 3){
+            boxes.forEach(box => {
+              box.innerHTML = '<span class="sug-loading">Aguardando servidor...</span>';
+            });
+            await cxSleep(700 * tentativa);
+            continue;
+          }
+
+          boxes.forEach(box => {
+            box.innerHTML = '<span class="sug-empty">Não foi possível calcular agora. Atualize a página.</span>';
+          });
+        }
       }
     }
 
