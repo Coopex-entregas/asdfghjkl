@@ -1138,6 +1138,7 @@ def to_brasilia(dt):
 
 from datetime import datetime, timezone
 import os
+import time as pytime
 
 # -------------------------------------------------------------------
 # CONFIG DE TEMPOS (para NÃO dar NameError)
@@ -1158,11 +1159,25 @@ LOCATION_VERY_LOW_SPEED_KMH = float(os.getenv("LOCATION_VERY_LOW_SPEED_KMH", "0.
 LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35"))
 
 # Controle de carga da API de localização.
-# Evita que vários celulares travem o login/admin no Render.
-LOCATION_MIN_SAVE_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_SAVE_INTERVAL_SEC", "2"))
-LOCATION_MIN_TRAJETO_INTERVAL_SEC = int(os.getenv("LOCATION_MIN_TRAJETO_INTERVAL_SEC", "2"))
-LOCATION_MIN_DISTANCE_FORCE_SAVE_M = float(os.getenv("LOCATION_MIN_DISTANCE_FORCE_SAVE_M", "0"))
-_LOCATION_TOKEN_LAST_TS = {}  # token -> timestamp; evita bater no banco em todo ping
+# IMPORTANTE: agora o GPS do app é tratado em MEMÓRIA.
+# Não grava latitude/longitude no banco, não cria histórico de trajeto e não faz commit a cada ping.
+# Isso protege o Render quando 50/100 entregadores enviam localização ao mesmo tempo.
+LOCATION_LIVE_MIN_INTERVAL_SEC = int(os.getenv("LOCATION_LIVE_MIN_INTERVAL_SEC", "4"))
+LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC = int(os.getenv("LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC", "5"))
+LOCATION_LIVE_MIN_DISTANCE_M = float(os.getenv("LOCATION_LIVE_MIN_DISTANCE_M", "10"))
+LOCATION_LIVE_FORCE_EMIT_DISTANCE_M = float(os.getenv("LOCATION_LIVE_FORCE_EMIT_DISTANCE_M", "35"))
+LOCATION_LIVE_CACHE_MAX = int(os.getenv("LOCATION_LIVE_CACHE_MAX", "300"))
+LOCATION_AUTH_CACHE_TTL_SEC = int(os.getenv("LOCATION_AUTH_CACHE_TTL_SEC", "600"))
+LOCATION_AUTH_CACHE_MAX = int(os.getenv("LOCATION_AUTH_CACHE_MAX", "500"))
+
+# Compatibilidade com nomes antigos, caso alguma parte do sistema ainda leia essas variáveis.
+LOCATION_MIN_SAVE_INTERVAL_SEC = LOCATION_LIVE_MIN_INTERVAL_SEC
+LOCATION_MIN_TRAJETO_INTERVAL_SEC = LOCATION_LIVE_MIN_INTERVAL_SEC
+LOCATION_MIN_DISTANCE_FORCE_SAVE_M = LOCATION_LIVE_MIN_DISTANCE_M
+
+_LOCATION_TOKEN_LAST_TS = {}       # compatibilidade
+_LOCATION_AUTH_CACHE = {}          # token -> {id, nome, ts_cache}
+_LIVE_LOCATION_BY_ID = {}          # cooperado_id -> última posição em memória
 
 
 def _haversine_m(lat1, lng1, lat2, lng2):
@@ -1206,6 +1221,193 @@ def _should_accept_location_update(prev_lat, prev_lng, new_lat, new_lng, accurac
         dist_m = None
 
     return True, 'aceito', dist_m
+
+
+def _evict_live_location_cache():
+    """Limita os dicionários em memória para não crescerem sem controle."""
+    try:
+        while len(_LIVE_LOCATION_BY_ID) > LOCATION_LIVE_CACHE_MAX:
+            oldest_id = min(
+                _LIVE_LOCATION_BY_ID,
+                key=lambda k: _LIVE_LOCATION_BY_ID.get(k, {}).get('last_seen_ts', 0)
+            )
+            _LIVE_LOCATION_BY_ID.pop(oldest_id, None)
+    except Exception:
+        pass
+
+    try:
+        while len(_LOCATION_AUTH_CACHE) > LOCATION_AUTH_CACHE_MAX:
+            oldest_token = min(
+                _LOCATION_AUTH_CACHE,
+                key=lambda k: _LOCATION_AUTH_CACHE.get(k, {}).get('cache_ts', 0)
+            )
+            _LOCATION_AUTH_CACHE.pop(oldest_token, None)
+    except Exception:
+        pass
+
+
+def _format_brasilia_from_utc(dt_utc):
+    try:
+        return to_brasilia(dt_utc).strftime('%d/%m/%Y %H:%M:%S') if dt_utc else ''
+    except Exception:
+        return ''
+
+
+def _get_live_location(cooperado_id):
+    """Retorna a localização viva em memória, respeitando OFFLINE_AFTER_SEC."""
+    try:
+        info = _LIVE_LOCATION_BY_ID.get(int(cooperado_id))
+    except Exception:
+        return None
+
+    if not info:
+        return None
+
+    try:
+        age = pytime.time() - float(info.get('last_seen_ts') or 0)
+        info['online'] = bool(age <= OFFLINE_AFTER_SEC)
+    except Exception:
+        info['online'] = False
+
+    return info
+
+
+def _get_cooperado_auth_from_token(token: str):
+    """
+    Valida o token do app usando cache em memória.
+    Só consulta o banco no primeiro ping do token ou após expirar o cache.
+    """
+    token = (token or '').strip()
+    if not token:
+        return None
+
+    now_ts = pytime.time()
+    cached = _LOCATION_AUTH_CACHE.get(token)
+    if cached and (now_ts - float(cached.get('cache_ts') or 0) <= LOCATION_AUTH_CACHE_TTL_SEC):
+        return cached
+
+    row = (
+        db.session.query(Cooperado.id, Cooperado.nome)
+        .filter(Cooperado.app_token == token)
+        .first()
+    )
+    if not row:
+        return None
+
+    info = {
+        'id': int(row.id),
+        'nome': row.nome or f'Cooperado {row.id}',
+        'token': token,
+        'cache_ts': now_ts,
+    }
+    _LOCATION_AUTH_CACHE[token] = info
+    _evict_live_location_cache()
+    return info
+
+
+def _emitir_posicao_motoboy_live(info: dict):
+    """Emite posição via Socket.IO sem depender de objeto salvo no banco."""
+    try:
+        payload = {
+            'id': int(info.get('id')),
+            'nome': info.get('nome') or f"Cooperado {info.get('id')}",
+            'lat': float(info.get('lat')),
+            'lng': float(info.get('lng')),
+            'online': bool(info.get('online', True)),
+            'status': info.get('status') or ('livre' if info.get('online', True) else 'offline'),
+            'idle_seconds': info.get('idle_seconds'),
+            'velocidade_kmh': float(info.get('speed')) if info.get('speed') is not None else None,
+            'heading': info.get('heading'),
+            'accuracy_m': info.get('accuracy'),
+            'ultima_atualizacao': info.get('ultima_atualizacao') or '',
+        }
+        socketio.emit('posicao_motoboy_atualizada', payload)
+    except Exception as e:
+        try:
+            current_app.logger.warning(f'Falha ao emitir posicao_motoboy_atualizada live: {e}')
+        except Exception:
+            pass
+
+
+def _registrar_localizacao_em_memoria(auth_info, lat, lng, acc=None, spd=None, hdg=None, source='android_native'):
+    """
+    Guarda somente a última localização em memória e emite para o painel.
+    Não grava em Cooperado, LocalizacaoCooperado ou Trajeto.
+    """
+    coop_id = int(auth_info['id'])
+    agora_dt = datetime.utcnow()
+    agora_ts = pytime.time()
+    anterior = _LIVE_LOCATION_BY_ID.get(coop_id)
+
+    prev_lat = anterior.get('lat') if anterior else None
+    prev_lng = anterior.get('lng') if anterior else None
+    aceito, motivo, dist_m = _should_accept_location_update(prev_lat, prev_lng, lat, lng, acc, spd)
+
+    if not aceito:
+        if anterior:
+            anterior['last_seen_ts'] = agora_ts
+            anterior['last_ping'] = agora_dt
+            anterior['online'] = True
+            anterior['ultima_atualizacao'] = _format_brasilia_from_utc(agora_dt)
+        return {
+            'ok': True,
+            'ignored': True,
+            'aceito': False,
+            'motivo': motivo,
+            'dist_m': float(dist_m or 0),
+            'emitido': False,
+        }
+
+    last_accept_ts = float((anterior or {}).get('last_accept_ts') or 0)
+    last_emit_ts = float((anterior or {}).get('last_emit_ts') or 0)
+    segundos_desde_aceite = agora_ts - last_accept_ts
+    segundos_desde_emit = agora_ts - last_emit_ts
+    dist_val = float(dist_m or 0)
+
+    # Se o app mandar 10/20 vezes em poucos segundos, segura em memória e não emite tudo.
+    emitir_agora = True
+    if anterior:
+        if segundos_desde_aceite < LOCATION_LIVE_MIN_INTERVAL_SEC and dist_val < LOCATION_LIVE_MIN_DISTANCE_M:
+            emitir_agora = False
+        if segundos_desde_emit < LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC and dist_val < LOCATION_LIVE_FORCE_EMIT_DISTANCE_M:
+            emitir_agora = False
+
+    info = {
+        'id': coop_id,
+        'nome': auth_info.get('nome') or f'Cooperado {coop_id}',
+        'lat': float(lat),
+        'lng': float(lng),
+        'accuracy': float(acc) if acc is not None else None,
+        'speed': float(spd) if spd is not None else None,
+        'heading': float(hdg) if hdg is not None else None,
+        'source': source,
+        'last_ping': agora_dt,
+        'last_seen_ts': agora_ts,
+        'last_accept_ts': agora_ts,
+        'last_emit_ts': last_emit_ts,
+        'online': True,
+        'status': (anterior or {}).get('status') or 'livre',
+        'idle_seconds': 0,
+        'ultima_atualizacao': _format_brasilia_from_utc(agora_dt),
+    }
+
+    if emitir_agora:
+        info['last_emit_ts'] = agora_ts
+
+    _LIVE_LOCATION_BY_ID[coop_id] = info
+    _evict_live_location_cache()
+
+    if emitir_agora:
+        _emitir_posicao_motoboy_live(info)
+
+    return {
+        'ok': True,
+        'ignored': not emitir_agora,
+        'aceito': True,
+        'motivo': 'emitido' if emitir_agora else 'throttle_memoria',
+        'dist_m': dist_val,
+        'emitido': bool(emitir_agora),
+    }
 
 
 def _to_utc_aware(dt):
@@ -4998,7 +5200,16 @@ def cooperado_aceitar_corrida():
 @app.post('/api/app/localizacao')
 def api_app_localizacao():
     """
-    Recebe localização do APK/WebView e salva para o mapa em tempo real.
+    Recebe localização do APK/WebView apenas para rastreamento em tempo real.
+
+    Esta versão NÃO salva GPS no banco:
+    - não atualiza Cooperado.last_lat / last_lng;
+    - não atualiza LocalizacaoCooperado;
+    - não cria pontos em Trajeto;
+    - não faz commit em cada ping.
+
+    O app pode continuar enviando muitas vezes; o servidor filtra e emite no máximo
+    em intervalos controlados para não estourar memória nem travar o Render.
     """
     data = request.get_json(silent=True) or {}
 
@@ -5041,6 +5252,7 @@ def api_app_localizacao():
     except (TypeError, ValueError):
         acc = None
 
+    # Precisão ruim não deve ir para o painel. Também não salva nada.
     if acc is not None and acc > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
         return jsonify({'ok': True, 'ignored': True, 'motivo': 'accuracy_ruim'}), 200
 
@@ -5060,73 +5272,45 @@ def api_app_localizacao():
     except (TypeError, ValueError):
         hdg = None
 
-    agora = datetime.utcnow()
-
     try:
-        coop = Cooperado.query.filter_by(app_token=token).first()
-        if not coop:
+        auth_info = _get_cooperado_auth_from_token(token)
+        if not auth_info:
             return jsonify({'ok': False, 'error': 'token inválido'}), 401
 
-        if user_id and str(coop.id) != user_id:
+        if user_id and str(auth_info['id']) != user_id:
             return jsonify({'ok': False, 'error': 'user_id não confere'}), 403
 
-        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
-        if not loc:
-            loc = LocalizacaoCooperado(cooperado_id=coop.id)
-            db.session.add(loc)
-            db.session.flush()
+        result = _registrar_localizacao_em_memoria(
+            auth_info,
+            lat,
+            lng,
+            acc=acc,
+            spd=spd,
+            hdg=hdg,
+            source=source,
+        )
 
-        prev_lat = coop.last_lat if coop.last_lat is not None else loc.latitude
-        prev_lng = coop.last_lng if coop.last_lng is not None else loc.longitude
-        aceito, motivo, dist_m = _should_accept_location_update(prev_lat, prev_lng, lat, lng, acc, spd)
-        if not aceito:
-            coop.last_ping = agora
-            coop.online = True
-            loc.online = True
-            loc.fonte = source
-            loc.atualizado_em = agora
-            db.session.commit()
-            return jsonify({'ok': True, 'cooperado_id': coop.id, 'aceito': False, 'motivo': motivo}), 200
-
-        coop.last_ping = agora
-        coop.online = True
-        coop.last_lat = lat
-        coop.last_lng = lng
-        coop.last_accuracy_m = acc
-        coop.last_heading = hdg
-        coop.last_speed_kmh = spd
-        coop.last_moving_at = agora
-
-        loc.latitude = lat
-        loc.longitude = lng
-        loc.accuracy = acc
-        loc.speed = spd
-        loc.heading = hdg
-        loc.online = True
-        loc.fonte = source
-        loc.atualizado_em = agora
-
-        db.session.commit()
-
-        try:
-            _append_point_to_active_trajeto(coop.id, lat, lng, agora)
-        except Exception:
-            try: db.session.rollback()
-            except Exception: pass
-
-        try:
-            emitir_posicao_motoboy(coop, lat, lng, spd)
-        except Exception:
-            pass
-
-        return jsonify({'ok': True, 'cooperado_id': coop.id, 'aceito': True, 'dist_m': round(float(dist_m or 0), 2)}), 200
+        return jsonify({
+            'ok': True,
+            'cooperado_id': auth_info['id'],
+            'aceito': bool(result.get('aceito')),
+            'ignored': bool(result.get('ignored')),
+            'emitido': bool(result.get('emitido')),
+            'motivo': result.get('motivo'),
+            'dist_m': round(float(result.get('dist_m') or 0), 2),
+            'modo': 'memoria_sem_salvar_banco',
+        }), 200
 
     except Exception:
-        try: db.session.rollback()
-        except Exception: pass
-        try: current_app.logger.exception('Falha em /api/app/localizacao')
-        except Exception: pass
-        return jsonify({'ok': False, 'error': 'falha ao salvar localização'}), 500
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        try:
+            current_app.logger.exception('Falha em /api/app/localizacao')
+        except Exception:
+            pass
+        return jsonify({'ok': False, 'error': 'falha ao processar localização em memória'}), 500
 
 
 @app.get('/api/cooperado/localizacao_status')
@@ -5135,28 +5319,9 @@ def api_cooperado_localizacao_status():
         return jsonify({'ok': False, 'error': 'Não autorizado'}), 403
 
     cooperado_id = session['user_id']
-    coop = Cooperado.query.get_or_404(cooperado_id)
-    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado_id).first()
+    info = _get_live_location(cooperado_id)
 
-    ping = coop.last_ping
-    lat = coop.last_lat
-    lng = coop.last_lng
-    accuracy = coop.last_accuracy_m
-    speed = coop.last_speed_kmh
-    heading = coop.last_heading
-    online_flag = bool(coop.online)
-
-    # fallback: usa a tabela de localização se os campos do cooperado ainda não refletiram
-    if loc and (ping is None or lat is None or lng is None):
-        ping = loc.atualizado_em
-        lat = loc.latitude
-        lng = loc.longitude
-        accuracy = loc.accuracy
-        speed = loc.speed
-        heading = loc.heading
-        online_flag = bool(loc.online)
-
-    if not ping or lat is None or lng is None:
+    if not info or info.get('lat') is None or info.get('lng') is None:
         return jsonify({
             'ok': True,
             'tem_localizacao': False,
@@ -5164,44 +5329,36 @@ def api_cooperado_localizacao_status():
             'mensagem': 'Sincronizando localização do app...'
         }), 200
 
-    if ping.tzinfo is None:
-        ping_utc = ping.replace(tzinfo=timezone.utc)
-    else:
-        ping_utc = ping.astimezone(timezone.utc)
-
-    agora = datetime.now(timezone.utc)
-    delta = (agora - ping_utc).total_seconds()
-    online = bool(online_flag) and delta <= OFFLINE_AFTER_SEC
-
     return jsonify({
         'ok': True,
         'tem_localizacao': True,
-        'online': online,
-        'latitude': lat,
-        'longitude': lng,
-        'accuracy': accuracy,
-        'speed': speed,
-        'heading': heading,
-        'atualizado_em': to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S') if ping else '',
-        'mensagem': 'Localização ativa' if online else 'Aguardando nova localização...'
+        'online': bool(info.get('online')),
+        'latitude': info.get('lat'),
+        'longitude': info.get('lng'),
+        'accuracy': info.get('accuracy'),
+        'speed': info.get('speed'),
+        'heading': info.get('heading'),
+        'atualizado_em': info.get('ultima_atualizacao') or '',
+        'mensagem': 'Localização ativa' if info.get('online') else 'Aguardando nova localização...',
+        'modo': 'memoria_sem_salvar_banco',
     }), 200
 
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
 def cooperado_atualizar_localizacao():
+    """
+    Atualização de GPS feita pelo painel/web do cooperado.
+    Também trabalha somente em memória, sem salvar no banco.
+    """
     if session.get('user_id') is None or session.get('is_admin'):
         return jsonify({'status': 'erro', 'msg': 'Não autorizado'}), 403
 
-    cooperado_id = session['user_id']
-    cooperado = Cooperado.query.get(cooperado_id)
-    if not cooperado:
-        return jsonify({'status': 'erro', 'msg': 'Cooperado não encontrado'}), 404
-
+    cooperado_id = int(session['user_id'])
     data = request.get_json(silent=True) or {}
 
     try:
-        lat = float(data.get('lat'))
-        lng = float(data.get('lng'))
+        lat = float(data.get('lat', data.get('latitude')))
+        lng = float(data.get('lng', data.get('longitude')))
         if not (-90 <= lat <= 90 and -180 <= lng <= 180):
             return jsonify({'status': 'erro', 'msg': 'Lat/Lng fora da faixa'}), 400
     except (TypeError, ValueError):
@@ -5233,49 +5390,34 @@ def cooperado_atualizar_localizacao():
     if acc is not None and acc > LOCATION_MAX_ACCEPTABLE_ACCURACY_M:
         return jsonify({'status': 'ok', 'ignored': True, 'motivo': 'accuracy_ruim'}), 200
 
-    agora = datetime.utcnow()
-
-    cooperado.last_lat = lat
-    cooperado.last_lng = lng
-    cooperado.last_ping = agora
-    cooperado.online = True
-    cooperado.last_speed_kmh = v_kmh
-    cooperado.last_accuracy_m = acc
-    cooperado.last_moving_at = agora
-
     try:
-        cooperado.last_heading = float(heading) if heading is not None else None
+        hdg = float(heading) if heading is not None else None
     except (TypeError, ValueError):
-        cooperado.last_heading = None
+        hdg = None
 
-    loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado.id).first()
-    if not loc:
-        loc = LocalizacaoCooperado(cooperado_id=cooperado.id)
-        db.session.add(loc)
+    auth_info = {
+        'id': cooperado_id,
+        'nome': session.get('user_nome') or session.get('nome') or f'Cooperado {cooperado_id}',
+        'token': None,
+    }
 
-    loc.latitude = lat
-    loc.longitude = lng
-    loc.accuracy = cooperado.last_accuracy_m
-    loc.speed = v_kmh
-    loc.heading = cooperado.last_heading
-    loc.online = True
-    loc.fonte = 'android_native' if request.headers.get('X-App-Native') else 'html5'
-    loc.atualizado_em = agora
+    result = _registrar_localizacao_em_memoria(
+        auth_info,
+        lat,
+        lng,
+        acc=acc,
+        spd=v_kmh,
+        hdg=hdg,
+        source='html5',
+    )
 
-    db.session.commit()
-
-    try:
-        _append_point_to_active_trajeto(cooperado.id, lat, lng, agora)
-    except Exception:
-        try: db.session.rollback()
-        except Exception: pass
-
-    try:
-        emitir_posicao_motoboy(cooperado, lat, lng, v_kmh)
-    except Exception:
-        pass
-
-    return jsonify({'status': 'ok'}), 200
+    return jsonify({
+        'status': 'ok',
+        'modo': 'memoria_sem_salvar_banco',
+        'ignored': bool(result.get('ignored')),
+        'emitido': bool(result.get('emitido')),
+        'motivo': result.get('motivo'),
+    }), 200
 
 
 @app.route('/cooperado/api/recusar' , methods=['POST'])
@@ -6296,25 +6438,29 @@ def trajetos_replay(trajeto_id):
 
 @app.get('/api/admin/cooperados_online')
 def api_admin_cooperados_online():
-    """Lista leve para o admin ver quem está online, mesmo sem GPS ainda."""
+    """Lista leve para o admin ver quem está online usando cache vivo em memória."""
     if not session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
 
     itens = []
     for c in Cooperado.query.order_by(Cooperado.nome.asc()).all():
-        is_online, idle_s, status_str = calc_status_cooperado(c)
+        live = _get_live_location(c.id)
+        online = bool(live and live.get('online'))
+        status_str = 'livre' if online else 'offline'
         itens.append({
             'id': c.id,
             'nome': c.nome,
-            'online': bool(is_online),
+            'online': online,
             'status': status_str,
-            'tem_localizacao': bool(c.last_lat is not None and c.last_lng is not None),
-            'lat': float(c.last_lat) if c.last_lat is not None else None,
-            'lng': float(c.last_lng) if c.last_lng is not None else None,
-            'ultima_atualizacao': to_brasilia(c.last_ping).strftime('%d/%m/%Y %H:%M:%S') if c.last_ping else '',
-            'idle_seconds': idle_s,
+            'tem_localizacao': bool(live and live.get('lat') is not None and live.get('lng') is not None),
+            'lat': float(live.get('lat')) if live and live.get('lat') is not None else None,
+            'lng': float(live.get('lng')) if live and live.get('lng') is not None else None,
+            'ultima_atualizacao': (live.get('ultima_atualizacao') if live else ''),
+            'idle_seconds': 0 if online else None,
+            'modo': 'memoria_sem_salvar_banco',
         })
     return jsonify(ok=True, cooperados=itens)
+
 
 
 
@@ -6384,21 +6530,27 @@ def mapa_motoboys():
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
 
+    # Conta entregas abertas uma única vez para não fazer uma consulta por cooperado.
+    abertas_por_coop = {}
+    try:
+        rows = (
+            db.session.query(Entrega.cooperado_id, func.count(Entrega.id))
+            .filter(Entrega.cooperado_id != None)
+            .filter(or_(Entrega.status_corrida == None, Entrega.status_corrida.in_(status_corrida_abertas)))
+            .filter(or_(Entrega.status == None, ~func.lower(func.coalesce(Entrega.status, '')).in_(status_finalizados)))
+            .group_by(Entrega.cooperado_id)
+            .all()
+        )
+        abertas_por_coop = {int(cid): int(total or 0) for cid, total in rows if cid is not None}
+    except Exception:
+        abertas_por_coop = {}
+
     def _coord_valida(lat, lng):
         try:
             lat = float(lat); lng = float(lng)
             if not (-90 <= lat <= 90 and -180 <= lng <= 180):
                 return False
             return (-8.5 <= lat <= -3.0) and (-41.5 <= lng <= -32.5)
-        except Exception:
-            return False
-
-    def _online_por_ping(ping, flag=True):
-        if not ping:
-            return False
-        try:
-            p = _to_utc_aware(ping)
-            return bool(flag) and ((datetime.now(timezone.utc) - p).total_seconds() <= OFFLINE_AFTER_SEC)
         except Exception:
             return False
 
@@ -6429,30 +6581,16 @@ def mapa_motoboys():
             return ''
 
     for c in cooperados:
-        lat = c.last_lat; lng = c.last_lng; ping = c.last_ping
-        acc = getattr(c, 'last_accuracy_m', None)
-        hdg = getattr(c, 'last_heading', None)
-        loc_online_flag = bool(getattr(c, 'online', False))
+        live = _get_live_location(c.id)
 
-        try:
-            loc = LocalizacaoCooperado.query.filter_by(cooperado_id=c.id).first()
-            if loc:
-                loc_is_newer = bool(loc.atualizado_em and (not ping or loc.atualizado_em >= ping))
-                if loc.latitude is not None and loc.longitude is not None and (lat is None or lng is None or loc_is_newer):
-                    lat = loc.latitude; lng = loc.longitude; ping = loc.atualizado_em or ping
-                    acc = loc.accuracy; hdg = loc.heading; loc_online_flag = bool(loc.online)
-                elif loc.atualizado_em and not ping:
-                    ping = loc.atualizado_em; loc_online_flag = bool(loc.online)
-        except Exception:
-            pass
+        lat = live.get('lat') if live else None
+        lng = live.get('lng') if live else None
+        acc = live.get('accuracy') if live else None
+        hdg = live.get('heading') if live else None
+        online = bool(live and live.get('online'))
+        tem_localizacao = bool(live and _coord_valida(lat, lng))
 
-        tem_localizacao = _coord_valida(lat, lng)
-        online = _online_por_ping(ping, loc_online_flag or bool(getattr(c, 'online', False)))
-
-        entregas_abertas = (Entrega.query.filter(Entrega.cooperado_id == c.id)
-            .filter(or_(Entrega.status_corrida == None, Entrega.status_corrida.in_(status_corrida_abertas)))
-            .filter(or_(Entrega.status == None, ~func.lower(func.coalesce(Entrega.status, '')).in_(status_finalizados)))
-            .count())
+        entregas_abertas = abertas_por_coop.get(int(c.id), 0)
 
         if online and entregas_abertas > 0:
             status = 'em_corrida'
@@ -6461,10 +6599,10 @@ def mapa_motoboys():
         else:
             status = 'offline'
 
-        try:
-            ultima_txt = to_brasilia(ping).strftime('%d/%m/%Y %H:%M:%S') if ping else ''
-        except Exception:
-            ultima_txt = ''
+        if live:
+            live['status'] = status
+
+        ultima_txt = live.get('ultima_atualizacao') if live else ''
 
         nome = c.nome or f'Cooperado {c.id}'
         try:
@@ -6480,7 +6618,7 @@ def mapa_motoboys():
             'tem_localizacao': bool(tem_localizacao),
             'online': bool(online),
             'status': status,
-            'idle_seconds': None,
+            'idle_seconds': 0 if online else None,
             'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
             'accuracy_m': float(acc or 0),
             'heading': float(hdg or 0),
@@ -6488,6 +6626,7 @@ def mapa_motoboys():
             'endereco': getattr(c, 'zona', None) or getattr(c, 'bairro', None) or '',
             'observacao': getattr(c, 'observacao', '') or '',
             'entregas_abertas': int(entregas_abertas),
+            'modo': 'memoria_sem_salvar_banco',
         })
 
     def _sort_key(x):
