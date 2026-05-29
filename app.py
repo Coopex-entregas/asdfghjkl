@@ -880,6 +880,16 @@ class ListaEspera(db.Model):
     created_at = db.Column(db.DateTime, nullable=True, default=datetime.utcnow)
     cooperado = db.relationship('Cooperado', lazy='joined')
 
+
+class ConfigSistema(db.Model):
+    __tablename__ = 'config_sistema'
+
+    id = db.Column(db.Integer, primary_key=True)
+    chave = db.Column(db.String(120), unique=True, nullable=False, index=True)
+    valor = db.Column(db.String(255), nullable=False, default='')
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    atualizado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, onupdate=datetime.utcnow)
+
 def emitir_lista_espera():
     """
     Emite para todos os painéis a situação atual da fila de espera.
@@ -6918,6 +6928,17 @@ def cadastrar_entrega():
 
         db.session.commit()
 
+        # COOPEX_ATRIB_AUTO_CADASTRAR_ENTREGA
+        # Se o automático estiver ligado, uma entrega nova sem cooperado pode ser atribuída sozinha.
+        if not entrega.cooperado_id and config_bool(ATRIB_AUTO_CONFIG_KEY, False):
+            try:
+                atribuir_cooperado_automatico(entrega)
+            except Exception as ex:
+                try:
+                    current_app.logger.warning(f'Falha na atribuição automática da entrega {entrega.id}: {ex}')
+                except Exception:
+                    pass
+
         print("DEBUG_PAGAMENTO_ENTREGA", entrega.id, repr(entrega.pagamento))
 
         credito_consumido = 0.0
@@ -7280,31 +7301,403 @@ def editar_entrega(id):
         return render_template('editar_entrega_cooperado.html', entrega=entrega)
 
 
-@app.post('/atribuir_cooperado/<int:id>')
-def atribuir_cooperado(id):
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
+# =========================================================
+# ATRIBUIÇÃO INTELIGENTE / AUTOMÁTICA DE COOPERADO
+# =========================================================
+ATRIB_AUTO_CONFIG_KEY = 'atribuicao_automatica_ativa'
+ATRIB_AUTO_MAX_ENTREGAS_ATIVAS = int(os.getenv('ATRIB_AUTO_MAX_ENTREGAS_ATIVAS', '3'))
+ATRIB_AUTO_MAX_LOCALIZACAO_MIN = int(os.getenv('ATRIB_AUTO_MAX_LOCALIZACAO_MIN', '10'))
+ATRIB_AUTO_MAX_SUGESTOES_LOTE = int(os.getenv('ATRIB_AUTO_MAX_SUGESTOES_LOTE', '80'))
 
-    entrega = Entrega.query.get_or_404(id)
-    coop_id = (request.form.get('cooperado_id') or '').strip()
+
+def _config_sistema_get(chave: str, padrao: str = '') -> str:
+    try:
+        item = ConfigSistema.query.filter_by(chave=chave).first()
+        if not item:
+            return padrao
+        return str(item.valor if item.valor is not None else padrao)
+    except Exception:
+        try:
+            db.session.rollback()
+        except Exception:
+            pass
+        return padrao
+
+
+def config_bool(chave: str, padrao: bool = False) -> bool:
+    valor = _config_sistema_get(chave, '1' if padrao else '0')
+    return str(valor).strip().lower() in ('1', 'true', 'sim', 's', 'on', 'ligado', 'ativo')
+
+
+def set_config_bool(chave: str, ativo: bool) -> bool:
+    try:
+        item = ConfigSistema.query.filter_by(chave=chave).first()
+        if not item:
+            item = ConfigSistema(chave=chave, valor='1' if ativo else '0')
+            db.session.add(item)
+        else:
+            item.valor = '1' if ativo else '0'
+            item.atualizado_em = datetime.utcnow()
+        db.session.commit()
+        return True
+    except Exception:
+        db.session.rollback()
+        return False
+
+
+def _auto_norm(txt) -> str:
+    try:
+        return _norm(txt)
+    except Exception:
+        return str(txt or '').strip().lower()
+
+
+def _auto_is_finalizada(entrega: Entrega) -> bool:
+    finais = {
+        'recebido', 'entregue', 'finalizado', 'finalizada', 'concluido', 'concluida',
+        'concluído', 'concluída', 'cancelado', 'cancelada', 'agendado'
+    }
+    st = _auto_norm(getattr(entrega, 'status', '') or '')
+    st_corrida = _auto_norm(getattr(entrega, 'status_corrida', '') or '')
+    return st in finais or st_corrida in finais
+
+
+def _auto_json_dict(raw):
+    if not raw:
+        return {}
+    if isinstance(raw, dict):
+        return raw
+    try:
+        data = json.loads(raw)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
+
+
+def _auto_entrega_origem(entrega: Entrega) -> dict:
+    try:
+        data = entrega.get_origem()
+        if data:
+            return data
+    except Exception:
+        pass
+    return _auto_json_dict(getattr(entrega, 'origem_json', None))
+
+
+def _auto_entrega_destino(entrega: Entrega) -> dict:
+    try:
+        data = entrega.get_destino()
+        if data:
+            return data
+    except Exception:
+        pass
+    return _auto_json_dict(getattr(entrega, 'destino_json', None))
+
+
+def _auto_float(v):
+    try:
+        if v is None or v == '':
+            return None
+        return float(v)
+    except Exception:
+        return None
+
+
+def _auto_pegar_lat_lng_entrega(entrega: Entrega):
+    origem = _auto_entrega_origem(entrega)
+    destino = _auto_entrega_destino(entrega)
+
+    for data in (origem, destino):
+        lat = _auto_float(data.get('lat') or data.get('latitude'))
+        lng = _auto_float(data.get('lng') or data.get('longitude') or data.get('lon'))
+        if lat is not None and lng is not None:
+            return lat, lng
+
+    return None, None
+
+
+def _auto_bairro_entrega(entrega: Entrega) -> str:
+    origem = _auto_entrega_origem(entrega)
+    destino = _auto_entrega_destino(entrega)
+    bairro = origem.get('bairro') or destino.get('bairro') or getattr(entrega, 'bairro', '')
+    return _auto_norm(bairro)
+
+
+def _auto_pegar_localizacao_cooperado(cooperado: Cooperado):
+    """Retorna lat, lng, quando, online_localizacao."""
+    lat = getattr(cooperado, 'last_lat', None)
+    lng = getattr(cooperado, 'last_lng', None)
+    quando = getattr(cooperado, 'last_ping', None)
+    online_loc = bool(getattr(cooperado, 'online', False))
 
     try:
-        if coop_id:
-            coop = Cooperado.query.get_or_404(int(coop_id))
-            entrega.cooperado_id = coop.id
-            entrega.data_atribuida = datetime.utcnow()
+        loc = LocalizacaoCooperado.query.filter_by(cooperado_id=cooperado.id).first()
+        if loc:
+            if loc.latitude is not None and loc.longitude is not None:
+                lat = loc.latitude
+                lng = loc.longitude
+            if loc.atualizado_em:
+                quando = loc.atualizado_em
+            if loc.online is not None:
+                online_loc = bool(loc.online)
+    except Exception:
+        pass
 
-            # fluxo atualizado: ao atribuir no admin, a entrega já aparece para o cooperado.
-            # Não exige confirmação de coleta; o cooperado só precisa marcar quando ENTREGOU.
-            entrega.status_corrida = 'aceita'
-            if (entrega.status or '').lower() in ('', 'pendente', 'aguardando', 'aguardando entregador', 'criado'):
-                entrega.status = 'em_andamento'
+    return _auto_float(lat), _auto_float(lng), quando, online_loc
+
+
+def _auto_localizacao_velha(quando) -> bool:
+    if not quando:
+        return True
+    try:
+        now_utc = datetime.now(timezone.utc)
+        dt = _to_utc_aware(quando)
+        if not dt:
+            return True
+        return (now_utc - dt).total_seconds() > (ATRIB_AUTO_MAX_LOCALIZACAO_MIN * 60)
+    except Exception:
+        return True
+
+
+def _auto_status_online(cooperado: Cooperado):
+    """Retorna online, idle_seconds, status_texto, lat, lng, quando_localizacao."""
+    lat, lng, quando_loc, online_loc = _auto_pegar_localizacao_cooperado(cooperado)
+
+    online_calc = False
+    idle_seconds = None
+    status_txt = 'offline'
+    try:
+        online_calc, idle_seconds, status_txt = calc_status_cooperado(cooperado)
+    except Exception:
+        online_calc = False
+        idle_seconds = None
+        status_txt = 'offline'
+
+    # Se a localização atualizou há pouco, considera online mesmo que o campo cooperado.online esteja atrasado.
+    loc_recente = bool(quando_loc and not _auto_localizacao_velha(quando_loc))
+    online = bool(online_calc or (online_loc and loc_recente))
+    if online and status_txt == 'offline':
+        status_txt = 'livre'
+
+    return online, idle_seconds, status_txt, lat, lng, quando_loc
+
+
+def _auto_distancia_km(lat1, lng1, lat2, lng2):
+    if None in (lat1, lng1, lat2, lng2):
+        return None
+    try:
+        return float(_haversine_m(lat1, lng1, lat2, lng2)) / 1000.0
+    except Exception:
+        return None
+
+
+def _auto_posicoes_fila():
+    por_id = {}
+    por_nome = {}
+    try:
+        itens = (
+            ListaEspera.query
+            .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc())
+            .all()
+        )
+        for pos, item in enumerate(itens, start=1):
+            if getattr(item, 'cooperado_id', None):
+                por_id[int(item.cooperado_id)] = pos
+            nome = _auto_norm(getattr(item, 'nome', '') or (item.cooperado.nome if item.cooperado else ''))
+            if nome:
+                por_nome[nome] = pos
+    except Exception:
+        pass
+    return por_id, por_nome
+
+
+def _auto_contar_entregas_ativas(cooperado_id: int) -> int:
+    finais_status = [
+        'recebido', 'entregue', 'finalizado', 'finalizada', 'concluido', 'concluida',
+        'concluído', 'concluída', 'cancelado', 'cancelada', 'agendado'
+    ]
+    finais_corrida = [
+        'finalizada', 'finalizado', 'recebido', 'entregue', 'cancelado', 'cancelada', 'recusada'
+    ]
+    try:
+        q = Entrega.query.filter(Entrega.cooperado_id == int(cooperado_id))
+        q = q.filter(
+            or_(Entrega.status == None, ~func.lower(Entrega.status).in_(finais_status))
+        )
+        q = q.filter(
+            or_(Entrega.status_corrida == None, ~func.lower(Entrega.status_corrida).in_(finais_corrida))
+        )
+        return int(q.count() or 0)
+    except Exception:
+        return 0
+
+
+def remover_cooperado_da_fila(cooperado: Cooperado, commit: bool = False):
+    if not cooperado:
+        return
+    try:
+        removidos = 0
+        removidos += ListaEspera.query.filter_by(cooperado_id=cooperado.id).delete(synchronize_session=False)
+        nome_norm = _auto_norm(cooperado.nome)
+        if nome_norm:
+            itens = ListaEspera.query.all()
+            for item in itens:
+                if _auto_norm(item.nome) == nome_norm:
+                    db.session.delete(item)
+                    removidos += 1
+        if commit:
+            db.session.commit()
+            try:
+                emitir_lista_espera()
+            except Exception:
+                pass
+        return removidos
+    except Exception:
+        if commit:
+            db.session.rollback()
+        return 0
+
+
+def calcular_sugestoes_cooperados(entrega: Entrega, limite: int = 5):
+    if not entrega or getattr(entrega, 'cooperado_id', None) or _auto_is_finalizada(entrega):
+        return []
+
+    lat_e, lng_e = _auto_pegar_lat_lng_entrega(entrega)
+    bairro_e = _auto_bairro_entrega(entrega)
+    fila_id, fila_nome = _auto_posicoes_fila()
+
+    candidatos = []
+    try:
+        cooperados = Cooperado.query.filter(Cooperado.ativo == True).order_by(Cooperado.nome.asc()).all()
+    except Exception:
+        cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
+
+    for coop in cooperados:
+        if not getattr(coop, 'id', None):
+            continue
+
+        online, idle_seconds, status_txt, lat_c, lng_c, quando_loc = _auto_status_online(coop)
+        if not online:
+            continue
+
+        ativas = _auto_contar_entregas_ativas(coop.id)
+        if ativas >= ATRIB_AUTO_MAX_ENTREGAS_ATIVAS:
+            continue
+
+        pontos = 0
+        motivos = []
+
+        pontos += 30
+        motivos.append('online')
+
+        posicao = fila_id.get(int(coop.id)) or fila_nome.get(_auto_norm(coop.nome))
+        if posicao:
+            if posicao == 1:
+                pontos += 32
+            elif posicao == 2:
+                pontos += 26
+            elif posicao == 3:
+                pontos += 20
+            elif posicao <= 5:
+                pontos += 14
+            else:
+                pontos += 8
+            motivos.append(f'fila #{posicao}')
         else:
-            entrega.cooperado_id = None
-            entrega.data_atribuida = None
-            entrega.status_corrida = None
+            pontos += 2
+            motivos.append('fora da fila')
 
+        dist = _auto_distancia_km(lat_e, lng_e, lat_c, lng_c)
+        if dist is not None:
+            if dist <= 1:
+                pontos += 26
+            elif dist <= 3:
+                pontos += 20
+            elif dist <= 5:
+                pontos += 12
+            elif dist <= 8:
+                pontos += 7
+            else:
+                pontos += 3
+            motivos.append(f'{dist:.1f} km')
+        else:
+            motivos.append('sem distância')
+
+        # Bairro atual só entra se existir no cadastro/objeto. Sem geocodificação reversa para não pesar a página.
+        bairro_c = _auto_norm(getattr(coop, 'bairro_atual', '') or getattr(coop, 'ultimo_bairro', '') or '')
+        if bairro_e and bairro_c and bairro_e == bairro_c:
+            pontos += 12
+            motivos.append('mesmo bairro')
+
+        if ativas == 0:
+            pontos += 18
+            motivos.append('sem entrega ativa')
+        elif ativas == 1:
+            pontos += 11
+            motivos.append('1 entrega ativa')
+        elif ativas == 2:
+            pontos += 5
+            motivos.append('2 entregas ativas')
+
+        idle_min = 0
+        try:
+            idle_min = int((idle_seconds or 0) / 60)
+        except Exception:
+            idle_min = 0
+        if idle_min >= 20:
+            pontos += 10
+            motivos.append(f'parado há {idle_min} min')
+        elif idle_min >= 10:
+            pontos += 6
+            motivos.append(f'parado há {idle_min} min')
+
+        candidatos.append({
+            'id': coop.id,
+            'nome': coop.nome,
+            'pontos': max(0, min(100, int(pontos))),
+            'motivos': motivos,
+            'distancia_km': round(dist, 2) if dist is not None else None,
+            'posicao_fila': posicao,
+            'entregas_ativas': ativas,
+            'status': status_txt,
+        })
+
+    candidatos.sort(key=lambda x: (-x['pontos'], x['entregas_ativas'], x['distancia_km'] if x['distancia_km'] is not None else 9999, x['posicao_fila'] or 9999, x['nome']))
+    return candidatos[:max(1, int(limite or 1))]
+
+
+def calcular_sugestao_cooperado(entrega: Entrega):
+    sugestoes = calcular_sugestoes_cooperados(entrega, limite=1)
+    return sugestoes[0] if sugestoes else None
+
+
+def atribuir_entrega_para_cooperado_core(entrega: Entrega, cooperado_id, *, commit: bool = True):
+    if not entrega:
+        return None
+
+    if cooperado_id:
+        coop = Cooperado.query.get(int(cooperado_id))
+        if not coop:
+            raise ValueError('Cooperado não encontrado.')
+        entrega.cooperado_id = coop.id
+        entrega.data_atribuida = datetime.utcnow()
+        entrega.status_corrida = 'aceita'
+        if (entrega.status or '').lower() in ('', 'pendente', 'aguardando', 'aguardando entregador', 'criado'):
+            entrega.status = 'em_andamento'
+        remover_cooperado_da_fila(coop, commit=False)
+    else:
+        coop = None
+        entrega.cooperado_id = None
+        entrega.data_atribuida = None
+        entrega.status_corrida = None
+
+    db.session.add(entrega)
+    if commit:
         db.session.commit()
+        try:
+            emitir_lista_espera()
+        except Exception:
+            pass
         try:
             emitir_atualizacao_entrega(entrega, 'atribuida' if entrega.cooperado_id else 'desatribuida')
             if entrega.cooperado_id:
@@ -7316,7 +7709,130 @@ def atribuir_cooperado(id):
                 }, room=f'cooperado_{entrega.cooperado_id}')
         except Exception:
             pass
-        msg = 'Entrega atribuída com sucesso!'
+
+    return coop
+
+
+def atribuir_cooperado_automatico(entrega: Entrega):
+    if not entrega:
+        return None, 'Entrega não encontrada.'
+    if getattr(entrega, 'cooperado_id', None):
+        return None, 'Essa entrega já possui cooperado.'
+    if _auto_is_finalizada(entrega):
+        return None, 'Essa entrega não está aberta para atribuição.'
+
+    sugestao = calcular_sugestao_cooperado(entrega)
+    if not sugestao:
+        return None, 'Nenhum cooperado disponível dentro das regras.'
+
+    try:
+        atribuir_entrega_para_cooperado_core(entrega, sugestao['id'], commit=True)
+        return sugestao, None
+    except Exception as e:
+        db.session.rollback()
+        return None, f'Erro ao atribuir automaticamente: {e}'
+
+
+@app.route('/api/config/atribuicao_automatica', methods=['GET', 'POST'])
+def api_config_atribuicao_automatica():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    if request.method == 'GET':
+        return jsonify(ok=True, ativo=config_bool(ATRIB_AUTO_CONFIG_KEY, False), max_entregas=ATRIB_AUTO_MAX_ENTREGAS_ATIVAS)
+
+    data = request.get_json(silent=True) or {}
+    ativo = bool(data.get('ativo'))
+    ok = set_config_bool(ATRIB_AUTO_CONFIG_KEY, ativo)
+    return jsonify(ok=ok, ativo=ativo, max_entregas=ATRIB_AUTO_MAX_ENTREGAS_ATIVAS)
+
+
+@app.get('/api/entrega/<int:entrega_id>/sugestao_cooperado')
+def api_sugestao_cooperado(entrega_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    entrega = Entrega.query.get_or_404(entrega_id)
+    return jsonify(ok=True, ja_atribuida=bool(entrega.cooperado_id), sugestao=calcular_sugestao_cooperado(entrega))
+
+
+@app.post('/api/entregas/sugestoes_cooperados')
+def api_sugestoes_cooperados_lote():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    data = request.get_json(silent=True) or {}
+    ids = data.get('entrega_ids') or []
+    try:
+        ids = [int(x) for x in ids if str(x).strip().isdigit()]
+    except Exception:
+        ids = []
+    ids = ids[:ATRIB_AUTO_MAX_SUGESTOES_LOTE]
+
+    if not ids:
+        return jsonify(ok=True, sugestoes={})
+
+    entregas = Entrega.query.filter(Entrega.id.in_(ids)).all()
+    resp = {}
+    for entrega in entregas:
+        resp[str(entrega.id)] = calcular_sugestao_cooperado(entrega)
+
+    return jsonify(ok=True, sugestoes=resp)
+
+
+@app.post('/api/entrega/<int:entrega_id>/atribuir_automaticamente')
+def api_atribuir_entrega_automaticamente(entrega_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    entrega = Entrega.query.get_or_404(entrega_id)
+    sugestao, erro = atribuir_cooperado_automatico(entrega)
+    if erro:
+        return jsonify(ok=False, erro=erro), 400
+
+    return jsonify(ok=True, sugestao=sugestao, mensagem=f"Entrega atribuída automaticamente para {sugestao['nome']}.")
+
+
+@app.post('/api/entregas/atribuir_abertas_automaticamente')
+def api_atribuir_abertas_automaticamente():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='unauthorized'), 401
+
+    q = Entrega.query.filter(Entrega.cooperado_id == None)
+    q = q.filter(or_(Entrega.status == None, ~func.lower(Entrega.status).in_([
+        'recebido', 'entregue', 'finalizado', 'finalizada', 'concluido', 'concluida',
+        'concluído', 'concluída', 'cancelado', 'cancelada', 'agendado'
+    ])))
+    entregas = q.order_by(Entrega.data_envio.asc(), Entrega.id.asc()).all()
+
+    atribuicoes = []
+    erros = []
+    for entrega in entregas:
+        sugestao, erro = atribuir_cooperado_automatico(entrega)
+        if sugestao:
+            atribuicoes.append({
+                'entrega_id': entrega.id,
+                'cooperado_id': sugestao['id'],
+                'cooperado_nome': sugestao['nome'],
+                'pontos': sugestao['pontos'],
+            })
+        else:
+            erros.append({'entrega_id': entrega.id, 'erro': erro})
+
+    return jsonify(ok=True, total_atribuidas=len(atribuicoes), atribuicoes=atribuicoes, erros=erros)
+
+
+@app.post('/atribuir_cooperado/<int:id>')
+def atribuir_cooperado(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    entrega = Entrega.query.get_or_404(id)
+    coop_id = (request.form.get('cooperado_id') or '').strip()
+
+    try:
+        atribuir_entrega_para_cooperado_core(entrega, coop_id or None, commit=True)
+        msg = 'Entrega atribuída com sucesso!' if coop_id else 'Entrega removida do cooperado.'
         flash(msg, 'success')
 
         if _wants_json():
@@ -7328,7 +7844,7 @@ def atribuir_cooperado(id):
                 status_corrida=entrega.status_corrida,
             )
 
-    except Exception as e:
+    except Exception:
         db.session.rollback()
         msg = 'Erro ao atribuir entrega'
         flash(msg, 'danger')
