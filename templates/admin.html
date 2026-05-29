@@ -704,6 +704,72 @@
 
 /* MAPA: modo tela cheia (fallback se Fullscreen API falhar) */
 
+
+
+    /* ===== SUGESTÃO / ATRIBUIÇÃO AUTOMÁTICA ===== */
+    .coop-cell{
+      display:flex;
+      flex-direction:column;
+      align-items:center;
+      justify-content:center;
+      gap:6px;
+      min-width:185px;
+    }
+    .sugestao-coop{
+      width:100%;
+      min-width:180px;
+      max-width:270px;
+      padding:7px 8px;
+      border-radius:13px;
+      border:1px solid var(--line);
+      background:#f3f7ff;
+      color:#16357e;
+      font-size:11.3px;
+      font-weight:800;
+      line-height:1.25;
+      box-shadow:0 6px 16px rgba(15,53,181,.06);
+    }
+    body.dark .sugestao-coop{
+      background:#101f3d;
+      color:#dbe6ff;
+      border-color:#2a3a62;
+      box-shadow:none;
+    }
+    .sug-title{font-weight:900;color:#0b43d9;}
+    body.dark .sug-title{color:#9fb8ff;}
+    .sug-motivos{margin-top:3px;color:#52648e;font-size:10.8px;white-space:normal;}
+    body.dark .sug-motivos{color:#a7b7e7;}
+    .sug-actions{display:flex;justify-content:center;gap:5px;margin-top:6px;flex-wrap:wrap;}
+    .sug-btn{
+      border:0;
+      border-radius:9px;
+      padding:5px 8px;
+      min-height:26px !important;
+      font-size:10.5px;
+      font-weight:900;
+      cursor:pointer;
+      background:#0b43d9;
+      color:#fff;
+    }
+    .sug-btn.sec{background:#eaf1ff;color:#0b43d9;border:1px solid #c9d8ff;}
+    body.dark .sug-btn.sec{background:#17264a;color:#dbe6ff;border-color:#2a3a62;}
+    .sug-empty{color:#991b1b;font-size:11px;font-weight:900;white-space:normal;}
+    body.dark .sug-empty{color:#ffb4b4;}
+    .btn.auto-on{
+      background:linear-gradient(90deg,#10b981 0%, #059669 100%) !important;
+      color:#fff !important;
+      border-color:rgba(16,185,129,.40) !important;
+    }
+    .btn.auto-off{
+      background:linear-gradient(180deg, rgba(255,255,255,.96), rgba(255,255,255,.90)) !important;
+      color:#0a1b3f !important;
+      border:1px solid var(--line) !important;
+    }
+    body.dark .btn.auto-off{
+      background:linear-gradient(180deg, rgba(15,23,42,.96), rgba(15,23,42,.90)) !important;
+      color:#e7edf9 !important;
+      border:1px solid var(--line) !important;
+    }
 </style>
 
 
@@ -1470,6 +1536,12 @@ body.modo-escuro input::placeholder{
             <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ agenda_url }}'">
               Ver agenda
             </button>
+            <button class="btn alt auto-off" id="btnAutoGlobal" type="button">
+              Automático: carregando...
+            </button>
+            <button class="btn alt" id="btnAutoAbertas" type="button">
+              Atribuir abertas automaticamente
+            </button>
           </div>
         </div>
 
@@ -1544,12 +1616,20 @@ body.modo-escuro input::placeholder{
                   <td>{{ to_brasilia(e.data_atribuida).strftime('%H:%M') if e.data_atribuida else '-' }}</td>
 
                   <td>
-                    <span class="coop-editable"
-                          data-id="{{ e.id }}"
-                          data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
-                          title="Clique para trocar o cooperado">
-                      {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
-                    </span>
+                    <div class="coop-cell">
+                      <span class="coop-editable"
+                            data-id="{{ e.id }}"
+                            data-cooperado-id="{{ e.cooperado.id if e.cooperado else '' }}"
+                            title="Clique para trocar o cooperado">
+                        {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
+                      </span>
+
+                      {% if not tem_coop %}
+                        <div class="sugestao-coop" data-entrega-id="{{ e.id }}">
+                          <span class="sug-loading">Calculando sugestão...</span>
+                        </div>
+                      {% endif %}
+                    </div>
                   </td>
 
                   <td>{{ e.pagamento }}</td>
@@ -2102,6 +2182,21 @@ body.modo-escuro input::placeholder{
           dot.classList.toggle('no', !temCoop);
           dot.title = temCoop ? 'Com cooperado atribuído' : 'Sem cooperado';
         }
+
+        const sug = tr.querySelector('.sugestao-coop');
+        if(temCoop && sug){
+          sug.remove();
+        }else if(!temCoop && !sug){
+          const cell = tr.querySelector('.coop-cell');
+          if(cell){
+            const box = document.createElement('div');
+            box.className = 'sugestao-coop';
+            box.dataset.entregaId = tr.dataset.id || '';
+            box.innerHTML = '<span class="sug-loading">Calculando sugestão...</span>';
+            cell.appendChild(box);
+            if(typeof carregarSugestaoCooperado === 'function') carregarSugestaoCooperado(box);
+          }
+        }
         atualizarBadgeAbertas();
       }catch(e){}
     }
@@ -2539,6 +2634,209 @@ body.modo-escuro input::placeholder{
       if (!ulFila || !htmlLista) return;
       ulFila.innerHTML = htmlLista;
     }
+
+    /* ===== SUGESTÃO / ATRIBUIÇÃO AUTOMÁTICA COOPEX ===== */
+    function cxEscapeHtml(v){
+      return String(v ?? '').replace(/[&<>"']/g, function(m){
+        return ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]);
+      });
+    }
+
+    async function cxJson(url, options){
+      const r = await fetch(url, options || {});
+      let data = {};
+      try{ data = await r.json(); }catch(e){ data = {}; }
+      if(!r.ok || data.ok === false){
+        throw new Error(data.erro || data.error || data.message || data.mensagem || 'Erro na solicitação.');
+      }
+      return data;
+    }
+
+    function atualizarBotaoAutoGlobal(ativo){
+      const btn = document.getElementById('btnAutoGlobal');
+      if(!btn) return;
+      btn.dataset.ativo = ativo ? '1' : '0';
+      btn.textContent = ativo ? 'Automático: Ligado' : 'Automático: Desligado';
+      btn.classList.toggle('auto-on', !!ativo);
+      btn.classList.toggle('auto-off', !ativo);
+      btn.classList.toggle('alt', !ativo);
+    }
+
+    async function carregarConfigAuto(){
+      try{
+        const data = await cxJson('/api/config/atribuicao_automatica', {headers:{'X-Requested-With':'fetch'}});
+        atualizarBotaoAutoGlobal(!!data.ativo);
+      }catch(e){
+        atualizarBotaoAutoGlobal(false);
+      }
+    }
+
+    async function alternarConfigAuto(){
+      const btn = document.getElementById('btnAutoGlobal');
+      if(!btn) return;
+      const ativoAtual = btn.dataset.ativo === '1';
+      const novoAtivo = !ativoAtual;
+      const msg = novoAtivo
+        ? 'Deseja LIGAR a atribuição automática? Novas entregas sem cooperado poderão ser atribuídas sozinhas respeitando fila, localização e limite de 3 entregas ativas.'
+        : 'Deseja DESLIGAR a atribuição automática? O sistema continuará mostrando sugestão, mas não atribuirá sozinho.';
+      if(!confirm(msg)) return;
+
+      try{
+        window.__markActionStart&&window.__markActionStart();
+        const data = await cxJson('/api/config/atribuicao_automatica', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body:JSON.stringify({ativo:novoAtivo})
+        });
+        atualizarBotaoAutoGlobal(!!data.ativo);
+        window.__markActionEnd&&window.__markActionEnd();
+        showToast(data.ativo ? '<strong>Atribuição automática ligada.</strong>' : '<strong>Atribuição automática desligada.</strong>');
+      }catch(e){
+        window.__markActionFail&&window.__markActionFail();
+        showToast('<strong>Não foi possível alterar a atribuição automática.</strong>');
+      }
+    }
+
+    function renderSugestao(box, sugestao){
+      if(!box) return;
+      if(!sugestao){
+        box.innerHTML = '<span class="sug-empty">Sem sugestão disponível pelas regras.</span>';
+        return;
+      }
+      const nome = cxEscapeHtml(sugestao.nome || 'Cooperado');
+      const motivos = Array.isArray(sugestao.motivos) ? sugestao.motivos.map(cxEscapeHtml).join(' · ') : '';
+      const pontos = Number.isFinite(Number(sugestao.pontos)) ? Number(sugestao.pontos) : 0;
+      const ativas = Number.isFinite(Number(sugestao.entregas_ativas)) ? Number(sugestao.entregas_ativas) : 0;
+      const idEntrega = cxEscapeHtml(box.dataset.entregaId || '');
+      const idCoop = cxEscapeHtml(sugestao.id || '');
+
+      box.innerHTML = `
+        <div class="sug-title">Sugestão: ${nome}</div>
+        <div class="sug-motivos">${motivos}</div>
+        <div class="sug-motivos">Pontuação: ${pontos}/100 · Ativas: ${ativas}/3</div>
+        <div class="sug-actions">
+          <button type="button" class="sug-btn btn-sug-atribuir" data-entrega-id="${idEntrega}" data-cooperado-id="${idCoop}" data-cooperado-nome="${nome}">Atribuir</button>
+          <button type="button" class="sug-btn sec btn-auto-row" data-entrega-id="${idEntrega}">Auto</button>
+        </div>`;
+    }
+
+    async function carregarSugestaoCooperado(box){
+      if(!box || !box.dataset.entregaId) return;
+      try{
+        const data = await cxJson(`/api/entrega/${box.dataset.entregaId}/sugestao_cooperado`, {headers:{'X-Requested-With':'fetch'}});
+        renderSugestao(box, data.sugestao);
+      }catch(e){
+        box.innerHTML = '<span class="sug-empty">Erro ao calcular sugestão.</span>';
+      }
+    }
+
+    async function carregarSugestoesCooperados(){
+      const boxes = Array.from(document.querySelectorAll('.sugestao-coop[data-entrega-id]'));
+      if(!boxes.length) return;
+      const ids = boxes.map(b => b.dataset.entregaId).filter(Boolean);
+      try{
+        const data = await cxJson('/api/entregas/sugestoes_cooperados', {
+          method:'POST',
+          headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
+          body:JSON.stringify({entrega_ids:ids})
+        });
+        const sugestoes = data.sugestoes || {};
+        boxes.forEach(box => renderSugestao(box, sugestoes[String(box.dataset.entregaId)] || null));
+      }catch(e){
+        boxes.forEach(box => { box.innerHTML = '<span class="sug-empty">Erro ao calcular sugestão.</span>'; });
+      }
+    }
+
+    function aplicarCooperadoNaLinha(entregaId, cooperado){
+      const tr = document.querySelector(`tr[data-id="${entregaId}"]`);
+      if(!tr || !cooperado) return;
+      const span = tr.querySelector('.coop-editable');
+      if(span){
+        span.textContent = cooperado.nome || 'Cooperado';
+        span.dataset.cooperadoId = cooperado.id || '';
+        atualizarLinhaEntregaDepoisEdicao(span, cooperado.id || '');
+      }
+      if(typeof removerDaFilaPorNome === 'function') removerDaFilaPorNome(cooperado.nome || '');
+      atualizarBadgeAbertas&&atualizarBadgeAbertas();
+    }
+
+    async function atribuirCooperadoSugerido(entregaId, cooperadoId, nome){
+      if(!entregaId || !cooperadoId) return;
+      try{
+        window.__markActionStart&&window.__markActionStart();
+        const fd = new FormData();
+        fd.append('cooperado_id', cooperadoId);
+        fd.append('notificar_painel', '1');
+        const res = await fetch('/atribuir_cooperado/' + entregaId, {method:'POST', body:fd, headers:{'X-Requested-With':'fetch'}});
+        if(!res.ok) throw new Error('Falha ao atribuir.');
+        aplicarCooperadoNaLinha(entregaId, {id:cooperadoId, nome:nome});
+        window.__markActionEnd&&window.__markActionEnd();
+        showToast(`<strong>Entrega atribuída para ${cxEscapeHtml(nome)}.</strong>`);
+      }catch(e){
+        window.__markActionFail&&window.__markActionFail();
+        showToast('<strong>Não foi possível atribuir o cooperado sugerido.</strong>');
+      }
+    }
+
+    async function atribuirAutomaticoLinha(entregaId){
+      if(!entregaId) return;
+      if(!confirm('Deseja atribuir automaticamente esta entrega respeitando fila, localização e limite de 3 entregas ativas por cooperado?')) return;
+      try{
+        window.__markActionStart&&window.__markActionStart();
+        const data = await cxJson(`/api/entrega/${entregaId}/atribuir_automaticamente`, {method:'POST', headers:{'X-Requested-With':'fetch'}});
+        if(data.sugestao){
+          aplicarCooperadoNaLinha(entregaId, {id:data.sugestao.id, nome:data.sugestao.nome});
+        }
+        window.__markActionEnd&&window.__markActionEnd();
+        showToast(`<strong>${cxEscapeHtml(data.mensagem || 'Entrega atribuída automaticamente.')}</strong>`);
+      }catch(e){
+        window.__markActionFail&&window.__markActionFail();
+        showToast(`<strong>${cxEscapeHtml(e.message || 'Nenhum cooperado disponível dentro das regras.')}</strong>`);
+      }
+    }
+
+    async function atribuirAbertasAutomaticamente(){
+      if(!confirm('Deseja atribuir automaticamente todas as entregas em aberto? O sistema vai respeitar fila, localização e limite de 3 entregas ativas por cooperado.')) return;
+      try{
+        window.__markActionStart&&window.__markActionStart();
+        const data = await cxJson('/api/entregas/atribuir_abertas_automaticamente', {method:'POST', headers:{'X-Requested-With':'fetch'}});
+        (data.atribuicoes || []).forEach(item => {
+          aplicarCooperadoNaLinha(item.entrega_id, {id:item.cooperado_id, nome:item.cooperado_nome});
+        });
+        window.__markActionEnd&&window.__markActionEnd();
+        showToast(`<strong>${Number(data.total_atribuidas || 0)} entrega(s) atribuída(s) automaticamente.</strong>`);
+      }catch(e){
+        window.__markActionFail&&window.__markActionFail();
+        showToast('<strong>Não foi possível atribuir as entregas abertas automaticamente.</strong>');
+      }
+    }
+
+    document.addEventListener('click', function(ev){
+      const btnGlobal = ev.target.closest?.('#btnAutoGlobal');
+      if(btnGlobal){ ev.preventDefault(); alternarConfigAuto(); return; }
+
+      const btnAbertas = ev.target.closest?.('#btnAutoAbertas');
+      if(btnAbertas){ ev.preventDefault(); atribuirAbertasAutomaticamente(); return; }
+
+      const btnSug = ev.target.closest?.('.btn-sug-atribuir');
+      if(btnSug){
+        ev.preventDefault(); ev.stopPropagation();
+        atribuirCooperadoSugerido(btnSug.dataset.entregaId, btnSug.dataset.cooperadoId, btnSug.dataset.cooperadoNome);
+        return;
+      }
+
+      const btnAutoRow = ev.target.closest?.('.btn-auto-row');
+      if(btnAutoRow){
+        ev.preventDefault(); ev.stopPropagation();
+        atribuirAutomaticoLinha(btnAutoRow.dataset.entregaId);
+      }
+    });
+
+    window.addEventListener('DOMContentLoaded', function(){
+      carregarConfigAuto();
+      carregarSugestoesCooperados();
+    });
+
 </script>
 
   <!-- CUPOM / MAPA TELA CHEIA -->
