@@ -687,6 +687,22 @@
           <a class="btn alt" href="{{ url_for('creditos') }}">Limpar</a>
         </div>
       </form>
+
+
+      <div style="margin-top:12px;border-top:1px solid var(--line);padding-top:12px;">
+        <form action="{{ url_for('creditos_reprocessar_auto') }}" method="POST"
+              onsubmit="return confirm('Deseja reprocessar as entregas antigas com CREDITO_AUTO? O sistema vai criar os consumos faltantes e poderá deixar saldo negativo.');">
+          {% if selected_cliente %}
+            <input type="hidden" name="cliente_id" value="{{ selected_cliente }}">
+          {% endif %}
+          <button class="btn block alt" type="submit">
+            Reprocessar crédito automático
+          </button>
+          <div class="hint" style="margin-top:7px;">
+            Use uma vez depois da atualização para puxar entregas antigas que não entraram no extrato.
+          </div>
+        </form>
+      </div>
     </div>
   </section>
 
@@ -713,19 +729,6 @@
             {{ '%.2f'|format(total_consumos or 0)|replace('.',',') }}
           </span>
         </div>
-
-        <form action="{{ url_for('creditos_reprocessar_auto') }}"
-              method="POST"
-              class="sticky-actions"
-              onsubmit="return confirm('Reprocessar entregas de crédito automático e corrigir consumos faltantes?');">
-          <input type="hidden" name="cliente_id" value="{{ cliente_id or '' }}">
-          <button type="submit" class="btn alt">
-            Reprocessar crédito automático
-          </button>
-          <span class="hint">
-            Use quando uma entrega CREDITO_AUTO não aparecer no extrato.
-          </span>
-        </form>
       </div>
 
       <div class="search-box">
