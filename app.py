@@ -1616,16 +1616,14 @@ def normalize_first_token(s: str) -> str:
 def pagamento_usa_credito(pagamento: str) -> bool:
     """
     True se a forma de pagamento usar crédito.
-
-    Reconhece também valores vindos do painel/API, como:
-      - CREDITO_AUTO
-      - Crédito auto
-      - Crédito automático
-      - Crédito + Pix
-      - Crédito + Dinheiro
+    Ex:
+      - "Crédito"
+      - "Credito"
+      - "Crédito automático"
+      - "Crédito + Pix"
     """
     txt = _strip_accents((pagamento or '').strip().lower())
-    txt = re.sub(r'[^a-z0-9]+', ' ', txt).strip()
+    txt = re.sub(r'\s+', ' ', txt)
     return txt.startswith('credito')
 
 
@@ -1721,129 +1719,8 @@ def atualizar_saldo_credito_cliente(cliente_id):
     return Decimal(str(saldo)).quantize(Decimal("0.01"))
 
 
-def _cliente_credito_da_entrega(e):
-    """Localiza/vincula o Cliente usado no controle de crédito da entrega."""
-    if not e:
-        return None
-
-    cli = None
-    if getattr(e, "cliente_id", None):
-        cli = Cliente.query.get(e.cliente_id)
-
-    if not cli:
-        cli = _find_cliente_by_nome(e.cliente)
-        if cli and not getattr(e, "cliente_id", None):
-            e.cliente_id = cli.id
-            db.session.add(e)
-
-    return cli
-
-
-def _movimentos_credito_da_entrega(entrega_id: int, cliente_id=None):
-    """Movimentos ligados a uma entrega, incluindo registros antigos por referência."""
-    ref_consumo = f"Entrega #{int(entrega_id)}"
-    ref_estorno = f"Estorno Entrega #{int(entrega_id)}"
-
-    q = CreditoMovimento.query.filter(
-        or_(
-            CreditoMovimento.entrega_id == int(entrega_id),
-            CreditoMovimento.referencia == ref_consumo,
-            CreditoMovimento.referencia == ref_estorno,
-        )
-    )
-
-    if cliente_id:
-        q = q.filter(
-            or_(
-                CreditoMovimento.cliente_id == int(cliente_id),
-                CreditoMovimento.cliente_id == None,
-            )
-        )
-
-    return q.order_by(CreditoMovimento.id.asc()).all()
-
-
-def credito_liquido_usado_entrega(entrega_id: int, cliente_id=None) -> Decimal:
-    """
-    Retorna quanto de crédito esta entrega já consumiu no extrato.
-    Débito conta positivo; estorno da entrega conta negativo.
-    """
-    total = Decimal("0.00")
-    for mov in _movimentos_credito_da_entrega(entrega_id, cliente_id):
-        valor = _as_decimal(mov.valor or 0)
-        tipo = (mov.tipo or '').strip().lower()
-        ref = _strip_accents((mov.referencia or '').strip().lower())
-
-        if tipo == 'debito':
-            total += valor
-        elif tipo == 'credito' and 'estorno' in ref:
-            total -= valor
-
-    return total.quantize(Decimal("0.01"))
-
-
-def sincronizar_credito_da_entrega(entrega_id: int,
-                                  exigir_saldo_total: bool = True,
-                                  permitir_saldo_negativo: bool = False) -> dict:
-    """
-    Garante que o extrato de crédito fique igual ao valor atual da entrega.
-
-    - Se a entrega usa crédito e falta débito, lança consumo.
-    - Se há débito maior que o valor da entrega, lança estorno da diferença.
-    - Se a entrega não usa crédito, estorna o que houver.
-    """
-    e = Entrega.query.get(entrega_id)
-    if not e:
-        return {"ok": False, "motivo": "entrega_nao_encontrada", "consumido": 0.0, "estornado": 0.0}
-
-    cli = _cliente_credito_da_entrega(e)
-    if not cli:
-        return {"ok": False, "motivo": "cliente_nao_encontrado", "consumido": 0.0, "estornado": 0.0}
-
-    if not pagamento_usa_credito(e.pagamento):
-        estornado = desfazer_consumo_credito_da_entrega(e.id)
-        return {"ok": True, "motivo": "pagamento_sem_credito", "consumido": 0.0, "estornado": float(estornado or 0)}
-
-    valor = _as_decimal(e.valor or 0)
-    usado = credito_liquido_usado_entrega(e.id, cli.id)
-
-    if valor <= 0:
-        estornado = desfazer_consumo_credito_da_entrega(e.id)
-        return {"ok": True, "motivo": "valor_zerado", "consumido": 0.0, "estornado": float(estornado or 0)}
-
-    if usado < valor:
-        consumido = consumir_credito_em_entrega(
-            e.id,
-            exigir_saldo_total=exigir_saldo_total,
-            permitir_saldo_negativo=permitir_saldo_negativo,
-        )
-        return {"ok": True, "motivo": "consumo_complementado", "consumido": float(consumido or 0), "estornado": 0.0}
-
-    if usado > valor:
-        diferenca = (usado - valor).quantize(Decimal("0.01"))
-        mov_estorno = CreditoMovimento(
-            cliente_id=cli.id,
-            tipo="credito",
-            valor=float(diferenca),
-            referencia=f"Estorno Entrega #{e.id}",
-            entrega_id=e.id,
-        )
-        db.session.add(mov_estorno)
-        e.credito_usado = float(valor)
-        db.session.add(e)
-        db.session.commit()
-        atualizar_saldo_credito_cliente(cli.id)
-        return {"ok": True, "motivo": "estorno_excesso", "consumido": 0.0, "estornado": float(diferenca)}
-
-    e.credito_usado = float(valor)
-    db.session.add(e)
-    db.session.commit()
-    atualizar_saldo_credito_cliente(cli.id)
-    return {"ok": True, "motivo": "ja_sincronizado", "consumido": 0.0, "estornado": 0.0}
-
-
 def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
-                      desconto_valor, motivo: str = "", criado_por: str = ""):
+                      desconto_valor, motivo: str = "", criado_por: str = "", criado_em_dt=None):
     """
     Cria um crédito, registra movimento 'credito' e recalcula saldo do cliente.
 
@@ -1868,7 +1745,8 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         valor_final=float(valor_final),
         motivo=motivo or "",
         saldo_antes=float(saldo_antes),
-        criado_por=criado_por or "Supervisor"
+        criado_por=criado_por or "Supervisor",
+        criado_em=criado_em_dt or datetime.utcnow()
     )
     db.session.add(c)
     db.session.flush()  # garante c.id
@@ -1880,6 +1758,8 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         tipo="credito",
         valor=float(valor_final),
         referencia=f"Crédito #{c.id}",
+        data=c.criado_em,
+        criado_em=c.criado_em,
     )
     db.session.add(mov)
     db.session.commit()
@@ -1934,100 +1814,154 @@ def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
     return c
 
 
-def consumir_credito_em_entrega(entrega_id: int,
-                                exigir_saldo_total: bool = True,
-                                permitir_saldo_negativo: bool = False) -> Decimal:
+def _credito_movimentos_da_entrega(entrega_id: int, cliente_id: int | None = None):
     """
-    Consome crédito na entrega.
+    Localiza todos os movimentos de crédito ligados a uma entrega.
+    Usa entrega_id quando existe e também a referência textual para cobrir
+    movimentos antigos criados antes do vínculo entrega_id.
+    """
+    filtros = [
+        CreditoMovimento.entrega_id == entrega_id,
+        CreditoMovimento.referencia.ilike(f"%Entrega #{entrega_id}%"),
+    ]
+    q = CreditoMovimento.query.filter(or_(*filtros))
+    if cliente_id:
+        q = q.filter(CreditoMovimento.cliente_id == cliente_id)
+    return q.order_by(CreditoMovimento.data.asc(), CreditoMovimento.id.asc()).all()
 
-    Regras:
-      - No portal do cliente, pode exigir saldo total ou consumir apenas o saldo existente.
-      - No painel/admin, quando permitir_saldo_negativo=True, consome o valor total
-        mesmo que o cliente fique com saldo negativo.
-      - Evita duplicidade olhando os movimentos já vinculados à entrega.
+
+def _credito_liquido_da_entrega(entrega_id: int, cliente_id: int | None = None) -> Decimal:
+    """
+    Retorna quanto a entrega já consumiu de crédito líquido.
+    Débitos aumentam o consumo; estornos/créditos reduzem.
+    """
+    total = Decimal("0.00")
+    for mov in _credito_movimentos_da_entrega(entrega_id, cliente_id):
+        valor = _as_decimal(mov.valor or 0)
+        tipo = _strip_accents((mov.tipo or '').lower())
+        if tipo == 'debito':
+            total += valor
+        elif tipo == 'credito':
+            total -= valor
+    return total.quantize(Decimal("0.01"))
+
+
+def _cliente_da_entrega(entrega: "Entrega"):
+    """Encontra e vincula o cliente da entrega para o controle de crédito."""
+    if not entrega:
+        return None
+
+    cli = None
+    if getattr(entrega, "cliente_id", None):
+        cli = Cliente.query.get(entrega.cliente_id)
+
+    if not cli:
+        cli = _find_cliente_by_nome(entrega.cliente)
+        if cli and not getattr(entrega, "cliente_id", None):
+            entrega.cliente_id = cli.id
+            db.session.add(entrega)
+            db.session.flush()
+    return cli
+
+
+def consumir_credito_em_entrega(entrega_id: int, exigir_saldo_total: bool = False) -> Decimal:
+    """
+    Sincroniza o consumo de crédito da entrega.
+
+    REGRA ATUAL COOPEX:
+      - CREDITO_AUTO / Crédito / Crédito automático sempre desconta o valor integral.
+      - Se o cliente não tiver saldo suficiente, o saldo fica negativo.
+      - Se a entrega já tinha consumo menor, cria só a diferença.
+      - Se a entrega foi editada para valor menor, cria estorno da diferença.
+      - Não duplica débito quando o reprocessamento roda mais de uma vez.
+
+    O parâmetro exigir_saldo_total foi mantido só para compatibilidade com rotas antigas,
+    mas não bloqueia mais o consumo no painel administrativo.
     """
     e = Entrega.query.get(entrega_id)
     if not e:
         return Decimal("0.00")
 
-    cli = _cliente_credito_da_entrega(e)
+    cli = _cliente_da_entrega(e)
     if not cli:
         return Decimal("0.00")
 
-    valor = _as_decimal(e.valor or 0)
-    usado_antes = credito_liquido_usado_entrega(e.id, cli.id)
-    if usado_antes < 0:
-        usado_antes = Decimal("0.00")
+    valor_entrega = _as_decimal(e.valor or 0)
+    if valor_entrega <= 0:
+        return Decimal("0.00")
 
-    faltante = (valor - usado_antes).quantize(Decimal("0.01"))
-    if faltante <= 0:
-        e.credito_usado = float(valor if usado_antes >= valor else usado_antes)
+    liquido_atual = _credito_liquido_da_entrega(e.id, cli.id)
+    diferenca = (valor_entrega - liquido_atual).quantize(Decimal("0.01"))
+
+    if diferenca > 0:
+        mov = CreditoMovimento(
+            cliente_id=cli.id,
+            entrega_id=e.id,
+            tipo="debito",
+            valor=float(diferenca),
+            referencia=f"Entrega #{e.id}",
+            data=e.data_envio or datetime.utcnow(),
+            criado_em=e.data_envio or datetime.utcnow(),
+        )
+        db.session.add(mov)
+    elif diferenca < 0:
+        mov = CreditoMovimento(
+            cliente_id=cli.id,
+            entrega_id=e.id,
+            tipo="credito",
+            valor=float(abs(diferenca)),
+            referencia=f"Estorno ajuste Entrega #{e.id}",
+            data=datetime.utcnow(),
+            criado_em=datetime.utcnow(),
+        )
+        db.session.add(mov)
+    else:
+        e.credito_usado = float(valor_entrega)
+        if not (e.status_pagamento or '').strip() or (e.status_pagamento or '').lower() == 'pendente':
+            e.status_pagamento = "pago"
+        if not (e.recebido_por or '').strip():
+            e.recebido_por = "Crédito automático"
         db.session.add(e)
         db.session.commit()
         atualizar_saldo_credito_cliente(cli.id)
         return Decimal("0.00")
 
-    saldo_atual = atualizar_saldo_credito_cliente(cli.id)
-    saldo = _as_decimal(saldo_atual)
-
-    if permitir_saldo_negativo:
-        consumir_val = faltante
-    else:
-        if exigir_saldo_total and saldo < faltante:
-            return Decimal("0.00")
-        consumir_val = min(saldo, faltante)
-
-    consumir_val = _as_decimal(consumir_val)
-    if consumir_val <= 0:
-        return Decimal("0.00")
-
-    novo_usado = (usado_antes + consumir_val).quantize(Decimal("0.01"))
-
-    mov = CreditoMovimento(
-        cliente_id=cli.id,
-        tipo="debito",
-        valor=float(consumir_val),
-        referencia=f"Entrega #{e.id}",
-        entrega_id=e.id,
-    )
-    db.session.add(mov)
-
-    e.credito_usado = float(novo_usado)
-    if novo_usado >= valor:
-        e.status_pagamento = "pago"
-        if not (e.pagamento or "").strip():
-            e.pagamento = "Crédito"
-        if not (e.recebido_por or "").strip():
-            e.recebido_por = "Crédito automático"
-    else:
-        if not (e.status_pagamento or "").strip():
-            e.status_pagamento = "pendente"
+    e.credito_usado = float(valor_entrega)
+    e.status_pagamento = "pago"
+    if not (e.pagamento or '').strip():
+        e.pagamento = "Crédito"
+    if not (e.recebido_por or '').strip():
+        e.recebido_por = "Crédito automático"
 
     db.session.add(e)
     db.session.commit()
-
     atualizar_saldo_credito_cliente(cli.id)
-    return consumir_val
+
+    return abs(diferenca).quantize(Decimal("0.01"))
 
 
 def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     """
-    Estorna o crédito efetivamente lançado no extrato desta entrega.
-    Usa os movimentos ligados à entrega, evitando criar estorno sem débito anterior.
+    Estorna o consumo líquido de crédito da entrega.
+
+    Usado quando:
+      - a entrega é excluída;
+      - a forma de pagamento deixa de ser crédito;
+      - é necessário desfazer o vínculo financeiro.
+
+    Ele não depende apenas de entrega.credito_usado, porque entregas antigas podem ter
+    movimentos sem esse campo preenchido corretamente.
     """
     e = Entrega.query.get(entrega_id)
     if not e:
         return Decimal("0.00")
 
-    cli = _cliente_credito_da_entrega(e)
+    cli = _cliente_da_entrega(e)
     if not cli:
-        e.credito_usado = 0.0
-        db.session.add(e)
-        db.session.commit()
         return Decimal("0.00")
 
-    usado = credito_liquido_usado_entrega(e.id, cli.id)
-    if usado <= 0:
+    liquido_atual = _credito_liquido_da_entrega(e.id, cli.id)
+    if liquido_atual <= 0:
         e.credito_usado = 0.0
         db.session.add(e)
         db.session.commit()
@@ -2036,20 +1970,21 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
 
     mov_estorno = CreditoMovimento(
         cliente_id=cli.id,
-        tipo="credito",
-        valor=float(usado),
-        referencia=f"Estorno Entrega #{e.id}",
         entrega_id=e.id,
+        tipo="credito",
+        valor=float(liquido_atual),
+        referencia=f"Estorno Entrega #{e.id}",
+        data=datetime.utcnow(),
+        criado_em=datetime.utcnow(),
     )
     db.session.add(mov_estorno)
 
     e.credito_usado = 0.0
     db.session.add(e)
     db.session.commit()
-
     atualizar_saldo_credito_cliente(cli.id)
-    return usado
 
+    return liquido_atual.quantize(Decimal("0.01"))
 
 def consumo_total_do_credito(credito_id: int) -> float:
     """
@@ -6837,17 +6772,7 @@ def api_update_entrega_valor(entrega_id):
         return jsonify({"ok": False, "error": "Valor não pode ser negativo."}), 400
 
     e.valor = float(novo_valor)
-    db.session.add(e)
     db.session.commit()
-
-    try:
-        if pagamento_usa_credito(e.pagamento):
-            desfazer_consumo_credito_da_entrega(e.id)
-            consumir_credito_em_entrega(e.id, exigir_saldo_total=False, permitir_saldo_negativo=True)
-        elif (e.credito_usado or 0) > 0:
-            desfazer_consumo_credito_da_entrega(e.id)
-    except Exception as ex:
-        current_app.logger.exception("Falha ao recalcular crédito na entrega %s: %s", e.id, ex)
 
     # Atualiza painéis em tempo real (se você usa isso)
     emitir_atualizacao_entrega(e, "editada")
@@ -6911,13 +6836,6 @@ def api_update_entrega_inline(entrega_id):
 
     if changed:
         db.session.commit()
-        try:
-            if pagamento_usa_credito(e.pagamento):
-                sincronizar_credito_da_entrega(e.id, exigir_saldo_total=False, permitir_saldo_negativo=True)
-            elif (e.credito_usado or 0) > 0:
-                desfazer_consumo_credito_da_entrega(e.id)
-        except Exception as ex:
-            current_app.logger.exception("Falha ao sincronizar crédito inline na entrega %s: %s", e.id, ex)
 
     return jsonify(
         ok=True,
@@ -7221,7 +7139,7 @@ def cadastrar_entrega():
 
         try:
             if pagamento_usa_credito(entrega.pagamento):
-                valor_consumido = consumir_credito_em_entrega(entrega.id, exigir_saldo_total=False, permitir_saldo_negativo=True)
+                valor_consumido = consumir_credito_em_entrega(entrega.id)
                 credito_consumido = float(valor_consumido or 0.0)
                 if credito_consumido > 0:
                     msg = (
@@ -7407,7 +7325,7 @@ def agendar_entrega():
 
         try:
             if pagamento_usa_credito(entrega.pagamento):
-                valor_consumido = consumir_credito_em_entrega(entrega.id, exigir_saldo_total=False, permitir_saldo_negativo=True)
+                valor_consumido = consumir_credito_em_entrega(entrega.id)
                 credito_consumido = float(valor_consumido or 0.0)
                 if credito_consumido > 0:
                     msg = (
@@ -7513,11 +7431,12 @@ def editar_entrega(id):
 
             try:
                 if pagamento_usa_credito(entrega.pagamento):
-                    desfazer_consumo_credito_da_entrega(entrega.id)
-                    consumir_credito_em_entrega(entrega.id, exigir_saldo_total=False, permitir_saldo_negativo=True)
+                    # Ajusta somente a diferença do valor. Se o valor mudou de 17 para 34,
+                    # lança +17; se mudou de 34 para 17, estorna -17.
+                    consumir_credito_em_entrega(entrega.id, exigir_saldo_total=False)
                 else:
-                    if (entrega.credito_usado or 0) > 0:
-                        desfazer_consumo_credito_da_entrega(entrega.id)
+                    # Se deixou de ser crédito, estorna o consumo líquido existente.
+                    desfazer_consumo_credito_da_entrega(entrega.id)
 
             except Exception as ex:
                 app.logger.exception(
@@ -8259,7 +8178,7 @@ def api_atualizar_valor_entrega(id):
         if pagamento_usa_credito(e.pagamento):
             # zera consumo antigo e tenta consumir de novo no novo valor
             desfazer_consumo_credito_da_entrega(e.id)
-            consumir_credito_em_entrega(e.id, exigir_saldo_total=False, permitir_saldo_negativo=True)
+            consumir_credito_em_entrega(e.id)
         else:
             # se não usa crédito e tinha crédito usado, estorna
             if (e.credito_usado or 0) > 0:
@@ -9113,80 +9032,6 @@ def creditos():
     )
 
 
-@app.route('/creditos/reprocessar-auto', methods=['POST'])
-def creditos_reprocessar_auto():
-    """
-    Reprocessa entregas pagas por crédito automático e sincroniza o extrato.
-    Útil para corrigir entregas antigas que ficaram sem movimento de consumo.
-    """
-    if not session.get('is_admin'):
-        return redirect(url_for('login'))
-
-    cliente_id = request.form.get('cliente_id', type=int)
-
-    query = Entrega.query.filter(Entrega.pagamento.ilike('%cred%'))
-    query = query.order_by(Entrega.data_envio.asc(), Entrega.id.asc())
-
-    total_analisadas = 0
-    total_corrigidas = 0
-    total_consumido = Decimal("0.00")
-    total_estornado = Decimal("0.00")
-
-    for e in query.all():
-        if not pagamento_usa_credito(e.pagamento):
-            continue
-
-        cli = _cliente_credito_da_entrega(e)
-        if not cli:
-            continue
-
-        if cliente_id and cli.id != cliente_id:
-            continue
-
-        total_analisadas += 1
-
-        antes = credito_liquido_usado_entrega(e.id, cli.id)
-        resultado = sincronizar_credito_da_entrega(
-            e.id,
-            exigir_saldo_total=False,
-            permitir_saldo_negativo=True,
-        )
-        depois = credito_liquido_usado_entrega(e.id, cli.id)
-
-        if depois != antes or resultado.get('estornado', 0) or resultado.get('consumido', 0):
-            total_corrigidas += 1
-            total_consumido += _as_decimal(resultado.get('consumido') or 0)
-            total_estornado += _as_decimal(resultado.get('estornado') or 0)
-
-    # Recalcula todos os clientes envolvidos no final.
-    if cliente_id:
-        atualizar_saldo_credito_cliente(cliente_id)
-    else:
-        ids_clientes = [cid for (cid,) in db.session.query(Cliente.id).all()]
-        for cid in ids_clientes:
-            atualizar_saldo_credito_cliente(cid)
-
-    msg = (
-        f'Reprocessamento concluído: {total_analisadas} entregas analisadas, '
-        f'{total_corrigidas} corrigidas, '
-        f'R$ {float(total_consumido):.2f} consumidos e '
-        f'R$ {float(total_estornado):.2f} estornados.'
-    )
-    flash(msg, 'success')
-
-    if _wants_json():
-        return jsonify(
-            ok=True,
-            analisadas=total_analisadas,
-            corrigidas=total_corrigidas,
-            consumido=float(total_consumido),
-            estornado=float(total_estornado),
-            message=msg,
-        )
-
-    return redirect(url_for('creditos', cliente_id=cliente_id) if cliente_id else url_for('creditos'))
-
-
 @app.route('/creditos/<int:cliente_id>/limpar', methods=['POST'])
 def creditos_limpar_cliente(cliente_id):
     """
@@ -9213,6 +9058,77 @@ def creditos_limpar_cliente(cliente_id):
         return jsonify(ok=True, message=msg, cliente_id=cliente_id)
 
     return redirect(url_for('creditos'))
+
+
+@app.route('/creditos/reprocessar-auto', methods=['POST'])
+def creditos_reprocessar_auto():
+    """
+    Reprocessa entregas antigas marcadas como crédito automático.
+
+    Pode ser usado após atualização do sistema para criar débitos faltantes
+    e ajustar valores editados. A função é idempotente: se rodar duas vezes,
+    não duplica consumo, pois consumir_credito_em_entrega() só lança diferença.
+    """
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cliente_id = request.form.get('cliente_id', type=int) or request.args.get('cliente_id', type=int)
+
+    q = Entrega.query
+    if cliente_id:
+        q = q.filter(Entrega.cliente_id == cliente_id)
+
+    analisadas = 0
+    ajustadas = 0
+    total_ajustado = Decimal("0.00")
+    clientes_afetados = set()
+
+    try:
+        for entrega in q.order_by(Entrega.data_envio.asc(), Entrega.id.asc()).all():
+            if not pagamento_usa_credito(entrega.pagamento):
+                continue
+
+            cli = _cliente_da_entrega(entrega)
+            if not cli:
+                continue
+
+            analisadas += 1
+            antes = _credito_liquido_da_entrega(entrega.id, cli.id)
+            ajuste = consumir_credito_em_entrega(entrega.id, exigir_saldo_total=False)
+            depois = _credito_liquido_da_entrega(entrega.id, cli.id)
+
+            if depois != antes or ajuste > 0:
+                ajustadas += 1
+                total_ajustado += abs(depois - antes)
+                clientes_afetados.add(cli.id)
+
+        for cid in clientes_afetados:
+            atualizar_saldo_credito_cliente(cid)
+
+        msg = (
+            f'Reprocessamento concluído. Entregas analisadas: {analisadas}. '
+            f'Ajustadas: {ajustadas}. Total ajustado: R$ {float(total_ajustado):.2f}.'
+        )
+        flash(msg, 'success')
+
+        if _wants_json():
+            return jsonify(
+                ok=True,
+                message=msg,
+                analisadas=analisadas,
+                ajustadas=ajustadas,
+                total_ajustado=float(total_ajustado),
+            )
+
+    except Exception as e:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao reprocessar crédito automático')
+        msg = f'Erro ao reprocessar crédito automático: {e.__class__.__name__}'
+        flash(msg, 'danger')
+        if _wants_json():
+            return jsonify(ok=False, message=msg), 500
+
+    return redirect(url_for('creditos', cliente_id=cliente_id) if cliente_id else url_for('creditos'))
 
 
 @app.route('/creditos/novo', methods=['GET', 'POST'])
@@ -9428,6 +9344,14 @@ def creditos_cadastrar():
     desconto_valor = data.get('desconto_valor') or 0
     motivo = (data.get('motivo') or '').strip()
     criado_por = session.get('user_nome', 'Supervisor')
+    criado_em_str = (data.get('criado_em') or '').strip()
+    criado_em_dt = None
+    if criado_em_str:
+        try:
+            data_local = datetime.strptime(criado_em_str, '%Y-%m-%d').date()
+            criado_em_dt = BRAZIL_TZ.localize(datetime.combine(data_local, time.min)).astimezone(pytz.utc).replace(tzinfo=None)
+        except Exception:
+            criado_em_dt = None
 
     try:
         valor_bruto = float(valor_bruto)
@@ -9453,7 +9377,8 @@ def creditos_cadastrar():
             desconto_tipo=desconto_tipo,
             desconto_valor=desconto_valor,
             motivo=motivo,
-            criado_por=criado_por
+            criado_por=criado_por,
+            criado_em_dt=criado_em_dt
         )
         msg = 'Crédito cadastrado com sucesso.'
         if _wants_json():
