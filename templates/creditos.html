@@ -713,6 +713,19 @@
             {{ '%.2f'|format(total_consumos or 0)|replace('.',',') }}
           </span>
         </div>
+
+        <form action="{{ url_for('creditos_reprocessar_auto') }}"
+              method="POST"
+              class="sticky-actions"
+              onsubmit="return confirm('Reprocessar entregas de crédito automático e corrigir consumos faltantes?');">
+          <input type="hidden" name="cliente_id" value="{{ cliente_id or '' }}">
+          <button type="submit" class="btn alt">
+            Reprocessar crédito automático
+          </button>
+          <span class="hint">
+            Use quando uma entrega CREDITO_AUTO não aparecer no extrato.
+          </span>
+        </form>
       </div>
 
       <div class="search-box">
