@@ -719,6 +719,25 @@ class Entrega(db.Model):
         return f'<Entrega {self.id} - {self.cliente} - {self.bairro} - R${self.valor:.2f}>'
 
 
+
+class SolicitacaoAlteracaoValor(db.Model):
+    __tablename__ = 'solicitacao_alteracao_valor'
+
+    id = db.Column(db.Integer, primary_key=True)
+    entrega_id = db.Column(db.Integer, db.ForeignKey('entrega.id', ondelete='CASCADE'), nullable=False, index=True)
+    cooperado_id = db.Column(db.Integer, db.ForeignKey('cooperado.id'), nullable=False, index=True)
+    valor_original = db.Column(db.Float, nullable=False)
+    valor_solicitado = db.Column(db.Float, nullable=False)
+    motivo = db.Column(db.String(500), nullable=True)
+    status = db.Column(db.String(20), nullable=False, default='pendente', index=True)
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
+    analisado_em = db.Column(db.DateTime, nullable=True)
+    analisado_por = db.Column(db.String(100), nullable=True)
+
+    entrega = db.relationship('Entrega', backref=db.backref('solicitacoes_valor', lazy=True, cascade='all, delete-orphan'))
+    cooperado = db.relationship('Cooperado')
+
+
 # =========================================================
 # HELPER: EMITIR ATUALIZAÇÃO EM TEMPO REAL
 # =========================================================
@@ -4598,7 +4617,9 @@ def admin():
     data_fim = request.args.get('data_fim')
     cooperado_id = request.args.get('cooperado_id', 'todos')
     status_pagamento = request.args.get('status_pagamento', 'todos')
+    forma_pagamento = (request.args.get('forma_pagamento') or 'todos').strip()
     cliente = (request.args.get('cliente') or '').strip()
+    endereco = (request.args.get('endereco') or '').strip()
 
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
@@ -4637,6 +4658,18 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
+    if forma_pagamento and forma_pagamento != 'todos':
+        query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+
+    if endereco:
+        like_end = f"%{endereco.lower()}%"
+        query = query.filter(or_(
+            func.lower(func.coalesce(Entrega.bairro, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.origem_json, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
+        ))
+
     entregas_all = (
         query.options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
@@ -4647,6 +4680,15 @@ def admin():
     entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    formas_pagamento_disponiveis = [
+        (row[0] or '').strip()
+        for row in db.session.query(Entrega.pagamento)
+            .filter(Entrega.pagamento.isnot(None))
+            .distinct()
+            .order_by(Entrega.pagamento.asc())
+            .all()
+        if (row[0] or '').strip()
+    ]
 
     inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
     mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
@@ -4673,7 +4715,32 @@ def admin():
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
-    cooperados_js = [{"id": c.id, "nome": c.nome} for c in cooperados]
+    # Cooperados da fila aparecem primeiro na atribuição manual, respeitando a posição.
+    fila_por_id = {int(it.cooperado_id): idx for idx, it in enumerate(lista_espera, start=1) if it.cooperado_id}
+    cooperados_ordenados_atribuicao = sorted(
+        cooperados,
+        key=lambda c: (0 if c.id in fila_por_id else 1, fila_por_id.get(c.id, 999999), (c.nome or '').lower())
+    )
+    cooperados_js = [
+        {
+            "id": c.id,
+            "nome": c.nome,
+            "na_fila": c.id in fila_por_id,
+            "posicao_fila": fila_por_id.get(c.id),
+            "rotulo": (f"{fila_por_id[c.id]}º da fila — {c.nome}" if c.id in fila_por_id else c.nome),
+        }
+        for c in cooperados_ordenados_atribuicao
+    ]
+
+    solicitacoes_valor = (
+        SolicitacaoAlteracaoValor.query
+        .options(joinedload(SolicitacaoAlteracaoValor.entrega), joinedload(SolicitacaoAlteracaoValor.cooperado))
+        .order_by(
+            case((SolicitacaoAlteracaoValor.status == 'pendente', 0), else_=1),
+            SolicitacaoAlteracaoValor.criado_em.desc()
+        )
+        .all()
+    )
 
     html = render_template(
         'admin.html',
@@ -4690,9 +4757,121 @@ def admin():
         lista_espera=lista_espera,
         cooperados_disponiveis=cooperados_disponiveis,
         cooperados_js=cooperados_js,
+        solicitacoes_valor=solicitacoes_valor,
+        formas_pagamento_disponiveis=formas_pagamento_disponiveis,
     )
     return _patch_admin_top_link(html)
 
+
+
+@app.post('/cooperado/entrega/<int:entrega_id>/solicitar-alteracao-valor')
+def cooperado_solicitar_alteracao_valor(entrega_id):
+    cooperado_id = session.get('user_id')
+    if not cooperado_id or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    entrega = Entrega.query.filter_by(id=entrega_id, cooperado_id=cooperado_id).first()
+    if not entrega:
+        return jsonify(ok=False, error='Entrega não encontrada'), 404
+
+    pendente = SolicitacaoAlteracaoValor.query.filter_by(entrega_id=entrega.id, status='pendente').first()
+    if pendente:
+        return jsonify(ok=False, error='Já existe uma solicitação pendente para esta entrega'), 409
+
+    data = request.get_json(silent=True) or request.form
+    try:
+        novo_valor = float(str(data.get('valor_solicitado', '')).replace('.', '').replace(',', '.'))
+    except Exception:
+        return jsonify(ok=False, error='Informe um valor válido'), 400
+
+    if novo_valor <= 0:
+        return jsonify(ok=False, error='O valor precisa ser maior que zero'), 400
+
+    motivo = (data.get('motivo') or '').strip()
+    solicitacao = SolicitacaoAlteracaoValor(
+        entrega_id=entrega.id,
+        cooperado_id=cooperado_id,
+        valor_original=float(entrega.valor or 0),
+        valor_solicitado=novo_valor,
+        motivo=motivo[:500],
+        status='pendente'
+    )
+    db.session.add(solicitacao)
+    db.session.commit()
+    return jsonify(ok=True, solicitacao_id=solicitacao.id, status='pendente')
+
+
+@app.post('/admin/solicitacao-valor/<int:solicitacao_id>/aprovar')
+def admin_aprovar_solicitacao_valor(solicitacao_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+    solicitacao = SolicitacaoAlteracaoValor.query.get_or_404(solicitacao_id)
+    if solicitacao.status != 'pendente':
+        return jsonify(ok=False, error='Solicitação já analisada'), 409
+    entrega = solicitacao.entrega
+    if not entrega:
+        return jsonify(ok=False, error='Entrega não encontrada'), 404
+    entrega.valor = float(solicitacao.valor_solicitado)
+    solicitacao.status = 'aprovada'
+    solicitacao.analisado_em = datetime.utcnow()
+    solicitacao.analisado_por = session.get('admin_user') or session.get('username') or 'admin'
+    db.session.commit()
+    emitir_atualizacao_entrega(entrega, 'valor_alterado')
+    return jsonify(ok=True, novo_valor=float(entrega.valor), status='aprovada')
+
+
+@app.post('/admin/solicitacao-valor/<int:solicitacao_id>/recusar')
+def admin_recusar_solicitacao_valor(solicitacao_id):
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+    solicitacao = SolicitacaoAlteracaoValor.query.get_or_404(solicitacao_id)
+    if solicitacao.status != 'pendente':
+        return jsonify(ok=False, error='Solicitação já analisada'), 409
+    solicitacao.status = 'recusada'
+    solicitacao.analisado_em = datetime.utcnow()
+    solicitacao.analisado_por = session.get('admin_user') or session.get('username') or 'admin'
+    db.session.commit()
+    return jsonify(ok=True, status='recusada')
+
+
+@app.post('/admin/solicitacoes-valor/aprovar-todas')
+def admin_aprovar_todas_solicitacoes_valor():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+    solicitacoes = SolicitacaoAlteracaoValor.query.filter_by(status='pendente').all()
+    aprovadas = 0
+    for solicitacao in solicitacoes:
+        if solicitacao.entrega:
+            solicitacao.entrega.valor = float(solicitacao.valor_solicitado)
+            solicitacao.status = 'aprovada'
+            solicitacao.analisado_em = datetime.utcnow()
+            solicitacao.analisado_por = session.get('admin_user') or session.get('username') or 'admin'
+            aprovadas += 1
+    db.session.commit()
+    return jsonify(ok=True, aprovadas=aprovadas)
+
+
+@app.post('/admin/entregas/marcar-todas-entregues')
+def admin_marcar_todas_entregas_entregues():
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+    data = request.get_json(silent=True) or {}
+    ids = data.get('ids') or []
+    query = Entrega.query
+    if ids:
+        try:
+            ids = [int(x) for x in ids]
+            query = query.filter(Entrega.id.in_(ids))
+        except Exception:
+            return jsonify(ok=False, error='Lista de entregas inválida'), 400
+    entregas = query.all()
+    alteradas = 0
+    for entrega in entregas:
+        if (entrega.status or '').lower() not in ('entregue', 'recebido'):
+            entrega.status = 'recebido'
+            alteradas += 1
+    db.session.commit()
+    return jsonify(ok=True, alteradas=alteradas)
 
 @app.route('/api/admin/kpis')
 def api_admin_kpis():
@@ -4826,6 +5005,7 @@ def painel_cooperado():
     fim = request.args.get('fim')
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
     todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
+    cliente_busca = (request.args.get('cliente') or '').strip()
 
     base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
@@ -4909,6 +5089,9 @@ def painel_cooperado():
     # Histórico (tabela) -> mantém filtro de período para não pesar
     query = base_q
 
+    if cliente_busca:
+        query = query.filter(func.lower(Entrega.cliente).like(f"%{cliente_busca.lower()}%"))
+
     if status_pgto == 'pago':
         query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
     elif status_pgto == 'pendente':
@@ -4962,6 +5145,18 @@ def painel_cooperado():
     total_pendente = max(0.0, total_geral - total_pago)
     total_pendente_geral = sum(float(e.valor or 0) for e in pendencias_pagamento)
 
+    fila_itens = (
+        ListaEspera.query
+        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc())
+        .all()
+    )
+    posicao_fila = None
+    for idx, item in enumerate(fila_itens, start=1):
+        if item.cooperado_id and int(item.cooperado_id) == int(user_id):
+            posicao_fila = idx
+            break
+    total_fila = len(fila_itens)
+
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
@@ -4985,6 +5180,8 @@ def painel_cooperado():
         cooperado_id=user_id,
         now=lambda: datetime.now(BRAZIL_TZ),
         app_token=(coop.app_token if coop else ''),
+        posicao_fila=posicao_fila,
+        total_fila=total_fila,
     )
 
 @app.route("/cooperado/verificar_nova_entrega")
@@ -10724,7 +10921,9 @@ def estatisticas_cooperado_exportar_xlsx():
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
     status_pagamento = request.args.get('status_pagamento', 'todos')
+    forma_pagamento = (request.args.get('forma_pagamento') or 'todos').strip()
     cliente = (request.args.get('cliente') or '').strip()
+    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
     if cooperado_id != 'todos':
@@ -10869,7 +11068,10 @@ def exportar_xlsx():
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
     cooperado_id = request.args.get('cooperado_id', 'todos')
+    status_pagamento = request.args.get('status_pagamento', 'todos')
+    forma_pagamento = (request.args.get('forma_pagamento') or 'todos').strip()
     cliente = (request.args.get('cliente') or '').strip()
+    endereco = (request.args.get('endereco') or '').strip()
 
     query = Entrega.query
     if cooperado_id != 'todos':
@@ -10877,6 +11079,21 @@ def exportar_xlsx():
     if cliente:
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
+    if status_pagamento and status_pagamento != 'todos':
+        if status_pagamento == 'pago':
+            query = query.filter(func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago')
+        elif status_pagamento == 'pendente':
+            query = query.filter((Entrega.status_pagamento == None) | (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente'))
+    if forma_pagamento and forma_pagamento != 'todos':
+        query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+    if endereco:
+        like_end = f"%{endereco.lower()}%"
+        query = query.filter(or_(
+            func.lower(func.coalesce(Entrega.bairro, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.origem_json, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
+        ))
     if data_inicio:
         di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
         inicio_utc, _ = local_date_window_to_utc_range(di)
@@ -11284,6 +11501,16 @@ def relatorio_termico():
     if cliente:
         like = f"%{cliente.lower()}%"
         q = q.filter(func.lower(Entrega.cliente).like(like))
+    if forma_pagamento and forma_pagamento != 'todos':
+        q = q.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+    if endereco:
+        like_end = f"%{endereco.lower()}%"
+        q = q.filter(or_(
+            func.lower(func.coalesce(Entrega.bairro, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.origem_json, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
+            func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
+        ))
 
     coalesce_dt = func.coalesce(Entrega.data_atribuida, Entrega.data_envio)
     q = q.filter(coalesce_dt >= inicio_utc, coalesce_dt <= fim_utc).order_by(
