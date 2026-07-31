@@ -2425,11 +2425,17 @@ def ir_principal_escala():
         return redirect(url_for('retornar_admin_principal'))
     return redirect(_build_principal_sso_url(tipo='supervisao', principal_user='SUPERVISAO', next_path='/admin?tab=escalas'))
 
+_MOBILE_TRACKING_SCHEMA_READY = False
+
 def ensure_mobile_tracking_schema():
     """
-    Garante a coluna app_token em cooperado e a tabela localizacao_cooperado,
-    sem depender de migração externa.
+    Garante a coluna app_token em cooperado e a tabela localizacao_cooperado.
+    A verificação pesada é executada uma única vez por processo para não
+    atrasar cada abertura do painel do cooperado.
     """
+    global _MOBILE_TRACKING_SCHEMA_READY
+    if _MOBILE_TRACKING_SCHEMA_READY:
+        return
     try:
         db.create_all()
     except Exception:
@@ -2453,6 +2459,7 @@ def ensure_mobile_tracking_schema():
         db.session.commit()
     except Exception:
         db.session.rollback()
+    _MOBILE_TRACKING_SCHEMA_READY = True
 
 
 
@@ -4817,7 +4824,7 @@ def admin_aprovar_solicitacao_valor(solicitacao_id):
     solicitacao.analisado_por = session.get('admin_user') or session.get('username') or 'admin'
     db.session.commit()
     emitir_atualizacao_entrega(entrega, 'valor_alterado')
-    return jsonify(ok=True, novo_valor=float(entrega.valor), status='aprovada')
+    return jsonify(ok=True, entrega_id=entrega.id, novo_valor=float(entrega.valor), status='aprovada', analisado_por=solicitacao.analisado_por, analisado_em=solicitacao.analisado_em.isoformat() if solicitacao.analisado_em else None)
 
 
 @app.post('/admin/solicitacao-valor/<int:solicitacao_id>/recusar')
@@ -4831,7 +4838,7 @@ def admin_recusar_solicitacao_valor(solicitacao_id):
     solicitacao.analisado_em = datetime.utcnow()
     solicitacao.analisado_por = session.get('admin_user') or session.get('username') or 'admin'
     db.session.commit()
-    return jsonify(ok=True, status='recusada')
+    return jsonify(ok=True, entrega_id=solicitacao.entrega_id, status='recusada', analisado_por=solicitacao.analisado_por, analisado_em=solicitacao.analisado_em.isoformat() if solicitacao.analisado_em else None)
 
 
 @app.post('/admin/solicitacoes-valor/aprovar-todas')
@@ -4980,26 +4987,126 @@ def admin_baixar_comprovante(entrega_id):
 # ================================
 # PAINEL DO COOPERADO (ESTILO UBER)
 # ================================
+def _cooperado_entregas_filtradas(user_id, *, inicio=None, fim=None, status_pgto='todas', cliente='', todas_datas=False):
+    """Consulta leve das entregas do cooperado, usada pela tela e pelo filtro AJAX."""
+    query = Entrega.query.filter(Entrega.cooperado_id == int(user_id))
+    cliente = (cliente or '').strip()
+    status_pgto = (status_pgto or 'todas').lower()
+
+    if cliente:
+        query = query.filter(func.lower(Entrega.cliente).like(f"%{cliente.lower()}%"))
+
+    status_norm = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente'))
+    if status_pgto == 'pago':
+        query = query.filter(status_norm == 'pago')
+    elif status_pgto == 'pendente':
+        query = query.filter(status_norm != 'pago')
+
+    # Tela inicial: somente hoje. Pendências: todas as datas por padrão.
+    aplicar_hoje = not todas_datas and not inicio and not fim and status_pgto != 'pendente'
+    if aplicar_hoje:
+        hoje_local = datetime.now(BRAZIL_TZ).date()
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_local)
+        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
+
+    if not todas_datas:
+        if inicio:
+            try:
+                data_inicio = datetime.strptime(inicio, '%Y-%m-%d').date()
+                inicio_utc, _ = local_date_window_to_utc_range(data_inicio)
+                query = query.filter(Entrega.data_envio >= inicio_utc)
+            except (TypeError, ValueError):
+                pass
+        if fim:
+            try:
+                data_fim = datetime.strptime(fim, '%Y-%m-%d').date()
+                _, fim_utc = local_date_window_to_utc_range(data_fim)
+                query = query.filter(Entrega.data_envio <= fim_utc)
+            except (TypeError, ValueError):
+                pass
+
+    return query.options(joinedload(Entrega.cooperado)).order_by(Entrega.data_envio.desc())
+
+
+def _cooperado_serializar_entrega(entrega, ajuste_pendente=False):
+    entrega = _enriquecer_entrega(entrega)
+    data_local = to_brasilia(entrega.data_envio) if entrega.data_envio else None
+    status_pago = (entrega.status_pagamento or 'pendente').lower()
+    status_entrega = (entrega.status or 'pendente').lower()
+    return {
+        'id': entrega.id,
+        'cliente': entrega.cliente or '-',
+        'valor': float(entrega.valor or 0),
+        'pagamento': entrega.pagamento or '-',
+        'status_pagamento': 'pago' if status_pago == 'pago' else 'pendente',
+        'status_entrega': 'entregue' if status_entrega in ('recebido', 'entregue') else 'pendente',
+        'data': data_local.strftime('%Y-%m-%d') if data_local else '',
+        'data_br': data_local.strftime('%d/%m/%Y') if data_local else '-',
+        'hora': data_local.strftime('%H:%M') if data_local else '-',
+        'origem': getattr(entrega, 'origem_endereco', '') or '-',
+        'destino': getattr(entrega, 'destino_endereco', '') or '-',
+        'paradas': getattr(entrega, 'paradas_texto', '') or '',
+        'observacao': getattr(entrega, 'observacao_entrega', '') or '',
+        'ajuste_pendente': bool(ajuste_pendente),
+    }
+
+
+def _cooperado_dashboard_resumo(user_id):
+    """Resumo em uma única consulta agregada; evita carregar todo o histórico ao entrar."""
+    hoje_local = datetime.now(BRAZIL_TZ).date()
+    inicio_hoje, fim_hoje = local_date_window_to_utc_range(hoje_local)
+    pago_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) == 'pago'
+    pendente_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) != 'pago'
+    hoje_cond = and_(Entrega.data_envio >= inicio_hoje, Entrega.data_envio <= fim_hoje)
+
+    row = db.session.query(
+        func.count(Entrega.id),
+        func.coalesce(func.sum(Entrega.valor), 0),
+        func.coalesce(func.sum(case((pago_cond, Entrega.valor), else_=0)), 0),
+        func.coalesce(func.sum(case((pendente_cond, Entrega.valor), else_=0)), 0),
+        func.coalesce(func.sum(case((pendente_cond, 1), else_=0)), 0),
+        func.coalesce(func.sum(case((hoje_cond, Entrega.valor), else_=0)), 0),
+        func.coalesce(func.sum(case((hoje_cond, 1), else_=0)), 0),
+    ).filter(Entrega.cooperado_id == int(user_id)).one()
+
+    ano_expr = func.extract('year', Entrega.data_envio)
+    anos = [
+        int(item[0]) for item in db.session.query(ano_expr)
+        .filter(Entrega.cooperado_id == int(user_id), Entrega.data_envio.isnot(None))
+        .distinct().order_by(ano_expr.asc()).all()
+        if item[0] is not None
+    ]
+
+    return {
+        'years': anos,
+        'current_year': int(hoje_local.year),
+        'today': hoje_local.isoformat(),
+        'summary': {
+            'qtd_total': int(row[0] or 0),
+            'total_geral': float(row[1] or 0),
+            'total_pago': float(row[2] or 0),
+            'total_pendente': float(row[3] or 0),
+            'qtd_pendente': int(row[4] or 0),
+            'ganhos_hoje': float(row[5] or 0),
+            'qtd_hoje': int(row[6] or 0),
+        },
+    }
+
+
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
 
-    user_id = session['user_id']
+    user_id = int(session['user_id'])
     ensure_mobile_tracking_schema()
     coop = Cooperado.query.get(user_id)
-    if coop:
+    if coop and not getattr(coop, 'app_token', None):
         try:
-            _coopex_registrar_login_cooperado_no_mapa(coop, fonte="painel_cooperado")
+            coop.ensure_app_token()
+            db.session.commit()
         except Exception:
-            if not getattr(coop, 'app_token', None):
-                coop.ensure_app_token()
-                try:
-                    db.session.commit()
-                except Exception:
-                    db.session.rollback()
-    if coop:
-        marcar_cooperado_online(coop, 'painel_cooperado')
+            db.session.rollback()
 
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
@@ -5007,162 +5114,63 @@ def painel_cooperado():
     todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
     cliente_busca = (request.args.get('cliente') or '').strip()
 
-    base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
+    entregas = _cooperado_entregas_filtradas(
+        user_id,
+        inicio=inicio,
+        fim=fim,
+        status_pgto=status_pgto,
+        cliente=cliente_busca,
+        todas_datas=todas_datas_flag,
+    ).all()
 
-    def _parse_json_field(raw):
-        if not raw:
-            return {}
-        if isinstance(raw, dict):
-            return raw
-        try:
-            return json.loads(raw)
-        except Exception:
-            return {}
+    ids_entregas = [e.id for e in entregas]
+    ajustes_pendentes = set()
+    if ids_entregas:
+        ajustes_pendentes = {
+            int(row[0]) for row in db.session.query(SolicitacaoAlteracaoValor.entrega_id)
+            .filter(
+                SolicitacaoAlteracaoValor.entrega_id.in_(ids_entregas),
+                SolicitacaoAlteracaoValor.status == 'pendente'
+            ).all()
+        }
+    entregas = [_enriquecer_entrega(e) for e in entregas]
+    dashboard_data = _cooperado_dashboard_resumo(user_id)
 
-    def _enriquecer_entrega_local(e):
-        origem = _parse_json_field(getattr(e, 'origem_json', None))
-        destino = _parse_json_field(getattr(e, 'destino_json', None))
-        paradas = _parse_json_field(getattr(e, 'paradas_json', None))
-
-        e.origem_endereco = (
-            _ponto_endereco(origem)
-            or origem.get('address')
-            or origem.get('bairro')
-            or e.bairro
-            or 'Origem não informada'
-        )
-        e.destino_endereco = (
-            _parada_linha_exibicao(destino, '')
-            or _ponto_endereco(destino)
-            or destino.get('address')
-            or destino.get('bairro')
-            or 'Destino não informado'
-        )
-        e.origem_bairro = origem.get('bairro') or ''
-        e.destino_bairro = destino.get('bairro') or ''
-        e.contato_coleta = origem.get('contato') or ''
-        e.telefone_coleta = origem.get('telefone') or ''
-        e.contato_entrega = destino.get('contato') or ''
-        e.telefone_entrega = destino.get('telefone') or ''
-        e.observacao_entrega = destino.get('observacao_geral') or origem.get('observacao_geral') or ''
-        stops = paradas.get('stops') or paradas.get('paradas') or []
-        e.paradas_lista = stops if isinstance(stops, list) else []
-        partes_paradas = []
-        for p in e.paradas_lista:
-            if isinstance(p, dict):
-                linha = _parada_linha_exibicao(p, '')
-                if linha:
-                    partes_paradas.append(linha)
-        if bool(paradas.get('retorno')):
-            partes_paradas.append('Retorno: ' + (_entrega_endereco_linha(origem, e.bairro or '-') or 'endereço da coleta'))
-        else:
-            partes_paradas.append('Sem retorno')
-        e.paradas_texto = ' | '.join([x for x in partes_paradas if x])
-        return e
-
-    # Corridas em aberto / andamento
-    corridas_query = (
-        base_q
-        .filter(
-            (Entrega.status_corrida == None) |
-            (Entrega.status_corrida.in_(['pendente', 'aceita']))
-        )
-        .filter(
-            (Entrega.status == None) |
-            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
-        )
-        .order_by(Entrega.data_envio.desc())
+    # Corridas abertas/andamento continuam disponíveis sem carregar histórico completo.
+    corridas_raw = (
+        Entrega.query.filter(Entrega.cooperado_id == user_id)
+        .filter((Entrega.status_corrida == None) | (Entrega.status_corrida.in_(['pendente', 'aceita'])))
+        .filter((Entrega.status == None) | (~func.lower(Entrega.status).in_(['recebido', 'entregue'])))
+        .order_by(Entrega.data_envio.desc()).all()
     )
-    corridas_raw = corridas_query.all()
     corridas = []
-    for e in corridas_raw:
-        e = _enriquecer_entrega_local(e)
+    for entrega in corridas_raw:
+        entrega = _enriquecer_entrega(entrega)
         corridas.append({
-            "obj": e,
-            "origem_endereco": e.origem_endereco,
-            "destino_endereco": e.destino_endereco,
-            "origem_bairro": e.origem_bairro,
-            "destino_bairro": e.destino_bairro,
-            "waypoints": e.paradas_lista,
+            'obj': entrega,
+            'origem_endereco': entrega.origem_endereco,
+            'destino_endereco': entrega.destino_endereco,
+            'origem_bairro': (entrega.origem_extra or {}).get('bairro') or '',
+            'destino_bairro': (entrega.destino_extra or {}).get('bairro') or '',
+            'waypoints': entrega.paradas_lista,
         })
-
-    # Histórico (tabela) -> mantém filtro de período para não pesar
-    query = base_q
-
-    if cliente_busca:
-        query = query.filter(func.lower(Entrega.cliente).like(f"%{cliente_busca.lower()}%"))
-
-    if status_pgto == 'pago':
-        query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
-    elif status_pgto == 'pendente':
-        query = query.filter(
-            (Entrega.status_pagamento == None) |
-            (func.lower(Entrega.status_pagamento) == 'pendente')
-        )
-
-    aplicar_filtro_padrao_hoje = (not todas_datas_flag and not inicio and not fim and status_pgto != 'pendente')
-
-    if aplicar_filtro_padrao_hoje:
-        hoje_brasil = datetime.now(BRAZIL_TZ).date()
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
-        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
-
-    if not todas_datas_flag:
-        if inicio:
-            di = datetime.strptime(inicio, "%Y-%m-%d").date()
-            inicio_utc, _ = local_date_window_to_utc_range(di)
-            query = query.filter(Entrega.data_envio >= inicio_utc)
-        if fim:
-            df_ = datetime.strptime(fim, "%Y-%m-%d").date()
-            _, fim_utc = local_date_window_to_utc_range(df_)
-            query = query.filter(Entrega.data_envio <= fim_utc)
-
-    entregas = (
-        query
-        .options(joinedload(Entrega.cooperado))
-        .order_by(Entrega.data_envio.desc())
-        .all()
-    )
-    entregas = [_enriquecer_entrega_local(e) for e in entregas]
-
-    # Base completa do cooperado para gráficos e pendências
-    entregas_base_completa = (
-        base_q
-        .options(joinedload(Entrega.cooperado))
-        .order_by(Entrega.data_envio.desc())
-        .all()
-    )
-    entregas_base_completa = [_enriquecer_entrega_local(e) for e in entregas_base_completa]
-
-    # Pendências de pagamento independentes da data
-    pendencias_pagamento = [
-        e for e in entregas_base_completa
-        if (e.status_pagamento or '').lower() != 'pago'
-    ]
 
     total_geral = sum(float(e.valor or 0) for e in entregas)
     total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
     total_pendente = max(0.0, total_geral - total_pago)
-    total_pendente_geral = sum(float(e.valor or 0) for e in pendencias_pagamento)
 
-    fila_itens = (
-        ListaEspera.query
-        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc())
-        .all()
-    )
-    posicao_fila = None
-    for idx, item in enumerate(fila_itens, start=1):
-        if item.cooperado_id and int(item.cooperado_id) == int(user_id):
-            posicao_fila = idx
-            break
-    total_fila = len(fila_itens)
+    fila_itens = ListaEspera.query.order_by(
+        ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc()
+    ).all()
+    posicao_fila = next((idx for idx, item in enumerate(fila_itens, start=1)
+                         if item.cooperado_id and int(item.cooperado_id) == user_id), None)
 
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
-        entregas_graficos=entregas_base_completa,
-        pendencias_pagamento=pendencias_pagamento,
-        total_pendente_geral=total_pendente_geral,
+        ajustes_pendentes=ajustes_pendentes,
+        dashboard_data=dashboard_data,
+        total_pendente_geral=dashboard_data['summary']['total_pendente'],
         corridas=corridas,
         total_geral=total_geral,
         total_pago=total_pago,
@@ -5181,8 +5189,139 @@ def painel_cooperado():
         now=lambda: datetime.now(BRAZIL_TZ),
         app_token=(coop.app_token if coop else ''),
         posicao_fila=posicao_fila,
-        total_fila=total_fila,
+        total_fila=len(fila_itens),
     )
+
+
+@app.get('/api/cooperado/entregas')
+def api_cooperado_filtrar_entregas():
+    user_id = session.get('user_id')
+    if not user_id or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    inicio = request.args.get('inicio')
+    fim = request.args.get('fim')
+    status_pgto = (request.args.get('status_pgto') or 'todas').lower()
+    cliente = (request.args.get('cliente') or '').strip()
+    todas_datas = (request.args.get('todas_datas') or '') == '1'
+
+    entregas = _cooperado_entregas_filtradas(
+        int(user_id), inicio=inicio, fim=fim, status_pgto=status_pgto,
+        cliente=cliente, todas_datas=todas_datas
+    ).all()
+
+    ids = [e.id for e in entregas]
+    pendentes = set()
+    if ids:
+        pendentes = {
+            int(row[0]) for row in db.session.query(SolicitacaoAlteracaoValor.entrega_id)
+            .filter(SolicitacaoAlteracaoValor.entrega_id.in_(ids), SolicitacaoAlteracaoValor.status == 'pendente')
+            .all()
+        }
+
+    return jsonify(
+        ok=True,
+        count=len(entregas),
+        items=[_cooperado_serializar_entrega(e, e.id in pendentes) for e in entregas]
+    )
+
+
+@app.get('/api/cooperado/graficos')
+def api_cooperado_graficos():
+    user_id = session.get('user_id')
+    if not user_id or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 403
+
+    user_id = int(user_id)
+    periodo = (request.args.get('periodo') or 'semana').lower()
+    try:
+        ano = int(request.args.get('ano') or datetime.now(BRAZIL_TZ).year)
+    except Exception:
+        ano = datetime.now(BRAZIL_TZ).year
+
+    ano_inicio, _ = local_date_window_to_utc_range(date(ano, 1, 1))
+    _, ano_fim = local_date_window_to_utc_range(date(ano, 12, 31))
+    base_ano = Entrega.query.filter(
+        Entrega.cooperado_id == user_id,
+        Entrega.data_envio >= ano_inicio,
+        Entrega.data_envio <= ano_fim,
+    )
+
+    pago_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) == 'pago'
+    status_row = db.session.query(
+        func.coalesce(func.sum(case((pago_cond, 1), else_=0)), 0),
+        func.coalesce(func.sum(case((~pago_cond, 1), else_=0)), 0),
+    ).filter(
+        Entrega.cooperado_id == user_id,
+        Entrega.data_envio >= ano_inicio,
+        Entrega.data_envio <= ano_fim,
+    ).one()
+
+    labels, valores, quantidades = [], [], []
+    if periodo == 'ano':
+        ano_expr = func.extract('year', Entrega.data_envio)
+        rows = db.session.query(
+            ano_expr,
+            func.coalesce(func.sum(Entrega.valor), 0),
+            func.count(Entrega.id),
+        ).filter(Entrega.cooperado_id == user_id, Entrega.data_envio.isnot(None))\
+         .group_by(ano_expr).order_by(ano_expr.asc()).all()
+        for ano_row, valor_row, qtd_row in rows:
+            labels.append(str(int(ano_row)))
+            valores.append(float(valor_row or 0))
+            quantidades.append(int(qtd_row or 0))
+    elif periodo == 'mes':
+        mes_expr = func.extract('month', Entrega.data_envio)
+        rows = db.session.query(
+            mes_expr,
+            func.coalesce(func.sum(Entrega.valor), 0),
+            func.count(Entrega.id),
+        ).filter(
+            Entrega.cooperado_id == user_id,
+            Entrega.data_envio >= ano_inicio,
+            Entrega.data_envio <= ano_fim,
+        ).group_by(mes_expr).order_by(mes_expr.asc()).all()
+        mapa = {int(m): (float(v or 0), int(q or 0)) for m, v, q in rows}
+        labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
+        valores = [mapa.get(m, (0, 0))[0] for m in range(1, 13)]
+        quantidades = [mapa.get(m, (0, 0))[1] for m in range(1, 13)]
+    else:
+        hoje_local = datetime.now(BRAZIL_TZ).date()
+        if ano == hoje_local.year:
+            fim_local = hoje_local
+        else:
+            ultimo = base_ano.with_entities(func.max(Entrega.data_envio)).scalar()
+            fim_local = to_brasilia(ultimo).date() if ultimo else date(ano, 12, 31)
+        inicio_local = fim_local - timedelta(days=6)
+        inicio_semana, _ = local_date_window_to_utc_range(inicio_local)
+        _, fim_semana = local_date_window_to_utc_range(fim_local)
+        rows = db.session.query(Entrega.data_envio, Entrega.valor).filter(
+            Entrega.cooperado_id == user_id,
+            Entrega.data_envio >= inicio_semana,
+            Entrega.data_envio <= fim_semana,
+        ).all()
+        mapa = {inicio_local + timedelta(days=i): {'valor': 0.0, 'qtd': 0} for i in range(7)}
+        for data_envio, valor in rows:
+            local = to_brasilia(data_envio).date()
+            if local in mapa:
+                mapa[local]['valor'] += float(valor or 0)
+                mapa[local]['qtd'] += 1
+        nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
+        dias = list(mapa.keys())
+        labels = [nomes[d.weekday()] for d in dias]
+        valores = [mapa[d]['valor'] for d in dias]
+        quantidades = [mapa[d]['qtd'] for d in dias]
+
+    return jsonify(
+        ok=True,
+        periodo=periodo,
+        ano=ano,
+        labels=labels,
+        valores=valores,
+        quantidades=quantidades,
+        status={'pagas': int(status_row[0] or 0), 'pendentes': int(status_row[1] or 0)},
+    )
+
 
 @app.route("/cooperado/verificar_nova_entrega")
 def cooperado_verificar_nova_entrega():
