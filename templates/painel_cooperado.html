@@ -2,10 +2,8 @@
 <html lang="pt-br">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover, interactive-widget=resizes-content" />
   <title>Painel do Cooperado</title>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
-  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <style>
     :root{
       --royal:#0f4bff;
@@ -622,6 +620,282 @@
     .queue-position-card strong{display:block;color:#12316e;font-size:1rem}
     .queue-position-card span{display:block;color:var(--muted);font-size:.86rem;margin-top:3px;line-height:1.35}
 
+
+    /* Ajuste compacto para encaixar corretamente em telas de celular */
+    html,body{width:100%;max-width:100%;overflow-x:hidden}
+    body{font-family:Inter,ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,Arial,sans-serif}
+    .app{width:100%;max-width:680px;padding:10px max(10px,env(safe-area-inset-right)) calc(92px + env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left))}
+    .topbar{align-items:center;margin-bottom:10px;min-width:0}
+    .title-wrap{min-width:0}
+    .title-wrap h1{font-size:clamp(1.28rem,5.6vw,1.75rem);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .top-actions{flex-direction:row!important;align-items:center!important;gap:6px}
+    .icon-circle{width:40px;height:40px;border-radius:13px;box-shadow:0 6px 16px rgba(24,59,165,.08)}
+    .logout-btn{height:40px;padding:0 12px;border-radius:13px}
+    .queue-position-card{padding:10px 12px!important;border-radius:17px!important;margin-bottom:10px!important;box-shadow:0 7px 18px rgba(24,59,165,.07)!important;min-width:0}
+    .queue-position-icon{width:40px!important;height:40px!important;border-radius:14px!important}
+    .queue-position-card>div:last-child{min-width:0}
+    .queue-position-card strong{font-size:.92rem!important}
+    .queue-position-card span{font-size:.78rem!important;white-space:normal}
+    .hero-card{padding:15px;margin-bottom:9px;border-radius:20px}
+    .hero-label{font-size:.86rem;margin-bottom:8px}
+    .hero-value{font-size:clamp(1.85rem,9vw,2.6rem);margin-bottom:8px}
+    .hero-pill{padding:8px 11px;font-size:.82rem}
+    .summary-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin-bottom:10px}
+    .mini-card{padding:11px;border-radius:18px;min-width:0;box-shadow:0 7px 18px rgba(24,59,165,.07)}
+    .mini-top{gap:6px;margin-bottom:4px}
+    .mini-icon{width:34px;height:34px;border-radius:12px;font-size:.9rem}
+    .mini-card h3{font-size:.82rem;line-height:1.2}
+    .mini-value{font-size:clamp(1.18rem,5vw,1.55rem);margin:4px 0}
+    .mini-sub{font-size:.73rem;line-height:1.25}
+    .surface,.filter-card,.delivery-card,.chart-card{border-radius:18px;box-shadow:0 7px 18px rgba(24,59,165,.07)}
+    .surface{padding:10px}
+    .tab-bar{position:fixed;z-index:900;left:50%;transform:translateX(-50%);bottom:max(8px,env(safe-area-inset-bottom));width:min(calc(100% - 20px),660px);margin:0;padding:6px;border-radius:20px;background:rgba(255,255,255,.96);backdrop-filter:blur(10px)}
+    .tab-btn{padding:9px 6px;border-radius:15px;font-size:.82rem}
+    .section-head{margin-bottom:10px}
+    .section-head h2{font-size:1.12rem}
+    .chip{padding:7px 10px;font-size:.78rem}
+    .filter-card{padding:10px;margin-bottom:10px}
+    .search-box{margin-bottom:9px}
+    .search-box input,.field input,.field select,.field textarea{height:44px;border-radius:13px;min-width:0;font-size:16px}
+    .date-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px;margin-bottom:9px}
+    .field{min-width:0}
+    .field label{font-size:.76rem;margin-bottom:4px}
+    .segmented{gap:6px}
+    .segment-btn{padding:10px 6px!important;font-size:.82rem!important;border-radius:12px}
+    .filter-action-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:7px;margin-top:9px}
+    .filter-action-row .action-btn{width:100%;min-width:0;padding:11px 10px}
+    .reset-date-btn{background:#edf2ff;color:#2448a7;white-space:nowrap}
+    .delivery-list{gap:9px}
+    .delivery-card{padding:11px;min-width:0}
+    .delivery-top{gap:8px;min-width:0}
+    .delivery-top>div:first-child{min-width:0;flex:1}
+    .delivery-top>div:last-child{flex:none;max-width:45%}
+    .delivery-client{font-size:.98rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .delivery-meta,.delivery-address,.delivery-note{font-size:.78rem;gap:6px;word-break:break-word}
+    .delivery-value{font-size:1.08rem}
+    .badge{padding:6px 9px;font-size:.72rem}
+    .delivery-actions{gap:6px}
+    .delivery-actions .action-btn{padding:10px 7px;font-size:.78rem;flex:1 1 calc(50% - 6px)}
+    .chart-wrap{height:210px}
+    @media(max-width:370px){
+      .app{padding-left:8px;padding-right:8px}
+      .title-wrap h1{font-size:1.16rem}
+      .logout-btn{padding:0 9px;font-size:.82rem}
+      .summary-grid{gap:6px}
+      .mini-card{padding:9px}
+      .mini-icon{width:30px;height:30px}
+      .mini-card h3{font-size:.75rem}
+      .mini-value{font-size:1.08rem}
+      .filter-action-row{grid-template-columns:1fr}
+      .delivery-top{display:grid;grid-template-columns:minmax(0,1fr) auto}
+    }
+
+
+    /* ===== MOBILE-FIRST: tela encaixada, sem rolagem lateral e resumo inteiro ===== */
+    html,body{
+      width:100%;
+      height:100%;
+      height:100dvh;
+      max-width:100%;
+      margin:0;
+      overflow:hidden;
+      overscroll-behavior:none;
+    }
+    body{min-height:100dvh; background:#f4f7ff}
+    button,input,textarea,select{max-width:100%}
+    img,svg,canvas{max-width:100%}
+
+    .app{
+      width:100%;
+      max-width:680px;
+      height:100vh;
+      height:100dvh;
+      margin:0 auto;
+      padding:8px 10px calc(66px + env(safe-area-inset-bottom));
+      display:flex;
+      flex-direction:column;
+      gap:8px;
+      overflow:hidden;
+    }
+
+    .topbar{
+      flex:0 0 auto;
+      min-height:44px;
+      margin:0;
+      gap:8px;
+    }
+    .title-wrap{min-width:0;flex:1}
+    .title-wrap small{font-size:.68rem;margin-bottom:2px;gap:6px}
+    .title-wrap h1{
+      font-size:clamp(1.2rem,5.7vw,1.55rem);
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .top-actions{display:flex!important;flex-direction:row!important;gap:6px!important}
+    .icon-circle,.logout-btn{height:40px!important;border-radius:13px!important;box-shadow:0 5px 14px rgba(24,59,165,.08)!important}
+    .icon-circle{width:40px!important}
+    .logout-btn{padding:0 12px!important;font-size:.88rem}
+
+    .queue-position-card{
+      flex:0 0 auto;
+      min-height:52px;
+      margin:0!important;
+      padding:8px 10px!important;
+      gap:9px!important;
+      border-radius:16px!important;
+      box-shadow:0 5px 14px rgba(24,59,165,.07)!important;
+      overflow:hidden;
+    }
+    .queue-position-icon{width:36px!important;height:36px!important;border-radius:12px!important;font-size:.9rem!important}
+    .queue-position-card>div:last-child{min-width:0}
+    .queue-position-card strong{font-size:.82rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .queue-position-card span{font-size:.68rem!important;line-height:1.15!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    .tab-panel{display:none;min-width:0;min-height:0;width:100%;max-width:100%}
+    #tab-resumo.active{
+      display:flex;
+      flex:1 1 auto;
+      min-height:0;
+      flex-direction:column;
+      gap:8px;
+      overflow:hidden;
+    }
+    #tab-entregas.active,#tab-graficos.active{
+      display:block;
+      flex:1 1 auto;
+      min-height:0;
+      overflow-y:auto;
+      overflow-x:hidden;
+      -webkit-overflow-scrolling:touch;
+      overscroll-behavior-y:contain;
+      scrollbar-width:thin;
+    }
+
+    #tab-resumo .hero-card{
+      flex:0 0 102px;
+      height:102px;
+      min-height:0;
+      margin:0;
+      padding:13px 14px;
+      border-radius:19px;
+      box-shadow:0 7px 18px rgba(15,75,255,.15);
+    }
+    #tab-resumo .hero-label{font-size:.78rem;margin-bottom:5px}
+    #tab-resumo .hero-value{font-size:clamp(1.65rem,8vw,2.25rem);margin:0 0 7px}
+    #tab-resumo .hero-pill{padding:6px 9px;font-size:.7rem;max-width:100%;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+    #tab-resumo .summary-grid{
+      flex:1 1 auto;
+      min-height:0;
+      height:auto;
+      display:grid;
+      grid-template-columns:repeat(2,minmax(0,1fr));
+      grid-template-rows:repeat(2,minmax(0,1fr));
+      gap:7px;
+      margin:0;
+      overflow:hidden;
+    }
+    #tab-resumo .mini-card{
+      min-width:0;
+      min-height:0;
+      height:100%;
+      padding:8px 9px;
+      border-radius:17px;
+      box-shadow:0 5px 14px rgba(24,59,165,.07);
+      display:flex;
+      flex-direction:column;
+      justify-content:center;
+      overflow:hidden;
+    }
+    #tab-resumo .mini-top{margin:0 0 2px;gap:5px;align-items:center}
+    #tab-resumo .mini-icon{width:29px;height:29px;border-radius:10px;font-size:.74rem}
+    #tab-resumo .mini-card h3{font-size:.72rem;line-height:1.08;max-width:100%}
+    #tab-resumo .mini-value{font-size:clamp(1.05rem,5.3vw,1.42rem);line-height:1.05;margin:3px 0}
+    #tab-resumo .mini-sub{font-size:.62rem;line-height:1.12;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+
+    .tab-bar{
+      position:fixed!important;
+      z-index:1000;
+      left:0!important;
+      right:0!important;
+      bottom:0!important;
+      transform:none!important;
+      width:100%!important;
+      max-width:680px!important;
+      min-height:58px;
+      margin:0 auto!important;
+      padding:5px 8px calc(5px + env(safe-area-inset-bottom))!important;
+      border-radius:18px 18px 0 0!important;
+      background:rgba(255,255,255,.98)!important;
+      border:1px solid var(--line)!important;
+      border-bottom:none!important;
+      box-shadow:0 -8px 24px rgba(24,59,165,.12)!important;
+      backdrop-filter:blur(12px);
+    }
+    .tab-btn{min-width:0!important;padding:7px 4px!important;border-radius:13px!important;font-size:.72rem!important;gap:2px!important}
+    .tab-btn>span:first-child{font-size:.95rem;line-height:1}
+
+    #tab-entregas>.surface,#tab-graficos>.surface{
+      width:100%;
+      max-width:100%;
+      min-width:0;
+      margin:0;
+      padding:9px;
+      border-radius:17px;
+      box-shadow:none;
+    }
+    .filter-card{padding:9px!important;margin-bottom:9px!important;border-radius:15px!important;box-shadow:none!important}
+    .search-box{margin-bottom:7px!important}
+    .search-box input,.field input,.field select,.field textarea{height:41px!important;min-width:0!important;border-radius:12px!important;font-size:16px!important}
+    .date-grid{grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important;margin-bottom:7px!important}
+    .field{min-width:0}
+    .field label{font-size:.7rem!important;margin-bottom:3px!important}
+    .segmented{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr));gap:5px!important}
+    .segment-btn{min-width:0!important;padding:9px 3px!important;font-size:.74rem!important;border-radius:11px!important}
+    .filter-action-row{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;gap:6px!important;margin-top:7px!important}
+    .filter-action-row .action-btn{min-width:0!important;padding:10px 5px!important;font-size:.72rem!important}
+    .delivery-list{width:100%;max-width:100%;gap:8px!important}
+    .delivery-card{width:100%;max-width:100%;min-width:0;padding:10px!important;border-radius:15px!important;box-shadow:none!important;overflow:hidden}
+    .delivery-top{min-width:0;display:grid!important;grid-template-columns:minmax(0,1fr) auto;gap:7px!important}
+    .delivery-top>div{min-width:0}
+    .delivery-top>div:last-child{max-width:42vw!important}
+    .delivery-client{font-size:.9rem!important;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .delivery-meta,.delivery-address,.delivery-note{font-size:.72rem!important;line-height:1.25!important;word-break:break-word;overflow-wrap:anywhere}
+    .delivery-value{font-size:1rem!important}
+    .badge{font-size:.64rem!important;padding:5px 7px!important}
+    .delivery-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:5px!important}
+    .delivery-actions .action-btn{min-width:0!important;width:100%!important;padding:9px 4px!important;font-size:.7rem!important}
+    .chart-grid,.chart-card,.chart-wrap{min-width:0;max-width:100%}
+    .chart-wrap{height:205px!important;overflow:hidden}
+
+    .loading-state{padding:22px 10px;text-align:center;color:var(--muted);font-size:.82rem;font-weight:700}
+
+    @media (max-height:660px){
+      .app{gap:6px;padding-top:6px}
+      .topbar{min-height:40px}
+      .queue-position-card{min-height:46px;padding:6px 9px!important}
+      .queue-position-card span{display:none!important}
+      #tab-resumo .hero-card{flex-basis:88px;height:88px;padding:10px 12px}
+      #tab-resumo .hero-pill{padding:5px 8px}
+      #tab-resumo .mini-card{padding:6px 8px}
+      #tab-resumo .mini-sub{font-size:.58rem;-webkit-line-clamp:1}
+    }
+    @media (max-height:560px){
+      .title-wrap small{display:none}
+      .queue-position-card{min-height:40px}
+      #tab-resumo .hero-card{flex-basis:78px;height:78px}
+      #tab-resumo .hero-label{margin-bottom:2px}
+      #tab-resumo .hero-pill{display:none}
+      #tab-resumo .mini-sub{display:none}
+    }
+    @media (max-width:360px){
+      .app{padding-left:7px;padding-right:7px}
+      .logout-btn{padding:0 9px!important}
+      #tab-resumo .mini-card h3{font-size:.66rem}
+      #tab-resumo .mini-value{font-size:1rem}
+    }
+
   </style>
 </head>
 <body data-user-id="{{ cooperado_id }}">
@@ -663,7 +937,7 @@
             <div class="mini-icon">✓</div>
           </div>
           <div class="mini-value" id="entregas-hoje">0</div>
-          <div class="mini-sub">Quantidade realizada hoje</div>
+          <div class="mini-sub">Realizadas hoje</div>
         </div>
 
         <div class="mini-card pending pending-card" id="card-pendencias">
@@ -685,7 +959,7 @@
             <div class="mini-icon">R$</div>
           </div>
           <div class="mini-value" id="total-recebido">R$ 0,00</div>
-          <div class="mini-sub">Somente pagamentos confirmados</div>
+          <div class="mini-sub">Pagamentos confirmados</div>
         </div>
 
         <div class="mini-card span-2">
@@ -696,7 +970,7 @@
             <div class="mini-icon">#</div>
           </div>
           <div class="mini-value" id="total-geral">R$ 0,00</div>
-          <div class="mini-sub"><span id="total-entregas">0</span> entrega(s) carregada(s) neste painel</div>
+          <div class="mini-sub"><span id="total-entregas">0</span> entrega(s) no histórico</div>
         </div>
       </div>
     </section>
@@ -723,11 +997,11 @@
           <div class="date-grid">
             <div class="field">
               <label for="filtro-inicio">Data inicial</label>
-              <input type="date" id="filtro-inicio" value="{{ request.args.get('inicio', hoje) }}">
+              <input type="date" id="filtro-inicio" value="{{ request.args.get('inicio', '' if request.args.get('todas_datas') == '1' else hoje) }}">
             </div>
             <div class="field">
               <label for="filtro-fim">Data final</label>
-              <input type="date" id="filtro-fim" value="{{ request.args.get('fim', hoje) }}">
+              <input type="date" id="filtro-fim" value="{{ request.args.get('fim', '' if request.args.get('todas_datas') == '1' else hoje) }}">
             </div>
           </div>
 
@@ -736,7 +1010,10 @@
             <button type="button" class="segment-btn" data-filter="pendente">Pendentes</button>
             <button type="button" class="segment-btn" data-filter="pago">Pagas</button>
           </div>
-          <button type="button" class="action-btn primary" id="aplicar-filtros" style="width:100%;margin-top:10px">Buscar entregas</button>
+          <div class="filter-action-row">
+            <button type="button" class="action-btn primary" id="aplicar-filtros">Buscar entregas</button>
+            <button type="button" class="action-btn reset-date-btn" id="redefinir-data">Redefinir para hoje</button>
+          </div>
         </div>
 
         <div class="delivery-list" id="delivery-list">
@@ -787,7 +1064,7 @@
               <button type="button" class="action-btn" data-role="maps" data-id="{{ e.id }}">Maps</button>
               <button type="button" class="action-btn warn" data-role="pgto" data-id="{{ e.id }}">{{ 'Marcar pendente' if pago else 'Marcar pago' }}</button>
               <button type="button" class="action-btn primary" data-role="entrega" data-id="{{ e.id }}">{{ 'Voltar entrega' if entregue else 'Confirmar entrega' }}</button>
-              <button type="button" class="action-btn" data-role="solicitar-valor" data-id="{{ e.id }}" data-valor="{{ '%.2f'|format(e.valor or 0) }}">Solicitar ajuste de valor</button>
+              <button type="button" class="action-btn" data-role="solicitar-valor" data-id="{{ e.id }}" data-valor="{{ '%.2f'|format(e.valor or 0) }}" {% if ajustes_pendentes is defined and e.id in ajustes_pendentes %}disabled{% endif %}>{{ 'Aguardando aprovação' if ajustes_pendentes is defined and e.id in ajustes_pendentes else 'Solicitar ajuste de valor' }}</button>
             </div>
           </article>
           {% else %}
@@ -886,10 +1163,12 @@
 
   <script>
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
-    const rows = Array.from(document.querySelectorAll('.entrega-row'));
-    const todayISO = new Date().toLocaleDateString('en-CA');
+    let rows = Array.from(document.querySelectorAll('.entrega-row'));
+    const todayISO = {{ hoje|tojson }};
+    const dashboardData = {{ dashboard_data|tojson }};
+    const initialTab = {{ (request.args.get('tab','tab-resumo') or 'tab-resumo')|tojson }};
 
-    const deliveries = rows.map(row => ({
+    let deliveries = rows.map(row => ({
       id: row.dataset.id,
       element: row,
       cliente: (row.dataset.cliente || '').trim(),
@@ -905,14 +1184,15 @@
     }));
 
     const state = {
-      tab: 'tab-resumo',
+      tab: initialTab,
       listFilter: {{ (request.args.get('status_pgto','todas') or 'todas')|tojson }},
-      search: '',
+      search: (document.getElementById('filtro-cliente') ? document.getElementById('filtro-cliente').value : ''),
       inicio: document.getElementById('filtro-inicio') ? document.getElementById('filtro-inicio').value : '',
       fim: document.getElementById('filtro-fim') ? document.getElementById('filtro-fim').value : '',
       chartPeriod: 'semana',
       chartYear: null,
-      entregaIdModal: null
+      entregaIdModal: null,
+      allDates: {{ ((request.args.get('todas_datas') or '') == '1')|tojson }}
     };
 
     const parseDate = (str) => {
@@ -926,9 +1206,20 @@
     const monthNames = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
 
     function activateTab(tabName){
-      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === tabName));
-      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === tabName));
-      state.tab = tabName;
+      const validTab = document.getElementById(tabName) ? tabName : 'tab-resumo';
+      document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.tab === validTab));
+      document.querySelectorAll('.tab-panel').forEach(panel => panel.classList.toggle('active', panel.id === validTab));
+      state.tab = validTab;
+      try{
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab', validTab);
+        history.replaceState(null, '', url.toString());
+      }catch(_){ }
+      if(validTab === 'tab-graficos' && !chartsInitialized){
+        buildYearPills();
+        buildCharts();
+        chartsInitialized = true;
+      }
     }
 
     document.querySelectorAll('.tab-btn').forEach(btn => {
@@ -936,27 +1227,146 @@
     });
 
     function getTodaySummary(){
-      const todayItems = deliveries.filter(item => item.data === todayISO);
-      const ganhosHoje = todayItems.reduce((sum, item) => sum + item.valor, 0);
-      const qtdHoje = todayItems.length;
-      return { ganhosHoje, qtdHoje };
+      const summary = dashboardData.summary || {};
+      return {
+        ganhosHoje: Number(summary.ganhos_hoje || 0),
+        qtdHoje: Number(summary.qtd_hoje || 0)
+      };
     }
 
     function updateSummary(){
       const { ganhosHoje, qtdHoje } = getTodaySummary();
-      const pendentes = deliveries.filter(item => item.statusPagamento !== 'pago');
-      const totalRecebido = deliveries.filter(item => item.statusPagamento === 'pago').reduce((sum, item) => sum + item.valor, 0);
-      const totalGeral = deliveries.reduce((sum, item) => sum + item.valor, 0);
-      const totalPendencias = pendentes.reduce((sum, item) => sum + item.valor, 0);
-
+      const summary = dashboardData.summary || {};
       document.getElementById('ganhos-hoje').textContent = money(ganhosHoje);
       document.getElementById('entregas-hoje').textContent = String(qtdHoje);
-      document.getElementById('pendencias-valor').textContent = money(totalPendencias);
-      document.getElementById('pendencias-qtd').textContent = String(pendentes.length);
-      document.getElementById('total-recebido').textContent = money(totalRecebido);
-      document.getElementById('total-geral').textContent = money(totalGeral);
-      document.getElementById('total-entregas').textContent = String(deliveries.length);
+      document.getElementById('pendencias-valor').textContent = money(summary.total_pendente || 0);
+      document.getElementById('pendencias-qtd').textContent = String(summary.qtd_pendente || 0);
+      document.getElementById('total-recebido').textContent = money(summary.total_pago || 0);
+      document.getElementById('total-geral').textContent = money(summary.total_geral || 0);
+      document.getElementById('total-entregas').textContent = String(summary.qtd_total || 0);
       document.getElementById('ganhos-hoje-sub').textContent = qtdHoje ? `${qtdHoje} entrega(s) no dia` : 'Sem entregas registradas hoje';
+    }
+
+    const deliveryList = document.getElementById('delivery-list');
+    const deliveryCache = new Map();
+    let deliveryAbortController = null;
+
+    function escapeHtml(value){
+      return String(value ?? '')
+        .replaceAll('&','&amp;').replaceAll('<','&lt;').replaceAll('>','&gt;')
+        .replaceAll('"','&quot;').replaceAll("'",'&#039;');
+    }
+
+    function deliveryCardMarkup(item){
+      const pago = item.status_pagamento === 'pago';
+      const entregue = item.status_entrega === 'entregue';
+      const ajuste = !!item.ajuste_pendente;
+      return `<article class="delivery-card entrega-row"
+        data-id="${escapeHtml(item.id)}"
+        data-cliente="${escapeHtml(item.cliente)}"
+        data-valor="${Number(item.valor || 0).toFixed(2)}"
+        data-pagamento="${escapeHtml((item.pagamento || '-').toLowerCase())}"
+        data-status-pagamento="${pago ? 'pago' : 'pendente'}"
+        data-status-entrega="${entregue ? 'entregue' : 'pendente'}"
+        data-data="${escapeHtml(item.data)}"
+        data-hora="${escapeHtml(item.hora)}"
+        data-origem="${escapeHtml(item.origem)}"
+        data-destino="${escapeHtml(item.destino)}"
+        data-paradas="${escapeHtml(item.paradas)}">
+        <div class="delivery-top">
+          <div>
+            <div class="delivery-client">${escapeHtml(item.cliente || '-')}</div>
+            <div class="delivery-meta"><span>📅 ${escapeHtml(item.data_br || '-')}</span><span>⏰ ${escapeHtml(item.hora || '-')}</span><span>💳 ${escapeHtml(item.pagamento || '-')}</span></div>
+          </div>
+          <div>
+            <div class="delivery-value">${money(item.valor || 0)}</div>
+            <div style="display:flex;justify-content:flex-end;gap:5px;flex-wrap:wrap">
+              <span class="badge ${pago ? 'paid' : 'pending'}" data-role="pgto-label">${pago ? 'Paga' : 'Pendente'}</span>
+              <span class="badge ${entregue ? 'done' : 'notdone'}" data-role="entrega-label">${entregue ? 'Entregue' : 'Em aberto'}</span>
+            </div>
+          </div>
+        </div>
+        <div class="delivery-address"><strong style="color:#15306f">Coleta:</strong> <span>${escapeHtml(item.origem || '-')}</span></div>
+        <div class="delivery-address"><strong style="color:#15306f">Entrega:</strong> <span>${escapeHtml(item.destino || '-')}</span></div>
+        ${item.paradas ? `<div class="delivery-note"><strong style="color:#15306f">Paradas:</strong> <span>${escapeHtml(item.paradas)}</span></div>` : ''}
+        ${item.observacao ? `<div class="delivery-note"><strong style="color:#15306f">Observação:</strong> <span>${escapeHtml(item.observacao)}</span></div>` : ''}
+        <div class="delivery-actions">
+          <button type="button" class="action-btn" data-role="maps" data-id="${escapeHtml(item.id)}">Maps</button>
+          <button type="button" class="action-btn warn" data-role="pgto" data-id="${escapeHtml(item.id)}">${pago ? 'Marcar pendente' : 'Marcar pago'}</button>
+          <button type="button" class="action-btn primary" data-role="entrega" data-id="${escapeHtml(item.id)}">${entregue ? 'Voltar entrega' : 'Confirmar entrega'}</button>
+          <button type="button" class="action-btn" data-role="solicitar-valor" data-id="${escapeHtml(item.id)}" data-valor="${Number(item.valor || 0).toFixed(2)}" ${ajuste ? 'disabled' : ''}>${ajuste ? 'Aguardando aprovação' : 'Solicitar ajuste de valor'}</button>
+        </div>
+      </article>`;
+    }
+
+    function hydrateDeliveries(items){
+      deliveryList.innerHTML = (items || []).map(deliveryCardMarkup).join('');
+      rows = Array.from(deliveryList.querySelectorAll('.entrega-row'));
+      deliveries = rows.map(row => ({
+        id: row.dataset.id,
+        element: row,
+        cliente: (row.dataset.cliente || '').trim(),
+        valor: Number(row.dataset.valor || 0),
+        pagamento: (row.dataset.pagamento || '').toLowerCase(),
+        statusPagamento: (row.dataset.statusPagamento || 'pendente').toLowerCase(),
+        statusEntrega: (row.dataset.statusEntrega || 'pendente').toLowerCase(),
+        data: row.dataset.data || '',
+        hora: row.dataset.hora || '',
+        origem: row.dataset.origem || '',
+        destino: row.dataset.destino || '',
+        paradas: row.dataset.paradas || ''
+      }));
+      renderList();
+    }
+
+    function filterParams(){
+      const params = new URLSearchParams();
+      params.set('status_pgto', state.listFilter || 'todas');
+      if(state.search) params.set('cliente', state.search);
+      if(state.inicio) params.set('inicio', state.inicio);
+      if(state.fim) params.set('fim', state.fim);
+      if(state.allDates) params.set('todas_datas','1');
+      return params;
+    }
+
+    function syncFilterUrl(){
+      try{
+        const url = new URL(window.location.href);
+        url.searchParams.set('tab','tab-entregas');
+        url.searchParams.set('status_pgto',state.listFilter || 'todas');
+        if(state.search) url.searchParams.set('cliente',state.search); else url.searchParams.delete('cliente');
+        if(state.inicio) url.searchParams.set('inicio',state.inicio); else url.searchParams.delete('inicio');
+        if(state.fim) url.searchParams.set('fim',state.fim); else url.searchParams.delete('fim');
+        if(state.allDates) url.searchParams.set('todas_datas','1'); else url.searchParams.delete('todas_datas');
+        history.replaceState(null,'',url.toString());
+      }catch(_){ }
+    }
+
+    async function loadDeliveries({useCache=true}={}){
+      activateTab('tab-entregas');
+      syncFilterUrl();
+      const params = filterParams();
+      const cacheKey = params.toString();
+      if(useCache && deliveryCache.has(cacheKey)){
+        hydrateDeliveries(deliveryCache.get(cacheKey));
+        return;
+      }
+      if(deliveryAbortController) deliveryAbortController.abort();
+      deliveryAbortController = new AbortController();
+      deliveryList.innerHTML = '<div class="loading-state">Carregando entregas…</div>';
+      document.getElementById('empty-deliveries').style.display = 'none';
+      try{
+        const response = await fetch(`{{ url_for('api_cooperado_filtrar_entregas') }}?${params.toString()}`, {
+          headers:{'Accept':'application/json'}, cache:'no-store', signal:deliveryAbortController.signal
+        });
+        const data = await response.json();
+        if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível filtrar as entregas.');
+        deliveryCache.set(cacheKey, data.items || []);
+        hydrateDeliveries(data.items || []);
+      }catch(error){
+        if(error.name === 'AbortError') return;
+        deliveryList.innerHTML = `<div class="empty-state" style="display:block">${escapeHtml(error.message || 'Falha ao carregar entregas.')}</div>`;
+      }
     }
 
     function listMatches(item){
@@ -988,13 +1398,28 @@
     }
 
     document.querySelectorAll('.segment-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab','tab-entregas');
-        url.searchParams.set('status_pgto', btn.dataset.filter);
-        if (btn.dataset.filter === 'pendente') url.searchParams.set('todas_datas','1');
-        else url.searchParams.delete('todas_datas');
-        window.location.href = url.toString();
+      btn.addEventListener('click', async () => {
+        const filter = btn.dataset.filter || 'todas';
+        state.listFilter = filter;
+        document.querySelectorAll('.segment-btn').forEach(x => x.classList.toggle('active', x === btn));
+        if(filter === 'pendente'){
+          state.search = '';
+          state.inicio = '';
+          state.fim = '';
+          state.allDates = true;
+          filtroCliente.value = '';
+          filtroInicio.value = '';
+          filtroFim.value = '';
+        }else{
+          state.allDates = false;
+          if(!filtroInicio.value && !filtroFim.value){
+            filtroInicio.value = todayISO;
+            filtroFim.value = todayISO;
+          }
+          state.inicio = filtroInicio.value || todayISO;
+          state.fim = filtroFim.value || todayISO;
+        }
+        await loadDeliveries();
       });
     });
 
@@ -1011,47 +1436,85 @@
     if (filtroInicio){
       filtroInicio.addEventListener('change', () => {
         state.inicio = filtroInicio.value || '';
+        state.allDates = false;
         renderList();
       });
     }
     if (filtroFim){
       filtroFim.addEventListener('change', () => {
         state.fim = filtroFim.value || '';
+        state.allDates = false;
         renderList();
       });
     }
 
-    document.getElementById('card-pendencias').addEventListener('click', () => {
-      const url = new URL(window.location.href);
-      url.searchParams.set('tab','tab-entregas');
-      url.searchParams.set('status_pgto','pendente');
-      url.searchParams.set('todas_datas','1');
-      url.searchParams.delete('inicio');
-      url.searchParams.delete('fim');
-      window.location.href = url.toString();
+    document.getElementById('card-pendencias').addEventListener('click', async () => {
+      state.listFilter = 'pendente';
+      state.search = '';
+      state.inicio = '';
+      state.fim = '';
+      state.allDates = true;
+      filtroCliente.value = '';
+      filtroInicio.value = '';
+      filtroFim.value = '';
+      setFilter('pendente');
+      await loadDeliveries();
     });
-
 
     const aplicarFiltrosBtn = document.getElementById('aplicar-filtros');
     if(aplicarFiltrosBtn){
-      aplicarFiltrosBtn.addEventListener('click', ()=>{
-        const url = new URL(window.location.href);
-        url.searchParams.set('tab','tab-entregas');
-        const cliente = (filtroCliente.value || '').trim();
-        const inicio = filtroInicio.value || '';
-        const fim = filtroFim.value || '';
-        if(cliente) url.searchParams.set('cliente', cliente); else url.searchParams.delete('cliente');
-        if(inicio) url.searchParams.set('inicio', inicio); else url.searchParams.delete('inicio');
-        if(fim) url.searchParams.set('fim', fim); else url.searchParams.delete('fim');
-        url.searchParams.delete('todas_datas');
-        window.location.href = url.toString();
+      aplicarFiltrosBtn.addEventListener('click', async ()=>{
+        state.search = (filtroCliente.value || '').trim();
+        state.inicio = filtroInicio.value || '';
+        state.fim = filtroFim.value || '';
+        state.allDates = false;
+        await loadDeliveries({useCache:false});
+      });
+    }
+
+    const redefinirDataBtn = document.getElementById('redefinir-data');
+    if(redefinirDataBtn){
+      redefinirDataBtn.addEventListener('click', async ()=>{
+        filtroInicio.value = todayISO;
+        filtroFim.value = todayISO;
+        state.inicio = todayISO;
+        state.fim = todayISO;
+        state.allDates = false;
+        await loadDeliveries();
       });
     }
 
     function syncRowState(id, updates){
+      deliveryCache.clear();
+      if(typeof chartCache !== 'undefined') chartCache.clear();
       const item = deliveries.find(entry => String(entry.id) === String(id));
       if (!item) return;
       if (updates.statusPagamento) {
+        const statusAnterior = item.statusPagamento;
+        const statusNovo = updates.statusPagamento;
+        if(statusAnterior !== statusNovo){
+          const resumo = dashboardData.summary || {};
+          if(statusNovo === 'pago'){
+            resumo.total_pago = Number(resumo.total_pago || 0) + item.valor;
+            resumo.total_pendente = Math.max(0, Number(resumo.total_pendente || 0) - item.valor);
+            resumo.qtd_pendente = Math.max(0, Number(resumo.qtd_pendente || 0) - 1);
+          }else{
+            resumo.total_pago = Math.max(0, Number(resumo.total_pago || 0) - item.valor);
+            resumo.total_pendente = Number(resumo.total_pendente || 0) + item.valor;
+            resumo.qtd_pendente = Number(resumo.qtd_pendente || 0) + 1;
+          }
+          const ano = item.data ? String(item.data.slice(0,4)) : '';
+          const statusAno = (dashboardData.status_by_year || {})[ano];
+          if(statusAno){
+            if(statusNovo === 'pago'){
+              statusAno.pagas = Number(statusAno.pagas || 0) + 1;
+              statusAno.pendentes = Math.max(0, Number(statusAno.pendentes || 0) - 1);
+            }else{
+              statusAno.pagas = Math.max(0, Number(statusAno.pagas || 0) - 1);
+              statusAno.pendentes = Number(statusAno.pendentes || 0) + 1;
+            }
+          }
+        }
         item.statusPagamento = updates.statusPagamento;
         item.element.dataset.statusPagamento = updates.statusPagamento;
         const badge = item.element.querySelector('[data-role="pgto-label"]');
@@ -1075,12 +1538,10 @@
         const btn = item.element.querySelector('[data-role="entrega"]');
         if (btn) btn.textContent = updates.statusEntrega === 'entregue' ? 'Voltar entrega' : 'Confirmar entrega';
       }
-      const initialTab = {{ (request.args.get('tab','tab-resumo') or 'tab-resumo')|tojson }};
-      activateTab(initialTab);
       setFilter(state.listFilter);
       updateSummary();
       renderList();
-      buildCharts();
+      if(chartsInitialized) buildCharts();
     }
 
     async function togglePagamento(btn){
@@ -1218,202 +1679,115 @@
       window.open(url, '_blank', 'noopener');
     }
 
-    document.querySelectorAll('[data-role="pgto"]').forEach(btn => btn.addEventListener('click', () => togglePagamento(btn)));
-    document.querySelectorAll('[data-role="entrega"]').forEach(btn => btn.addEventListener('click', () => toggleEntrega(btn)));
-    document.querySelectorAll('[data-role="maps"]').forEach(btn => btn.addEventListener('click', () => abrirEntregaNoMaps(btn)));
+    deliveryList.addEventListener('click', (event) => {
+      const btn = event.target.closest('[data-role]');
+      if(!btn) return;
+      const role = btn.dataset.role;
+      if(role === 'pgto') togglePagamento(btn);
+      else if(role === 'entrega') toggleEntrega(btn);
+      else if(role === 'maps') abrirEntregaNoMaps(btn);
+      else if(role === 'solicitar-valor' && !btn.disabled) abrirSolicitacaoValor(btn);
+    });
 
     let chartGanhos, chartQtd, chartStatus;
-    const allYears = Array.from(new Set(deliveries.map(item => {
-      const d = parseDate(item.data);
-      return d ? d.getFullYear() : null;
-    }).filter(Boolean))).sort((a,b) => a-b);
+    let chartsInitialized = false;
+    let chartLibPromise = null;
+    const chartCache = new Map();
+    const allYears = Array.isArray(dashboardData.years) ? dashboardData.years.map(Number).sort((a,b)=>a-b) : [];
+    state.chartYear = allYears.length ? allYears[allYears.length - 1] : Number(dashboardData.current_year || new Date().getFullYear());
 
-    state.chartYear = allYears.length ? allYears[allYears.length - 1] : new Date().getFullYear();
+    function ensureChartJs(){
+      if(window.Chart) return Promise.resolve(window.Chart);
+      if(chartLibPromise) return chartLibPromise;
+      chartLibPromise = new Promise((resolve,reject)=>{
+        const script = document.createElement('script');
+        script.src = 'https://cdn.jsdelivr.net/npm/chart.js';
+        script.async = true;
+        script.onload = ()=>resolve(window.Chart);
+        script.onerror = ()=>reject(new Error('Não foi possível carregar os gráficos.'));
+        document.head.appendChild(script);
+      });
+      return chartLibPromise;
+    }
 
     function buildYearPills(){
       const host = document.getElementById('year-pills');
+      if(!host) return;
       host.innerHTML = '';
-      if (!allYears.length) return;
-      allYears.forEach(year => {
+      const years = allYears.length ? allYears : [Number(dashboardData.current_year || new Date().getFullYear())];
+      years.forEach(year => {
         const btn = document.createElement('button');
         btn.type = 'button';
         btn.className = 'pill-btn' + (year === state.chartYear ? ' active' : '');
         btn.textContent = String(year);
-        btn.addEventListener('click', () => {
+        btn.addEventListener('click', async () => {
           state.chartYear = year;
           buildYearPills();
-          buildCharts();
+          await buildCharts();
         });
         host.appendChild(btn);
       });
     }
 
     document.querySelectorAll('[data-period]').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         document.querySelectorAll('[data-period]').forEach(x => x.classList.remove('active'));
         btn.classList.add('active');
         state.chartPeriod = btn.dataset.period;
-        buildCharts();
+        await buildCharts();
       });
     });
-
-    function deliveriesForCharts(){
-      return deliveries.filter(item => {
-        const d = parseDate(item.data);
-        return d && d.getFullYear() === state.chartYear;
-      });
-    }
-
-    function aggregateCharts(){
-      const source = deliveriesForCharts();
-      if (state.chartPeriod === 'ano') {
-        const byYear = {};
-        deliveries.forEach(item => {
-          const d = parseDate(item.data);
-          if (!d) return;
-          const y = d.getFullYear();
-          byYear[y] = byYear[y] || { valor:0, qtd:0 };
-          byYear[y].valor += item.valor;
-          byYear[y].qtd += 1;
-        });
-        const labels = Object.keys(byYear).sort();
-        return {
-          labels,
-          valores: labels.map(label => byYear[label].valor),
-          quantidades: labels.map(label => byYear[label].qtd),
-          source
-        };
-      }
-
-      if (state.chartPeriod === 'mes') {
-        const valorMes = new Array(12).fill(0);
-        const qtdMes = new Array(12).fill(0);
-        source.forEach(item => {
-          const d = parseDate(item.data);
-          if (!d) return;
-          const idx = d.getMonth();
-          valorMes[idx] += item.valor;
-          qtdMes[idx] += 1;
-        });
-        return {
-          labels: monthNames,
-          valores: valorMes,
-          quantidades: qtdMes,
-          source
-        };
-      }
-
-      const last7 = [];
-      for (let i = 6; i >= 0; i -= 1){
-        const ref = new Date();
-        ref.setDate(ref.getDate() - i);
-        ref.setHours(12,0,0,0);
-        last7.push(ref);
-      }
-      const labels = last7.map(d => `${weekDayNames[d.getDay()]}`);
-      const valores = new Array(7).fill(0);
-      const quantidades = new Array(7).fill(0);
-      last7.forEach((day, idx) => {
-        const iso = day.toLocaleDateString('en-CA');
-        source.filter(item => item.data === iso).forEach(item => {
-          valores[idx] += item.valor;
-          quantidades[idx] += 1;
-        });
-      });
-      return { labels, valores, quantidades, source };
-    }
-
-    function aggregateStatus(source){
-      const pagas = source.filter(item => item.statusPagamento === 'pago');
-      const pendentes = source.filter(item => item.statusPagamento !== 'pago');
-      return {
-        labels:['Pagas','Pendentes'],
-        data:[pagas.length, pendentes.length],
-        total: source.length,
-        totalPagas: pagas.length,
-        totalPendentes: pendentes.length
-      };
-    }
 
     function destroyCharts(){
       [chartGanhos, chartQtd, chartStatus].forEach(chart => chart && chart.destroy());
     }
 
-    function buildCharts(){
-      destroyCharts();
-      const agg = aggregateCharts();
-      const statusAgg = aggregateStatus(agg.source);
-      const totalValor = agg.valores.reduce((sum, val) => sum + Number(val || 0), 0);
-      const totalQtd = agg.quantidades.reduce((sum, val) => sum + Number(val || 0), 0);
-
-      document.getElementById('chart-period-chip').textContent = state.chartPeriod === 'semana' ? 'Semanal' : state.chartPeriod === 'mes' ? 'Mensal' : 'Anual';
-      document.getElementById('chart-total-valor').textContent = money(totalValor);
-      document.getElementById('chart-total-entregas').textContent = String(totalQtd);
-      document.getElementById('chart-total-status').textContent = `${statusAgg.total} total`;
-
-      chartGanhos = new Chart(document.getElementById('chartGanhos'), {
-        type:'bar',
-        data:{
-          labels: agg.labels,
-          datasets:[{
-            data: agg.valores,
-            backgroundColor:'#0f4bff',
-            borderRadius:12,
-            maxBarThickness:42
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          animation:false,
-          plugins:{ legend:{ display:false } },
-          scales:{ y:{ beginAtZero:true, grid:{ color:'rgba(15,31,74,.08)' } }, x:{ grid:{ display:false } } }
-        }
-      });
-
-      chartQtd = new Chart(document.getElementById('chartQtd'), {
-        type:'line',
-        data:{
-          labels: agg.labels,
-          datasets:[{
-            data: agg.quantidades,
-            borderColor:'#0f4bff',
-            backgroundColor:'rgba(15,75,255,.14)',
-            fill:true,
-            tension:.35,
-            pointRadius:4,
-            pointHoverRadius:4
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          animation:false,
-          plugins:{ legend:{ display:false } },
-          scales:{ y:{ beginAtZero:true, grid:{ color:'rgba(15,31,74,.08)' } }, x:{ grid:{ display:false } } }
-        }
-      });
-
-      chartStatus = new Chart(document.getElementById('chartStatus'), {
-        type:'doughnut',
-        data:{
-          labels: statusAgg.labels,
-          datasets:[{
-            data: statusAgg.data,
-            backgroundColor:['#0f4bff','#f28c18'],
-            borderWidth:0
-          }]
-        },
-        options:{
-          responsive:true,
-          maintainAspectRatio:false,
-          animation:false,
-          plugins:{ legend:{ position:'right' } },
-          cutout:'68%'
-        }
-      });
+    async function fetchChartData(){
+      const key = `${state.chartPeriod}:${state.chartYear}`;
+      if(chartCache.has(key)) return chartCache.get(key);
+      const params = new URLSearchParams({periodo:state.chartPeriod,ano:String(state.chartYear)});
+      const response = await fetch(`{{ url_for('api_cooperado_graficos') }}?${params.toString()}`, {headers:{'Accept':'application/json'},cache:'no-store'});
+      const data = await response.json();
+      if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível carregar os gráficos.');
+      chartCache.set(key,data);
+      return data;
     }
 
+    async function buildCharts(){
+      const chip = document.getElementById('chart-period-chip');
+      if(chip) chip.textContent = 'Carregando…';
+      try{
+        await ensureChartJs();
+        const data = await fetchChartData();
+        destroyCharts();
+        const valores = (data.valores || []).map(Number);
+        const quantidades = (data.quantidades || []).map(Number);
+        const statusAgg = data.status || {pagas:0,pendentes:0};
+        const totalValor = valores.reduce((sum,val)=>sum+Number(val||0),0);
+        const totalQtd = quantidades.reduce((sum,val)=>sum+Number(val||0),0);
+        const totalStatus = Number(statusAgg.pagas||0)+Number(statusAgg.pendentes||0);
+        chip.textContent = state.chartPeriod === 'semana' ? 'Semanal' : state.chartPeriod === 'mes' ? 'Mensal' : 'Anual';
+        document.getElementById('chart-total-valor').textContent = money(totalValor);
+        document.getElementById('chart-total-entregas').textContent = String(totalQtd);
+        document.getElementById('chart-total-status').textContent = `${totalStatus} total`;
+
+        chartGanhos = new Chart(document.getElementById('chartGanhos'), {
+          type:'bar', data:{labels:data.labels || [],datasets:[{data:valores,backgroundColor:'#0f4bff',borderRadius:9,maxBarThickness:38}]},
+          options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(15,31,74,.08)'}},x:{grid:{display:false}}}}
+        });
+        chartQtd = new Chart(document.getElementById('chartQtd'), {
+          type:'line', data:{labels:data.labels || [],datasets:[{data:quantidades,borderColor:'#0f4bff',backgroundColor:'rgba(15,75,255,.14)',fill:true,tension:.35,pointRadius:3}]},
+          options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,grid:{color:'rgba(15,31,74,.08)'}},x:{grid:{display:false}}}}
+        });
+        chartStatus = new Chart(document.getElementById('chartStatus'), {
+          type:'doughnut', data:{labels:['Pagas','Pendentes'],datasets:[{data:[Number(statusAgg.pagas||0),Number(statusAgg.pendentes||0)],backgroundColor:['#0f4bff','#f28c18'],borderWidth:0}]},
+          options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{position:'right'}},cutout:'68%'}
+        });
+      }catch(error){
+        if(chip) chip.textContent = 'Erro';
+        console.error(error);
+      }
+    }
 
 
     const valorOverlay = document.getElementById('valor-overlay');
@@ -1440,7 +1814,6 @@
       valorOverlay.setAttribute('aria-hidden','true');
     }
 
-    document.querySelectorAll('[data-role="solicitar-valor"]').forEach(btn => btn.addEventListener('click', ()=>abrirSolicitacaoValor(btn)));
     valorCancelar.addEventListener('click', fecharSolicitacaoValor);
     valorOverlay.addEventListener('click', e => { if(e.target === valorOverlay) fecharSolicitacaoValor(); });
     valorEnviar.addEventListener('click', async ()=>{
@@ -1458,6 +1831,7 @@
         if(!r.ok || j.ok === false) throw new Error(j.error || 'Não foi possível enviar a solicitação.');
         const btn = document.querySelector(`[data-role="solicitar-valor"][data-id="${valorEntregaId}"]`);
         if(btn){ btn.textContent='Aguardando aprovação'; btn.disabled=true; }
+        deliveryCache.clear();
         fecharSolicitacaoValor();
         alert('Solicitação enviada. O valor ficará aguardando aprovação do administrador.');
       }catch(e){ alert(e.message); }
@@ -1618,13 +1992,16 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      activateTab(initialTab);
+      setFilter(state.listFilter);
       updateSummary();
       renderList();
-      buildYearPills();
-      buildCharts();
-      requireLocation();
-      fetchGpsStatus();
-      setInterval(fetchGpsStatus, 8000);
+      requestAnimationFrame(()=>document.body.classList.add('ready'));
+      setTimeout(() => {
+        requireLocation();
+        fetchGpsStatus();
+        setInterval(fetchGpsStatus, 15000);
+      }, 700);
     });
   </script>
 </body>
