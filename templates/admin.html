@@ -2233,7 +2233,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                     <li id="fila-vazia" class="small">Nenhum cooperado na fila.</li>
                   {% else %}
                     {% for item in lista_espera %}
-                    <li class="espera-chip" draggable="true" data-id="{{ item.id }}">
+                    <li class="espera-chip" draggable="true" data-id="{{ item.id }}" data-cooperado-id="{{ item.cooperado_id or (item.cooperado.id if item.cooperado else '') }}" data-cooperado-nome="{{ (item.cooperado.nome if item.cooperado else item.nome)|e }}">
                       <span class="espera-chip-num">{{ loop.index }}º</span>
                       <span class="espera-chip-text">{{ item.cooperado.nome if item.cooperado else item.nome }}</span>
                       <form action="{{ url_for('lista_espera_remove', id=item.id) }}" method="POST" style="margin-left:auto">
@@ -3125,38 +3125,66 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       sel.className='coop-edit-select';
 
       const cooperadosLista = window.COOPERADOS || [];
-      const primeiroDaFila = cooperadosLista.find(c => c.na_fila && Number(c.posicao_fila) === 1)
+
+      // A fila visível na tela é a fonte principal. Assim a seleção funciona
+      // mesmo quando o app.py antigo não envia na_fila/posicao_fila no JSON.
+      const primeiroChipFila = document.querySelector('#espera-lista .espera-chip[data-cooperado-id]');
+      const primeiroFilaId = (primeiroChipFila?.dataset?.cooperadoId || '').trim();
+      const primeiroFilaNome = (primeiroChipFila?.dataset?.cooperadoNome || '').trim();
+
+      const primeiroDaFilaJson = cooperadosLista.find(c => c.na_fila && Number(c.posicao_fila) === 1)
         || cooperadosLista.find(c => c.na_fila)
         || null;
+
+      const primeiroDaFilaId = primeiroFilaId || (primeiroDaFilaJson ? String(primeiroDaFilaJson.id) : '');
+      const primeiroDaFilaNome = primeiroFilaNome || (primeiroDaFilaJson?.nome || '');
 
       const opt0 = document.createElement('option');
       opt0.value='';
       opt0.textContent='Sem Cooperado';
-      opt0.selected = !atual && !primeiroDaFila;
       sel.appendChild(opt0);
 
       cooperadosLista.forEach(c=>{
         const o = document.createElement('option');
-        o.value=c.id;
-        o.textContent=c.rotulo || c.nome;
-        if(c.na_fila) o.dataset.fila='1';
-
-        const isAtual = String(c.id) === String(atual);
-        const isPrimeiroFila = !atual && primeiroDaFila && String(c.id) === String(primeiroDaFila.id);
-        if(isAtual || isPrimeiroFila) o.selected = true;
-
+        o.value=String(c.id);
+        const ehPrimeiro = primeiroDaFilaId && String(c.id) === String(primeiroDaFilaId);
+        o.textContent = ehPrimeiro
+          ? `1º da fila — ${c.nome}`
+          : (c.rotulo || c.nome);
+        if(c.na_fila || ehPrimeiro) o.dataset.fila='1';
         sel.appendChild(o);
       });
 
-      if(!atual && primeiroDaFila){
-        sel.title = `Selecionado automaticamente: ${primeiroDaFila.posicao_fila || 1}º da fila — ${primeiroDaFila.nome}. Você pode escolher outro cooperado.`;
+      // Define o valor somente depois de todas as opções terem sido criadas.
+      // Isso evita o navegador voltar para "Sem Cooperado".
+      const valorInicial = atual || primeiroDaFilaId || '';
+      sel.value = String(valorInicial);
+
+      // Caso o cooperado da fila ainda não esteja no JSON, cria a opção dele.
+      if(valorInicial && sel.value !== String(valorInicial)){
+        const fallback = document.createElement('option');
+        fallback.value = String(valorInicial);
+        fallback.textContent = !atual && primeiroDaFilaNome
+          ? `1º da fila — ${primeiroDaFilaNome}`
+          : primeiroDaFilaNome || 'Cooperado selecionado';
+        fallback.dataset.fila='1';
+        sel.insertBefore(fallback, sel.options[1] || null);
+        sel.value = String(valorInicial);
+      }
+
+      if(!atual && primeiroDaFilaId){
+        sel.title = `Selecionado automaticamente: 1º da fila — ${primeiroDaFilaNome || 'cooperado'}. Você pode escolher outro cooperado.`;
         sel.setAttribute('aria-label', sel.title);
       }else{
         sel.title = 'Selecione ou troque o cooperado responsável.';
       }
 
       el.parentNode.replaceChild(sel, el);
-      sel.focus();
+      if(valorInicial) sel.value = String(valorInicial);
+      requestAnimationFrame(()=>{
+        if(valorInicial) sel.value = String(valorInicial);
+        sel.focus();
+      });
 
       let salvando = false;
       async function salvar(){
