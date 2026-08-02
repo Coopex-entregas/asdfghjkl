@@ -7366,7 +7366,28 @@ def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    # Fila primeiro: o cooperado em 1º lugar já chega selecionado no cadastro.
+    cooperados_todos = Cooperado.query.order_by(Cooperado.nome).all()
+    lista_espera = (
+        ListaEspera.query
+        .options(joinedload(ListaEspera.cooperado))
+        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+        .all()
+    )
+    fila_por_id = {
+        int(item.cooperado_id): indice
+        for indice, item in enumerate(lista_espera, start=1)
+        if item.cooperado_id
+    }
+    primeiro_fila_id = next(iter(fila_por_id), None)
+    cooperados = sorted(
+        cooperados_todos,
+        key=lambda c: (
+            0 if c.id in fila_por_id else 1,
+            fila_por_id.get(c.id, 999999),
+            (c.nome or '').lower(),
+        )
+    )
 
     if request.method == 'POST':
         cliente_nome = _dash_title_case((request.form.get('cliente') or '').strip())
@@ -7521,7 +7542,12 @@ def cadastrar_entrega():
 
         return redirect_back_to_admin()
 
-    return render_template('cadastrar_entrega.html', cooperados=cooperados)
+    return render_template(
+        'cadastrar_entrega.html',
+        cooperados=cooperados,
+        fila_por_id=fila_por_id,
+        primeiro_fila_id=primeiro_fila_id,
+    )
 
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
