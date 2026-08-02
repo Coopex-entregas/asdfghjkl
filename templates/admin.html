@@ -922,6 +922,21 @@ body.dark .row-assigned{background:#131e33}
   .bank-toolbar .bank-group-btn{min-width:118px}
 }
 
+
+/* Cooperado da fila pré-selecionado na atribuição */
+.coop-edit-select{
+  min-width:190px;
+  max-width:100%;
+  border:1px solid var(--line-2) !important;
+  background:var(--card) !important;
+  color:var(--ink) !important;
+}
+body.dark .coop-edit-select{
+  background:#101a2d !important;
+  color:#f2f6ff !important;
+  border-color:#31456f !important;
+}
+
 </style>
 
 
@@ -3107,19 +3122,38 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       sel.style.borderRadius='12px';
       sel.style.padding='7px 10px';
       sel.style.fontWeight='900';
+      sel.className='coop-edit-select';
+
+      const cooperadosLista = window.COOPERADOS || [];
+      const primeiroDaFila = cooperadosLista.find(c => c.na_fila && Number(c.posicao_fila) === 1)
+        || cooperadosLista.find(c => c.na_fila)
+        || null;
 
       const opt0 = document.createElement('option');
-      opt0.value=''; opt0.textContent='Sem Cooperado';
+      opt0.value='';
+      opt0.textContent='Sem Cooperado';
+      opt0.selected = !atual && !primeiroDaFila;
       sel.appendChild(opt0);
 
-      (window.COOPERADOS || []).forEach(c=>{
+      cooperadosLista.forEach(c=>{
         const o = document.createElement('option');
         o.value=c.id;
         o.textContent=c.rotulo || c.nome;
         if(c.na_fila) o.dataset.fila='1';
-        if(String(c.id)===String(atual)) o.selected=true;
+
+        const isAtual = String(c.id) === String(atual);
+        const isPrimeiroFila = !atual && primeiroDaFila && String(c.id) === String(primeiroDaFila.id);
+        if(isAtual || isPrimeiroFila) o.selected = true;
+
         sel.appendChild(o);
       });
+
+      if(!atual && primeiroDaFila){
+        sel.title = `Selecionado automaticamente: ${primeiroDaFila.posicao_fila || 1}º da fila — ${primeiroDaFila.nome}. Você pode escolher outro cooperado.`;
+        sel.setAttribute('aria-label', sel.title);
+      }else{
+        sel.title = 'Selecione ou troque o cooperado responsável.';
+      }
 
       el.parentNode.replaceChild(sel, el);
       sel.focus();
@@ -3129,8 +3163,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(salvando) return;
         salvando = true;
         const coopId = sel.value || '';
-        let nomeEscolhido = 'Sem Cooperado';
-        if(sel.selectedIndex >= 0) nomeEscolhido = (sel.options[sel.selectedIndex]?.textContent || 'Sem Cooperado').trim();
+        const cooperadoEscolhido = (window.COOPERADOS || []).find(x => String(x.id) === String(coopId));
+        const nomeEscolhido = cooperadoEscolhido?.nome || 'Sem Cooperado';
 
         let requestOk = false;
         try{
