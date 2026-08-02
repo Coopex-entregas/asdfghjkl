@@ -24,6 +24,7 @@
     button.alt{background:#eef3ff;color:var(--azul);border:1px solid #cdd8ff}
     button.alt:hover{background:#e1ebff}
     small.hint{display:block;margin:-6px 0 12px;color:#555}
+    .fila-hint{color:#0f5f38;background:#effcf5;border:1px solid #ccefdc;padding:8px 10px;border-radius:8px;margin-top:-8px}
     .top-actions{width:100%;max-width:520px;display:flex;justify-content:space-between;gap:10px;margin-bottom:10px}
     a.link{color:var(--azul);text-decoration:none} a.link:hover{text-decoration:underline}
     .search-hint{font-size:12px;color:var(--muted);margin:4px 0 6px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
@@ -115,11 +116,18 @@
 
     <label for="cooperado_id">Atribuir Cooperado (opcional):</label>
     <select id="cooperado_id" name="cooperado_id">
-      <option value="">-- Nenhum --</option>
+      <option value="" {% if not primeiro_fila_id %}selected{% endif %}>-- Nenhum --</option>
       {% for c in cooperados %}
-        <option value="{{ c.id }}">{{ c.nome }}</option>
+        <option value="{{ c.id }}" {% if primeiro_fila_id and c.id == primeiro_fila_id %}selected{% endif %}>
+          {% if c.id in fila_por_id %}{{ fila_por_id[c.id] }}º da fila — {% endif %}{{ c.nome }}
+        </option>
       {% endfor %}
     </select>
+    {% if primeiro_fila_id %}
+      <small class="hint fila-hint">O 1º cooperado da fila já está selecionado. Você pode trocar antes de cadastrar.</small>
+    {% else %}
+      <small class="hint">Nenhum cooperado está na fila de espera.</small>
+    {% endif %}
 
     <div class="footer-actions">
       <button type="submit">Cadastrar entrega</button>
@@ -375,6 +383,14 @@
     }
 
     restoreFormState();
+
+    // Mantém o primeiro da fila realmente selecionado ao abrir esta tela.
+    const primeiroFilaId = {{ primeiro_fila_id|tojson }};
+    const cooperadoSelect = document.getElementById('cooperado_id');
+    if (primeiroFilaId && cooperadoSelect) {
+      cooperadoSelect.value = String(primeiroFilaId);
+    }
+
     bindPersist();
     persistFormState();
   </script>
