@@ -2512,6 +2512,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                         data-cliente="{{ e.cliente|e }}"
                         data-bairro="{{ e.bairro|e }}"
                         data-endereco="{{ (e.endereco if e.endereco is defined and e.endereco else '-')|e }}"
+                        data-coleta="{{ (e.origem_endereco if e.origem_endereco is defined else '-')|e }}"
+                        data-entrega="{{ (e.destino_endereco if e.destino_endereco is defined else '-')|e }}"
                         data-valor="{{ '%.2f'|format(e.valor) }}"
                         data-data="{{ to_brasilia(e.data_envio).strftime('%d/%m/%Y') if e.data_envio else '-' }}"
                         data-hora_pedido="{{ to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-' }}"
@@ -3809,8 +3811,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 
       var inpRec = document.getElementById('cupomRecebido');
       if(inpCliente) inpCliente.value = d?.cliente || '';
-      if(inpColeta)  inpColeta.value  = d?.endereco || '';
-      if(inpEntrega) inpEntrega.value = '';
+      if(inpColeta)  inpColeta.value  = d?.coleta || d?.endereco || '';
+      if(inpEntrega) inpEntrega.value = d?.entrega || '';
       if(inpAt)      inpAt.value      = '';
       if(inpCnpjEmpresa) inpCnpjEmpresa.value = d?.cnpjEmpresa || '';
       if(inpRec)     inpRec.value     = d?.recebido || '';
@@ -3838,11 +3840,11 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 
       var blocoEndereco = '';
       if(mode === 'editado'){
-        blocoEndereco += row('COLETA:', coleta || '-');
-        blocoEndereco += row('ENTREGA:', entrega || '-');
+        blocoEndereco += row('COLETA:', coleta || d.coleta || d.endereco || '-');
+        blocoEndereco += row('ENTREGA:', entrega || d.entrega || '-');
       }else{
-        blocoEndereco += row('ENDEREÇO:', d.endereco || '-');
-        blocoEndereco += row('BAIRRO:', d.bairro || '-');
+        blocoEndereco += row('COLETA:', d.coleta || d.endereco || '-');
+        blocoEndereco += row('ENTREGA:', d.entrega || d.bairro || '-');
       }
 
       var atendenteLinha = atendente ? row('ATENDENTE:', atendente) : '';
@@ -3871,189 +3873,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         '.small{font-size:11px; opacity:.9;}' +
         '.qrWrap{margin-top:10px; display:flex; flex-direction:column; align-items:center; gap:6px;}' +
         '.qrImg{width:38mm;height:38mm; object-fit:contain;}' +
-        '</style>
-
-<!-- COOPEX_ADMIN_BANK_LIGHT_FINAL -->
-<style>
-/* Layout final: menu bancário lateral, painel leve e tabela ampla */
-:root{
-  --royal:#1348d8;
-  --royal-2:#245ee8;
-  --ink:#12203f;
-  --muted:#66759a;
-  --bg:#f4f7fc;
-  --card:#fff;
-  --line:#e1e8f5;
-  --shadow:0 5px 18px rgba(24,48,108,.07);
-  --shadow-2:0 10px 28px rgba(24,48,108,.10);
-}
-body{
-  background:#f4f7fc !important;
-  color:var(--ink) !important;
-}
-header{
-  background:#fff !important;
-  color:var(--ink) !important;
-  border-bottom:1px solid var(--line) !important;
-  box-shadow:0 2px 10px rgba(30,53,104,.06) !important;
-}
-.topbar{
-  min-height:62px !important;
-  padding:8px 14px !important;
-  grid-template-columns:auto 1fr auto !important;
-  gap:10px !important;
-}
-.brand{gap:10px !important;color:#173778 !important}
-.brand span{font-size:1rem !important;text-shadow:none !important}
-.menu-btn{
-  width:42px !important;height:42px !important;
-  background:#eef3ff !important;
-  border:1px solid #d7e2ff !important;
-  box-shadow:none !important;
-}
-.menu-btn span{background:#173f9f !important}
-.diag-mini{display:none !important}
-.kpis{gap:7px !important;justify-content:flex-end !important;flex-wrap:nowrap !important}
-.kpi{
-  min-width:92px !important;
-  padding:7px 10px !important;
-  background:#f7f9fe !important;
-  border:1px solid var(--line) !important;
-  border-radius:12px !important;
-  box-shadow:none !important;
-  color:#18336f !important;
-}
-.kpi small{font-size:.66rem !important;color:var(--muted) !important}
-.kpi span{font-size:.98rem !important}
-.theme-toggle{display:none !important}
-.logout{
-  padding:9px 14px !important;
-  border-radius:11px !important;
-  box-shadow:none !important;
-  background:#e5484d !important;
-}
-.banner{
-  padding:6px 14px !important;
-  min-height:38px !important;
-  background:#fff !important;
-  box-shadow:none !important;
-  border-bottom:1px solid var(--line) !important;
-}
-.banner .badge{padding:5px 9px !important;font-size:.76rem !important}
-.viewport{padding:8px 10px 14px !important}
-.panel{
-  margin-top:0 !important;
-  border-radius:14px !important;
-  box-shadow:var(--shadow) !important;
-  border:1px solid var(--line) !important;
-}
-.panel-head{
-  min-height:46px !important;
-  padding:9px 12px !important;
-  background:#173f9f !important;
-}
-.panel-title{font-size:.95rem !important}
-.filters-bar{padding:8px !important}
-.filters-top{gap:7px !important}
-.filters-form{gap:7px !important}
-.filters-form select,.filters-form input{padding:8px 9px !important;border-radius:10px !important}
-.btn{padding:8px 11px !important;border-radius:10px !important;box-shadow:none !important;font-size:.85rem !important}
-.table-wrap{
-  max-height:calc(100vh - 225px) !important;
-  min-height:430px !important;
-  overflow:auto !important;
-}
-.tabela{font-size:.84rem !important}
-.tabela thead th{position:sticky !important;top:0 !important;z-index:5 !important;padding:9px 8px !important}
-.tabela tbody td{padding:8px !important}
-
-/* Gaveta lateral no estilo de sistemas bancários */
-.left.bank-menu{
-  display:flex !important;
-  position:fixed !important;
-  top:0 !important;
-  left:0 !important;
-  right:auto !important;
-  width:min(330px,92vw) !important;
-  height:100vh !important;
-  max-height:none !important;
-  z-index:3000 !important;
-  transform:translateX(-104%) !important;
-  transition:transform .20s ease !important;
-  pointer-events:none !important;
-  padding:0 !important;
-}
-.left.bank-menu.open{
-  transform:translateX(0) !important;
-  pointer-events:auto !important;
-}
-.bank-menu .menu-panel{
-  width:100% !important;
-  height:100% !important;
-  border-radius:0 18px 18px 0 !important;
-  border:0 !important;
-  border-right:1px solid var(--line) !important;
-  background:#fff !important;
-  box-shadow:14px 0 40px rgba(17,36,84,.16) !important;
-  padding:14px 12px !important;
-  overflow-y:auto !important;
-}
-.bank-menu .menu-header{
-  padding:4px 4px 14px !important;
-  margin-bottom:10px !important;
-  border-bottom:1px solid var(--line) !important;
-}
-.bank-menu .menu-header img{width:40px !important;height:40px !important;border-radius:11px !important}
-.bank-menu .menu-header strong{font-size:.95rem !important;color:#153775 !important}
-.bank-menu .menu-header small{color:var(--muted) !important}
-.bank-nav{gap:5px !important}
-.bank-group{border-bottom:1px solid #f0f3f9 !important;padding-bottom:5px !important}
-.bank-group-btn{
-  height:44px !important;
-  padding:0 12px !important;
-  border:0 !important;
-  border-radius:10px !important;
-  background:#fff !important;
-  color:#17356f !important;
-  box-shadow:none !important;
-  font-size:.92rem !important;
-}
-.bank-group-btn:hover,.bank-group.open .bank-group-btn{
-  background:#eef3ff !important;
-  color:#123fb6 !important;
-}
-.bank-submenu{
-  padding:4px 4px 4px 14px !important;
-  border-left:2px solid #dbe5ff !important;
-  margin-left:12px !important;
-}
-.bank-submenu>a{
-  padding:9px 10px !important;
-  border-radius:9px !important;
-  color:#42557f !important;
-  font-size:.84rem !important;
-}
-.bank-submenu>a:hover{background:#f2f6ff !important;color:#123fb6 !important}
-.queue-submenu{max-height:52vh !important;overflow:auto !important}
-.queue-add-form{padding:6px 0 8px !important}
-.queue-add-form input,.queue-add-form select{height:39px !important;border-radius:9px !important}
-.espera-chip{padding:7px 8px !important;border-radius:10px !important;box-shadow:none !important}
-
-@media(max-width:980px){
-  .topbar{grid-template-columns:auto 1fr auto !important}
-  .kpis .kpi:nth-child(n+3){display:none !important}
-  .table-wrap{max-height:calc(100vh - 235px) !important}
-}
-@media(max-width:640px){
-  .brand span{font-size:.9rem !important}
-  .kpis{display:none !important}
-  .logout{padding:8px 11px !important}
-  .banner{font-size:.8rem !important}
-  .table-wrap{min-height:360px !important;max-height:calc(100vh - 205px) !important}
-}
-</style>
-
-</head><body>' +
+        '</style>' +
+        '</head><body>' +
         '<div class="ticket">' +
           '<div class="center">' +
             '<img class="logo" src="'+ logoUrl +'" alt="COOPEX">' +
@@ -4107,6 +3928,8 @@ header{
           cliente: botao.dataset.cliente || '-',
           bairro: botao.dataset.bairro || '-',
           endereco: botao.dataset.endereco || '-',
+          coleta: botao.dataset.coleta || botao.dataset.endereco || '-',
+          entrega: botao.dataset.entrega || botao.dataset.bairro || '-',
           valor: valorRaw,
           valorFmt: valorFmt,
           data: botao.dataset.data || '-',
