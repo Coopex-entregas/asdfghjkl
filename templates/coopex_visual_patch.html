@@ -1,0 +1,20 @@
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex-legacy.css') }}">
+<script id="coopex-visual-patch">
+(function(){
+  function apply(){
+    document.body.classList.add('coopex-unified');
+    const saved=localStorage.getItem('coopex_theme');
+    if(saved==='dark')document.body.classList.add('dark');
+    if(document.getElementById('coopexVisualTools'))return;
+    const tools=document.createElement('div');
+    tools.id='coopexVisualTools';tools.className='coopex-visual-tools';
+    tools.innerHTML='<button type="button" id="coopexLegacyTheme" title="Alternar tema">☾</button>{% if session.get("is_admin") %}<a href="{{ url_for("admin") }}"><span class="tool-label">Admin</span><span>↩</span></a>{% endif %}';
+    document.body.appendChild(tools);
+    const btn=document.getElementById('coopexLegacyTheme');
+    const sync=()=>btn.textContent=document.body.classList.contains('dark')?'☀':'☾';
+    btn.addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()});
+    sync();
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
+})();
+</script>
