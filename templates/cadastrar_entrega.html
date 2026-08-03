@@ -16,6 +16,7 @@
   </style>
   <script id="coopex-complete-behavior">
   (function(){
+    const primeiroFilaId={{ primeiro_fila_id|tojson }}?String({{ primeiro_fila_id|tojson }}):'';
     function money(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v||0))}
     function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
     let todosCooperados=[];
@@ -29,14 +30,20 @@
       todosCooperados=[...select.options].filter(o=>o.value).map(o=>({id:String(o.value),nome:(o.textContent||'').replace(/^.*?—\s*/,'').trim()}));
       try{
         const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok||!d.restricao_ativa)return;
-        const ids=new Set((d.cooperados_ids||[]).map(String)),resumos=new Map();(d.itens||[]).forEach(x=>{const a=resumos.get(String(x.cooperado_id))||[];a.push(`${x.contrato} · ${x.horario}`);resumos.set(String(x.cooperado_id),a)});
+        const itensBase=(d.itens||[]).filter(x=>norm(x.contrato)==='base');
+        const idsBase=new Set(itensBase.map(x=>String(x.cooperado_id)));
+        const primeiroFila=todosCooperados.find(c=>c.id===primeiroFilaId)||null;
         select.innerHTML='<option value="">Sem cooperado</option>';
-        todosCooperados.filter(c=>ids.has(c.id)).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`Escalado agora — ${c.nome}${resumos.has(c.id)?' · '+resumos.get(c.id).join(' | '):''}`;select.appendChild(o)});
-        const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='🔎 Digitar outro cooperado (fora da escala)';select.appendChild(manual);
-        const primeiro=[...select.options].find(o=>ids.has(String(o.value)));select.value=primeiro?primeiro.value:'';
-        let note=document.getElementById('completeScaleNote');if(!note){note=document.createElement('div');note.id='completeScaleNote';select.insertAdjacentElement('afterend',note)}note.className='complete-scale-note'+(primeiro?'':' warn');note.textContent=primeiro?'A lista mostra somente quem está escalado e dentro do horário. Use a busca para uma exceção.':'Não há cooperado escalado neste horário. Use a busca para escolher uma exceção.';
-        select.addEventListener('change',e=>{if(select.value!=='__fora_escala__')return;e.stopImmediatePropagation();const c=escolherExcecao(select);if(!c){select.value='';return}let o=[...select.options].find(x=>x.value===c.id);if(!o){o=document.createElement('option');o.value=c.id;o.textContent=`Fora da escala — ${c.nome}`;select.insertBefore(o,manual)}select.value=c.id},true);
-        select.form?.addEventListener('submit',e=>{if(select.value==='__fora_escala__'){e.preventDefault();alert('Escolha o cooperado fora da escala antes de cadastrar.')}});
+        if(primeiroFila){const o=document.createElement('option');o.value=primeiroFila.id;o.textContent=`1º da fila — ${primeiroFila.nome}`;select.appendChild(o)}
+        todosCooperados.filter(c=>idsBase.has(c.id)&&c.id!==primeiroFilaId).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=c.nome;select.appendChild(o)});
+        const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='Digitar outro cooperado';select.appendChild(manual);
+        const primeiroBase=[...select.options].find(o=>idsBase.has(String(o.value)));
+        select.value=primeiroFila?primeiroFila.id:(primeiroBase?primeiroBase.value:'');
+        let note=document.getElementById('completeScaleNote');if(!note){note=document.createElement('div');note.id='completeScaleNote';select.insertAdjacentElement('afterend',note)}
+        note.className='complete-scale-note'+((primeiroFila||primeiroBase)?'':' warn');
+        note.textContent=(primeiroFila||primeiroBase)?'Mostrando o 1º da fila e quem está escalado na BASE neste horário.':'Não há cooperado da BASE escalado neste horário. Use a busca para escolher uma exceção.';
+        select.addEventListener('change',e=>{if(select.value!=='__fora_escala__')return;e.stopImmediatePropagation();const c=escolherExcecao(select);if(!c){select.value=primeiroFila?primeiroFila.id:'';return}let o=[...select.options].find(x=>x.value===c.id);if(!o){o=document.createElement('option');o.value=c.id;o.textContent=c.nome;select.insertBefore(o,manual)}select.value=c.id},true);
+        select.form?.addEventListener('submit',e=>{if(select.value==='__fora_escala__'){e.preventDefault();alert('Escolha o cooperado antes de cadastrar.')}});
       }catch(e){}
     }
     function setup(){
