@@ -14,8 +14,16 @@
 (function(){
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
   let todos=[];
-  let escala={carregada:false,restrita:false,ids:new Set(),resumo:new Map()};
+  let escala={carregada:false,restrita:false,ids:new Set()};
   let cliqueContexto=null;
+
+  function primeiroFilaInfo(){
+    const json=todos.find(c=>c.na_fila&&Number(c.posicao_fila)===1)||todos.find(c=>c.na_fila)||null;
+    if(json)return {id:String(json.id),nome:json.nome||''};
+    const chip=document.querySelector('#espera-lista .espera-chip[data-cooperado-id]');
+    const id=String(chip?.dataset?.cooperadoId||'');
+    return id?{id,nome:String(chip?.dataset?.cooperadoNome||'')}:null;
+  }
 
   function aplicarMenu(){
     const links=[...document.querySelectorAll('.bank-submenu a')];
@@ -53,10 +61,12 @@
       const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
       const d=await r.json();
       if(!r.ok||!d.ok)return;
-      escala.carregada=true;escala.restrita=!!d.restricao_ativa;escala.ids=new Set((d.cooperados_ids||[]).map(String));escala.resumo=new Map();
-      (d.itens||[]).forEach(x=>{const id=String(x.cooperado_id);const atual=escala.resumo.get(id)||[];atual.push(`${x.contrato} · ${x.horario}`);escala.resumo.set(id,atual)});
+      const itensBase=(d.itens||[]).filter(x=>norm(x.contrato)==='base');
+      escala.carregada=true;escala.restrita=!!d.restricao_ativa;escala.ids=new Set(itensBase.map(x=>String(x.cooperado_id)));
       if(escala.restrita){
-        window.COOPERADOS=todos.filter(c=>escala.ids.has(String(c.id))).map(c=>({...c,em_escala_agora:true,rotulo:`Escalado agora — ${c.nome}`}));
+        const fila=primeiroFilaInfo();
+        const permitidos=new Set([...escala.ids,...(fila?[fila.id]:[])]);
+        window.COOPERADOS=todos.filter(c=>permitidos.has(String(c.id))).map(c=>({...c,rotulo:c.nome}));
       }else window.COOPERADOS=todos.map(c=>({...c}));
       document.querySelectorAll('.coop-edit-select').forEach(prepararSelect);
     }catch(e){}
@@ -78,14 +88,31 @@
     if(!sel||sel.dataset.escalaPreparada==='1'||!escala.restrita)return;
     sel.dataset.escalaPreparada='1';
     const atual=cliqueContexto?.atual||'';
+    const fila=primeiroFilaInfo();
+    const filaId=fila?.id||'';
+
     [...sel.options].forEach(o=>{
-      if(!o.value||o.value===String(atual)||escala.ids.has(String(o.value)))return;
+      const id=String(o.value||'');
+      if(!id||id===String(atual)||id===filaId||escala.ids.has(id))return;
       o.remove();
     });
-    [...sel.options].forEach(o=>{if(escala.ids.has(String(o.value))){const info=(escala.resumo.get(String(o.value))||[]).join(' | ');const base=todos.find(c=>String(c.id)===String(o.value));o.textContent=`Escalado agora — ${base?.nome||o.textContent}${info?' · '+info:''}`}});
-    const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='🔎 Digitar outro cooperado (fora da escala)';sel.appendChild(manual);
-    if(!atual){const primeiro=[...sel.options].find(o=>escala.ids.has(String(o.value)));sel.value=primeiro?primeiro.value:''}
-    sel.title='Mostrando quem está escalado neste horário. Use a busca para uma exceção.';
+
+    [...sel.options].forEach(o=>{
+      const id=String(o.value||'');
+      if(!id)return;
+      const coop=todos.find(c=>String(c.id)===id);
+      const nome=coop?.nome||(o.textContent||'').replace(/^.*?—\s*/,'').trim();
+      if(id===filaId)o.textContent=`1º da fila — ${nome}`;
+      else if(escala.ids.has(id)||id===String(atual))o.textContent=nome;
+    });
+
+    const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='Digitar outro cooperado';sel.appendChild(manual);
+    if(!atual){
+      const filaOpt=[...sel.options].find(o=>String(o.value)===filaId);
+      const primeiroBase=[...sel.options].find(o=>escala.ids.has(String(o.value)));
+      sel.value=filaOpt?filaOpt.value:(primeiroBase?primeiroBase.value:'');
+    }
+    sel.title='Mostra o 1º da fila e os cooperados escalados na BASE neste horário.';
   }
 
   document.addEventListener('click',e=>{const alvo=e.target.closest?.('.coop-editable');if(alvo)cliqueContexto={atual:String(alvo.dataset.cooperadoId||'')};},true);
@@ -95,9 +122,9 @@
     e.preventDefault();e.stopImmediatePropagation();
     const escolhido=escolherForaEscala();
     if(!escolhido){sel.value='';return}
-    if(!(window.COOPERADOS||[]).some(c=>String(c.id)===String(escolhido.id)))window.COOPERADOS.push({...escolhido,rotulo:`Fora da escala — ${escolhido.nome}`});
+    if(!(window.COOPERADOS||[]).some(c=>String(c.id)===String(escolhido.id)))window.COOPERADOS.push({...escolhido,rotulo:escolhido.nome});
     let opt=[...sel.options].find(o=>String(o.value)===String(escolhido.id));
-    if(!opt){opt=document.createElement('option');opt.value=String(escolhido.id);opt.textContent=`Fora da escala — ${escolhido.nome}`;sel.insertBefore(opt,sel.options[sel.options.length-1])}
+    if(!opt){opt=document.createElement('option');opt.value=String(escolhido.id);opt.textContent=escolhido.nome;sel.insertBefore(opt,sel.options[sel.options.length-1])}
     sel.value=String(escolhido.id);
     setTimeout(()=>sel.dispatchEvent(new Event('change',{bubbles:true})),0);
   },true);
