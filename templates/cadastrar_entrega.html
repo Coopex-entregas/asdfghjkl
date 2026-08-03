@@ -3,52 +3,51 @@
   <style id="coopex-complete-visual">
     :root{--cx-blue:#1648d8;--cx-blue2:#0b329f;--cx-bg:#f3f6fd;--cx-card:#fff;--cx-text:#17223f;--cx-muted:#687696;--cx-line:#dbe4f6}
     body{margin:0!important;padding:16px!important;background:var(--cx-bg)!important;color:var(--cx-text)!important;font-family:Inter,Arial,Helvetica,sans-serif!important}
-    h1{color:var(--cx-blue2)!important;margin:4px 0 12px!important}
-    form{max-width:860px!important;border:1px solid var(--cx-line)!important;border-radius:16px!important;box-shadow:0 10px 28px rgba(18,54,145,.08)!important}
-    input[type="text"],input[type="number"],select{min-height:43px!important;border-radius:11px!important;border-color:#c4d2ef!important}
-    button{border-radius:11px!important;background:var(--cx-blue)!important;font-weight:850!important}
-    button.alt{background:#edf3ff!important;color:var(--cx-blue2)!important;border:1px solid #c4d2ef!important}
-    .delivery-mode-switch{width:100%;max-width:860px;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:7px;margin:0 0 12px;border:1px solid var(--cx-line);border-radius:14px;background:#fff;box-shadow:0 8px 22px rgba(18,54,145,.07)}
-    .delivery-mode-switch a{min-height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;text-decoration:none;font-weight:900;color:var(--cx-blue2)}
-    .delivery-mode-switch a.active{background:var(--cx-blue);color:#fff}
-    .complete-credit-note{display:none;margin:-7px 0 12px;padding:8px 10px;border-radius:10px;background:#edf3ff;border:1px solid #c4d2ef;color:var(--cx-blue2);font-size:.8rem;font-weight:700}
-    @media(max-width:560px){body{padding:10px!important}.delivery-mode-switch{grid-template-columns:1fr}.top-actions{flex-wrap:wrap}}
+    body.dark{--cx-bg:#081326;--cx-card:#101d35;--cx-text:#edf3ff;--cx-muted:#a9b8d5;--cx-line:#2a3f67;background:var(--cx-bg)!important;color:var(--cx-text)!important}
+    h1{color:var(--cx-blue2)!important;margin:4px 0 12px!important}body.dark h1{color:#dce7ff!important}
+    form{max-width:860px!important;border:1px solid var(--cx-line)!important;border-radius:16px!important;box-shadow:0 10px 28px rgba(18,54,145,.08)!important;background:var(--cx-card)!important}
+    input[type="text"],input[type="number"],select{min-height:43px!important;border-radius:11px!important;border-color:#c4d2ef!important}body.dark input,body.dark select{background:#0b172c!important;color:#edf3ff!important;border-color:#38527f!important}
+    button{border-radius:11px!important;background:var(--cx-blue)!important;font-weight:850!important}button.alt{background:#edf3ff!important;color:var(--cx-blue2)!important;border:1px solid #c4d2ef!important}
+    .delivery-mode-switch{width:100%;max-width:860px;display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:7px;margin:0 0 12px;border:1px solid var(--cx-line);border-radius:14px;background:var(--cx-card);box-shadow:0 8px 22px rgba(18,54,145,.07)}
+    .delivery-mode-switch a{min-height:42px;display:flex;align-items:center;justify-content:center;border-radius:10px;text-decoration:none;font-weight:900;color:var(--cx-blue2)}body.dark .delivery-mode-switch a{color:#dce7ff}.delivery-mode-switch a.active{background:var(--cx-blue);color:#fff}
+    .complete-credit-note,.complete-scale-note{display:none;margin:-7px 0 12px;padding:8px 10px;border-radius:10px;background:#edf3ff;border:1px solid #c4d2ef;color:var(--cx-blue2);font-size:.8rem;font-weight:700}.complete-scale-note{display:block;background:#eaf8f0;border-color:#c3e7d3;color:#087747}.complete-scale-note.warn{background:#fff5df;border-color:#ebd8a8;color:#805500}
+    .complete-theme{position:fixed;right:14px;bottom:14px;z-index:5000;width:44px;height:44px;border-radius:13px;background:#1648d8;color:#fff;border:0;box-shadow:0 8px 24px rgba(18,54,145,.22);cursor:pointer}
+    @media(max-width:560px){body{padding:10px!important}.delivery-mode-switch{grid-template-columns:1fr}.top-actions{flex-wrap:wrap}.complete-theme{right:8px;bottom:8px}}
   </style>
   <script id="coopex-complete-behavior">
   (function(){
     function money(v){return new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v||0))}
-    function setup(){
-      const h1=document.querySelector('h1');
-      if(h1&&!document.getElementById('deliveryModeSwitch')){
-        const nav=document.createElement('div');
-        nav.id='deliveryModeSwitch';nav.className='delivery-mode-switch';
-        nav.innerHTML='<a href="{{ url_for('cadastrar_entrega') }}">⚡ Entrega rápida</a><a class="active" href="{{ url_for('cadastrar_entrega', modo='completo') }}">📋 Entrega completa</a>';
-        h1.insertAdjacentElement('afterend',nav);
-      }
-      const pg=document.getElementById('pagamento');
-      if(pg){
-        pg.innerHTML='<option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Comanda">3. Comanda</option><option id="completeCreditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option>';
-        let note=document.getElementById('completeCreditNote');
-        if(!note){note=document.createElement('div');note.id='completeCreditNote';note.className='complete-credit-note';pg.insertAdjacentElement('afterend',note)}
-      }
-      const original=window.escolher;
-      if(typeof original==='function'&&!original.__coopexWrapped){
-        const wrapped=function(item){original(item);loadCredit(item)};
-        wrapped.__coopexWrapped=true;window.escolher=wrapped;
-      }
+    function norm(s){return String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim()}
+    let todosCooperados=[];
+    function escolherExcecao(select){
+      const termo=prompt('Digite parte do nome do cooperado que trabalhará fora da escala:');if(!termo)return null;
+      let achados=todosCooperados.filter(c=>norm(c.nome).includes(norm(termo)));if(!achados.length){alert('Nenhum cooperado encontrado.');return null}
+      if(achados.length===1)return achados[0];achados=achados.slice(0,12);const n=Number(prompt('Digite o número correto:\n'+achados.map((c,i)=>`${i+1}. ${c.nome}`).join('\n')))-1;return n>=0&&n<achados.length?achados[n]:null;
     }
-    async function loadCredit(item){
-      const pg=document.getElementById('pagamento'),opt=document.getElementById('completeCreditOption'),note=document.getElementById('completeCreditNote');
-      if(!pg||!opt||!item)return;
-      const profile={saldo:Number(item.saldo_atual||0),allowed:Math.abs(Number(item.saldo_atual||0))>0.000001,frequent:false};
+    async function setupEscala(){
+      const select=document.getElementById('cooperado_id');if(!select||select.dataset.escalaConfigurada==='1')return;select.dataset.escalaConfigurada='1';
+      todosCooperados=[...select.options].filter(o=>o.value).map(o=>({id:String(o.value),nome:(o.textContent||'').replace(/^.*?—\s*/,'').trim()}));
       try{
-        const r=await fetch(`/cliente/${item.id}/credito?format=json`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
-        const d=await r.json();
-        if(r.ok&&d.ok){const movs=d.movimentos||[];const consumos=movs.filter(m=>String(m.tipo||'').toLowerCase()==='debito'&&(m.entrega_id||String(m.referencia||'').toLowerCase().includes('entrega'))).length;profile.saldo=Number(d.saldo_atual||0);profile.allowed=profile.allowed||movs.length>0||Number(d.total_creditos||0)!==0||Number(d.total_debitos||0)!==0;profile.frequent=consumos>=2}
+        const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok||!d.restricao_ativa)return;
+        const ids=new Set((d.cooperados_ids||[]).map(String)),resumos=new Map();(d.itens||[]).forEach(x=>{const a=resumos.get(String(x.cooperado_id))||[];a.push(`${x.contrato} · ${x.horario}`);resumos.set(String(x.cooperado_id),a)});
+        select.innerHTML='<option value="">Sem cooperado</option>';
+        todosCooperados.filter(c=>ids.has(c.id)).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`Escalado agora — ${c.nome}${resumos.has(c.id)?' · '+resumos.get(c.id).join(' | '):''}`;select.appendChild(o)});
+        const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='🔎 Digitar outro cooperado (fora da escala)';select.appendChild(manual);
+        const primeiro=[...select.options].find(o=>ids.has(String(o.value)));select.value=primeiro?primeiro.value:'';
+        let note=document.getElementById('completeScaleNote');if(!note){note=document.createElement('div');note.id='completeScaleNote';select.insertAdjacentElement('afterend',note)}note.className='complete-scale-note'+(primeiro?'':' warn');note.textContent=primeiro?'A lista mostra somente quem está escalado e dentro do horário. Use a busca para uma exceção.':'Não há cooperado escalado neste horário. Use a busca para escolher uma exceção.';
+        select.addEventListener('change',e=>{if(select.value!=='__fora_escala__')return;e.stopImmediatePropagation();const c=escolherExcecao(select);if(!c){select.value='';return}let o=[...select.options].find(x=>x.value===c.id);if(!o){o=document.createElement('option');o.value=c.id;o.textContent=`Fora da escala — ${c.nome}`;select.insertBefore(o,manual)}select.value=c.id},true);
+        select.form?.addEventListener('submit',e=>{if(select.value==='__fora_escala__'){e.preventDefault();alert('Escolha o cooperado fora da escala antes de cadastrar.')}});
       }catch(e){}
-      opt.hidden=!profile.allowed;opt.disabled=!profile.allowed;note.style.display=profile.allowed?'block':'none';
-      if(profile.allowed){note.textContent=`Crédito disponível. Saldo atual: ${money(profile.saldo)}.`;if(profile.frequent){pg.value='CREDITO_AUTO';note.textContent=`Cliente usa crédito automático com frequência. Saldo atual: ${money(profile.saldo)}.`}}else{pg.value='Pix';note.textContent=''}
     }
+    function setup(){
+      if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');
+      const h1=document.querySelector('h1');if(h1&&!document.getElementById('deliveryModeSwitch')){const nav=document.createElement('div');nav.id='deliveryModeSwitch';nav.className='delivery-mode-switch';nav.innerHTML='<a href="{{ url_for('cadastrar_entrega') }}">⚡ Entrega rápida</a><a class="active" href="{{ url_for('cadastrar_entrega', modo='completo') }}">📋 Entrega completa</a>';h1.insertAdjacentElement('afterend',nav)}
+      if(!document.getElementById('completeTheme')){const b=document.createElement('button');b.id='completeTheme';b.className='complete-theme';b.type='button';const sync=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()};document.body.appendChild(b);sync()}
+      const pg=document.getElementById('pagamento');if(pg){pg.innerHTML='<option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Comanda">3. Comanda</option><option id="completeCreditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option>';let note=document.getElementById('completeCreditNote');if(!note){note=document.createElement('div');note.id='completeCreditNote';note.className='complete-credit-note';pg.insertAdjacentElement('afterend',note)}}
+      const original=window.escolher;if(typeof original==='function'&&!original.__coopexWrapped){const wrapped=function(item){original(item);loadCredit(item)};wrapped.__coopexWrapped=true;window.escolher=wrapped}
+      setupEscala();
+    }
+    async function loadCredit(item){const pg=document.getElementById('pagamento'),opt=document.getElementById('completeCreditOption'),note=document.getElementById('completeCreditNote');if(!pg||!opt||!item)return;const profile={saldo:Number(item.saldo_atual||0),allowed:Math.abs(Number(item.saldo_atual||0))>0.000001,frequent:false};try{const r=await fetch(`/cliente/${item.id}/credito?format=json`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(r.ok&&d.ok){const movs=d.movimentos||[];const consumos=movs.filter(m=>String(m.tipo||'').toLowerCase()==='debito'&&(m.entrega_id||String(m.referencia||'').toLowerCase().includes('entrega'))).length;profile.saldo=Number(d.saldo_atual||0);profile.allowed=profile.allowed||movs.length>0||Number(d.total_creditos||0)!==0||Number(d.total_debitos||0)!==0;profile.frequent=consumos>=2}}catch(e){}opt.hidden=!profile.allowed;opt.disabled=!profile.allowed;note.style.display=profile.allowed?'block':'none';if(profile.allowed){note.textContent=`Crédito disponível. Saldo atual: ${money(profile.saldo)}.`;if(profile.frequent){pg.value='CREDITO_AUTO';note.textContent=`Cliente usa crédito automático com frequência. Saldo atual: ${money(profile.saldo)}.`}}else{pg.value='Pix';note.textContent=''}}
     if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setup,{once:true});else setup();
   })();
   </script>

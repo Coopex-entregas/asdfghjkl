@@ -1,48 +1,110 @@
 {% include 'admin_original.html' %}
-<style id="coopex-admin-quick-complete">
-  .quick-delivery-actions{display:grid!important;grid-template-columns:1fr 1fr!important;gap:8px!important;min-width:390px!important}
+<style id="coopex-admin-schedule-ui">
+  .quick-delivery-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;min-width:560px!important}
   .quick-delivery-actions .btn{width:100%!important;white-space:nowrap!important}
-  .btn-complete-action{height:46px!important;border-radius:14px!important;font-size:.94rem!important;box-shadow:none!important;background:#edf3ff!important;color:#173f9f!important;border:1px solid #cbd9f6!important}
-  body.dark .btn-complete-action{background:#162846!important;color:#edf3ff!important;border-color:#334b75!important}
-  @media(max-width:780px){.quick-delivery-actions{min-width:0!important;width:100%!important;grid-template-columns:1fr 1fr!important}}
-  @media(max-width:480px){.quick-delivery-actions{grid-template-columns:1fr!important}}
+  .btn-complete-action,.btn-scale-action{height:46px!important;border-radius:14px!important;font-size:.94rem!important;box-shadow:none!important;background:#edf3ff!important;color:#173f9f!important;border:1px solid #cbd9f6!important}
+  .btn-scale-action{background:#e9f8f0!important;color:#087747!important;border-color:#bfe4d0!important}
+  body.dark .btn-complete-action,body.dark .btn-scale-action{background:#162846!important;color:#edf3ff!important;border-color:#334b75!important}
+  .scale-live-pill{display:inline-flex;align-items:center;gap:5px;margin-left:6px;padding:3px 7px;border-radius:999px;background:#e8f8ef;color:#087747;font-size:.67rem;font-weight:900;vertical-align:middle}
+  body.dark .scale-live-pill{background:#103328;color:#8ce0b5}
+  @media(max-width:980px){.quick-delivery-actions{min-width:0!important;width:100%!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}}
+  @media(max-width:680px){.quick-delivery-actions{grid-template-columns:1fr!important}}
 </style>
-<script id="coopex-admin-quick-complete-script">
+<script id="coopex-admin-schedule-script">
 (function(){
-  function aplicar(){
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  let todos=[];
+  let escala={carregada:false,restrita:false,ids:new Set(),resumo:new Map()};
+  let cliqueContexto=null;
+
+  function aplicarMenu(){
     const links=[...document.querySelectorAll('.bank-submenu a')];
-    const quick=links.find(a=>(a.textContent||'').trim().toLowerCase()==='nova entrega');
+    const quick=links.find(a=>(a.textContent||'').trim().toLowerCase()==='nova entrega'||(a.textContent||'').toLowerCase().includes('entrega rápida'));
     if(quick){
       quick.href="{{ url_for('cadastrar_entrega') }}";
       quick.innerHTML='<span class="btn-ico">⚡</span>Entrega rápida';
       if(!document.getElementById('adminEntregaCompletaLink')){
-        const full=document.createElement('a');
-        full.id='adminEntregaCompletaLink';
-        full.href="{{ url_for('cadastrar_entrega', modo='completo') }}";
-        full.innerHTML='<span class="btn-ico">📋</span>Entrega completa';
-        quick.insertAdjacentElement('afterend',full);
+        const full=document.createElement('a');full.id='adminEntregaCompletaLink';full.href="{{ url_for('cadastrar_entrega', modo='completo') }}";full.innerHTML='<span class="btn-ico">📋</span>Entrega completa';quick.insertAdjacentElement('afterend',full);
+      }
+      if(!document.getElementById('adminEscalaLink')){
+        const item=document.createElement('a');item.id='adminEscalaLink';item.href="{{ url_for('escala') }}";item.innerHTML='<span class="btn-ico">🗓</span>Escala semanal';(document.getElementById('adminEntregaCompletaLink')||quick).insertAdjacentElement('afterend',item);
       }
     }
-
     links.filter(a=>(a.textContent||'').toLowerCase().includes('histórico de trajetos')).forEach(a=>a.remove());
 
-    const primary=[...document.querySelectorAll('.quick-left .btn')].find(b=>(b.textContent||'').toLowerCase().includes('nova entrega'));
+    const primary=[...document.querySelectorAll('.quick-left .btn')].find(b=>(b.textContent||'').toLowerCase().includes('nova entrega')||(b.textContent||'').toLowerCase().includes('entrega rápida'));
     if(primary){
-      const holder=primary.closest('.quick-left');
-      holder.classList.add('quick-delivery-actions');
-      primary.innerHTML='<span class="btn-ico">⚡</span> Entrega rápida';
-      primary.onclick=function(){window.__markActionStart&&window.__markActionStart();window.location.href="{{ url_for('cadastrar_entrega') }}"};
-      if(!document.getElementById('btnEntregaCompletaAdmin')){
-        const fullBtn=document.createElement('button');
-        fullBtn.id='btnEntregaCompletaAdmin';
-        fullBtn.className='btn alt btn-complete-action';
-        fullBtn.type='button';
-        fullBtn.innerHTML='<span class="btn-ico">📋</span> Entrega completa';
-        fullBtn.onclick=function(){window.__markActionStart&&window.__markActionStart();window.location.href="{{ url_for('cadastrar_entrega', modo='completo') }}"};
-        holder.appendChild(fullBtn);
-      }
+      const holder=primary.closest('.quick-left');holder.classList.add('quick-delivery-actions');primary.innerHTML='<span class="btn-ico">⚡</span> Entrega rápida';primary.onclick=()=>location.href="{{ url_for('cadastrar_entrega') }}";
+      if(!document.getElementById('btnEntregaCompletaAdmin')){const b=document.createElement('button');b.id='btnEntregaCompletaAdmin';b.className='btn alt btn-complete-action';b.type='button';b.innerHTML='<span class="btn-ico">📋</span> Entrega completa';b.onclick=()=>location.href="{{ url_for('cadastrar_entrega', modo='completo') }}";holder.appendChild(b)}
+      if(!document.getElementById('btnEscalaAdmin')){const b=document.createElement('button');b.id='btnEscalaAdmin';b.className='btn alt btn-scale-action';b.type='button';b.innerHTML='<span class="btn-ico">🗓</span> Escala semanal';b.onclick=()=>location.href="{{ url_for('escala') }}";holder.appendChild(b)}
     }
   }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aplicar,{once:true});else aplicar();
+
+  function sincronizarTema(){
+    const salvo=localStorage.getItem('coopex_theme');
+    if(salvo==='dark')document.body.classList.add('dark');
+    if(salvo==='light')document.body.classList.remove('dark');
+    new MutationObserver(()=>localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light')).observe(document.body,{attributes:true,attributeFilter:['class']});
+  }
+
+  async function carregarEscala(){
+    try{
+      if(!todos.length)todos=(window.COOPERADOS||[]).map(x=>({...x}));
+      const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
+      const d=await r.json();
+      if(!r.ok||!d.ok)return;
+      escala.carregada=true;escala.restrita=!!d.restricao_ativa;escala.ids=new Set((d.cooperados_ids||[]).map(String));escala.resumo=new Map();
+      (d.itens||[]).forEach(x=>{const id=String(x.cooperado_id);const atual=escala.resumo.get(id)||[];atual.push(`${x.contrato} · ${x.horario}`);escala.resumo.set(id,atual)});
+      if(escala.restrita){
+        window.COOPERADOS=todos.filter(c=>escala.ids.has(String(c.id))).map(c=>({...c,em_escala_agora:true,rotulo:`Escalado agora — ${c.nome}`}));
+      }else window.COOPERADOS=todos.map(c=>({...c}));
+      document.querySelectorAll('.coop-edit-select').forEach(prepararSelect);
+    }catch(e){}
+  }
+
+  function escolherForaEscala(){
+    const termo=prompt('Digite parte do nome do cooperado que trabalhará fora da escala:');
+    if(!termo)return null;
+    const q=norm(termo);let encontrados=todos.filter(c=>norm(c.nome).includes(q));
+    if(!encontrados.length){alert('Nenhum cooperado encontrado.');return null}
+    if(encontrados.length===1)return encontrados[0];
+    encontrados=encontrados.slice(0,12);
+    const escolha=prompt('Digite o número do cooperado:\n'+encontrados.map((c,i)=>`${i+1}. ${c.nome}`).join('\n'));
+    const indice=Number(escolha)-1;
+    return indice>=0&&indice<encontrados.length?encontrados[indice]:null;
+  }
+
+  function prepararSelect(sel){
+    if(!sel||sel.dataset.escalaPreparada==='1'||!escala.restrita)return;
+    sel.dataset.escalaPreparada='1';
+    const atual=cliqueContexto?.atual||'';
+    [...sel.options].forEach(o=>{
+      if(!o.value||o.value===String(atual)||escala.ids.has(String(o.value)))return;
+      o.remove();
+    });
+    [...sel.options].forEach(o=>{if(escala.ids.has(String(o.value))){const info=(escala.resumo.get(String(o.value))||[]).join(' | ');const base=todos.find(c=>String(c.id)===String(o.value));o.textContent=`Escalado agora — ${base?.nome||o.textContent}${info?' · '+info:''}`}});
+    const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='🔎 Digitar outro cooperado (fora da escala)';sel.appendChild(manual);
+    if(!atual){const primeiro=[...sel.options].find(o=>escala.ids.has(String(o.value)));sel.value=primeiro?primeiro.value:''}
+    sel.title='Mostrando quem está escalado neste horário. Use a busca para uma exceção.';
+  }
+
+  document.addEventListener('click',e=>{const alvo=e.target.closest?.('.coop-editable');if(alvo)cliqueContexto={atual:String(alvo.dataset.cooperadoId||'')};},true);
+  document.addEventListener('change',e=>{
+    const sel=e.target.closest?.('.coop-edit-select');
+    if(!sel||sel.value!=='__fora_escala__')return;
+    e.preventDefault();e.stopImmediatePropagation();
+    const escolhido=escolherForaEscala();
+    if(!escolhido){sel.value='';return}
+    if(!(window.COOPERADOS||[]).some(c=>String(c.id)===String(escolhido.id)))window.COOPERADOS.push({...escolhido,rotulo:`Fora da escala — ${escolhido.nome}`});
+    let opt=[...sel.options].find(o=>String(o.value)===String(escolhido.id));
+    if(!opt){opt=document.createElement('option');opt.value=String(escolhido.id);opt.textContent=`Fora da escala — ${escolhido.nome}`;sel.insertBefore(opt,sel.options[sel.options.length-1])}
+    sel.value=String(escolhido.id);
+    setTimeout(()=>sel.dispatchEvent(new Event('change',{bubbles:true})),0);
+  },true);
+
+  new MutationObserver(muts=>muts.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType!==1)return;if(n.matches?.('.coop-edit-select'))prepararSelect(n);n.querySelectorAll?.('.coop-edit-select').forEach(prepararSelect)}))).observe(document.documentElement,{childList:true,subtree:true});
+
+  function iniciar(){sincronizarTema();aplicarMenu();todos=(window.COOPERADOS||[]).map(x=>({...x}));carregarEscala();setInterval(carregarEscala,60000)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
 })();
 </script>

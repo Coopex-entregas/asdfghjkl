@@ -1,11 +1,7 @@
 """Configuração leve do Gunicorn para o painel COOPEX.
 
-O Render normalmente inicia o Flask via Gunicorn. Este arquivo é lido antes do
-app.py ser carregado e registra helpers globais usados pelo dashboard.
-
-Correção aplicada:
-- evita NameError: _bairro_rota_display is not defined
-- evita NameError: _bairro_rota_key is not defined
+O arquivo também instala a escala semanal somente depois que o app Flask está
+carregado no worker. Assim o recurso fica separado do app.py principal.
 """
 
 import builtins
@@ -37,14 +33,23 @@ def _bairro_rota_key(valor):
     return re.sub(r"\s+", " ", txt).strip()
 
 
-# Deixa os nomes disponíveis para qualquer módulo carregado pelo Gunicorn.
 builtins._bairro_rota_display = _bairro_rota_display
 builtins._bairro_rota_key = _bairro_rota_key
 
-
-# Configs seguras e leves para Render.
 workers = 1
 threads = 4
 timeout = 120
 keepalive = 5
 preload_app = False
+
+
+def post_worker_init(worker):
+    """Instala a escala após o Gunicorn carregar app:app."""
+    try:
+        import app as app_module
+        from escala_feature import install
+        install(app_module)
+        worker.log.info("Escala semanal COOPEX instalada.")
+    except Exception:
+        worker.log.exception("Falha ao instalar a escala semanal COOPEX.")
+        raise
