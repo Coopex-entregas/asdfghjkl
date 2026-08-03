@@ -73,8 +73,17 @@
   const select=document.getElementById('cooperado_id');
   if(!select)return;
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const filaId=firstQueue?String(firstQueue):'';
   const todos=[...select.options].filter(o=>o.value).map(o=>({id:String(o.value),nome:(o.textContent||'').replace(/^.*?—\s*/,'').trim()}));
-  let ids=new Set(),restrita=false;
+  let idsBase=new Set();
+
+  function adicionar(id,texto,antesDe=null){
+    if(!id||[...select.options].some(o=>String(o.value)===String(id)))return null;
+    const o=document.createElement('option');o.value=String(id);o.textContent=texto;
+    if(antesDe)select.insertBefore(o,antesDe);else select.appendChild(o);
+    return o;
+  }
+
   function manual(){
     const termo=prompt('Digite parte do nome do cooperado que trabalhará fora da escala:');if(!termo)return null;
     let lista=todos.filter(c=>norm(c.nome).includes(norm(termo)));
@@ -83,22 +92,40 @@
     lista=lista.slice(0,12);const n=Number(prompt('Digite o número do cooperado:\n'+lista.map((c,i)=>`${i+1}. ${c.nome}`).join('\n')))-1;
     return n>=0&&n<lista.length?lista[n]:null;
   }
+
   async function aplicar(){
     try{
       const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();
-      if(!r.ok||!d.ok)return;restrita=!!d.restricao_ativa;ids=new Set((d.cooperados_ids||[]).map(String));if(!restrita)return;
-      const resumos=new Map();(d.itens||[]).forEach(x=>{const a=resumos.get(String(x.cooperado_id))||[];a.push(`${x.contrato} · ${x.horario}`);resumos.set(String(x.cooperado_id),a)});
+      if(!r.ok||!d.ok||!d.restricao_ativa)return;
+
+      const itensBase=(d.itens||[]).filter(x=>norm(x.contrato)==='base');
+      idsBase=new Set(itensBase.map(x=>String(x.cooperado_id)));
+      const primeiroFila=todos.find(c=>c.id===filaId)||null;
+
       select.innerHTML='<option value="">Sem cooperado</option>';
-      todos.filter(c=>ids.has(c.id)).forEach(c=>{const o=document.createElement('option');o.value=c.id;o.textContent=`Escalado agora — ${c.nome}${resumos.has(c.id)?' · '+resumos.get(c.id).join(' | '):''}`;select.appendChild(o)});
-      const m=document.createElement('option');m.value='__fora_escala__';m.textContent='🔎 Digitar outro cooperado (fora da escala)';select.appendChild(m);
-      const primeiro=[...select.options].find(o=>ids.has(String(o.value)));select.value=primeiro?primeiro.value:'';select.title='A lista principal mostra apenas quem está escalado neste horário.';select.dispatchEvent(new Event('change',{bubbles:true}));
+      if(primeiroFila)adicionar(primeiroFila.id,`1º da fila — ${primeiroFila.nome}`);
+      todos.filter(c=>idsBase.has(c.id)&&c.id!==filaId).forEach(c=>adicionar(c.id,c.nome));
+
+      const m=document.createElement('option');m.value='__fora_escala__';m.textContent='Digitar outro cooperado';select.appendChild(m);
+      const primeiroBase=[...select.options].find(o=>idsBase.has(String(o.value)));
+      select.value=primeiroFila?primeiroFila.id:(primeiroBase?primeiroBase.value:'');
+      select.title='Mostra o 1º da fila e os cooperados escalados na BASE neste horário.';
+      select.dispatchEvent(new Event('change',{bubbles:true}));
     }catch(e){}
   }
+
   select.addEventListener('change',e=>{
-    if(select.value!=='__fora_escala__')return;e.stopImmediatePropagation();const c=manual();if(!c){select.value='';return}
-    let o=[...select.options].find(x=>x.value===c.id);if(!o){o=document.createElement('option');o.value=c.id;o.textContent=`Fora da escala — ${c.nome}`;select.insertBefore(o,select.options[select.options.length-1])}select.value=c.id;
+    if(select.value!=='__fora_escala__')return;
+    e.stopImmediatePropagation();
+    const c=manual();
+    if(!c){select.value=filaId&&[...select.options].some(o=>o.value===filaId)?filaId:'';return}
+    const manualOpt=select.options[select.options.length-1];
+    let o=[...select.options].find(x=>x.value===c.id);
+    if(!o)o=adicionar(c.id,c.nome,manualOpt);
+    select.value=c.id;
     const resumo=document.getElementById('sCooperado');if(resumo)resumo.textContent=c.nome;
   },true);
+
   window.addEventListener('pageshow',()=>setTimeout(aplicar,0));
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aplicar,{once:true});else aplicar();
 })();
