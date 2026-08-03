@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <title>Agendar Entrega - Coopex</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <style>
+    :root{--royal:#0f35b5;--royal2:#255bff;--bg:#eef3ff;--card:#fff;--text:#0b1020;--muted:#667085;--line:#dbe6ff;--shadow:0 16px 40px rgba(12,38,140,.14);--shadow2:0 10px 24px rgba(12,38,140,.10)}
+    *{box-sizing:border-box} body{margin:0;font-family:Arial,sans-serif;background:linear-gradient(180deg,#f5f8ff 0%, #eaf1ff 100%);color:var(--text);padding:24px 14px 40px}
+    .wrap{max-width:880px;margin:0 auto}.back{display:inline-flex;align-items:center;gap:8px;color:var(--royal);text-decoration:none;font-weight:900;margin-bottom:14px}
+    .shell{background:var(--card);border:1px solid var(--line);border-radius:28px;box-shadow:var(--shadow);overflow:hidden}
+    .hero{padding:18px 20px;background:linear-gradient(135deg,var(--royal) 0%, var(--royal2) 100%);color:#fff}.hero h1{margin:0;font-size:1.2rem}.hero p{margin:5px 0 0;font-size:.9rem;font-weight:700;opacity:.95}
+    form{padding:18px}.section{border:1px solid var(--line);border-radius:22px;padding:14px;margin-bottom:14px;background:linear-gradient(180deg,#fff,#f8fbff)}
+    .section h2{margin:0 0 10px;font-size:1rem;color:var(--royal)}.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.grid-3{display:grid;grid-template-columns:1.2fr .9fr .9fr;gap:12px}
+    .field{display:flex;flex-direction:column;gap:6px}label{font-size:.78rem;font-weight:900;color:var(--muted);text-transform:uppercase;letter-spacing:.02em}
+    input[type="text"],input[type="number"],input[type="datetime-local"],select,textarea{width:100%;border:1px solid #cdd9ff;border-radius:14px;padding:12px 14px;font:inherit;background:#fff;outline:none;color:var(--text)}
+    textarea{min-height:88px;resize:vertical}input:focus,select:focus,textarea:focus{border-color:#8facff;box-shadow:0 0 0 4px rgba(37,91,255,.10)}
+    .hint{font-size:.82rem;color:var(--muted);font-weight:700}.meta{margin-top:10px;padding:12px;border-radius:16px;background:#f5f8ff;border:1px solid var(--line);font-size:.88rem;line-height:1.4}.meta strong{color:var(--royal)}
+    .stop{border:1px solid var(--line);border-radius:16px;padding:12px;background:#fff;margin-top:10px}.stop-top{display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px}
+    .stop-badge{display:inline-flex;align-items:center;justify-content:center;width:30px;height:30px;border-radius:999px;background:#eef3ff;color:var(--royal);font-weight:900}
+    .btn-row{display:flex;gap:12px;flex-wrap:wrap}.btn,.btn-soft{border:none;border-radius:16px;padding:14px 18px;font:inherit;font-weight:900;cursor:pointer}.btn{background:linear-gradient(135deg,var(--royal),var(--royal2));color:#fff;box-shadow:var(--shadow2)}.btn-soft{background:#eef3ff;color:var(--royal)}.submit-row{display:flex;justify-content:flex-end;margin-top:8px}
+    @media (max-width:760px){.grid,.grid-3{grid-template-columns:1fr}.submit-row .btn{width:100%}}
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <a class="back" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+    <div class="shell">
+      <div class="hero">
+        <h1>Agendar Entrega</h1>
+        <p>Agendamento completo com coleta, entrega, contatos, observação e paradas.</p>
+      </div>
+
+      <form method="POST" action="{{ url_for('agendar_entrega') }}" autocomplete="off">
+        <input type="hidden" id="cliente_id" name="cliente_id" />
+        <input type="hidden" id="paradas_json" name="paradas_json" />
+
+        <div class="section">
+          <h2>Cliente e agendamento</h2>
+          <div class="grid">
+            <div class="field">
+              <label for="cliente-select">Cliente cadastrado</label>
+              <select id="cliente-select">
+                <option value="">-- Selecione um cliente cadastrado --</option>
+                {% if clientes %}
+                  {% for cl in clientes %}
+                    <option value="{{ cl.id }}" data-nome="{{ cl.nome|e }}" data-bairro="{{ cl.bairro_origem or '' }}" data-endereco="{{ cl.endereco or '' }}" data-telefone="{{ cl.telefone or '' }}">
+                      {{ cl.nome }}
+                    </option>
+                  {% endfor %}
+                {% endif %}
+              </select>
+              <div class="hint">Se selecionar, os dados da coleta podem ser preenchidos automaticamente.</div>
+            </div>
+            <div class="field">
+              <label for="cliente">Nome do cliente</label>
+              <input id="cliente" type="text" name="cliente" required />
+            </div>
+          </div>
+
+          <div id="clienteMeta" class="meta" style="display:none"></div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="data">Data e hora da entrega</label>
+              <input type="datetime-local" id="data" name="data" required />
+            </div>
+            <div class="field">
+              <label for="cooperado_id">Atribuir cooperado</label>
+              <select id="cooperado_id" name="cooperado_id">
+                <option value="">-- Nenhum --</option>
+                {% for c in cooperados %}
+                  <option value="{{ c.id }}">{{ c.nome }}</option>
+                {% endfor %}
+              </select>
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Coleta</h2>
+          <div class="grid-3">
+            <div class="field">
+              <label for="coleta_endereco">Endereço da coleta</label>
+              <input id="coleta_endereco" type="text" name="coleta_endereco" />
+            </div>
+            <div class="field">
+              <label for="coleta_bairro">Bairro da coleta</label>
+              <input id="coleta_bairro" type="text" name="coleta_bairro" />
+            </div>
+            <div class="field">
+              <label for="bairro">Bairro principal</label>
+              <input id="bairro" type="text" name="bairro" required />
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="coleta_contato">Contato da coleta</label>
+              <input id="coleta_contato" type="text" name="coleta_contato" />
+            </div>
+            <div class="field">
+              <label for="coleta_telefone">Telefone da coleta</label>
+              <input id="coleta_telefone" type="text" name="coleta_telefone" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Entrega</h2>
+          <div class="grid">
+            <div class="field">
+              <label for="entrega_endereco">Endereço da entrega</label>
+              <input id="entrega_endereco" type="text" name="entrega_endereco" />
+            </div>
+            <div class="field">
+              <label for="entrega_bairro">Bairro da entrega</label>
+              <input id="entrega_bairro" type="text" name="entrega_bairro" />
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="entrega_contato">Quem vai receber</label>
+              <input id="entrega_contato" type="text" name="entrega_contato" />
+            </div>
+            <div class="field">
+              <label for="entrega_telefone">Telefone de quem recebe</label>
+              <input id="entrega_telefone" type="text" name="entrega_telefone" />
+            </div>
+          </div>
+        </div>
+
+        <div class="section">
+          <h2>Paradas</h2>
+          <div class="btn-row">
+            <button class="btn-soft" type="button" id="btnAddParada">+ Adicionar parada</button>
+          </div>
+          <div id="paradasWrap"></div>
+        </div>
+
+        <div class="section">
+          <h2>Valores e status</h2>
+          <div class="grid">
+            <div class="field">
+              <label for="valor">Valor (R$)</label>
+              <input type="number" id="valor" name="valor" step="0.01" min="0" required />
+            </div>
+            <div class="field">
+              <label for="pagamento">Forma de pagamento</label>
+              <select id="pagamento" name="pagamento" required>
+                <option value="Dinheiro">Dinheiro</option>
+                <option value="Pix">Pix</option>
+                <option value="Pix (Cooperativa)">Pix (Cooperativa)</option>
+                <option value="Comanda">Comanda</option>
+                <option value="Crédito auto">Crédito (auto)</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="grid">
+            <div class="field">
+              <label for="status_pagamento">Status pagamento</label>
+              <select id="status_pagamento" name="status_pagamento">
+                <option value="Pendente">Pendente</option>
+                <option value="Pago">Pago</option>
+              </select>
+            </div>
+            <div class="field">
+              <label for="status_entrega">Status entrega</label>
+              <select id="status_entrega" name="status_entrega">
+                <option value="pendente">Pendente</option>
+                <option value="recebido">Entregue</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="field">
+            <label for="observacao">Observação</label>
+            <textarea id="observacao" name="observacao" placeholder="Informações importantes da entrega"></textarea>
+          </div>
+        </div>
+
+        <div class="submit-row">
+          <button class="btn" type="submit">Agendar</button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <script>
+    const sel = document.getElementById('cliente-select');
+    const hiddenId = document.getElementById('cliente_id');
+    const inpCliente = document.getElementById('cliente');
+    const inpBairro = document.getElementById('bairro');
+    const inpColetaEndereco = document.getElementById('coleta_endereco');
+    const inpColetaBairro = document.getElementById('coleta_bairro');
+    const inpColetaContato = document.getElementById('coleta_contato');
+    const inpColetaTelefone = document.getElementById('coleta_telefone');
+    const clienteMeta = document.getElementById('clienteMeta');
+
+    function setMeta(data){
+      if(!data){
+        clienteMeta.style.display = 'none';
+        clienteMeta.innerHTML = '';
+        return;
+      }
+      clienteMeta.innerHTML = `<strong>Cliente:</strong> ${data.nome || '—'}<br><strong>Telefone:</strong> ${data.telefone || '—'}<br><strong>Bairro:</strong> ${data.bairro || '—'}<br><strong>Endereço:</strong> ${data.endereco || '—'}`;
+      clienteMeta.style.display = 'block';
+    }
+
+    sel.addEventListener('change', function(){
+      const opt = sel.options[sel.selectedIndex];
+      if(!opt || !opt.value){
+        hiddenId.value = '';
+        setMeta(null);
+        return;
+      }
+      const data = {
+        id: opt.value,
+        nome: opt.getAttribute('data-nome') || '',
+        bairro: opt.getAttribute('data-bairro') || '',
+        endereco: opt.getAttribute('data-endereco') || '',
+        telefone: opt.getAttribute('data-telefone') || ''
+      };
+      hiddenId.value = data.id;
+      if(data.nome) inpCliente.value = data.nome;
+      if(data.bairro && !inpBairro.value) inpBairro.value = data.bairro;
+      if(data.endereco && !inpColetaEndereco.value) inpColetaEndereco.value = data.endereco;
+      if(data.bairro && !inpColetaBairro.value) inpColetaBairro.value = data.bairro;
+      if(data.nome && !inpColetaContato.value) inpColetaContato.value = data.nome;
+      if(data.telefone && !inpColetaTelefone.value) inpColetaTelefone.value = data.telefone;
+      setMeta(data);
+    });
+
+    inpCliente.addEventListener('input', function(){
+      if(sel.value) sel.value = '';
+      if(hiddenId.value) hiddenId.value = '';
+    });
+
+    const paradasWrap = document.getElementById('paradasWrap');
+    const paradasJson = document.getElementById('paradas_json');
+    document.getElementById('btnAddParada').addEventListener('click', addParada);
+
+    function addParada(data = {}){
+      const index = paradasWrap.children.length + 1;
+      const el = document.createElement('div');
+      el.className = 'stop';
+      el.innerHTML = `<div class="stop-top"><div style="display:flex;align-items:center;gap:10px"><span class="stop-badge">${index}</span><strong>Parada</strong></div><button class="btn-soft" type="button">Remover</button></div><div class="grid"><div class="field"><label>Endereço da parada</label><input type="text" class="stop-endereco" value="${data.endereco || ''}"></div><div class="field"><label>Quem procurar</label><input type="text" class="stop-contato" value="${data.contato || ''}"></div></div><div class="grid"><div class="field"><label>Telefone</label><input type="text" class="stop-telefone" value="${data.telefone || ''}"></div><div class="field"><label>Observação</label><input type="text" class="stop-observacao" value="${data.observacao || ''}"></div></div>`;
+      el.querySelector('button').addEventListener('click', () => { el.remove(); syncParadas(); renumerarParadas(); });
+      paradasWrap.appendChild(el);
+      [...el.querySelectorAll('input')].forEach(i => i.addEventListener('input', syncParadas));
+      syncParadas();
+      renumerarParadas();
+    }
+
+    function renumerarParadas(){
+      [...paradasWrap.children].forEach((el, idx) => {
+        const badge = el.querySelector('.stop-badge');
+        if(badge) badge.textContent = idx + 1;
+      });
+    }
+
+    function syncParadas(){
+      const items = [...paradasWrap.children].map(el => ({
+        endereco: el.querySelector('.stop-endereco')?.value || '',
+        contato: el.querySelector('.stop-contato')?.value || '',
+        telefone: el.querySelector('.stop-telefone')?.value || '',
+        observacao: el.querySelector('.stop-observacao')?.value || ''
+      })).filter(x => x.endereco || x.contato || x.telefone || x.observacao);
+      paradasJson.value = JSON.stringify({stops: items});
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+<meta charset="UTF-8" />
+<title>Dashboard Gerencial — COOPEX</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{
+  --azul:#003399;
+  --azul2:#0057ff;
+  --azul3:#eaf1ff;
+  --verde:#15b46f;
+  --branco:#fff;
+  --bg:#f4f7ff;
+  --texto:#0b1f45;
+  --muted:#64748b;
+  --line:#d9e5ff;
+  --red:#dc2626;
+  --amber:#f59e0b;
+  --cyan:#0891b2;
+  --shadow:0 12px 30px rgba(0,36,120,.10);
+  --r:18px;
+}
+*{box-sizing:border-box}
+html,body{margin:0;font-family:Inter,system-ui,Segoe UI,Arial,sans-serif;background:var(--bg);color:var(--texto);font-size:12px;line-height:1.25}
+body{min-height:100vh;background:linear-gradient(180deg,#f7faff 0%,#eef4ff 100%)}
+a{text-decoration:none;color:inherit}button,input,select,textarea{font-family:inherit}
+.wrap{max-width:1720px;margin:0 auto;padding:12px 14px}
+.top{position:sticky;top:0;z-index:20;background:rgba(244,247,255,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.topbar{max-width:1720px;margin:0 auto;padding:10px 14px;display:grid;grid-template-columns:220px minmax(0,1fr) auto;gap:10px;align-items:center}
+.brand{display:flex;align-items:center;gap:10px;background:var(--branco);border:1px solid var(--line);border-radius:18px;padding:9px 10px;box-shadow:var(--shadow)}
+.brand img{width:36px;height:36px;object-fit:contain;border-radius:10px;background:#fff;border:1px solid #e5edff;padding:4px}
+.brand b{display:block;font-size:16px;font-weight:950;color:var(--azul)}
+.brand small{display:block;color:var(--muted);font-weight:800;margin-top:2px}
+.filters{display:grid;grid-template-columns:repeat(9,minmax(0,1fr));gap:8px;align-items:end;min-width:0}
+.f label{display:block;font-size:10px;font-weight:950;color:#1e3a8a;margin:0 0 4px 3px;text-transform:uppercase;letter-spacing:.04em}
+.f input,.f select{width:100%;height:38px;border-radius:12px;border:1px solid #bcd0ff;background:#fff;color:#0b2c6f;font-weight:850;padding:0 10px;outline:none;font-size:11px}
+.f input:focus,.f select:focus,.miniForm input:focus,.miniForm textarea:focus{box-shadow:0 0 0 4px rgba(0,51,153,.12);border-color:#8eb0ff}
+.actions{display:flex;gap:8px;align-items:center;justify-content:flex-end;flex-wrap:wrap;min-width:0}
+.btn{height:38px;border-radius:12px;border:1px solid #bcd0ff;background:#fff;color:var(--azul);font-weight:950;padding:0 12px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:7px;font-size:11px;white-space:nowrap}
+.btn.primary{background:linear-gradient(90deg,var(--azul),var(--azul2));color:white;border-color:transparent}
+.btn.green{background:linear-gradient(90deg,#0e9f62,var(--verde));color:white;border-color:transparent}
+.btn.red{background:#fff1f2;color:#b91c1c;border-color:#fecdd3}
+.btn:hover{filter:brightness(.98)}
+@media(max-width:1450px){.topbar{grid-template-columns:1fr}.filters{grid-template-columns:repeat(4,1fr)}.actions{justify-content:flex-start}}
+@media(max-width:980px){.filters{grid-template-columns:repeat(2,1fr)}}
+@media(max-width:760px){.filters{grid-template-columns:1fr}.wrap{padding:8px}.topbar{padding:8px}}
+
+.hero{background:linear-gradient(135deg,var(--azul),#075cff 70%,#0e8bff);border-radius:24px;padding:14px;box-shadow:var(--shadow);margin-top:12px;color:white;overflow:hidden;position:relative}
+.hero:before{content:"";position:absolute;right:-80px;top:-120px;width:340px;height:340px;border-radius:50%;background:rgba(255,255,255,.13)}
+.heroGrid{position:relative;display:grid;grid-template-columns:1.1fr .9fr;gap:12px;align-items:stretch}
+.hero h1{margin:0;font-size:22px;font-weight:950;letter-spacing:-.03em}
+.hero p{margin:4px 0 0;color:#dbeafe;font-weight:800}
+.heroRight{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;align-content:center}
+.heroChip{background:rgba(255,255,255,.16);border:1px solid rgba(255,255,255,.25);border-radius:999px;padding:9px 12px;font-weight:900;color:#fff}
+@media(max-width:900px){.heroGrid{grid-template-columns:1fr}.heroRight{justify-content:flex-start}}
+
+.gridKpi{display:grid;grid-template-columns:repeat(12,1fr);gap:10px;margin-top:10px}
+.kpi{grid-column:span 2;background:#fff;border:1px solid var(--line);border-radius:18px;padding:12px;box-shadow:var(--shadow);position:relative;overflow:hidden;min-height:92px}
+.kpi.w3{grid-column:span 3}.kpi.w4{grid-column:span 4}
+.kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--bar,var(--azul))}
+.kpi .lab{font-size:10px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.06em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpi .val{font-size:20px;font-weight:950;margin-top:8px;letter-spacing:-.03em;color:#091b3d;word-break:break-word;font-variant-numeric:tabular-nums}
+.kpi .hint{font-size:11px;color:var(--muted);font-weight:850;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+@media(max-width:1200px){.kpi{grid-column:span 3}.kpi.w3,.kpi.w4{grid-column:span 6}}
+@media(max-width:760px){.kpi,.kpi.w3,.kpi.w4{grid-column:span 12}}
+
+.board{display:grid;grid-template-columns:1.05fr .95fr;gap:10px;margin-top:10px}
+.board3{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:10px}
+.board4{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:10px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;box-shadow:var(--shadow);padding:12px;min-width:0}
+.card h2{margin:0;color:var(--azul);font-size:13px;font-weight:950;letter-spacing:-.01em}
+.cardHead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;margin-bottom:10px}
+.sub{font-size:11px;color:var(--muted);font-weight:800;margin-top:3px}
+.chartBox{height:235px;position:relative}.chartBox.small{height:190px}.chartBox.tall{height:290px}
+canvas{width:100%!important;height:100%!important}
+@media(max-width:1050px){.board,.board3,.board4{grid-template-columns:1fr}.chartBox{height:260px}}
+
+.tableWrap{overflow:auto;border:1px solid #e2ebff;border-radius:16px;background:#fff}
+table{width:100%;border-collapse:collapse;min-width:720px}
+th,td{padding:9px 9px;border-bottom:1px solid #edf2ff;text-align:left;white-space:nowrap}
+th{position:sticky;top:0;background:#f1f6ff;color:#123272;font-size:11px;font-weight:950;z-index:1}
+td{font-weight:800;color:#142850}.num{text-align:right;font-variant-numeric:tabular-nums}.center{text-align:center}
+tr:hover td{background:#f8fbff}.muted{color:var(--muted)}
+.tag{display:inline-flex;align-items:center;gap:6px;border-radius:999px;padding:5px 8px;font-size:10px;font-weight:950;border:1px solid #cfe0ff;background:#eef4ff;color:#0b2c6f}
+.tag.ok{background:#e8fff3;color:#087044;border-color:#b7efd3}.tag.warn{background:#fff7e6;color:#8a4b00;border-color:#ffe1ad}.tag.red{background:#fff0f1;color:#b91c1c;border-color:#fecdd3}.tag.info{background:#ecfeff;color:#075985;border-color:#a5f3fc}
+.list{display:flex;flex-direction:column;gap:8px}.rowItem{display:grid;grid-template-columns:32px 1fr auto;gap:8px;align-items:center;padding:8px;border-radius:14px;background:#f8fbff;border:1px solid #edf2ff}.rankNum{width:30px;height:30px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--azul);color:#fff;font-weight:950}.rowItem b{display:block;font-weight:950;color:#0b2c6f;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.rowItem small{display:block;margin-top:2px;color:var(--muted);font-weight:800}.rowItem .right{font-weight:950;text-align:right;color:#111827}
+.alerts{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}.alert{border-radius:16px;padding:11px;border:1px solid #cfe0ff;background:#f8fbff}.alert b{display:block;font-size:12px}.alert p{margin:4px 0 0;color:var(--muted);font-weight:800}.alert.ok{border-color:#b7efd3;background:#edfff6}.alert.warn{border-color:#ffe1ad;background:#fff8ec}.alert.danger{border-color:#fecdd3;background:#fff1f2}.alert.info{border-color:#a5f3fc;background:#ecfeff}
+@media(max-width:1000px){.alerts{grid-template-columns:1fr}}
+
+.sectionTitle{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:15px 0 7px}.sectionTitle h3{margin:0;color:#0b2c6f;font-size:13px;font-weight:950}.line{height:1px;background:var(--line);margin:10px 0}
+.miniForm{display:grid;grid-template-columns:1fr 1.5fr auto;gap:8px;align-items:end}.miniForm label{display:block;font-size:10px;font-weight:950;color:#1e3a8a;margin-bottom:4px;text-transform:uppercase}.miniForm input,.miniForm textarea{width:100%;border-radius:12px;border:1px solid #bcd0ff;background:#fff;color:#0b2c6f;font-weight:850;padding:9px 10px;outline:none}.miniForm textarea{min-height:78px;resize:vertical}.groupGrid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.groupBox{border:1px solid #e2ebff;background:#f8fbff;border-radius:16px;padding:10px}.groupBox strong{color:#0b2c6f;font-weight:950}.groupBox small{display:block;color:var(--muted);font-weight:800;margin-top:4px}.groupActions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}.copyBox{width:100%;min-height:118px;border-radius:16px;border:1px dashed #bcd0ff;background:#f8fbff;padding:10px;color:#0b2c6f;font-weight:800;resize:vertical}
+@media(max-width:900px){.miniForm,.groupGrid{grid-template-columns:1fr}}
+
+.printOnly{display:none}
+@media print{.top,.noPrint,.btn{display:none!important}.wrap{max-width:none}.card,.kpi,.hero{box-shadow:none}.printOnly{display:block}body{background:#fff}.hero{color:#0b2c6f;background:#fff;border:1px solid var(--line)}}
+
+/* =========================================================
+   MODO NOTURNO CONTROLADO DENTRO DESTA PÁGINA
+   ========================================================= */
+html.dark-mode,
+body.dark-mode{
+  --bg:#071126;
+  --texto:#eaf1ff;
+  --muted:#a9b8d6;
+  --line:#203866;
+  --azul3:#11275a;
+  --shadow:0 14px 34px rgba(0,0,0,.28);
+}
+body.dark-mode{
+  background:linear-gradient(180deg,#071126 0%,#0b1730 100%);
+  color:var(--texto);
+}
+body.dark-mode .top{
+  background:rgba(7,17,38,.94);
+  border-bottom-color:#203866;
+}
+body.dark-mode .brand,
+body.dark-mode .card,
+body.dark-mode .kpi,
+body.dark-mode .tableWrap,
+body.dark-mode .groupBox,
+body.dark-mode .alert,
+body.dark-mode .copyBox{
+  background:#0f1f3f;
+  border-color:#203866;
+  color:#eaf1ff;
+  box-shadow:0 14px 34px rgba(0,0,0,.28);
+}
+body.dark-mode .brand img{
+  background:#ffffff;
+}
+body.dark-mode .brand b,
+body.dark-mode .card h2,
+body.dark-mode .sectionTitle h3,
+body.dark-mode .rowItem b,
+body.dark-mode .groupBox strong{
+  color:#dce8ff;
+}
+body.dark-mode .sub,
+body.dark-mode .muted,
+body.dark-mode .kpi .hint,
+body.dark-mode .kpi .lab,
+body.dark-mode .alert p,
+body.dark-mode .rowItem small{
+  color:#a9b8d6;
+}
+body.dark-mode .kpi .val,
+body.dark-mode td{
+  color:#f4f8ff;
+}
+body.dark-mode .f label,
+body.dark-mode .miniForm label{
+  color:#bcd0ff;
+}
+body.dark-mode .f input,
+body.dark-mode .f select,
+body.dark-mode .miniForm input,
+body.dark-mode .miniForm textarea{
+  background:#0b1730;
+  border-color:#2b4c84;
+  color:#f4f8ff;
+}
+body.dark-mode .f input::placeholder,
+body.dark-mode .miniForm textarea::placeholder{
+  color:#7f91b7;
+}
+body.dark-mode th{
+  background:#102a63;
+  color:#ffffff;
+}
+body.dark-mode tr:hover td{
+  background:#132a55;
+}
+body.dark-mode .rowItem{
+  background:#0b1730;
+  border-color:#203866;
+}
+body.dark-mode .tag{
+  background:#112a5a;
+  border-color:#2b4c84;
+  color:#dce8ff;
+}
+body.dark-mode .hero{
+  background:linear-gradient(135deg,#06236d,#003399 70%,#0057ff);
+}
+body.dark-mode .line{
+  background:#203866;
+}
+body.dark-mode .btn{
+  background:#0b1730;
+  color:#dce8ff;
+  border-color:#2b4c84;
+}
+body.dark-mode .btn.primary{
+  background:linear-gradient(90deg,#003399,#0057ff);
+  color:#fff;
+}
+body.dark-mode .btn.green{
+  background:linear-gradient(90deg,#0e9f62,#15b46f);
+  color:#fff;
+}
+body.dark-mode .btn.red{
+  background:#3a1420;
+  color:#fecdd3;
+  border-color:#7f1d1d;
+}
+body.dark-mode .copyBox{
+  background:#0b1730;
+  color:#eaf1ff;
+}
+.btn.darkToggle{
+  min-width:132px;
+}
+body.dark-mode .btn.darkToggle{
+  background:#eaf1ff;
+  color:#003399;
+  border-color:#eaf1ff;
+}
+
+/* =========================================================
+   LIMITADOR VISUAL DOS QUADROS GRANDES
+   ========================================================= */
+.rankingTools{
+  display:flex;
+  align-items:center;
+  justify-content:flex-end;
+  gap:8px;
+  flex-wrap:wrap;
+}
+.rankingTools label{
+  color:var(--muted);
+  font-weight:950;
+  font-size:10px;
+  text-transform:uppercase;
+  letter-spacing:.04em;
+}
+.rankingTools select{
+  height:32px;
+  border-radius:10px;
+  border:1px solid #bcd0ff;
+  background:#fff;
+  color:#0b2c6f;
+  font-weight:950;
+  padding:0 8px;
+  outline:none;
+}
+body.dark-mode .rankingTools select{
+  background:#0b1730;
+  border-color:#2b4c84;
+  color:#f4f8ff;
+}
+.rankScroll{
+  max-height:520px;
+  overflow:auto;
+}
+.rankScroll table{
+  min-width:700px;
+}
+.rankRow.is-hidden{
+  display:none;
+}
+
+</style>
+</head>
+<body>
+<header class="top noPrint">
+  <form class="topbar" method="get" action="{{ url_for('estatisticas_cooperado') }}">
+    <div class="brand">
+      <img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX" onerror="this.style.display='none'">
+      <div><b>Dashboard</b><small>{{ periodo_legivel }}</small></div>
+    </div>
+    <div class="filters">
+      <div class="f"><label>Período</label><select name="periodo" id="periodoSel">
+        <option value="hoje" {% if filtros.periodo=='hoje' %}selected{% endif %}>Hoje</option>
+        <option value="ontem" {% if filtros.periodo=='ontem' %}selected{% endif %}>Ontem</option>
+        <option value="7dias" {% if filtros.periodo=='7dias' %}selected{% endif %}>7 dias</option>
+        <option value="semana" {% if filtros.periodo=='semana' %}selected{% endif %}>Semana</option>
+        <option value="mes" {% if filtros.periodo=='mes' %}selected{% endif %}>Mês</option>
+        <option value="ano" {% if filtros.periodo=='ano' %}selected{% endif %}>Ano</option>
+        <option value="personalizado" {% if filtros.periodo=='personalizado' %}selected{% endif %}>Personalizado</option>
+      </select></div>
+      <div class="f"><label>De</label><input type="date" name="data_inicio" value="{{ filtros.data_inicio }}"></div>
+      <div class="f"><label>Até</label><input type="date" name="data_fim" value="{{ filtros.data_fim }}"></div>
+      <div class="f"><label>Cooperado</label><select name="cooperado_id"><option value="todos">Todos</option>{% for c in cooperados %}<option value="{{ c.id }}" {% if filtros.cooperado_id == c.id|string %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select></div>
+      <div class="f"><label>Grupo/Contrato</label><select name="grupo_id"><option value="todos">Todos</option>{% for g in grupos_cliente %}<option value="{{ g.id }}" {% if filtros.grupo_id == g.id|string %}selected{% endif %}>{{ g.nome_grupo }}</option>{% endfor %}</select></div>
+      <div class="f"><label>Cliente avulso</label><input name="cliente" value="{{ filtros.cliente or '' }}" placeholder="Nome do cliente"></div>
+      <div class="f"><label>Status pgto</label><select name="status_pagamento"><option value="todos" {% if filtros.status_pagamento=='todos' %}selected{% endif %}>Todos</option><option value="pago" {% if filtros.status_pagamento=='pago' %}selected{% endif %}>Pago</option><option value="pendente" {% if filtros.status_pagamento=='pendente' %}selected{% endif %}>Pendente</option></select></div>
+      <div class="f"><label>Origem</label><input name="origem" value="{{ filtros.origem or '' }}" placeholder="Bairro"></div>
+      <div class="f"><label>Destino</label><input name="destino" value="{{ filtros.destino or '' }}" placeholder="Bairro"></div>
+    </div>
+    <div class="actions"><button class="btn primary" type="submit">Aplicar</button><button class="btn darkToggle" type="button" id="darkModeBtn" onclick="toggleDarkMode()">🌙 Modo noturno</button><a class="btn" href="{{ url_for('admin') }}">Voltar</a><button class="btn green" type="button" onclick="window.print()">Imprimir</button></div>
+  </form>
+</header>
+
+<main class="wrap">
+  <section class="hero">
+    <div class="heroGrid">
+      <div>
+        <h1>Dashboard Gerencial COOPEX</h1>
+        <p>Visão executiva de operação, cooperados, contratos, bairros, rotas, financeiro e crédito.</p>
+      </div>
+      <div class="heroRight">
+        <span class="heroChip">{{ periodo_legivel }}</span>
+        <span class="heroChip">{{ resumo.total_entregas }} entregas</span>
+        <span class="heroChip">R$ {{ '%.2f'|format(resumo.valor_total or 0)|replace('.', ',') }}</span>
+      </div>
+    </div>
+  </section>
+
+  <section class="gridKpi">
+    <div class="kpi" style="--bar:var(--azul)"><div class="lab">Entregas</div><div class="val">{{ resumo.total_entregas }}</div><div class="hint">Total no período</div></div>
+    <div class="kpi" style="--bar:var(--verde)"><div class="lab">Faturamento</div><div class="val">R$ {{ '%.2f'|format(resumo.valor_total or 0)|replace('.', ',') }}</div><div class="hint">Bruto</div></div>
+    <div class="kpi" style="--bar:var(--cyan)"><div class="lab">Ticket médio</div><div class="val">R$ {{ '%.2f'|format(resumo.ticket_medio or 0)|replace('.', ',') }}</div><div class="hint">Valor / entrega</div></div>
+    <div class="kpi" style="--bar:var(--amber)"><div class="lab">Em aberto</div><div class="val">{{ resumo.abertas }}</div><div class="hint">Não concluídas</div></div>
+    <div class="kpi" style="--bar:var(--red)"><div class="lab">Sem cooperado</div><div class="val">{{ resumo.sem_cooperado }}</div><div class="hint">Aguardando atribuição</div></div>
+    <div class="kpi" style="--bar:var(--azul2)"><div class="lab">Atribuídas</div><div class="val">{{ resumo.atribuidas }}</div><div class="hint">Com cooperado</div></div>
+    <div class="kpi" style="--bar:var(--verde)"><div class="lab">Concluídas</div><div class="val">{{ resumo.concluidas }}</div><div class="hint">Recebidas/entregues</div></div>
+    <div class="kpi" style="--bar:var(--amber)"><div class="lab">Pendentes pgto</div><div class="val">{{ resumo.pendentes_pgto }}</div><div class="hint">R$ {{ '%.2f'|format(resumo.valor_pendente or 0)|replace('.', ',') }}</div></div>
+    <div class="kpi" style="--bar:var(--azul)"><div class="lab">Clientes ativos</div><div class="val">{{ resumo.clientes_ativos }}</div><div class="hint">Contratos/grupos</div></div>
+    <div class="kpi" style="--bar:var(--cyan)"><div class="lab">Cooperados ativos</div><div class="val">{{ resumo.cooperados_ativos }}</div><div class="hint">Com produção</div></div>
+    <div class="kpi" style="--bar:var(--red)"><div class="lab">Paradas +20min</div><div class="val">{{ resumo.paradas_20 }}</div><div class="hint">Ação da supervisão</div></div>
+    <div class="kpi" style="--bar:var(--verde)"><div class="lab">Saldo créditos</div><div class="val">R$ {{ '%.2f'|format(resumo.credito_saldo_total or 0)|replace('.', ',') }}</div><div class="hint">Clientes com crédito</div></div>
+  </section>
+
+  <section class="board">
+    <div class="card">
+      <div class="cardHead"><div><h2>Faturamento e entregas por dia</h2><div class="sub">Gráfico leve com dados já resumidos pelo Python</div></div><span class="tag info">{{ periodo_legivel }}</span></div>
+      <div class="chartBox"><canvas id="chartDia"></canvas></div>
+    </div>
+    <div class="card">
+      <div class="cardHead"><div><h2>Alertas inteligentes</h2><div class="sub">Pontos que pedem atenção operacional</div></div><span class="tag warn">{{ alertas|length }}</span></div>
+      <div class="alerts">
+        {% for a in alertas %}<div class="alert {{ a.tipo }}"><b>{{ a.titulo }}</b><p>{{ a.texto }}</p></div>{% endfor %}
+      </div>
+      <div class="line"></div>
+      <div class="gridKpi" style="margin:0;grid-template-columns:repeat(4,1fr)">
+        <div class="kpi" style="grid-column:span 1;--bar:var(--azul)"><div class="lab">Qtd anterior</div><div class="val">{{ resumo.comp_qtd_prev }}</div><div class="hint">{{ resumo.comp_qtd_pct if resumo.comp_qtd_pct is not none else '—' }}%</div></div>
+        <div class="kpi" style="grid-column:span 1;--bar:var(--verde)"><div class="lab">R$ anterior</div><div class="val">R$ {{ '%.2f'|format(resumo.comp_valor_prev or 0)|replace('.', ',') }}</div><div class="hint">{{ resumo.comp_valor_pct if resumo.comp_valor_pct is not none else '—' }}%</div></div>
+        <div class="kpi" style="grid-column:span 1;--bar:var(--amber)"><div class="lab">Valor pago</div><div class="val">R$ {{ '%.2f'|format(resumo.valor_pago or 0)|replace('.', ',') }}</div><div class="hint">Pagas: {{ resumo.pagas }}</div></div>
+        <div class="kpi" style="grid-column:span 1;--bar:var(--red)"><div class="lab">Sem coop +10min</div><div class="val">{{ resumo.sem_coop_10 }}</div><div class="hint">Prioridade</div></div>
+      </div>
+    </div>
+  </section>
+
+  <div class="sectionTitle"><h3>Operação, Cooperados e Contratos</h3><span class="tag">Power BI style • leve</span></div>
+  <section class="board3">
+    <div class="card">
+      <div class="cardHead">
+        <div><h2>Top cooperados</h2><div class="sub">Qtd, valor, ticket e pendências</div></div>
+        <div class="rankingTools">
+          <label>Mostrar</label>
+          <select id="limitCoop" onchange="aplicarLimitesRankings()">
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+      </div>
+      <div class="tableWrap rankScroll"><table><thead><tr><th>Cooperado</th><th class="center">Qtd</th><th class="num">Valor</th><th class="num">Ticket</th><th class="center">Pend.</th></tr></thead><tbody>
+        {% for r in top_cooperados %}<tr class="rankRow rankCoop" data-rank="{{ loop.index }}"><td>{{ r.nome }}</td><td class="center">{{ r.qtd }}</td><td class="num">R$ {{ '%.2f'|format(r.valor)|replace('.', ',') }}</td><td class="num">R$ {{ '%.2f'|format(r.ticket)|replace('.', ',') }}</td><td class="center">{{ r.pendentes }}</td></tr>{% else %}<tr><td colspan="5">Sem dados</td></tr>{% endfor %}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="cardHead">
+        <div><h2>Contratos / Clientes agrupados</h2><div class="sub">Soma nomes diferentes no mesmo contrato</div></div>
+        <div class="rankingTools">
+          <label>Mostrar</label>
+          <select id="limitContrato" onchange="aplicarLimitesRankings()">
+            <option value="20">20</option>
+            <option value="30">30</option>
+            <option value="50">50</option>
+            <option value="todos">Todos</option>
+          </select>
+        </div>
+      </div>
+      <div class="tableWrap rankScroll"><table><thead><tr><th>Contrato</th><th class="center">Qtd</th><th class="num">Valor</th><th class="num">Pend.</th><th class="num">Crédito</th></tr></thead><tbody>
+        {% for r in top_contratos %}<tr class="rankRow rankContrato" data-rank="{{ loop.index }}"><td><b>{{ r.nome }}</b>{% if r.vinculados %}<br><span class="muted">{{ r.vinculados|join(', ') }}</span>{% endif %}</td><td class="center">{{ r.qtd }}</td><td class="num">R$ {{ '%.2f'|format(r.valor)|replace('.', ',') }}</td><td class="num">R$ {{ '%.2f'|format(r.pendente_valor)|replace('.', ',') }}</td><td class="num">R$ {{ '%.2f'|format(r.credito_usado)|replace('.', ',') }}</td></tr>{% else %}<tr><td colspan="5">Sem dados</td></tr>{% endfor %}
+      </tbody></table></div>
+    </div>
+    <div class="card">
+      <div class="cardHead"><div><h2>Resumo para WhatsApp</h2><div class="sub">Copie rápido para supervisão</div></div><button class="btn" type="button" onclick="copiarResumo()">Copiar</button></div>
+      <textarea class="copyBox" id="resumoZap" readonly>{{ resumo_whatsapp }}</textarea>
+    </div>
+  </section>
+
+  <section class="board3">
+    <div class="card"><div class="cardHead"><div><h2>Faturamento por cooperado</h2><div class="sub">Top 8</div></div></div><div class="chartBox small"><canvas id="chartCoop"></canvas></div></div>
+    <div class="card"><div class="cardHead"><div><h2>Faturamento por contrato</h2><div class="sub">Top 8</div></div></div><div class="chartBox small"><canvas id="chartCliente"></canvas></div></div>
+    <div class="card"><div class="cardHead"><div><h2>Forma de pagamento</h2><div class="sub">Valor por forma</div></div></div><div class="chartBox small"><canvas id="chartPagamento"></canvas></div></div>
+  </section>
+
+  <div class="sectionTitle"><h3>Bairros e Rotas</h3><span class="tag info">Origem • Destino • Combinações</span></div>
+  <section class="board4">
+    <div class="card"><div class="cardHead"><div><h2>Top bairros de coleta</h2><div class="sub">Origem</div></div></div><div class="list">{% for r in top_coleta %}<div class="rowItem"><span class="rankNum">{{ loop.index }}</span><div><b>{{ r.nome }}</b><small>Coletas</small></div><span class="right">{{ r.qtd }}</span></div>{% else %}<span class="muted">Sem dados</span>{% endfor %}</div></div>
+    <div class="card"><div class="cardHead"><div><h2>Top bairros de entrega</h2><div class="sub">Destino</div></div></div><div class="list">{% for r in top_entrega %}<div class="rowItem"><span class="rankNum">{{ loop.index }}</span><div><b>{{ r.nome }}</b><small>Entregas</small></div><span class="right">{{ r.qtd }}</span></div>{% else %}<span class="muted">Sem dados</span>{% endfor %}</div></div>
+    <div class="card"><div class="cardHead"><div><h2>Rotas mais usadas</h2><div class="sub">Combinações de bairros</div></div></div><div class="list">{% for r in top_rotas_freq %}<div class="rowItem"><span class="rankNum">{{ loop.index }}</span><div><b>{{ r.nome }}</b><small>R$ {{ '%.2f'|format(r.valor)|replace('.', ',') }}</small></div><span class="right">{{ r.qtd }}</span></div>{% else %}<span class="muted">Sem dados</span>{% endfor %}</div></div>
+    <div class="card"><div class="cardHead"><div><h2>Rotas mais lucrativas</h2><div class="sub">Maior valor total</div></div></div><div class="list">{% for r in top_rotas_valor %}<div class="rowItem"><span class="rankNum">{{ loop.index }}</span><div><b>{{ r.nome }}</b><small>{{ r.qtd }} entregas</small></div><span class="right">R$ {{ '%.2f'|format(r.valor)|replace('.', ',') }}</span></div>{% else %}<span class="muted">Sem dados</span>{% endfor %}</div></div>
+  </section>
+
+  <div class="sectionTitle"><h3>Crédito e Financeiro</h3><span class="tag ok">Meu Crédito</span></div>
+  <section class="gridKpi">
+    <div class="kpi w3" style="--bar:var(--verde)"><div class="lab">Crédito lançado</div><div class="val">R$ {{ '%.2f'|format(resumo.credito_lancado or 0)|replace('.', ',') }}</div><div class="hint">No período</div></div>
+    <div class="kpi w3" style="--bar:var(--azul)"><div class="lab">Crédito consumido</div><div class="val">R$ {{ '%.2f'|format(resumo.credito_consumido or 0)|replace('.', ',') }}</div><div class="hint">Em entregas</div></div>
+    <div class="kpi w3" style="--bar:var(--cyan)"><div class="lab">Saldo total clientes</div><div class="val">R$ {{ '%.2f'|format(resumo.credito_saldo_total or 0)|replace('.', ',') }}</div><div class="hint">Saldo atual</div></div>
+    <div class="kpi w3" style="--bar:var(--amber)"><div class="lab">Saldo baixo</div><div class="val">{{ resumo.credito_clientes_baixo }}</div><div class="hint">Clientes até R$ 50,00</div></div>
+  </section>
+  <section class="board">
+    <div class="card"><div class="cardHead"><div><h2>Clientes com maior saldo de crédito</h2><div class="sub">Saldo atual cadastrado</div></div></div><div class="tableWrap"><table><thead><tr><th>Cliente</th><th>Telefone</th><th class="num">Saldo</th></tr></thead><tbody>{% for c in credito_clientes %}<tr><td>{{ c.nome }}</td><td>{{ c.telefone }}</td><td class="num">R$ {{ '%.2f'|format(c.saldo)|replace('.', ',') }}</td></tr>{% else %}<tr><td colspan="3">Sem clientes com saldo</td></tr>{% endfor %}</tbody></table></div></div>
+    <div class="card"><div class="cardHead"><div><h2>Financeiro por pagamento</h2><div class="sub">Valor e quantidade por forma</div></div></div><div class="tableWrap"><table><thead><tr><th>Pagamento</th><th class="center">Qtd</th><th class="num">Valor</th></tr></thead><tbody>{% for p in grafico_pagamento %}<tr><td>{{ p.label }}</td><td class="center">{{ p.qtd }}</td><td class="num">R$ {{ '%.2f'|format(p.valor)|replace('.', ',') }}</td></tr>{% else %}<tr><td colspan="3">Sem dados</td></tr>{% endfor %}</tbody></table></div></div>
+  </section>
+
+  <div class="sectionTitle noPrint"><h3>Gerenciar grupos de contrato</h3><span class="tag">Ex.: Mexicano + Território Mexicano</span></div>
+  <section class="board noPrint">
+    <div class="card">
+      <div class="cardHead"><div><h2>Criar / atualizar grupo</h2><div class="sub">Coloque um nome por linha, vírgula ou ponto e vírgula</div></div></div>
+      <form class="miniForm" method="post" action="{{ url_for('estatisticas_cooperado_grupo_salvar') }}">
+        <input type="hidden" name="periodo_back" value="{{ filtros.periodo }}">
+        <div><label>Nome do grupo</label><input name="nome_grupo" placeholder="Ex.: Grupo Mexicano" required></div>
+        <div><label>Nomes vinculados</label><textarea name="nomes_clientes" placeholder="Mexicano&#10;Território Mexicano&#10;Mexicano Ponta Negra" required></textarea></div>
+        <button class="btn primary" type="submit">Salvar grupo</button>
+      </form>
+      <div class="line"></div>
+      <div class="sub"><b>Clientes encontrados:</b> {{ nomes_clientes[:40]|join(', ') }}{% if nomes_clientes|length > 40 %}...{% endif %}</div>
+    </div>
+    <div class="card">
+      <div class="cardHead"><div><h2>Grupos cadastrados</h2><div class="sub">Use o filtro “Grupo/Contrato” no topo</div></div></div>
+      <div class="groupGrid">
+        {% for g in grupos_cliente %}
+        <div class="groupBox">
+          <strong>{{ g.nome_grupo }}</strong>
+          <small>{{ g.nomes_lista()|join(', ') }}</small>
+          <div class="groupActions"><form method="post" action="{{ url_for('estatisticas_cooperado_grupo_excluir', grupo_id=g.id) }}" onsubmit="return confirm('Excluir este grupo?')"><input type="hidden" name="periodo_back" value="{{ filtros.periodo }}"><button class="btn red" type="submit">Excluir</button></form></div>
+        </div>
+        {% else %}<span class="muted">Nenhum grupo cadastrado ainda.</span>{% endfor %}
+      </div>
+    </div>
+  </section>
+</main>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
+<script>
+const dia = {{ grafico_dia|tojson }};
+const coops = {{ grafico_cooperados|tojson }};
+const clientes = {{ grafico_clientes|tojson }};
+const pagamentos = {{ grafico_pagamento|tojson }};
+function br(v){ return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+function baseOptions(){return {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=> ctx.dataset.label + ': ' + (ctx.dataset.money?'R$ '+br(ctx.raw):ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#334155',font:{size:10,weight:'700'}}},y:{beginAtZero:true,grid:{color:'#eaf1ff'},ticks:{color:'#334155',font:{size:10,weight:'700'}}}}};}
+function chartBar(id, labels, vals, label, color='#003399', money=true){const el=document.getElementById(id); if(!el)return; new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:[{label,data:vals,money,backgroundColor:color,borderRadius:8,maxBarThickness:34}]},options:baseOptions()});}
+function chartLine(id){const el=document.getElementById(id); if(!el)return; new Chart(el.getContext('2d'),{data:{labels:dia.map(x=>x.label),datasets:[{type:'bar',label:'Faturamento',data:dia.map(x=>x.valor),money:true,backgroundColor:'#15b46f',borderRadius:8,maxBarThickness:28},{type:'line',label:'Entregas',data:dia.map(x=>x.qtd),money:false,borderColor:'#003399',backgroundColor:'#003399',borderWidth:3,tension:.35,pointRadius:3,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:11,weight:'800'}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10,weight:'700'}}},y:{beginAtZero:true,grid:{color:'#eaf1ff'},title:{display:true,text:'R$'}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Qtd'}}}}});}
+function chartDoughnut(id, labels, vals){const el=document.getElementById(id); if(!el)return; new Chart(el.getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:['#003399','#15b46f','#f59e0b','#0891b2','#dc2626','#64748b'],borderColor:'#fff',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10,weight:'800'}}},tooltip:{callbacks:{label:(ctx)=>ctx.label+': R$ '+br(ctx.raw)}}}}});}
+chartLine('chartDia');
+chartBar('chartCoop', coops.map(x=>x.label), coops.map(x=>x.valor), 'Faturamento', '#003399', true);
+chartBar('chartCliente', clientes.map(x=>x.label), clientes.map(x=>x.valor), 'Faturamento', '#15b46f', true);
+chartDoughnut('chartPagamento', pagamentos.map(x=>x.label), pagamentos.map(x=>x.valor));
+async function copiarResumo(){const t=document.getElementById('resumoZap'); try{await navigator.clipboard.writeText(t.value); alert('Resumo copiado.');}catch(e){t.select();document.execCommand('copy');alert('Resumo copiado.');}}
+
+/* =========================================================
+   MODO NOTURNO E LIMITE DOS RANKINGS
+   ========================================================= */
+(function iniciarPreferenciasDashboard(){
+  try{
+    const darkSaved = localStorage.getItem('coopex_estatisticas_dark');
+    const adminDark = localStorage.getItem('coopex_admin_dark') || localStorage.getItem('coopex_dark_mode') || localStorage.getItem('darkMode');
+
+    const deveEscurecer = (
+      darkSaved === '1' ||
+      darkSaved === 'true' ||
+      (darkSaved === null && (adminDark === '1' || adminDark === 'true' || adminDark === 'dark'))
+    );
+
+    document.body.classList.toggle('dark-mode', !!deveEscurecer);
+    document.documentElement.classList.toggle('dark-mode', !!deveEscurecer);
+    atualizarBotaoDarkMode();
+
+    const lc = localStorage.getItem('coopex_rank_coop_limit') || '20';
+    const lt = localStorage.getItem('coopex_rank_contrato_limit') || '20';
+    const selC = document.getElementById('limitCoop');
+    const selT = document.getElementById('limitContrato');
+    if(selC) selC.value = lc;
+    if(selT) selT.value = lt;
+    aplicarLimitesRankings();
+  }catch(e){}
+})();
+
+function atualizarBotaoDarkMode(){
+  const btn = document.getElementById('darkModeBtn');
+  if(!btn) return;
+  const ativo = document.body.classList.contains('dark-mode');
+  btn.textContent = ativo ? '☀️ Modo claro' : '🌙 Modo noturno';
+}
+
+function toggleDarkMode(){
+  const ativo = !document.body.classList.contains('dark-mode');
+  document.body.classList.toggle('dark-mode', ativo);
+  document.documentElement.classList.toggle('dark-mode', ativo);
+  try{
+    localStorage.setItem('coopex_estatisticas_dark', ativo ? '1' : '0');
+    localStorage.setItem('coopex_admin_dark', ativo ? '1' : '0');
+    localStorage.setItem('coopex_dark_mode', ativo ? 'dark' : 'light');
+  }catch(e){}
+  atualizarBotaoDarkMode();
+}
+
+function aplicarLimitesRankings(){
+  const selC = document.getElementById('limitCoop');
+  const selT = document.getElementById('limitContrato');
+
+  const limC = selC ? selC.value : '20';
+  const limT = selT ? selT.value : '20';
+
+  try{
+    localStorage.setItem('coopex_rank_coop_limit', limC);
+    localStorage.setItem('coopex_rank_contrato_limit', limT);
+  }catch(e){}
+
+  aplicarLimiteLista('.rankCoop', limC);
+  aplicarLimiteLista('.rankContrato', limT);
+}
+
+function aplicarLimiteLista(selector, limite){
+  const rows = Array.from(document.querySelectorAll(selector));
+  const mostrarTodos = String(limite).toLowerCase() === 'todos';
+  const n = mostrarTodos ? 999999 : parseInt(limite || '20', 10);
+
+  rows.forEach((row, idx)=>{
+    const pos = parseInt(row.getAttribute('data-rank') || (idx + 1), 10);
+    row.classList.toggle('is-hidden', !mostrarTodos && pos > n);
+  });
+}
+
+</script>
+</body>
+</html>
