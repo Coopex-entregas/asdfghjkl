@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Entrega rápida — COOPEX</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo_coopex.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex-ui.css') }}">
+  <style>
+    .rapid-grid{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:14px;align-items:start}.search-box{position:relative}.results{position:absolute;left:0;right:0;top:72px;z-index:40;display:none;max-height:280px;overflow:auto;padding:6px;border:1px solid var(--cx-line-strong);border-radius:12px;background:var(--cx-card);box-shadow:0 18px 42px rgba(12,43,130,.2)}.result{display:flex;justify-content:space-between;gap:10px;padding:10px;border-radius:9px;cursor:pointer}.result:hover,.result.active{background:var(--cx-royal-light)}.result strong{display:block}.result small{color:var(--cx-muted)}.loading{display:none;margin-top:5px;color:var(--cx-muted);font-size:.78rem}.client-meta{display:none;margin-top:8px}.summary{display:grid;gap:8px}.summary div{display:flex;justify-content:space-between;gap:10px;padding:9px 10px;border:1px solid var(--cx-line);border-radius:10px;background:var(--cx-royal-light);font-size:.82rem}.summary span{color:var(--cx-muted)}.summary strong{text-align:right}.side{position:sticky;top:82px}.route-msg,.credit-msg{display:block;min-height:20px;margin-top:5px;font-size:.78rem;color:var(--cx-muted)}.credit-msg{display:none}.mode-links{display:flex;gap:8px}.mode-links .cx-btn{min-width:0}.fila-note{margin-top:5px}.top-actions{display:flex;gap:8px}
+    @media(max-width:860px){.rapid-grid{grid-template-columns:1fr}.side{position:static}.summary{grid-template-columns:1fr 1fr}}
+    @media(max-width:520px){.summary{grid-template-columns:1fr}.cx-brand-title small{display:none}.top-actions .label{display:none}}
+  </style>
+</head>
+<body class="cx-page">
+<header class="cx-topbar">
+  <div class="cx-brand"><img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX" onerror="this.style.display='none'"><div class="cx-brand-title"><strong>Entrega rápida</strong><small>Cadastro em poucos segundos</small></div></div>
+  <div class="cx-spacer"></div>
+  <div class="top-actions"><button id="theme" class="cx-btn ghost" type="button">☾</button><a class="cx-btn ghost" href="{{ url_for('admin') }}"><span>←</span><span class="label">Admin</span></a></div>
+</header>
+
+<main class="cx-wrap">
+  <div class="mode-links cx-tabs">
+    <a class="cx-tab active" href="{{ url_for('cadastrar_entrega') }}">⚡ Entrega rápida</a>
+    <a class="cx-tab" href="{{ url_for('cadastrar_entrega', modo='completo') }}">📋 Entrega completa</a>
+  </div>
+
+  <div class="rapid-grid">
+    <section class="cx-card">
+      <div class="cx-card-head"><h1>Pedido rápido</h1><p>Selecione o cliente, informe o destino e confirme. Coleta, preço e crédito são verificados automaticamente.</p></div>
+      <div class="cx-card-body">
+        <div id="flash" class="cx-note warn" style="display:none;margin-bottom:12px"></div>
+        <form id="quickForm" method="POST" action="{{ url_for('cadastrar_entrega') }}" autocomplete="off">
+          <input type="hidden" id="cliente_id" name="cliente_id">
+          <input type="hidden" id="bairro" name="bairro">
+
+          <div class="cx-field search-box">
+            <label for="cliente">Cliente</label>
+            <input class="cx-input" id="cliente" name="cliente" required autocomplete="off" placeholder="Digite nome ou telefone">
+            <div id="loading" class="loading">Buscando clientes...</div>
+            <div id="results" class="results"></div>
+            <div id="clientMeta" class="cx-note client-meta"></div>
+          </div>
+
+          <div class="cx-grid-2">
+            <div class="cx-field"><label for="coleta_bairro">Bairro da coleta</label><input class="cx-input" id="coleta_bairro" name="coleta_bairro" required placeholder="Preenchido pelo cliente"></div>
+            <div class="cx-field"><label for="entrega_bairro">Bairro da entrega</label><input class="cx-input" id="entrega_bairro" name="entrega_bairro" required placeholder="Digite o destino"></div>
+          </div>
+
+          <div class="cx-grid-2">
+            <div class="cx-field"><label for="valor">Valor</label><input class="cx-input" id="valor" name="valor" required inputmode="decimal" placeholder="Calculado pela rota"><span id="routeMsg" class="route-msg">Selecione o cliente e informe o destino.</span></div>
+            <div class="cx-field"><label for="pagamento">Forma de pagamento</label><select class="cx-select" id="pagamento" name="pagamento" required><option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Comanda">3. Comanda</option><option id="creditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option></select><span id="creditMsg" class="credit-msg"></span></div>
+          </div>
+
+          <div class="cx-field"><label for="cooperado_id">Atribuir cooperado</label><select class="cx-select" id="cooperado_id" name="cooperado_id"><option value="" {% if not primeiro_fila_id %}selected{% endif %}>Sem cooperado</option>{% for c in cooperados %}<option value="{{ c.id }}" {% if primeiro_fila_id and c.id == primeiro_fila_id %}selected{% endif %}>{% if c.id in fila_por_id %}{{ fila_por_id[c.id] }}º da fila — {% endif %}{{ c.nome }}</option>{% endfor %}</select>{% if primeiro_fila_id %}<span class="cx-hint fila-note">O 1º cooperado da fila já está selecionado. Você pode trocar.</span>{% endif %}</div>
+
+          <div class="cx-actions"><button class="cx-btn" type="submit">Cadastrar entrega rápida</button><a class="cx-btn alt" href="{{ url_for('clientes') }}">Cadastrar cliente</a><a class="cx-btn alt" href="{{ url_for('cadastrar_entrega', modo='completo') }}">Abrir completa</a></div>
+        </form>
+      </div>
+    </section>
+
+    <aside class="cx-card side"><div class="cx-card-head"><h3>Resumo</h3><p>Confira antes de cadastrar.</p></div><div class="cx-card-body"><div class="summary"><div><span>Cliente</span><strong id="sCliente">—</strong></div><div><span>Coleta</span><strong id="sColeta">—</strong></div><div><span>Entrega</span><strong id="sEntrega">—</strong></div><div><span>Valor</span><strong id="sValor">R$ 0,00</strong></div><div><span>Pagamento</span><strong id="sPagamento">Pix</strong></div><div><span>Cooperado</span><strong id="sCooperado">—</strong></div></div><div class="cx-note" style="margin-top:10px">O crédito automático só aparece para cliente com saldo ou histórico de crédito. Clientes que usam crédito com frequência já ficam selecionados automaticamente.</div></div></aside>
+  </div>
+</main>
+
+<script>
+  const firstQueue={{ primeiro_fila_id|tojson }};
+  const el=id=>document.getElementById(id);
+  const cliente=el('cliente'),clienteId=el('cliente_id'),results=el('results'),loading=el('loading'),meta=el('clientMeta');
+  const origem=el('coleta_bairro'),destino=el('entrega_bairro'),bairro=el('bairro'),valor=el('valor'),pagamento=el('pagamento'),credito=el('creditOption'),creditMsg=el('creditMsg'),coop=el('cooperado_id'),routeMsg=el('routeMsg');
+  let timer=null,routeTimer=null,items=[],active=-1,routes=null,abort=null;
+  const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v||0));
+  const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
+  function hide(){results.style.display='none'}
+  function render(list){items=list||[];active=-1;results.innerHTML='';if(!items.length){results.innerHTML='<div class="cx-muted" style="padding:12px;text-align:center">Nenhum cliente encontrado.</div>';results.style.display='block';return}items.forEach((x,i)=>{const d=document.createElement('div');d.className='result';d.innerHTML=`<div><strong>${esc(x.nome)}</strong><small>${esc(x.telefone||'sem telefone')} • ${esc(x.bairro_origem||'sem bairro')}</small></div><b style="color:var(--cx-royal-dark);font-size:.74rem">Selecionar</b>`;d.onmousedown=e=>{e.preventDefault();choose(x)};d.onmousemove=()=>activate(i);results.appendChild(d)});results.style.display='block'}
+  function activate(i){[...results.querySelectorAll('.result')].forEach(x=>x.classList.remove('active'));const n=results.children[i];if(n){n.classList.add('active');active=i}}
+  async function search(q){if(abort)abort.abort();abort=new AbortController();loading.style.display='block';try{const r=await fetch(`{{ url_for('api_busca_clientes_entrega') }}?q=${encodeURIComponent(q)}&limit=12`,{signal:abort.signal,headers:{'X-Requested-With':'fetch'}});const d=await r.json();render(d.ok?d.items:[])}catch(e){if(e.name!=='AbortError')render([])}finally{loading.style.display='none'}}
+  function creditState(profile){const allowed=Boolean(profile.tem_credito);credito.hidden=!allowed;credito.disabled=!allowed;creditMsg.style.display=allowed?'block':'none';if(!allowed){if(pagamento.value==='CREDITO_AUTO')pagamento.value='Pix';creditMsg.textContent='';sync();return}creditMsg.textContent=`Crédito disponível. Saldo: ${money(profile.saldo)}`;if(profile.frequent){pagamento.value='CREDITO_AUTO';creditMsg.textContent=`Cliente usa crédito automático com frequência. Saldo: ${money(profile.saldo)}`}sync()}
+  async function creditProfile(x){const p={saldo:Number(x.saldo_atual||0),tem_credito:Math.abs(Number(x.saldo_atual||0))>0.000001,frequent:false};try{const r=await fetch(`/cliente/${x.id}/credito?format=json`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(r.ok&&d.ok){const m=d.movimentos||[];const consumos=m.filter(a=>String(a.tipo||'').toLowerCase()==='debito'&&(a.entrega_id||String(a.referencia||'').toLowerCase().includes('entrega'))).length;p.saldo=Number(d.saldo_atual||0);p.tem_credito=p.tem_credito||m.length>0||Number(d.total_creditos||0)!==0||Number(d.total_debitos||0)!==0;p.frequent=consumos>=2}}catch(e){}creditState(p);meta.innerHTML=`<strong>${esc(x.nome)}</strong><br>${esc(x.bairro_origem||'Sem bairro')} • Saldo ${money(p.saldo)}`}
+  function choose(x){cliente.value=x.nome||'';clienteId.value=x.id||'';origem.value=x.bairro_origem||'';meta.style.display='block';meta.innerHTML=`<strong>${esc(x.nome)}</strong><br>${esc(x.bairro_origem||'Sem bairro')} • Saldo ${money(x.saldo_atual)}`;creditState({saldo:x.saldo_atual,tem_credito:Math.abs(Number(x.saldo_atual||0))>0.000001,frequent:false});creditProfile(x);hide();sync();lookupSoon(30);destino.focus()}
+  async function loadRoutes(){if(routes)return routes;const r=await fetch(`{{ url_for('api_list_precos') }}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error();routes=d.items||[];return routes}
+  async function lookup(){bairro.value=destino.value.trim();if(!origem.value.trim()||!destino.value.trim()){routeMsg.textContent='Informe coleta e entrega.';sync();return}routeMsg.textContent='Buscando valor...';try{const list=await loadRoutes(),o=norm(origem.value),d=norm(destino.value),r=list.find(x=>(norm(x.origem)===o&&norm(x.destino)===d)||(norm(x.origem)===d&&norm(x.destino)===o));if(r){valor.value=Number(r.valor||0).toFixed(2).replace('.',',');routeMsg.textContent=`Valor encontrado: ${money(r.valor)}`;routeMsg.style.color='var(--cx-green)'}else{routeMsg.textContent='Rota não cadastrada. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}}catch(e){routeMsg.textContent='Não foi possível consultar. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}sync()}
+  function lookupSoon(ms=260){clearTimeout(routeTimer);routeTimer=setTimeout(lookup,ms)}
+  function sync(){el('sCliente').textContent=cliente.value||'—';el('sColeta').textContent=origem.value||'—';el('sEntrega').textContent=destino.value||'—';const n=parseFloat(String(valor.value||'0').replace(/\./g,'').replace(',','.'))||0;el('sValor').textContent=money(n);el('sPagamento').textContent=pagamento.options[pagamento.selectedIndex]?.text.replace(/^\d+\.\s*/,'')||'—';el('sCooperado').textContent=coop.options[coop.selectedIndex]?.text||'—'}
+  cliente.oninput=()=>{clienteId.value='';meta.style.display='none';creditState({tem_credito:false,saldo:0,frequent:false});clearTimeout(timer);const q=cliente.value.trim();if(q.length<2){hide();sync();return}timer=setTimeout(()=>search(q),160);sync()};
+  cliente.onkeydown=e=>{const nodes=[...results.querySelectorAll('.result')];if(!nodes.length||results.style.display==='none')return;if(e.key==='ArrowDown'){e.preventDefault();activate(active<nodes.length-1?active+1:0)}else if(e.key==='ArrowUp'){e.preventDefault();activate(active>0?active-1:nodes.length-1)}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape')hide()};
+  document.addEventListener('click',e=>{if(!results.contains(e.target)&&e.target!==cliente)hide()});origem.oninput=()=>lookupSoon();destino.oninput=()=>{bairro.value=destino.value;lookupSoon();sync()};valor.oninput=sync;pagamento.onchange=sync;coop.onchange=sync;
+  el('quickForm').onsubmit=e=>{if(!valor.value.trim()){e.preventDefault();el('flash').textContent='Informe o valor da entrega.';el('flash').style.display='block';valor.focus()}bairro.value=destino.value||origem.value};
+  function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';if(firstQueue)coop.value=String(firstQueue);routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
+  window.addEventListener('pageshow',reset);reset();
+  (function(){const b=el('theme');if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');const s=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');s()};s()})();
+</script>
+</body>
+</html>
