@@ -43,12 +43,46 @@ keepalive = 5
 preload_app = False
 
 
+def _corrigir_serializacao_escala(escala_feature):
+    """Remove estruturas internas não serializáveis dos candidatos da escala."""
+    original = escala_feature.match_name
+    if getattr(original, "_coopex_json_safe", False):
+        return
+
+    def match_name_json_safe(name, ctx):
+        cooperado_id, status, candidatos, detalhe = original(name, ctx)
+        candidatos_seguros = []
+
+        for candidato in candidatos or []:
+            if not isinstance(candidato, dict):
+                continue
+
+            item = {
+                "id": candidato.get("id"),
+                "nome": candidato.get("nome") or "",
+            }
+
+            if candidato.get("score") is not None:
+                item["score"] = candidato.get("score")
+            if candidato.get("motivo"):
+                item["motivo"] = candidato.get("motivo")
+
+            candidatos_seguros.append(item)
+
+        return cooperado_id, status, candidatos_seguros, detalhe
+
+    match_name_json_safe._coopex_json_safe = True
+    escala_feature.match_name = match_name_json_safe
+
+
 def post_worker_init(worker):
     """Instala a escala após o Gunicorn carregar app:app."""
     try:
         import app as app_module
-        from escala_feature import install
-        install(app_module)
+        import escala_feature
+
+        _corrigir_serializacao_escala(escala_feature)
+        escala_feature.install(app_module)
         worker.log.info("Escala semanal COOPEX instalada.")
     except Exception:
         worker.log.exception("Falha ao instalar a escala semanal COOPEX.")
