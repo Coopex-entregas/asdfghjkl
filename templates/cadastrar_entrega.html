@@ -66,7 +66,6 @@
     <div id="resultados" class="result-list" role="listbox" aria-label="Resultados de clientes"></div>
     <div id="clienteMeta" class="client-meta"></div>
 
-
     <label for="coleta_endereco">Endereço da coleta:</label>
     <input id="coleta_endereco" name="coleta_endereco" type="text" placeholder="Rua, número, complemento">
 
@@ -145,53 +144,10 @@
     const loadingBusca = document.getElementById('loadingBusca');
     const flashBox = document.getElementById('flashBox');
 
-
-    function persistFormState(){
-      const ids = [
-        'cliente_manual','cliente_id','coleta_endereco','coleta_bairro','coleta_contato','coleta_telefone',
-        'entrega_endereco','entrega_bairro','bairro','entrega_contato','entrega_telefone',
-        'paradas','observacao','valor','pagamento','cooperado_id'
-      ];
-      const data = {};
-      ids.forEach(id => {
-        const el = document.getElementById(id);
-        if (el) data[id] = el.value || '';
-      });
-      localStorage.setItem('coopex_cadastrar_entrega_draft', JSON.stringify(data));
-    }
-
-    function restoreFormState(){
-      try{
-        const raw = localStorage.getItem('coopex_cadastrar_entrega_draft');
-        if(!raw) return;
-        const data = JSON.parse(raw);
-        Object.entries(data).forEach(([id,val]) => {
-          const el = document.getElementById(id);
-          if(el && !el.value) el.value = val || '';
-        });
-      }catch(_){}
-    }
-
-
     function clearFormState(){
-      localStorage.removeItem('coopex_cadastrar_entrega_draft');
+      try{ localStorage.removeItem('coopex_cadastrar_entrega_draft'); }catch(_){}
     }
-
-    function bindPersist(){
-      const ids = [
-        'cliente_manual','coleta_endereco','coleta_bairro','coleta_contato','coleta_telefone',
-        'entrega_endereco','entrega_bairro','bairro','entrega_contato','entrega_telefone',
-        'paradas','observacao','valor','pagamento','cooperado_id'
-      ];
-      ids.forEach(id => {
-        const el = document.getElementById(id);
-        if(el){
-          el.addEventListener('input', persistFormState);
-          el.addEventListener('change', persistFormState);
-        }
-      });
-    }
-
+    function persistFormState(){ }
 
     let debounceTimer = null;
     let activeIndex = -1;
@@ -263,7 +219,6 @@
       if (document.getElementById('coleta_contato')) document.getElementById('coleta_contato').value = item.nome || '';
       if (document.getElementById('coleta_telefone')) document.getElementById('coleta_telefone').value = item.telefone || '';
       if (document.getElementById('bairro') && item.bairro_origem && !document.getElementById('bairro').value) document.getElementById('bairro').value = item.bairro_origem || '';
-      persistFormState();
       showResultados(false);
       (document.getElementById('entrega_endereco') || bairro).focus();
     }
@@ -345,11 +300,9 @@
       if(resp.ok && data.ok){
         showFlash(data.message || 'Cliente cadastrado com sucesso.', 'ok');
         if(data.cliente) escolher(data.cliente);
-        persistFormState();
       }else{
         showFlash(data.error || 'Cliente já cadastrado.', 'warn');
         if(data.cliente) escolher(data.cliente);
-        persistFormState();
       }
     });
 
@@ -369,30 +322,32 @@
       const data = await resp.json().catch(() => ({}));
       if(resp.ok && data.ok){
         showFlash(data.message || 'Rota precificada com sucesso.', 'ok');
-        persistFormState();
       }else{
         showFlash(data.error || 'Bairro já cadastrado.', 'warn');
-        persistFormState();
       }
     });
-    const formEntrega = document.querySelector('form');
-    if(formEntrega){
-      formEntrega.addEventListener('submit', () => {
-        clearFormState();
-      });
-    }
 
-    restoreFormState();
-
-    // Mantém o primeiro da fila realmente selecionado ao abrir esta tela.
     const primeiroFilaId = {{ primeiro_fila_id|tojson }};
     const cooperadoSelect = document.getElementById('cooperado_id');
-    if (primeiroFilaId && cooperadoSelect) {
-      cooperadoSelect.value = String(primeiroFilaId);
+
+    function resetarCadastroEntrega(){
+      clearFormState();
+      const form = document.querySelector('form[action="{{ url_for('cadastrar_entrega') }}"]');
+      if(form) form.reset();
+      clienteId.value = '';
+      inputCliente.value = '';
+      setMeta(null);
+      resultados.innerHTML = '';
+      showResultados(false);
+      flashBox.style.display = 'none';
+      if (primeiroFilaId && cooperadoSelect) {
+        cooperadoSelect.value = String(primeiroFilaId);
+      }
     }
 
-    bindPersist();
-    persistFormState();
+    window.addEventListener('pageshow', resetarCadastroEntrega);
+    window.addEventListener('pagehide', clearFormState);
+    resetarCadastroEntrega();
   </script>
 </body>
 </html>
