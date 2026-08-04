@@ -71,9 +71,25 @@ def _limpar_ajuste_antigo(item_id):
     ajuste_model = getattr(SCALE, "Ajuste", None)
     if not ajuste_model:
         return
+
     ajuste = ajuste_model.query.filter_by(item_id=item_id).first()
-    if ajuste:
-        DB.session.delete(ajuste)
+    if not ajuste:
+        return
+
+    motivo = str(ajuste.motivo or "")
+    if motivo.startswith("TROCA:") and "|" in motivo:
+        token = motivo.split("|", 1)[0]
+        pares = ajuste_model.query.filter(ajuste_model.motivo.like(token + "|%")).all()
+        for par in pares:
+            item = SCALE.Item.query.get(par.item_id)
+            if item:
+                item.cooperado_id = par.cooperado_original_id
+                item.status_match = "confirmado" if par.cooperado_original_id else "nao_encontrado"
+                item.detalhe_match = "Troca desfeita para aplicar uma nova alteração."
+            DB.session.delete(par)
+        return
+
+    DB.session.delete(ajuste)
 
 
 def _adicionar():
