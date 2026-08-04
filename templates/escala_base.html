@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Escala semanal — COOPEX</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo_coopex.png') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex-ui.css') }}">
+  <style>
+    *{box-sizing:border-box}
+    body{overflow-x:hidden}
+    .scale-page{width:100%;max-width:none;padding:14px 18px 32px}
+    .scale-head{display:flex;align-items:center;gap:12px;min-width:0}
+    .scale-head-title{min-width:0}.scale-head-title strong{display:block;font-size:1.02rem}.scale-head-title small{display:block;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .flash-stack{display:grid;gap:8px;margin-bottom:12px}.flash{padding:11px 13px;border-radius:12px;border:1px solid var(--cx-line);background:var(--cx-card);font-weight:750}.flash.success{border-color:#b7e3cb;background:#ebfaf2;color:#087747}.flash.warning{border-color:#eed9a3;background:#fff8e7;color:#815600}.flash.error,.flash.danger{border-color:#efc0c0;background:#fff0f0;color:#a52b2b}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px;margin-bottom:12px}.summary-card{padding:14px;border:1px solid var(--cx-line);border-radius:15px;background:var(--cx-card);box-shadow:var(--cx-shadow)}.summary-card span{display:block;color:var(--cx-muted);font-size:.72rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}.summary-card strong{display:block;margin-top:5px;font-size:1.24rem;color:var(--cx-royal-dark)}body.dark .summary-card strong{color:#dce7ff}.summary-card small{display:block;margin-top:4px;color:var(--cx-muted)}
+    .workspace{display:grid;grid-template-columns:350px minmax(0,1fr);gap:12px;align-items:start}.side-stack{display:grid;gap:12px;position:sticky;top:78px}.upload-zone{display:block;padding:16px;border:2px dashed var(--cx-line-strong);border-radius:14px;background:var(--cx-royal-light);text-align:center;cursor:pointer}.upload-zone input{display:none}.upload-zone strong{display:block;color:var(--cx-royal-dark);font-size:.96rem}.upload-zone span{display:block;color:var(--cx-muted);font-size:.78rem;margin-top:4px}.file-name{margin-top:8px;font-size:.8rem;font-weight:800;color:var(--cx-royal-dark)}
+    .filter-grid{display:grid;grid-template-columns:160px minmax(160px,1fr) minmax(170px,1fr) 160px minmax(180px,1fr) auto;gap:8px;align-items:end}.filter-grid .cx-field{margin:0}.filter-grid .cx-btn{min-width:94px}
+    .table-head-actions{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}.table-head-actions .cx-btn{min-width:170px}
+    .table-shell{width:100%;overflow:auto;border:1px solid var(--cx-line);border-radius:14px}.scale-table{width:100%;min-width:1220px;border-collapse:collapse;background:var(--cx-card)}.scale-table th{position:sticky;top:0;z-index:4;padding:11px 10px;background:var(--cx-royal-dark);color:#fff;text-align:left;font-size:.72rem;text-transform:uppercase;letter-spacing:.035em}.scale-table td{padding:10px;border-bottom:1px solid var(--cx-line);vertical-align:top;font-size:.84rem}.scale-table tr:last-child td{border-bottom:0}.scale-table tr.active-now td{background:#edf9f2}body.dark .scale-table tr.active-now td{background:#112f27}.person{font-weight:900;color:var(--cx-text)}.muted{color:var(--cx-muted);font-size:.76rem;margin-top:3px}.contract{display:inline-flex;padding:5px 8px;border-radius:999px;background:var(--cx-royal-light);color:var(--cx-royal-dark);font-size:.72rem;font-weight:900}.time{white-space:nowrap;font-weight:850}.estimated{display:inline-flex;margin-left:5px;padding:2px 5px;border-radius:999px;background:#fff3d7;color:#7d5200;font-size:.64rem;font-weight:900}.status{display:inline-flex;padding:5px 8px;border-radius:999px;font-size:.69rem;font-weight:900;white-space:nowrap}.status.exato,.status.alias,.status.automatico,.status.confirmado{background:#e8f8ef;color:#087747}.status.ambiguo{background:#fff3d8;color:#835500}.status.nao_encontrado{background:#ffe9e9;color:#a42a2a}.status.manual,.status.ajustado{background:#e8efff;color:#1746b7}.status.folga{background:#f3f4f6;color:#596275}.now-chip{display:inline-flex;margin-top:4px;padding:3px 7px;border-radius:999px;background:#117d4a;color:#fff;font-size:.66rem;font-weight:900}
+    .resolver{display:grid;gap:7px;min-width:270px}.resolver-row{display:flex;gap:6px}.resolver-row input{min-width:0;flex:1}.resolver-row .cx-btn{min-width:78px;padding:8px 10px}.candidate-list{display:flex;gap:5px;flex-wrap:wrap}.candidate{border:1px solid var(--cx-line-strong);border-radius:999px;background:var(--cx-card);color:var(--cx-royal-dark);padding:4px 7px;font-size:.68rem;font-weight:800;cursor:pointer}.candidate:hover{background:var(--cx-royal-light)}.match-detail{color:var(--cx-muted);font-size:.71rem;line-height:1.35}.adjust-reason{max-width:240px;color:var(--cx-text);font-size:.78rem;font-weight:750;line-height:1.35}.adjust-reason.empty{color:var(--cx-muted);font-weight:600}.row-actions{display:flex;gap:6px;flex-wrap:wrap}.row-actions .cx-btn{min-width:0;padding:7px 9px;font-size:.72rem}.empty-state{padding:34px;text-align:center;color:var(--cx-muted);font-weight:750}
+    .danger-action{background:#fff0f0!important;color:#a52b2b!important;border-color:#efc4c4!important}.meta-list{display:grid;gap:8px}.meta-row{display:flex;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--cx-line);font-size:.8rem}.meta-row:last-child{border:0}.meta-row span{color:var(--cx-muted)}.meta-row strong{text-align:right}.help-list{margin:0;padding-left:18px;color:var(--cx-muted);font-size:.79rem;line-height:1.55}
+    .adjust-overlay{position:fixed;inset:0;z-index:5000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(5,14,35,.7);backdrop-filter:blur(4px)}.adjust-overlay.open{display:flex}.adjust-modal{width:min(650px,96vw);max-height:94vh;overflow:auto;border:1px solid var(--cx-line);border-radius:20px;background:var(--cx-card);color:var(--cx-text);box-shadow:0 28px 75px rgba(4,18,52,.34)}.adjust-modal-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:17px 18px;background:linear-gradient(135deg,var(--cx-royal-dark),var(--cx-royal));color:#fff}.adjust-modal-head h3{margin:0;color:#fff}.adjust-modal-head p{margin:5px 0 0;font-size:.8rem;opacity:.88}.adjust-close{width:38px;height:38px;border:1px solid rgba(255,255,255,.35);border-radius:11px;background:rgba(255,255,255,.14);color:#fff;font-size:1.35rem;cursor:pointer}.adjust-body{padding:17px}.adjust-grid{display:grid;grid-template-columns:1fr 1fr;gap:11px}.adjust-grid .full{grid-column:1/-1}.adjust-footer{display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap;margin-top:14px}.adjust-footer-left,.adjust-footer-right{display:flex;gap:8px;flex-wrap:wrap}.adjust-footer .cx-btn{min-width:130px}.reason-help{margin-top:5px;color:var(--cx-muted);font-size:.76rem}
+    @media(max-width:1100px){.workspace{grid-template-columns:1fr}.side-stack{position:static;grid-template-columns:repeat(2,minmax(0,1fr))}.filter-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+    @media(max-width:720px){.scale-page{padding:10px}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.side-stack{grid-template-columns:1fr}.filter-grid{grid-template-columns:1fr 1fr}.filter-grid .cx-btn{width:100%}.scale-head-title small{display:none}.cx-topbar{position:sticky}.resolver{min-width:230px}.adjust-grid{grid-template-columns:1fr}.adjust-grid .full{grid-column:auto}.adjust-footer,.adjust-footer-left,.adjust-footer-right{flex-direction:column;width:100%}.adjust-footer .cx-btn{width:100%}}
+    @media(max-width:440px){.summary-grid,.filter-grid{grid-template-columns:1fr}.summary-card{padding:11px}.cx-topbar .cx-btn{padding:8px}.hide-mobile{display:none}}
+  </style>
+</head>
+<body class="cx-page">
+<header class="cx-topbar">
+  <div class="scale-head">
+    <img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX" style="width:42px;height:42px;border-radius:12px;background:#fff;object-fit:contain;padding:3px" onerror="this.style.display='none'">
+    <div class="scale-head-title"><strong>Escala semanal</strong><small>Importação XLSX, alterações manuais e disponibilidade por horário</small></div>
+  </div>
+  <div class="cx-spacer"></div>
+  <button id="theme" class="cx-btn ghost" type="button" title="Alternar tema">☾</button>
+  <a class="cx-btn ghost" href="{{ url_for('admin') }}">← <span class="hide-mobile">Admin</span></a>
+</header>
+
+<main class="scale-page">
+  {% with mensagens = get_flashed_messages(with_categories=true) %}
+    {% if mensagens %}<div class="flash-stack">{% for categoria, mensagem in mensagens %}<div class="flash {{ categoria }}">{{ mensagem }}</div>{% endfor %}</div>{% endif %}
+  {% endwith %}
+
+  <section class="summary-grid">
+    <article class="summary-card"><span>Período importado</span><strong>{% if meta and meta.inicio_semana %}{{ meta.inicio_semana.strftime('%d/%m') }} a {{ meta.fim_semana.strftime('%d/%m/%Y') }}{% else %}Sem escala{% endif %}</strong><small>{{ meta.arquivo_nome if meta else 'Envie o XLSX semanal' }}</small></article>
+    <article class="summary-card"><span>Linhas válidas</span><strong>{{ meta.total_linhas if meta else 0 }}</strong><small>Inclui ajustes manuais da semana</small></article>
+    <article class="summary-card"><span>Reconhecidas</span><strong>{{ vinculados_total }}</strong><small>Vinculadas aos cadastros</small></article>
+    <article class="summary-card"><span>Para confirmar</span><strong>{{ pendentes_total }}</strong><small>Nomes ambíguos ou não encontrados</small></article>
+  </section>
+
+  <div class="workspace">
+    <aside class="side-stack">
+      <section class="cx-card">
+        <div class="cx-card-head"><h3>Substituir escala</h3><p>O novo arquivo apaga somente a escala anterior. Os apelidos confirmados permanecem.</p></div>
+        <div class="cx-card-body">
+          <form method="POST" action="{{ url_for('escala_importar') }}" enctype="multipart/form-data" id="uploadForm">
+            <label class="upload-zone" for="arquivo"><input id="arquivo" name="arquivo" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" required><strong>Selecionar planilha XLSX</strong><span>Use as colunas DATA, QTD, TURNO, HORÁRIOS, CONTRATO e NOME DO COOPERADO.</span><div id="fileName" class="file-name"></div></label>
+            <button class="cx-btn" style="width:100%;margin-top:10px" type="submit">Importar e substituir escala</button>
+          </form>
+        </div>
+      </section>
+
+      <section class="cx-card">
+        <div class="cx-card-head"><h3>Importação atual</h3></div>
+        <div class="cx-card-body">
+          <div class="meta-list">
+            <div class="meta-row"><span>Arquivo</span><strong>{{ meta.arquivo_nome if meta else '—' }}</strong></div>
+            <div class="meta-row"><span>Importado em</span><strong>{{ to_brasilia(meta.importado_em).strftime('%d/%m/%Y %H:%M') if meta and meta.importado_em else '—' }}</strong></div>
+            <div class="meta-row"><span>Ignoradas</span><strong>{{ meta.linhas_ignoradas if meta else 0 }}</strong></div>
+          </div>
+          {% if meta %}<form method="POST" action="{{ url_for('escala_limpar') }}" onsubmit="return confirm('Remover a escala atual? Os apelidos confirmados serão mantidos.')"><button class="cx-btn alt danger-action" style="width:100%;margin-top:10px" type="submit">Remover escala atual</button></form>{% endif %}
+        </div>
+      </section>
+
+      <section class="cx-card">
+        <div class="cx-card-head"><h3>Ajustes da semana</h3></div>
+        <div class="cx-card-body"><ol class="help-list"><li>Use “Adicionar pessoa” para colocar alguém que não veio no XLSX.</li><li>Use “Alterar” para trocar cooperado, contrato ou horário.</li><li>Deixe o cooperado vazio para marcar folga ou ausência sem substituto.</li><li>O motivo fica visível ao lado do registro.</li></ol></div>
+      </section>
+    </aside>
+
+    <section class="cx-card">
+      <div class="cx-card-head table-head-actions"><div><h2>Escalados</h2><p>Filtre por dia, contrato ou cooperado. A coluna “Agora” usa o horário de Brasília.</p></div><button class="cx-btn" type="button" id="btnAdicionarEscala">+ Adicionar pessoa</button></div>
+      <div class="cx-card-body">
+        <form class="filter-grid" method="GET" action="{{ url_for('escala') }}">
+          <div class="cx-field"><label for="data">Data</label><input class="cx-input" id="data" name="data" type="date" value="{{ data_escolhida.isoformat() }}"></div>
+          <div class="cx-field"><label for="contrato">Contrato</label><select class="cx-select" id="contrato" name="contrato"><option value="">Todos</option>{% for nome in contratos %}<option value="{{ nome }}" {% if contrato_filtro == nome %}selected{% endif %}>{{ nome }}</option>{% endfor %}</select></div>
+          <div class="cx-field"><label for="cooperado_id">Cooperado</label><select class="cx-select" id="cooperado_id" name="cooperado_id"><option value="">Todos</option>{% for c in cooperados %}<option value="{{ c.id }}" {% if cooperado_filtro == c.id %}selected{% endif %}>{{ c.nome }}</option>{% endfor %}</select></div>
+          <div class="cx-field"><label for="status">Vínculo</label><select class="cx-select" id="status" name="status"><option value="todos" {% if status_filtro == 'todos' %}selected{% endif %}>Todos</option><option value="vinculados" {% if status_filtro == 'vinculados' %}selected{% endif %}>Reconhecidos</option><option value="pendentes" {% if status_filtro == 'pendentes' %}selected{% endif %}>Para confirmar</option></select></div>
+          <div class="cx-field"><label for="q">Busca</label><input class="cx-input" id="q" name="q" value="{{ busca }}" placeholder="Nome do cooperado"></div>
+          <button class="cx-btn" type="submit">Aplicar</button>
+        </form>
+
+        <datalist id="cooperadosLista">{% for c in cooperados %}<option value="{{ c.id }} — {{ c.nome }}"></option>{% endfor %}</datalist>
+        <datalist id="contratosLista">{% for nome in contratos %}<option value="{{ nome }}"></option>{% endfor %}</datalist>
+
+        <div class="table-shell" style="margin-top:12px">
+          <table class="scale-table">
+            <thead><tr><th>Cooperado da escala</th><th>Contrato</th><th>Turno</th><th>Horário</th><th>Cadastro identificado</th><th>Situação</th><th>Motivo do ajuste</th><th>Ações</th></tr></thead>
+            <tbody>
+              {% for item in itens %}
+              <tr class="{% if item.ativo_agora %}active-now{% endif %}">
+                <td><div class="person">{{ item.nome_planilha }}</div><div class="muted">{{ item.data.strftime('%d/%m/%Y') }}{% if item.qtd %} • {{ item.qtd }}{% endif %}</div>{% if item.ativo_agora %}<span class="now-chip">Ativo agora</span>{% endif %}</td>
+                <td><span class="contract">{{ item.contrato }}</span></td>
+                <td>{{ item.turno or '—' }}</td>
+                <td><span class="time">{{ item.intervalos_rotulo }}</span>{% if item.horario_estimado %}<span class="estimated" title="A planilha não trouxe horas numéricas; foi aplicado o período padrão do turno.">estimado</span>{% endif %}<div class="muted">{{ item.horario_texto or '—' }}</div></td>
+                <td>{% if item.cooperado %}<div class="person">{{ item.cooperado.nome }}</div>{% else %}<div class="muted">Folga, ausência ou não vinculado</div>{% endif %}</td>
+                <td><span class="status {{ item.status_match }}">{{ item.status_match|replace('_',' ')|title }}</span>{% if item.status_match not in ['manual','ajustado','folga'] %}<div class="match-detail">{{ item.detalhe_match or '' }}</div>{% endif %}</td>
+                <td>{% if item.status_match in ['manual','ajustado','folga'] %}<div class="adjust-reason">{{ item.detalhe_match|replace('Motivo: ','') }}</div>{% else %}<div class="adjust-reason empty">Sem alteração manual</div>{% endif %}</td>
+                <td>
+                  <div class="row-actions">
+                    <button type="button" class="cx-btn alt" data-adjust-item data-id="{{ item.id }}" data-data="{{ item.data.isoformat() }}" data-contrato="{{ item.contrato|e }}" data-turno="{{ (item.turno or '')|e }}" data-horario="{{ (item.horario_texto or '')|e }}" data-cooperado-id="{{ item.cooperado_id or '' }}" data-motivo="{% if item.status_match in ['manual','ajustado','folga'] %}{{ item.detalhe_match|replace('Motivo: ','')|e }}{% endif %}">Alterar</button>
+                  </div>
+                  {% if not item.cooperado_id and item.status_match not in ['folga'] %}
+                  <form class="resolver" method="POST" action="{{ url_for('escala_vincular', i=item.id) }}" data-resolve-form style="margin-top:8px">
+                    <input type="hidden" name="cooperado_id"><input type="hidden" name="salvar_alias" value="1">
+                    <div class="resolver-row"><input class="cx-input" list="cooperadosLista" placeholder="Vincular cadastro" data-coop-input autocomplete="off"><button class="cx-btn" type="submit">Vincular</button></div>
+                    {% if item.candidatos_lista %}<div class="candidate-list">{% for candidato in item.candidatos_lista[:4] %}<button type="button" class="candidate" data-id="{{ candidato.id }}" data-name="{{ candidato.nome }}">{{ candidato.nome }}</button>{% endfor %}</div>{% endif %}
+                  </form>
+                  {% endif %}
+                </td>
+              </tr>
+              {% else %}<tr><td colspan="8"><div class="empty-state">Nenhum escalado encontrado para estes filtros.</div></td></tr>{% endfor %}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<div class="adjust-overlay" id="adjustOverlay" aria-hidden="true">
+  <section class="adjust-modal" role="dialog" aria-modal="true" aria-labelledby="adjustTitle">
+    <div class="adjust-modal-head"><div><h3 id="adjustTitle">Adicionar pessoa à escala</h3><p id="adjustSubtitle">Inclua um cooperado sem precisar reenviar a planilha.</p></div><button class="adjust-close" type="button" id="adjustClose">×</button></div>
+    <form class="adjust-body" id="adjustForm" method="POST" action="{{ url_for('escala_adicionar') }}">
+      <div class="adjust-grid">
+        <div class="cx-field"><label for="ajData">Data</label><input class="cx-input" id="ajData" name="data" type="date" required></div>
+        <div class="cx-field"><label for="ajContrato">Contrato</label><input class="cx-input" id="ajContrato" name="contrato" list="contratosLista" placeholder="Ex.: BASE" required></div>
+        <div class="cx-field full"><label for="ajCooperado">Cooperado</label><select class="cx-select" id="ajCooperado" name="cooperado_id"><option value="">Sem substituto / folga</option>{% for c in cooperados %}<option value="{{ c.id }}">{{ c.nome }}</option>{% endfor %}</select><span class="cx-hint" id="coopHint">Para adicionar uma nova pessoa, o cooperado é obrigatório.</span></div>
+        <div class="cx-field"><label for="ajTurno">Turno</label><input class="cx-input" id="ajTurno" name="turno" placeholder="Ex.: Manhã"></div>
+        <div class="cx-field"><label for="ajHorario">Horário</label><input class="cx-input" id="ajHorario" name="horario" placeholder="Ex.: 07:50–17:00" required></div>
+        <div class="cx-field full"><label for="ajMotivo">Motivo</label><input class="cx-input" id="ajMotivo" name="motivo" placeholder="Ex.: substituição por folga, falta, reforço ou troca de contrato" maxlength="220" required><div class="reason-help">O motivo aparecerá ao lado do registro nesta escala semanal.</div></div>
+      </div>
+      <div class="adjust-footer">
+        <div class="adjust-footer-left"><button class="cx-btn alt danger-action" type="button" id="btnRemoverEscala" style="display:none">Remover da escala</button></div>
+        <div class="adjust-footer-right"><button class="cx-btn alt" type="button" id="btnCancelarAjuste">Cancelar</button><button class="cx-btn" type="submit" id="btnSalvarAjuste">Adicionar</button></div>
+      </div>
+    </form>
+    <form id="removeForm" method="POST" style="display:none"></form>
+  </section>
+</div>
+
+<script>
+(function(){
+  const theme=document.getElementById('theme');
+  if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');
+  const syncTheme=()=>theme.textContent=document.body.classList.contains('dark')?'☀':'☾';
+  theme.addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');syncTheme()});syncTheme();
+
+  const arquivo=document.getElementById('arquivo'),fileName=document.getElementById('fileName'),uploadForm=document.getElementById('uploadForm');
+  arquivo?.addEventListener('change',()=>{fileName.textContent=arquivo.files?.[0]?.name||''});
+  uploadForm?.addEventListener('submit',()=>{const btn=uploadForm.querySelector('button[type="submit"]');btn.disabled=true;btn.textContent='Importando e reconhecendo nomes...'});
+
+  const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
+  const cooperados=[{% for c in cooperados %}{id:{{ c.id }},nome:{{ c.nome|tojson }}},{% endfor %}];
+  document.querySelectorAll('[data-resolve-form]').forEach(form=>{
+    const input=form.querySelector('[data-coop-input]'),hidden=form.querySelector('input[name="cooperado_id"]');
+    function resolve(){
+      const raw=input.value.trim();
+      const idMatch=raw.match(/^\s*(\d+)\s*[—-]/);
+      let found=idMatch?cooperados.find(c=>String(c.id)===idMatch[1]):null;
+      if(!found){const q=norm(raw);const matches=cooperados.filter(c=>norm(c.nome)===q);if(matches.length===1)found=matches[0]}
+      hidden.value=found?String(found.id):'';return found;
+    }
+    input.addEventListener('input',resolve);
+    form.querySelectorAll('.candidate').forEach(btn=>btn.addEventListener('click',()=>{input.value=`${btn.dataset.id} — ${btn.dataset.name}`;hidden.value=btn.dataset.id}));
+    form.addEventListener('submit',e=>{if(!resolve()){e.preventDefault();alert('Escolha um cooperado da lista para confirmar este nome.');input.focus()}});
+  });
+
+  const overlay=document.getElementById('adjustOverlay');
+  const form=document.getElementById('adjustForm');
+  const title=document.getElementById('adjustTitle');
+  const subtitle=document.getElementById('adjustSubtitle');
+  const data=document.getElementById('ajData');
+  const contrato=document.getElementById('ajContrato');
+  const cooperado=document.getElementById('ajCooperado');
+  const turno=document.getElementById('ajTurno');
+  const horario=document.getElementById('ajHorario');
+  const motivo=document.getElementById('ajMotivo');
+  const salvar=document.getElementById('btnSalvarAjuste');
+  const remover=document.getElementById('btnRemoverEscala');
+  const removeForm=document.getElementById('removeForm');
+  const coopHint=document.getElementById('coopHint');
+  let editId='';
+
+  function openModal(mode,btn=null){
+    const editing=mode==='edit';
+    editId=editing?String(btn.dataset.id||''):'';
+    title.textContent=editing?'Alterar escala':'Adicionar pessoa à escala';
+    subtitle.textContent=editing?'Troque a pessoa, contrato ou horário e registre o motivo.':'Inclua um cooperado sem precisar reenviar a planilha.';
+    form.action=editing?`/escala/editar/${editId}`:'{{ url_for("escala_adicionar") }}';
+    data.value=editing?(btn.dataset.data||''):'{{ data_escolhida.isoformat() }}';
+    contrato.value=editing?(btn.dataset.contrato||''):'';
+    cooperado.value=editing?(btn.dataset.cooperadoId||''):'';
+    turno.value=editing?(btn.dataset.turno||''):'';
+    horario.value=editing?(btn.dataset.horario||''):'';
+    motivo.value=editing?(btn.dataset.motivo||''):'';
+    cooperado.required=!editing;
+    coopHint.textContent=editing?'Deixe vazio para registrar folga ou ausência sem substituto.':'Para adicionar uma nova pessoa, o cooperado é obrigatório.';
+    salvar.textContent=editing?'Salvar alteração':'Adicionar';
+    remover.style.display=editing?'inline-flex':'none';
+    overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+    setTimeout(()=>contrato.focus(),30);
+  }
+  function closeModal(){overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.style.overflow='';editId=''}
+
+  document.getElementById('btnAdicionarEscala').addEventListener('click',()=>openModal('add'));
+  document.querySelectorAll('[data-adjust-item]').forEach(btn=>btn.addEventListener('click',()=>openModal('edit',btn)));
+  document.getElementById('adjustClose').addEventListener('click',closeModal);
+  document.getElementById('btnCancelarAjuste').addEventListener('click',closeModal);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)closeModal()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))closeModal()});
+  remover.addEventListener('click',()=>{
+    if(!editId)return;
+    if(!confirm('Remover esta pessoa da escala atual?'))return;
+    removeForm.action=`/escala/remover/${editId}`;
+    removeForm.submit();
+  });
+  form.addEventListener('submit',()=>{salvar.disabled=true;salvar.textContent=editId?'Salvando...':'Adicionando...'});
+})();
+</script>
+</body>
+</html>
