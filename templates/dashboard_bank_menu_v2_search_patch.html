@@ -1,0 +1,84 @@
+<style id="coopex-dashboard-bank-v2-search-style">
+  .dash-v2-search{
+    width:min(330px,32vw)!important;
+    height:31px!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:6px!important;
+    padding:0 9px!important;
+    border:1px solid #cad8ed!important;
+    border-radius:8px!important;
+    background:#fff!important;
+  }
+  .dash-v2-search span{color:#1746a5!important;font-size:.78rem!important;font-weight:900!important}
+  .dash-v2-search input{
+    width:100%!important;
+    height:29px!important;
+    min-height:29px!important;
+    padding:0!important;
+    border:0!important;
+    outline:0!important;
+    background:transparent!important;
+    color:#17315f!important;
+    box-shadow:none!important;
+    font:inherit!important;
+    font-size:.69rem!important;
+    font-weight:750!important;
+  }
+  .dash-v2-search input::placeholder{color:#8090ac!important}
+  .dash-v2-search-count{min-width:74px!important;color:#657493!important;font-size:.65rem!important;font-weight:800!important;text-align:right!important}
+  .dash-v2-search-hidden{display:none!important}
+  .dash-v2-search-found{outline:2px solid rgba(24,75,194,.16)!important;outline-offset:-2px!important}
+  body.dark-mode .dash-v2-search{background:#13233e!important;border-color:#334a75!important}
+  body.dark-mode .dash-v2-search span{color:#a9c3ff!important}
+  body.dark-mode .dash-v2-search input{color:#edf3ff!important;-webkit-text-fill-color:#edf3ff!important}
+  body.dark-mode .dash-v2-search input::placeholder{color:#91a1be!important}
+  body.dark-mode .dash-v2-search-count{color:#bac6dc!important}
+  @media(max-width:920px){.dash-v2-search{width:min(280px,48vw)!important}}
+  @media(max-width:720px){.dash-v2-search{width:100%!important;min-width:100%!important;order:-1!important}.dash-v2-search-count{width:100%!important;text-align:left!important}}
+</style>
+
+<script id="coopex-dashboard-bank-v2-search-script">
+(function(){
+  function norm(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
+
+  function install(){
+    const actions=document.querySelector('.dash-v2-filter-actions');
+    if(!actions||document.getElementById('dashGlobalSearch'))return false;
+
+    const search=document.createElement('label');
+    search.className='dash-v2-search';
+    search.innerHTML='<span>⌕</span><input id="dashGlobalSearch" type="search" autocomplete="off" placeholder="Pesquisar cooperado, cliente, contrato, bairro, rota ou valor">';
+    const count=document.createElement('span');
+    count.className='dash-v2-search-count';
+    count.id='dashV2SearchCount';
+    actions.prepend(count);
+    actions.prepend(search);
+
+    const input=search.querySelector('input');
+    function run(){
+      const query=norm(input.value);
+      const rows=[...document.querySelectorAll('table tbody tr,.rowItem,.alerts .alert')];
+      document.querySelectorAll('.dash-v2-search-found').forEach(el=>el.classList.remove('dash-v2-search-found'));
+      if(!query){rows.forEach(row=>row.classList.remove('dash-v2-search-hidden'));count.textContent='';return}
+      let total=0;
+      rows.forEach(row=>{
+        const found=norm(row.textContent).includes(query);
+        row.classList.toggle('dash-v2-search-hidden',!found);
+        if(found){row.classList.add('dash-v2-search-found');total++}
+      });
+      count.textContent=`${total} resultado${total===1?'':'s'}`;
+    }
+    input.addEventListener('input',run);
+    input.addEventListener('keydown',event=>{if(event.key==='Escape'){input.value='';run();input.blur()}});
+    return true;
+  }
+
+  function start(){
+    if(install())return;
+    let attempts=0;
+    const timer=setInterval(()=>{attempts++;if(install()||attempts>30)clearInterval(timer)},100);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
