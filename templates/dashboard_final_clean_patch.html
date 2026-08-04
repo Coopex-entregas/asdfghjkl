@@ -1,61 +1,54 @@
-<style id="coopex-dashboard-final-clean-style">
+<style id="coopex-dashboard-tabs-final-style">
   :root{
-    --df-header-h:86px;
-    --df-menu-h:44px;
-    --df-blue:#1748b8;
-    --df-blue-dark:#10378f;
-    --df-bg:#f3f6fb;
-    --df-card:#ffffff;
-    --df-text:#132441;
-    --df-muted:#61708d;
-    --df-line:#d9e2ef;
-    --df-line-strong:#c7d4e7;
-    --df-shadow:0 7px 22px rgba(19,48,105,.08);
+    --dt-blue:#1748b8;
+    --dt-blue-dark:#10378f;
+    --dt-bg:#f3f6fb;
+    --dt-card:#ffffff;
+    --dt-text:#132441;
+    --dt-muted:#62718e;
+    --dt-line:#d9e2ef;
+    --dt-shadow:0 7px 22px rgba(19,48,105,.08);
   }
 
   *{box-sizing:border-box}
   html,body{width:100%;max-width:100%;overflow-x:hidden}
-  body{margin:0!important;background:var(--df-bg)!important;color:var(--df-text)!important}
+  body{margin:0!important;background:var(--dt-bg)!important;color:var(--dt-text)!important}
 
-  /* Cabeçalho azul compacto e estável */
+  /* Cabeçalho azul fixo, compacto e sem logo */
   .top{
     position:sticky!important;
     top:0!important;
     z-index:3000!important;
     width:100%!important;
-    height:auto!important;
     min-height:0!important;
-    max-height:none!important;
+    height:auto!important;
     margin:0!important;
     padding:0!important;
     overflow:visible!important;
-    background:linear-gradient(105deg,var(--df-blue-dark),var(--df-blue) 72%,#3d69d0)!important;
+    background:linear-gradient(105deg,var(--dt-blue-dark),var(--dt-blue) 72%,#3d69d0)!important;
     border:0!important;
     border-bottom:1px solid rgba(255,255,255,.22)!important;
     box-shadow:0 5px 16px rgba(13,48,132,.18)!important;
     backdrop-filter:none!important;
   }
-  .topbar.dashboard-clean-header{
+  .topbar.dashboard-tabs-header{
     width:100%!important;
     max-width:none!important;
+    min-height:78px!important;
     height:auto!important;
-    min-height:82px!important;
-    max-height:none!important;
     margin:0!important;
-    padding:13px 20px!important;
+    padding:12px 20px!important;
     display:grid!important;
-    grid-template-columns:minmax(290px,1fr) auto auto!important;
+    grid-template-columns:minmax(300px,1fr) auto auto!important;
     grid-template-areas:"brand summary actions"!important;
     align-items:center!important;
-    align-content:center!important;
     gap:12px 18px!important;
     background:transparent!important;
     border:0!important;
     border-radius:0!important;
     box-shadow:none!important;
-    overflow:visible!important;
   }
-  .topbar.dashboard-clean-header .brand{
+  .topbar.dashboard-tabs-header .brand{
     grid-area:brand!important;
     min-width:0!important;
     min-height:0!important;
@@ -67,29 +60,27 @@
     border:0!important;
     border-radius:0!important;
     box-shadow:none!important;
-    color:#fff!important;
   }
-  .topbar.dashboard-clean-header .brand img{display:none!important}
-  .topbar.dashboard-clean-header .brand>div{display:block!important;min-width:0!important}
-  .topbar.dashboard-clean-header .brand b{
+  .topbar.dashboard-tabs-header .brand img{display:none!important}
+  .topbar.dashboard-tabs-header .brand b{
     display:block!important;
     margin:0!important;
     color:#fff!important;
-    font-size:1.12rem!important;
+    font-size:1.14rem!important;
     font-weight:950!important;
     line-height:1.12!important;
     letter-spacing:-.02em!important;
   }
-  .topbar.dashboard-clean-header .brand small{
+  .topbar.dashboard-tabs-header .brand small{
     display:block!important;
-    max-width:720px!important;
+    max-width:760px!important;
     margin-top:5px!important;
     color:#e1eaff!important;
     font-size:.72rem!important;
     font-weight:700!important;
     line-height:1.35!important;
   }
-  .dashboard-clean-summary{
+  .dashboard-tabs-summary{
     grid-area:summary!important;
     display:flex!important;
     align-items:center!important;
@@ -97,7 +88,7 @@
     gap:7px!important;
     flex-wrap:wrap!important;
   }
-  .dashboard-clean-summary .heroChip{
+  .dashboard-tabs-summary .heroChip{
     min-height:34px!important;
     margin:0!important;
     padding:7px 10px!important;
@@ -112,7 +103,7 @@
     font-weight:900!important;
     white-space:nowrap!important;
   }
-  .topbar.dashboard-clean-header .actions{
+  .topbar.dashboard-tabs-header .actions{
     grid-area:actions!important;
     width:auto!important;
     margin:0!important;
@@ -123,7 +114,7 @@
     gap:6px!important;
     flex-wrap:wrap!important;
   }
-  .topbar.dashboard-clean-header .actions .btn{
+  .topbar.dashboard-tabs-header .actions .btn{
     width:auto!important;
     min-width:0!important;
     height:34px!important;
@@ -143,137 +134,66 @@
     text-decoration:none!important;
     white-space:nowrap!important;
   }
-  .topbar.dashboard-clean-header .actions .btn:hover{background:rgba(255,255,255,.20)!important;transform:none!important}
-  .topbar.dashboard-clean-header .actions .btn.primary{display:none!important}
+  .topbar.dashboard-tabs-header .actions .btn:hover{background:rgba(255,255,255,.20)!important;transform:none!important}
+  .topbar.dashboard-tabs-header .actions .btn.primary{display:none!important}
 
-  /* Menu próprio, fino, como sistema bancário */
-  .dashboard-bank-menu{
-    position:sticky!important;
-    top:var(--df-header-h)!important;
-    z-index:2900!important;
+  /* Abas diretas: cada aba mostra apenas seu conteúdo */
+  .dashboard-tabs-bar{
     width:100%!important;
-    height:var(--df-menu-h)!important;
-    display:flex!important;
-    align-items:stretch!important;
+    min-height:44px!important;
     padding:0 14px!important;
-    background:var(--df-card)!important;
-    border-bottom:1px solid var(--df-line)!important;
-    box-shadow:0 3px 10px rgba(22,52,112,.05)!important;
-    overflow:visible!important;
-  }
-  .dashboard-bank-menu-inner{
-    width:100%!important;
-    height:100%!important;
     display:flex!important;
     align-items:stretch!important;
-    gap:0!important;
+    background:var(--dt-card)!important;
+    border-bottom:1px solid var(--dt-line)!important;
+    box-shadow:0 3px 10px rgba(22,52,112,.05)!important;
     overflow-x:auto!important;
-    overflow-y:visible!important;
+    overflow-y:hidden!important;
     scrollbar-width:thin!important;
   }
-  .dashboard-bank-item{position:relative!important;flex:0 0 auto!important;height:100%!important}
-  .dashboard-bank-button,
-  .dashboard-bank-link{
-    height:100%!important;
+  .dashboard-tab-button{
+    flex:0 0 auto!important;
     min-width:0!important;
-    padding:0 13px!important;
+    height:44px!important;
+    padding:0 14px!important;
     display:flex!important;
     align-items:center!important;
     justify-content:center!important;
     gap:7px!important;
     border:0!important;
-    border-bottom:2px solid transparent!important;
+    border-bottom:3px solid transparent!important;
     border-radius:0!important;
     background:transparent!important;
-    color:#344b75!important;
+    color:#3b5077!important;
     box-shadow:none!important;
     font:inherit!important;
     font-size:.76rem!important;
     font-weight:850!important;
-    text-decoration:none!important;
     white-space:nowrap!important;
     cursor:pointer!important;
   }
-  .dashboard-bank-button:hover,
-  .dashboard-bank-link:hover,
-  .dashboard-bank-item.open>.dashboard-bank-button{
-    background:#f1f5fc!important;
-    color:#1246be!important;
-    border-bottom-color:#174bc8!important;
-  }
-  .dashboard-bank-icon{font-size:.82rem!important;line-height:1!important;color:#174bc8!important}
-  .dashboard-bank-arrow{font-size:.64rem!important;line-height:1!important;color:#71809d!important;transition:transform .15s ease!important}
-  .dashboard-bank-item.open .dashboard-bank-arrow{transform:rotate(180deg)!important}
-  .dashboard-bank-spacer{flex:1 0 18px!important}
-  .dashboard-bank-dropdown{
-    display:none!important;
-    position:fixed!important;
-    z-index:4000!important;
-    min-width:230px!important;
-    max-width:min(340px,92vw)!important;
-    padding:6px!important;
-    border:1px solid var(--df-line)!important;
-    border-radius:0 0 11px 11px!important;
-    background:var(--df-card)!important;
-    box-shadow:0 16px 34px rgba(20,47,102,.16)!important;
-  }
-  .dashboard-bank-item.open>.dashboard-bank-dropdown{display:grid!important;gap:2px!important}
-  .dashboard-bank-dropdown button,
-  .dashboard-bank-dropdown a{
-    width:100%!important;
-    min-height:37px!important;
-    padding:8px 10px!important;
-    display:flex!important;
-    align-items:center!important;
-    gap:9px!important;
-    border:0!important;
-    border-radius:7px!important;
-    background:transparent!important;
-    color:#30476f!important;
-    box-shadow:none!important;
-    font:inherit!important;
-    font-size:.76rem!important;
-    font-weight:780!important;
-    text-align:left!important;
-    text-decoration:none!important;
-    cursor:pointer!important;
-  }
-  .dashboard-bank-dropdown button:hover,
-  .dashboard-bank-dropdown a:hover{background:#eef4ff!important;color:#1246be!important}
+  .dashboard-tab-button:hover{background:#f2f5fb!important;color:#1246be!important}
+  .dashboard-tab-button.active{background:#eef4ff!important;color:#1246be!important;border-bottom-color:#174bc8!important}
+  .dashboard-tab-button .tab-icon{color:#174bc8!important;font-size:.82rem!important;line-height:1!important}
+  .dashboard-tab-spacer{flex:1 0 16px!important}
 
-  /* Filtros fora do cabeçalho */
+  /* Filtros sempre visíveis, abaixo das abas */
   .dashboard-filter-shell{
     width:100%!important;
-    padding:8px 14px!important;
+    padding:9px 14px 10px!important;
     background:#fbfcff!important;
-    border-bottom:1px solid var(--df-line)!important;
+    border-bottom:1px solid var(--dt-line)!important;
   }
-  .dashboard-filter-toolbar{
-    min-height:36px!important;
+  .dashboard-filter-title-row{
     display:flex!important;
     align-items:center!important;
-    gap:8px!important;
-    flex-wrap:wrap!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+    margin-bottom:7px!important;
   }
-  .dashboard-filter-title{color:#173d8d!important;font-size:.72rem!important;font-weight:900!important;white-space:nowrap!important}
-  .dashboard-filter-chips{display:flex!important;align-items:center!important;gap:5px!important;flex:1!important;flex-wrap:wrap!important;min-width:0!important}
-  .dashboard-filter-chip{
-    min-height:27px!important;
-    padding:4px 8px!important;
-    display:inline-flex!important;
-    align-items:center!important;
-    gap:4px!important;
-    border:1px solid #cfdaeb!important;
-    border-radius:999px!important;
-    background:#fff!important;
-    color:#536483!important;
-    font-size:.65rem!important;
-    font-weight:780!important;
-    white-space:nowrap!important;
-  }
-  .dashboard-filter-chip strong{color:#17449f!important}
-  .dashboard-global-search{
-    width:min(340px,36vw)!important;
+  .dashboard-filter-title{color:#173d8d!important;font-size:.72rem!important;font-weight:900!important}
+  .dashboard-filter-search{
+    width:min(360px,40vw)!important;
     height:31px!important;
     display:flex!important;
     align-items:center!important;
@@ -283,8 +203,8 @@
     border-radius:8px!important;
     background:#fff!important;
   }
-  .dashboard-global-search span{color:#1746a5!important;font-size:.75rem!important;font-weight:900!important}
-  .dashboard-global-search input{
+  .dashboard-filter-search span{color:#1746a5!important;font-size:.75rem!important;font-weight:900!important}
+  .dashboard-filter-search input{
     width:100%!important;
     height:29px!important;
     min-height:29px!important;
@@ -298,13 +218,56 @@
     font-size:.69rem!important;
     font-weight:750!important;
   }
-  .dashboard-global-search input::placeholder{color:#8290aa!important}
-  .dashboard-filter-actions{display:flex!important;align-items:center!important;gap:6px!important;margin-left:auto!important}
+  .dashboard-filter-search input::placeholder{color:#8290aa!important}
+  .dashboard-search-count{min-width:70px!important;color:#677692!important;font-size:.64rem!important;font-weight:800!important;text-align:right!important}
+  .dashboard-filter-content{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    gap:8px!important;
+    align-items:end!important;
+  }
+  .dashboard-filter-content .filters{
+    width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    display:grid!important;
+    grid-template-columns:repeat(9,minmax(108px,1fr))!important;
+    gap:7px!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  .dashboard-filter-content .f{min-width:0!important}
+  .dashboard-filter-content .f label{
+    display:block!important;
+    margin:0 0 4px 1px!important;
+    color:#536483!important;
+    font-size:.59rem!important;
+    font-weight:900!important;
+    letter-spacing:.035em!important;
+    text-transform:uppercase!important;
+  }
+  .dashboard-filter-content .f input,
+  .dashboard-filter-content .f select{
+    width:100%!important;
+    height:35px!important;
+    min-height:35px!important;
+    padding:0 8px!important;
+    border:1px solid #cbd7e9!important;
+    border-radius:8px!important;
+    background:#fff!important;
+    color:#19325f!important;
+    box-shadow:none!important;
+    font-size:.68rem!important;
+    font-weight:760!important;
+  }
+  .dashboard-filter-actions{display:flex!important;align-items:center!important;gap:6px!important}
   .dashboard-filter-actions button,
   .dashboard-filter-actions .btn{
-    height:31px!important;
-    min-height:31px!important;
-    padding:0 10px!important;
+    height:35px!important;
+    min-height:35px!important;
+    padding:0 11px!important;
     border:1px solid #c8d5e8!important;
     border-radius:8px!important;
     background:#fff!important;
@@ -313,148 +276,73 @@
     font:inherit!important;
     font-size:.67rem!important;
     font-weight:850!important;
+    white-space:nowrap!important;
     cursor:pointer!important;
   }
   .dashboard-filter-actions .apply-filter{background:#174bc8!important;color:#fff!important;border-color:#174bc8!important}
-  .dashboard-filter-panel{
-    display:none!important;
-    margin-top:8px!important;
-    padding:10px!important;
-    border:1px solid var(--df-line)!important;
-    border-radius:12px!important;
-    background:#fff!important;
-  }
-  .dashboard-filter-shell.open .dashboard-filter-panel{display:block!important}
-  .dashboard-filter-panel .filters{
-    width:100%!important;
-    margin:0!important;
-    padding:0!important;
-    display:grid!important;
-    grid-template-columns:repeat(9,minmax(110px,1fr))!important;
-    gap:8px!important;
-    background:transparent!important;
-    border:0!important;
-    border-radius:0!important;
-    box-shadow:none!important;
-  }
-  .dashboard-filter-panel .f{min-width:0!important}
-  .dashboard-filter-panel .f label{
-    display:block!important;
-    margin:0 0 4px 1px!important;
-    color:#536483!important;
-    font-size:.6rem!important;
-    font-weight:900!important;
-    letter-spacing:.035em!important;
-    text-transform:uppercase!important;
-  }
-  .dashboard-filter-panel .f input,
-  .dashboard-filter-panel .f select{
-    width:100%!important;
-    height:35px!important;
-    min-height:35px!important;
-    padding:0 9px!important;
-    border:1px solid #cbd7e9!important;
-    border-radius:8px!important;
-    background:#fff!important;
-    color:#19325f!important;
-    box-shadow:none!important;
-    font-size:.7rem!important;
-    font-weight:760!important;
-  }
 
-  /* Conteúdo profissional e sem espaço vazio */
+  /* Conteúdo separado por abas */
   .hero{display:none!important}
-  .wrap{
-    width:100%!important;
-    max-width:none!important;
-    min-height:0!important;
-    margin:0!important;
-    padding:12px 14px 32px!important;
-  }
+  .wrap{width:100%!important;max-width:none!important;min-height:0!important;margin:0!important;padding:12px 14px 32px!important}
+  .dashboard-tab-panel{display:none!important;animation:dashboardTabFade .15s ease!important}
+  .dashboard-tab-panel.active{display:block!important}
+  @keyframes dashboardTabFade{from{opacity:.25}to{opacity:1}}
+  .dashboard-panel-title{display:flex;align-items:flex-end;justify-content:space-between;gap:10px;margin:1px 0 9px;padding-bottom:7px;border-bottom:1px solid var(--dt-line)}
+  .dashboard-panel-title h2{margin:0;color:#153b8c;font-size:1rem;font-weight:950}.dashboard-panel-title p{margin:3px 0 0;color:var(--dt-muted);font-size:.72rem;font-weight:650}
+  .dashboard-panel-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+  .dashboard-panel-grid.one{grid-template-columns:1fr}.dashboard-panel-grid.three{grid-template-columns:repeat(3,minmax(0,1fr))}
   .gridKpi{margin-top:0!important;gap:9px!important}
-  .gridKpi>.kpi,
-  .card,
-  .year-compare-kpi,
-  .year-compare-table-wrap{
-    background:var(--df-card)!important;
-    border:1px solid var(--df-line)!important;
-    box-shadow:var(--df-shadow)!important;
-  }
+  .gridKpi>.kpi,.card,.year-compare-kpi,.year-compare-table-wrap{background:var(--dt-card)!important;border:1px solid var(--dt-line)!important;box-shadow:var(--dt-shadow)!important}
   .gridKpi>.kpi{min-height:92px!important;padding:12px!important;border-radius:14px!important}
-  .card,.year-compare-table-wrap{border-radius:15px!important}
-  .card{padding:13px!important}
+  .card,.year-compare-table-wrap{border-radius:15px!important}.card{padding:13px!important}
   .board,.board3,.board4,.year-compare-board,.year-compare-tables{gap:10px!important}
-  .sectionTitle{scroll-margin-top:calc(var(--df-header-h) + var(--df-menu-h) + 14px)!important}
-
-  /* Tabelas ajustadas à tela */
   .tableWrap,.rankScroll,.year-compare-table-wrap{width:100%!important;max-width:100%!important;overflow-x:hidden!important;overflow-y:visible!important;max-height:none!important}
   table,.tableWrap table,.rankScroll table,.year-compare-table,.year-compare-table.year-table{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important}
   th,td,.year-compare-table th,.year-compare-table td{padding:8px 6px!important;white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.3!important;vertical-align:middle!important}
   th{background:#123b91!important;color:#fff!important;font-size:.66rem!important;text-transform:uppercase!important}
-  td{color:#20365e!important;font-size:.72rem!important}
-  tr:hover td{background:#eef4ff!important}
+  td{color:#20365e!important;font-size:.72rem!important}tr:hover td{background:#eef4ff!important}
+  .dashboard-search-hidden{display:none!important}.dashboard-search-found{outline:2px solid rgba(23,72,184,.16)!important;outline-offset:-2px!important}
 
-  .dashboard-search-hidden{display:none!important}
-  .dashboard-search-found{outline:2px solid rgba(23,72,184,.16)!important;outline-offset:-2px!important}
-  .dashboard-search-count{min-width:70px!important;color:#677692!important;font-size:.64rem!important;font-weight:800!important;text-align:right!important}
-
-  /* Modo escuro */
-  body.dark-mode{
-    --df-bg:#071326;--df-card:#0f1d35;--df-text:#edf3ff;--df-muted:#aebbd5;
-    --df-line:#263a60;--df-line-strong:#344b77;background:#071326!important;color:#edf3ff!important;
-  }
-  body.dark-mode .dashboard-bank-menu{background:#0d192e!important;border-color:#263a60!important}
-  body.dark-mode .dashboard-bank-button,body.dark-mode .dashboard-bank-link{color:#dce7ff!important}
-  body.dark-mode .dashboard-bank-button:hover,body.dark-mode .dashboard-bank-link:hover,body.dark-mode .dashboard-bank-item.open>.dashboard-bank-button{background:#172a49!important;color:#fff!important}
-  body.dark-mode .dashboard-bank-dropdown{background:#111f37!important;border-color:#2b416c!important}
-  body.dark-mode .dashboard-bank-dropdown button,body.dark-mode .dashboard-bank-dropdown a{color:#dce7ff!important}
-  body.dark-mode .dashboard-bank-dropdown button:hover,body.dark-mode .dashboard-bank-dropdown a:hover{background:#1a3155!important;color:#fff!important}
+  body.dark-mode{--dt-bg:#071326;--dt-card:#0f1d35;--dt-text:#edf3ff;--dt-muted:#aebbd5;--dt-line:#263a60;background:#071326!important;color:#edf3ff!important}
+  body.dark-mode .dashboard-tabs-bar{background:#0d192e!important;border-color:#263a60!important}
+  body.dark-mode .dashboard-tab-button{color:#dce7ff!important}
+  body.dark-mode .dashboard-tab-button:hover,body.dark-mode .dashboard-tab-button.active{background:#172a49!important;color:#fff!important}
   body.dark-mode .dashboard-filter-shell{background:#0c182d!important;border-color:#263a60!important}
   body.dark-mode .dashboard-filter-title{color:#dce7ff!important}
-  body.dark-mode .dashboard-filter-chip,body.dark-mode .dashboard-global-search,body.dark-mode .dashboard-filter-actions button,body.dark-mode .dashboard-filter-panel{background:#13223d!important;border-color:#334a75!important;color:#dce7ff!important}
-  body.dark-mode .dashboard-filter-chip strong{color:#a8c2ff!important}
-  body.dark-mode .dashboard-global-search input,body.dark-mode .dashboard-filter-panel .f input,body.dark-mode .dashboard-filter-panel .f select{background:#0b1730!important;color:#edf3ff!important;-webkit-text-fill-color:#edf3ff!important;border-color:#3a527e!important}
-  body.dark-mode .dashboard-filter-panel .f label{color:#b7c5df!important}
+  body.dark-mode .dashboard-filter-search,body.dark-mode .dashboard-filter-actions button{background:#13223d!important;border-color:#334a75!important;color:#dce7ff!important}
+  body.dark-mode .dashboard-filter-search input,body.dark-mode .dashboard-filter-content .f input,body.dark-mode .dashboard-filter-content .f select{background:#0b1730!important;color:#edf3ff!important;-webkit-text-fill-color:#edf3ff!important;border-color:#3a527e!important}
+  body.dark-mode .dashboard-filter-content .f label{color:#b7c5df!important}
   body.dark-mode .gridKpi>.kpi,body.dark-mode .card,body.dark-mode .year-compare-kpi,body.dark-mode .year-compare-table-wrap{background:#0f1d35!important;border-color:#263a60!important;box-shadow:0 10px 28px rgba(0,0,0,.22)!important}
-  body.dark-mode td{color:#edf3ff!important}body.dark-mode tr:hover td{background:#142b50!important}
+  body.dark-mode .dashboard-panel-title{border-color:#263a60!important}body.dark-mode .dashboard-panel-title h2{color:#dce7ff!important}body.dark-mode td{color:#edf3ff!important}body.dark-mode tr:hover td{background:#142b50!important}
 
-  @media(max-width:1350px){
-    .dashboard-filter-panel .filters{grid-template-columns:repeat(5,minmax(120px,1fr))!important}
-  }
+  @media(max-width:1380px){.dashboard-filter-content .filters{grid-template-columns:repeat(5,minmax(120px,1fr))!important}}
   @media(max-width:1000px){
-    .topbar.dashboard-clean-header{grid-template-columns:1fr auto!important;grid-template-areas:"brand actions" "summary summary"!important;gap:7px 10px!important}
-    .dashboard-clean-summary{justify-content:flex-start!important}
-    .dashboard-global-search{width:min(300px,45vw)!important}
-    .dashboard-filter-panel .filters{grid-template-columns:repeat(3,minmax(130px,1fr))!important}
+    .topbar.dashboard-tabs-header{grid-template-columns:1fr auto!important;grid-template-areas:"brand actions" "summary summary"!important;gap:7px 10px!important}
+    .dashboard-tabs-summary{justify-content:flex-start!important}
+    .dashboard-filter-content{grid-template-columns:1fr!important}.dashboard-filter-actions{justify-content:flex-end!important}
+    .dashboard-filter-content .filters{grid-template-columns:repeat(3,minmax(130px,1fr))!important}
+    .dashboard-panel-grid,.dashboard-panel-grid.three{grid-template-columns:1fr!important}
   }
   @media(max-width:720px){
-    .topbar.dashboard-clean-header{padding:10px 11px!important;grid-template-columns:1fr!important;grid-template-areas:"brand" "summary" "actions"!important}
-    .topbar.dashboard-clean-header .actions{justify-content:flex-start!important}
-    .dashboard-bank-menu{padding:0 5px!important}
-    .dashboard-bank-button,.dashboard-bank-link{padding:0 10px!important;font-size:.7rem!important}
-    .dashboard-filter-toolbar{align-items:stretch!important}
-    .dashboard-filter-chips{width:100%!important;order:2!important}
-    .dashboard-global-search{width:100%!important;order:3!important}
-    .dashboard-search-count{order:3!important;text-align:left!important}
-    .dashboard-filter-actions{width:100%!important;order:4!important;margin-left:0!important}
-    .dashboard-filter-actions button,.dashboard-filter-actions .btn{flex:1!important}
-    .dashboard-filter-panel .filters{grid-template-columns:1fr 1fr!important}
-    .wrap{padding:8px!important}
-    table,td{font-size:.62rem!important}th{font-size:.58rem!important}th,td{padding:6px 3px!important}
+    .topbar.dashboard-tabs-header{padding:10px 11px!important;grid-template-columns:1fr!important;grid-template-areas:"brand" "summary" "actions"!important}
+    .topbar.dashboard-tabs-header .actions{justify-content:flex-start!important}
+    .dashboard-tabs-bar{padding:0 5px!important}.dashboard-tab-button{padding:0 10px!important;font-size:.7rem!important}
+    .dashboard-filter-title-row{align-items:stretch!important;flex-direction:column!important}.dashboard-filter-search{width:100%!important}.dashboard-search-count{text-align:left!important}
+    .dashboard-filter-content .filters{grid-template-columns:1fr 1fr!important}.dashboard-filter-actions{width:100%!important}.dashboard-filter-actions button,.dashboard-filter-actions .btn{flex:1!important}
+    .wrap{padding:8px!important}table,td{font-size:.62rem!important}th{font-size:.58rem!important}th,td{padding:6px 3px!important}
   }
-  @media(max-width:440px){
-    .dashboard-filter-panel .filters{grid-template-columns:1fr!important}
-  }
+  @media(max-width:440px){.dashboard-filter-content .filters{grid-template-columns:1fr!important}}
 </style>
 
-<script id="coopex-dashboard-final-clean-script">
+<script id="coopex-dashboard-tabs-final-script">
 (function(){
   const top=document.querySelector('.top');
   const form=top?.querySelector('.topbar');
-  if(!top||!form||document.querySelector('.dashboard-bank-menu'))return;
+  const main=document.querySelector('main.wrap');
+  if(!top||!form||!main||document.querySelector('.dashboard-tabs-bar'))return;
 
   form.id='dashboardReportForm';
-  form.classList.add('dashboard-clean-header');
+  form.classList.add('dashboard-tabs-header');
 
   const brand=form.querySelector('.brand');
   const originalFilters=form.querySelector('.filters');
@@ -465,145 +353,159 @@
   brand?.querySelector('img')?.remove();
   if(brand){
     const box=brand.querySelector('div')||brand;
-    box.innerHTML='<b>Dashboard Gerencial COOPEX</b><small>Visão executiva de operação, cooperados, contratos, bairros, rotas, financeiro e crédito.</small>';
+    box.innerHTML='<b>Dashboard Gerencial COOPEX</b><small>Relatórios separados por área, com filtros por período, cooperado, estabelecimento, contrato, pagamento, origem e destino.</small>';
   }
 
   const summary=document.createElement('div');
-  summary.className='dashboard-clean-summary';
-  if(heroRight){
-    [...heroRight.children].forEach(item=>summary.appendChild(item.cloneNode(true)));
-  }else{
-    summary.innerHTML='<span class="heroChip">{{ periodo_legivel }}</span><span class="heroChip">{{ resumo.total_entregas }} entregas</span><span class="heroChip">R$ {{ "%.2f"|format(resumo.valor_total or 0)|replace(".", ",") }}</span>';
-  }
+  summary.className='dashboard-tabs-summary';
+  if(heroRight){[...heroRight.children].forEach(item=>summary.appendChild(item.cloneNode(true)))}
   form.insertBefore(summary,originalActions||null);
 
-  function setHeaderHeight(){
-    const height=Math.max(70,Math.ceil(top.getBoundingClientRect().height));
-    document.documentElement.style.setProperty('--df-header-h',`${height}px`);
-  }
-  setHeaderHeight();
-  window.addEventListener('resize',setHeaderHeight,{passive:true});
-
-  function findHeading(text){
-    const q=String(text||'').toLowerCase();
-    return [...document.querySelectorAll('.sectionTitle h3,.year-compare-head h3,.cardHead h2')]
-      .find(node=>String(node.textContent||'').toLowerCase().includes(q));
-  }
-  function goTo(text){
-    const heading=findHeading(text);
-    const target=heading?.closest('.sectionTitle,.year-compare,.card')||heading;
-    target?.scrollIntoView({behavior:'smooth',block:'start'});
-  }
-
-  const nav=document.createElement('nav');
-  nav.className='dashboard-bank-menu noPrint';
-  nav.innerHTML=`<div class="dashboard-bank-menu-inner">
-    <div class="dashboard-bank-item"><button class="dashboard-bank-link" type="button" data-home><span class="dashboard-bank-icon">▦</span><span>Visão geral</span></button></div>
-    <div class="dashboard-bank-item"><button class="dashboard-bank-button" type="button"><span class="dashboard-bank-icon">◷</span><span>Operação</span><span class="dashboard-bank-arrow">⌄</span></button><div class="dashboard-bank-dropdown">
-      <button type="button" data-section="Faturamento e entregas por dia"><span>↗</span>Faturamento por dia</button>
-      <button type="button" data-section="Status das entregas"><span>◫</span>Status das entregas</button>
-      <button type="button" data-section="Operação, Cooperados e Contratos"><span>▤</span>Resumo da operação</button>
-    </div></div>
-    <div class="dashboard-bank-item"><button class="dashboard-bank-button" type="button"><span class="dashboard-bank-icon">♙</span><span>Cooperados e contratos</span><span class="dashboard-bank-arrow">⌄</span></button><div class="dashboard-bank-dropdown">
-      <button type="button" data-section="Cooperados"><span>♙</span>Produção dos cooperados</button>
-      <button type="button" data-section="Contratos"><span>▥</span>Contratos e clientes</button>
-      <button type="button" data-section="Estabelecimentos"><span>⌂</span>Estabelecimentos</button>
-    </div></div>
-    <div class="dashboard-bank-item"><button class="dashboard-bank-button" type="button"><span class="dashboard-bank-icon">¤</span><span>Financeiro</span><span class="dashboard-bank-arrow">⌄</span></button><div class="dashboard-bank-dropdown">
-      <button type="button" data-section="Crédito e Financeiro"><span>R$</span>Resumo financeiro</button>
-      <button type="button" data-section="Comparativo mensal e anual"><span>↗</span>Comparativo mensal e anual</button>
-      <a href="{{ url_for('creditos') }}"><span>¤</span>Créditos dos clientes</a>
-    </div></div>
-    <div class="dashboard-bank-item"><button class="dashboard-bank-button" type="button"><span class="dashboard-bank-icon">⌖</span><span>Bairros e rotas</span><span class="dashboard-bank-arrow">⌄</span></button><div class="dashboard-bank-dropdown">
-      <button type="button" data-section="Bairros e Rotas"><span>⌖</span>Desempenho por bairro</button>
-      <button type="button" data-section="Rotas"><span>⇄</span>Rotas mais utilizadas</button>
-      <a href="{{ url_for('precos_rotas') }}"><span>R$</span>Preços cadastrados</a>
-    </div></div>
-    <div class="dashboard-bank-item"><button class="dashboard-bank-button" type="button"><span class="dashboard-bank-icon">▧</span><span>Relatórios</span><span class="dashboard-bank-arrow">⌄</span></button><div class="dashboard-bank-dropdown">
-      <button type="button" data-print><span>▧</span>Imprimir relatório</button>
-      <a href="{{ url_for('admin') }}"><span>←</span>Voltar ao Admin</a>
-    </div></div>
-    <div class="dashboard-bank-spacer"></div>
-  </div>`;
-  top.insertAdjacentElement('afterend',nav);
+  const tabs=[
+    ['geral','▦','Visão geral'],
+    ['cooperados','♙','Cooperados'],
+    ['contratos','▥','Contratos'],
+    ['rotas','⌖','Bairros e rotas'],
+    ['financeiro','R$','Financeiro'],
+    ['comparativo','↗','Comparativo'],
+    ['configuracoes','⚙','Configurações']
+  ];
+  const tabsBar=document.createElement('nav');
+  tabsBar.className='dashboard-tabs-bar noPrint';
+  tabsBar.innerHTML=tabs.map(([id,icon,label])=>`<button class="dashboard-tab-button" type="button" data-tab="${id}"><span class="tab-icon">${icon}</span><span>${label}</span></button>`).join('')+'<span class="dashboard-tab-spacer"></span>';
+  top.insertAdjacentElement('afterend',tabsBar);
 
   const filterShell=document.createElement('section');
   filterShell.className='dashboard-filter-shell noPrint';
-  filterShell.innerHTML=`<div class="dashboard-filter-toolbar">
-    <span class="dashboard-filter-title">Filtros do relatório</span>
-    <div class="dashboard-filter-chips"></div>
-    <label class="dashboard-global-search"><span>⌕</span><input type="search" autocomplete="off" placeholder="Pesquisar cooperado, cliente, contrato, bairro, rota ou valor"></label>
-    <span class="dashboard-search-count"></span>
-    <div class="dashboard-filter-actions"><button type="button" data-filter-toggle>Mostrar filtros</button><button type="button" data-clear>Limpar</button></div>
-  </div><div class="dashboard-filter-panel"></div>`;
-  nav.insertAdjacentElement('afterend',filterShell);
+  filterShell.innerHTML=`<div class="dashboard-filter-title-row"><span class="dashboard-filter-title">Filtros do relatório</span><div style="display:flex;align-items:center;gap:7px"><label class="dashboard-filter-search"><span>⌕</span><input type="search" autocomplete="off" placeholder="Pesquisar dentro da aba aberta"></label><span class="dashboard-search-count"></span></div></div><div class="dashboard-filter-content"><div class="dashboard-filter-fields"></div><div class="dashboard-filter-actions"><button type="button" data-clear>Limpar</button></div></div>`;
+  tabsBar.insertAdjacentElement('afterend',filterShell);
 
-  const filterPanel=filterShell.querySelector('.dashboard-filter-panel');
+  const fieldsHost=filterShell.querySelector('.dashboard-filter-fields');
   if(originalFilters){
-    filterPanel.appendChild(originalFilters);
+    fieldsHost.appendChild(originalFilters);
     originalFilters.querySelectorAll('input,select').forEach(field=>field.setAttribute('form',form.id));
+    const clienteLabel=originalFilters.querySelector('[name="cliente"]')?.closest('.f')?.querySelector('label');
+    if(clienteLabel)clienteLabel.textContent='Estabelecimento / cliente';
+    const grupoLabel=originalFilters.querySelector('[name="grupo_id"]')?.closest('.f')?.querySelector('label');
+    if(grupoLabel)grupoLabel.textContent='Contrato';
   }
 
   const applyButton=originalActions?.querySelector('.btn.primary');
   if(applyButton){
     applyButton.classList.add('apply-filter');
+    applyButton.textContent='Aplicar filtros';
     applyButton.setAttribute('form',form.id);
     filterShell.querySelector('.dashboard-filter-actions').appendChild(applyButton);
   }
 
-  function placeDropdown(item){
-    const button=item.querySelector('.dashboard-bank-button');
-    const dropdown=item.querySelector('.dashboard-bank-dropdown');
-    if(!button||!dropdown)return;
-    const rect=button.getBoundingClientRect();
-    const width=dropdown.offsetWidth||230;
-    dropdown.style.top=`${Math.round(rect.bottom)}px`;
-    dropdown.style.left=`${Math.max(6,Math.min(Math.round(rect.left),window.innerWidth-width-6))}px`;
+  function panel(id,title,description){
+    const section=document.createElement('section');
+    section.className='dashboard-tab-panel';
+    section.dataset.panel=id;
+    section.innerHTML=`<div class="dashboard-panel-title"><div><h2>${title}</h2><p>${description}</p></div></div>`;
+    return section;
   }
-  nav.querySelectorAll('.dashboard-bank-button').forEach(button=>button.addEventListener('click',event=>{
-    event.stopPropagation();
-    const item=button.closest('.dashboard-bank-item');
-    const wasOpen=item.classList.contains('open');
-    nav.querySelectorAll('.dashboard-bank-item.open').forEach(other=>other.classList.remove('open'));
-    if(!wasOpen){item.classList.add('open');requestAnimationFrame(()=>placeDropdown(item))}
-  }));
-  document.addEventListener('click',()=>nav.querySelectorAll('.dashboard-bank-item.open').forEach(item=>item.classList.remove('open')));
-  window.addEventListener('resize',()=>nav.querySelectorAll('.dashboard-bank-item.open').forEach(placeDropdown),{passive:true});
-  nav.querySelector('[data-home]')?.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
-  nav.querySelectorAll('[data-section]').forEach(button=>button.addEventListener('click',()=>goTo(button.dataset.section)));
-  nav.querySelectorAll('[data-print]').forEach(button=>button.addEventListener('click',()=>window.print()));
 
-  const toggleButton=filterShell.querySelector('[data-filter-toggle]');
-  toggleButton.addEventListener('click',()=>{
-    const open=filterShell.classList.toggle('open');
-    toggleButton.textContent=open?'Ocultar filtros':'Mostrar filtros';
+  const panels={
+    geral:panel('geral','Visão geral','Indicadores principais, evolução diária e alertas da operação.'),
+    cooperados:panel('cooperados','Cooperados','Produção, faturamento, ticket médio e pendências por cooperado.'),
+    contratos:panel('contratos','Contratos e estabelecimentos','Produção agrupada por contrato, cliente e estabelecimento.'),
+    rotas:panel('rotas','Bairros e rotas','Coletas, entregas, rotas mais usadas e rotas mais lucrativas.'),
+    financeiro:panel('financeiro','Financeiro e crédito','Pagamentos, valores recebidos, pendências e créditos dos clientes.'),
+    comparativo:panel('comparativo','Comparativo mensal e anual','Comparação mês a mês e ano a ano.'),
+    configuracoes:panel('configuracoes','Configurações do relatório','Gerenciamento dos grupos e nomes vinculados aos contratos.')
+  };
+
+  Object.values(panels).forEach(item=>main.appendChild(item));
+
+  function directChild(selector){return [...main.children].find(el=>el.matches?.(selector)&&!el.classList.contains('dashboard-tab-panel'))||null}
+  function cardByTitle(text){
+    const q=String(text).toLowerCase();
+    return [...main.querySelectorAll('.card')].find(card=>String(card.querySelector('h2')?.textContent||'').toLowerCase().includes(q))||null;
+  }
+  function sectionTitle(text){
+    const q=String(text).toLowerCase();
+    return [...main.querySelectorAll('.sectionTitle')].find(el=>String(el.textContent||'').toLowerCase().includes(q))||null;
+  }
+  function moveRange(titleNode,target){
+    if(!titleNode)return;
+    const nodes=[titleNode];
+    let cursor=titleNode.nextElementSibling;
+    while(cursor&&!cursor.classList.contains('sectionTitle')&&!cursor.classList.contains('year-compare')){
+      nodes.push(cursor);cursor=cursor.nextElementSibling;
+    }
+    nodes.forEach(node=>target.appendChild(node));
+  }
+  function grid(target,klass='dashboard-panel-grid'){
+    const box=document.createElement('div');box.className=klass;target.appendChild(box);return box;
+  }
+
+  const firstKpi=directChild('section.gridKpi');
+  const firstBoard=directChild('section.board');
+  if(firstKpi)panels.geral.appendChild(firstKpi);
+  if(firstBoard)panels.geral.appendChild(firstBoard);
+
+  const coopGrid=grid(panels.cooperados);
+  ['top cooperados','faturamento por cooperado'].forEach(title=>{const card=cardByTitle(title);if(card)coopGrid.appendChild(card)});
+
+  const contractGrid=grid(panels.contratos,'dashboard-panel-grid three');
+  ['contratos / clientes agrupados','faturamento por contrato','resumo para whatsapp'].forEach(title=>{const card=cardByTitle(title);if(card)contractGrid.appendChild(card)});
+
+  const financeGrid=grid(panels.financeiro,'dashboard-panel-grid one');
+  const paymentCard=cardByTitle('forma de pagamento');
+  if(paymentCard)financeGrid.appendChild(paymentCard);
+
+  const routesTitle=sectionTitle('bairros e rotas');
+  moveRange(routesTitle,panels.rotas);
+
+  const financeTitle=sectionTitle('crédito e financeiro');
+  moveRange(financeTitle,panels.financeiro);
+
+  const settingsTitle=sectionTitle('gerenciar grupos de contrato');
+  moveRange(settingsTitle,panels.configuracoes);
+
+  const compare=document.getElementById('yearCompareSection')||main.querySelector('.year-compare');
+  if(compare)panels.comparativo.appendChild(compare);
+
+  const operationTitle=sectionTitle('operação, cooperados e contratos');
+  if(operationTitle)operationTitle.remove();
+
+  [...main.querySelectorAll('.board3,.board4,.board')].forEach(container=>{
+    if(!container.querySelector('.card,.kpi,table,canvas,.rowItem')&&!container.closest('.dashboard-tab-panel'))container.remove();
   });
 
-  const chipsBox=filterShell.querySelector('.dashboard-filter-chips');
-  const labels={periodo:'Período',data_inicio:'De',data_fim:'Até',cooperado_id:'Cooperado',grupo_id:'Contrato',cliente:'Cliente',status_pagamento:'Pagamento',origem:'Origem',destino:'Destino'};
-  function updateChips(){
-    chipsBox.innerHTML='';
-    [...form.elements].forEach(field=>{
-      if(!field.name||!labels[field.name])return;
-      let value=field.value;
-      if(!value||value==='todos')return;
-      if(field.tagName==='SELECT')value=field.options[field.selectedIndex]?.text||value;
-      const chip=document.createElement('span');
-      chip.className='dashboard-filter-chip';
-      chip.innerHTML=`<strong>${labels[field.name]}:</strong> ${value}`;
-      chipsBox.appendChild(chip);
+  [...main.children].forEach(child=>{
+    if(!child.classList.contains('dashboard-tab-panel')&&child!==hero)child.style.display='none';
+  });
+  if(hero)hero.style.display='none';
+
+  function resizeCharts(panelNode){
+    requestAnimationFrame(()=>{
+      panelNode.querySelectorAll('canvas').forEach(canvas=>{
+        try{if(window.Chart){const chart=Chart.getChart?Chart.getChart(canvas):null;chart?.resize()}}catch(e){}
+      });
+      window.dispatchEvent(new Event('resize'));
     });
-    if(!chipsBox.children.length){const chip=document.createElement('span');chip.className='dashboard-filter-chip';chip.textContent='Sem filtros específicos';chipsBox.appendChild(chip)}
   }
-  updateChips();
-  originalFilters?.querySelectorAll('input,select').forEach(field=>field.addEventListener('change',updateChips));
+
+  let activeTab=sessionStorage.getItem('coopex_dashboard_tab')||'geral';
+  if(!panels[activeTab])activeTab='geral';
+  function activate(id){
+    activeTab=panels[id]?id:'geral';
+    Object.entries(panels).forEach(([key,node])=>node.classList.toggle('active',key===activeTab));
+    tabsBar.querySelectorAll('[data-tab]').forEach(button=>button.classList.toggle('active',button.dataset.tab===activeTab));
+    sessionStorage.setItem('coopex_dashboard_tab',activeTab);
+    resizeCharts(panels[activeTab]);
+    searchCurrentTab();
+  }
+  tabsBar.querySelectorAll('[data-tab]').forEach(button=>button.addEventListener('click',()=>activate(button.dataset.tab)));
 
   const periodo=form.querySelector('[name="periodo"]');
   const specific=form.querySelectorAll('[name="data_inicio"],[name="data_fim"],[name="cooperado_id"],[name="grupo_id"],[name="cliente"],[name="status_pagamento"],[name="origem"],[name="destino"]');
   function hasSpecificValue(field){return field.tagName==='SELECT'?Boolean(field.value&&field.value!=='todos'):Boolean(field.value.trim())}
   specific.forEach(field=>{
     const eventName=field.tagName==='SELECT'?'change':'input';
-    field.addEventListener(eventName,()=>{if(hasSpecificValue(field)&&periodo)periodo.value='personalizado';updateChips()});
+    field.addEventListener(eventName,()=>{if(hasSpecificValue(field)&&periodo)periodo.value='personalizado'});
   });
 
   filterShell.querySelector('[data-clear]').addEventListener('click',()=>{
@@ -612,14 +514,15 @@
     form.requestSubmit();
   });
 
-  const searchInput=filterShell.querySelector('.dashboard-global-search input');
+  const searchInput=filterShell.querySelector('.dashboard-filter-search input');
   const searchCount=filterShell.querySelector('.dashboard-search-count');
   function normalize(text){return String(text||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
-  function searchDashboard(){
+  function searchCurrentTab(){
     const query=normalize(searchInput.value);
-    const rows=[...document.querySelectorAll('table tbody tr,.rowItem,.alerts .alert')];
-    rows.forEach(row=>row.classList.remove('dashboard-search-found'));
-    if(!query){rows.forEach(row=>row.classList.remove('dashboard-search-hidden'));searchCount.textContent='';return}
+    document.querySelectorAll('.dashboard-search-hidden,.dashboard-search-found').forEach(node=>node.classList.remove('dashboard-search-hidden','dashboard-search-found'));
+    const activePanel=panels[activeTab];
+    if(!query){searchCount.textContent='';return}
+    const rows=[...activePanel.querySelectorAll('table tbody tr,.rowItem,.alerts .alert')];
     let found=0;
     rows.forEach(row=>{
       const match=normalize(row.textContent).includes(query);
@@ -628,7 +531,9 @@
     });
     searchCount.textContent=`${found} resultado${found===1?'':'s'}`;
   }
-  searchInput.addEventListener('input',searchDashboard);
-  searchInput.addEventListener('keydown',event=>{if(event.key==='Escape'){searchInput.value='';searchDashboard();searchInput.blur()}});
+  searchInput.addEventListener('input',searchCurrentTab);
+  searchInput.addEventListener('keydown',event=>{if(event.key==='Escape'){searchInput.value='';searchCurrentTab();searchInput.blur()}});
+
+  activate(activeTab);
 })();
 </script>
