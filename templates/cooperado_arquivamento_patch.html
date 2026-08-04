@@ -1,0 +1,62 @@
+<style id="coopex-cooperado-archive-style">
+  .archive-info{
+    margin:0 0 14px;
+    padding:12px 13px;
+    display:flex;
+    align-items:flex-start;
+    gap:10px;
+    border:1px solid #cbdaf5;
+    border-radius:13px;
+    background:#eef4ff;
+    color:#18366f;
+    font-size:.82rem;
+    font-weight:750;
+    line-height:1.45;
+  }
+  .archive-info i{font-size:1.05rem;color:#174bd2;margin-top:1px}
+  .archive-info strong{color:#0f3ea8}
+  body.dark .archive-info{background:#122544;border-color:#34517f;color:#dbe7ff}
+  body.dark .archive-info i,body.dark .archive-info strong{color:#a9c3ff}
+  .archive-confirm-note{display:block;margin-top:3px;font-size:.7rem;font-weight:700;opacity:.78}
+</style>
+
+<script id="coopex-cooperado-archive-script">
+(function(){
+  function aplicar(){
+    const lista=document.querySelector('.coop-list');
+    const card=lista?.closest('.card');
+    const body=card?.querySelector('.card-body');
+    if(body&&!document.getElementById('archiveInfo')){
+      const info=document.createElement('div');
+      info.id='archiveInfo';
+      info.className='archive-info';
+      info.innerHTML='<i class="bi bi-shield-check"></i><div><strong>Desativar</strong> bloqueia o acesso, retira da fila, das escalas futuras e das entregas ainda abertas, mas mantém o cadastro para reativação. <strong>Excluir cadastro</strong> remove a pessoa das telas ativas e impede novo login, porém conserva o nome em todas as entregas e relatórios da época.</div>';
+      const toolbar=body.querySelector('.toolbar');
+      if(toolbar)toolbar.insertAdjacentElement('afterend',info);else body.prepend(info);
+    }
+
+    document.querySelectorAll('form[action*="/excluir"]').forEach(form=>{
+      const button=form.querySelector('button[type="submit"]');
+      if(button){
+        button.title='Excluir cadastro ativo mantendo todo o histórico';
+        button.innerHTML='<i class="bi bi-archive"></i> Excluir cadastro<span class="archive-confirm-note">Histórico preservado</span>';
+      }
+      form.onsubmit=function(){
+        const nome=form.closest('.coop-card')?.querySelector('.coop-name span')?.textContent?.trim()||'este cooperado';
+        return confirm(`Excluir o cadastro ativo de ${nome}?\n\nA pessoa não poderá mais entrar, não aparecerá na lista de cooperados e não receberá novas entregas. O nome continuará aparecendo nas entregas e relatórios antigos.`);
+      };
+    });
+
+    document.querySelectorAll('form[action*="/status"]').forEach(form=>{
+      const status=form.querySelector('input[name="novo_status"]')?.value;
+      if(status==='0'){
+        form.onsubmit=function(){
+          const nome=form.closest('.coop-card')?.querySelector('.coop-name span')?.textContent?.trim()||'este cooperado';
+          return confirm(`Desativar ${nome}?\n\nO acesso será bloqueado e ele será retirado da fila, das escalas futuras e das entregas ainda abertas. O cadastro poderá ser reativado depois.`);
+        };
+      }
+    });
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aplicar,{once:true});else aplicar();
+})();
+</script>
