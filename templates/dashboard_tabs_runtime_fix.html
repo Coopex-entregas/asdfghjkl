@@ -1,0 +1,170 @@
+<style id="coopex-dashboard-tabs-runtime-fix-style">
+  .dashboard-tab-panel{display:none!important}
+  .dashboard-tab-panel.active{display:block!important}
+  .dashboard-first-year-note{margin:0 0 10px;padding:10px 12px;border:1px solid #cbdaf2;border-radius:11px;background:#eef4ff;color:#173d8d;font-size:.76rem;font-weight:800}
+  body.dark-mode .dashboard-first-year-note{background:#142744;border-color:#34517f;color:#dce7ff}
+</style>
+<script id="coopex-dashboard-tabs-runtime-fix-script">
+(function(){
+  function resizeCharts(panel){
+    requestAnimationFrame(function(){
+      panel?.querySelectorAll('canvas').forEach(function(canvas){
+        try{
+          if(window.Chart&&Chart.getChart){
+            const chart=Chart.getChart(canvas);
+            if(chart)chart.resize();
+          }
+        }catch(error){}
+      });
+      window.dispatchEvent(new Event('resize'));
+    });
+  }
+
+  function activateTab(id){
+    const panels=[...document.querySelectorAll('.dashboard-tab-panel')];
+    const target=document.querySelector(`.dashboard-tab-panel[data-panel="${id}"]`);
+    if(!panels.length||!target)return false;
+
+    panels.forEach(function(panel){
+      const active=panel===target;
+      panel.classList.toggle('active',active);
+      panel.style.setProperty('display',active?'block':'none','important');
+      panel.setAttribute('aria-hidden',active?'false':'true');
+    });
+    document.querySelectorAll('.dashboard-tab-button').forEach(function(button){
+      const active=button.dataset.tab===id;
+      button.classList.toggle('active',active);
+      button.setAttribute('aria-selected',active?'true':'false');
+    });
+    try{sessionStorage.setItem('coopex_dashboard_tab',id)}catch(error){}
+    resizeCharts(target);
+    return true;
+  }
+
+  document.addEventListener('click',function(event){
+    const button=event.target.closest('.dashboard-tab-button[data-tab]');
+    if(!button)return;
+    event.preventDefault();
+    activateTab(button.dataset.tab);
+  },true);
+
+  function ensureTab(){
+    const activeButton=document.querySelector('.dashboard-tab-button.active[data-tab]');
+    let saved='geral';
+    try{saved=sessionStorage.getItem('coopex_dashboard_tab')||'geral'}catch(error){}
+    const id=activeButton?.dataset.tab||saved;
+    return activateTab(id)||activateTab('geral');
+  }
+
+  let attempts=0;
+  const timer=setInterval(function(){
+    attempts+=1;
+    if(ensureTab()||attempts>=30)clearInterval(timer);
+  },250);
+
+  function hideTableColumns(table,indexes){
+    if(!table)return;
+    [...table.rows].forEach(function(row){
+      indexes.forEach(function(index){
+        const cell=row.cells[index];
+        if(cell)cell.style.setProperty('display','none','important');
+      });
+    });
+  }
+
+  function adjustFirstYear(){
+    const select=document.getElementById('yearCompareSelect');
+    const content=document.getElementById('yearCompareContent');
+    if(!select||!content)return;
+
+    [...select.options].forEach(function(option){
+      const year=Number(option.value||String(option.textContent).match(/\d{4}/)?.[0]);
+      if(year&&year<2025)option.remove();
+    });
+    const option2025=[...select.options].find(option=>Number(option.value)===2025);
+    if(option2025)option2025.textContent='2025 — primeiro ano do sistema';
+
+    if(Number(select.value)!==2025)return;
+
+    let note=content.querySelector('.dashboard-first-year-note');
+    if(!note){
+      note=document.createElement('div');
+      note.className='dashboard-first-year-note';
+      note.textContent='O sistema começou em 2025. Por isso, 2025 é exibido como o primeiro ano, sem comparação com 2024.';
+      content.prepend(note);
+    }
+
+    const grid=content.querySelector('.year-compare-grid');
+    if(grid){
+      const cards=[...grid.children];
+      if(cards[1])cards[1].style.setProperty('display','none','important');
+      if(cards[2])cards[2].style.setProperty('display','none','important');
+      grid.style.gridTemplateColumns='repeat(4,minmax(0,1fr))';
+      if(cards[0]){
+        const detail=cards[0].querySelector('.detail');
+        if(detail)detail.textContent='Primeiro ano do sistema • ano completo';
+      }
+      if(cards[3]){
+        const detail=cards[3].querySelector('.detail');
+        if(detail)detail.textContent='Total de entregas registradas em 2025';
+      }
+    }
+
+    const chartCards=[...content.querySelectorAll('.year-compare-board .card')];
+    if(chartCards[0]){
+      const sub=chartCards[0].querySelector('.sub');
+      if(sub)sub.textContent='Evolução mensal de 2025';
+    }
+    if(chartCards[1]){
+      const sub=chartCards[1].querySelector('.sub');
+      if(sub)sub.textContent='Quantidade mensal registrada em 2025';
+    }
+
+    content.querySelectorAll('canvas').forEach(function(canvas){
+      try{
+        if(window.Chart&&Chart.getChart){
+          const chart=Chart.getChart(canvas);
+          if(chart){
+            chart.data.datasets=chart.data.datasets.filter(function(dataset){
+              const label=String(dataset.label||'').trim();
+              const year=Number(label);
+              return label!=='null'&&(!year||year>=2025);
+            });
+            chart.update('none');
+          }
+        }
+      }catch(error){}
+    });
+
+    const monthlyTable=content.querySelector('.year-compare-table:not(.year-table)');
+    hideTableColumns(monthlyTable,[1,3,4,6,7]);
+    const monthlyCard=monthlyTable?.closest('.card');
+    if(monthlyCard){
+      const sub=monthlyCard.querySelector('.sub');
+      if(sub)sub.textContent='Faturamento e quantidade mês a mês do primeiro ano do sistema.';
+      const tag=monthlyCard.querySelector('.tag');
+      if(tag)tag.textContent='2025';
+    }
+
+    content.querySelectorAll('*').forEach(function(node){
+      if(node.children.length===0&&/\b(null|2024)\b/i.test(node.textContent||'')){
+        node.textContent=(node.textContent||'')
+          .replace(/null\s*(comparado com|×)\s*2025/gi,'2025 — primeiro ano')
+          .replace(/2024\s*(comparado com|×)\s*2025/gi,'2025 — primeiro ano')
+          .replace(/\bnull\b/gi,'')
+          .replace(/\b2024\b/g,'')
+          .replace(/\s{2,}/g,' ')
+          .trim();
+      }
+    });
+  }
+
+  const compareObserver=new MutationObserver(function(){
+    setTimeout(adjustFirstYear,30);
+  });
+  const compareContent=document.getElementById('yearCompareContent');
+  if(compareContent)compareObserver.observe(compareContent,{childList:true,subtree:true});
+  document.getElementById('yearCompareSelect')?.addEventListener('change',function(){setTimeout(adjustFirstYear,100)});
+  setTimeout(adjustFirstYear,300);
+})();
+</script>
