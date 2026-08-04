@@ -17,28 +17,36 @@ def _redirect_back():
     return redirect(request.referrer or url_for("escala"))
 
 
+def _grupo_turno(item):
+    texto = SCALE.norm(f"{item.turno or ''} {item.horario_texto or ''}")
+
+    if any(palavra in texto for palavra in ("noite", "noturno", "madrugada")):
+        return "noite"
+    if any(
+        palavra in texto
+        for palavra in ("dia", "manha", "tarde", "comercial", "meio")
+    ):
+        return "dia"
+
+    try:
+        intervalos = item.intervalos()
+        inicio = str(intervalos[0].get("inicio") or "")
+        hora = int(inicio.split(":", 1)[0])
+        return "noite" if hora >= 17 or hora < 5 else "dia"
+    except Exception:
+        pass
+
+    return SCALE.norm(item.turno or "") or str(item.intervalos_json or "[]")
+
+
 def _turno_compativel(a, b):
     if a.data != b.data:
         return False
-
-    turno_a = SCALE.norm(a.turno or "")
-    turno_b = SCALE.norm(b.turno or "")
-    if turno_a and turno_b:
-        return turno_a == turno_b
-
-    # Quando o turno não está preenchido, usa a faixa de horário como apoio.
-    return (a.intervalos_json or "[]") == (b.intervalos_json or "[]")
+    return _grupo_turno(a) == _grupo_turno(b)
 
 
 def _ajuste_ativo(item_id):
     return SCALE.Ajuste.query.filter_by(item_id=int(item_id)).first()
-
-
-def _motivo_visivel(valor):
-    texto = str(valor or "")
-    if texto.startswith("TROCA:") and "|" in texto:
-        return texto.split("|", 1)[1]
-    return texto
 
 
 def _candidatos(item_id):
