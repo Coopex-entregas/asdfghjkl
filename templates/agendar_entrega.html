@@ -1,2 +1,22 @@
 {% include 'agendar_entrega_original.html' %}
 {% include 'coopex_visual_patch.html' %}
+<script id="coopex-scheduled-status">
+(function(){
+  function aplicar(){
+    const status=document.getElementById('status_entrega');
+    if(status){
+      let opcao=[...status.options].find(o=>o.value==='agendado');
+      if(!opcao){
+        opcao=document.createElement('option');
+        opcao.value='agendado';
+        opcao.textContent='Agendado';
+        status.insertBefore(opcao,status.options[0]||null);
+      }
+      status.value='agendado';
+    }
+    const coop=document.getElementById('cooperado_id');
+    if(coop)coop.value='';
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aplicar,{once:true});else aplicar();
+})();
+</script>
