@@ -33,7 +33,6 @@ def _registrar_apos_inserir(mapper, connection, target):
         return
 
     # Entregas comuns são criadas com data_envio próxima ao horário atual.
-    # A margem evita classificá-las como agendadas por diferença de segundos.
     if data_envio <= datetime.utcnow() + timedelta(minutes=2):
         return
 
@@ -85,11 +84,45 @@ def _api():
     else:
         query = query.order_by(Meta.criada_em.desc()).limit(500)
 
-    itens = {
-        str(item.entrega_id): item.agendada_para.isoformat()
-        for item in query.all()
+    metas = query.all()
+    if not metas:
+        return jsonify(ok=True, itens=[])
+
+    entrega_ids = [int(item.entrega_id) for item in metas]
+    entregas = {
+        int(entrega.id): entrega
+        for entrega in MOD.Entrega.query.filter(MOD.Entrega.id.in_(entrega_ids)).all()
     }
-    return jsonify(ok=True, agendamentos=itens)
+    converter = getattr(MOD, "to_brasilia", lambda valor: valor)
+    itens = []
+
+    for meta in metas:
+        entrega = entregas.get(int(meta.entrega_id))
+        if not entrega:
+            continue
+
+        agendada = meta.agendada_para
+        atribuida = getattr(entrega, "data_atribuida", None)
+        agendada_local = converter(agendada)
+        atribuida_local = converter(atribuida) if atribuida else None
+        atribuida_depois = bool(atribuida and agendada and atribuida > agendada)
+
+        # Antes do horário, permanece visível o horário agendado.
+        # Depois do horário, aparece a hora real em que foi atribuída.
+        hora_exibida = atribuida_local if atribuida_depois else agendada_local
+
+        itens.append(
+            {
+                "id": int(meta.entrega_id),
+                "agendada_data": agendada_local.strftime("%d/%m/%Y"),
+                "agendada_hora": agendada_local.strftime("%H:%M"),
+                "atribuicao_hora": hora_exibida.strftime("%H:%M") if hora_exibida else "-",
+                "atribuida_depois": atribuida_depois,
+                "tem_cooperado": bool(getattr(entrega, "cooperado_id", None)),
+            }
+        )
+
+    return jsonify(ok=True, itens=itens)
 
 
 def install(app_module):
