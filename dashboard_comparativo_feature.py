@@ -14,6 +14,7 @@ _CACHE = {}
 _CACHE_LOCK = threading.Lock()
 _CACHE_TTL = 60
 _CACHE_MAX = 50
+MIN_YEAR = 2025
 
 MESES = [
     "Jan", "Fev", "Mar", "Abr", "Mai", "Jun",
@@ -67,7 +68,9 @@ def _base_query():
 
     status_pagamento = (request.args.get("status_pagamento") or "todos").strip().lower()
     if status_pagamento in {"pago", "pendente"}:
-        query = query.filter(func.lower(func.coalesce(Entrega.status_pagamento, "")) == status_pagamento)
+        query = query.filter(
+            func.lower(func.coalesce(Entrega.status_pagamento, "")) == status_pagamento
+        )
 
     cliente = (request.args.get("cliente") or "").strip()
     if cliente:
@@ -145,16 +148,25 @@ def _aggregate_range(query, start_utc, end_utc):
     }
 
 
+def _zero_summary():
+    return {"qtd": 0, "valor": 0.0, "ticket": 0.0}
+
+
 def _build_payload(ano):
     Entrega = MOD.Entrega
     query = _base_query()
-    ano_anterior = ano - 1
+    comparacao_disponivel = ano > MIN_YEAR
+    ano_anterior = ano - 1 if comparacao_disponivel else None
 
     year_expr = cast(extract("year", Entrega.data_envio), Integer)
     month_expr = cast(extract("month", Entrega.data_envio), Integer)
 
+    anos_consulta = [ano]
+    if ano_anterior is not None:
+        anos_consulta.append(ano_anterior)
+
     monthly_rows = query.filter(
-        year_expr.in_([ano_anterior, ano])
+        year_expr.in_(anos_consulta)
     ).with_entities(
         year_expr.label("ano"),
         month_expr.label("mes"),
@@ -172,11 +184,17 @@ def _build_payload(ano):
     meses = []
     for mes in range(1, 13):
         atual = monthly_map.get((ano, mes), {"qtd": 0, "valor": 0.0})
-        anterior = monthly_map.get((ano_anterior, mes), {"qtd": 0, "valor": 0.0})
-        valor_pct = _pct(atual["valor"], anterior["valor"])
-        qtd_pct = _pct(atual["qtd"], anterior["qtd"])
+        anterior = (
+            monthly_map.get((ano_anterior, mes), {"qtd": 0, "valor": 0.0})
+            if ano_anterior is not None
+            else {"qtd": 0, "valor": 0.0}
+        )
+        valor_pct = _pct(atual["valor"], anterior["valor"]) if comparacao_disponivel else None
+        qtd_pct = _pct(atual["qtd"], anterior["qtd"]) if comparacao_disponivel else None
 
-        if atual["valor"] > anterior["valor"]:
+        if not comparacao_disponivel:
+            melhor = str(ano) if atual["valor"] else "Sem dados"
+        elif atual["valor"] > anterior["valor"]:
             melhor = str(ano)
         elif anterior["valor"] > atual["valor"]:
             melhor = str(ano_anterior)
@@ -197,7 +215,9 @@ def _build_payload(ano):
             "melhor": melhor,
         })
 
-    annual_rows = query.with_entities(
+    annual_rows = query.filter(
+        year_expr >= MIN_YEAR
+    ).with_entities(
         year_expr.label("ano"),
         func.count(Entrega.id).label("qtd"),
         func.coalesce(func.sum(Entrega.valor), 0).label("valor"),
@@ -207,6 +227,8 @@ def _build_payload(ano):
     anos = []
     for row in annual_rows:
         row_year = int(row.ano)
+        if row_year < MIN_YEAR:
+            continue
         qtd = int(row.qtd or 0)
         valor = _float(row.valor)
         anos.append({
@@ -218,7 +240,7 @@ def _build_payload(ano):
         })
 
     anos_disponiveis = sorted(
-        set([ano, ano_anterior] + [item["ano"] for item in anos]),
+        set([ano, MIN_YEAR] + [item["ano"] for item in anos if item["ano"] >= MIN_YEAR]),
         reverse=True,
     )
 
@@ -227,33 +249,55 @@ def _build_payload(ano):
             month=1, day=1, hour=0, minute=0, second=0, microsecond=0
         )
         end_current_local = now_local
-        start_previous_local = start_current_local.replace(year=ano_anterior)
-        end_previous_local = _same_date_previous_year(now_local)
         corte_label = f"01/01 a {now_local.strftime('%d/%m')}"
-        comparacao_tipo = "Mesmo período"
+        comparacao_tipo = "Mesmo período" if comparacao_disponivel else "Primeiro ano do sistema"
     else:
         start_current_local = _local_timezone().localize(datetime(ano, 1, 1))
         end_current_local = _local_timezone().localize(datetime(ano + 1, 1, 1))
-        start_previous_local = _local_timezone().localize(datetime(ano_anterior, 1, 1))
-        end_previous_local = _local_timezone().localize(datetime(ano, 1, 1))
         corte_label = "Ano completo"
-        comparacao_tipo = "Ano fechado"
+        comparacao_tipo = "Ano fechado" if comparacao_disponivel else "Primeiro ano do sistema"
 
     atual_acumulado = _aggregate_range(
         query,
         _local_to_utc_naive(start_current_local),
         _local_to_utc_naive(end_current_local),
     )
-    anterior_acumulado = _aggregate_range(
-        query,
-        _local_to_utc_naive(start_previous_local),
-        _local_to_utc_naive(end_previous_local),
-    )
 
-    valor_diff = round(atual_acumulado["valor"] - anterior_acumulado["valor"], 2)
-    qtd_diff = atual_acumulado["qtd"] - anterior_acumulado["qtd"]
-    valor_pct = _pct(atual_acumulado["valor"], anterior_acumulado["valor"])
-    qtd_pct = _pct(atual_acumulado["qtd"], anterior_acumulado["qtd"])
+    if comparacao_disponivel:
+        if ano == now_local.year:
+            start_previous_local = start_current_local.replace(year=ano_anterior)
+            end_previous_local = _same_date_previous_year(now_local)
+        else:
+            start_previous_local = _local_timezone().localize(datetime(ano_anterior, 1, 1))
+            end_previous_local = _local_timezone().localize(datetime(ano, 1, 1))
+        anterior_acumulado = _aggregate_range(
+            query,
+            _local_to_utc_naive(start_previous_local),
+            _local_to_utc_naive(end_previous_local),
+        )
+    else:
+        anterior_acumulado = _zero_summary()
+
+    valor_diff = (
+        round(atual_acumulado["valor"] - anterior_acumulado["valor"], 2)
+        if comparacao_disponivel
+        else 0.0
+    )
+    qtd_diff = (
+        atual_acumulado["qtd"] - anterior_acumulado["qtd"]
+        if comparacao_disponivel
+        else 0
+    )
+    valor_pct = (
+        _pct(atual_acumulado["valor"], anterior_acumulado["valor"])
+        if comparacao_disponivel
+        else None
+    )
+    qtd_pct = (
+        _pct(atual_acumulado["qtd"], anterior_acumulado["qtd"])
+        if comparacao_disponivel
+        else None
+    )
 
     meses_com_dados = [item for item in meses if item["atual_valor"] > 0]
     melhor_mes_atual = max(
@@ -266,7 +310,9 @@ def _build_payload(ano):
     return {
         "ok": True,
         "ano": ano,
+        "ano_inicial": MIN_YEAR,
         "ano_anterior": ano_anterior,
+        "comparacao_disponivel": comparacao_disponivel,
         "comparacao_tipo": comparacao_tipo,
         "corte_label": corte_label,
         "atual": atual_acumulado,
@@ -292,8 +338,11 @@ def _api():
 
     now_local = datetime.now(_local_timezone())
     ano = request.args.get("ano", type=int) or now_local.year
-    if ano < 2000 or ano > now_local.year + 1:
-        return jsonify(ok=False, error="Ano inválido."), 400
+    if ano < MIN_YEAR or ano > now_local.year + 1:
+        return jsonify(
+            ok=False,
+            error=f"Ano inválido. O sistema possui dados a partir de {MIN_YEAR}.",
+        ), 400
 
     key = _cache_key(ano)
     cached = _cache_get(key)
