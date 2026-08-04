@@ -5,23 +5,15 @@
   .btn-complete-action,.btn-scale-action{height:46px!important;border-radius:14px!important;font-size:.94rem!important;box-shadow:none!important;background:#edf3ff!important;color:#173f9f!important;border:1px solid #cbd9f6!important}
   .btn-scale-action{background:#e9f8f0!important;color:#087747!important;border-color:#bfe4d0!important}
   body.dark .btn-complete-action,body.dark .btn-scale-action{background:#162846!important;color:#edf3ff!important;border-color:#334b75!important}
+  .scheduled-clock{display:inline-flex;align-items:center;gap:4px;padding:3px 6px;border-radius:999px;background:#e9f1ff;color:#1746b5;font-weight:900;white-space:nowrap}.scheduled-clock.actual{background:#e9f8f0;color:#087747}body.dark .scheduled-clock{background:#18315a;color:#dce8ff}body.dark .scheduled-clock.actual{background:#12382c;color:#98e4ba}
 
-  /* Contraste real do modo noturno, inclusive no modal Editar entrega. */
   body.dark label,body.dark legend{color:#dce7ff!important}
-  body.dark input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),
-  body.dark select,body.dark textarea{
-    background:#0b172c!important;
-    color:#edf3ff!important;
-    border-color:#38527f!important;
-    -webkit-text-fill-color:#edf3ff!important;
-  }
+  body.dark input:not([type="checkbox"]):not([type="radio"]):not([type="hidden"]),body.dark select,body.dark textarea{background:#0b172c!important;color:#edf3ff!important;border-color:#38527f!important;-webkit-text-fill-color:#edf3ff!important}
   body.dark input::placeholder,body.dark textarea::placeholder{color:#8292b3!important;opacity:1}
   body.dark option{background:#0b172c!important;color:#edf3ff!important}
   body.dark input[type="date"],body.dark input[type="time"],body.dark input[type="datetime-local"]{color-scheme:dark}
   body.dark [role="dialog"],body.dark .modal,body.dark [class*="modal"]{color:#edf3ff!important}
-  body.dark [role="dialog"] h1,body.dark [role="dialog"] h2,body.dark [role="dialog"] h3,
-  body.dark .modal h1,body.dark .modal h2,body.dark .modal h3{color:#edf3ff!important}
-
+  body.dark [role="dialog"] h1,body.dark [role="dialog"] h2,body.dark [role="dialog"] h3,body.dark .modal h1,body.dark .modal h2,body.dark .modal h3{color:#edf3ff!important}
   @media(max-width:980px){.quick-delivery-actions{min-width:0!important;width:100%!important;grid-template-columns:repeat(3,minmax(0,1fr))!important}}
   @media(max-width:680px){.quick-delivery-actions{grid-template-columns:1fr!important}}
 </style>
@@ -33,30 +25,18 @@
   let cliqueContexto=null;
 
   function filaAtual(){
-    return [...document.querySelectorAll('#espera-lista .espera-chip[data-cooperado-id]')]
-      .map((chip,indice)=>({
-        id:String(chip.dataset.cooperadoId||''),
-        nome:String(chip.dataset.cooperadoNome||chip.querySelector('.espera-chip-text')?.textContent||'').trim(),
-        pos:indice+1
-      }))
-      .filter(x=>x.id);
+    return [...document.querySelectorAll('#espera-lista .espera-chip[data-cooperado-id]')].map((chip,indice)=>({id:String(chip.dataset.cooperadoId||''),nome:String(chip.dataset.cooperadoNome||chip.querySelector('.espera-chip-text')?.textContent||'').trim(),pos:indice+1})).filter(x=>x.id);
   }
 
   function aplicarMenu(){
     const links=[...document.querySelectorAll('.bank-submenu a')];
     const quick=links.find(a=>(a.textContent||'').trim().toLowerCase()==='nova entrega'||(a.textContent||'').toLowerCase().includes('entrega rápida'));
     if(quick){
-      quick.href="{{ url_for('cadastrar_entrega') }}";
-      quick.innerHTML='<span class="btn-ico">⚡</span>Entrega rápida';
-      if(!document.getElementById('adminEntregaCompletaLink')){
-        const full=document.createElement('a');full.id='adminEntregaCompletaLink';full.href="{{ url_for('cadastrar_entrega', modo='completo') }}";full.innerHTML='<span class="btn-ico">📋</span>Entrega completa';quick.insertAdjacentElement('afterend',full);
-      }
-      if(!document.getElementById('adminEscalaLink')){
-        const item=document.createElement('a');item.id='adminEscalaLink';item.href="{{ url_for('escala') }}";item.innerHTML='<span class="btn-ico">🗓</span>Escala semanal';(document.getElementById('adminEntregaCompletaLink')||quick).insertAdjacentElement('afterend',item);
-      }
+      quick.href="{{ url_for('cadastrar_entrega') }}";quick.innerHTML='<span class="btn-ico">⚡</span>Entrega rápida';
+      if(!document.getElementById('adminEntregaCompletaLink')){const full=document.createElement('a');full.id='adminEntregaCompletaLink';full.href="{{ url_for('cadastrar_entrega', modo='completo') }}";full.innerHTML='<span class="btn-ico">📋</span>Entrega completa';quick.insertAdjacentElement('afterend',full)}
+      if(!document.getElementById('adminEscalaLink')){const item=document.createElement('a');item.id='adminEscalaLink';item.href="{{ url_for('escala') }}";item.innerHTML='<span class="btn-ico">🗓</span>Escala semanal';(document.getElementById('adminEntregaCompletaLink')||quick).insertAdjacentElement('afterend',item)}
     }
     links.filter(a=>(a.textContent||'').toLowerCase().includes('histórico de trajetos')).forEach(a=>a.remove());
-
     const primary=[...document.querySelectorAll('.quick-left .btn')].find(b=>(b.textContent||'').toLowerCase().includes('nova entrega')||(b.textContent||'').toLowerCase().includes('entrega rápida'));
     if(primary){
       const holder=primary.closest('.quick-left');holder.classList.add('quick-delivery-actions');primary.innerHTML='<span class="btn-ico">⚡</span> Entrega rápida';primary.onclick=()=>location.href="{{ url_for('cadastrar_entrega') }}";
@@ -66,117 +46,52 @@
   }
 
   function sincronizarTema(){
-    const salvo=localStorage.getItem('coopex_theme');
-    if(salvo==='dark')document.body.classList.add('dark');
-    if(salvo==='light')document.body.classList.remove('dark');
-    new MutationObserver(()=>localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light')).observe(document.body,{attributes:true,attributeFilter:['class']});
+    const salvo=localStorage.getItem('coopex_theme');if(salvo==='dark')document.body.classList.add('dark');if(salvo==='light')document.body.classList.remove('dark');new MutationObserver(()=>localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light')).observe(document.body,{attributes:true,attributeFilter:['class']});
   }
 
   async function carregarEscala(){
     try{
       if(!todos.length)todos=(window.COOPERADOS||[]).map(x=>({...x}));
-      const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
-      const d=await r.json();
-      if(!r.ok||!d.ok)return;
-      const itensBase=(d.itens||[]).filter(x=>norm(x.contrato)==='base');
-      escala.carregada=true;
-      escala.restrita=!!d.restricao_ativa;
-      escala.idsBase=new Set(itensBase.map(x=>String(x.cooperado_id)));
-
-      if(escala.restrita){
-        const idsFila=new Set(filaAtual().map(x=>x.id));
-        const permitidos=new Set([...escala.idsBase,...idsFila]);
-        window.COOPERADOS=todos.filter(c=>permitidos.has(String(c.id))).map(c=>({...c,rotulo:c.nome}));
-      }else{
-        window.COOPERADOS=todos.map(c=>({...c}));
-      }
-
+      const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)return;
+      const itensBase=(d.itens||[]).filter(x=>norm(x.contrato)==='base');escala.carregada=true;escala.restrita=!!d.restricao_ativa;escala.idsBase=new Set(itensBase.map(x=>String(x.cooperado_id)));
+      if(escala.restrita){const idsFila=new Set(filaAtual().map(x=>x.id));const permitidos=new Set([...escala.idsBase,...idsFila]);window.COOPERADOS=todos.filter(c=>permitidos.has(String(c.id))).map(c=>({...c,rotulo:c.nome}))}else window.COOPERADOS=todos.map(c=>({...c}));
       document.querySelectorAll('.coop-edit-select').forEach(prepararSelect);
     }catch(e){}
   }
 
+  async function carregarAgendamentos(){
+    try{
+      const r=await fetch('{{ url_for("api_entregas_agendadas_exibicao") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)return;
+      (d.itens||[]).forEach(item=>{
+        const tr=document.querySelector(`tr[data-id="${item.id}"]`);if(!tr||tr.cells.length<7)return;
+        const pedido=tr.cells[5],atribuicao=tr.cells[6];
+        pedido.innerHTML=`<span class="scheduled-clock" title="Entrega agendada para ${item.agendada_data} às ${item.agendada_hora}">🕒 ${item.agendada_hora}</span>`;
+        if(item.atribuida_depois){atribuicao.innerHTML=`<span class="scheduled-clock actual" title="Cooperado atribuído depois do horário agendado">${item.atribuicao_hora}</span>`}
+        else{const titulo=item.tem_cooperado?'Cooperado atribuído antes do horário; exibindo a hora agendada':'Aguardando atribuição; exibindo a hora agendada';atribuicao.innerHTML=`<span class="scheduled-clock" title="${titulo}">🕒 ${item.atribuicao_hora}</span>`}
+      });
+    }catch(e){}
+  }
+
   function escolherForaEscala(){
-    const termo=prompt('Digite parte do nome do cooperado:');
-    if(!termo)return null;
-    const q=norm(termo);let encontrados=todos.filter(c=>norm(c.nome).includes(q));
-    if(!encontrados.length){alert('Nenhum cooperado encontrado.');return null}
-    if(encontrados.length===1)return encontrados[0];
-    encontrados=encontrados.slice(0,12);
-    const escolha=prompt('Digite o número do cooperado:\n'+encontrados.map((c,i)=>`${i+1}. ${c.nome}`).join('\n'));
-    const indice=Number(escolha)-1;
-    return indice>=0&&indice<encontrados.length?encontrados[indice]:null;
+    const termo=prompt('Digite parte do nome do cooperado:');if(!termo)return null;const q=norm(termo);let encontrados=todos.filter(c=>norm(c.nome).includes(q));if(!encontrados.length){alert('Nenhum cooperado encontrado.');return null}if(encontrados.length===1)return encontrados[0];encontrados=encontrados.slice(0,12);const escolha=prompt('Digite o número do cooperado:\n'+encontrados.map((c,i)=>`${i+1}. ${c.nome}`).join('\n'));const indice=Number(escolha)-1;return indice>=0&&indice<encontrados.length?encontrados[indice]:null;
   }
 
   function prepararSelect(sel){
-    if(!sel||sel.dataset.filaBasePreparada==='1'||!escala.restrita)return;
-    sel.dataset.filaBasePreparada='1';
-
-    const atual=String(cliqueContexto?.atual||sel.value||'');
-    const fila=filaAtual();
-    const idsFila=new Set(fila.map(x=>x.id));
-    const atualCoop=todos.find(c=>String(c.id)===atual)||null;
-
+    if(!sel||sel.dataset.filaBasePreparada==='1'||!escala.restrita)return;sel.dataset.filaBasePreparada='1';
+    const atual=String(cliqueContexto?.atual||sel.value||'');const fila=filaAtual();const idsFila=new Set(fila.map(x=>x.id));const atualCoop=todos.find(c=>String(c.id)===atual)||null;
     sel.innerHTML='<option value="">Sem cooperado</option>';
-
-    fila.forEach(item=>{
-      const o=document.createElement('option');
-      o.value=item.id;
-      o.textContent=`${item.pos}º da fila — ${item.nome}`;
-      sel.appendChild(o);
-    });
-
-    todos.filter(c=>escala.idsBase.has(String(c.id))&&!idsFila.has(String(c.id))).forEach(c=>{
-      const o=document.createElement('option');
-      o.value=String(c.id);
-      o.textContent=c.nome;
-      sel.appendChild(o);
-    });
-
-    if(atual&&atualCoop&&![...sel.options].some(o=>String(o.value)===atual)){
-      const o=document.createElement('option');
-      o.value=atual;
-      o.textContent=atualCoop.nome;
-      sel.appendChild(o);
-    }
-
-    const manual=document.createElement('option');
-    manual.value='__fora_escala__';
-    manual.textContent='Digitar outro cooperado';
-    sel.appendChild(manual);
-
-    sel.value=atual&&[...sel.options].some(o=>String(o.value)===atual)?atual:'';
-    sel.title='Sem cooperado aparece primeiro. Depois vêm todos da fila e os escalados na BASE.';
+    fila.forEach(item=>{const o=document.createElement('option');o.value=item.id;o.textContent=`${item.pos}º da fila — ${item.nome}`;sel.appendChild(o)});
+    todos.filter(c=>escala.idsBase.has(String(c.id))&&!idsFila.has(String(c.id))).forEach(c=>{const o=document.createElement('option');o.value=String(c.id);o.textContent=c.nome;sel.appendChild(o)});
+    if(atual&&atualCoop&&![...sel.options].some(o=>String(o.value)===atual)){const o=document.createElement('option');o.value=atual;o.textContent=atualCoop.nome;sel.appendChild(o)}
+    const manual=document.createElement('option');manual.value='__fora_escala__';manual.textContent='Digitar outro cooperado';sel.appendChild(manual);
+    sel.value=atual&&[...sel.options].some(o=>String(o.value)===atual)?atual:'';sel.title='Sem cooperado aparece primeiro. Depois vêm todos da fila e os escalados na BASE.';
   }
 
   document.addEventListener('click',e=>{const alvo=e.target.closest?.('.coop-editable');if(alvo)cliqueContexto={atual:String(alvo.dataset.cooperadoId||'')};},true);
+  document.addEventListener('change',e=>{const sel=e.target.closest?.('.coop-edit-select');if(!sel||sel.value!=='__fora_escala__')return;e.preventDefault();e.stopImmediatePropagation();const escolhido=escolherForaEscala();if(!escolhido){sel.value='';return}if(!(window.COOPERADOS||[]).some(c=>String(c.id)===String(escolhido.id)))window.COOPERADOS.push({...escolhido,rotulo:escolhido.nome});let opt=[...sel.options].find(o=>String(o.value)===String(escolhido.id));if(!opt){opt=document.createElement('option');opt.value=String(escolhido.id);opt.textContent=escolhido.nome;sel.insertBefore(opt,sel.options[sel.options.length-1])}sel.value=String(escolhido.id);setTimeout(()=>sel.dispatchEvent(new Event('change',{bubbles:true})),0)},true);
+  new MutationObserver(muts=>muts.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType!==1)return;if(n.matches?.('.coop-edit-select'))prepararSelect(n);n.querySelectorAll?.('.coop-edit-select').forEach(prepararSelect)}))).observe(document.documentElement,{childList:true,subtree:true});
 
-  document.addEventListener('change',e=>{
-    const sel=e.target.closest?.('.coop-edit-select');
-    if(!sel||sel.value!=='__fora_escala__')return;
-    e.preventDefault();e.stopImmediatePropagation();
-    const escolhido=escolherForaEscala();
-    if(!escolhido){sel.value='';return}
-    if(!(window.COOPERADOS||[]).some(c=>String(c.id)===String(escolhido.id)))window.COOPERADOS.push({...escolhido,rotulo:escolhido.nome});
-    let opt=[...sel.options].find(o=>String(o.value)===String(escolhido.id));
-    if(!opt){opt=document.createElement('option');opt.value=String(escolhido.id);opt.textContent=escolhido.nome;sel.insertBefore(opt,sel.options[sel.options.length-1])}
-    sel.value=String(escolhido.id);
-    setTimeout(()=>sel.dispatchEvent(new Event('change',{bubbles:true})),0);
-  },true);
-
-  new MutationObserver(muts=>muts.forEach(m=>m.addedNodes.forEach(n=>{
-    if(n.nodeType!==1)return;
-    if(n.matches?.('.coop-edit-select'))prepararSelect(n);
-    n.querySelectorAll?.('.coop-edit-select').forEach(prepararSelect);
-  }))).observe(document.documentElement,{childList:true,subtree:true});
-
-  function iniciar(){
-    sincronizarTema();
-    aplicarMenu();
-    todos=(window.COOPERADOS||[]).map(x=>({...x}));
-    carregarEscala();
-    setInterval(carregarEscala,60000);
-  }
-
+  function iniciar(){sincronizarTema();aplicarMenu();todos=(window.COOPERADOS||[]).map(x=>({...x}));carregarEscala();carregarAgendamentos();setInterval(()=>{carregarEscala();carregarAgendamentos()},60000)}
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
 })();
 </script>
