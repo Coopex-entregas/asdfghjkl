@@ -84,6 +84,7 @@ def post_worker_init(worker):
         import escala_troca
         import agendamento_feature
         import rotas_bairros_feature
+        import dashboard_comparativo_feature
 
         _corrigir_serializacao_escala(escala_feature)
         escala_feature.install(app_module)
@@ -91,8 +92,9 @@ def post_worker_init(worker):
         escala_troca.install(app_module, escala_feature)
         agendamento_feature.install(app_module)
         rotas_bairros_feature.install(app_module)
+        dashboard_comparativo_feature.install(app_module)
         worker.log.info(
-            "Escala, trocas, agendamentos e tabela de bairros COOPEX instalados."
+            "Escala, trocas, agendamentos, bairros e comparativo do dashboard instalados."
         )
     except Exception:
         worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
