@@ -1,0 +1,590 @@
+<style id="coopex-dashboard-bank-v2-style">
+  :root{
+    --dash-v2-header-h:92px;
+    --dash-v2-menu-h:44px;
+    --dash-v2-blue:#1848b8;
+    --dash-v2-blue-dark:#10378f;
+    --dash-v2-line:#d9e2f1;
+    --dash-v2-text:#122342;
+    --dash-v2-muted:#62708e;
+    --dash-v2-card:#fff;
+    --dash-v2-bg:#f3f6fb;
+  }
+
+  body{background:var(--dash-v2-bg)!important;color:var(--dash-v2-text)!important}
+
+  /* Cabeçalho azul fixo, sem logo e sem filtros misturados */
+  .top{
+    position:sticky!important;
+    top:0!important;
+    z-index:3000!important;
+    width:100%!important;
+    min-height:var(--dash-v2-header-h)!important;
+    background:linear-gradient(105deg,var(--dash-v2-blue-dark),var(--dash-v2-blue) 70%,#3d6bd4)!important;
+    border-bottom:1px solid rgba(255,255,255,.22)!important;
+    box-shadow:0 6px 18px rgba(11,43,120,.17)!important;
+    backdrop-filter:none!important;
+  }
+  .topbar.dash-v2-header{
+    width:100%!important;
+    max-width:none!important;
+    min-height:var(--dash-v2-header-h)!important;
+    margin:0!important;
+    padding:14px 20px!important;
+    display:grid!important;
+    grid-template-columns:minmax(280px,1fr) auto auto!important;
+    grid-template-areas:"title summary actions"!important;
+    align-items:center!important;
+    gap:12px 18px!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  .dash-v2-header .brand{
+    grid-area:title!important;
+    min-width:0!important;
+    min-height:auto!important;
+    margin:0!important;
+    padding:0!important;
+    display:block!important;
+    background:transparent!important;
+    border:0!important;
+    box-shadow:none!important;
+    color:#fff!important;
+  }
+  .dash-v2-header .brand img{display:none!important}
+  .dash-v2-header .brand b{
+    display:block!important;
+    color:#fff!important;
+    font-size:1.22rem!important;
+    font-weight:950!important;
+    letter-spacing:-.025em!important;
+    line-height:1.08!important;
+  }
+  .dash-v2-header .brand small{
+    display:block!important;
+    margin-top:5px!important;
+    color:#dce8ff!important;
+    font-size:.76rem!important;
+    font-weight:750!important;
+    line-height:1.3!important;
+  }
+  .dash-v2-summary{
+    grid-area:summary!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:7px!important;
+    flex-wrap:wrap!important;
+  }
+  .dash-v2-summary .heroChip{
+    min-height:34px!important;
+    margin:0!important;
+    padding:7px 11px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    border:1px solid rgba(255,255,255,.30)!important;
+    border-radius:10px!important;
+    background:rgba(255,255,255,.13)!important;
+    color:#fff!important;
+    font-size:.72rem!important;
+    font-weight:900!important;
+    box-shadow:none!important;
+    white-space:nowrap!important;
+  }
+  .dash-v2-header .actions{
+    grid-area:actions!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    flex-wrap:wrap!important;
+    margin:0!important;
+  }
+  .dash-v2-header .actions .btn{
+    min-width:0!important;
+    height:34px!important;
+    min-height:34px!important;
+    margin:0!important;
+    padding:0 10px!important;
+    border:1px solid rgba(255,255,255,.32)!important;
+    border-radius:9px!important;
+    background:rgba(255,255,255,.12)!important;
+    color:#fff!important;
+    box-shadow:none!important;
+    font-size:.7rem!important;
+    font-weight:850!important;
+  }
+  .dash-v2-header .actions .btn:hover{background:rgba(255,255,255,.22)!important}
+  .dash-v2-header .actions .btn.primary{display:none!important}
+
+  /* Menu fino, próprio do Dashboard, no estilo de banco */
+  .dash-v2-menu-wrap{
+    position:sticky!important;
+    top:var(--dash-v2-header-h)!important;
+    z-index:2900!important;
+    width:100%!important;
+    height:var(--dash-v2-menu-h)!important;
+    background:#fff!important;
+    border-bottom:1px solid var(--dash-v2-line)!important;
+    box-shadow:0 3px 11px rgba(25,52,102,.06)!important;
+  }
+  .dash-v2-menu{
+    width:100%!important;
+    height:var(--dash-v2-menu-h)!important;
+    padding:0 16px!important;
+    display:flex!important;
+    align-items:stretch!important;
+    gap:0!important;
+    overflow-x:auto!important;
+    overflow-y:visible!important;
+    scrollbar-width:thin!important;
+  }
+  .dash-v2-item{position:relative!important;flex:0 0 auto!important}
+  .dash-v2-button,.dash-v2-direct{
+    height:var(--dash-v2-menu-h)!important;
+    min-width:124px!important;
+    padding:0 13px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    gap:7px!important;
+    border:0!important;
+    border-radius:0!important;
+    background:transparent!important;
+    color:#314b78!important;
+    font:inherit!important;
+    font-size:.76rem!important;
+    font-weight:850!important;
+    text-decoration:none!important;
+    white-space:nowrap!important;
+    cursor:pointer!important;
+    box-shadow:none!important;
+  }
+  .dash-v2-button:hover,.dash-v2-item.open>.dash-v2-button,.dash-v2-direct:hover{
+    background:#eef4ff!important;
+    color:#1649c4!important;
+    box-shadow:inset 0 -3px 0 #1a4fd0!important;
+  }
+  .dash-v2-arrow{
+    display:inline-block!important;
+    margin-left:1px!important;
+    font-size:.62rem!important;
+    transition:transform .16s ease!important;
+  }
+  .dash-v2-item.open .dash-v2-arrow{transform:rotate(180deg)!important}
+  .dash-v2-spacer{flex:1 0 18px!important}
+  .dash-v2-direct{min-width:auto!important}
+  .dash-v2-dropdown{
+    display:none!important;
+    position:fixed!important;
+    z-index:3400!important;
+    width:min(290px,92vw)!important;
+    padding:7px!important;
+    border:1px solid #d9e3f2!important;
+    border-radius:0 0 13px 13px!important;
+    background:#fff!important;
+    box-shadow:0 17px 38px rgba(27,53,104,.17)!important;
+  }
+  .dash-v2-item.open>.dash-v2-dropdown{display:grid!important;gap:3px!important}
+  .dash-v2-dropdown button{
+    width:100%!important;
+    min-height:38px!important;
+    padding:8px 10px!important;
+    display:flex!important;
+    align-items:center!important;
+    gap:9px!important;
+    border:0!important;
+    border-radius:8px!important;
+    background:transparent!important;
+    color:#29436f!important;
+    font:inherit!important;
+    font-size:.75rem!important;
+    font-weight:780!important;
+    text-align:left!important;
+    cursor:pointer!important;
+  }
+  .dash-v2-dropdown button:hover{background:#eef4ff!important;color:#1649c4!important}
+  .dash-v2-dropdown small{
+    display:block!important;
+    margin-top:2px!important;
+    color:#7a8aa6!important;
+    font-size:.64rem!important;
+    font-weight:650!important;
+  }
+
+  /* Filtros separados do cabeçalho */
+  .dash-v2-filter-shell{
+    width:100%!important;
+    background:#f8faff!important;
+    border-bottom:1px solid var(--dash-v2-line)!important;
+  }
+  .dash-v2-filter-bar{
+    min-height:44px!important;
+    padding:6px 16px!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:space-between!important;
+    gap:10px!important;
+    background:#f8faff!important;
+  }
+  .dash-v2-filter-left,.dash-v2-filter-actions{
+    display:flex!important;
+    align-items:center!important;
+    gap:7px!important;
+    flex-wrap:wrap!important;
+  }
+  .dash-v2-filter-title{color:#183f8f!important;font-size:.72rem!important;font-weight:900!important}
+  .dash-v2-filter-chip{
+    min-height:27px!important;
+    padding:4px 8px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    gap:4px!important;
+    border:1px solid #d2def0!important;
+    border-radius:999px!important;
+    background:#fff!important;
+    color:#5b6c8b!important;
+    font-size:.66rem!important;
+    font-weight:780!important;
+  }
+  .dash-v2-filter-chip strong{color:#153d91!important}
+  .dash-v2-filter-actions button{
+    height:31px!important;
+    padding:0 10px!important;
+    border:1px solid #cad8ed!important;
+    border-radius:8px!important;
+    background:#fff!important;
+    color:#173c89!important;
+    font:inherit!important;
+    font-size:.69rem!important;
+    font-weight:850!important;
+    cursor:pointer!important;
+  }
+  .dash-v2-filter-actions button.primary{background:#174ac3!important;border-color:#174ac3!important;color:#fff!important}
+  .dash-v2-filter-panel{
+    display:none!important;
+    padding:10px 16px 12px!important;
+    background:#fff!important;
+    border-top:1px solid #e5ebf5!important;
+  }
+  .dash-v2-filter-shell.open .dash-v2-filter-panel{display:block!important}
+  .dash-v2-filter-panel .filters{
+    width:100%!important;
+    margin:0!important;
+    padding:0!important;
+    display:grid!important;
+    grid-template-columns:repeat(9,minmax(110px,1fr))!important;
+    gap:8px!important;
+    background:transparent!important;
+    border:0!important;
+    border-radius:0!important;
+    box-shadow:none!important;
+  }
+  .dash-v2-filter-panel .f label{
+    display:block!important;
+    margin:0 0 4px 2px!important;
+    color:#536589!important;
+    font-size:.61rem!important;
+    font-weight:900!important;
+    text-transform:uppercase!important;
+    letter-spacing:.04em!important;
+  }
+  .dash-v2-filter-panel .f input,.dash-v2-filter-panel .f select{
+    width:100%!important;
+    height:35px!important;
+    min-height:35px!important;
+    padding:0 9px!important;
+    border:1px solid #cdd9ea!important;
+    border-radius:9px!important;
+    background:#fff!important;
+    color:#15315f!important;
+    box-shadow:none!important;
+    font-size:.72rem!important;
+    font-weight:780!important;
+  }
+  .dash-v2-filter-panel .f input:focus,.dash-v2-filter-panel .f select:focus{
+    border-color:#2860d0!important;
+    box-shadow:0 0 0 3px rgba(40,96,208,.12)!important;
+    outline:0!important;
+  }
+
+  /* O antigo menu e o contexto anterior não aparecem */
+  .dash-bank-wrap,.dash-context{display:none!important}
+
+  /* O cabeçalho azul duplicado dentro do conteúdo deixa de existir */
+  main.wrap>.hero{display:none!important}
+  .wrap{padding-top:12px!important}
+
+  body.dark-mode{
+    --dash-v2-line:#263b61;
+    --dash-v2-text:#eef3ff;
+    --dash-v2-muted:#aab9d5;
+    --dash-v2-card:#101d34;
+    --dash-v2-bg:#071326;
+  }
+  body.dark-mode .top{background:linear-gradient(105deg,#071d5b,#0e378c 72%,#234fa9)!important}
+  body.dark-mode .dash-v2-menu-wrap{background:#0d192d!important;border-color:#263b61!important}
+  body.dark-mode .dash-v2-button,body.dark-mode .dash-v2-direct{color:#dce6fa!important}
+  body.dark-mode .dash-v2-button:hover,body.dark-mode .dash-v2-item.open>.dash-v2-button,body.dark-mode .dash-v2-direct:hover{background:#172b4c!important;color:#fff!important}
+  body.dark-mode .dash-v2-dropdown{background:#111f37!important;border-color:#2d426b!important}
+  body.dark-mode .dash-v2-dropdown button{color:#dbe6fb!important}
+  body.dark-mode .dash-v2-dropdown button:hover{background:#1a3156!important;color:#fff!important}
+  body.dark-mode .dash-v2-dropdown small{color:#9faecc!important}
+  body.dark-mode .dash-v2-filter-shell,body.dark-mode .dash-v2-filter-bar{background:#0d192e!important;border-color:#263b61!important}
+  body.dark-mode .dash-v2-filter-title{color:#dbe7ff!important}
+  body.dark-mode .dash-v2-filter-chip,body.dark-mode .dash-v2-filter-actions button{background:#13233e!important;border-color:#334a75!important;color:#dbe6fb!important}
+  body.dark-mode .dash-v2-filter-chip strong{color:#9fbcff!important}
+  body.dark-mode .dash-v2-filter-panel{background:#101d34!important;border-color:#263b61!important}
+  body.dark-mode .dash-v2-filter-panel .f label{color:#b5c3df!important}
+  body.dark-mode .dash-v2-filter-panel .f input,body.dark-mode .dash-v2-filter-panel .f select{background:#0a162a!important;border-color:#3a527d!important;color:#eef3ff!important;-webkit-text-fill-color:#eef3ff!important}
+
+  @media(max-width:1380px){
+    .dash-v2-filter-panel .filters{grid-template-columns:repeat(5,minmax(130px,1fr))!important}
+  }
+  @media(max-width:1080px){
+    :root{--dash-v2-header-h:126px}
+    .topbar.dash-v2-header{
+      grid-template-columns:1fr auto!important;
+      grid-template-areas:"title actions" "summary summary"!important;
+      padding:12px 14px!important;
+    }
+    .dash-v2-summary{justify-content:flex-start!important}
+    .dash-v2-filter-panel .filters{grid-template-columns:repeat(3,minmax(140px,1fr))!important}
+  }
+  @media(max-width:720px){
+    :root{--dash-v2-header-h:154px}
+    .topbar.dash-v2-header{
+      grid-template-columns:1fr!important;
+      grid-template-areas:"title" "summary" "actions"!important;
+      gap:8px!important;
+    }
+    .dash-v2-header .actions{justify-content:flex-start!important}
+    .dash-v2-menu{padding:0 5px!important}
+    .dash-v2-button,.dash-v2-direct{min-width:108px!important;padding:0 9px!important;font-size:.7rem!important}
+    .dash-v2-filter-bar{align-items:flex-start!important;padding:7px 9px!important}
+    .dash-v2-filter-left{max-width:64%!important}
+    .dash-v2-filter-panel{padding:9px!important}
+    .dash-v2-filter-panel .filters{grid-template-columns:1fr 1fr!important}
+  }
+  @media(max-width:460px){
+    :root{--dash-v2-header-h:174px}
+    .dash-v2-filter-bar{display:grid!important;grid-template-columns:1fr!important}
+    .dash-v2-filter-left{max-width:100%!important}
+    .dash-v2-filter-actions{width:100%!important}
+    .dash-v2-filter-actions button{flex:1!important}
+    .dash-v2-filter-panel .filters{grid-template-columns:1fr!important}
+  }
+</style>
+
+<script id="coopex-dashboard-bank-v2-script">
+(function(){
+  function norm(value){
+    return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+  }
+
+  function findText(text){
+    const q=norm(text);
+    return [...document.querySelectorAll('.sectionTitle h3,.year-compare-head h3,.cardHead h2')]
+      .find(el=>norm(el.textContent).includes(q));
+  }
+
+  function scrollToText(text){
+    const found=findText(text);
+    const target=found?.closest('.sectionTitle,.year-compare,.card')||found;
+    if(target)target.scrollIntoView({behavior:'smooth',block:'start'});
+  }
+
+  function updateHeaderHeight(){
+    const top=document.querySelector('.top');
+    if(!top)return;
+    document.documentElement.style.setProperty('--dash-v2-header-h',`${Math.ceil(top.getBoundingClientRect().height)}px`);
+  }
+
+  function buildMenu(){
+    document.querySelectorAll('.dash-bank-wrap,.dash-context,.dash-v2-menu-wrap,.dash-v2-filter-shell').forEach(el=>el.remove());
+
+    const top=document.querySelector('.top');
+    const form=document.querySelector('.topbar');
+    if(!top||!form)return;
+
+    form.id='dashboardFilterForm';
+    form.classList.add('dash-v2-header');
+
+    const brand=form.querySelector('.brand');
+    if(brand){
+      brand.querySelector('img')?.remove();
+      const title=brand.querySelector('b');
+      const subtitle=brand.querySelector('small');
+      if(title)title.textContent='Dashboard Gerencial COOPEX';
+      if(subtitle)subtitle.textContent='Visão executiva de operação, cooperados, contratos, bairros, rotas, financeiro e crédito.';
+    }
+
+    const hero=document.querySelector('main.wrap>.hero');
+    const heroRight=hero?.querySelector('.heroRight');
+    let summary=form.querySelector('.dash-v2-summary');
+    if(!summary){summary=document.createElement('div');summary.className='dash-v2-summary';form.appendChild(summary)}
+    if(heroRight){
+      summary.innerHTML='';
+      [...heroRight.children].forEach(chip=>summary.appendChild(chip));
+    }
+
+    const actions=form.querySelector('.actions');
+    actions?.querySelector('.primary')?.remove();
+
+    const menu=document.createElement('nav');
+    menu.className='dash-v2-menu-wrap noPrint';
+    menu.innerHTML=`<div class="dash-v2-menu">
+      <button type="button" class="dash-v2-direct" data-dashboard-top>Visão geral</button>
+
+      <div class="dash-v2-item">
+        <button type="button" class="dash-v2-button">Operação <span class="dash-v2-arrow">▾</span></button>
+        <div class="dash-v2-dropdown">
+          <button type="button" data-scroll-text="Faturamento e entregas por dia">Indicadores diários<small>Entregas e faturamento por data</small></button>
+          <button type="button" data-scroll-text="Operação, Cooperados e Contratos">Operação e contratos<small>Volume, produção e estabelecimentos</small></button>
+          <button type="button" data-scroll-text="Situação">Situação das entregas<small>Abertas, concluídas e pendências</small></button>
+        </div>
+      </div>
+
+      <div class="dash-v2-item">
+        <button type="button" class="dash-v2-button">Cooperados e contratos <span class="dash-v2-arrow">▾</span></button>
+        <div class="dash-v2-dropdown">
+          <button type="button" data-scroll-text="Ranking de cooperados">Ranking de cooperados<small>Produção e desempenho individual</small></button>
+          <button type="button" data-scroll-text="Contratos">Contratos e clientes<small>Produção por estabelecimento</small></button>
+          <button type="button" data-focus-filter="cooperado_id">Pesquisar cooperado<small>Abre os filtros no campo correto</small></button>
+        </div>
+      </div>
+
+      <div class="dash-v2-item">
+        <button type="button" class="dash-v2-button">Financeiro <span class="dash-v2-arrow">▾</span></button>
+        <div class="dash-v2-dropdown">
+          <button type="button" data-scroll-text="Crédito e Financeiro">Crédito e financeiro<small>Saldo, consumo e pagamentos</small></button>
+          <button type="button" data-scroll-text="Comparativo mensal e anual">Comparativo anual<small>Mês a mês e ano contra ano</small></button>
+          <button type="button" data-focus-filter="status_pagamento">Filtrar pagamentos<small>Pago, pendente ou todos</small></button>
+        </div>
+      </div>
+
+      <div class="dash-v2-item">
+        <button type="button" class="dash-v2-button">Bairros e rotas <span class="dash-v2-arrow">▾</span></button>
+        <div class="dash-v2-dropdown">
+          <button type="button" data-scroll-text="Bairros e Rotas">Análise de bairros e rotas<small>Origem, destino e trajetos recorrentes</small></button>
+          <button type="button" data-focus-filter="origem">Pesquisar origem<small>Abre o filtro de bairro de coleta</small></button>
+          <button type="button" data-focus-filter="destino">Pesquisar destino<small>Abre o filtro de bairro de entrega</small></button>
+        </div>
+      </div>
+
+      <div class="dash-v2-item">
+        <button type="button" class="dash-v2-button">Relatórios <span class="dash-v2-arrow">▾</span></button>
+        <div class="dash-v2-dropdown">
+          <button type="button" data-search-focus>Pesquisa geral<small>Busca em todas as tabelas carregadas</small></button>
+          <button type="button" data-print-dashboard>Imprimir relatório<small>Gera a visualização para impressão</small></button>
+        </div>
+      </div>
+
+      <div class="dash-v2-spacer"></div>
+      <a href="{{ url_for('admin') }}" class="dash-v2-direct">Voltar ao Admin</a>
+    </div>`;
+    top.insertAdjacentElement('afterend',menu);
+
+    const filterShell=document.createElement('section');
+    filterShell.className='dash-v2-filter-shell noPrint';
+    filterShell.innerHTML=`<div class="dash-v2-filter-bar">
+      <div class="dash-v2-filter-left"><span class="dash-v2-filter-title">Filtros do relatório</span></div>
+      <div class="dash-v2-filter-actions">
+        <button type="button" data-toggle-filters>Mostrar filtros</button>
+        <button type="button" data-clear-filters>Limpar</button>
+        <button type="button" class="primary" data-apply-filters>Aplicar</button>
+      </div>
+    </div><div class="dash-v2-filter-panel"></div>`;
+    menu.insertAdjacentElement('afterend',filterShell);
+
+    const filters=form.querySelector('.filters');
+    if(filters){
+      filterShell.querySelector('.dash-v2-filter-panel').appendChild(filters);
+      [...filters.querySelectorAll('input,select,button')].forEach(el=>el.setAttribute('form','dashboardFilterForm'));
+    }
+
+    const filterLeft=filterShell.querySelector('.dash-v2-filter-left');
+    const toggle=filterShell.querySelector('[data-toggle-filters]');
+
+    function activeFilters(){
+      filterLeft.querySelectorAll('.dash-v2-filter-chip').forEach(el=>el.remove());
+      const names={periodo:'Período',data_inicio:'De',data_fim:'Até',cooperado_id:'Cooperado',grupo_id:'Contrato',cliente:'Cliente',status_pagamento:'Pagamento',origem:'Origem',destino:'Destino'};
+      [...form.elements].forEach(el=>{
+        if(!el.name||!names[el.name])return;
+        let value=el.value;
+        if(!value||value==='todos')return;
+        if(el.tagName==='SELECT')value=el.options[el.selectedIndex]?.text||value;
+        const chip=document.createElement('span');chip.className='dash-v2-filter-chip';chip.innerHTML=`<strong>${names[el.name]}:</strong> ${value}`;filterLeft.appendChild(chip);
+      });
+      if(!filterLeft.querySelector('.dash-v2-filter-chip')){
+        const chip=document.createElement('span');chip.className='dash-v2-filter-chip';chip.textContent='Sem filtros específicos';filterLeft.appendChild(chip);
+      }
+    }
+
+    function openFilters(focusName){
+      filterShell.classList.add('open');
+      toggle.textContent='Ocultar filtros';
+      if(focusName)setTimeout(()=>filters?.querySelector(`[name="${focusName}"]`)?.focus(),80);
+    }
+
+    toggle.addEventListener('click',()=>{
+      filterShell.classList.toggle('open');
+      toggle.textContent=filterShell.classList.contains('open')?'Ocultar filtros':'Mostrar filtros';
+    });
+    filterShell.querySelector('[data-apply-filters]').addEventListener('click',()=>form.requestSubmit());
+    filterShell.querySelector('[data-clear-filters]').addEventListener('click',()=>{
+      form.querySelectorAll('input').forEach(input=>input.value='');
+      form.querySelectorAll('select').forEach(select=>select.value=select.name==='periodo'?'mes':'todos');
+      form.requestSubmit();
+    });
+
+    const periodo=form.querySelector('[name="periodo"]');
+    const personalized=[...form.querySelectorAll('[name="data_inicio"],[name="data_fim"],[name="cooperado_id"],[name="grupo_id"],[name="cliente"],[name="status_pagamento"],[name="origem"],[name="destino"]')];
+    personalized.forEach(el=>{
+      const handler=()=>{
+        const populated=el.tagName==='SELECT'?el.value&&el.value!=='todos':Boolean(el.value.trim());
+        if(populated&&periodo)periodo.value='personalizado';
+        activeFilters();
+      };
+      el.addEventListener('change',handler);
+      if(el.tagName!=='SELECT')el.addEventListener('input',handler);
+    });
+    periodo?.addEventListener('change',activeFilters);
+
+    menu.querySelectorAll('.dash-v2-button').forEach(button=>button.addEventListener('click',event=>{
+      event.stopPropagation();
+      const item=button.closest('.dash-v2-item');
+      const already=item.classList.contains('open');
+      menu.querySelectorAll('.dash-v2-item.open').forEach(el=>el.classList.remove('open'));
+      if(!already){
+        item.classList.add('open');
+        requestAnimationFrame(()=>{
+          const dropdown=item.querySelector('.dash-v2-dropdown');
+          const rect=button.getBoundingClientRect();
+          dropdown.style.top=`${Math.round(rect.bottom)}px`;
+          dropdown.style.left=`${Math.max(6,Math.min(Math.round(rect.left),window.innerWidth-dropdown.offsetWidth-6))}px`;
+        });
+      }
+    }));
+    document.addEventListener('click',()=>menu.querySelectorAll('.dash-v2-item.open').forEach(el=>el.classList.remove('open')));
+    menu.querySelectorAll('[data-scroll-text]').forEach(btn=>btn.addEventListener('click',()=>scrollToText(btn.dataset.scrollText)));
+    menu.querySelector('[data-dashboard-top]')?.addEventListener('click',()=>window.scrollTo({top:0,behavior:'smooth'}));
+    menu.querySelectorAll('[data-focus-filter]').forEach(btn=>btn.addEventListener('click',()=>openFilters(btn.dataset.focusFilter)));
+    menu.querySelector('[data-search-focus]')?.addEventListener('click',()=>document.getElementById('dashGlobalSearch')?.focus());
+    menu.querySelector('[data-print-dashboard]')?.addEventListener('click',()=>window.print());
+
+    activeFilters();
+    const hasSpecific=personalized.some(el=>el.tagName==='SELECT'?el.value&&el.value!=='todos':Boolean(el.value.trim()));
+    if(hasSpecific)openFilters();
+
+    updateHeaderHeight();
+    if('ResizeObserver' in window)new ResizeObserver(updateHeaderHeight).observe(top);
+    window.addEventListener('resize',updateHeaderHeight);
+  }
+
+  function start(){setTimeout(buildMenu,0)}
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
