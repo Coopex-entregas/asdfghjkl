@@ -1,2 +1,41 @@
 {% include 'editar_entrega_original.html' %}
 {% include 'coopex_visual_patch.html' %}
+<style id="coopex-edit-delivery-dark-fix">
+  body.dark{
+    --bg:#071326!important;
+    --card:#101f38!important;
+    --text:#f2f6ff!important;
+    --muted:#c2d0eb!important;
+    --line:#314a73!important;
+    background:linear-gradient(180deg,#071326 0%,#0b1830 100%)!important;
+    color:#f2f6ff!important;
+  }
+  body.dark .back{color:#b8ccff!important}
+  body.dark .shell{background:#0d1b32!important;border-color:#314a73!important;box-shadow:0 18px 44px rgba(0,0,0,.34)!important}
+  body.dark form{background:#0d1b32!important;color:#f2f6ff!important}
+  body.dark .section{background:linear-gradient(180deg,#13233e,#0f1d35)!important;border-color:#314a73!important;color:#f2f6ff!important}
+  body.dark .section h2{color:#aecaFF!important}
+  body.dark .info{background:#0a172c!important;border-color:#38527f!important;color:#eef3ff!important}
+  body.dark .info strong{color:#9fbcff!important}
+  body.dark label{color:#c8d7f2!important;-webkit-text-fill-color:#c8d7f2!important}
+  body.dark input[type="text"],body.dark input[type="number"],body.dark select,body.dark textarea{
+    background:#071428!important;
+    color:#ffffff!important;
+    -webkit-text-fill-color:#ffffff!important;
+    border-color:#48638e!important;
+    box-shadow:none!important;
+  }
+  body.dark input::placeholder,body.dark textarea::placeholder{color:#8295b8!important;-webkit-text-fill-color:#8295b8!important;opacity:1!important}
+  body.dark select option{background:#071428!important;color:#fff!important}
+  body.dark input:focus,body.dark select:focus,body.dark textarea:focus{border-color:#6f95ff!important;box-shadow:0 0 0 4px rgba(86,126,255,.18)!important}
+  body.dark .stop{background:#0a172c!important;border-color:#38527f!important;color:#f2f6ff!important}
+  body.dark .stop-badge{background:#1a3157!important;color:#dbe7ff!important}
+  body.dark .btn-soft{background:#18315a!important;color:#eef3ff!important;border:1px solid #45628f!important}
+  body.dark .submit-row{background:transparent!important}
+  body.dark .hero{background:linear-gradient(135deg,#123da8,#1d56dc)!important}
+</style>
+<script id="coopex-edit-delivery-theme-now">
+(function(){
+  if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');
+})();
+</script>
