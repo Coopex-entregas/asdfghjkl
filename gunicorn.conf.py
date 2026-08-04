@@ -1,7 +1,7 @@
 """Configuração leve do Gunicorn para o painel COOPEX.
 
-O arquivo também instala a escala semanal somente depois que o app Flask está
-carregado no worker. Assim o recurso fica separado do app.py principal.
+Os recursos adicionais são instalados somente depois que o app Flask está
+carregado no worker, mantendo o app.py principal estável.
 """
 
 import builtins
@@ -85,6 +85,7 @@ def post_worker_init(worker):
         import agendamento_feature
         import rotas_bairros_feature
         import dashboard_comparativo_feature
+        import cooperado_arquivamento_feature
 
         _corrigir_serializacao_escala(escala_feature)
         escala_feature.install(app_module)
@@ -93,8 +94,9 @@ def post_worker_init(worker):
         agendamento_feature.install(app_module)
         rotas_bairros_feature.install(app_module)
         dashboard_comparativo_feature.install(app_module)
+        cooperado_arquivamento_feature.install(app_module)
         worker.log.info(
-            "Escala, trocas, agendamentos, bairros e comparativo do dashboard instalados."
+            "Escala, trocas, agendamentos, bairros, comparativo e arquivamento de cooperados instalados."
         )
     except Exception:
         worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
