@@ -61,7 +61,9 @@
 
   async function carregarAgendamentos(){
     try{
-      const r=await fetch('{{ url_for("api_entregas_agendadas_exibicao") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)return;
+      const ids=[...document.querySelectorAll('tr[data-id]')].map(tr=>tr.dataset.id).filter(Boolean).join(',');
+      const url='{{ url_for("api_admin_agendamentos") }}'+(ids?`?ids=${encodeURIComponent(ids)}`:'');
+      const r=await fetch(url,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)return;
       (d.itens||[]).forEach(item=>{
         const tr=document.querySelector(`tr[data-id="${item.id}"]`);if(!tr||tr.cells.length<7)return;
         const pedido=tr.cells[5],atribuicao=tr.cells[6];
