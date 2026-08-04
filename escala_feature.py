@@ -4,8 +4,9 @@ from datetime import date,datetime,time as dtime,timedelta
 from zoneinfo import ZoneInfo
 import pandas as pd
 from flask import flash,jsonify,redirect,render_template,request,session,url_for
+from sqlalchemy import func,or_
 
-DONE=False; DB=None; MOD=None; Alias=None; Importacao=None; Item=None
+DONE=False; DB=None; MOD=None; Alias=None; Importacao=None; Item=None; Ajuste=None
 CACHE={'until':0,'data':None}; STOP={'de','da','do','das','dos','e'}
 NICKS=({'francisco','chico'},{'alberto','beto'})
 COMMON={'carlos','jose','joao','francisco','antonio','alexandre','marcos','lucas','ricardo','gabriel','anderson','paulo','rafael','raphael','silva','santos','souza','costa','lima','alves','gomes','ferreira','pereira','rocha','nunes','dias','barbosa','carvalho','oliveira'}
@@ -22,7 +23,7 @@ def clear_cache(): CACHE.update(until=0,data=None)
 def admin(): return bool(session.get('is_admin'))
 
 def define_models(m):
- global DB,Alias,Importacao,Item
+ global DB,Alias,Importacao,Item,Ajuste
  DB=m.db;db=DB
  class A(db.Model):
   __tablename__='cooperado_alias';id=db.Column(db.Integer,primary_key=True);cooperado_id=db.Column(db.Integer,db.ForeignKey('cooperado.id'),nullable=False,index=True);alias_texto=db.Column(db.String(160),nullable=False);alias_norm=db.Column(db.String(160),nullable=False,unique=True,index=True);criado_em=db.Column(db.DateTime,default=datetime.utcnow,nullable=False);cooperado=db.relationship('Cooperado')
@@ -36,13 +37,15 @@ def define_models(m):
   def candidatos(self):
    try:return json.loads(self.candidatos_json or '[]')
    except:return []
- Alias=A;Importacao=I;Item=E
+ class J(db.Model):
+  __tablename__='escala_ajuste';id=db.Column(db.Integer,primary_key=True);item_id=db.Column(db.Integer,db.ForeignKey('escala_item.id'),nullable=False,unique=True,index=True);cooperado_original_id=db.Column(db.Integer,db.ForeignKey('cooperado.id'));cooperado_novo_id=db.Column(db.Integer,db.ForeignKey('cooperado.id'),nullable=False,index=True);motivo=db.Column(db.String(255),nullable=False);alterado_em=db.Column(db.DateTime,default=datetime.utcnow,nullable=False);item=db.relationship(E);original=db.relationship('Cooperado',foreign_keys=[cooperado_original_id]);novo=db.relationship('Cooperado',foreign_keys=[cooperado_novo_id])
+ Alias=A;Importacao=I;Item=E;Ajuste=J
 
 def resolver_ctx():
  C=MOD.Cooperado
  try:cs=C.query.filter(C.ativo.is_(True)).order_by(C.nome).all()
  except:cs=C.query.order_by(C.nome).all()
- als=Alias.query.all(); amap={a.alias_norm:int(a.cooperado_id) for a in als};freq=Counter();rows=[]
+ als=Alias.query.all();amap={a.alias_norm:int(a.cooperado_id) for a in als};freq=Counter();rows=[]
  for c in cs:
   tt=toks(c.nome);freq.update(set(tt));rows.append({'id':int(c.id),'nome':c.nome,'norm':norm(c.nome),'t':set(tt)})
  return rows,amap,freq
@@ -123,9 +126,9 @@ def routes(app):
   if cid:query=query.filter(Item.cooperado_id==cid)
   if status=='pendentes':query=query.filter(Item.cooperado_id.is_(None))
   if status=='vinculados':query=query.filter(Item.cooperado_id.isnot(None))
-  if q:query=query.filter(Item.nome_norm.like('%'+norm(q)+'%'))
-  items=query.order_by(Item.contrato,Item.horario_texto,Item.nome_planilha).all();ctx=context_now();active_ids={x.id for x in ctx['itens']}
-  for x in items:x.ativo_agora=x.id in active_ids;x.intervalos_rotulo=label(x);x.candidatos_lista=x.candidatos()
+  if q:query=query.filter(or_(Item.nome_norm.like('%'+norm(q)+'%'),func.lower(Item.contrato).like('%'+q.lower()+'%')))
+  items=query.order_by(Item.contrato,Item.horario_texto,Item.nome_planilha).all();ctx=context_now();active_ids={x.id for x in ctx['itens']};ajustes={x.item_id:x for x in Ajuste.query.filter(Ajuste.item_id.in_([i.id for i in items] or [-1])).all()}
+  for x in items:x.ativo_agora=x.id in active_ids;x.intervalos_rotulo=label(x);x.candidatos_lista=x.candidatos();x.ajuste=ajustes.get(x.id)
   contracts=[x[0] for x in DB.session.query(Item.contrato).distinct().order_by(Item.contrato).all()];C=MOD.Cooperado
   try:coops=C.query.filter(C.ativo.is_(True)).order_by(C.nome).all()
   except:coops=C.query.order_by(C.nome).all()
@@ -143,7 +146,7 @@ def routes(app):
     if not con or not name or not dd or norm(con)=='folga':ignored+=1;continue
     ht=str(r.get(col['horarios'],'') or '').strip();turn=str(r.get(col['turno'],'') or '').strip() if col.get('turno') else '';qtd=str(r.get(col['qtd'],'') or '').strip() if col.get('qtd') else '';ints,est=parse_hours(ht,turn);cid,st,cands,detail=match_name(name,ctx);new.append(Item(data=dd,qtd=qtd[:30],turno=turn[:30],horario_texto=ht[:120],intervalos_json=json.dumps(ints,ensure_ascii=False),horario_estimado=est,contrato=con[:160],nome_planilha=name[:160],nome_norm=norm(name)[:160],cooperado_id=cid,status_match=st,candidatos_json=json.dumps(cands,ensure_ascii=False),detalhe_match=detail[:255],importado_em=stamp));dates.append(dd)
    if not new:raise ValueError('Nenhuma linha válida foi encontrada.')
-   Item.query.delete(synchronize_session=False);meta=Importacao.query.filter_by(id=1).first() or Importacao(id=1);DB.session.add(meta);DB.session.add_all(new);DB.session.flush();meta.arquivo_nome=f.filename[:255];meta.inicio_semana=min(dates);meta.fim_semana=max(dates);meta.importado_em=stamp;meta.linhas_ignoradas=ignored;recount(meta);DB.session.commit();clear_cache();flash(f'Escala substituída: {meta.total_linhas} linhas válidas e {ignored} ignoradas.','success')
+   Ajuste.query.delete(synchronize_session=False);Item.query.delete(synchronize_session=False);meta=Importacao.query.filter_by(id=1).first() or Importacao(id=1);DB.session.add(meta);DB.session.add_all(new);DB.session.flush();meta.arquivo_nome=f.filename[:255];meta.inicio_semana=min(dates);meta.fim_semana=max(dates);meta.importado_em=stamp;meta.linhas_ignoradas=ignored;recount(meta);DB.session.commit();clear_cache();flash(f'Escala substituída: {meta.total_linhas} linhas válidas e {ignored} ignoradas.','success')
   except Exception as e:DB.session.rollback();flash(f'Não foi possível importar a escala: {e}','error')
   return redirect(url_for('escala'))
  def link(i):
@@ -155,13 +158,34 @@ def routes(app):
   else:DB.session.add(Alias(cooperado_id=c.id,alias_texto=x.nome_planilha,alias_norm=n))
   for y in Item.query.filter_by(nome_norm=x.nome_norm).all():y.cooperado_id=c.id;y.status_match='confirmado';y.detalhe_match='Associação confirmada pelo administrador.'
   meta=Importacao.query.filter_by(id=1).first();recount(meta) if meta else None;DB.session.commit();clear_cache();flash(f'{x.nome_planilha} foi associado a {c.nome}.','success');return redirect(request.referrer or url_for('escala'))
+ def substitute(i):
+  if not admin():return redirect(url_for('login'))
+  x=Item.query.get_or_404(i);cid=request.form.get('cooperado_id',type=int);motivo=(request.form.get('motivo') or '').strip();c=MOD.Cooperado.query.get(cid) if cid else None
+  if not c:flash('Selecione o cooperado que fará a substituição.','error');return redirect(request.referrer or url_for('escala'))
+  if len(motivo)<3:flash('Informe o motivo da mudança.','error');return redirect(request.referrer or url_for('escala'))
+  aj=Ajuste.query.filter_by(item_id=x.id).first()
+  if not aj:aj=Ajuste(item_id=x.id,cooperado_original_id=x.cooperado_id,cooperado_novo_id=c.id,motivo=motivo[:255]);DB.session.add(aj)
+  else:aj.cooperado_novo_id=c.id;aj.motivo=motivo[:255];aj.alterado_em=datetime.utcnow()
+  x.cooperado_id=c.id;x.status_match='substituido';x.detalhe_match=('Substituição: '+motivo)[:255];DB.session.commit();clear_cache();flash(f'Escala alterada para {c.nome}.','success');return redirect(request.referrer or url_for('escala'))
+ def restore(i):
+  if not admin():return redirect(url_for('login'))
+  x=Item.query.get_or_404(i);aj=Ajuste.query.filter_by(item_id=x.id).first()
+  if not aj:flash('Esta linha não possui substituição.','warning');return redirect(request.referrer or url_for('escala'))
+  x.cooperado_id=aj.cooperado_original_id;x.status_match='confirmado' if x.cooperado_id else 'nao_encontrado';x.detalhe_match='Substituição desfeita; escala importada restaurada.';DB.session.delete(aj);DB.session.commit();clear_cache();flash('Escala original restaurada.','success');return redirect(request.referrer or url_for('escala'))
  def clear():
   if not admin():return redirect(url_for('login'))
-  Item.query.delete(synchronize_session=False);Importacao.query.delete(synchronize_session=False);DB.session.commit();clear_cache();flash('Escala atual removida. As associações de nomes foram mantidas.','success');return redirect(url_for('escala'))
+  Ajuste.query.delete(synchronize_session=False);Item.query.delete(synchronize_session=False);Importacao.query.delete(synchronize_session=False);DB.session.commit();clear_cache();flash('Escala atual removida. As associações de nomes foram mantidas.','success');return redirect(url_for('escala'))
  def api():
   if not admin():return jsonify(ok=False,error='Não autorizado'),401
   c=context_now();items=[{'cooperado_id':int(x.cooperado_id),'nome':x.cooperado.nome if x.cooperado else x.nome_planilha,'contrato':x.contrato,'horario':label(x)} for x in c['itens']];return jsonify(ok=True,restricao_ativa=c['restricao_ativa'],agora=c['agora'].isoformat(),cooperados_ids=sorted(c['ids']),itens=items)
- app.add_url_rule('/escala','escala',page);app.add_url_rule('/escala/importar','escala_importar',upload,methods=['POST']);app.add_url_rule('/escala/vincular/<int:i>','escala_vincular',link,methods=['POST']);app.add_url_rule('/escala/limpar','escala_limpar',clear,methods=['POST']);app.add_url_rule('/api/escala/agora','api_escala_agora',api)
+ def scheduled_api():
+  if not admin():return jsonify(ok=False,error='Não autorizado'),401
+  E=MOD.Entrega;utc_now=datetime.utcnow();rows=E.query.filter(E.data_envio.isnot(None)).filter(or_(func.lower(func.coalesce(E.status,''))=='agendado',E.data_envio>utc_now)).order_by(E.data_envio.asc()).limit(500).all();conv=getattr(MOD,'to_brasilia',lambda x:x);out=[]
+  for e in rows:
+   ag=e.data_envio;at=e.data_atribuida;ag_local=conv(ag);at_local=conv(at) if at else None;depois=bool(at and ag and at>ag);mostra=at_local if depois else ag_local
+   out.append({'id':int(e.id),'agendada_data':ag_local.strftime('%d/%m/%Y'),'agendada_hora':ag_local.strftime('%H:%M'),'atribuicao_hora':mostra.strftime('%H:%M') if mostra else '-','atribuida_depois':depois,'tem_cooperado':bool(e.cooperado_id)})
+  return jsonify(ok=True,itens=out)
+ app.add_url_rule('/escala','escala',page);app.add_url_rule('/escala/importar','escala_importar',upload,methods=['POST']);app.add_url_rule('/escala/vincular/<int:i>','escala_vincular',link,methods=['POST']);app.add_url_rule('/escala/substituir/<int:i>','escala_substituir',substitute,methods=['POST']);app.add_url_rule('/escala/restaurar/<int:i>','escala_restaurar',restore,methods=['POST']);app.add_url_rule('/escala/limpar','escala_limpar',clear,methods=['POST']);app.add_url_rule('/api/escala/agora','api_escala_agora',api);app.add_url_rule('/api/entregas/agendadas-exibicao','api_entregas_agendadas_exibicao',scheduled_api)
 
 def wrap_suggestions():
  old=getattr(MOD,'calcular_sugestoes_cooperados',None)
