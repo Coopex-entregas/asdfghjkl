@@ -1,0 +1,205 @@
+<style id="coopex-dashboard-visibility-search-style">
+  /* Dashboard sem logo e com melhor aproveitamento horizontal */
+  .topbar .brand img{display:none!important}
+  .topbar .brand{min-width:170px!important;gap:0!important;padding-left:3px!important}
+  .topbar{grid-template-columns:190px minmax(0,1fr) auto!important}
+
+  /* Todas as tabelas cabem na largura da tela, sem rolagem lateral */
+  .tableWrap,
+  .rankScroll,
+  .year-compare-table-wrap{
+    width:100%!important;
+    max-width:100%!important;
+    max-height:none!important;
+    overflow-x:hidden!important;
+    overflow-y:visible!important;
+  }
+  .tableWrap table,
+  .rankScroll table,
+  .year-compare-table,
+  .year-compare-table.year-table,
+  table{
+    width:100%!important;
+    min-width:0!important;
+    max-width:100%!important;
+    table-layout:fixed!important;
+  }
+  th,td,
+  .year-compare-table th,
+  .year-compare-table td{
+    padding:8px 7px!important;
+    white-space:normal!important;
+    overflow-wrap:anywhere!important;
+    word-break:normal!important;
+    line-height:1.3!important;
+    vertical-align:middle!important;
+  }
+  td.num,th.num,td.center,th.center{
+    text-align:center!important;
+  }
+  .muted{white-space:normal!important;overflow-wrap:anywhere!important}
+
+  /* Pesquisa dentro das informações já carregadas no dashboard */
+  .dash-search-box{
+    position:relative;
+    display:flex;
+    align-items:center;
+    min-width:min(420px,42vw);
+    height:34px;
+    border:1px solid #cbd8ed;
+    border-radius:10px;
+    background:#fff;
+    overflow:hidden;
+  }
+  .dash-search-box span{
+    width:34px;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    color:#1744a8;
+    font-size:.86rem;
+    font-weight:900;
+  }
+  .dash-search-box input{
+    width:100%;
+    height:100%;
+    border:0!important;
+    outline:0!important;
+    background:transparent!important;
+    color:#17315f!important;
+    padding:0 10px 0 0!important;
+    font:inherit;
+    font-size:.75rem!important;
+    font-weight:750!important;
+    box-shadow:none!important;
+  }
+  .dash-search-box input::placeholder{color:#7b8bab!important}
+  .dash-search-count{
+    min-width:92px;
+    color:#607193;
+    font-size:.69rem;
+    font-weight:800;
+    text-align:right;
+  }
+  .dashboard-search-hidden{display:none!important}
+  .dashboard-search-mark{
+    outline:2px solid rgba(23,75,210,.18)!important;
+    outline-offset:-2px!important;
+  }
+
+  body.dark-mode .dash-search-box{
+    background:#13223d;
+    border-color:#334a76;
+  }
+  body.dark-mode .dash-search-box span{color:#a9c3ff}
+  body.dark-mode .dash-search-box input{
+    color:#edf3ff!important;
+    -webkit-text-fill-color:#edf3ff!important;
+  }
+  body.dark-mode .dash-search-box input::placeholder{color:#8fa0bf!important}
+  body.dark-mode .dash-search-count{color:#b9c6df}
+
+  @media(max-width:1150px){
+    .topbar{grid-template-columns:1fr auto!important}
+    .topbar .brand{min-width:0!important}
+    table,.year-compare-table{font-size:.7rem!important}
+    th,td,.year-compare-table th,.year-compare-table td{padding:7px 5px!important}
+    .dash-search-box{min-width:min(360px,60vw)}
+  }
+  @media(max-width:760px){
+    .dash-context-right{width:100%!important}
+    .dash-search-box{width:100%;min-width:100%!important;order:-1}
+    .dash-search-count{width:100%;text-align:left}
+    table,.year-compare-table{font-size:.64rem!important}
+    th,td,.year-compare-table th,.year-compare-table td{padding:6px 3px!important}
+    .compare-badge{min-width:0!important;padding:4px 5px!important;font-size:.58rem!important}
+  }
+</style>
+
+<script id="coopex-dashboard-visibility-search-script">
+(function(){
+  function normalizar(valor){
+    return String(valor||'')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase()
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function iniciarPesquisa(){
+    const context=document.querySelector('.dash-context');
+    const right=context?.querySelector('.dash-context-right');
+    if(!right||document.getElementById('dashGlobalSearch'))return;
+
+    const box=document.createElement('label');
+    box.className='dash-search-box';
+    box.setAttribute('for','dashGlobalSearch');
+    box.innerHTML='<span>⌕</span><input id="dashGlobalSearch" type="search" autocomplete="off" placeholder="Pesquisar cooperado, cliente, contrato, bairro, rota ou valor">';
+
+    const count=document.createElement('span');
+    count.id='dashSearchCount';
+    count.className='dash-search-count';
+    count.textContent='';
+
+    right.prepend(count);
+    right.prepend(box);
+
+    const input=box.querySelector('input');
+    const tableRows=[...document.querySelectorAll('table tbody tr')];
+    const listRows=[...document.querySelectorAll('.rowItem,.alerts .alert')];
+
+    function limparMarcas(){
+      document.querySelectorAll('.dashboard-search-mark').forEach(el=>el.classList.remove('dashboard-search-mark'));
+    }
+
+    function pesquisar(){
+      const termo=normalizar(input.value);
+      limparMarcas();
+
+      if(!termo){
+        [...tableRows,...listRows].forEach(el=>el.classList.remove('dashboard-search-hidden'));
+        count.textContent='';
+        return;
+      }
+
+      let encontrados=0;
+      tableRows.forEach(row=>{
+        const visivel=normalizar(row.textContent).includes(termo);
+        row.classList.toggle('dashboard-search-hidden',!visivel);
+        if(visivel){encontrados++;row.classList.add('dashboard-search-mark')}
+      });
+      listRows.forEach(row=>{
+        const visivel=normalizar(row.textContent).includes(termo);
+        row.classList.toggle('dashboard-search-hidden',!visivel);
+        if(visivel){encontrados++;row.classList.add('dashboard-search-mark')}
+      });
+      count.textContent=`${encontrados} resultado${encontrados===1?'':'s'}`;
+    }
+
+    input.addEventListener('input',pesquisar);
+    input.addEventListener('keydown',event=>{
+      if(event.key==='Escape'){
+        input.value='';
+        pesquisar();
+        input.blur();
+      }
+    });
+  }
+
+  function removerLogo(){
+    document.querySelector('.topbar .brand img')?.remove();
+  }
+
+  function iniciar(){
+    removerLogo();
+    iniciarPesquisa();
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  }else{
+    iniciar();
+  }
+})();
+</script>
