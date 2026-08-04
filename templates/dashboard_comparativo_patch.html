@@ -1,0 +1,198 @@
+<style id="coopex-dashboard-comparativo-style">
+  .year-compare{margin-top:10px}
+  .year-compare-head{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin:15px 0 7px}
+  .year-compare-head h3{margin:0;color:#0b2c6f;font-size:13px;font-weight:950}
+  .year-compare-tools{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .year-compare-tools label{font-size:10px;font-weight:950;color:#1e3a8a;text-transform:uppercase;letter-spacing:.04em}
+  .year-compare-tools select{height:34px;border-radius:11px;border:1px solid #bcd0ff;background:#fff;color:#0b2c6f;font-weight:950;padding:0 10px;outline:none}
+  .year-compare-grid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:10px;margin-top:10px}
+  .year-compare-kpi{position:relative;overflow:hidden;min-height:100px;padding:12px;border:1px solid var(--line);border-radius:18px;background:#fff;box-shadow:var(--shadow)}
+  .year-compare-kpi:before{content:"";position:absolute;left:0;top:0;bottom:0;width:6px;background:var(--compare-bar,var(--azul))}
+  .year-compare-kpi .label{font-size:10px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.055em;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .year-compare-kpi .value{margin-top:8px;color:#091b3d;font-size:19px;font-weight:950;letter-spacing:-.03em;font-variant-numeric:tabular-nums;word-break:break-word}
+  .year-compare-kpi .detail{margin-top:5px;color:var(--muted);font-size:10px;font-weight:850;line-height:1.35}
+  .year-compare-kpi.positive .value{color:#087044}.year-compare-kpi.negative .value{color:#b91c1c}
+  .year-compare-board{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:10px}
+  .year-compare-chart{height:255px;position:relative}
+  .year-compare-tables{display:grid;grid-template-columns:1.35fr .65fr;gap:10px;margin-top:10px}
+  .year-compare-table-wrap{overflow:auto;max-height:510px;border:1px solid #e2ebff;border-radius:16px;background:#fff}
+  .year-compare-table{width:100%;min-width:760px;border-collapse:collapse}
+  .year-compare-table.year-table{min-width:500px}
+  .year-compare-table th,.year-compare-table td{padding:9px;border-bottom:1px solid #edf2ff;text-align:left;white-space:nowrap}
+  .year-compare-table th{position:sticky;top:0;z-index:2;background:#f1f6ff;color:#123272;font-size:10px;font-weight:950;text-transform:uppercase}
+  .year-compare-table td{color:#142850;font-weight:800;font-variant-numeric:tabular-nums}
+  .year-compare-table .num{text-align:right}.year-compare-table .center{text-align:center}
+  .compare-badge{display:inline-flex;align-items:center;justify-content:center;min-width:76px;padding:5px 8px;border-radius:999px;border:1px solid #cfe0ff;background:#eef4ff;color:#0b2c6f;font-size:10px;font-weight:950}
+  .compare-badge.good{background:#e8fff3;color:#087044;border-color:#b7efd3}.compare-badge.bad{background:#fff0f1;color:#b91c1c;border-color:#fecdd3}.compare-badge.wait{background:#fff7e6;color:#8a4b00;border-color:#ffe1ad}.compare-badge.best{background:#efe8ff;color:#6732b8;border-color:#d9c9f5}
+  .compare-delta.good{color:#087044}.compare-delta.bad{color:#b91c1c}.compare-delta.neutral{color:var(--muted)}
+  .year-compare-loading{display:flex;align-items:center;justify-content:center;min-height:180px;color:var(--muted);font-weight:900}
+  .year-compare-error{padding:13px;border:1px solid #fecdd3;border-radius:14px;background:#fff1f2;color:#b91c1c;font-weight:850}
+  body.dark-mode .year-compare-head h3{color:#dce8ff}
+  body.dark-mode .year-compare-tools label{color:#bcd0ff}
+  body.dark-mode .year-compare-tools select{background:#0b1730;border-color:#2b4c84;color:#f4f8ff}
+  body.dark-mode .year-compare-kpi,body.dark-mode .year-compare-table-wrap{background:#0f1f3f;border-color:#203866;box-shadow:0 14px 34px rgba(0,0,0,.28)}
+  body.dark-mode .year-compare-kpi .value,body.dark-mode .year-compare-table td{color:#f4f8ff}
+  body.dark-mode .year-compare-table th{background:#102a63;color:#fff}
+  body.dark-mode .year-compare-table th,body.dark-mode .year-compare-table td{border-bottom-color:#203866}
+  body.dark-mode .compare-badge{background:#112a5a;border-color:#2b4c84;color:#dce8ff}
+  body.dark-mode .compare-badge.good{background:#103328;color:#9ce4bd;border-color:#28694b}
+  body.dark-mode .compare-badge.bad{background:#431d28;color:#ffc5cf;border-color:#7d3a4b}
+  body.dark-mode .compare-badge.wait{background:#3b2a0d;color:#ffd98c;border-color:#73551d}
+  body.dark-mode .compare-badge.best{background:#332157;color:#dfcfff;border-color:#624996}
+  @media(max-width:1350px){.year-compare-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
+  @media(max-width:1000px){.year-compare-board,.year-compare-tables{grid-template-columns:1fr}.year-compare-chart{height:280px}}
+  @media(max-width:680px){.year-compare-grid{grid-template-columns:1fr 1fr}.year-compare-tools{width:100%}.year-compare-tools select{flex:1}.year-compare-kpi{min-height:94px}}
+  @media(max-width:440px){.year-compare-grid{grid-template-columns:1fr}}
+</style>
+
+<section class="year-compare" id="yearCompareSection">
+  <div class="year-compare-head">
+    <div><h3>Comparativo mensal e anual</h3><div class="sub">Compare mês a mês, acumulado do ano e total de cada ano.</div></div>
+    <div class="year-compare-tools noPrint">
+      <label for="yearCompareSelect">Ano base</label>
+      <select id="yearCompareSelect"><option>Carregando...</option></select>
+      <button class="btn" type="button" id="yearCompareReload">Atualizar</button>
+    </div>
+  </div>
+
+  <div id="yearCompareContent"><div class="year-compare-loading">Calculando o comparativo...</div></div>
+</section>
+
+<script id="coopex-dashboard-comparativo-script">
+(function(){
+  const section=document.getElementById('yearCompareSection');
+  const content=document.getElementById('yearCompareContent');
+  const select=document.getElementById('yearCompareSelect');
+  const reload=document.getElementById('yearCompareReload');
+  let currentData=null;
+  let chartRevenue=null;
+  let chartCount=null;
+
+  const anchor=[...document.querySelectorAll('.sectionTitle')].find(el=>/opera[cç][aã]o.*cooperados/i.test(el.textContent||''));
+  if(anchor)anchor.insertAdjacentElement('beforebegin',section);
+  else document.querySelector('main.wrap')?.appendChild(section);
+
+  const currency=value=>Number(value||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  const integer=value=>Number(value||0).toLocaleString('pt-BR');
+  const signedCurrency=value=>`${Number(value||0)>0?'+ ':Number(value||0)<0?'- ':''}${currency(Math.abs(Number(value||0)))}`;
+  const percent=value=>value===null||value===undefined?'—':`${Number(value)>0?'+':''}${Number(value).toLocaleString('pt-BR',{minimumFractionDigits:1,maximumFractionDigits:1})}%`;
+  const esc=value=>String(value??'').replace(/[&<>"']/g,ch=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[ch]));
+
+  function apiParams(year){
+    const params=new URLSearchParams(location.search);
+    ['periodo','data_inicio','data_fim'].forEach(key=>params.delete(key));
+    params.set('ano',String(year));
+    return params;
+  }
+
+  function deltaClass(value){return Number(value)>0?'good':Number(value)<0?'bad':'neutral'}
+  function kpi(label,value,detail,color,klass=''){
+    return `<article class="year-compare-kpi ${klass}" style="--compare-bar:${color}"><div class="label">${esc(label)}</div><div class="value">${value}</div><div class="detail">${detail}</div></article>`
+  }
+
+  function monthStatus(item,data){
+    const now=new Date();
+    const future=data.ano===now.getFullYear()&&item.mes>now.getMonth()+1;
+    if(future)return {label:'Aguardando',klass:'wait',future:true};
+    if(item.melhor===String(data.ano))return {label:data.ano,klass:'good',future:false};
+    if(item.melhor===String(data.ano_anterior))return {label:data.ano_anterior,klass:'bad',future:false};
+    return {label:item.melhor||'Empate',klass:'',future:false};
+  }
+
+  function render(data){
+    currentData=data;
+    const diffClass=deltaClass(data.diferenca.valor);
+    const qtdClass=deltaClass(data.diferenca.qtd);
+    const bestMonth=data.melhor_mes?`${data.melhor_mes.label} • ${currency(data.melhor_mes.atual_valor)}`:'Sem dados';
+    const bestYear=data.melhor_ano?`${data.melhor_ano.ano} • ${currency(data.melhor_ano.valor)}`:'Sem dados';
+
+    const monthRows=data.meses.map(item=>{
+      const status=monthStatus(item,data);
+      const valueDelta=item.valor_pct===null?'—':percent(item.valor_pct);
+      const countDelta=item.qtd_pct===null?'—':percent(item.qtd_pct);
+      const currentValue=status.future?'—':currency(item.atual_valor);
+      const currentCount=status.future?'—':integer(item.atual_qtd);
+      return `<tr>
+        <td><b>${esc(item.label)}</b>${data.ano===new Date().getFullYear()&&item.mes===new Date().getMonth()+1?' <span class="compare-badge wait">Parcial</span>':''}</td>
+        <td class="num">${currency(item.anterior_valor)}</td>
+        <td class="num">${currentValue}</td>
+        <td class="num compare-delta ${status.future?'neutral':deltaClass(item.valor_pct)}">${status.future?'—':valueDelta}</td>
+        <td class="center">${integer(item.anterior_qtd)}</td>
+        <td class="center">${currentCount}</td>
+        <td class="center compare-delta ${status.future?'neutral':deltaClass(item.qtd_pct)}">${status.future?'—':countDelta}</td>
+        <td class="center"><span class="compare-badge ${status.klass}">${esc(status.label)}</span></td>
+      </tr>`
+    }).join('');
+
+    const yearRows=(data.anos||[]).map(item=>{
+      const best=data.melhor_ano&&Number(data.melhor_ano.ano)===Number(item.ano);
+      return `<tr><td><b>${item.ano}</b> ${item.parcial?'<span class="compare-badge wait">Parcial</span>':''} ${best?'<span class="compare-badge best">Melhor ano</span>':''}</td><td class="center">${integer(item.qtd)}</td><td class="num">${currency(item.valor)}</td><td class="num">${currency(item.ticket)}</td></tr>`
+    }).join('')||'<tr><td colspan="4">Sem dados anuais.</td></tr>';
+
+    content.innerHTML=`
+      <div class="year-compare-grid">
+        ${kpi(`Faturamento ${data.ano}`,currency(data.atual.valor),`${data.comparacao_tipo}: ${data.corte_label}`,'#15b46f')}
+        ${kpi(`Faturamento ${data.ano_anterior}`,currency(data.anterior.valor),`Mesmo recorte para comparação`,'#003399')}
+        ${kpi('Diferença no faturamento',signedCurrency(data.diferenca.valor),`${percent(data.diferenca.valor_pct)} sobre ${data.ano_anterior}`,diffClass==='good'?'#15b46f':diffClass==='bad'?'#dc2626':'#64748b',diffClass==='good'?'positive':diffClass==='bad'?'negative':'')}
+        ${kpi(`Entregas ${data.ano}`,integer(data.atual.qtd),`${percent(data.diferenca.qtd_pct)} em relação a ${data.ano_anterior}`,'#0891b2',qtdClass==='good'?'positive':qtdClass==='bad'?'negative':'')}
+        ${kpi('Melhor mês do ano base',bestMonth,`Maior faturamento mensal de ${data.ano}`,'#f59e0b')}
+        ${kpi('Melhor ano registrado',bestYear,'Maior valor total na base de dados','#7b48d8')}
+      </div>
+
+      <div class="year-compare-board">
+        <article class="card"><div class="cardHead"><div><h2>Faturamento mês a mês</h2><div class="sub">${data.ano_anterior} comparado com ${data.ano}</div></div><span class="tag info">Valores</span></div><div class="year-compare-chart"><canvas id="yearRevenueChart"></canvas></div></article>
+        <article class="card"><div class="cardHead"><div><h2>Entregas mês a mês</h2><div class="sub">Quantidade de pedidos registrados</div></div><span class="tag info">Quantidade</span></div><div class="year-compare-chart"><canvas id="yearCountChart"></canvas></div></article>
+      </div>
+
+      <div class="year-compare-tables">
+        <article class="card"><div class="cardHead"><div><h2>Resultado de cada mês</h2><div class="sub">Mostra qual ano foi melhor em faturamento.</div></div><span class="tag">${data.ano_anterior} × ${data.ano}</span></div><div class="year-compare-table-wrap"><table class="year-compare-table"><thead><tr><th>Mês</th><th class="num">R$ ${data.ano_anterior}</th><th class="num">R$ ${data.ano}</th><th class="num">Dif. R$</th><th class="center">Qtd ${data.ano_anterior}</th><th class="center">Qtd ${data.ano}</th><th class="center">Dif. qtd</th><th class="center">Melhor</th></tr></thead><tbody>${monthRows}</tbody></table></div></article>
+        <article class="card"><div class="cardHead"><div><h2>Comparativo ano por ano</h2><div class="sub">Total registrado em cada ano.</div></div><span class="tag ok">Histórico</span></div><div class="year-compare-table-wrap"><table class="year-compare-table year-table"><thead><tr><th>Ano</th><th class="center">Entregas</th><th class="num">Faturamento</th><th class="num">Ticket médio</th></tr></thead><tbody>${yearRows}</tbody></table></div></article>
+      </div>
+      <div class="sub" style="margin-top:7px">Atualizado em ${esc(data.gerado_em)}. O comparativo ignora apenas o filtro de datas e mantém cooperado, contrato, cliente, pagamento, origem e destino selecionados no dashboard.</div>`;
+
+    populateYears(data);
+    renderCharts(data);
+  }
+
+  function populateYears(data){
+    const before=String(select.value||data.ano);
+    select.innerHTML=(data.anos_disponiveis||[]).map(year=>`<option value="${year}" ${Number(year)===Number(data.ano)?'selected':''}>${year} × ${Number(year)-1}</option>`).join('');
+    if([...select.options].some(option=>option.value===before))select.value=before;
+  }
+
+  function chartTextColor(){return document.body.classList.contains('dark-mode')?'#cbd8f2':'#334155'}
+  function chartGridColor(){return document.body.classList.contains('dark-mode')?'rgba(99,130,180,.18)':'#eaf1ff'}
+  function chartOptions(money){
+    return {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:11,color:chartTextColor(),font:{size:11,weight:'800'}}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${money?currency(ctx.raw):integer(ctx.raw)}`}}},scales:{x:{grid:{display:false},ticks:{color:chartTextColor(),font:{size:10,weight:'700'}}},y:{beginAtZero:true,grid:{color:chartGridColor()},ticks:{color:chartTextColor(),font:{size:10,weight:'700'},callback:value=>money?'R$ '+Number(value).toLocaleString('pt-BR'):Number(value).toLocaleString('pt-BR')}}}};
+  }
+
+  function renderCharts(data){
+    if(typeof Chart==='undefined')return;
+    chartRevenue?.destroy();chartCount?.destroy();
+    const labels=data.meses.map(item=>item.label);
+    const now=new Date();
+    const currentValues=data.meses.map(item=>data.ano===now.getFullYear()&&item.mes>now.getMonth()+1?null:item.atual_valor);
+    const currentCounts=data.meses.map(item=>data.ano===now.getFullYear()&&item.mes>now.getMonth()+1?null:item.atual_qtd);
+    chartRevenue=new Chart(document.getElementById('yearRevenueChart'),{type:'bar',data:{labels,datasets:[{label:String(data.ano_anterior),data:data.meses.map(item=>item.anterior_valor),backgroundColor:'#003399',borderRadius:7,maxBarThickness:28},{label:String(data.ano),data:currentValues,backgroundColor:'#15b46f',borderRadius:7,maxBarThickness:28}]},options:chartOptions(true)});
+    chartCount=new Chart(document.getElementById('yearCountChart'),{type:'line',data:{labels,datasets:[{label:String(data.ano_anterior),data:data.meses.map(item=>item.anterior_qtd),borderColor:'#003399',backgroundColor:'#003399',borderWidth:3,tension:.32,pointRadius:3},{label:String(data.ano),data:currentCounts,borderColor:'#15b46f',backgroundColor:'#15b46f',borderWidth:3,tension:.32,pointRadius:3}]},options:chartOptions(false)});
+  }
+
+  async function load(year,force=false){
+    content.innerHTML='<div class="year-compare-loading">Calculando o comparativo...</div>';
+    reload.disabled=true;
+    try{
+      const params=apiParams(year);if(force)params.set('_',Date.now());
+      const response=await fetch(`/api/dashboard/comparativo-anual?${params.toString()}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
+      const data=await response.json();
+      if(!response.ok||!data.ok)throw new Error(data.error||'Não foi possível carregar o comparativo.');
+      render(data);
+    }catch(error){content.innerHTML=`<div class="year-compare-error">${esc(error.message||'Não foi possível carregar o comparativo.')}</div>`}
+    finally{reload.disabled=false}
+  }
+
+  select.addEventListener('change',()=>load(Number(select.value)));
+  reload.addEventListener('click',()=>load(Number(select.value)||new Date().getFullYear(),true));
+  new MutationObserver(()=>{if(currentData)renderCharts(currentData)}).observe(document.body,{attributes:true,attributeFilter:['class']});
+  load(new Date().getFullYear());
+})();
+</script>
