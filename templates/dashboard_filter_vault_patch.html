@@ -1,0 +1,89 @@
+<style id="coopex-dashboard-filter-vault-style">
+  #dashboardFilterVault{display:none!important}
+  .dashboard-filter-fields>.filters{display:grid!important}
+</style>
+<script id="coopex-dashboard-filter-vault-script">
+(function(){
+  const form=document.querySelector('.top form.topbar')||document.querySelector('form.topbar');
+  if(!form)return;
+
+  form.id=form.id||'dashboardReportForm';
+
+  const filters=form.querySelector('.filters')
+    ||document.querySelector('.dashboard-filter-shell .filters')
+    ||document.querySelector('.dash-v2-filter-shell .filters');
+  const apply=form.querySelector('.btn.primary')
+    ||[...document.querySelectorAll('button,a')].find(node=>/aplicar( filtros)?/i.test(node.textContent||''));
+
+  const vault=document.createElement('section');
+  vault.id='dashboardFilterVault';
+  vault.setAttribute('aria-hidden','true');
+  document.body.appendChild(vault);
+
+  if(filters){
+    filters.querySelectorAll('input,select').forEach(field=>field.setAttribute('form',form.id));
+    vault.appendChild(filters);
+  }
+  if(apply){
+    apply.setAttribute('form',form.id);
+    vault.appendChild(apply);
+  }
+
+  function restore(){
+    const fieldsHost=document.querySelector('.dashboard-filter-fields');
+    const actionsHost=document.querySelector('.dashboard-filter-actions');
+    if(!fieldsHost||!actionsHost)return false;
+
+    const savedFilters=vault.querySelector('.filters')||document.querySelector('#dashboardFilterVault .filters');
+    if(savedFilters&&!fieldsHost.contains(savedFilters)){
+      fieldsHost.appendChild(savedFilters);
+      savedFilters.querySelectorAll('input,select').forEach(field=>field.setAttribute('form',form.id));
+
+      const clienteLabel=savedFilters.querySelector('[name="cliente"]')?.closest('.f')?.querySelector('label');
+      if(clienteLabel)clienteLabel.textContent='Estabelecimento / cliente';
+      const grupoLabel=savedFilters.querySelector('[name="grupo_id"]')?.closest('.f')?.querySelector('label');
+      if(grupoLabel)grupoLabel.textContent='Contrato';
+    }
+
+    let applyButton=vault.querySelector('.btn.primary')
+      ||document.querySelector('#dashboardFilterVault .btn.primary')
+      ||actionsHost.querySelector('.apply-filter');
+
+    if(!applyButton){
+      applyButton=document.createElement('button');
+      applyButton.type='submit';
+      applyButton.className='btn primary apply-filter';
+      applyButton.textContent='Aplicar filtros';
+    }
+    applyButton.classList.add('apply-filter');
+    applyButton.textContent='Aplicar filtros';
+    applyButton.setAttribute('form',form.id);
+    if(!actionsHost.contains(applyButton))actionsHost.appendChild(applyButton);
+
+    const currentFilters=fieldsHost.querySelector('.filters');
+    if(!currentFilters)return false;
+
+    const periodo=currentFilters.querySelector('[name="periodo"]');
+    currentFilters.querySelectorAll('[name="data_inicio"],[name="data_fim"],[name="cooperado_id"],[name="grupo_id"],[name="cliente"],[name="status_pagamento"],[name="origem"],[name="destino"]').forEach(field=>{
+      if(field.dataset.personalizadoLigado==='1')return;
+      field.dataset.personalizadoLigado='1';
+      const eventName=field.tagName==='SELECT'?'change':'input';
+      field.addEventListener(eventName,()=>{
+        const filled=field.tagName==='SELECT'?(field.value&&field.value!=='todos'):Boolean(field.value.trim());
+        if(filled&&periodo)periodo.value='personalizado';
+      });
+    });
+
+    if(!vault.children.length)vault.remove();
+    return true;
+  }
+
+  document.addEventListener('DOMContentLoaded',()=>{
+    let attempts=0;
+    const timer=setInterval(()=>{
+      attempts+=1;
+      if(restore()||attempts>=40)clearInterval(timer);
+    },100);
+  },{once:true});
+})();
+</script>
