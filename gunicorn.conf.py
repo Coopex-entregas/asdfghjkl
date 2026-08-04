@@ -81,13 +81,17 @@ def post_worker_init(worker):
         import app as app_module
         import escala_feature
         import escala_ajustes
+        import escala_troca
         import agendamento_feature
 
         _corrigir_serializacao_escala(escala_feature)
         escala_feature.install(app_module)
         escala_ajustes.install(app_module, escala_feature)
+        escala_troca.install(app_module, escala_feature)
         agendamento_feature.install(app_module)
-        worker.log.info("Escala semanal, ajustes e agendamentos COOPEX instalados.")
+        worker.log.info(
+            "Escala semanal, ajustes, trocas e agendamentos COOPEX instalados."
+        )
     except Exception:
         worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
         raise
