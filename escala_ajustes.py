@@ -67,6 +67,15 @@ def _parse_common_form(require_cooperado=False):
     }
 
 
+def _limpar_ajuste_antigo(item_id):
+    ajuste_model = getattr(SCALE, "Ajuste", None)
+    if not ajuste_model:
+        return
+    ajuste = ajuste_model.query.filter_by(item_id=item_id).first()
+    if ajuste:
+        DB.session.delete(ajuste)
+
+
 def _adicionar():
     if not _admin():
         return redirect(url_for("login"))
@@ -111,6 +120,7 @@ def _editar(item_id):
     try:
         dados = _parse_common_form(require_cooperado=False)
         cooperado = dados["cooperado"]
+        _limpar_ajuste_antigo(item.id)
 
         item.data = dados["data"]
         item.contrato = dados["contrato"]
@@ -149,6 +159,7 @@ def _remover(item_id):
     item = SCALE.Item.query.get_or_404(item_id)
     nome = item.cooperado.nome if item.cooperado else item.nome_planilha
     try:
+        _limpar_ajuste_antigo(item.id)
         DB.session.delete(item)
         _meta_recount()
         DB.session.commit()
