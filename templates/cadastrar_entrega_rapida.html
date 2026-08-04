@@ -31,12 +31,12 @@
           <div class="cx-field search-box"><label for="cliente">Cliente</label><input class="cx-input" id="cliente" name="cliente" required autocomplete="off" placeholder="Digite nome ou telefone"><div id="loading" class="loading">Buscando clientes...</div><div id="results" class="results"></div><div id="clientMeta" class="cx-note client-meta"></div></div>
           <div class="cx-grid-2"><div class="cx-field"><label for="coleta_bairro">Bairro da coleta</label><input class="cx-input" id="coleta_bairro" name="coleta_bairro" required placeholder="Preenchido pelo cliente"></div><div class="cx-field"><label for="entrega_bairro">Bairro da entrega</label><input class="cx-input" id="entrega_bairro" name="entrega_bairro" required placeholder="Digite o destino"></div></div>
           <div class="cx-grid-2"><div class="cx-field"><label for="valor">Valor</label><input class="cx-input" id="valor" name="valor" required inputmode="decimal" placeholder="Calculado pela rota"><span id="routeMsg" class="route-msg">Selecione o cliente e informe o destino.</span></div><div class="cx-field"><label for="pagamento">Forma de pagamento</label><select class="cx-select" id="pagamento" name="pagamento" required><option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Comanda">3. Comanda</option><option id="creditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option></select><span id="creditMsg" class="credit-msg"></span></div></div>
-          <div class="cx-field"><label for="cooperado_id">Atribuir cooperado</label><select class="cx-select" id="cooperado_id" name="cooperado_id"><option value="" {% if not primeiro_fila_id %}selected{% endif %}>Sem cooperado</option>{% for c in cooperados %}<option value="{{ c.id }}" {% if primeiro_fila_id and c.id == primeiro_fila_id %}selected{% endif %}>{% if c.id in fila_por_id %}{{ fila_por_id[c.id] }}º da fila — {% endif %}{{ c.nome }}</option>{% endfor %}</select>{% if primeiro_fila_id %}<span class="cx-hint fila-note">O 1º cooperado da fila já está selecionado. Você pode trocar.</span>{% endif %}</div>
-          <div class="cx-actions"><button class="cx-btn" type="submit">Cadastrar entrega rápida</button><a class="cx-btn alt" href="{{ url_for('clientes') }}">Cadastrar cliente</a><a class="cx-btn alt" href="{{ url_for('cadastrar_entrega', modo='completo') }}">Abrir completa</a></div>
+          <div class="cx-field"><label for="cooperado_id">Atribuir cooperado</label><select class="cx-select" id="cooperado_id" name="cooperado_id"><option value="" selected>Sem cooperado</option>{% for c in cooperados %}<option value="{{ c.id }}">{% if c.id in fila_por_id %}{{ fila_por_id[c.id] }}º da fila — {% endif %}{{ c.nome }}</option>{% endfor %}</select><span class="cx-hint fila-note">Sem cooperado é a opção inicial. Depois aparecem a fila de espera e os escalados na BASE.</span></div>
+          <div class="cx-actions"><button class="cx-btn" type="submit">Cadastrar entrega rápida</button><a class="cx-btn alt" href="{{ url_for('clientes') }}">Cadastrar cliente</a><a class="cx-btn alt" href="{{ url_for('cadastrar_entrega', modo='completo') }}">Abrir completa</a><a class="cx-btn alt" href="{{ url_for('admin') }}">← Voltar ao Admin</a></div>
         </form>
       </div>
     </section>
-    <aside class="cx-card side"><div class="cx-card-head"><h3>Resumo</h3><p>Confira antes de cadastrar.</p></div><div class="cx-card-body"><div class="summary"><div><span>Cliente</span><strong id="sCliente">—</strong></div><div><span>Coleta</span><strong id="sColeta">—</strong></div><div><span>Entrega</span><strong id="sEntrega">—</strong></div><div><span>Valor</span><strong id="sValor">R$ 0,00</strong></div><div><span>Pagamento</span><strong id="sPagamento">Pix</strong></div><div><span>Cooperado</span><strong id="sCooperado">—</strong></div></div><div class="cx-note" style="margin-top:10px">O crédito automático só aparece para cliente com saldo ou histórico de crédito. Clientes que usam crédito com frequência já ficam selecionados automaticamente.</div></div></aside>
+    <aside class="cx-card side"><div class="cx-card-head"><h3>Resumo</h3><p>Confira antes de cadastrar.</p></div><div class="cx-card-body"><div class="summary"><div><span>Cliente</span><strong id="sCliente">—</strong></div><div><span>Coleta</span><strong id="sColeta">—</strong></div><div><span>Entrega</span><strong id="sEntrega">—</strong></div><div><span>Valor</span><strong id="sValor">R$ 0,00</strong></div><div><span>Pagamento</span><strong id="sPagamento">Pix</strong></div><div><span>Cooperado</span><strong id="sCooperado">Sem cooperado</strong></div></div><div class="cx-note" style="margin-top:10px">O crédito automático só aparece para cliente com saldo ou histórico de crédito. Clientes que usam crédito com frequência já ficam selecionados automaticamente.</div></div></aside>
   </div>
 </main>
 
@@ -59,12 +59,12 @@
   async function loadRoutes(){if(routes)return routes;const r=await fetch(`{{ url_for('api_list_precos') }}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error();routes=d.items||[];return routes}
   async function lookup(){bairro.value=destino.value.trim();if(!origem.value.trim()||!destino.value.trim()){routeMsg.textContent='Informe coleta e entrega.';sync();return}routeMsg.textContent='Buscando valor...';try{const list=await loadRoutes(),o=norm(origem.value),d=norm(destino.value),r=list.find(x=>(norm(x.origem)===o&&norm(x.destino)===d)||(norm(x.origem)===d&&norm(x.destino)===o));if(r){valor.value=Number(r.valor||0).toFixed(2).replace('.',',');routeMsg.textContent=`Valor encontrado: ${money(r.valor)}`;routeMsg.style.color='var(--cx-green)'}else{routeMsg.textContent='Rota não cadastrada. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}}catch(e){routeMsg.textContent='Não foi possível consultar. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}sync()}
   function lookupSoon(ms=260){clearTimeout(routeTimer);routeTimer=setTimeout(lookup,ms)}
-  function sync(){el('sCliente').textContent=cliente.value||'—';el('sColeta').textContent=origem.value||'—';el('sEntrega').textContent=destino.value||'—';const n=parseFloat(String(valor.value||'0').replace(/\./g,'').replace(',','.'))||0;el('sValor').textContent=money(n);el('sPagamento').textContent=pagamento.options[pagamento.selectedIndex]?.text.replace(/^\d+\.\s*/,'')||'—';el('sCooperado').textContent=coop.options[coop.selectedIndex]?.text||'—'}
+  function sync(){el('sCliente').textContent=cliente.value||'—';el('sColeta').textContent=origem.value||'—';el('sEntrega').textContent=destino.value||'—';const n=parseFloat(String(valor.value||'0').replace(/\./g,'').replace(',','.'))||0;el('sValor').textContent=money(n);el('sPagamento').textContent=pagamento.options[pagamento.selectedIndex]?.text.replace(/^\d+\.\s*/,'')||'—';el('sCooperado').textContent=coop.options[coop.selectedIndex]?.text||'Sem cooperado'}
   cliente.oninput=()=>{clienteId.value='';meta.style.display='none';creditState({tem_credito:false,saldo:0,frequent:false});clearTimeout(timer);const q=cliente.value.trim();if(q.length<2){hide();sync();return}timer=setTimeout(()=>search(q),160);sync()};
   cliente.onkeydown=e=>{const nodes=[...results.querySelectorAll('.result')];if(!nodes.length||results.style.display==='none')return;if(e.key==='ArrowDown'){e.preventDefault();activate(active<nodes.length-1?active+1:0)}else if(e.key==='ArrowUp'){e.preventDefault();activate(active>0?active-1:nodes.length-1)}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape')hide()};
   document.addEventListener('click',e=>{if(!results.contains(e.target)&&e.target!==cliente)hide()});origem.oninput=()=>lookupSoon();destino.oninput=()=>{bairro.value=destino.value;lookupSoon();sync()};valor.oninput=sync;pagamento.onchange=sync;coop.onchange=sync;
   el('quickForm').onsubmit=e=>{if(!valor.value.trim()){e.preventDefault();el('flash').textContent='Informe o valor da entrega.';el('flash').style.display='block';valor.focus()}bairro.value=destino.value||origem.value};
-  function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';if(firstQueue)coop.value=String(firstQueue);routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
+  function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';coop.value='';routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
   window.addEventListener('pageshow',reset);reset();
   (function(){const b=el('theme');if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');const s=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');s()};s()})();
 </script>
@@ -73,8 +73,9 @@
   const select=document.getElementById('cooperado_id');
   if(!select)return;
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').trim();
-  const filaId=firstQueue?String(firstQueue):'';
-  const todos=[...select.options].filter(o=>o.value).map(o=>({id:String(o.value),nome:(o.textContent||'').replace(/^.*?—\s*/,'').trim()}));
+  const iniciais=[...select.options].filter(o=>o.value).map(o=>{const texto=(o.textContent||'').trim();const m=texto.match(/^(\d+)º\s+da\s+fila\s+—\s*(.+)$/i);return{id:String(o.value),nome:(m?m[2]:texto).trim(),fila:m?Number(m[1]):null}});
+  const todos=[...iniciais];
+  const fila=todos.filter(c=>Number.isFinite(c.fila)).sort((a,b)=>a.fila-b.fila);
   let idsBase=new Set();
 
   function adicionar(id,texto,antesDe=null){
@@ -85,7 +86,7 @@
   }
 
   function manual(){
-    const termo=prompt('Digite parte do nome do cooperado que trabalhará fora da escala:');if(!termo)return null;
+    const termo=prompt('Digite parte do nome do cooperado:');if(!termo)return null;
     let lista=todos.filter(c=>norm(c.nome).includes(norm(termo)));
     if(!lista.length){alert('Nenhum cooperado encontrado.');return null}
     if(lista.length===1)return lista[0];
@@ -97,19 +98,16 @@
     try{
       const r=await fetch('{{ url_for("api_escala_agora") }}',{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();
       if(!r.ok||!d.ok||!d.restricao_ativa)return;
-
       const itensBase=(d.itens||[]).filter(x=>norm(x.contrato)==='base');
       idsBase=new Set(itensBase.map(x=>String(x.cooperado_id)));
-      const primeiroFila=todos.find(c=>c.id===filaId)||null;
 
       select.innerHTML='<option value="">Sem cooperado</option>';
-      if(primeiroFila)adicionar(primeiroFila.id,`1º da fila — ${primeiroFila.nome}`);
-      todos.filter(c=>idsBase.has(c.id)&&c.id!==filaId).forEach(c=>adicionar(c.id,c.nome));
+      fila.forEach(c=>adicionar(c.id,`${c.fila}º da fila — ${c.nome}`));
+      todos.filter(c=>idsBase.has(c.id)&&!Number.isFinite(c.fila)).forEach(c=>adicionar(c.id,c.nome));
 
       const m=document.createElement('option');m.value='__fora_escala__';m.textContent='Digitar outro cooperado';select.appendChild(m);
-      const primeiroBase=[...select.options].find(o=>idsBase.has(String(o.value)));
-      select.value=primeiroFila?primeiroFila.id:(primeiroBase?primeiroBase.value:'');
-      select.title='Mostra o 1º da fila e os cooperados escalados na BASE neste horário.';
+      select.value='';
+      select.title='Sem cooperado fica primeiro. Depois aparecem a fila e os escalados na BASE.';
       select.dispatchEvent(new Event('change',{bubbles:true}));
     }catch(e){}
   }
@@ -118,7 +116,7 @@
     if(select.value!=='__fora_escala__')return;
     e.stopImmediatePropagation();
     const c=manual();
-    if(!c){select.value=filaId&&[...select.options].some(o=>o.value===filaId)?filaId:'';return}
+    if(!c){select.value='';return}
     const manualOpt=select.options[select.options.length-1];
     let o=[...select.options].find(x=>x.value===c.id);
     if(!o)o=adicionar(c.id,c.nome,manualOpt);
