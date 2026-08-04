@@ -1,11 +1,38 @@
-<style id="coopex-dashboard-tabs-runtime-fix-style">
+<style id="coopex-dashboard-tabs-hard-fix-style">
   .dashboard-tab-panel{display:none!important}
   .dashboard-tab-panel.active{display:block!important}
+  .dashboard-tabs-bar{display:flex!important}
   .dashboard-first-year-note{margin:0 0 10px;padding:10px 12px;border:1px solid #cbdaf2;border-radius:11px;background:#eef4ff;color:#173d8d;font-size:.76rem;font-weight:800}
   body.dark-mode .dashboard-first-year-note{background:#142744;border-color:#34517f;color:#dce7ff}
 </style>
-<script id="coopex-dashboard-tabs-runtime-fix-script">
+<script id="coopex-dashboard-tabs-hard-fix-script">
 (function(){
+  function textOf(node){return String(node?.textContent||'').toLowerCase()}
+  function byTitle(root,title){
+    const q=String(title||'').toLowerCase();
+    return [...root.querySelectorAll('.card')].find(card=>textOf(card.querySelector('h2')).includes(q))||null;
+  }
+  function findSectionContaining(root,needle,selector='section'){
+    const q=String(needle||'').toLowerCase();
+    return [...root.querySelectorAll(selector)].find(node=>textOf(node).includes(q))||null;
+  }
+  function makePanel(id,title,description){
+    const panel=document.createElement('section');
+    panel.className='dashboard-tab-panel';
+    panel.dataset.panel=id;
+    panel.setAttribute('aria-hidden','true');
+    panel.innerHTML=`<div class="dashboard-panel-title"><div><h2>${title}</h2><p>${description}</p></div></div>`;
+    return panel;
+  }
+  function makeGrid(panel,klass='dashboard-panel-grid'){
+    const grid=document.createElement('div');
+    grid.className=klass;
+    panel.appendChild(grid);
+    return grid;
+  }
+  function appendUnique(parent,node){
+    if(node&&node!==parent&&!parent.contains(node))parent.appendChild(node);
+  }
   function resizeCharts(panel){
     requestAnimationFrame(function(){
       panel?.querySelectorAll('canvas').forEach(function(canvas){
@@ -20,151 +47,225 @@
     });
   }
 
-  function activateTab(id){
-    const panels=[...document.querySelectorAll('.dashboard-tab-panel')];
-    const target=document.querySelector(`.dashboard-tab-panel[data-panel="${id}"]`);
-    if(!panels.length||!target)return false;
+  function buildDashboard(){
+    const main=document.querySelector('main.wrap');
+    const top=document.querySelector('.top');
+    const form=top?.querySelector('form.topbar');
+    if(!main||!top||!form)return false;
 
-    panels.forEach(function(panel){
-      const active=panel===target;
-      panel.classList.toggle('active',active);
-      panel.style.setProperty('display',active?'block':'none','important');
-      panel.setAttribute('aria-hidden',active?'false':'true');
+    document.querySelectorAll('.dash-v2-menu-wrap,.dash-v2-filter-shell,.dash-bank-wrap,.dash-context,.dashboard-tabs-bar,.dashboard-filter-shell').forEach(node=>node.remove());
+    top.querySelector('.brand img')?.remove();
+
+    const firstKpi=[...main.querySelectorAll('section.gridKpi')].find(section=>/entregas/i.test(section.textContent)&&/ticket médio/i.test(section.textContent))||null;
+    const dailyBoard=findSectionContaining(main,'Faturamento e entregas por dia','section.board');
+
+    const topCoop=byTitle(main,'Top cooperados');
+    const chartCoop=byTitle(main,'Faturamento por cooperado');
+    const topContracts=byTitle(main,'Contratos / Clientes agrupados');
+    const chartContracts=byTitle(main,'Faturamento por contrato');
+    const whatsapp=byTitle(main,'Resumo para WhatsApp');
+    const paymentChart=byTitle(main,'Forma de pagamento');
+
+    const routesBoard=findSectionContaining(main,'Top bairros de coleta','section.board4');
+    const creditKpi=[...main.querySelectorAll('section.gridKpi')].find(section=>/crédito lançado/i.test(section.textContent))||null;
+    const creditBoard=findSectionContaining(main,'Clientes com maior saldo de crédito','section.board');
+    const settingsBoard=[...main.querySelectorAll('section.board')].find(section=>section.querySelector('form[action*="estatisticas_cooperado/grupos"]'))||null;
+    const compare=document.getElementById('yearCompareSection')||document.querySelector('.year-compare');
+
+    const panels={
+      geral:makePanel('geral','Visão geral','Indicadores principais, evolução diária e alertas da operação.'),
+      cooperados:makePanel('cooperados','Cooperados','Produção, faturamento, ticket médio e pendências por cooperado.'),
+      contratos:makePanel('contratos','Contratos e estabelecimentos','Produção agrupada por contrato, cliente e estabelecimento.'),
+      rotas:makePanel('rotas','Bairros e rotas','Coletas, entregas, rotas mais usadas e rotas mais lucrativas.'),
+      financeiro:makePanel('financeiro','Financeiro e crédito','Pagamentos, pendências e créditos dos clientes.'),
+      comparativo:makePanel('comparativo','Comparativo mensal e anual','Comparação mês a mês e ano a ano, a partir de 2025.'),
+      configuracoes:makePanel('configuracoes','Configurações','Gerenciamento dos grupos e nomes vinculados aos contratos.')
+    };
+
+    appendUnique(panels.geral,firstKpi);
+    appendUnique(panels.geral,dailyBoard);
+
+    const coopGrid=makeGrid(panels.cooperados);
+    appendUnique(coopGrid,topCoop);
+    appendUnique(coopGrid,chartCoop);
+
+    const contractGrid=makeGrid(panels.contratos,'dashboard-panel-grid three');
+    appendUnique(contractGrid,topContracts);
+    appendUnique(contractGrid,chartContracts);
+    appendUnique(contractGrid,whatsapp);
+
+    appendUnique(panels.rotas,routesBoard);
+
+    appendUnique(panels.financeiro,creditKpi);
+    appendUnique(panels.financeiro,creditBoard);
+    if(paymentChart){
+      const financeExtra=makeGrid(panels.financeiro,'dashboard-panel-grid one');
+      appendUnique(financeExtra,paymentChart);
+    }
+
+    appendUnique(panels.comparativo,compare);
+    appendUnique(panels.configuracoes,settingsBoard);
+
+    Object.entries(panels).forEach(function(entry){
+      const panel=entry[1];
+      if(panel.children.length===1){
+        const empty=document.createElement('div');
+        empty.className='card';
+        empty.innerHTML='<div class="sub">Nenhuma informação encontrada para esta área com os filtros atuais.</div>';
+        panel.appendChild(empty);
+      }
     });
-    document.querySelectorAll('.dashboard-tab-button').forEach(function(button){
-      const active=button.dataset.tab===id;
-      button.classList.toggle('active',active);
-      button.setAttribute('aria-selected',active?'true':'false');
+
+    const host=document.createElement('div');
+    host.id='dashboardTabsHost';
+    Object.values(panels).forEach(panel=>host.appendChild(panel));
+    main.replaceChildren(host);
+
+    const tabs=[
+      ['geral','▦','Visão geral'],
+      ['cooperados','♙','Cooperados'],
+      ['contratos','▥','Contratos'],
+      ['rotas','⌖','Bairros e rotas'],
+      ['financeiro','R$','Financeiro'],
+      ['comparativo','↗','Comparativo'],
+      ['configuracoes','⚙','Configurações']
+    ];
+    const tabsBar=document.createElement('nav');
+    tabsBar.className='dashboard-tabs-bar noPrint';
+    tabsBar.innerHTML=tabs.map(([id,icon,label])=>`<button class="dashboard-tab-button" type="button" data-tab="${id}" aria-controls="dashboard-panel-${id}"><span class="tab-icon">${icon}</span><span>${label}</span></button>`).join('')+'<span class="dashboard-tab-spacer"></span>';
+    top.insertAdjacentElement('afterend',tabsBar);
+    Object.entries(panels).forEach(([id,panel])=>panel.id=`dashboard-panel-${id}`);
+
+    const filters=[...document.querySelectorAll('.filters')].find(node=>node.querySelector('[name="periodo"]'))||null;
+    const apply=[...document.querySelectorAll('button,a')].find(node=>/aplicar( filtros)?/i.test(node.textContent||'')&&node.closest('form,section,.dashboard-filter-shell,.dash-v2-filter-shell'))||null;
+    const filterShell=document.createElement('section');
+    filterShell.className='dashboard-filter-shell noPrint';
+    filterShell.innerHTML='<div class="dashboard-filter-title-row"><span class="dashboard-filter-title">Filtros do relatório</span><div style="display:flex;align-items:center;gap:7px"><label class="dashboard-filter-search"><span>⌕</span><input type="search" autocomplete="off" placeholder="Pesquisar dentro da aba aberta"></label><span class="dashboard-search-count"></span></div></div><div class="dashboard-filter-content"><div class="dashboard-filter-fields"></div><div class="dashboard-filter-actions"><button type="button" data-clear>Limpar</button></div></div>';
+    tabsBar.insertAdjacentElement('afterend',filterShell);
+
+    if(filters){
+      filterShell.querySelector('.dashboard-filter-fields').appendChild(filters);
+      filters.querySelectorAll('input,select').forEach(field=>field.setAttribute('form',form.id||'dashboardReportForm'));
+      form.id=form.id||'dashboardReportForm';
+      const clienteLabel=filters.querySelector('[name="cliente"]')?.closest('.f')?.querySelector('label');
+      if(clienteLabel)clienteLabel.textContent='Estabelecimento / cliente';
+      const grupoLabel=filters.querySelector('[name="grupo_id"]')?.closest('.f')?.querySelector('label');
+      if(grupoLabel)grupoLabel.textContent='Contrato';
+    }
+    if(apply){
+      apply.classList.add('apply-filter');
+      apply.textContent='Aplicar filtros';
+      apply.setAttribute('form',form.id||'dashboardReportForm');
+      filterShell.querySelector('.dashboard-filter-actions').appendChild(apply);
+    }
+
+    let active='geral';
+    try{active=sessionStorage.getItem('coopex_dashboard_tab')||'geral'}catch(error){}
+    if(!panels[active])active='geral';
+
+    function activate(id){
+      if(!panels[id])id='geral';
+      active=id;
+      Object.entries(panels).forEach(function([key,panel]){
+        const selected=key===id;
+        panel.classList.toggle('active',selected);
+        panel.style.setProperty('display',selected?'block':'none','important');
+        panel.setAttribute('aria-hidden',selected?'false':'true');
+      });
+      tabsBar.querySelectorAll('.dashboard-tab-button').forEach(function(button){
+        const selected=button.dataset.tab===id;
+        button.classList.toggle('active',selected);
+        button.setAttribute('aria-selected',selected?'true':'false');
+      });
+      try{sessionStorage.setItem('coopex_dashboard_tab',id)}catch(error){}
+      resizeCharts(panels[id]);
+      searchCurrent();
+    }
+
+    tabsBar.addEventListener('click',function(event){
+      const button=event.target.closest('.dashboard-tab-button[data-tab]');
+      if(!button)return;
+      event.preventDefault();
+      event.stopPropagation();
+      activate(button.dataset.tab);
     });
-    try{sessionStorage.setItem('coopex_dashboard_tab',id)}catch(error){}
-    resizeCharts(target);
-    return true;
-  }
 
-  document.addEventListener('click',function(event){
-    const button=event.target.closest('.dashboard-tab-button[data-tab]');
-    if(!button)return;
-    event.preventDefault();
-    activateTab(button.dataset.tab);
-  },true);
-
-  function ensureTab(){
-    const activeButton=document.querySelector('.dashboard-tab-button.active[data-tab]');
-    let saved='geral';
-    try{saved=sessionStorage.getItem('coopex_dashboard_tab')||'geral'}catch(error){}
-    const id=activeButton?.dataset.tab||saved;
-    return activateTab(id)||activateTab('geral');
-  }
-
-  let attempts=0;
-  const timer=setInterval(function(){
-    attempts+=1;
-    if(ensureTab()||attempts>=30)clearInterval(timer);
-  },250);
-
-  function hideTableColumns(table,indexes){
-    if(!table)return;
-    [...table.rows].forEach(function(row){
-      indexes.forEach(function(index){
-        const cell=row.cells[index];
-        if(cell)cell.style.setProperty('display','none','important');
+    const periodo=filters?.querySelector('[name="periodo"]');
+    filters?.querySelectorAll('[name="data_inicio"],[name="data_fim"],[name="cooperado_id"],[name="grupo_id"],[name="cliente"],[name="status_pagamento"],[name="origem"],[name="destino"]').forEach(function(field){
+      const eventName=field.tagName==='SELECT'?'change':'input';
+      field.addEventListener(eventName,function(){
+        const filled=field.tagName==='SELECT'?(field.value&&field.value!=='todos'):field.value.trim();
+        if(filled&&periodo)periodo.value='personalizado';
       });
     });
+
+    filterShell.querySelector('[data-clear]').addEventListener('click',function(){
+      filters?.querySelectorAll('input').forEach(input=>input.value='');
+      filters?.querySelectorAll('select').forEach(select=>select.value=select.name==='periodo'?'mes':'todos');
+      form.requestSubmit();
+    });
+
+    const searchInput=filterShell.querySelector('.dashboard-filter-search input');
+    const searchCount=filterShell.querySelector('.dashboard-search-count');
+    function normalize(value){return String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/\s+/g,' ').trim()}
+    function searchCurrent(){
+      document.querySelectorAll('.dashboard-search-hidden,.dashboard-search-found').forEach(node=>node.classList.remove('dashboard-search-hidden','dashboard-search-found'));
+      const query=normalize(searchInput.value);
+      if(!query){searchCount.textContent='';return}
+      const rows=[...panels[active].querySelectorAll('table tbody tr,.rowItem,.alerts .alert')];
+      let found=0;
+      rows.forEach(function(row){
+        const match=normalize(row.textContent).includes(query);
+        row.classList.toggle('dashboard-search-hidden',!match);
+        if(match){row.classList.add('dashboard-search-found');found++}
+      });
+      searchCount.textContent=`${found} resultado${found===1?'':'s'}`;
+    }
+    searchInput.addEventListener('input',searchCurrent);
+    searchInput.addEventListener('keydown',function(event){if(event.key==='Escape'){searchInput.value='';searchCurrent();searchInput.blur()}});
+
+    activate(active);
+    return true;
   }
 
   function adjustFirstYear(){
     const select=document.getElementById('yearCompareSelect');
     const content=document.getElementById('yearCompareContent');
     if(!select||!content)return;
-
     [...select.options].forEach(function(option){
       const year=Number(option.value||String(option.textContent).match(/\d{4}/)?.[0]);
       if(year&&year<2025)option.remove();
     });
     const option2025=[...select.options].find(option=>Number(option.value)===2025);
     if(option2025)option2025.textContent='2025 — primeiro ano do sistema';
-
     if(Number(select.value)!==2025)return;
-
-    let note=content.querySelector('.dashboard-first-year-note');
-    if(!note){
-      note=document.createElement('div');
+    if(!content.querySelector('.dashboard-first-year-note')){
+      const note=document.createElement('div');
       note.className='dashboard-first-year-note';
-      note.textContent='O sistema começou em 2025. Por isso, 2025 é exibido como o primeiro ano, sem comparação com 2024.';
+      note.textContent='O sistema começou em 2025. Por isso, 2025 aparece sem comparação com 2024.';
       content.prepend(note);
     }
-
-    const grid=content.querySelector('.year-compare-grid');
-    if(grid){
-      const cards=[...grid.children];
-      if(cards[1])cards[1].style.setProperty('display','none','important');
-      if(cards[2])cards[2].style.setProperty('display','none','important');
-      grid.style.gridTemplateColumns='repeat(4,minmax(0,1fr))';
-      if(cards[0]){
-        const detail=cards[0].querySelector('.detail');
-        if(detail)detail.textContent='Primeiro ano do sistema • ano completo';
-      }
-      if(cards[3]){
-        const detail=cards[3].querySelector('.detail');
-        if(detail)detail.textContent='Total de entregas registradas em 2025';
-      }
-    }
-
-    const chartCards=[...content.querySelectorAll('.year-compare-board .card')];
-    if(chartCards[0]){
-      const sub=chartCards[0].querySelector('.sub');
-      if(sub)sub.textContent='Evolução mensal de 2025';
-    }
-    if(chartCards[1]){
-      const sub=chartCards[1].querySelector('.sub');
-      if(sub)sub.textContent='Quantidade mensal registrada em 2025';
-    }
-
-    content.querySelectorAll('canvas').forEach(function(canvas){
-      try{
-        if(window.Chart&&Chart.getChart){
-          const chart=Chart.getChart(canvas);
-          if(chart){
-            chart.data.datasets=chart.data.datasets.filter(function(dataset){
-              const label=String(dataset.label||'').trim();
-              const year=Number(label);
-              return label!=='null'&&(!year||year>=2025);
-            });
-            chart.update('none');
-          }
-        }
-      }catch(error){}
-    });
-
-    const monthlyTable=content.querySelector('.year-compare-table:not(.year-table)');
-    hideTableColumns(monthlyTable,[1,3,4,6,7]);
-    const monthlyCard=monthlyTable?.closest('.card');
-    if(monthlyCard){
-      const sub=monthlyCard.querySelector('.sub');
-      if(sub)sub.textContent='Faturamento e quantidade mês a mês do primeiro ano do sistema.';
-      const tag=monthlyCard.querySelector('.tag');
-      if(tag)tag.textContent='2025';
-    }
-
     content.querySelectorAll('*').forEach(function(node){
       if(node.children.length===0&&/\b(null|2024)\b/i.test(node.textContent||'')){
-        node.textContent=(node.textContent||'')
-          .replace(/null\s*(comparado com|×)\s*2025/gi,'2025 — primeiro ano')
-          .replace(/2024\s*(comparado com|×)\s*2025/gi,'2025 — primeiro ano')
-          .replace(/\bnull\b/gi,'')
-          .replace(/\b2024\b/g,'')
-          .replace(/\s{2,}/g,' ')
-          .trim();
+        node.textContent=(node.textContent||'').replace(/\bnull\b/gi,'').replace(/\b2024\b/g,'').replace(/\s{2,}/g,' ').trim();
       }
     });
   }
 
-  const compareObserver=new MutationObserver(function(){
-    setTimeout(adjustFirstYear,30);
-  });
-  const compareContent=document.getElementById('yearCompareContent');
-  if(compareContent)compareObserver.observe(compareContent,{childList:true,subtree:true});
-  document.getElementById('yearCompareSelect')?.addEventListener('change',function(){setTimeout(adjustFirstYear,100)});
-  setTimeout(adjustFirstYear,300);
+  function start(){
+    try{
+      if(buildDashboard()){
+        const observer=new MutationObserver(()=>setTimeout(adjustFirstYear,30));
+        const compareContent=document.getElementById('yearCompareContent');
+        if(compareContent)observer.observe(compareContent,{childList:true,subtree:true});
+        setTimeout(adjustFirstYear,300);
+      }
+    }catch(error){
+      console.error('Falha ao montar as abas do Dashboard:',error);
+    }
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else setTimeout(start,0);
 })();
 </script>
