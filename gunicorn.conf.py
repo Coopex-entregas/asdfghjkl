@@ -76,14 +76,18 @@ def _corrigir_serializacao_escala(escala_feature):
 
 
 def post_worker_init(worker):
-    """Instala a escala após o Gunicorn carregar app:app."""
+    """Instala os recursos separados depois que o Flask carrega app:app."""
     try:
         import app as app_module
         import escala_feature
+        import escala_ajustes
+        import agendamento_feature
 
         _corrigir_serializacao_escala(escala_feature)
         escala_feature.install(app_module)
-        worker.log.info("Escala semanal COOPEX instalada.")
+        escala_ajustes.install(app_module, escala_feature)
+        agendamento_feature.install(app_module)
+        worker.log.info("Escala semanal, ajustes e agendamentos COOPEX instalados.")
     except Exception:
-        worker.log.exception("Falha ao instalar a escala semanal COOPEX.")
+        worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
         raise
