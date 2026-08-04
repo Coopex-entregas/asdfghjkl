@@ -1,0 +1,113 @@
+<style id="coopex-swap-style">
+  .status.troca{background:#efe8ff!important;color:#6732b8!important}
+  body.dark .status.troca{background:#332157!important;color:#d9c4ff!important}
+  .swap-action{background:#f1ecff!important;color:#6332ad!important;border-color:#d9c9f5!important}
+  body.dark .swap-action{background:#2d2250!important;color:#e2d4ff!important;border-color:#5d4a8a!important}
+  .swap-undo{background:#fff0f0!important;color:#a52b2b!important;border-color:#efc4c4!important}
+  body.dark .swap-undo{background:#442020!important;color:#ffc6c6!important;border-color:#7b3d3d!important}
+  .swap-reason{max-width:250px;color:var(--cx-text);font-size:.78rem;font-weight:800;line-height:1.4}
+  .swap-overlay{position:fixed;inset:0;z-index:7000;display:none;align-items:center;justify-content:center;padding:16px;background:rgba(4,12,31,.74);backdrop-filter:blur(4px)}
+  .swap-overlay.open{display:flex}
+  .swap-modal{width:min(650px,96vw);max-height:94vh;overflow:auto;border:1px solid var(--cx-line);border-radius:20px;background:var(--cx-card);color:var(--cx-text);box-shadow:0 28px 78px rgba(0,0,0,.38)}
+  .swap-head{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;padding:17px 18px;background:linear-gradient(135deg,#5426a5,#7b48d8);color:#fff}
+  .swap-head h3{margin:0;color:#fff}.swap-head p{margin:5px 0 0;font-size:.8rem;opacity:.9}
+  .swap-close{width:38px;height:38px;border:1px solid rgba(255,255,255,.34);border-radius:11px;background:rgba(255,255,255,.14);color:#fff;font-size:1.35rem;cursor:pointer}
+  .swap-body{padding:17px}.swap-current{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}.swap-current div{padding:10px;border:1px solid var(--cx-line);border-radius:11px;background:var(--cx-royal-light)}.swap-current span{display:block;color:var(--cx-muted);font-size:.7rem;font-weight:900;text-transform:uppercase}.swap-current strong{display:block;margin-top:4px;color:var(--cx-text)}
+  .swap-help{margin-top:6px;color:var(--cx-muted);font-size:.76rem;line-height:1.4}.swap-empty{display:none;margin-top:8px;padding:10px;border:1px solid #ecd9a7;border-radius:11px;background:#fff7e5;color:#7d5500;font-size:.8rem;font-weight:750}
+  .swap-footer{display:flex;justify-content:flex-end;gap:8px;flex-wrap:wrap;margin-top:14px}.swap-footer .cx-btn{min-width:135px}
+  @media(max-width:620px){.swap-current{grid-template-columns:1fr}.swap-footer{flex-direction:column}.swap-footer .cx-btn{width:100%}}
+</style>
+
+<div class="swap-overlay" id="swapOverlay" aria-hidden="true">
+  <section class="swap-modal" role="dialog" aria-modal="true" aria-labelledby="swapTitle">
+    <div class="swap-head">
+      <div><h3 id="swapTitle">Trocar duas escalas</h3><p>Os dois cooperados assumirão os contratos e horários um do outro.</p></div>
+      <button class="swap-close" id="swapClose" type="button">×</button>
+    </div>
+    <form class="swap-body" id="swapForm" method="POST" action="{{ url_for('escala_trocar_dupla') }}">
+      <input type="hidden" id="swapItemA" name="item_a_id">
+      <div class="swap-current">
+        <div><span>Cooperado escolhido</span><strong id="swapOrigemNome">—</strong></div>
+        <div><span>Escala atual</span><strong id="swapOrigemEscala">—</strong></div>
+      </div>
+      <div class="cx-field">
+        <label for="swapItemB">Trocar com</label>
+        <select class="cx-select" id="swapItemB" name="item_b_id" required><option value="">Carregando escalas compatíveis...</option></select>
+        <div class="swap-help">A troca é permitida entre duas entradas do mesmo dia e do mesmo turno. Os horários podem ser diferentes.</div>
+        <div class="swap-empty" id="swapEmpty">Não existe outra escala compatível para esta entrada.</div>
+      </div>
+      <div class="cx-field">
+        <label for="swapMotivo">Motivo da troca</label>
+        <textarea class="cx-textarea" id="swapMotivo" name="motivo" rows="3" maxlength="220" required placeholder="Ex.: troca autorizada por folga, compromisso ou necessidade do contrato"></textarea>
+        <div class="swap-help">O motivo ficará visível nas duas linhas da escala.</div>
+      </div>
+      <div class="swap-footer">
+        <button class="cx-btn alt" id="swapCancel" type="button">Cancelar</button>
+        <button class="cx-btn" id="swapSave" type="submit">Confirmar troca</button>
+      </div>
+    </form>
+  </section>
+</div>
+
+<script id="coopex-swap-script">
+(function(){
+  const overlay=document.getElementById('swapOverlay');
+  const form=document.getElementById('swapForm');
+  const itemA=document.getElementById('swapItemA');
+  const itemB=document.getElementById('swapItemB');
+  const motivo=document.getElementById('swapMotivo');
+  const origemNome=document.getElementById('swapOrigemNome');
+  const origemEscala=document.getElementById('swapOrigemEscala');
+  const empty=document.getElementById('swapEmpty');
+  const save=document.getElementById('swapSave');
+
+  function close(){overlay.classList.remove('open');overlay.setAttribute('aria-hidden','true');document.body.style.overflow='';form.reset();itemB.innerHTML='<option value="">Carregando escalas compatíveis...</option>';empty.style.display='none';save.disabled=false;save.textContent='Confirmar troca'}
+
+  async function openSwap(btn){
+    const id=btn.dataset.swapId;
+    if(!id)return;
+    itemA.value=id;motivo.value='';empty.style.display='none';save.disabled=true;
+    itemB.innerHTML='<option value="">Carregando escalas compatíveis...</option>';
+    origemNome.textContent=btn.dataset.swapName||'—';
+    origemEscala.textContent=[btn.dataset.swapContract,btn.dataset.swapShift,btn.dataset.swapTime].filter(Boolean).join(' • ')||'—';
+    overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+    try{
+      const r=await fetch(`/api/escala/troca-candidatos/${encodeURIComponent(id)}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
+      const d=await r.json();
+      if(!r.ok||!d.ok)throw new Error(d.error||'Não foi possível consultar as escalas.');
+      itemB.innerHTML='<option value="">Selecione a outra escala</option>';
+      (d.itens||[]).forEach(x=>{
+        const o=document.createElement('option');o.value=String(x.id);o.textContent=`${x.cooperado} — ${x.contrato} — ${x.turno||'turno'} — ${x.horario}`;itemB.appendChild(o);
+      });
+      if(!(d.itens||[]).length){empty.style.display='block';save.disabled=true}else{save.disabled=false;itemB.focus()}
+    }catch(e){itemB.innerHTML='<option value="">Erro ao carregar</option>';empty.textContent=e.message||'Não foi possível consultar as escalas.';empty.style.display='block';save.disabled=true}
+  }
+
+  function decorate(){
+    document.querySelectorAll('.scale-table tbody tr').forEach(row=>{
+      const edit=row.querySelector('[data-adjust-item]');if(!edit)return;
+      const id=String(edit.dataset.id||''),coopId=String(edit.dataset.cooperadoId||'');
+      const actions=row.querySelector('.row-actions');if(!id||!actions)return;
+      const status=row.querySelector('.status');const isSwap=status?.classList.contains('troca')||String(status?.textContent||'').trim().toLowerCase()==='troca';
+      const detail=String(row.querySelector('.match-detail')?.textContent||'').trim();
+      if(isSwap&&row.cells[6]&&detail){row.cells[6].innerHTML='';const d=document.createElement('div');d.className='swap-reason';d.textContent=detail;row.cells[6].appendChild(d)}
+      if(isSwap){
+        if(!actions.querySelector('[data-swap-undo]')){
+          const f=document.createElement('form');f.method='POST';f.action=`/escala/desfazer-troca/${id}`;f.style.display='inline-flex';f.onsubmit=()=>confirm('Desfazer a troca das duas escalas?');
+          const b=document.createElement('button');b.type='submit';b.className='cx-btn alt swap-undo';b.dataset.swapUndo='1';b.textContent='Desfazer troca';f.appendChild(b);actions.appendChild(f)
+        }
+        return;
+      }
+      if(!coopId||actions.querySelector('[data-swap-id]'))return;
+      const b=document.createElement('button');b.type='button';b.className='cx-btn alt swap-action';b.textContent='Trocar escala';b.dataset.swapId=id;b.dataset.swapName=row.cells[4]?.textContent.trim()||row.cells[0]?.textContent.trim()||'';b.dataset.swapContract=edit.dataset.contrato||row.cells[1]?.textContent.trim()||'';b.dataset.swapShift=edit.dataset.turno||row.cells[2]?.textContent.trim()||'';b.dataset.swapTime=edit.dataset.horario||row.cells[3]?.textContent.trim()||'';b.addEventListener('click',()=>openSwap(b));actions.appendChild(b)
+    });
+  }
+
+  document.getElementById('swapClose').addEventListener('click',close);
+  document.getElementById('swapCancel').addEventListener('click',close);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close()});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))close()});
+  form.addEventListener('submit',e=>{if(!itemB.value||motivo.value.trim().length<3){e.preventDefault();alert('Escolha a outra escala e informe o motivo.');return}save.disabled=true;save.textContent='Trocando...'});
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',decorate,{once:true});else decorate();
+})();
+</script>
