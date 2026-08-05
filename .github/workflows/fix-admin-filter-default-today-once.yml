@@ -1,0 +1,79 @@
+name: Corrigir filtros do admin para hoje
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-admin-filter-default-today-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Corrigir período padrão dos filtros
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('app.py')
+          text = path.read_text(encoding='utf-8')
+
+          old = "\n".join([
+              "    # A abertura normal do painel mostra somente o dia atual.",
+              "    # Ao clicar em Filtrar, até mesmo mantendo Todos e datas vazias,",
+              "    # a consulta passa a considerar o histórico disponível.",
+              "    campos_do_filtro = (",
+              "        'cooperado_id', 'data_inicio', 'data_fim', 'status_pagamento',",
+              "        'forma_pagamento', 'cliente', 'endereco'",
+              "    )",
+              "    filtro_solicitado = any(campo in request.args for campo in campos_do_filtro)",
+              "    if not data_inicio and not data_fim and not filtro_solicitado:",
+              "        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)",
+              "        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)",
+          ]) + "\n"
+
+          new = "\n".join([
+              "    # Sem data informada, qualquer filtro considera somente as entregas de hoje.",
+              "    # Para consultar outro período ou todo o histórico, o usuário informa as datas.",
+              "    if not data_inicio and not data_fim:",
+              "        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)",
+              "        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)",
+          ]) + "\n"
+
+          count = text.count(old)
+          if count != 1:
+              raise SystemExit(f'Bloco esperado não encontrado exatamente uma vez: {count}')
+
+          path.write_text(text.replace(old, new, 1), encoding='utf-8')
+          PY
+
+      - name: Validar alteração
+        run: |
+          python -m py_compile app.py
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('app.py').read_text(encoding='utf-8')
+          assert "if not data_inicio and not data_fim:" in text
+          assert "filtro_solicitado" not in text
+          assert "campos_do_filtro" not in text
+          assert ".limit(500)" in text
+          assert "forma_pagamento.lower() not in ('todos', 'todas')" in text
+          PY
+          git diff --check
+
+      - name: Publicar correção e remover workflow temporário
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-admin-filter-default-today-once.yml
+          git add app.py
+          git commit -m 'fix: usar hoje como período padrão dos filtros'
+          git push origin main
