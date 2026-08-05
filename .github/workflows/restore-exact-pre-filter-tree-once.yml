@@ -1,0 +1,55 @@
+name: Finalizar restauração exata anterior aos filtros
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/restore-exact-pre-filter-tree-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  restaurar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar histórico completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restaurar e limpar árvore
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET="fa379ca1faabae9d8dd8fb156134cc81b01ed3e5"
+          TARGET_TREE="$(git rev-parse "$TARGET^{tree}")"
+          git read-tree --reset -u "$TARGET"
+          git clean -fdx
+          CURRENT_TREE="$(git write-tree)"
+          test "$CURRENT_TREE" = "$TARGET_TREE"
+
+      - name: Validar sistema
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile app.py
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+          for path in ('templates/admin.html', 'templates/admin_original.html'):
+              p = Path(path)
+              if p.exists():
+                  Environment().parse(p.read_text(encoding='utf-8'))
+          print('Árvore exata anterior aos filtros validada.')
+          PY
+          git diff --check
+
+      - name: Publicar versão exata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Coopex Coding Agent"
+          git config user.email "coding-agent@users.noreply.github.com"
+          git commit -m "revert: restaurar árvore exata anterior aos filtros"
+          git push origin HEAD:main
