@@ -1,0 +1,71 @@
+(function(){
+  function norm(value){
+    return String(value||'')
+      .normalize('NFD')
+      .replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g,' ')
+      .replace(/\s+/g,' ')
+      .trim();
+  }
+
+  function canonical(value){
+    const key=norm(value);
+    if(!key||key==='todas'||key==='todos')return {key:'todas',value:'todas',label:'Todas'};
+    if(['credito','credito auto','credito automatico','credito saldo cliente','credito automatico saldo cliente','saldo cliente'].includes(key)){
+      return {key:'credito',value:'CREDITO_AUTO',label:'Crédito automático'};
+    }
+    if(['pix cooperativa','pix da cooperativa','pix coopex','pix da coopex'].includes(key)){
+      return {key:'pix_cooperativa',value:'Pix (Cooperativa)',label:'Pix Cooperativa'};
+    }
+    if(key==='pix')return {key:'pix',value:'Pix',label:'Pix'};
+    if(key==='dinheiro')return {key:'dinheiro',value:'Dinheiro',label:'Dinheiro'};
+    if(key==='comanda')return {key:'comanda',value:'Comanda',label:'Comanda'};
+    return {key:'outro:'+key,value:String(value||'').trim(),label:String(value||'').trim()};
+  }
+
+  function fix(){
+    const select=document.querySelector('select[name="forma_pagamento"]');
+    if(!select||select.dataset.paymentNormalized==='1')return false;
+
+    const selected=canonical(select.value).key;
+    const seen=new Set();
+    const ordered=[];
+
+    [...select.options].forEach(function(option){
+      const item=canonical(option.value||option.textContent);
+      if(seen.has(item.key))return;
+      seen.add(item.key);
+      const clean=document.createElement('option');
+      clean.value=item.value;
+      clean.textContent=item.label;
+      if(item.key===selected)clean.selected=true;
+      ordered.push(clean);
+    });
+
+    const priority=['todas','pix','dinheiro','pix_cooperativa','credito','comanda'];
+    ordered.sort(function(a,b){
+      const ka=canonical(a.value).key;
+      const kb=canonical(b.value).key;
+      const ia=priority.indexOf(ka);
+      const ib=priority.indexOf(kb);
+      return (ia<0?999:ia)-(ib<0?999:ib)||a.textContent.localeCompare(b.textContent,'pt-BR');
+    });
+
+    select.replaceChildren(...ordered);
+    select.dataset.paymentNormalized='1';
+    if(![...select.options].some(option=>option.selected))select.value='todas';
+    return true;
+  }
+
+  function start(){
+    let attempts=0;
+    const timer=setInterval(function(){
+      attempts+=1;
+      if(fix()||attempts>=30)clearInterval(timer);
+    },100);
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
+  else start();
+})();
