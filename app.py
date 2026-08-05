@@ -4631,8 +4631,17 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # padrão: dia de hoje
-    if not data_inicio and not data_fim:
+    # Sem filtros, o painel abre mostrando somente as entregas de hoje.
+    # Quando qualquer filtro é aplicado sem datas, a pesquisa deve considerar
+    # todo o histórico; caso contrário, cooperados e pagamentos antigos somem.
+    filtro_explicito = bool(
+        (cooperado_id and cooperado_id != 'todos')
+        or (status_pagamento and status_pagamento != 'todos')
+        or (forma_pagamento and forma_pagamento.lower() != 'todos')
+        or cliente
+        or endereco
+    )
+    if not data_inicio and not data_fim and not filtro_explicito:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
