@@ -1,6 +1,7 @@
 import re
 import unicodedata
 
+from flask import request
 from sqlalchemy import text
 
 DONE = False
@@ -100,6 +101,30 @@ def _normalize_existing(app_module):
     db.session.commit()
 
 
+def _inject_admin_filter_fix(response):
+    try:
+        if request.endpoint != "admin":
+            return response
+        if response.status_code != 200 or response.mimetype != "text/html":
+            return response
+
+        html = response.get_data(as_text=True)
+        asset = (
+            '<script defer src="/static/js/admin_payment_filter_patch.js'
+            '?v=20260805-1"></script>'
+        )
+        if asset not in html:
+            if "</body>" in html:
+                html = html.replace("</body>", asset + "</body>", 1)
+            else:
+                html += asset
+            response.set_data(html)
+            response.headers.pop("Content-Length", None)
+    except Exception:
+        pass
+    return response
+
+
 def install(app_module):
     global DONE
     if DONE:
@@ -115,4 +140,5 @@ def install(app_module):
             )
             raise
 
+    app_module.app.after_request(_inject_admin_filter_fix)
     DONE = True
