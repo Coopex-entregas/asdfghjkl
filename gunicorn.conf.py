@@ -80,6 +80,7 @@ def post_worker_init(worker):
     try:
         import app as app_module
         import escala_feature
+        import escala_api_session_fix
         import escala_ajustes
         import escala_troca
         import agendamento_feature
@@ -92,6 +93,7 @@ def post_worker_init(worker):
 
         _corrigir_serializacao_escala(escala_feature)
         escala_feature.install(app_module)
+        escala_api_session_fix.install(app_module, escala_feature)
         escala_ajustes.install(app_module, escala_feature)
         escala_troca.install(app_module, escala_feature)
         agendamento_feature.install(app_module)
@@ -102,7 +104,7 @@ def post_worker_init(worker):
         creditos_otimizacao_feature.install(app_module)
         pagamentos_normalizacao_feature.install(app_module)
         worker.log.info(
-            "Escala, trocas, agendamentos, bairros, comparativo, arquivamento, histórico, créditos e pagamentos instalados."
+            "Escala, API da escala, trocas, agendamentos, bairros, comparativo, arquivamento, histórico, créditos e pagamentos instalados."
         )
     except Exception:
         worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
