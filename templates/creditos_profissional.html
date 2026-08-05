@@ -1,0 +1,316 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Créditos de Clientes — COOPEX</title>
+  <link rel="icon" href="{{ url_for('static', filename='logo_coopex.png') }}">
+  <style>
+    :root{
+      --blue:#1748d8;
+      --blue-dark:#10368f;
+      --blue-soft:#eef4ff;
+      --bg:#f2f5fa;
+      --card:#ffffff;
+      --card-2:#f8faff;
+      --text:#152441;
+      --muted:#687795;
+      --line:#dce4f1;
+      --line-strong:#c8d5e8;
+      --green:#087c49;
+      --green-soft:#e9f8f0;
+      --red:#c4323d;
+      --red-soft:#fff0f1;
+      --amber:#946000;
+      --amber-soft:#fff6df;
+      --shadow:0 7px 24px rgba(19,48,105,.08);
+    }
+    body.dark{
+      --bg:#071326;
+      --card:#0f1d35;
+      --card-2:#0b182e;
+      --text:#edf3ff;
+      --muted:#aebbd5;
+      --line:#263b61;
+      --line-strong:#38517f;
+      --blue-soft:#172b4d;
+      --green-soft:#11382c;
+      --red-soft:#411e26;
+      --amber-soft:#3d2e13;
+      --shadow:0 10px 28px rgba(0,0,0,.22);
+    }
+    *{box-sizing:border-box}
+    html,body{min-height:100%;margin:0}
+    body{background:var(--bg);color:var(--text);font-family:Inter,Segoe UI,Arial,sans-serif;overflow-x:hidden}
+    button,input{font:inherit}
+    a{color:inherit}
+
+    .topbar{
+      position:sticky;top:0;z-index:1000;
+      min-height:62px;padding:9px 18px;
+      display:flex;align-items:center;gap:12px;
+      background:linear-gradient(100deg,var(--blue-dark),var(--blue) 72%,#3b69d5);
+      color:#fff;border-bottom:1px solid rgba(255,255,255,.22);
+      box-shadow:0 4px 15px rgba(10,48,145,.16)
+    }
+    .brand{display:flex;align-items:center;gap:10px;min-width:0}
+    .brand img{width:38px;height:38px;object-fit:contain;background:#fff;border-radius:10px;padding:3px}
+    .brand-text strong{display:block;font-size:1rem;font-weight:900;line-height:1.1}
+    .brand-text small{display:block;margin-top:3px;font-size:.69rem;font-weight:700;color:#dfe8ff}
+    .top-spacer{flex:1}
+    .top-actions{display:flex;align-items:center;gap:7px}
+    .btn{
+      min-height:38px;padding:0 13px;display:inline-flex;align-items:center;justify-content:center;gap:6px;
+      border:1px solid transparent;border-radius:9px;background:var(--blue);color:#fff;
+      font-size:.78rem;font-weight:850;text-decoration:none;cursor:pointer;box-shadow:none;white-space:nowrap
+    }
+    .btn:hover{filter:brightness(1.04)}
+    .btn.light{background:#fff;color:var(--blue-dark);border-color:#d3def2}
+    .topbar .btn.light{background:rgba(255,255,255,.12);color:#fff;border-color:rgba(255,255,255,.32)}
+    .btn.danger{background:#fff;color:var(--red);border-color:#edc3c7}
+    .btn.small{min-height:31px;padding:0 9px;font-size:.7rem}
+
+    .workspace{
+      width:100%;max-width:1760px;margin:0 auto;padding:14px;
+      display:grid;grid-template-columns:360px minmax(0,1fr);gap:13px;align-items:start
+    }
+    .card{background:var(--card);border:1px solid var(--line);border-radius:15px;box-shadow:var(--shadow);overflow:hidden}
+    .card-head{padding:14px 16px 12px;border-bottom:1px solid var(--line);background:var(--card)}
+    .card-head h1,.card-head h2{margin:0;color:var(--text);font-size:1rem;font-weight:900;letter-spacing:-.02em}
+    .card-head p{margin:5px 0 0;color:var(--muted);font-size:.72rem;font-weight:650;line-height:1.35}
+    .card-body{padding:15px}
+    .register-card{position:sticky;top:76px}
+
+    .field{margin-bottom:12px;position:relative}
+    .field label{display:block;margin:0 0 5px;color:#315086;font-size:.66rem;font-weight:900;text-transform:uppercase;letter-spacing:.045em}
+    body.dark .field label{color:#b9c8e5}
+    .control{
+      width:100%;height:41px;padding:0 11px;border:1px solid var(--line-strong);border-radius:9px;
+      background:var(--card);color:var(--text);outline:0;font-size:.82rem;font-weight:700
+    }
+    .control:focus{border-color:#4775db;box-shadow:0 0 0 3px rgba(23,72,216,.11)}
+    .control::placeholder{color:#8b98b0}
+    .client-picker-results{
+      position:absolute;left:0;right:0;top:68px;z-index:40;display:none;max-height:280px;overflow:auto;
+      padding:5px;border:1px solid var(--line-strong);border-radius:10px;background:var(--card);box-shadow:0 18px 40px rgba(11,38,102,.19)
+    }
+    .client-picker-results.open{display:block}
+    .picker-item{width:100%;padding:9px 10px;text-align:left;border:0;border-radius:8px;background:transparent;color:var(--text);cursor:pointer}
+    .picker-item:hover,.picker-item.active{background:var(--blue-soft)}
+    .picker-item strong{display:block;font-size:.79rem}.picker-item small{display:block;margin-top:2px;color:var(--muted);font-size:.67rem}
+    .credit-status{display:none;margin-top:7px;padding:9px 10px;border-radius:9px;font-size:.7rem;font-weight:750;line-height:1.35}
+    .credit-status.show{display:block}.credit-status.new{background:var(--amber-soft);color:var(--amber);border:1px solid #efd79d}.credit-status.active{background:var(--green-soft);color:var(--green);border:1px solid #bde4cf}
+    .form-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:14px}.form-actions .btn{width:100%}
+    .flash{margin-bottom:10px;padding:10px 11px;border:1px solid #cbdaf1;border-radius:9px;background:var(--blue-soft);color:var(--blue-dark);font-size:.73rem;font-weight:750}
+    .flash.error{background:var(--red-soft);border-color:#ecc7ca;color:var(--red)}
+
+    .content{min-width:0;display:flex;flex-direction:column;gap:11px}
+    .summary-grid{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:9px}
+    .metric{min-height:86px;padding:12px 13px;background:var(--card);border:1px solid var(--line);border-radius:13px;box-shadow:var(--shadow)}
+    .metric small{display:block;color:var(--muted);font-size:.64rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .metric strong{display:block;margin-top:8px;color:var(--blue-dark);font-size:1.18rem;font-weight:950;letter-spacing:-.03em}
+    body.dark .metric strong{color:#dbe6ff}
+    .metric span{display:block;margin-top:5px;color:var(--muted);font-size:.65rem;font-weight:700}
+
+    .list-card .card-head{display:flex;align-items:center;justify-content:space-between;gap:12px}
+    .head-title{min-width:0}
+    .list-toolbar{display:grid;grid-template-columns:minmax(260px,420px) auto;gap:8px;align-items:center}
+    .count-badge{min-height:36px;padding:0 11px;display:inline-flex;align-items:center;border-radius:9px;background:var(--blue-soft);color:var(--blue-dark);border:1px solid #cad8ee;font-size:.7rem;font-weight:900;white-space:nowrap}
+    body.dark .count-badge{color:#dce7ff;border-color:#355078}
+    .clients-grid{padding:12px;display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;align-items:start}
+    .client-card{border:1px solid var(--line);border-radius:12px;background:var(--card);overflow:hidden;min-width:0}
+    .client-card[open]{grid-column:1/-1;box-shadow:0 10px 24px rgba(18,50,114,.08)}
+    .client-card.hidden{display:none}
+    .client-summary{list-style:none;cursor:pointer;padding:12px 13px;display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center;background:var(--card)}
+    .client-summary::-webkit-details-marker{display:none}
+    .client-summary:hover{background:var(--card-2)}
+    .client-main{min-width:0}.client-name{font-size:.84rem;font-weight:900;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    .client-meta{display:flex;gap:6px;flex-wrap:wrap;margin-top:7px}
+    .mini{display:inline-flex;align-items:center;padding:4px 7px;border-radius:999px;background:var(--blue-soft);color:var(--blue-dark);border:1px solid #d2def1;font-size:.61rem;font-weight:850;white-space:nowrap}
+    body.dark .mini{color:#dce7ff;border-color:#334b75}
+    .balance-box{text-align:right;white-space:nowrap}.balance-box small{display:block;color:var(--muted);font-size:.59rem;font-weight:850;text-transform:uppercase}.balance-box strong{display:block;margin-top:3px;color:var(--green);font-size:.84rem;font-weight:950}.balance-box strong.negative{color:var(--red)}
+    .client-detail{border-top:1px solid var(--line);background:var(--card-2)}
+    .client-actions{padding:9px 11px;display:flex;gap:7px;flex-wrap:wrap;border-bottom:1px solid var(--line)}.client-actions form{margin:0}
+    .history{padding:10px}.state{padding:22px 12px;text-align:center;color:var(--muted);font-size:.74rem;font-weight:750}
+    .history-pills{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px}
+    .pill{display:inline-flex;align-items:center;padding:5px 8px;border-radius:999px;border:1px solid #d1ddf1;background:var(--blue-soft);color:var(--blue-dark);font-size:.64rem;font-weight:900}
+    .pill.green{background:var(--green-soft);color:var(--green);border-color:#bfe4d0}.pill.red{background:var(--red-soft);color:var(--red);border-color:#ebc4c8}
+    .table-wrap{width:100%;max-height:460px;overflow:auto;border:1px solid var(--line);border-radius:9px;background:var(--card)}
+    table{width:100%;min-width:850px;border-collapse:separate;border-spacing:0;table-layout:fixed}
+    th{position:sticky;top:0;z-index:2;padding:8px 7px;background:var(--blue-dark);color:#fff;border-right:1px solid rgba(255,255,255,.12);text-align:left;font-size:.64rem;font-weight:900;text-transform:uppercase}
+    td{padding:7px;border-top:1px solid var(--line);color:var(--text);font-size:.7rem;line-height:1.3;overflow-wrap:anywhere}
+    tbody tr:nth-child(even) td{background:var(--card-2)}
+    .money{font-weight:950;white-space:nowrap}.money.credit{color:var(--green)}.money.debit{color:var(--red)}
+    .history-footer{display:flex;justify-content:center;padding-top:8px}
+    .empty-list{grid-column:1/-1;padding:42px 20px;text-align:center;color:var(--muted);font-size:.8rem;font-weight:750}
+
+    @media(max-width:1250px){.workspace{grid-template-columns:330px minmax(0,1fr)}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.clients-grid{grid-template-columns:1fr}}
+    @media(max-width:900px){.workspace{grid-template-columns:1fr}.register-card{position:static}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.list-card .card-head{align-items:stretch;flex-direction:column}.list-toolbar{grid-template-columns:1fr auto}}
+    @media(max-width:580px){.topbar{padding:8px 10px}.brand img,.brand-text small{display:none}.top-actions .btn{padding:0 9px}.workspace{padding:8px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:78px}.metric strong{font-size:.96rem}.clients-grid{padding:8px}.list-toolbar{grid-template-columns:1fr}.form-actions{grid-template-columns:1fr}.client-summary{grid-template-columns:1fr}.balance-box{text-align:left}.table-wrap{max-height:520px}}
+  </style>
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX" onerror="this.style.display='none'">
+    <div class="brand-text"><strong>Créditos de Clientes</strong><small>Gestão de saldo, lançamentos e consumos</small></div>
+  </div>
+  <div class="top-spacer"></div>
+  <div class="top-actions">
+    <button id="theme" class="btn light" type="button">☾</button>
+    <a class="btn light" href="{{ url_for('clientes') }}">Clientes</a>
+    <a class="btn light" href="{{ url_for('admin') }}">Admin</a>
+  </div>
+</header>
+
+<main class="workspace">
+  <aside class="card register-card">
+    <div class="card-head"><h1>Registrar crédito</h1><p>O primeiro lançamento habilita o cliente para usar a forma de pagamento Crédito.</p></div>
+    <div class="card-body">
+      {% with messages = get_flashed_messages(with_categories=true) %}
+        {% for category,message in messages %}<div class="flash {{ 'error' if category in ['error','danger'] else '' }}">{{ message }}</div>{% endfor %}
+      {% endwith %}
+      <form id="creditForm" method="POST" action="{{ url_for('creditos_cadastrar') }}" autocomplete="off">
+        <div class="field">
+          <label for="clientPicker">Cliente</label>
+          <input id="clientPicker" class="control" type="text" placeholder="Digite o nome do cliente" autocomplete="off" required>
+          <input id="cliente_id" name="cliente_id" type="hidden" required>
+          <div id="pickerResults" class="client-picker-results"></div>
+          <div id="creditStatus" class="credit-status"></div>
+        </div>
+        <div class="field"><label for="valor_bruto">Valor do crédito</label><input id="valor_bruto" class="control" name="valor_bruto" type="number" min="0.01" step="0.01" required placeholder="0,00"></div>
+        <div class="field"><label for="motivo">Motivo ou observação</label><input id="motivo" class="control" name="motivo" maxlength="180" placeholder="Opcional"></div>
+        <input type="hidden" name="desconto_tipo" value="nenhum"><input type="hidden" name="desconto_valor" value="0">
+        <div class="form-actions"><button class="btn" type="submit">Salvar crédito</button><a class="btn light" href="{{ url_for('creditos') }}">Limpar</a></div>
+      </form>
+    </div>
+  </aside>
+
+  <section class="content">
+    <div class="summary-grid">
+      <div class="metric"><small>Saldo total</small><strong>{{ total_saldo|brl }}</strong><span>Saldo líquido dos clientes de crédito</span></div>
+      <div class="metric"><small>Créditos lançados</small><strong>{{ total_creditos|brl }}</strong><span>Somente créditos originais</span></div>
+      <div class="metric"><small>Consumos líquidos</small><strong>{{ total_consumos|brl }}</strong><span>Débitos descontados dos estornos</span></div>
+      <div class="metric"><small>Clientes de crédito</small><strong>{{ clientes_lista|length }}</strong><span>Clientes que já receberam crédito</span></div>
+    </div>
+
+    <section class="card list-card">
+      <div class="card-head">
+        <div class="head-title"><h2>Clientes e histórico</h2><p>Os clientes aparecem imediatamente. O histórico detalhado só é carregado ao abrir, deixando a tela mais rápida.</p></div>
+        <div class="list-toolbar"><input id="search" class="control" type="search" placeholder="Pesquisar cliente de crédito"><span id="visibleCount" class="count-badge">{{ clientes_lista|length }} clientes</span></div>
+      </div>
+      <div id="clientsGrid" class="clients-grid">
+        {% for cli in clientes_lista %}
+        <details class="client-card" data-id="{{ cli.id }}" data-name="{{ cli.nome_normalizado }}" {% if cliente_id and cliente_id == cli.id %}open{% endif %}>
+          <summary class="client-summary">
+            <div class="client-main">
+              <div class="client-name">{{ cli.nome }}</div>
+              <div class="client-meta"><span class="mini">Créditos: {{ cli.total_creditos|brl }}</span><span class="mini">Consumos: {{ cli.total_consumos|brl }}</span><span class="mini">{{ cli.movimentos }} movimentos</span></div>
+            </div>
+            <div class="balance-box"><small>Saldo atual</small><strong class="{{ 'negative' if cli.saldo < 0 else '' }}">{{ cli.saldo|brl }}</strong></div>
+          </summary>
+          <div class="client-detail">
+            <div class="client-actions">
+              <form method="POST" action="{{ url_for('creditos_reprocessar_auto') }}" onsubmit="return confirm('Reprocessar as entregas de crédito automático deste cliente?')"><input type="hidden" name="cliente_id" value="{{ cli.id }}"><button class="btn light small" type="submit">Reprocessar automático</button></form>
+              <form method="POST" action="{{ url_for('creditos_limpar_cliente', cliente_id=cli.id) }}" onsubmit="return confirm('Limpar todo o histórico e zerar o saldo deste cliente?')"><button class="btn danger small" type="submit">Limpar histórico</button></form>
+            </div>
+            <div class="history" data-loaded="0" data-offset="0"><div class="state">Abrindo histórico...</div></div>
+          </div>
+        </details>
+        {% else %}<div class="empty-list">Nenhum cliente recebeu crédito ainda. Use o formulário ao lado para fazer o primeiro lançamento.</div>{% endfor %}
+      </div>
+    </section>
+  </section>
+</main>
+
+<script>
+  const ALL_CLIENTS={{ clientes_form|tojson }};
+  const SELECTED_ID={{ (cliente_id or 0)|tojson }};
+  const money=value=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(value||0));
+  const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+  const norm=value=>String(value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().replace(/[^a-z0-9]+/g,' ').replace(/\s+/g,' ').trim();
+
+  const picker=document.getElementById('clientPicker');
+  const hiddenId=document.getElementById('cliente_id');
+  const pickerResults=document.getElementById('pickerResults');
+  const creditStatus=document.getElementById('creditStatus');
+  let pickerItems=[],pickerIndex=-1;
+
+  function showCreditStatus(client){
+    if(!client){creditStatus.className='credit-status';creditStatus.textContent='';return}
+    creditStatus.className='credit-status show '+(client.tem_credito?'active':'new');
+    creditStatus.textContent=client.tem_credito
+      ? `Cliente de crédito ativo. Saldo atual: ${money(client.saldo)}`
+      : 'Este será o primeiro crédito. Após salvar, o cliente será habilitado para pagar entregas no crédito.';
+  }
+  function chooseClient(client){
+    picker.value=client.nome;hiddenId.value=client.id;pickerResults.classList.remove('open');showCreditStatus(client);document.getElementById('valor_bruto').focus();
+  }
+  function renderPicker(){
+    const q=norm(picker.value);hiddenId.value='';showCreditStatus(null);
+    pickerItems=ALL_CLIENTS.filter(client=>!q||norm(client.nome).includes(q)).slice(0,18);pickerIndex=-1;
+    pickerResults.innerHTML=pickerItems.map((client,index)=>`<button type="button" class="picker-item" data-index="${index}"><strong>${esc(client.nome)}</strong><small>${client.tem_credito?`Cliente de crédito • ${money(client.saldo)}`:'Ainda não habilitado para crédito'}</small></button>`).join('')||'<div class="state">Nenhum cliente encontrado.</div>';
+    pickerResults.classList.add('open');
+    pickerResults.querySelectorAll('.picker-item').forEach(button=>button.addEventListener('mousedown',event=>{event.preventDefault();chooseClient(pickerItems[Number(button.dataset.index)])}));
+  }
+  picker.addEventListener('focus',renderPicker);picker.addEventListener('input',renderPicker);
+  picker.addEventListener('keydown',event=>{
+    const buttons=[...pickerResults.querySelectorAll('.picker-item')];if(!buttons.length)return;
+    if(event.key==='ArrowDown'){event.preventDefault();pickerIndex=(pickerIndex+1)%buttons.length}
+    else if(event.key==='ArrowUp'){event.preventDefault();pickerIndex=(pickerIndex-1+buttons.length)%buttons.length}
+    else if(event.key==='Enter'&&pickerIndex>=0){event.preventDefault();chooseClient(pickerItems[pickerIndex]);return}
+    else if(event.key==='Escape'){pickerResults.classList.remove('open');return}else return;
+    buttons.forEach((button,index)=>button.classList.toggle('active',index===pickerIndex));buttons[pickerIndex]?.scrollIntoView({block:'nearest'});
+  });
+  document.addEventListener('click',event=>{if(!pickerResults.contains(event.target)&&event.target!==picker)pickerResults.classList.remove('open')});
+  document.getElementById('creditForm').addEventListener('submit',event=>{if(!hiddenId.value){event.preventDefault();picker.focus();renderPicker();alert('Selecione um cliente cadastrado na lista.')}});
+
+  function rowHtml(movement){
+    const debit=String(movement.tipo||'').toLowerCase()==='debito';
+    const action=movement.editar_url?`<a class="btn light small" href="${esc(movement.editar_url)}">Editar</a>`:'—';
+    return `<tr><td>${esc(movement.data_texto||'—')}</td><td>${esc(movement.tipo_texto||'—')}</td><td>${esc(movement.referencia||'—')}</td><td class="money ${debit?'debit':'credit'}">${debit?'-':'+'} ${money(movement.valor)}</td><td>${esc(movement.vinculo||'—')}</td><td>${action}</td></tr>`;
+  }
+
+  async function loadHistory(card,append=false){
+    const box=card.querySelector('.history');
+    if(box.dataset.loading==='1')return;
+    const offset=append?Number(box.dataset.offset||0):0;
+    box.dataset.loading='1';
+    if(!append)box.innerHTML='<div class="state">Carregando histórico...</div>';
+    try{
+      const response=await fetch(`/api/creditos/clientes/${card.dataset.id}/historico?limit=60&offset=${offset}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});
+      const data=await response.json();if(!response.ok||!data.ok)throw new Error(data.error||'Falha ao carregar o histórico.');
+      let table=box.querySelector('table');
+      if(!append){
+        box.innerHTML=`<div class="history-pills"><span class="pill green">Saldo: ${money(data.resumo.saldo)}</span><span class="pill">Créditos: ${money(data.resumo.creditos)}</span><span class="pill red">Consumos: ${money(data.resumo.consumos)}</span><span class="pill">Movimentos: ${data.resumo.movimentos}</span></div>`;
+        if(!data.items.length){box.innerHTML+='<div class="state">Este cliente ainda não possui movimentações.</div>';box.dataset.loaded='1';return}
+        box.innerHTML+='<div class="table-wrap"><table><thead><tr><th>Data</th><th>Tipo</th><th>Referência</th><th>Valor</th><th>Vínculo</th><th>Ação</th></tr></thead><tbody></tbody></table></div><div class="history-footer"></div>';
+        table=box.querySelector('table');
+      }
+      table.querySelector('tbody').insertAdjacentHTML('beforeend',data.items.map(rowHtml).join(''));
+      box.dataset.offset=String(offset+data.items.length);box.dataset.loaded='1';
+      const footer=box.querySelector('.history-footer');
+      if(footer)footer.innerHTML=data.has_more?'<button type="button" class="btn light small load-more">Carregar mais</button>':'';
+      footer?.querySelector('.load-more')?.addEventListener('click',()=>loadHistory(card,true));
+    }catch(error){if(!append)box.innerHTML=`<div class="state">${esc(error.message||'Não foi possível carregar o histórico.')}</div>`}
+    finally{box.dataset.loading='0'}
+  }
+
+  document.querySelectorAll('.client-card').forEach(card=>{
+    card.addEventListener('toggle',()=>{if(card.open&&card.querySelector('.history').dataset.loaded!=='1')loadHistory(card)});
+    if(card.open)loadHistory(card);
+  });
+
+  const search=document.getElementById('search');
+  const visibleCount=document.getElementById('visibleCount');
+  search.addEventListener('input',()=>{
+    const q=norm(search.value);let visible=0;
+    document.querySelectorAll('.client-card').forEach(card=>{const show=!q||card.dataset.name.includes(q);card.classList.toggle('hidden',!show);if(show)visible++});
+    visibleCount.textContent=`${visible} cliente${visible===1?'':'s'}`;
+  });
+
+  if(SELECTED_ID){const selected=ALL_CLIENTS.find(client=>Number(client.id)===Number(SELECTED_ID));if(selected)chooseClient(selected)}
+  (function(){const button=document.getElementById('theme');const saved=localStorage.getItem('coopex_theme');if(saved==='dark')document.body.classList.add('dark');const sync=()=>button.textContent=document.body.classList.contains('dark')?'☀':'☾';button.addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()});sync()})();
+</script>
+</body>
+</html>
