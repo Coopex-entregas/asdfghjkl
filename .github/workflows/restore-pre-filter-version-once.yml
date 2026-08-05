@@ -1,0 +1,53 @@
+name: Restaurar versão anterior aos filtros
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/restore-pre-filter-version-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  restaurar:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar histórico completo
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Restaurar árvore exata anterior aos filtros
+        shell: bash
+        run: |
+          set -euo pipefail
+          TARGET="fa379ca1faabae9d8dd8fb156134cc81b01ed3e5"
+          git cat-file -e "$TARGET^{commit}"
+          git read-tree --reset -u "$TARGET"
+
+      - name: Validar sistema restaurado
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m py_compile app.py
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+          for path in ('templates/admin.html', 'templates/admin_original.html'):
+              p = Path(path)
+              if p.exists():
+                  Environment().parse(p.read_text(encoding='utf-8'))
+          print('Versão anterior aos filtros validada.')
+          PY
+          git diff --check
+
+      - name: Publicar restauração na main
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "Coopex Coding Agent"
+          git config user.email "coding-agent@users.noreply.github.com"
+          git add -A
+          git commit -m "revert: restaurar sistema anterior às mudanças de filtro"
+          git push origin HEAD:main
