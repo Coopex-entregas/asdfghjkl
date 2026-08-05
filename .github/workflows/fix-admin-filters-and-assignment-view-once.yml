@@ -1,0 +1,131 @@
+name: Corrigir filtros e atribuições do admin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-admin-filters-and-assignment-view-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Corrigir painel admin
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          app_path = Path('app.py')
+          app = app_path.read_text(encoding='utf-8')
+          start = app.index("def admin():")
+          end = app.index("\n\n@app.post('/cooperado/entrega/", start)
+          block = app[start:end]
+
+          # A página deve manter a ordem cronológica. A ordenação por 'sem cooperado primeiro'
+          # fazia as atribuídas sumirem das primeiras páginas e parecia remover a atribuição.
+          old_order = '''        .order_by(
+              case((Entrega.cooperado_id.is_(None), 0), else_=1),
+              Entrega.data_envio.desc(),
+              Entrega.id.desc(),
+          )'''
+          new_order = '''        .order_by(
+              Entrega.data_envio.desc(),
+              Entrega.id.desc(),
+          )'''
+          if old_order not in block:
+              raise SystemExit('Ordenação problemática do admin não encontrada')
+          block = block.replace(old_order, new_order, 1)
+
+          # Filtros vazios ou "todos" sempre voltam à página 1 e não carregam
+          # parâmetros antigos de paginação. Datas inválidas são ignoradas.
+          block = block.replace(
+              "    if data_inicio:\n        di = datetime.strptime(data_inicio, \"%Y-%m-%d\").date()\n        inicio_utc, _ = local_date_window_to_utc_range(di)\n        query = query.filter(Entrega.data_envio >= inicio_utc)\n\n    if data_fim:\n        df_ = datetime.strptime(data_fim, \"%Y-%m-%d\").date()\n        _, fim_utc = local_date_window_to_utc_range(df_)\n        query = query.filter(Entrega.data_envio <= fim_utc)",
+              "    if data_inicio:\n        try:\n            di = datetime.strptime(data_inicio, \"%Y-%m-%d\").date()\n            inicio_utc, _ = local_date_window_to_utc_range(di)\n            query = query.filter(Entrega.data_envio >= inicio_utc)\n        except (TypeError, ValueError):\n            data_inicio = None\n\n    if data_fim:\n        try:\n            df_ = datetime.strptime(data_fim, \"%Y-%m-%d\").date()\n            _, fim_utc = local_date_window_to_utc_range(df_)\n            query = query.filter(Entrega.data_envio <= fim_utc)\n        except (TypeError, ValueError):\n            data_fim = None",
+              1,
+          )
+
+          app = app[:start] + block + app[end:]
+          app_path.write_text(app, encoding='utf-8')
+
+          tpl_path = Path('templates/admin_original.html')
+          tpl = tpl_path.read_text(encoding='utf-8')
+
+          # O valor selecionado do cooperado precisa refletir a URL.
+          tpl = tpl.replace(
+              '<option value="todos">Todos</option>',
+              '<option value="todos" {% if request.args.get(\'cooperado_id\',\'todos\') == \'todos\' %}selected{% endif %}>Todos</option>',
+              1,
+          )
+          tpl = tpl.replace(
+              '<option value="{{ c.id }}">{{ c.nome }}</option>',
+              '<option value="{{ c.id }}" {% if request.args.get(\'cooperado_id\') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>',
+              1,
+          )
+
+          # Ao filtrar, sempre começa na página 1. Ao limpar, remove todos os filtros.
+          form_tag = '<form class="filters-form" method="GET" action="{{ url_for(\'admin\') }}" onsubmit="window.__markActionStart&&window.__markActionStart()">'
+          form_new = '<form class="filters-form" method="GET" action="{{ url_for(\'admin\') }}" onsubmit="window.__markActionStart&&window.__markActionStart()"><input type="hidden" name="page" value="1">'
+          if form_tag not in tpl:
+              raise SystemExit('Formulário de filtros não encontrado')
+          tpl = tpl.replace(form_tag, form_new, 1)
+
+          filter_button = '<button class="btn" type="submit">Filtrar</button>'
+          filter_buttons = '''<div class="filter-submit-actions">
+                <button class="btn" type="submit">Filtrar</button>
+                <a class="btn alt" href="{{ url_for('admin') }}" onclick="window.__markActionStart&&window.__markActionStart()">Limpar</a>
+              </div>'''
+          if filter_button not in tpl:
+              raise SystemExit('Botão Filtrar não encontrado')
+          tpl = tpl.replace(filter_button, filter_buttons, 1)
+
+          # Remove o texto enganoso que dizia "Atribuídas de hoje" quando apenas ocultava linhas.
+          tpl = tpl.replace("btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Atribuídas de hoje';",
+                            "btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Mostrar atribuídas';", 1)
+
+          style = '''
+          <style id="admin-filter-final-fix">
+            .filter-submit-actions{display:flex;align-items:end;gap:7px}
+            .filter-submit-actions .btn{height:42px}
+            @media(max-width:560px){.filter-submit-actions{width:100%}.filter-submit-actions .btn{flex:1}}
+          </style>
+          '''
+          tpl = tpl.replace('</head>', style + '</head>', 1)
+          tpl_path.write_text(tpl, encoding='utf-8')
+
+          Path('.github/workflows/fix-admin-filters-and-assignment-view-once.yml').unlink()
+
+      - name: Validar
+        shell: bash
+        run: |
+          python -m py_compile app.py
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+          app = Path('app.py').read_text(encoding='utf-8')
+          tpl = Path('templates/admin_original.html').read_text(encoding='utf-8')
+          assert "case((Entrega.cooperado_id.is_(None), 0), else_=1)" not in app[app.index('def admin():'):app.index("@app.post('/cooperado/entrega/", app.index('def admin():'))]
+          assert "request.args.get('cooperado_id','todos') == 'todos'" in tpl
+          assert 'name="page" value="1"' in tpl
+          assert "href=\"{{ url_for('admin') }}\"" in tpl
+          Environment().parse(tpl)
+          print('Filtros e atribuições do painel admin validados.')
+          PY
+          git diff --check
+
+      - name: Salvar na main
+        shell: bash
+        run: |
+          git config user.name "Coopex Coding Agent"
+          git config user.email "coding-agent@users.noreply.github.com"
+          git add app.py templates/admin_original.html .github/workflows/fix-admin-filters-and-assignment-view-once.yml
+          git commit -m "fix: restaurar filtros e exibição das atribuições no admin"
+          git push origin HEAD:main
