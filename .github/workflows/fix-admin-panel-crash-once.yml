@@ -1,0 +1,159 @@
+name: Corrigir queda do painel admin
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - .github/workflows/fix-admin-panel-crash-once.yml
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar código
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Aplicar paginação leve no painel admin
+        shell: python
+        run: |
+          from pathlib import Path
+
+          app_path = Path('app.py')
+          app = app_path.read_text(encoding='utf-8')
+
+          old_query = '''    entregas_all = (
+              query.options(joinedload(Entrega.cooperado))
+              .order_by(Entrega.data_envio.desc())
+              .all()
+          )
+          nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
+          atribuidos = [e for e in entregas_all if e.cooperado_id]
+          entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
+          '''
+
+          new_query = '''    # O painel nunca deve carregar todo o histórico de uma vez.
+          # "Todos" continua mostrando todas as entregas, mas em páginas leves.
+          page = max(1, request.args.get('page', 1, type=int) or 1)
+          per_page = 100
+          total_entregas = query.order_by(None).count()
+          total_pages = max(1, (total_entregas + per_page - 1) // per_page)
+          page = min(page, total_pages)
+
+          entregas_page = (
+              query.options(joinedload(Entrega.cooperado))
+              .order_by(
+                  case((Entrega.cooperado_id.is_(None), 0), else_=1),
+                  Entrega.data_envio.desc(),
+                  Entrega.id.desc(),
+              )
+              .offset((page - 1) * per_page)
+              .limit(per_page)
+              .all()
+          )
+          entregas = [_enriquecer_entrega(e) for e in entregas_page]
+          '''
+
+          if old_query not in app:
+              raise SystemExit('Consulta antiga do painel não encontrada')
+          app = app.replace(old_query, new_query, 1)
+
+          old_render = '''        formas_pagamento_disponiveis=formas_pagamento_disponiveis,
+          )
+          '''
+          new_render = '''        formas_pagamento_disponiveis=formas_pagamento_disponiveis,
+              page=page,
+              total_pages=total_pages,
+              total_entregas=total_entregas,
+              per_page=per_page,
+          )
+          '''
+          if old_render not in app:
+              raise SystemExit('Bloco render_template do admin não encontrado')
+          app = app.replace(old_render, new_render, 1)
+          app_path.write_text(app, encoding='utf-8')
+
+          tpl_path = Path('templates/admin_original.html')
+          tpl = tpl_path.read_text(encoding='utf-8')
+
+          old_end = '''            </table>
+                </div>
+              </div>
+
+            </section>
+          '''
+
+          new_end = '''            </table>
+                </div>
+              </div>
+
+              <nav class="admin-pagination" aria-label="Paginação das entregas">
+                <div class="admin-pagination-info">
+                  Mostrando até {{ per_page }} por página · {{ total_entregas }} entrega(s)
+                </div>
+                <div class="admin-pagination-actions">
+                  {% set qs = request.args.to_dict() %}
+                  {% if page > 1 %}
+                    {% set _ = qs.update({'page': page - 1}) %}
+                    <a class="btn alt" href="{{ url_for('admin', **qs) }}">Anterior</a>
+                  {% endif %}
+                  <span class="admin-page-label">Página {{ page }} de {{ total_pages }}</span>
+                  {% if page < total_pages %}
+                    {% set _ = qs.update({'page': page + 1}) %}
+                    <a class="btn alt" href="{{ url_for('admin', **qs) }}">Próxima</a>
+                  {% endif %}
+                </div>
+              </nav>
+
+            </section>
+          '''
+
+          if old_end not in tpl:
+              raise SystemExit('Final da tabela do painel não encontrado')
+          tpl = tpl.replace(old_end, new_end, 1)
+
+          style_marker = '</style>\n\n\n\n<!-- COOPEX_ADMIN_VISUAL_V2_START -->'
+          pagination_css = '''
+          .admin-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-top:1px solid var(--line);background:#fff;flex-wrap:wrap}
+          .admin-pagination-info{font-size:.82rem;color:var(--muted);font-weight:800}
+          .admin-pagination-actions{display:flex;align-items:center;gap:8px}
+          .admin-page-label{font-size:.82rem;font-weight:900;color:#173f9f;white-space:nowrap}
+          @media(max-width:640px){.admin-pagination{align-items:stretch}.admin-pagination-actions{width:100%;justify-content:space-between}}
+          '''
+          if style_marker not in tpl:
+              raise SystemExit('Marcador de estilo do painel não encontrado')
+          tpl = tpl.replace(style_marker, pagination_css + style_marker, 1)
+          tpl_path.write_text(tpl, encoding='utf-8')
+
+          Path('.github/workflows/fix-admin-panel-crash-once.yml').unlink()
+
+      - name: Validar arquivos
+        shell: bash
+        run: |
+          python -m py_compile app.py
+          python - <<'PY'
+          from pathlib import Path
+          from jinja2 import Environment
+          app = Path('app.py').read_text(encoding='utf-8')
+          tpl = Path('templates/admin_original.html').read_text(encoding='utf-8')
+          assert "per_page = 100" in app
+          assert ".limit(per_page)" in app
+          assert "total_pages=total_pages" in app
+          assert "admin-pagination" in tpl
+          Environment().parse(tpl)
+          print('Painel admin validado com paginação leve.')
+          PY
+          git diff --check
+
+      - name: Salvar diretamente na main
+        shell: bash
+        run: |
+          git config user.name "Coopex Coding Agent"
+          git config user.email "coding-agent@users.noreply.github.com"
+          git add app.py templates/admin_original.html .github/workflows/fix-admin-panel-crash-once.yml
+          git commit -m "fix: impedir queda do painel admin com paginação"
+          git push origin HEAD:main
