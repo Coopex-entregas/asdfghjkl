@@ -2338,8 +2338,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
               + Agendar entrega
             </button>
-            <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="false">
-              Atribuídas de hoje
+            <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="true">
+              Ocultar atribuídas
             </button>
             <button class="btn alt" id="btnCopyOpenBairros" type="button">
               Bairros em aberto
@@ -2366,7 +2366,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 <!-- TABELA -->
         <div class="quick-view-bar">
           <div class="quick-view-chip active" id="chipOpenOnly">Em aberto primeiro</div>
-          <div class="quick-view-chip" id="chipAssignedInfo">Atribuídas escondidas até clicar no botão</div>
+          <div class="quick-view-chip active" id="chipAssignedInfo">Atribuídas visíveis</div>
         </div>
         <div class="table-shell">
           <div class="table-wrap" id="tbl">
@@ -2871,7 +2871,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
     window.addEventListener('DOMContentLoaded', function(){
       atualizarBadgeAbertas();
       try{
-        document.body.classList.add('hide-assigned');
+        document.body.classList.remove('hide-assigned');
         const btn = document.getElementById('btnToggleAssigned');
         const chipAssigned = document.getElementById('chipAssignedInfo');
         const syncAssignedUi = ()=>{
