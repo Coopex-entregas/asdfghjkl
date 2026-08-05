@@ -4631,10 +4631,8 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # padrão: dia de hoje
-    if not data_inicio and not data_fim:
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
-        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
+    # Sem período informado, "Todos" exibe todo o histórico de entregas.
+    # A consulta só é restringida por data quando início e/ou fim são preenchidos.
 
     if cooperado_id and cooperado_id != 'todos':
         try:
