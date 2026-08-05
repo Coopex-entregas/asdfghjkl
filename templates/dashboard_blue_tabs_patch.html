@@ -1,0 +1,145 @@
+<style id="coopex-dashboard-blue-tabs-style">
+  /* Remove a faixa superior e transforma a barra das abas no único cabeçalho */
+  body.dashboard-blue-tabs-ready .top{display:none!important}
+  body.dashboard-blue-tabs-ready .dashboard-tabs-bar{
+    position:sticky!important;
+    top:0!important;
+    z-index:3200!important;
+    min-height:52px!important;
+    height:auto!important;
+    padding:0 14px!important;
+    display:flex!important;
+    align-items:stretch!important;
+    gap:0!important;
+    background:linear-gradient(100deg,#10378f,#1748b8 72%,#3567cf)!important;
+    border:0!important;
+    border-bottom:1px solid rgba(255,255,255,.24)!important;
+    box-shadow:0 5px 16px rgba(13,48,132,.18)!important;
+    overflow-x:auto!important;
+    overflow-y:hidden!important;
+  }
+  body.dashboard-blue-tabs-ready .dashboard-tab-button{
+    height:52px!important;
+    min-height:52px!important;
+    padding:0 13px!important;
+    color:#fff!important;
+    border-bottom:3px solid transparent!important;
+    background:transparent!important;
+    opacity:.92!important;
+  }
+  body.dashboard-blue-tabs-ready .dashboard-tab-button .tab-icon,
+  body.dashboard-blue-tabs-ready .dashboard-tab-button span{
+    color:#fff!important;
+  }
+  body.dashboard-blue-tabs-ready .dashboard-tab-button:hover{
+    color:#fff!important;
+    background:rgba(255,255,255,.10)!important;
+    opacity:1!important;
+  }
+  body.dashboard-blue-tabs-ready .dashboard-tab-button.active{
+    color:#fff!important;
+    background:rgba(255,255,255,.16)!important;
+    border-bottom-color:#fff!important;
+    opacity:1!important;
+  }
+  .dashboard-tabs-actions{
+    margin-left:auto!important;
+    display:flex!important;
+    align-items:center!important;
+    justify-content:flex-end!important;
+    gap:6px!important;
+    flex:0 0 auto!important;
+    padding-left:14px!important;
+  }
+  .dashboard-tabs-actions .heroChip,
+  .dashboard-tabs-actions .btn{
+    min-height:32px!important;
+    height:32px!important;
+    margin:0!important;
+    padding:0 10px!important;
+    display:inline-flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    border:1px solid rgba(255,255,255,.34)!important;
+    border-radius:9px!important;
+    background:rgba(255,255,255,.12)!important;
+    color:#fff!important;
+    box-shadow:none!important;
+    font-size:.68rem!important;
+    font-weight:850!important;
+    line-height:1!important;
+    text-decoration:none!important;
+    white-space:nowrap!important;
+  }
+  .dashboard-tabs-actions .btn:hover,
+  .dashboard-tabs-actions .heroChip:hover{
+    background:rgba(255,255,255,.22)!important;
+    color:#fff!important;
+    transform:none!important;
+  }
+  .dashboard-tabs-actions .btn.primary,
+  .dashboard-tabs-actions .apply-filter{display:none!important}
+  body.dashboard-blue-tabs-ready .dashboard-tab-spacer{display:none!important}
+
+  body.dark-mode.dashboard-blue-tabs-ready .dashboard-tabs-bar{
+    background:linear-gradient(100deg,#071d5b,#0e378c 72%,#234fa9)!important;
+  }
+
+  @media(max-width:1450px){
+    body.dashboard-blue-tabs-ready .dashboard-tab-button{padding:0 9px!important;font-size:.69rem!important}
+    .dashboard-tabs-actions{padding-left:8px!important;gap:4px!important}
+    .dashboard-tabs-actions .heroChip,.dashboard-tabs-actions .btn{padding:0 8px!important;font-size:.62rem!important}
+  }
+  @media(max-width:1100px){
+    body.dashboard-blue-tabs-ready .dashboard-tabs-bar{flex-wrap:wrap!important;overflow:visible!important;padding:0 8px 6px!important}
+    .dashboard-tabs-actions{width:100%!important;margin-left:0!important;padding:5px 0 0!important;justify-content:flex-start!important;overflow-x:auto!important}
+  }
+</style>
+<script id="coopex-dashboard-blue-tabs-script">
+(function(){
+  function montarBarraAzul(){
+    const tabs=document.querySelector('.dashboard-tabs-bar');
+    const top=document.querySelector('.top');
+    if(!tabs||!top)return false;
+    if(tabs.querySelector('.dashboard-tabs-actions')){
+      document.body.classList.add('dashboard-blue-tabs-ready');
+      return true;
+    }
+
+    const actions=document.createElement('div');
+    actions.className='dashboard-tabs-actions noPrint';
+
+    const summary=top.querySelector('.dashboard-tabs-summary')
+      ||top.querySelector('.dashboard-clean-summary')
+      ||top.querySelector('.dash-v2-summary');
+    if(summary){
+      [...summary.children].forEach(item=>actions.appendChild(item));
+    }else{
+      actions.innerHTML='<span class="heroChip">{{ periodo_legivel }}</span><span class="heroChip">{{ resumo.total_entregas }} entregas</span><span class="heroChip">R$ {{ "%.2f"|format(resumo.valor_total or 0)|replace(".", ",") }}</span>';
+    }
+
+    const topActions=top.querySelector('.actions');
+    if(topActions){
+      [...topActions.children].forEach(item=>{
+        if(item.matches('.primary,[type="submit"]'))return;
+        actions.appendChild(item);
+      });
+    }
+
+    tabs.appendChild(actions);
+    document.body.classList.add('dashboard-blue-tabs-ready');
+    return true;
+  }
+
+  function iniciar(){
+    let tentativas=0;
+    const timer=setInterval(()=>{
+      tentativas+=1;
+      if(montarBarraAzul()||tentativas>=50)clearInterval(timer);
+    },100);
+  }
+
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  else iniciar();
+})();
+</script>
