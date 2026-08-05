@@ -87,6 +87,7 @@ def post_worker_init(worker):
         import dashboard_comparativo_feature
         import cooperado_arquivamento_feature
         import historico_entregas_feature
+        import creditos_otimizacao_feature
 
         _corrigir_serializacao_escala(escala_feature)
         escala_feature.install(app_module)
@@ -97,8 +98,9 @@ def post_worker_init(worker):
         dashboard_comparativo_feature.install(app_module)
         cooperado_arquivamento_feature.install(app_module)
         historico_entregas_feature.install(app_module)
+        creditos_otimizacao_feature.install(app_module)
         worker.log.info(
-            "Escala, trocas, agendamentos, bairros, comparativo, arquivamento e histórico instalados."
+            "Escala, trocas, agendamentos, bairros, comparativo, arquivamento, histórico e créditos instalados."
         )
     except Exception:
         worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
