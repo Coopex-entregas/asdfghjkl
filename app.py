@@ -4631,17 +4631,15 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # Sem filtros, o painel abre mostrando somente as entregas de hoje.
-    # Quando qualquer filtro é aplicado sem datas, a pesquisa deve considerar
-    # todo o histórico; caso contrário, cooperados e pagamentos antigos somem.
-    filtro_explicito = bool(
-        (cooperado_id and cooperado_id != 'todos')
-        or (status_pagamento and status_pagamento != 'todos')
-        or (forma_pagamento and forma_pagamento.lower() != 'todos')
-        or cliente
-        or endereco
+    # A abertura normal do painel mostra somente o dia atual.
+    # Ao clicar em Filtrar, até mesmo mantendo Todos e datas vazias,
+    # a consulta passa a considerar o histórico disponível.
+    campos_do_filtro = (
+        'cooperado_id', 'data_inicio', 'data_fim', 'status_pagamento',
+        'forma_pagamento', 'cliente', 'endereco'
     )
-    if not data_inicio and not data_fim and not filtro_explicito:
+    filtro_solicitado = any(campo in request.args for campo in campos_do_filtro)
+    if not data_inicio and not data_fim and not filtro_solicitado:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
@@ -4674,7 +4672,7 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    if forma_pagamento and forma_pagamento != 'todos':
+    if forma_pagamento and forma_pagamento.lower() not in ('todos', 'todas'):
         query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
 
     if endereco:
@@ -4689,6 +4687,7 @@ def admin():
     entregas_all = (
         query.options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
+        .limit(500)
         .all()
     )
     nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
