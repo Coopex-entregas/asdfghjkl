@@ -1,0 +1,76 @@
+name: Corrigir botão ocultar atribuídas
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/fix-hide-assigned-button-once.yml'
+
+permissions:
+  contents: write
+
+jobs:
+  corrigir:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Baixar repositório
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Corrigir botão
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path('templates/admin_original.html')
+          text = path.read_text(encoding='utf-8')
+
+          replacements = [
+              (
+                  "    body.filter-active.hide-assigned .row-assigned{display:table-row}\n",
+                  ""
+              ),
+              (
+                  "          const mostrando = document.body.classList.contains('filter-active') || !document.body.classList.contains('hide-assigned');",
+                  "          const mostrando = !document.body.classList.contains('hide-assigned');"
+              ),
+              (
+                  "            btn.textContent = document.body.classList.contains('filter-active') ? 'Atribuídas exibidas' : (mostrando ? 'Ocultar atribuídas' : 'Mostrar atribuídas');",
+                  "            btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Mostrar atribuídas';"
+              ),
+              (
+                  "          btn.addEventListener('click', function(){\n            if(document.body.classList.contains('filter-active')){\n              document.body.classList.remove('hide-assigned');\n              syncAssignedUi();\n              return;\n            }\n            document.body.classList.toggle('hide-assigned');",
+                  "          btn.addEventListener('click', function(){\n            document.body.classList.remove('filter-active');\n            document.body.classList.toggle('hide-assigned');"
+              ),
+          ]
+
+          for old, new in replacements:
+              count = text.count(old)
+              if count != 1:
+                  raise SystemExit(f'Trecho esperado não encontrado exatamente uma vez: {old[:100]!r} (ocorrências={count})')
+              text = text.replace(old, new, 1)
+
+          path.write_text(text, encoding='utf-8')
+          PY
+
+      - name: Validar alteração
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          text = Path('templates/admin_original.html').read_text(encoding='utf-8')
+          assert "body.filter-active.hide-assigned .row-assigned{display:table-row}" not in text
+          assert "const mostrando = !document.body.classList.contains('hide-assigned');" in text
+          assert "btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Mostrar atribuídas';" in text
+          assert "document.body.classList.remove('filter-active');\n            document.body.classList.toggle('hide-assigned');" in text
+          PY
+          git diff --check
+
+      - name: Publicar correção e remover workflow temporário
+        run: |
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/fix-hide-assigned-button-once.yml
+          git add templates/admin_original.html
+          git commit -m 'fix: destravar botão de ocultar atribuídas'
+          git push origin main
