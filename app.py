@@ -4631,8 +4631,10 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # Sem período informado, "Todos" exibe todo o histórico de entregas.
-    # A consulta só é restringida por data quando início e/ou fim são preenchidos.
+    # padrão: dia de hoje
+    if not data_inicio and not data_fim:
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
+        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
     if cooperado_id and cooperado_id != 'todos':
         try:
@@ -4675,36 +4677,14 @@ def admin():
             func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
         ))
 
-    # "Todos" mantém acesso ao histórico completo, sem carregar tudo na memória.
-    page = max(1, request.args.get('page', 1, type=int) or 1)
-    per_page = 100
-    total_entregas = query.order_by(None).count()
-    total_pages = max(1, (total_entregas + per_page - 1) // per_page)
-    page = min(page, total_pages)
-
-    entregas_page = (
+    entregas_all = (
         query.options(joinedload(Entrega.cooperado))
-        .order_by(
-            case((Entrega.cooperado_id.is_(None), 0), else_=1),
-            Entrega.data_envio.desc(),
-            Entrega.id.desc(),
-        )
-        .offset((page - 1) * per_page)
-        .limit(per_page)
+        .order_by(Entrega.data_envio.desc())
         .all()
     )
-    entregas = [_enriquecer_entrega(e) for e in entregas_page]
-
-    pagination_args = request.args.to_dict()
-    prev_url = None
-    next_url = None
-    if page > 1:
-        pagination_args['page'] = page - 1
-        prev_url = url_for('admin', **pagination_args)
-    if page < total_pages:
-        pagination_args['page'] = page + 1
-        next_url = url_for('admin', **pagination_args)
-
+    nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
+    atribuidos = [e for e in entregas_all if e.cooperado_id]
+    entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     formas_pagamento_disponiveis = [
@@ -4786,12 +4766,6 @@ def admin():
         cooperados_js=cooperados_js,
         solicitacoes_valor=solicitacoes_valor,
         formas_pagamento_disponiveis=formas_pagamento_disponiveis,
-    page=page,
-    total_pages=total_pages,
-    total_entregas=total_entregas,
-    per_page=per_page,
-    prev_url=prev_url,
-    next_url=next_url,
     )
     return _patch_admin_top_link(html)
 

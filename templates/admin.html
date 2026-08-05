@@ -1,45 +1,4 @@
 {% include 'admin_original.html' %}
-<style id="admin-pagination-stability">
-  .admin-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #e1e8f5;border-top:0;background:#fff;flex-wrap:wrap}
-  .admin-pagination-info{font-size:.82rem;color:#66759a;font-weight:800}
-  .admin-pagination-actions{display:flex;align-items:center;gap:8px}
-  .admin-page-label{font-size:.82rem;font-weight:900;color:#173f9f;white-space:nowrap}
-  @media(max-width:640px){.admin-pagination{align-items:stretch}.admin-pagination-actions{width:100%;justify-content:space-between}}
-</style>
-<script id="admin-pagination-stability-script">
-(function(){
-  const cfg={
-    page:{{ page|default(1)|int }},
-    totalPages:{{ total_pages|default(1)|int }},
-    total:{{ total_entregas|default(0)|int }},
-    perPage:{{ per_page|default(100)|int }},
-    prev:{{ prev_url|tojson }},
-    next:{{ next_url|tojson }}
-  };
-  function montar(){
-    const shell=document.querySelector('.table-shell');
-    if(!shell||document.getElementById('adminPagination'))return;
-    const nav=document.createElement('nav');
-    nav.id='adminPagination';
-    nav.className='admin-pagination';
-    nav.setAttribute('aria-label','Paginação das entregas');
-    const info=document.createElement('div');
-    info.className='admin-pagination-info';
-    info.textContent=`${cfg.total} entrega(s) · até ${cfg.perPage} por página`;
-    const actions=document.createElement('div');
-    actions.className='admin-pagination-actions';
-    if(cfg.prev){const a=document.createElement('a');a.className='btn alt';a.href=cfg.prev;a.textContent='Anterior';actions.appendChild(a)}
-    const label=document.createElement('span');
-    label.className='admin-page-label';
-    label.textContent=`Página ${cfg.page} de ${cfg.totalPages}`;
-    actions.appendChild(label);
-    if(cfg.next){const a=document.createElement('a');a.className='btn alt';a.href=cfg.next;a.textContent='Próxima';actions.appendChild(a)}
-    nav.append(info,actions);
-    shell.insertAdjacentElement('afterend',nav);
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montar,{once:true});else montar();
-})();
-</script>
 <style id="coopex-admin-schedule-ui">
   .quick-delivery-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;min-width:560px!important}
   .quick-delivery-actions .btn{width:100%!important;white-space:nowrap!important}
