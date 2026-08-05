@@ -73,43 +73,55 @@ jobs:
           app = app[:render_pos] + render_extra + app[render_pos:]
           app_path.write_text(app, encoding='utf-8')
 
-          tpl_path = Path('templates/admin_original.html')
+          tpl_path = Path('templates/admin.html')
           tpl = tpl_path.read_text(encoding='utf-8')
-          table_end = '''            </table>
-                </div>
-              </div>
-
-            </section>'''
-          pagination = '''            </table>
-                </div>
-              </div>
-
-              <nav class="admin-pagination" aria-label="Paginação das entregas">
-                <div class="admin-pagination-info">{{ total_entregas }} entrega(s) · até {{ per_page }} por página</div>
-                <div class="admin-pagination-actions">
-                  {% if prev_url %}<a class="btn alt" href="{{ prev_url }}">Anterior</a>{% endif %}
-                  <span class="admin-page-label">Página {{ page }} de {{ total_pages }}</span>
-                  {% if next_url %}<a class="btn alt" href="{{ next_url }}">Próxima</a>{% endif %}
-                </div>
-              </nav>
-
-            </section>'''
-          if table_end not in tpl:
-              raise SystemExit('Final da tabela do painel não encontrado')
-          tpl = tpl.replace(table_end, pagination, 1)
-
-          css = '''
+          include_line = "{% include 'admin_original.html' %}\n"
+          patch = '''{% include 'admin_original.html' %}
           <style id="admin-pagination-stability">
-          .admin-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border-top:1px solid #e1e8f5;background:#fff;flex-wrap:wrap}
-          .admin-pagination-info{font-size:.82rem;color:#66759a;font-weight:800}
-          .admin-pagination-actions{display:flex;align-items:center;gap:8px}
-          .admin-page-label{font-size:.82rem;font-weight:900;color:#173f9f;white-space:nowrap}
-          @media(max-width:640px){.admin-pagination{align-items:stretch}.admin-pagination-actions{width:100%;justify-content:space-between}}
+            .admin-pagination{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 12px;border:1px solid #e1e8f5;border-top:0;background:#fff;flex-wrap:wrap}
+            .admin-pagination-info{font-size:.82rem;color:#66759a;font-weight:800}
+            .admin-pagination-actions{display:flex;align-items:center;gap:8px}
+            .admin-page-label{font-size:.82rem;font-weight:900;color:#173f9f;white-space:nowrap}
+            @media(max-width:640px){.admin-pagination{align-items:stretch}.admin-pagination-actions{width:100%;justify-content:space-between}}
           </style>
+          <script id="admin-pagination-stability-script">
+          (function(){
+            const cfg={
+              page:{{ page|default(1)|int }},
+              totalPages:{{ total_pages|default(1)|int }},
+              total:{{ total_entregas|default(0)|int }},
+              perPage:{{ per_page|default(100)|int }},
+              prev:{{ prev_url|tojson }},
+              next:{{ next_url|tojson }}
+            };
+            function montar(){
+              const shell=document.querySelector('.table-shell');
+              if(!shell||document.getElementById('adminPagination'))return;
+              const nav=document.createElement('nav');
+              nav.id='adminPagination';
+              nav.className='admin-pagination';
+              nav.setAttribute('aria-label','Paginação das entregas');
+              const info=document.createElement('div');
+              info.className='admin-pagination-info';
+              info.textContent=`${cfg.total} entrega(s) · até ${cfg.perPage} por página`;
+              const actions=document.createElement('div');
+              actions.className='admin-pagination-actions';
+              if(cfg.prev){const a=document.createElement('a');a.className='btn alt';a.href=cfg.prev;a.textContent='Anterior';actions.appendChild(a)}
+              const label=document.createElement('span');
+              label.className='admin-page-label';
+              label.textContent=`Página ${cfg.page} de ${cfg.totalPages}`;
+              actions.appendChild(label);
+              if(cfg.next){const a=document.createElement('a');a.className='btn alt';a.href=cfg.next;a.textContent='Próxima';actions.appendChild(a)}
+              nav.append(info,actions);
+              shell.insertAdjacentElement('afterend',nav);
+            }
+            if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',montar,{once:true});else montar();
+          })();
+          </script>
           '''
-          if '</head>' not in tpl:
-              raise SystemExit('Cabeçalho HTML do painel não encontrado')
-          tpl = tpl.replace('</head>', css + '</head>', 1)
+          if include_line not in tpl:
+              raise SystemExit('Inclusão principal do admin não encontrada')
+          tpl = tpl.replace(include_line, patch, 1)
           tpl_path.write_text(tpl, encoding='utf-8')
 
           Path('.github/workflows/fix-admin-panel-crash-once.yml').unlink()
@@ -122,11 +134,11 @@ jobs:
           from pathlib import Path
           from jinja2 import Environment
           app = Path('app.py').read_text(encoding='utf-8')
-          tpl = Path('templates/admin_original.html').read_text(encoding='utf-8')
+          tpl = Path('templates/admin.html').read_text(encoding='utf-8')
           assert "per_page = 100" in app
           assert ".limit(per_page)" in app
           assert "prev_url=prev_url" in app
-          assert "admin-pagination-stability" in tpl
+          assert "admin-pagination-stability-script" in tpl
           Environment().parse(tpl)
           print('Painel admin validado com paginação leve.')
           PY
@@ -137,6 +149,6 @@ jobs:
         run: |
           git config user.name "Coopex Coding Agent"
           git config user.email "coding-agent@users.noreply.github.com"
-          git add app.py templates/admin_original.html .github/workflows/fix-admin-panel-crash-once.yml
+          git add app.py templates/admin.html .github/workflows/fix-admin-panel-crash-once.yml
           git commit -m "fix: impedir queda do painel admin com paginação"
           git push origin HEAD:main
