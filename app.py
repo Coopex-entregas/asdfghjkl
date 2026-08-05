@@ -4631,15 +4631,9 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # A abertura normal do painel mostra somente o dia atual.
-    # Ao clicar em Filtrar, até mesmo mantendo Todos e datas vazias,
-    # a consulta passa a considerar o histórico disponível.
-    campos_do_filtro = (
-        'cooperado_id', 'data_inicio', 'data_fim', 'status_pagamento',
-        'forma_pagamento', 'cliente', 'endereco'
-    )
-    filtro_solicitado = any(campo in request.args for campo in campos_do_filtro)
-    if not data_inicio and not data_fim and not filtro_solicitado:
+    # Sem data informada, qualquer filtro considera somente as entregas de hoje.
+    # Para consultar outro período ou todo o histórico, o usuário informa as datas.
+    if not data_inicio and not data_fim:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
