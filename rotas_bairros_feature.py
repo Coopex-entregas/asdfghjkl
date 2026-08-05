@@ -243,6 +243,34 @@ def _price():
     )
 
 
+def _inject_price_export_assets(response):
+    """Carrega a impressão A4 avançada apenas na tela Preços e Rotas."""
+    try:
+        if request.endpoint != "precos_rotas":
+            return response
+        if response.status_code != 200 or response.mimetype != "text/html":
+            return response
+
+        html = response.get_data(as_text=True)
+        asset = (
+            '<script defer src="/static/js/precos_rotas_export_print.js'
+            '?v=20260804-1"></script>'
+        )
+        if asset not in html:
+            if "</body>" in html:
+                html = html.replace("</body>", asset + "</body>", 1)
+            else:
+                html += asset
+            response.set_data(html)
+            response.headers.pop("Content-Length", None)
+    except Exception:
+        if MOD is not None:
+            MOD.app.logger.exception(
+                "Falha ao carregar a impressão da tabela de preços."
+            )
+    return response
+
+
 def install(app_module):
     global DONE, MOD, DB
     if DONE:
@@ -280,4 +308,5 @@ def install(app_module):
         _price,
         methods=["GET"],
     )
+    app_module.app.after_request(_inject_price_export_assets)
     DONE = True
