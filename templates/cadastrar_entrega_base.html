@@ -44,12 +44,19 @@
         select.form?.addEventListener('submit',e=>{if(select.value==='__fora_escala__'){e.preventDefault();alert('Escolha o cooperado antes de cadastrar.')}});
       }catch(e){}
     }
+    function resetCredit(){
+      const pg=document.getElementById('pagamento'),opt=document.getElementById('completeCreditOption'),note=document.getElementById('completeCreditNote');
+      if(opt){opt.hidden=true;opt.disabled=true}
+      if(pg&&pg.value==='CREDITO_AUTO')pg.value='Pix';
+      if(note){note.style.display='none';note.textContent=''}
+    }
     function setup(){
       if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');
       const h1=document.querySelector('h1');if(h1&&!document.getElementById('deliveryModeSwitch')){const nav=document.createElement('div');nav.id='deliveryModeSwitch';nav.className='delivery-mode-switch';nav.innerHTML='<a href="{{ url_for('cadastrar_entrega') }}">⚡ Entrega rápida</a><a class="active" href="{{ url_for('cadastrar_entrega', modo='completo') }}">📋 Entrega completa</a>';h1.insertAdjacentElement('afterend',nav)}
       if(!document.getElementById('completeTheme')){const b=document.createElement('button');b.id='completeTheme';b.className='complete-theme';b.type='button';const sync=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()};document.body.appendChild(b);sync()}
-      const pg=document.getElementById('pagamento');if(pg){pg.innerHTML='<option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Comanda">3. Comanda</option><option id="completeCreditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option>';let note=document.getElementById('completeCreditNote');if(!note){note=document.createElement('div');note.id='completeCreditNote';note.className='complete-credit-note';pg.insertAdjacentElement('afterend',note)}}
+      const pg=document.getElementById('pagamento');if(pg){pg.innerHTML='<option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Pix (Cooperativa)">3. Pix Cooperativa</option><option id="completeCreditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option><option value="Comanda">5. Comanda</option>';let note=document.getElementById('completeCreditNote');if(!note){note=document.createElement('div');note.id='completeCreditNote';note.className='complete-credit-note';pg.insertAdjacentElement('afterend',note)}}
       const original=window.escolher;if(typeof original==='function'&&!original.__coopexWrapped){const wrapped=function(item){original(item);loadCredit(item)};wrapped.__coopexWrapped=true;window.escolher=wrapped}
+      const clientInput=document.getElementById('cliente_manual');if(clientInput&&!clientInput.dataset.creditReset){clientInput.dataset.creditReset='1';clientInput.addEventListener('input',()=>{const clientId=document.getElementById('cliente_id');if(!clientId||!clientId.value)resetCredit()})}
       setupEscala();
     }
     async function loadCredit(item){const pg=document.getElementById('pagamento'),opt=document.getElementById('completeCreditOption'),note=document.getElementById('completeCreditNote');if(!pg||!opt||!item)return;const profile={saldo:Number(item.saldo_atual||0),allowed:Math.abs(Number(item.saldo_atual||0))>0.000001,frequent:false};try{const r=await fetch(`/cliente/${item.id}/credito?format=json`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(r.ok&&d.ok){const movs=d.movimentos||[];const consumos=movs.filter(m=>String(m.tipo||'').toLowerCase()==='debito'&&(m.entrega_id||String(m.referencia||'').toLowerCase().includes('entrega'))).length;profile.saldo=Number(d.saldo_atual||0);profile.allowed=profile.allowed||movs.length>0||Number(d.total_creditos||0)!==0||Number(d.total_debitos||0)!==0;profile.frequent=consumos>=2}}catch(e){}opt.hidden=!profile.allowed;opt.disabled=!profile.allowed;note.style.display=profile.allowed?'block':'none';if(profile.allowed){note.textContent=`Crédito disponível. Saldo atual: ${money(profile.saldo)}.`;if(profile.frequent){pg.value='CREDITO_AUTO';note.textContent=`Cliente usa crédito automático com frequência. Saldo atual: ${money(profile.saldo)}.`}}else{pg.value='Pix';note.textContent=''}}
@@ -58,4 +65,34 @@
   </script>
 {% else %}
   {% include 'cadastrar_entrega_rapida.html' %}
+  <script id="coopex-quick-payment-options">
+  (function(){
+    function setupPaymentOptions(){
+      const select=document.getElementById('pagamento');
+      if(!select||select.dataset.coopexPaymentOrder==='1')return;
+      select.dataset.coopexPaymentOrder='1';
+
+      const find=value=>[...select.options].find(option=>option.value===value);
+      const pix=find('Pix');
+      const dinheiro=find('Dinheiro');
+      const comanda=find('Comanda');
+      const credito=document.getElementById('creditOption')||find('CREDITO_AUTO');
+      let pixCooperativa=find('Pix (Cooperativa)')||find('Pix Cooperativa');
+
+      if(!pixCooperativa){
+        pixCooperativa=document.createElement('option');
+        pixCooperativa.value='Pix (Cooperativa)';
+      }
+
+      if(pix){pix.textContent='1. Pix';select.appendChild(pix)}
+      if(dinheiro){dinheiro.textContent='2. Dinheiro';select.appendChild(dinheiro)}
+      pixCooperativa.textContent='3. Pix Cooperativa';select.appendChild(pixCooperativa);
+      if(credito){credito.textContent='4. Crédito automático';select.appendChild(credito)}
+      if(comanda){comanda.textContent='5. Comanda';select.appendChild(comanda)}
+      if(!select.value||select.value==='CREDITO_AUTO'&&credito?.disabled)select.value='Pix';
+      select.dispatchEvent(new Event('change',{bubbles:true}));
+    }
+    if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',setupPaymentOptions,{once:true});else setupPaymentOptions();
+  })();
+  </script>
 {% endif %}
