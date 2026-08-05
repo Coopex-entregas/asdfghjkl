@@ -102,6 +102,7 @@ def _normalize_existing(app_module):
 
 
 def _inject_admin_filter_fix(response):
+    """Insere o script no fechamento real do body, nunca dentro de JavaScript inline."""
     try:
         if request.endpoint != "admin":
             return response
@@ -111,15 +112,20 @@ def _inject_admin_filter_fix(response):
         html = response.get_data(as_text=True)
         asset = (
             '<script defer src="/static/js/admin_payment_filter_patch.js'
-            '?v=20260805-1"></script>'
+            '?v=20260805-2"></script>'
         )
-        if asset not in html:
-            if "</body>" in html:
-                html = html.replace("</body>", asset + "</body>", 1)
-            else:
-                html += asset
-            response.set_data(html)
-            response.headers.pop("Content-Length", None)
+        if asset in html:
+            return response
+
+        lower_html = html.lower()
+        body_index = lower_html.rfind("</body>")
+        if body_index >= 0:
+            html = html[:body_index] + asset + html[body_index:]
+        else:
+            html += asset
+
+        response.set_data(html)
+        response.headers.pop("Content-Length", None)
     except Exception:
         pass
     return response
