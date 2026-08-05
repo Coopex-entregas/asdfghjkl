@@ -101,8 +101,8 @@ def _normalize_existing(app_module):
     db.session.commit()
 
 
-def _inject_admin_filter_fix(response):
-    """Insere o script no fechamento real do body, nunca dentro de JavaScript inline."""
+def _inject_admin_assets(response):
+    """Insere os scripts no fechamento real do body do Admin."""
     try:
         if request.endpoint != "admin":
             return response
@@ -110,19 +110,21 @@ def _inject_admin_filter_fix(response):
             return response
 
         html = response.get_data(as_text=True)
-        asset = (
-            '<script defer src="/static/js/admin_payment_filter_patch.js'
-            '?v=20260805-2"></script>'
-        )
-        if asset in html:
+        assets = [
+            '<script defer src="/static/js/admin_payment_filter_patch.js?v=20260805-2"></script>',
+            '<script defer src="/static/js/admin_assigned_visibility_patch.js?v=20260805-1"></script>',
+        ]
+        missing = [asset for asset in assets if asset not in html]
+        if not missing:
             return response
 
+        block = "".join(missing)
         lower_html = html.lower()
         body_index = lower_html.rfind("</body>")
         if body_index >= 0:
-            html = html[:body_index] + asset + html[body_index:]
+            html = html[:body_index] + block + html[body_index:]
         else:
-            html += asset
+            html += block
 
         response.set_data(html)
         response.headers.pop("Content-Length", None)
@@ -146,5 +148,5 @@ def install(app_module):
             )
             raise
 
-    app_module.app.after_request(_inject_admin_filter_fix)
+    app_module.app.after_request(_inject_admin_assets)
     DONE = True
