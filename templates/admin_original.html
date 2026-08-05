@@ -527,6 +527,7 @@
     body.dark .quick-view-chip{background:#101a33;color:#dbe6ff;border-color:#2a3a62}
     .quick-view-chip.active{background:linear-gradient(135deg, rgba(15,53,181,.12), rgba(57,93,225,.18));box-shadow:0 10px 24px rgba(15,53,181,.10)}
     body.hide-assigned .row-assigned{display:none}
+    body.filter-active.hide-assigned .row-assigned{display:table-row}
 
     .value-input{
       width:110px;
@@ -2280,7 +2281,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
               </button>
             </div>
 
-            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" onsubmit="window.__markActionStart&&window.__markActionStart()">
+            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" onsubmit="sessionStorage.setItem('coopex_show_assigned_after_filter','1');document.body.classList.add('filter-active');document.body.classList.remove('hide-assigned');window.__markActionStart&&window.__markActionStart()">
               <div class="field">
                 <label for="cooperado">Cooperado</label>
                 <select name="cooperado_id" id="cooperado">
@@ -2871,14 +2872,19 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
     window.addEventListener('DOMContentLoaded', function(){
       atualizarBadgeAbertas();
       try{
+        const filtroEnviado = sessionStorage.getItem('coopex_show_assigned_after_filter') === '1' || window.location.search.length > 1;
+        if(filtroEnviado){
+          sessionStorage.removeItem('coopex_show_assigned_after_filter');
+          document.body.classList.add('filter-active');
+        }
         document.body.classList.remove('hide-assigned');
         const btn = document.getElementById('btnToggleAssigned');
         const chipAssigned = document.getElementById('chipAssignedInfo');
         const syncAssignedUi = ()=>{
-          const mostrando = !document.body.classList.contains('hide-assigned');
+          const mostrando = document.body.classList.contains('filter-active') || !document.body.classList.contains('hide-assigned');
           if(btn){
             btn.setAttribute('aria-expanded', mostrando ? 'true' : 'false');
-            btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Atribuídas de hoje';
+            btn.textContent = document.body.classList.contains('filter-active') ? 'Atribuídas exibidas' : (mostrando ? 'Ocultar atribuídas' : 'Mostrar atribuídas');
           }
           if(chipAssigned){
             chipAssigned.textContent = mostrando ? 'Atribuídas visíveis' : 'Atribuídas escondidas até clicar no botão';
@@ -2888,6 +2894,11 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         syncAssignedUi();
         if(btn){
           btn.addEventListener('click', function(){
+            if(document.body.classList.contains('filter-active')){
+              document.body.classList.remove('hide-assigned');
+              syncAssignedUi();
+              return;
+            }
             document.body.classList.toggle('hide-assigned');
             syncAssignedUi();
           });
