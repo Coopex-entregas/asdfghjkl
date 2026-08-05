@@ -4675,14 +4675,36 @@ def admin():
             func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
         ))
 
-    entregas_all = (
+    # "Todos" mantém acesso ao histórico completo, sem carregar tudo na memória.
+    page = max(1, request.args.get('page', 1, type=int) or 1)
+    per_page = 100
+    total_entregas = query.order_by(None).count()
+    total_pages = max(1, (total_entregas + per_page - 1) // per_page)
+    page = min(page, total_pages)
+
+    entregas_page = (
         query.options(joinedload(Entrega.cooperado))
-        .order_by(Entrega.data_envio.desc())
+        .order_by(
+            case((Entrega.cooperado_id.is_(None), 0), else_=1),
+            Entrega.data_envio.desc(),
+            Entrega.id.desc(),
+        )
+        .offset((page - 1) * per_page)
+        .limit(per_page)
         .all()
     )
-    nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
-    atribuidos = [e for e in entregas_all if e.cooperado_id]
-    entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
+    entregas = [_enriquecer_entrega(e) for e in entregas_page]
+
+    pagination_args = request.args.to_dict()
+    prev_url = None
+    next_url = None
+    if page > 1:
+        pagination_args['page'] = page - 1
+        prev_url = url_for('admin', **pagination_args)
+    if page < total_pages:
+        pagination_args['page'] = page + 1
+        next_url = url_for('admin', **pagination_args)
+
 
     cooperados = Cooperado.query.order_by(Cooperado.nome).all()
     formas_pagamento_disponiveis = [
@@ -4764,6 +4786,12 @@ def admin():
         cooperados_js=cooperados_js,
         solicitacoes_valor=solicitacoes_valor,
         formas_pagamento_disponiveis=formas_pagamento_disponiveis,
+    page=page,
+    total_pages=total_pages,
+    total_entregas=total_entregas,
+    per_page=per_page,
+    prev_url=prev_url,
+    next_url=next_url,
     )
     return _patch_admin_top_link(html)
 
