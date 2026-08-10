@@ -11,6 +11,7 @@ from collections import Counter, defaultdict
 from urllib.parse import urlparse, parse_qs
 from functools import wraps
 from decimal import Decimal
+from types import SimpleNamespace
 
 from flask import (
     Flask, render_template, render_template_string, request, redirect, url_for,
@@ -4631,8 +4632,7 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # Sem data informada, qualquer filtro considera somente as entregas de hoje.
-    # Para consultar outro período ou todo o histórico, o usuário informa as datas.
+    # padrão: dia de hoje
     if not data_inicio and not data_fim:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
@@ -4666,7 +4666,7 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    if forma_pagamento and forma_pagamento.lower() not in ('todos', 'todas'):
+    if forma_pagamento and forma_pagamento != 'todos':
         query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
 
     if endereco:
@@ -4681,7 +4681,6 @@ def admin():
     entregas_all = (
         query.options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
-        .limit(500)
         .all()
     )
     nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
@@ -6071,6 +6070,7 @@ def mudar_status_cooperado(coop_id):
 # =========================================================
 # CLIENTES (CRUD BÁSICO)
 # =========================================================
+@app.route('/cadastro-clientes', methods=['GET', 'POST'], endpoint='cadastro_clientes')
 @app.route('/clientes', methods=['GET', 'POST'])
 def clientes():
     """
@@ -9289,71 +9289,178 @@ def creditos():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # usado só pra pré-selecionar no select
     cliente_id = request.args.get('cliente_id', type=int)
 
-    # todos os clientes para o formulário de lançamento
+    # Uma consulta para clientes, uma para movimentos e uma para créditos antigos.
+    # Evita uma consulta por cliente e recupera registros legados em que
+    # credito_movimento.cliente_id ficou vazio, mas credito_id está preenchido.
     clientes_form = Cliente.query.order_by(Cliente.nome.asc()).all()
+    cliente_ids = [cli.id for cli in clientes_form]
+
+    movimentos_brutos = []
+    creditos_brutos = []
+    if cliente_ids:
+        movimentos_brutos = (
+            CreditoMovimento.query
+            .options(joinedload(CreditoMovimento.credito))
+            .filter(or_(
+                CreditoMovimento.cliente_id.in_(cliente_ids),
+                CreditoMovimento.credito_id.isnot(None),
+            ))
+            .order_by(
+                func.coalesce(CreditoMovimento.data, CreditoMovimento.criado_em).asc(),
+                CreditoMovimento.id.asc(),
+            )
+            .all()
+        )
+        creditos_brutos = (
+            Credito.query
+            .filter(Credito.cliente_id.in_(cliente_ids))
+            .order_by(Credito.criado_em.asc(), Credito.id.asc())
+            .all()
+        )
+
+    movimentos_agrupados = defaultdict(list)
+    creditos_agrupados = defaultdict(list)
+
+    def _tipo_credito_normalizado(tipo):
+        valor = (tipo or '').strip().lower()
+        if valor in ('credito', 'crédito', 'entrada', 'ajuste'):
+            return 'credito'
+        if valor in ('debito', 'débito', 'consumo'):
+            return 'debito'
+        return 'credito'
+
+    for mov in movimentos_brutos:
+        mov_cliente_id = mov.cliente_id
+        if not mov_cliente_id and getattr(mov, 'credito', None):
+            mov_cliente_id = mov.credito.cliente_id
+        if not mov_cliente_id or mov_cliente_id not in cliente_ids:
+            continue
+
+        # Objeto próprio de exibição: usa criado_em quando o campo antigo data está vazio.
+        movimentos_agrupados[mov_cliente_id].append(SimpleNamespace(
+            id=mov.id,
+            credito_id=mov.credito_id,
+            cliente_id=mov_cliente_id,
+            tipo=_tipo_credito_normalizado(mov.tipo),
+            valor=abs(float(mov.valor or 0.0)),
+            referencia=(mov.referencia or mov.descricao or '').strip(),
+            data=(mov.data or mov.criado_em),
+            criado_em=mov.criado_em,
+            sort_id=int(mov.id or 0),
+            origem='movimento',
+        ))
+
+    for cred in creditos_brutos:
+        creditos_agrupados[cred.cliente_id].append(cred)
 
     movimentos_por_cliente = {}
     saldos_por_cliente = {}
     creditos_originais_por_cliente = {}
     consumos_por_cliente = {}
-
-    clientes_lista = []  # apenas os que terão histórico no acordeão
+    clientes_lista = []
 
     for cli in clientes_form:
-        movs = (
-            CreditoMovimento.query
-            .filter(CreditoMovimento.cliente_id == cli.id)
-            .order_by(CreditoMovimento.data.asc(), CreditoMovimento.id.asc())
-            .all()
-        )
+        itens = list(movimentos_agrupados.get(cli.id, []))
+        creditos_com_movimento = {
+            int(item.credito_id)
+            for item in itens
+            if getattr(item, 'credito_id', None)
+        }
 
-        # se não tem movimento e saldo_atual é zero/nulo, não aparece no histórico
-        if not movs and not (cli.saldo_atual or 0):
+        # Créditos de versões antigas podem existir sem CreditoMovimento.
+        # Eles são exibidos no histórico sem duplicar os que já possuem movimento.
+        for cred in creditos_agrupados.get(cli.id, []):
+            if cred.id in creditos_com_movimento:
+                continue
+            valor_legado = (
+                float(cred.valor_final or 0.0)
+                or float(cred.valor or 0.0)
+                or float(cred.valor_bruto or 0.0)
+            )
+            if abs(valor_legado) < 0.000001:
+                continue
+            referencia = f"Crédito #{cred.id} (registro anterior)"
+            if (cred.motivo or '').strip():
+                referencia += f" — {(cred.motivo or '').strip()}"
+            itens.append(SimpleNamespace(
+                id=f"credito-{cred.id}",
+                credito_id=cred.id,
+                cliente_id=cli.id,
+                tipo='credito' if valor_legado >= 0 else 'debito',
+                valor=abs(valor_legado),
+                referencia=referencia,
+                data=cred.criado_em,
+                criado_em=cred.criado_em,
+                sort_id=int(cred.id or 0),
+                origem='credito_legado',
+            ))
+
+        def _data_ordem(item):
+            dt = getattr(item, 'data', None) or getattr(item, 'criado_em', None)
+            return dt or datetime.min
+
+        itens.sort(key=lambda item: (_data_ordem(item), getattr(item, 'sort_id', 0)))
+
+        saldo_calculado = 0.0
+        for item in itens:
+            valor = abs(float(item.valor or 0.0))
+            saldo_calculado += valor if item.tipo == 'credito' else -valor
+
+        # Quando sobrou apenas saldo de uma versão antiga sem qualquer linha de histórico,
+        # cria uma linha explícita, sem fingir que é um lançamento novo.
+        saldo_banco = float(cli.saldo_atual or 0.0)
+        diferenca = saldo_banco - saldo_calculado
+        if abs(diferenca) >= 0.005:
+            itens.insert(0, SimpleNamespace(
+                id=f"saldo-legado-{cli.id}",
+                credito_id=None,
+                cliente_id=cli.id,
+                tipo='credito' if diferenca > 0 else 'debito',
+                valor=abs(diferenca),
+                referencia='Saldo anterior importado (registro legado)',
+                data=None,
+                criado_em=None,
+                sort_id=-1,
+                origem='saldo_legado',
+            ))
+
+        if not itens and abs(saldo_banco) < 0.005:
             continue
 
         saldo = 0.0
         rows = []
-        total_creditos_originais = 0.0  # só créditos "Crédito #...", sem estorno
+        total_creditos_originais = 0.0
 
-        for mov in movs:
-            valor = float(mov.valor or 0.0)
-            ref = (mov.referencia or '').lower()
-
-            if mov.tipo == 'credito':
+        for item in itens:
+            valor = abs(float(item.valor or 0.0))
+            referencia_lower = (item.referencia or '').lower()
+            if item.tipo == 'credito':
                 delta = valor
-                # conta como "crédito lançado" só se NÃO for estorno
-                if 'estorno' not in ref:
+                if 'estorno' not in referencia_lower:
                     total_creditos_originais += valor
-            elif mov.tipo == 'debito':
-                delta = -valor
             else:
-                delta = 0.0
+                delta = -valor
 
             saldo_antes = saldo
             saldo_depois = saldo_antes + delta
-
             rows.append({
-                "mov": mov,
-                "saldo_antes": saldo_antes,
-                "saldo_depois": saldo_depois,
+                'mov': item,
+                'saldo_antes': saldo_antes,
+                'saldo_depois': saldo_depois,
             })
-
             saldo = saldo_depois
 
         movimentos_por_cliente[cli.id] = rows
         saldos_por_cliente[cli.id] = saldo
         creditos_originais_por_cliente[cli.id] = total_creditos_originais
-        consumos_por_cliente[cli.id] = total_creditos_originais - saldo
-
+        consumos_por_cliente[cli.id] = max(0.0, total_creditos_originais - saldo)
         clientes_lista.append(cli)
 
-    # totais globais (apenas clientes que aparecem no histórico)
     total_saldo = sum(saldos_por_cliente.values()) if saldos_por_cliente else 0.0
     total_creditos = sum(creditos_originais_por_cliente.values()) if creditos_originais_por_cliente else 0.0
-    total_consumos = total_creditos - total_saldo
+    total_consumos = sum(consumos_por_cliente.values()) if consumos_por_cliente else 0.0
 
     if _wants_json():
         return jsonify(
@@ -9375,9 +9482,7 @@ def creditos():
 
     return render_template(
         'creditos.html',
-        # formulário de lançamento
         clientes_form=clientes_form,
-        # clientes que aparecem no histórico
         clientes_lista=clientes_lista,
         cliente_id=cliente_id,
         movimentos_por_cliente=movimentos_por_cliente,
@@ -9387,9 +9492,9 @@ def creditos():
         total_saldo=total_saldo,
         total_creditos=total_creditos,
         total_consumos=total_consumos,
-        request=request
+        request=request,
+        to_brasilia=to_brasilia,
     )
-
 
 
 @app.route('/creditos/reprocessar-auto', methods=['POST'])
@@ -11227,32 +11332,59 @@ def admin_normalizar_nomes():
     return redirect(url_for('estatisticas_cooperado'))
 
 
+def _filtro_todos_ou_todas(valor):
+    """Trata 'todos' e 'todas' como ausência de filtro."""
+    valor = (str(valor or '').strip().lower())
+    return valor in ('', 'todos', 'todas', 'all')
+
+
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    status_pagamento = request.args.get('status_pagamento', 'todos')
+    data_inicio = (request.args.get('data_inicio') or '').strip()
+    data_fim = (request.args.get('data_fim') or '').strip()
+    cooperado_id = (request.args.get('cooperado_id') or 'todos').strip()
+    status_pagamento = (request.args.get('status_pagamento') or 'todos').strip()
     forma_pagamento = (request.args.get('forma_pagamento') or 'todos').strip()
     cliente = (request.args.get('cliente') or '').strip()
     endereco = (request.args.get('endereco') or '').strip()
 
-    query = Entrega.query
-    if cooperado_id != 'todos':
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+    query = Entrega.query.options(joinedload(Entrega.cooperado))
+
+    if not _filtro_todos_ou_todas(cooperado_id):
+        try:
+            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
     if cliente:
         like = f"%{cliente.lower()}%"
-        query = query.filter(func.lower(Entrega.cliente).like(like))
-    if status_pagamento and status_pagamento != 'todos':
-        if status_pagamento == 'pago':
-            query = query.filter(func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago')
-        elif status_pagamento == 'pendente':
-            query = query.filter((Entrega.status_pagamento == None) | (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente'))
-    if forma_pagamento and forma_pagamento != 'todos':
-        query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+        query = query.filter(
+            func.lower(func.coalesce(Entrega.cliente, '')).like(like)
+        )
+
+    if not _filtro_todos_ou_todas(status_pagamento):
+        status_norm = status_pagamento.lower()
+        if status_norm == 'pago':
+            query = query.filter(
+                func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago'
+            )
+        elif status_norm == 'pendente':
+            query = query.filter(
+                (Entrega.status_pagamento == None) |
+                (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente')
+            )
+
+    # IMPORTANTE: a tela envia "todas" no filtro geral de forma de pagamento.
+    # Antes isso era tratado como forma de pagamento literal e zerava a exportação.
+    if not _filtro_todos_ou_todas(forma_pagamento):
+        query = query.filter(
+            func.lower(func.coalesce(Entrega.pagamento, '')) ==
+            forma_pagamento.lower()
+        )
+
     if endereco:
         like_end = f"%{endereco.lower()}%"
         query = query.filter(or_(
@@ -11261,44 +11393,74 @@ def exportar_xlsx():
             func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
             func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
         ))
-    if data_inicio:
-        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-        inicio_utc, _ = local_date_window_to_utc_range(di)
-        query = query.filter(Entrega.data_envio >= inicio_utc)
-    if data_fim:
-        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df_)
-        query = query.filter(Entrega.data_envio <= fim_utc)
 
-    entregas = query.order_by(Entrega.data_envio.asc()).all()
+    # Usa a MESMA data da tabela do Admin: Entrega.data_envio.
+    if data_inicio:
+        try:
+            di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+            inicio_utc, _ = local_date_window_to_utc_range(di)
+            query = query.filter(Entrega.data_envio >= inicio_utc)
+        except ValueError:
+            pass
+
+    if data_fim:
+        try:
+            df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+            _, fim_utc = local_date_window_to_utc_range(df_)
+            query = query.filter(Entrega.data_envio <= fim_utc)
+        except ValueError:
+            pass
+
+    entregas = query.order_by(Entrega.data_envio.asc(), Entrega.id.asc()).all()
+
+    columns = [
+        'Data', 'Cliente', 'Bairro', 'Valor',
+        'Status Pagamento', 'Status Entrega', 'Forma Pagamento',
+        'Cooperado', 'Recebido Por'
+    ]
 
     rows = []
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         rows.append({
             'Data': dt_local.strftime('%d/%m/%Y') if dt_local else '',
-            'Cliente': e.cliente,
-            'Bairro': e.bairro,
-            'Valor': e.valor,
-            'Status Pagamento': e.status_pagamento,
-            'Status Entrega': e.status,
-            'Forma Pagamento': e.pagamento,
+            'Cliente': e.cliente or '',
+            'Bairro': e.bairro or '',
+            'Valor': float(e.valor or 0),
+            'Status Pagamento': e.status_pagamento or '',
+            'Status Entrega': e.status or '',
+            'Forma Pagamento': e.pagamento or '',
             'Cooperado': (e.cooperado.nome if e.cooperado else 'Sem Cooperado'),
             'Recebido Por': e.recebido_por or ''
         })
 
-    df_out = pd.DataFrame(rows)
+    # Mantém cabeçalhos mesmo quando realmente não houver registros.
+    df_out = pd.DataFrame(rows, columns=columns)
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Entregas'
         df_out.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
-        col_widths = [12, 28, 18, 10, 18, 16, 16, 22, 18]
-        for i, w in enumerate(col_widths[:len(df_out.columns)]):
+        col_widths = [12, 28, 18, 12, 18, 18, 20, 26, 20]
+        for i, w in enumerate(col_widths):
             ws.set_column(i, i, w)
+
     output.seek(0)
-    return send_file(output, download_name="entregas.xlsx", as_attachment=True)
+
+    nome = 'entregas'
+    if data_inicio or data_fim:
+        ini_nome = data_inicio or 'inicio'
+        fim_nome = data_fim or 'fim'
+        nome = f'entregas_{ini_nome}_a_{fim_nome}'
+
+    return send_file(
+        output,
+        download_name=f"{nome}.xlsx",
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 
 # =========================================================
 # EXPORTAR / IMPORTAR CLIENTES
@@ -11628,48 +11790,46 @@ def relatorio_termico():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    status_pagamento = request.args.get('status_pagamento', 'todos')
+    cooperado_id = (request.args.get('cooperado_id') or 'todos').strip()
+    data_inicio = (request.args.get('data_inicio') or '').strip()
+    data_fim = (request.args.get('data_fim') or '').strip()
+    status_pagamento = (request.args.get('status_pagamento') or 'todos').strip()
+    forma_pagamento = (request.args.get('forma_pagamento') or 'todos').strip()
     cliente = (request.args.get('cliente') or '').strip()
+    endereco = (request.args.get('endereco') or '').strip()
 
-    if data_inicio:
-        di_date = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-        inicio_utc, _ = local_date_window_to_utc_range(di_date)
-    else:
-        hoje = datetime.now(BRAZIL_TZ).date()
-        inicio_utc, _ = local_date_window_to_utc_range(hoje)
+    q = Entrega.query.options(joinedload(Entrega.cooperado))
 
-    if data_fim:
-        df_date = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df_date)
-    else:
-        base = datetime.strptime(data_inicio, "%Y-%m-%d").date() if data_inicio else datetime.now(BRAZIL_TZ).date()
-        _, fim_utc = local_date_window_to_utc_range(base)
-
-    q = Entrega.query
-
-    if cooperado_id and cooperado_id != 'todos':
+    if not _filtro_todos_ou_todas(cooperado_id):
         try:
             q = q.filter(Entrega.cooperado_id == int(cooperado_id))
         except Exception:
             pass
 
-    if status_pagamento and status_pagamento != 'todos':
-        if status_pagamento == 'pago':
-            q = q.filter(func.lower(Entrega.status_pagamento) == 'pago')
-        elif status_pagamento == 'pendente':
+    if not _filtro_todos_ou_todas(status_pagamento):
+        status_norm = status_pagamento.lower()
+        if status_norm == 'pago':
+            q = q.filter(
+                func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago'
+            )
+        elif status_norm == 'pendente':
             q = q.filter(
                 (Entrega.status_pagamento == None) |
-                (func.lower(Entrega.status_pagamento) == 'pendente')
+                (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente')
             )
 
     if cliente:
         like = f"%{cliente.lower()}%"
-        q = q.filter(func.lower(Entrega.cliente).like(like))
-    if forma_pagamento and forma_pagamento != 'todos':
-        q = q.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+        q = q.filter(
+            func.lower(func.coalesce(Entrega.cliente, '')).like(like)
+        )
+
+    if not _filtro_todos_ou_todas(forma_pagamento):
+        q = q.filter(
+            func.lower(func.coalesce(Entrega.pagamento, '')) ==
+            forma_pagamento.lower()
+        )
+
     if endereco:
         like_end = f"%{endereco.lower()}%"
         q = q.filter(or_(
@@ -11679,21 +11839,47 @@ def relatorio_termico():
             func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
         ))
 
-    coalesce_dt = func.coalesce(Entrega.data_atribuida, Entrega.data_envio)
-    q = q.filter(coalesce_dt >= inicio_utc, coalesce_dt <= fim_utc).order_by(
-        coalesce_dt.asc(),
-        Entrega.cliente.asc()
-    )
+    # Mesma regra de data da tabela do Admin e do Excel.
+    if not data_inicio and not data_fim:
+        hoje = datetime.now(BRAZIL_TZ).date()
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
+        q = q.filter(
+            Entrega.data_envio >= inicio_utc,
+            Entrega.data_envio <= fim_utc
+        )
+    else:
+        if data_inicio:
+            try:
+                di_date = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+                inicio_utc, _ = local_date_window_to_utc_range(di_date)
+                q = q.filter(Entrega.data_envio >= inicio_utc)
+            except ValueError:
+                pass
 
-    entregas = q.options(joinedload(Entrega.cooperado)).all()
+        if data_fim:
+            try:
+                df_date = datetime.strptime(data_fim, "%Y-%m-%d").date()
+                _, fim_utc = local_date_window_to_utc_range(df_date)
+                q = q.filter(Entrega.data_envio <= fim_utc)
+            except ValueError:
+                pass
+
+    entregas = q.order_by(
+        Entrega.data_envio.asc(),
+        Entrega.cliente.asc(),
+        Entrega.id.asc()
+    ).all()
 
     periodo_txt = periodo_legivel_str(data_inicio, data_fim)
 
     coop_nome = "Todos"
-    if cooperado_id and cooperado_id != "todos":
-        coop = Cooperado.query.get(int(cooperado_id))
-        if coop:
-            coop_nome = coop.nome
+    if not _filtro_todos_ou_todas(cooperado_id):
+        try:
+            coop = Cooperado.query.get(int(cooperado_id))
+            if coop:
+                coop_nome = coop.nome
+        except Exception:
+            pass
 
     total_relatorio = sum(float(e.valor or 0) for e in entregas)
     agora = datetime.now(BRAZIL_TZ)
