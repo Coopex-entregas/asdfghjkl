@@ -4631,8 +4631,7 @@ def admin():
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
 
-    # Sem data informada, qualquer filtro considera somente as entregas de hoje.
-    # Para consultar outro período ou todo o histórico, o usuário informa as datas.
+    # padrão: dia de hoje
     if not data_inicio and not data_fim:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
@@ -4666,7 +4665,7 @@ def admin():
         like = f"%{cliente.lower()}%"
         query = query.filter(func.lower(Entrega.cliente).like(like))
 
-    if forma_pagamento and forma_pagamento.lower() not in ('todos', 'todas'):
+    if forma_pagamento and forma_pagamento != 'todos':
         query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
 
     if endereco:
@@ -4681,7 +4680,6 @@ def admin():
     entregas_all = (
         query.options(joinedload(Entrega.cooperado))
         .order_by(Entrega.data_envio.desc())
-        .limit(500)
         .all()
     )
     nao_atribuidos = [e for e in entregas_all if not e.cooperado_id]
@@ -4989,126 +4987,26 @@ def admin_baixar_comprovante(entrega_id):
 # ================================
 # PAINEL DO COOPERADO (ESTILO UBER)
 # ================================
-def _cooperado_entregas_filtradas(user_id, *, inicio=None, fim=None, status_pgto='todas', cliente='', todas_datas=False):
-    """Consulta leve das entregas do cooperado, usada pela tela e pelo filtro AJAX."""
-    query = Entrega.query.filter(Entrega.cooperado_id == int(user_id))
-    cliente = (cliente or '').strip()
-    status_pgto = (status_pgto or 'todas').lower()
-
-    if cliente:
-        query = query.filter(func.lower(Entrega.cliente).like(f"%{cliente.lower()}%"))
-
-    status_norm = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente'))
-    if status_pgto == 'pago':
-        query = query.filter(status_norm == 'pago')
-    elif status_pgto == 'pendente':
-        query = query.filter(status_norm != 'pago')
-
-    # Tela inicial: somente hoje. Pendências: todas as datas por padrão.
-    aplicar_hoje = not todas_datas and not inicio and not fim and status_pgto != 'pendente'
-    if aplicar_hoje:
-        hoje_local = datetime.now(BRAZIL_TZ).date()
-        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_local)
-        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
-
-    if not todas_datas:
-        if inicio:
-            try:
-                data_inicio = datetime.strptime(inicio, '%Y-%m-%d').date()
-                inicio_utc, _ = local_date_window_to_utc_range(data_inicio)
-                query = query.filter(Entrega.data_envio >= inicio_utc)
-            except (TypeError, ValueError):
-                pass
-        if fim:
-            try:
-                data_fim = datetime.strptime(fim, '%Y-%m-%d').date()
-                _, fim_utc = local_date_window_to_utc_range(data_fim)
-                query = query.filter(Entrega.data_envio <= fim_utc)
-            except (TypeError, ValueError):
-                pass
-
-    return query.options(joinedload(Entrega.cooperado)).order_by(Entrega.data_envio.desc())
-
-
-def _cooperado_serializar_entrega(entrega, ajuste_pendente=False):
-    entrega = _enriquecer_entrega(entrega)
-    data_local = to_brasilia(entrega.data_envio) if entrega.data_envio else None
-    status_pago = (entrega.status_pagamento or 'pendente').lower()
-    status_entrega = (entrega.status or 'pendente').lower()
-    return {
-        'id': entrega.id,
-        'cliente': entrega.cliente or '-',
-        'valor': float(entrega.valor or 0),
-        'pagamento': entrega.pagamento or '-',
-        'status_pagamento': 'pago' if status_pago == 'pago' else 'pendente',
-        'status_entrega': 'entregue' if status_entrega in ('recebido', 'entregue') else 'pendente',
-        'data': data_local.strftime('%Y-%m-%d') if data_local else '',
-        'data_br': data_local.strftime('%d/%m/%Y') if data_local else '-',
-        'hora': data_local.strftime('%H:%M') if data_local else '-',
-        'origem': getattr(entrega, 'origem_endereco', '') or '-',
-        'destino': getattr(entrega, 'destino_endereco', '') or '-',
-        'paradas': getattr(entrega, 'paradas_texto', '') or '',
-        'observacao': getattr(entrega, 'observacao_entrega', '') or '',
-        'ajuste_pendente': bool(ajuste_pendente),
-    }
-
-
-def _cooperado_dashboard_resumo(user_id):
-    """Resumo em uma única consulta agregada; evita carregar todo o histórico ao entrar."""
-    hoje_local = datetime.now(BRAZIL_TZ).date()
-    inicio_hoje, fim_hoje = local_date_window_to_utc_range(hoje_local)
-    pago_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) == 'pago'
-    pendente_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) != 'pago'
-    hoje_cond = and_(Entrega.data_envio >= inicio_hoje, Entrega.data_envio <= fim_hoje)
-
-    row = db.session.query(
-        func.count(Entrega.id),
-        func.coalesce(func.sum(Entrega.valor), 0),
-        func.coalesce(func.sum(case((pago_cond, Entrega.valor), else_=0)), 0),
-        func.coalesce(func.sum(case((pendente_cond, Entrega.valor), else_=0)), 0),
-        func.coalesce(func.sum(case((pendente_cond, 1), else_=0)), 0),
-        func.coalesce(func.sum(case((hoje_cond, Entrega.valor), else_=0)), 0),
-        func.coalesce(func.sum(case((hoje_cond, 1), else_=0)), 0),
-    ).filter(Entrega.cooperado_id == int(user_id)).one()
-
-    ano_expr = func.extract('year', Entrega.data_envio)
-    anos = [
-        int(item[0]) for item in db.session.query(ano_expr)
-        .filter(Entrega.cooperado_id == int(user_id), Entrega.data_envio.isnot(None))
-        .distinct().order_by(ano_expr.asc()).all()
-        if item[0] is not None
-    ]
-
-    return {
-        'years': anos,
-        'current_year': int(hoje_local.year),
-        'today': hoje_local.isoformat(),
-        'summary': {
-            'qtd_total': int(row[0] or 0),
-            'total_geral': float(row[1] or 0),
-            'total_pago': float(row[2] or 0),
-            'total_pendente': float(row[3] or 0),
-            'qtd_pendente': int(row[4] or 0),
-            'ganhos_hoje': float(row[5] or 0),
-            'qtd_hoje': int(row[6] or 0),
-        },
-    }
-
-
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
 
-    user_id = int(session['user_id'])
+    user_id = session['user_id']
     ensure_mobile_tracking_schema()
     coop = Cooperado.query.get(user_id)
-    if coop and not getattr(coop, 'app_token', None):
+    if coop:
         try:
-            coop.ensure_app_token()
-            db.session.commit()
+            _coopex_registrar_login_cooperado_no_mapa(coop, fonte="painel_cooperado")
         except Exception:
-            db.session.rollback()
+            if not getattr(coop, 'app_token', None):
+                coop.ensure_app_token()
+                try:
+                    db.session.commit()
+                except Exception:
+                    db.session.rollback()
+    # _coopex_registrar_login_cooperado_no_mapa já atualiza a presença online.
+    # Evita uma segunda gravação/commit idêntica a cada abertura do painel.
 
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
@@ -5116,63 +5014,236 @@ def painel_cooperado():
     todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
     cliente_busca = (request.args.get('cliente') or '').strip()
 
-    entregas = _cooperado_entregas_filtradas(
-        user_id,
-        inicio=inicio,
-        fim=fim,
-        status_pgto=status_pgto,
-        cliente=cliente_busca,
-        todas_datas=todas_datas_flag,
-    ).all()
+    base_q = Entrega.query.filter(Entrega.cooperado_id == user_id)
 
-    ids_entregas = [e.id for e in entregas]
-    ajustes_pendentes = set()
-    if ids_entregas:
-        ajustes_pendentes = {
-            int(row[0]) for row in db.session.query(SolicitacaoAlteracaoValor.entrega_id)
-            .filter(
-                SolicitacaoAlteracaoValor.entrega_id.in_(ids_entregas),
-                SolicitacaoAlteracaoValor.status == 'pendente'
-            ).all()
-        }
-    entregas = [_enriquecer_entrega(e) for e in entregas]
-    dashboard_data = _cooperado_dashboard_resumo(user_id)
+    def _parse_json_field(raw):
+        if not raw:
+            return {}
+        if isinstance(raw, dict):
+            return raw
+        try:
+            return json.loads(raw)
+        except Exception:
+            return {}
 
-    # Corridas abertas/andamento continuam disponíveis sem carregar histórico completo.
-    corridas_raw = (
-        Entrega.query.filter(Entrega.cooperado_id == user_id)
-        .filter((Entrega.status_corrida == None) | (Entrega.status_corrida.in_(['pendente', 'aceita'])))
-        .filter((Entrega.status == None) | (~func.lower(Entrega.status).in_(['recebido', 'entregue'])))
-        .order_by(Entrega.data_envio.desc()).all()
+    def _enriquecer_entrega_local(e):
+        origem = _parse_json_field(getattr(e, 'origem_json', None))
+        destino = _parse_json_field(getattr(e, 'destino_json', None))
+        paradas = _parse_json_field(getattr(e, 'paradas_json', None))
+
+        e.origem_endereco = (
+            _ponto_endereco(origem)
+            or origem.get('address')
+            or origem.get('bairro')
+            or e.bairro
+            or 'Origem não informada'
+        )
+        e.destino_endereco = (
+            _parada_linha_exibicao(destino, '')
+            or _ponto_endereco(destino)
+            or destino.get('address')
+            or destino.get('bairro')
+            or 'Destino não informado'
+        )
+        e.origem_bairro = origem.get('bairro') or ''
+        e.destino_bairro = destino.get('bairro') or ''
+        e.contato_coleta = origem.get('contato') or ''
+        e.telefone_coleta = origem.get('telefone') or ''
+        e.contato_entrega = destino.get('contato') or ''
+        e.telefone_entrega = destino.get('telefone') or ''
+        e.observacao_entrega = destino.get('observacao_geral') or origem.get('observacao_geral') or ''
+        stops = paradas.get('stops') or paradas.get('paradas') or []
+        e.paradas_lista = stops if isinstance(stops, list) else []
+        partes_paradas = []
+        for p in e.paradas_lista:
+            if isinstance(p, dict):
+                linha = _parada_linha_exibicao(p, '')
+                if linha:
+                    partes_paradas.append(linha)
+        if bool(paradas.get('retorno')):
+            partes_paradas.append('Retorno: ' + (_entrega_endereco_linha(origem, e.bairro or '-') or 'endereço da coleta'))
+        else:
+            partes_paradas.append('Sem retorno')
+        e.paradas_texto = ' | '.join([x for x in partes_paradas if x])
+        return e
+
+    # Corridas em aberto / andamento
+    corridas_query = (
+        base_q
+        .filter(
+            (Entrega.status_corrida == None) |
+            (Entrega.status_corrida.in_(['pendente', 'aceita']))
+        )
+        .filter(
+            (Entrega.status == None) |
+            (~func.lower(Entrega.status).in_(['recebido', 'entregue']))
+        )
+        .order_by(Entrega.data_envio.desc())
     )
+    corridas_raw = corridas_query.all()
     corridas = []
-    for entrega in corridas_raw:
-        entrega = _enriquecer_entrega(entrega)
+    for e in corridas_raw:
+        e = _enriquecer_entrega_local(e)
         corridas.append({
-            'obj': entrega,
-            'origem_endereco': entrega.origem_endereco,
-            'destino_endereco': entrega.destino_endereco,
-            'origem_bairro': (entrega.origem_extra or {}).get('bairro') or '',
-            'destino_bairro': (entrega.destino_extra or {}).get('bairro') or '',
-            'waypoints': entrega.paradas_lista,
+            "obj": e,
+            "origem_endereco": e.origem_endereco,
+            "destino_endereco": e.destino_endereco,
+            "origem_bairro": e.origem_bairro,
+            "destino_bairro": e.destino_bairro,
+            "waypoints": e.paradas_lista,
         })
+
+    # Histórico (tabela) -> mantém filtro de período para não pesar
+    query = base_q
+
+    if cliente_busca:
+        query = query.filter(func.lower(Entrega.cliente).like(f"%{cliente_busca.lower()}%"))
+
+    if status_pgto == 'pago':
+        query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+    elif status_pgto == 'pendente':
+        query = query.filter(
+            (Entrega.status_pagamento == None) |
+            (func.lower(Entrega.status_pagamento) == 'pendente')
+        )
+
+    aplicar_filtro_padrao_hoje = (not todas_datas_flag and not inicio and not fim and status_pgto != 'pendente')
+
+    if aplicar_filtro_padrao_hoje:
+        hoje_brasil = datetime.now(BRAZIL_TZ).date()
+        inicio_utc, fim_utc = local_date_window_to_utc_range(hoje_brasil)
+        query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
+
+    if not todas_datas_flag:
+        if inicio:
+            di = datetime.strptime(inicio, "%Y-%m-%d").date()
+            inicio_utc, _ = local_date_window_to_utc_range(di)
+            query = query.filter(Entrega.data_envio >= inicio_utc)
+        if fim:
+            df_ = datetime.strptime(fim, "%Y-%m-%d").date()
+            _, fim_utc = local_date_window_to_utc_range(df_)
+            query = query.filter(Entrega.data_envio <= fim_utc)
+
+    entregas = (
+        query
+        .options(joinedload(Entrega.cooperado))
+        .order_by(Entrega.data_envio.desc())
+        .all()
+    )
+    entregas = [_enriquecer_entrega_local(e) for e in entregas]
+
+    # Dados históricos leves para resumo e gráficos.
+    # Busca somente as quatro colunas necessárias, sem carregar objetos completos,
+    # relacionamentos, endereços e JSON de todas as entregas.
+    historico_rows = (
+        base_q.with_entities(
+            Entrega.id,
+            Entrega.data_envio,
+            Entrega.valor,
+            Entrega.status_pagamento,
+        )
+        .order_by(Entrega.data_envio.asc())
+        .all()
+    )
+
+    hoje_local = datetime.now(BRAZIL_TZ).date()
+    anos = set()
+    diario_por_ano = defaultdict(lambda: defaultdict(lambda: {"valor": 0.0, "qtd": 0}))
+    mensal_por_ano = defaultdict(lambda: [{"valor": 0.0, "qtd": 0} for _ in range(12)])
+    status_por_ano = defaultdict(lambda: {"pagas": 0, "pendentes": 0})
+    anual = defaultdict(lambda: {"valor": 0.0, "qtd": 0})
+
+    total_historico = 0.0
+    total_pago_historico = 0.0
+    total_pendente_geral = 0.0
+    qtd_pendente_geral = 0
+    ganhos_hoje = 0.0
+    qtd_hoje = 0
+
+    for entrega_id, data_envio_row, valor_row, status_pgto_row in historico_rows:
+        if not data_envio_row:
+            continue
+        dt_local = to_brasilia(data_envio_row)
+        if not dt_local:
+            continue
+        data_local = dt_local.date()
+        ano = int(data_local.year)
+        mes_idx = int(data_local.month) - 1
+        data_iso = data_local.isoformat()
+        valor_num = float(valor_row or 0)
+        pago_row = (status_pgto_row or '').lower() == 'pago'
+
+        anos.add(ano)
+        total_historico += valor_num
+        anual[ano]["valor"] += valor_num
+        anual[ano]["qtd"] += 1
+        mensal_por_ano[ano][mes_idx]["valor"] += valor_num
+        mensal_por_ano[ano][mes_idx]["qtd"] += 1
+        diario_por_ano[ano][data_iso]["valor"] += valor_num
+        diario_por_ano[ano][data_iso]["qtd"] += 1
+
+        if pago_row:
+            total_pago_historico += valor_num
+            status_por_ano[ano]["pagas"] += 1
+        else:
+            total_pendente_geral += valor_num
+            qtd_pendente_geral += 1
+            status_por_ano[ano]["pendentes"] += 1
+
+        if data_local == hoje_local:
+            ganhos_hoje += valor_num
+            qtd_hoje += 1
+
+    anos_ordenados = sorted(anos)
+    dashboard_data = {
+        "years": anos_ordenados,
+        "current_year": int(hoje_local.year),
+        "today": hoje_local.isoformat(),
+        "summary": {
+            "ganhos_hoje": ganhos_hoje,
+            "qtd_hoje": qtd_hoje,
+            "total_geral": total_historico,
+            "total_pago": total_pago_historico,
+            "total_pendente": total_pendente_geral,
+            "qtd_pendente": qtd_pendente_geral,
+            "qtd_total": len(historico_rows),
+        },
+        "daily": {
+            str(ano): {dia: dados for dia, dados in dias.items()}
+            for ano, dias in diario_por_ano.items()
+        },
+        "monthly": {
+            str(ano): meses for ano, meses in mensal_por_ano.items()
+        },
+        "annual": {
+            str(ano): dados for ano, dados in anual.items()
+        },
+        "status_by_year": {
+            str(ano): dados for ano, dados in status_por_ano.items()
+        },
+    }
 
     total_geral = sum(float(e.valor or 0) for e in entregas)
     total_pago = sum(float(e.valor or 0) for e in entregas if (e.status_pagamento or '').lower() == 'pago')
     total_pendente = max(0.0, total_geral - total_pago)
 
-    fila_itens = ListaEspera.query.order_by(
-        ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc()
-    ).all()
-    posicao_fila = next((idx for idx, item in enumerate(fila_itens, start=1)
-                         if item.cooperado_id and int(item.cooperado_id) == user_id), None)
+    fila_itens = (
+        ListaEspera.query
+        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc())
+        .all()
+    )
+    posicao_fila = None
+    for idx, item in enumerate(fila_itens, start=1):
+        if item.cooperado_id and int(item.cooperado_id) == int(user_id):
+            posicao_fila = idx
+            break
+    total_fila = len(fila_itens)
 
     return render_template(
         'painel_cooperado.html',
         entregas=entregas,
-        ajustes_pendentes=ajustes_pendentes,
         dashboard_data=dashboard_data,
-        total_pendente_geral=dashboard_data['summary']['total_pendente'],
+        total_pendente_geral=total_pendente_geral,
         corridas=corridas,
         total_geral=total_geral,
         total_pago=total_pago,
@@ -5191,139 +5262,8 @@ def painel_cooperado():
         now=lambda: datetime.now(BRAZIL_TZ),
         app_token=(coop.app_token if coop else ''),
         posicao_fila=posicao_fila,
-        total_fila=len(fila_itens),
+        total_fila=total_fila,
     )
-
-
-@app.get('/api/cooperado/entregas')
-def api_cooperado_filtrar_entregas():
-    user_id = session.get('user_id')
-    if not user_id or session.get('is_admin'):
-        return jsonify(ok=False, error='Não autorizado'), 403
-
-    inicio = request.args.get('inicio')
-    fim = request.args.get('fim')
-    status_pgto = (request.args.get('status_pgto') or 'todas').lower()
-    cliente = (request.args.get('cliente') or '').strip()
-    todas_datas = (request.args.get('todas_datas') or '') == '1'
-
-    entregas = _cooperado_entregas_filtradas(
-        int(user_id), inicio=inicio, fim=fim, status_pgto=status_pgto,
-        cliente=cliente, todas_datas=todas_datas
-    ).all()
-
-    ids = [e.id for e in entregas]
-    pendentes = set()
-    if ids:
-        pendentes = {
-            int(row[0]) for row in db.session.query(SolicitacaoAlteracaoValor.entrega_id)
-            .filter(SolicitacaoAlteracaoValor.entrega_id.in_(ids), SolicitacaoAlteracaoValor.status == 'pendente')
-            .all()
-        }
-
-    return jsonify(
-        ok=True,
-        count=len(entregas),
-        items=[_cooperado_serializar_entrega(e, e.id in pendentes) for e in entregas]
-    )
-
-
-@app.get('/api/cooperado/graficos')
-def api_cooperado_graficos():
-    user_id = session.get('user_id')
-    if not user_id or session.get('is_admin'):
-        return jsonify(ok=False, error='Não autorizado'), 403
-
-    user_id = int(user_id)
-    periodo = (request.args.get('periodo') or 'semana').lower()
-    try:
-        ano = int(request.args.get('ano') or datetime.now(BRAZIL_TZ).year)
-    except Exception:
-        ano = datetime.now(BRAZIL_TZ).year
-
-    ano_inicio, _ = local_date_window_to_utc_range(date(ano, 1, 1))
-    _, ano_fim = local_date_window_to_utc_range(date(ano, 12, 31))
-    base_ano = Entrega.query.filter(
-        Entrega.cooperado_id == user_id,
-        Entrega.data_envio >= ano_inicio,
-        Entrega.data_envio <= ano_fim,
-    )
-
-    pago_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) == 'pago'
-    status_row = db.session.query(
-        func.coalesce(func.sum(case((pago_cond, 1), else_=0)), 0),
-        func.coalesce(func.sum(case((~pago_cond, 1), else_=0)), 0),
-    ).filter(
-        Entrega.cooperado_id == user_id,
-        Entrega.data_envio >= ano_inicio,
-        Entrega.data_envio <= ano_fim,
-    ).one()
-
-    labels, valores, quantidades = [], [], []
-    if periodo == 'ano':
-        ano_expr = func.extract('year', Entrega.data_envio)
-        rows = db.session.query(
-            ano_expr,
-            func.coalesce(func.sum(Entrega.valor), 0),
-            func.count(Entrega.id),
-        ).filter(Entrega.cooperado_id == user_id, Entrega.data_envio.isnot(None))\
-         .group_by(ano_expr).order_by(ano_expr.asc()).all()
-        for ano_row, valor_row, qtd_row in rows:
-            labels.append(str(int(ano_row)))
-            valores.append(float(valor_row or 0))
-            quantidades.append(int(qtd_row or 0))
-    elif periodo == 'mes':
-        mes_expr = func.extract('month', Entrega.data_envio)
-        rows = db.session.query(
-            mes_expr,
-            func.coalesce(func.sum(Entrega.valor), 0),
-            func.count(Entrega.id),
-        ).filter(
-            Entrega.cooperado_id == user_id,
-            Entrega.data_envio >= ano_inicio,
-            Entrega.data_envio <= ano_fim,
-        ).group_by(mes_expr).order_by(mes_expr.asc()).all()
-        mapa = {int(m): (float(v or 0), int(q or 0)) for m, v, q in rows}
-        labels = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez']
-        valores = [mapa.get(m, (0, 0))[0] for m in range(1, 13)]
-        quantidades = [mapa.get(m, (0, 0))[1] for m in range(1, 13)]
-    else:
-        hoje_local = datetime.now(BRAZIL_TZ).date()
-        if ano == hoje_local.year:
-            fim_local = hoje_local
-        else:
-            ultimo = base_ano.with_entities(func.max(Entrega.data_envio)).scalar()
-            fim_local = to_brasilia(ultimo).date() if ultimo else date(ano, 12, 31)
-        inicio_local = fim_local - timedelta(days=6)
-        inicio_semana, _ = local_date_window_to_utc_range(inicio_local)
-        _, fim_semana = local_date_window_to_utc_range(fim_local)
-        rows = db.session.query(Entrega.data_envio, Entrega.valor).filter(
-            Entrega.cooperado_id == user_id,
-            Entrega.data_envio >= inicio_semana,
-            Entrega.data_envio <= fim_semana,
-        ).all()
-        mapa = {inicio_local + timedelta(days=i): {'valor': 0.0, 'qtd': 0} for i in range(7)}
-        for data_envio, valor in rows:
-            local = to_brasilia(data_envio).date()
-            if local in mapa:
-                mapa[local]['valor'] += float(valor or 0)
-                mapa[local]['qtd'] += 1
-        nomes = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
-        dias = list(mapa.keys())
-        labels = [nomes[d.weekday()] for d in dias]
-        valores = [mapa[d]['valor'] for d in dias]
-        quantidades = [mapa[d]['qtd'] for d in dias]
-
-    return jsonify(
-        ok=True,
-        periodo=periodo,
-        ano=ano,
-        labels=labels,
-        valores=valores,
-        quantidades=quantidades,
-        status={'pagas': int(status_row[0] or 0), 'pendentes': int(status_row[1] or 0)},
-    )
-
 
 @app.route("/cooperado/verificar_nova_entrega")
 def cooperado_verificar_nova_entrega():
@@ -7368,28 +7308,7 @@ def cadastrar_entrega():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    # Fila primeiro: o cooperado em 1º lugar já chega selecionado no cadastro.
-    cooperados_todos = Cooperado.query.order_by(Cooperado.nome).all()
-    lista_espera = (
-        ListaEspera.query
-        .options(joinedload(ListaEspera.cooperado))
-        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
-        .all()
-    )
-    fila_por_id = {
-        int(item.cooperado_id): indice
-        for indice, item in enumerate(lista_espera, start=1)
-        if item.cooperado_id
-    }
-    primeiro_fila_id = next(iter(fila_por_id), None)
-    cooperados = sorted(
-        cooperados_todos,
-        key=lambda c: (
-            0 if c.id in fila_por_id else 1,
-            fila_por_id.get(c.id, 999999),
-            (c.nome or '').lower(),
-        )
-    )
+    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
 
     if request.method == 'POST':
         cliente_nome = _dash_title_case((request.form.get('cliente') or '').strip())
@@ -7544,12 +7463,7 @@ def cadastrar_entrega():
 
         return redirect_back_to_admin()
 
-    return render_template(
-        'cadastrar_entrega.html',
-        cooperados=cooperados,
-        fila_por_id=fila_por_id,
-        primeiro_fila_id=primeiro_fila_id,
-    )
+    return render_template('cadastrar_entrega.html', cooperados=cooperados)
 
 
 @app.route('/agendar_entrega', methods=['GET', 'POST'])
@@ -11227,32 +11141,91 @@ def admin_normalizar_nomes():
     return redirect(url_for('estatisticas_cooperado'))
 
 
+def _coopex_relatorio_arg(nome, padrao=''):
+    """Lê o filtro da URL atual e, se faltar, recupera da URL do Admin (Referer)."""
+    valor = request.args.get(nome)
+    if valor is not None and str(valor).strip() != '':
+        return str(valor).strip()
+
+    try:
+        from urllib.parse import urlparse, parse_qs
+        ref = request.referrer or request.headers.get('Referer') or ''
+        if ref:
+            qs = parse_qs(urlparse(ref).query, keep_blank_values=True)
+            vals = qs.get(nome)
+            if vals and str(vals[0]).strip() != '':
+                return str(vals[0]).strip()
+    except Exception:
+        pass
+    return padrao
+
+
+def _coopex_filtro_todos(valor):
+    """Aceita Todos/Todas/todos/todas como ausência de filtro."""
+    import unicodedata
+    s = str(valor or '').strip()
+    s = ''.join(
+        c for c in unicodedata.normalize('NFD', s)
+        if unicodedata.category(c) != 'Mn'
+    ).lower()
+    return s in ('', 'todos', 'todas', 'all')
+
+
+def _coopex_parse_data_filtro(valor):
+    if not valor:
+        return None
+    valor = str(valor).strip()
+    for fmt in ("%Y-%m-%d", "%d/%m/%Y"):
+        try:
+            return datetime.strptime(valor, fmt).date()
+        except Exception:
+            pass
+    return None
+
+
 @app.route('/exportar_xlsx')
 def exportar_xlsx():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    status_pagamento = request.args.get('status_pagamento', 'todos')
-    forma_pagamento = (request.args.get('forma_pagamento') or 'todos').strip()
-    cliente = (request.args.get('cliente') or '').strip()
-    endereco = (request.args.get('endereco') or '').strip()
+    data_inicio = _coopex_relatorio_arg('data_inicio', '')
+    data_fim = _coopex_relatorio_arg('data_fim', '')
+    cooperado_id = _coopex_relatorio_arg('cooperado_id', 'todos')
+    status_pagamento = _coopex_relatorio_arg('status_pagamento', 'todos')
+    forma_pagamento = _coopex_relatorio_arg('forma_pagamento', 'todos')
+    cliente = _coopex_relatorio_arg('cliente', '')
+    endereco = _coopex_relatorio_arg('endereco', '')
 
-    query = Entrega.query
-    if cooperado_id != 'todos':
-        query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+    query = Entrega.query.options(joinedload(Entrega.cooperado))
+
+    if not _coopex_filtro_todos(cooperado_id):
+        try:
+            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
     if cliente:
         like = f"%{cliente.lower()}%"
-        query = query.filter(func.lower(Entrega.cliente).like(like))
-    if status_pagamento and status_pagamento != 'todos':
-        if status_pagamento == 'pago':
-            query = query.filter(func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago')
-        elif status_pagamento == 'pendente':
-            query = query.filter((Entrega.status_pagamento == None) | (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente'))
-    if forma_pagamento and forma_pagamento != 'todos':
-        query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+        query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).like(like))
+
+    if not _coopex_filtro_todos(status_pagamento):
+        sp = str(status_pagamento).strip().lower()
+        if sp == 'pago':
+            query = query.filter(
+                func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago'
+            )
+        elif sp == 'pendente':
+            query = query.filter(
+                (Entrega.status_pagamento == None) |
+                (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente')
+            )
+
+    if not _coopex_filtro_todos(forma_pagamento):
+        query = query.filter(
+            func.lower(func.coalesce(Entrega.pagamento, '')) ==
+            str(forma_pagamento).strip().lower()
+        )
+
     if endereco:
         like_end = f"%{endereco.lower()}%"
         query = query.filter(or_(
@@ -11261,44 +11234,86 @@ def exportar_xlsx():
             func.lower(func.coalesce(Entrega.destino_json, '')).like(like_end),
             func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
         ))
-    if data_inicio:
-        di = datetime.strptime(data_inicio, "%Y-%m-%d").date()
+
+    di = _coopex_parse_data_filtro(data_inicio)
+    df_ = _coopex_parse_data_filtro(data_fim)
+
+    # Usa EXATAMENTE o mesmo campo de data mostrado/filtrado no Admin.
+    if di:
         inicio_utc, _ = local_date_window_to_utc_range(di)
         query = query.filter(Entrega.data_envio >= inicio_utc)
-    if data_fim:
-        df_ = datetime.strptime(data_fim, "%Y-%m-%d").date()
+    if df_:
         _, fim_utc = local_date_window_to_utc_range(df_)
         query = query.filter(Entrega.data_envio <= fim_utc)
 
-    entregas = query.order_by(Entrega.data_envio.asc()).all()
+    entregas = query.order_by(Entrega.data_envio.asc(), Entrega.id.asc()).all()
 
+    columns = [
+        'Data', 'Cliente', 'Bairro', 'Valor',
+        'Status Pagamento', 'Status Entrega', 'Forma Pagamento',
+        'Cooperado', 'Recebido Por'
+    ]
     rows = []
     for e in entregas:
         dt_local = to_brasilia(e.data_envio)
         rows.append({
             'Data': dt_local.strftime('%d/%m/%Y') if dt_local else '',
-            'Cliente': e.cliente,
-            'Bairro': e.bairro,
+            'Cliente': e.cliente or '',
+            'Bairro': e.bairro or '',
             'Valor': e.valor,
-            'Status Pagamento': e.status_pagamento,
-            'Status Entrega': e.status,
-            'Forma Pagamento': e.pagamento,
+            'Status Pagamento': e.status_pagamento or '',
+            'Status Entrega': e.status or '',
+            'Forma Pagamento': e.pagamento or '',
             'Cooperado': (e.cooperado.nome if e.cooperado else 'Sem Cooperado'),
             'Recebido Por': e.recebido_por or ''
         })
 
-    df_out = pd.DataFrame(rows)
+    # Mesmo sem registros, mantém os cabeçalhos para não gerar Excel totalmente em branco.
+    df_out = pd.DataFrame(rows, columns=columns)
 
     output = io.BytesIO()
     with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
         sheet = 'Entregas'
         df_out.to_excel(writer, index=False, sheet_name=sheet)
         ws = writer.sheets[sheet]
-        col_widths = [12, 28, 18, 10, 18, 16, 16, 22, 18]
-        for i, w in enumerate(col_widths[:len(df_out.columns)]):
+        col_widths = [12, 28, 18, 12, 18, 16, 20, 26, 20]
+        for i, w in enumerate(col_widths):
             ws.set_column(i, i, w)
+
+        # Registra no próprio arquivo quais filtros foram usados.
+        filtros = [
+            ['Filtro', 'Valor'],
+            ['Data inicial', data_inicio or ''],
+            ['Data final', data_fim or ''],
+            ['Cooperado', cooperado_id or 'todos'],
+            ['Status pagamento', status_pagamento or 'todos'],
+            ['Forma pagamento', forma_pagamento or 'todos'],
+            ['Cliente', cliente or ''],
+            ['Endereço', endereco or ''],
+            ['Registros exportados', len(entregas)],
+        ]
+        ws_f = writer.book.add_worksheet('Filtros')
+        for r, linha in enumerate(filtros):
+            for c, valor in enumerate(linha):
+                ws_f.write(r, c, valor)
+        ws_f.set_column(0, 0, 22)
+        ws_f.set_column(1, 1, 38)
+
     output.seek(0)
-    return send_file(output, download_name="entregas.xlsx", as_attachment=True)
+
+    nome = "entregas"
+    if data_inicio or data_fim:
+        ini_nome = (data_inicio or 'inicio').replace('/', '-')
+        fim_nome = (data_fim or 'fim').replace('/', '-')
+        nome = f"entregas_{ini_nome}_a_{fim_nome}"
+
+    return send_file(
+        output,
+        download_name=f"{nome}.xlsx",
+        as_attachment=True,
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'
+    )
+
 
 # =========================================================
 # EXPORTAR / IMPORTAR CLIENTES
@@ -11628,48 +11643,64 @@ def relatorio_termico():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperado_id = request.args.get('cooperado_id', 'todos')
-    data_inicio = request.args.get('data_inicio')
-    data_fim = request.args.get('data_fim')
-    status_pagamento = request.args.get('status_pagamento', 'todos')
-    cliente = (request.args.get('cliente') or '').strip()
+    cooperado_id = _coopex_relatorio_arg('cooperado_id', 'todos')
+    data_inicio = _coopex_relatorio_arg('data_inicio', '')
+    data_fim = _coopex_relatorio_arg('data_fim', '')
+    status_pagamento = _coopex_relatorio_arg('status_pagamento', 'todos')
+    forma_pagamento = _coopex_relatorio_arg('forma_pagamento', 'todos')
+    cliente = _coopex_relatorio_arg('cliente', '')
+    endereco = _coopex_relatorio_arg('endereco', '')
 
-    if data_inicio:
-        di_date = datetime.strptime(data_inicio, "%Y-%m-%d").date()
-        inicio_utc, _ = local_date_window_to_utc_range(di_date)
-    else:
+    di_date = _coopex_parse_data_filtro(data_inicio)
+    df_date = _coopex_parse_data_filtro(data_fim)
+
+    # Se não houver período informado, relatório do dia atual.
+    if not di_date and not df_date:
         hoje = datetime.now(BRAZIL_TZ).date()
-        inicio_utc, _ = local_date_window_to_utc_range(hoje)
+        di_date = hoje
+        df_date = hoje
+        data_inicio = hoje.isoformat()
+        data_fim = hoje.isoformat()
+    elif di_date and not df_date:
+        df_date = di_date
+        data_fim = data_inicio
+    elif df_date and not di_date:
+        di_date = df_date
+        data_inicio = data_fim
 
-    if data_fim:
-        df_date = datetime.strptime(data_fim, "%Y-%m-%d").date()
-        _, fim_utc = local_date_window_to_utc_range(df_date)
-    else:
-        base = datetime.strptime(data_inicio, "%Y-%m-%d").date() if data_inicio else datetime.now(BRAZIL_TZ).date()
-        _, fim_utc = local_date_window_to_utc_range(base)
+    inicio_utc, _ = local_date_window_to_utc_range(di_date)
+    _, fim_utc = local_date_window_to_utc_range(df_date)
 
-    q = Entrega.query
+    q = Entrega.query.options(joinedload(Entrega.cooperado))
 
-    if cooperado_id and cooperado_id != 'todos':
+    if not _coopex_filtro_todos(cooperado_id):
         try:
             q = q.filter(Entrega.cooperado_id == int(cooperado_id))
         except Exception:
             pass
 
-    if status_pagamento and status_pagamento != 'todos':
-        if status_pagamento == 'pago':
-            q = q.filter(func.lower(Entrega.status_pagamento) == 'pago')
-        elif status_pagamento == 'pendente':
+    if not _coopex_filtro_todos(status_pagamento):
+        sp = str(status_pagamento).strip().lower()
+        if sp == 'pago':
+            q = q.filter(
+                func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago'
+            )
+        elif sp == 'pendente':
             q = q.filter(
                 (Entrega.status_pagamento == None) |
-                (func.lower(Entrega.status_pagamento) == 'pendente')
+                (func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pendente')
             )
 
     if cliente:
         like = f"%{cliente.lower()}%"
-        q = q.filter(func.lower(Entrega.cliente).like(like))
-    if forma_pagamento and forma_pagamento != 'todos':
-        q = q.filter(func.lower(func.coalesce(Entrega.pagamento, '')) == forma_pagamento.lower())
+        q = q.filter(func.lower(func.coalesce(Entrega.cliente, '')).like(like))
+
+    if not _coopex_filtro_todos(forma_pagamento):
+        q = q.filter(
+            func.lower(func.coalesce(Entrega.pagamento, '')) ==
+            str(forma_pagamento).strip().lower()
+        )
+
     if endereco:
         like_end = f"%{endereco.lower()}%"
         q = q.filter(or_(
@@ -11679,21 +11710,28 @@ def relatorio_termico():
             func.lower(func.coalesce(Entrega.paradas_json, '')).like(like_end),
         ))
 
-    coalesce_dt = func.coalesce(Entrega.data_atribuida, Entrega.data_envio)
-    q = q.filter(coalesce_dt >= inicio_utc, coalesce_dt <= fim_utc).order_by(
-        coalesce_dt.asc(),
-        Entrega.cliente.asc()
+    # Mesma data usada na tabela do Admin e no Excel.
+    q = q.filter(
+        Entrega.data_envio >= inicio_utc,
+        Entrega.data_envio <= fim_utc
+    ).order_by(
+        Entrega.data_envio.asc(),
+        Entrega.cliente.asc(),
+        Entrega.id.asc()
     )
 
-    entregas = q.options(joinedload(Entrega.cooperado)).all()
+    entregas = q.all()
 
     periodo_txt = periodo_legivel_str(data_inicio, data_fim)
 
     coop_nome = "Todos"
-    if cooperado_id and cooperado_id != "todos":
-        coop = Cooperado.query.get(int(cooperado_id))
-        if coop:
-            coop_nome = coop.nome
+    if not _coopex_filtro_todos(cooperado_id):
+        try:
+            coop = Cooperado.query.get(int(cooperado_id))
+            if coop:
+                coop_nome = coop.nome
+        except Exception:
+            pass
 
     total_relatorio = sum(float(e.valor or 0) for e in entregas)
     agora = datetime.now(BRAZIL_TZ)
@@ -11705,7 +11743,16 @@ def relatorio_termico():
         coop_nome=coop_nome,
         agora=agora,
         to_brasilia=to_brasilia,
-        total_relatorio=total_relatorio
+        total_relatorio=total_relatorio,
+        filtros={
+            'data_inicio': data_inicio,
+            'data_fim': data_fim,
+            'cooperado_id': cooperado_id,
+            'status_pagamento': status_pagamento,
+            'forma_pagamento': forma_pagamento,
+            'cliente': cliente,
+            'endereco': endereco,
+        }
     )
 
 
