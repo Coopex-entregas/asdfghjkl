@@ -2210,8 +2210,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             <div class="bank-group">
               <button type="button" class="bank-group-btn">📊 Relatórios <span>›</span></button>
               <div class="bank-submenu">
-                <a href="{{ url_for('exportar_xlsx', data_inicio=data_inicio or '', data_fim=data_fim or '', cooperado_id=request.args.get('cooperado_id','todos'), status_pagamento=request.args.get('status_pagamento','todos'), forma_pagamento=request.args.get('forma_pagamento','todos'), cliente=request.args.get('cliente',''), endereco=request.args.get('endereco','')) }}"><span class="btn-ico">📄</span>Exportar Excel</a>
-                <a target="_blank" rel="noopener" href="{{ url_for('relatorio_termico', data_inicio=data_inicio or '', data_fim=data_fim or '', cooperado_id=request.args.get('cooperado_id','todos'), status_pagamento=request.args.get('status_pagamento','todos'), forma_pagamento=request.args.get('forma_pagamento','todos'), cliente=request.args.get('cliente',''), endereco=request.args.get('endereco','')) }}"><span class="btn-ico">🖨</span>Imprimir relatório</a>
+                <a id="exportExcelLink" href="{{ url_for('exportar_xlsx') }}"><span class="btn-ico">📄</span>Exportar Excel</a>
+                <a id="relatorioTermicoLink" target="_blank" rel="noopener" href="{{ url_for('relatorio_termico') }}"><span class="btn-ico">🖨</span>Imprimir relatório</a>
               </div>
             </div>
 
@@ -2280,7 +2280,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
               </button>
             </div>
 
-            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" onsubmit="sessionStorage.setItem('coopex_show_assigned_after_filter','1');document.body.classList.add('filter-active');document.body.classList.remove('hide-assigned');window.__markActionStart&&window.__markActionStart()">
+            <form class="filters-form" method="GET" action="{{ url_for('admin') }}" onsubmit="window.__markActionStart&&window.__markActionStart()">
               <div class="field">
                 <label for="cooperado">Cooperado</label>
                 <select name="cooperado_id" id="cooperado">
@@ -2871,11 +2871,6 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
     window.addEventListener('DOMContentLoaded', function(){
       atualizarBadgeAbertas();
       try{
-        const filtroEnviado = sessionStorage.getItem('coopex_show_assigned_after_filter') === '1' || window.location.search.length > 1;
-        if(filtroEnviado){
-          sessionStorage.removeItem('coopex_show_assigned_after_filter');
-          document.body.classList.add('filter-active');
-        }
         document.body.classList.remove('hide-assigned');
         const btn = document.getElementById('btnToggleAssigned');
         const chipAssigned = document.getElementById('chipAssignedInfo');
@@ -2883,7 +2878,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
           const mostrando = !document.body.classList.contains('hide-assigned');
           if(btn){
             btn.setAttribute('aria-expanded', mostrando ? 'true' : 'false');
-            btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Mostrar atribuídas';
+            btn.textContent = mostrando ? 'Ocultar atribuídas' : 'Atribuídas de hoje';
           }
           if(chipAssigned){
             chipAssigned.textContent = mostrando ? 'Atribuídas visíveis' : 'Atribuídas escondidas até clicar no botão';
@@ -2893,7 +2888,6 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         syncAssignedUi();
         if(btn){
           btn.addEventListener('click', function(){
-            document.body.classList.remove('filter-active');
             document.body.classList.toggle('hide-assigned');
             syncAssignedUi();
           });
@@ -4384,5 +4378,62 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 
 
 
+
+<script id="coopex-export-current-filters-fix">
+(function(){
+  function getFilterParams(){
+    const form = document.querySelector('.filters-form');
+    const params = new URLSearchParams();
+    if(!form) return params;
+
+    const fd = new FormData(form);
+    for(const [key, value] of fd.entries()){
+      const v = String(value == null ? '' : value).trim();
+      if(v !== '') params.set(key, v);
+    }
+
+    if(!params.has('cooperado_id')) params.set('cooperado_id', 'todos');
+    if(!params.has('status_pagamento')) params.set('status_pagamento', 'todos');
+    if(!params.has('forma_pagamento')) params.set('forma_pagamento', 'todos');
+    return params;
+  }
+
+  function syncReportLinks(){
+    const query = getFilterParams().toString();
+
+    const excel = document.getElementById('exportExcelLink');
+    if(excel){
+      excel.href = "{{ url_for('exportar_xlsx') }}" + (query ? '?' + query : '');
+    }
+
+    const relatorio = document.getElementById('relatorioTermicoLink');
+    if(relatorio){
+      relatorio.href = "{{ url_for('relatorio_termico') }}" + (query ? '?' + query : '');
+    }
+  }
+
+  function start(){
+    const form = document.querySelector('.filters-form');
+    syncReportLinks();
+
+    if(form){
+      form.addEventListener('input', syncReportLinks);
+      form.addEventListener('change', syncReportLinks);
+    }
+
+    const excel = document.getElementById('exportExcelLink');
+    if(excel) excel.addEventListener('click', syncReportLinks, true);
+
+    const relatorio = document.getElementById('relatorioTermicoLink');
+    if(relatorio) relatorio.addEventListener('click', syncReportLinks, true);
+  }
+
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', start, {once:true});
+  } else {
+    start();
+  }
+})();
+</script>
 </body>
 </html>
