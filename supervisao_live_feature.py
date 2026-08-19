@@ -123,7 +123,14 @@ def install(app_module):
                 return response
 
             html = response.get_data(as_text=True)
-            if "supervisao_live.js" in html:
+
+            # O admin.html atual já possui o cliente "ao vivo" inline.
+            # Não injeta novamente e evita corromper scripts que montam HTML
+            # contendo a sequência literal "</body>" (ex.: impressão de cupom).
+            if (
+                "supervisao_live.js" in html
+                or 'id="supervisao-live-sync"' in html
+            ):
                 return response
 
             tag = (
@@ -131,10 +138,16 @@ def install(app_module):
                 + url_for("static", filename="js/supervisao_live.js")
                 + '"></script>'
             )
-            if "</body>" in html:
-                html = html.replace("</body>", tag + "</body>", 1)
+
+            # Se for necessário injetar, usa o ÚLTIMO </body> do documento.
+            # Nunca o primeiro, pois pode existir "</body>" dentro de uma
+            # string JavaScript e isso faria o navegador exibir código na tela.
+            pos = html.rfind("</body>")
+            if pos >= 0:
+                html = html[:pos] + tag + html[pos:]
             else:
                 html += tag
+
             response.set_data(html)
         except Exception as exc:
             app.logger.warning("Falha ao injetar Supervisão ao vivo: %s", exc)
