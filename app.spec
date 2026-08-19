@@ -8,6 +8,10 @@ ROOT = Path(SPECPATH)
 webview_hidden = collect_submodules('webview')
 webview_datas = collect_data_files('webview')
 
+# O pytz precisa dos arquivos de zoneinfo no EXE.
+# Sem isso, pytz.timezone('America/Sao_Paulo') pode falhar no aplicativo empacotado.
+pytz_datas = collect_data_files('pytz')
+
 hidden = [
     'flask_socketio',
     'simple_websocket',
@@ -26,13 +30,14 @@ hidden = [
     'creditos_otimizacao_feature',
     'pagamentos_normalizacao_feature',
     'supervisao_live_feature',
+    'pytz',
 ] + webview_hidden
 
 datas = [
     (str(ROOT / 'templates'), 'templates'),
     (str(ROOT / 'static'), 'static'),
     (str(ROOT / 'data'), 'data'),
-] + webview_datas
+] + webview_datas + pytz_datas
 
 a = Analysis(
     ['supervisao_desktop.py'],
