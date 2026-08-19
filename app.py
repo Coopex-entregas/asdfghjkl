@@ -12320,6 +12320,15 @@ def api_rastreio_pos(token):
 
 
 if __name__ == '__main__':
+    # Quando executado localmente/EXE, instala também os recursos de atualização
+    # automática que no Render são ativados pelo gunicorn.conf.py.
+    try:
+        import sys
+        import supervisao_live_feature
+        supervisao_live_feature.install(sys.modules[__name__])
+    except Exception as exc:
+        app.logger.warning(f'Falha ao instalar Supervisão ao vivo localmente: {exc}')
+
     port = int(os.environ.get('PORT', 5000))
     # importante rodar pelo socketio, não pelo app.run
-    socketio.run(app, host='0.0.0.0', port=port)
+    socketio.run(app, host='0.0.0.0', port=port, allow_unsafe_werkzeug=True)
