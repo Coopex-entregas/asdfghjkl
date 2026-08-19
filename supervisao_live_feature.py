@@ -18,12 +18,13 @@ from sqlalchemy import text
 LIVE_STYLE = r"""
 <style id="supervisao-live-style">
 #supervisao-live-indicator{
-  display:inline-flex;align-items:center;gap:6px;
-  min-height:30px;padding:5px 9px;margin-left:8px;
-  border:1px solid #cdd9f2;border-radius:999px;
-  background:#fff;color:#173f9f;
-  font:800 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  display:inline-flex;align-items:center;gap:4px;
+  min-height:20px;padding:3px 6px;margin-left:7px;
+  border:1px solid rgba(255,255,255,.35);border-radius:999px;
+  background:rgba(255,255,255,.12);color:inherit;
+  font:800 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
   vertical-align:middle;white-space:nowrap;
+  flex:none;
 }
 #supervisao-live-indicator .dot{
   width:7px;height:7px;border-radius:50%;
@@ -31,7 +32,7 @@ LIVE_STYLE = r"""
 }
 #supervisao-live-indicator.off .dot{background:#d64545}
 body.dark #supervisao-live-indicator{
-  background:#14243f;border-color:#334b75;color:#dce8ff
+  background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.25);color:inherit
 }
 </style>
 """
@@ -70,8 +71,9 @@ LIVE_SCRIPT = r"""
         return t.includes('solicita') && t.includes('valor');
       });
 
-    if(alvo && alvo.parentNode){
-      alvo.insertAdjacentElement('afterend',el);
+    if(alvo){
+      // Fica DENTRO do botão "Solicitações de valor", na mesma linha do nome.
+      alvo.appendChild(el);
     }else{
       const barra=document.querySelector('.bank-toolbar') ||
                  document.querySelector('.quick-left') ||
