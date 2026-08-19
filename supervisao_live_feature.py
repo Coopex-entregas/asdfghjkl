@@ -26,7 +26,7 @@ def install(app_module):
     ConfigSistema = getattr(app_module, "ConfigSistema", None)
 
     @app.get("/api/admin/live-state")
-    def supervisao_live_state():
+    def api_admin_live_state():
         if not session.get("is_admin") and not session.get("is_master"):
             return jsonify(ok=False, error="unauthorized"), 401
 
