@@ -1,7 +1,7 @@
 """Configuração leve do Gunicorn para o painel COOPEX.
 
-Os recursos adicionais são instalados somente depois que o app Flask está
-carregado no worker, mantendo o app.py principal estável.
+Recursos adicionais instalados depois que o app Flask é carregado.
+Inclui o servidor de sincronização offline-first.
 """
 
 import builtins
@@ -44,7 +44,6 @@ preload_app = False
 
 
 def _corrigir_serializacao_escala(escala_feature):
-    """Remove estruturas internas não serializáveis dos candidatos da escala."""
     original = escala_feature.match_name
     if getattr(original, "_coopex_json_safe", False):
         return
@@ -52,23 +51,18 @@ def _corrigir_serializacao_escala(escala_feature):
     def match_name_json_safe(name, ctx):
         cooperado_id, status, candidatos, detalhe = original(name, ctx)
         candidatos_seguros = []
-
         for candidato in candidatos or []:
             if not isinstance(candidato, dict):
                 continue
-
             item = {
                 "id": candidato.get("id"),
                 "nome": candidato.get("nome") or "",
             }
-
             if candidato.get("score") is not None:
                 item["score"] = candidato.get("score")
             if candidato.get("motivo"):
                 item["motivo"] = candidato.get("motivo")
-
             candidatos_seguros.append(item)
-
         return cooperado_id, status, candidatos_seguros, detalhe
 
     match_name_json_safe._coopex_json_safe = True
@@ -76,7 +70,6 @@ def _corrigir_serializacao_escala(escala_feature):
 
 
 def post_worker_init(worker):
-    """Instala os recursos separados depois que o Flask carrega app:app."""
     try:
         import app as app_module
         import escala_feature
@@ -91,8 +84,10 @@ def post_worker_init(worker):
         import creditos_otimizacao_feature
         import pagamentos_normalizacao_feature
         import supervisao_live_feature
+        import sync_feature
 
         _corrigir_serializacao_escala(escala_feature)
+
         escala_feature.install(app_module)
         escala_api_session_fix.install(app_module, escala_feature)
         escala_ajustes.install(app_module, escala_feature)
@@ -105,9 +100,13 @@ def post_worker_init(worker):
         creditos_otimizacao_feature.install(app_module)
         pagamentos_normalizacao_feature.install(app_module)
         supervisao_live_feature.install(app_module)
+
+        # Sempre por último: precisa enxergar as tabelas de todos os módulos.
+        sync_feature.install(app_module)
+
         worker.log.info(
-            "Escala, API da escala, trocas, agendamentos, bairros, comparativo, arquivamento, histórico, créditos, pagamentos e Supervisão ao vivo instalados."
+            "Recursos COOPEX + Supervisão ao vivo + sincronização offline instalados."
         )
     except Exception:
-        worker.log.exception("Falha ao instalar os recursos adicionais da COOPEX.")
+        worker.log.exception("Falha ao instalar recursos adicionais da COOPEX.")
         raise

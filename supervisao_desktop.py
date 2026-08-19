@@ -1,8 +1,13 @@
 # -*- coding: utf-8 -*-
-"""
-Supervisão Desktop
-Abre o sistema Flask em uma janela nativa do Windows via pywebview.
-Sem navegador, sem barra de endereço e sem terminal.
+r"""
+Supervisão Desktop — offline-first com sincronização.
+
+- Janela própria Windows via pywebview/WebView2.
+- SEMPRE usa SQLite local.
+- SQLite fica em %LOCALAPPDATA%\Supervisao\data\supervisao.sqlite3.
+- Sincroniza com o Render através de sync_feature.py quando houver internet.
+- Se o Render estiver fora/deploy, o app continua funcionando no SQLite.
+- Ajusta cache/mmap do SQLite conforme a memória RAM do computador.
 """
 
 import builtins
@@ -20,6 +25,7 @@ from pathlib import Path
 
 APP_NAME = "Supervisão"
 MUTEX_NAME = "Local\\COOPEX_SUPERVISAO_DESKTOP_2026"
+REMOTE_URL_DEFAULT = "https://escalas-2-1.onrender.com"
 
 
 def _user_data_dir() -> Path:
@@ -37,7 +43,7 @@ LOG_FILE = USER_DIR / "logs" / "supervisao.log"
 logging.basicConfig(
     filename=str(LOG_FILE),
     level=logging.INFO,
-    format="%(asctime)s %(levelname)s %(message)s",
+    format="%(asctime)s %(levelname)s %(name)s %(message)s",
     encoding="utf-8",
 )
 log = logging.getLogger("supervisao")
@@ -54,8 +60,7 @@ def _message_box(title: str, message: str, error: bool = False):
 def _single_instance():
     try:
         handle = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
-        last_error = ctypes.windll.kernel32.GetLastError()
-        if last_error == 183:
+        if ctypes.windll.kernel32.GetLastError() == 183:
             _message_box(APP_NAME, "O Supervisão já está aberto.")
             return None
         return handle
@@ -67,6 +72,47 @@ def _free_port() -> int:
     with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
         s.bind(("127.0.0.1", 0))
         return int(s.getsockname()[1])
+
+
+def _ram_total_gb() -> float:
+    """Lê RAM do Windows sem depender de psutil."""
+    try:
+        class MEMORYSTATUSEX(ctypes.Structure):
+            _fields_ = [
+                ("dwLength", ctypes.c_ulong),
+                ("dwMemoryLoad", ctypes.c_ulong),
+                ("ullTotalPhys", ctypes.c_ulonglong),
+                ("ullAvailPhys", ctypes.c_ulonglong),
+                ("ullTotalPageFile", ctypes.c_ulonglong),
+                ("ullAvailPageFile", ctypes.c_ulonglong),
+                ("ullTotalVirtual", ctypes.c_ulonglong),
+                ("ullAvailVirtual", ctypes.c_ulonglong),
+                ("ullAvailExtendedVirtual", ctypes.c_ulonglong),
+            ]
+        st = MEMORYSTATUSEX()
+        st.dwLength = ctypes.sizeof(MEMORYSTATUSEX)
+        if ctypes.windll.kernel32.GlobalMemoryStatusEx(ctypes.byref(st)):
+            return st.ullTotalPhys / (1024 ** 3)
+    except Exception:
+        pass
+    return 8.0
+
+
+def _configure_memory_accelerator():
+    ram = _ram_total_gb()
+    if ram >= 16:
+        cache_mb, mmap_mb = 256, 512
+    elif ram >= 8:
+        cache_mb, mmap_mb = 128, 256
+    else:
+        cache_mb, mmap_mb = 64, 128
+
+    os.environ["SUPERVISAO_SQLITE_CACHE_MB"] = str(cache_mb)
+    os.environ["SUPERVISAO_SQLITE_MMAP_MB"] = str(mmap_mb)
+    log.info(
+        "Acelerador de memória: RAM=%.1fGB cache=%sMB mmap=%sMB",
+        ram, cache_mb, mmap_mb,
+    )
 
 
 def _coopex_strip_accents(texto):
@@ -93,15 +139,28 @@ def _bairro_rota_key(valor):
     return re.sub(r"\s+", " ", txt).strip()
 
 
-def _prepare_environment(port: int):
+def _prepare_environment(port: int, self_test: bool = False):
     builtins._bairro_rota_display = _bairro_rota_display
     builtins._bairro_rota_key = _bairro_rota_key
 
     os.environ["PORT"] = str(port)
     os.environ["SUPERVISAO_DESKTOP"] = "1"
+    os.environ["SUPERVISAO_OFFLINE"] = "1"
 
-    db_path = (USER_DIR / "data" / "supervisao.sqlite3").resolve().as_posix()
-    os.environ.setdefault("DATABASE_URL", f"sqlite:///{db_path}")
+    # Chamadas ao Flask local nunca devem passar por proxy.
+    os.environ["NO_PROXY"] = "127.0.0.1,localhost"
+    os.environ["no_proxy"] = "127.0.0.1,localhost"
+
+    os.environ.setdefault("SUPERVISAO_REMOTE_URL", REMOTE_URL_DEFAULT)
+
+    _configure_memory_accelerator()
+
+    nome = "supervisao_selftest.sqlite3" if self_test else "supervisao.sqlite3"
+    db_path = (USER_DIR / "data" / nome).resolve().as_posix()
+
+    # IMPORTANTE: força SQLite. Não usa setdefault.
+    os.environ["DATABASE_URL"] = f"sqlite:///{db_path}"
+    return Path(db_path)
 
 
 def _corrigir_serializacao_escala(escala_feature):
@@ -130,12 +189,33 @@ def _corrigir_serializacao_escala(escala_feature):
     escala_feature.match_name = match_name_json_safe
 
 
+def _attach_flask_logs(app_module):
+    try:
+        handler = logging.FileHandler(str(LOG_FILE), encoding="utf-8")
+        handler.setFormatter(
+            logging.Formatter("%(asctime)s %(levelname)s %(name)s %(message)s")
+        )
+        handler.setLevel(logging.INFO)
+        for logger_obj in (app_module.app.logger, logging.getLogger("werkzeug")):
+            logger_obj.setLevel(logging.INFO)
+            if not any(
+                isinstance(h, logging.FileHandler)
+                and getattr(h, "baseFilename", "") == str(LOG_FILE)
+                for h in logger_obj.handlers
+            ):
+                logger_obj.addHandler(handler)
+    except Exception:
+        log.exception("Falha configurando logs Flask")
+
+
 def _init_core_database(app_module):
-    """Garante que o SQLite local tenha as tabelas principais antes de abrir a UI."""
     with app_module.app.app_context():
         app_module.db.create_all()
         app_module.db.session.commit()
-    log.info("Banco local principal inicializado em %s", app_module.app.config.get("SQLALCHEMY_DATABASE_URI"))
+    log.info(
+        "Banco local principal inicializado: %s",
+        app_module.app.config.get("SQLALCHEMY_DATABASE_URI"),
+    )
 
 
 def _install_features(app_module):
@@ -170,14 +250,21 @@ def _install_features(app_module):
     except Exception:
         log.exception("Falha ao instalar supervisao_live_feature")
 
-    # Alguns módulos registram modelos/tabelas durante a instalação.
-    # Executa novamente para criar qualquer tabela que tenha sido adicionada.
+    # Tabelas que módulos adicionais registraram.
     with app_module.app.app_context():
         app_module.db.create_all()
         app_module.db.session.commit()
 
+    # A sincronização deve entrar por último para enxergar todas as tabelas.
+    try:
+        import sync_feature
+        sync_feature.install(app_module)
+    except Exception:
+        log.exception("Falha ao instalar sync_feature")
+        raise
 
-def _wait_server(url: str, timeout: float = 25.0):
+
+def _wait_server(url: str, timeout: float = 30.0):
     deadline = time.time() + timeout
     last_exc = None
     while time.time() < deadline:
@@ -207,7 +294,69 @@ def _run_server(app_module, port: int):
         log.exception("Falha no servidor local")
 
 
+def _self_test(app_module, test_db: Path) -> int:
+    try:
+        import pytz
+        import holidays
+
+        pytz.timezone("America/Sao_Paulo")
+        holidays.Brazil(years=[2026])
+
+        _attach_flask_logs(app_module)
+        _init_core_database(app_module)
+        _install_features(app_module)
+
+        client = app_module.app.test_client()
+        if client.get("/healthz").status_code != 200:
+            raise RuntimeError("/healthz falhou")
+        if client.get("/readyz").status_code != 200:
+            raise RuntimeError("/readyz falhou")
+
+        with client.session_transaction() as sess:
+            sess["is_admin"] = True
+            sess["is_master"] = True
+            sess["admin_user"] = "coopex"
+
+        r = client.get("/admin")
+        if r.status_code != 200:
+            raise RuntimeError(
+                f"/admin retornou {r.status_code}: {r.get_data(as_text=True)[:1000]}"
+            )
+
+        log.info("SELF-TEST OK")
+        return 0
+    except Exception:
+        log.exception("SELF-TEST FALHOU")
+        return 10
+    finally:
+        try:
+            app_module.db.session.remove()
+            app_module.db.engine.dispose()
+        except Exception:
+            pass
+        try:
+            if test_db.exists():
+                test_db.unlink()
+            for suf in ("-wal", "-shm"):
+                p = Path(str(test_db) + suf)
+                if p.exists():
+                    p.unlink()
+        except Exception:
+            pass
+
+
 def main():
+    self_test = "--self-test" in sys.argv
+
+    if self_test:
+        try:
+            db_path = _prepare_environment(0, self_test=True)
+            import app as app_module
+            return _self_test(app_module, db_path)
+        except Exception:
+            log.exception("Falha ao iniciar self-test")
+            return 11
+
     mutex = _single_instance()
     if mutex is None:
         return 0
@@ -217,11 +366,9 @@ def main():
         _prepare_environment(port)
 
         import app as app_module
+        _attach_flask_logs(app_module)
 
-        # CORREÇÃO: o desktop usa um SQLite novo. Antes de qualquer tela consultar
-        # Cooperado, Entrega, ListaEspera etc., criamos o esquema principal.
         _init_core_database(app_module)
-
         _install_features(app_module)
 
         server_thread = threading.Thread(
@@ -265,7 +412,7 @@ def main():
             "Supervisão - erro ao iniciar",
             f"O Supervisão não conseguiu abrir.\n\n"
             f"{exc}\n\n"
-            f"Foi criado um relatório em:\n{LOG_FILE}",
+            f"Relatório:\n{LOG_FILE}",
             error=True,
         )
         return 1

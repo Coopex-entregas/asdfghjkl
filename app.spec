@@ -1,21 +1,21 @@
 # -*- mode: python ; coding: utf-8 -*-
 
 from pathlib import Path
-from PyInstaller.utils.hooks import collect_submodules, collect_data_files
+from PyInstaller.utils.hooks import collect_all, collect_submodules
 
 ROOT = Path(SPECPATH)
 
-webview_hidden = collect_submodules('webview')
-webview_datas = collect_data_files('webview')
-
-# O pytz precisa dos arquivos de zoneinfo no EXE.
-# Sem isso, pytz.timezone('America/Sao_Paulo') pode falhar no aplicativo empacotado.
-pytz_datas = collect_data_files('pytz')
-
+datas = [
+    (str(ROOT / 'templates'), 'templates'),
+    (str(ROOT / 'static'), 'static'),
+    (str(ROOT / 'data'), 'data'),
+]
+binaries = []
 hidden = [
     'flask_socketio',
     'simple_websocket',
     'psycopg2',
+    'psycopg2.extensions',
     'engineio.async_drivers.threading',
     'engineio.async_drivers._websocket_wsgi',
     'escala_feature',
@@ -30,19 +30,42 @@ hidden = [
     'creditos_otimizacao_feature',
     'pagamentos_normalizacao_feature',
     'supervisao_live_feature',
-    'pytz',
-] + webview_hidden
+    'sync_feature',
+    'requests',
+]
 
-datas = [
-    (str(ROOT / 'templates'), 'templates'),
-    (str(ROOT / 'static'), 'static'),
-    (str(ROOT / 'data'), 'data'),
-] + webview_datas + pytz_datas
+for pacote in (
+    'webview',
+    'pytz',
+    'holidays',
+    'requests',
+    'urllib3',
+    'certifi',
+    'charset_normalizer',
+    'idna',
+):
+    try:
+        d, b, h = collect_all(pacote)
+        datas += d
+        binaries += b
+        hidden += h
+    except Exception:
+        pass
+
+for pacote in ('openpyxl', 'xlsxwriter'):
+    try:
+        hidden += collect_submodules(pacote)
+    except Exception:
+        pass
+
+hidden += collect_submodules('engineio.async_drivers')
+hidden += collect_submodules('socketio')
+hidden = list(dict.fromkeys(hidden))
 
 a = Analysis(
     ['supervisao_desktop.py'],
     pathex=[str(ROOT)],
-    binaries=[],
+    binaries=binaries,
     datas=datas,
     hiddenimports=hidden,
     hookspath=[],
