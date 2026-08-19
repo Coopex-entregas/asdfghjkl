@@ -45,18 +45,17 @@ log = logging.getLogger("supervisao")
 
 def _message_box(title: str, message: str, error: bool = False):
     try:
-        flags = 0x10 if error else 0x40  # MB_ICONERROR / MB_ICONINFORMATION
+        flags = 0x10 if error else 0x40
         ctypes.windll.user32.MessageBoxW(None, str(message), str(title), flags)
     except Exception:
         pass
 
 
 def _single_instance():
-    """Evita abrir duas instâncias locais usando o mesmo banco."""
     try:
         handle = ctypes.windll.kernel32.CreateMutexW(None, False, MUTEX_NAME)
         last_error = ctypes.windll.kernel32.GetLastError()
-        if last_error == 183:  # ERROR_ALREADY_EXISTS
+        if last_error == 183:
             _message_box(APP_NAME, "O Supervisão já está aberto.")
             return None
         return handle
@@ -101,7 +100,6 @@ def _prepare_environment(port: int):
     os.environ["PORT"] = str(port)
     os.environ["SUPERVISAO_DESKTOP"] = "1"
 
-    # Banco local persistente. A sincronização com o Render será feita por camada própria.
     db_path = (USER_DIR / "data" / "supervisao.sqlite3").resolve().as_posix()
     os.environ.setdefault("DATABASE_URL", f"sqlite:///{db_path}")
 
@@ -132,8 +130,15 @@ def _corrigir_serializacao_escala(escala_feature):
     escala_feature.match_name = match_name_json_safe
 
 
+def _init_core_database(app_module):
+    """Garante que o SQLite local tenha as tabelas principais antes de abrir a UI."""
+    with app_module.app.app_context():
+        app_module.db.create_all()
+        app_module.db.session.commit()
+    log.info("Banco local principal inicializado em %s", app_module.app.config.get("SQLALCHEMY_DATABASE_URI"))
+
+
 def _install_features(app_module):
-    """Replica no desktop os módulos que o Render instala via gunicorn.conf.py."""
     import escala_feature
     import escala_api_session_fix
     import escala_ajustes
@@ -164,6 +169,12 @@ def _install_features(app_module):
         supervisao_live_feature.install(app_module)
     except Exception:
         log.exception("Falha ao instalar supervisao_live_feature")
+
+    # Alguns módulos registram modelos/tabelas durante a instalação.
+    # Executa novamente para criar qualquer tabela que tenha sido adicionada.
+    with app_module.app.app_context():
+        app_module.db.create_all()
+        app_module.db.session.commit()
 
 
 def _wait_server(url: str, timeout: float = 25.0):
@@ -206,6 +217,11 @@ def main():
         _prepare_environment(port)
 
         import app as app_module
+
+        # CORREÇÃO: o desktop usa um SQLite novo. Antes de qualquer tela consultar
+        # Cooperado, Entrega, ListaEspera etc., criamos o esquema principal.
+        _init_core_database(app_module)
+
         _install_features(app_module)
 
         server_thread = threading.Thread(
@@ -221,14 +237,13 @@ def main():
 
         import webview
 
-        # Mantém links externos no navegador padrão, mas o próprio sistema fica na janela.
         try:
             webview.settings["OPEN_EXTERNAL_LINKS_IN_BROWSER"] = True
             webview.settings["OPEN_DEVTOOLS_IN_DEBUG"] = False
         except Exception:
             pass
 
-        window = webview.create_window(
+        webview.create_window(
             APP_NAME,
             url=base_url,
             width=1440,
@@ -241,7 +256,6 @@ def main():
             text_select=True,
         )
 
-        # Edge Chromium / WebView2: janela de app real, sem barra de endereço.
         webview.start(gui="edgechromium", debug=False, private_mode=False)
         return 0
 
