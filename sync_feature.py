@@ -1963,15 +1963,11 @@ def _install_desktop_hooks(app_module, worker: DesktopSyncWorker):
                 usuario = (request.form.get("usuario") or "").strip()
                 senha = request.form.get("senha") or ""
                 if usuario and senha:
+                    # Login bem-sucedido deve entrar IMEDIATAMENTE no app.
+                    # A cópia inicial/sincronização roda em segundo plano e nunca
+                    # bloqueia o redirect para /admin.
                     worker.set_credentials(usuario, senha)
-                    # Primeira instalação: baixa os dados antes do redirect /admin.
-                    state = _local_state(db_path)
-                    if int(state.get("bootstrap_done") or 0) != 1:
-                        try:
-                            app_module.db.session.remove()
-                        except Exception:
-                            pass
-                        worker.bootstrap_blocking()
+                    worker.wake_event.set()
         except Exception:
             LOG.exception("Falha capturando login para sync")
         return response
