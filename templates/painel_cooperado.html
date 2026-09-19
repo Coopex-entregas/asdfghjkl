@@ -923,7 +923,7 @@
 
 <section id="tab-resumo" class="tab-panel active">
       <div class="hero-card">
-        <div class="hero-label">Ganhos de hoje</div>
+        <div class="hero-label" id="hero-label-resumo">Ganhos de hoje</div>
         <div class="hero-value" id="ganhos-hoje">R$ 0,00</div>
         <div class="hero-pill">💰 <span id="ganhos-hoje-sub">Total líquido do dia</span></div>
       </div>
@@ -932,12 +932,12 @@
         <div class="mini-card success">
           <div class="mini-top">
             <div>
-              <h3>Entregas de hoje</h3>
+              <h3 id="entregas-periodo-label">Entregas de hoje</h3>
             </div>
             <div class="mini-icon">✓</div>
           </div>
           <div class="mini-value" id="entregas-hoje">0</div>
-          <div class="mini-sub">Realizadas hoje</div>
+          <div class="mini-sub" id="entregas-periodo-sub">Realizadas hoje</div>
         </div>
 
         <div class="mini-card pending pending-card" id="card-pendencias">
@@ -1226,30 +1226,86 @@
       btn.addEventListener('click', () => activateTab(btn.dataset.tab));
     });
 
-    function getTodaySummary(){
-      const summary = dashboardData.summary || {};
+    function formatDateBR(iso){
+      if(!iso) return '';
+      const p = String(iso).split('-');
+      if(p.length !== 3) return iso;
+      return `${p[2]}/${p[1]}/${p[0]}`;
+    }
+
+    function isTodayRange(){
+      return state.inicio === todayISO && state.fim === todayISO;
+    }
+
+    function periodDescription(){
+      if(isTodayRange()) return 'hoje';
+      if(state.inicio && state.fim){
+        if(state.inicio === state.fim) return `em ${formatDateBR(state.inicio)}`;
+        return `de ${formatDateBR(state.inicio)} a ${formatDateBR(state.fim)}`;
+      }
+      if(state.inicio) return `a partir de ${formatDateBR(state.inicio)}`;
+      if(state.fim) return `até ${formatDateBR(state.fim)}`;
+      return 'hoje';
+    }
+
+    function summarizeItems(items){
+      const list = Array.isArray(items) ? items : [];
+      let totalPago = 0;
+      let totalPendente = 0;
+      let qtdPendente = 0;
+      let totalGeral = 0;
+
+      list.forEach(item => {
+        const valor = Number(item.valor || 0);
+        const status = String(item.status_pagamento ?? item.statusPagamento ?? 'pendente').toLowerCase();
+        totalGeral += valor;
+        if(status === 'pago'){
+          totalPago += valor;
+        }else{
+          totalPendente += valor;
+          qtdPendente += 1;
+        }
+      });
+
       return {
-        ganhosHoje: Number(summary.ganhos_hoje || 0),
-        qtdHoje: Number(summary.qtd_hoje || 0)
+        totalPago,
+        totalPendente,
+        qtdPendente,
+        totalGeral,
+        qtdTotal: list.length
       };
     }
 
-    function updateSummary(){
-      const { ganhosHoje, qtdHoje } = getTodaySummary();
-      const summary = dashboardData.summary || {};
-      document.getElementById('ganhos-hoje').textContent = money(ganhosHoje);
-      document.getElementById('entregas-hoje').textContent = String(qtdHoje);
-      document.getElementById('pendencias-valor').textContent = money(summary.total_pendente || 0);
-      document.getElementById('pendencias-qtd').textContent = String(summary.qtd_pendente || 0);
-      document.getElementById('total-recebido').textContent = money(summary.total_pago || 0);
-      document.getElementById('total-geral').textContent = money(summary.total_geral || 0);
-      document.getElementById('total-entregas').textContent = String(summary.qtd_total || 0);
-      document.getElementById('ganhos-hoje-sub').textContent = qtdHoje ? `${qtdHoje} entrega(s) no dia` : 'Sem entregas registradas hoje';
+    function updateSummaryFromItems(items){
+      const summary = summarizeItems(items);
+      const today = isTodayRange();
+      const periodo = periodDescription();
+
+      document.getElementById('ganhos-hoje').textContent = money(summary.totalGeral);
+      document.getElementById('entregas-hoje').textContent = String(summary.qtdTotal);
+      document.getElementById('pendencias-valor').textContent = money(summary.totalPendente);
+      document.getElementById('pendencias-qtd').textContent = String(summary.qtdPendente);
+      document.getElementById('total-recebido').textContent = money(summary.totalPago);
+      document.getElementById('total-geral').textContent = money(summary.totalGeral);
+      document.getElementById('total-entregas').textContent = String(summary.qtdTotal);
+
+      const heroLabel = document.getElementById('hero-label-resumo');
+      const entregasLabel = document.getElementById('entregas-periodo-label');
+      const entregasSub = document.getElementById('entregas-periodo-sub');
+      if(heroLabel) heroLabel.textContent = today ? 'Ganhos de hoje' : 'Ganhos do período filtrado';
+      if(entregasLabel) entregasLabel.textContent = today ? 'Entregas de hoje' : 'Entregas do período';
+      if(entregasSub) entregasSub.textContent = today ? 'Realizadas hoje' : `Realizadas ${periodo}`;
+
+      document.getElementById('ganhos-hoje-sub').textContent = summary.qtdTotal
+        ? `${summary.qtdTotal} entrega(s) ${periodo}`
+        : (today ? 'Sem entregas registradas hoje' : `Sem entregas ${periodo}`);
     }
 
     const deliveryList = document.getElementById('delivery-list');
     const deliveryCache = new Map();
+    const summaryCache = new Map();
     let deliveryAbortController = null;
+    let summaryAbortController = null;
 
     function escapeHtml(value){
       return String(value ?? '')
@@ -1319,14 +1375,66 @@
       renderList();
     }
 
-    function filterParams(){
+    function filterParams(statusOverride=null){
       const params = new URLSearchParams();
-      params.set('status_pgto', state.listFilter || 'todas');
+      params.set('status_pgto', statusOverride || state.listFilter || 'todas');
       if(state.search) params.set('cliente', state.search);
       if(state.inicio) params.set('inicio', state.inicio);
       if(state.fim) params.set('fim', state.fim);
-      if(state.allDates) params.set('todas_datas','1');
       return params;
+    }
+
+    function ensureDateRangeDefaults(){
+      let inicio = (filtroInicio && filtroInicio.value) ? filtroInicio.value : state.inicio;
+      let fim = (filtroFim && filtroFim.value) ? filtroFim.value : state.fim;
+
+      // Sem data informada = HOJE. Se só uma ponta for informada, usa a mesma data nas duas pontas.
+      if(!inicio && !fim){
+        inicio = todayISO;
+        fim = todayISO;
+      }else if(inicio && !fim){
+        fim = inicio;
+      }else if(!inicio && fim){
+        inicio = fim;
+      }
+
+      state.inicio = inicio;
+      state.fim = fim;
+      state.allDates = false;
+      if(filtroInicio) filtroInicio.value = inicio;
+      if(filtroFim) filtroFim.value = fim;
+    }
+
+    async function loadSummaryForCurrentFilters({useCache=true, fallbackItems=null}={}){
+      const params = filterParams('todas');
+      const cacheKey = params.toString();
+
+      if(Array.isArray(fallbackItems)){
+        summaryCache.set(cacheKey, fallbackItems);
+        updateSummaryFromItems(fallbackItems);
+        return;
+      }
+
+      if(useCache && summaryCache.has(cacheKey)){
+        updateSummaryFromItems(summaryCache.get(cacheKey));
+        return;
+      }
+
+      if(summaryAbortController) summaryAbortController.abort();
+      summaryAbortController = new AbortController();
+      try{
+        const response = await fetch(`{{ url_for('api_cooperado_filtrar_entregas') }}?${params.toString()}`, {
+          headers:{'Accept':'application/json'}, cache:'no-store', signal:summaryAbortController.signal
+        });
+        const data = await response.json();
+        if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível atualizar o resumo.');
+        const items = data.items || [];
+        summaryCache.set(cacheKey, items);
+        updateSummaryFromItems(items);
+      }catch(error){
+        if(error.name === 'AbortError') return;
+        console.error('Erro ao atualizar resumo filtrado:', error);
+      }
     }
 
     function syncFilterUrl(){
@@ -1337,20 +1445,28 @@
         if(state.search) url.searchParams.set('cliente',state.search); else url.searchParams.delete('cliente');
         if(state.inicio) url.searchParams.set('inicio',state.inicio); else url.searchParams.delete('inicio');
         if(state.fim) url.searchParams.set('fim',state.fim); else url.searchParams.delete('fim');
-        if(state.allDates) url.searchParams.set('todas_datas','1'); else url.searchParams.delete('todas_datas');
+        url.searchParams.delete('todas_datas');
         history.replaceState(null,'',url.toString());
       }catch(_){ }
     }
 
     async function loadDeliveries({useCache=true}={}){
       activateTab('tab-entregas');
+      ensureDateRangeDefaults();
       syncFilterUrl();
       const params = filterParams();
       const cacheKey = params.toString();
+
       if(useCache && deliveryCache.has(cacheKey)){
-        hydrateDeliveries(deliveryCache.get(cacheKey));
+        const cachedItems = deliveryCache.get(cacheKey);
+        hydrateDeliveries(cachedItems);
+        await loadSummaryForCurrentFilters({
+          useCache:true,
+          fallbackItems: state.listFilter === 'todas' ? cachedItems : null
+        });
         return;
       }
+
       if(deliveryAbortController) deliveryAbortController.abort();
       deliveryAbortController = new AbortController();
       deliveryList.innerHTML = '<div class="loading-state">Carregando entregas…</div>';
@@ -1361,8 +1477,13 @@
         });
         const data = await response.json();
         if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível filtrar as entregas.');
-        deliveryCache.set(cacheKey, data.items || []);
-        hydrateDeliveries(data.items || []);
+        const items = data.items || [];
+        deliveryCache.set(cacheKey, items);
+        hydrateDeliveries(items);
+        await loadSummaryForCurrentFilters({
+          useCache,
+          fallbackItems: state.listFilter === 'todas' ? items : null
+        });
       }catch(error){
         if(error.name === 'AbortError') return;
         deliveryList.innerHTML = `<div class="empty-state" style="display:block">${escapeHtml(error.message || 'Falha ao carregar entregas.')}</div>`;
@@ -1401,24 +1522,9 @@
       btn.addEventListener('click', async () => {
         const filter = btn.dataset.filter || 'todas';
         state.listFilter = filter;
+        state.search = (filtroCliente.value || '').trim();
+        ensureDateRangeDefaults();
         document.querySelectorAll('.segment-btn').forEach(x => x.classList.toggle('active', x === btn));
-        if(filter === 'pendente'){
-          state.search = '';
-          state.inicio = '';
-          state.fim = '';
-          state.allDates = true;
-          filtroCliente.value = '';
-          filtroInicio.value = '';
-          filtroFim.value = '';
-        }else{
-          state.allDates = false;
-          if(!filtroInicio.value && !filtroFim.value){
-            filtroInicio.value = todayISO;
-            filtroFim.value = todayISO;
-          }
-          state.inicio = filtroInicio.value || todayISO;
-          state.fim = filtroFim.value || todayISO;
-        }
         await loadDeliveries();
       });
     });
@@ -1450,13 +1556,8 @@
 
     document.getElementById('card-pendencias').addEventListener('click', async () => {
       state.listFilter = 'pendente';
-      state.search = '';
-      state.inicio = '';
-      state.fim = '';
-      state.allDates = true;
-      filtroCliente.value = '';
-      filtroInicio.value = '';
-      filtroFim.value = '';
+      state.search = (filtroCliente.value || '').trim();
+      ensureDateRangeDefaults();
       setFilter('pendente');
       await loadDeliveries();
     });
@@ -1467,7 +1568,7 @@
         state.search = (filtroCliente.value || '').trim();
         state.inicio = filtroInicio.value || '';
         state.fim = filtroFim.value || '';
-        state.allDates = false;
+        ensureDateRangeDefaults();
         await loadDeliveries({useCache:false});
       });
     }
@@ -1486,6 +1587,7 @@
 
     function syncRowState(id, updates){
       deliveryCache.clear();
+      summaryCache.clear();
       if(typeof chartCache !== 'undefined') chartCache.clear();
       const item = deliveries.find(entry => String(entry.id) === String(id));
       if (!item) return;
@@ -1539,8 +1641,8 @@
         if (btn) btn.textContent = updates.statusEntrega === 'entregue' ? 'Voltar entrega' : 'Confirmar entrega';
       }
       setFilter(state.listFilter);
-      updateSummary();
       renderList();
+      loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
       if(chartsInitialized) buildCharts();
     }
 
@@ -1832,6 +1934,7 @@
         const btn = document.querySelector(`[data-role="solicitar-valor"][data-id="${valorEntregaId}"]`);
         if(btn){ btn.textContent='Aguardando aprovação'; btn.disabled=true; }
         deliveryCache.clear();
+        summaryCache.clear();
         fecharSolicitacaoValor();
         alert('Solicitação enviada. O valor ficará aguardando aprovação do administrador.');
       }catch(e){ alert(e.message); }
@@ -1992,10 +2095,11 @@
     }
 
     document.addEventListener('DOMContentLoaded', () => {
+      ensureDateRangeDefaults();
       activateTab(initialTab);
       setFilter(state.listFilter);
-      updateSummary();
       renderList();
+      loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
       requestAnimationFrame(()=>document.body.classList.add('ready'));
       setTimeout(() => {
         requireLocation();
