@@ -8698,38 +8698,179 @@ def api_cliente_endereco_delete(endereco_id):
     db.session.commit()
     return jsonify(ok=True)
 
+def _cliente_historico_query(cli):
+    """Monta a consulta do histórico do cliente com filtros opcionais."""
+    data_inicio = (request.args.get('data_inicio') or request.args.get('inicio') or '').strip()
+    data_fim = (request.args.get('data_fim') or request.args.get('fim') or '').strip()
+    data_ref = (request.args.get('data') or '').strip()  # compatibilidade com a tela antiga
+    pagamento = _norm(request.args.get('pagamento') or request.args.get('forma_pagamento') or 'todos')
+    situacao = _norm(request.args.get('situacao') or request.args.get('status') or 'todos')
+
+    q = Entrega.query.filter(Entrega.cliente_id == cli.id)
+
+    try:
+        if data_ref and not data_inicio and not data_fim:
+            d = datetime.strptime(data_ref, '%Y-%m-%d').date()
+            ini, fim = local_date_window_to_utc_range(d)
+            q = q.filter(Entrega.data_envio >= ini, Entrega.data_envio <= fim)
+        else:
+            if data_inicio:
+                d_ini = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+                ini_utc, _ = local_date_window_to_utc_range(d_ini)
+                q = q.filter(Entrega.data_envio >= ini_utc)
+
+            if data_fim:
+                d_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+                _, fim_utc = local_date_window_to_utc_range(d_fim)
+                q = q.filter(Entrega.data_envio <= fim_utc)
+    except Exception:
+        raise ValueError('Data inválida.')
+
+    pagamento_col = func.lower(func.coalesce(Entrega.pagamento, ''))
+    if pagamento not in ('', 'todos', 'todas'):
+        if pagamento == 'credito':
+            q = q.filter(pagamento_col.like('%crédito%') | pagamento_col.like('%credito%'))
+        elif pagamento == 'pix':
+            q = q.filter(pagamento_col.like('%pix%'))
+        elif pagamento == 'dinheiro':
+            q = q.filter(pagamento_col.like('%dinheiro%'))
+        else:
+            q = q.filter(pagamento_col == pagamento)
+
+    status_col = func.lower(func.coalesce(Entrega.status, 'pendente'))
+    if situacao == 'cancelado':
+        q = q.filter(status_col.like('%cancel%'))
+    elif situacao in ('concluido', 'concluído', 'entregue'):
+        q = q.filter(
+            status_col.in_(('entregue', 'recebido', 'finalizada', 'finalizado', 'concluido', 'concluído'))
+        )
+    elif situacao in ('andamento', 'em andamento', 'ativo'):
+        q = q.filter(
+            ~status_col.like('%cancel%'),
+            ~status_col.in_(('entregue', 'recebido', 'finalizada', 'finalizado', 'concluido', 'concluído'))
+        )
+
+    return q
+
+
 @app.get('/api/cliente/historico')
 @cliente_required
 def api_cliente_historico():
     cli = _cliente_atual()
-    data_ref = (request.args.get('data') or '').strip()
-    q = Entrega.query.filter(Entrega.cliente_id == cli.id)
-    if data_ref:
-        try:
-            d = datetime.strptime(data_ref, '%Y-%m-%d').date()
-            ini, fim = local_date_window_to_utc_range(d)
-            q = q.filter(Entrega.data_envio >= ini, Entrega.data_envio <= fim)
-        except Exception:
-            return jsonify(ok=False, erro='Data inválida.'), 400
-    itens = q.order_by(Entrega.data_envio.desc()).limit(80).all()
+
+    try:
+        q = _cliente_historico_query(cli)
+    except ValueError as exc:
+        return jsonify(ok=False, erro=str(exc)), 400
+
+    try:
+        limite = int(request.args.get('limite') or 500)
+    except Exception:
+        limite = 500
+    limite = max(1, min(limite, 2000))
+
+    itens = q.order_by(Entrega.data_envio.desc()).limit(limite).all()
     out = []
+    total_valor = 0.0
+    total_credito = 0.0
+    canceladas = 0
+
     for e in itens:
         e = _enriquecer_entrega(e)
         pago = _entrega_esta_paga(e)
+        status_norm = _norm(e.status or 'pendente')
+        pagamento_txt = e.pagamento or ''
+        valor = float(e.valor or 0)
+
+        total_valor += valor
+        if 'credito' in _norm(pagamento_txt):
+            total_credito += float(getattr(e, 'credito_usado', 0) or 0)
+        if 'cancel' in status_norm:
+            canceladas += 1
+
         out.append({
             'id': e.id,
             'data': to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '',
+            'data_iso': to_brasilia(e.data_envio).strftime('%Y-%m-%d') if e.data_envio else '',
             'cliente': e.cliente,
             'origem': getattr(e, 'origem_endereco', ''),
             'destino': getattr(e, 'destino_endereco', ''),
-            'valor': float(e.valor or 0),
+            'valor': valor,
             'status': e.status or 'pendente',
             'status_pagamento': e.status_pagamento or 'pendente',
-            'pagamento': e.pagamento or '',
+            'pagamento': pagamento_txt,
+            'credito_usado': float(getattr(e, 'credito_usado', 0) or 0),
             'pago': pago,
+            'cancelado': 'cancel' in status_norm,
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
         })
-    return jsonify(ok=True, entregas=out)
+
+    return jsonify(
+        ok=True,
+        entregas=out,
+        resumo={
+            'quantidade': len(out),
+            'valor_total': round(total_valor, 2),
+            'credito_usado': round(total_credito, 2),
+            'canceladas': canceladas,
+        }
+    )
+
+
+@app.get('/cliente/historico/exportar.xlsx')
+@cliente_required
+def cliente_historico_exportar_xlsx():
+    cli = _cliente_atual()
+
+    try:
+        q = _cliente_historico_query(cli)
+    except ValueError as exc:
+        return jsonify(ok=False, erro=str(exc)), 400
+
+    itens = q.order_by(Entrega.data_envio.asc()).all()
+    linhas = []
+
+    for e in itens:
+        e = _enriquecer_entrega(e)
+        data_local = to_brasilia(e.data_envio) if e.data_envio else None
+        linhas.append({
+            'Pedido': e.id,
+            'Data': data_local.strftime('%d/%m/%Y') if data_local else '',
+            'Hora': data_local.strftime('%H:%M') if data_local else '',
+            'Origem': getattr(e, 'origem_endereco', '') or '',
+            'Destino': getattr(e, 'destino_endereco', '') or '',
+            'Valor (R$)': float(e.valor or 0),
+            'Forma de pagamento': e.pagamento or '',
+            'Crédito utilizado (R$)': float(getattr(e, 'credito_usado', 0) or 0),
+            'Status da entrega': e.status or 'pendente',
+            'Status do pagamento': e.status_pagamento or 'pendente',
+        })
+
+    df = pd.DataFrame(linhas, columns=[
+        'Pedido', 'Data', 'Hora', 'Origem', 'Destino', 'Valor (R$)',
+        'Forma de pagamento', 'Crédito utilizado (R$)',
+        'Status da entrega', 'Status do pagamento'
+    ])
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        df.to_excel(writer, index=False, sheet_name='Histórico')
+        ws = writer.sheets['Histórico']
+        ws.freeze_panes(1, 0)
+        ws.autofilter(0, 0, max(len(df), 1), len(df.columns) - 1)
+        larguras = [10, 12, 8, 34, 34, 14, 22, 20, 20, 20]
+        for idx, largura in enumerate(larguras):
+            ws.set_column(idx, idx, largura)
+
+    output.seek(0)
+
+    nome_cliente = re.sub(r'[^A-Za-z0-9_-]+', '_', cli.nome or 'cliente').strip('_') or 'cliente'
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=f'historico_{nome_cliente}.xlsx',
+        mimetype='application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+    )
 
 
 def _entrega_esta_paga(entrega):
