@@ -57,7 +57,7 @@
   <section class="card">
     <div class="table-wrap">
       <table>
-        <thead><tr><th>Nome</th><th>Telefone</th><th>Bairro</th><th>Endereço</th><th>Saldo</th><th>Ações</th></tr></thead>
+        <thead><tr><th>Nome</th><th>Login</th><th>Telefone</th><th>Bairro</th><th>Endereço</th><th>Saldo</th><th>Ações</th></tr></thead>
         <tbody>
         {% for cl in clientes %}
           <form id="edit-{{ cl.id }}" method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}"></form>
@@ -65,6 +65,7 @@
           <form id="del-{{ cl.id }}" method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" onsubmit="return confirm('Excluir este cliente?')"></form>
           <tr>
             <td><input form="edit-{{ cl.id }}" name="nome" value="{{ cl.nome }}" required></td>
+            <td>{{ cl.username or '—' }}</td>
             <td><input form="edit-{{ cl.id }}" name="telefone" value="{{ cl.telefone or '' }}"></td>
             <td><input form="edit-{{ cl.id }}" name="bairro_origem" value="{{ cl.bairro_origem or '' }}"></td>
             <td><input form="edit-{{ cl.id }}" name="endereco" value="{{ cl.endereco or '' }}"></td>
@@ -72,7 +73,7 @@
             <td><div class="row-actions"><button class="btn" form="edit-{{ cl.id }}" type="submit">Salvar</button><button class="btn alt" type="button" onclick="redefinirSenha({{ cl.id }}, {{ cl.nome|tojson }})">Redefinir senha</button><button class="btn danger" form="del-{{ cl.id }}" type="submit">Excluir</button></div></td>
           </tr>
         {% else %}
-          <tr><td colspan="6" style="text-align:center;padding:20px">Nenhum cliente encontrado.</td></tr>
+          <tr><td colspan="7" style="text-align:center;padding:20px">Nenhum cliente encontrado.</td></tr>
         {% endfor %}
         </tbody>
       </table>
