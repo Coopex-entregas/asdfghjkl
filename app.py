@@ -2594,6 +2594,14 @@ def login():
             session['cliente_username'] = cli.username
             session['cliente_nome'] = cli.nome
             session['is_cliente'] = True
+
+            # Senha definida pelo administrador é temporária:
+            # no primeiro login o cliente deve criar a senha pessoal.
+            if (cli.reset_code or '') == 'TMPRESET':
+                session['cliente_troca_senha_obrigatoria'] = True
+                return redirect(url_for('cliente_trocar_senha_obrigatoria'))
+
+            session.pop('cliente_troca_senha_obrigatoria', None)
             if next_url:
                 return redirect(next_url)
             return redirect(url_for('meu_credito'))
@@ -2966,6 +2974,12 @@ def cliente_login():
         session['cliente_username'] = cli.username
         session['cliente_nome'] = cli.nome
         session['is_cliente'] = True
+
+        if (cli.reset_code or '') == 'TMPRESET':
+            session['cliente_troca_senha_obrigatoria'] = True
+            return redirect(url_for('cliente_trocar_senha_obrigatoria'))
+
+        session.pop('cliente_troca_senha_obrigatoria', None)
         return redirect(url_for('meu_credito'))
 
     return render_or_string("cliente_login.html", """
@@ -2979,9 +2993,113 @@ def cliente_login():
     """)
 
 
+@app.route('/cliente/trocar-senha-obrigatoria', methods=['GET', 'POST'])
+def cliente_trocar_senha_obrigatoria():
+    cliente_id = session.get('cliente_id')
+    if not session.get('is_cliente') or not cliente_id:
+        return redirect(url_for('login'))
+
+    cli = Cliente.query.get_or_404(cliente_id)
+
+    # Se já não existe mais marca de senha temporária, segue para o painel.
+    if (cli.reset_code or '') != 'TMPRESET':
+        session.pop('cliente_troca_senha_obrigatoria', None)
+        return redirect(url_for('meu_credito'))
+
+    if request.method == 'POST':
+        nova = request.form.get('senha') or ''
+        confirmar = request.form.get('senha_conf') or ''
+
+        if len(nova) < 6:
+            flash('A nova senha deve ter pelo menos 6 caracteres.', 'error')
+        elif nova != confirmar:
+            flash('As senhas informadas não são iguais.', 'error')
+        else:
+            cli.set_senha(nova)
+            cli.reset_code = None
+            cli.reset_expires_at = None
+            db.session.commit()
+
+            session.pop('cliente_troca_senha_obrigatoria', None)
+            flash('Nova senha cadastrada com sucesso!', 'ok')
+            return redirect(url_for('meu_credito'))
+
+    return render_template_string("""
+    <!doctype html>
+    <html lang="pt-BR">
+    <head>
+      <meta charset="utf-8">
+      <meta name="viewport" content="width=device-width,initial-scale=1">
+      <title>Crie sua nova senha — COOPEX</title>
+      <style>
+        *{box-sizing:border-box}
+        body{
+          margin:0;min-height:100vh;display:grid;place-items:center;
+          background:#f3f6fc;font-family:Arial,Helvetica,sans-serif;color:#17223f;
+          padding:18px
+        }
+        .card{
+          width:min(440px,100%);background:#fff;border:1px solid #dbe4f7;
+          border-radius:22px;box-shadow:0 18px 46px rgba(11,50,159,.12);overflow:hidden
+        }
+        .head{background:linear-gradient(135deg,#1648d8,#0b329f);color:#fff;padding:24px}
+        .head small{font-weight:800;letter-spacing:.5px}
+        .head h1{font-size:24px;margin:7px 0 0}
+        .body{padding:22px}
+        .notice{
+          background:#edf4ff;border:1px solid #cddcff;border-radius:13px;padding:12px;
+          color:#0b329f;font-size:13px;font-weight:700;line-height:1.4;margin-bottom:16px
+        }
+        label{display:block;font-size:12px;font-weight:800;margin:12px 0 6px;color:#42557a}
+        input{
+          width:100%;height:48px;border:1px solid #cbd7ef;border-radius:13px;padding:0 12px;
+          outline:none;font-size:16px
+        }
+        input:focus{border-color:#1648d8;box-shadow:0 0 0 4px rgba(22,72,216,.10)}
+        button{
+          width:100%;height:50px;border:0;border-radius:14px;background:#1648d8;color:#fff;
+          font-weight:900;font-size:16px;margin-top:18px;cursor:pointer
+        }
+        .flash{padding:10px 12px;border-radius:11px;background:#fff0f0;border:1px solid #efc9c9;color:#a42020;margin-bottom:12px}
+      </style>
+    </head>
+    <body>
+      <div class="card">
+        <div class="head">
+          <small>ACESSO COOPEX</small>
+          <h1>Crie sua nova senha</h1>
+        </div>
+        <div class="body">
+          {% with msgs = get_flashed_messages() %}
+            {% if msgs %}
+              {% for msg in msgs %}<div class="flash">{{ msg }}</div>{% endfor %}
+            {% endif %}
+          {% endwith %}
+
+          <div class="notice">
+            Olá, {{ cli.nome }}. Você entrou com uma senha temporária fornecida pela COOPEX.
+            Para continuar, crie agora sua senha pessoal.
+          </div>
+
+          <form method="post">
+            <label>Nova senha</label>
+            <input type="password" name="senha" minlength="6" required autocomplete="new-password">
+
+            <label>Confirmar nova senha</label>
+            <input type="password" name="senha_conf" minlength="6" required autocomplete="new-password">
+
+            <button type="submit">Salvar minha nova senha</button>
+          </form>
+        </div>
+      </div>
+    </body>
+    </html>
+    """, cli=cli)
+
+
 @app.route('/cliente/logout')
 def cliente_logout():
-    for k in ['cliente_id', 'cliente_username', 'cliente_nome', 'is_cliente']:
+    for k in ['cliente_id', 'cliente_username', 'cliente_nome', 'is_cliente', 'cliente_troca_senha_obrigatoria']:
         session.pop(k, None)
     flash('Você saiu da área do cliente.')
     # volta para o login principal (admin / cooperado / cliente)
@@ -6231,8 +6349,9 @@ def redefinir_senha_cliente(id):
     # Nome, telefone, endereço, saldo, usuário, e-mail e histórico permanecem intactos.
     cl.set_senha(nova_senha)
 
-    # Invalida somente um eventual código de recuperação antigo.
-    cl.reset_code = None
+    # Marca esta senha como TEMPORÁRIA.
+    # No próximo login o cliente será obrigado a criar uma senha pessoal.
+    cl.reset_code = 'TMPRESET'
     cl.reset_expires_at = None
 
     db.session.commit()
