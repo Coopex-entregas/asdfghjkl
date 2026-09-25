@@ -631,15 +631,15 @@
 
   <script>
     const API = {
-      me: "{{ url_for('api_cliente_me') }}",
-      saldo: "{{ url_for('api_credito_saldo') }}",
-      recarga: "{{ url_for('api_credito_recarga') }}",
-      pedido: "{{ url_for('api_pedidos_criar') }}",
-      pedidoAtivo: "{{ url_for('api_pedidos_ativo') }}",
-      cancelar: (id) => "{{ url_for('api_pedidos_cancelar', pedido_id=0) }}".replace("/0", `/${id}`),
-      historico: "{{ url_for('api_cliente_historico') }}",
-      exportar: "{{ url_for('cliente_historico_exportar_xlsx') }}",
-      enderecos: "{{ url_for('api_cliente_enderecos') }}",
+      me: "/api/cliente/me",
+      saldo: "/api/cliente/saldo-json",
+      recarga: "/api/cliente/recarga",
+      pedido: "/api/pedidos/criar",
+      pedidoAtivo: "/api/pedidos/ativo",
+      cancelar: (id) => `/api/pedidos/${id}/cancelar`,
+      historico: "/api/cliente/historico",
+      exportar: "/cliente/historico/exportar.xlsx",
+      enderecos: "/api/cliente/enderecos",
       enderecoPadrao: (id) => `/api/cliente/enderecos/${id}/padrao`,
       enderecoDelete: (id) => `/api/cliente/enderecos/${id}`
     };
