@@ -68,10 +68,14 @@ ADMIN_CREDENTIALS = {
 # ------------------------
 database_url = os.environ.get('DATABASE_URL', 'sqlite:///db.sqlite3')
 
-# Render (e outros serviços) costumam vir com "postgres://"
-# O SQLAlchemy precisa de "postgresql+psycopg2://"
+# Normaliza URLs PostgreSQL do Render para o driver psycopg2,
+# que já é o driver usado pelo projeto.
 if database_url.startswith("postgres://"):
     database_url = database_url.replace("postgres://", "postgresql+psycopg2://", 1)
+elif database_url.startswith("postgresql+psycopg://"):
+    database_url = database_url.replace("postgresql+psycopg://", "postgresql+psycopg2://", 1)
+elif database_url.startswith("postgresql://"):
+    database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
