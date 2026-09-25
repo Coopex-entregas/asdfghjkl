@@ -61,6 +61,7 @@
         <tbody>
         {% for cl in clientes %}
           <form id="edit-{{ cl.id }}" method="POST" action="{{ url_for('editar_cliente', id=cl.id) }}"></form>
+          <form id="senha-{{ cl.id }}" method="POST" action="{{ url_for('redefinir_senha_cliente', id=cl.id) }}"></form>
           <form id="del-{{ cl.id }}" method="POST" action="{{ url_for('excluir_cliente', id=cl.id) }}" onsubmit="return confirm('Excluir este cliente?')"></form>
           <tr>
             <td><input form="edit-{{ cl.id }}" name="nome" value="{{ cl.nome }}" required></td>
@@ -68,7 +69,7 @@
             <td><input form="edit-{{ cl.id }}" name="bairro_origem" value="{{ cl.bairro_origem or '' }}"></td>
             <td><input form="edit-{{ cl.id }}" name="endereco" value="{{ cl.endereco or '' }}"></td>
             <td>R$ {{ '%.2f'|format(cl.saldo_atual or 0)|replace('.',',') }}</td>
-            <td><div class="row-actions"><button class="btn" form="edit-{{ cl.id }}" type="submit">Salvar</button><button class="btn danger" form="del-{{ cl.id }}" type="submit">Excluir</button></div></td>
+            <td><div class="row-actions"><button class="btn" form="edit-{{ cl.id }}" type="submit">Salvar</button><button class="btn alt" type="button" onclick="redefinirSenha({{ cl.id }}, {{ cl.nome|tojson }})">Redefinir senha</button><button class="btn danger" form="del-{{ cl.id }}" type="submit">Excluir</button></div></td>
           </tr>
         {% else %}
           <tr><td colspan="6" style="text-align:center;padding:20px">Nenhum cliente encontrado.</td></tr>
@@ -79,5 +80,47 @@
     <p class="muted">A tela abre diretamente o cadastro e gerenciamento de clientes. O histórico financeiro permanece separado em Créditos.</p>
   </section>
 </div>
+<script>
+function redefinirSenha(id, nome) {
+  const senha1 = prompt('Digite a NOVA senha para o cliente:\n\n' + nome);
+  if (senha1 === null) return;
+
+  if (senha1.length < 6) {
+    alert('A senha deve possuir pelo menos 6 caracteres.');
+    return;
+  }
+
+  const senha2 = prompt('Digite novamente a nova senha:');
+  if (senha2 === null) return;
+
+  if (senha1 !== senha2) {
+    alert('As senhas não são iguais.');
+    return;
+  }
+
+  if (!confirm(
+    'Confirma a redefinição da senha de ' + nome + '?\n\n' +
+    'Somente a senha será alterada. Os demais dados do cliente serão mantidos.'
+  )) {
+    return;
+  }
+
+  const form = document.getElementById('senha-' + id);
+
+  const campoSenha = document.createElement('input');
+  campoSenha.type = 'hidden';
+  campoSenha.name = 'nova_senha';
+  campoSenha.value = senha1;
+
+  const campoConfirmacao = document.createElement('input');
+  campoConfirmacao.type = 'hidden';
+  campoConfirmacao.name = 'confirmar_senha';
+  campoConfirmacao.value = senha2;
+
+  form.appendChild(campoSenha);
+  form.appendChild(campoConfirmacao);
+  form.submit();
+}
+</script>
 </body>
 </html>
