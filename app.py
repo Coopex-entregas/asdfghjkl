@@ -6206,6 +6206,36 @@ def editar_cliente(id):
     return redirect(url_for('clientes'))
 
 
+@app.route('/clientes/<int:id>/redefinir-senha', methods=['POST'])
+def redefinir_senha_cliente(id):
+    if not session.get('is_admin'):
+        return redirect(url_for('login'))
+
+    cl = Cliente.query.get_or_404(id)
+    nova_senha = (request.form.get('nova_senha') or '').strip()
+    confirmar_senha = (request.form.get('confirmar_senha') or '').strip()
+
+    if len(nova_senha) < 6:
+        flash('A nova senha deve ter pelo menos 6 caracteres.')
+        return redirect(url_for('clientes'))
+
+    if nova_senha != confirmar_senha:
+        flash('As senhas informadas não são iguais.')
+        return redirect(url_for('clientes'))
+
+    # Altera SOMENTE a senha do cliente.
+    # Nome, telefone, endereço, saldo, usuário, e-mail e histórico permanecem intactos.
+    cl.set_senha(nova_senha)
+
+    # Invalida somente um eventual código de recuperação antigo.
+    cl.reset_code = None
+    cl.reset_expires_at = None
+
+    db.session.commit()
+    flash(f'Senha do cliente {cl.nome} redefinida com sucesso!')
+    return redirect(url_for('clientes'))
+
+
 @app.route('/clientes/<int:id>/excluir', methods=['POST'])
 def excluir_cliente(id):
     if not session.get('is_admin'):
