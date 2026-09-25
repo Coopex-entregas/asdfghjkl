@@ -7,6 +7,20 @@
   <style>
     :root{--blue:#1648d8;--blue2:#0b329f;--bg:#f4f7ff;--card:#fff;--text:#17223f;--muted:#667395;--line:#dbe4f7;--green:#117a48;--red:#bd3030}
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}body{padding:16px}.wrap{max-width:1180px;margin:auto}.top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:14px}.top h1{margin:0;color:var(--blue2);font-size:1.55rem}.actions,.tools{display:flex;gap:8px;align-items:center;flex-wrap:wrap}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:40px;padding:9px 14px;border:0;border-radius:11px;background:var(--blue);color:#fff;text-decoration:none;font-weight:800;cursor:pointer}.btn:hover{background:var(--blue2)}.btn.alt{background:#edf3ff;color:var(--blue2);border:1px solid var(--line)}.btn.danger{background:#fff0f0;color:var(--red);border:1px solid #efc9c9}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:14px;box-shadow:0 8px 22px rgba(21,62,155,.07)}.flash{padding:10px 12px;background:#edf4ff;border:1px solid #cddcff;border-radius:10px;margin-bottom:10px}.grid{display:grid;grid-template-columns:2fr 1.2fr 1.2fr 2fr;gap:10px}.field label{display:block;margin-bottom:5px;color:var(--blue2);font-size:.78rem;font-weight:800}.field input{width:100%;height:42px;border:1px solid #cbd7ef;border-radius:10px;padding:0 11px;background:#fff;color:var(--text)}.search{display:grid;grid-template-columns:1fr auto;gap:8px}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:13px}table{width:100%;min-width:900px;border-collapse:collapse}th{background:var(--blue2);color:#fff;text-align:left;padding:10px 8px;font-size:.82rem}td{padding:8px;border-top:1px solid var(--line);vertical-align:middle}tbody tr:nth-child(even){background:#f8faff}td input{width:100%;min-height:38px;border:1px solid #d4def1;border-radius:9px;padding:7px 9px;background:#fff}.row-actions{display:flex;gap:6px;white-space:nowrap}.row-actions .btn{min-height:36px;padding:7px 10px;font-size:.78rem}.kpis{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:14px}.kpi{flex:1 1 180px;background:#fff;border:1px solid var(--line);border-radius:13px;padding:12px}.kpi small{display:block;color:var(--muted);font-weight:700}.kpi strong{display:block;color:var(--blue2);font-size:1.45rem;margin-top:3px}.muted{color:var(--muted);font-size:.82rem}@media(max-width:760px){body{padding:10px}.grid{grid-template-columns:1fr}.search{grid-template-columns:1fr}.actions,.tools{width:100%}.actions .btn,.tools .btn{flex:1}.card{padding:12px}.top h1{font-size:1.3rem}}
+
+    .senha-modal-bg{display:none;position:fixed;inset:0;background:rgba(8,20,55,.58);z-index:9999;align-items:center;justify-content:center;padding:16px}
+    .senha-modal-bg.show{display:flex}
+    .senha-modal{width:min(460px,100%);background:#fff;border:1px solid var(--line);border-radius:18px;box-shadow:0 24px 70px rgba(0,0,0,.25);padding:18px}
+    .senha-modal h3{margin:0 0 6px;color:var(--blue2)}
+    .senha-modal p{margin:0 0 14px;color:var(--muted);font-size:.9rem;line-height:1.4}
+    .senha-info{background:#f7f9ff;border:1px solid var(--line);border-radius:12px;padding:12px;margin-bottom:12px}
+    .senha-info small{display:block;color:var(--muted);font-weight:700;margin-bottom:3px}
+    .senha-info strong{display:block;color:var(--blue2);word-break:break-word}
+    .senha-temp-row{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center}
+    .senha-temp{width:100%;height:44px;border:2px solid #a9bde9;border-radius:10px;padding:0 11px;font-size:1.05rem;font-weight:900;letter-spacing:.8px;color:var(--blue2);background:#fff}
+    .senha-modal-actions{display:flex;gap:8px;justify-content:flex-end;flex-wrap:wrap;margin-top:14px}
+    .senha-aviso{margin-top:10px;padding:10px;border-radius:10px;background:#fff8df;border:1px solid #f0d98a;color:#7a5a00;font-size:.82rem;font-weight:700;line-height:1.35}
+
   </style>
 </head>
 <body>
@@ -70,7 +84,7 @@
             <td><input form="edit-{{ cl.id }}" name="bairro_origem" value="{{ cl.bairro_origem or '' }}"></td>
             <td><input form="edit-{{ cl.id }}" name="endereco" value="{{ cl.endereco or '' }}"></td>
             <td>R$ {{ '%.2f'|format(cl.saldo_atual or 0)|replace('.',',') }}</td>
-            <td><div class="row-actions"><button class="btn" form="edit-{{ cl.id }}" type="submit">Salvar</button><button class="btn alt" type="button" onclick="redefinirSenha({{ cl.id }}, {{ cl.nome|tojson }})">Redefinir senha</button><button class="btn danger" form="del-{{ cl.id }}" type="submit">Excluir</button></div></td>
+            <td><div class="row-actions"><button class="btn" form="edit-{{ cl.id }}" type="submit">Salvar</button><button class="btn alt btn-redefinir-senha" type="button" data-cliente-id="{{ cl.id }}" data-cliente-nome="{{ cl.nome|e }}" data-cliente-login="{{ cl.username or ''|e }}">Redefinir senha</button><button class="btn danger" form="del-{{ cl.id }}" type="submit">Excluir</button></div></td>
           </tr>
         {% else %}
           <tr><td colspan="7" style="text-align:center;padding:20px">Nenhum cliente encontrado.</td></tr>
@@ -81,47 +95,158 @@
     <p class="muted">A tela abre diretamente o cadastro e gerenciamento de clientes. O histórico financeiro permanece separado em Créditos.</p>
   </section>
 </div>
+
+<div class="senha-modal-bg" id="senhaModalBg" aria-hidden="true">
+  <div class="senha-modal" role="dialog" aria-modal="true" aria-labelledby="senhaModalTitulo">
+    <h3 id="senhaModalTitulo">Redefinir senha do cliente</h3>
+    <p>A senha abaixo será a nova senha de acesso. Copie e envie ao cliente após confirmar.</p>
+
+    <div class="senha-info">
+      <small>Cliente</small>
+      <strong id="senhaClienteNome">—</strong>
+    </div>
+
+    <div class="senha-info">
+      <small>Login do cliente</small>
+      <strong id="senhaClienteLogin">—</strong>
+    </div>
+
+    <div>
+      <small style="display:block;color:var(--muted);font-weight:800;margin-bottom:6px">Senha temporária gerada</small>
+      <div class="senha-temp-row">
+        <input class="senha-temp" id="senhaTemporaria" type="text" readonly>
+        <button class="btn alt" id="btnCopiarSenha" type="button">Copiar</button>
+      </div>
+    </div>
+
+    <div class="senha-aviso">
+      Ao confirmar, a senha anterior deixará de funcionar. Nenhum outro dado do cliente será alterado.
+    </div>
+
+    <div class="senha-modal-actions">
+      <button class="btn alt" id="btnGerarOutraSenha" type="button">Gerar outra</button>
+      <button class="btn alt" id="btnCancelarSenha" type="button">Cancelar</button>
+      <button class="btn" id="btnConfirmarSenha" type="button">Confirmar redefinição</button>
+    </div>
+  </div>
+</div>
+
 <script>
-function redefinirSenha(id, nome) {
-  const senha1 = prompt('Digite a NOVA senha para o cliente:\n\n' + nome);
-  if (senha1 === null) return;
 
-  if (senha1.length < 6) {
-    alert('A senha deve possuir pelo menos 6 caracteres.');
+let clienteSenhaId = null;
+
+function gerarSenhaTemporaria() {
+  const letras = 'ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz';
+  const numeros = '23456789';
+  const todos = letras + numeros;
+  const bytes = new Uint32Array(8);
+
+  if (window.crypto && window.crypto.getRandomValues) {
+    window.crypto.getRandomValues(bytes);
+  } else {
+    for (let i = 0; i < bytes.length; i++) {
+      bytes[i] = Math.floor(Math.random() * 1000000);
+    }
+  }
+
+  let senha = '';
+  senha += letras[bytes[0] % letras.length];
+  senha += numeros[bytes[1] % numeros.length];
+
+  for (let i = 2; i < 8; i++) {
+    senha += todos[bytes[i] % todos.length];
+  }
+
+  return senha;
+}
+
+function abrirModalSenha(id, nome, login) {
+  clienteSenhaId = id;
+  document.getElementById('senhaClienteNome').textContent = nome || '—';
+  document.getElementById('senhaClienteLogin').textContent = login || 'Não cadastrado';
+  document.getElementById('senhaTemporaria').value = gerarSenhaTemporaria();
+
+  const bg = document.getElementById('senhaModalBg');
+  bg.classList.add('show');
+  bg.setAttribute('aria-hidden', 'false');
+}
+
+function fecharModalSenha() {
+  clienteSenhaId = null;
+  const bg = document.getElementById('senhaModalBg');
+  bg.classList.remove('show');
+  bg.setAttribute('aria-hidden', 'true');
+}
+
+document.querySelectorAll('.btn-redefinir-senha').forEach((btn) => {
+  btn.addEventListener('click', () => {
+    abrirModalSenha(
+      btn.dataset.clienteId,
+      btn.dataset.clienteNome,
+      btn.dataset.clienteLogin
+    );
+  });
+});
+
+document.getElementById('btnGerarOutraSenha').addEventListener('click', () => {
+  document.getElementById('senhaTemporaria').value = gerarSenhaTemporaria();
+});
+
+document.getElementById('btnCancelarSenha').addEventListener('click', fecharModalSenha);
+
+document.getElementById('senhaModalBg').addEventListener('click', (ev) => {
+  if (ev.target.id === 'senhaModalBg') fecharModalSenha();
+});
+
+document.getElementById('btnCopiarSenha').addEventListener('click', async () => {
+  const campo = document.getElementById('senhaTemporaria');
+  const senha = campo.value;
+
+  try {
+    await navigator.clipboard.writeText(senha);
+    const botao = document.getElementById('btnCopiarSenha');
+    const anterior = botao.textContent;
+    botao.textContent = 'Copiado!';
+    setTimeout(() => botao.textContent = anterior, 1400);
+  } catch (_) {
+    campo.focus();
+    campo.select();
+    document.execCommand('copy');
+  }
+});
+
+document.getElementById('btnConfirmarSenha').addEventListener('click', () => {
+  if (!clienteSenhaId) return;
+
+  const senha = document.getElementById('senhaTemporaria').value.trim();
+
+  if (senha.length < 6) {
+    alert('A senha precisa ter pelo menos 6 caracteres.');
     return;
   }
 
-  const senha2 = prompt('Digite novamente a nova senha:');
-  if (senha2 === null) return;
-
-  if (senha1 !== senha2) {
-    alert('As senhas não são iguais.');
+  const form = document.getElementById('senha-' + clienteSenhaId);
+  if (!form) {
+    alert('Não foi possível localizar o formulário deste cliente.');
     return;
   }
 
-  if (!confirm(
-    'Confirma a redefinição da senha de ' + nome + '?\n\n' +
-    'Somente a senha será alterada. Os demais dados do cliente serão mantidos.'
-  )) {
-    return;
-  }
-
-  const form = document.getElementById('senha-' + id);
+  form.querySelectorAll('input[name="nova_senha"], input[name="confirmar_senha"]').forEach(el => el.remove());
 
   const campoSenha = document.createElement('input');
   campoSenha.type = 'hidden';
   campoSenha.name = 'nova_senha';
-  campoSenha.value = senha1;
+  campoSenha.value = senha;
 
   const campoConfirmacao = document.createElement('input');
   campoConfirmacao.type = 'hidden';
   campoConfirmacao.name = 'confirmar_senha';
-  campoConfirmacao.value = senha2;
+  campoConfirmacao.value = senha;
 
   form.appendChild(campoSenha);
   form.appendChild(campoConfirmacao);
   form.submit();
-}
+});
 </script>
 </body>
 </html>
