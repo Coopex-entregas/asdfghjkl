@@ -239,7 +239,14 @@
       .sticky-order .resume{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
       .primary-btn{width:100%}
     }
-  </style>
+  
+    .logout-btn{
+      height:46px;padding:0 16px;border-radius:16px;border:1px solid #E7CACA;
+      background:#FFF7F7;color:#B42318;font-weight:900;display:inline-flex;
+      align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none
+    }
+    .logout-btn:hover{background:#FFF0F0}
+</style>
 </head>
 <body>
   <div class="app">
@@ -257,6 +264,7 @@
           <span>Bem-vindo(a) ao seu painel</span>
         </div>
         <div class="online-pill"><span class="dot"></span> Conexão Online</div>
+        <a class="logout-btn" href="/cliente/logout">Sair</a>
       </div>
     </header>
 
