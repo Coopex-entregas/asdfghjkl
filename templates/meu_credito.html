@@ -1,1181 +1,182 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover" />
-  <title>Meu Crédito — COOPEX</title>
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-  <style>
-    :root{
-      --royal:#0B49D8;
-      --royal2:#0A3DAF;
-      --royal3:#08318B;
-      --bg:#F3F6FC;
-      --card:#FFFFFF;
-      --line:#DDE7F7;
-      --text:#14213D;
-      --muted:#73819D;
-      --success:#0E9F6E;
-      --warning:#D97706;
-      --danger:#DC2626;
-      --soft:#EEF4FF;
-      --shadow:0 10px 30px rgba(12, 45, 120, .08);
-      --radius:22px;
-      --radius-sm:16px;
-      --tap:48px;
-      --max:1440px;
-    }
-    *{box-sizing:border-box}
-    html,body{margin:0;padding:0;background:var(--bg);color:var(--text);font-family:Inter,system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif}
-    button,input,select,textarea{font:inherit}
-    a{text-decoration:none;color:inherit}
-    .app{max-width:var(--max);margin:0 auto;min-height:100vh;padding:0}
-    .topbar{
-      height:86px;background:#fff;border-bottom:1px solid var(--line);
-      display:flex;align-items:center;justify-content:space-between;padding:0 26px;gap:18px
-    }
-    .brand{display:flex;align-items:center;gap:14px;min-width:0}
-    .brand-badge{
-      width:54px;height:54px;border-radius:16px;
-      background:linear-gradient(145deg,var(--royal),var(--royal3));
-      display:grid;place-items:center;color:#fff;font-weight:900;font-size:22px;
-      box-shadow:0 10px 24px rgba(11,73,216,.24)
-    }
-    .brand-txt{min-width:0}
-    .brand-txt h1{margin:0;font-size:18px;font-weight:900;color:var(--royal2);white-space:nowrap}
-    .brand-txt p{margin:3px 0 0;font-size:12px;color:#8B98B6;font-weight:600}
-    .top-right{display:flex;align-items:center;gap:14px}
-    .hello{font-size:14px;line-height:1.25;text-align:right}
-    .hello strong{display:block;color:var(--royal2);font-size:15px}
-    .online-pill{
-      display:flex;align-items:center;gap:10px;background:#fff;border:1px solid var(--line);
-      height:46px;padding:0 16px;border-radius:16px;box-shadow:var(--shadow);font-weight:800;color:var(--royal2)
-    }
-    .dot{width:12px;height:12px;border-radius:999px;background:#22C55E;box-shadow:0 0 0 5px rgba(34,197,94,.16)}
-    .page{display:grid;grid-template-columns:240px minmax(0,1fr);gap:18px;padding:18px}
-    .sidebar{
-      background:linear-gradient(180deg,#F6F9FF,#F2F6FD);border:1px solid var(--line);
-      border-radius:24px;padding:18px;min-height:calc(100vh - 122px);position:sticky;top:18px
-    }
-    .menu{display:flex;flex-direction:column;gap:8px}
-    .menu-btn{
-      height:56px;border:0;background:transparent;border-radius:18px;padding:0 16px;
-      display:flex;align-items:center;gap:14px;font-weight:800;color:#4C5E82;text-align:left;cursor:pointer
-    }
-    .menu-btn.active{background:#EAF1FF;color:var(--royal2)}
-    .ico{
-      width:34px;height:34px;border-radius:12px;background:#fff;border:1px solid var(--line);
-      display:grid;place-items:center;font-size:16px;flex:0 0 auto
-    }
-    .promo{
-      margin-top:24px;border-radius:22px;padding:18px;background:linear-gradient(180deg,#F8FBFF,#EEF4FF);
-      border:1px solid var(--line)
-    }
-    .promo-box{
-      height:86px;border-radius:18px;background:linear-gradient(145deg,#E2ECFF,#F5F9FF);
-      display:grid;place-items:center;color:var(--royal);font-weight:900;font-size:32px;margin-bottom:14px
-    }
-    .promo h3{margin:0 0 8px;font-size:15px;color:var(--royal2)}
-    .promo p{margin:0;font-size:13px;color:#64748B;line-height:1.45}
-    .content{min-width:0}
-    .hero{
-      background:linear-gradient(135deg,var(--royal) 0%, #1657EA 45%, #0D42BF 100%);
-      border-radius:30px;padding:24px 28px;color:#fff;position:relative;overflow:hidden;box-shadow:0 16px 34px rgba(11,73,216,.22)
-    }
-    .hero::after{
-      content:"";position:absolute;right:-60px;top:-50px;width:320px;height:320px;border-radius:60px;
-      background:radial-gradient(circle at 30% 30%, rgba(255,255,255,.18), transparent 60%);
-      transform:rotate(18deg)
-    }
-    .hero-top{display:flex;align-items:flex-start;justify-content:space-between;gap:18px;position:relative;z-index:1}
-    .hero-title{display:flex;gap:16px;align-items:flex-start}
-    .hero-ico{
-      width:62px;height:62px;border-radius:18px;background:rgba(255,255,255,.14);border:1px solid rgba(255,255,255,.26);
-      display:grid;place-items:center;font-size:30px
-    }
-    .hero-title h2{margin:0;font-size:18px}
-    .hero-title p{margin:6px 0 0;color:rgba(255,255,255,.82);font-size:14px;line-height:1.35}
-    .hero-grid{display:grid;grid-template-columns:1.2fr .55fr;gap:18px;align-items:center;margin-top:14px;position:relative;z-index:1}
-    .wallet{
-      border:1px solid rgba(255,255,255,.18);background:rgba(255,255,255,.08);border-radius:22px;padding:18px 20px;min-width:0
-    }
-    .wallet small{display:block;font-size:13px;font-weight:800;opacity:.92}
-    .wallet .saldo{font-size:44px;line-height:1;font-weight:900;letter-spacing:-1px;margin:10px 0}
-    .wallet .sub{font-size:13px;color:rgba(255,255,255,.84);font-weight:600}
-    .hero-actions{display:flex;flex-direction:column;gap:12px}
-    .hero-btn{
-      height:64px;border-radius:20px;padding:0 20px;border:1px solid rgba(255,255,255,.3);
-      display:flex;align-items:center;justify-content:space-between;gap:12px;font-weight:900;font-size:16px;cursor:pointer
-    }
-    .hero-btn.white{background:#fff;color:var(--royal2)}
-    .hero-btn.outline{background:transparent;color:#fff}
-    .tabs{
-      display:grid;grid-template-columns:repeat(4,1fr);gap:10px;background:#fff;border:1px solid var(--line);
-      margin:14px 0 16px;border-radius:22px;padding:10px
-    }
-    .tab{
-      height:56px;border:0;background:transparent;border-radius:16px;font-weight:800;color:#546784;display:flex;align-items:center;justify-content:center;gap:10px;cursor:pointer
-    }
-    .tab.active{background:#F4F8FF;color:var(--royal2);box-shadow:inset 0 -3px 0 var(--royal)}
-    .view{display:none}
-    .view.active{display:block}
-    .card{
-      background:#fff;border:1px solid var(--line);border-radius:24px;box-shadow:var(--shadow);padding:18px;margin-bottom:14px
-    }
-    .section-head{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:14px}
-    .section-title{display:flex;align-items:flex-start;gap:14px}
-    .step{
-      width:40px;height:40px;border-radius:999px;background:#F1F6FF;border:1px solid var(--line);display:grid;place-items:center;
-      color:var(--royal2);font-weight:900;flex:0 0 auto
-    }
-    .section-title h3{margin:0;font-size:15px;color:var(--royal2)}
-    .section-title p{margin:4px 0 0;font-size:12px;color:#6F7E97;font-weight:600}
-    .ghost-btn{
-      height:44px;border-radius:14px;padding:0 14px;border:1px solid #D8E4FC;background:#fff;color:var(--royal2);font-weight:800;cursor:pointer
-    }
-    .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
-    .span2{grid-column:1 / -1}
-    .field{display:flex;flex-direction:column;gap:6px}
-    .field label{font-size:12px;font-weight:800;color:#5D6C88}
-    .input,.select,.textarea{
-      width:100%;min-height:48px;border-radius:15px;border:1px solid #D8E3F4;background:#fff;padding:0 14px;color:var(--text);outline:none
-    }
-    .textarea{min-height:92px;padding:12px 14px;resize:vertical}
-    .input:focus,.select:focus,.textarea:focus{border-color:#8EB1FF;box-shadow:0 0 0 4px rgba(11,73,216,.10)}
-    .hint{
-      background:#F5F9FF;border:1px solid #D8E3F4;padding:12px 14px;border-radius:14px;color:#5670A6;font-size:13px;font-weight:600
-    }
-    .switchline{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
-    .switchline input{width:18px;height:18px}
-    .saved-list{display:flex;flex-direction:column;gap:10px}
-    .saved-item{
-      border:1px solid var(--line);border-radius:18px;padding:14px;background:#FCFDFF;
-      display:grid;grid-template-columns:1fr auto;gap:12px
-    }
-    .saved-item strong{display:block;font-size:14px}
-    .saved-item small{display:block;color:#71809D;margin-top:4px;line-height:1.4}
-    .saved-actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end}
-    .mini-btn{
-      height:36px;padding:0 12px;border-radius:12px;border:1px solid #D8E4FC;background:#fff;color:var(--royal2);font-weight:800;cursor:pointer
-    }
-    .mini-btn.red{border-color:#F1C7C7;color:var(--danger)}
-    .sticky-order{
-      position:sticky;bottom:14px;z-index:30;border:1px solid var(--line);background:rgba(255,255,255,.96);
-      backdrop-filter:blur(6px);border-radius:22px;padding:14px 18px;box-shadow:0 10px 30px rgba(20,33,61,.12);
-      display:flex;align-items:center;justify-content:space-between;gap:14px;margin-top:8px
-    }
-    .sticky-order .resume{display:grid;grid-template-columns:1fr 1fr;gap:26px;align-items:center}
-    .resume-item small{display:block;font-size:12px;font-weight:800;color:#65748F}
-    .resume-item strong{display:block;margin-top:4px;font-size:16px}
-    .primary-btn{
-      min-width:240px;height:54px;border:0;border-radius:16px;background:linear-gradient(135deg,var(--royal),var(--royal2));
-      color:#fff;font-weight:900;font-size:18px;cursor:pointer;box-shadow:0 14px 24px rgba(11,73,216,.24)
-    }
-    .stats{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:14px}
-    .stat{
-      background:#fff;border:1px solid var(--line);border-radius:18px;padding:16px;box-shadow:var(--shadow)
-    }
-    .stat small{display:block;color:#6A7894;font-size:11px;font-weight:800}
-    .stat strong{display:block;font-size:24px;margin-top:6px}
-    .history-list{display:flex;flex-direction:column;gap:10px}
-    .history-item{
-      background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:grid;grid-template-columns:1fr auto;gap:14px;box-shadow:var(--shadow)
-    }
-    .history-item strong{font-size:14px}
-    .history-item .meta{font-size:12px;color:#6B7892;margin-top:5px}
-    .history-item .route{font-size:13px;color:#394760;margin-top:6px}
-    .value{text-align:right;font-weight:900;font-size:18px}
-    .tag{
-      display:inline-flex;align-items:center;padding:6px 10px;border-radius:999px;font-size:11px;font-weight:900;border:1px solid transparent
-    }
-    .tag.blue{background:#EEF4FF;color:var(--royal2)}
-    .tag.green{background:#EAF9F2;color:var(--success)}
-    .tag.orange{background:#FFF5E6;color:var(--warning)}
-    .tag.red{background:#FFF0F0;color:var(--danger)}
-    .rowline{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-    .filters{display:grid;grid-template-columns:repeat(4,1fr) auto;gap:12px;align-items:end}
-    .toolbar{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
-    .empty{padding:30px;border:1px dashed var(--line);border-radius:18px;background:#fff;text-align:center;color:#7A88A1}
-    .recarga-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:12px}
-    .recarga-preset{
-      height:50px;border-radius:15px;border:1px solid var(--line);background:#fff;color:var(--royal2);font-weight:900;cursor:pointer
-    }
-    .status-box{
-      display:none;border:1px solid #D9E8FF;background:#F7FAFF;border-radius:18px;padding:14px 16px;margin-bottom:14px
-    }
-    .status-box.show{display:block}
-    .mobile-nav{display:none}
-    .toast{
-      position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);
-      background:#16233E;color:#fff;padding:12px 16px;border-radius:14px;font-size:13px;font-weight:800;opacity:0;pointer-events:none;transition:.22s;z-index:200
-    }
-    .toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-    @media (max-width: 1080px){
-      .page{grid-template-columns:1fr}
-      .sidebar{display:none}
-      .hero-grid{grid-template-columns:1fr}
-      .sticky-order{padding:12px 14px}
-      .primary-btn{min-width:200px}
-      .mobile-nav{
-        position:fixed;left:12px;right:12px;bottom:12px;display:grid;grid-template-columns:repeat(4,1fr);gap:8px;
-        background:rgba(255,255,255,.96);border:1px solid var(--line);box-shadow:var(--shadow);border-radius:20px;padding:8px;z-index:80
-      }
-      .mobile-nav .tab{height:52px;font-size:12px;gap:6px;flex-direction:column}
-      .topbar{padding:0 14px}
-    }
-    @media (max-width: 760px){
-      .topbar{height:auto;padding:12px;align-items:flex-start;flex-wrap:wrap}
-      .top-right{width:100%;justify-content:space-between}
-      .hello{text-align:left}
-      .page{padding:12px}
-      .hero{padding:18px}
-      .wallet .saldo{font-size:34px}
-      .tabs{grid-template-columns:repeat(2,1fr)}
-      .form-grid,.filters,.stats,.recarga-grid{grid-template-columns:1fr}
-      .history-item,.saved-item{grid-template-columns:1fr}
-      .sticky-order{display:block;padding-bottom:14px}
-      .sticky-order .resume{grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px}
-      .primary-btn{width:100%}
-    }
-  
-    .logout-btn{
-      height:46px;padding:0 16px;border-radius:16px;border:1px solid #E7CACA;
-      background:#FFF7F7;color:#B42318;font-weight:900;display:inline-flex;
-      align-items:center;justify-content:center;gap:8px;cursor:pointer;text-decoration:none
-    }
-    .logout-btn:hover{background:#FFF0F0}
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>COOPEX Entregas — Cliente</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<style>
+:root{--blue:#0c55df;--blue2:#063ab0;--ink:#11254c;--muted:#71809d;--bg:#f2f6fd;--card:#fff;--line:#dce6f7;--red:#d92d20;--green:#0e9f6e;--shadow:0 12px 32px rgba(20,54,120,.08)}
+*{box-sizing:border-box}html,body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink)}button,input,select,textarea{font:inherit}button{cursor:pointer}.app{max-width:1500px;margin:auto;padding:18px}.top{background:#fff;border:1px solid var(--line);border-radius:22px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.brand strong{display:block;color:var(--blue2);font-size:20px}.brand span{font-size:12px;color:var(--muted)}.top-right{display:flex;align-items:center;gap:10px}.hello{font-size:12px}.hello strong{display:block;font-size:14px}.pill,.logout{height:42px;border:1px solid var(--line);background:#fff;border-radius:13px;padding:0 13px;display:inline-flex;align-items:center;gap:8px;font-weight:800;color:var(--blue2);text-decoration:none}.logout{color:var(--red);border-color:#f2c5c5}.dot{width:10px;height:10px;border-radius:50%;background:#16c36a}
+.layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:16px}.side{background:#f8fbff;border:1px solid var(--line);border-radius:22px;padding:12px;height:max-content;position:sticky;top:12px}.nav{width:100%;height:54px;border:0;border-radius:15px;background:transparent;color:#50607e;font-weight:800;text-align:left;padding:0 14px;margin:3px 0}.nav.active{background:#e8f0ff;color:var(--blue2)}
+.hero{background:linear-gradient(135deg,#0c55df,#063ab0);color:#fff;border-radius:24px;padding:20px 24px;display:grid;grid-template-columns:1.15fr .55fr;gap:20px;align-items:center;box-shadow:0 16px 34px rgba(10,70,190,.18)}.hero h2{margin:0;font-size:20px}.hero .desc{font-size:13px;opacity:.9;margin-top:5px}.balance{font-size:46px;font-weight:900;letter-spacing:-1px;margin:16px 0 7px}.balance.negative{color:#ffb5b0}.balance-label{font-size:12px;font-weight:900;opacity:.95}.balance-msg{font-size:13px;font-weight:600;opacity:.94}.hero-actions{display:flex;flex-direction:column;gap:10px}.hero-btn{height:58px;border-radius:16px;border:1px solid rgba(255,255,255,.35);font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:space-between;padding:0 18px}.hero-btn.white{background:#fff;color:var(--blue2)}.hero-btn.outline{background:transparent;color:#fff}
+.active-order{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:none;align-items:center;justify-content:space-between;gap:12px}.active-order.show{display:flex}.active-order .meta{font-size:12px;color:var(--muted);margin-top:4px}.cancel-btn{border:1px solid #f2bcbc;background:#fff5f5;color:var(--red);border-radius:13px;height:42px;padding:0 14px;font-weight:900}
+.tabs{margin:14px 0;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:18px;padding:7px}.tab{height:50px;border:0;background:transparent;border-radius:13px;font-weight:900;color:#53627e}.tab.active{background:#eef4ff;color:var(--blue2);box-shadow:inset 0 -3px 0 var(--blue)}
+.view{display:none}.view.active{display:block}.steps{display:grid;grid-template-columns:1fr 1fr;gap:14px}.step-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;box-shadow:var(--shadow)}.step-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}.num{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:900}.step-head h3{margin:0;color:var(--blue2);font-size:16px}.step-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field.full{grid-column:1/-1}.field label{display:block;font-size:11px;font-weight:800;color:#586985;margin:0 0 5px}.input,.select,.textarea{width:100%;border:1px solid #cfdcf0;border-radius:12px;background:#fff;min-height:46px;padding:0 12px;outline:none}.textarea{padding:11px 12px;min-height:82px;resize:vertical}.input[readonly]{background:#f7f9fd;color:#4d5d78}.input:focus,.select:focus,.textarea:focus{border-color:#7aa6ff;box-shadow:0 0 0 3px rgba(12,85,223,.09)}.fixed-note{background:#eef5ff;color:#315d9e;border:1px solid #d7e6ff;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700}
+.order-bar{position:sticky;bottom:10px;z-index:20;margin-top:14px;background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:18px;padding:12px 14px;box-shadow:0 15px 32px rgba(16,42,92,.15);display:flex;justify-content:space-between;align-items:center;gap:14px}.estimate small{display:block;color:var(--muted);font-weight:800}.estimate strong{font-size:25px;color:var(--blue2)}.primary{border:0;background:linear-gradient(135deg,#0d63f3,#0744c6);color:#fff;border-radius:14px;height:52px;padding:0 24px;font-weight:900;font-size:16px}
+.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;margin-bottom:14px;box-shadow:var(--shadow)}.card h3{margin:0 0 12px;color:var(--blue2)}.week-title{font-size:13px;color:#66758e;margin-top:-5px;margin-bottom:14px;font-weight:700}.filters{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:9px;align-items:end}.ghost{height:44px;border:1px solid #d4dff1;background:#fff;color:var(--blue2);font-weight:900;border-radius:12px;padding:0 13px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+.financial{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.fin{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.fin small{display:block;color:#66758e;font-size:11px;font-weight:800}.fin strong{display:block;font-size:20px;margin-top:6px}.fin strong.neg{color:var(--red)}.fin strong.pos{color:var(--green)}
+.delivery-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.mini-stat{background:#f8fbff;border:1px solid var(--line);border-radius:14px;padding:11px}.mini-stat small{font-size:10px;color:#71809a;font-weight:800}.mini-stat strong{display:block;margin-top:4px}
+.history{display:flex;flex-direction:column;gap:9px}.hist{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:10px}.hist .route{font-size:13px;margin-top:6px}.hist .meta{font-size:11px;color:#6e7c95;margin-top:5px}.tags{display:flex;gap:6px;flex-wrap:wrap}.tag{font-size:10px;font-weight:900;border-radius:999px;padding:5px 8px;background:#eef4ff;color:var(--blue2)}.tag.red{background:#fff0f0;color:var(--red)}.tag.green{background:#eaf8f2;color:var(--green)}.value{font-size:17px;font-weight:900;text-align:right}.receipt{display:inline-flex;margin-top:8px;border:1px solid #cddaf0;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:900;color:var(--blue2);text-decoration:none}
+.credit-box{max-width:700px}.preset{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.preset button{height:46px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--blue2);font-weight:900}.pix-result{display:none;margin-top:13px;background:#f4f8ff;border:1px solid #d5e3fb;border-radius:15px;padding:14px}.pix-result.show{display:block}.pix-key{font-size:21px;font-weight:900;color:var(--blue2);word-break:break-all}.wa{display:flex;justify-content:center;align-items:center;text-align:center;margin-top:10px;min-height:46px;padding:9px 12px;background:#1fa855;color:#fff;border-radius:12px;font-weight:900;text-decoration:none}
+.saved{display:flex;flex-direction:column;gap:8px}.saved-item{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;justify-content:space-between;gap:10px}.saved-item small{display:block;color:#6d7b94;margin-top:4px}.empty{padding:20px;text-align:center;color:#73819b;border:1px dashed #d7e0ef;border-radius:14px}.toast{position:fixed;left:50%;bottom:15px;transform:translate(-50%,20px);background:#17243f;color:#fff;padding:11px 14px;border-radius:12px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;z-index:200}.toast.show{opacity:1;transform:translate(-50%,0)}
+.mobile-menu{display:none}
+@media(max-width:900px){.app{padding:10px}.layout{display:block}.side{display:none}.top{padding:12px}.brand strong{font-size:16px}.brand span{font-size:10px}.hello{display:none}.pill{display:none}.hero{grid-template-columns:1fr;padding:16px}.balance{font-size:34px;margin:10px 0 4px}.hero-actions{display:grid;grid-template-columns:1fr 1fr}.hero-btn{height:50px;font-size:13px}.tabs{display:none}.mobile-menu{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:8px;right:8px;bottom:8px;z-index:80;background:#fff;border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow)}.mobile-menu .tab{height:48px;font-size:10px;padding:0 3px}.steps{display:block}.step-card{margin-bottom:9px;padding:13px}.step-head{margin-bottom:0;cursor:pointer}.step-card .step-body{display:none;margin-top:13px}.step-card.open .step-body{display:block}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.order-bar{bottom:68px}.financial,.delivery-summary{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr 1fr}.filters .field:nth-child(3),.filters .field:nth-child(4){grid-column:auto}.filters .ghost{grid-column:1/-1}.active-order{align-items:flex-start;flex-direction:column}.cancel-btn{width:100%}.top-right{margin-left:auto}.logout{height:38px;padding:0 10px}.hist{grid-template-columns:1fr}.value{text-align:left}.saved-item{display:block}.saved-item .toolbar{margin-top:8px}}
 </style>
 </head>
 <body>
-  <div class="app">
-    <header class="topbar">
-      <div class="brand">
-        <div class="brand-badge">CX</div>
-        <div class="brand-txt">
-          <h1>COOPEX ENTREGAS</h1>
-          <p>Soluções em Coletas e Entregas</p>
-        </div>
-      </div>
-      <div class="top-right">
-        <div class="hello">
-          <strong id="helloName">Olá.</strong>
-          <span>Bem-vindo(a) ao seu painel</span>
-        </div>
-        <div class="online-pill"><span class="dot"></span> Conexão Online</div>
-        <a class="logout-btn" href="/cliente/logout">Sair</a>
-      </div>
-    </header>
+<div class="app">
+<header class="top">
+  <div class="brand"><strong>COOPEX ENTREGAS</strong><span>Soluções em Coletas e Entregas</span></div>
+  <div class="top-right"><div class="hello"><strong id="hello">Olá, Cliente</strong><span>Bem-vindo(a) de volta!</span></div><div class="pill"><span class="dot"></span>Conexão Online</div><a class="logout" href="/cliente/logout">Sair</a></div>
+</header>
+<div class="layout">
+<aside class="side">
+  <button class="nav active" data-view="pedido">Novo pedido</button>
+  <button class="nav" data-view="carteira">Carteira</button>
+  <button class="nav" data-view="historico">Histórico</button>
+  <button class="nav" data-view="enderecos">Endereços</button>
+</aside>
+<main>
+<section class="hero">
+  <div>
+    <h2>Sua carteira</h2><div class="desc">Saldo para pedidos e recargas.</div>
+    <div class="balance-label" id="balanceLabel">SALDO DISPONÍVEL</div>
+    <div class="balance" id="saldoHero">R$ 0,00</div>
+    <div class="balance-msg" id="saldoMsg">Consulte seu saldo atual.</div>
+  </div>
+  <div class="hero-actions"><button class="hero-btn white" data-go="carteira">Comprar crédito <span>→</span></button><button class="hero-btn outline" data-go="pedido">Fazer pedido <span>→</span></button></div>
+</section>
 
-    <div class="page">
-      <aside class="sidebar">
-        <div class="menu">
-          <button class="menu-btn active" data-view="pedido"><span class="ico">📝</span> Novo pedido</button>
-          <button class="menu-btn" data-view="carteira"><span class="ico">💳</span> Carteira</button>
-          <button class="menu-btn" data-view="historico"><span class="ico">🕘</span> Histórico</button>
-          <button class="menu-btn" data-view="enderecos"><span class="ico">📍</span> Endereços</button>
-        </div>
-        <div class="promo">
-          <div class="promo-box">📦</div>
-          <h3>Entregas mais rápidas e seguras</h3>
-          <p>Conte com a COOPEX para suas coletas e entregas.</p>
-        </div>
-      </aside>
+<div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
 
-      <main class="content">
-        <section class="hero">
-          <div class="hero-top">
-            <div class="hero-title">
-              <div class="hero-ico">💳</div>
-              <div>
-                <h2>Sua carteira</h2>
-                <p>Saldo, pedidos e recargas. Solicite entregas, acompanhe o histórico e compre crédito por Pix.</p>
-              </div>
-            </div>
-          </div>
-          <div class="hero-grid">
-            <div class="wallet">
-              <small>SALDO DISPONÍVEL</small>
-              <div class="saldo" id="saldoHero">R$ 0,00</div>
-              <div class="sub" id="saldoSub">Use seu crédito para pagar pedidos com mais rapidez.</div>
-            </div>
-            <div class="hero-actions">
-              <button class="hero-btn white" data-view-go="carteira">Comprar crédito <span>→</span></button>
-              <button class="hero-btn outline" data-view-go="pedido">Fazer pedido <span>→</span></button>
-            </div>
-          </div>
-        </section>
+<div class="tabs">
+  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="enderecos">Endereços</button>
+</div>
 
-        <div class="tabs">
-          <button class="tab active" data-view="pedido">📝 Novo pedido</button>
-          <button class="tab" data-view="carteira">💳 Carteira</button>
-          <button class="tab" data-view="historico">🕘 Histórico</button>
-          <button class="tab" data-view="enderecos">📍 Endereços</button>
-        </div>
+<section class="view active" id="view-pedido">
+  <div class="steps">
+    <article class="step-card open">
+      <div class="step-head"><span class="num">1</span><div><h3>Coleta</h3><p>Onde vamos retirar?</p></div></div>
+      <div class="step-body"><div class="fields">
+        <div class="field full"><label>Endereço de coleta fixo</label><input class="input" id="coletaEndereco" readonly></div>
+        <div class="field"><label>Bairro</label><input class="input" id="coletaBairro" readonly></div>
+        <div class="field"><label>Referência (opcional)</label><input class="input" id="coletaReferencia" placeholder="Ex.: portaria, loja, sala"></div>
+        <div class="field"><label>Nome de quem entrega</label><input class="input" id="coletaContato"></div>
+        <div class="field"><label>Telefone</label><input class="input" id="coletaTelefone"></div>
+        <div class="field full"><div class="fixed-note">A coleta está vinculada ao cadastro do cliente. Para alterar o endereço fixo, solicite a atualização à COOPEX.</div></div>
+      </div></div>
+    </article>
 
-        <section class="view active" id="view-pedido">
-          <div class="status-box" id="pedidoAtivoBox">
-            <strong id="pedidoAtivoTitle">Pedido em andamento</strong>
-            <div id="pedidoAtivoText" style="font-size:13px;color:#56657F;margin-top:6px"></div>
-            <div style="margin-top:10px">
-              <button class="ghost-btn" id="btnCancelarPedido">Cancelar pedido</button>
-            </div>
-          </div>
+    <article class="step-card">
+      <div class="step-head"><span class="num">2</span><div><h3>Solicitante</h3><p>Quem está solicitando?</p></div></div>
+      <div class="step-body"><div class="fields">
+        <div class="field full"><label>Nome completo</label><input class="input" id="clienteNome"></div>
+        <div class="field full"><label>Telefone / WhatsApp</label><input class="input" id="clienteWhatsapp"></div>
+      </div></div>
+    </article>
 
-          <div class="card">
-            <div class="section-head">
-              <div class="section-title">
-                <div class="step">1</div>
-                <div>
-                  <h3>Endereço de coleta salvo</h3>
-                  <p>Escolha um endereço salvo ou preencha manualmente.</p>
-                </div>
-              </div>
-              <button class="ghost-btn" id="btnSalvarColeta">Salvar coleta</button>
-            </div>
+    <article class="step-card">
+      <div class="step-head"><span class="num">3</span><div><h3>Entrega</h3><p>Para onde vamos entregar?</p></div></div>
+      <div class="step-body"><div class="fields">
+        <div class="field full"><label>Usar endereço salvo</label><select class="select" id="destinoSalvo"><option value="">Preencher manualmente</option></select></div>
+        <div class="field full"><label>Endereço de entrega</label><input class="input" id="entregaEndereco" placeholder="Rua, número e complemento"></div>
+        <div class="field"><label>Bairro da entrega</label><input class="input" id="entregaBairro" placeholder="Bairro"></div>
+        <div class="field"><label>Referência (opcional)</label><input class="input" id="entregaReferencia"></div>
+        <div class="field"><label>Nome de quem recebe</label><input class="input" id="entregaContato"></div>
+        <div class="field"><label>Telefone de quem recebe</label><input class="input" id="entregaTelefone"></div>
+        <div class="field full"><label><input type="checkbox" id="salvarDestino"> Salvar este endereço para usar novamente</label></div>
+      </div></div>
+    </article>
 
-            <div class="form-grid">
-              <div class="field">
-                <label>Escolher endereço salvo</label>
-                <select class="select" id="coletaSalvaSelect">
-                  <option value="">Preencher manualmente</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Nome do endereço para salvar</label>
-                <input class="input" id="salvarApelido" placeholder="Ex.: Loja principal">
-              </div>
-              <div class="field span2">
-                <label>Endereço da coleta</label>
-                <input class="input" id="coletaEndereco" placeholder="Rua, número, complemento">
-              </div>
-              <div class="field">
-                <label>Bairro da coleta</label>
-                <input class="input" id="coletaBairro" placeholder="Bairro">
-              </div>
-              <div class="field">
-                <label>Referência da coleta</label>
-                <input class="input" id="coletaReferencia" placeholder="Ex.: em frente à farmácia">
-              </div>
-              <div class="field span2">
-                <label class="switchline"><input type="checkbox" id="salvarPadrao"> Definir como endereço padrão</label>
-              </div>
-            </div>
-          </div>
+    <article class="step-card">
+      <div class="step-head"><span class="num">4</span><div><h3>Pagamento</h3><p>Como será o pagamento?</p></div></div>
+      <div class="step-body"><div class="fields">
+        <div class="field full"><label>Tipo de pedido</label><select class="select" id="pedidoTipo"><option value="coleta_entrega">Coleta e Entrega</option><option value="cartorio">Cartório</option><option value="correios">Correios</option><option value="compras">Compras</option></select></div>
+        <div class="field full"><label>Pagamento</label><select class="select" id="pedidoPagamento"><option value="credito">Usar crédito</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option></select></div>
+        <div class="field full" id="cashWrap" style="display:none"><label>Onde o dinheiro será recebido?</label><select class="select" id="recebeDinheiro"><option value="">Escolha</option><option value="coleta">Na coleta</option><option value="entrega">Na entrega</option></select></div>
+        <div class="field"><label><input type="checkbox" id="pedidoRetorno"> Com retorno</label></div>
+        <div class="field full"><label>Observações</label><textarea class="textarea" id="obs"></textarea></div>
+      </div></div>
+    </article>
+  </div>
+  <div class="order-bar"><div class="estimate"><small>Valor estimado</small><strong id="estimate">Informe o bairro</strong><div style="font-size:11px;color:#73819a" id="estimateSource"></div></div><button class="primary" id="sendOrder">Solicitar entrega</button></div>
+</section>
 
-          <div class="card">
-            <div class="section-title" style="margin-bottom:14px">
-              <div class="step">2</div>
-              <div>
-                <h3>Dados de quem está pedindo</h3>
-                <p>Informe os dados de contato de quem solicita a entrega.</p>
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="field">
-                <label>Nome de quem solicita</label>
-                <input class="input" id="clienteNome" placeholder="Nome">
-              </div>
-              <div class="field">
-                <label>WhatsApp de quem solicita</label>
-                <input class="input" id="clienteWhatsapp" placeholder="WhatsApp">
-              </div>
-            </div>
-          </div>
+<section class="view" id="view-carteira">
+  <div class="card credit-box"><h3>Comprar crédito</h3><div class="preset"><button data-v="20">R$ 20</button><button data-v="50">R$ 50</button><button data-v="100">R$ 100</button></div>
+  <div class="field" style="margin-top:10px"><label>Valor do crédito</label><input class="input" id="creditValue" inputmode="decimal" placeholder="Ex.: 100,00"></div>
+  <button class="primary" id="requestCredit" style="width:100%;margin-top:10px">Solicitar crédito</button>
+  <div class="pix-result" id="pixResult"></div></div>
+</section>
 
-          <div class="card">
-            <div class="section-title" style="margin-bottom:14px">
-              <div class="step">3</div>
-              <div>
-                <h3>Tipo de pedido e pagamento</h3>
-                <p>Escolha o tipo do pedido e a forma de pagamento.</p>
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="field">
-                <label>Tipo de pedido</label>
-                <select class="select" id="pedidoTipo">
-                  <option value="coleta_entrega">Coleta/Entrega</option>
-                  <option value="cartorio">Cartório</option>
-                  <option value="correios">Correios</option>
-                  <option value="compras">Compras</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Pagamento</label>
-                <select class="select" id="pedidoPagamento">
-                  <option value="credito">Usar crédito</option>
-                  <option value="pix">Pix</option>
-                  <option value="dinheiro">Dinheiro</option>
-                </select>
-              </div>
-              <div class="field span2" id="recebimentoDinheiroWrap" style="display:none">
-                <label>Onde o cooperado receberá o dinheiro?</label>
-                <select class="select" id="recebeDinheiroEm">
-                  <option value="">Escolha</option>
-                  <option value="coleta">Na coleta</option>
-                  <option value="entrega">Na entrega</option>
-                </select>
-              </div>
-              <div class="field span2">
-                <div class="hint">Escolha o tipo de pedido antes de preencher o endereço. Se for Cartório, Correios ou Compras, informe o endereço do local onde o cooperado deve realizar o serviço.</div>
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="section-title" style="margin-bottom:14px">
-              <div class="step">4</div>
-              <div>
-                <h3>Coleta</h3>
-                <p>Informe os dados de quem entrega na coleta.</p>
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="field">
-                <label>Nome de quem entrega na coleta</label>
-                <input class="input" id="coletaContato" placeholder="Nome do responsável">
-              </div>
-              <div class="field">
-                <label>Telefone da coleta</label>
-                <input class="input" id="coletaTelefone" placeholder="Telefone">
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="section-title" style="margin-bottom:14px">
-              <div class="step">5</div>
-              <div>
-                <h3>Entrega</h3>
-                <p>Informe os dados do local de entrega.</p>
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="field">
-                <label>Nome de quem recebe</label>
-                <input class="input" id="entregaContato" placeholder="Nome do destinatário">
-              </div>
-              <div class="field">
-                <label>Telefone da entrega</label>
-                <input class="input" id="entregaTelefone" placeholder="Telefone">
-              </div>
-              <div class="field span2">
-                <label>Endereço da entrega</label>
-                <input class="input" id="entregaEndereco" placeholder="Rua, número, complemento">
-              </div>
-              <div class="field">
-                <label>Bairro da entrega</label>
-                <input class="input" id="entregaBairro" placeholder="Bairro">
-              </div>
-              <div class="field">
-                <label>Referência da entrega</label>
-                <input class="input" id="entregaReferencia" placeholder="Ex.: ao lado da padaria">
-              </div>
-            </div>
-          </div>
-
-          <div class="card">
-            <div class="section-title" style="margin-bottom:14px">
-              <div class="step">6</div>
-              <div>
-                <h3>Detalhes adicionais</h3>
-                <p>Retorno e observações do pedido.</p>
-              </div>
-            </div>
-            <div class="form-grid">
-              <div class="field span2">
-                <label class="switchline"><input type="checkbox" id="pedidoRetorno"> Pedido com retorno</label>
-              </div>
-              <div class="field span2">
-                <label>Observações</label>
-                <textarea class="textarea" id="pedidoObs" placeholder="Informações complementares, ponto de referência ou orientação para o cooperado"></textarea>
-              </div>
-            </div>
-          </div>
-
-          <div class="sticky-order">
-            <div class="resume">
-              <div class="resume-item">
-                <small>Valor estimado da entrega</small>
-                <strong id="resumoValor">A calcular</strong>
-              </div>
-              <div class="resume-item">
-                <small>Previsão</small>
-                <strong id="resumoPrevisao">Ao calcular</strong>
-              </div>
-            </div>
-            <button class="primary-btn" id="btnSolicitarEntrega">Solicitar entrega</button>
-          </div>
-        </section>
-
-        <section class="view" id="view-carteira">
-          <div class="card">
-            <div class="section-head">
-              <div class="section-title">
-                <div class="step">💳</div>
-                <div>
-                  <h3>Carteira e crédito</h3>
-                  <p>Compre crédito para usar em novos pedidos.</p>
-                </div>
-              </div>
-            </div>
-            <div class="wallet" style="background:#F5F9FF;border-color:#D8E4FC;color:var(--royal2)">
-              <small style="color:#5B6D8F">SALDO DISPONÍVEL</small>
-              <div class="saldo" id="saldoCarteira" style="color:var(--royal2)">R$ 0,00</div>
-              <div class="sub" style="color:#66799C">As recargas serão abatidas no seu saldo.</div>
-            </div>
-            <div style="height:14px"></div>
-            <div class="recarga-grid">
-              <button class="recarga-preset" data-v="20">R$ 20</button>
-              <button class="recarga-preset" data-v="30">R$ 30</button>
-              <button class="recarga-preset" data-v="50">R$ 50</button>
-            </div>
-            <div class="form-grid">
-              <div class="field">
-                <label>Outro valor</label>
-                <input class="input" id="valorRecarga" placeholder="Ex.: 100,00" inputmode="decimal">
-              </div>
-              <div class="field">
-                <label>Método</label>
-                <select class="select" id="metodoRecarga">
-                  <option value="pix">Pix</option>
-                </select>
-              </div>
-            </div>
-            <div style="height:12px"></div>
-            <button class="primary-btn" style="min-width:unset;width:100%" id="btnGerarRecarga">Solicitar crédito</button>
-            <div id="boxRecarga" class="hint" style="margin-top:12px">Ao solicitar, o pedido ficará aguardando a confirmação do pagamento pela COOPEX.</div>
-          </div>
-        </section>
-
-        <section class="view" id="view-historico">
-          <div class="stats">
-            <div class="stat"><small>Entregas</small><strong id="statQtd">0</strong></div>
-            <div class="stat"><small>Total</small><strong id="statTotal">R$ 0,00</strong></div>
-            <div class="stat"><small>Crédito usado</small><strong id="statCredito">R$ 0,00</strong></div>
-            <div class="stat"><small>Canceladas</small><strong id="statCancel">0</strong></div>
-          </div>
-
-          <div class="card">
-            <div class="section-head">
-              <div class="section-title">
-                <div class="step">🕘</div>
-                <div>
-                  <h3>Filtrar histórico</h3>
-                  <p>Escolha o período, o tipo de pagamento e a situação.</p>
-                </div>
-              </div>
-            </div>
-            <div class="filters">
-              <div class="field">
-                <label>De</label>
-                <input class="input" type="date" id="histIni">
-              </div>
-              <div class="field">
-                <label>Até</label>
-                <input class="input" type="date" id="histFim">
-              </div>
-              <div class="field">
-                <label>Pagamento</label>
-                <select class="select" id="histPagamento">
-                  <option value="todos">Todos</option>
-                  <option value="credito">Crédito</option>
-                  <option value="pix">Pix</option>
-                  <option value="dinheiro">Dinheiro</option>
-                </select>
-              </div>
-              <div class="field">
-                <label>Situação</label>
-                <select class="select" id="histSituacao">
-                  <option value="todos">Todas</option>
-                  <option value="concluido">Concluídas</option>
-                  <option value="andamento">Em andamento</option>
-                  <option value="cancelado">Canceladas</option>
-                </select>
-              </div>
-              <button class="ghost-btn" id="btnFiltrarHist">Buscar</button>
-            </div>
-            <div class="toolbar">
-              <button class="ghost-btn" id="btnMesAtual">Este mês</button>
-              <button class="ghost-btn" id="btnLimparHist">Limpar</button>
-              <button class="ghost-btn" id="btnExportarHist">Exportar Excel</button>
-            </div>
-          </div>
-          <div class="history-list" id="historyList">
-            <div class="empty">Carregando histórico...</div>
-          </div>
-        </section>
-
-        <section class="view" id="view-enderecos">
-          <div class="card">
-            <div class="section-head">
-              <div class="section-title">
-                <div class="step">📍</div>
-                <div>
-                  <h3>Endereços salvos</h3>
-                  <p>Use, defina como padrão ou exclua seus endereços.</p>
-                </div>
-              </div>
-            </div>
-            <div id="savedAddresses" class="saved-list">
-              <div class="empty">Nenhum endereço salvo.</div>
-            </div>
-          </div>
-        </section>
-      </main>
+<section class="view" id="view-historico">
+  <div class="card"><h3>Espelho semanal</h3><div class="week-title" id="weekTitle">Semana passada</div>
+    <div class="filters">
+      <div class="field"><label>De</label><input class="input" type="date" id="histIni"></div>
+      <div class="field"><label>Até</label><input class="input" type="date" id="histFim"></div>
+      <div class="field"><label>Pagamento</label><select class="select" id="histPay"><option value="todos">Todos</option><option value="credito">Crédito</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option></select></div>
+      <div class="field"><label>Situação</label><select class="select" id="histStatus"><option value="todos">Todas</option><option value="concluido">Concluídas</option><option value="andamento">Em andamento</option><option value="cancelado">Canceladas</option></select></div>
+      <button class="ghost" id="searchHist">Buscar</button>
     </div>
-
-    <div class="mobile-nav">
-      <button class="tab active" data-view="pedido">📝 Pedido</button>
-      <button class="tab" data-view="carteira">💳 Carteira</button>
-      <button class="tab" data-view="historico">🕘 Histórico</button>
-      <button class="tab" data-view="enderecos">📍 Endereços</button>
-    </div>
+    <div class="toolbar"><button class="ghost" id="lastWeek">Semana passada</button><button class="ghost" id="exportHist">Exportar Excel</button></div>
   </div>
 
-  <div class="toast" id="toast"></div>
+  <div class="financial">
+    <div class="fin"><small>Saldo no início do período</small><strong id="fStart">R$ 0,00</strong></div>
+    <div class="fin"><small>Créditos adicionados no período</small><strong class="pos" id="fAdded">+R$ 0,00</strong></div>
+    <div class="fin"><small>Crédito utilizado no período</small><strong class="neg" id="fUsed">-R$ 0,00</strong></div>
+    <div class="fin"><small>Saldo ao final do período</small><strong id="fEnd">R$ 0,00</strong></div>
+  </div>
 
-  <script>
-    const API = {
-      me: "/api/cliente/me",
-      saldo: "/api/cliente/saldo-json",
-      recarga: "/api/cliente/recarga",
-      pedido: "/api/pedidos/criar",
-      pedidoAtivo: "/api/pedidos/ativo",
-      cancelar: (id) => `/api/pedidos/${id}/cancelar`,
-      historico: "/api/cliente/historico",
-      exportar: "/cliente/historico/exportar.xlsx",
-      cotar: "/api/cliente/cotar-entrega",
-      enderecos: "/api/cliente/enderecos",
-      enderecoPadrao: (id) => `/api/cliente/enderecos/${id}/padrao`,
-      enderecoDelete: (id) => `/api/cliente/enderecos/${id}`
-    };
+  <div class="delivery-summary">
+    <div class="mini-stat"><small>Entregas no período</small><strong id="hQtd">0</strong></div>
+    <div class="mini-stat"><small>Valor das entregas</small><strong id="hTotal">R$ 0,00</strong></div>
+    <div class="mini-stat"><small>Pago com crédito</small><strong id="hCredit">R$ 0,00</strong></div>
+    <div class="mini-stat"><small>Canceladas</small><strong id="hCancel">0</strong></div>
+  </div>
+  <div class="history" id="history"></div>
+</section>
 
-    const $ = (id) => document.getElementById(id);
-    const moneyBR = (v) => Number(v || 0).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-    let state = {
-      cliente: null,
-      saldo: 0,
-      enderecos: [],
-      pedidoAtivo: null,
-      historico: []
-    };
+<section class="view" id="view-enderecos"><div class="card"><h3>Endereços salvos</h3><div class="saved" id="saved"></div></div></section>
+</main>
+</div>
 
-    function toast(msg){
-      const el = $("toast");
-      el.textContent = msg;
-      el.classList.add("show");
-      clearTimeout(window.__toast);
-      window.__toast = setTimeout(() => el.classList.remove("show"), 2600);
-    }
-
-    async function safeJSON(url, opts){
-      try{
-        const r = await fetch(url, opts);
-        const data = await r.json().catch(() => null);
-        if(!r.ok){
-          throw new Error((data && (data.msg || data.erro || data.error)) || ("HTTP " + r.status));
-        }
-        return data;
-      }catch(e){
-        toast(e.message || "Falha na comunicação");
-        return null;
-      }
-    }
-
-    function setView(view){
-      document.querySelectorAll(".view").forEach(v => v.classList.toggle("active", v.id === "view-" + view));
-      document.querySelectorAll("[data-view]").forEach(btn => btn.classList.toggle("active", btn.dataset.view === view));
-      if(view === "historico"){
-        loadHistorico();
-      }else if(view === "enderecos"){
-        renderEnderecos();
-      }
-      window.scrollTo({ top: 0, behavior: "smooth" });
-    }
-
-    document.querySelectorAll("[data-view]").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.view)));
-    document.querySelectorAll("[data-view-go]").forEach(btn => btn.addEventListener("click", () => setView(btn.dataset.viewGo)));
-
-    function setSaldo(n){
-      state.saldo = Number(n || 0);
-      $("saldoHero").textContent = moneyBR(state.saldo);
-      $("saldoCarteira").textContent = moneyBR(state.saldo);
-      $("saldoSub").textContent = state.saldo > 0
-        ? "Use seu crédito para pagar pedidos com mais rapidez."
-        : "Saldo zerado. Faça uma recarga para usar crédito.";
-    }
-
-    function currentMonthRange(){
-      const now = new Date();
-      const y = now.getFullYear();
-      const m = now.getMonth();
-      const ini = new Date(y, m, 1);
-      const fim = new Date(y, m + 1, 0);
-      return { ini, fim };
-    }
-
-    function toISODate(d){
-      const y = d.getFullYear();
-      const m = String(d.getMonth() + 1).padStart(2, "0");
-      const day = String(d.getDate()).padStart(2, "0");
-      return `${y}-${m}-${day}`;
-    }
-
-    function presetMesAtual(){
-      const { ini, fim } = currentMonthRange();
-      $("histIni").value = toISODate(ini);
-      $("histFim").value = toISODate(fim);
-    }
-
-    function fillCliente(data){
-      state.cliente = data || {};
-      $("helloName").textContent = "Olá, " + (state.cliente.nome || "Cliente") + ".";
-      $("clienteNome").value = state.cliente.nome || "";
-      $("clienteWhatsapp").value = state.cliente.telefone || "";
-      if(!$("coletaContato").value) $("coletaContato").value = state.cliente.nome || "";
-      if(!$("coletaTelefone").value) $("coletaTelefone").value = state.cliente.telefone || "";
-    }
-
-    async function loadMe(){
-      const j = await safeJSON(API.me);
-      if(j && j.ok) fillCliente(j.cliente);
-    }
-
-    async function loadSaldo(){
-      const j = await safeJSON(API.saldo);
-      if(j && j.ok){
-        setSaldo(j.saldo || 0);
-        if(j.cliente && !state.cliente) fillCliente(j.cliente);
-      }
-    }
-
-    async function loadPedidoAtivo(){
-      const j = await safeJSON(API.pedidoAtivo);
-      state.pedidoAtivo = (j && j.ok) ? j.pedido : null;
-      const box = $("pedidoAtivoBox");
-      if(state.pedidoAtivo){
-        box.classList.add("show");
-        $("pedidoAtivoTitle").textContent = `Pedido #${state.pedidoAtivo.id} • ${state.pedidoAtivo.status || "Em andamento"}`;
-        $("pedidoAtivoText").textContent = `${state.pedidoAtivo.origem_txt || "-"} → ${state.pedidoAtivo.destino_txt || "-"} • ${moneyBR(state.pedidoAtivo.valor || 0)}`;
-      }else{
-        box.classList.remove("show");
-      }
-    }
-
-    async function loadEnderecos(){
-      const j = await safeJSON(API.enderecos);
-      if(j && j.ok){
-        state.enderecos = j.enderecos || [];
-        populateEnderecoSelect();
-        renderEnderecos();
-        applyEnderecoPadrao();
-      }
-    }
-
-    function populateEnderecoSelect(){
-      const sel = $("coletaSalvaSelect");
-      sel.innerHTML = `<option value="">Preencher manualmente</option>`;
-      state.enderecos.forEach(item => {
-        const opt = document.createElement("option");
-        opt.value = item.id;
-        opt.textContent = `${item.apelido || "Endereço"}${item.padrao ? " (padrão)" : ""}`;
-        sel.appendChild(opt);
-      });
-    }
-
-    function applyEnderecoPadrao(){
-      const padrao = state.enderecos.find(x => x.padrao);
-      if(padrao && !$("coletaEndereco").value){
-        $("coletaSalvaSelect").value = String(padrao.id);
-        applyEnderecoToForm(padrao);
-      }
-    }
-
-    function applyEnderecoToForm(item){
-      if(!item) return;
-      $("salvarApelido").value = item.apelido || "";
-      $("coletaEndereco").value = item.endereco || "";
-      $("coletaBairro").value = item.bairro || "";
-      $("coletaReferencia").value = item.referencia || "";
-      $("coletaContato").value = item.contato || $("coletaContato").value || "";
-      $("coletaTelefone").value = item.telefone || $("coletaTelefone").value || "";
-      $("salvarPadrao").checked = !!item.padrao;
-      setTimeout(agendarCotacao, 0);
-    }
-
-    $("coletaSalvaSelect").addEventListener("change", () => {
-      const id = $("coletaSalvaSelect").value;
-      const item = state.enderecos.find(x => String(x.id) === String(id));
-      if(item) applyEnderecoToForm(item);
-    });
-
-    function renderEnderecos(){
-      const wrap = $("savedAddresses");
-      if(!state.enderecos.length){
-        wrap.innerHTML = `<div class="empty">Nenhum endereço salvo.</div>`;
-        return;
-      }
-      wrap.innerHTML = state.enderecos.map(item => `
-        <div class="saved-item">
-          <div>
-            <div class="rowline">
-              <strong>${escapeHtml(item.apelido || "Endereço")}</strong>
-              ${item.padrao ? `<span class="tag blue">Padrão</span>` : ``}
-            </div>
-            <small>${escapeHtml(item.endereco || "")}${item.bairro ? " • " + escapeHtml(item.bairro) : ""}</small>
-            <small>${item.contato ? "Contato: " + escapeHtml(item.contato) : ""}${item.telefone ? " • " + escapeHtml(item.telefone) : ""}</small>
-            <small>${item.referencia ? "Referência: " + escapeHtml(item.referencia) : ""}</small>
-          </div>
-          <div class="saved-actions">
-            <button class="mini-btn" onclick="usarEndereco(${item.id})">Usar</button>
-            <button class="mini-btn" onclick="tornarPadrao(${item.id})">Tornar padrão</button>
-            <button class="mini-btn red" onclick="excluirEndereco(${item.id})">Excluir</button>
-          </div>
-        </div>
-      `).join("");
-    }
-
-    window.usarEndereco = function(id){
-      const item = state.enderecos.find(x => x.id === id);
-      if(item){
-        setView("pedido");
-        $("coletaSalvaSelect").value = String(item.id);
-        applyEnderecoToForm(item);
-        toast("Endereço aplicado na coleta.");
-      }
-    }
-
-    window.tornarPadrao = async function(id){
-      const j = await safeJSON(API.enderecoPadrao(id), { method: "POST" });
-      if(j && j.ok){
-        toast("Endereço definido como padrão.");
-        await loadEnderecos();
-      }
-    }
-
-    window.excluirEndereco = async function(id){
-      if(!confirm("Excluir este endereço salvo?")) return;
-      const j = await safeJSON(API.enderecoDelete(id), { method: "DELETE" });
-      if(j && j.ok){
-        toast("Endereço excluído.");
-        await loadEnderecos();
-      }
-    }
-
-    $("btnSalvarColeta").addEventListener("click", async () => {
-      const endereco = $("coletaEndereco").value.trim();
-      if(!endereco){
-        toast("Informe o endereço da coleta para salvar.");
-        return;
-      }
-      const payload = {
-        apelido: $("salvarApelido").value.trim() || "Coleta",
-        contato: $("coletaContato").value.trim(),
-        telefone: $("coletaTelefone").value.trim(),
-        endereco,
-        bairro: $("coletaBairro").value.trim(),
-        referencia: $("coletaReferencia").value.trim(),
-        padrao: $("salvarPadrao").checked
-      };
-      const j = await safeJSON(API.enderecos, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-      if(j && j.ok){
-        toast("Coleta salva com sucesso.");
-        await loadEnderecos();
-      }
-    });
-
-    function historicoParams(){
-      const p = new URLSearchParams();
-      if($("histIni").value) p.set("data_inicio", $("histIni").value);
-      if($("histFim").value) p.set("data_fim", $("histFim").value);
-      p.set("pagamento", $("histPagamento").value || "todos");
-      p.set("situacao", $("histSituacao").value || "todos");
-      return p.toString();
-    }
-
-    function histStatusTag(item){
-      const st = (item.status || "").toLowerCase();
-      if(item.cancelado || st.includes("cancel")) return `<span class="tag red">Cancelada</span>`;
-      if(st.includes("entreg") || st.includes("recebid") || st.includes("finaliz") || st.includes("concl")) return `<span class="tag green">Concluída</span>`;
-      return `<span class="tag orange">Em andamento</span>`;
-    }
-
-    async function loadHistorico(){
-      const j = await safeJSON(API.historico + "?" + historicoParams());
-      const wrap = $("historyList");
-      if(!(j && j.ok)) return;
-      state.historico = j.entregas || [];
-      const resumo = j.resumo || {};
-      $("statQtd").textContent = resumo.quantidade || 0;
-      $("statTotal").textContent = moneyBR(resumo.valor_total || 0);
-      $("statCredito").textContent = moneyBR(resumo.credito_usado || 0);
-      $("statCancel").textContent = resumo.canceladas || 0;
-
-      if(!state.historico.length){
-        wrap.innerHTML = `<div class="empty">Nenhuma entrega encontrada para os filtros escolhidos.</div>`;
-        return;
-      }
-
-      wrap.innerHTML = state.historico.map(item => `
-        <div class="history-item">
-          <div>
-            <div class="rowline">
-              <strong>Pedido #${item.id}</strong>
-              ${histStatusTag(item)}
-              <span class="tag blue">${escapeHtml(item.pagamento || "-")}</span>
-            </div>
-            <div class="route">${escapeHtml(item.origem || "-")} → ${escapeHtml(item.destino || "-")}</div>
-            <div class="meta">${escapeHtml(item.data || "")} • Pagamento: ${escapeHtml(item.status_pagamento || "pendente")}</div>
-            <div class="meta">Entregador: <strong>${escapeHtml(item.entregador || "Ainda não atribuído")}</strong></div>
-            ${item.comprovante_url ? `<div style="margin-top:9px"><a class="mini-btn" href="${item.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a></div>` : ``}
-          </div>
-          <div class="value">${moneyBR(item.valor || 0)}</div>
-        </div>
-      `).join("");
-    }
-
-    $("btnFiltrarHist").addEventListener("click", loadHistorico);
-    $("btnMesAtual").addEventListener("click", () => { presetMesAtual(); loadHistorico(); });
-    $("btnLimparHist").addEventListener("click", () => {
-      $("histIni").value = "";
-      $("histFim").value = "";
-      $("histPagamento").value = "todos";
-      $("histSituacao").value = "todos";
-      loadHistorico();
-    });
-    $("btnExportarHist").addEventListener("click", () => {
-      window.location.href = API.exportar + "?" + historicoParams();
-    });
-
-    document.querySelectorAll(".recarga-preset").forEach(btn => {
-      btn.addEventListener("click", () => $("valorRecarga").value = (btn.dataset.v || "").replace(".", ","));
-    });
-
-
-    window.copiarChavePix = async function(){
-      const chave = '05289938000197';
-      try{
-        await navigator.clipboard.writeText(chave);
-        toast('Chave Pix copiada.');
-      }catch(e){
-        const ta=document.createElement('textarea');
-        ta.value=chave;document.body.appendChild(ta);ta.select();
-        document.execCommand('copy');ta.remove();
-        toast('Chave Pix copiada.');
-      }
-    };
-
-    $("btnGerarRecarga").addEventListener("click", async () => {
-      const valor = Number(($("valorRecarga").value || "").replace(/\./g, "").replace(",", "."));
-      if(!valor || valor <= 0){
-        toast("Informe um valor válido.");
-        return;
-      }
-      const j = await safeJSON(API.recarga, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ valor, metodo: $("metodoRecarga").value })
-      });
-      if(j && j.ok){
-        $("boxRecarga").innerHTML = `
-          <div style="font-size:15px;font-weight:900;color:#0A3DAF;margin-bottom:8px">Solicitação #${j.solicitacao_id || j.recarga_id} enviada</div>
-          <div style="margin-bottom:6px">Valor solicitado: <strong>${moneyBR(j.valor || 0)}</strong></div>
-          <div style="margin-bottom:8px">Status: <strong>Aguardando confirmação do pagamento</strong></div>
-
-          <div style="background:#fff;border:1px solid #cfdcf4;border-radius:14px;padding:12px;margin-top:10px">
-            <div style="font-size:11px;font-weight:900;color:#65748F;margin-bottom:5px">CHAVE PIX — CNPJ COOPEX</div>
-            <div style="font-size:20px;font-weight:950;color:#0A3DAF;word-break:break-all">05289938000197</div>
-            <button type="button" class="ghost-btn" style="margin-top:9px" onclick="copiarChavePix()">Copiar chave Pix</button>
-          </div>
-
-          <a href="${j.whatsapp_url || 'https://wa.me/5584981110706'}"
-             target="_blank" rel="noopener"
-             style="display:flex;align-items:center;justify-content:center;text-align:center;
-                    margin-top:12px;min-height:48px;padding:10px 14px;border-radius:14px;
-                    background:#1FA855;color:#fff;font-weight:900;text-decoration:none">
-            Favor enviar o comprovante direto para esse número: (84) 98111-0706
-          </a>
-          <div style="margin-top:8px;font-size:12px;color:#697892">
-            O crédito só será lançado após a COOPEX confirmar o pagamento no painel administrativo.
-          </div>
-        `;
-        toast("Solicitação de crédito enviada.");
-      }
-    });
-
-    $("pedidoPagamento").addEventListener("change", () => {
-      $("recebimentoDinheiroWrap").style.display = $("pedidoPagamento").value === "dinheiro" ? "block" : "none";
-    });
-
-
-    let cotacaoTimer = null;
-
-    async function cotarPedido(){
-      const coletaEndereco = $("coletaEndereco").value.trim();
-      const coletaBairro = $("coletaBairro").value.trim();
-      const entregaEndereco = $("entregaEndereco").value.trim();
-      const entregaBairro = $("entregaBairro").value.trim();
-
-      // Para usar a tabela de bairros, precisamos ao menos dos bairros.
-      if(!coletaBairro || !entregaBairro){
-        $("resumoValor").textContent = "Informe os bairros";
-        $("resumoPrevisao").textContent = "—";
-        return null;
-      }
-
-      $("resumoValor").textContent = "Calculando...";
-      $("resumoPrevisao").textContent = "Aguarde";
-
-      const payload = {
-        tipo: $("pedidoTipo").value,
-        retorno: $("pedidoRetorno").checked,
-        coleta: {
-          endereco: coletaEndereco,
-          bairro: coletaBairro,
-          ref: $("coletaReferencia").value.trim(),
-          contato: $("coletaContato").value.trim(),
-          telefone: $("coletaTelefone").value.trim()
-        },
-        entrega: {
-          endereco: entregaEndereco,
-          bairro: entregaBairro,
-          ref: $("entregaReferencia").value.trim(),
-          contato: $("entregaContato").value.trim(),
-          telefone: $("entregaTelefone").value.trim()
-        },
-        paradas: []
-      };
-
-      const j = await safeJSON(API.cotar, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if(!(j && j.ok)){
-        $("resumoValor").textContent = "A confirmar";
-        $("resumoPrevisao").textContent = "—";
-        return null;
-      }
-
-      if(j.valor_a_informar || j.preco == null){
-        $("resumoValor").textContent = "A confirmar";
-        $("resumoPrevisao").textContent = "Supervisão";
-      }else{
-        $("resumoValor").textContent = moneyBR(j.preco);
-        $("resumoPrevisao").textContent =
-          j.origem_preco === "tabela" ? "Tabela de bairros" :
-          j.origem_preco === "km" ? "Cálculo por km" : "Calculado";
-      }
-
-      return j;
-    }
-
-    function agendarCotacao(){
-      clearTimeout(cotacaoTimer);
-      cotacaoTimer = setTimeout(cotarPedido, 350);
-    }
-
-    ["coletaBairro","entregaBairro","coletaEndereco","entregaEndereco"].forEach(id => {
-      $(id).addEventListener("input", agendarCotacao);
-      $(id).addEventListener("change", agendarCotacao);
-    });
-    $("pedidoTipo").addEventListener("change", agendarCotacao);
-    $("pedidoRetorno").addEventListener("change", agendarCotacao);
-
-    $("btnSolicitarEntrega").addEventListener("click", async () => {
-      const coletaEndereco = $("coletaEndereco").value.trim();
-      const entregaEndereco = $("entregaEndereco").value.trim();
-      if(!coletaEndereco || !entregaEndereco){
-        toast("Informe a coleta e a entrega.");
-        return;
-      }
-
-      const cotacao = await cotarPedido();
-      if(!cotacao){
-        toast("Não foi possível calcular a entrega. Confira os bairros.");
-        return;
-      }
-
-      const pagamento = $("pedidoPagamento").value;
-      const recebeDinheiroEm = $("recebeDinheiroEm").value;
-      if(pagamento === "dinheiro" && !recebeDinheiroEm){
-        toast("Informe onde o dinheiro será recebido.");
-        return;
-      }
-
-      const payload = {
-        cliente_nome: $("clienteNome").value.trim(),
-        cliente_whatsapp: $("clienteWhatsapp").value.trim(),
-        tipo: $("pedidoTipo").value,
-        pagamento,
-        recebe_dinheiro_em: pagamento === "dinheiro" ? recebeDinheiroEm : "",
-        obs: $("pedidoObs").value.trim(),
-        retorno: $("pedidoRetorno").checked,
-        coleta: {
-          endereco: coletaEndereco,
-          bairro: $("coletaBairro").value.trim(),
-          ref: $("coletaReferencia").value.trim(),
-          contato: $("coletaContato").value.trim(),
-          telefone: $("coletaTelefone").value.trim()
-        },
-        entrega: {
-          endereco: $("entregaEndereco").value.trim(),
-          bairro: $("entregaBairro").value.trim(),
-          ref: $("entregaReferencia").value.trim(),
-          contato: $("entregaContato").value.trim(),
-          telefone: $("entregaTelefone").value.trim()
-        },
-        origem_txt: coletaEndereco,
-        destino_txt: entregaEndereco,
-        bairro_origem: $("coletaBairro").value.trim(),
-        bairro_destino: $("entregaBairro").value.trim()
-      };
-
-      const j = await safeJSON(API.pedido, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload)
-      });
-
-      if(j && j.ok){
-        $("resumoValor").textContent = moneyBR(j.preco || 0);
-        $("resumoPrevisao").textContent = j.valor_a_informar ? "A confirmar" : "Solicitação enviada";
-        toast(j.msg || "Pedido enviado.");
-        await loadPedidoAtivo();
-        await loadHistorico();
-      }
-    });
-
-    $("btnCancelarPedido").addEventListener("click", async () => {
-      if(!state.pedidoAtivo) return;
-      if(!confirm("Deseja cancelar o pedido ativo?")) return;
-      const j = await safeJSON(API.cancelar(state.pedidoAtivo.id), { method: "POST" });
-      if(j && j.ok){
-        toast("Pedido cancelado.");
-        await loadPedidoAtivo();
-        await loadHistorico();
-      }
-    });
-
-    function escapeHtml(txt){
-      return String(txt || "").replace(/[&<>"']/g, (m) => ({
-        "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"
-      }[m]));
-    }
-
-    (async function boot(){
-      presetMesAtual();
-      await Promise.all([loadMe(), loadSaldo(), loadEnderecos(), loadPedidoAtivo()]);
-      await loadHistorico();
-    })();
-  </script>
-</body>
-</html>
+<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="enderecos">Endereços</button></div>
+</div>
+<div class="toast" id="toast"></div>
+<script>
+const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',delEnd:id=>`/api/cliente/enderecos/${id}`};
+const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[]};
+function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
+async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
+function setView(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
+document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
+document.querySelectorAll('.step-head').forEach(h=>h.onclick=()=>{if(innerWidth<=900)h.parentElement.classList.toggle('open')});
+function setSaldo(v){S.saldo=Number(v||0);const neg=S.saldo<0;$('saldoHero').textContent=money(Math.abs(S.saldo));$('saldoHero').classList.toggle('negative',neg);$('balanceLabel').textContent=neg?'SALDO DEVEDOR':'SALDO DISPONÍVEL';$('saldoMsg').textContent=neg?'Saldo negativo. Faça uma nova recarga para regularizar seu saldo.':'Saldo disponível para usar nos seus pedidos.'}
+async function loadMe(){const j=await api(API.me);if(!j?.ok)return;S.cliente=j.cliente||{};$('hello').textContent='Olá, '+(S.cliente.nome||'Cliente');$('clienteNome').value=S.cliente.nome||'';$('clienteWhatsapp').value=S.cliente.telefone||'';$('coletaContato').value=S.cliente.nome||'';$('coletaTelefone').value=S.cliente.telefone||'';$('coletaEndereco').value=S.cliente.endereco||'';$('coletaBairro').value=S.cliente.bairro_origem||'';scheduleQuote()}
+async function loadSaldo(){const j=await api(API.saldo);if(j?.ok)setSaldo(j.saldo)}
+async function loadActive(){const j=await api(API.ativo);S.ativo=j?.ok?j.pedido:null;if(S.ativo){$('activeOrder').classList.add('show');$('activeTitle').textContent=`Pedido #${S.ativo.id} — ${S.ativo.status||'em andamento'}`;$('activeMeta').textContent=`${S.ativo.origem_txt||'-'} → ${S.ativo.destino_txt||'-'} • ${money(S.ativo.valor)}`;$('requestCancel').disabled=String(S.ativo.status||'').toLowerCase().includes('cancelamento solicitado')}else $('activeOrder').classList.remove('show')}
+$('requestCancel').onclick=async()=>{if(!S.ativo)return;if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;const j=await api(API.cancel(S.ativo.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo portal.'})});if(j?.ok){toast(j.msg);loadActive()}};
+async function loadEnds(){const j=await api(API.enderecos);if(j?.ok){S.ends=j.enderecos||[];const sel=$('destinoSalvo');sel.innerHTML='<option value="">Preencher manualmente</option>'+S.ends.map(x=>`<option value="${x.id}">${esc(x.apelido||'Endereço')}</option>`).join('');renderEnds()}}
+$('destinoSalvo').onchange=()=>{const x=S.ends.find(a=>String(a.id)==$('destinoSalvo').value);if(!x)return;$('entregaEndereco').value=x.endereco||'';$('entregaBairro').value=x.bairro||'';$('entregaReferencia').value=x.referencia||'';$('entregaContato').value=x.contato||'';$('entregaTelefone').value=x.telefone||'';scheduleQuote()};
+function renderEnds(){const w=$('saved');if(!S.ends.length){w.innerHTML='<div class="empty">Nenhum endereço salvo.</div>';return}w.innerHTML=S.ends.map(x=>`<div class="saved-item"><div><strong>${esc(x.apelido||'Endereço')}</strong><small>${esc(x.endereco||'')} ${x.bairro?'• '+esc(x.bairro):''}</small></div><div class="toolbar"><button class="ghost" onclick="useEnd(${x.id})">Usar</button><button class="ghost" onclick="delEnd(${x.id})">Excluir</button></div></div>`).join('')}
+window.useEnd=id=>{const x=S.ends.find(a=>a.id===id);if(x){setView('pedido');$('destinoSalvo').value=String(id);$('destinoSalvo').onchange()}};window.delEnd=async id=>{if(!confirm('Excluir endereço?'))return;const j=await api(API.delEnd(id),{method:'DELETE'});if(j?.ok)loadEnds()};
+$('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
+let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['entregaEndereco','entregaBairro','coletaReferencia'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
+async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Tabela de bairros':j.origem_preco==='km'?'Cálculo por km':'';return j}
+$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()){toast('O cliente está sem endereço fixo de coleta cadastrado.');return}if(!$('entregaEndereco').value.trim()||!$('entregaBairro').value.trim()){toast('Informe o endereço e o bairro da entrega.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}};
+document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
+window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
+$('requestCredit').onclick=async()=>{const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));if(!v||v<=0){toast('Informe um valor válido.');return}const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});if(j?.ok){const w=$('pixResult');w.classList.add('show');w.innerHTML=`<strong>Solicitação #${j.solicitacao_id} enviada</strong><div style="margin-top:8px">Valor: <strong>${money(j.valor)}</strong></div><div style="margin-top:12px;font-size:11px;font-weight:900;color:#66758e">CHAVE PIX — CNPJ COOPEX</div><div class="pix-key">05289938000197</div><button class="ghost" style="margin-top:8px" onclick="copyPix()">Copiar chave Pix</button><a class="wa" href="${j.whatsapp_url}" target="_blank" rel="noopener">Favor enviar o comprovante direto para esse número: (84) 98111-0706</a><div style="font-size:11px;color:#6c7a93;margin-top:8px">O crédito será lançado após a COOPEX confirmar o pagamento.</div>`;toast('Solicitação enviada para o administrativo.')}};
+function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function lastWeekRange(){const n=new Date();n.setHours(12,0,0,0);const day=n.getDay();const sinceMon=(day+6)%7;const thisMon=new Date(n);thisMon.setDate(n.getDate()-sinceMon);const ini=new Date(thisMon);ini.setDate(thisMon.getDate()-7);const fim=new Date(ini);fim.setDate(ini.getDate()+6);return{ini,fim}}function setLastWeek(){const r=lastWeekRange();$('histIni').value=iso(r.ini);$('histFim').value=iso(r.fim);$('weekTitle').textContent=`Semana passada: ${r.ini.toLocaleDateString('pt-BR')} a ${r.fim.toLocaleDateString('pt-BR')}`}
+function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);return p.toString()}
+function signed(v,plus=false){const n=Number(v||0);const abs=money(Math.abs(n));return n<0?'-'+abs:(plus&&n>0?'+':'')+abs}function tone(el,v){el.classList.toggle('neg',Number(v)<0);el.classList.toggle('pos',Number(v)>0)}
+async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;const f=j.financeiro||{};$('fStart').textContent=signed(f.saldo_inicial);$('fAdded').textContent='+'+money(f.creditos_adicionados||0);$('fUsed').textContent='-'+money(f.credito_utilizado||0);$('fEnd').textContent=signed(f.saldo_final);tone($('fStart'),f.saldo_inicial);tone($('fEnd'),f.saldo_final);const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;const w=$('history');const itens=j.entregas||[];if(!itens.length){w.innerHTML='<div class="empty">Nenhuma entrega encontrada nesta semana.</div>';return}w.innerHTML=itens.map(x=>`<div class="hist"><div><div class="tags"><strong>Pedido #${x.id}</strong><span class="tag">${esc(x.pagamento||'-')}</span><span class="tag ${x.cancelado?'red':x.status?.toLowerCase().includes('entreg')?'green':''}">${esc(x.status||'')}</span></div><div class="route">${esc(x.origem||'-')} → ${esc(x.destino||'-')}</div><div class="meta">${esc(x.data||'')} • Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div>${x.comprovante_url?`<a class="receipt" href="${x.comprovante_url}" target="_blank">Ver recibo</a>`:''}</div><div class="value">${money(x.valor)}</div></div>`).join('')}
+$('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
+function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
+(async()=>{setLastWeek();await Promise.all([loadMe(),loadSaldo(),loadEnds(),loadActive()]);await loadHist()})();
+</script>
+</body></html>
