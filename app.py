@@ -1765,37 +1765,47 @@ def _aplicar_delta_saldo_credito(cliente_id: int, delta) -> Decimal:
 
 def _correcao_pontual_saldo_20260926(cliente):
     """
-    Correção única do saldo que foi sobrescrito pelo recálculo retroativo.
+    Correção única do saldo consolidado do caso Grifes.com.
 
-    Situação confirmada em 26/09/2026:
-      saldo consolidado antes das 2 novas entregas: -169,00
-      novas entregas: -15,00 e -16,00
-      saldo correto atual: -200,00
+    Cenário confirmado em 26/09/2026:
+      saldo em 18/09 antes do consumo final do dia: -88,00
+      consumo de 17,00 antes da recarga: saldo antes da recarga = -105,00
+      última recarga confirmada: +300,00
+      saldo após recarga: +195,00
+      consumos líquidos posteriores à recarga: 376,00
+      saldo correto atual: -181,00
 
-    Aplica somente quando encontra exatamente o cenário afetado (saldo -354,00
-    e última recarga #100046 de 300,00), e grava uma chave para nunca repetir.
+    Esta rotina NÃO reprocessa todo o passado. Ela apenas corrige o saldo
+    consolidado e o snapshot da última recarga no caso confirmado, tanto se o
+    cliente ainda estiver em -354,00 quanto se já tiver sido ajustado para
+    -200,00 por uma correção anterior.
     """
     if not cliente:
         return
-    chave = f"saldo_fix_20260926_cliente_{cliente.id}"
+
+    chave = f"saldo_fix_20260926_v2_cliente_{cliente.id}"
     try:
         if ConfigSistema.query.filter_by(chave=chave).first():
             return
+
         ultima = (Credito.query
                   .filter_by(cliente_id=cliente.id)
                   .order_by(Credito.criado_em.desc(), Credito.id.desc())
                   .first())
         if not ultima:
             return
-        saldo_atual = _as_decimal(cliente.saldo_atual or 0)
-        valor_ultima = _as_decimal(ultima.valor_final or ultima.valor_bruto or 0)
-        if ultima.id == 100046 and valor_ultima == Decimal("300.00") and saldo_atual == Decimal("-354.00"):
-            cliente.saldo_atual = -200.00
+
+        saldo_atual = _as_decimal(cliente.saldo_atual or 0).quantize(Decimal("0.01"))
+        valor_ultima = _as_decimal(ultima.valor_final or ultima.valor_bruto or 0).quantize(Decimal("0.01"))
+
+        cenarios_afetados = {Decimal("-354.00"), Decimal("-200.00"), Decimal("-181.00")}
+        if ultima.id == 100046 and valor_ultima == Decimal("300.00") and saldo_atual in cenarios_afetados:
+            cliente.saldo_atual = -181.00
             ultima.saldo_antes = -105.00
             ultima.saldo_depois = 195.00
             db.session.add(cliente)
             db.session.add(ultima)
-            db.session.add(ConfigSistema(chave=chave, valor="-200.00"))
+            db.session.add(ConfigSistema(chave=chave, valor="-181.00"))
             db.session.commit()
     except Exception:
         db.session.rollback()
@@ -1969,7 +1979,8 @@ def sincronizar_credito_da_entrega(entrega_id: int) -> Decimal:
 
     valor_atual = _as_decimal(e.valor or 0)
     usa_credito = pagamento_usa_credito(e.pagamento)
-    desejado = valor_atual if usa_credito else Decimal("0.00")
+    status_cancelado = _norm(e.status or '') in ('cancelado', 'cancelada')
+    desejado = Decimal("0.00") if status_cancelado else (valor_atual if usa_credito else Decimal("0.00"))
     ja_lancado = _credito_liquido_ja_lancado(cli.id, e.id)
     diferenca = (desejado - ja_lancado).quantize(Decimal("0.01"))
 
@@ -2007,7 +2018,13 @@ def sincronizar_credito_da_entrega(entrega_id: int) -> Decimal:
 
     # Mantém a entrega espelhando o consumo líquido desejado.
     e.credito_usado = float(desejado)
-    if usa_credito:
+    if status_cancelado and usa_credito:
+        # A entrega cancelada permanece no histórico, mas seu valor visível vira 0,00.
+        # O débito antigo continua no extrato e o estorno aparece separado, devolvendo o saldo.
+        e.valor = 0.0
+        e.status_pagamento = "estornado"
+        e.recebido_por = "Valor foi estornado"
+    elif usa_credito:
         e.status_pagamento = "pago"
         if not (e.recebido_por or "").strip():
             e.recebido_por = "Crédito automático"
@@ -9047,8 +9064,15 @@ def api_cliente_historico():
                 consumo_ate_fim = max(0.0, float(debitos_apos_recarga) - float(estornos_apos_recarga))
 
             # Saldo atual oficial = saldo consolidado salvo no cliente.
-            # Este é o MESMO valor mostrado no cartão principal da carteira.
+            # Este é o MESMO valor mostrado no cartão principal da carteira e no admin.
             saldo_atual_real = float(cli.saldo_atual or 0.0)
+
+            # Se a data final já é hoje (ou futura), não existe "depois do período".
+            # Nesse caso o consumo do card precisa fechar exatamente a conta:
+            # saldo após recarga - consumo = saldo atual oficial.
+            hoje_local = datetime.now(BRAZIL_TZ).date()
+            if d_fim >= hoje_local and ultima_recarga:
+                consumo_ate_fim = max(0.0, float(saldo_apos_recarga) - float(saldo_atual_real))
 
             # CARD 4 — do dia seguinte ao fechamento até hoje.
             # O fechamento consolidado usado pela tela é o consumo líquido do CARD 3
@@ -9986,6 +10010,11 @@ def api_admin_cancelamento_aprovar(req_id):
             entrega = Entrega.query.get(entrega.id) or entrega
 
         entrega.status = 'cancelado'
+        if pagamento_usa_credito(entrega.pagamento or ''):
+            entrega.valor = 0.0
+            entrega.credito_usado = 0.0
+            entrega.status_pagamento = 'estornado'
+            entrega.recebido_por = 'Valor foi estornado'
         req.status = 'aprovado'
         req.decidido_em = datetime.utcnow()
         req.decidido_por = _admin_nome_sessao()
@@ -10087,6 +10116,12 @@ def creditos():
     clientes_lista = []  # apenas os que terão histórico no acordeão
 
     for cli in clientes_form:
+        try:
+            _correcao_pontual_saldo_20260926(cli)
+            cli = Cliente.query.get(cli.id) or cli
+        except Exception:
+            pass
+
         movs = (
             CreditoMovimento.query
             .filter(CreditoMovimento.cliente_id == cli.id)
@@ -10128,16 +10163,26 @@ def creditos():
             saldo = saldo_depois
 
         movimentos_por_cliente[cli.id] = rows
-        saldos_por_cliente[cli.id] = saldo
+        # FONTE ÚNICA DO SALDO: o mesmo Cliente.saldo_atual usado em /meu-credito.
+        # O histórico antigo possui ajustes e não pode voltar a recalcular a carteira.
+        saldo_oficial = float(cli.saldo_atual or 0.0)
+        saldos_por_cliente[cli.id] = saldo_oficial
         creditos_originais_por_cliente[cli.id] = total_creditos_originais
-        consumos_por_cliente[cli.id] = total_creditos_originais - saldo
+
+        # Consumo líquido informativo do extrato: débitos menos estornos.
+        total_debitos = sum(float(m.valor or 0.0) for m in movs if (m.tipo or '').lower() == 'debito')
+        total_estornos = sum(
+            float(m.valor or 0.0) for m in movs
+            if (m.tipo or '').lower() == 'credito' and 'estorno' in (m.referencia or '').lower()
+        )
+        consumos_por_cliente[cli.id] = max(0.0, total_debitos - total_estornos)
 
         clientes_lista.append(cli)
 
     # totais globais (apenas clientes que aparecem no histórico)
     total_saldo = sum(saldos_por_cliente.values()) if saldos_por_cliente else 0.0
     total_creditos = sum(creditos_originais_por_cliente.values()) if creditos_originais_por_cliente else 0.0
-    total_consumos = total_creditos - total_saldo
+    total_consumos = sum(consumos_por_cliente.values()) if consumos_por_cliente else 0.0
 
     if _wants_json():
         return jsonify(
@@ -10174,6 +10219,87 @@ def creditos():
         request=request
     )
 
+
+
+@app.get('/api/creditos/clientes/<int:cliente_id>/historico')
+def api_creditos_cliente_historico(cliente_id):
+    """Histórico do admin usando a MESMA fonte de saldo de /meu-credito."""
+    if not session.get('is_admin'):
+        return jsonify(ok=False, error='Sessão expirada.'), 401
+
+    cli = Cliente.query.get_or_404(cliente_id)
+    try:
+        _correcao_pontual_saldo_20260926(cli)
+        cli = Cliente.query.get(cliente_id) or cli
+    except Exception:
+        pass
+
+    try:
+        limit = max(1, min(int(request.args.get('limit') or 60), 200))
+        offset = max(0, int(request.args.get('offset') or 0))
+    except Exception:
+        limit, offset = 60, 0
+
+    q = (CreditoMovimento.query
+         .filter(CreditoMovimento.cliente_id == cliente_id)
+         .order_by(func.coalesce(CreditoMovimento.criado_em, CreditoMovimento.data).desc(), CreditoMovimento.id.desc()))
+    total_mov = q.count()
+    movs = q.offset(offset).limit(limit).all()
+
+    todos = CreditoMovimento.query.filter(CreditoMovimento.cliente_id == cliente_id).all()
+    creditos_originais = 0.0
+    debitos = 0.0
+    estornos = 0.0
+    for m in todos:
+        valor = float(m.valor or 0.0)
+        tipo = (m.tipo or '').lower()
+        ref = (m.referencia or '').lower()
+        if tipo == 'debito':
+            debitos += valor
+        elif tipo == 'credito' and 'estorno' in ref:
+            estornos += valor
+        elif tipo == 'credito':
+            creditos_originais += valor
+
+    def _dt_mov(m):
+        dt = m.criado_em or m.data
+        if not dt:
+            return '—'
+        try:
+            return to_brasilia(dt).strftime('%d/%m/%Y, %H:%M:%S')
+        except Exception:
+            return dt.strftime('%d/%m/%Y, %H:%M:%S')
+
+    items = []
+    for m in movs:
+        tipo = (m.tipo or '').lower()
+        ref = m.referencia or ''
+        eh_estorno = tipo == 'credito' and 'estorno' in ref.lower()
+        tipo_texto = 'Estorno' if eh_estorno else ('Crédito' if tipo == 'credito' else 'Consumo')
+        vinculo = f'Entrega #{m.entrega_id}' if m.entrega_id else (f'Crédito #{m.credito_id}' if m.credito_id else '—')
+        editar_url = url_for('creditos_editar', credito_id=m.credito_id) if (m.credito_id and not eh_estorno) else None
+        items.append({
+            'id': m.id,
+            'data_texto': _dt_mov(m),
+            'tipo': tipo,
+            'tipo_texto': tipo_texto,
+            'referencia': ref or '—',
+            'valor': float(m.valor or 0.0),
+            'vinculo': vinculo,
+            'editar_url': editar_url,
+        })
+
+    return jsonify(
+        ok=True,
+        resumo={
+            'saldo': float(cli.saldo_atual or 0.0),
+            'creditos': round(creditos_originais, 2),
+            'consumos': round(max(0.0, debitos - estornos), 2),
+            'movimentos': total_mov,
+        },
+        items=items,
+        has_more=(offset + len(items) < total_mov),
+    )
 
 
 @app.route('/creditos/reprocessar-auto', methods=['POST'])
