@@ -4,49 +4,47 @@
   <meta charset="UTF-8">
   <title>Gestão de Cooperados | COOPEX</title>
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <link rel="icon" href="{{ url_for('static', filename='logo_coopex.png') }}">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
 
+  
   <style>
     :root{
-      --royal:#0033cc;
-      --royal-2:#1748f5;
-      --royal-3:#eaf1ff;
-      --ink:#071d49;
-      --text:#15284d;
-      --muted:#66789f;
-      --bg:#eef3ff;
+      --royal:#1557e8;
+      --royal-2:#0f46c8;
+      --royal-3:#eef4ff;
+      --ink:#102754;
+      --text:#1d3157;
+      --muted:#6c7f9f;
+      --bg:#edf3fa;
       --card:#ffffff;
       --soft:#f8fbff;
-      --line:#dbe6ff;
-      --line-strong:#bfd0ff;
-      --good:#10b981;
-      --good-bg:#e9fff5;
-      --bad:#ef4444;
-      --bad-bg:#fff0f0;
-      --warn:#f59e0b;
+      --line:#dbe5f2;
+      --line-strong:#c8d6ea;
+      --good:#0d9156;
+      --good-bg:#eaf9f1;
+      --bad:#df333b;
+      --bad-bg:#fff0f2;
+      --shadow:0 10px 28px rgba(31,61,115,.08);
+      --shadow-2:0 16px 42px rgba(31,61,115,.11);
       --radius:18px;
-      --radius-sm:13px;
-      --shadow:0 10px 32px rgba(0,39,135,.09);
-      --shadow-2:0 16px 48px rgba(0,39,135,.14);
-      --header-h:74px;
+      --header-h:72px;
     }
 
     body.dark{
-      --bg:#071126;
-      --card:#0f1b34;
-      --soft:#0a152b;
-      --ink:#eef4ff;
-      --text:#dce8ff;
-      --muted:#9fb2d7;
-      --line:#24375f;
-      --line-strong:#34528a;
-      --royal-3:#102652;
-      --good-bg:#0d2b22;
-      --bad-bg:#3a1420;
-      --shadow:0 12px 34px rgba(0,0,0,.26);
-      --shadow-2:0 18px 48px rgba(0,0,0,.34);
+      --bg:#071326;
+      --card:#0f1d35;
+      --soft:#0b182e;
+      --ink:#f1f5ff;
+      --text:#dce7fa;
+      --muted:#9fb0ce;
+      --line:#263b61;
+      --line-strong:#38517f;
+      --royal-3:#13284b;
+      --good-bg:#0d3227;
+      --bad-bg:#3a1720;
+      --shadow:0 12px 32px rgba(0,0,0,.23);
+      --shadow-2:0 18px 46px rgba(0,0,0,.30);
     }
 
     *{box-sizing:border-box}
@@ -55,97 +53,84 @@
       margin:0;
       font-family:'Inter',system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       background:
-        radial-gradient(circle at top left, rgba(0,51,204,.10), transparent 360px),
-        linear-gradient(180deg,#f5f8ff 0%, var(--bg) 260px, var(--bg) 100%);
+        radial-gradient(circle at top left, rgba(21,87,232,.08), transparent 360px),
+        linear-gradient(180deg,#f7faff 0%,var(--bg) 240px,var(--bg) 100%);
       color:var(--text);
       overflow-x:hidden;
+      -webkit-font-smoothing:antialiased;
     }
     body.dark{
       background:
-        radial-gradient(circle at top left, rgba(39,80,255,.18), transparent 380px),
-        linear-gradient(180deg,#061331 0%, var(--bg) 280px, var(--bg) 100%);
+        radial-gradient(circle at top left, rgba(45,95,255,.15), transparent 390px),
+        linear-gradient(180deg,#06142f 0%,var(--bg) 280px,var(--bg) 100%);
     }
 
     .topbar{
-      position:sticky;
-      top:0;
-      z-index:100;
+      position:sticky;top:0;z-index:100;
       min-height:var(--header-h);
-      padding:14px 24px;
-      display:flex;
-      align-items:center;
-      gap:14px;
-      width:100%;
-      background:linear-gradient(90deg,#002a9f 0%, var(--royal) 50%, #4169ff 100%);
+      padding:10px 24px;
+      display:flex;align-items:center;gap:14px;
+      background:linear-gradient(100deg,#0a2f8c 0%,#1251db 58%,#2f68ee 100%);
       color:#fff;
+      border-bottom:1px solid rgba(255,255,255,.18);
       box-shadow:var(--shadow-2);
-      border-bottom:1px solid rgba(255,255,255,.22);
+    }
+    body.dark .topbar{
+      background:linear-gradient(100deg,#071a3b 0%,#0a2e73 58%,#0d3f95 100%);
+      border-bottom-color:#21456f;
     }
 
     .brand{
-      display:flex;
-      align-items:center;
-      gap:12px;
-      min-width:260px;
-      font-weight:950;
-      letter-spacing:-.02em;
+      display:flex;align-items:center;gap:14px;min-width:0;
     }
-    .brand img{
-      width:42px;
-      height:42px;
-      border-radius:14px;
-      background:#fff;
-      border:2px solid rgba(255,255,255,.82);
-      object-fit:contain;
-      padding:3px;
-      box-shadow:0 8px 22px rgba(0,0,0,.16);
+    .brand-symbol{
+      width:48px;height:48px;border-radius:14px;flex:none;
+      display:flex;align-items:center;justify-content:center;
+      background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.22);
+      color:#fff;font-size:1.15rem;font-weight:900;
+      box-shadow:0 8px 22px rgba(0,0,0,.10);
     }
-    .brand-title{
-      display:flex;
-      flex-direction:column;
-      line-height:1.08;
-      text-shadow:0 2px 18px rgba(0,0,0,.22);
+    body.dark .brand-symbol{
+      background:#0c1d38;
+      border-color:#31547e;
     }
-    .brand-title strong{font-size:1.02rem}
-    .brand-title small{font-size:.78rem;font-weight:750;opacity:.86;margin-top:3px}
+    .brand-title{display:flex;flex-direction:column;line-height:1.08}
+    .brand-title strong{font-size:1.18rem;font-weight:900;letter-spacing:-.025em}
+    .brand-title small{font-size:.78rem;font-weight:700;opacity:.88;margin-top:4px}
     .spacer{flex:1}
 
     .top-btn{
-      height:40px;
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:7px;
-      border-radius:13px;
-      padding:0 15px;
-      font-weight:900;
-      text-decoration:none;
-      font-size:.86rem;
-      white-space:nowrap;
-      transition:.16s ease;
-      cursor:pointer;
+      height:42px;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      border-radius:12px;padding:0 16px;
+      font-weight:850;text-decoration:none;font-size:.84rem;
+      white-space:nowrap;transition:.16s ease;cursor:pointer;
     }
     .top-btn.admin{
-      color:#0633b8;
-      background:#fff;
-      border:1px solid rgba(255,255,255,.90);
-      box-shadow:0 8px 20px rgba(0,0,0,.10);
+      color:#fff;
+      background:rgba(7,28,65,.28);
+      border:1px solid rgba(255,255,255,.20);
+      box-shadow:none;
+    }
+    body.dark .top-btn.admin{
+      background:#0c1d38;
+      border-color:#31547e;
     }
     .top-btn.theme{
-      color:#fff;
-      background:rgba(255,255,255,.14);
-      border:1px solid rgba(255,255,255,.38);
+      color:#fff;background:rgba(255,255,255,.10);
+      border:1px solid rgba(255,255,255,.18);
+    }
+    body.dark .top-btn.theme{
+      background:#0e48b5;
+      border-color:#285dc0;
     }
     .top-btn.logout{
-      color:#fff;
-      background:linear-gradient(90deg,#b91c1c,#ef4444);
-      border:1px solid rgba(255,255,255,.16);
-      box-shadow:0 8px 20px rgba(185,28,28,.22);
+      color:#fff;background:linear-gradient(90deg,#c91f28,#ef3f48);
+      border:1px solid rgba(255,255,255,.12);
+      box-shadow:0 8px 20px rgba(190,31,42,.20);
     }
-    .top-btn:hover{
-      transform:translateY(-1px);
-      filter:brightness(1.04);
-    }
+    .top-btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
 
     .page{
       width:100%;
@@ -153,424 +138,266 @@
       margin:0;
       padding:18px 20px 26px;
       display:grid;
-      grid-template-columns:minmax(330px, 410px) minmax(0, 1fr);
+      grid-template-columns:360px minmax(0,1fr);
       gap:18px;
       align-items:start;
     }
 
     .card{
-      background:rgba(255,255,255,.94);
+      background:var(--card);
       border:1px solid var(--line);
       border-radius:var(--radius);
       box-shadow:var(--shadow);
       overflow:hidden;
-      backdrop-filter:blur(10px);
     }
-    body.dark .card{background:rgba(15,27,52,.96)}
-    .card-body{padding:18px}
+    .card-body{padding:20px}
+    .left-card{position:sticky;top:90px}
     .card-title{
-      display:flex;
-      align-items:flex-start;
-      justify-content:space-between;
-      gap:12px;
-      margin-bottom:14px;
+      display:flex;align-items:flex-start;justify-content:space-between;
+      gap:14px;margin-bottom:16px;
     }
-    .title-block h1,
-    .title-block h2{
-      margin:0;
-      color:var(--ink);
-      letter-spacing:-.035em;
-      line-height:1.08;
+    .title-with-icon{display:flex;align-items:flex-start;gap:12px}
+    .title-icon{
+      width:44px;height:44px;border-radius:13px;flex:none;
+      display:flex;align-items:center;justify-content:center;
+      background:linear-gradient(180deg,#1d66f2,#1350dc);
+      color:#fff;font-size:1.1rem;
+      box-shadow:0 6px 16px rgba(21,87,232,.16);
     }
-    .title-block h1{font-size:1.26rem}
+    .title-block h1,.title-block h2{
+      margin:0;color:var(--ink);letter-spacing:-.03em;line-height:1.08;
+    }
+    .title-block h1{font-size:1.28rem}
     .title-block h2{font-size:1.18rem}
     .title-block p{
-      margin:6px 0 0;
-      color:var(--muted);
-      font-size:.84rem;
-      line-height:1.35;
-      font-weight:650;
+      margin:6px 0 0;color:var(--muted);
+      font-size:.80rem;line-height:1.45;font-weight:650;
     }
 
     .kpi{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      min-width:54px;
-      height:34px;
-      border-radius:999px;
-      background:var(--royal-3);
-      color:var(--royal);
-      border:1px solid var(--line-strong);
-      font-weight:950;
-      box-shadow:0 4px 14px rgba(0,51,204,.06);
+      display:inline-flex;align-items:center;justify-content:center;gap:7px;
+      min-width:132px;height:38px;padding:0 14px;
+      border-radius:999px;background:var(--royal-3);
+      color:var(--royal);border:1px solid var(--line-strong);
+      font-weight:900;font-size:.78rem;
     }
-    body.dark .kpi{color:#dce8ff}
+    body.dark .kpi{color:#dce7ff}
 
     .messages{
-      background:var(--bad-bg);
-      color:#b91c1c;
-      border:1px solid #fecaca;
-      padding:12px;
-      border-radius:13px;
-      margin-bottom:14px;
-      font-size:.88rem;
-      font-weight:750;
+      background:var(--bad-bg);color:#b91c1c;
+      border:1px solid #fecaca;padding:12px;border-radius:12px;
+      margin-bottom:14px;font-size:.84rem;font-weight:750;
     }
-    body.dark .messages{
-      color:#fecdd3;
-      border-color:#7f1d1d;
-    }
+    body.dark .messages{color:#fecdd3;border-color:#7f1d1d}
 
     label{
-      display:block;
-      font-size:.76rem;
-      color:#2449a8;
-      font-weight:950;
-      margin-bottom:5px;
-      text-transform:uppercase;
-      letter-spacing:.035em;
+      display:block;font-size:.72rem;color:#385788;font-weight:900;
+      margin-bottom:6px;letter-spacing:.02em;
     }
-    body.dark label{color:#b9ccff}
+    body.dark label{color:#b9c8e5}
 
-    input[type="text"],
-    input[type="password"],
-    select{
-      width:100%;
-      min-height:42px;
-      padding:10px 12px;
-      border-radius:13px;
-      border:1px solid var(--line-strong);
-      background:#fff;
-      color:var(--ink);
-      font-weight:750;
-      font-size:.9rem;
-      box-shadow:0 2px 0 rgba(0,51,204,.02);
-      transition:.14s ease;
+    input[type="text"],input[type="password"],select{
+      width:100%;min-height:44px;padding:10px 12px;
+      border-radius:11px;border:1px solid var(--line-strong);
+      background:#fff;color:var(--ink);
+      font-weight:700;font-size:.84rem;transition:.14s ease;
     }
-    body.dark input,
-    body.dark select{
-      background:#0a152b;
-      color:#eef4ff;
-      border-color:#34528a;
+    body.dark input,body.dark select{
+      background:#0b182e;color:#eef4ff;border-color:#38517f;
     }
-    input:focus,
-    select:focus{
-      outline:none;
-      border-color:var(--royal-2);
-      box-shadow:0 0 0 3px rgba(39,80,255,.16);
+    input:focus,select:focus{
+      outline:none;border-color:var(--royal);
+      box-shadow:0 0 0 3px rgba(21,87,232,.12);
     }
-    input::placeholder{color:#91a0c3}
+    input::placeholder{color:#91a0bb}
     body.dark input::placeholder{color:#7486ad}
 
-    .form-grid{
-      display:grid;
-      grid-template-columns:1fr;
-      gap:12px;
-    }
+    .form-grid{display:grid;grid-template-columns:1fr;gap:14px}
     .field-note{
-      display:block;
-      margin-top:5px;
-      color:var(--muted);
-      font-size:.76rem;
-      font-weight:650;
-      line-height:1.3;
+      display:block;margin-top:6px;color:var(--muted);
+      font-size:.75rem;font-weight:650;line-height:1.35;
     }
+
+    .password-wrap{position:relative}
+    .password-wrap input{padding-right:42px}
+    .password-toggle{
+      position:absolute;right:8px;top:50%;transform:translateY(-50%);
+      border:0;background:transparent;color:var(--muted);cursor:pointer;
+      width:34px;height:34px;border-radius:9px;
+    }
+    .password-toggle:hover{background:var(--royal-3);color:var(--royal)}
 
     .btn{
-      display:inline-flex;
-      align-items:center;
-      justify-content:center;
-      gap:7px;
-      min-height:40px;
-      background:linear-gradient(90deg,var(--royal) 0%, var(--royal-2) 100%);
-      color:#fff;
-      border:none;
-      border-radius:13px;
-      padding:10px 15px;
-      font-weight:900;
-      text-decoration:none;
-      box-shadow:0 8px 22px rgba(0,51,204,.20);
-      cursor:pointer;
-      font-size:.88rem;
-      white-space:nowrap;
-      transition:.16s ease;
+      display:inline-flex;align-items:center;justify-content:center;gap:8px;
+      min-height:42px;background:linear-gradient(90deg,var(--royal),var(--royal-2));
+      color:#fff;border:none;border-radius:11px;padding:10px 15px;
+      font-weight:850;text-decoration:none;
+      box-shadow:0 7px 18px rgba(21,87,232,.16);
+      cursor:pointer;font-size:.82rem;white-space:nowrap;transition:.16s ease;
     }
-    .btn:hover{
-      transform:translateY(-1px);
-      filter:brightness(1.03);
-    }
+    .btn:hover{transform:translateY(-1px);filter:brightness(1.03)}
     .btn.alt{
-      background:var(--royal-3);
-      color:var(--royal);
-      border:1px solid var(--line-strong);
-      box-shadow:none;
+      background:transparent;color:var(--royal);
+      border:1px solid var(--line-strong);box-shadow:none;
     }
-    body.dark .btn.alt{
-      color:#dce8ff;
-      background:#122756;
-      border-color:#34528a;
-    }
-    .btn.small{
-      min-height:32px;
-      padding:6px 10px;
-      font-size:.76rem;
-      border-radius:10px;
-      box-shadow:none;
-    }
-    .btn.danger{
-      background:linear-gradient(90deg,#b91c1c,#ef4444);
-      box-shadow:0 8px 18px rgba(239,68,68,.16);
-    }
+    body.dark .btn.alt{color:#dce7ff;border-color:#3d5b88}
+    .btn.small{min-height:34px;padding:6px 11px;font-size:.73rem;border-radius:9px;box-shadow:none}
+    .btn.danger{background:linear-gradient(90deg,#c8202a,#ef3f48);box-shadow:none}
     .btn.success{
-      background:linear-gradient(90deg,#059669,#10b981);
-      box-shadow:0 8px 18px rgba(16,185,129,.16);
+      background:transparent;color:var(--royal);
+      border:1px solid #4d79cf;box-shadow:none;
     }
+    body.dark .btn.success{color:#dce7ff;border-color:#4d79cf}
 
-    .actions{
-      display:flex;
-      gap:9px;
-      align-items:center;
-      flex-wrap:wrap;
-      margin-top:14px;
-    }
-    .actions .btn{flex:1}
+    .actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:16px}
     .panel-link{
-      display:inline-flex;
-      width:100%;
-      justify-content:center;
-      margin-top:12px;
-      color:var(--royal);
-      font-weight:900;
-      text-decoration:none;
-      font-size:.86rem;
+      display:inline-flex;width:100%;justify-content:center;align-items:center;gap:7px;
+      margin-top:16px;padding-top:16px;border-top:1px solid var(--line);
+      color:var(--royal);font-weight:850;text-decoration:none;font-size:.80rem;
     }
-    body.dark .panel-link{color:#b9ccff}
+    body.dark .panel-link{color:#9fc2ff}
 
     .toolbar{
-      display:grid;
-      grid-template-columns:minmax(260px, 1fr) 160px 170px;
-      gap:10px;
-      align-items:end;
-      margin-bottom:14px;
+      display:grid;grid-template-columns:minmax(320px,1fr) 170px 180px;
+      gap:12px;align-items:end;margin-bottom:14px;
     }
 
-    .coop-list{
-      display:grid;
-      grid-template-columns:repeat(auto-fill, minmax(360px, 1fr));
-      gap:12px;
-      max-height:calc(100vh - 225px);
-      overflow:auto;
-      padding-right:5px;
-      scrollbar-gutter:stable;
+    .info-strip{
+      display:flex;align-items:flex-start;gap:10px;
+      padding:12px 14px;margin-bottom:14px;
+      border-radius:12px;background:var(--royal-3);
+      border:1px solid var(--line-strong);
+      color:var(--text);font-size:.76rem;line-height:1.45;font-weight:650;
     }
-    .coop-list::-webkit-scrollbar{width:9px;height:9px}
-    .coop-list::-webkit-scrollbar-track{background:transparent}
-    .coop-list::-webkit-scrollbar-thumb{background:#b9c9f4;border-radius:999px}
-    body.dark .coop-list::-webkit-scrollbar-thumb{background:#365488}
+    .info-strip i{color:var(--royal);font-size:1rem;margin-top:1px}
 
-    .coop-card{
-      background:#fff;
-      border-radius:16px;
+    .table-shell{
       border:1px solid var(--line);
-      box-shadow:0 6px 18px rgba(0,30,130,.045);
-      padding:12px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      transition:.14s ease;
+      border-radius:14px;
+      overflow:auto;
+      max-height:calc(100vh - 300px);
+      background:var(--card);
     }
-    body.dark .coop-card{
-      background:#0a152b;
-      box-shadow:none;
+    .coop-table{
+      width:100%;
+      min-width:1040px;
+      border-collapse:separate;
+      border-spacing:0;
+      table-layout:fixed;
     }
-    .coop-card:hover{
-      border-color:var(--line-strong);
-      box-shadow:0 10px 26px rgba(0,30,130,.085);
-      transform:translateY(-1px);
+    .coop-table thead th{
+      position:sticky;top:0;z-index:2;
+      padding:12px 14px;
+      background:var(--soft);
+      color:#36517f;
+      border-bottom:1px solid var(--line);
+      font-size:.69rem;font-weight:900;text-align:left;
+      text-transform:uppercase;letter-spacing:.035em;
     }
-    body.dark .coop-card:hover{
-      box-shadow:0 10px 26px rgba(0,0,0,.20);
+    body.dark .coop-table thead th{
+      background:#10203a;color:#c3d2ec;
     }
-    .coop-card.coop-inativo{
-      opacity:.78;
-      background:#f8fafc;
-      border-style:dashed;
+    .coop-table tbody td{
+      padding:8px 14px;
+      border-bottom:1px solid var(--line);
+      vertical-align:middle;
+      background:var(--card);
+      font-size:.78rem;
     }
-    body.dark .coop-card.coop-inativo{background:#0a1326}
+    .coop-table tbody tr:last-child td{border-bottom:0}
+    .coop-table tbody tr:hover td{background:var(--soft)}
+    .coop-table .col-coop{width:21%}
+    .coop-table .col-status{width:10%}
+    .coop-table .col-name{width:19%}
+    .coop-table .col-pass{width:16%}
+    .coop-table .col-actions{width:34%}
 
-    .coop-head{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:10px;
+    .coop-ident{
+      display:flex;align-items:center;gap:10px;min-width:0;
+      font-weight:850;color:var(--ink);
     }
-    .coop-name{
-      min-width:0;
-      display:flex;
-      align-items:center;
-      gap:9px;
-      color:var(--ink);
-      font-weight:950;
-      font-size:.94rem;
+    .avatar{
+      width:34px;height:34px;border-radius:50%;
+      display:flex;align-items:center;justify-content:center;
+      flex:none;color:#fff;font-size:.72rem;font-weight:900;
+      background:linear-gradient(135deg,#4f7ff0,#7d5ce7);
     }
-    .coop-name span{
-      min-width:0;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
+    .coop-ident span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
     .badge-status{
-      display:inline-flex;
-      align-items:center;
-      gap:5px;
-      padding:5px 10px;
-      border-radius:999px;
-      font-size:.74rem;
-      font-weight:950;
-      white-space:nowrap;
+      display:inline-flex;align-items:center;gap:6px;
+      padding:5px 10px;border-radius:999px;
+      font-size:.70rem;font-weight:900;white-space:nowrap;
       border:1px solid transparent;
     }
-    .badge-status.ativo{
-      background:var(--good-bg);
-      color:#047857;
-      border-color:#bdf4d8;
-    }
-    .badge-status.inativo{
-      background:var(--bad-bg);
-      color:#b91c1c;
-      border-color:#ffcaca;
-    }
-    body.dark .badge-status.ativo{
-      color:#a7f3d0;
-      border-color:#116b4e;
-    }
-    body.dark .badge-status.inativo{
-      color:#fecdd3;
-      border-color:#7f1d1d;
-    }
+    .badge-status.ativo{background:var(--good-bg);color:#087f4d;border-color:#bcebd3}
+    .badge-status.inativo{background:var(--bad-bg);color:#bd2430;border-color:#f3c1c6}
+    body.dark .badge-status.ativo{color:#a7f3d0;border-color:#116b4e}
+    body.dark .badge-status.inativo{color:#fecdd3;border-color:#7f1d1d}
 
-    .edit-form{
-      display:grid;
-      grid-template-columns:minmax(150px, 1fr) minmax(110px, .8fr) auto;
-      gap:8px;
-      align-items:end;
+    .table-input{
+      min-height:38px!important;height:38px!important;
+      padding:0 10px!important;border-radius:9px!important;
+      font-size:.77rem!important;
     }
-    .edit-form .btn{
-      min-width:112px;
+    .row-actions{
+      display:flex;align-items:center;gap:7px;flex-wrap:nowrap;
     }
-    .card-actions{
-      display:flex;
-      gap:8px;
-      align-items:center;
-      justify-content:flex-end;
-      flex-wrap:wrap;
-      border-top:1px solid var(--line);
-      padding-top:10px;
-    }
-    .inline-form{display:inline-flex;margin:0}
-
+    .row-actions form{margin:0}
+    .row-actions .btn{min-width:108px}
+    .row-actions .btn.danger{min-width:142px}
     .empty{
-      color:var(--muted);
-      font-size:.95rem;
-      text-align:center;
-      padding:28px;
-      border:1px dashed var(--line-strong);
-      border-radius:16px;
-      background:var(--soft);
+      color:var(--muted);font-size:.9rem;text-align:center;padding:28px;
+      border:1px dashed var(--line-strong);border-radius:14px;background:var(--soft);
     }
-    .coop-card.is-hidden{display:none}
+    .coop-row.is-hidden{display:none}
 
-    @media (max-width:1200px){
-      .page{
-        grid-template-columns:350px minmax(0,1fr);
-        padding:16px 14px 24px;
-      }
-      .coop-list{
-        grid-template-columns:1fr;
-      }
-      .toolbar{
-        grid-template-columns:1fr 150px 155px;
-      }
+    .table-shell::-webkit-scrollbar{width:9px;height:9px}
+    .table-shell::-webkit-scrollbar-track{background:transparent}
+    .table-shell::-webkit-scrollbar-thumb{background:#b9c9e6;border-radius:999px}
+    body.dark .table-shell::-webkit-scrollbar-thumb{background:#365488}
+
+    @media(max-width:1200px){
+      .page{grid-template-columns:330px minmax(0,1fr);padding:16px 14px 24px}
+      .toolbar{grid-template-columns:1fr 150px 160px}
+      .row-actions{flex-wrap:wrap}
     }
-    @media (max-width:900px){
-      .topbar{
-        padding:12px;
-        gap:8px;
-        flex-wrap:wrap;
-      }
-      .brand{
-        min-width:0;
-        flex:1;
-      }
-      .brand-title strong{font-size:.94rem}
-      .page{
-        grid-template-columns:1fr;
-      }
-      .coop-list{
-        max-height:650px;
-      }
-      .toolbar{
-        grid-template-columns:1fr;
-      }
-      .edit-form{
-        grid-template-columns:1fr;
-      }
-      .edit-form .btn{
-        width:100%;
-      }
+    @media(max-width:900px){
+      .topbar{padding:10px 12px;gap:8px;flex-wrap:wrap}
+      .brand{flex:1}
+      .page{grid-template-columns:1fr}
+      .left-card{position:static}
+      .toolbar{grid-template-columns:1fr}
+      .table-shell{max-height:650px}
     }
-    @media (max-width:620px){
-      .top-btn{
-        height:36px;
-        padding:0 10px;
-        font-size:.78rem;
-      }
-      .page{
-        padding:12px 10px 20px;
-      }
-      .card-body{
-        padding:14px;
-      }
-      .actions .btn{
-        width:100%;
-        flex:auto;
-      }
-      .coop-head{
-        align-items:flex-start;
-        flex-direction:column;
-      }
-      .card-actions{
-        justify-content:stretch;
-      }
-      .card-actions .btn,
-      .card-actions form{
-        width:100%;
-      }
-      .card-actions form button{
-        width:100%;
-      }
+    @media(max-width:620px){
+      .brand-symbol{width:42px;height:42px}
+      .brand-title strong{font-size:1rem}
+      .brand-title small{font-size:.70rem}
+      .top-btn{height:36px;padding:0 10px;font-size:.74rem}
+      .page{padding:12px 10px 20px}
+      .card-body{padding:14px}
+      .kpi{min-width:auto}
     }
   </style>
+
 </head>
 
 <body>
   <header class="topbar">
+    
     <div class="brand">
-      <img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX"
-           onerror="this.onerror=null;this.src='https://via.placeholder.com/80x42?text=COOPEX'">
+      <div class="brand-symbol" aria-hidden="true">✱</div>
       <div class="brand-title">
         <strong>Gestão de Cooperados</strong>
         <small>Cadastro, acesso e situação operacional</small>
       </div>
     </div>
 
+
     <div class="spacer"></div>
 
-    <a class="top-btn admin" href="{{ url_for('admin') }}">
-      <i class="bi bi-arrow-left-circle"></i> Admin
-    </a>
+    <a class="top-btn admin" href="{{ url_for('admin') }}"><i class="bi bi-arrow-left"></i> Painel administrativo</a>
     <button id="btnTheme" class="top-btn theme" type="button">
       <i class="bi bi-moon-stars"></i> Modo escuro
     </button>
@@ -583,9 +410,12 @@
     <section class="card">
       <div class="card-body">
         <div class="card-title">
-          <div class="title-block">
-            <h1>Novo cooperado</h1>
-            <p>Cadastre o nome de acesso e a senha inicial do cooperado.</p>
+          <div class="title-with-icon">
+            <div class="title-icon"><i class="bi bi-person-plus"></i></div>
+            <div class="title-block">
+              <h1>Novo cooperado</h1>
+              <p>Cadastre o nome de acesso e a senha inicial do cooperado.</p>
+            </div>
           </div>
         </div>
 
@@ -610,7 +440,10 @@
 
             <div>
               <label for="senha">Senha inicial</label>
-              <input type="password" name="senha" id="senha" required maxlength="40" autocomplete="new-password" placeholder="Digite a senha inicial">
+              <div class="password-wrap">
+                <input type="password" name="senha" id="senha" required maxlength="40" autocomplete="new-password" placeholder="Digite a senha inicial">
+                <button class="password-toggle" type="button" id="toggleSenha" aria-label="Mostrar ou ocultar senha"><i class="bi bi-eye"></i></button>
+              </div>
               <span class="field-note">O cooperado poderá acessar o painel com esse nome e senha.</span>
             </div>
           </div>
@@ -634,11 +467,14 @@
     <section class="card">
       <div class="card-body">
         <div class="card-title">
-          <div class="title-block">
-            <h2>Cooperados cadastrados</h2>
-            <p>Edite nome e senha no mesmo formulário. A senha é opcional: deixe em branco para manter a atual.</p>
+          <div class="title-with-icon">
+            <div class="title-icon"><i class="bi bi-people"></i></div>
+            <div class="title-block">
+              <h2>Cooperados cadastrados</h2>
+              <p>Edite nome e senha no mesmo formulário. A senha é opcional: deixe em branco para manter a atual.</p>
+            </div>
           </div>
-          <span class="kpi" id="qtd-cooperados">{{ cooperados|length }}</span>
+          <span class="kpi"><i class="bi bi-people"></i> <span id="qtd-cooperados">{{ cooperados|length }}</span> cooperados</span>
         </div>
 
         <div class="toolbar">
@@ -667,66 +503,69 @@
           </div>
         </div>
 
-        <div class="coop-list" id="coopList">
-          {% for c in cooperados %}
-          <article class="coop-card{% if not c.ativo %} coop-inativo{% endif %}"
-                   data-rank="{{ loop.index }}"
-                   data-nome="{{ c.nome|lower }}"
-                   data-status="{% if c.ativo %}ativo{% else %}inativo{% endif %}">
-            <div class="coop-head">
-              <div class="coop-name" title="{{ c.nome }}">
-                <i class="bi bi-person-badge"></i>
-                <span>{{ c.nome }}</span>
-              </div>
+        <div class="info-strip">
+          <i class="bi bi-info-circle-fill"></i>
+          <span><strong>Desativar</strong> bloqueia o acesso do cooperado, mantendo o cadastro para reativação. <strong>Excluir cadastro</strong> remove a pessoa das telas ativas e impede novo login.</span>
+        </div>
 
-              {% if c.ativo %}
-                <span class="badge-status ativo"><i class="bi bi-check-circle"></i> Ativo</span>
+        <div class="table-shell">
+          <table class="coop-table" id="coopTable">
+            <thead>
+              <tr>
+                <th class="col-coop">Cooperado</th>
+                <th class="col-status">Situação</th>
+                <th class="col-name">Nome (editável)</th>
+                <th class="col-pass">Nova senha</th>
+                <th class="col-actions">Ações</th>
+              </tr>
+            </thead>
+            <tbody id="coopList">
+              {% for c in cooperados %}
+              <tr class="coop-row{% if not c.ativo %} coop-inativo{% endif %}"
+                  data-rank="{{ loop.index }}"
+                  data-nome="{{ c.nome|lower }}"
+                  data-status="{% if c.ativo %}ativo{% else %}inativo{% endif %}">
+                <td>
+                  <div class="coop-ident" title="{{ c.nome }}">
+                    <div class="avatar">{{ c.nome[:2]|upper }}</div>
+                    <span>{{ c.nome }}</span>
+                  </div>
+                </td>
+                <td>
+                  {% if c.ativo %}
+                    <span class="badge-status ativo"><i class="bi bi-circle-fill" style="font-size:.48rem"></i> Ativo</span>
+                  {% else %}
+                    <span class="badge-status inativo"><i class="bi bi-circle-fill" style="font-size:.48rem"></i> Inativo</span>
+                  {% endif %}
+                </td>
+                <td>
+                  <form id="edit-{{ c.id }}" method="POST" action="{{ url_for('atualizar_cooperado', coop_id=c.id) }}" autocomplete="off"></form>
+                  <input class="table-input" form="edit-{{ c.id }}" type="text" name="novo_nome" value="{{ c.nome }}" required minlength="2" maxlength="80" placeholder="Nome do cooperado">
+                </td>
+                <td>
+                  <input class="table-input" form="edit-{{ c.id }}" type="password" name="nova_senha" placeholder="Opcional" minlength="3" maxlength="40" autocomplete="new-password">
+                </td>
+                <td>
+                  <div class="row-actions">
+                    <button class="btn small" form="edit-{{ c.id }}" type="submit" title="Salvar alterações"><i class="bi bi-save2"></i> Salvar</button>
+                    <form method="POST" action="{{ url_for('mudar_status_cooperado', coop_id=c.id) }}">
+                      {% if c.ativo %}
+                        <button class="btn small success" type="submit" name="novo_status" value="0" title="Desativar cooperado"><i class="bi bi-person-x"></i> Desativar</button>
+                      {% else %}
+                        <button class="btn small success" type="submit" name="novo_status" value="1" title="Ativar cooperado"><i class="bi bi-person-check"></i> Ativar</button>
+                      {% endif %}
+                    </form>
+                    <form method="POST" action="{{ url_for('excluir_cooperado', coop_id=c.id) }}" onsubmit="return confirm('Excluir cooperado {{ c.nome }}?');">
+                      <button class="btn small danger" type="submit" title="Excluir cooperado"><i class="bi bi-trash3"></i> Excluir cadastro</button>
+                    </form>
+                  </div>
+                </td>
+              </tr>
               {% else %}
-                <span class="badge-status inativo"><i class="bi bi-x-circle"></i> Inativo</span>
-              {% endif %}
-            </div>
-
-            <form class="edit-form" method="POST" action="{{ url_for('atualizar_cooperado', coop_id=c.id) }}" autocomplete="off">
-              <div>
-                <label>Nome</label>
-                <input type="text" name="novo_nome" value="{{ c.nome }}" required minlength="2" maxlength="80" placeholder="Nome do cooperado">
-              </div>
-
-              <div>
-                <label>Nova senha</label>
-                <input type="password" name="nova_senha" placeholder="Opcional" minlength="3" maxlength="40" autocomplete="new-password">
-              </div>
-
-              <button class="btn small" type="submit" title="Salvar alterações">
-                <i class="bi bi-save2"></i> Salvar
-              </button>
-            </form>
-
-            <div class="card-actions">
-              <form class="inline-form" method="POST" action="{{ url_for('mudar_status_cooperado', coop_id=c.id) }}">
-                {% if c.ativo %}
-                  <button class="btn small success" type="submit" name="novo_status" value="0" title="Desativar cooperado">
-                    <i class="bi bi-person-x"></i> Desativar
-                  </button>
-                {% else %}
-                  <button class="btn small success" type="submit" name="novo_status" value="1" title="Ativar cooperado">
-                    <i class="bi bi-person-check"></i> Ativar
-                  </button>
-                {% endif %}
-              </form>
-
-              <form class="inline-form" method="POST" action="{{ url_for('excluir_cooperado', coop_id=c.id) }}" onsubmit="return confirm('Excluir cooperado {{ c.nome }}?');">
-                <button class="btn small danger" type="submit" title="Excluir cooperado">
-                  <i class="bi bi-trash3"></i> Excluir
-                </button>
-              </form>
-            </div>
-          </article>
-          {% else %}
-          <div class="empty">
-            Nenhum cooperado cadastrado.
-          </div>
-          {% endfor %}
+              <tr><td colspan="5"><div class="empty">Nenhum cooperado cadastrado.</div></td></tr>
+              {% endfor %}
+            </tbody>
+          </table>
         </div>
       </div>
     </section>
@@ -770,12 +609,25 @@
       }catch(e){}
     })();
 
+
+    // Mostrar/ocultar senha inicial.
+    (function(){
+      const input = document.getElementById('senha');
+      const button = document.getElementById('toggleSenha');
+      if(!input || !button) return;
+      button.addEventListener('click', function(){
+        const mostrar = input.type === 'password';
+        input.type = mostrar ? 'text' : 'password';
+        button.innerHTML = mostrar ? '<i class="bi bi-eye-slash"></i>' : '<i class="bi bi-eye"></i>';
+      });
+    })();
+
     // Busca, status e limite de visualização.
     (function(){
       const busca = document.getElementById('buscaCooperado');
       const filtroStatus = document.getElementById('filtroStatus');
       const limiteLista = document.getElementById('limiteLista');
-      const cards = Array.from(document.querySelectorAll('.coop-card'));
+      const cards = Array.from(document.querySelectorAll('.coop-row'));
       const qtdSpan = document.getElementById('qtd-cooperados');
 
       try{
