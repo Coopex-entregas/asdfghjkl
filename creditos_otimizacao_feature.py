@@ -226,10 +226,10 @@ def _summary_rows():
     for row in rows:
         original_credits = float(row.creditos or 0.0)
         movement_count = int(row.movimentos or 0)
-        if movement_count:
-            balance = float(row.mov_creditos or 0.0) - float(row.debitos or 0.0)
-        else:
-            balance = float(row.saldo_atual or original_credits or 0.0)
+        # O saldo oficial é o saldo consolidado do cliente.
+        # Não reconstruímos o saldo pelo histórico antigo, pois ele pode conter
+        # ajustes/migrações que não representam mais o saldo vigente.
+        balance = float(row.saldo_atual or 0.0)
         consumption = original_credits - balance
         result.append(
             {
@@ -325,7 +325,13 @@ def _client_credit_summary(cliente_id):
     movement_credits = float(aggregate[0] or 0.0)
     debits = float(aggregate[1] or 0.0)
     movement_count = int(aggregate[2] or 0)
-    balance = movement_credits - debits
+
+    # Mesma fonte de verdade usada em Meu Crédito: Cliente.saldo_atual.
+    # Os agregados acima continuam disponíveis para auditoria/contagem, mas
+    # nunca substituem o saldo consolidado vigente.
+    client = MOD.Cliente.query.get(cliente_id)
+    balance = float(getattr(client, "saldo_atual", 0.0) or 0.0) if client else 0.0
+
     return {
         "saldo": balance,
         "creditos": original_credits,
@@ -456,18 +462,31 @@ def install(app_module):
         _create_indexes()
 
     app_module.app.view_functions["creditos"] = _creditos_fast
-    app_module.app.add_url_rule(
-        "/api/creditos/clientes/<int:cliente_id>/historico",
-        "api_creditos_cliente_historico",
-        _credit_history,
-        methods=["GET"],
-    )
-    app_module.app.add_url_rule(
-        "/api/creditos/clientes/<int:cliente_id>/habilitado",
-        "api_creditos_cliente_habilitado",
-        _credit_enabled,
-        methods=["GET"],
-    )
+
+    # Essas rotas podem já existir no app.py. Nesse caso, apenas substituímos
+    # a view associada ao endpoint em vez de registrar a mesma rota novamente.
+    # Isso evita o AssertionError do Flask durante o boot do Gunicorn.
+    history_endpoint = "api_creditos_cliente_historico"
+    if history_endpoint in app_module.app.view_functions:
+        app_module.app.view_functions[history_endpoint] = _credit_history
+    else:
+        app_module.app.add_url_rule(
+            "/api/creditos/clientes/<int:cliente_id>/historico",
+            history_endpoint,
+            _credit_history,
+            methods=["GET"],
+        )
+
+    enabled_endpoint = "api_creditos_cliente_habilitado"
+    if enabled_endpoint in app_module.app.view_functions:
+        app_module.app.view_functions[enabled_endpoint] = _credit_enabled
+    else:
+        app_module.app.add_url_rule(
+            "/api/creditos/clientes/<int:cliente_id>/habilitado",
+            enabled_endpoint,
+            _credit_enabled,
+            methods=["GET"],
+        )
 
     for endpoint in (
         "cadastrar_entrega",
