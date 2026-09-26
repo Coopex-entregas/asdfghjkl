@@ -186,7 +186,7 @@
       display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:12px
     }
     .metric{
-      position:relative;min-height:104px;padding:16px 16px 14px 76px;
+      position:relative;min-height:104px;padding:16px 16px 14px 78px;
       background:var(--card);border:1px solid var(--line);
       border-radius:15px;box-shadow:var(--shadow-soft);
       overflow:hidden
@@ -201,6 +201,21 @@
     .metric:nth-child(2)::before{background:#eaf2ff}
     .metric:nth-child(3)::before{background:#fff0f2}
     .metric:nth-child(4)::before{background:#f1ecff}
+    .metric::after{
+      position:absolute;
+      left:18px;top:18px;width:42px;height:42px;
+      display:flex;align-items:center;justify-content:center;
+      font-size:1.15rem;font-weight:900;line-height:1;
+      z-index:1;
+    }
+    .metric:nth-child(1)::after{content:"💼";color:#0d8a52}
+    .metric:nth-child(2)::after{content:"↗";color:#1557e8}
+    .metric:nth-child(3)::after{content:"↘";color:#d92f3b}
+    .metric:nth-child(4)::after{content:"👥";color:#7547d8}
+    body.dark .metric:nth-child(1)::after{color:#4fd18a}
+    body.dark .metric:nth-child(2)::after{color:#75a6ff}
+    body.dark .metric:nth-child(3)::after{color:#ff8d96}
+    body.dark .metric:nth-child(4)::after{color:#b69cff}
     .metric small{
       display:block;color:var(--muted);font-size:.66rem;font-weight:900;
       text-transform:uppercase;letter-spacing:.045em
