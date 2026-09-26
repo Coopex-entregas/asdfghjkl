@@ -9007,39 +9007,63 @@ def api_cliente_historico():
                     valor_recarga = float(ultima_recarga.valor or 0)
                     saldo_apos_recarga = saldo_antes_recarga + valor_recarga
 
-            # Saldo REAL no fechamento da data final do filtro.
-            # Aqui entram TODOS os créditos, inclusive estornos, porque estorno devolve saldo.
-            creditos_ate_fim = (
-                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                .filter(
-                    CreditoMovimento.cliente_id == cli.id,
-                    CreditoMovimento.tipo == 'credito',
-                    mov_data <= fim_utc
-                ).scalar() or 0.0
-            )
-            debitos_ate_fim = (
-                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                .filter(
-                    CreditoMovimento.cliente_id == cli.id,
-                    CreditoMovimento.tipo == 'debito',
-                    mov_data <= fim_utc
-                ).scalar() or 0.0
-            )
-            saldo_final_periodo = float(creditos_ate_fim) - float(debitos_ate_fim)
+            # CARD 3 — consumo líquido de CREDITO_AUTO depois da última recarga
+            # até o fechamento da data final selecionada.
+            #
+            # IMPORTANTE:
+            # - débito de entrega = aumenta o consumo;
+            # - estorno = devolve saldo e reduz o consumo;
+            # - recarga real NÃO entra nessa conta;
+            # - não reprocessamos o histórico anterior à última recarga.
+            consumo_ate_fim = 0.0
+            if ultima_recarga:
+                dt_rec = (
+                    getattr(ultima_recarga, 'criado_em', None)
+                    or getattr(ultima_recarga, 'data', None)
+                )
+
+                debitos_apos_recarga = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'debito',
+                        mov_data > dt_rec,
+                        mov_data <= fim_utc
+                    ).scalar() or 0.0
+                )
+
+                estornos_apos_recarga = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'credito',
+                        CreditoMovimento.credito_id.is_(None),
+                        func.lower(func.coalesce(CreditoMovimento.referencia, '')).like('%estorno%'),
+                        mov_data > dt_rec,
+                        mov_data <= fim_utc
+                    ).scalar() or 0.0
+                )
+
+                consumo_ate_fim = max(0.0, float(debitos_apos_recarga) - float(estornos_apos_recarga))
 
             # Saldo atual oficial = saldo consolidado salvo no cliente.
-            # Nunca reprocessa todo o histórico antigo.
+            # Este é o MESMO valor mostrado no cartão principal da carteira.
             saldo_atual_real = float(cli.saldo_atual or 0.0)
 
-            # Ex.: saldo no dia 20 = -34 e saldo atual = -169 => foram consumidos 135.
-            # Não soma o saldo atual novamente; apenas compara os dois saldos.
-            consumo_apos_periodo = saldo_final_periodo - saldo_atual_real
+            # CARD 4 — do dia seguinte ao fechamento até hoje.
+            # O fechamento consolidado usado pela tela é o consumo líquido do CARD 3
+            # como referência negativa. Ex.: consumo até dia 20 = R$ 34,00 => -R$ 34,00.
+            # Se o saldo atual é -R$ 200,00, então depois do fechamento foram
+            # consumidos R$ 166,00.
+            saldo_referencia_fim = -float(consumo_ate_fim)
+            consumo_apos_periodo = max(0.0, saldo_referencia_fim - saldo_atual_real)
 
             financeiro = {
                 'saldo_antes_recarga': round(saldo_antes_recarga, 2),
                 'ultima_recarga': round(valor_recarga, 2),
                 'saldo_apos_recarga': round(saldo_apos_recarga, 2),
-                'saldo_final_periodo': round(saldo_final_periodo, 2),
+                'consumo_ate_fim': round(consumo_ate_fim, 2),
+                'saldo_referencia_fim': round(saldo_referencia_fim, 2),
                 'consumo_apos_periodo': round(consumo_apos_periodo, 2),
                 'saldo_atual': round(saldo_atual_real, 2),
                 'data_inicio': data_inicio,
