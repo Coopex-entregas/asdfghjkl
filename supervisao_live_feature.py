@@ -26,14 +26,84 @@ LIVE_STYLE = r"""
   vertical-align:middle;white-space:nowrap;
   flex:none;
 }
-#supervisao-live-indicator .dot{
-  width:7px;height:7px;border-radius:50%;
-  background:#16a365;
-}
+#supervisao-live-indicator .dot{width:7px;height:7px;border-radius:50%;background:#16a365}
 #supervisao-live-indicator.off .dot{background:#d64545}
 body.dark #supervisao-live-indicator{
   background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.25);color:inherit
 }
+
+#credito-solicitacoes-live{
+  display:none;align-items:center;gap:5px;margin-left:6px;
+  min-height:22px;padding:4px 8px;border-radius:999px;
+  background:#fff4d8;color:#8a4d00;border:1px solid #f3ca69;
+  font:900 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  cursor:pointer;vertical-align:middle;white-space:nowrap;
+  box-shadow:0 3px 10px rgba(138,77,0,.12)
+}
+#credito-solicitacoes-live.show{display:inline-flex}
+#credito-solicitacoes-live .count{
+  min-width:17px;height:17px;padding:0 4px;border-radius:999px;
+  display:inline-grid;place-items:center;background:#d97706;color:#fff;font-size:9px
+}
+body.dark #credito-solicitacoes-live{
+  background:#3a2a0a;color:#ffd98a;border-color:#755315
+}
+
+#credito-solicitacoes-overlay{
+  position:fixed;inset:0;z-index:10050;display:none;
+  background:rgba(7,18,45,.50);padding:18px;
+  align-items:center;justify-content:center
+}
+#credito-solicitacoes-overlay.open{display:flex}
+#credito-solicitacoes-modal{
+  width:min(760px,100%);max-height:min(760px,90vh);overflow:auto;
+  background:#fff;color:#14213d;border-radius:22px;
+  border:1px solid #dbe5f7;box-shadow:0 28px 80px rgba(7,18,45,.30)
+}
+.credito-modal-head{
+  position:sticky;top:0;z-index:2;background:#fff;
+  padding:18px 20px;border-bottom:1px solid #e5ebf6;
+  display:flex;align-items:center;justify-content:space-between;gap:12px
+}
+.credito-modal-head h3{margin:0;color:#0a3daf;font-size:18px}
+.credito-modal-close{
+  width:38px;height:38px;border-radius:12px;border:1px solid #dde5f2;
+  background:#fff;color:#20304f;font-size:20px;cursor:pointer
+}
+.credito-modal-body{padding:16px 20px 22px}
+.credito-section-title{
+  margin:3px 0 10px;font:900 12px/1.2 system-ui;color:#53627e;text-transform:uppercase
+}
+.credito-request-list{display:flex;flex-direction:column;gap:10px}
+.credito-request{
+  border:1px solid #dce5f5;border-radius:16px;padding:13px 14px;background:#fbfdff
+}
+.credito-request-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
+.credito-request-name{font-weight:900;color:#153d99}
+.credito-request-value{font-weight:950;font-size:18px;color:#0a3daf;white-space:nowrap}
+.credito-request-meta{margin-top:5px;font-size:12px;color:#697892;line-height:1.45}
+.credito-request-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.credito-action{
+  border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer
+}
+.credito-action.approve{background:#0e9f6e;color:#fff}
+.credito-action.reject{background:#fff0f0;color:#b42318;border:1px solid #f2caca}
+.credito-empty{padding:18px;border:1px dashed #dce5f5;border-radius:14px;text-align:center;color:#76839b}
+.credito-history{margin-top:18px}
+.credito-status{
+  display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;margin-left:5px
+}
+.credito-status.aprovado{background:#e8f8f0;color:#0b7c56}
+.credito-status.recusado{background:#fff0f0;color:#b42318}
+body.dark #credito-solicitacoes-modal,
+body.dark .credito-modal-head{
+  background:#0e1b31;color:#e8efff;border-color:#32435f
+}
+body.dark .credito-request{background:#14233e;border-color:#32435f}
+body.dark .credito-modal-head h3,
+body.dark .credito-request-name,
+body.dark .credito-request-value{color:#dce8ff}
+body.dark .credito-request-meta{color:#a9b7d0}
 </style>
 """
 
@@ -89,6 +159,188 @@ LIVE_SCRIPT = r"""
     el.classList.toggle('off',!ok);
     const txt=el.querySelector('.txt');
     if(txt) txt.textContent=ok?'AO VIVO':'OFFLINE';
+  }
+
+
+  const URL_CREDITOS='/api/admin/solicitacoes-credito';
+  let carregandoCreditos=false;
+
+  function moneyBR(v){
+    return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+  }
+
+  function esc(s){
+    return String(s||'').replace(/[&<>"']/g,m=>({
+      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
+    })[m]);
+  }
+
+  function indicadorCreditos(){
+    let el=document.getElementById('credito-solicitacoes-live');
+    if(el) return el;
+
+    const aoVivo=indicador();
+    el=document.createElement('span');
+    el.id='credito-solicitacoes-live';
+    el.setAttribute('role','button');
+    el.setAttribute('tabindex','0');
+    el.title='Solicitações de crédito pendentes';
+    el.innerHTML='CRÉDITO <span class="count">0</span>';
+
+    aoVivo.insertAdjacentElement('afterend',el);
+    el.addEventListener('click',abrirCreditos);
+    el.addEventListener('keydown',e=>{
+      if(e.key==='Enter'||e.key===' '){e.preventDefault();abrirCreditos();}
+    });
+    return el;
+  }
+
+  function modalCreditos(){
+    let overlay=document.getElementById('credito-solicitacoes-overlay');
+    if(overlay) return overlay;
+
+    overlay=document.createElement('div');
+    overlay.id='credito-solicitacoes-overlay';
+    overlay.innerHTML=`
+      <div id="credito-solicitacoes-modal" role="dialog" aria-modal="true" aria-label="Solicitações de crédito">
+        <div class="credito-modal-head">
+          <div>
+            <h3>Solicitações de crédito</h3>
+            <div style="font-size:12px;color:#6f7c94;margin-top:3px">Aprove somente depois de confirmar o pagamento.</div>
+          </div>
+          <button type="button" class="credito-modal-close" title="Fechar">×</button>
+        </div>
+        <div class="credito-modal-body">
+          <div class="credito-section-title">Pendentes</div>
+          <div id="credito-pendentes-list" class="credito-request-list"></div>
+          <div class="credito-history">
+            <div class="credito-section-title">Processadas recentemente</div>
+            <div id="credito-recentes-list" class="credito-request-list"></div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(overlay);
+
+    overlay.querySelector('.credito-modal-close').addEventListener('click',fecharCreditos);
+    overlay.addEventListener('click',e=>{if(e.target===overlay) fecharCreditos();});
+    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))fecharCreditos();});
+    return overlay;
+  }
+
+  function fecharCreditos(){
+    modalCreditos().classList.remove('open');
+  }
+
+  function abrirCreditos(){
+    modalCreditos().classList.add('open');
+    carregarSolicitacoesCredito(true);
+  }
+
+  function renderCreditoRequest(x,pendente){
+    const tel=x.cliente_telefone ? ` • ${esc(x.cliente_telefone)}` : '';
+    const user=x.cliente_username ? ` • Login: ${esc(x.cliente_username)}` : '';
+    const status=esc(x.status||'pendente');
+    const obs=x.observacao ? `<div class="credito-request-meta">${esc(x.observacao)}</div>` : '';
+    return `
+      <div class="credito-request" data-credito-request="${x.id}">
+        <div class="credito-request-top">
+          <div>
+            <div class="credito-request-name">
+              ${esc(x.cliente_nome||'Cliente')}
+              ${pendente?'':`<span class="credito-status ${status}">${status.toUpperCase()}</span>`}
+            </div>
+            <div class="credito-request-meta">Solicitação #${x.id} • ${esc(x.criado_em||'')}${tel}${user}</div>
+            ${obs}
+          </div>
+          <div class="credito-request-value">${moneyBR(x.valor)}</div>
+        </div>
+        ${pendente?`
+          <div class="credito-request-actions">
+            <button type="button" class="credito-action approve" data-credit-approve="${x.id}">Aprovar e creditar</button>
+            <button type="button" class="credito-action reject" data-credit-reject="${x.id}">Recusar</button>
+          </div>`:''}
+      </div>`;
+  }
+
+  function renderSolicitacoesCredito(data){
+    const chip=indicadorCreditos();
+    const qtd=Number(data.quantidade_pendente||0);
+    const count=chip.querySelector('.count');
+    if(count) count.textContent=String(qtd);
+    chip.classList.toggle('show',qtd>0);
+
+    const modal=modalCreditos();
+    const p=modal.querySelector('#credito-pendentes-list');
+    const r=modal.querySelector('#credito-recentes-list');
+
+    p.innerHTML=(data.pendentes||[]).length
+      ? data.pendentes.map(x=>renderCreditoRequest(x,true)).join('')
+      : '<div class="credito-empty">Nenhuma solicitação de crédito pendente.</div>';
+
+    r.innerHTML=(data.recentes||[]).length
+      ? data.recentes.map(x=>renderCreditoRequest(x,false)).join('')
+      : '<div class="credito-empty">Nenhuma solicitação processada recentemente.</div>';
+
+    modal.querySelectorAll('[data-credit-approve]').forEach(btn=>{
+      btn.addEventListener('click',()=>aprovarCredito(btn.dataset.creditApprove,btn));
+    });
+    modal.querySelectorAll('[data-credit-reject]').forEach(btn=>{
+      btn.addEventListener('click',()=>recusarCredito(btn.dataset.creditReject,btn));
+    });
+  }
+
+  async function carregarSolicitacoesCredito(forcar){
+    if(carregandoCreditos) return;
+    carregandoCreditos=true;
+    try{
+      const resp=await fetch(URL_CREDITOS,{
+        cache:'no-store',credentials:'same-origin',
+        headers:{Accept:'application/json','X-Requested-With':'fetch'}
+      });
+      if(!resp.ok) throw new Error('creditos '+resp.status);
+      const data=await resp.json();
+      if(data&&data.ok) renderSolicitacoesCredito(data);
+    }catch(e){
+      if(forcar) console.warn('Solicitações de crédito:',e);
+    }finally{
+      carregandoCreditos=false;
+    }
+  }
+
+  async function aprovarCredito(id,btn){
+    if(!confirm('Confirmar pagamento e lançar este valor como crédito para o cliente?')) return;
+    btn.disabled=true;
+    try{
+      const resp=await fetch(`/api/admin/solicitacoes-credito/${id}/aprovar`,{
+        method:'POST',credentials:'same-origin',
+        headers:{Accept:'application/json','X-Requested-With':'fetch'}
+      });
+      const data=await resp.json().catch(()=>null);
+      if(!resp.ok||!data||!data.ok) throw new Error(data?.error||'Não foi possível aprovar.');
+      await carregarSolicitacoesCredito(true);
+      try{document.dispatchEvent(new CustomEvent('supervisao:live-updated'));}catch(e){}
+    }catch(e){
+      alert(e.message||'Falha ao aprovar solicitação.');
+      btn.disabled=false;
+    }
+  }
+
+  async function recusarCredito(id,btn){
+    if(!confirm('Recusar esta solicitação? Nenhum crédito será lançado.')) return;
+    btn.disabled=true;
+    try{
+      const resp=await fetch(`/api/admin/solicitacoes-credito/${id}/recusar`,{
+        method:'POST',credentials:'same-origin',
+        headers:{'Content-Type':'application/json',Accept:'application/json','X-Requested-With':'fetch'},
+        body:JSON.stringify({motivo:'Pagamento não confirmado pelo administrador.'})
+      });
+      const data=await resp.json().catch(()=>null);
+      if(!resp.ok||!data||!data.ok) throw new Error(data?.error||'Não foi possível recusar.');
+      await carregarSolicitacoesCredito(true);
+    }catch(e){
+      alert(e.message||'Falha ao recusar solicitação.');
+      btn.disabled=false;
+    }
   }
 
   function usuarioEditando(){
@@ -202,6 +454,7 @@ LIVE_SCRIPT = r"""
 
       atualizarFilaContador(docNovo);
       atualizarContadoresSolicitacoes(docNovo);
+      await carregarSolicitacoesCredito(false);
 
       reaplicarFiltros(filtros);
 
@@ -241,6 +494,7 @@ LIVE_SCRIPT = r"""
       }
 
       const nova=String(d.versao);
+      await carregarSolicitacoesCredito(false);
 
       if(versao===null){
         versao=nova;
@@ -265,6 +519,9 @@ LIVE_SCRIPT = r"""
 
   function iniciar(){
     indicador();
+    indicadorCreditos();
+    modalCreditos();
+    carregarSolicitacoesCredito(false);
     verificar();
     setInterval(verificar,INTERVALO);
 
