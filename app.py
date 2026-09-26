@@ -8919,6 +8919,7 @@ def api_cliente_historico():
             'status_pagamento': e.status_pagamento or 'pendente',
             'pagamento': pagamento_txt,
             'credito_usado': float(getattr(e, 'credito_usado', 0) or 0),
+            'entregador': (e.cooperado.nome if getattr(e, 'cooperado', None) else ''),
             'pago': pago,
             'cancelado': 'cancel' in status_norm,
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
@@ -8961,13 +8962,14 @@ def cliente_historico_exportar_xlsx():
             'Valor (R$)': float(e.valor or 0),
             'Forma de pagamento': e.pagamento or '',
             'Crédito utilizado (R$)': float(getattr(e, 'credito_usado', 0) or 0),
+            'Entregador': (e.cooperado.nome if getattr(e, 'cooperado', None) else ''),
             'Status da entrega': e.status or 'pendente',
             'Status do pagamento': e.status_pagamento or 'pendente',
         })
 
     df = pd.DataFrame(linhas, columns=[
         'Pedido', 'Data', 'Hora', 'Origem', 'Destino', 'Valor (R$)',
-        'Forma de pagamento', 'Crédito utilizado (R$)',
+        'Forma de pagamento', 'Crédito utilizado (R$)', 'Entregador',
         'Status da entrega', 'Status do pagamento'
     ])
 
@@ -8977,7 +8979,7 @@ def cliente_historico_exportar_xlsx():
         ws = writer.sheets['Histórico']
         ws.freeze_panes(1, 0)
         ws.autofilter(0, 0, max(len(df), 1), len(df.columns) - 1)
-        larguras = [10, 12, 8, 34, 34, 14, 22, 20, 20, 20]
+        larguras = [10, 12, 8, 34, 34, 14, 22, 20, 24, 20, 20]
         for idx, largura in enumerate(larguras):
             ws.set_column(idx, idx, largura)
 
