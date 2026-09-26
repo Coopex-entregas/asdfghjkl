@@ -151,15 +151,18 @@
       </div>
     </div>
     <div class="fin">
-      <small>Consumo líquido após a recarga</small>
-      <strong class="neg" id="fUsed">-R$ 0,00</strong>
+      <small id="fEndLabel">Saldo até a data final do filtro</small>
+      <strong id="fEnd">R$ 0,00</strong>
       <div style="font-size:11px;color:#71809a;margin-top:5px">
-        Consumos menos estornos.
+        Inclui consumos e estornos até a data selecionada.
       </div>
     </div>
     <div class="fin">
-      <small>Saldo ao final do período</small>
-      <strong id="fEnd">R$ 0,00</strong>
+      <small id="fAfterLabel">Do dia seguinte até hoje foi consumido</small>
+      <strong class="neg" id="fAfterUsed">R$ 0,00</strong>
+      <div style="font-size:11px;color:#71809a;margin-top:5px">
+        Saldo atual: <strong id="fCurrent" style="font-size:12px">R$ 0,00</strong>
+      </div>
     </div>
   </div>
 
@@ -209,8 +212,8 @@ function renderEnds(){const w=$('saved');if(!S.ends.length){w.innerHTML='<div cl
 window.useEnd=id=>{const x=S.ends.find(a=>a.id===id);if(x){setView('pedido');$('destinoSalvo').value=String(id);$('destinoSalvo').onchange()}};window.delEnd=async id=>{if(!confirm('Excluir endereço?'))return;const j=await api(API.delEnd(id),{method:'DELETE'});if(j?.ok)loadEnds()};
 $('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
 let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['entregaEndereco','entregaBairro','coletaReferencia'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
-async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Tabela de bairros':j.origem_preco==='km'?'Cálculo por km':'';return j}
-$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()){toast('O cliente está sem endereço fixo de coleta cadastrado.');return}if(!$('entregaEndereco').value.trim()||!$('entregaBairro').value.trim()){toast('Informe o endereço e o bairro da entrega.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}};
+async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Valor conforme tabela de bairros':'Bairro sem valor cadastrado — a supervisão informará o preço';return j}
+$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()&&!$('coletaBairro').value.trim()){toast('Informe o endereço ou o bairro da coleta.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
 window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
 $('requestCredit').onclick=async()=>{const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));if(!v||v<=0){toast('Informe um valor válido.');return}const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});if(j?.ok){const w=$('pixResult');w.classList.add('show');w.innerHTML=`<strong>Solicitação #${j.solicitacao_id} enviada</strong><div style="margin-top:8px">Valor: <strong>${money(j.valor)}</strong></div><div style="margin-top:12px;font-size:11px;font-weight:900;color:#66758e">CHAVE PIX — CNPJ COOPEX</div><div class="pix-key">05289938000197</div><button class="ghost" style="margin-top:8px" onclick="copyPix()">Copiar chave Pix</button><a class="wa" href="${j.whatsapp_url}" target="_blank" rel="noopener">Favor enviar o comprovante direto para esse número: (84) 98111-0706</a><div style="font-size:11px;color:#6c7a93;margin-top:8px">O crédito será lançado após a COOPEX confirmar o pagamento.</div>`;toast('Solicitação enviada para o administrativo.')}};
@@ -221,12 +224,17 @@ async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok
 $('fStart').textContent=signed(f.saldo_antes_recarga);
 $('fAdded').textContent='+'+money(f.ultima_recarga||0);
 $('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
-$('fUsed').textContent='-'+money(Math.abs(f.consumo_liquido||0));
 $('fEnd').textContent=signed(f.saldo_final_periodo);
+const consumidoDepois=Number(f.consumo_apos_periodo||0);
+$('fAfterUsed').textContent=(consumidoDepois>0?'-':'')+money(Math.abs(consumidoDepois));
+$('fCurrent').textContent=signed(f.saldo_atual);
+$('fEndLabel').textContent=f.data_fim_br?`Saldo até ${f.data_fim_br}`:'Saldo até a data final do filtro';
+$('fAfterLabel').textContent=f.data_fim_br?`Do dia seguinte a ${f.data_fim_br} até hoje foi consumido`:'Do dia seguinte até hoje foi consumido';
 tone($('fStart'),f.saldo_antes_recarga);
 tone($('fAfterRecharge'),f.saldo_apos_recarga);
-tone($('fUsed'),-Math.abs(f.consumo_liquido||0));
 tone($('fEnd'),f.saldo_final_periodo);
+tone($('fAfterUsed'),-Math.abs(consumidoDepois));
+tone($('fCurrent'),f.saldo_atual);
 const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
 $('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
