@@ -8959,10 +8959,16 @@ def api_cliente_historico():
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
         })
 
-    # Resumo financeiro baseado na ÚLTIMA RECARGA.
+    # Resumo financeiro baseado na ÚLTIMA RECARGA REAL.
+    #
+    # Regra:
+    # - Recarga real: movimento tipo 'credito' com credito_id preenchido e valor > 0.
+    # - Estorno: movimento tipo 'credito' sem credito_id; apenas devolve ao saldo
+    #   um valor previamente consumido e NÃO pode ser tratado como recarga.
     financeiro = None
     data_inicio = (request.args.get('data_inicio') or request.args.get('inicio') or '').strip()
     data_fim = (request.args.get('data_fim') or request.args.get('fim') or '').strip()
+
     if data_inicio and data_fim:
         try:
             d_ini = datetime.strptime(data_inicio, '%Y-%m-%d').date()
@@ -8971,26 +8977,36 @@ def api_cliente_historico():
 
             mov_data = func.coalesce(CreditoMovimento.criado_em, CreditoMovimento.data)
 
+            # Última RECARGA REAL até o fim do período.
             ultima_recarga = (
                 CreditoMovimento.query
                 .filter(
                     CreditoMovimento.cliente_id == cli.id,
                     CreditoMovimento.tipo == 'credito',
+                    CreditoMovimento.credito_id.isnot(None),
+                    CreditoMovimento.valor > 0,
                     mov_data <= fim_utc
                 )
                 .order_by(mov_data.desc(), CreditoMovimento.id.desc())
                 .first()
             )
 
-            saldo_antes_ultima_recarga = 0.0
-            valor_ultima_recarga = 0.0
-            ficou_para_consumo = 0.0
-            valor_consumido = 0.0
+            saldo_antes_recarga = 0.0
+            valor_recarga = 0.0
+            saldo_apos_recarga = 0.0
+            debitos_apos_recarga = 0.0
+            estornos_apos_recarga = 0.0
+            consumo_liquido = 0.0
+            saldo_final_periodo = 0.0
 
             if ultima_recarga:
-                dt_rec = getattr(ultima_recarga, 'criado_em', None) or getattr(ultima_recarga, 'data', None)
+                dt_rec = (
+                    getattr(ultima_recarga, 'criado_em', None)
+                    or getattr(ultima_recarga, 'data', None)
+                )
 
-                cred_antes_rec = (
+                # Saldo imediatamente antes da recarga real.
+                creditos_antes = (
                     db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
                     .filter(
                         CreditoMovimento.cliente_id == cli.id,
@@ -8998,7 +9014,7 @@ def api_cliente_historico():
                         mov_data < dt_rec
                     ).scalar() or 0.0
                 )
-                deb_antes_rec = (
+                debitos_antes = (
                     db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
                     .filter(
                         CreditoMovimento.cliente_id == cli.id,
@@ -9006,21 +9022,41 @@ def api_cliente_historico():
                         mov_data < dt_rec
                     ).scalar() or 0.0
                 )
-                saldo_antes_ultima_recarga = float(cred_antes_rec) - float(deb_antes_rec)
-                valor_ultima_recarga = float(getattr(ultima_recarga, 'valor', 0) or 0)
-                ficou_para_consumo = saldo_antes_ultima_recarga + valor_ultima_recarga
 
-                valor_consumido = (
+                saldo_antes_recarga = float(creditos_antes) - float(debitos_antes)
+                valor_recarga = float(ultima_recarga.valor or 0)
+                saldo_apos_recarga = saldo_antes_recarga + valor_recarga
+
+                # Consumos após a recarga.
+                debitos_apos_recarga = (
                     db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
                     .filter(
                         CreditoMovimento.cliente_id == cli.id,
                         CreditoMovimento.tipo == 'debito',
-                        mov_data >= dt_rec,
+                        mov_data > dt_rec,
                         mov_data <= fim_utc
                     ).scalar() or 0.0
                 )
+
+                # Estornos após a recarga:
+                # créditos sem credito_id = valor devolvido de uma saída anterior.
+                estornos_apos_recarga = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'credito',
+                        CreditoMovimento.credito_id.is_(None),
+                        mov_data > dt_rec,
+                        mov_data <= fim_utc
+                    ).scalar() or 0.0
+                )
+
+                consumo_liquido = float(debitos_apos_recarga) - float(estornos_apos_recarga)
+                saldo_final_periodo = saldo_apos_recarga - consumo_liquido
+
             else:
-                cred_ate_fim = (
+                # Cliente sem recarga real registrada até o fim do período.
+                todos_creditos = (
                     db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
                     .filter(
                         CreditoMovimento.cliente_id == cli.id,
@@ -9028,7 +9064,7 @@ def api_cliente_historico():
                         mov_data <= fim_utc
                     ).scalar() or 0.0
                 )
-                deb_ate_fim = (
+                todos_debitos = (
                     db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
                     .filter(
                         CreditoMovimento.cliente_id == cli.id,
@@ -9036,20 +9072,21 @@ def api_cliente_historico():
                         mov_data <= fim_utc
                     ).scalar() or 0.0
                 )
-                saldo_antes_ultima_recarga = 0.0
-                valor_ultima_recarga = float(cred_ate_fim)
-                ficou_para_consumo = float(cred_ate_fim)
-                valor_consumido = float(deb_ate_fim)
+                saldo_final_periodo = float(todos_creditos) - float(todos_debitos)
 
             financeiro = {
-                'saldo_antes_ultima_recarga': round(float(saldo_antes_ultima_recarga), 2),
-                'ultima_recarga': round(float(valor_ultima_recarga), 2),
-                'ficou_para_consumo': round(float(ficou_para_consumo), 2),
-                'valor_consumido': round(float(valor_consumido), 2),
+                'saldo_antes_recarga': round(saldo_antes_recarga, 2),
+                'ultima_recarga': round(valor_recarga, 2),
+                'saldo_apos_recarga': round(saldo_apos_recarga, 2),
+                'debitos_apos_recarga': round(float(debitos_apos_recarga), 2),
+                'estornos_apos_recarga': round(float(estornos_apos_recarga), 2),
+                'consumo_liquido': round(consumo_liquido, 2),
+                'saldo_final_periodo': round(saldo_final_periodo, 2),
                 'data_inicio': data_inicio,
                 'data_fim': data_fim,
             }
         except Exception:
+            current_app.logger.exception('Erro ao calcular resumo financeiro do cliente')
             financeiro = None
 
     return jsonify(
