@@ -1739,41 +1739,67 @@ def _find_cliente_by_nome(nome: str):
 
 def atualizar_saldo_credito_cliente(cliente_id):
     """
-    Recalcula o saldo do cliente SOMENTE pelos movimentos em CreditoMovimento.
+    Retorna o SALDO CONSOLIDADO salvo no cliente.
 
-    Isso garante:
-      - Se você excluir um crédito, remover seus movimentos e chamar esta função,
-        o saldo volta a ser o que sobrar dos outros movimentos.
+    IMPORTANTE: o histórico antigo possui ajustes/lançamentos que não podem ser
+    reprocessados como se fossem um razão contábil perfeito. Por isso esta função
+    NÃO recalcula mais a carteira desde o início. O saldo oficial passa a ser
+    Cliente.saldo_atual e, daqui para frente, cada recarga, consumo ou estorno
+    altera esse saldo apenas pela diferença da nova movimentação.
     """
-    total_creditos = (
-        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-        .filter(
-            CreditoMovimento.cliente_id == cliente_id,
-            CreditoMovimento.tipo == 'credito'
-        )
-        .scalar()
-        or 0.0
-    )
-
-    total_debitos = (
-        db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-        .filter(
-            CreditoMovimento.cliente_id == cliente_id,
-            CreditoMovimento.tipo == 'debito'
-        )
-        .scalar()
-        or 0.0
-    )
-
-    saldo = float(total_creditos - total_debitos)
-
     cliente = Cliente.query.get(cliente_id)
-    if cliente:
-        cliente.saldo_atual = saldo
-        db.session.add(cliente)
-        db.session.commit()
+    saldo = _as_decimal(cliente.saldo_atual if cliente else 0)
+    return saldo.quantize(Decimal("0.01"))
 
-    return Decimal(str(saldo)).quantize(Decimal("0.01"))
+
+def _aplicar_delta_saldo_credito(cliente_id: int, delta) -> Decimal:
+    """Aplica somente a NOVA diferença ao saldo consolidado do cliente."""
+    cliente = Cliente.query.get(cliente_id)
+    if not cliente:
+        raise ValueError("Cliente não encontrado")
+    novo = (_as_decimal(cliente.saldo_atual or 0) + _as_decimal(delta)).quantize(Decimal("0.01"))
+    cliente.saldo_atual = float(novo)
+    db.session.add(cliente)
+    return novo
+
+
+def _correcao_pontual_saldo_20260926(cliente):
+    """
+    Correção única do saldo que foi sobrescrito pelo recálculo retroativo.
+
+    Situação confirmada em 26/09/2026:
+      saldo consolidado antes das 2 novas entregas: -169,00
+      novas entregas: -15,00 e -16,00
+      saldo correto atual: -200,00
+
+    Aplica somente quando encontra exatamente o cenário afetado (saldo -354,00
+    e última recarga #100046 de 300,00), e grava uma chave para nunca repetir.
+    """
+    if not cliente:
+        return
+    chave = f"saldo_fix_20260926_cliente_{cliente.id}"
+    try:
+        if ConfigSistema.query.filter_by(chave=chave).first():
+            return
+        ultima = (Credito.query
+                  .filter_by(cliente_id=cliente.id)
+                  .order_by(Credito.criado_em.desc(), Credito.id.desc())
+                  .first())
+        if not ultima:
+            return
+        saldo_atual = _as_decimal(cliente.saldo_atual or 0)
+        valor_ultima = _as_decimal(ultima.valor_final or ultima.valor_bruto or 0)
+        if ultima.id == 100046 and valor_ultima == Decimal("300.00") and saldo_atual == Decimal("-354.00"):
+            cliente.saldo_atual = -200.00
+            ultima.saldo_antes = -105.00
+            ultima.saldo_depois = 195.00
+            db.session.add(cliente)
+            db.session.add(ultima)
+            db.session.add(ConfigSistema(chave=chave, valor="-200.00"))
+            db.session.commit()
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception("Falha ao aplicar correção pontual do saldo consolidado")
 
 
 def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
@@ -1791,8 +1817,8 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
 
     valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
 
-    # saldo_antes vai ser o saldo recalculado pelos movimentos atuais
-    saldo_antes = atualizar_saldo_credito_cliente(cli.id)
+    # Usa o saldo consolidado atual; não reprocessa o histórico antigo.
+    saldo_antes = _as_decimal(cli.saldo_atual or 0).quantize(Decimal("0.01"))
 
     c = Credito(
         cliente_id=cli.id,
@@ -1816,11 +1842,9 @@ def registrar_credito(cliente_id: int, valor_bruto, desconto_tipo: str,
         referencia=f"Crédito #{c.id}",
     )
     db.session.add(mov)
-    db.session.commit()
 
-    # Recalcula saldo a partir de TODOS os movimentos (incluindo este crédito)
-    novo_saldo = atualizar_saldo_credito_cliente(cli.id)
-
+    # Recarga nova: soma somente este valor ao saldo consolidado.
+    novo_saldo = _aplicar_delta_saldo_credito(cli.id, valor_final)
     c.saldo_depois = float(novo_saldo)
     db.session.add(c)
     db.session.commit()
@@ -1837,6 +1861,7 @@ def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
     if not cli:
         raise ValueError("Cliente não encontrado para esse crédito")
 
+    valor_antigo = _as_decimal(c.valor_final or 0).quantize(Decimal("0.01"))
     valor_final = calcular_valor_final(valor_bruto, desconto_tipo, desconto_valor)
 
     c.valor_bruto = float(_as_decimal(valor_bruto))
@@ -1857,11 +1882,13 @@ def editar_credito(credito_id: int, valor_bruto, desconto_tipo: str,
         mov.valor = float(valor_final)
         mov.referencia = f"Crédito #{c.id} (ajustado)"
 
-    db.session.commit()
-
-    # Recalcula saldo do cliente com base em TODOS os movimentos
-    novo_saldo = atualizar_saldo_credito_cliente(cli.id)
-    c.saldo_depois = float(novo_saldo)
+    # Edição de recarga: aplica somente a diferença entre o valor novo e o antigo.
+    delta = (_as_decimal(valor_final) - valor_antigo).quantize(Decimal("0.01"))
+    novo_saldo = _aplicar_delta_saldo_credito(cli.id, delta)
+    if c.saldo_depois is not None:
+        c.saldo_depois = float((_as_decimal(c.saldo_depois or 0) + delta).quantize(Decimal("0.01")))
+    else:
+        c.saldo_depois = float(novo_saldo)
 
     db.session.add(c)
     db.session.commit()
@@ -1946,6 +1973,9 @@ def sincronizar_credito_da_entrega(entrega_id: int) -> Decimal:
     ja_lancado = _credito_liquido_ja_lancado(cli.id, e.id)
     diferenca = (desejado - ja_lancado).quantize(Decimal("0.01"))
 
+    # Débito inicial acompanha a data da entrega. Estorno, porém, deve entrar no
+    # extrato na data em que foi efetivamente devolvido, como CRÉDITO de estorno
+    # (credito_id=None), nunca como nova recarga.
     data_mov = e.data_envio or datetime.utcnow()
 
     if diferenca > Decimal("0.00"):
@@ -1962,13 +1992,15 @@ def sincronizar_credito_da_entrega(entrega_id: int) -> Decimal:
 
     elif diferenca < Decimal("0.00"):
         estorno = abs(diferenca).quantize(Decimal("0.01"))
+        data_estorno = datetime.utcnow()
         mov = CreditoMovimento(
             cliente_id=cli.id,
             entrega_id=e.id,
+            credito_id=None,
             tipo="credito",
             valor=float(estorno),
-            data=data_mov,
-            criado_em=data_mov,
+            data=data_estorno,
+            criado_em=data_estorno,
             referencia=f"Estorno Entrega #{e.id}",
         )
         db.session.add(mov)
@@ -1979,10 +2011,12 @@ def sincronizar_credito_da_entrega(entrega_id: int) -> Decimal:
         e.status_pagamento = "pago"
         if not (e.recebido_por or "").strip():
             e.recebido_por = "Crédito automático"
+    # Movimento novo altera somente o saldo consolidado pela diferença:
+    # débito => diminui saldo; estorno => aumenta saldo.
+    if diferenca != Decimal("0.00"):
+        _aplicar_delta_saldo_credito(cli.id, -diferenca)
     db.session.add(e)
     db.session.commit()
-
-    atualizar_saldo_credito_cliente(cli.id)
     return diferenca
 
 
@@ -2015,13 +2049,13 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
         e.credito_usado = 0.0
         db.session.add(e)
         db.session.commit()
-        atualizar_saldo_credito_cliente(cli.id)
         return Decimal("0.00")
 
     data_mov = datetime.utcnow()
     mov_estorno = CreditoMovimento(
         cliente_id=cli.id,
         entrega_id=e.id,
+        credito_id=None,
         tipo="credito",
         valor=float(ja_lancado),
         data=data_mov,
@@ -2031,10 +2065,9 @@ def desfazer_consumo_credito_da_entrega(entrega_id: int) -> Decimal:
     db.session.add(mov_estorno)
 
     e.credito_usado = 0.0
+    _aplicar_delta_saldo_credito(cli.id, ja_lancado)
     db.session.add(e)
     db.session.commit()
-
-    atualizar_saldo_credito_cliente(cli.id)
     return ja_lancado
 
 
@@ -2068,7 +2101,7 @@ def calc_valor_final(valor, desconto_tipo, desconto_valor):
 
 def atualizar_saldo_cliente(cliente_id, delta):
     """
-    Função LEGADA. Hoje o saldo oficial é calculado por atualizar_saldo_credito_cliente.
+    Função LEGADA. O saldo oficial é Cliente.saldo_atual e deve ser alterado apenas por delta.
     Se ainda tiver uso em algum lugar antigo, ela só ajusta o saldo_atual direto.
     """
     cli = Cliente.query.get(cliente_id)
@@ -2085,7 +2118,7 @@ def registrar_movimento(cliente_id, tipo, valor,
     """
     Também legado. Hoje o normal é:
       - criar movimentos diretamente nas funções novas
-      - depois chamar atualizar_saldo_credito_cliente(cliente_id)
+      - o saldo deve ser ajustado pelo delta correspondente
 
     Agora também aceita entrega_id para vincular o movimento a uma entrega.
     """
@@ -3155,6 +3188,9 @@ def meu_credito():
     - Cliente avulso pode pedir sem cadastro.
     """
     cli = _cliente_atual_optional()
+    if cli:
+        _correcao_pontual_saldo_20260926(cli)
+        cli = Cliente.query.get(cli.id)
     cid = cli.id if cli else None
 
     movs = []
@@ -4028,13 +4064,11 @@ def _calcular_preco_por_trechos_tabela(coleta, entrega, paradas=None, retorno=Fa
 
 def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
     """
-    Ordem correta:
-    1) Tenta preço cadastrado na tabela/rotas.
-       - Sem parada: origem -> destino.
-       - Com parada: soma os trechos cadastrados.
-    2) Se faltar cadastro, calcula rota real de rua pelo OSRM e multiplica pelo R$/km
-       configurado em Tabelas e Rotas (/api/perkm).
-    3) Se não conseguir calcular a rota, retorna valor a confirmar.
+    Regra de preço do portal do cliente:
+    1) Usa SOMENTE o preço cadastrado em Preços e Rotas para os bairros informados.
+    2) Não existe mais fallback automático por quilômetro.
+    3) Se algum trecho/bairro não possuir preço cadastrado, a solicitação continua
+       com valor pendente para a supervisão informar manualmente.
     """
     paradas = paradas or []
     preco_tabela = _calcular_preco_por_trechos_tabela(coleta, entrega, paradas, retorno=retorno)
@@ -4044,49 +4078,8 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
             'valor_a_informar': False,
             'origem_preco': 'tabela',
             'distancia_km': None,
-            'per_km': float(get_per_km()),
+            'per_km': None,
             'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
-        }
-
-    distancia_km = _calcular_rota_real_km(coleta, entrega, paradas)
-    per_km = float(get_per_km())
-    if distancia_km is not None and distancia_km > 0:
-        valor_base = float(distancia_km) * per_km
-
-        # Soma serviços fixos cadastrados nas paradas e no destino final.
-        valor_servicos = 0.0
-        for p in list(paradas or []) + [entrega]:
-            if isinstance(p, dict):
-                servico = (p.get('servico') or p.get('tipo_servico') or p.get('tipo') or '').strip()
-                if servico and _norm(servico) != 'retorno':
-                    valor_servicos += float(_buscar_preco_servico(servico) or 0)
-
-        subtotal_sem_retorno = valor_base + valor_servicos
-
-        # Para cálculo por KM, o retorno também segue a regra: percentual sobre
-        # a última entrega/último trecho, sem incluir Cartório, Correios, Compras
-        # ou qualquer serviço fixo no valor-base do retorno.
-        ultimo_trecho_base = valor_base
-        try:
-            ultimo_km = _calcular_ultimo_trecho_real_km(coleta, entrega, paradas)
-            if ultimo_km is not None and ultimo_km > 0:
-                ultimo_trecho_base = float(ultimo_km) * per_km
-        except Exception:
-            ultimo_trecho_base = valor_base
-
-        valor_retorno = 0.0
-        if retorno:
-            valor_retorno = float(ultimo_trecho_base or 0) * (_buscar_percentual_retorno() / 100.0)
-
-        return {
-            'preco': round(subtotal_sem_retorno + valor_retorno, 2),
-            'valor_a_informar': False,
-            'origem_preco': 'km',
-            'distancia_km': round(float(distancia_km), 2),
-            'per_km': per_km,
-            'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
-            'retorno_valor': round(valor_retorno, 2),
-            'valor_servicos': round(valor_servicos, 2),
         }
 
     return {
@@ -4094,7 +4087,8 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
         'valor_a_informar': True,
         'origem_preco': 'confirmar',
         'distancia_km': None,
-        'per_km': per_km,
+        'per_km': None,
+        'retorno_percentual': _buscar_percentual_retorno() if retorno else 0,
     }
 
 
@@ -8751,9 +8745,9 @@ def api_atualizar_valor_entrega(id):
 def api_cliente_saldo():
     cli = _cliente_atual()
 
-    # garante que o saldo esteja correto (opcional mas recomendado)
+    # O saldo salvo é a fonte oficial. Não recalcula o passado.
     try:
-        atualizar_saldo_credito_cliente(cli.id)
+        _correcao_pontual_saldo_20260926(cli)
         cli = Cliente.query.get(cli.id)
     except Exception:
         pass
@@ -8961,10 +8955,10 @@ def api_cliente_historico():
 
     # Resumo financeiro baseado na ÚLTIMA RECARGA REAL.
     #
-    # Regra:
-    # - Recarga real: movimento tipo 'credito' com credito_id preenchido e valor > 0.
-    # - Estorno: movimento tipo 'credito' sem credito_id; apenas devolve ao saldo
-    #   um valor previamente consumido e NÃO pode ser tratado como recarga.
+    # IMPORTANTE:
+    # - Recarga real = crédito ligado a um registro da tabela Credito (credito_id preenchido).
+    # - Estorno = crédito de devolução de uma entrega (credito_id=None).
+    #   O estorno VOLTA para o saldo normalmente, mas NUNCA vira "última recarga".
     financeiro = None
     data_inicio = (request.args.get('data_inicio') or request.args.get('inicio') or '').strip()
     data_fim = (request.args.get('data_fim') or request.args.get('fim') or '').strip()
@@ -8977,7 +8971,8 @@ def api_cliente_historico():
 
             mov_data = func.coalesce(CreditoMovimento.criado_em, CreditoMovimento.data)
 
-            # Última RECARGA REAL até o fim do período.
+            # Última RECARGA REAL existente até o fechamento da data escolhida.
+            # Estornos ficam de fora porque possuem credito_id=None.
             ultima_recarga = (
                 CreditoMovimento.query
                 .filter(
@@ -8994,10 +8989,6 @@ def api_cliente_historico():
             saldo_antes_recarga = 0.0
             valor_recarga = 0.0
             saldo_apos_recarga = 0.0
-            debitos_apos_recarga = 0.0
-            estornos_apos_recarga = 0.0
-            consumo_liquido = 0.0
-            saldo_final_periodo = 0.0
 
             if ultima_recarga:
                 dt_rec = (
@@ -9005,85 +8996,55 @@ def api_cliente_historico():
                     or getattr(ultima_recarga, 'data', None)
                 )
 
-                # Saldo imediatamente antes da recarga real.
-                creditos_antes = (
-                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                    .filter(
-                        CreditoMovimento.cliente_id == cli.id,
-                        CreditoMovimento.tipo == 'credito',
-                        mov_data < dt_rec
-                    ).scalar() or 0.0
-                )
-                debitos_antes = (
-                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                    .filter(
-                        CreditoMovimento.cliente_id == cli.id,
-                        CreditoMovimento.tipo == 'debito',
-                        mov_data < dt_rec
-                    ).scalar() or 0.0
-                )
+                # Para a recarga, usa o snapshot consolidado salvo no registro Credito.
+                # Assim ajustes antigos do extrato não alteram retroativamente o card.
+                reg_credito = Credito.query.get(ultima_recarga.credito_id) if ultima_recarga.credito_id else None
+                if reg_credito is not None:
+                    saldo_antes_recarga = float(reg_credito.saldo_antes or 0)
+                    valor_recarga = float(reg_credito.valor_final or ultima_recarga.valor or 0)
+                    saldo_apos_recarga = float(reg_credito.saldo_depois if reg_credito.saldo_depois is not None else (saldo_antes_recarga + valor_recarga))
+                else:
+                    valor_recarga = float(ultima_recarga.valor or 0)
+                    saldo_apos_recarga = saldo_antes_recarga + valor_recarga
 
-                saldo_antes_recarga = float(creditos_antes) - float(debitos_antes)
-                valor_recarga = float(ultima_recarga.valor or 0)
-                saldo_apos_recarga = saldo_antes_recarga + valor_recarga
+            # Saldo REAL no fechamento da data final do filtro.
+            # Aqui entram TODOS os créditos, inclusive estornos, porque estorno devolve saldo.
+            creditos_ate_fim = (
+                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                .filter(
+                    CreditoMovimento.cliente_id == cli.id,
+                    CreditoMovimento.tipo == 'credito',
+                    mov_data <= fim_utc
+                ).scalar() or 0.0
+            )
+            debitos_ate_fim = (
+                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                .filter(
+                    CreditoMovimento.cliente_id == cli.id,
+                    CreditoMovimento.tipo == 'debito',
+                    mov_data <= fim_utc
+                ).scalar() or 0.0
+            )
+            saldo_final_periodo = float(creditos_ate_fim) - float(debitos_ate_fim)
 
-                # Consumos após a recarga.
-                debitos_apos_recarga = (
-                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                    .filter(
-                        CreditoMovimento.cliente_id == cli.id,
-                        CreditoMovimento.tipo == 'debito',
-                        mov_data > dt_rec,
-                        mov_data <= fim_utc
-                    ).scalar() or 0.0
-                )
+            # Saldo atual oficial = saldo consolidado salvo no cliente.
+            # Nunca reprocessa todo o histórico antigo.
+            saldo_atual_real = float(cli.saldo_atual or 0.0)
 
-                # Estornos após a recarga:
-                # créditos sem credito_id = valor devolvido de uma saída anterior.
-                estornos_apos_recarga = (
-                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                    .filter(
-                        CreditoMovimento.cliente_id == cli.id,
-                        CreditoMovimento.tipo == 'credito',
-                        CreditoMovimento.credito_id.is_(None),
-                        mov_data > dt_rec,
-                        mov_data <= fim_utc
-                    ).scalar() or 0.0
-                )
-
-                consumo_liquido = float(debitos_apos_recarga) - float(estornos_apos_recarga)
-                saldo_final_periodo = saldo_apos_recarga - consumo_liquido
-
-            else:
-                # Cliente sem recarga real registrada até o fim do período.
-                todos_creditos = (
-                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                    .filter(
-                        CreditoMovimento.cliente_id == cli.id,
-                        CreditoMovimento.tipo == 'credito',
-                        mov_data <= fim_utc
-                    ).scalar() or 0.0
-                )
-                todos_debitos = (
-                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                    .filter(
-                        CreditoMovimento.cliente_id == cli.id,
-                        CreditoMovimento.tipo == 'debito',
-                        mov_data <= fim_utc
-                    ).scalar() or 0.0
-                )
-                saldo_final_periodo = float(todos_creditos) - float(todos_debitos)
+            # Ex.: saldo no dia 20 = -34 e saldo atual = -169 => foram consumidos 135.
+            # Não soma o saldo atual novamente; apenas compara os dois saldos.
+            consumo_apos_periodo = saldo_final_periodo - saldo_atual_real
 
             financeiro = {
                 'saldo_antes_recarga': round(saldo_antes_recarga, 2),
                 'ultima_recarga': round(valor_recarga, 2),
                 'saldo_apos_recarga': round(saldo_apos_recarga, 2),
-                'debitos_apos_recarga': round(float(debitos_apos_recarga), 2),
-                'estornos_apos_recarga': round(float(estornos_apos_recarga), 2),
-                'consumo_liquido': round(consumo_liquido, 2),
                 'saldo_final_periodo': round(saldo_final_periodo, 2),
+                'consumo_apos_periodo': round(consumo_apos_periodo, 2),
+                'saldo_atual': round(saldo_atual_real, 2),
                 'data_inicio': data_inicio,
                 'data_fim': data_fim,
+                'data_fim_br': d_fim.strftime('%d/%m/%Y'),
             }
         except Exception:
             current_app.logger.exception('Erro ao calcular resumo financeiro do cliente')
@@ -10395,13 +10356,14 @@ def creditos_excluir(id):
 
     c = Credito.query.get_or_404(id)
     cliente_id = c.cliente_id
-    # remove movimentos ligados a este crédito
+    valor_remover = _as_decimal(c.valor_final or 0).quantize(Decimal("0.01"))
+    # Excluir uma recarga remove somente o efeito daquela recarga do saldo atual.
+    _aplicar_delta_saldo_credito(cliente_id, -valor_remover)
     CreditoMovimento.query.filter_by(credito_id=c.id).delete()
     db.session.delete(c)
     db.session.commit()
 
-    atualizar_saldo_credito_cliente(cliente_id)
-    msg = 'Crédito excluído e saldo recalculado.'
+    msg = 'Crédito excluído e valor removido do saldo consolidado.'
     flash(msg, 'success')
 
     if _wants_json():
