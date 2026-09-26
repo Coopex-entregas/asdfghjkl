@@ -151,10 +151,10 @@
       </div>
     </div>
     <div class="fin">
-      <small id="fEndLabel">Saldo até a data final do filtro</small>
-      <strong id="fEnd">R$ 0,00</strong>
+      <small id="fEndLabel">Consumo após a recarga até a data final</small>
+      <strong class="neg" id="fEnd">R$ 0,00</strong>
       <div style="font-size:11px;color:#71809a;margin-top:5px">
-        Inclui consumos e estornos até a data selecionada.
+        Somente crédito automático, descontando os estornos.
       </div>
     </div>
     <div class="fin">
@@ -224,15 +224,16 @@ async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok
 $('fStart').textContent=signed(f.saldo_antes_recarga);
 $('fAdded').textContent='+'+money(f.ultima_recarga||0);
 $('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
-$('fEnd').textContent=signed(f.saldo_final_periodo);
+const consumidoAte=Number(f.consumo_ate_fim||0);
+$('fEnd').textContent=money(Math.abs(consumidoAte));
 const consumidoDepois=Number(f.consumo_apos_periodo||0);
-$('fAfterUsed').textContent=(consumidoDepois>0?'-':'')+money(Math.abs(consumidoDepois));
+$('fAfterUsed').textContent=money(Math.abs(consumidoDepois));
 $('fCurrent').textContent=signed(f.saldo_atual);
-$('fEndLabel').textContent=f.data_fim_br?`Saldo até ${f.data_fim_br}`:'Saldo até a data final do filtro';
+$('fEndLabel').textContent=f.data_fim_br?`Consumo após a recarga até ${f.data_fim_br}`:'Consumo após a recarga até a data final';
 $('fAfterLabel').textContent=f.data_fim_br?`Do dia seguinte a ${f.data_fim_br} até hoje foi consumido`:'Do dia seguinte até hoje foi consumido';
 tone($('fStart'),f.saldo_antes_recarga);
 tone($('fAfterRecharge'),f.saldo_apos_recarga);
-tone($('fEnd'),f.saldo_final_periodo);
+tone($('fEnd'),-Math.abs(consumidoAte));
 tone($('fAfterUsed'),-Math.abs(consumidoDepois));
 tone($('fCurrent'),f.saldo_atual);
 const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
