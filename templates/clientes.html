@@ -168,6 +168,96 @@
       .title-wrap h1{font-size:1.6rem}
       .senha-temp-row{grid-template-columns:1fr}
     }
+    body.dark{
+      --bg:#071326;
+      --card:#0f1d35;
+      --card-2:#0b182e;
+      --text:#edf3ff;
+      --muted:#aebbd5;
+      --line:#263b61;
+      --line-strong:#38517f;
+      --blue-soft:#172b4d;
+      --red-soft:#411e26;
+      --shadow:0 12px 30px rgba(0,0,0,.25);
+      --shadow-soft:0 6px 18px rgba(0,0,0,.18);
+    }
+    body.dark{
+      background:
+        radial-gradient(circle at 85% 0%,rgba(61,112,229,.10),transparent 28%),
+        #071326;
+    }
+    body.dark .top h1,
+    body.dark .title-wrap h1,
+    body.dark .section-title h3{
+      color:#f3f6ff;
+    }
+    body.dark .title-wrap p,
+    body.dark .section-title p,
+    body.dark .muted,
+    body.dark .kpi small{
+      color:#aebbd5;
+    }
+    body.dark .brand-icon,
+    body.dark .kpi,
+    body.dark .card,
+    body.dark .table-wrap,
+    body.dark .senha-modal{
+      background:#0f1d35;
+      border-color:#263b61;
+    }
+    body.dark .kpi{
+      background:linear-gradient(120deg,#0f1d35 0%,#0d1930 70%,#10213f 100%);
+    }
+    body.dark .kpi::before,
+    body.dark .section-icon{
+      background:#172b4d;
+      border-color:#355078;
+    }
+    body.dark .field label{
+      color:#b9c8e5;
+    }
+    body.dark .field input,
+    body.dark .searchbar-wrap input,
+    body.dark td input,
+    body.dark .senha-temp{
+      background:#0b182e;
+      color:#edf3ff;
+      border-color:#38517f;
+    }
+    body.dark input::placeholder{
+      color:#8191ad;
+    }
+    body.dark .tools form,
+    body.dark .senha-info{
+      background:#0b182e;
+      border-color:#263b61;
+    }
+    body.dark td{
+      background:#0f1d35;
+      color:#edf3ff;
+      border-color:#263b61;
+    }
+    body.dark tbody tr:nth-child(even) td{
+      background:#0b182e;
+    }
+    body.dark tbody tr:hover td{
+      background:#172b4d;
+    }
+    body.dark .btn.alt{
+      background:#13233f;
+      color:#dce7ff;
+      border-color:#355078;
+    }
+    body.dark .btn.danger{
+      background:#28171c;
+      color:#ff8a93;
+      border-color:#6b313a;
+    }
+    body.dark .senha-info strong,
+    body.dark .senha-modal h3{
+      color:#dfe8ff;
+    }
+
   </style>
 
 </head>
@@ -182,6 +272,7 @@
       </div>
     </div>
     <div class="actions">
+      <button id="theme" class="btn alt" type="button" title="Alternar modo claro/escuro">☾</button>
       <a class="btn alt" href="{{ url_for('admin') }}">← Painel administrativo</a>
       <a class="btn" href="{{ url_for('creditos') }}">Créditos</a>
     </div>
@@ -421,6 +512,39 @@ document.getElementById('btnConfirmarSenha').addEventListener('click', () => {
   form.appendChild(campoConfirmacao);
   form.submit();
 });
+
+(function(){
+  const button=document.getElementById('theme');
+  const saved=localStorage.getItem('coopex_theme');
+  if(saved==='dark') document.body.classList.add('dark');
+
+  function syncThemeButton(){
+    if(!button) return;
+    button.textContent=document.body.classList.contains('dark')?'☀':'☾';
+    button.title=document.body.classList.contains('dark')?'Usar modo claro':'Usar modo noturno';
+  }
+
+  if(button){
+    button.addEventListener('click',()=>{
+      document.body.classList.toggle('dark');
+      localStorage.setItem(
+        'coopex_theme',
+        document.body.classList.contains('dark')?'dark':'light'
+      );
+      syncThemeButton();
+    });
+  }
+
+  window.addEventListener('storage',(event)=>{
+    if(event.key==='coopex_theme'){
+      document.body.classList.toggle('dark',event.newValue==='dark');
+      syncThemeButton();
+    }
+  });
+
+  syncThemeButton();
+})();
+
 </script>
 </body>
 </html>
