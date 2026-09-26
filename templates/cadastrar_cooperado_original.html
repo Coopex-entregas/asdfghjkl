@@ -97,7 +97,7 @@
     }
     .brand-title{display:flex;flex-direction:column;line-height:1.08}
     .brand-title strong{font-size:1.18rem;font-weight:900;letter-spacing:-.025em}
-    .brand-title small{font-size:.78rem;font-weight:700;opacity:.88;margin-top:4px}
+    .brand-title small{font-size:.74rem;font-weight:700;opacity:.88;margin-top:4px}
     .spacer{flex:1}
 
     .top-btn{
@@ -131,14 +131,19 @@
       box-shadow:0 8px 20px rgba(190,31,42,.20);
     }
     .top-btn:hover{transform:translateY(-1px);filter:brightness(1.04)}
+    .top-btn.icon-only{
+      width:42px;
+      padding:0;
+      gap:0;
+    }
 
     .page{
       width:100%;
       max-width:none;
       margin:0;
-      padding:18px 20px 26px;
+      padding:14px 16px 22px;
       display:grid;
-      grid-template-columns:360px minmax(0,1fr);
+      grid-template-columns:320px minmax(0,1fr);
       gap:18px;
       align-items:start;
     }
@@ -150,7 +155,7 @@
       box-shadow:var(--shadow);
       overflow:hidden;
     }
-    .card-body{padding:20px}
+    .card-body{padding:18px}
     .left-card{position:sticky;top:90px}
     .card-title{
       display:flex;align-items:flex-start;justify-content:space-between;
@@ -179,7 +184,7 @@
       min-width:132px;height:38px;padding:0 14px;
       border-radius:999px;background:var(--royal-3);
       color:var(--royal);border:1px solid var(--line-strong);
-      font-weight:900;font-size:.78rem;
+      font-weight:900;font-size:.74rem;
     }
     body.dark .kpi{color:#dce7ff}
 
@@ -249,7 +254,7 @@
     }
     body.dark .btn.success{color:#dce7ff;border-color:#4d79cf}
 
-    .actions{display:grid;grid-template-columns:1fr;gap:10px;margin-top:16px}
+    .actions{display:grid;grid-template-columns:1fr;gap:8px;margin-top:14px}
     .panel-link{
       display:inline-flex;width:100%;justify-content:center;align-items:center;gap:7px;
       margin-top:16px;padding-top:16px;border-top:1px solid var(--line);
@@ -258,13 +263,13 @@
     body.dark .panel-link{color:#9fc2ff}
 
     .toolbar{
-      display:grid;grid-template-columns:minmax(320px,1fr) 170px 180px;
+      display:grid;grid-template-columns:minmax(260px,1fr) 150px 150px;
       gap:12px;align-items:end;margin-bottom:14px;
     }
 
     .info-strip{
       display:flex;align-items:flex-start;gap:10px;
-      padding:12px 14px;margin-bottom:14px;
+      padding:10px 10px;margin-bottom:14px;
       border-radius:12px;background:var(--royal-3);
       border:1px solid var(--line-strong);
       color:var(--text);font-size:.76rem;line-height:1.45;font-weight:650;
@@ -280,14 +285,14 @@
     }
     .coop-table{
       width:100%;
-      min-width:1040px;
+      min-width:980px;
       border-collapse:separate;
       border-spacing:0;
       table-layout:fixed;
     }
     .coop-table thead th{
       position:sticky;top:0;z-index:2;
-      padding:12px 14px;
+      padding:10px 10px;
       background:var(--soft);
       color:#36517f;
       border-bottom:1px solid var(--line);
@@ -298,19 +303,19 @@
       background:#10203a;color:#c3d2ec;
     }
     .coop-table tbody td{
-      padding:8px 14px;
+      padding:8px 10px;
       border-bottom:1px solid var(--line);
       vertical-align:middle;
       background:var(--card);
-      font-size:.78rem;
+      font-size:.74rem;
     }
     .coop-table tbody tr:last-child td{border-bottom:0}
     .coop-table tbody tr:hover td{background:var(--soft)}
-    .coop-table .col-coop{width:21%}
-    .coop-table .col-status{width:10%}
-    .coop-table .col-name{width:19%}
-    .coop-table .col-pass{width:16%}
-    .coop-table .col-actions{width:34%}
+    .coop-table .col-coop{width:18%}
+    .coop-table .col-status{width:9%}
+    .coop-table .col-name{width:18%}
+    .coop-table .col-pass{width:14%}
+    .coop-table .col-actions{width:40%}
 
     .coop-ident{
       display:flex;align-items:center;gap:10px;min-width:0;
@@ -341,11 +346,11 @@
       font-size:.77rem!important;
     }
     .row-actions{
-      display:flex;align-items:center;gap:7px;flex-wrap:nowrap;
+      display:flex;align-items:center;gap:6px;flex-wrap:wrap;
     }
     .row-actions form{margin:0}
-    .row-actions .btn{min-width:108px}
-    .row-actions .btn.danger{min-width:142px}
+    .row-actions .btn{min-width:90px}
+    .row-actions .btn.danger{min-width:110px}
     .empty{
       color:var(--muted);font-size:.9rem;text-align:center;padding:28px;
       border:1px dashed var(--line-strong);border-radius:14px;background:var(--soft);
@@ -358,8 +363,8 @@
     body.dark .table-shell::-webkit-scrollbar-thumb{background:#365488}
 
     @media(max-width:1200px){
-      .page{grid-template-columns:330px minmax(0,1fr);padding:16px 14px 24px}
-      .toolbar{grid-template-columns:1fr 150px 160px}
+      .page{grid-template-columns:300px minmax(0,1fr);padding:16px 14px 24px}
+      .toolbar{grid-template-columns:1fr 140px 140px}
       .row-actions{flex-wrap:wrap}
     }
     @media(max-width:900px){
@@ -398,9 +403,7 @@
     <div class="spacer"></div>
 
     <a class="top-btn admin" href="{{ url_for('admin') }}"><i class="bi bi-arrow-left"></i> Painel administrativo</a>
-    <button id="btnTheme" class="top-btn theme" type="button">
-      <i class="bi bi-moon-stars"></i> Modo escuro
-    </button>
+    <button id="btnTheme" class="top-btn theme icon-only" type="button" aria-label="Alternar tema" title="Alternar tema"><i class="bi bi-moon-stars"></i></button>
     <a class="top-btn logout" href="{{ url_for('logout') }}">
       <i class="bi bi-box-arrow-right"></i> Sair
     </a>
@@ -457,11 +460,7 @@
             </a>
           </div>
         </form>
-
-        <a class="panel-link" href="{{ url_for('admin') }}">
-          <i class="bi bi-arrow-left-circle"></i>&nbsp; Voltar ao painel principal
-        </a>
-      </div>
+</div>
     </section>
 
     <section class="card">
@@ -556,7 +555,7 @@
                       {% endif %}
                     </form>
                     <form method="POST" action="{{ url_for('excluir_cooperado', coop_id=c.id) }}" onsubmit="return confirm('Excluir cooperado {{ c.nome }}?');">
-                      <button class="btn small danger" type="submit" title="Excluir cooperado"><i class="bi bi-trash3"></i> Excluir cadastro</button>
+                      <button class="btn small danger" type="submit" title="Excluir cooperado"><i class="bi bi-trash3"></i> Excluir</button>
                     </form>
                   </div>
                 </td>
