@@ -647,6 +647,7 @@
       cancelar: (id) => `/api/pedidos/${id}/cancelar`,
       historico: "/api/cliente/historico",
       exportar: "/cliente/historico/exportar.xlsx",
+      cotar: "/api/cliente/cotar-entrega",
       enderecos: "/api/cliente/enderecos",
       enderecoPadrao: (id) => `/api/cliente/enderecos/${id}/padrao`,
       enderecoDelete: (id) => `/api/cliente/enderecos/${id}`
@@ -802,6 +803,7 @@
       $("coletaContato").value = item.contato || $("coletaContato").value || "";
       $("coletaTelefone").value = item.telefone || $("coletaTelefone").value || "";
       $("salvarPadrao").checked = !!item.padrao;
+      setTimeout(agendarCotacao, 0);
     }
 
     $("coletaSalvaSelect").addEventListener("change", () => {
@@ -931,6 +933,8 @@
             </div>
             <div class="route">${escapeHtml(item.origem || "-")} → ${escapeHtml(item.destino || "-")}</div>
             <div class="meta">${escapeHtml(item.data || "")} • Pagamento: ${escapeHtml(item.status_pagamento || "pendente")}</div>
+            <div class="meta">Entregador: <strong>${escapeHtml(item.entregador || "Ainda não atribuído")}</strong></div>
+            ${item.comprovante_url ? `<div style="margin-top:9px"><a class="mini-btn" href="${item.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a></div>` : ``}
           </div>
           <div class="value">${moneyBR(item.valor || 0)}</div>
         </div>
@@ -980,11 +984,93 @@
       $("recebimentoDinheiroWrap").style.display = $("pedidoPagamento").value === "dinheiro" ? "block" : "none";
     });
 
+
+    let cotacaoTimer = null;
+
+    async function cotarPedido(){
+      const coletaEndereco = $("coletaEndereco").value.trim();
+      const coletaBairro = $("coletaBairro").value.trim();
+      const entregaEndereco = $("entregaEndereco").value.trim();
+      const entregaBairro = $("entregaBairro").value.trim();
+
+      // Para usar a tabela de bairros, precisamos ao menos dos bairros.
+      if(!coletaBairro || !entregaBairro){
+        $("resumoValor").textContent = "Informe os bairros";
+        $("resumoPrevisao").textContent = "—";
+        return null;
+      }
+
+      $("resumoValor").textContent = "Calculando...";
+      $("resumoPrevisao").textContent = "Aguarde";
+
+      const payload = {
+        tipo: $("pedidoTipo").value,
+        retorno: $("pedidoRetorno").checked,
+        coleta: {
+          endereco: coletaEndereco,
+          bairro: coletaBairro,
+          ref: $("coletaReferencia").value.trim(),
+          contato: $("coletaContato").value.trim(),
+          telefone: $("coletaTelefone").value.trim()
+        },
+        entrega: {
+          endereco: entregaEndereco,
+          bairro: entregaBairro,
+          ref: $("entregaReferencia").value.trim(),
+          contato: $("entregaContato").value.trim(),
+          telefone: $("entregaTelefone").value.trim()
+        },
+        paradas: []
+      };
+
+      const j = await safeJSON(API.cotar, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+
+      if(!(j && j.ok)){
+        $("resumoValor").textContent = "A confirmar";
+        $("resumoPrevisao").textContent = "—";
+        return null;
+      }
+
+      if(j.valor_a_informar || j.preco == null){
+        $("resumoValor").textContent = "A confirmar";
+        $("resumoPrevisao").textContent = "Supervisão";
+      }else{
+        $("resumoValor").textContent = moneyBR(j.preco);
+        $("resumoPrevisao").textContent =
+          j.origem_preco === "tabela" ? "Tabela de bairros" :
+          j.origem_preco === "km" ? "Cálculo por km" : "Calculado";
+      }
+
+      return j;
+    }
+
+    function agendarCotacao(){
+      clearTimeout(cotacaoTimer);
+      cotacaoTimer = setTimeout(cotarPedido, 350);
+    }
+
+    ["coletaBairro","entregaBairro","coletaEndereco","entregaEndereco"].forEach(id => {
+      $(id).addEventListener("input", agendarCotacao);
+      $(id).addEventListener("change", agendarCotacao);
+    });
+    $("pedidoTipo").addEventListener("change", agendarCotacao);
+    $("pedidoRetorno").addEventListener("change", agendarCotacao);
+
     $("btnSolicitarEntrega").addEventListener("click", async () => {
       const coletaEndereco = $("coletaEndereco").value.trim();
       const entregaEndereco = $("entregaEndereco").value.trim();
       if(!coletaEndereco || !entregaEndereco){
         toast("Informe a coleta e a entrega.");
+        return;
+      }
+
+      const cotacao = await cotarPedido();
+      if(!cotacao){
+        toast("Não foi possível calcular a entrega. Confira os bairros.");
         return;
       }
 
