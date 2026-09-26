@@ -1,8 +1,10 @@
 from functools import wraps
+from datetime import datetime, timedelta
+from io import BytesIO
 import re
 import unicodedata
 
-from flask import flash, jsonify, redirect, render_template, request, session, url_for
+from flask import flash, jsonify, redirect, render_template, request, send_file, session, url_for
 from sqlalchemy import case, func, text
 
 DONE = False
@@ -431,6 +433,120 @@ def _credit_enabled(cliente_id):
     return jsonify(ok=True, habilitado=enabled, cliente_id=cliente_id, resumo=summary)
 
 
+def _export_credit_movements():
+    if not _is_admin():
+        return redirect(url_for("login"))
+
+    start_raw = (request.args.get("data_inicio") or "").strip()
+    end_raw = (request.args.get("data_fim") or "").strip()
+    cliente_id = request.args.get("cliente_id", type=int)
+
+    try:
+        start_date = datetime.strptime(start_raw, "%Y-%m-%d").date()
+        end_date = datetime.strptime(end_raw, "%Y-%m-%d").date()
+    except ValueError:
+        return _credit_error("Informe uma data inicial e uma data final válidas.")
+
+    if start_date > end_date:
+        return _credit_error("A data inicial não pode ser maior que a data final.")
+
+    Movimento = MOD.CreditoMovimento
+    Cliente = MOD.Cliente
+    date_order = func.coalesce(Movimento.criado_em, Movimento.data)
+    query = (
+        DB.session.query(Movimento, Cliente.nome.label("cliente_nome"))
+        .join(Cliente, Cliente.id == Movimento.cliente_id)
+    )
+    if cliente_id:
+        query = query.filter(Movimento.cliente_id == cliente_id)
+
+    # Busca uma margem e filtra pela data local de Brasília em Python.
+    query = query.filter(
+        date_order >= datetime.combine(start_date - timedelta(days=1), datetime.min.time()),
+        date_order < datetime.combine(end_date + timedelta(days=2), datetime.min.time()),
+    ).order_by(date_order.asc(), Movimento.id.asc())
+
+    rows = []
+    converter = getattr(MOD, "to_brasilia", None)
+    for movement, client_name in query.all():
+        raw_dt = movement.criado_em or movement.data
+        local_dt = converter(raw_dt) if callable(converter) and raw_dt else raw_dt
+        if local_dt and not (start_date <= local_dt.date() <= end_date):
+            continue
+
+        reference = str(movement.referencia or "").strip()
+        kind = str(movement.tipo or "").lower()
+        if kind == "debito":
+            type_text = "Consumo"
+            signed_value = -float(movement.valor or 0.0)
+        elif "estorno" in _norm(reference):
+            type_text = "Estorno"
+            signed_value = float(movement.valor or 0.0)
+        else:
+            type_text = "Crédito"
+            signed_value = float(movement.valor or 0.0)
+
+        rows.append({
+            "data": local_dt.strftime("%d/%m/%Y %H:%M:%S") if local_dt else "",
+            "cliente": client_name or f"Cliente #{movement.cliente_id}",
+            "tipo": type_text,
+            "referencia": reference or "—",
+            "valor": signed_value,
+            "vinculo": (
+                f"Entrega #{movement.entrega_id}" if movement.entrega_id
+                else f"Crédito #{movement.credito_id}" if movement.credito_id
+                else "—"
+            ),
+        })
+
+    try:
+        import xlsxwriter
+    except Exception:
+        return _credit_error("XlsxWriter não está disponível para gerar o Excel.")
+
+    output = BytesIO()
+    workbook = xlsxwriter.Workbook(output, {"in_memory": True})
+    ws = workbook.add_worksheet("Créditos")
+    header = workbook.add_format({"bold": True, "bg_color": "#1748D8", "font_color": "#FFFFFF", "border": 1})
+    money = workbook.add_format({"num_format": 'R$ #,##0.00;[Red]-R$ #,##0.00', "border": 1})
+    cell = workbook.add_format({"border": 1})
+    date_fmt = workbook.add_format({"border": 1})
+
+    columns = ["Data", "Cliente", "Tipo", "Referência", "Valor", "Vínculo"]
+    for col, title in enumerate(columns):
+        ws.write(0, col, title, header)
+
+    for row_idx, item in enumerate(rows, start=1):
+        ws.write(row_idx, 0, item["data"], date_fmt)
+        ws.write(row_idx, 1, item["cliente"], cell)
+        ws.write(row_idx, 2, item["tipo"], cell)
+        ws.write(row_idx, 3, item["referencia"], cell)
+        ws.write_number(row_idx, 4, item["valor"], money)
+        ws.write(row_idx, 5, item["vinculo"], cell)
+
+    total_row = len(rows) + 2
+    ws.write(total_row, 3, "Total líquido", header)
+    ws.write_formula(total_row, 4, f"=SUM(E2:E{len(rows)+1})" if rows else "=0", money)
+    ws.set_column(0, 0, 21)
+    ws.set_column(1, 1, 28)
+    ws.set_column(2, 2, 14)
+    ws.set_column(3, 3, 34)
+    ws.set_column(4, 4, 16)
+    ws.set_column(5, 5, 22)
+    ws.freeze_panes(1, 0)
+    workbook.close()
+    output.seek(0)
+
+    suffix = f"_{cliente_id}" if cliente_id else ""
+    filename = f"creditos_{start_date.strftime('%Y%m%d')}_a_{end_date.strftime('%Y%m%d')}{suffix}.xlsx"
+    return send_file(
+        output,
+        as_attachment=True,
+        download_name=filename,
+        mimetype="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+    )
+
+
 def _create_indexes():
     statements = [
         "CREATE INDEX IF NOT EXISTS idx_credito_cliente_criado ON credito (cliente_id, criado_em)",
@@ -485,6 +601,17 @@ def install(app_module):
             "/api/creditos/clientes/<int:cliente_id>/habilitado",
             enabled_endpoint,
             _credit_enabled,
+            methods=["GET"],
+        )
+
+    export_endpoint = "creditos_exportar_excel"
+    if export_endpoint in app_module.app.view_functions:
+        app_module.app.view_functions[export_endpoint] = _export_credit_movements
+    else:
+        app_module.app.add_url_rule(
+            "/creditos/exportar-excel",
+            export_endpoint,
+            _export_credit_movements,
             methods=["GET"],
         )
 
