@@ -144,6 +144,16 @@
     .history-footer{display:flex;justify-content:center;padding-top:8px}
     .empty-list{grid-column:1/-1;padding:42px 20px;text-align:center;color:var(--muted);font-size:.8rem;font-weight:750}
 
+    .export-card{padding:12px 14px;display:flex;align-items:end;gap:10px;flex-wrap:wrap}
+    .export-title{min-width:190px;align-self:center}
+    .export-title strong{display:block;font-size:.82rem;font-weight:900}
+    .export-title small{display:block;margin-top:3px;color:var(--muted);font-size:.66rem;font-weight:700}
+    .export-field{display:flex;flex-direction:column;gap:5px;min-width:150px}
+    .export-field label{color:var(--muted);font-size:.62rem;font-weight:900;text-transform:uppercase;letter-spacing:.04em}
+    .export-field .control{height:38px}
+    .export-actions{display:flex;gap:7px;flex-wrap:wrap}
+    @media(max-width:700px){.export-title{width:100%}.export-field{flex:1;min-width:130px}.export-actions{width:100%}.export-actions .btn{flex:1}}
+
     @media(max-width:1250px){.workspace{grid-template-columns:330px minmax(0,1fr)}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.clients-grid{grid-template-columns:1fr}}
     @media(max-width:900px){.workspace{grid-template-columns:1fr}.register-card{position:static}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.list-card .card-head{align-items:stretch;flex-direction:column}.list-toolbar{grid-template-columns:1fr auto}}
     @media(max-width:580px){.topbar{padding:8px 10px}.brand img,.brand-text small{display:none}.top-actions .btn{padding:0 9px}.workspace{padding:8px}.summary-grid{grid-template-columns:1fr 1fr}.metric{min-height:78px}.metric strong{font-size:.96rem}.clients-grid{padding:8px}.list-toolbar{grid-template-columns:1fr}.form-actions{grid-template-columns:1fr}.client-summary{grid-template-columns:1fr}.balance-box{text-align:left}.table-wrap{max-height:520px}}
@@ -193,6 +203,16 @@
       <div class="metric"><small>Consumos líquidos</small><strong>{{ total_consumos|brl }}</strong><span>Débitos descontados dos estornos</span></div>
       <div class="metric"><small>Clientes de crédito</small><strong>{{ clientes_lista|length }}</strong><span>Clientes que já receberam crédito</span></div>
     </div>
+
+    <section class="card export-card">
+      <div class="export-title"><strong>Exportar movimentações</strong><small>Escolha um período ou use a semana passada.</small></div>
+      <div class="export-field"><label for="exportStart">De</label><input id="exportStart" class="control" type="date"></div>
+      <div class="export-field"><label for="exportEnd">Até</label><input id="exportEnd" class="control" type="date"></div>
+      <div class="export-actions">
+        <button id="lastWeek" class="btn light" type="button">Semana passada</button>
+        <button id="exportExcel" class="btn" type="button">Exportar Excel</button>
+      </div>
+    </section>
 
     <section class="card list-card">
       <div class="card-head">
@@ -310,6 +330,27 @@
   });
 
   if(SELECTED_ID){const selected=ALL_CLIENTS.find(client=>Number(client.id)===Number(SELECTED_ID));if(selected)chooseClient(selected)}
+
+  const exportStart=document.getElementById('exportStart');
+  const exportEnd=document.getElementById('exportEnd');
+  const isoDate=d=>{const y=d.getFullYear(),m=String(d.getMonth()+1).padStart(2,'0'),day=String(d.getDate()).padStart(2,'0');return `${y}-${m}-${day}`};
+  function setLastWeek(){
+    const today=new Date();
+    const weekday=(today.getDay()+6)%7;
+    const thisMonday=new Date(today);thisMonday.setHours(0,0,0,0);thisMonday.setDate(today.getDate()-weekday);
+    const start=new Date(thisMonday);start.setDate(start.getDate()-7);
+    const end=new Date(start);end.setDate(end.getDate()+6);
+    exportStart.value=isoDate(start);exportEnd.value=isoDate(end);
+  }
+  document.getElementById('lastWeek').addEventListener('click',setLastWeek);
+  document.getElementById('exportExcel').addEventListener('click',()=>{
+    if(!exportStart.value||!exportEnd.value){alert('Informe a data inicial e a data final.');return}
+    if(exportStart.value>exportEnd.value){alert('A data inicial não pode ser maior que a data final.');return}
+    const params=new URLSearchParams({data_inicio:exportStart.value,data_fim:exportEnd.value});
+    if(SELECTED_ID)params.set('cliente_id',SELECTED_ID);
+    window.location.href=`/creditos/exportar-excel?${params.toString()}`;
+  });
+
   (function(){const button=document.getElementById('theme');const saved=localStorage.getItem('coopex_theme');if(saved==='dark')document.body.classList.add('dark');const sync=()=>button.textContent=document.body.classList.contains('dark')?'☀':'☾';button.addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()});sync()})();
 </script>
 </body>
