@@ -1,242 +1,582 @@
-<!doctype html>
-<html lang="pt-BR">
-<head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<title>COOPEX Entregas — Cliente</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
-<style>
-:root{--blue:#0c55df;--blue2:#063ab0;--ink:#11254c;--muted:#71809d;--bg:#f2f6fd;--card:#fff;--line:#dce6f7;--red:#d92d20;--green:#0e9f6e;--shadow:0 12px 32px rgba(20,54,120,.08)}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);font-family:Inter,system-ui,sans-serif;color:var(--ink)}button,input,select,textarea{font:inherit}button{cursor:pointer}.app{max-width:1500px;margin:auto;padding:18px}.top{background:#fff;border:1px solid var(--line);border-radius:22px;padding:14px 20px;display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:16px}.brand strong{display:block;color:var(--blue2);font-size:20px}.brand span{font-size:12px;color:var(--muted)}.top-right{display:flex;align-items:center;gap:10px}.hello{font-size:12px}.hello strong{display:block;font-size:14px}.pill,.logout{height:42px;border:1px solid var(--line);background:#fff;border-radius:13px;padding:0 13px;display:inline-flex;align-items:center;gap:8px;font-weight:800;color:var(--blue2);text-decoration:none}.logout{color:var(--red);border-color:#f2c5c5}.dot{width:10px;height:10px;border-radius:50%;background:#16c36a}
-.layout{display:grid;grid-template-columns:210px minmax(0,1fr);gap:16px}.side{background:#f8fbff;border:1px solid var(--line);border-radius:22px;padding:12px;height:max-content;position:sticky;top:12px}.nav{width:100%;height:54px;border:0;border-radius:15px;background:transparent;color:#50607e;font-weight:800;text-align:left;padding:0 14px;margin:3px 0}.nav.active{background:#e8f0ff;color:var(--blue2)}
-.hero{background:linear-gradient(135deg,#0c55df,#063ab0);color:#fff;border-radius:24px;padding:20px 24px;display:grid;grid-template-columns:1.15fr .55fr;gap:20px;align-items:center;box-shadow:0 16px 34px rgba(10,70,190,.18)}.hero h2{margin:0;font-size:20px}.hero .desc{font-size:13px;opacity:.9;margin-top:5px}.balance{font-size:46px;font-weight:900;letter-spacing:-1px;margin:16px 0 7px}.balance.negative{color:#ffb5b0}.balance-label{font-size:12px;font-weight:900;opacity:.95}.balance-msg{font-size:13px;font-weight:600;opacity:.94}.hero-actions{display:flex;flex-direction:column;gap:10px}.hero-btn{height:58px;border-radius:16px;border:1px solid rgba(255,255,255,.35);font-weight:900;font-size:15px;display:flex;align-items:center;justify-content:space-between;padding:0 18px}.hero-btn.white{background:#fff;color:var(--blue2)}.hero-btn.outline{background:transparent;color:#fff}
-.active-order{margin-top:14px;background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px 16px;display:none;align-items:center;justify-content:space-between;gap:12px}.active-order.show{display:flex}.active-order .meta{font-size:12px;color:var(--muted);margin-top:4px}.cancel-btn{border:1px solid #f2bcbc;background:#fff5f5;color:var(--red);border-radius:13px;height:42px;padding:0 14px;font-weight:900}
-.tabs{margin:14px 0;display:grid;grid-template-columns:repeat(4,1fr);background:#fff;border:1px solid var(--line);border-radius:18px;padding:7px}.tab{height:50px;border:0;background:transparent;border-radius:13px;font-weight:900;color:#53627e}.tab.active{background:#eef4ff;color:var(--blue2);box-shadow:inset 0 -3px 0 var(--blue)}
-.view{display:none}.view.active{display:block}.steps{display:grid;grid-template-columns:1fr 1fr;gap:14px}.step-card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;box-shadow:var(--shadow)}.step-head{display:flex;align-items:center;gap:12px;margin-bottom:14px}.num{width:38px;height:38px;border-radius:50%;background:var(--blue);color:#fff;display:grid;place-items:center;font-weight:900}.step-head h3{margin:0;color:var(--blue2);font-size:16px}.step-head p{margin:3px 0 0;color:var(--muted);font-size:12px}.fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}.field.full{grid-column:1/-1}.field label{display:block;font-size:11px;font-weight:800;color:#586985;margin:0 0 5px}.input,.select,.textarea{width:100%;border:1px solid #cfdcf0;border-radius:12px;background:#fff;min-height:46px;padding:0 12px;outline:none}.textarea{padding:11px 12px;min-height:82px;resize:vertical}.input[readonly]{background:#f7f9fd;color:#4d5d78}.input:focus,.select:focus,.textarea:focus{border-color:#7aa6ff;box-shadow:0 0 0 3px rgba(12,85,223,.09)}.fixed-note{background:#eef5ff;color:#315d9e;border:1px solid #d7e6ff;border-radius:12px;padding:10px 12px;font-size:12px;font-weight:700}
-.order-bar{position:sticky;bottom:10px;z-index:20;margin-top:14px;background:rgba(255,255,255,.97);border:1px solid var(--line);border-radius:18px;padding:12px 14px;box-shadow:0 15px 32px rgba(16,42,92,.15);display:flex;justify-content:space-between;align-items:center;gap:14px}.estimate small{display:block;color:var(--muted);font-weight:800}.estimate strong{font-size:25px;color:var(--blue2)}.primary{border:0;background:linear-gradient(135deg,#0d63f3,#0744c6);color:#fff;border-radius:14px;height:52px;padding:0 24px;font-weight:900;font-size:16px}
-.card{background:#fff;border:1px solid var(--line);border-radius:20px;padding:17px;margin-bottom:14px;box-shadow:var(--shadow)}.card h3{margin:0 0 12px;color:var(--blue2)}.week-title{font-size:13px;color:#66758e;margin-top:-5px;margin-bottom:14px;font-weight:700}.filters{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:9px;align-items:end}.ghost{height:44px;border:1px solid #d4dff1;background:#fff;color:var(--blue2);font-weight:900;border-radius:12px;padding:0 13px}.toolbar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
-.financial{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-bottom:14px}.fin{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}.fin small{display:block;color:#66758e;font-size:11px;font-weight:800}.fin strong{display:block;font-size:20px;margin-top:6px}.fin strong.neg{color:var(--red)}.fin strong.pos{color:var(--green)}
-.delivery-summary{display:grid;grid-template-columns:repeat(4,1fr);gap:9px;margin-bottom:12px}.mini-stat{background:#f8fbff;border:1px solid var(--line);border-radius:14px;padding:11px}.mini-stat small{font-size:10px;color:#71809a;font-weight:800}.mini-stat strong{display:block;margin-top:4px}
-.history{display:flex;flex-direction:column;gap:9px}.hist{background:#fff;border:1px solid var(--line);border-radius:16px;padding:13px 14px;display:grid;grid-template-columns:1fr auto;gap:10px}.hist .route{font-size:13px;margin-top:6px}.hist .meta{font-size:11px;color:#6e7c95;margin-top:5px}.tags{display:flex;gap:6px;flex-wrap:wrap}.tag{font-size:10px;font-weight:900;border-radius:999px;padding:5px 8px;background:#eef4ff;color:var(--blue2)}.tag.red{background:#fff0f0;color:var(--red)}.tag.green{background:#eaf8f2;color:var(--green)}.value{font-size:17px;font-weight:900;text-align:right}.receipt{display:inline-flex;margin-top:8px;border:1px solid #cddaf0;border-radius:9px;padding:7px 9px;font-size:11px;font-weight:900;color:var(--blue2);text-decoration:none}
-.credit-box{max-width:700px}.preset{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}.preset button{height:46px;border:1px solid var(--line);border-radius:12px;background:#fff;color:var(--blue2);font-weight:900}.pix-result{display:none;margin-top:13px;background:#f4f8ff;border:1px solid #d5e3fb;border-radius:15px;padding:14px}.pix-result.show{display:block}.pix-key{font-size:21px;font-weight:900;color:var(--blue2);word-break:break-all}.wa{display:flex;justify-content:center;align-items:center;text-align:center;margin-top:10px;min-height:46px;padding:9px 12px;background:#1fa855;color:#fff;border-radius:12px;font-weight:900;text-decoration:none}
-.saved{display:flex;flex-direction:column;gap:8px}.saved-item{border:1px solid var(--line);border-radius:14px;padding:12px;display:flex;justify-content:space-between;gap:10px}.saved-item small{display:block;color:#6d7b94;margin-top:4px}.empty{padding:20px;text-align:center;color:#73819b;border:1px dashed #d7e0ef;border-radius:14px}.toast{position:fixed;left:50%;bottom:15px;transform:translate(-50%,20px);background:#17243f;color:#fff;padding:11px 14px;border-radius:12px;font-size:12px;font-weight:800;opacity:0;pointer-events:none;transition:.2s;z-index:200}.toast.show{opacity:1;transform:translate(-50%,0)}
-.mobile-menu{display:none}
-@media(max-width:900px){.app{padding:10px}.layout{display:block}.side{display:none}.top{padding:12px}.brand strong{font-size:16px}.brand span{font-size:10px}.hello{display:none}.pill{display:none}.hero{grid-template-columns:1fr;padding:16px}.balance{font-size:34px;margin:10px 0 4px}.hero-actions{display:grid;grid-template-columns:1fr 1fr}.hero-btn{height:50px;font-size:13px}.tabs{display:none}.mobile-menu{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:8px;right:8px;bottom:8px;z-index:80;background:#fff;border:1px solid var(--line);border-radius:16px;padding:6px;box-shadow:var(--shadow)}.mobile-menu .tab{height:48px;font-size:10px;padding:0 3px}.steps{display:block}.step-card{margin-bottom:9px;padding:13px}.step-head{margin-bottom:0;cursor:pointer}.step-card .step-body{display:none;margin-top:13px}.step-card.open .step-body{display:block}.fields{grid-template-columns:1fr}.field.full{grid-column:auto}.order-bar{bottom:68px}.financial,.delivery-summary{grid-template-columns:1fr 1fr}.filters{grid-template-columns:1fr 1fr}.filters .field:nth-child(3),.filters .field:nth-child(4){grid-column:auto}.filters .ghost{grid-column:1/-1}.active-order{align-items:flex-start;flex-direction:column}.cancel-btn{width:100%}.top-right{margin-left:auto}.logout{height:38px;padding:0 10px}.hist{grid-template-columns:1fr}.value{text-align:left}.saved-item{display:block}.saved-item .toolbar{margin-top:8px}}
+"""Atualização ao vivo do painel Supervisão sem recarregar a página.
 
-@keyframes negativePulse{
-  0%,100%{box-shadow:0 16px 34px rgba(217,45,32,.24),0 0 0 0 rgba(217,45,32,.26)}
-  50%{box-shadow:0 18px 44px rgba(217,45,32,.42),0 0 0 8px rgba(217,45,32,.08)}
+- Consulta apenas um contador de versão a cada 2 segundos.
+- Não usa location.reload().
+- Só busca o HTML do /admin quando alguma operação realmente altera dados.
+- Atualiza somente tabela, fila, KPIs e solicitações.
+- Mantém pesquisa/filtros, posição da página e edição em andamento.
+- Remove o cliente antigo que recarregava a página e que podia quebrar o JS do recibo.
+"""
+
+import re
+from datetime import datetime
+
+from flask import jsonify, request, session
+from sqlalchemy import text
+
+
+LIVE_STYLE = r"""
+<style id="supervisao-live-style">
+#supervisao-live-indicator,.portal-alert-chip{
+  display:inline-flex;align-items:center;gap:5px;min-height:22px;padding:4px 8px;margin-left:6px;
+  border-radius:999px;font:900 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  vertical-align:middle;white-space:nowrap
 }
-.hero.negative-balance{
-  background:linear-gradient(135deg,#d92d20,#9f1f17)!important;
-  animation:negativePulse 1.15s ease-in-out infinite;
+#supervisao-live-indicator{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:inherit}
+#supervisao-live-indicator .dot{width:7px;height:7px;border-radius:50%;background:#16a365}
+#supervisao-live-indicator.off .dot{background:#d64545}
+.portal-alert-chip{display:none;cursor:pointer;border:1px solid}
+.portal-alert-chip.show{display:inline-flex}
+.portal-alert-chip.credito{background:#fff5dd;color:#8a4d00;border-color:#f2ce76}
+.portal-alert-chip.cancel{background:#fff0f0;color:#b42318;border-color:#efb8b8}
+.portal-alert-chip .count{display:grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:currentColor;color:#fff}
+#portal-requests-overlay{
+  position:fixed;inset:0;z-index:11000;display:none;align-items:center;justify-content:center;
+  padding:16px;background:rgba(8,18,42,.58)
 }
-.hero.negative-balance .balance{color:#fff!important}
-.hero.negative-balance .balance-label,
-.hero.negative-balance .balance-msg,
-.hero.negative-balance .desc,
-.hero.negative-balance h2{color:#fff!important}
+#portal-requests-overlay.open{display:flex}
+#portal-requests-modal{
+  width:min(780px,100%);max-height:90vh;overflow:auto;background:#fff;color:#14213d;
+  border-radius:22px;border:1px solid #dce5f5;box-shadow:0 28px 90px rgba(8,18,42,.34)
+}
+.pr-head{position:sticky;top:0;z-index:2;background:#fff;padding:17px 20px;border-bottom:1px solid #e4eaf4;display:flex;justify-content:space-between;gap:12px}
+.pr-head h2{margin:0;font-size:20px;color:#0a3daf}.pr-head p{margin:4px 0 0;font-size:12px;color:#6d7a93}
+.pr-close{width:40px;height:40px;border-radius:12px;border:1px solid #dce4f0;background:#fff;font-size:20px;cursor:pointer}
+.pr-body{padding:16px 20px 22px}.pr-section{margin-bottom:18px}.pr-title{font-size:12px;font-weight:900;color:#697790;text-transform:uppercase;margin:0 0 9px}
+.pr-list{display:flex;flex-direction:column;gap:10px}.pr-empty{border:1px dashed #dbe4f2;border-radius:14px;padding:18px;text-align:center;color:#75829a}
+.pr-card{border:1px solid #dbe4f2;border-radius:16px;padding:13px 14px;background:#fbfdff}
+.pr-card.danger{border-color:#efb8b8;background:#fffafa}
+.pr-top{display:flex;justify-content:space-between;gap:12px}.pr-name{font-weight:900;color:#153d99}.pr-value{font-weight:950;font-size:18px;color:#0a3daf}
+.pr-meta{font-size:12px;color:#687793;line-height:1.45;margin-top:5px}.pr-route{font-size:13px;color:#34445f;margin-top:7px;font-weight:700}
+.pr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.pr-btn{border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer}
+.pr-btn.ok{background:#0e9f6e;color:#fff}.pr-btn.no{background:#fff0f0;color:#b42318;border:1px solid #efc5c5}
+body.dark #portal-requests-modal,body.dark .pr-head{background:#101d32;color:#e9efff;border-color:#33445e}
+body.dark .pr-card{background:#14233e;border-color:#33445e}
+
+@keyframes portalCancelFlash{
+  0%,100%{background:#ffeded;color:#b42318;box-shadow:0 0 0 0 rgba(217,45,32,.20)}
+  50%{background:#d92d20;color:#fff;box-shadow:0 0 0 7px rgba(217,45,32,.10)}
+}
+.portal-alert-chip.cancel.show{
+  animation:portalCancelFlash .95s ease-in-out infinite;
+}
+
 </style>
-</head>
-<body>
-<div class="app">
-<header class="top">
-  <div class="brand"><strong>COOPEX ENTREGAS</strong><span>Soluções em Coletas e Entregas</span></div>
-  <div class="top-right"><div class="hello"><strong id="hello">Olá, Cliente</strong><span>Bem-vindo(a) de volta!</span></div><div class="pill"><span class="dot"></span>Conexão Online</div><a class="logout" href="/cliente/logout">Sair</a></div>
-</header>
-<div class="layout">
-<aside class="side">
-  <button class="nav active" data-view="pedido">Novo pedido</button>
-  <button class="nav" data-view="carteira">Carteira</button>
-  <button class="nav" data-view="historico">Histórico</button>
-  <button class="nav" data-view="enderecos">Endereços</button>
-</aside>
-<main>
-<section class="hero" id="walletHero">
-  <div>
-    <h2>Sua carteira</h2><div class="desc">Saldo para pedidos e recargas.</div>
-    <div class="balance-label" id="balanceLabel">SALDO DISPONÍVEL</div>
-    <div class="balance" id="saldoHero">R$ 0,00</div>
-    <div class="balance-msg" id="saldoMsg">Consulte seu saldo atual.</div>
-  </div>
-  <div class="hero-actions"><button class="hero-btn white" data-go="carteira">Comprar crédito <span>→</span></button><button class="hero-btn outline" data-go="pedido">Fazer pedido <span>→</span></button></div>
-</section>
+"""
 
-<div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
+LIVE_SCRIPT = r"""
+<script id="supervisao-live-sync">
+(function(){
+  'use strict';
 
-<div class="tabs">
-  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="enderecos">Endereços</button>
-</div>
+  const URL_LIVE='/api/admin/live-state';
+  const INTERVALO=2000;
 
-<section class="view active" id="view-pedido">
-  <div class="steps">
-    <article class="step-card open">
-      <div class="step-head"><span class="num">1</span><div><h3>Coleta</h3><p>Onde vamos retirar?</p></div></div>
-      <div class="step-body"><div class="fields">
-        <div class="field full"><label>Endereço de coleta fixo</label><input class="input" id="coletaEndereco" readonly></div>
-        <div class="field"><label>Bairro</label><input class="input" id="coletaBairro" readonly></div>
-        <div class="field"><label>Referência (opcional)</label><input class="input" id="coletaReferencia" placeholder="Ex.: portaria, loja, sala"></div>
-        <div class="field"><label>Nome de quem entrega</label><input class="input" id="coletaContato"></div>
-        <div class="field"><label>Telefone</label><input class="input" id="coletaTelefone"></div>
-        <div class="field full"><div class="fixed-note">A coleta está vinculada ao cadastro do cliente. Para alterar o endereço fixo, solicite a atualização à COOPEX.</div></div>
-      </div></div>
-    </article>
+  let versao=null;
+  let verificando=false;
+  let atualizando=false;
+  let pendente=false;
 
-    <article class="step-card">
-      <div class="step-head"><span class="num">2</span><div><h3>Solicitante</h3><p>Quem está solicitando?</p></div></div>
-      <div class="step-body"><div class="fields">
-        <div class="field full"><label>Nome completo</label><input class="input" id="clienteNome"></div>
-        <div class="field full"><label>Telefone / WhatsApp</label><input class="input" id="clienteWhatsapp"></div>
-      </div></div>
-    </article>
+  function normalizar(s){
+    return String(s||'')
+      .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+      .toLowerCase().trim();
+  }
 
-    <article class="step-card">
-      <div class="step-head"><span class="num">3</span><div><h3>Entrega</h3><p>Para onde vamos entregar?</p></div></div>
-      <div class="step-body"><div class="fields">
-        <div class="field full"><label>Usar endereço salvo</label><select class="select" id="destinoSalvo"><option value="">Preencher manualmente</option></select></div>
-        <div class="field full"><label>Endereço de entrega</label><input class="input" id="entregaEndereco" placeholder="Rua, número e complemento"></div>
-        <div class="field"><label>Bairro da entrega</label><input class="input" id="entregaBairro" placeholder="Bairro"></div>
-        <div class="field"><label>Referência (opcional)</label><input class="input" id="entregaReferencia"></div>
-        <div class="field"><label>Nome de quem recebe</label><input class="input" id="entregaContato"></div>
-        <div class="field"><label>Telefone de quem recebe</label><input class="input" id="entregaTelefone"></div>
-        <div class="field full"><label><input type="checkbox" id="salvarDestino"> Salvar este endereço para usar novamente</label></div>
-      </div></div>
-    </article>
+  function indicador(){
+    let el=document.getElementById('supervisao-live-indicator');
+    if(el) return el;
 
-    <article class="step-card">
-      <div class="step-head"><span class="num">4</span><div><h3>Pagamento</h3><p>Como será o pagamento?</p></div></div>
-      <div class="step-body"><div class="fields">
-        <div class="field full"><label>Tipo de pedido</label><select class="select" id="pedidoTipo"><option value="coleta_entrega">Coleta e Entrega</option><option value="cartorio">Cartório</option><option value="correios">Correios</option><option value="compras">Compras</option></select></div>
-        <div class="field full"><label>Pagamento</label><select class="select" id="pedidoPagamento"><option value="credito">Usar crédito</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option></select></div>
-        <div class="field full" id="cashWrap" style="display:none"><label>Onde o dinheiro será recebido?</label><select class="select" id="recebeDinheiro"><option value="">Escolha</option><option value="coleta">Na coleta</option><option value="entrega">Na entrega</option></select></div>
-        <div class="field"><label><input type="checkbox" id="pedidoRetorno"> Com retorno</label></div>
-        <div class="field full"><label>Observações</label><textarea class="textarea" id="obs"></textarea></div>
-      </div></div>
-    </article>
-  </div>
-  <div class="order-bar"><div class="estimate"><small>Valor estimado</small><strong id="estimate">Informe o bairro</strong><div style="font-size:11px;color:#73819a" id="estimateSource"></div></div><button class="primary" id="sendOrder">Solicitar entrega</button></div>
-</section>
+    el=document.createElement('span');
+    el.id='supervisao-live-indicator';
+    el.innerHTML='<span class="dot"></span><span class="txt">AO VIVO</span>';
+    el.title='Atualização automática ativa';
 
-<section class="view" id="view-carteira">
-  <div class="card credit-box"><h3>Comprar crédito</h3><div class="preset"><button data-v="20">R$ 20</button><button data-v="50">R$ 50</button><button data-v="100">R$ 100</button></div>
-  <div class="field" style="margin-top:10px"><label>Valor do crédito</label><input class="input" id="creditValue" inputmode="decimal" placeholder="Ex.: 100,00"></div>
-  <button class="primary" id="requestCredit" style="width:100%;margin-top:10px">Solicitar crédito</button>
-  <div class="pix-result" id="pixResult"></div></div>
-</section>
+    const alvo=[...document.querySelectorAll('button,a')]
+      .find(x=>{
+        const t=normalizar(x.textContent);
+        return t.includes('solicita') && t.includes('valor');
+      });
 
-<section class="view" id="view-historico">
-  <div class="card"><h3>Espelho semanal</h3><div class="week-title" id="weekTitle">Semana passada</div>
-    <div class="filters">
-      <div class="field"><label>De</label><input class="input" type="date" id="histIni"></div>
-      <div class="field"><label>Até</label><input class="input" type="date" id="histFim"></div>
-      <div class="field"><label>Pagamento</label><select class="select" id="histPay"><option value="todos">Todos</option><option value="credito">Crédito</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option></select></div>
-      <div class="field"><label>Situação</label><select class="select" id="histStatus"><option value="todos">Todas</option><option value="concluido">Concluídas</option><option value="andamento">Em andamento</option><option value="cancelado">Canceladas</option></select></div>
-      <button class="ghost" id="searchHist">Buscar</button>
-    </div>
-    <div class="toolbar"><button class="ghost" id="lastWeek">Semana passada</button><button class="ghost" id="exportHist">Exportar Excel</button></div>
-  </div>
+    if(alvo){
+      // Fica DENTRO do botão "Solicitações de valor", na mesma linha do nome.
+      alvo.appendChild(el);
+    }else{
+      const barra=document.querySelector('.bank-toolbar') ||
+                 document.querySelector('.quick-left') ||
+                 document.querySelector('header .topbar');
+      if(barra) barra.appendChild(el);
+    }
+    return el;
+  }
 
-  <div class="financial">
-    <div class="fin">
-      <small>Saldo antes da última recarga</small>
-      <strong id="fStart">R$ 0,00</strong>
-    </div>
-    <div class="fin">
-      <small>Última recarga</small>
-      <strong class="pos" id="fAdded">+R$ 0,00</strong>
-      <div style="font-size:11px;color:#71809a;margin-top:5px">
-        Após a recarga: <strong id="fAfterRecharge" style="font-size:12px">R$ 0,00</strong>
-      </div>
-    </div>
-    <div class="fin">
-      <small id="fUsedLabel">Consumo líquido após a recarga</small>
-      <strong class="neg" id="fUsed">-R$ 0,00</strong>
-      <div style="font-size:11px;color:#71809a;margin-top:5px">
-        Considera consumos menos estornos até a data final do filtro.
-      </div>
-    </div>
-    <div class="fin">
-      <small id="fAfterPeriodLabel">Do dia seguinte até hoje foi consumido</small>
-      <strong class="neg" id="fAfterPeriod">-R$ 0,00</strong>
-      <div style="font-size:11px;color:#71809a;margin-top:5px">
-        Saldo atual: <strong id="fCurrentBalance" style="font-size:12px">R$ 0,00</strong>
-      </div>
-    </div>
-  </div>
+  function statusOnline(ok){
+    const el=indicador();
+    if(!el) return;
+    el.classList.toggle('off',!ok);
+    const txt=el.querySelector('.txt');
+    if(txt) txt.textContent=ok?'AO VIVO':'OFFLINE';
+  }
 
-  <div class="delivery-summary">
-    <div class="mini-stat"><small>Entregas no período</small><strong id="hQtd">0</strong></div>
-    <div class="mini-stat"><small>Valor das entregas</small><strong id="hTotal">R$ 0,00</strong></div>
-    <div class="mini-stat"><small>Pago com crédito</small><strong id="hCredit">R$ 0,00</strong></div>
-    <div class="mini-stat"><small>Canceladas</small><strong id="hCancel">0</strong></div>
-  </div>
-  <div class="history" id="history"></div>
-</section>
 
-<section class="view" id="view-enderecos"><div class="card"><h3>Endereços salvos</h3><div class="saved" id="saved"></div></div></section>
-</main>
-</div>
+  let portalLoading=false;
+  let lastCancelCount=0;
 
-<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="enderecos">Endereços</button></div>
-</div>
-<div class="toast" id="toast"></div>
-<script>
-const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',delEnd:id=>`/api/cliente/enderecos/${id}`};
-const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[]};
-function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
-async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
-function setView(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
-document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
-document.querySelectorAll('.step-head').forEach(h=>h.onclick=()=>{if(innerWidth<=900)h.parentElement.classList.toggle('open')});
-function setSaldo(v){
-  S.saldo=Number(v||0);
-  const neg=S.saldo<0;
-  $('saldoHero').textContent=(neg?'-':'')+money(Math.abs(S.saldo));
-  $('saldoHero').classList.toggle('negative',neg);
-  $('walletHero').classList.toggle('negative-balance',neg);
-  $('balanceLabel').textContent=neg?'SALDO DEVEDOR':'SALDO DISPONÍVEL';
-  $('saldoMsg').textContent=neg
-    ?'Saldo negativo. Faça uma nova recarga para regularizar seu saldo.'
-    :'Saldo disponível para usar nos seus pedidos.';
-}
-async function loadMe(){const j=await api(API.me);if(!j?.ok)return;S.cliente=j.cliente||{};$('hello').textContent='Olá, '+(S.cliente.nome||'Cliente');$('clienteNome').value=S.cliente.nome||'';$('clienteWhatsapp').value=S.cliente.telefone||'';$('coletaContato').value=S.cliente.nome||'';$('coletaTelefone').value=S.cliente.telefone||'';$('coletaEndereco').value=S.cliente.endereco||'';$('coletaBairro').value=S.cliente.bairro_origem||'';scheduleQuote()}
-async function loadSaldo(){const j=await api(API.saldo);if(j?.ok)setSaldo(j.saldo)}
-async function loadActive(){const j=await api(API.ativo);S.ativo=j?.ok?j.pedido:null;if(S.ativo){$('activeOrder').classList.add('show');const stAtivo=String(S.ativo.status||'em andamento');
-$('activeTitle').textContent=`Pedido #${S.ativo.id} — ${stAtivo==='cancel solicitado'?'Cancelamento solicitado':stAtivo}`;$('activeMeta').textContent=`${S.ativo.origem_txt||'-'} → ${S.ativo.destino_txt||'-'} • ${money(S.ativo.valor)}`;$('requestCancel').disabled=String(S.ativo.status||'').toLowerCase().includes('cancel solicitado')}else $('activeOrder').classList.remove('show')}
-$('requestCancel').onclick=async()=>{if(!S.ativo)return;if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;const j=await api(API.cancel(S.ativo.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo portal.'})});if(j?.ok){toast(j.msg);loadActive()}};
-async function loadEnds(){const j=await api(API.enderecos);if(j?.ok){S.ends=j.enderecos||[];const sel=$('destinoSalvo');sel.innerHTML='<option value="">Preencher manualmente</option>'+S.ends.map(x=>`<option value="${x.id}">${esc(x.apelido||'Endereço')}</option>`).join('');renderEnds()}}
-$('destinoSalvo').onchange=()=>{const x=S.ends.find(a=>String(a.id)==$('destinoSalvo').value);if(!x)return;$('entregaEndereco').value=x.endereco||'';$('entregaBairro').value=x.bairro||'';$('entregaReferencia').value=x.referencia||'';$('entregaContato').value=x.contato||'';$('entregaTelefone').value=x.telefone||'';scheduleQuote()};
-function renderEnds(){const w=$('saved');if(!S.ends.length){w.innerHTML='<div class="empty">Nenhum endereço salvo.</div>';return}w.innerHTML=S.ends.map(x=>`<div class="saved-item"><div><strong>${esc(x.apelido||'Endereço')}</strong><small>${esc(x.endereco||'')} ${x.bairro?'• '+esc(x.bairro):''}</small></div><div class="toolbar"><button class="ghost" onclick="useEnd(${x.id})">Usar</button><button class="ghost" onclick="delEnd(${x.id})">Excluir</button></div></div>`).join('')}
-window.useEnd=id=>{const x=S.ends.find(a=>a.id===id);if(x){setView('pedido');$('destinoSalvo').value=String(id);$('destinoSalvo').onchange()}};window.delEnd=async id=>{if(!confirm('Excluir endereço?'))return;const j=await api(API.delEnd(id),{method:'DELETE'});if(j?.ok)loadEnds()};
-$('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
-let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['entregaEndereco','entregaBairro','coletaReferencia'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
-async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Tabela de bairros':j.origem_preco==='km'?'Cálculo por km':'';return j}
-$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()){toast('O cliente está sem endereço fixo de coleta cadastrado.');return}if(!$('entregaEndereco').value.trim()||!$('entregaBairro').value.trim()){toast('Informe o endereço e o bairro da entrega.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}};
-document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
-window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
-$('requestCredit').onclick=async()=>{const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));if(!v||v<=0){toast('Informe um valor válido.');return}const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});if(j?.ok){const w=$('pixResult');w.classList.add('show');w.innerHTML=`<strong>Solicitação #${j.solicitacao_id} enviada</strong><div style="margin-top:8px">Valor: <strong>${money(j.valor)}</strong></div><div style="margin-top:12px;font-size:11px;font-weight:900;color:#66758e">CHAVE PIX — CNPJ COOPEX</div><div class="pix-key">05289938000197</div><button class="ghost" style="margin-top:8px" onclick="copyPix()">Copiar chave Pix</button><a class="wa" href="${j.whatsapp_url}" target="_blank" rel="noopener">Favor enviar o comprovante direto para esse número: (84) 98111-0706</a><div style="font-size:11px;color:#6c7a93;margin-top:8px">O crédito será lançado após a COOPEX confirmar o pagamento.</div>`;toast('Solicitação enviada para o administrativo.')}};
-function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function lastWeekRange(){const n=new Date();n.setHours(12,0,0,0);const day=n.getDay();const sinceMon=(day+6)%7;const thisMon=new Date(n);thisMon.setDate(n.getDate()-sinceMon);const ini=new Date(thisMon);ini.setDate(thisMon.getDate()-7);const fim=new Date(ini);fim.setDate(ini.getDate()+6);return{ini,fim}}function setLastWeek(){const r=lastWeekRange();$('histIni').value=iso(r.ini);$('histFim').value=iso(r.fim);$('weekTitle').textContent=`Semana passada: ${r.ini.toLocaleDateString('pt-BR')} a ${r.fim.toLocaleDateString('pt-BR')}`}
-function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);return p.toString()}
-function signed(v,plus=false){const n=Number(v||0);const abs=money(Math.abs(n));return n<0?'-'+abs:(plus&&n>0?'+':'')+abs}function tone(el,v){el.classList.toggle('neg',Number(v)<0);el.classList.toggle('pos',Number(v)>0)}
-async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;const f=j.financeiro||{};
-$('fUsedLabel').textContent='Consumo líquido após a recarga até '+(f.data_fim_label||'a data final');
-$('fAfterPeriodLabel').textContent='Do dia '+(f.pos_periodo_inicio_label||'seguinte')+' até hoje foi consumido';
-$('fStart').textContent=signed(f.saldo_antes_recarga);
-$('fAdded').textContent='+'+money(f.ultima_recarga||0);
-$('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
-$('fUsed').textContent='-'+money(Math.abs(f.consumo_liquido||0));
-$('fAfterPeriod').textContent='-'+money(Math.abs(f.consumo_pos_periodo||0));
-$('fCurrentBalance').textContent=signed(f.saldo_atual);
-tone($('fStart'),f.saldo_antes_recarga);
-tone($('fAfterRecharge'),f.saldo_apos_recarga);
-tone($('fUsed'),-Math.abs(f.consumo_liquido||0));
-tone($('fAfterPeriod'),-Math.abs(f.consumo_pos_periodo||0));
-tone($('fCurrentBalance'),f.saldo_atual);
-const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;const list=$('history');const arr=j.entregas||[];list.innerHTML=arr.length?arr.map(x=>`<div class="hist"><div><strong>Pedido #${x.id||'-'} ${x.status?'— '+esc(x.status):''}</strong><div class="route">${esc(x.origem_txt||'-')} → ${esc(x.destino_txt||'-')}</div><div class="meta">${esc(x.data||x.data_criacao||'')} • ${esc(x.pagamento_label||x.pagamento||'-')} • ${x.entregador_nome?'Entregador: '+esc(x.entregador_nome)+' • ':''}${x.status_pagamento?'Pagamento: '+esc(x.status_pagamento)+' • ':''}${x.recibo_url?`<a href="${x.recibo_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><div class="right"><strong>${money(x.valor||0)}</strong><div class="tags">${x.pagamento?`<span class="tag">${esc(x.pagamento)}</span>`:''}${String(x.status||'').toLowerCase().includes('cancel')?'<span class="tag red">Cancelada</span>':''}</div></div></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
-$('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
-function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-(async()=>{setLastWeek();await Promise.all([loadMe(),loadSaldo(),loadEnds(),loadActive()]);await loadHist()})();
+  function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
+
+  function portalChip(id,label,cls){
+    let el=document.getElementById(id);
+    if(el) return el;
+    el=document.createElement('span');
+    el.id=id; el.className='portal-alert-chip '+cls;
+    el.innerHTML=`${label} <span class="count">0</span>`;
+    indicador().insertAdjacentElement('afterend',el);
+    el.addEventListener('click',()=>openPortalRequests(cls));
+    return el;
+  }
+
+  function portalModal(){
+    let o=document.getElementById('portal-requests-overlay');
+    if(o) return o;
+    o=document.createElement('div');o.id='portal-requests-overlay';
+    o.innerHTML=`
+      <div id="portal-requests-modal">
+        <div class="pr-head">
+          <div><h2 id="prModalTitle">Solicitações do cliente</h2><p id="prModalSub">Pendências que precisam de decisão administrativa.</p></div>
+          <button class="pr-close" type="button">×</button>
+        </div>
+        <div class="pr-body">
+          <div class="pr-section"><div class="pr-title">Pendentes</div><div id="prPending" class="pr-list"></div></div>
+          <div class="pr-section"><div class="pr-title">Processadas recentemente</div><div id="prRecent" class="pr-list"></div></div>
+        </div>
+      </div>`;
+    document.body.appendChild(o);
+    o.querySelector('.pr-close').addEventListener('click',()=>o.classList.remove('open'));
+    o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+    return o;
+  }
+
+  let currentPortalKind='credito';
+  function openPortalRequests(kind){
+    currentPortalKind=kind||'credito';
+    const o=portalModal();o.classList.add('open');
+    renderPortalCurrent();
+  }
+
+  let portalData={credito:{pendentes:[],recentes:[]},cancel:{pendentes:[],recentes:[]}};
+
+  function creditCard(x,pending){
+    return `<div class="pr-card">
+      <div class="pr-top"><div><div class="pr-name">${esc(x.cliente_nome)}</div><div class="pr-meta">Solicitação #${x.id} • ${esc(x.criado_em||'')} ${x.cliente_telefone?'• '+esc(x.cliente_telefone):''}</div></div><div class="pr-value">${money(x.valor)}</div></div>
+      ${pending?`<div class="pr-actions"><button class="pr-btn ok" data-credit-ok="${x.id}">Aprovar e creditar</button><button class="pr-btn no" data-credit-no="${x.id}">Recusar</button></div>`:`<div class="pr-meta">Status: ${esc(x.status||'')}</div>`}
+    </div>`;
+  }
+  function cancelCard(x,pending){
+    return `<div class="pr-card danger">
+      <div class="pr-top"><div><div class="pr-name">CANCELAMENTO — ${esc(x.cliente_nome)}</div><div class="pr-meta">Pedido #${x.entrega_id} • ${esc(x.criado_em||'')}</div></div><div class="pr-value">${money(x.valor)}</div></div>
+      <div class="pr-route">${esc(x.origem||'-')} → ${esc(x.destino||'-')}</div>
+      <div class="pr-meta">${x.entregador?'Entregador: '+esc(x.entregador)+' • ':''}${esc(x.motivo||'Cliente solicitou cancelamento.')}</div>
+      ${pending?`<div class="pr-actions"><button class="pr-btn ok" data-cancel-ok="${x.id}">Aceitar cancelamento</button><button class="pr-btn no" data-cancel-no="${x.id}">Recusar</button></div>`:`<div class="pr-meta">Status: ${esc(x.status||'')}</div>`}
+    </div>`;
+  }
+
+  function renderPortalCurrent(){
+    const kind=currentPortalKind;
+    const data=portalData[kind]||{pendentes:[],recentes:[]};
+    const modal=portalModal();
+    modal.querySelector('#prModalTitle').textContent=kind==='cancel'?'Solicitações de cancelamento':'Solicitações de crédito';
+    modal.querySelector('#prModalSub').textContent=kind==='cancel'
+      ?'O pedido só será cancelado depois que a administração aceitar.'
+      :'Aprove somente depois de confirmar o pagamento.';
+    const card=kind==='cancel'?cancelCard:creditCard;
+    modal.querySelector('#prPending').innerHTML=data.pendentes.length?data.pendentes.map(x=>card(x,true)).join(''):'<div class="pr-empty">Nenhuma solicitação pendente.</div>';
+    modal.querySelector('#prRecent').innerHTML=data.recentes.length?data.recentes.map(x=>card(x,false)).join(''):'<div class="pr-empty">Nenhuma solicitação processada recentemente.</div>';
+
+    modal.querySelectorAll('[data-credit-ok]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-credito/${b.dataset.creditOk}/aprovar`,b));
+    modal.querySelectorAll('[data-credit-no]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-credito/${b.dataset.creditNo}/recusar`,b));
+    modal.querySelectorAll('[data-cancel-ok]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-cancelamento/${b.dataset.cancelOk}/aprovar`,b));
+    modal.querySelectorAll('[data-cancel-no]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-cancelamento/${b.dataset.cancelNo}/recusar`,b));
+  }
+
+  async function portalAction(url,btn){
+    const cancel=url.includes('cancelamento');
+    const approve=url.endsWith('/aprovar');
+    const msg=cancel
+      ?(approve?'Aceitar o cancelamento deste pedido?':'Recusar o cancelamento e manter o pedido ativo?')
+      :(approve?'Confirmar o pagamento e lançar este crédito?':'Recusar esta solicitação de crédito?');
+    if(!confirm(msg)) return;
+    btn.disabled=true;
+    try{
+      const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'fetch'}});
+      const d=await r.json().catch(()=>null);
+      if(!r.ok||!d||!d.ok) throw new Error(d?.error||d?.msg||'Não foi possível concluir.');
+      await loadPortalRequests(false);
+    }catch(e){alert(e.message||'Falha ao processar.');btn.disabled=false;}
+  }
+
+  function playCancelSiren(){
+    try{
+      const a=new Audio('/static/aviso_pendente.mp3');
+      a.volume=1;a.play().catch(()=>{});
+      setTimeout(()=>{try{const b=new Audio('/static/aviso_pendente.mp3');b.volume=1;b.play().catch(()=>{});}catch(e){}},1100);
+    }catch(e){}
+  }
+
+  async function loadPortalRequests(openOnNew){
+    if(portalLoading)return;portalLoading=true;
+    try{
+      const [cr,ca]=await Promise.all([
+        fetch('/api/admin/solicitacoes-credito',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()),
+        fetch('/api/admin/solicitacoes-cancelamento',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json())
+      ]);
+      if(cr&&cr.ok) portalData.credito={pendentes:cr.pendentes||[],recentes:cr.recentes||[]};
+      if(ca&&ca.ok) portalData.cancel={pendentes:ca.pendentes||[],recentes:ca.recentes||[]};
+
+      const cchip=portalChip('portal-credit-chip','CRÉDITO','credito');
+      const xchip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+      const cq=portalData.credito.pendentes.length, xq=portalData.cancel.pendentes.length;
+      cchip.querySelector('.count').textContent=cq;cchip.classList.toggle('show',cq>0);
+      xchip.querySelector('.count').textContent=xq;xchip.classList.toggle('show',xq>0);
+
+      if(xq>lastCancelCount){
+        playCancelSiren();
+        currentPortalKind='cancel';
+        portalModal().classList.add('open');
+      }else if(lastCancelCount===0 && xq>0){
+        currentPortalKind='cancel';
+        portalModal().classList.add('open');
+      }
+      lastCancelCount=xq;
+      if(portalModal().classList.contains('open')) renderPortalCurrent();
+    }catch(e){console.warn('Solicitações do portal:',e);}
+    finally{portalLoading=false;}
+  }
+
+  function usuarioEditando(){
+    const a=document.activeElement;
+    if(a && a.matches &&
+       a.matches('input,textarea,select,[contenteditable="true"]')) return true;
+
+    if(document.querySelector(
+      '.modal.open,.modal.show,[role="dialog"].open,'+
+      '[role="dialog"][aria-hidden="false"],.value-requests-overlay.open'
+    )) return true;
+
+    return false;
+  }
+
+  function capturarFiltros(){
+    const itens=[];
+    document.querySelectorAll(
+      'input[type="search"],input[id*="busca" i],input[name*="busca" i],'+
+      'input[id*="search" i],input[name*="search" i],select[id*="filtro" i],'+
+      'select[name*="filtro" i]'
+    ).forEach(el=>{
+      if(!el.id) return;
+      itens.push({id:el.id,value:el.value});
+    });
+    return itens;
+  }
+
+  function reaplicarFiltros(itens){
+    (itens||[]).forEach(item=>{
+      const el=document.getElementById(item.id);
+      if(!el) return;
+      if(String(el.value)!==String(item.value)) el.value=item.value;
+      try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
+      try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
+    });
+  }
+
+  function trocarConteudo(docNovo,seletor){
+    const atual=document.querySelector(seletor);
+    const novo=docNovo.querySelector(seletor);
+    if(!atual || !novo) return false;
+    if(atual.innerHTML!==novo.innerHTML) atual.innerHTML=novo.innerHTML;
+    return true;
+  }
+
+  function trocarTexto(docNovo,seletor){
+    const atual=document.querySelector(seletor);
+    const novo=docNovo.querySelector(seletor);
+    if(!atual || !novo) return;
+    if(atual.textContent!==novo.textContent) atual.textContent=novo.textContent;
+  }
+
+  function atualizarFilaContador(docNovo){
+    const atual=[...document.querySelectorAll('.bank-group-btn')]
+      .find(b=>normalizar(b.textContent).includes('fila de espera'));
+    const novo=[...docNovo.querySelectorAll('.bank-group-btn')]
+      .find(b=>normalizar(b.textContent).includes('fila de espera'));
+
+    const a=atual&&atual.querySelector('.queue-count');
+    const n=novo&&novo.querySelector('.queue-count');
+    if(a&&n&&a.textContent!==n.textContent) a.textContent=n.textContent;
+  }
+
+  function atualizarContadoresSolicitacoes(docNovo){
+    const atuais=[...document.querySelectorAll('[data-request-count]')];
+    const novos=[...docNovo.querySelectorAll('[data-request-count]')];
+    atuais.forEach((el,i)=>{
+      if(novos[i] && el.textContent!==novos[i].textContent){
+        el.textContent=novos[i].textContent;
+      }
+    });
+  }
+
+  async function atualizarParcial(){
+    if(atualizando) return;
+
+    if(usuarioEditando()){
+      pendente=true;
+      return;
+    }
+
+    atualizando=true;
+    pendente=false;
+
+    const y=window.scrollY||0;
+    const filtros=capturarFiltros();
+
+    try{
+      const r=await fetch(window.location.href,{
+        cache:'no-store',
+        credentials:'same-origin',
+        headers:{
+          'Accept':'text/html',
+          'X-Requested-With':'supervisao-live'
+        }
+      });
+      if(!r.ok) throw new Error('admin '+r.status);
+
+      const html=await r.text();
+      const docNovo=new DOMParser().parseFromString(html,'text/html');
+
+      trocarConteudo(docNovo,'.tabela tbody');
+      trocarConteudo(docNovo,'#espera-lista');
+      trocarConteudo(docNovo,'#pendingValueRequestsList');
+      trocarConteudo(docNovo,'#valueRequestHistoryList');
+
+      trocarTexto(docNovo,'#kpiTotalDia');
+      trocarTexto(docNovo,'#kpiTotalMes');
+      trocarTexto(docNovo,'#kpiTotalAno');
+
+      atualizarFilaContador(docNovo);
+      atualizarContadoresSolicitacoes(docNovo);
+
+      reaplicarFiltros(filtros);
+
+      requestAnimationFrame(()=>{
+        window.scrollTo(0,y);
+        requestAnimationFrame(()=>window.scrollTo(0,y));
+      });
+
+      try{
+        document.dispatchEvent(new CustomEvent('supervisao:live-updated'));
+      }catch(e){}
+
+      statusOnline(true);
+    }catch(e){
+      console.warn('Supervisão ao vivo:',e);
+      statusOnline(false);
+    }finally{
+      atualizando=false;
+    }
+  }
+
+  async function verificar(){
+    if(verificando || document.visibilityState==='hidden') return;
+    verificando=true;
+
+    try{
+      const r=await fetch(URL_LIVE,{
+        cache:'no-store',
+        credentials:'same-origin',
+        headers:{'Accept':'application/json','X-Requested-With':'fetch'}
+      });
+      if(!r.ok) throw new Error('live-state '+r.status);
+
+      const d=await r.json();
+      if(!d.ok || d.versao===undefined || d.versao===null){
+        throw new Error('live-state inválido');
+      }
+
+      const nova=String(d.versao);
+      await loadPortalRequests(false);
+
+      if(versao===null){
+        versao=nova;
+        statusOnline(true);
+        return;
+      }
+
+      if(nova!==versao){
+        versao=nova;
+        await atualizarParcial();
+      }else if(pendente && !usuarioEditando()){
+        await atualizarParcial();
+      }else{
+        statusOnline(true);
+      }
+    }catch(e){
+      statusOnline(false);
+    }finally{
+      verificando=false;
+    }
+  }
+
+  function iniciar(){
+    indicador();
+    portalChip('portal-credit-chip','CRÉDITO','credito');
+    portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+    portalModal();
+    loadPortalRequests(false);
+    setInterval(()=>loadPortalRequests(false),5000);
+    verificar();
+    setInterval(verificar,INTERVALO);
+
+    document.addEventListener('visibilitychange',()=>{
+      if(document.visibilityState==='visible') verificar();
+    });
+
+    document.addEventListener('focusout',()=>{
+      if(pendente) setTimeout(verificar,180);
+    },true);
+
+    window.addEventListener('online',()=>setTimeout(verificar,100));
+  }
+
+  if(document.readyState==='loading'){
+    document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  }else{
+    iniciar();
+  }
+})();
 </script>
-</body></html>
+"""
+
+
+def install(app_module):
+    app = app_module.app
+    db = app_module.db
+
+    if app.extensions.get("supervisao_live_installed"):
+        return
+    app.extensions["supervisao_live_installed"] = True
+
+    # Uma única linha no banco. A checagem de 2 em 2 segundos lê só esse número.
+    with app.app_context():
+        with db.engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS supervisao_live_version (
+                    id INTEGER PRIMARY KEY,
+                    versao BIGINT NOT NULL
+                )
+            """))
+            atual = conn.execute(
+                text("SELECT versao FROM supervisao_live_version WHERE id=1")
+            ).scalar()
+            if atual is None:
+                conn.execute(text(
+                    "INSERT INTO supervisao_live_version (id,versao) VALUES (1,1)"
+                ))
+
+    def ler_versao():
+        with db.engine.connect() as conn:
+            return int(conn.execute(
+                text("SELECT versao FROM supervisao_live_version WHERE id=1")
+            ).scalar() or 1)
+
+    def incrementar_versao():
+        try:
+            with db.engine.begin() as conn:
+                conn.execute(text("""
+                    UPDATE supervisao_live_version
+                    SET versao=versao+1
+                    WHERE id=1
+                """))
+        except Exception as exc:
+            app.logger.warning(
+                "Falha ao incrementar versão do Supervisão ao vivo: %s", exc
+            )
+
+    def requisicao_ruidosa(path):
+        p=(path or "").lower()
+        ignorar=(
+            "/api/admin/live-state",
+            "/socket.io",
+            "/healthz",
+            "/readyz",
+            "/api/app/localizacao",
+            "/api/app/heartbeat",
+            "/api/app/ping",
+        )
+        return any(p.startswith(x) for x in ignorar)
+
+    @app.get("/api/admin/live-state")
+    def api_admin_live_state():
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False,error="unauthorized"),401
+        try:
+            return jsonify(
+                ok=True,
+                versao=ler_versao(),
+                servidor=datetime.utcnow().isoformat(timespec="seconds")+"Z",
+            )
+        except Exception as exc:
+            app.logger.warning("Falha no Supervisão ao vivo: %s",exc)
+            return jsonify(ok=False,error="live-state indisponível"),503
+
+    @app.after_request
+    def supervisao_live_after_request(response):
+        try:
+            # Qualquer gravação bem-sucedida sinaliza alteração real ao painel.
+            if (
+                request.method in ("POST","PUT","PATCH","DELETE")
+                and response.status_code < 400
+                and not requisicao_ruidosa(request.path)
+            ):
+                incrementar_versao()
+
+            if request.path != "/admin":
+                return response
+            if response.status_code != 200 or response.mimetype != "text/html":
+                return response
+
+            html=response.get_data(as_text=True)
+
+            # Remove completamente os clientes antigos que chamavam location.reload().
+            html=re.sub(
+                r'<style\s+id=["\']supervisao-live-style["\'][^>]*>.*?</style>',
+                '',html,flags=re.I|re.S
+            )
+            html=re.sub(
+                r'<script\s+id=["\']supervisao-live-sync["\'][^>]*>.*?</script>',
+                '',html,flags=re.I|re.S
+            )
+            html=re.sub(
+                r'<script[^>]+src=["\'][^"\']*supervisao_live\.js[^"\']*["\'][^>]*>\s*</script>',
+                '',html,flags=re.I|re.S
+            )
+
+            bloco=LIVE_STYLE+LIVE_SCRIPT
+
+            # IMPORTANTE: injeta no ÚLTIMO </body> real.
+            # O recibo possui a string "</body></html>" dentro do JavaScript.
+            # Usar replace(...,1) quebrava esse script e fazia o código aparecer na página.
+            pos=html.rfind("</body>")
+            if pos>=0:
+                html=html[:pos]+bloco+html[pos:]
+            else:
+                html+=bloco
+
+            response.set_data(html)
+
+        except Exception as exc:
+            app.logger.warning(
+                "Falha ao aplicar Supervisão ao vivo sem recarga: %s",exc
+            )
+
+        return response
