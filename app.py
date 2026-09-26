@@ -8959,7 +8959,7 @@ def api_cliente_historico():
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
         })
 
-    # Espelho financeiro do período filtrado.
+    # Resumo financeiro baseado na ÚLTIMA RECARGA.
     financeiro = None
     data_inicio = (request.args.get('data_inicio') or request.args.get('inicio') or '').strip()
     data_fim = (request.args.get('data_fim') or request.args.get('fim') or '').strip()
@@ -8967,53 +8967,85 @@ def api_cliente_historico():
         try:
             d_ini = datetime.strptime(data_inicio, '%Y-%m-%d').date()
             d_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
-            ini_utc, _ = local_date_window_to_utc_range(d_ini)
             _, fim_utc = local_date_window_to_utc_range(d_fim)
 
             mov_data = func.coalesce(CreditoMovimento.criado_em, CreditoMovimento.data)
 
-            cred_antes = (
-                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+            ultima_recarga = (
+                CreditoMovimento.query
                 .filter(
                     CreditoMovimento.cliente_id == cli.id,
                     CreditoMovimento.tipo == 'credito',
-                    mov_data < ini_utc
-                ).scalar() or 0.0
-            )
-            deb_antes = (
-                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                .filter(
-                    CreditoMovimento.cliente_id == cli.id,
-                    CreditoMovimento.tipo == 'debito',
-                    mov_data < ini_utc
-                ).scalar() or 0.0
-            )
-            creditos_periodo = (
-                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                .filter(
-                    CreditoMovimento.cliente_id == cli.id,
-                    CreditoMovimento.tipo == 'credito',
-                    mov_data >= ini_utc,
                     mov_data <= fim_utc
-                ).scalar() or 0.0
-            )
-            debitos_periodo = (
-                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
-                .filter(
-                    CreditoMovimento.cliente_id == cli.id,
-                    CreditoMovimento.tipo == 'debito',
-                    mov_data >= ini_utc,
-                    mov_data <= fim_utc
-                ).scalar() or 0.0
+                )
+                .order_by(mov_data.desc(), CreditoMovimento.id.desc())
+                .first()
             )
 
-            saldo_inicial = float(cred_antes) - float(deb_antes)
-            saldo_final = saldo_inicial + float(creditos_periodo) - float(debitos_periodo)
+            saldo_antes_ultima_recarga = 0.0
+            valor_ultima_recarga = 0.0
+            ficou_para_consumo = 0.0
+            valor_consumido = 0.0
+
+            if ultima_recarga:
+                dt_rec = getattr(ultima_recarga, 'criado_em', None) or getattr(ultima_recarga, 'data', None)
+
+                cred_antes_rec = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'credito',
+                        mov_data < dt_rec
+                    ).scalar() or 0.0
+                )
+                deb_antes_rec = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'debito',
+                        mov_data < dt_rec
+                    ).scalar() or 0.0
+                )
+                saldo_antes_ultima_recarga = float(cred_antes_rec) - float(deb_antes_rec)
+                valor_ultima_recarga = float(getattr(ultima_recarga, 'valor', 0) or 0)
+                ficou_para_consumo = saldo_antes_ultima_recarga + valor_ultima_recarga
+
+                valor_consumido = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'debito',
+                        mov_data >= dt_rec,
+                        mov_data <= fim_utc
+                    ).scalar() or 0.0
+                )
+            else:
+                cred_ate_fim = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'credito',
+                        mov_data <= fim_utc
+                    ).scalar() or 0.0
+                )
+                deb_ate_fim = (
+                    db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                    .filter(
+                        CreditoMovimento.cliente_id == cli.id,
+                        CreditoMovimento.tipo == 'debito',
+                        mov_data <= fim_utc
+                    ).scalar() or 0.0
+                )
+                saldo_antes_ultima_recarga = 0.0
+                valor_ultima_recarga = float(cred_ate_fim)
+                ficou_para_consumo = float(cred_ate_fim)
+                valor_consumido = float(deb_ate_fim)
+
             financeiro = {
-                'saldo_inicial': round(saldo_inicial, 2),
-                'creditos_adicionados': round(float(creditos_periodo), 2),
-                'credito_utilizado': round(float(debitos_periodo), 2),
-                'saldo_final': round(saldo_final, 2),
+                'saldo_antes_ultima_recarga': round(float(saldo_antes_ultima_recarga), 2),
+                'ultima_recarga': round(float(valor_ultima_recarga), 2),
+                'ficou_para_consumo': round(float(ficou_para_consumo), 2),
+                'valor_consumido': round(float(valor_consumido), 2),
                 'data_inicio': data_inicio,
                 'data_fim': data_fim,
             }
@@ -9384,10 +9416,27 @@ def api_pedidos_cancelar(pedido_id):
         motivo=motivo[:255],
         criado_em=datetime.utcnow(),
     )
-    entrega.status = 'cancelamento solicitado'
-    db.session.add(req)
-    db.session.add(entrega)
-    db.session.commit()
+    try:
+        # Entrega.status possui limite de 20 caracteres no banco.
+        # Mantemos uma versão curta internamente e a interface exibe
+        # "Cancelamento solicitado" para o cliente.
+        entrega.status = 'cancel solicitado'
+        db.session.add(req)
+        db.session.add(entrega)
+        db.session.commit()
+    except Exception as exc:
+        db.session.rollback()
+        try:
+            current_app.logger.exception(
+                'Erro ao registrar solicitação de cancelamento do pedido %s',
+                entrega.id
+            )
+        except Exception:
+            pass
+        return jsonify(
+            ok=False,
+            msg=f'Não foi possível solicitar o cancelamento: {exc.__class__.__name__}'
+        ), 500
 
     return jsonify(
         ok=True,
