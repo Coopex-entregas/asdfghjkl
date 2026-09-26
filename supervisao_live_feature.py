@@ -17,93 +17,42 @@ from sqlalchemy import text
 
 LIVE_STYLE = r"""
 <style id="supervisao-live-style">
-#supervisao-live-indicator{
-  display:inline-flex;align-items:center;gap:4px;
-  min-height:20px;padding:3px 6px;margin-left:7px;
-  border:1px solid rgba(255,255,255,.35);border-radius:999px;
-  background:rgba(255,255,255,.12);color:inherit;
-  font:800 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
-  vertical-align:middle;white-space:nowrap;
-  flex:none;
+#supervisao-live-indicator,.portal-alert-chip{
+  display:inline-flex;align-items:center;gap:5px;min-height:22px;padding:4px 8px;margin-left:6px;
+  border-radius:999px;font:900 9px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
+  vertical-align:middle;white-space:nowrap
 }
+#supervisao-live-indicator{border:1px solid rgba(255,255,255,.35);background:rgba(255,255,255,.12);color:inherit}
 #supervisao-live-indicator .dot{width:7px;height:7px;border-radius:50%;background:#16a365}
 #supervisao-live-indicator.off .dot{background:#d64545}
-body.dark #supervisao-live-indicator{
-  background:rgba(255,255,255,.10);border-color:rgba(255,255,255,.25);color:inherit
+.portal-alert-chip{display:none;cursor:pointer;border:1px solid}
+.portal-alert-chip.show{display:inline-flex}
+.portal-alert-chip.credito{background:#fff5dd;color:#8a4d00;border-color:#f2ce76}
+.portal-alert-chip.cancel{background:#fff0f0;color:#b42318;border-color:#efb8b8}
+.portal-alert-chip .count{display:grid;place-items:center;min-width:17px;height:17px;padding:0 4px;border-radius:999px;background:currentColor;color:#fff}
+#portal-requests-overlay{
+  position:fixed;inset:0;z-index:11000;display:none;align-items:center;justify-content:center;
+  padding:16px;background:rgba(8,18,42,.58)
 }
-
-#credito-solicitacoes-live{
-  display:none;align-items:center;gap:5px;margin-left:6px;
-  min-height:22px;padding:4px 8px;border-radius:999px;
-  background:#fff4d8;color:#8a4d00;border:1px solid #f3ca69;
-  font:900 10px/1 system-ui,-apple-system,"Segoe UI",sans-serif;
-  cursor:pointer;vertical-align:middle;white-space:nowrap;
-  box-shadow:0 3px 10px rgba(138,77,0,.12)
+#portal-requests-overlay.open{display:flex}
+#portal-requests-modal{
+  width:min(780px,100%);max-height:90vh;overflow:auto;background:#fff;color:#14213d;
+  border-radius:22px;border:1px solid #dce5f5;box-shadow:0 28px 90px rgba(8,18,42,.34)
 }
-#credito-solicitacoes-live.show{display:inline-flex}
-#credito-solicitacoes-live .count{
-  min-width:17px;height:17px;padding:0 4px;border-radius:999px;
-  display:inline-grid;place-items:center;background:#d97706;color:#fff;font-size:9px
-}
-body.dark #credito-solicitacoes-live{
-  background:#3a2a0a;color:#ffd98a;border-color:#755315
-}
-
-#credito-solicitacoes-overlay{
-  position:fixed;inset:0;z-index:10050;display:none;
-  background:rgba(7,18,45,.50);padding:18px;
-  align-items:center;justify-content:center
-}
-#credito-solicitacoes-overlay.open{display:flex}
-#credito-solicitacoes-modal{
-  width:min(760px,100%);max-height:min(760px,90vh);overflow:auto;
-  background:#fff;color:#14213d;border-radius:22px;
-  border:1px solid #dbe5f7;box-shadow:0 28px 80px rgba(7,18,45,.30)
-}
-.credito-modal-head{
-  position:sticky;top:0;z-index:2;background:#fff;
-  padding:18px 20px;border-bottom:1px solid #e5ebf6;
-  display:flex;align-items:center;justify-content:space-between;gap:12px
-}
-.credito-modal-head h3{margin:0;color:#0a3daf;font-size:18px}
-.credito-modal-close{
-  width:38px;height:38px;border-radius:12px;border:1px solid #dde5f2;
-  background:#fff;color:#20304f;font-size:20px;cursor:pointer
-}
-.credito-modal-body{padding:16px 20px 22px}
-.credito-section-title{
-  margin:3px 0 10px;font:900 12px/1.2 system-ui;color:#53627e;text-transform:uppercase
-}
-.credito-request-list{display:flex;flex-direction:column;gap:10px}
-.credito-request{
-  border:1px solid #dce5f5;border-radius:16px;padding:13px 14px;background:#fbfdff
-}
-.credito-request-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px}
-.credito-request-name{font-weight:900;color:#153d99}
-.credito-request-value{font-weight:950;font-size:18px;color:#0a3daf;white-space:nowrap}
-.credito-request-meta{margin-top:5px;font-size:12px;color:#697892;line-height:1.45}
-.credito-request-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
-.credito-action{
-  border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer
-}
-.credito-action.approve{background:#0e9f6e;color:#fff}
-.credito-action.reject{background:#fff0f0;color:#b42318;border:1px solid #f2caca}
-.credito-empty{padding:18px;border:1px dashed #dce5f5;border-radius:14px;text-align:center;color:#76839b}
-.credito-history{margin-top:18px}
-.credito-status{
-  display:inline-flex;padding:4px 8px;border-radius:999px;font-size:10px;font-weight:900;margin-left:5px
-}
-.credito-status.aprovado{background:#e8f8f0;color:#0b7c56}
-.credito-status.recusado{background:#fff0f0;color:#b42318}
-body.dark #credito-solicitacoes-modal,
-body.dark .credito-modal-head{
-  background:#0e1b31;color:#e8efff;border-color:#32435f
-}
-body.dark .credito-request{background:#14233e;border-color:#32435f}
-body.dark .credito-modal-head h3,
-body.dark .credito-request-name,
-body.dark .credito-request-value{color:#dce8ff}
-body.dark .credito-request-meta{color:#a9b7d0}
+.pr-head{position:sticky;top:0;z-index:2;background:#fff;padding:17px 20px;border-bottom:1px solid #e4eaf4;display:flex;justify-content:space-between;gap:12px}
+.pr-head h2{margin:0;font-size:20px;color:#0a3daf}.pr-head p{margin:4px 0 0;font-size:12px;color:#6d7a93}
+.pr-close{width:40px;height:40px;border-radius:12px;border:1px solid #dce4f0;background:#fff;font-size:20px;cursor:pointer}
+.pr-body{padding:16px 20px 22px}.pr-section{margin-bottom:18px}.pr-title{font-size:12px;font-weight:900;color:#697790;text-transform:uppercase;margin:0 0 9px}
+.pr-list{display:flex;flex-direction:column;gap:10px}.pr-empty{border:1px dashed #dbe4f2;border-radius:14px;padding:18px;text-align:center;color:#75829a}
+.pr-card{border:1px solid #dbe4f2;border-radius:16px;padding:13px 14px;background:#fbfdff}
+.pr-card.danger{border-color:#efb8b8;background:#fffafa}
+.pr-top{display:flex;justify-content:space-between;gap:12px}.pr-name{font-weight:900;color:#153d99}.pr-value{font-weight:950;font-size:18px;color:#0a3daf}
+.pr-meta{font-size:12px;color:#687793;line-height:1.45;margin-top:5px}.pr-route{font-size:13px;color:#34445f;margin-top:7px;font-weight:700}
+.pr-actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:11px}
+.pr-btn{border:0;border-radius:11px;padding:9px 12px;font-weight:900;cursor:pointer}
+.pr-btn.ok{background:#0e9f6e;color:#fff}.pr-btn.no{background:#fff0f0;color:#b42318;border:1px solid #efc5c5}
+body.dark #portal-requests-modal,body.dark .pr-head{background:#101d32;color:#e9efff;border-color:#33445e}
+body.dark .pr-card{background:#14233e;border-color:#33445e}
 </style>
 """
 
@@ -162,185 +111,135 @@ LIVE_SCRIPT = r"""
   }
 
 
-  const URL_CREDITOS='/api/admin/solicitacoes-credito';
-  let carregandoCreditos=false;
+  let portalLoading=false;
+  let lastCancelCount=0;
 
-  function moneyBR(v){
-    return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
-  }
+  function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
+  function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
 
-  function esc(s){
-    return String(s||'').replace(/[&<>"']/g,m=>({
-      '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'
-    })[m]);
-  }
-
-  function indicadorCreditos(){
-    let el=document.getElementById('credito-solicitacoes-live');
+  function portalChip(id,label,cls){
+    let el=document.getElementById(id);
     if(el) return el;
-
-    const aoVivo=indicador();
     el=document.createElement('span');
-    el.id='credito-solicitacoes-live';
-    el.setAttribute('role','button');
-    el.setAttribute('tabindex','0');
-    el.title='Solicitações de crédito pendentes';
-    el.innerHTML='CRÉDITO <span class="count">0</span>';
-
-    aoVivo.insertAdjacentElement('afterend',el);
-    el.addEventListener('click',abrirCreditos);
-    el.addEventListener('keydown',e=>{
-      if(e.key==='Enter'||e.key===' '){e.preventDefault();abrirCreditos();}
-    });
+    el.id=id; el.className='portal-alert-chip '+cls;
+    el.innerHTML=`${label} <span class="count">0</span>`;
+    indicador().insertAdjacentElement('afterend',el);
+    el.addEventListener('click',()=>openPortalRequests(cls));
     return el;
   }
 
-  function modalCreditos(){
-    let overlay=document.getElementById('credito-solicitacoes-overlay');
-    if(overlay) return overlay;
-
-    overlay=document.createElement('div');
-    overlay.id='credito-solicitacoes-overlay';
-    overlay.innerHTML=`
-      <div id="credito-solicitacoes-modal" role="dialog" aria-modal="true" aria-label="Solicitações de crédito">
-        <div class="credito-modal-head">
-          <div>
-            <h3>Solicitações de crédito</h3>
-            <div style="font-size:12px;color:#6f7c94;margin-top:3px">Aprove somente depois de confirmar o pagamento.</div>
-          </div>
-          <button type="button" class="credito-modal-close" title="Fechar">×</button>
+  function portalModal(){
+    let o=document.getElementById('portal-requests-overlay');
+    if(o) return o;
+    o=document.createElement('div');o.id='portal-requests-overlay';
+    o.innerHTML=`
+      <div id="portal-requests-modal">
+        <div class="pr-head">
+          <div><h2 id="prModalTitle">Solicitações do cliente</h2><p id="prModalSub">Pendências que precisam de decisão administrativa.</p></div>
+          <button class="pr-close" type="button">×</button>
         </div>
-        <div class="credito-modal-body">
-          <div class="credito-section-title">Pendentes</div>
-          <div id="credito-pendentes-list" class="credito-request-list"></div>
-          <div class="credito-history">
-            <div class="credito-section-title">Processadas recentemente</div>
-            <div id="credito-recentes-list" class="credito-request-list"></div>
-          </div>
+        <div class="pr-body">
+          <div class="pr-section"><div class="pr-title">Pendentes</div><div id="prPending" class="pr-list"></div></div>
+          <div class="pr-section"><div class="pr-title">Processadas recentemente</div><div id="prRecent" class="pr-list"></div></div>
         </div>
       </div>`;
-    document.body.appendChild(overlay);
-
-    overlay.querySelector('.credito-modal-close').addEventListener('click',fecharCreditos);
-    overlay.addEventListener('click',e=>{if(e.target===overlay) fecharCreditos();});
-    document.addEventListener('keydown',e=>{if(e.key==='Escape'&&overlay.classList.contains('open'))fecharCreditos();});
-    return overlay;
+    document.body.appendChild(o);
+    o.querySelector('.pr-close').addEventListener('click',()=>o.classList.remove('open'));
+    o.addEventListener('click',e=>{if(e.target===o)o.classList.remove('open');});
+    return o;
   }
 
-  function fecharCreditos(){
-    modalCreditos().classList.remove('open');
+  let currentPortalKind='credito';
+  function openPortalRequests(kind){
+    currentPortalKind=kind||'credito';
+    const o=portalModal();o.classList.add('open');
+    renderPortalCurrent();
   }
 
-  function abrirCreditos(){
-    modalCreditos().classList.add('open');
-    carregarSolicitacoesCredito(true);
+  let portalData={credito:{pendentes:[],recentes:[]},cancel:{pendentes:[],recentes:[]}};
+
+  function creditCard(x,pending){
+    return `<div class="pr-card">
+      <div class="pr-top"><div><div class="pr-name">${esc(x.cliente_nome)}</div><div class="pr-meta">Solicitação #${x.id} • ${esc(x.criado_em||'')} ${x.cliente_telefone?'• '+esc(x.cliente_telefone):''}</div></div><div class="pr-value">${money(x.valor)}</div></div>
+      ${pending?`<div class="pr-actions"><button class="pr-btn ok" data-credit-ok="${x.id}">Aprovar e creditar</button><button class="pr-btn no" data-credit-no="${x.id}">Recusar</button></div>`:`<div class="pr-meta">Status: ${esc(x.status||'')}</div>`}
+    </div>`;
+  }
+  function cancelCard(x,pending){
+    return `<div class="pr-card danger">
+      <div class="pr-top"><div><div class="pr-name">CANCELAMENTO — ${esc(x.cliente_nome)}</div><div class="pr-meta">Pedido #${x.entrega_id} • ${esc(x.criado_em||'')}</div></div><div class="pr-value">${money(x.valor)}</div></div>
+      <div class="pr-route">${esc(x.origem||'-')} → ${esc(x.destino||'-')}</div>
+      <div class="pr-meta">${x.entregador?'Entregador: '+esc(x.entregador)+' • ':''}${esc(x.motivo||'Cliente solicitou cancelamento.')}</div>
+      ${pending?`<div class="pr-actions"><button class="pr-btn ok" data-cancel-ok="${x.id}">Aceitar cancelamento</button><button class="pr-btn no" data-cancel-no="${x.id}">Recusar</button></div>`:`<div class="pr-meta">Status: ${esc(x.status||'')}</div>`}
+    </div>`;
   }
 
-  function renderCreditoRequest(x,pendente){
-    const tel=x.cliente_telefone ? ` • ${esc(x.cliente_telefone)}` : '';
-    const user=x.cliente_username ? ` • Login: ${esc(x.cliente_username)}` : '';
-    const status=esc(x.status||'pendente');
-    const obs=x.observacao ? `<div class="credito-request-meta">${esc(x.observacao)}</div>` : '';
-    return `
-      <div class="credito-request" data-credito-request="${x.id}">
-        <div class="credito-request-top">
-          <div>
-            <div class="credito-request-name">
-              ${esc(x.cliente_nome||'Cliente')}
-              ${pendente?'':`<span class="credito-status ${status}">${status.toUpperCase()}</span>`}
-            </div>
-            <div class="credito-request-meta">Solicitação #${x.id} • ${esc(x.criado_em||'')}${tel}${user}</div>
-            ${obs}
-          </div>
-          <div class="credito-request-value">${moneyBR(x.valor)}</div>
-        </div>
-        ${pendente?`
-          <div class="credito-request-actions">
-            <button type="button" class="credito-action approve" data-credit-approve="${x.id}">Aprovar e creditar</button>
-            <button type="button" class="credito-action reject" data-credit-reject="${x.id}">Recusar</button>
-          </div>`:''}
-      </div>`;
+  function renderPortalCurrent(){
+    const kind=currentPortalKind;
+    const data=portalData[kind]||{pendentes:[],recentes:[]};
+    const modal=portalModal();
+    modal.querySelector('#prModalTitle').textContent=kind==='cancel'?'Solicitações de cancelamento':'Solicitações de crédito';
+    modal.querySelector('#prModalSub').textContent=kind==='cancel'
+      ?'O pedido só será cancelado depois que a administração aceitar.'
+      :'Aprove somente depois de confirmar o pagamento.';
+    const card=kind==='cancel'?cancelCard:creditCard;
+    modal.querySelector('#prPending').innerHTML=data.pendentes.length?data.pendentes.map(x=>card(x,true)).join(''):'<div class="pr-empty">Nenhuma solicitação pendente.</div>';
+    modal.querySelector('#prRecent').innerHTML=data.recentes.length?data.recentes.map(x=>card(x,false)).join(''):'<div class="pr-empty">Nenhuma solicitação processada recentemente.</div>';
+
+    modal.querySelectorAll('[data-credit-ok]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-credito/${b.dataset.creditOk}/aprovar`,b));
+    modal.querySelectorAll('[data-credit-no]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-credito/${b.dataset.creditNo}/recusar`,b));
+    modal.querySelectorAll('[data-cancel-ok]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-cancelamento/${b.dataset.cancelOk}/aprovar`,b));
+    modal.querySelectorAll('[data-cancel-no]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-cancelamento/${b.dataset.cancelNo}/recusar`,b));
   }
 
-  function renderSolicitacoesCredito(data){
-    const chip=indicadorCreditos();
-    const qtd=Number(data.quantidade_pendente||0);
-    const count=chip.querySelector('.count');
-    if(count) count.textContent=String(qtd);
-    chip.classList.toggle('show',qtd>0);
-
-    const modal=modalCreditos();
-    const p=modal.querySelector('#credito-pendentes-list');
-    const r=modal.querySelector('#credito-recentes-list');
-
-    p.innerHTML=(data.pendentes||[]).length
-      ? data.pendentes.map(x=>renderCreditoRequest(x,true)).join('')
-      : '<div class="credito-empty">Nenhuma solicitação de crédito pendente.</div>';
-
-    r.innerHTML=(data.recentes||[]).length
-      ? data.recentes.map(x=>renderCreditoRequest(x,false)).join('')
-      : '<div class="credito-empty">Nenhuma solicitação processada recentemente.</div>';
-
-    modal.querySelectorAll('[data-credit-approve]').forEach(btn=>{
-      btn.addEventListener('click',()=>aprovarCredito(btn.dataset.creditApprove,btn));
-    });
-    modal.querySelectorAll('[data-credit-reject]').forEach(btn=>{
-      btn.addEventListener('click',()=>recusarCredito(btn.dataset.creditReject,btn));
-    });
-  }
-
-  async function carregarSolicitacoesCredito(forcar){
-    if(carregandoCreditos) return;
-    carregandoCreditos=true;
-    try{
-      const resp=await fetch(URL_CREDITOS,{
-        cache:'no-store',credentials:'same-origin',
-        headers:{Accept:'application/json','X-Requested-With':'fetch'}
-      });
-      if(!resp.ok) throw new Error('creditos '+resp.status);
-      const data=await resp.json();
-      if(data&&data.ok) renderSolicitacoesCredito(data);
-    }catch(e){
-      if(forcar) console.warn('Solicitações de crédito:',e);
-    }finally{
-      carregandoCreditos=false;
-    }
-  }
-
-  async function aprovarCredito(id,btn){
-    if(!confirm('Confirmar pagamento e lançar este valor como crédito para o cliente?')) return;
+  async function portalAction(url,btn){
+    const cancel=url.includes('cancelamento');
+    const approve=url.endsWith('/aprovar');
+    const msg=cancel
+      ?(approve?'Aceitar o cancelamento deste pedido?':'Recusar o cancelamento e manter o pedido ativo?')
+      :(approve?'Confirmar o pagamento e lançar este crédito?':'Recusar esta solicitação de crédito?');
+    if(!confirm(msg)) return;
     btn.disabled=true;
     try{
-      const resp=await fetch(`/api/admin/solicitacoes-credito/${id}/aprovar`,{
-        method:'POST',credentials:'same-origin',
-        headers:{Accept:'application/json','X-Requested-With':'fetch'}
-      });
-      const data=await resp.json().catch(()=>null);
-      if(!resp.ok||!data||!data.ok) throw new Error(data?.error||'Não foi possível aprovar.');
-      await carregarSolicitacoesCredito(true);
-      try{document.dispatchEvent(new CustomEvent('supervisao:live-updated'));}catch(e){}
-    }catch(e){
-      alert(e.message||'Falha ao aprovar solicitação.');
-      btn.disabled=false;
-    }
+      const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'fetch'}});
+      const d=await r.json().catch(()=>null);
+      if(!r.ok||!d||!d.ok) throw new Error(d?.error||d?.msg||'Não foi possível concluir.');
+      await loadPortalRequests(false);
+    }catch(e){alert(e.message||'Falha ao processar.');btn.disabled=false;}
   }
 
-  async function recusarCredito(id,btn){
-    if(!confirm('Recusar esta solicitação? Nenhum crédito será lançado.')) return;
-    btn.disabled=true;
+  function playCancelSiren(){
     try{
-      const resp=await fetch(`/api/admin/solicitacoes-credito/${id}/recusar`,{
-        method:'POST',credentials:'same-origin',
-        headers:{'Content-Type':'application/json',Accept:'application/json','X-Requested-With':'fetch'},
-        body:JSON.stringify({motivo:'Pagamento não confirmado pelo administrador.'})
-      });
-      const data=await resp.json().catch(()=>null);
-      if(!resp.ok||!data||!data.ok) throw new Error(data?.error||'Não foi possível recusar.');
-      await carregarSolicitacoesCredito(true);
-    }catch(e){
-      alert(e.message||'Falha ao recusar solicitação.');
-      btn.disabled=false;
-    }
+      const a=new Audio('/static/aviso_pendente.mp3');
+      a.volume=1;a.play().catch(()=>{});
+      setTimeout(()=>{try{const b=new Audio('/static/aviso_pendente.mp3');b.volume=1;b.play().catch(()=>{});}catch(e){}},1100);
+    }catch(e){}
+  }
+
+  async function loadPortalRequests(openOnNew){
+    if(portalLoading)return;portalLoading=true;
+    try{
+      const [cr,ca]=await Promise.all([
+        fetch('/api/admin/solicitacoes-credito',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()),
+        fetch('/api/admin/solicitacoes-cancelamento',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json())
+      ]);
+      if(cr&&cr.ok) portalData.credito={pendentes:cr.pendentes||[],recentes:cr.recentes||[]};
+      if(ca&&ca.ok) portalData.cancel={pendentes:ca.pendentes||[],recentes:ca.recentes||[]};
+
+      const cchip=portalChip('portal-credit-chip','CRÉDITO','credito');
+      const xchip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+      const cq=portalData.credito.pendentes.length, xq=portalData.cancel.pendentes.length;
+      cchip.querySelector('.count').textContent=cq;cchip.classList.toggle('show',cq>0);
+      xchip.querySelector('.count').textContent=xq;xchip.classList.toggle('show',xq>0);
+
+      if(xq>lastCancelCount){
+        playCancelSiren();
+        currentPortalKind='cancel';
+        portalModal().classList.add('open');
+      }
+      lastCancelCount=xq;
+      if(portalModal().classList.contains('open')) renderPortalCurrent();
+    }catch(e){console.warn('Solicitações do portal:',e);}
+    finally{portalLoading=false;}
   }
 
   function usuarioEditando(){
@@ -454,7 +353,6 @@ LIVE_SCRIPT = r"""
 
       atualizarFilaContador(docNovo);
       atualizarContadoresSolicitacoes(docNovo);
-      await carregarSolicitacoesCredito(false);
 
       reaplicarFiltros(filtros);
 
@@ -494,7 +392,7 @@ LIVE_SCRIPT = r"""
       }
 
       const nova=String(d.versao);
-      await carregarSolicitacoesCredito(false);
+      await loadPortalRequests(false);
 
       if(versao===null){
         versao=nova;
@@ -519,9 +417,10 @@ LIVE_SCRIPT = r"""
 
   function iniciar(){
     indicador();
-    indicadorCreditos();
-    modalCreditos();
-    carregarSolicitacoesCredito(false);
+    portalChip('portal-credit-chip','CRÉDITO','credito');
+    portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+    portalModal();
+    loadPortalRequests(false);
     verificar();
     setInterval(verificar,INTERVALO);
 
