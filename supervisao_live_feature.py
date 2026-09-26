@@ -53,6 +53,15 @@ LIVE_STYLE = r"""
 .pr-btn.ok{background:#0e9f6e;color:#fff}.pr-btn.no{background:#fff0f0;color:#b42318;border:1px solid #efc5c5}
 body.dark #portal-requests-modal,body.dark .pr-head{background:#101d32;color:#e9efff;border-color:#33445e}
 body.dark .pr-card{background:#14233e;border-color:#33445e}
+
+@keyframes portalCancelFlash{
+  0%,100%{background:#ffeded;color:#b42318;box-shadow:0 0 0 0 rgba(217,45,32,.20)}
+  50%{background:#d92d20;color:#fff;box-shadow:0 0 0 7px rgba(217,45,32,.10)}
+}
+.portal-alert-chip.cancel.show{
+  animation:portalCancelFlash .95s ease-in-out infinite;
+}
+
 </style>
 """
 
@@ -233,6 +242,9 @@ LIVE_SCRIPT = r"""
 
       if(xq>lastCancelCount){
         playCancelSiren();
+        currentPortalKind='cancel';
+        portalModal().classList.add('open');
+      }else if(lastCancelCount===0 && xq>0){
         currentPortalKind='cancel';
         portalModal().classList.add('open');
       }
@@ -421,6 +433,7 @@ LIVE_SCRIPT = r"""
     portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
     portalModal();
     loadPortalRequests(false);
+    setInterval(()=>loadPortalRequests(false),5000);
     verificar();
     setInterval(verificar,INTERVALO);
 
