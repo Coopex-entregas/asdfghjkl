@@ -857,27 +857,6 @@ class Credito(db.Model):
         return f'<Credito {self.id} - Cliente {self.cliente_id} - R${self.valor_final:.2f}>'
 
 
-class SolicitacaoCreditoCliente(db.Model):
-    """Solicitações de compra de crédito feitas pelo portal do cliente."""
-    __tablename__ = 'solicitacao_credito_cliente'
-
-    id = db.Column(db.Integer, primary_key=True)
-    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False, index=True)
-    valor = db.Column(db.Float, nullable=False, default=0.0)
-    status = db.Column(db.String(20), nullable=False, default='pendente', index=True)
-    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
-    decidido_em = db.Column(db.DateTime, nullable=True)
-    decidido_por = db.Column(db.String(80), nullable=True)
-    credito_id = db.Column(db.Integer, db.ForeignKey('credito.id'), nullable=True)
-    observacao = db.Column(db.String(255), nullable=True)
-
-    cliente = db.relationship('Cliente', backref=db.backref('solicitacoes_credito', lazy=True))
-    credito = db.relationship('Credito', foreign_keys=[credito_id])
-
-    def __repr__(self):
-        return f'<SolicitacaoCreditoCliente {self.id} cliente={self.cliente_id} valor={self.valor} status={self.status}>'
-
-
 class CreditoMovimento(db.Model):
     __tablename__ = 'credito_movimento'
 
@@ -914,6 +893,38 @@ class CreditoMovimento(db.Model):
 
     descricao = db.Column(db.String(255))
     referencia = db.Column(db.String(255))
+
+
+class SolicitacaoCreditoCliente(db.Model):
+    __tablename__ = 'solicitacao_credito_cliente'
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False, index=True)
+    valor = db.Column(db.Float, nullable=False, default=0.0)
+    status = db.Column(db.String(20), nullable=False, default='pendente', index=True)
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    decidido_em = db.Column(db.DateTime, nullable=True)
+    decidido_por = db.Column(db.String(80), nullable=True)
+    credito_id = db.Column(db.Integer, db.ForeignKey('credito.id'), nullable=True)
+    observacao = db.Column(db.String(255), nullable=True)
+
+    cliente = db.relationship('Cliente', backref=db.backref('solicitacoes_credito', lazy=True))
+    credito = db.relationship('Credito', foreign_keys=[credito_id])
+
+
+class SolicitacaoCancelamentoCliente(db.Model):
+    __tablename__ = 'solicitacao_cancelamento_cliente'
+    id = db.Column(db.Integer, primary_key=True)
+    cliente_id = db.Column(db.Integer, db.ForeignKey('cliente.id'), nullable=False, index=True)
+    entrega_id = db.Column(db.Integer, db.ForeignKey('entrega.id'), nullable=False, index=True)
+    status = db.Column(db.String(20), nullable=False, default='pendente', index=True)
+    status_anterior = db.Column(db.String(50), nullable=True)
+    motivo = db.Column(db.String(255), nullable=True)
+    criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow, index=True)
+    decidido_em = db.Column(db.DateTime, nullable=True)
+    decidido_por = db.Column(db.String(80), nullable=True)
+
+    cliente = db.relationship('Cliente', backref=db.backref('solicitacoes_cancelamento', lazy=True))
+    entrega = db.relationship('Entrega', foreign_keys=[entrega_id])
 
 
 class ListaEspera(db.Model):
@@ -8774,6 +8785,8 @@ def api_cliente_me():
         'telefone': cli.telefone,
         'email': cli.email,
         'username': cli.username,
+        'endereco': getattr(cli, 'endereco', None) or '',
+        'bairro_origem': getattr(cli, 'bairro_origem', None) or '',
     })
 
 @app.get('/api/cliente/saldo-json')
@@ -8946,6 +8959,67 @@ def api_cliente_historico():
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
         })
 
+    # Espelho financeiro do período filtrado.
+    financeiro = None
+    data_inicio = (request.args.get('data_inicio') or request.args.get('inicio') or '').strip()
+    data_fim = (request.args.get('data_fim') or request.args.get('fim') or '').strip()
+    if data_inicio and data_fim:
+        try:
+            d_ini = datetime.strptime(data_inicio, '%Y-%m-%d').date()
+            d_fim = datetime.strptime(data_fim, '%Y-%m-%d').date()
+            ini_utc, _ = local_date_window_to_utc_range(d_ini)
+            _, fim_utc = local_date_window_to_utc_range(d_fim)
+
+            mov_data = func.coalesce(CreditoMovimento.criado_em, CreditoMovimento.data)
+
+            cred_antes = (
+                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                .filter(
+                    CreditoMovimento.cliente_id == cli.id,
+                    CreditoMovimento.tipo == 'credito',
+                    mov_data < ini_utc
+                ).scalar() or 0.0
+            )
+            deb_antes = (
+                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                .filter(
+                    CreditoMovimento.cliente_id == cli.id,
+                    CreditoMovimento.tipo == 'debito',
+                    mov_data < ini_utc
+                ).scalar() or 0.0
+            )
+            creditos_periodo = (
+                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                .filter(
+                    CreditoMovimento.cliente_id == cli.id,
+                    CreditoMovimento.tipo == 'credito',
+                    mov_data >= ini_utc,
+                    mov_data <= fim_utc
+                ).scalar() or 0.0
+            )
+            debitos_periodo = (
+                db.session.query(func.coalesce(func.sum(CreditoMovimento.valor), 0.0))
+                .filter(
+                    CreditoMovimento.cliente_id == cli.id,
+                    CreditoMovimento.tipo == 'debito',
+                    mov_data >= ini_utc,
+                    mov_data <= fim_utc
+                ).scalar() or 0.0
+            )
+
+            saldo_inicial = float(cred_antes) - float(deb_antes)
+            saldo_final = saldo_inicial + float(creditos_periodo) - float(debitos_periodo)
+            financeiro = {
+                'saldo_inicial': round(saldo_inicial, 2),
+                'creditos_adicionados': round(float(creditos_periodo), 2),
+                'credito_utilizado': round(float(debitos_periodo), 2),
+                'saldo_final': round(saldo_final, 2),
+                'data_inicio': data_inicio,
+                'data_fim': data_fim,
+            }
+        except Exception:
+            financeiro = None
+
     return jsonify(
         ok=True,
         entregas=out,
@@ -8954,7 +9028,8 @@ def api_cliente_historico():
             'valor_total': round(total_valor, 2),
             'credito_usado': round(total_credito, 2),
             'canceladas': canceladas,
-        }
+        },
+        financeiro=financeiro
     )
 
 
@@ -9017,16 +9092,14 @@ def cliente_historico_exportar_xlsx():
 
 def _entrega_esta_paga(entrega):
     """
-    Regra do recibo do cliente:
-    - Pagamento por Crédito: recibo liberado automaticamente.
-    - Pix, Dinheiro e demais formas: recibo somente quando status_pagamento = pago.
+    Recibo do cliente:
+    - Crédito/Crédito automático: liberado automaticamente.
+    - Pix, Dinheiro e outras formas: somente quando status_pagamento == pago.
     """
     st = _norm(getattr(entrega, 'status_pagamento', '') or '')
     pag = _norm(getattr(entrega, 'pagamento', '') or '')
-
     if pag.startswith('credito') or pag.startswith('crédito'):
         return True
-
     return st == 'pago'
 
 
@@ -9050,14 +9123,8 @@ def _pedido_to_json(entrega):
 @app.post('/api/cliente/recarga')
 @cliente_required
 def api_credito_recarga():
-    """
-    Cliente solicita compra de crédito.
-    A solicitação fica PENDENTE até o administrador aprovar ou recusar.
-    Nenhum crédito entra automaticamente nesta etapa.
-    """
     cli = _cliente_atual()
     data = request.get_json(silent=True) or {}
-
     try:
         valor = float(data.get('valor') or 0)
     except Exception:
@@ -9075,27 +9142,25 @@ def api_credito_recarga():
     db.session.add(solicitacao)
     db.session.commit()
 
-    pix_chave = '05289938000197'
-    numero_whatsapp = '5584981110706'
     from urllib.parse import quote
-    mensagem = (
+    pix_chave = '05289938000197'
+    numero = '5584981110706'
+    msg = (
         f'Olá, COOPEX. Segue o comprovante da solicitação de crédito '
-        f'#{solicitacao.id} no valor de R$ {valor:.2f}. '
-        f'Cliente: {cli.nome}.'
+        f'#{solicitacao.id} no valor de R$ {valor:.2f}. Cliente: {cli.nome}.'
     )
-    whatsapp_url = f'https://wa.me/{numero_whatsapp}?text={quote(mensagem)}'
+    whatsapp_url = f'https://wa.me/{numero}?text={quote(msg)}'
 
     return jsonify(
         ok=True,
         solicitacao_id=solicitacao.id,
-        recarga_id=solicitacao.id,
         valor=round(valor, 2),
         status='pendente',
         pix_chave=pix_chave,
         whatsapp_numero='84981110706',
         whatsapp_url=whatsapp_url,
         referencia=f'CREDITO-{solicitacao.id}',
-        msg='Solicitação enviada para aprovação da COOPEX.'
+        msg='Solicitação enviada. Aguarde a confirmação do pagamento pela COOPEX.'
     )
 
 
@@ -9230,6 +9295,14 @@ def api_pedidos_criar():
         db.session.add(entrega)
         db.session.commit()
 
+        # Pagamento por crédito é automático e pode deixar o saldo negativo.
+        if pagamento_in == 'credito':
+            try:
+                sincronizar_credito_da_entrega(entrega.id)
+                entrega = Entrega.query.get(entrega.id) or entrega
+            except Exception:
+                current_app.logger.exception('Falha ao sincronizar crédito automático da entrega %s', entrega.id)
+
         try:
             emitir_atualizacao_entrega(entrega, 'criada')
         except Exception:
@@ -9270,15 +9343,58 @@ def api_pedidos_ativo():
 
 @app.post('/api/pedidos/<int:pedido_id>/cancelar')
 def api_pedidos_cancelar(pedido_id):
+    """
+    O cliente NÃO cancela diretamente.
+    Ele solicita o cancelamento, que precisa ser aceito ou recusado pela administração.
+    """
     cli = _cliente_atual_optional()
-    q = Entrega.query.filter(Entrega.id == pedido_id)
-    if cli:
-        q = q.filter(Entrega.cliente_id == cli.id)
-    entrega = q.first_or_404()
-    entrega.status = 'cancelado'
+    if not cli:
+        return jsonify(ok=False, msg='Entre como cliente para solicitar o cancelamento.'), 401
+
+    entrega = Entrega.query.filter(
+        Entrega.id == pedido_id,
+        Entrega.cliente_id == cli.id
+    ).first_or_404()
+
+    if _norm(entrega.status or '') == 'cancelado':
+        return jsonify(ok=False, msg='Este pedido já está cancelado.'), 409
+
+    existente = (
+        SolicitacaoCancelamentoCliente.query
+        .filter_by(cliente_id=cli.id, entrega_id=entrega.id, status='pendente')
+        .order_by(SolicitacaoCancelamentoCliente.id.desc())
+        .first()
+    )
+    if existente:
+        return jsonify(
+            ok=True,
+            solicitacao_id=existente.id,
+            status='pendente',
+            msg='A solicitação de cancelamento já está aguardando análise.'
+        )
+
+    data = request.get_json(silent=True) or {}
+    motivo = (data.get('motivo') or 'Cliente solicitou o cancelamento pelo portal.').strip()
+
+    req = SolicitacaoCancelamentoCliente(
+        cliente_id=cli.id,
+        entrega_id=entrega.id,
+        status='pendente',
+        status_anterior=(entrega.status or 'aguardando')[:50],
+        motivo=motivo[:255],
+        criado_em=datetime.utcnow(),
+    )
+    entrega.status = 'cancelamento solicitado'
+    db.session.add(req)
     db.session.add(entrega)
     db.session.commit()
-    return jsonify(ok=True)
+
+    return jsonify(
+        ok=True,
+        solicitacao_id=req.id,
+        status='pendente',
+        msg='Cancelamento solicitado. Aguarde a decisão da COOPEX.'
+    )
 
 
 
@@ -9598,36 +9714,63 @@ html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;b
 
 
 # =========================================================
-# SOLICITAÇÕES DE CRÉDITO DO CLIENTE — ADMIN
+# PORTAL DO CLIENTE — SOLICITAÇÕES PARA O ADMIN
 # =========================================================
-def _serializar_solicitacao_credito(s):
-    cli = getattr(s, 'cliente', None)
-    criado_local = None
-    decidido_local = None
-    try:
-        if s.criado_em:
-            criado_local = to_brasilia(s.criado_em).strftime('%d/%m/%Y %H:%M')
-    except Exception:
-        criado_local = s.criado_em.strftime('%d/%m/%Y %H:%M') if s.criado_em else None
-    try:
-        if s.decidido_em:
-            decidido_local = to_brasilia(s.decidido_em).strftime('%d/%m/%Y %H:%M')
-    except Exception:
-        decidido_local = s.decidido_em.strftime('%d/%m/%Y %H:%M') if s.decidido_em else None
+def _admin_nome_sessao():
+    return str(
+        session.get('admin_username')
+        or session.get('username')
+        or session.get('usuario')
+        or 'Administrador'
+    )[:80]
 
+
+def _dt_admin_br(dt):
+    if not dt:
+        return ''
+    try:
+        return to_brasilia(dt).strftime('%d/%m/%Y %H:%M')
+    except Exception:
+        return dt.strftime('%d/%m/%Y %H:%M')
+
+
+def _credito_req_json(x):
+    cli = getattr(x, 'cliente', None)
     return {
-        'id': s.id,
-        'cliente_id': s.cliente_id,
-        'cliente_nome': cli.nome if cli else f'Cliente #{s.cliente_id}',
-        'cliente_username': getattr(cli, 'username', None) if cli else None,
-        'cliente_telefone': getattr(cli, 'telefone', None) if cli else None,
-        'valor': float(s.valor or 0),
-        'status': s.status or 'pendente',
-        'criado_em': criado_local,
-        'decidido_em': decidido_local,
-        'decidido_por': s.decidido_por or '',
-        'credito_id': s.credito_id,
-        'observacao': s.observacao or '',
+        'id': x.id,
+        'cliente_id': x.cliente_id,
+        'cliente_nome': cli.nome if cli else f'Cliente #{x.cliente_id}',
+        'cliente_telefone': getattr(cli, 'telefone', '') if cli else '',
+        'valor': float(x.valor or 0),
+        'status': x.status or 'pendente',
+        'criado_em': _dt_admin_br(x.criado_em),
+        'decidido_em': _dt_admin_br(x.decidido_em),
+        'observacao': x.observacao or '',
+    }
+
+
+def _cancel_req_json(x):
+    cli = getattr(x, 'cliente', None)
+    e = getattr(x, 'entrega', None)
+    if e:
+        try:
+            e = _enriquecer_entrega(e)
+        except Exception:
+            pass
+    return {
+        'id': x.id,
+        'cliente_id': x.cliente_id,
+        'cliente_nome': cli.nome if cli else f'Cliente #{x.cliente_id}',
+        'cliente_telefone': getattr(cli, 'telefone', '') if cli else '',
+        'entrega_id': x.entrega_id,
+        'valor': float(getattr(e, 'valor', 0) or 0),
+        'origem': getattr(e, 'origem_endereco', '') if e else '',
+        'destino': getattr(e, 'destino_endereco', '') if e else '',
+        'entregador': (e.cooperado.nome if e and getattr(e, 'cooperado', None) else ''),
+        'status': x.status or 'pendente',
+        'motivo': x.motivo or '',
+        'criado_em': _dt_admin_br(x.criado_em),
+        'decidido_em': _dt_admin_br(x.decidido_em),
     }
 
 
@@ -9638,132 +9781,146 @@ def api_admin_solicitacoes_credito():
 
     pendentes = (
         SolicitacaoCreditoCliente.query
-        .filter(SolicitacaoCreditoCliente.status == 'pendente')
-        .order_by(SolicitacaoCreditoCliente.criado_em.asc(), SolicitacaoCreditoCliente.id.asc())
+        .filter_by(status='pendente')
+        .order_by(SolicitacaoCreditoCliente.criado_em.asc())
         .all()
     )
-
     recentes = (
         SolicitacaoCreditoCliente.query
         .filter(SolicitacaoCreditoCliente.status.in_(['aprovado', 'recusado']))
-        .order_by(SolicitacaoCreditoCliente.decidido_em.desc(), SolicitacaoCreditoCliente.id.desc())
-        .limit(20)
-        .all()
+        .order_by(SolicitacaoCreditoCliente.decidido_em.desc())
+        .limit(20).all()
     )
-
     return jsonify(
         ok=True,
         quantidade_pendente=len(pendentes),
-        pendentes=[_serializar_solicitacao_credito(x) for x in pendentes],
-        recentes=[_serializar_solicitacao_credito(x) for x in recentes],
+        pendentes=[_credito_req_json(x) for x in pendentes],
+        recentes=[_credito_req_json(x) for x in recentes],
     )
 
 
-@app.post('/api/admin/solicitacoes-credito/<int:solicitacao_id>/aprovar')
-def api_admin_solicitacao_credito_aprovar(solicitacao_id):
+@app.post('/api/admin/solicitacoes-credito/<int:req_id>/aprovar')
+def api_admin_credito_aprovar(req_id):
     if not session.get('is_admin') and not session.get('is_master'):
         return jsonify(ok=False, error='unauthorized'), 401
-
-    solicitacao = SolicitacaoCreditoCliente.query.get_or_404(solicitacao_id)
-    if solicitacao.status != 'pendente':
-        return jsonify(
-            ok=False,
-            error='Esta solicitação já foi processada.',
-            status=solicitacao.status
-        ), 409
-
-    # Reserva a solicitação para impedir duplo clique/aprovação duplicada.
-    solicitacao.status = 'processando'
-    db.session.add(solicitacao)
-    db.session.commit()
+    req = SolicitacaoCreditoCliente.query.get_or_404(req_id)
+    if req.status != 'pendente':
+        return jsonify(ok=False, error='Solicitação já processada.'), 409
 
     try:
-        nome_admin = (
-            session.get('admin_username')
-            or session.get('username')
-            or session.get('usuario')
-            or 'Administrador'
-        )
-
         credito = registrar_credito(
-            cliente_id=solicitacao.cliente_id,
-            valor_bruto=solicitacao.valor,
+            cliente_id=req.cliente_id,
+            valor_bruto=req.valor,
             desconto_tipo='nenhum',
             desconto_valor=0,
-            motivo=f'Crédito aprovado da solicitação #{solicitacao.id}',
-            criado_por=str(nome_admin)[:80],
+            motivo=f'Solicitação de crédito #{req.id} aprovada',
+            criado_por=_admin_nome_sessao(),
         )
-
-        solicitacao = SolicitacaoCreditoCliente.query.get(solicitacao_id)
-        solicitacao.status = 'aprovado'
-        solicitacao.decidido_em = datetime.utcnow()
-        solicitacao.decidido_por = str(nome_admin)[:80]
-        solicitacao.credito_id = credito.id
-        solicitacao.observacao = 'Pagamento confirmado e crédito lançado.'
-        db.session.add(solicitacao)
+        req.status = 'aprovado'
+        req.decidido_em = datetime.utcnow()
+        req.decidido_por = _admin_nome_sessao()
+        req.credito_id = credito.id
+        req.observacao = 'Pagamento confirmado e crédito lançado.'
+        db.session.add(req)
         db.session.commit()
-
-        cli = Cliente.query.get(solicitacao.cliente_id)
+        cli = Cliente.query.get(req.cliente_id)
         return jsonify(
             ok=True,
-            status='aprovado',
-            solicitacao=_serializar_solicitacao_credito(solicitacao),
-            saldo=float(cli.saldo_atual or 0) if cli else None,
-            msg='Solicitação aprovada e crédito lançado no saldo do cliente.'
+            msg='Crédito aprovado e lançado.',
+            saldo=float(cli.saldo_atual or 0) if cli else None
         )
-
     except Exception as exc:
         db.session.rollback()
-        try:
-            solicitacao = SolicitacaoCreditoCliente.query.get(solicitacao_id)
-            if solicitacao and solicitacao.status == 'processando':
-                solicitacao.status = 'pendente'
-                solicitacao.observacao = 'Falha ao aprovar; solicitação devolvida para pendente.'
-                db.session.add(solicitacao)
-                db.session.commit()
-        except Exception:
-            db.session.rollback()
-
-        current_app.logger.exception('Erro ao aprovar solicitação de crédito')
-        return jsonify(ok=False, error=f'Falha ao aprovar crédito: {exc.__class__.__name__}'), 500
+        current_app.logger.exception('Erro ao aprovar crédito solicitado')
+        return jsonify(ok=False, error=f'Falha ao lançar crédito: {exc.__class__.__name__}'), 500
 
 
-@app.post('/api/admin/solicitacoes-credito/<int:solicitacao_id>/recusar')
-def api_admin_solicitacao_credito_recusar(solicitacao_id):
+@app.post('/api/admin/solicitacoes-credito/<int:req_id>/recusar')
+def api_admin_credito_recusar(req_id):
     if not session.get('is_admin') and not session.get('is_master'):
         return jsonify(ok=False, error='unauthorized'), 401
-
-    solicitacao = SolicitacaoCreditoCliente.query.get_or_404(solicitacao_id)
-    if solicitacao.status != 'pendente':
-        return jsonify(
-            ok=False,
-            error='Esta solicitação já foi processada.',
-            status=solicitacao.status
-        ), 409
-
-    data = request.get_json(silent=True) or {}
-    motivo = (data.get('motivo') or 'Pagamento não confirmado.').strip()
-
-    nome_admin = (
-        session.get('admin_username')
-        or session.get('username')
-        or session.get('usuario')
-        or 'Administrador'
-    )
-
-    solicitacao.status = 'recusado'
-    solicitacao.decidido_em = datetime.utcnow()
-    solicitacao.decidido_por = str(nome_admin)[:80]
-    solicitacao.observacao = motivo[:255]
-    db.session.add(solicitacao)
+    req = SolicitacaoCreditoCliente.query.get_or_404(req_id)
+    if req.status != 'pendente':
+        return jsonify(ok=False, error='Solicitação já processada.'), 409
+    req.status = 'recusado'
+    req.decidido_em = datetime.utcnow()
+    req.decidido_por = _admin_nome_sessao()
+    req.observacao = 'Pagamento não confirmado / solicitação recusada.'
+    db.session.add(req)
     db.session.commit()
+    return jsonify(ok=True, msg='Solicitação recusada. Nenhum crédito foi lançado.')
 
+
+@app.get('/api/admin/solicitacoes-cancelamento')
+def api_admin_solicitacoes_cancelamento():
+    if not session.get('is_admin') and not session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 401
+    pendentes = (
+        SolicitacaoCancelamentoCliente.query
+        .filter_by(status='pendente')
+        .order_by(SolicitacaoCancelamentoCliente.criado_em.asc())
+        .all()
+    )
+    recentes = (
+        SolicitacaoCancelamentoCliente.query
+        .filter(SolicitacaoCancelamentoCliente.status.in_(['aprovado', 'recusado']))
+        .order_by(SolicitacaoCancelamentoCliente.decidido_em.desc())
+        .limit(20).all()
+    )
     return jsonify(
         ok=True,
-        status='recusado',
-        solicitacao=_serializar_solicitacao_credito(solicitacao),
-        msg='Solicitação recusada. Nenhum crédito foi lançado.'
+        quantidade_pendente=len(pendentes),
+        pendentes=[_cancel_req_json(x) for x in pendentes],
+        recentes=[_cancel_req_json(x) for x in recentes],
     )
+
+
+@app.post('/api/admin/solicitacoes-cancelamento/<int:req_id>/aprovar')
+def api_admin_cancelamento_aprovar(req_id):
+    if not session.get('is_admin') and not session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 401
+    req = SolicitacaoCancelamentoCliente.query.get_or_404(req_id)
+    if req.status != 'pendente':
+        return jsonify(ok=False, error='Solicitação já processada.'), 409
+
+    entrega = Entrega.query.get_or_404(req.entrega_id)
+    try:
+        # Se o pedido consumiu crédito, devolve o consumo ao cliente.
+        if pagamento_usa_credito(entrega.pagamento or '') or float(getattr(entrega, 'credito_usado', 0) or 0) > 0:
+            desfazer_consumo_credito_da_entrega(entrega.id)
+            entrega = Entrega.query.get(entrega.id) or entrega
+
+        entrega.status = 'cancelado'
+        req.status = 'aprovado'
+        req.decidido_em = datetime.utcnow()
+        req.decidido_por = _admin_nome_sessao()
+        db.session.add(entrega)
+        db.session.add(req)
+        db.session.commit()
+        return jsonify(ok=True, msg='Cancelamento aprovado.')
+    except Exception as exc:
+        db.session.rollback()
+        current_app.logger.exception('Erro ao aprovar cancelamento')
+        return jsonify(ok=False, error=f'Falha ao cancelar: {exc.__class__.__name__}'), 500
+
+
+@app.post('/api/admin/solicitacoes-cancelamento/<int:req_id>/recusar')
+def api_admin_cancelamento_recusar(req_id):
+    if not session.get('is_admin') and not session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 401
+    req = SolicitacaoCancelamentoCliente.query.get_or_404(req_id)
+    if req.status != 'pendente':
+        return jsonify(ok=False, error='Solicitação já processada.'), 409
+
+    entrega = Entrega.query.get_or_404(req.entrega_id)
+    entrega.status = req.status_anterior or ('entregador atribuído' if entrega.cooperado else 'aguardando')
+    req.status = 'recusado'
+    req.decidido_em = datetime.utcnow()
+    req.decidido_por = _admin_nome_sessao()
+    db.session.add(entrega)
+    db.session.add(req)
+    db.session.commit()
+    return jsonify(ok=True, msg='Cancelamento recusado. O pedido continua normalmente.')
 
 
 @app.get('/api/servicos')
