@@ -139,10 +139,28 @@
   </div>
 
   <div class="financial">
-    <div class="fin"><small>Saldo antes da última recarga</small><strong id="fStart">R$ 0,00</strong></div>
-    <div class="fin"><small>Recarga realizada</small><strong class="pos" id="fAdded">+R$ 0,00</strong></div>
-    <div class="fin"><small>Ficou para consumo</small><strong class="neg" id="fUsed">-R$ 0,00</strong></div>
-    <div class="fin"><small>Valor consumido</small><strong id="fEnd">R$ 0,00</strong></div>
+    <div class="fin">
+      <small>Saldo antes da última recarga</small>
+      <strong id="fStart">R$ 0,00</strong>
+    </div>
+    <div class="fin">
+      <small>Última recarga</small>
+      <strong class="pos" id="fAdded">+R$ 0,00</strong>
+      <div style="font-size:11px;color:#71809a;margin-top:5px">
+        Após a recarga: <strong id="fAfterRecharge" style="font-size:12px">R$ 0,00</strong>
+      </div>
+    </div>
+    <div class="fin">
+      <small>Consumo líquido após a recarga</small>
+      <strong class="neg" id="fUsed">-R$ 0,00</strong>
+      <div style="font-size:11px;color:#71809a;margin-top:5px">
+        Consumos menos estornos.
+      </div>
+    </div>
+    <div class="fin">
+      <small>Saldo ao final do período</small>
+      <strong id="fEnd">R$ 0,00</strong>
+    </div>
   </div>
 
   <div class="delivery-summary">
@@ -199,7 +217,17 @@ $('requestCredit').onclick=async()=>{const v=Number(($('creditValue').value||'')
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function lastWeekRange(){const n=new Date();n.setHours(12,0,0,0);const day=n.getDay();const sinceMon=(day+6)%7;const thisMon=new Date(n);thisMon.setDate(n.getDate()-sinceMon);const ini=new Date(thisMon);ini.setDate(thisMon.getDate()-7);const fim=new Date(ini);fim.setDate(ini.getDate()+6);return{ini,fim}}function setLastWeek(){const r=lastWeekRange();$('histIni').value=iso(r.ini);$('histFim').value=iso(r.fim);$('weekTitle').textContent=`Semana passada: ${r.ini.toLocaleDateString('pt-BR')} a ${r.fim.toLocaleDateString('pt-BR')}`}
 function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);return p.toString()}
 function signed(v,plus=false){const n=Number(v||0);const abs=money(Math.abs(n));return n<0?'-'+abs:(plus&&n>0?'+':'')+abs}function tone(el,v){el.classList.toggle('neg',Number(v)<0);el.classList.toggle('pos',Number(v)>0)}
-async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;const f=j.financeiro||{};$('fStart').textContent=signed(f.saldo_antes_ultima_recarga);$('fAdded').textContent='+'+money(f.ultima_recarga||0);$('fUsed').textContent=signed(f.ficou_para_consumo);$('fEnd').textContent='-'+money(f.valor_consumido||0);tone($('fStart'),f.saldo_antes_ultima_recarga);tone($('fUsed'),f.ficou_para_consumo);tone($('fEnd'),-Math.abs(f.valor_consumido||0));const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
+async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;const f=j.financeiro||{};
+$('fStart').textContent=signed(f.saldo_antes_recarga);
+$('fAdded').textContent='+'+money(f.ultima_recarga||0);
+$('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
+$('fUsed').textContent='-'+money(Math.abs(f.consumo_liquido||0));
+$('fEnd').textContent=signed(f.saldo_final_periodo);
+tone($('fStart'),f.saldo_antes_recarga);
+tone($('fAfterRecharge'),f.saldo_apos_recarga);
+tone($('fUsed'),-Math.abs(f.consumo_liquido||0));
+tone($('fEnd'),f.saldo_final_periodo);
+const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
 $('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 (async()=>{setLastWeek();await Promise.all([loadMe(),loadSaldo(),loadEnds(),loadActive()]);await loadHist()})();
