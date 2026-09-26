@@ -9851,6 +9851,30 @@ def api_admin_credito_recusar(req_id):
     return jsonify(ok=True, msg='Solicitação recusada. Nenhum crédito foi lançado.')
 
 
+@app.get('/api/cliente/solicitacoes-cancelamento')
+@cliente_required
+def api_cliente_solicitacoes_cancelamento():
+    cli = _cliente_atual()
+    pendentes = (
+        SolicitacaoCancelamentoCliente.query
+        .filter_by(cliente_id=cli.id, status='pendente')
+        .order_by(SolicitacaoCancelamentoCliente.criado_em.desc())
+        .all()
+    )
+    return jsonify(
+        ok=True,
+        pendentes=[
+            {
+                'id': x.id,
+                'entrega_id': x.entrega_id,
+                'status': x.status,
+                'criado_em': _dt_admin_br(x.criado_em),
+            }
+            for x in pendentes
+        ]
+    )
+
+
 @app.get('/api/admin/solicitacoes-cancelamento')
 def api_admin_solicitacoes_cancelamento():
     if not session.get('is_admin') and not session.get('is_master'):
