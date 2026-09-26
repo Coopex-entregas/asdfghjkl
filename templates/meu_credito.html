@@ -545,8 +545,8 @@
               </div>
             </div>
             <div style="height:12px"></div>
-            <button class="primary-btn" style="min-width:unset;width:100%" id="btnGerarRecarga">Gerar cobrança</button>
-            <div id="boxRecarga" class="hint" style="margin-top:12px">Ao gerar a cobrança, aparecerão a chave Pix e a referência.</div>
+            <button class="primary-btn" style="min-width:unset;width:100%" id="btnGerarRecarga">Solicitar crédito</button>
+            <div id="boxRecarga" class="hint" style="margin-top:12px">Ao solicitar, o pedido ficará aguardando a confirmação do pagamento pela COOPEX.</div>
           </div>
         </section>
 
@@ -958,6 +958,20 @@
       btn.addEventListener("click", () => $("valorRecarga").value = (btn.dataset.v || "").replace(".", ","));
     });
 
+
+    window.copiarChavePix = async function(){
+      const chave = '05289938000197';
+      try{
+        await navigator.clipboard.writeText(chave);
+        toast('Chave Pix copiada.');
+      }catch(e){
+        const ta=document.createElement('textarea');
+        ta.value=chave;document.body.appendChild(ta);ta.select();
+        document.execCommand('copy');ta.remove();
+        toast('Chave Pix copiada.');
+      }
+    };
+
     $("btnGerarRecarga").addEventListener("click", async () => {
       const valor = Number(($("valorRecarga").value || "").replace(/\./g, "").replace(",", "."));
       if(!valor || valor <= 0){
@@ -971,12 +985,28 @@
       });
       if(j && j.ok){
         $("boxRecarga").innerHTML = `
-          <strong>Solicitação criada.</strong><br>
-          Chave Pix: <strong>${escapeHtml(j.pix_chave || "")}</strong><br>
-          Valor: <strong>${moneyBR(j.valor || 0)}</strong><br>
-          Referência: <strong>${escapeHtml(j.referencia || "")}</strong>
+          <div style="font-size:15px;font-weight:900;color:#0A3DAF;margin-bottom:8px">Solicitação #${j.solicitacao_id || j.recarga_id} enviada</div>
+          <div style="margin-bottom:6px">Valor solicitado: <strong>${moneyBR(j.valor || 0)}</strong></div>
+          <div style="margin-bottom:8px">Status: <strong>Aguardando confirmação do pagamento</strong></div>
+
+          <div style="background:#fff;border:1px solid #cfdcf4;border-radius:14px;padding:12px;margin-top:10px">
+            <div style="font-size:11px;font-weight:900;color:#65748F;margin-bottom:5px">CHAVE PIX — CNPJ COOPEX</div>
+            <div style="font-size:20px;font-weight:950;color:#0A3DAF;word-break:break-all">05289938000197</div>
+            <button type="button" class="ghost-btn" style="margin-top:9px" onclick="copiarChavePix()">Copiar chave Pix</button>
+          </div>
+
+          <a href="${j.whatsapp_url || 'https://wa.me/5584981110706'}"
+             target="_blank" rel="noopener"
+             style="display:flex;align-items:center;justify-content:center;text-align:center;
+                    margin-top:12px;min-height:48px;padding:10px 14px;border-radius:14px;
+                    background:#1FA855;color:#fff;font-weight:900;text-decoration:none">
+            Favor enviar o comprovante direto para esse número: (84) 98111-0706
+          </a>
+          <div style="margin-top:8px;font-size:12px;color:#697892">
+            O crédito só será lançado após a COOPEX confirmar o pagamento no painel administrativo.
+          </div>
         `;
-        toast("Cobrança gerada com sucesso.");
+        toast("Solicitação de crédito enviada.");
       }
     });
 
