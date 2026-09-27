@@ -14001,13 +14001,45 @@ except Exception:
 # BOOTSTRAP BANCO / DDL / ÍNDICES / BACKFILL
 # =========================================================
 def criar_bd():
+    """
+    Cria tabelas e aplica pequenas migrações de forma segura.
+
+    IMPORTANTE:
+    No PostgreSQL, qualquer SQL inválido dentro da mesma transação deixa a
+    transação inteira abortada. Antes havia um PRAGMA do SQLite executado no
+    PostgreSQL; o erro era ignorado, mas as ALTER TABLE seguintes também
+    deixavam de ser aplicadas. Por isso as colunas novas de vendedor não eram
+    criadas antes das consultas do sistema.
+
+    Agora cada DDL é executado em sua própria transação.
+    """
     with app.app_context():
+        # Cria tabelas novas (incluindo vendedor_cliente) sem alterar dados existentes.
         db.create_all()
 
-        try:
-            db.session.execute(text("PRAGMA foreign_keys = ON"))
-        except Exception:
-            pass
+        dialect = (db.engine.dialect.name or '').lower()
+
+        # SQLite: ativa FK somente onde PRAGMA é válido.
+        if dialect == 'sqlite':
+            try:
+                with db.engine.connect() as conn:
+                    conn.exec_driver_sql("PRAGMA foreign_keys = ON")
+            except Exception as exc:
+                current_app.logger.warning("Falha ao ativar foreign_keys no SQLite: %s", exc)
+
+        def _exec_ddl_safe(sql, *, postgres_only=False):
+            if postgres_only and dialect not in ('postgresql', 'postgres'):
+                return
+            try:
+                # Uma transação independente por comando.
+                # Se um DDL falhar, não contamina os comandos seguintes.
+                with db.engine.begin() as conn:
+                    conn.execute(text(sql))
+            except Exception as exc:
+                try:
+                    current_app.logger.warning("DDL ignorado: %s | %s", sql[:120], exc)
+                except Exception:
+                    pass
 
         ddl_cmds = [
             "ALTER TABLE lista_espera ADD COLUMN IF NOT EXISTS cooperado_id INTEGER",
@@ -14018,7 +14050,6 @@ def criar_bd():
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS saldo_atual REAL DEFAULT 0",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS username VARCHAR(80)",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS senha_hash VARCHAR(128)",
-
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS email VARCHAR(120)",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS reset_code VARCHAR(10)",
             "ALTER TABLE cliente ADD COLUMN IF NOT EXISTS reset_expires_at TIMESTAMP",
@@ -14026,12 +14057,14 @@ def criar_bd():
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_usado REAL DEFAULT 0",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS credito_mov_id INTEGER",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS cliente_id INTEGER",
+
+            # CAMPOS DO NOVO PAINEL DE VENDEDORES
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS vendedor_id INTEGER",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS vendedor_nome VARCHAR(100)",
 
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS origem_json TEXT",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS destino_json TEXT",
-            
+
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_tipo VARCHAR(20) DEFAULT 'nenhum'",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS desconto_valor REAL DEFAULT 0",
             "ALTER TABLE credito ADD COLUMN IF NOT EXISTS valor_final REAL",
@@ -14049,12 +14082,10 @@ def criar_bd():
             "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS credito_id INTEGER",
             "ALTER TABLE credito_movimento ADD COLUMN IF NOT EXISTS entrega_id INTEGER",
         ]
-        for s in ddl_cmds:
-            try:
-                db.session.execute(text(s))
-            except Exception:
-                pass
+        for sql in ddl_cmds:
+            _exec_ddl_safe(sql)
 
+        # PostgreSQL: cria/garante FKs depois que as colunas já existem.
         fk_cmds_create_if_missing = [
             (
                 "DO $$ BEGIN "
@@ -14121,11 +14152,8 @@ def criar_bd():
                 "END IF; END $$;"
             ),
         ]
-        for s in fk_cmds_create_if_missing:
-            try:
-                db.session.execute(text(s))
-            except Exception:
-                pass
+        for sql in fk_cmds_create_if_missing:
+            _exec_ddl_safe(sql, postgres_only=True)
 
         fix_fk_cmd = (
             "DO $$ DECLARE del CHAR; BEGIN "
@@ -14139,10 +14167,7 @@ def criar_bd():
             "END IF; "
             "END $$;"
         )
-        try:
-            db.session.execute(text(fix_fk_cmd))
-        except Exception:
-            pass
+        _exec_ddl_safe(fix_fk_cmd, postgres_only=True)
 
         idx_cmds = [
             "CREATE INDEX IF NOT EXISTS idx_entrega_data_envio ON entrega (data_envio DESC)",
@@ -14153,40 +14178,38 @@ def criar_bd():
             "CREATE INDEX IF NOT EXISTS idx_vendedor_cliente_ativo ON vendedor_cliente (cliente_id, ativo)",
             "CREATE INDEX IF NOT EXISTS idx_entrega_status_pagamento_lower ON entrega ((lower(status_pagamento)))",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_lower ON entrega ((lower(cliente)))",
-
             "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)",
-
             "CREATE INDEX IF NOT EXISTS idx_cliente_nome_lower ON cliente ((lower(nome)))",
             "CREATE INDEX IF NOT EXISTS idx_cliente_endereco_cliente_id ON cliente_endereco (cliente_id)",
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_username ON cliente (username)",
             "CREATE UNIQUE INDEX IF NOT EXISTS idx_cliente_email ON cliente (email)",
-
             "CREATE INDEX IF NOT EXISTS idx_credito_cliente_id ON credito (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_credito_criado_em ON credito (criado_em DESC)",
-
             "CREATE INDEX IF NOT EXISTS idx_credmov_cliente_id ON credito_movimento (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_credmov_entrega_id ON credito_movimento (entrega_id)",
             "CREATE INDEX IF NOT EXISTS idx_credmov_criado_em ON credito_movimento (criado_em DESC)",
             "CREATE INDEX IF NOT EXISTS idx_credmov_tipo ON credito_movimento (tipo)",
-
             "CREATE INDEX IF NOT EXISTS idx_trajeto_cooperado_id ON trajeto (cooperado_id)",
             "CREATE INDEX IF NOT EXISTS idx_trajeto_inicio ON trajeto (inicio DESC)",
         ]
-        for s in idx_cmds:
-            try:
-                db.session.execute(text(s))
-            except Exception:
-                pass
+        for sql in idx_cmds:
+            _exec_ddl_safe(sql)
 
+        # Backfill antigo: relaciona entregas já existentes ao cliente.
+        # Só roda depois de todas as colunas necessárias estarem garantidas.
         try:
             pend = (
                 Entrega.query
-                .filter((Entrega.cliente_id == None) | (Entrega.cliente_id.is_(None)))
+                .filter(Entrega.cliente_id.is_(None))
                 .limit(5000)
                 .all()
             )
             if pend:
-                nomes = {(e.cliente or '').strip().lower() for e in pend if (e.cliente or '').strip()}
+                nomes = {
+                    (e.cliente or '').strip().lower()
+                    for e in pend
+                    if (e.cliente or '').strip()
+                }
                 if nomes:
                     mapa = {
                         c.nome.strip().lower(): c.id
@@ -14203,10 +14226,28 @@ def criar_bd():
                             mudou += 1
                     if mudou:
                         db.session.commit()
-        except Exception:
+        except Exception as exc:
             db.session.rollback()
+            try:
+                current_app.logger.warning("Falha no backfill cliente_id: %s", exc)
+            except Exception:
+                pass
 
-        db.session.commit()
+        # Confirma explicitamente que as duas colunas do vendedor existem.
+        # Se não existirem, falha o boot com uma mensagem clara em vez de
+        # iniciar o sistema parcialmente.
+        try:
+            insp = inspect(db.engine)
+            colunas_entrega = {c['name'] for c in insp.get_columns('entrega')}
+            faltando = {'vendedor_id', 'vendedor_nome'} - colunas_entrega
+            if faltando:
+                raise RuntimeError(
+                    "Migração incompleta da tabela entrega. Faltando: "
+                    + ", ".join(sorted(faltando))
+                )
+        except Exception:
+            raise
+
 
 criar_bd()
 
