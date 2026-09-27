@@ -1,3 +1,4 @@
+import math
 import os
 import io
 import re
@@ -4216,8 +4217,12 @@ def _calcular_cotacao_entrega(coleta, entrega, paradas=None, retorno=False):
     paradas = paradas or []
     preco_tabela = _calcular_preco_por_trechos_tabela(coleta, entrega, paradas, retorno=retorno)
     if preco_tabela is not None:
+        # Regra COOPEX: o valor monetário final da cotação é sempre
+        # arredondado para cima para o próximo real quando houver centavos.
+        # Ex.: R$ 25,50 -> R$ 26,00 | R$ 25,00 -> R$ 25,00.
+        preco_final = float(math.ceil(float(preco_tabela) - 1e-9))
         return {
-            'preco': float(preco_tabela),
+            'preco': preco_final,
             'valor_a_informar': False,
             'origem_preco': 'tabela',
             'distancia_km': None,
@@ -9194,9 +9199,9 @@ def api_cliente_enderecos():
         itens = ClienteEndereco.query.filter_by(cliente_id=cli.id).order_by(ClienteEndereco.padrao.desc(), ClienteEndereco.apelido.asc()).all()
         return jsonify(ok=True, enderecos=[x.to_dict() for x in itens])
 
-    if _cliente_em_modo_vendedor():
-        return jsonify(ok=False, msg='Somente o acesso principal pode cadastrar endereços.'), 403
-
+    # Agenda compartilhada do estabelecimento:
+    # acesso principal e vendedores podem cadastrar clientes/endereço recorrentes.
+    # Editar, excluir e definir endereço padrão continuam restritos ao principal.
     data = request.get_json(silent=True) or {}
     endereco = (data.get('endereco') or data.get('origem') or '').strip()
     if not endereco:
@@ -9233,6 +9238,64 @@ def api_cliente_enderecos():
 
     db.session.commit()
     return jsonify(ok=True, endereco=item.to_dict())
+
+
+@app.post('/api/cliente/clientes-recorrentes/salvar')
+@cliente_required
+def api_cliente_recorrente_salvar():
+    """
+    Salva/atualiza um cliente recorrente compartilhado por todo o estabelecimento.
+    Principal e vendedores podem usar.
+    """
+    cli = _cliente_atual()
+    data = request.get_json(silent=True) or {}
+
+    nome = (data.get('nome') or data.get('apelido') or data.get('contato') or '').strip()
+    endereco = (data.get('endereco') or '').strip()
+    bairro = (data.get('bairro') or '').strip()
+
+    if not nome:
+        return jsonify(ok=False, msg='Informe o nome do cliente.'), 400
+    if not endereco:
+        return jsonify(ok=False, msg='Informe o endereço do cliente.'), 400
+    if not bairro:
+        return jsonify(ok=False, msg='Informe o bairro do cliente.'), 400
+
+    item = (
+        ClienteEndereco.query
+        .filter(
+            ClienteEndereco.cliente_id == cli.id,
+            func.lower(ClienteEndereco.apelido) == nome.lower()
+        )
+        .first()
+    )
+
+    atualizado = bool(item)
+    if not item:
+        item = ClienteEndereco(
+            cliente_id=cli.id,
+            apelido=nome[:80],
+            padrao=False
+        )
+
+    item.apelido = nome[:80]
+    item.contato = (data.get('contato') or nome).strip()[:120] or None
+    item.telefone = (data.get('telefone') or '').strip()[:40] or None
+    item.endereco = endereco[:255]
+    item.bairro = bairro[:100]
+    item.referencia = (data.get('referencia') or data.get('ref') or '').strip()[:255] or None
+    item.cidade = (data.get('cidade') or item.cidade or '').strip()[:100] or None
+    item.uf = (data.get('uf') or item.uf or 'RN').strip()[:2] or 'RN'
+
+    db.session.add(item)
+    db.session.commit()
+
+    return jsonify(
+        ok=True,
+        atualizado=atualizado,
+        msg='Cliente recorrente atualizado.' if atualizado else 'Cliente recorrente salvo.',
+        endereco=item.to_dict()
+    )
 
 @app.put('/api/cliente/enderecos/<int:endereco_id>')
 @cliente_required
@@ -9412,6 +9475,10 @@ def api_cliente_historico():
         if 'cancel' in status_norm:
             canceladas += 1
 
+        destino_info = e.get_destino() if hasattr(e, 'get_destino') else {}
+        cliente_destino_nome = (destino_info.get('contato') or '').strip()
+        cliente_destino_telefone = (destino_info.get('telefone') or '').strip()
+
         out.append({
             'id': e.id,
             'data': to_brasilia(e.data_envio).strftime('%d/%m/%Y %H:%M') if e.data_envio else '',
@@ -9421,6 +9488,8 @@ def api_cliente_historico():
             'vendedor': getattr(e, 'vendedor_nome', None) or 'Principal',
             'origem': getattr(e, 'origem_endereco', ''),
             'destino': getattr(e, 'destino_endereco', ''),
+            'cliente_destino': cliente_destino_nome,
+            'cliente_destino_telefone': cliente_destino_telefone,
             'valor': valor,
             'status': e.status or 'pendente',
             'status_pagamento': e.status_pagamento or 'pendente',
@@ -9597,11 +9666,16 @@ def cliente_historico_exportar_xlsx():
     for e in itens:
         e = _enriquecer_entrega(e)
         data_local = to_brasilia(e.data_envio) if e.data_envio else None
+        destino_info = e.get_destino() if hasattr(e, 'get_destino') else {}
+        cliente_destino_nome = (destino_info.get('contato') or '').strip()
+        cliente_destino_telefone = (destino_info.get('telefone') or '').strip()
         linhas.append({
             'Pedido': e.id,
             'Data': data_local.strftime('%d/%m/%Y') if data_local else '',
             'Hora': data_local.strftime('%H:%M') if data_local else '',
             'Vendedor(a)': getattr(e, 'vendedor_nome', None) or 'Principal',
+            'Cliente destino': cliente_destino_nome,
+            'Telefone cliente': cliente_destino_telefone,
             'Origem': getattr(e, 'origem_endereco', '') or '',
             'Destino': getattr(e, 'destino_endereco', '') or '',
             'Valor (R$)': float(e.valor or 0),
@@ -9613,9 +9687,9 @@ def cliente_historico_exportar_xlsx():
         })
 
     df = pd.DataFrame(linhas, columns=[
-        'Pedido', 'Data', 'Hora', 'Vendedor(a)', 'Origem', 'Destino', 'Valor (R$)',
-        'Forma de pagamento', 'Crédito utilizado (R$)', 'Entregador',
-        'Status da entrega', 'Status do pagamento'
+        'Pedido', 'Data', 'Hora', 'Vendedor(a)', 'Cliente destino', 'Telefone cliente',
+        'Origem', 'Destino', 'Valor (R$)', 'Forma de pagamento',
+        'Crédito utilizado (R$)', 'Entregador', 'Status da entrega', 'Status do pagamento'
     ])
 
     output = io.BytesIO()
@@ -9624,7 +9698,7 @@ def cliente_historico_exportar_xlsx():
         ws = writer.sheets['Histórico']
         ws.freeze_panes(1, 0)
         ws.autofilter(0, 0, max(len(df), 1), len(df.columns) - 1)
-        larguras = [10, 12, 8, 24, 34, 34, 14, 22, 20, 24, 20, 20]
+        larguras = [10, 12, 8, 24, 26, 18, 34, 34, 14, 22, 20, 24, 20, 20]
         for idx, largura in enumerate(larguras):
             ws.set_column(idx, idx, largura)
 
@@ -10323,13 +10397,20 @@ def cliente_comprovante_publico(entrega_id):
     hora_str = to_brasilia(e.data_envio).strftime('%H:%M') if e.data_envio else '-'
     valor_fmt = ('%.2f' % float(e.valor or 0)).replace('.', ',')
     cooperado_nome = e.cooperado.nome if e.cooperado else 'Sem Cooperado'
+    vendedor_nome = getattr(e, 'vendedor_nome', None) or 'Principal'
+    destino_info = e.get_destino() if hasattr(e, 'get_destino') else {}
+    cliente_destino_nome = (destino_info.get('contato') or '').strip()
+    cliente_destino_telefone = (destino_info.get('telefone') or '').strip()
     return render_template_string("""
 <!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Cupom COOPEX #{{ e.id }}</title>
 <style>
 html,body{margin:0;padding:0;font-family:Arial,Helvetica,sans-serif;color:#000;background:#eef3ff}.page{min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:18px}.ticket{width:80mm;max-width:100%;padding:6mm 5mm;background:#fff;border-radius:12px;box-shadow:0 18px 44px rgba(12,38,140,.18)}.center{text-align:center}.logo{max-width:62mm;max-height:28mm;margin:0 auto 6px;display:block;object-fit:contain}.title{font-weight:800;font-size:16px;margin:2px 0}.sub{font-size:11px;opacity:.88}.coopLine{font-size:10.5px;line-height:1.35;text-align:center;margin:1px 0}.hr{border-top:1px dashed #000;margin:8px 0}.row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px;margin:3px 0}.k{font-weight:700;flex:0 0 auto}.v{font-weight:700;text-align:right;flex:1 1 auto;word-break:break-word}.totalRow{display:flex;justify-content:space-between;align-items:flex-end;margin-top:6px;font-size:15px;font-weight:800}.totalRow .v{font-size:16px}.small{font-size:11px;opacity:.9}.btns{display:flex;gap:10px;justify-content:center;margin-top:14px;flex-wrap:wrap}.btn{display:inline-flex;background:#003399;color:white;text-decoration:none;padding:12px 16px;border-radius:12px;font-weight:900;border:0;cursor:pointer}.btn.alt{background:#fff;color:#003399;border:1px solid #cfe0ff}@media print{body,.page{background:#fff;padding:0}.ticket{box-shadow:none;border-radius:0}.btns{display:none}}
-</style></head><body><div class="page"><div><div class="ticket"><div class="center"><img class="logo" src="{{ logo }}" alt="COOPEX" onerror="this.style.display='none'"><div class="coopLine"><strong>COOPERATIVA DE TRABALHADORES DE ENTREGAS DO RIO GRANDE DO NORTE - COOPEX</strong></div><div class="coopLine">CNPJ: 05 289.938/0001-97</div><div class="coopLine">Rua: José Freire De Souza 22 - Lagoa Nova Natal-RN, Cep: 59075-140</div><div class="coopLine">Fone/WhatsApp (84) 3234-9025 / 3231-5623 / 98111-0706</div><div class="title">CUPOM NÃO FISCAL</div><div class="sub">Comprovante de Entrega</div></div><div class="hr"></div><div class="row"><div class="k">PEDIDO:</div><div class="v">#{{ e.id }}</div></div><div class="row"><div class="k">DATA:</div><div class="v">{{ data_str }}</div></div><div class="row"><div class="k">HORA:</div><div class="v">{{ hora_str }}</div></div><div class="row"><div class="k">CLIENTE:</div><div class="v">{{ e.cliente }}</div></div><div class="row"><div class="k">COLETA:</div><div class="v">{{ e.origem_endereco or '-' }}</div></div><div class="row"><div class="k">ENTREGA:</div><div class="v">{{ e.destino_endereco or '-' }}</div></div><div class="row"><div class="k">MOTOBOY:</div><div class="v">{{ cooperado_nome }}</div></div><div class="row"><div class="k">FORMA PGTO:</div><div class="v">{{ e.pagamento or '-' }}</div></div>{% if e.recebido_por %}<div class="row"><div class="k">RECEBIDO POR:</div><div class="v">{{ e.recebido_por }}</div></div>{% endif %}<div class="hr"></div><div class="totalRow"><div class="k">TOTAL:</div><div class="v">R$ {{ valor_fmt }}</div></div><div class="hr"></div><div class="small" style="text-align:center">Obrigado por escolher a <strong>COOPEX</strong>!</div></div><div class="btns"><button class="btn" onclick="window.print()">Imprimir / salvar PDF</button><button class="btn alt" onclick="window.close()">Fechar</button></div></div></div></body></html>
-""", e=e, logo=logo, data_str=data_str, hora_str=hora_str, valor_fmt=valor_fmt, cooperado_nome=cooperado_nome)
+</style></head><body><div class="page"><div><div class="ticket"><div class="center"><img class="logo" src="{{ logo }}" alt="COOPEX" onerror="this.style.display='none'"><div class="coopLine"><strong>COOPERATIVA DE TRABALHADORES DE ENTREGAS DO RIO GRANDE DO NORTE - COOPEX</strong></div><div class="coopLine">CNPJ: 05 289.938/0001-97</div><div class="coopLine">Rua: José Freire De Souza 22 - Lagoa Nova Natal-RN, Cep: 59075-140</div><div class="coopLine">Fone/WhatsApp (84) 3234-9025 / 3231-5623 / 98111-0706</div><div class="title">CUPOM NÃO FISCAL</div><div class="sub">Comprovante de Entrega</div></div><div class="hr"></div><div class="row"><div class="k">PEDIDO:</div><div class="v">#{{ e.id }}</div></div><div class="row"><div class="k">DATA:</div><div class="v">{{ data_str }}</div></div><div class="row"><div class="k">HORA:</div><div class="v">{{ hora_str }}</div></div><div class="row"><div class="k">CLIENTE:</div><div class="v">{{ e.cliente }}</div></div><div class="row"><div class="k">SOLICITADO POR:</div><div class="v">{{ vendedor_nome }}</div></div>{% if cliente_destino_nome %}<div class="row"><div class="k">CLIENTE DESTINO:</div><div class="v">{{ cliente_destino_nome }}</div></div>{% endif %}{% if cliente_destino_telefone %}<div class="row"><div class="k">TELEFONE:</div><div class="v">{{ cliente_destino_telefone }}</div></div>{% endif %}<div class="row"><div class="k">COLETA:</div><div class="v">{{ e.origem_endereco or '-' }}</div></div><div class="row"><div class="k">ENTREGA:</div><div class="v">{{ e.destino_endereco or '-' }}</div></div><div class="row"><div class="k">MOTOBOY:</div><div class="v">{{ cooperado_nome }}</div></div><div class="row"><div class="k">FORMA PGTO:</div><div class="v">{{ e.pagamento or '-' }}</div></div>{% if e.recebido_por %}<div class="row"><div class="k">RECEBIDO POR:</div><div class="v">{{ e.recebido_por }}</div></div>{% endif %}<div class="hr"></div><div class="totalRow"><div class="k">TOTAL:</div><div class="v">R$ {{ valor_fmt }}</div></div><div class="hr"></div><div class="small" style="text-align:center">Obrigado por escolher a <strong>COOPEX</strong>!</div></div><div class="btns"><button class="btn" onclick="window.print()">Imprimir / salvar PDF</button><button class="btn alt" onclick="window.close()">Fechar</button></div></div></div></body></html>
+""", e=e, logo=logo, data_str=data_str, hora_str=hora_str, valor_fmt=valor_fmt,
+       cooperado_nome=cooperado_nome, vendedor_nome=vendedor_nome,
+       cliente_destino_nome=cliente_destino_nome,
+       cliente_destino_telefone=cliente_destino_telefone)
 
 
 
