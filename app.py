@@ -9369,6 +9369,15 @@ def api_cliente_endereco_delete(endereco_id):
     db.session.commit()
     return jsonify(ok=True)
 
+
+def _entrega_concluida_para_cliente(entrega):
+    status_norm = _norm(getattr(entrega, 'status', '') or '')
+    return status_norm in (
+        'entregue', 'recebido', 'finalizada', 'finalizado',
+        'concluido', 'concluído'
+    )
+
+
 def _cliente_historico_query(cli):
     """Monta a consulta do histórico do cliente com filtros opcionais."""
     data_inicio = (request.args.get('data_inicio') or request.args.get('inicio') or '').strip()
@@ -9377,20 +9386,44 @@ def _cliente_historico_query(cli):
     pagamento = _norm(request.args.get('pagamento') or request.args.get('forma_pagamento') or 'todos')
     situacao = _norm(request.args.get('situacao') or request.args.get('status') or 'todos')
 
-    q = Entrega.query.filter(Entrega.cliente_id == cli.id)
+    q = Entrega.query.filter(or_(
+        Entrega.cliente_id == cli.id,
+        and_(
+            Entrega.cliente_id.is_(None),
+            func.lower(func.trim(func.coalesce(Entrega.cliente, ''))) == (cli.nome or '').strip().lower()
+        )
+    ))
 
     vend = _vendedor_cliente_atual()
     if vend:
-        # Vendedor vê somente os próprios pedidos.
-        q = q.filter(Entrega.vendedor_id == vend.id)
+        q = q.filter(or_(
+            Entrega.vendedor_id == vend.id,
+            and_(
+                Entrega.vendedor_id.is_(None),
+                func.lower(func.trim(func.coalesce(Entrega.vendedor_nome, ''))) == vend.nome.strip().lower()
+            )
+        ))
     else:
-        # O principal pode ver tudo ou filtrar um vendedor específico.
         vendedor_id = (request.args.get('vendedor_id') or 'todos').strip()
         if vendedor_id == 'principal':
-            q = q.filter(Entrega.vendedor_id.is_(None))
+            q = q.filter(
+                Entrega.vendedor_id.is_(None),
+                or_(Entrega.vendedor_nome.is_(None), func.trim(Entrega.vendedor_nome) == '')
+            )
         elif vendedor_id and vendedor_id != 'todos':
             try:
-                q = q.filter(Entrega.vendedor_id == int(vendedor_id))
+                seller = VendedorCliente.query.filter_by(
+                    id=int(vendedor_id),
+                    cliente_id=cli.id
+                ).first()
+                if seller:
+                    q = q.filter(or_(
+                        Entrega.vendedor_id == seller.id,
+                        and_(
+                            Entrega.vendedor_id.is_(None),
+                            func.lower(func.trim(func.coalesce(Entrega.vendedor_nome, ''))) == seller.nome.strip().lower()
+                        )
+                    ))
             except Exception:
                 pass
 
@@ -9437,6 +9470,127 @@ def _cliente_historico_query(cli):
         )
 
     return q
+
+
+
+@app.post('/api/cliente/historico/<int:pedido_id>/vendedor')
+@cliente_required
+def api_cliente_historico_trocar_vendedor(pedido_id):
+    cli = _cliente_atual()
+
+    if _cliente_em_modo_vendedor():
+        return jsonify(ok=False, msg='Somente o acesso principal pode alterar o vendedor do pedido.'), 403
+
+    entrega = Entrega.query.filter(
+        Entrega.id == pedido_id,
+        or_(
+            Entrega.cliente_id == cli.id,
+            and_(
+                Entrega.cliente_id.is_(None),
+                func.lower(func.trim(func.coalesce(Entrega.cliente, ''))) == (cli.nome or '').strip().lower()
+            )
+        )
+    ).first_or_404()
+
+    data = request.get_json(silent=True) or {}
+    raw = data.get('vendedor_id')
+
+    if raw in (None, '', 'principal', '0', 0):
+        entrega.vendedor_id = None
+        entrega.vendedor_nome = None
+        nome = 'Principal'
+    else:
+        try:
+            vid = int(raw)
+        except Exception:
+            return jsonify(ok=False, msg='Vendedor inválido.'), 400
+
+        vend = VendedorCliente.query.filter_by(
+            id=vid,
+            cliente_id=cli.id
+        ).first()
+
+        if not vend:
+            return jsonify(ok=False, msg='Vendedor não pertence a este estabelecimento.'), 404
+
+        entrega.vendedor_id = vend.id
+        entrega.vendedor_nome = vend.nome
+        nome = vend.nome
+
+    if entrega.cliente_id is None:
+        entrega.cliente_id = cli.id
+
+    db.session.add(entrega)
+    db.session.commit()
+
+    return jsonify(
+        ok=True,
+        msg=f'Vendedor do pedido #{entrega.id} alterado para {nome}.',
+        vendedor_id=entrega.vendedor_id,
+        vendedor=entrega.vendedor_nome or 'Principal'
+    )
+
+
+@app.post('/api/cliente/historico/<int:pedido_id>/pagamento')
+@cliente_required
+def api_cliente_historico_editar_pagamento(pedido_id):
+    cli = _cliente_atual()
+
+    if _cliente_em_modo_vendedor():
+        return jsonify(ok=False, msg='Somente o acesso principal pode alterar a forma de pagamento.'), 403
+
+    entrega = Entrega.query.filter(
+        Entrega.id == pedido_id,
+        or_(
+            Entrega.cliente_id == cli.id,
+            and_(
+                Entrega.cliente_id.is_(None),
+                func.lower(func.trim(func.coalesce(Entrega.cliente, ''))) == (cli.nome or '').strip().lower()
+            )
+        )
+    ).first_or_404()
+
+    if _entrega_concluida_para_cliente(entrega):
+        return jsonify(ok=False, msg='A entrega já foi concluída e não pode mais ser editada.'), 409
+
+    status_norm = _norm(entrega.status or '')
+    if 'cancel' in status_norm:
+        return jsonify(ok=False, msg='Entrega cancelada não pode ser editada.'), 409
+
+    data = request.get_json(silent=True) or {}
+    forma = _norm(data.get('pagamento') or '')
+    if forma not in ('credito', 'pix', 'dinheiro'):
+        return jsonify(ok=False, msg='Forma de pagamento inválida.'), 400
+
+    if forma == 'credito':
+        entrega.pagamento = 'Crédito'
+    elif forma == 'pix':
+        entrega.pagamento = 'PIX'
+        entrega.status_pagamento = 'pendente'
+        entrega.recebido_por = None
+    else:
+        entrega.pagamento = 'Dinheiro'
+        entrega.status_pagamento = 'pendente'
+        entrega.recebido_por = None
+
+    if entrega.cliente_id is None:
+        entrega.cliente_id = cli.id
+
+    db.session.add(entrega)
+    db.session.commit()
+
+    # Ajusta automaticamente a carteira se houve troca para/de Crédito.
+    sincronizar_credito_da_entrega(entrega.id)
+
+    entrega = Entrega.query.get(entrega.id)
+    return jsonify(
+        ok=True,
+        msg=f'Forma de pagamento do pedido #{entrega.id} alterada.',
+        pagamento=entrega.pagamento,
+        status_pagamento=entrega.status_pagamento,
+        credito_usado=float(getattr(entrega, 'credito_usado', 0) or 0),
+        saldo_atual=float(cli.saldo_atual or 0)
+    )
 
 
 @app.get('/api/cliente/historico')
@@ -9505,6 +9659,17 @@ def api_cliente_historico():
                 and 'cancel solicitado' not in status_norm
                 and 'cancelad' not in status_norm
             ),
+            'pode_editar_pagamento': (
+                not _cliente_em_modo_vendedor()
+                and status_norm not in (
+                    'entregue', 'recebido', 'finalizada', 'finalizado',
+                    'concluido', 'concluído', 'cancelado', 'cancelada'
+                )
+                and 'cancel' not in status_norm
+            ),
+            # Acesso principal pode corrigir quem lançou o pedido
+            # inclusive depois de concluído.
+            'pode_trocar_vendedor': (not _cliente_em_modo_vendedor()),
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
         })
 
@@ -10013,12 +10178,26 @@ def api_pedidos_cancelar(pedido_id):
 
     entrega = Entrega.query.filter(
         Entrega.id == pedido_id,
-        Entrega.cliente_id == cli.id
+        or_(
+            Entrega.cliente_id == cli.id,
+            and_(
+                Entrega.cliente_id.is_(None),
+                func.lower(func.trim(func.coalesce(Entrega.cliente, ''))) == (cli.nome or '').strip().lower()
+            )
+        )
     ).first_or_404()
 
     vend = _vendedor_cliente_atual()
-    if vend and entrega.vendedor_id != vend.id:
-        return jsonify(ok=False, msg='Você só pode solicitar cancelamento dos seus próprios pedidos.'), 403
+    if vend:
+        pertence = (
+            entrega.vendedor_id == vend.id
+            or (
+                entrega.vendedor_id is None
+                and (entrega.vendedor_nome or '').strip().lower() == vend.nome.strip().lower()
+            )
+        )
+        if not pertence:
+            return jsonify(ok=False, msg='Você só pode solicitar cancelamento dos seus próprios pedidos.'), 403
 
     status_atual = _norm(entrega.status or '')
     status_finalizados = {
