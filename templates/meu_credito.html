@@ -358,6 +358,51 @@ body.modo-vendedor .seller-topbar-compact{
   cursor:not-allowed;
 }
 
+
+.recurring-client-row{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px}
+.recurring-client-hint{font-size:11px;color:#71809a;margin-top:5px}
+.recurring-save-box{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:10px;border:1px dashed var(--line);border-radius:12px;background:#fbfdff}
+.recurring-save-box span{font-size:11px;color:#71809a;font-weight:700}
+@media(max-width:700px){.recurring-client-row{grid-template-columns:1fr}.recurring-client-row .ghost{width:100%}}
+
+
+/* ABA CLIENTES */
+.clients-grid{
+  display:grid;
+  grid-template-columns:minmax(0,1.45fr) minmax(320px,.75fr);
+  gap:16px;
+  align-items:start;
+}
+.clients-list{
+  display:flex;
+  flex-direction:column;
+  gap:9px;
+  margin-top:12px;
+}
+.client-row{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) auto;
+  gap:12px;
+  align-items:center;
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:13px 14px;
+  background:#fff;
+}
+.client-row:hover{background:#f8fbff}
+.client-row-name{font-size:14px;font-weight:900;color:#17345f;margin-bottom:4px}
+.client-row-meta{font-size:12px;color:#63738f;line-height:1.45}
+.client-row-actions{display:flex;gap:7px;flex-wrap:wrap;justify-content:flex-end}
+.client-form-card{position:sticky;top:84px}
+@media(max-width:980px){
+  .clients-grid{grid-template-columns:1fr}
+  .client-form-card{position:static}
+}
+@media(max-width:620px){
+  .client-row{grid-template-columns:1fr}
+  .client-row-actions{justify-content:flex-start}
+}
+
 </style>
 </head>
 <body>
@@ -376,6 +421,7 @@ body.modo-vendedor .seller-topbar-compact{
   <button class="nav active" data-view="pedido">Novo pedido</button>
   <button class="nav principal-only" data-view="carteira">Carteira</button>
   <button class="nav" data-view="historico">Histórico</button>
+  <button class="nav" data-view="clientes">Clientes</button>
   <button class="nav" data-view="calculadora">Calculadora</button>
   <button class="nav principal-only" data-view="enderecos">Endereços</button>
   <button class="nav principal-only" data-view="vendedores">Vendedores</button>
@@ -423,12 +469,25 @@ body.modo-vendedor .seller-topbar-compact{
     <article class="step-card">
       <div class="step-head"><span class="num">3</span><div><h3>Entrega</h3><p>Para onde vamos entregar?</p></div></div>
       <div class="step-body"><div class="fields">
+        <div class="field full">
+          <label>Cliente recorrente</label>
+          <div class="recurring-client-row">
+            <input class="input" id="clienteRecorrenteBusca" list="clientesRecorrentesLista" placeholder="Digite o nome do cliente">
+            <datalist id="clientesRecorrentesLista"></datalist>
+            <button class="ghost" type="button" id="buscarClienteRecorrente">Buscar</button>
+          </div>
+          <div class="recurring-client-hint">Digite o nome e, se já estiver salvo, o endereço será preenchido automaticamente.</div>
+        </div>
         <div class="field full"><label>Usar endereço salvo</label><select class="select" id="destinoSalvo"><option value="">Preencher manualmente</option></select></div>
         <div class="field full"><label>Endereço de entrega</label><input class="input" id="entregaEndereco" placeholder="Rua, número e complemento"></div>
         <div class="field"><label>Bairro da entrega</label><input class="input" id="entregaBairro" placeholder="Bairro"></div>
         <div class="field"><label>Referência (opcional)</label><input class="input" id="entregaReferencia"></div>
         <div class="field"><label>Nome de quem recebe</label><input class="input" id="entregaContato"></div>
         <div class="field"><label>Telefone de quem recebe</label><input class="input" id="entregaTelefone"></div>
+        <div class="field full recurring-save-box">
+          <button class="ghost" type="button" id="salvarClienteRecorrente">Salvar cliente</button>
+          <span>O cliente salvo fica disponível para todos os vendedores e para o acesso principal.</span>
+        </div>
         <div class="field full"><label><input type="checkbox" id="salvarDestino"> Salvar este endereço para usar novamente</label></div>
       </div></div>
     </article>
@@ -452,6 +511,58 @@ body.modo-vendedor .seller-topbar-compact{
   <div class="field" style="margin-top:10px"><label>Valor do crédito</label><input class="input" id="creditValue" inputmode="decimal" placeholder="Ex.: 100,00"></div>
   <button class="primary" id="requestCredit" style="width:100%;margin-top:10px">Solicitar crédito</button>
   <div class="pix-result" id="pixResult"></div></div>
+</section>
+
+
+<section class="view" id="view-clientes">
+  <div class="clients-grid">
+    <div class="card">
+      <h3>Clientes</h3>
+      <div class="week-title">Pesquise os clientes recorrentes cadastrados por qualquer vendedor ou pelo acesso principal.</div>
+
+      <div class="field full" style="margin-top:14px">
+        <label>Pesquisar cliente</label>
+        <input class="input" id="clientSearch" placeholder="Pesquise por nome, endereço ou telefone">
+      </div>
+
+      <div id="clientsList" class="clients-list"></div>
+    </div>
+
+    <div class="card client-form-card">
+      <h3>Cadastrar cliente</h3>
+      <div class="fields">
+        <div class="field full">
+          <label>Nome do cliente</label>
+          <input class="input" id="clientName" placeholder="Ex.: Maria Silva">
+        </div>
+        <div class="field">
+          <label>Telefone</label>
+          <input class="input" id="clientPhone" placeholder="(84) 99999-9999">
+        </div>
+        <div class="field">
+          <label>Bairro</label>
+          <input class="input" id="clientNeighborhood" placeholder="Bairro">
+        </div>
+        <div class="field full">
+          <label>Endereço</label>
+          <input class="input" id="clientAddress" placeholder="Rua, número e complemento">
+        </div>
+        <div class="field full">
+          <label>Referência</label>
+          <input class="input" id="clientReference" placeholder="Ex.: portaria, loja, apartamento">
+        </div>
+      </div>
+
+      <div class="toolbar" style="margin-top:12px">
+        <button class="primary" type="button" id="saveRecurringClientTab">Salvar cliente</button>
+        <button class="ghost" type="button" id="clearRecurringClientTab">Limpar</button>
+      </div>
+
+      <div class="recurring-client-hint">
+        O cliente salvo fica disponível para todos os vendedores e para o acesso principal deste estabelecimento.
+      </div>
+    </div>
+  </div>
 </section>
 
 <section class="view" id="view-historico">
@@ -616,7 +727,7 @@ body.modo-vendedor .seller-topbar-compact{
 </main>
 </div>
 
-<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="calculadora">Calc.</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button></div>
+<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="clientes">Clientes</button><button class="tab" data-view="calculadora">Calc.</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button></div>
 </div>
 <div class="toast" id="toast"></div>
 
@@ -637,11 +748,11 @@ body.modo-vendedor .seller-topbar-compact{
 </div>
 
 <script>
-const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal'};
+const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal',clienteRecorrenteSalvar:'/api/cliente/clientes-recorrentes/salvar'};
 const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[],editEndId:null,vendedores:[],modoVendedor:false,vendedor:null,editSellerId:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
 async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
-function setView(v){if(S.modoVendedor&&!['pedido','historico','calculadora'].includes(v))v='pedido';document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
+function setView(v){if(S.modoVendedor&&!['pedido','historico','clientes','calculadora'].includes(v))v='pedido';document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='clientes')renderClients();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
 document.querySelectorAll('.step-head').forEach(h=>h.onclick=()=>{if(innerWidth<=900)h.parentElement.classList.toggle('open')});
 function setSaldo(v){
@@ -702,6 +813,7 @@ async function loadEnds(){
   const j=await api(API.enderecos);
   if(!j?.ok)return;
   S.ends=j.enderecos||[];
+  refreshRecurringClientList();
 
   const opts='<option value="">Preencher manualmente</option>'+S.ends.map(x=>`<option value="${x.id}">${esc(x.apelido||'Endereço')}${x.padrao?' — PADRÃO':''}</option>`).join('');
   $('destinoSalvo').innerHTML=opts;
@@ -719,7 +831,185 @@ async function loadEnds(){
   }
 
   renderEnds();
+  if(document.getElementById('view-clientes')?.classList.contains('active'))renderClients();
 }
+
+
+
+function clientSearchText(x){
+  return [
+    x?.apelido||'',
+    x?.contato||'',
+    x?.telefone||'',
+    x?.endereco||'',
+    x?.bairro||'',
+    x?.referencia||''
+  ].join(' ').toLocaleLowerCase('pt-BR');
+}
+
+function clearClientTabForm(){
+  if($('clientName'))$('clientName').value='';
+  if($('clientPhone'))$('clientPhone').value='';
+  if($('clientNeighborhood'))$('clientNeighborhood').value='';
+  if($('clientAddress'))$('clientAddress').value='';
+  if($('clientReference'))$('clientReference').value='';
+}
+
+function renderClients(){
+  const box=$('clientsList');
+  if(!box)return;
+
+  const q=String($('clientSearch')?.value||'')
+    .trim()
+    .toLocaleLowerCase('pt-BR');
+
+  const items=(S.ends||[])
+    .filter(x=>!q || clientSearchText(x).includes(q))
+    .sort((a,b)=>String(a.apelido||a.contato||'').localeCompare(String(b.apelido||b.contato||''),'pt-BR'));
+
+  if(!items.length){
+    box.innerHTML='<div class="empty">Nenhum cliente encontrado.</div>';
+    return;
+  }
+
+  box.innerHTML=items.map(x=>`
+    <div class="client-row">
+      <div>
+        <div class="client-row-name">${esc(x.apelido||x.contato||'Cliente')}</div>
+        <div class="client-row-meta">
+          ${esc(x.telefone||'Sem telefone')}<br>
+          ${esc(x.endereco||'Sem endereço')}${x.bairro?` • ${esc(x.bairro)}`:''}
+          ${x.referencia?`<br>Ref.: ${esc(x.referencia)}`:''}
+        </div>
+      </div>
+      <div class="client-row-actions">
+        <button class="primary" type="button" onclick="useClientFromList(${x.id})">Usar no pedido</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.useClientFromList=id=>{
+  const x=(S.ends||[]).find(a=>String(a.id)===String(id));
+  if(!x)return;
+  fillRecurringClient(x);
+  setView('pedido');
+};
+
+$('clientSearch')?.addEventListener('input',renderClients);
+$('clearRecurringClientTab')?.addEventListener('click',clearClientTabForm);
+
+$('saveRecurringClientTab')?.addEventListener('click',async()=>{
+  const nome=$('clientName').value.trim();
+  const telefone=$('clientPhone').value.trim();
+  const bairro=$('clientNeighborhood').value.trim();
+  const endereco=$('clientAddress').value.trim();
+  const referencia=$('clientReference').value.trim();
+
+  if(!nome){toast('Informe o nome do cliente.');return}
+  if(!endereco){toast('Informe o endereço do cliente.');return}
+  if(!bairro){toast('Informe o bairro do cliente.');return}
+
+  const j=await api(API.clienteRecorrenteSalvar,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      nome,
+      contato:nome,
+      telefone,
+      endereco,
+      bairro,
+      referencia,
+      uf:'RN'
+    })
+  });
+
+  if(j?.ok){
+    toast(j.msg||'Cliente salvo.');
+    clearClientTabForm();
+    await loadEnds();
+    renderClients();
+  }
+});
+
+function recurringClientName(x){
+  return String(x?.apelido||x?.contato||'').trim();
+}
+function refreshRecurringClientList(){
+  const dl=$('clientesRecorrentesLista');
+  if(!dl)return;
+  dl.innerHTML=(S.ends||[])
+    .filter(x=>recurringClientName(x))
+    .map(x=>`<option value="${esc(recurringClientName(x))}">${esc(x.bairro||'')} • ${esc(x.endereco||'')}</option>`)
+    .join('');
+}
+function findRecurringClientByName(nome){
+  const key=String(nome||'').trim().toLocaleLowerCase('pt-BR');
+  if(!key)return null;
+  return (S.ends||[]).find(x=>recurringClientName(x).toLocaleLowerCase('pt-BR')===key)
+    || (S.ends||[]).find(x=>recurringClientName(x).toLocaleLowerCase('pt-BR').startsWith(key))
+    || null;
+}
+function fillRecurringClient(x){
+  if(!x)return;
+  $('clienteRecorrenteBusca').value=recurringClientName(x);
+  $('entregaContato').value=x.contato||x.apelido||'';
+  $('entregaTelefone').value=x.telefone||'';
+  $('entregaEndereco').value=x.endereco||'';
+  $('entregaBairro').value=x.bairro||'';
+  $('entregaReferencia').value=x.referencia||'';
+  $('destinoSalvo').value=String(x.id||'');
+  scheduleQuote();
+}
+function tryFillRecurringClient(){
+  const x=findRecurringClientByName($('clienteRecorrenteBusca')?.value);
+  if(x){fillRecurringClient(x);return true}
+  return false;
+}
+$('buscarClienteRecorrente')?.addEventListener('click',()=>{
+  if(!tryFillRecurringClient())toast('Cliente não encontrado.');
+});
+$('clienteRecorrenteBusca')?.addEventListener('input',()=>{
+  const x=findRecurringClientByName($('clienteRecorrenteBusca').value);
+  if(x && recurringClientName(x).toLocaleLowerCase('pt-BR')===$('clienteRecorrenteBusca').value.trim().toLocaleLowerCase('pt-BR')){
+    fillRecurringClient(x);
+  }
+});
+$('clienteRecorrenteBusca')?.addEventListener('change',()=>tryFillRecurringClient());
+$('clienteRecorrenteBusca')?.addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    if(!tryFillRecurringClient())toast('Cliente não encontrado.');
+  }
+});
+$('salvarClienteRecorrente')?.addEventListener('click',async()=>{
+  const nome=($('entregaContato').value||$('clienteRecorrenteBusca').value||'').trim();
+  const endereco=$('entregaEndereco').value.trim();
+  const bairro=$('entregaBairro').value.trim();
+  if(!nome){toast('Informe o nome do cliente.');return}
+  if(!endereco){toast('Informe o endereço do cliente.');return}
+  if(!bairro){toast('Informe o bairro do cliente.');return}
+
+  const j=await api(API.clienteRecorrenteSalvar,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({
+      nome,
+      contato:nome,
+      telefone:$('entregaTelefone').value.trim(),
+      endereco,
+      bairro,
+      referencia:$('entregaReferencia').value.trim(),
+      uf:'RN'
+    })
+  });
+
+  if(j?.ok){
+    toast(j.msg||'Cliente salvo.');
+    await loadEnds();
+    $('clienteRecorrenteBusca').value=nome;
+  }
+});
 
 function fillCollectionAddress(x){
   if(!x)return;
@@ -942,7 +1232,7 @@ function scheduleFixedCollectionSave(){
 
 $('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
 let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['coletaEndereco','coletaBairro','coletaReferencia','entregaEndereco','entregaBairro'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
-async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Valor conforme tabela de bairros':'Bairro sem valor cadastrado — a supervisão informará o preço';return j}
+async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;if(!j.valor_a_informar && j.preco!==null && j.preco!==undefined){j.preco=Math.ceil(Number(j.preco)-1e-9)}$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Valor conforme tabela de bairros':'Bairro sem valor cadastrado — a supervisão informará o preço';return j}
 $('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()||!$('coletaBairro').value.trim()){toast('Informe o endereço e o bairro da coleta.');return}if(!await saveFixedCollection(true)){toast('Não foi possível salvar o endereço de coleta no cadastro.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
 window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
@@ -1135,7 +1425,7 @@ tone($('fAfterRecharge'),f.saldo_apos_recarga);
 tone($('fEnd'),-Math.abs(consumidoAte));
 tone($('fAfterUsed'),-Math.abs(consumidoDepois));
 tone($('fCurrent'),f.saldo_atual);
-const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}${x.pode_cancelar?`<button class="tag red hist-cancel-btn" type="button" data-cancel-id="${x.id}">Solicitar cancelamento</button>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>';
+const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div>${x.cliente_destino?`<div class="meta">Cliente destino: <strong>${esc(x.cliente_destino)}</strong>${x.cliente_destino_telefone?` • ${esc(x.cliente_destino_telefone)}`:''}</div>`:''}<div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}${x.pode_cancelar?`<button class="tag red hist-cancel-btn" type="button" data-cancel-id="${x.id}">Solicitar cancelamento</button>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>';
 
 document.querySelectorAll('.hist-cancel-btn').forEach(btn=>{
   btn.onclick=async()=>{
