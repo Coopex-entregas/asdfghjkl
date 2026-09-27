@@ -11899,7 +11899,172 @@ def estatisticas_cooperado():
     if not abertas_rotas:
         resumo_whatsapp.append('Nenhuma rota sem cooperado no momento.')
 
+
+    # =========================================================
+    # MÉTRICAS GERENCIAIS AVANÇADAS — DASHBOARD PRO
+    # =========================================================
+    canceladas = [
+        e for e in entregas
+        if 'cancel' in (e.status or '').lower()
+    ]
+    valor_cancelado = sum(_dash_money(e.valor) for e in canceladas)
+
+    # Taxas
+    taxa_conclusao = round((len(concluidas) / total) * 100.0, 1) if total else 0.0
+    taxa_pagamento = round((len(pagas) / total) * 100.0, 1) if total else 0.0
+    atribuidas_total = [e for e in entregas if e.cooperado_id]
+    taxa_atribuicao = round((len(atribuidas_total) / total) * 100.0, 1) if total else 0.0
+    sem_cooperado_pct = round((len([e for e in entregas if not e.cooperado_id]) / total) * 100.0, 1) if total else 0.0
+
+    # Tempo de atribuição
+    tempos_atribuicao = []
+    for e in entregas:
+        if e.data_envio and getattr(e, 'data_atribuida', None):
+            try:
+                mins = (e.data_atribuida - e.data_envio).total_seconds() / 60.0
+                if 0 <= mins <= (24 * 60):
+                    tempos_atribuicao.append(mins)
+            except Exception:
+                pass
+    tempos_ord = sorted(tempos_atribuicao)
+    tempo_medio_atribuicao = round(sum(tempos_ord) / len(tempos_ord), 1) if tempos_ord else 0.0
+    if tempos_ord:
+        mid = len(tempos_ord) // 2
+        if len(tempos_ord) % 2:
+            tempo_mediana_atribuicao = round(tempos_ord[mid], 1)
+        else:
+            tempo_mediana_atribuicao = round((tempos_ord[mid - 1] + tempos_ord[mid]) / 2.0, 1)
+        tempo_max_atribuicao = round(max(tempos_ord), 1)
+    else:
+        tempo_mediana_atribuicao = 0.0
+        tempo_max_atribuicao = 0.0
+
+    # Horários / dias de pico
+    hora_qtd = Counter()
+    hora_val = defaultdict(float)
+    semana_qtd = Counter()
+    semana_val = defaultdict(float)
+    status_qtd = Counter()
+    status_val = defaultdict(float)
+    dias_pt = ['Seg', 'Ter', 'Qua', 'Qui', 'Sex', 'Sáb', 'Dom']
+
+    for e in entregas:
+        valor = _dash_money(e.valor)
+        dt = to_brasilia(e.data_envio) if e.data_envio else None
+        if dt:
+            hora = f'{dt.hour:02d}:00'
+            dia = dias_pt[dt.weekday()]
+            hora_qtd[hora] += 1
+            hora_val[hora] += valor
+            semana_qtd[dia] += 1
+            semana_val[dia] += valor
+        st = _dash_title_case((e.status or 'Não informado').strip() or 'Não informado')
+        status_qtd[st] += 1
+        status_val[st] += valor
+
+    hora_pico = hora_qtd.most_common(1)[0][0] if hora_qtd else '—'
+    hora_pico_qtd = hora_qtd.most_common(1)[0][1] if hora_qtd else 0
+    dia_pico = semana_qtd.most_common(1)[0][0] if semana_qtd else '—'
+    dia_pico_qtd = semana_qtd.most_common(1)[0][1] if semana_qtd else 0
+
+    # Médias por período
+    dias_periodo = max(1, (df - di).days + 1)
+    media_entregas_dia = round(total / dias_periodo, 1) if total else 0.0
+    media_faturamento_dia = round(valor_total / dias_periodo, 2) if total else 0.0
+    media_entregas_cooperado = round(total / cooperados_ativos, 1) if cooperados_ativos else 0.0
+    media_faturamento_cooperado = round(valor_total / cooperados_ativos, 2) if cooperados_ativos else 0.0
+    rotas_distintas = len(rota_counter)
+
+    top_rota_nome = rota_counter.most_common(1)[0][0] if rota_counter else '—'
+    top_rota_qtd = rota_counter.most_common(1)[0][1] if rota_counter else 0
+    top_cliente_nome = top_contratos[0]['nome'] if top_contratos else '—'
+    top_cliente_valor = top_contratos[0]['valor'] if top_contratos else 0.0
+    top_cooperado_nome = top_cooperados[0]['nome'] if top_cooperados else '—'
+    top_cooperado_valor = top_cooperados[0]['valor'] if top_cooperados else 0.0
+
+    # Qualidade dos cadastros operacionais
+    sem_origem = sum(1 for e in entregas if not e._dash_origem or e._dash_origem == 'Não informado')
+    sem_destino = sum(1 for e in entregas if not e._dash_destino or e._dash_destino == 'Não informado')
+    sem_cliente = sum(1 for e in entregas if not (e.cliente or '').strip())
+    cadastro_incompleto = sem_origem + sem_destino + sem_cliente
+
+    # Últimas entregas para auditoria rápida no dashboard
+    ultimas_entregas = []
+    for e in entregas[:200]:
+        dt = to_brasilia(e.data_envio) if e.data_envio else None
+        atrib = to_brasilia(e.data_atribuida) if getattr(e, 'data_atribuida', None) else None
+        ultimas_entregas.append({
+            'id': e.id,
+            'data': dt.strftime('%d/%m/%Y %H:%M') if dt else '',
+            'cliente': e._dash_contrato or e.cliente or 'Não informado',
+            'cooperado': e.cooperado.nome if e.cooperado else 'Sem cooperado',
+            'origem': e._dash_origem,
+            'destino': e._dash_destino,
+            'status': e.status or 'Não informado',
+            'pagamento': e.pagamento or 'Não informado',
+            'status_pagamento': e.status_pagamento or 'pendente',
+            'valor': round(_dash_money(e.valor), 2),
+            'credito_usado': round(_dash_money(getattr(e, 'credito_usado', 0)), 2),
+            'atribuida': atrib.strftime('%d/%m/%Y %H:%M') if atrib else '',
+        })
+
+    grafico_hora = [
+        {'label': f'{h:02d}:00', 'qtd': int(hora_qtd.get(f'{h:02d}:00', 0)), 'valor': round(hora_val.get(f'{h:02d}:00', 0), 2)}
+        for h in range(24)
+    ]
+    grafico_semana = [
+        {'label': d, 'qtd': int(semana_qtd.get(d, 0)), 'valor': round(semana_val.get(d, 0), 2)}
+        for d in dias_pt
+    ]
+    grafico_status = [
+        {'label': k, 'qtd': int(v), 'valor': round(status_val[k], 2)}
+        for k, v in status_qtd.most_common()
+    ]
+
+    insights = []
+    if total:
+        insights.append(f'{total} entregas no período, média de {media_entregas_dia:.1f} por dia.')
+        if top_rota_qtd:
+            insights.append(f'Rota mais frequente: {top_rota_nome} ({top_rota_qtd} entregas).')
+        if hora_pico_qtd:
+            insights.append(f'Horário de maior movimento: {hora_pico} ({hora_pico_qtd} entregas).')
+        if dia_pico_qtd:
+            insights.append(f'Dia da semana com maior volume: {dia_pico} ({dia_pico_qtd} entregas).')
+        if cooperados_ativos:
+            insights.append(f'{cooperados_ativos} cooperados produziram no período; média de {media_entregas_cooperado:.1f} entregas por cooperado.')
+        if pendentes_pgto:
+            insights.append(f'{len(pendentes_pgto)} entregas possuem pagamento pendente, totalizando R$ {sum(_dash_money(e.valor) for e in pendentes_pgto):.2f}.')
+        if sem_cooperado:
+            insights.append(f'{len(sem_cooperado)} entregas abertas ainda estão sem cooperado.')
+    else:
+        insights.append('Nenhuma entrega encontrada para os filtros selecionados.')
+
     resumo = {
+        'canceladas': len(canceladas),
+        'valor_cancelado': round(valor_cancelado, 2),
+        'taxa_conclusao': taxa_conclusao,
+        'taxa_pagamento': taxa_pagamento,
+        'taxa_atribuicao': taxa_atribuicao,
+        'sem_cooperado_pct': sem_cooperado_pct,
+        'tempo_medio_atribuicao': tempo_medio_atribuicao,
+        'tempo_mediana_atribuicao': tempo_mediana_atribuicao,
+        'tempo_max_atribuicao': tempo_max_atribuicao,
+        'hora_pico': hora_pico,
+        'hora_pico_qtd': hora_pico_qtd,
+        'dia_pico': dia_pico,
+        'dia_pico_qtd': dia_pico_qtd,
+        'media_entregas_dia': media_entregas_dia,
+        'media_faturamento_dia': media_faturamento_dia,
+        'media_entregas_cooperado': media_entregas_cooperado,
+        'media_faturamento_cooperado': media_faturamento_cooperado,
+        'rotas_distintas': rotas_distintas,
+        'top_rota_nome': top_rota_nome,
+        'top_rota_qtd': top_rota_qtd,
+        'top_cliente_nome': top_cliente_nome,
+        'top_cliente_valor': round(top_cliente_valor, 2),
+        'top_cooperado_nome': top_cooperado_nome,
+        'top_cooperado_valor': round(top_cooperado_valor, 2),
+        'cadastro_incompleto': cadastro_incompleto,
         'periodo_legivel': periodo_legivel,
         'total_entregas': total,
         'valor_total': round(valor_total, 2),
@@ -11985,6 +12150,11 @@ def estatisticas_cooperado():
         grafico_pagamento=grafico_pagamento,
         credito_clientes=credito_clientes,
         alertas=alertas,
+        insights=insights,
+        ultimas_entregas=ultimas_entregas,
+        grafico_hora=grafico_hora,
+        grafico_semana=grafico_semana,
+        grafico_status=grafico_status,
         resumo_whatsapp='\n'.join(resumo_whatsapp),
         now=lambda: datetime.now(BRAZIL_TZ),
     )
@@ -12084,6 +12254,653 @@ def estatisticas_cooperado_exportar_xlsx():
     return send_file(output, download_name="faturamento_cooperados.xlsx", as_attachment=True)
 
 
+
+@app.route('/estatisticas_cooperado/exportar-dados')
+@master_required
+def estatisticas_cooperado_exportar_dados():
+    """
+    Exportação profissional do dashboard.
+    tipo: completo | resumo | entregas | cooperados | contratos | rotas |
+          bairros | pagamentos | credito
+    """
+    tipo = (request.args.get('tipo') or 'completo').strip().lower()
+    periodo = (request.args.get('periodo') or 'hoje').strip().lower()
+    data_inicio = request.args.get('data_inicio')
+    data_fim = request.args.get('data_fim')
+    cooperado_id = request.args.get('cooperado_id', 'todos')
+    grupo_id = request.args.get('grupo_id', 'todos')
+    cliente = (request.args.get('cliente') or '').strip()
+    status_pagamento = request.args.get('status_pagamento', 'todos')
+    pagamento = request.args.get('pagamento', request.args.get('forma_pagamento', 'todos'))
+    origem_f = (request.args.get('origem') or '').strip()
+    destino_f = (request.args.get('destino') or '').strip()
+
+    di, df, periodo_legivel = _dash_aplica_periodo(periodo, data_inicio, data_fim)
+    mapa_grupos, grupos_cliente = _dash_mapa_grupos()
+
+    query = Entrega.query.options(joinedload(Entrega.cooperado))
+    query = _dash_range_q(query, di, df)
+
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            query = query.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
+    if status_pagamento and status_pagamento != 'todos':
+        if status_pagamento == 'pago':
+            query = query.filter(func.lower(Entrega.status_pagamento) == 'pago')
+        elif status_pagamento == 'pendente':
+            query = query.filter(or_(Entrega.status_pagamento == None, func.lower(Entrega.status_pagamento) == 'pendente'))
+
+    if pagamento and pagamento != 'todos':
+        query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')).like(f"%{pagamento.lower()}%"))
+
+    if cliente:
+        query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).like(f"%{cliente.lower()}%"))
+
+    if grupo_id and grupo_id != 'todos':
+        try:
+            gid = int(grupo_id)
+            itens = GrupoClienteItem.query.filter_by(grupo_id=gid).all()
+            nomes_norm = [it.nome_norm for it in itens if it.nome_norm]
+            if nomes_norm:
+                query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).in_(nomes_norm))
+            else:
+                query = query.filter(text('1=0'))
+        except Exception:
+            pass
+
+    rows = query.order_by(Entrega.data_envio.asc()).limit(20000).all()
+    origem_key = _dash_compact_key(origem_f)
+    destino_key = _dash_compact_key(destino_f)
+    entregas = []
+    for e in rows:
+        bo, bd = _dash_origem_destino(e)
+        if origem_key and origem_key not in _dash_compact_key(bo):
+            continue
+        if destino_key and destino_key not in _dash_compact_key(bd):
+            continue
+        e._dash_origem = bo
+        e._dash_destino = bd
+        e._dash_contrato = _dash_contrato_nome(e, mapa_grupos)
+        entregas.append(e)
+
+    coop = defaultdict(lambda: {'qtd': 0, 'valor': 0.0, 'pendentes': 0, 'clientes': set()})
+    contratos = defaultdict(lambda: {'qtd': 0, 'valor': 0.0, 'pendente': 0.0, 'credito': 0.0})
+    rotas = defaultdict(lambda: {'qtd': 0, 'valor': 0.0})
+    coleta = defaultdict(lambda: {'qtd': 0, 'valor': 0.0})
+    destino = defaultdict(lambda: {'qtd': 0, 'valor': 0.0})
+    pagamentos = defaultdict(lambda: {'qtd': 0, 'valor': 0.0})
+    detalhe = []
+
+    total_valor = 0.0
+    total_pago = 0.0
+    total_pendente = 0.0
+    concluidas = 0
+    canceladas = 0
+
+    for e in entregas:
+        valor = _dash_money(e.valor)
+        total_valor += valor
+        dt = to_brasilia(e.data_envio) if e.data_envio else None
+        datr = to_brasilia(e.data_atribuida) if getattr(e, 'data_atribuida', None) else None
+        cn = e._dash_contrato or e.cliente or 'Não informado'
+        cp = e.cooperado.nome if e.cooperado else 'Sem cooperado'
+        bo, bd = e._dash_origem, e._dash_destino
+        rota = f'{bo} → {bd}'
+        pg = _dash_title_case(e.pagamento or 'Não informado')
+        pago = (e.status_pagamento or '').lower() == 'pago'
+        status = (e.status or '').lower()
+
+        if pago:
+            total_pago += valor
+        else:
+            total_pendente += valor
+        if status in ('recebido', 'entregue', 'finalizado', 'finalizada'):
+            concluidas += 1
+        if 'cancel' in status:
+            canceladas += 1
+
+        coop[cp]['qtd'] += 1
+        coop[cp]['valor'] += valor
+        coop[cp]['clientes'].add(cn)
+        if not pago:
+            coop[cp]['pendentes'] += 1
+
+        contratos[cn]['qtd'] += 1
+        contratos[cn]['valor'] += valor
+        if not pago:
+            contratos[cn]['pendente'] += valor
+        contratos[cn]['credito'] += _dash_money(getattr(e, 'credito_usado', 0))
+
+        rotas[rota]['qtd'] += 1; rotas[rota]['valor'] += valor
+        coleta[bo]['qtd'] += 1; coleta[bo]['valor'] += valor
+        destino[bd]['qtd'] += 1; destino[bd]['valor'] += valor
+        pagamentos[pg]['qtd'] += 1; pagamentos[pg]['valor'] += valor
+
+        tempo_atr = None
+        if e.data_envio and getattr(e, 'data_atribuida', None):
+            try:
+                tempo_atr = round((e.data_atribuida - e.data_envio).total_seconds() / 60.0, 1)
+            except Exception:
+                pass
+
+        detalhe.append({
+            'Pedido': e.id,
+            'Data': dt.strftime('%d/%m/%Y') if dt else '',
+            'Hora': dt.strftime('%H:%M') if dt else '',
+            'Cliente / Contrato': cn,
+            'Cooperado': cp,
+            'Origem': bo,
+            'Destino': bd,
+            'Valor (R$)': round(valor, 2),
+            'Pagamento': pg,
+            'Status pagamento': e.status_pagamento or 'pendente',
+            'Status entrega': e.status or '',
+            'Crédito usado (R$)': round(_dash_money(getattr(e, 'credito_usado', 0)), 2),
+            'Atribuída em': datr.strftime('%d/%m/%Y %H:%M') if datr else '',
+            'Tempo atribuição (min)': tempo_atr,
+        })
+
+    qtd = len(entregas)
+    resumo_rows = [
+        {'Indicador': 'Período', 'Valor': periodo_legivel},
+        {'Indicador': 'Entregas', 'Valor': qtd},
+        {'Indicador': 'Faturamento', 'Valor': round(total_valor, 2)},
+        {'Indicador': 'Ticket médio', 'Valor': round(total_valor / qtd, 2) if qtd else 0},
+        {'Indicador': 'Valor pago', 'Valor': round(total_pago, 2)},
+        {'Indicador': 'Valor pendente', 'Valor': round(total_pendente, 2)},
+        {'Indicador': 'Concluídas', 'Valor': concluidas},
+        {'Indicador': 'Canceladas', 'Valor': canceladas},
+        {'Indicador': 'Cooperados com produção', 'Valor': len([k for k in coop if k != 'Sem cooperado'])},
+        {'Indicador': 'Clientes / contratos', 'Valor': len(contratos)},
+        {'Indicador': 'Rotas distintas', 'Valor': len(rotas)},
+    ]
+
+    coop_rows = [{
+        'Cooperado': nome,
+        'Entregas': d['qtd'],
+        'Faturamento (R$)': round(d['valor'], 2),
+        'Ticket médio (R$)': round(d['valor'] / d['qtd'], 2) if d['qtd'] else 0,
+        'Pagamentos pendentes': d['pendentes'],
+        'Clientes atendidos': len(d['clientes']),
+        '% faturamento': round((d['valor'] / total_valor * 100.0), 2) if total_valor else 0,
+    } for nome, d in sorted(coop.items(), key=lambda kv: kv[1]['valor'], reverse=True)]
+
+    contrato_rows = [{
+        'Cliente / Contrato': nome,
+        'Entregas': d['qtd'],
+        'Faturamento (R$)': round(d['valor'], 2),
+        'Ticket médio (R$)': round(d['valor'] / d['qtd'], 2) if d['qtd'] else 0,
+        'Pendente (R$)': round(d['pendente'], 2),
+        'Crédito usado (R$)': round(d['credito'], 2),
+        '% faturamento': round((d['valor'] / total_valor * 100.0), 2) if total_valor else 0,
+    } for nome, d in sorted(contratos.items(), key=lambda kv: kv[1]['valor'], reverse=True)]
+
+    rota_rows = [{
+        'Rota': nome, 'Entregas': d['qtd'], 'Faturamento (R$)': round(d['valor'], 2),
+        'Ticket médio (R$)': round(d['valor'] / d['qtd'], 2) if d['qtd'] else 0
+    } for nome, d in sorted(rotas.items(), key=lambda kv: (-kv[1]['qtd'], -kv[1]['valor']))]
+
+    bairro_rows = []
+    for nome, d in sorted(coleta.items(), key=lambda kv: kv[1]['qtd'], reverse=True):
+        bairro_rows.append({'Tipo': 'Coleta', 'Bairro': nome, 'Entregas': d['qtd'], 'Faturamento (R$)': round(d['valor'], 2)})
+    for nome, d in sorted(destino.items(), key=lambda kv: kv[1]['qtd'], reverse=True):
+        bairro_rows.append({'Tipo': 'Entrega', 'Bairro': nome, 'Entregas': d['qtd'], 'Faturamento (R$)': round(d['valor'], 2)})
+
+    pagamento_rows = [{
+        'Forma de pagamento': nome,
+        'Entregas': d['qtd'],
+        'Valor (R$)': round(d['valor'], 2),
+        '% faturamento': round((d['valor'] / total_valor * 100.0), 2) if total_valor else 0,
+    } for nome, d in sorted(pagamentos.items(), key=lambda kv: kv[1]['valor'], reverse=True)]
+
+    credito_rows = []
+    try:
+        ini_utc, _ = local_date_window_to_utc_range(di)
+        _, fim_utc = local_date_window_to_utc_range(df)
+        movs = (
+            CreditoMovimento.query
+            .filter(CreditoMovimento.criado_em >= ini_utc, CreditoMovimento.criado_em <= fim_utc)
+            .order_by(CreditoMovimento.criado_em.asc())
+            .all()
+        )
+        for m in movs:
+            cli = Cliente.query.get(m.cliente_id) if m.cliente_id else None
+            credito_rows.append({
+                'Data': to_brasilia(m.criado_em).strftime('%d/%m/%Y %H:%M') if m.criado_em else '',
+                'Cliente': cli.nome if cli else f'Cliente #{m.cliente_id}',
+                'Tipo': m.tipo or '',
+                'Valor (R$)': round(_dash_money(m.valor), 2),
+                'Entrega': getattr(m, 'entrega_id', None) or '',
+                'Crédito': getattr(m, 'credito_id', None) or '',
+                'Descrição': getattr(m, 'descricao', '') or '',
+                'Referência': getattr(m, 'referencia', '') or '',
+            })
+    except Exception:
+        credito_rows = []
+
+    datasets = {
+        'resumo': ('Resumo', pd.DataFrame(resumo_rows)),
+        'entregas': ('Entregas', pd.DataFrame(detalhe)),
+        'cooperados': ('Cooperados', pd.DataFrame(coop_rows)),
+        'contratos': ('Contratos', pd.DataFrame(contrato_rows)),
+        'rotas': ('Rotas', pd.DataFrame(rota_rows)),
+        'bairros': ('Bairros', pd.DataFrame(bairro_rows)),
+        'pagamentos': ('Pagamentos', pd.DataFrame(pagamento_rows)),
+        'credito': ('Credito', pd.DataFrame(credito_rows)),
+    }
+
+    if tipo == 'completo':
+        chosen = list(datasets.values())
+        filename = f'dashboard_coopex_{di.isoformat()}_{df.isoformat()}.xlsx'
+    else:
+        if tipo not in datasets:
+            tipo = 'resumo'
+        chosen = [datasets[tipo]]
+        filename = f'coopex_{tipo}_{di.isoformat()}_{df.isoformat()}.xlsx'
+
+    output = io.BytesIO()
+    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+        book = writer.book
+        header_fmt = book.add_format({'bold': True, 'bg_color': '#123B9E', 'font_color': '#FFFFFF', 'border': 0})
+        money_fmt = book.add_format({'num_format': 'R$ #,##0.00'})
+        pct_fmt = book.add_format({'num_format': '0.00"%"'})
+        title_fmt = book.add_format({'bold': True, 'font_size': 14, 'font_color': '#123B9E'})
+        for sheet_name, df_sheet in chosen:
+            safe = sheet_name[:31]
+            startrow = 2
+            df_sheet.to_excel(writer, index=False, sheet_name=safe, startrow=startrow)
+            ws = writer.sheets[safe]
+            ws.write(0, 0, f'COOPEX — {sheet_name} — {periodo_legivel}', title_fmt)
+            if not df_sheet.empty:
+                for c, col in enumerate(df_sheet.columns):
+                    ws.write(startrow, c, col, header_fmt)
+                    max_len = max(len(str(col)), *(len(str(v)) for v in df_sheet[col].head(300).fillna('').tolist()))
+                    ws.set_column(c, c, min(max(max_len + 2, 12), 42))
+                    if '(R$)' in str(col) or str(col) in ('Faturamento', 'Ticket médio', 'Valor'):
+                        ws.set_column(c, c, min(max(max_len + 2, 15), 42), money_fmt)
+                    if '%' in str(col):
+                        ws.set_column(c, c, 14, pct_fmt)
+                ws.autofilter(startrow, 0, startrow + len(df_sheet), len(df_sheet.columns) - 1)
+                ws.freeze_panes(startrow + 1, 0)
+
+    output.seek(0)
+    return send_file(output, download_name=filename, as_attachment=True)
+
+
+
+# =========================================================
+# DASHBOARD PRO MAX — DADOS AVANÇADOS / COMPARATIVOS
+# =========================================================
+
+def _dash_pro_norm_status(value):
+    return _dash_text_key(value or '')
+
+
+def _dash_pro_concluida(e):
+    return _dash_pro_norm_status(getattr(e, 'status', '')) in {
+        'recebido', 'entregue', 'finalizado', 'finalizada', 'concluido', 'concluida'
+    }
+
+
+def _dash_pro_cancelada(e):
+    s = _dash_pro_norm_status(getattr(e, 'status', ''))
+    return s in {'cancelado', 'cancelada', 'cancel solicitado', 'cancelamento solicitado'} or 'cancel' in s
+
+
+def _dash_pro_paga(e):
+    return _dash_pro_norm_status(getattr(e, 'status_pagamento', '')) == 'pago'
+
+
+def _dash_pro_credito_auto(e):
+    try:
+        return bool(pagamento_usa_credito(getattr(e, 'pagamento', '') or ''))
+    except Exception:
+        p = _dash_pro_norm_status(getattr(e, 'pagamento', ''))
+        return p in {
+            'credito_auto', 'credito automatico', 'credito auto',
+            'saldo cliente', 'credito saldo cliente'
+        }
+
+
+def _dash_pro_percentil(values, pct):
+    vals = sorted(float(v) for v in values if v is not None)
+    if not vals:
+        return 0.0
+    if len(vals) == 1:
+        return round(vals[0], 1)
+    pos = (len(vals) - 1) * float(pct)
+    lo = int(pos)
+    hi = min(lo + 1, len(vals) - 1)
+    frac = pos - lo
+    return round(vals[lo] + (vals[hi] - vals[lo]) * frac, 1)
+
+
+def _dash_pro_filters_from_request():
+    return {
+        'cooperado_id': request.args.get('cooperado_id', 'todos'),
+        'grupo_id': request.args.get('grupo_id', 'todos'),
+        'cliente': (request.args.get('cliente') or '').strip(),
+        'status_pagamento': request.args.get('status_pagamento', 'todos'),
+        'pagamento': request.args.get('pagamento', request.args.get('forma_pagamento', 'todos')),
+        'origem': (request.args.get('origem') or '').strip(),
+        'destino': (request.args.get('destino') or '').strip(),
+    }
+
+
+def _dash_pro_query_rows(di, df, filtros, mapa_grupos, limit=30000):
+    q = Entrega.query.options(joinedload(Entrega.cooperado))
+    q = _dash_range_q(q, di, df)
+
+    cooperado_id = filtros.get('cooperado_id', 'todos')
+    if cooperado_id and cooperado_id != 'todos':
+        try:
+            q = q.filter(Entrega.cooperado_id == int(cooperado_id))
+        except Exception:
+            pass
+
+    sp = filtros.get('status_pagamento', 'todos')
+    if sp == 'pago':
+        q = q.filter(func.lower(func.coalesce(Entrega.status_pagamento, '')) == 'pago')
+    elif sp == 'pendente':
+        q = q.filter(or_(Entrega.status_pagamento == None, func.lower(func.coalesce(Entrega.status_pagamento, '')) != 'pago'))
+
+    pg = (filtros.get('pagamento') or 'todos').strip().lower()
+    if pg and pg != 'todos':
+        if pg in ('credito', 'credito_auto'):
+            aliases = [
+                'credito_auto', 'crédito automático', 'credito automático',
+                'crédito automatico', 'credito automatico', 'crédito auto',
+                'credito auto', 'saldo cliente', 'credito saldo cliente'
+            ]
+            q = q.filter(func.lower(func.trim(func.coalesce(Entrega.pagamento, ''))).in_(aliases))
+        elif pg == 'pix':
+            q = q.filter(func.lower(func.coalesce(Entrega.pagamento, '')).like('%pix%'))
+        elif pg == 'dinheiro':
+            q = q.filter(func.lower(func.coalesce(Entrega.pagamento, '')).like('%dinheiro%'))
+        else:
+            q = q.filter(func.lower(func.coalesce(Entrega.pagamento, '')).like(f'%{pg}%'))
+
+    cliente = filtros.get('cliente', '')
+    if cliente:
+        q = q.filter(func.lower(func.coalesce(Entrega.cliente, '')).like(f'%{cliente.lower()}%'))
+
+    grupo_id = filtros.get('grupo_id', 'todos')
+    if grupo_id and grupo_id != 'todos':
+        try:
+            itens = GrupoClienteItem.query.filter_by(grupo_id=int(grupo_id)).all()
+            nomes = [x.nome_norm for x in itens if x.nome_norm]
+            q = q.filter(func.lower(func.coalesce(Entrega.cliente, '')).in_(nomes)) if nomes else q.filter(text('1=0'))
+        except Exception:
+            pass
+
+    raw = q.order_by(Entrega.data_envio.desc()).limit(int(limit)).all()
+    ok = []
+    origem_key = _dash_compact_key(filtros.get('origem', ''))
+    destino_key = _dash_compact_key(filtros.get('destino', ''))
+    for e in raw:
+        bo, bd = _dash_origem_destino(e)
+        if origem_key and origem_key not in _dash_compact_key(bo):
+            continue
+        if destino_key and destino_key not in _dash_compact_key(bd):
+            continue
+        e._dash_origem = bo
+        e._dash_destino = bd
+        e._dash_contrato = _dash_contrato_nome(e, mapa_grupos)
+        ok.append(e)
+    return ok
+
+
+def _dash_pro_build_payload(di, df, filtros, limit=30000):
+    mapa_grupos, _ = _dash_mapa_grupos()
+    rows = _dash_pro_query_rows(di, df, filtros, mapa_grupos, limit=limit)
+    now_utc = datetime.utcnow()
+    total_valor = sum(_dash_money(e.valor) for e in rows)
+
+    coop = defaultdict(lambda: {'qtd':0,'valor':0.0,'pago':0.0,'pendente':0.0,'concluidas':0,'canceladas':0,'clientes':set(),'rotas':set(),'dias':set(),'tempos':[],'credito_qtd':0,'credito_valor':0.0})
+    contracts = defaultdict(lambda: {'qtd':0,'valor':0.0,'pago':0.0,'pendente':0.0,'credito':0.0,'cooperados':set(),'rotas':set(),'dias':set(),'concluidas':0,'canceladas':0})
+    clients = defaultdict(lambda: {'qtd':0,'valor':0.0,'pago':0.0,'pendente':0.0,'credito':0.0,'cooperados':set(),'rotas':set(),'dias':set()})
+    origins = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    destinations = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    routes = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    payments = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    statuses = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    by_hour = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    by_weekday = defaultdict(lambda: {'qtd':0,'valor':0.0})
+    heat = defaultdict(int)
+    weekday_names = ['Seg','Ter','Qua','Qui','Sex','Sáb','Dom']
+
+    open_count = 0; unassigned = 0; unassigned10 = 0; unassigned20 = 0
+    paid_count = 0; completed_count = 0; cancelled_count = 0
+    value_paid = 0.0; value_pending = 0.0; value_cancelled = 0.0
+    credit_auto_count = 0; credit_auto_value = 0.0
+    assign_times = []
+    quality = {'sem_origem':0,'sem_destino':0,'sem_cliente':0,'sem_cooperado':0,'sem_pagamento':0,'sem_status_pagamento':0,'valor_zero_ou_negativo':0}
+    audit = []
+
+    for e in rows:
+        val = _dash_money(e.valor)
+        pago = _dash_pro_paga(e)
+        concluida = _dash_pro_concluida(e)
+        cancelada = _dash_pro_cancelada(e)
+        credit_auto = _dash_pro_credito_auto(e)
+        dt = to_brasilia(e.data_envio) if e.data_envio else None
+        contrato = (e._dash_contrato or e.cliente or 'Cliente não informado').strip()
+        cliente = (e.cliente or 'Cliente não informado').strip()
+        cname = e.cooperado.nome if e.cooperado else 'Sem cooperado'
+        bo = (e._dash_origem or 'Não informado').strip()
+        bd = (e._dash_destino or 'Não informado').strip()
+        route = f'{bo} → {bd}'
+        pg = _dash_title_case((e.pagamento or 'Não informado').strip() or 'Não informado')
+        st = _dash_title_case((e.status or 'Não informado').strip() or 'Não informado')
+
+        if pago:
+            paid_count += 1; value_paid += val
+        else:
+            value_pending += val
+        if concluida: completed_count += 1
+        if cancelada:
+            cancelled_count += 1; value_cancelled += val
+        if not concluida and not cancelada:
+            open_count += 1
+            if not e.cooperado_id:
+                unassigned += 1
+                mins = int((now_utc - e.data_envio).total_seconds()/60) if e.data_envio else 0
+                if mins >= 10: unassigned10 += 1
+                if mins >= 20: unassigned20 += 1
+
+        at = None
+        if e.data_envio and e.data_atribuida:
+            try:
+                at = (e.data_atribuida - e.data_envio).total_seconds()/60.0
+                if 0 <= at <= 1440: assign_times.append(at)
+                else: at = None
+            except Exception:
+                at = None
+
+        if credit_auto:
+            credit_auto_count += 1
+            cv = _dash_money(getattr(e,'credito_usado',0)) or val
+            credit_auto_value += cv
+
+        c = coop[cname]
+        c['qtd'] += 1; c['valor'] += val; c['clientes'].add(contrato); c['rotas'].add(route)
+        if dt: c['dias'].add(dt.date().isoformat())
+        if pago: c['pago'] += val
+        else: c['pendente'] += val
+        if concluida: c['concluidas'] += 1
+        if cancelada: c['canceladas'] += 1
+        if at is not None: c['tempos'].append(at)
+        if credit_auto:
+            c['credito_qtd'] += 1; c['credito_valor'] += (_dash_money(getattr(e,'credito_usado',0)) or val)
+
+        g = contracts[contrato]
+        g['qtd'] += 1; g['valor'] += val; g['cooperados'].add(cname); g['rotas'].add(route)
+        if dt: g['dias'].add(dt.date().isoformat())
+        if pago: g['pago'] += val
+        else: g['pendente'] += val
+        if concluida: g['concluidas'] += 1
+        if cancelada: g['canceladas'] += 1
+        if credit_auto: g['credito'] += (_dash_money(getattr(e,'credito_usado',0)) or val)
+
+        rc = clients[cliente]
+        rc['qtd'] += 1; rc['valor'] += val; rc['cooperados'].add(cname); rc['rotas'].add(route)
+        if dt: rc['dias'].add(dt.date().isoformat())
+        if pago: rc['pago'] += val
+        else: rc['pendente'] += val
+        if credit_auto: rc['credito'] += (_dash_money(getattr(e,'credito_usado',0)) or val)
+
+        origins[bo]['qtd'] += 1; origins[bo]['valor'] += val
+        destinations[bd]['qtd'] += 1; destinations[bd]['valor'] += val
+        routes[route]['qtd'] += 1; routes[route]['valor'] += val
+        payments[pg]['qtd'] += 1; payments[pg]['valor'] += val
+        statuses[st]['qtd'] += 1; statuses[st]['valor'] += val
+        if dt:
+            hk=f'{dt.hour:02d}:00'; wk=weekday_names[dt.weekday()]
+            by_hour[hk]['qtd'] += 1; by_hour[hk]['valor'] += val
+            by_weekday[wk]['qtd'] += 1; by_weekday[wk]['valor'] += val
+            heat[(wk,dt.hour)] += 1
+
+        if not bo or bo == 'Não informado': quality['sem_origem'] += 1
+        if not bd or bd == 'Não informado': quality['sem_destino'] += 1
+        if not cliente or cliente == 'Cliente não informado': quality['sem_cliente'] += 1
+        if not e.cooperado_id: quality['sem_cooperado'] += 1
+        if not (e.pagamento or '').strip(): quality['sem_pagamento'] += 1
+        if not (e.status_pagamento or '').strip(): quality['sem_status_pagamento'] += 1
+        if val <= 0: quality['valor_zero_ou_negativo'] += 1
+
+        audit.append({
+            'id':e.id,'data':dt.strftime('%d/%m/%Y') if dt else '', 'hora':dt.strftime('%H:%M') if dt else '',
+            'cliente':cliente,'contrato':contrato,'cooperado':cname,'origem':bo,'destino':bd,'rota':route,
+            'status':e.status or 'Não informado','pagamento':e.pagamento or 'Não informado','status_pagamento':e.status_pagamento or 'pendente',
+            'valor':round(val,2),'credito_auto':bool(credit_auto),'credito_usado':round(_dash_money(getattr(e,'credito_usado',0)),2),
+            'tempo_atribuicao':round(at,1) if at is not None else None
+        })
+
+    def pct(a,b): return round(a/b*100.0,1) if b else 0.0
+    def avg(vals): return round(sum(vals)/len(vals),1) if vals else 0.0
+    coop_rows=[]
+    for name,d in sorted(coop.items(), key=lambda kv:kv[1]['valor'], reverse=True):
+        q=d['qtd']
+        coop_rows.append({'nome':name,'qtd':q,'valor':round(d['valor'],2),'ticket':round(d['valor']/q,2) if q else 0,'pago':round(d['pago'],2),'pendente':round(d['pendente'],2),'conclusao_pct':pct(d['concluidas'],q),'canceladas':d['canceladas'],'clientes':len(d['clientes']),'rotas':len(d['rotas']),'dias_ativos':len(d['dias']),'media_dia':round(q/len(d['dias']),1) if d['dias'] else 0,'tempo_atr_medio':avg(d['tempos']),'credito_auto_qtd':d['credito_qtd'],'credito_auto_valor':round(d['credito_valor'],2),'participacao_pct':round(d['valor']/total_valor*100.0,2) if total_valor else 0})
+
+    contract_rows=[]
+    for name,d in sorted(contracts.items(), key=lambda kv:kv[1]['valor'], reverse=True):
+        q=d['qtd']
+        contract_rows.append({'nome':name,'qtd':q,'valor':round(d['valor'],2),'ticket':round(d['valor']/q,2) if q else 0,'pago':round(d['pago'],2),'pendente':round(d['pendente'],2),'credito_auto':round(d['credito'],2),'cooperados':len(d['cooperados']),'rotas':len(d['rotas']),'dias_ativos':len(d['dias']),'conclusao_pct':pct(d['concluidas'],q),'canceladas':d['canceladas'],'participacao_pct':round(d['valor']/total_valor*100.0,2) if total_valor else 0})
+
+    client_rows=[]
+    for name,d in sorted(clients.items(), key=lambda kv:kv[1]['valor'], reverse=True):
+        q=d['qtd']
+        client_rows.append({'nome':name,'qtd':q,'valor':round(d['valor'],2),'ticket':round(d['valor']/q,2) if q else 0,'pago':round(d['pago'],2),'pendente':round(d['pendente'],2),'credito_auto':round(d['credito'],2),'cooperados':len(d['cooperados']),'rotas':len(d['rotas']),'dias_ativos':len(d['dias']),'participacao_pct':round(d['valor']/total_valor*100.0,2) if total_valor else 0})
+
+    def simple_rows(source):
+        return [{'nome':name,'qtd':d['qtd'],'valor':round(d['valor'],2),'ticket':round(d['valor']/d['qtd'],2) if d['qtd'] else 0} for name,d in sorted(source.items(), key=lambda kv:(-kv[1]['qtd'],-kv[1]['valor']))]
+    route_rows=simple_rows(routes); origin_rows=simple_rows(origins); destination_rows=simple_rows(destinations)
+    payment_rows=[{'nome':n,'qtd':d['qtd'],'valor':round(d['valor'],2),'participacao_pct':round(d['valor']/total_valor*100.0,2) if total_valor else 0} for n,d in sorted(payments.items(), key=lambda kv:kv[1]['valor'], reverse=True)]
+    status_rows=[{'nome':n,'qtd':d['qtd'],'valor':round(d['valor'],2)} for n,d in sorted(statuses.items(), key=lambda kv:kv[1]['qtd'], reverse=True)]
+    hour_rows=[{'label':f'{h:02d}:00','qtd':by_hour[f'{h:02d}:00']['qtd'],'valor':round(by_hour[f'{h:02d}:00']['valor'],2)} for h in range(24)]
+    weekday_rows=[{'label':d,'qtd':by_weekday[d]['qtd'],'valor':round(by_weekday[d]['valor'],2)} for d in weekday_names]
+    heat_rows=[{'dia':d,'hora':h,'qtd':heat[(d,h)]} for d in weekday_names for h in range(24)]
+
+    # Crédito: recarga real = tipo credito + credito_id; estorno = tipo credito sem credito_id.
+    ini_utc,_=local_date_window_to_utc_range(di); _,fim_utc=local_date_window_to_utc_range(df)
+    mov_date=func.coalesce(CreditoMovimento.criado_em,CreditoMovimento.data)
+    try:
+        movs=CreditoMovimento.query.filter(mov_date>=ini_utc,mov_date<=fim_utc).order_by(mov_date.desc()).limit(10000).all()
+    except Exception:
+        movs=[]
+    recargas=[]; estornos=[]
+    for m in movs:
+        dtm=to_brasilia(m.criado_em or m.data) if (m.criado_em or m.data) else None
+        row={'data':dtm.strftime('%d/%m/%Y %H:%M') if dtm else '','cliente_id':m.cliente_id,'entrega_id':m.entrega_id,'credito_id':m.credito_id,'valor':round(_dash_money(m.valor),2),'referencia':m.referencia or '','descricao':m.descricao or ''}
+        if _dash_pro_norm_status(m.tipo)=='credito' and m.credito_id: recargas.append(row)
+        elif _dash_pro_norm_status(m.tipo)=='credito' and not m.credito_id: estornos.append(row)
+
+    try:
+        all_clients=Cliente.query.order_by(Cliente.saldo_atual.asc()).all()
+    except Exception:
+        all_clients=[]
+    balances=[{'id':c.id,'nome':c.nome,'telefone':c.telefone or '','bairro':c.bairro_origem or '','saldo':round(_dash_money(c.saldo_atual),2)} for c in all_clients]
+    negatives=[x for x in balances if x['saldo']<0]; lows=[x for x in balances if 0<x['saldo']<=50]
+
+    produced_ids={e.cooperado_id for e in rows if e.cooperado_id}
+    online=[]; no_production=[]; active_registered=0
+    try:
+        coops=Cooperado.query.order_by(Cooperado.nome.asc()).all()
+        for c in coops:
+            if c.ativo:
+                active_registered += 1
+                if c.id not in produced_ids: no_production.append({'id':c.id,'nome':c.nome})
+            fresh=False
+            if c.last_ping:
+                try: fresh=(now_utc-c.last_ping).total_seconds()<=300
+                except Exception: fresh=False
+            if c.online and fresh:
+                online.append({'id':c.id,'nome':c.nome,'velocidade':round(float(c.last_speed_kmh or 0),1),'precisao':round(float(c.last_accuracy_m or 0),1),'ping':to_brasilia(c.last_ping).strftime('%H:%M:%S')})
+    except Exception:
+        pass
+
+    try:
+        wait=ListaEspera.query.order_by(ListaEspera.pos.asc(),ListaEspera.created_at.asc()).all()
+        wait_rows=[{'pos':x.pos or i+1,'nome':x.cooperado.nome if x.cooperado else x.nome,'desde':to_brasilia(x.created_at).strftime('%d/%m %H:%M') if x.created_at else ''} for i,x in enumerate(wait)]
+    except Exception:
+        wait_rows=[]
+    try: credit_requests=SolicitacaoCreditoCliente.query.filter_by(status='pendente').count()
+    except Exception: credit_requests=0
+    try: cancel_requests=SolicitacaoCancelamentoCliente.query.filter_by(status='pendente').count()
+    except Exception: cancel_requests=0
+    try: value_requests=SolicitacaoAlteracaoValor.query.filter_by(status='pendente').count()
+    except Exception: value_requests=0
+
+    summary={
+        'total':len(rows),'valor_total':round(total_valor,2),'ticket':round(total_valor/len(rows),2) if rows else 0,
+        'pago_qtd':paid_count,'pago_valor':round(value_paid,2),'pendente_valor':round(value_pending,2),'concluidas':completed_count,'canceladas':cancelled_count,'cancelado_valor':round(value_cancelled,2),
+        'abertas':open_count,'sem_cooperado':unassigned,'sem_coop_10':unassigned10,'sem_coop_20':unassigned20,
+        'taxa_pagamento':pct(paid_count,len(rows)),'taxa_conclusao':pct(completed_count,len(rows)),'taxa_cancelamento':pct(cancelled_count,len(rows)),'taxa_atribuicao':pct(len(rows)-quality['sem_cooperado'],len(rows)),
+        'tempo_medio':avg(assign_times),'tempo_p50':_dash_pro_percentil(assign_times,.5),'tempo_p90':_dash_pro_percentil(assign_times,.9),'tempo_max':round(max(assign_times),1) if assign_times else 0,
+        'credito_auto_qtd':credit_auto_count,'credito_auto_valor':round(credit_auto_value,2),'recargas_qtd':len(recargas),'recargas_valor':round(sum(x['valor'] for x in recargas),2),'estornos_qtd':len(estornos),'estornos_valor':round(sum(x['valor'] for x in estornos),2),
+        'clientes_negativos':len(negatives),'saldo_negativo_total':round(sum(x['saldo'] for x in negatives),2),'clientes_baixo':len(lows),'saldo_total':round(sum(x['saldo'] for x in balances),2),
+        'online':len(online),'ativos_cadastrados':active_registered,'sem_producao':len(no_production),'fila':len(wait_rows),'solicit_credito':int(credit_requests or 0),'solicit_cancel':int(cancel_requests or 0),'solicit_valor':int(value_requests or 0),
+        'rotas_distintas':len(routes),'clientes_ativos':len(clients),'cooperados_ativos':len([x for x in coop_rows if x['nome']!='Sem cooperado'])
+    }
+    return {'summary':summary,'cooperados':coop_rows,'contratos':contract_rows,'clientes':client_rows,'rotas':route_rows,'origens':origin_rows,'destinos':destination_rows,'pagamentos':payment_rows,'statuses':status_rows,'horas':hour_rows,'weekdays':weekday_rows,'heatmap':heat_rows,'qualidade':quality,'audit':audit[:500],'recargas':recargas[:200],'estornos':estornos[:200],'balances':balances,'negatives':negatives,'lows':lows,'online':online,'no_production':no_production,'fila':wait_rows}
+
+
+@app.get('/estatisticas_cooperado/pro-data')
+@master_required
+def estatisticas_cooperado_pro_data():
+    periodo=(request.args.get('periodo') or 'hoje').strip().lower()
+    di,df,label=_dash_aplica_periodo(periodo,request.args.get('data_inicio'),request.args.get('data_fim'))
+    payload=_dash_pro_build_payload(di,df,_dash_pro_filters_from_request())
+    payload['periodo_legivel']=label
+    return jsonify(ok=True, **payload)
+
+
+@app.get('/estatisticas_cooperado/pro-comparativo')
+@master_required
+def estatisticas_cooperado_pro_comparativo():
+    try: year=int(request.args.get('ano') or datetime.now(BRAZIL_TZ).year)
+    except Exception: year=datetime.now(BRAZIL_TZ).year
+    filtros=_dash_pro_filters_from_request(); mapa,_=_dash_mapa_grupos()
+    def calc(yy):
+        rows=_dash_pro_query_rows(date(yy,1,1),date(yy,12,31),filtros,mapa,limit=50000)
+        months=[{'mes':m,'label':['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'][m-1],'qtd':0,'valor':0.0} for m in range(1,13)]
+        for e in rows:
+            dt=to_brasilia(e.data_envio) if e.data_envio else None
+            if dt:
+                months[dt.month-1]['qtd']+=1; months[dt.month-1]['valor']+=_dash_money(e.valor)
+        for m in months: m['valor']=round(m['valor'],2)
+        q=len(rows); v=sum(_dash_money(e.valor) for e in rows)
+        return months, {'qtd':q,'valor':round(v,2),'ticket':round(v/q,2) if q else 0,'canceladas':sum(1 for e in rows if _dash_pro_cancelada(e))}
+    cur,cs=calc(year); prev,ps=calc(year-1)
+    out=[]
+    for i in range(12):
+        a=cur[i]; b=prev[i]
+        out.append({'label':a['label'],'atual_qtd':a['qtd'],'atual_valor':a['valor'],'anterior_qtd':b['qtd'],'anterior_valor':b['valor'],'qtd_pct':_dash_yoy_atual_anterior(a['qtd'],b['qtd']),'valor_pct':_dash_yoy_atual_anterior(a['valor'],b['valor'])})
+    return jsonify(ok=True,ano=year,ano_anterior=year-1,atual=cs,anterior=ps,diferenca={'qtd_pct':_dash_yoy_atual_anterior(cs['qtd'],ps['qtd']),'valor_pct':_dash_yoy_atual_anterior(cs['valor'],ps['valor']),'ticket_pct':_dash_yoy_atual_anterior(cs['ticket'],ps['ticket'])},meses=out)
 
 @app.route('/admin/normalizar_nomes', methods=['GET', 'POST'])
 @master_required
