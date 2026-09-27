@@ -85,10 +85,98 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
 .calc-keys button.soft{color:#0c55df}.calc-keys button.zero{grid-column:span 2}
 .calc-memory-status{display:flex;justify-content:space-between;gap:8px;color:#6a7890;font-size:9px;font-weight:800;padding:8px 3px 0}
 .calc-side{display:grid;gap:14px}.calc-side .card{margin:0}
-.profit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.profit-grid>div{background:#f8fbff;border:1px solid var(--line);border-radius:13px;padding:11px}.profit-grid small{display:block;color:var(--muted);font-size:10px;font-weight:800}.profit-grid strong{display:block;margin-top:4px;color:var(--blue2);font-size:16px}
+
 .calc-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.calc-history-head h3{margin:0}.calc-history-head small{color:var(--muted)}
 .calc-history{display:flex;flex-direction:column;gap:7px;margin-top:10px;max-height:410px;overflow:auto}.calc-history-item{display:grid;grid-template-columns:1fr auto;gap:10px;border:1px solid var(--line);background:#fbfdff;border-radius:12px;padding:9px 11px}.calc-history-item small{display:block;color:var(--muted);font-size:10px}.calc-history-item strong{color:var(--blue2)}.calc-history-item button{border:0;background:transparent;color:var(--blue);font-weight:900}
-@media(max-width:900px){.calc-layout{grid-template-columns:1fr}.iphone-calc{max-width:430px;margin:auto;width:100%}.calc-top{display:block}.calc-top .ghost{margin-top:8px}.profit-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.calc-layout{grid-template-columns:1fr}.iphone-calc{max-width:430px;margin:auto;width:100%}.calc-top{display:block}.calc-top .ghost{margin-top:8px}}
+
+
+/* AJUSTE DE APROVEITAMENTO DE TELA */
+.wrap, .container, .page, .page-shell{max-width:none!important;width:100%!important}
+main, .main, .content, .content-area, .app-main{width:100%!important;max-width:none!important}
+body .shell, body .layout, body .page-layout, body .portal-layout{
+  width:100%!important;
+  max-width:none!important;
+}
+@media(min-width:1024px){
+  .layout, .page-layout, .portal-layout, .shell{
+    grid-template-columns: 220px minmax(0,1fr)!important;
+    gap: 12px!important;
+  }
+  .content, .content-area, main, .main, .app-main{
+    min-width:0!important;
+  }
+}
+
+
+/* MODO VENDEDOR MAIS LIMPO */
+body.modo-vendedor .seller-hero,
+body.modo-vendedor .vendor-hero,
+body.modo-vendedor .seller-summary,
+body.modo-vendedor .vendor-summary,
+body.modo-vendedor .wallet-hero,
+body.modo-vendedor .wallet-panel,
+body.modo-vendedor .hero,
+body.modo-vendedor .top-hero{
+  display:none!important;
+}
+body.modo-vendedor .seller-topbar-compact{
+  display:flex!important;
+}
+.seller-topbar-compact{
+  display:none;
+  align-items:center;
+  justify-content:space-between;
+  gap:12px;
+  background: linear-gradient(135deg, #0d5be1 0%, #0a48c2 100%);
+  color:#fff;
+  border-radius:20px;
+  padding:14px 18px;
+  margin-bottom:12px;
+  box-shadow:0 10px 28px rgba(10,72,194,.18);
+}
+.seller-topbar-compact .seller-topbar-title{
+  font-size:20px;
+  font-weight:900;
+  line-height:1.1;
+  margin:0 0 2px 0;
+}
+.seller-topbar-compact .seller-topbar-sub{
+  font-size:12px;
+  opacity:.95;
+}
+.seller-topbar-compact .seller-topbar-actions{
+  display:flex;
+  gap:10px;
+  flex-wrap:wrap;
+}
+.seller-topbar-compact .seller-topbar-actions button{
+  min-width:170px;
+}
+@media(max-width:860px){
+  .seller-topbar-compact{
+    flex-direction:column;
+    align-items:stretch;
+  }
+  .seller-topbar-compact .seller-topbar-actions{
+    width:100%;
+    flex-direction:column;
+  }
+  .seller-topbar-compact .seller-topbar-actions button{
+    width:100%;
+    min-width:0;
+  }
+}
+
+
+.sidebar, .side, aside{
+  width:100%!important;
+  max-width:none!important;
+}
+.sidebar .nav, .side .nav, aside .nav{
+  font-size:16px!important;
+  padding:18px 20px!important;
+}
 
 </style>
 </head>
@@ -135,6 +223,18 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
 </section>
 
 <div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
+
+
+<div class="seller-topbar-compact" id="sellerCompactBar">
+  <div>
+    <div class="seller-topbar-title" id="sellerCompactName">Pedido do vendedor</div>
+    <div class="seller-topbar-sub">Acesso rápido do vendedor. Área financeira e configurações ficam no acesso principal.</div>
+  </div>
+  <div class="seller-topbar-actions">
+    <button type="button" class="primary" id="sellerQuickOrderBtn">Fazer pedido</button>
+    <button type="button" class="ghost" id="sellerQuickSwitchBtn">Trocar vendedor</button>
+  </div>
+</div>
 
 <div class="tabs">
   <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="calculadora">Calculadora</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button>
@@ -314,20 +414,7 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
       </div>
 
       <div class="calc-side">
-        <div class="card calc-profit">
-          <h3>Lucro / margem</h3>
-          <div class="fields">
-            <div class="field"><label>Preço de custo</label><input class="input" id="calcCost" inputmode="decimal" placeholder="0,00"></div>
-            <div class="field"><label>Preço de venda</label><input class="input" id="calcSale" inputmode="decimal" placeholder="0,00"></div>
-          </div>
-          <div class="profit-grid">
-            <div><small>Lucro</small><strong id="calcProfitValue">R$ 0,00</strong></div>
-            <div><small>Margem</small><strong id="calcMarginValue">0,00%</strong></div>
-            <div><small>Markup</small><strong id="calcMarkupValue">0,00%</strong></div>
-          </div>
-        </div>
-
-        <div class="card">
+<div class="card">
           <div class="calc-history-head"><h3>Histórico</h3><small>Salvo neste navegador.</small></div>
           <div class="calc-history" id="calcHistory"></div>
         </div>
@@ -1037,20 +1124,72 @@ document.querySelectorAll('[data-calc]').forEach(btn=>btn.addEventListener('clic
   if(['MC','MR','M+','M-'].includes(k))return calcMemory(k);
 }));
 
-function calcProfit(){
-  const cost=calcParse($('calcCost')?.value||0);
-  const sale=calcParse($('calcSale')?.value||0);
-  const exactProfit=sale-cost;
-  const roundedProfit=calcRoundUpMoney(exactProfit);
-  const margin=sale?((exactProfit/sale)*100):0;
-  const markup=cost?((exactProfit/cost)*100):0;
-  if($('calcProfitValue'))$('calcProfitValue').textContent=calcMoney(roundedProfit);
-  if($('calcMarginValue'))$('calcMarginValue').textContent=calcFmt(margin,2)+'%';
-  if($('calcMarkupValue'))$('calcMarkupValue').textContent=calcFmt(markup,2)+'%';
-}
-['calcCost','calcSale'].forEach(id=>$(id)?.addEventListener('input',calcProfit));
 $('clearCalcHistory')?.addEventListener('click',()=>{if(confirm('Limpar o histórico da calculadora?')){calcSaveHistory([]);calcRenderHistory()}});
-calcUpdate();calcRenderHistory();calcProfit();
+calcUpdate();calcRenderHistory();
+
+
+/* Teclado físico para a calculadora */
+document.addEventListener('keydown', e=>{
+  const calcView=$('view-calculadora');
+  if(!calcView || !calcView.classList.contains('active')) return;
+
+  const tag=(document.activeElement?.tagName||'').toLowerCase();
+  const isTyping=['input','textarea','select'].includes(tag);
+  if(isTyping) return;
+
+  const k=e.key;
+
+  if(/^\d$/.test(k)){
+    e.preventDefault();
+    return calcDigit(k);
+  }
+  if(k===',' || k==='.'){
+    e.preventDefault();
+    return calcDecimal();
+  }
+  if(['+','-','*','/'].includes(k)){
+    e.preventDefault();
+    return calcOperator(k);
+  }
+  if(k==='Enter' || k==='='){
+    e.preventDefault();
+    return calcEquals();
+  }
+  if(k==='%'){
+    e.preventDefault();
+    return calcPercent();
+  }
+  if(k==='Escape'){
+    e.preventDefault();
+    return calcClear();
+  }
+  if(k==='Backspace' || k==='Delete'){
+    e.preventDefault();
+    return calcCE();
+  }
+});
+
+
+/* UI vendedor mais limpa e larga */
+function refreshSellerModeUI(){
+  const sellerMode=!!(S&&S.modoVendedor);
+  document.body.classList.toggle('modo-vendedor', sellerMode);
+  const nm=(S&&S.vendedor&&S.vendedor.nome)?S.vendedor.nome:'Pedido do vendedor';
+  const el=document.getElementById('sellerCompactName');
+  if(el) el.textContent = sellerMode ? nm : 'Painel do cliente';
+}
+setTimeout(refreshSellerModeUI, 0);
+const _origLoadMe = loadMe;
+loadMe = async function(){
+  const r = await _origLoadMe.apply(this, arguments);
+  refreshSellerModeUI();
+  return r;
+};
+document.getElementById('sellerQuickOrderBtn')?.addEventListener('click', ()=>setView('pedido'));
+document.getElementById('sellerQuickSwitchBtn')?.addEventListener('click', ()=>{
+  const btn = document.getElementById('switchSellerBtn');
+  if(btn) btn.click();
+});
 
 </script>
 </body></html>
