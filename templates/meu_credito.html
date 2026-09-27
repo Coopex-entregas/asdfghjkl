@@ -67,6 +67,29 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
 .seller-off{opacity:.55}
 @media(max-width:900px){ #switchSellerBtn{height:38px;padding:0 9px}.mobile-menu{overflow-x:auto}}
 
+
+.calc-shell{margin-top:14px}
+.calc-top{display:flex;align-items:flex-start;justify-content:space-between;gap:12px;margin-bottom:14px}
+.calc-top h3{margin:0;color:var(--blue2);font-size:20px}.calc-top p{margin:4px 0 0;color:var(--muted);font-size:12px}
+.calc-layout{display:grid;grid-template-columns:minmax(320px,430px) minmax(0,1fr);gap:16px;align-items:start}
+.iphone-calc{background:linear-gradient(180deg,#f9fbff,#e8eef8);border:1px solid #b7c7e3;border-radius:28px;padding:14px;box-shadow:0 22px 50px rgba(8,54,145,.18),inset 0 1px 0 #fff}
+.calc-brand{display:flex;align-items:baseline;gap:6px;padding:0 4px 8px;color:#0b4cbd}.calc-brand strong{font-size:16px}.calc-brand span{font-size:10px;font-weight:800;color:#24a27a}
+.calc-display-wrap{background:#edf7ff;border:2px solid #b8d2ea;border-radius:12px;padding:8px 12px;margin-bottom:10px;box-shadow:inset 0 2px 8px rgba(55,96,142,.12)}
+.calc-expression{height:18px;text-align:right;color:#6c7f9f;font-size:11px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.calc-display{text-align:right;color:#0750ba;font-size:34px;line-height:1.15;font-weight:500;letter-spacing:1px;min-height:40px;overflow:hidden;text-overflow:ellipsis}
+.calc-memory-row,.calc-keys{display:grid;gap:7px}.calc-memory-row{grid-template-columns:repeat(4,1fr);margin-bottom:7px}.calc-keys{grid-template-columns:repeat(4,1fr)}
+.calc-memory-row button,.calc-keys button{height:52px;border:1px solid #b9c8df;border-radius:12px;background:linear-gradient(180deg,#fff,#edf2f9);color:#17457e;font-weight:800;font-size:17px;box-shadow:0 2px 4px rgba(33,67,115,.12)}
+.calc-memory-row button{height:38px;font-size:12px}
+.calc-keys button.op{background:linear-gradient(180deg,#1584ef,#0067d9);color:#fff;border-color:#0060c9}
+.calc-keys button.equals{background:linear-gradient(180deg,#0b7fee,#0359c4);color:#fff;border-color:#034da7}
+.calc-keys button.soft{color:#0c55df}.calc-keys button.zero{grid-column:span 2}
+.calc-memory-status{display:flex;justify-content:space-between;gap:8px;color:#6a7890;font-size:9px;font-weight:800;padding:8px 3px 0}
+.calc-side{display:grid;gap:14px}.calc-side .card{margin:0}
+.profit-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-top:12px}.profit-grid>div{background:#f8fbff;border:1px solid var(--line);border-radius:13px;padding:11px}.profit-grid small{display:block;color:var(--muted);font-size:10px;font-weight:800}.profit-grid strong{display:block;margin-top:4px;color:var(--blue2);font-size:16px}
+.calc-history-head{display:flex;align-items:center;justify-content:space-between;gap:10px}.calc-history-head h3{margin:0}.calc-history-head small{color:var(--muted)}
+.calc-history{display:flex;flex-direction:column;gap:7px;margin-top:10px;max-height:410px;overflow:auto}.calc-history-item{display:grid;grid-template-columns:1fr auto;gap:10px;border:1px solid var(--line);background:#fbfdff;border-radius:12px;padding:9px 11px}.calc-history-item small{display:block;color:var(--muted);font-size:10px}.calc-history-item strong{color:var(--blue2)}.calc-history-item button{border:0;background:transparent;color:var(--blue);font-weight:900}
+@media(max-width:900px){.calc-layout{grid-template-columns:1fr}.iphone-calc{max-width:430px;margin:auto;width:100%}.calc-top{display:block}.calc-top .ghost{margin-top:8px}.profit-grid{grid-template-columns:repeat(3,1fr)}}
+
 </style>
 </head>
 <body>
@@ -85,6 +108,7 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
   <button class="nav active" data-view="pedido">Novo pedido</button>
   <button class="nav principal-only" data-view="carteira">Carteira</button>
   <button class="nav" data-view="historico">Histórico</button>
+  <button class="nav" data-view="calculadora">Calculadora</button>
   <button class="nav principal-only" data-view="enderecos">Endereços</button>
   <button class="nav principal-only" data-view="vendedores">Vendedores</button>
 </aside>
@@ -113,7 +137,7 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
 <div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
 
 <div class="tabs">
-  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button>
+  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="calculadora">Calculadora</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button>
 </div>
 
 <section class="view active" id="view-pedido">
@@ -192,7 +216,7 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
     <div class="toolbar"><button class="ghost" id="lastWeek">Semana passada</button><button class="ghost" id="exportHist">Exportar Excel</button></div>
   </div>
 
-  <div class="financial">
+  <div class="financial principal-only">
     <div class="fin">
       <small>Saldo antes da última recarga</small>
       <strong id="fStart">R$ 0,00</strong>
@@ -230,12 +254,95 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
 </section>
 
 
+
+<section class="view" id="view-calculadora">
+  <div class="calc-shell">
+    <div class="calc-top">
+      <div>
+        <h3>Calculadora</h3>
+        <p>Operações rápidas, porcentagem, memória, lucro e margem.</p>
+      </div>
+      <button type="button" class="ghost" id="clearCalcHistory">Limpar histórico</button>
+    </div>
+
+    <div class="calc-layout">
+      <div class="iphone-calc">
+        <div class="calc-brand"><strong>COOPEX</strong><span>calculadora</span></div>
+
+        <div class="calc-display-wrap">
+          <div class="calc-expression" id="calcExpression"></div>
+          <div class="calc-display" id="calcDisplay">0</div>
+        </div>
+
+        <div class="calc-memory-row">
+          <button type="button" data-calc="MC">MC</button>
+          <button type="button" data-calc="MR">MR</button>
+          <button type="button" data-calc="M+">M+</button>
+          <button type="button" data-calc="M-">M-</button>
+        </div>
+
+        <div class="calc-keys">
+          <button type="button" class="soft" data-calc="C">C</button>
+          <button type="button" class="soft" data-calc="CE">CE</button>
+          <button type="button" class="soft" data-calc="%">%</button>
+          <button type="button" class="op" data-calc="/">÷</button>
+
+          <button type="button" data-calc="7">7</button>
+          <button type="button" data-calc="8">8</button>
+          <button type="button" data-calc="9">9</button>
+          <button type="button" class="op" data-calc="*">×</button>
+
+          <button type="button" data-calc="4">4</button>
+          <button type="button" data-calc="5">5</button>
+          <button type="button" data-calc="6">6</button>
+          <button type="button" class="op" data-calc="-">−</button>
+
+          <button type="button" data-calc="1">1</button>
+          <button type="button" data-calc="2">2</button>
+          <button type="button" data-calc="3">3</button>
+          <button type="button" class="op" data-calc="+">+</button>
+
+          <button type="button" class="zero" data-calc="0">0</button>
+          <button type="button" data-calc=".">,</button>
+          <button type="button" class="equals" data-calc="=">=</button>
+        </div>
+
+        <div class="calc-memory-status">
+          <span id="calcMemoryStatus">Memória: R$ 0,00</span>
+          <span>Totais monetários arredondados para cima.</span>
+        </div>
+      </div>
+
+      <div class="calc-side">
+        <div class="card calc-profit">
+          <h3>Lucro / margem</h3>
+          <div class="fields">
+            <div class="field"><label>Preço de custo</label><input class="input" id="calcCost" inputmode="decimal" placeholder="0,00"></div>
+            <div class="field"><label>Preço de venda</label><input class="input" id="calcSale" inputmode="decimal" placeholder="0,00"></div>
+          </div>
+          <div class="profit-grid">
+            <div><small>Lucro</small><strong id="calcProfitValue">R$ 0,00</strong></div>
+            <div><small>Margem</small><strong id="calcMarginValue">0,00%</strong></div>
+            <div><small>Markup</small><strong id="calcMarkupValue">0,00%</strong></div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="calc-history-head"><h3>Histórico</h3><small>Salvo neste navegador.</small></div>
+          <div class="calc-history" id="calcHistory"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
 <section class="view principal-only" id="view-vendedores">
   <div class="card">
     <h3>Vendedores do estabelecimento</h3>
     <div class="week-title">Cada vendedor usa sua própria senha para entrar no modo de pedidos. Eles não veem saldo e não compram crédito.</div>
     <div class="fields">
       <div class="field"><label>Nome do vendedor(a)</label><input class="input" id="sellerName" placeholder="Ex.: Ana"></div>
+      <div class="field"><label>Login</label><input class="input" id="sellerUsername" placeholder="Ex.: ana.loja1" autocomplete="off"></div>
       <div class="field"><label>Senha</label><input class="input" id="sellerPassword" type="password" placeholder="Mínimo 4 caracteres"></div>
     </div>
     <div class="toolbar">
@@ -276,13 +383,13 @@ body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
 </main>
 </div>
 
-<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button></div>
+<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="calculadora">Calc.</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button></div>
 </div>
 <div class="toast" id="toast"></div>
 
 <div class="modal-backdrop" id="sellerModal">
   <div class="modal-card">
-    <div class="modal-head"><div><strong>Trocar vendedor</strong><small>Escolha o vendedor e informe a senha.</small></div><button type="button" class="modal-x" data-close-seller>×</button></div>
+    <div class="modal-head"><div><strong>Trocar vendedor</strong><small>Escolha outro vendedor e informe a senha dele. O acesso principal também pode ser restaurado com a senha principal.</small></div><button type="button" class="modal-x" data-close-seller>×</button></div>
     <div class="field"><label>Vendedor(a)</label><select class="select" id="sellerLoginSelect"><option value="">Escolha</option></select></div>
     <div class="field" style="margin-top:10px"><label>Senha</label><input class="input" id="sellerLoginPassword" type="password" placeholder="Senha do vendedor"></div>
     <button class="primary" type="button" id="sellerLoginBtn" style="width:100%;margin-top:12px">Entrar como vendedor</button>
@@ -301,7 +408,7 @@ const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cl
 const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[],editEndId:null,vendedores:[],modoVendedor:false,vendedor:null,editSellerId:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
 async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
-function setView(v){if(S.modoVendedor&&['carteira','enderecos','vendedores'].includes(v))v='pedido';document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
+function setView(v){if(S.modoVendedor&&!['pedido','historico','calculadora'].includes(v))v='pedido';document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
 document.querySelectorAll('.step-head').forEach(h=>h.onclick=()=>{if(innerWidth<=900)h.parentElement.classList.toggle('open')});
 function setSaldo(v){
@@ -632,7 +739,7 @@ function renderSellers(){
     <div class="saved-item ${v.ativo?'':'seller-off'}">
       <div>
         <strong>${esc(v.nome)}</strong>
-        <small>${v.ativo?'Ativo e liberado para fazer pedidos':'Inativo'}</small>
+        <small>Login: <strong>${esc(v.login||'não definido')}</strong> • ${v.ativo?'Ativo e liberado para fazer pedidos':'Inativo'}</small>
       </div>
       <div class="saved-actions">
         <button class="ghost" onclick="editSeller(${v.id})">Editar</button>
@@ -646,6 +753,7 @@ function renderSellers(){
 function clearSellerForm(){
   S.editSellerId=null;
   $('sellerName').value='';
+  $('sellerUsername').value='';
   $('sellerPassword').value='';
   $('saveSeller').textContent='Cadastrar vendedor';
   $('cancelSellerEdit').style.display='none';
@@ -655,11 +763,13 @@ $('cancelSellerEdit').onclick=clearSellerForm;
 
 $('saveSeller').onclick=async()=>{
   const nome=$('sellerName').value.trim();
+  const login=$('sellerUsername').value.trim().toLowerCase();
   const senha=$('sellerPassword').value;
   if(!nome){toast('Informe o nome do vendedor.');return}
+  if(!login){toast('Informe o login do vendedor.');return}
   if(!S.editSellerId && senha.length<4){toast('A senha deve ter pelo menos 4 caracteres.');return}
 
-  const payload={nome};
+  const payload={nome,login};
   if(senha)payload.senha=senha;
 
   const isEdit=!!S.editSellerId;
@@ -680,6 +790,7 @@ window.editSeller=id=>{
   if(!v)return;
   S.editSellerId=id;
   $('sellerName').value=v.nome||'';
+  $('sellerUsername').value=v.login||'';
   $('sellerPassword').value='';
   $('sellerPassword').placeholder='Deixe vazio para manter a senha';
   $('saveSeller').textContent='Salvar alterações';
@@ -693,7 +804,7 @@ window.toggleSeller=async(id,ativo)=>{
   const j=await api(API.editSeller(id),{
     method:'PUT',
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({nome:v.nome,ativo})
+    body:JSON.stringify({nome:v.nome,login:v.login,ativo})
   });
   if(j?.ok){toast(j.msg||'Atualizado.');await loadSellers()}
 };
@@ -759,7 +870,15 @@ $('returnPrincipalBtn').onclick=async()=>{
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function lastWeekRange(){const n=new Date();n.setHours(12,0,0,0);const day=n.getDay();const sinceMon=(day+6)%7;const thisMon=new Date(n);thisMon.setDate(n.getDate()-sinceMon);const ini=new Date(thisMon);ini.setDate(thisMon.getDate()-7);const fim=new Date(ini);fim.setDate(ini.getDate()+6);return{ini,fim}}function setLastWeek(){const r=lastWeekRange();$('histIni').value=iso(r.ini);$('histFim').value=iso(r.fim);$('weekTitle').textContent=`Semana passada: ${r.ini.toLocaleDateString('pt-BR')} a ${r.fim.toLocaleDateString('pt-BR')}`}
 function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);if(!S.modoVendedor&&$('histSeller')&&$('histSeller').value)p.set('vendedor_id',$('histSeller').value);return p.toString()}
 function signed(v,plus=false){const n=Number(v||0);const abs=money(Math.abs(n));return n<0?'-'+abs:(plus&&n>0?'+':'')+abs}function tone(el,v){el.classList.toggle('neg',Number(v)<0);el.classList.toggle('pos',Number(v)>0)}
-async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;const f=j.financeiro||{};
+async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;
+const histTitle=document.querySelector('#view-historico .card h3');
+if(S.modoVendedor){
+  if(histTitle)histTitle.textContent='Meu histórico';
+  if($('weekTitle'))$('weekTitle').textContent='Somente os pedidos feitos por '+(S.vendedor?.nome||'este vendedor');
+}else{
+  if(histTitle)histTitle.textContent='Espelho semanal';
+}
+const f=j.financeiro||{};
 $('fStart').textContent=signed(f.saldo_antes_recarga);
 $('fAdded').textContent='+'+money(f.ultima_recarga||0);
 $('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
@@ -779,5 +898,159 @@ const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textConte
 $('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 (async()=>{setLastWeek();await loadMe();await Promise.all([loadSellers(),loadEnds(),loadActive()]);if(!S.modoVendedor)await loadSaldo();await loadHist()})();
+
+/* ===============================
+   CALCULADORA COOPEX
+   =============================== */
+const CALC_KEY='coopex_calc_history_v2';
+let calcState={display:'0',raw:'0',stored:null,op:null,waiting:false,memory:0,expression:''};
+
+function calcParse(v){
+  const s=String(v??'0').replace(/\./g,'').replace(',','.');
+  const n=Number(s);
+  return Number.isFinite(n)?n:0;
+}
+function calcFmt(n,max=8){
+  if(!Number.isFinite(Number(n)))return 'Erro';
+  return Number(n).toLocaleString('pt-BR',{maximumFractionDigits:max});
+}
+function calcMoney(n){
+  return Number(n||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+}
+function calcRoundUpMoney(n){
+  const x=Number(n);
+  if(!Number.isFinite(x))return x;
+  // Para valores positivos, qualquer centavo sobe para o próximo real.
+  // Ex.: 19,01 -> 20; 19,50 -> 20; 20,00 -> 20.
+  // Para negativos, mantém o arredondamento matemático para cima (em direção a +infinito).
+  return Math.ceil((x-1e-10));
+}
+function calcUpdate(){
+  if($('calcDisplay'))$('calcDisplay').textContent=calcState.display;
+  if($('calcExpression'))$('calcExpression').textContent=calcState.expression||'';
+  if($('calcMemoryStatus'))$('calcMemoryStatus').textContent='Memória: '+calcMoney(calcState.memory);
+}
+function calcSetRaw(n){
+  calcState.raw=String(n);
+  calcState.display=calcFmt(n);
+}
+function calcDigit(d){
+  if(calcState.waiting||calcState.display==='Erro'){
+    calcState.raw=d; calcState.waiting=false;
+  }else{
+    if(calcState.raw==='0')calcState.raw=d;
+    else calcState.raw+=d;
+  }
+  calcState.display=calcFmt(Number(calcState.raw));
+  calcUpdate();
+}
+function calcDecimal(){
+  if(calcState.waiting||calcState.display==='Erro'){
+    calcState.raw='0.';calcState.display='0,';calcState.waiting=false;calcUpdate();return;
+  }
+  if(!calcState.raw.includes('.')){
+    calcState.raw+='.';
+    calcState.display=calcFmt(Number(calcState.raw.slice(0,-1)||0))+',';
+    calcUpdate();
+  }
+}
+function calcOpResult(a,b,op){
+  if(op==='+')return a+b;
+  if(op==='-')return a-b;
+  if(op==='*')return a*b;
+  if(op==='/')return b===0?NaN:a/b;
+  return b;
+}
+function calcOperator(op){
+  const current=Number(calcState.raw||0);
+  if(calcState.op && calcState.stored!==null && !calcState.waiting){
+    const interim=calcOpResult(calcState.stored,current,calcState.op);
+    if(!Number.isFinite(interim)){calcState.display='Erro';calcState.raw='0';calcState.stored=null;calcState.op=null;calcUpdate();return}
+    calcState.stored=interim;
+    calcSetRaw(interim);
+  }else calcState.stored=current;
+  calcState.op=op;
+  calcState.waiting=true;
+  calcState.expression=`${calcFmt(calcState.stored)} ${op==='*'?'×':op==='/'?'÷':op}`;
+  calcUpdate();
+}
+function calcEquals(){
+  if(calcState.op===null||calcState.stored===null)return;
+  const b=Number(calcState.raw||0),a=calcState.stored,op=calcState.op;
+  const exact=calcOpResult(a,b,op);
+  if(!Number.isFinite(exact)){calcState.display='Erro';calcState.expression='Operação inválida';calcState.stored=null;calcState.op=null;calcUpdate();return}
+  const rounded=calcRoundUpMoney(exact);
+  const exp=`${calcFmt(a)} ${op==='*'?'×':op==='/'?'÷':op} ${calcFmt(b)}`;
+  calcSetRaw(rounded);
+  calcState.expression=exp+' =';
+  calcAddHistory(exp,rounded,exact);
+  calcState.stored=null;calcState.op=null;calcState.waiting=true;
+  calcUpdate();
+}
+function calcPercent(){
+  const v=Number(calcState.raw||0);
+  let exact=v/100;
+  if(calcState.op && calcState.stored!==null && (calcState.op==='+'||calcState.op==='-')){
+    exact=calcState.stored*(v/100);
+  }
+  calcState.raw=String(exact);
+  calcState.display=calcFmt(exact);
+  calcUpdate();
+}
+function calcClear(){calcState={display:'0',raw:'0',stored:null,op:null,waiting:false,memory:calcState.memory,expression:''};calcUpdate()}
+function calcCE(){calcState.display='0';calcState.raw='0';calcState.waiting=false;calcUpdate()}
+function calcMemory(cmd){
+  const n=Number(calcState.raw||0);
+  if(cmd==='MC')calcState.memory=0;
+  if(cmd==='MR'){calcSetRaw(calcState.memory);calcState.waiting=true}
+  if(cmd==='M+')calcState.memory+=n;
+  if(cmd==='M-')calcState.memory-=n;
+  calcUpdate();
+}
+function calcGetHistory(){
+  try{return JSON.parse(localStorage.getItem(CALC_KEY)||'[]')}catch(e){return[]}
+}
+function calcSaveHistory(h){try{localStorage.setItem(CALC_KEY,JSON.stringify(h.slice(0,80)))}catch(e){}}
+function calcAddHistory(expression,result,exact=null){
+  const h=calcGetHistory();
+  h.unshift({expression,result,exact,at:new Date().toISOString()});
+  calcSaveHistory(h);
+  calcRenderHistory();
+}
+function calcRenderHistory(){
+  const w=$('calcHistory');if(!w)return;
+  const h=calcGetHistory();
+  if(!h.length){w.innerHTML='<div class="empty">Nenhum cálculo realizado.</div>';return}
+  w.innerHTML=h.map((x,i)=>`<div class="calc-history-item"><div><small>${esc(x.expression||'')}</small><strong>${calcFmt(x.result)}</strong>${x.exact!=null&&Math.abs(Number(x.exact)-Number(x.result))>.000001?`<small>Exato: ${calcFmt(x.exact)} • arredondado para cima</small>`:''}</div><button type="button" onclick="calcReuse(${i})">Usar</button></div>`).join('');
+}
+window.calcReuse=i=>{const h=calcGetHistory();const x=h[i];if(!x)return;calcSetRaw(Number(x.result||0));calcState.waiting=true;calcUpdate()};
+
+document.querySelectorAll('[data-calc]').forEach(btn=>btn.addEventListener('click',()=>{
+  const k=btn.dataset.calc;
+  if(/^\d$/.test(k))return calcDigit(k);
+  if(k==='.')return calcDecimal();
+  if(['+','-','*','/'].includes(k))return calcOperator(k);
+  if(k==='=')return calcEquals();
+  if(k==='%')return calcPercent();
+  if(k==='C')return calcClear();
+  if(k==='CE')return calcCE();
+  if(['MC','MR','M+','M-'].includes(k))return calcMemory(k);
+}));
+
+function calcProfit(){
+  const cost=calcParse($('calcCost')?.value||0);
+  const sale=calcParse($('calcSale')?.value||0);
+  const exactProfit=sale-cost;
+  const roundedProfit=calcRoundUpMoney(exactProfit);
+  const margin=sale?((exactProfit/sale)*100):0;
+  const markup=cost?((exactProfit/cost)*100):0;
+  if($('calcProfitValue'))$('calcProfitValue').textContent=calcMoney(roundedProfit);
+  if($('calcMarginValue'))$('calcMarginValue').textContent=calcFmt(margin,2)+'%';
+  if($('calcMarkupValue'))$('calcMarkupValue').textContent=calcFmt(markup,2)+'%';
+}
+['calcCost','calcSale'].forEach(id=>$(id)?.addEventListener('input',calcProfit));
+$('clearCalcHistory')?.addEventListener('click',()=>{if(confirm('Limpar o histórico da calculadora?')){calcSaveHistory([]);calcRenderHistory()}});
+calcUpdate();calcRenderHistory();calcProfit();
+
 </script>
 </body></html>
