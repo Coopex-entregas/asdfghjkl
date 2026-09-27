@@ -9429,6 +9429,14 @@ def api_cliente_historico():
             'entregador': (e.cooperado.nome if getattr(e, 'cooperado', None) else ''),
             'pago': pago,
             'cancelado': 'cancel' in status_norm,
+            'pode_cancelar': (
+                status_norm not in (
+                    'entregue', 'recebido', 'finalizada', 'finalizado',
+                    'concluido', 'concluído', 'cancelado', 'cancelada'
+                )
+                and 'cancel solicitado' not in status_norm
+                and 'cancelad' not in status_norm
+            ),
             'comprovante_url': url_for('cliente_comprovante_publico', entrega_id=e.id) if pago else '',
         })
 
@@ -9898,14 +9906,26 @@ def api_pedidos_ativo():
     cli = _cliente_atual_optional()
     if not cli:
         return jsonify(ok=True, pedido=None)
+
+    # Compara status de forma normalizada para não tratar "Entregue",
+    # "CONCLUÍDO", "Finalizada" etc. como pedido ativo.
+    status_col = func.lower(func.coalesce(Entrega.status, ''))
+    concluidos = (
+        'entregue', 'recebido', 'finalizada', 'finalizado',
+        'concluido', 'concluído', 'cancelado', 'cancelada'
+    )
+
     q = Entrega.query.filter(
         Entrega.cliente_id == cli.id,
-        Entrega.status.notin_(['entregue', 'cancelado'])
+        ~status_col.in_(concluidos),
+        ~status_col.like('%cancelad%')
     )
+
     vend = _vendedor_cliente_atual()
     if vend:
         q = q.filter(Entrega.vendedor_id == vend.id)
-    entrega = q.order_by(Entrega.data_envio.desc()).first()
+
+    entrega = q.order_by(Entrega.data_envio.desc(), Entrega.id.desc()).first()
     return jsonify(ok=True, pedido=_pedido_to_json(entrega) if entrega else None)
 
 @app.post('/api/pedidos/<int:pedido_id>/cancelar')
@@ -9927,7 +9947,19 @@ def api_pedidos_cancelar(pedido_id):
     if vend and entrega.vendedor_id != vend.id:
         return jsonify(ok=False, msg='Você só pode solicitar cancelamento dos seus próprios pedidos.'), 403
 
-    if _norm(entrega.status or '') == 'cancelado':
+    status_atual = _norm(entrega.status or '')
+    status_finalizados = {
+        'entregue', 'recebido', 'finalizada', 'finalizado',
+        'concluido', 'concluído'
+    }
+
+    if status_atual in status_finalizados:
+        return jsonify(
+            ok=False,
+            msg='Esta entrega já foi concluída e não pode mais ser cancelada.'
+        ), 409
+
+    if 'cancel' in status_atual and status_atual != 'cancel solicitado':
         return jsonify(ok=False, msg='Este pedido já está cancelado.'), 409
 
     existente = (
