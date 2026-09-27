@@ -262,9 +262,108 @@ body.dark-mode .rankingTools select{
   display:none;
 }
 
+
+/* =========================================================
+   COOPEX DASHBOARD PRO — CAMADA SEGURA SOBRE A BASE FUNCIONAL
+   ========================================================= */
+.quickNav{
+  position:sticky;top:0;z-index:35;background:rgba(244,247,255,.96);
+  backdrop-filter:blur(10px);border-bottom:1px solid var(--line);
+  padding:7px 14px;display:flex;gap:6px;overflow:auto;scrollbar-width:thin
+}
+.quickNav button{
+  height:34px;border:1px solid #bcd0ff;border-radius:11px;background:#fff;color:var(--azul);
+  font-weight:950;font-size:10px;padding:0 11px;white-space:nowrap;cursor:pointer
+}
+.quickNav button:hover,.quickNav button.active{background:var(--azul3);border-color:#8eb0ff}
+body.dark-mode .quickNav{background:rgba(7,17,38,.96)}
+body.dark-mode .quickNav button{background:#0b1730;color:#dce8ff;border-color:#2b4c84}
+body.dark-mode .quickNav button.active{background:#112a5a}
+
+.proToolbar{
+  display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:10px 0
+}
+.proSearch{
+  min-width:260px;max-width:480px;flex:1;height:38px;border:1px solid #bcd0ff;
+  border-radius:12px;background:#fff;display:flex;align-items:center;padding:0 10px
+}
+.proSearch input{width:100%;border:0;outline:0;background:transparent;color:#0b2c6f;font-weight:850}
+body.dark-mode .proSearch{background:#0b1730;border-color:#2b4c84}
+body.dark-mode .proSearch input{color:#f4f8ff}
+.proExport{position:relative}
+.proExportMenu{
+  display:none;position:absolute;right:0;top:42px;z-index:60;width:240px;padding:7px;
+  background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow)
+}
+.proExport.open .proExportMenu{display:block}
+.proExportMenu button{
+  width:100%;height:34px;border:0;background:transparent;border-radius:8px;text-align:left;
+  color:#0b2c6f;font-weight:900;font-size:10px;padding:0 9px
+}
+.proExportMenu button:hover{background:#eef4ff}
+body.dark-mode .proExportMenu{background:#0f1f3f;border-color:#203866}
+body.dark-mode .proExportMenu button{color:#eaf1ff}
+body.dark-mode .proExportMenu button:hover{background:#132a55}
+
+.metricGrid{display:grid;grid-template-columns:repeat(12,1fr);gap:8px;margin-top:10px}
+.metric{
+  grid-column:span 2;min-height:86px;background:#fff;border:1px solid var(--line);border-radius:16px;
+  padding:11px 12px;box-shadow:var(--shadow);position:relative;overflow:hidden
+}
+.metric:before{content:"";position:absolute;left:0;top:0;bottom:0;width:5px;background:var(--m,var(--azul))}
+.metric .mlab{font-size:9px;color:var(--muted);font-weight:950;text-transform:uppercase;letter-spacing:.04em}
+.metric .mval{font-size:18px;font-weight:950;margin-top:6px;color:#091b3d;font-variant-numeric:tabular-nums}
+.metric .mhint{font-size:9px;color:var(--muted);font-weight:800;margin-top:3px}
+body.dark-mode .metric{background:#0f1f3f;border-color:#203866}
+body.dark-mode .metric .mval{color:#f4f8ff}
+
+.proSection{scroll-margin-top:90px}
+.proSectionHead{display:flex;align-items:center;justify-content:space-between;gap:10px;margin:18px 0 8px}
+.proSectionHead h3{margin:0;color:#0b2c6f;font-size:14px;font-weight:950}
+.proSectionHead p{margin:3px 0 0;color:var(--muted);font-size:10px;font-weight:800}
+body.dark-mode .proSectionHead h3{color:#dce8ff}
+
+.proInsights{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.proInsight{background:#eef4ff;border:1px solid #cfe0ff;border-radius:14px;padding:10px}
+.proInsight b{display:block;color:#0b2c6f;font-size:10px}
+.proInsight span{display:block;margin-top:4px;color:#40506e;font-size:9px;font-weight:800;line-height:1.4}
+body.dark-mode .proInsight{background:#112a5a;border-color:#2b4c84}
+body.dark-mode .proInsight b{color:#fff}
+body.dark-mode .proInsight span{color:#cad6eb}
+
+.auditTable{max-height:590px;overflow:auto}
+.auditTable table{min-width:1200px}
+.searchHidden{display:none!important}
+
+.proCompare{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.proCompare .box{border:1px solid var(--line);border-radius:15px;background:#f8fbff;padding:11px}
+.proCompare .box b{display:block;font-size:10px;color:var(--azul)}
+.proCompare .box strong{display:block;margin-top:6px;font-size:20px}
+.proCompare .box small{display:block;margin-top:4px;color:var(--muted);font-weight:800}
+body.dark-mode .proCompare .box{background:#0b1730;border-color:#203866}
+body.dark-mode .proCompare .box b{color:#dce8ff}
+
+@media(max-width:1250px){.metric{grid-column:span 3}.proInsights{grid-template-columns:1fr 1fr}}
+@media(max-width:800px){
+  .metric{grid-column:span 6}.proInsights,.proCompare{grid-template-columns:1fr}
+  .proToolbar{align-items:stretch}.proSearch{min-width:100%;max-width:none}
+}
+@media(max-width:480px){.metric{grid-column:span 6}.metric .mval{font-size:15px}}
+
 </style>
 </head>
 <body>
+
+<nav class="quickNav noPrint" id="quickNav">
+  <button type="button" data-target="sec-resumo">Resumo</button>
+  <button type="button" data-target="sec-operacao">Operação</button>
+  <button type="button" data-target="sec-cooperados">Cooperados</button>
+  <button type="button" data-target="sec-rotas">Rotas</button>
+  <button type="button" data-target="sec-financeiro">Financeiro</button>
+  <button type="button" data-target="sec-auditoria">Auditoria</button>
+  <button type="button" data-target="sec-config">Configurações</button>
+</nav>
+
 <header class="top noPrint">
   <form class="topbar" method="get" action="{{ url_for('estatisticas_cooperado') }}">
     <div class="brand">
@@ -295,6 +394,7 @@ body.dark-mode .rankingTools select{
 </header>
 
 <main class="wrap">
+<div id="sec-resumo" class="proSection"></div>
   <section class="hero">
     <div class="heroGrid">
       <div>
@@ -307,7 +407,27 @@ body.dark-mode .rankingTools select{
         <span class="heroChip">R$ {{ '%.2f'|format(resumo.valor_total or 0)|replace('.', ',') }}</span>
       </div>
     </div>
-  </section>
+  
+</section>
+
+  <div class="proToolbar noPrint">
+    <label class="proSearch">⌕ <input id="proSearch" type="search" placeholder="Pesquisar nas tabelas e listas do dashboard..."></label>
+    <button class="btn" type="button" onclick="window.print()">Imprimir / PDF</button>
+    <div class="proExport" id="proExport">
+      <button class="btn green" type="button" id="proExportBtn">Exportar ▾</button>
+      <div class="proExportMenu">
+        <button type="button" data-export="completo">Excel completo</button>
+        <button type="button" data-export="resumo">Resumo executivo</button>
+        <button type="button" data-export="entregas">Entregas detalhadas</button>
+        <button type="button" data-export="cooperados">Cooperados</button>
+        <button type="button" data-export="contratos">Contratos</button>
+        <button type="button" data-export="rotas">Rotas</button>
+        <button type="button" data-export="bairros">Bairros</button>
+        <button type="button" data-export="pagamentos">Pagamentos</button>
+        <button type="button" data-export="credito">Crédito</button>
+      </div>
+    </div>
+  </div>
 
   <section class="gridKpi">
     <div class="kpi" style="--bar:var(--azul)"><div class="lab">Entregas</div><div class="val">{{ resumo.total_entregas }}</div><div class="hint">Total no período</div></div>
@@ -322,6 +442,26 @@ body.dark-mode .rankingTools select{
     <div class="kpi" style="--bar:var(--cyan)"><div class="lab">Cooperados ativos</div><div class="val">{{ resumo.cooperados_ativos }}</div><div class="hint">Com produção</div></div>
     <div class="kpi" style="--bar:var(--red)"><div class="lab">Paradas +20min</div><div class="val">{{ resumo.paradas_20 }}</div><div class="hint">Ação da supervisão</div></div>
     <div class="kpi" style="--bar:var(--verde)"><div class="lab">Saldo créditos</div><div class="val">R$ {{ '%.2f'|format(resumo.credito_saldo_total or 0)|replace('.', ',') }}</div><div class="hint">Clientes com crédito</div></div>
+  </section>
+
+  <div class="proSectionHead">
+    <div><h3>Indicadores avançados</h3><p>Métricas adicionais já calculadas pelo Python atual.</p></div>
+    <span class="tag info">Atualizado pelo filtro</span>
+  </div>
+  <section class="metricGrid">
+    <div class="metric" style="--m:var(--verde)"><div class="mlab">Taxa de conclusão</div><div class="mval">{{ resumo.taxa_conclusao|default(0,true) }}%</div><div class="mhint">Entregas concluídas / total</div></div>
+    <div class="metric" style="--m:var(--verde)"><div class="mlab">Taxa de pagamento</div><div class="mval">{{ resumo.taxa_pagamento|default(0,true) }}%</div><div class="mhint">Entregas pagas / total</div></div>
+    <div class="metric" style="--m:var(--azul)"><div class="mlab">Taxa de atribuição</div><div class="mval">{{ resumo.taxa_atribuicao|default(0,true) }}%</div><div class="mhint">Entregas com cooperado</div></div>
+    <div class="metric" style="--m:var(--cyan)"><div class="mlab">Tempo médio atribuição</div><div class="mval">{{ resumo.tempo_medio_atribuicao|default(0,true) }} min</div><div class="mhint">Da solicitação à atribuição</div></div>
+    <div class="metric" style="--m:var(--amber)"><div class="mlab">Mediana atribuição</div><div class="mval">{{ resumo.tempo_mediana_atribuicao|default(0,true) }} min</div><div class="mhint">Ponto central dos tempos</div></div>
+    <div class="metric" style="--m:var(--red)"><div class="mlab">Máximo atribuição</div><div class="mval">{{ resumo.tempo_max_atribuicao|default(0,true) }} min</div><div class="mhint">Maior tempo observado</div></div>
+
+    <div class="metric" style="--m:var(--azul2)"><div class="mlab">Média entregas/dia</div><div class="mval">{{ resumo.media_entregas_dia|default(0,true) }}</div><div class="mhint">No período filtrado</div></div>
+    <div class="metric" style="--m:var(--verde)"><div class="mlab">Faturamento/dia</div><div class="mval">R$ {{ '%.2f'|format(resumo.media_faturamento_dia|default(0,true))|replace('.', ',') }}</div><div class="mhint">Média diária</div></div>
+    <div class="metric" style="--m:var(--cyan)"><div class="mlab">Média entregas/coop.</div><div class="mval">{{ resumo.media_entregas_cooperado|default(0,true) }}</div><div class="mhint">Produtividade média</div></div>
+    <div class="metric" style="--m:var(--verde)"><div class="mlab">Faturamento/coop.</div><div class="mval">R$ {{ '%.2f'|format(resumo.media_faturamento_cooperado|default(0,true))|replace('.', ',') }}</div><div class="mhint">Média no período</div></div>
+    <div class="metric" style="--m:var(--amber)"><div class="mlab">Hora de pico</div><div class="mval">{{ resumo.hora_pico|default('—',true) }}</div><div class="mhint">{{ resumo.hora_pico_qtd|default(0,true) }} entrega(s)</div></div>
+    <div class="metric" style="--m:var(--cyan)"><div class="mlab">Dia de pico</div><div class="mval">{{ resumo.dia_pico|default('—',true) }}</div><div class="mhint">{{ resumo.dia_pico_qtd|default(0,true) }} entrega(s)</div></div>
   </section>
 
   <section class="board">
@@ -344,6 +484,41 @@ body.dark-mode .rankingTools select{
     </div>
   </section>
 
+
+  <div id="sec-operacao" class="proSection"></div>
+  <div class="proSectionHead">
+    <div><h3>Operação avançada</h3><p>Horários, dias, status e leitura rápida da operação.</p></div>
+    <span class="tag warn">{{ resumo.sem_coop_10|default(0,true) }} prioridade(s)</span>
+  </div>
+
+  <section class="board3">
+    <div class="card"><div class="cardHead"><div><h2>Entregas por hora</h2><div class="sub">Identifica o horário de maior movimento</div></div></div><div class="chartBox small"><canvas id="chartHoraPro"></canvas></div></div>
+    <div class="card"><div class="cardHead"><div><h2>Entregas por dia da semana</h2><div class="sub">Distribuição semanal</div></div></div><div class="chartBox small"><canvas id="chartSemanaPro"></canvas></div></div>
+    <div class="card"><div class="cardHead"><div><h2>Status das entregas</h2><div class="sub">Quantidade por situação</div></div></div><div class="chartBox small"><canvas id="chartStatusPro"></canvas></div></div>
+  </section>
+
+  <section class="board">
+    <div class="card">
+      <div class="cardHead"><div><h2>Leitura rápida</h2><div class="sub">Insights automáticos do período</div></div></div>
+      <div class="proInsights">
+        {% for i in insights %}
+          <div class="proInsight"><b>Insight {{ loop.index }}</b><span>{{ i }}</span></div>
+        {% else %}
+          <div class="proInsight"><b>Sem observações</b><span>Nenhum insight disponível neste recorte.</span></div>
+        {% endfor %}
+      </div>
+    </div>
+    <div class="card">
+      <div class="cardHead"><div><h2>Comparação com período anterior</h2><div class="sub">Mesmo tamanho de período</div></div></div>
+      <div class="proCompare">
+        <div class="box"><b>Entregas</b><strong>{{ resumo.total_entregas }}</strong><small>Anterior: {{ resumo.comp_qtd_prev }} • {{ resumo.comp_qtd_pct if resumo.comp_qtd_pct is not none else '—' }}%</small></div>
+        <div class="box"><b>Faturamento</b><strong>R$ {{ '%.2f'|format(resumo.valor_total or 0)|replace('.', ',') }}</strong><small>Anterior: R$ {{ '%.2f'|format(resumo.comp_valor_prev or 0)|replace('.', ',') }} • {{ resumo.comp_valor_pct if resumo.comp_valor_pct is not none else '—' }}%</small></div>
+        <div class="box"><b>Rotas distintas</b><strong>{{ resumo.rotas_distintas|default(0,true) }}</strong><small>Mais usada: {{ resumo.top_rota_nome|default('—',true) }}</small></div>
+      </div>
+    </div>
+  </section>
+
+  <div id="sec-cooperados" class="proSection"></div>
   <div class="sectionTitle"><h3>Operação, Cooperados e Contratos</h3><span class="tag">Power BI style • leve</span></div>
   <section class="board3">
     <div class="card">
@@ -392,6 +567,7 @@ body.dark-mode .rankingTools select{
     <div class="card"><div class="cardHead"><div><h2>Forma de pagamento</h2><div class="sub">Valor por forma</div></div></div><div class="chartBox small"><canvas id="chartPagamento"></canvas></div></div>
   </section>
 
+  <div id="sec-rotas" class="proSection"></div>
   <div class="sectionTitle"><h3>Bairros e Rotas</h3><span class="tag info">Origem • Destino • Combinações</span></div>
   <section class="board4">
     <div class="card"><div class="cardHead"><div><h2>Top bairros de coleta</h2><div class="sub">Origem</div></div></div><div class="list">{% for r in top_coleta %}<div class="rowItem"><span class="rankNum">{{ loop.index }}</span><div><b>{{ r.nome }}</b><small>Coletas</small></div><span class="right">{{ r.qtd }}</span></div>{% else %}<span class="muted">Sem dados</span>{% endfor %}</div></div>
@@ -400,6 +576,7 @@ body.dark-mode .rankingTools select{
     <div class="card"><div class="cardHead"><div><h2>Rotas mais lucrativas</h2><div class="sub">Maior valor total</div></div></div><div class="list">{% for r in top_rotas_valor %}<div class="rowItem"><span class="rankNum">{{ loop.index }}</span><div><b>{{ r.nome }}</b><small>{{ r.qtd }} entregas</small></div><span class="right">R$ {{ '%.2f'|format(r.valor)|replace('.', ',') }}</span></div>{% else %}<span class="muted">Sem dados</span>{% endfor %}</div></div>
   </section>
 
+  <div id="sec-financeiro" class="proSection"></div>
   <div class="sectionTitle"><h3>Crédito e Financeiro</h3><span class="tag ok">Meu Crédito</span></div>
   <section class="gridKpi">
     <div class="kpi w3" style="--bar:var(--verde)"><div class="lab">Crédito lançado</div><div class="val">R$ {{ '%.2f'|format(resumo.credito_lancado or 0)|replace('.', ',') }}</div><div class="hint">No período</div></div>
@@ -412,6 +589,42 @@ body.dark-mode .rankingTools select{
     <div class="card"><div class="cardHead"><div><h2>Financeiro por pagamento</h2><div class="sub">Valor e quantidade por forma</div></div></div><div class="tableWrap"><table><thead><tr><th>Pagamento</th><th class="center">Qtd</th><th class="num">Valor</th></tr></thead><tbody>{% for p in grafico_pagamento %}<tr><td>{{ p.label }}</td><td class="center">{{ p.qtd }}</td><td class="num">R$ {{ '%.2f'|format(p.valor)|replace('.', ',') }}</td></tr>{% else %}<tr><td colspan="3">Sem dados</td></tr>{% endfor %}</tbody></table></div></div>
   </section>
 
+
+  <div id="sec-auditoria" class="proSection"></div>
+  <div class="proSectionHead">
+    <div><h3>Auditoria e qualidade dos dados</h3><p>Últimas entregas do período e indicadores de cadastro.</p></div>
+    <span class="tag warn">{{ resumo.cadastro_incompleto|default(0,true) }} inconsistência(s)</span>
+  </div>
+
+  <section class="metricGrid">
+    <div class="metric" style="--m:var(--red)"><div class="mlab">Canceladas</div><div class="mval">{{ resumo.canceladas|default(0,true) }}</div><div class="mhint">R$ {{ '%.2f'|format(resumo.valor_cancelado|default(0,true))|replace('.', ',') }}</div></div>
+    <div class="metric" style="--m:var(--red)"><div class="mlab">Sem cooperado</div><div class="mval">{{ resumo.sem_cooperado }}</div><div class="mhint">{{ resumo.sem_cooperado_pct|default(0,true) }}% das entregas</div></div>
+    <div class="metric" style="--m:var(--amber)"><div class="mlab">Cadastros incompletos</div><div class="mval">{{ resumo.cadastro_incompleto|default(0,true) }}</div><div class="mhint">Cliente/origem/destino</div></div>
+    <div class="metric" style="--m:var(--cyan)"><div class="mlab">Rotas distintas</div><div class="mval">{{ resumo.rotas_distintas|default(0,true) }}</div><div class="mhint">Combinações de bairros</div></div>
+    <div class="metric" style="--m:var(--green)"><div class="mlab">Maior cliente</div><div class="mval" style="font-size:13px">{{ resumo.top_cliente_nome|default('—',true) }}</div><div class="mhint">R$ {{ '%.2f'|format(resumo.top_cliente_valor|default(0,true))|replace('.', ',') }}</div></div>
+    <div class="metric" style="--m:var(--azul)"><div class="mlab">Maior cooperado</div><div class="mval" style="font-size:13px">{{ resumo.top_cooperado_nome|default('—',true) }}</div><div class="mhint">R$ {{ '%.2f'|format(resumo.top_cooperado_valor|default(0,true))|replace('.', ',') }}</div></div>
+  </section>
+
+  <section class="card" style="margin-top:10px">
+    <div class="cardHead"><div><h2>Últimas entregas do período</h2><div class="sub">Até 200 registros para conferência rápida</div></div></div>
+    <div class="tableWrap auditTable">
+      <table class="proSearchable">
+        <thead><tr><th>Pedido</th><th>Data</th><th>Cliente</th><th>Cooperado</th><th>Origem</th><th>Destino</th><th>Status</th><th>Pagamento</th><th>Status pgto.</th><th class="num">Valor</th><th class="num">Crédito</th></tr></thead>
+        <tbody>
+          {% for e in ultimas_entregas %}
+          <tr>
+            <td>#{{ e.id }}</td><td>{{ e.data }}</td><td>{{ e.cliente }}</td><td>{{ e.cooperado }}</td><td>{{ e.origem }}</td><td>{{ e.destino }}</td>
+            <td>{{ e.status }}</td><td>{{ e.pagamento }}</td><td>{{ e.status_pagamento }}</td>
+            <td class="num">R$ {{ '%.2f'|format(e.valor|default(0,true))|replace('.', ',') }}</td>
+            <td class="num">R$ {{ '%.2f'|format(e.credito_usado|default(0,true))|replace('.', ',') }}</td>
+          </tr>
+          {% else %}<tr><td colspan="11">Sem entregas no período.</td></tr>{% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <div id="sec-config" class="proSection"></div>
   <div class="sectionTitle noPrint"><h3>Gerenciar grupos de contrato</h3><span class="tag">Ex.: Mexicano + Território Mexicano</span></div>
   <section class="board noPrint">
     <div class="card">
@@ -530,6 +743,77 @@ function aplicarLimiteLista(selector, limite){
     row.classList.toggle('is-hidden', !mostrarTodos && pos > n);
   });
 }
+
+
+
+/* =========================================================
+   INTERATIVIDADE PRO — SEM ALTERAR O BACKEND
+   ========================================================= */
+const proHora = {{ grafico_hora|default([],true)|tojson }};
+const proSemana = {{ grafico_semana|default([],true)|tojson }};
+const proStatus = {{ grafico_status|default([],true)|tojson }};
+
+chartBar('chartHoraPro', proHora.map(x=>x.label), proHora.map(x=>x.qtd), 'Entregas', '#0057ff', false);
+chartBar('chartSemanaPro', proSemana.map(x=>x.label), proSemana.map(x=>x.qtd), 'Entregas', '#0891b2', false);
+chartBar('chartStatusPro', proStatus.map(x=>x.label), proStatus.map(x=>x.qtd), 'Entregas', '#f59e0b', false);
+
+document.querySelectorAll('#quickNav [data-target]').forEach(btn=>{
+  btn.addEventListener('click',()=>{
+    const alvo=document.getElementById(btn.dataset.target);
+    if(alvo) alvo.scrollIntoView({behavior:'smooth',block:'start'});
+  });
+});
+
+const proSearch=document.getElementById('proSearch');
+if(proSearch){
+  proSearch.addEventListener('input',()=>{
+    const q=(proSearch.value||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim();
+    document.querySelectorAll('tbody tr,.rowItem,.groupBox,.proInsight').forEach(el=>{
+      const t=(el.textContent||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
+      el.classList.toggle('searchHidden',!!q && !t.includes(q));
+    });
+  });
+}
+
+const proExport=document.getElementById('proExport');
+const proExportBtn=document.getElementById('proExportBtn');
+if(proExportBtn && proExport){
+  proExportBtn.addEventListener('click',(ev)=>{ev.stopPropagation();proExport.classList.toggle('open')});
+  document.addEventListener('click',()=>proExport.classList.remove('open'));
+}
+document.querySelectorAll('[data-export]').forEach(btn=>{
+  btn.addEventListener('click',(ev)=>{
+    ev.stopPropagation();
+    const p=new URLSearchParams(location.search);
+    if(!p.get('periodo')) p.set('periodo','{{ filtros.periodo }}');
+    if(!p.get('data_inicio')) p.set('data_inicio','{{ filtros.data_inicio }}');
+    if(!p.get('data_fim')) p.set('data_fim','{{ filtros.data_fim }}');
+    p.set('tipo',btn.dataset.export);
+    location.href='/estatisticas_cooperado/exportar-dados?'+p.toString();
+  });
+});
+
+/* Ordenação leve em todas as tabelas */
+function proParse(v){
+  const s=String(v||'').trim();
+  const n=Number(s.replace(/[R$\s%]/g,'').replace(/\./g,'').replace(',','.'));
+  return Number.isFinite(n)&&/[0-9]/.test(s)?n:s.toLowerCase();
+}
+document.querySelectorAll('table th').forEach(th=>{
+  th.style.cursor='pointer';
+  th.addEventListener('click',()=>{
+    const table=th.closest('table'), body=table&&table.tBodies&&table.tBodies[0];
+    if(!body)return;
+    const idx=[...th.parentElement.children].indexOf(th);
+    const asc=th.dataset.sort!=='asc';
+    th.dataset.sort=asc?'asc':'desc';
+    [...body.rows].sort((a,b)=>{
+      const A=proParse(a.cells[idx]?.textContent), B=proParse(b.cells[idx]?.textContent);
+      const c=A>B?1:A<B?-1:0;
+      return asc?c:-c;
+    }).forEach(r=>body.appendChild(r));
+  });
+});
 
 </script>
 </body>
