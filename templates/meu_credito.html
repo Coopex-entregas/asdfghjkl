@@ -38,23 +38,58 @@
 .hero.negative-balance .balance-msg,
 .hero.negative-balance .desc,
 .hero.negative-balance h2{color:#fff!important}
+
+.saved-item.default-address{border-color:#8db0ff;background:#f3f7ff}
+.saved-main{min-width:0;cursor:pointer}
+.saved-main strong{color:var(--blue2)}
+.saved-badge{display:inline-flex;margin-left:6px;border-radius:999px;padding:3px 7px;background:#e7f6ef;color:var(--green);font-size:9px;font-weight:900}
+.saved-actions{display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end}
+.saved-actions .ghost{height:36px;padding:0 9px}
+@media(max-width:900px){.saved-actions{justify-content:flex-start;margin-top:9px}.saved-item{display:block}}
+
+
+.seller-only{display:none}
+body.seller-mode .principal-only{display:none!important}
+body.seller-mode .seller-only{display:block!important}
+body.seller-mode .tabs{grid-template-columns:repeat(2,1fr)}
+body.seller-mode .mobile-menu{grid-template-columns:repeat(2,1fr)}
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,25,55,.55);display:none;align-items:center;justify-content:center;padding:16px;z-index:300}
+.modal-backdrop.show{display:flex}
+.modal-card{width:min(440px,100%);background:#fff;border-radius:20px;border:1px solid var(--line);box-shadow:0 20px 60px rgba(15,35,80,.25);padding:16px}
+.modal-head{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;margin-bottom:14px}
+.modal-head strong{display:block;color:var(--blue2);font-size:17px}
+.modal-head small{display:block;color:var(--muted);margin-top:3px}
+.modal-x{width:34px;height:34px;border:1px solid var(--line);border-radius:10px;background:#fff;color:var(--ink);font-size:22px}
+.line-sep{height:1px;background:var(--line);margin:15px 0}
+.principal-return strong{display:block;color:var(--blue2);font-size:13px}
+.principal-return small{display:block;color:var(--muted);font-size:11px;margin-top:3px}
+.seller-badge{display:inline-flex;border-radius:999px;padding:4px 8px;background:#eef4ff;color:var(--blue2);font-weight:900;font-size:10px}
+.seller-off{opacity:.55}
+@media(max-width:900px){#switchSellerBtn{height:38px;padding:0 9px}.mobile-menu{overflow-x:auto}}
+
 </style>
 </head>
 <body>
 <div class="app">
 <header class="top">
   <div class="brand"><strong>COOPEX ENTREGAS</strong><span>Soluções em Coletas e Entregas</span></div>
-  <div class="top-right"><div class="hello"><strong id="hello">Olá, Cliente</strong><span>Bem-vindo(a) de volta!</span></div><div class="pill"><span class="dot"></span>Conexão Online</div><a class="logout" href="/cliente/logout">Sair</a></div>
+  <div class="top-right">
+    <div class="hello"><strong id="hello">Olá, Cliente</strong><span id="accessModeText">Acesso principal</span></div>
+    <button class="pill" type="button" id="switchSellerBtn">Trocar vendedor</button>
+    <div class="pill"><span class="dot"></span>Conexão Online</div>
+    <a class="logout" href="/cliente/logout">Sair</a>
+  </div>
 </header>
 <div class="layout">
 <aside class="side">
   <button class="nav active" data-view="pedido">Novo pedido</button>
-  <button class="nav" data-view="carteira">Carteira</button>
+  <button class="nav principal-only" data-view="carteira">Carteira</button>
   <button class="nav" data-view="historico">Histórico</button>
-  <button class="nav" data-view="enderecos">Endereços</button>
+  <button class="nav principal-only" data-view="enderecos">Endereços</button>
+  <button class="nav principal-only" data-view="vendedores">Vendedores</button>
 </aside>
 <main>
-<section class="hero" id="walletHero">
+<section class="hero principal-only" id="walletHero">
   <div>
     <h2>Sua carteira</h2><div class="desc">Saldo para pedidos e recargas.</div>
     <div class="balance-label" id="balanceLabel">SALDO DISPONÍVEL</div>
@@ -64,10 +99,21 @@
   <div class="hero-actions"><button class="hero-btn white" data-go="carteira">Comprar crédito <span>→</span></button><button class="hero-btn outline" data-go="pedido">Fazer pedido <span>→</span></button></div>
 </section>
 
+<section class="hero seller-only" id="sellerHero" style="display:none">
+  <div>
+    <h2>Pedido do vendedor</h2>
+    <div class="desc">Você está usando o acesso restrito do estabelecimento.</div>
+    <div class="balance-label">VENDEDOR(A)</div>
+    <div class="balance" id="sellerHeroName" style="font-size:32px">—</div>
+    <div class="balance-msg">Saldo, recargas e configurações financeiras ficam disponíveis somente no acesso principal.</div>
+  </div>
+  <div class="hero-actions"><button class="hero-btn white" data-go="pedido">Fazer pedido <span>→</span></button><button class="hero-btn outline" type="button" id="sellerSwitchHero">Trocar vendedor <span>→</span></button></div>
+</section>
+
 <div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
 
 <div class="tabs">
-  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="enderecos">Endereços</button>
+  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button>
 </div>
 
 <section class="view active" id="view-pedido">
@@ -75,12 +121,19 @@
     <article class="step-card open">
       <div class="step-head"><span class="num">1</span><div><h3>Coleta</h3><p>Onde vamos retirar?</p></div></div>
       <div class="step-body"><div class="fields">
-        <div class="field full"><label>Endereço de coleta fixo</label><input class="input" id="coletaEndereco" readonly></div>
-        <div class="field"><label>Bairro</label><input class="input" id="coletaBairro" readonly></div>
+        <div class="field full">
+          <label>Usar endereço salvo na coleta</label>
+          <div style="display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px">
+            <select class="select" id="coletaSalva"><option value="">Preencher manualmente</option></select>
+            <button class="ghost" type="button" id="fixarColeta" style="height:46px">Fixar como padrão</button>
+          </div>
+        </div>
+        <div class="field full"><label>Endereço de coleta</label><input class="input" id="coletaEndereco" placeholder="Rua, número e complemento" autocomplete="street-address"></div>
+        <div class="field"><label>Bairro da coleta</label><input class="input" id="coletaBairro" placeholder="Bairro"></div>
         <div class="field"><label>Referência (opcional)</label><input class="input" id="coletaReferencia" placeholder="Ex.: portaria, loja, sala"></div>
         <div class="field"><label>Nome de quem entrega</label><input class="input" id="coletaContato"></div>
         <div class="field"><label>Telefone</label><input class="input" id="coletaTelefone"></div>
-        <div class="field full"><div class="fixed-note">A coleta está vinculada ao cadastro do cliente. Para alterar o endereço fixo, solicite a atualização à COOPEX.</div></div>
+        <div class="field full"><div class="fixed-note" id="fixedAddressNote">Escolha um endereço salvo pelo apelido ou preencha manualmente. Você pode fixar qualquer endereço como coleta padrão.</div></div>
       </div></div>
     </article>
 
@@ -119,7 +172,7 @@
   <div class="order-bar"><div class="estimate"><small>Valor estimado</small><strong id="estimate">Informe o bairro</strong><div style="font-size:11px;color:#73819a" id="estimateSource"></div></div><button class="primary" id="sendOrder">Solicitar entrega</button></div>
 </section>
 
-<section class="view" id="view-carteira">
+<section class="view principal-only" id="view-carteira">
   <div class="card credit-box"><h3>Comprar crédito</h3><div class="preset"><button data-v="20">R$ 20</button><button data-v="50">R$ 50</button><button data-v="100">R$ 100</button></div>
   <div class="field" style="margin-top:10px"><label>Valor do crédito</label><input class="input" id="creditValue" inputmode="decimal" placeholder="Ex.: 100,00"></div>
   <button class="primary" id="requestCredit" style="width:100%;margin-top:10px">Solicitar crédito</button>
@@ -133,6 +186,7 @@
       <div class="field"><label>Até</label><input class="input" type="date" id="histFim"></div>
       <div class="field"><label>Pagamento</label><select class="select" id="histPay"><option value="todos">Todos</option><option value="credito">Crédito</option><option value="pix">Pix</option><option value="dinheiro">Dinheiro</option></select></div>
       <div class="field"><label>Situação</label><select class="select" id="histStatus"><option value="todos">Todas</option><option value="concluido">Concluídas</option><option value="andamento">Em andamento</option><option value="cancelado">Canceladas</option></select></div>
+      <div class="field principal-only"><label>Vendedor(a)</label><select class="select" id="histSeller"><option value="todos">Todos</option></select></div>
       <button class="ghost" id="searchHist">Buscar</button>
     </div>
     <div class="toolbar"><button class="ghost" id="lastWeek">Semana passada</button><button class="ghost" id="exportHist">Exportar Excel</button></div>
@@ -175,19 +229,79 @@
   <div class="history" id="history"></div>
 </section>
 
-<section class="view" id="view-enderecos"><div class="card"><h3>Endereços salvos</h3><div class="saved" id="saved"></div></div></section>
+
+<section class="view principal-only" id="view-vendedores">
+  <div class="card">
+    <h3>Vendedores do estabelecimento</h3>
+    <div class="week-title">Cada vendedor usa sua própria senha para entrar no modo de pedidos. Eles não veem saldo e não compram crédito.</div>
+    <div class="fields">
+      <div class="field"><label>Nome do vendedor(a)</label><input class="input" id="sellerName" placeholder="Ex.: Ana"></div>
+      <div class="field"><label>Senha</label><input class="input" id="sellerPassword" type="password" placeholder="Mínimo 4 caracteres"></div>
+    </div>
+    <div class="toolbar">
+      <button class="primary" type="button" id="saveSeller" style="height:44px">Cadastrar vendedor</button>
+      <button class="ghost" type="button" id="cancelSellerEdit" style="display:none">Cancelar edição</button>
+    </div>
+  </div>
+  <div class="card">
+    <h3>Vendedores cadastrados</h3>
+    <div class="saved" id="sellerList"></div>
+  </div>
+</section>
+
+<section class="view" id="view-enderecos">
+  <div class="card">
+    <h3 id="addressFormTitle">Cadastrar endereço</h3>
+    <div class="fields">
+      <div class="field"><label>Apelido</label><input class="input" id="endApelido" placeholder="Ex.: Casa, Trabalho, Shopping Cidade Verde"></div>
+      <div class="field"><label>Bairro</label><input class="input" id="endBairro" placeholder="Bairro"></div>
+      <div class="field full"><label>Endereço</label><input class="input" id="endEndereco" placeholder="Rua, número e complemento"></div>
+      <div class="field"><label>Referência</label><input class="input" id="endReferencia" placeholder="Ex.: loja, portaria, sala"></div>
+      <div class="field"><label>Contato</label><input class="input" id="endContato" placeholder="Quem entrega/recebe"></div>
+      <div class="field"><label>Telefone</label><input class="input" id="endTelefone" placeholder="Telefone / WhatsApp"></div>
+      <div class="field full"><label><input type="checkbox" id="endPadrao"> Definir como coleta padrão</label></div>
+    </div>
+    <div class="toolbar">
+      <button class="primary" type="button" id="saveAddress" style="height:44px">Salvar endereço</button>
+      <button class="ghost" type="button" id="cancelEditAddress" style="display:none">Cancelar edição</button>
+    </div>
+  </div>
+
+  <div class="card">
+    <h3>Meus endereços</h3>
+    <div class="week-title">Clique no apelido/“Usar na coleta” para preencher a coleta. Você também pode usar o mesmo endereço como destino ou fixá-lo como padrão.</div>
+    <div class="saved" id="saved"></div>
+  </div>
+</section>
 </main>
 </div>
 
-<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="enderecos">Endereços</button></div>
+<div class="mobile-menu"><button class="tab active" data-view="pedido">Pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button></div>
 </div>
 <div class="toast" id="toast"></div>
+
+<div class="modal-backdrop" id="sellerModal">
+  <div class="modal-card">
+    <div class="modal-head"><div><strong>Trocar vendedor</strong><small>Escolha o vendedor e informe a senha.</small></div><button type="button" class="modal-x" data-close-seller>×</button></div>
+    <div class="field"><label>Vendedor(a)</label><select class="select" id="sellerLoginSelect"><option value="">Escolha</option></select></div>
+    <div class="field" style="margin-top:10px"><label>Senha</label><input class="input" id="sellerLoginPassword" type="password" placeholder="Senha do vendedor"></div>
+    <button class="primary" type="button" id="sellerLoginBtn" style="width:100%;margin-top:12px">Entrar como vendedor</button>
+    <div class="principal-return seller-only" id="principalReturnBox" style="display:none">
+      <div class="line-sep"></div>
+      <strong>Voltar ao acesso principal</strong>
+      <small>Informe a senha principal do estabelecimento.</small>
+      <input class="input" id="principalPassword" type="password" placeholder="Senha principal" style="margin-top:8px">
+      <button class="ghost" type="button" id="returnPrincipalBtn" style="width:100%;margin-top:8px">Voltar ao principal</button>
+    </div>
+  </div>
+</div>
+
 <script>
-const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',delEnd:id=>`/api/cliente/enderecos/${id}`};
-const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[]};
+const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal'};
+const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[],editEndId:null,vendedores:[],modoVendedor:false,vendedor:null,editSellerId:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
 async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
-function setView(v){document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
+function setView(v){if(S.modoVendedor&&['carteira','enderecos','vendedores'].includes(v))v='pedido';document.querySelectorAll('.view').forEach(x=>x.classList.toggle('active',x.id==='view-'+v));document.querySelectorAll('[data-view]').forEach(x=>x.classList.toggle('active',x.dataset.view===v));if(v==='historico')loadHist();if(v==='enderecos')renderEnds();scrollTo({top:0,behavior:'smooth'})}
 document.querySelectorAll('[data-view]').forEach(b=>b.onclick=()=>setView(b.dataset.view));document.querySelectorAll('[data-go]').forEach(b=>b.onclick=()=>setView(b.dataset.go));
 document.querySelectorAll('.step-head').forEach(h=>h.onclick=()=>{if(innerWidth<=900)h.parentElement.classList.toggle('open')});
 function setSaldo(v){
@@ -201,24 +315,449 @@ function setSaldo(v){
     ?'Saldo negativo. Faça uma nova recarga para regularizar seu saldo.'
     :'Saldo disponível para usar nos seus pedidos.';
 }
-async function loadMe(){const j=await api(API.me);if(!j?.ok)return;S.cliente=j.cliente||{};$('hello').textContent='Olá, '+(S.cliente.nome||'Cliente');$('clienteNome').value=S.cliente.nome||'';$('clienteWhatsapp').value=S.cliente.telefone||'';$('coletaContato').value=S.cliente.nome||'';$('coletaTelefone').value=S.cliente.telefone||'';$('coletaEndereco').value=S.cliente.endereco||'';$('coletaBairro').value=S.cliente.bairro_origem||'';scheduleQuote()}
-async function loadSaldo(){const j=await api(API.saldo);if(j?.ok)setSaldo(j.saldo)}
+async function loadMe(){
+  const j=await api(API.me);
+  if(!j?.ok)return;
+  S.cliente=j.cliente||{};
+  S.modoVendedor=!!j.modo_vendedor;
+  S.vendedor=j.vendedor||null;
+  document.body.classList.toggle('seller-mode',S.modoVendedor);
+
+  $('hello').textContent=S.modoVendedor
+    ?'Olá, '+(S.vendedor?.nome||'Vendedor')
+    :'Olá, '+(S.cliente.nome||'Cliente');
+  $('accessModeText').textContent=S.modoVendedor
+    ?'Vendedor(a) • acesso restrito'
+    :'Acesso principal';
+  if($('sellerHeroName'))$('sellerHeroName').textContent=S.vendedor?.nome||'Vendedor';
+
+  $('clienteNome').value=S.cliente.nome||'';
+  $('clienteWhatsapp').value=S.cliente.telefone||'';
+  $('coletaContato').value=S.modoVendedor?(S.vendedor?.nome||''):(S.cliente.nome||'');
+  $('coletaTelefone').value=S.cliente.telefone||'';
+  $('coletaEndereco').value=S.cliente.endereco||'';
+  $('coletaBairro').value=S.cliente.bairro_origem||'';
+
+  fixedSignature=($('coletaEndereco').value.trim()&&$('coletaBairro').value.trim())
+    ?$('coletaEndereco').value.trim()+'|'+$('coletaBairro').value.trim():'';
+
+  if(S.modoVendedor){
+    if(document.querySelector('.view.active.principal-only'))setView('pedido');
+  }
+  scheduleQuote();
+}
+async function loadSaldo(){if(S.modoVendedor)return;const j=await api(API.saldo);if(j?.ok)setSaldo(j.saldo)}
 async function loadActive(){const j=await api(API.ativo);S.ativo=j?.ok?j.pedido:null;if(S.ativo){$('activeOrder').classList.add('show');const stAtivo=String(S.ativo.status||'em andamento');
 $('activeTitle').textContent=`Pedido #${S.ativo.id} — ${stAtivo==='cancel solicitado'?'Cancelamento solicitado':stAtivo}`;$('activeMeta').textContent=`${S.ativo.origem_txt||'-'} → ${S.ativo.destino_txt||'-'} • ${money(S.ativo.valor)}`;$('requestCancel').disabled=String(S.ativo.status||'').toLowerCase().includes('cancel solicitado')}else $('activeOrder').classList.remove('show')}
 $('requestCancel').onclick=async()=>{if(!S.ativo)return;if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;const j=await api(API.cancel(S.ativo.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo portal.'})});if(j?.ok){toast(j.msg);loadActive()}};
-async function loadEnds(){const j=await api(API.enderecos);if(j?.ok){S.ends=j.enderecos||[];const sel=$('destinoSalvo');sel.innerHTML='<option value="">Preencher manualmente</option>'+S.ends.map(x=>`<option value="${x.id}">${esc(x.apelido||'Endereço')}</option>`).join('');renderEnds()}}
-$('destinoSalvo').onchange=()=>{const x=S.ends.find(a=>String(a.id)==$('destinoSalvo').value);if(!x)return;$('entregaEndereco').value=x.endereco||'';$('entregaBairro').value=x.bairro||'';$('entregaReferencia').value=x.referencia||'';$('entregaContato').value=x.contato||'';$('entregaTelefone').value=x.telefone||'';scheduleQuote()};
-function renderEnds(){const w=$('saved');if(!S.ends.length){w.innerHTML='<div class="empty">Nenhum endereço salvo.</div>';return}w.innerHTML=S.ends.map(x=>`<div class="saved-item"><div><strong>${esc(x.apelido||'Endereço')}</strong><small>${esc(x.endereco||'')} ${x.bairro?'• '+esc(x.bairro):''}</small></div><div class="toolbar"><button class="ghost" onclick="useEnd(${x.id})">Usar</button><button class="ghost" onclick="delEnd(${x.id})">Excluir</button></div></div>`).join('')}
-window.useEnd=id=>{const x=S.ends.find(a=>a.id===id);if(x){setView('pedido');$('destinoSalvo').value=String(id);$('destinoSalvo').onchange()}};window.delEnd=async id=>{if(!confirm('Excluir endereço?'))return;const j=await api(API.delEnd(id),{method:'DELETE'});if(j?.ok)loadEnds()};
+async function loadEnds(){
+  const j=await api(API.enderecos);
+  if(!j?.ok)return;
+  S.ends=j.enderecos||[];
+
+  const opts='<option value="">Preencher manualmente</option>'+S.ends.map(x=>`<option value="${x.id}">${esc(x.apelido||'Endereço')}${x.padrao?' — PADRÃO':''}</option>`).join('');
+  $('destinoSalvo').innerHTML=opts;
+  $('coletaSalva').innerHTML=opts;
+
+  const padrao=S.ends.find(x=>x.padrao);
+  if(padrao){
+    const atualEndereco=$('coletaEndereco').value.trim();
+    const atualBairro=$('coletaBairro').value.trim();
+    if(!atualEndereco&&!atualBairro){
+      fillCollectionAddress(padrao);
+    }else if(atualEndereco===String(padrao.endereco||'').trim() && atualBairro===String(padrao.bairro||'').trim()){
+      $('coletaSalva').value=String(padrao.id);
+    }
+  }
+
+  renderEnds();
+}
+
+function fillCollectionAddress(x){
+  if(!x)return;
+  $('coletaEndereco').value=x.endereco||'';
+  $('coletaBairro').value=x.bairro||'';
+  $('coletaReferencia').value=x.referencia||'';
+  $('coletaContato').value=x.contato||S.cliente?.nome||'';
+  $('coletaTelefone').value=x.telefone||S.cliente?.telefone||'';
+  $('coletaSalva').value=String(x.id||'');
+  scheduleQuote();
+}
+
+function fillDestinationAddress(x){
+  if(!x)return;
+  $('entregaEndereco').value=x.endereco||'';
+  $('entregaBairro').value=x.bairro||'';
+  $('entregaReferencia').value=x.referencia||'';
+  $('entregaContato').value=x.contato||'';
+  $('entregaTelefone').value=x.telefone||'';
+  $('destinoSalvo').value=String(x.id||'');
+  scheduleQuote();
+}
+
+$('coletaSalva').onchange=()=>{
+  const id=$('coletaSalva').value;
+  if(!id)return;
+  const x=S.ends.find(a=>String(a.id)===String(id));
+  if(x)fillCollectionAddress(x);
+};
+
+$('destinoSalvo').onchange=()=>{
+  const id=$('destinoSalvo').value;
+  if(!id)return;
+  const x=S.ends.find(a=>String(a.id)===String(id));
+  if(x)fillDestinationAddress(x);
+};
+
+$('fixarColeta').onclick=async()=>{
+  const id=$('coletaSalva').value;
+  if(!id){
+    toast('Escolha um endereço salvo para fixar como padrão.');
+    return;
+  }
+  const j=await api(API.padraoEnd(id),{method:'POST'});
+  if(j?.ok){
+    toast('Endereço fixado como coleta padrão.');
+    if(S.cliente && j.cliente){
+      S.cliente.endereco=j.cliente.endereco||'';
+      S.cliente.bairro_origem=j.cliente.bairro_origem||'';
+    }
+    await loadEnds();
+  }
+};
+
+function clearAddressForm(){
+  S.editEndId=null;
+  $('addressFormTitle').textContent='Cadastrar endereço';
+  $('endApelido').value='';
+  $('endBairro').value='';
+  $('endEndereco').value='';
+  $('endReferencia').value='';
+  $('endContato').value='';
+  $('endTelefone').value='';
+  $('endPadrao').checked=false;
+  $('saveAddress').textContent='Salvar endereço';
+  $('cancelEditAddress').style.display='none';
+}
+
+$('cancelEditAddress').onclick=clearAddressForm;
+
+$('saveAddress').onclick=async()=>{
+  const endereco=$('endEndereco').value.trim();
+  const bairro=$('endBairro').value.trim();
+  const apelido=$('endApelido').value.trim()||'Endereço';
+  if(!endereco){toast('Informe o endereço.');return}
+  if(!bairro){toast('Informe o bairro.');return}
+
+  const payload={
+    apelido,
+    endereco,
+    bairro,
+    referencia:$('endReferencia').value.trim(),
+    contato:$('endContato').value.trim(),
+    telefone:$('endTelefone').value.trim(),
+    padrao:$('endPadrao').checked,
+    uf:'RN'
+  };
+
+  const isEdit=!!S.editEndId;
+  const url=isEdit?API.editEnd(S.editEndId):API.enderecos;
+  const method=isEdit?'PUT':'POST';
+  const j=await api(url,{method,headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+  if(j?.ok){
+    if(isEdit && payload.padrao){
+      await api(API.padraoEnd(S.editEndId),{method:'POST'});
+    }
+    toast(isEdit?'Endereço atualizado.':'Endereço salvo.');
+    clearAddressForm();
+    await loadMe();
+    await loadEnds();
+  }
+};
+
+function renderEnds(){
+  const w=$('saved');
+  if(!S.ends.length){
+    w.innerHTML='<div class="empty">Nenhum endereço salvo. Cadastre Casa, Trabalho, Shopping ou qualquer outro local frequente.</div>';
+    return;
+  }
+  w.innerHTML=S.ends.map(x=>`
+    <div class="saved-item ${x.padrao?'default-address':''}">
+      <div class="saved-main" onclick="useEndCollection(${x.id})" title="Usar este endereço na coleta">
+        <strong>${esc(x.apelido||'Endereço')}</strong>${x.padrao?'<span class="saved-badge">COLETA PADRÃO</span>':''}
+        <small>${esc(x.endereco||'')}${x.bairro?' • '+esc(x.bairro):''}${x.referencia?' • Ref.: '+esc(x.referencia):''}</small>
+      </div>
+      <div class="saved-actions">
+        <button class="ghost" onclick="useEndCollection(${x.id})">Usar na coleta</button>
+        <button class="ghost" onclick="useEndDestination(${x.id})">Usar na entrega</button>
+        ${x.padrao?'':`<button class="ghost" onclick="makeDefaultEnd(${x.id})">Fixar padrão</button>`}
+        <button class="ghost" onclick="editEnd(${x.id})">Editar</button>
+        <button class="ghost" onclick="delEnd(${x.id})">Excluir</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+window.useEndCollection=id=>{
+  const x=S.ends.find(a=>a.id===id);
+  if(!x)return;
+  setView('pedido');
+  setTimeout(()=>{
+    fillCollectionAddress(x);
+    document.querySelector('[data-view="pedido"]')?.scrollIntoView?.({behavior:'smooth',block:'start'});
+  },30);
+};
+
+window.useEndDestination=id=>{
+  const x=S.ends.find(a=>a.id===id);
+  if(!x)return;
+  setView('pedido');
+  setTimeout(()=>fillDestinationAddress(x),30);
+};
+
+window.makeDefaultEnd=async id=>{
+  const j=await api(API.padraoEnd(id),{method:'POST'});
+  if(j?.ok){
+    toast('Este endereço agora é a coleta padrão.');
+    await loadMe();
+    await loadEnds();
+    const x=S.ends.find(a=>a.id===id);
+    if(x)fillCollectionAddress(x);
+  }
+};
+
+window.editEnd=id=>{
+  const x=S.ends.find(a=>a.id===id);
+  if(!x)return;
+  S.editEndId=id;
+  $('addressFormTitle').textContent='Editar endereço';
+  $('endApelido').value=x.apelido||'';
+  $('endBairro').value=x.bairro||'';
+  $('endEndereco').value=x.endereco||'';
+  $('endReferencia').value=x.referencia||'';
+  $('endContato').value=x.contato||'';
+  $('endTelefone').value=x.telefone||'';
+  $('endPadrao').checked=!!x.padrao;
+  $('saveAddress').textContent='Salvar alterações';
+  $('cancelEditAddress').style.display='inline-flex';
+  setView('enderecos');
+  setTimeout(()=>$('endApelido').focus(),50);
+};
+
+window.delEnd=async id=>{
+  if(!confirm('Excluir este endereço salvo?'))return;
+  const j=await api(API.delEnd(id),{method:'DELETE'});
+  if(j?.ok){
+    toast('Endereço excluído.');
+    await loadEnds();
+  }
+};
+
+/* Quando a coleta é digitada/alterada manualmente, ela passa a ser
+   o endereço fixo atual do cadastro do cliente. */
+let fixedSaveTimer=null;
+let fixedSignature='';
+async function saveFixedCollection(silent=true){
+  if(S.modoVendedor)return true;
+  const endereco=$('coletaEndereco').value.trim();
+  const bairro=$('coletaBairro').value.trim();
+  if(!endereco||!bairro)return false;
+  const sig=endereco+'|'+bairro;
+  if(sig===fixedSignature)return true;
+  const j=await api(API.enderecoFixo,{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({endereco,bairro})
+  });
+  if(j?.ok){
+    fixedSignature=sig;
+    if(S.cliente){
+      S.cliente.endereco=endereco;
+      S.cliente.bairro_origem=bairro;
+    }
+    if(!silent)toast('Endereço de coleta atualizado no cadastro.');
+    return true;
+  }
+  return false;
+}
+function scheduleFixedCollectionSave(){
+  clearTimeout(fixedSaveTimer);
+  fixedSaveTimer=setTimeout(()=>saveFixedCollection(true),700);
+}
+['coletaEndereco','coletaBairro'].forEach(id=>{
+  $(id).addEventListener('input',()=>{
+    $('coletaSalva').value='';
+    scheduleFixedCollectionSave();
+  });
+  $(id).addEventListener('blur',()=>saveFixedCollection(true));
+});
+
 $('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
-let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['entregaEndereco','entregaBairro','coletaReferencia'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
+let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['coletaEndereco','coletaBairro','coletaReferencia','entregaEndereco','entregaBairro'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
 async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Valor conforme tabela de bairros':'Bairro sem valor cadastrado — a supervisão informará o preço';return j}
-$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()&&!$('coletaBairro').value.trim()){toast('Informe o endereço ou o bairro da coleta.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
+$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()||!$('coletaBairro').value.trim()){toast('Informe o endereço e o bairro da coleta.');return}if(!await saveFixedCollection(true)){toast('Não foi possível salvar o endereço de coleta no cadastro.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
 window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
 $('requestCredit').onclick=async()=>{const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));if(!v||v<=0){toast('Informe um valor válido.');return}const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});if(j?.ok){const w=$('pixResult');w.classList.add('show');w.innerHTML=`<strong>Solicitação #${j.solicitacao_id} enviada</strong><div style="margin-top:8px">Valor: <strong>${money(j.valor)}</strong></div><div style="margin-top:12px;font-size:11px;font-weight:900;color:#66758e">CHAVE PIX — CNPJ COOPEX</div><div class="pix-key">05289938000197</div><button class="ghost" style="margin-top:8px" onclick="copyPix()">Copiar chave Pix</button><a class="wa" href="${j.whatsapp_url}" target="_blank" rel="noopener">Favor enviar o comprovante direto para esse número: (84) 98111-0706</a><div style="font-size:11px;color:#6c7a93;margin-top:8px">O crédito será lançado após a COOPEX confirmar o pagamento.</div>`;toast('Solicitação enviada para o administrativo.')}};
+
+async function loadSellers(){
+  const j=await api(API.vendedores);
+  if(!j?.ok)return;
+  S.vendedores=j.vendedores||[];
+  renderSellerSelectors();
+  renderSellers();
+}
+
+function renderSellerSelectors(){
+  const active=S.vendedores.filter(v=>v.ativo);
+  const opts='<option value="">Escolha</option>'+active.map(v=>`<option value="${v.id}">${esc(v.nome)}</option>`).join('');
+  if($('sellerLoginSelect'))$('sellerLoginSelect').innerHTML=opts;
+
+  if($('histSeller')){
+    const atual=$('histSeller').value||'todos';
+    $('histSeller').innerHTML='<option value="todos">Todos</option><option value="principal">Principal / sem vendedor</option>'+
+      S.vendedores.map(v=>`<option value="${v.id}">${esc(v.nome)}${v.ativo?'':' (inativo)'}</option>`).join('');
+    if([...$('histSeller').options].some(o=>o.value===atual))$('histSeller').value=atual;
+  }
+}
+
+function renderSellers(){
+  const w=$('sellerList');
+  if(!w)return;
+  if(!S.vendedores.length){
+    w.innerHTML='<div class="empty">Nenhum vendedor cadastrado.</div>';
+    return;
+  }
+  w.innerHTML=S.vendedores.map(v=>`
+    <div class="saved-item ${v.ativo?'':'seller-off'}">
+      <div>
+        <strong>${esc(v.nome)}</strong>
+        <small>${v.ativo?'Ativo e liberado para fazer pedidos':'Inativo'}</small>
+      </div>
+      <div class="saved-actions">
+        <button class="ghost" onclick="editSeller(${v.id})">Editar</button>
+        <button class="ghost" onclick="toggleSeller(${v.id},${v.ativo?'false':'true'})">${v.ativo?'Desativar':'Ativar'}</button>
+        <button class="ghost" onclick="deleteSeller(${v.id})">Excluir</button>
+      </div>
+    </div>
+  `).join('');
+}
+
+function clearSellerForm(){
+  S.editSellerId=null;
+  $('sellerName').value='';
+  $('sellerPassword').value='';
+  $('saveSeller').textContent='Cadastrar vendedor';
+  $('cancelSellerEdit').style.display='none';
+}
+
+$('cancelSellerEdit').onclick=clearSellerForm;
+
+$('saveSeller').onclick=async()=>{
+  const nome=$('sellerName').value.trim();
+  const senha=$('sellerPassword').value;
+  if(!nome){toast('Informe o nome do vendedor.');return}
+  if(!S.editSellerId && senha.length<4){toast('A senha deve ter pelo menos 4 caracteres.');return}
+
+  const payload={nome};
+  if(senha)payload.senha=senha;
+
+  const isEdit=!!S.editSellerId;
+  const j=await api(isEdit?API.editSeller(S.editSellerId):API.vendedores,{
+    method:isEdit?'PUT':'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify(payload)
+  });
+  if(j?.ok){
+    toast(j.msg||'Vendedor salvo.');
+    clearSellerForm();
+    await loadSellers();
+  }
+};
+
+window.editSeller=id=>{
+  const v=S.vendedores.find(x=>x.id===id);
+  if(!v)return;
+  S.editSellerId=id;
+  $('sellerName').value=v.nome||'';
+  $('sellerPassword').value='';
+  $('sellerPassword').placeholder='Deixe vazio para manter a senha';
+  $('saveSeller').textContent='Salvar alterações';
+  $('cancelSellerEdit').style.display='inline-flex';
+  setView('vendedores');
+};
+
+window.toggleSeller=async(id,ativo)=>{
+  const v=S.vendedores.find(x=>x.id===id);
+  if(!v)return;
+  const j=await api(API.editSeller(id),{
+    method:'PUT',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({nome:v.nome,ativo})
+  });
+  if(j?.ok){toast(j.msg||'Atualizado.');await loadSellers()}
+};
+
+window.deleteSeller=async id=>{
+  if(!confirm('Excluir este vendedor? Os pedidos antigos continuarão mostrando o nome dele.'))return;
+  const j=await api(API.editSeller(id),{method:'DELETE'});
+  if(j?.ok){toast(j.msg||'Vendedor excluído.');await loadSellers()}
+};
+
+function openSellerModal(){
+  $('sellerModal').classList.add('show');
+  $('sellerLoginPassword').value='';
+  $('principalPassword').value='';
+  $('principalReturnBox').style.display=S.modoVendedor?'block':'none';
+}
+function closeSellerModal(){$('sellerModal').classList.remove('show')}
+
+$('switchSellerBtn').onclick=openSellerModal;
+if($('sellerSwitchHero'))$('sellerSwitchHero').onclick=openSellerModal;
+document.querySelectorAll('[data-close-seller]').forEach(b=>b.onclick=closeSellerModal);
+$('sellerModal').addEventListener('click',e=>{if(e.target===$('sellerModal'))closeSellerModal()});
+
+$('sellerLoginBtn').onclick=async()=>{
+  const vendedor_id=$('sellerLoginSelect').value;
+  const senha=$('sellerLoginPassword').value;
+  if(!vendedor_id){toast('Escolha o vendedor.');return}
+  if(!senha){toast('Informe a senha do vendedor.');return}
+
+  const j=await api(API.sellerLogin,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({vendedor_id,senha})
+  });
+  if(j?.ok){
+    toast(j.msg||'Vendedor ativado.');
+    closeSellerModal();
+    await loadMe();
+    await loadActive();
+    setView('pedido');
+  }
+};
+
+$('returnPrincipalBtn').onclick=async()=>{
+  const senha=$('principalPassword').value;
+  if(!senha){toast('Informe a senha principal.');return}
+  const j=await api(API.principalLogin,{
+    method:'POST',
+    headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({senha})
+  });
+  if(j?.ok){
+    toast(j.msg||'Acesso principal restaurado.');
+    closeSellerModal();
+    await loadMe();
+    await loadSaldo();
+    await loadSellers();
+    setView('pedido');
+  }
+};
+
+
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function lastWeekRange(){const n=new Date();n.setHours(12,0,0,0);const day=n.getDay();const sinceMon=(day+6)%7;const thisMon=new Date(n);thisMon.setDate(n.getDate()-sinceMon);const ini=new Date(thisMon);ini.setDate(thisMon.getDate()-7);const fim=new Date(ini);fim.setDate(ini.getDate()+6);return{ini,fim}}function setLastWeek(){const r=lastWeekRange();$('histIni').value=iso(r.ini);$('histFim').value=iso(r.fim);$('weekTitle').textContent=`Semana passada: ${r.ini.toLocaleDateString('pt-BR')} a ${r.fim.toLocaleDateString('pt-BR')}`}
-function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);return p.toString()}
+function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);if(!S.modoVendedor&&$('histSeller')&&$('histSeller').value)p.set('vendedor_id',$('histSeller').value);return p.toString()}
 function signed(v,plus=false){const n=Number(v||0);const abs=money(Math.abs(n));return n<0?'-'+abs:(plus&&n>0?'+':'')+abs}function tone(el,v){el.classList.toggle('neg',Number(v)<0);el.classList.toggle('pos',Number(v)>0)}
 async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;const f=j.financeiro||{};
 $('fStart').textContent=signed(f.saldo_antes_recarga);
@@ -236,9 +775,9 @@ tone($('fAfterRecharge'),f.saldo_apos_recarga);
 tone($('fEnd'),-Math.abs(consumidoAte));
 tone($('fAfterUsed'),-Math.abs(consumidoDepois));
 tone($('fCurrent'),f.saldo_atual);
-const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
+const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
 $('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-(async()=>{setLastWeek();await Promise.all([loadMe(),loadSaldo(),loadEnds(),loadActive()]);await loadHist()})();
+(async()=>{setLastWeek();await loadMe();await Promise.all([loadSellers(),loadEnds(),loadActive()]);if(!S.modoVendedor)await loadSaldo();await loadHist()})();
 </script>
 </body></html>
