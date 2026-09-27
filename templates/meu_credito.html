@@ -403,6 +403,29 @@ body.modo-vendedor .seller-topbar-compact{
   .client-row-actions{justify-content:flex-start}
 }
 
+
+.hist-edit-line{
+  display:grid;
+  grid-template-columns:140px minmax(180px,320px);
+  gap:8px;
+  align-items:center;
+  margin-top:8px;
+}
+.hist-edit-line label{
+  font-size:12px;
+  font-weight:900;
+  color:#17345f;
+}
+.hist-edit-line .select{
+  height:36px;
+  padding:0 10px;
+  border-radius:10px;
+}
+@media(max-width:680px){
+  .hist-edit-line{grid-template-columns:1fr}
+  .hist-edit-line .select{width:100%}
+}
+
 </style>
 </head>
 <body>
@@ -575,7 +598,7 @@ body.modo-vendedor .seller-topbar-compact{
       <div class="field principal-only"><label>Vendedor(a)</label><select class="select" id="histSeller"><option value="todos">Todos</option></select></div>
       <button class="ghost" id="searchHist">Buscar</button>
     </div>
-    <div class="toolbar"><button class="ghost" id="lastWeek">Semana passada</button><button class="ghost" id="exportHist">Exportar Excel</button></div>
+    <div class="toolbar"><button class="ghost" id="currentMonth">Este mês</button><button class="ghost" id="lastWeek">Semana passada</button><button class="ghost" id="exportHist">Exportar Excel</button></div>
   </div>
 
   <div class="financial principal-only">
@@ -748,7 +771,7 @@ body.modo-vendedor .seller-topbar-compact{
 </div>
 
 <script>
-const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal',clienteRecorrenteSalvar:'/api/cliente/clientes-recorrentes/salvar'};
+const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal',clienteRecorrenteSalvar:'/api/cliente/clientes-recorrentes/salvar',histSellerChange:id=>`/api/cliente/historico/${id}/vendedor`,histPaymentChange:id=>`/api/cliente/historico/${id}/pagamento`};
 const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[],editEndId:null,vendedores:[],modoVendedor:false,vendedor:null,editSellerId:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
 async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
@@ -1399,57 +1422,152 @@ $('returnPrincipalBtn').onclick=async()=>{
 
 
 function iso(d){return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0')}function lastWeekRange(){const n=new Date();n.setHours(12,0,0,0);const day=n.getDay();const sinceMon=(day+6)%7;const thisMon=new Date(n);thisMon.setDate(n.getDate()-sinceMon);const ini=new Date(thisMon);ini.setDate(thisMon.getDate()-7);const fim=new Date(ini);fim.setDate(ini.getDate()+6);return{ini,fim}}function setLastWeek(){const r=lastWeekRange();$('histIni').value=iso(r.ini);$('histFim').value=iso(r.fim);$('weekTitle').textContent=`Semana passada: ${r.ini.toLocaleDateString('pt-BR')} a ${r.fim.toLocaleDateString('pt-BR')}`}
+function setCurrentMonth(){const n=new Date();n.setHours(12,0,0,0);const ini=new Date(n.getFullYear(),n.getMonth(),1,12,0,0,0);$('histIni').value=iso(ini);$('histFim').value=iso(n);$('weekTitle').textContent=`Este mês: ${ini.toLocaleDateString('pt-BR')} a ${n.toLocaleDateString('pt-BR')}`}
 function histParams(){const p=new URLSearchParams();if($('histIni').value)p.set('data_inicio',$('histIni').value);if($('histFim').value)p.set('data_fim',$('histFim').value);p.set('pagamento',$('histPay').value);p.set('situacao',$('histStatus').value);if(!S.modoVendedor&&$('histSeller')&&$('histSeller').value)p.set('vendedor_id',$('histSeller').value);return p.toString()}
 function signed(v,plus=false){const n=Number(v||0);const abs=money(Math.abs(n));return n<0?'-'+abs:(plus&&n>0?'+':'')+abs}function tone(el,v){el.classList.toggle('neg',Number(v)<0);el.classList.toggle('pos',Number(v)>0)}
-async function loadHist(){const j=await api(API.hist+'?'+histParams());if(!j?.ok)return;
-const histTitle=document.querySelector('#view-historico .card h3');
-if(S.modoVendedor){
-  if(histTitle)histTitle.textContent='Meu histórico';
-  if($('weekTitle'))$('weekTitle').textContent='Somente os pedidos feitos por '+(S.vendedor?.nome||'este vendedor');
-}else{
-  if(histTitle)histTitle.textContent='Espelho semanal';
-}
-const f=j.financeiro||{};
-$('fStart').textContent=signed(f.saldo_antes_recarga);
-$('fAdded').textContent='+'+money(f.ultima_recarga||0);
-$('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
-const consumidoAte=Number(f.consumo_ate_fim||0);
-$('fEnd').textContent=money(Math.abs(consumidoAte));
-const consumidoDepois=Number(f.consumo_apos_periodo||0);
-$('fAfterUsed').textContent=money(Math.abs(consumidoDepois));
-$('fCurrent').textContent=signed(f.saldo_atual);
-$('fEndLabel').textContent=f.data_fim_br?`Consumo após a recarga até ${f.data_fim_br}`:'Consumo após a recarga até a data final';
-$('fAfterLabel').textContent=f.data_fim_br?`Do dia seguinte a ${f.data_fim_br} até hoje foi consumido`:'Do dia seguinte até hoje foi consumido';
-tone($('fStart'),f.saldo_antes_recarga);
-tone($('fAfterRecharge'),f.saldo_apos_recarga);
-tone($('fEnd'),-Math.abs(consumidoAte));
-tone($('fAfterUsed'),-Math.abs(consumidoDepois));
-tone($('fCurrent'),f.saldo_atual);
-const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div>${x.cliente_destino?`<div class="meta">Cliente destino: <strong>${esc(x.cliente_destino)}</strong>${x.cliente_destino_telefone?` • ${esc(x.cliente_destino_telefone)}`:''}</div>`:''}<div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}${x.pode_cancelar?`<button class="tag red hist-cancel-btn" type="button" data-cancel-id="${x.id}">Solicitar cancelamento</button>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>';
+async function loadHist(){
+  const j=await api(API.hist+'?'+histParams());
+  if(!j?.ok)return;
 
-document.querySelectorAll('.hist-cancel-btn').forEach(btn=>{
-  btn.onclick=async()=>{
-    const id=Number(btn.dataset.cancelId||0);
-    if(!id)return;
-    if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;
-    btn.disabled=true;
-    const resp=await api(API.cancel(id),{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo histórico do portal.'})
-    });
-    btn.disabled=false;
-    if(resp?.ok){
-      toast(resp.msg||'Cancelamento solicitado.');
-      await loadHist();
-      await loadActive();
+  const histTitle=document.querySelector('#view-historico .card h3');
+  if(histTitle) histTitle.textContent=S.modoVendedor?'Meu histórico':'Histórico de entregas';
+
+  const f=j.financeiro||{};
+  $('fStart').textContent=signed(f.saldo_antes_recarga);
+  $('fAdded').textContent='+'+money(f.ultima_recarga||0);
+  $('fAfterRecharge').textContent=signed(f.saldo_apos_recarga);
+  const consumidoAte=Number(f.consumo_ate_fim||0);
+  $('fEnd').textContent=money(Math.abs(consumidoAte));
+  const consumidoDepois=Number(f.consumo_apos_periodo||0);
+  $('fAfterUsed').textContent=money(Math.abs(consumidoDepois));
+  $('fCurrent').textContent=signed(f.saldo_atual);
+  $('fEndLabel').textContent=f.data_fim_br?`Consumo após a recarga até ${f.data_fim_br}`:'Consumo após a recarga até a data final';
+  $('fAfterLabel').textContent=f.data_fim_br?`Do dia seguinte a ${f.data_fim_br} até hoje foi consumido`:'Do dia seguinte até hoje foi consumido';
+  tone($('fStart'),f.saldo_antes_recarga);
+  tone($('fAfterRecharge'),f.saldo_apos_recarga);
+  tone($('fEnd'),-Math.abs(consumidoAte));
+  tone($('fAfterUsed'),-Math.abs(consumidoDepois));
+  tone($('fCurrent'),f.saldo_atual);
+
+  const r=j.resumo||{};
+  $('hQtd').textContent=r.quantidade||0;
+  $('hTotal').textContent=money(r.valor_total||0);
+  $('hCredit').textContent=money(r.credito_usado||0);
+  $('hCancel').textContent=r.canceladas||0;
+
+  const sellerOptions=['<option value="principal">Principal</option>']
+    .concat((S.sellers||[]).map(v=>`<option value="${v.id}">${esc(v.nome)}</option>`))
+    .join('');
+
+  $('history').innerHTML=(j.entregas||[]).length
+    ? (j.entregas||[]).map(x=>`
+      <div class="hist">
+        <div style="min-width:0;flex:1">
+          <strong>Pedido #${x.id} — ${esc(x.status||'')}</strong>
+          <div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div>
+          <div class="meta">${esc(x.data||'')} • Pagamento: <strong>${esc(x.status_pagamento||'pendente')}</strong></div>
+          ${x.cliente_destino?`<div class="meta">Cliente destino: <strong>${esc(x.cliente_destino)}</strong>${x.cliente_destino_telefone?` • ${esc(x.cliente_destino_telefone)}`:''}</div>`:''}
+          <div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div>
+
+          ${!S.modoVendedor && x.pode_trocar_vendedor ? `
+            <div class="hist-edit-line">
+              <label>Vendedor(a)</label>
+              <select class="select hist-seller-select" data-order-id="${x.id}">
+                ${sellerOptions}
+              </select>
+            </div>` : `<div class="meta">Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong></div>`}
+
+          ${!S.modoVendedor && x.pode_editar_pagamento ? `
+            <div class="hist-edit-line">
+              <label>Forma de pagamento</label>
+              <select class="select hist-payment-select" data-order-id="${x.id}">
+                <option value="credito">Crédito</option>
+                <option value="pix">PIX</option>
+                <option value="dinheiro">Dinheiro</option>
+              </select>
+            </div>` : `<div class="meta">Forma: <strong>${esc(x.pagamento||'-')}</strong></div>`}
+
+          <div class="tags">
+            <span class="tag">${esc(x.pagamento||'-')}</span>
+            ${x.cancelado?'<span class="tag red">Cancelado</span>':''}
+            ${x.pago?'<span class="tag green">Pago</span>':''}
+            ${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}
+            ${x.pode_cancelar?`<button class="tag red hist-cancel-btn" type="button" data-cancel-id="${x.id}">Solicitar cancelamento</button>`:''}
+          </div>
+        </div>
+        <strong>${money(x.valor||0)}</strong>
+      </div>`).join('')
+    : '<div class="empty">Nenhuma entrega encontrada neste período.</div>';
+
+  (j.entregas||[]).forEach(x=>{
+    const ss=document.querySelector(`.hist-seller-select[data-order-id="${x.id}"]`);
+    if(ss) ss.value=x.vendedor_id?String(x.vendedor_id):'principal';
+
+    const ps=document.querySelector(`.hist-payment-select[data-order-id="${x.id}"]`);
+    if(ps){
+      const p=String(x.pagamento||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+      ps.value=p.includes('credito')?'credito':p.includes('dinheiro')?'dinheiro':'pix';
     }
-  };
-});
+  });
+
+  document.querySelectorAll('.hist-seller-select').forEach(sel=>{
+    sel.onchange=async()=>{
+      const id=Number(sel.dataset.orderId||0);
+      const resp=await api(API.histSellerChange(id),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({vendedor_id:sel.value})
+      });
+      if(resp?.ok){
+        toast(resp.msg||'Vendedor alterado.');
+        await loadHist();
+      }
+    };
+  });
+
+  document.querySelectorAll('.hist-payment-select').forEach(sel=>{
+    sel.onchange=async()=>{
+      const id=Number(sel.dataset.orderId||0);
+      if(!confirm('Alterar a forma de pagamento deste pedido? Se sair de Crédito, o valor será devolvido para a carteira.')){
+        await loadHist();
+        return;
+      }
+      const resp=await api(API.histPaymentChange(id),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({pagamento:sel.value})
+      });
+      if(resp?.ok){
+        toast(resp.msg||'Forma de pagamento alterada.');
+        await loadSaldo();
+        await loadHist();
+      }
+    };
+  });
+
+  document.querySelectorAll('.hist-cancel-btn').forEach(btn=>{
+    btn.onclick=async()=>{
+      const id=Number(btn.dataset.cancelId||0);
+      if(!id)return;
+      if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;
+      btn.disabled=true;
+      const resp=await api(API.cancel(id),{
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo histórico do portal.'})
+      });
+      btn.disabled=false;
+      if(resp?.ok){
+        toast(resp.msg||'Cancelamento solicitado.');
+        await loadHist();
+        await loadActive();
+      }
+    };
+  });
 }
-$('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
+$('searchHist').onclick=loadHist;if($('currentMonth'))$('currentMonth').onclick=()=>{setCurrentMonth();loadHist()};$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
-(async()=>{setLastWeek();await loadMe();await Promise.all([loadSellers(),loadEnds(),loadActive()]);if(!S.modoVendedor)await loadSaldo();await loadHist()})();
+(async()=>{setCurrentMonth();await loadMe();await Promise.all([loadSellers(),loadEnds(),loadActive()]);if(!S.modoVendedor)await loadSaldo();await loadHist()})();
 
 /* ===============================
    CALCULADORA COOPEX
