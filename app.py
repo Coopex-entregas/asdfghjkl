@@ -3448,8 +3448,7 @@ def _enriquecer_entrega(e):
     ]
     if bool(paradas_data.get('retorno')):
         partes_paradas.append('Retorno: ' + (_entrega_endereco_linha(origem, e.bairro or '-') or 'endereço da coleta'))
-    else:
-        partes_paradas.append('Sem retorno')
+    # Sem retorno: não mostra nenhuma linha/etiqueta extra.
     e.paradas_texto = ' | '.join([x for x in partes_paradas if x])
     return e
 
@@ -14583,6 +14582,237 @@ def handle_atualizar_entrega(data):
         room=f"entrega_{entrega_id}",
     )
 
+
+
+
+# =========================================================
+# PATCH DE ROTA / LEGIBILIDADE — PAINEL DO COOPERADO
+# =========================================================
+# O template do cooperado já existe em produção. Este after_request aplica
+# apenas um complemento visual/comportamental na página, sem mexer nos dados.
+_COOP_ROUTE_PATCH = r"""
+<style id="coopex-route-card-patch">
+  /* Endereços mais legíveis no celular */
+  #tab-entregas .delivery-address,
+  #tab-entregas .delivery-note.route-note-clickable{
+    font-size: .92rem !important;
+    line-height: 1.42 !important;
+    margin-bottom: 8px !important;
+  }
+  #tab-entregas .delivery-address.route-address-clickable,
+  #tab-entregas .delivery-note.route-note-clickable{
+    display:flex !important;
+    align-items:flex-start !important;
+    gap:7px !important;
+    padding:9px 10px !important;
+    border:1px solid #dfe7ff !important;
+    border-radius:12px !important;
+    background:#f8faff !important;
+    cursor:pointer !important;
+    user-select:none;
+    -webkit-tap-highlight-color:transparent;
+  }
+  #tab-entregas .delivery-address.route-address-clickable:active,
+  #tab-entregas .delivery-note.route-note-clickable:active{
+    transform:scale(.995);
+    background:#eef3ff !important;
+  }
+  #tab-entregas .route-tap-hint{
+    display:block;
+    margin-top:2px;
+    color:#0f4bff;
+    font-size:.68rem;
+    font-weight:800;
+  }
+  @media(max-width:640px){
+    #tab-entregas .delivery-address,
+    #tab-entregas .delivery-note.route-note-clickable{
+      font-size:.86rem !important;
+      line-height:1.4 !important;
+    }
+  }
+</style>
+<script id="coopex-route-js-patch">
+(function(){
+  function cleanPoint(s){
+    return String(s || '').trim();
+  }
+
+  function splitRouteData(card){
+    const origem = cleanPoint(card && card.dataset ? card.dataset.origem : '');
+    const destino = cleanPoint(card && card.dataset ? card.dataset.destino : '');
+    const raw = cleanPoint(card && card.dataset ? card.dataset.paradas : '');
+
+    const stops = [];
+    let retorno = '';
+
+    raw.split('|').map(x => x.trim()).filter(Boolean).forEach(item => {
+      if(/^sem retorno$/i.test(item)) return;
+
+      const m = item.match(/^retorno\s*:\s*(.+)$/i);
+      if(m){
+        retorno = cleanPoint(m[1]);
+        return;
+      }
+
+      // remove rótulo textual eventual, mantendo só o endereço
+      stops.push(item.replace(/^parada\s*\d*\s*:\s*/i,'').trim());
+    });
+
+    return {origem, destino, stops:stops.filter(Boolean), retorno};
+  }
+
+  function openSingleDestination(address){
+    const p = cleanPoint(address);
+    if(!p) return;
+    // Sem origin: Google Maps usa a localização atual do cooperado.
+    const url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving&destination='
+      + encodeURIComponent(p);
+    window.open(url, '_blank', 'noopener');
+  }
+
+  // Sobrescreve a ação do botão Maps.
+  // Ordem:
+  // localização atual -> coleta -> paradas -> entrega -> retorno (se houver)
+  window.abrirEntregaNoMaps = function(btn){
+    const card = btn && btn.closest ? btn.closest('.entrega-row') : null;
+    if(!card) return;
+
+    const r = splitRouteData(card);
+    const route = [];
+    if(r.origem) route.push(r.origem);
+    r.stops.forEach(x => route.push(x));
+    if(r.destino) route.push(r.destino);
+    if(r.retorno) route.push(r.retorno);
+
+    if(!route.length){
+      alert('Sem rota disponível para esta entrega.');
+      return;
+    }
+
+    // O último ponto é o destino. Os anteriores viram waypoints.
+    // Origin fica vazio de propósito para iniciar da localização atual.
+    const finalDestination = route[route.length - 1];
+    const waypoints = route.slice(0, -1);
+
+    let url = 'https://www.google.com/maps/dir/?api=1&travelmode=driving'
+      + '&destination=' + encodeURIComponent(finalDestination);
+
+    if(waypoints.length){
+      url += '&waypoints=' + waypoints.map(x => encodeURIComponent(x)).join('|');
+    }
+
+    window.open(url, '_blank', 'noopener');
+  };
+
+  function enhanceCard(card){
+    if(!card || card.dataset.routeEnhanced === '1') return;
+    card.dataset.routeEnhanced = '1';
+
+    const r = splitRouteData(card);
+    const addresses = card.querySelectorAll('.delivery-address');
+
+    addresses.forEach(el => {
+      const label = (el.querySelector('strong')?.textContent || '').trim().toLowerCase();
+      let address = '';
+      if(label.startsWith('coleta')) address = r.origem;
+      else if(label.startsWith('entrega')) address = r.destino;
+      if(!address) return;
+
+      el.classList.add('route-address-clickable');
+      el.setAttribute('role','button');
+      el.setAttribute('tabindex','0');
+      el.title = 'Toque para abrir a rota até este endereço';
+
+      if(!el.querySelector('.route-tap-hint')){
+        const span = el.querySelector('span');
+        if(span){
+          const hint = document.createElement('small');
+          hint.className = 'route-tap-hint';
+          hint.textContent = 'Toque para ir até este endereço';
+          span.appendChild(hint);
+        }
+      }
+
+      const go = () => openSingleDestination(address);
+      el.addEventListener('click', go);
+      el.addEventListener('keydown', ev => {
+        if(ev.key === 'Enter' || ev.key === ' '){
+          ev.preventDefault();
+          go();
+        }
+      });
+    });
+
+    // Se houver paradas/retorno, transforma a linha em pontos clicáveis separados.
+    const note = Array.from(card.querySelectorAll('.delivery-note')).find(el => {
+      const t = (el.querySelector('strong')?.textContent || '').trim().toLowerCase();
+      return t.startsWith('paradas');
+    });
+
+    if(note){
+      const points = [];
+      r.stops.forEach((addr, idx) => points.push({label:'Parada ' + (idx+1), address:addr}));
+      if(r.retorno) points.push({label:'Retorno', address:r.retorno});
+
+      if(points.length){
+        note.classList.add('route-note-clickable');
+        note.innerHTML = '<strong style="color:#15306f">Rota:</strong><span style="display:grid;gap:7px;flex:1"></span>';
+        const host = note.querySelector('span');
+        points.forEach(p => {
+          const b = document.createElement('button');
+          b.type = 'button';
+          b.style.cssText = 'border:0;background:transparent;padding:0;text-align:left;font:inherit;color:#6f7ea8;cursor:pointer';
+          b.innerHTML = '<strong style="color:#15306f">' + p.label + ':</strong> '
+            + p.address.replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))
+            + '<small class="route-tap-hint">Toque para ir até este endereço</small>';
+          b.addEventListener('click', ev => {
+            ev.stopPropagation();
+            openSingleDestination(p.address);
+          });
+          host.appendChild(b);
+        });
+      }else{
+        // Não há paradas nem retorno: não exibe "Paradas".
+        note.remove();
+      }
+    }
+  }
+
+  function enhanceAll(){
+    document.querySelectorAll('.entrega-row').forEach(enhanceCard);
+  }
+
+  // Cards já existentes.
+  if(document.readyState === 'loading'){
+    document.addEventListener('DOMContentLoaded', enhanceAll);
+  }else{
+    enhanceAll();
+  }
+
+  // Cards recarregados pelos filtros AJAX.
+  const list = document.getElementById('delivery-list');
+  if(list){
+    new MutationObserver(enhanceAll).observe(list, {childList:true, subtree:true});
+  }
+})();
+</script>
+"""
+
+@app.after_request
+def _coopex_patch_painel_cooperado(response):
+    try:
+        if request.path == '/painel_cooperado':
+            ctype = (response.headers.get('Content-Type') or '').lower()
+            if response.status_code == 200 and 'text/html' in ctype:
+                html = response.get_data(as_text=True)
+                if 'coopex-route-js-patch' not in html:
+                    html = html.replace('</body>', _COOP_ROUTE_PATCH + '\n</body>')
+                    response.set_data(html)
+                    response.headers['Content-Length'] = str(len(response.get_data()))
+    except Exception:
+        pass
+    return response
 
 
 # =========================================================
