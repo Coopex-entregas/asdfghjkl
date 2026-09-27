@@ -178,6 +178,175 @@ body.modo-vendedor .seller-topbar-compact{
   padding:18px 20px!important;
 }
 
+
+/* Status sem texto */
+.connection-status .status-text,
+.connection-pill .status-text,
+.online-status .status-text,
+.network-status .status-text{display:none!important;}
+.connection-status,
+.connection-pill,
+.online-status,
+.network-status{min-width:auto!important;padding-left:10px!important;padding-right:10px!important;}
+
+
+/* =========================================================
+   COOPEX — NAVEGAÇÃO ÚNICA / VISUAL LIMPO
+   Desktop: somente menu lateral
+   Mobile: somente menu inferior
+   ========================================================= */
+.tabs{display:none!important;}
+
+.app{
+  width:100%;
+  max-width:none!important;
+  min-height:100vh;
+  padding:0!important;
+}
+.top{
+  margin:0!important;
+  border-radius:0!important;
+  min-height:68px;
+  padding:12px 22px!important;
+  border-left:0!important;
+  border-right:0!important;
+  border-top:0!important;
+  box-shadow:0 4px 18px rgba(23,62,130,.07)!important;
+}
+.layout{
+  width:100%!important;
+  max-width:none!important;
+  display:grid!important;
+  grid-template-columns:230px minmax(0,1fr)!important;
+  gap:16px!important;
+  padding:16px!important;
+  align-items:start!important;
+}
+.side{
+  position:sticky;
+  top:84px;
+  display:flex!important;
+  flex-direction:column!important;
+  gap:6px!important;
+  width:230px!important;
+  max-width:230px!important;
+  padding:10px!important;
+  border:1px solid var(--line)!important;
+  border-radius:18px!important;
+  background:#fff!important;
+  box-shadow:0 8px 28px rgba(20,65,130,.06)!important;
+}
+.side .nav{
+  width:100%!important;
+  min-height:48px!important;
+  display:flex!important;
+  align-items:center!important;
+  justify-content:flex-start!important;
+  text-align:left!important;
+  padding:0 16px!important;
+  margin:0!important;
+  border:0!important;
+  border-radius:12px!important;
+  background:transparent!important;
+  color:#42557a!important;
+  font-size:14px!important;
+  font-weight:800!important;
+  box-shadow:none!important;
+}
+.side .nav:hover{
+  background:#f1f5ff!important;
+  color:var(--blue2)!important;
+}
+.side .nav.active{
+  background:#e8f0ff!important;
+  color:var(--blue2)!important;
+  box-shadow:inset 3px 0 0 var(--blue)!important;
+}
+main{
+  min-width:0!important;
+  width:100%!important;
+  max-width:none!important;
+}
+.view{
+  width:100%!important;
+  max-width:none!important;
+}
+.card,.step-card{
+  box-shadow:0 8px 24px rgba(16,60,125,.05)!important;
+}
+
+/* vendedor: não mostrar o hero/resumo duplicado */
+body.modo-vendedor #sellerHero,
+body.modo-vendedor .seller-topbar-compact{
+  display:none!important;
+}
+
+/* status: só bolinha */
+.top-right .pill:not(#switchSellerBtn){
+  width:34px!important;
+  min-width:34px!important;
+  height:34px!important;
+  padding:0!important;
+  display:grid!important;
+  place-items:center!important;
+  border-radius:50%!important;
+}
+.top-right .pill:not(#switchSellerBtn) .dot{
+  margin:0!important;
+}
+.top-right .pill:not(#switchSellerBtn){
+  font-size:0!important;
+}
+
+/* Mobile: some menu lateral e entra apenas menu inferior */
+.mobile-menu{
+  display:none!important;
+}
+@media(max-width:860px){
+  .top{
+    min-height:60px;
+    padding:10px 12px!important;
+  }
+  .brand span,.hello span{display:none!important}
+  .layout{
+    display:block!important;
+    padding:10px 10px 82px!important;
+  }
+  .side{
+    display:none!important;
+  }
+  .mobile-menu{
+    display:flex!important;
+    position:fixed!important;
+    left:10px!important;
+    right:10px!important;
+    bottom:10px!important;
+    z-index:1000!important;
+    gap:4px!important;
+    padding:6px!important;
+    border:1px solid var(--line)!important;
+    border-radius:16px!important;
+    background:rgba(255,255,255,.96)!important;
+    box-shadow:0 12px 35px rgba(20,60,120,.18)!important;
+    overflow-x:auto!important;
+  }
+  .mobile-menu .tab{
+    flex:1 0 auto!important;
+    min-width:78px!important;
+    height:44px!important;
+    padding:0 10px!important;
+    border:0!important;
+    border-radius:11px!important;
+    background:transparent!important;
+    font-size:12px!important;
+    font-weight:800!important;
+  }
+  .mobile-menu .tab.active{
+    background:#e8f0ff!important;
+    color:var(--blue2)!important;
+  }
+}
+
 </style>
 </head>
 <body>
@@ -187,7 +356,7 @@ body.modo-vendedor .seller-topbar-compact{
   <div class="top-right">
     <div class="hello"><strong id="hello">Olá, Cliente</strong><span id="accessModeText">Acesso principal</span></div>
     <button class="pill" type="button" id="switchSellerBtn">Trocar vendedor</button>
-    <div class="pill"><span class="dot"></span>Conexão Online</div>
+    <div class="pill"><span class="dot"></span></div>
     <a class="logout" href="/cliente/logout">Sair</a>
   </div>
 </header>
@@ -223,11 +392,6 @@ body.modo-vendedor .seller-topbar-compact{
 </section>
 
 <div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
-
-<div class="tabs">
-  <button class="tab active" data-view="pedido">Novo pedido</button><button class="tab principal-only" data-view="carteira">Carteira</button><button class="tab" data-view="historico">Histórico</button><button class="tab" data-view="calculadora">Calculadora</button><button class="tab principal-only" data-view="enderecos">Endereços</button><button class="tab principal-only" data-view="vendedores">Vendedores</button>
-</div>
-
 <section class="view active" id="view-pedido">
   <div class="steps">
     <article class="step-card open">
@@ -348,6 +512,7 @@ body.modo-vendedor .seller-topbar-compact{
     <div class="calc-top">
       <div>
         <h3>Calculadora</h3>
+        
       </div>
       <button type="button" class="ghost" id="clearCalcHistory">Limpar histórico</button>
     </div>
@@ -393,9 +558,6 @@ body.modo-vendedor .seller-topbar-compact{
           <button type="button" data-calc=".">,</button>
           <button type="button" class="equals" data-calc="=">=</button>
         </div>
-
-        <div class="calc-memory-status">
-         </div>
       </div>
 
       <div class="calc-side">
@@ -1000,7 +1162,6 @@ function calcRoundUpMoney(n){
 function calcUpdate(){
   if($('calcDisplay'))$('calcDisplay').textContent=calcState.display;
   if($('calcExpression'))$('calcExpression').textContent=calcState.expression||'';
-  if($('calcMemoryStatus'))$('calcMemoryStatus').textContent='Memória: '+calcMoney(calcState.memory);
 }
 function calcSetRaw(n){
   calcState.raw=String(n);
@@ -1175,6 +1336,23 @@ document.getElementById('sellerQuickSwitchBtn')?.addEventListener('click', ()=>{
   const btn = document.getElementById('switchSellerBtn');
   if(btn) btn.click();
 });
+
+
+/* Marca visualmente o modo vendedor para o layout */
+function syncSellerBodyClass(){
+  try{
+    document.body.classList.toggle('modo-vendedor', !!(S && S.modoVendedor));
+  }catch(e){}
+}
+setTimeout(syncSellerBodyClass,0);
+
+
+const __coopexLoadMeNav = loadMe;
+loadMe = async function(){
+  const r = await __coopexLoadMeNav.apply(this, arguments);
+  syncSellerBodyClass();
+  return r;
+};
 
 </script>
 </body></html>
