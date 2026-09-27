@@ -379,18 +379,6 @@ body.modo-vendedor .seller-topbar-compact{
   </div>
   <div class="hero-actions"><button class="hero-btn white" data-go="carteira">Comprar crédito <span>→</span></button><button class="hero-btn outline" data-go="pedido">Fazer pedido <span>→</span></button></div>
 </section>
-
-<section class="hero seller-only" id="sellerHero" style="display:none">
-  <div>
-    <h2>Pedido do vendedor</h2>
-    <div class="desc">Você está usando o acesso restrito do estabelecimento.</div>
-    <div class="balance-label">VENDEDOR(A)</div>
-    <div class="balance" id="sellerHeroName" style="font-size:32px">—</div>
-    <div class="balance-msg">Saldo, recargas e configurações financeiras ficam disponíveis somente no acesso principal.</div>
-  </div>
-  <div class="hero-actions"><button class="hero-btn white" data-go="pedido">Fazer pedido <span>→</span></button><button class="hero-btn outline" type="button" id="sellerSwitchHero">Trocar vendedor <span>→</span></button></div>
-</section>
-
 <div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
 <section class="view active" id="view-pedido">
   <div class="steps">
@@ -670,7 +658,6 @@ async function loadMe(){
   $('accessModeText').textContent=S.modoVendedor
     ?'Vendedor(a) • acesso restrito'
     :'Acesso principal';
-  if($('sellerHeroName'))$('sellerHeroName').textContent=S.vendedor?.nome||'Vendedor';
 
   $('clienteNome').value=S.cliente.nome||'';
   $('clienteWhatsapp').value=S.cliente.telefone||'';
