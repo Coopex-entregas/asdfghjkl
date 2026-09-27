@@ -426,6 +426,13 @@ body.modo-vendedor .seller-topbar-compact{
   .hist-edit-line .select{width:100%}
 }
 
+
+.client-delete-btn{
+  color:#b42318!important;
+  background:#fff2f0!important;
+  border-color:#ffd1cc!important;
+}
+
 </style>
 </head>
 <body>
@@ -552,7 +559,7 @@ body.modo-vendedor .seller-topbar-compact{
     </div>
 
     <div class="card client-form-card">
-      <h3>Cadastrar cliente</h3>
+      <h3 id="clientFormTitle">Cadastrar cliente</h3>
       <div class="fields">
         <div class="field full">
           <label>Nome do cliente</label>
@@ -771,7 +778,7 @@ body.modo-vendedor .seller-topbar-compact{
 </div>
 
 <script>
-const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal',clienteRecorrenteSalvar:'/api/cliente/clientes-recorrentes/salvar',histSellerChange:id=>`/api/cliente/historico/${id}/vendedor`,histPaymentChange:id=>`/api/cliente/historico/${id}/pagamento`};
+const API={me:'/api/cliente/me',saldo:'/api/cliente/saldo-json',recarga:'/api/cliente/recarga',pedido:'/api/pedidos/criar',ativo:'/api/pedidos/ativo',cancel:id=>`/api/pedidos/${id}/cancelar`,hist:'/api/cliente/historico',export:'/cliente/historico/exportar.xlsx',cotar:'/api/cliente/cotar-entrega',enderecos:'/api/cliente/enderecos',enderecoFixo:'/api/cliente/endereco-fixo',padraoEnd:id=>`/api/cliente/enderecos/${id}/padrao`,editEnd:id=>`/api/cliente/enderecos/${id}`,delEnd:id=>`/api/cliente/enderecos/${id}`,vendedores:'/api/cliente/vendedores',editSeller:id=>`/api/cliente/vendedores/${id}`,sellerLogin:'/api/cliente/vendedor/entrar',principalLogin:'/api/cliente/vendedor/voltar-principal',clienteRecorrenteSalvar:'/api/cliente/clientes-recorrentes/salvar',histSellerChange:id=>`/api/cliente/historico/${id}/vendedor`,histPaymentChange:id=>`/api/cliente/historico/${id}/pagamento`,clienteRecorrenteEditar:id=>`/api/cliente/clientes-recorrentes/${id}`,clienteRecorrenteExcluir:id=>`/api/cliente/clientes-recorrentes/${id}`};
 const $=id=>document.getElementById(id);const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});let S={cliente:null,saldo:0,ativo:null,ends:[],editEndId:null,vendedores:[],modoVendedor:false,vendedor:null,editSellerId:null};
 function toast(t){const e=$('toast');e.textContent=t;e.classList.add('show');clearTimeout(window.tt);window.tt=setTimeout(()=>e.classList.remove('show'),2400)}
 async function api(url,opt){try{const r=await fetch(url,opt);const j=await r.json().catch(()=>null);if(!r.ok)throw new Error(j?.msg||j?.erro||j?.error||'Erro '+r.status);return j}catch(e){toast(e.message);return null}}
@@ -870,13 +877,64 @@ function clientSearchText(x){
   ].join(' ').toLocaleLowerCase('pt-BR');
 }
 
+let recurringClientEditId=null;
+
 function clearClientTabForm(){
+  recurringClientEditId=null;
+  if($('clientFormTitle'))$('clientFormTitle').textContent='Cadastrar cliente';
+  if($('saveRecurringClientTab'))$('saveRecurringClientTab').textContent='Salvar cliente';
   if($('clientName'))$('clientName').value='';
   if($('clientPhone'))$('clientPhone').value='';
   if($('clientNeighborhood'))$('clientNeighborhood').value='';
   if($('clientAddress'))$('clientAddress').value='';
   if($('clientReference'))$('clientReference').value='';
 }
+
+
+function editRecurringClient(id){
+  const x=(S.ends||[]).find(a=>String(a.id)===String(id));
+  if(!x)return;
+
+  if(x.padrao){
+    toast('Este é o endereço padrão do estabelecimento. Edite-o na aba Endereços.');
+    return;
+  }
+
+  recurringClientEditId=Number(id);
+  $('clientFormTitle').textContent='Editar cliente';
+  $('saveRecurringClientTab').textContent='Salvar alterações';
+  $('clientName').value=x.apelido||x.contato||'';
+  $('clientPhone').value=x.telefone||'';
+  $('clientNeighborhood').value=x.bairro||'';
+  $('clientAddress').value=x.endereco||'';
+  $('clientReference').value=x.referencia||'';
+
+  document.querySelector('.client-form-card')?.scrollIntoView({behavior:'smooth',block:'start'});
+}
+
+async function deleteRecurringClient(id){
+  const x=(S.ends||[]).find(a=>String(a.id)===String(id));
+  if(!x)return;
+
+  if(x.padrao){
+    toast('O endereço padrão do estabelecimento não pode ser excluído pela aba Clientes.');
+    return;
+  }
+
+  const nome=x.apelido||x.contato||'este cliente';
+  if(!confirm(`Excluir ${nome} da lista de clientes recorrentes?`))return;
+
+  const j=await api(API.clienteRecorrenteExcluir(id),{method:'DELETE'});
+  if(j?.ok){
+    toast(j.msg||'Cliente excluído.');
+    if(Number(recurringClientEditId)===Number(id))clearClientTabForm();
+    await loadEnds();
+    renderClients();
+  }
+}
+
+window.editRecurringClient=editRecurringClient;
+window.deleteRecurringClient=deleteRecurringClient;
 
 function renderClients(){
   const box=$('clientsList');
@@ -907,6 +965,8 @@ function renderClients(){
       </div>
       <div class="client-row-actions">
         <button class="primary" type="button" onclick="useClientFromList(${x.id})">Usar no pedido</button>
+        ${x.padrao?'':`<button class="ghost" type="button" onclick="editRecurringClient(${x.id})">Editar</button>
+        <button class="ghost client-delete-btn" type="button" onclick="deleteRecurringClient(${x.id})">Excluir</button>`}
       </div>
     </div>
   `).join('');
@@ -933,22 +993,28 @@ $('saveRecurringClientTab')?.addEventListener('click',async()=>{
   if(!endereco){toast('Informe o endereço do cliente.');return}
   if(!bairro){toast('Informe o bairro do cliente.');return}
 
-  const j=await api(API.clienteRecorrenteSalvar,{
-    method:'POST',
+  const payload={
+    nome,
+    contato:nome,
+    telefone,
+    endereco,
+    bairro,
+    referencia,
+    uf:'RN'
+  };
+
+  const editando=!!recurringClientEditId;
+  const url=editando?API.clienteRecorrenteEditar(recurringClientEditId):API.clienteRecorrenteSalvar;
+  const method=editando?'PUT':'POST';
+
+  const j=await api(url,{
+    method,
     headers:{'Content-Type':'application/json'},
-    body:JSON.stringify({
-      nome,
-      contato:nome,
-      telefone,
-      endereco,
-      bairro,
-      referencia,
-      uf:'RN'
-    })
+    body:JSON.stringify(payload)
   });
 
   if(j?.ok){
-    toast(j.msg||'Cliente salvo.');
+    toast(j.msg||(editando?'Cliente atualizado.':'Cliente salvo.'));
     clearClientTabForm();
     await loadEnds();
     renderClients();
