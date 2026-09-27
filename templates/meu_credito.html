@@ -347,6 +347,17 @@ body.modo-vendedor .seller-topbar-compact{
   }
 }
 
+
+.hist-cancel-btn{
+  cursor:pointer;
+  font-family:inherit;
+  font-weight:800;
+}
+.hist-cancel-btn:disabled{
+  opacity:.55;
+  cursor:not-allowed;
+}
+
 </style>
 </head>
 <body>
@@ -379,7 +390,7 @@ body.modo-vendedor .seller-topbar-compact{
   </div>
   <div class="hero-actions"><button class="hero-btn white" data-go="carteira">Comprar crédito <span>→</span></button><button class="hero-btn outline" data-go="pedido">Fazer pedido <span>→</span></button></div>
 </section>
-<div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div><button class="cancel-btn" id="requestCancel">Solicitar cancelamento</button></div>
+<div class="active-order" id="activeOrder"><div><strong id="activeTitle">Pedido em andamento</strong><div class="meta" id="activeMeta"></div></div></div>
 <section class="view active" id="view-pedido">
   <div class="steps">
     <article class="step-card open">
@@ -675,9 +686,18 @@ async function loadMe(){
   scheduleQuote();
 }
 async function loadSaldo(){if(S.modoVendedor)return;const j=await api(API.saldo);if(j?.ok)setSaldo(j.saldo)}
-async function loadActive(){const j=await api(API.ativo);S.ativo=j?.ok?j.pedido:null;if(S.ativo){$('activeOrder').classList.add('show');const stAtivo=String(S.ativo.status||'em andamento');
-$('activeTitle').textContent=`Pedido #${S.ativo.id} — ${stAtivo==='cancel solicitado'?'Cancelamento solicitado':stAtivo}`;$('activeMeta').textContent=`${S.ativo.origem_txt||'-'} → ${S.ativo.destino_txt||'-'} • ${money(S.ativo.valor)}`;$('requestCancel').disabled=String(S.ativo.status||'').toLowerCase().includes('cancel solicitado')}else $('activeOrder').classList.remove('show')}
-$('requestCancel').onclick=async()=>{if(!S.ativo)return;if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;const j=await api(API.cancel(S.ativo.id),{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo portal.'})});if(j?.ok){toast(j.msg);loadActive()}};
+async function loadActive(){
+  const j=await api(API.ativo);
+  S.ativo=j?.ok?j.pedido:null;
+  if(S.ativo){
+    $('activeOrder').classList.add('show');
+    const stAtivo=String(S.ativo.status||'em andamento');
+    $('activeTitle').textContent=`Pedido #${S.ativo.id} — ${stAtivo==='cancel solicitado'?'Cancelamento solicitado':stAtivo}`;
+    $('activeMeta').textContent=`${S.ativo.origem_txt||'-'} → ${S.ativo.destino_txt||'-'} • ${money(S.ativo.valor)}`;
+  }else{
+    $('activeOrder').classList.remove('show');
+  }
+}
 async function loadEnds(){
   const j=await api(API.enderecos);
   if(!j?.ok)return;
@@ -1115,7 +1135,28 @@ tone($('fAfterRecharge'),f.saldo_apos_recarga);
 tone($('fEnd'),-Math.abs(consumidoAte));
 tone($('fAfterUsed'),-Math.abs(consumidoDepois));
 tone($('fCurrent'),f.saldo_atual);
-const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>'}
+const r=j.resumo||{};$('hQtd').textContent=r.quantidade||0;$('hTotal').textContent=money(r.valor_total||0);$('hCredit').textContent=money(r.credito_usado||0);$('hCancel').textContent=r.canceladas||0;$('history').innerHTML=(j.entregas||[]).length?(j.entregas||[]).map(x=>`<div class="hist"><div><strong>Pedido #${x.id} — ${esc(x.status||'')}</strong><div class="route">${esc(x.origem||x.origem_txt||'-')} → ${esc(x.destino||x.destino_txt||'-')}</div><div class="meta">${esc(x.data||'')} • Vendedor(a): <strong>${esc(x.vendedor||'Principal')}</strong> • Pagamento: ${esc(x.status_pagamento||'pendente')}</div><div class="meta">Entregador: <strong>${esc(x.entregador||'Ainda não atribuído')}</strong></div><div class="tags"><span class="tag">${esc(x.pagamento||'-')}</span>${x.cancelado?'<span class="tag red">Cancelado</span>':''}${x.pago?'<span class="tag green">Pago</span>':''}${x.comprovante_url?`<a class="tag" href="${x.comprovante_url}" target="_blank" rel="noopener">Ver recibo</a>`:''}${x.pode_cancelar?`<button class="tag red hist-cancel-btn" type="button" data-cancel-id="${x.id}">Solicitar cancelamento</button>`:''}</div></div><strong>${money(x.valor||0)}</strong></div>`).join(''):'<div class="empty">Nenhuma entrega encontrada neste período.</div>';
+
+document.querySelectorAll('.hist-cancel-btn').forEach(btn=>{
+  btn.onclick=async()=>{
+    const id=Number(btn.dataset.cancelId||0);
+    if(!id)return;
+    if(!confirm('Solicitar o cancelamento deste pedido? A COOPEX precisará aceitar.'))return;
+    btn.disabled=true;
+    const resp=await api(API.cancel(id),{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({motivo:'Cliente solicitou cancelamento pelo histórico do portal.'})
+    });
+    btn.disabled=false;
+    if(resp?.ok){
+      toast(resp.msg||'Cancelamento solicitado.');
+      await loadHist();
+      await loadActive();
+    }
+  };
+});
+}
 $('searchHist').onclick=loadHist;$('lastWeek').onclick=()=>{setLastWeek();loadHist()};$('exportHist').onclick=()=>location.href=API.export+'?'+histParams();
 function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]))}
 (async()=>{setLastWeek();await loadMe();await Promise.all([loadSellers(),loadEnds(),loadActive()]);if(!S.modoVendedor)await loadSaldo();await loadHist()})();
