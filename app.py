@@ -433,6 +433,7 @@ class VendedorCliente(db.Model):
         index=True
     )
     nome = db.Column(db.String(100), nullable=False)
+    login = db.Column(db.String(80), nullable=True, unique=True, index=True)
     senha_hash = db.Column(db.String(128), nullable=False)
     ativo = db.Column(db.Boolean, nullable=False, default=True, index=True)
     criado_em = db.Column(db.DateTime, nullable=False, default=datetime.utcnow)
@@ -458,6 +459,7 @@ class VendedorCliente(db.Model):
         return {
             'id': self.id,
             'nome': self.nome or '',
+            'login': self.login or '',
             'ativo': bool(self.ativo),
         }
 
@@ -2742,6 +2744,27 @@ def login():
                 return redirect(next_url)
             return redirect(url_for('meu_credito'))
 
+        # 4) Vendedor do cliente — usa o MESMO login principal do sistema.
+        # O login do vendedor é único, então o sistema identifica automaticamente
+        # a qual estabelecimento ele pertence.
+        vendedor = VendedorCliente.query.filter(
+            func.lower(VendedorCliente.login) == user_lc,
+            VendedorCliente.ativo.is_(True)
+        ).first()
+
+        if vendedor and vendedor.check_senha(senha):
+            cli_vendedor = Cliente.query.get(vendedor.cliente_id)
+            if cli_vendedor:
+                session.clear()
+                session['cliente_id'] = cli_vendedor.id
+                session['cliente_username'] = cli_vendedor.username
+                session['cliente_nome'] = cli_vendedor.nome
+                session['is_cliente'] = True
+                session['cliente_vendedor_id'] = vendedor.id
+                session['cliente_vendedor_nome'] = vendedor.nome
+                session['tipo'] = 'cliente_vendedor'
+                return redirect(url_for('meu_credito'))
+
         # nenhuma combinação deu certo
         flash('Usuário ou senha incorretos.', 'error')
 
@@ -3103,6 +3126,23 @@ def cliente_login():
 
         cli = Cliente.query.filter(func.lower(Cliente.username) == username.lower()).first()
         if not cli or not cli.check_senha(senha):
+            vend = VendedorCliente.query.filter(
+                func.lower(VendedorCliente.login) == username.lower(),
+                VendedorCliente.ativo.is_(True)
+            ).first()
+            if vend and vend.check_senha(senha):
+                cli_vendedor = Cliente.query.get(vend.cliente_id)
+                if cli_vendedor:
+                    session.clear()
+                    session['cliente_id'] = cli_vendedor.id
+                    session['cliente_username'] = cli_vendedor.username
+                    session['cliente_nome'] = cli_vendedor.nome
+                    session['is_cliente'] = True
+                    session['cliente_vendedor_id'] = vend.id
+                    session['cliente_vendedor_nome'] = vend.nome
+                    session['tipo'] = 'cliente_vendedor'
+                    return redirect(url_for('meu_credito'))
+
             flash('Usuário ou senha inválidos.')
             return redirect(url_for('cliente_login'))
 
@@ -8933,14 +8973,19 @@ def api_cliente_vendedores():
 
     data = request.get_json(silent=True) or {}
     nome = (data.get('nome') or '').strip()
+    login_vendedor = (data.get('login') or '').strip().lower()
     senha = str(data.get('senha') or '')
 
     if not nome:
         return jsonify(ok=False, msg='Informe o nome do vendedor(a).'), 400
+    if not login_vendedor:
+        return jsonify(ok=False, msg='Informe o login do vendedor(a).'), 400
+    if len(login_vendedor) < 3:
+        return jsonify(ok=False, msg='O login do vendedor deve ter pelo menos 3 caracteres.'), 400
     if len(senha) < 4:
         return jsonify(ok=False, msg='A senha do vendedor deve ter pelo menos 4 caracteres.'), 400
 
-    existente = (
+    existente_nome = (
         VendedorCliente.query
         .filter(
             VendedorCliente.cliente_id == cli.id,
@@ -8948,10 +8993,27 @@ def api_cliente_vendedores():
         )
         .first()
     )
-    if existente:
-        return jsonify(ok=False, msg='Já existe um vendedor com esse nome.'), 409
+    if existente_nome:
+        return jsonify(ok=False, msg='Já existe um vendedor com esse nome neste estabelecimento.'), 409
 
-    vend = VendedorCliente(cliente_id=cli.id, nome=nome[:100], ativo=True)
+    existente_login = VendedorCliente.query.filter(
+        func.lower(VendedorCliente.login) == login_vendedor
+    ).first()
+    if existente_login:
+        return jsonify(ok=False, msg='Esse login de vendedor já está em uso.'), 409
+
+    # Evita colisão com login de cliente e cooperado.
+    if Cliente.query.filter(func.lower(Cliente.username) == login_vendedor).first():
+        return jsonify(ok=False, msg='Esse login já é usado por um cliente.'), 409
+    if Cooperado.query.filter(func.lower(Cooperado.nome) == login_vendedor).first():
+        return jsonify(ok=False, msg='Esse login já é usado por um cooperado.'), 409
+
+    vend = VendedorCliente(
+        cliente_id=cli.id,
+        nome=nome[:100],
+        login=login_vendedor[:80],
+        ativo=True
+    )
     vend.set_senha(senha)
     db.session.add(vend)
     db.session.commit()
@@ -8974,8 +9036,23 @@ def api_cliente_vendedor_editar(vendedor_id):
     data = request.get_json(silent=True) or {}
 
     nome = (data.get('nome') or vend.nome or '').strip()
+    login_vendedor = (data.get('login') or vend.login or '').strip().lower()
     if not nome:
         return jsonify(ok=False, msg='Informe o nome do vendedor(a).'), 400
+    if not login_vendedor:
+        return jsonify(ok=False, msg='Informe o login do vendedor(a).'), 400
+
+    duplicado_login = VendedorCliente.query.filter(
+        VendedorCliente.id != vend.id,
+        func.lower(VendedorCliente.login) == login_vendedor
+    ).first()
+    if duplicado_login:
+        return jsonify(ok=False, msg='Esse login de vendedor já está em uso.'), 409
+
+    if Cliente.query.filter(func.lower(Cliente.username) == login_vendedor).first():
+        return jsonify(ok=False, msg='Esse login já é usado por um cliente.'), 409
+    if Cooperado.query.filter(func.lower(Cooperado.nome) == login_vendedor).first():
+        return jsonify(ok=False, msg='Esse login já é usado por um cooperado.'), 409
 
     duplicado = (
         VendedorCliente.query
@@ -8990,6 +9067,7 @@ def api_cliente_vendedor_editar(vendedor_id):
         return jsonify(ok=False, msg='Já existe outro vendedor com esse nome.'), 409
 
     vend.nome = nome[:100]
+    vend.login = login_vendedor[:80]
     if 'ativo' in data:
         vend.ativo = bool(data.get('ativo'))
 
@@ -14061,6 +14139,7 @@ def criar_bd():
             # CAMPOS DO NOVO PAINEL DE VENDEDORES
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS vendedor_id INTEGER",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS vendedor_nome VARCHAR(100)",
+            "ALTER TABLE vendedor_cliente ADD COLUMN IF NOT EXISTS login VARCHAR(80)",
 
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS origem_json TEXT",
             "ALTER TABLE entrega ADD COLUMN IF NOT EXISTS destino_json TEXT",
@@ -14176,6 +14255,7 @@ def criar_bd():
             "CREATE INDEX IF NOT EXISTS idx_entrega_vendedor_id ON entrega (vendedor_id)",
             "CREATE INDEX IF NOT EXISTS idx_vendedor_cliente_cliente_id ON vendedor_cliente (cliente_id)",
             "CREATE INDEX IF NOT EXISTS idx_vendedor_cliente_ativo ON vendedor_cliente (cliente_id, ativo)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS idx_vendedor_cliente_login_unique ON vendedor_cliente ((lower(login))) WHERE login IS NOT NULL",
             "CREATE INDEX IF NOT EXISTS idx_entrega_status_pagamento_lower ON entrega ((lower(status_pagamento)))",
             "CREATE INDEX IF NOT EXISTS idx_entrega_cliente_lower ON entrega ((lower(cliente)))",
             "CREATE INDEX IF NOT EXISTS idx_lista_espera_pos ON lista_espera (pos ASC)",
