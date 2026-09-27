@@ -9296,6 +9296,97 @@ def api_cliente_recorrente_salvar():
         endereco=item.to_dict()
     )
 
+
+@app.put('/api/cliente/clientes-recorrentes/<int:endereco_id>')
+@cliente_required
+def api_cliente_recorrente_editar(endereco_id):
+    """
+    Edita um cliente recorrente compartilhado.
+    Pode ser usado pelo acesso principal e pelos vendedores.
+    """
+    cli = _cliente_atual()
+    item = ClienteEndereco.query.filter_by(
+        id=endereco_id,
+        cliente_id=cli.id
+    ).first_or_404()
+
+    # O endereço padrão é a coleta principal do estabelecimento,
+    # não um cliente recorrente.
+    if bool(getattr(item, 'padrao', False)):
+        return jsonify(
+            ok=False,
+            msg='Este registro é o endereço padrão do estabelecimento. Edite-o na aba Endereços.'
+        ), 409
+
+    data = request.get_json(silent=True) or {}
+    nome = (data.get('nome') or data.get('apelido') or data.get('contato') or '').strip()
+    endereco = (data.get('endereco') or '').strip()
+    bairro = (data.get('bairro') or '').strip()
+
+    if not nome:
+        return jsonify(ok=False, msg='Informe o nome do cliente.'), 400
+    if not endereco:
+        return jsonify(ok=False, msg='Informe o endereço do cliente.'), 400
+    if not bairro:
+        return jsonify(ok=False, msg='Informe o bairro do cliente.'), 400
+
+    duplicado = (
+        ClienteEndereco.query
+        .filter(
+            ClienteEndereco.cliente_id == cli.id,
+            ClienteEndereco.id != item.id,
+            func.lower(ClienteEndereco.apelido) == nome.lower()
+        )
+        .first()
+    )
+    if duplicado:
+        return jsonify(ok=False, msg='Já existe outro cliente salvo com esse nome.'), 409
+
+    item.apelido = nome[:80]
+    item.contato = (data.get('contato') or nome).strip()[:120] or None
+    item.telefone = (data.get('telefone') or '').strip()[:40] or None
+    item.endereco = endereco[:255]
+    item.bairro = bairro[:100]
+    item.referencia = (data.get('referencia') or data.get('ref') or '').strip()[:255] or None
+    item.cidade = (data.get('cidade') or item.cidade or '').strip()[:100] or None
+    item.uf = (data.get('uf') or item.uf or 'RN').strip()[:2] or 'RN'
+
+    db.session.add(item)
+    db.session.commit()
+
+    return jsonify(
+        ok=True,
+        msg='Cliente atualizado.',
+        endereco=item.to_dict()
+    )
+
+
+@app.delete('/api/cliente/clientes-recorrentes/<int:endereco_id>')
+@cliente_required
+def api_cliente_recorrente_excluir(endereco_id):
+    """
+    Exclui um cliente recorrente compartilhado.
+    Pode ser usado pelo acesso principal e pelos vendedores.
+    """
+    cli = _cliente_atual()
+    item = ClienteEndereco.query.filter_by(
+        id=endereco_id,
+        cliente_id=cli.id
+    ).first_or_404()
+
+    if bool(getattr(item, 'padrao', False)):
+        return jsonify(
+            ok=False,
+            msg='O endereço padrão do estabelecimento não pode ser excluído pela aba Clientes.'
+        ), 409
+
+    nome = item.apelido or item.contato or 'Cliente'
+    db.session.delete(item)
+    db.session.commit()
+
+    return jsonify(ok=True, msg=f'Cliente {nome} excluído.')
+
+
 @app.put('/api/cliente/enderecos/<int:endereco_id>')
 @cliente_required
 def api_cliente_endereco_editar(endereco_id):
