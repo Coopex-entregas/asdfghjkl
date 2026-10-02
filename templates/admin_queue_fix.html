@@ -1,0 +1,309 @@
+{# COOPEX - correção da atribuição/fila no admin #}
+<script id="coopex-admin-fila-atribuicao-fix">
+(function(){
+  'use strict';
+
+  const norm = s => String(s||'')
+    .normalize('NFD').replace(/[\u0300-\u036f]/g,'')
+    .toLowerCase().replace(/\s+/g,' ').trim();
+
+  function toast(msg){
+    try{
+      if(typeof window.showToast === 'function'){
+        window.showToast('<strong>'+msg+'</strong>');
+        return;
+      }
+    }catch(_){}
+    alert(msg);
+  }
+
+  function filaAtual(){
+    return [...document.querySelectorAll('#espera-lista .espera-chip[data-cooperado-id]')]
+      .map((chip, i)=>({
+        id:String(chip.dataset.cooperadoId||'').trim(),
+        nome:String(chip.dataset.cooperadoNome || chip.querySelector('.espera-chip-text')?.textContent || '').trim(),
+        pos:i+1
+      }))
+      .filter(x=>x.id);
+  }
+
+  function renumerarFila(){
+    const chips=[...document.querySelectorAll('#espera-lista .espera-chip[data-cooperado-id]')];
+    chips.forEach((chip,i)=>{
+      const n=chip.querySelector('.espera-chip-num');
+      if(n)n.textContent=(i+1)+'º';
+    });
+
+    // Atualiza somente o contador do grupo "Fila de espera"
+    document.querySelectorAll('.bank-group').forEach(g=>{
+      const btn=g.querySelector('.bank-group-btn');
+      if(!btn || !norm(btn.textContent).includes('fila de espera'))return;
+      const count=btn.querySelector('.queue-count');
+      if(count)count.textContent=String(chips.length);
+    });
+
+    const ul=document.getElementById('espera-lista');
+    if(ul){
+      const empty=ul.querySelector('#fila-vazia');
+      if(chips.length===0 && !empty){
+        const li=document.createElement('li');
+        li.id='fila-vazia';
+        li.className='small';
+        li.style.opacity='.85';
+        li.textContent='Nenhum cooperado na fila.';
+        ul.appendChild(li);
+      }else if(chips.length>0 && empty){
+        empty.remove();
+      }
+    }
+  }
+
+  function removerDaFilaVisual(cooperadoId){
+    const id=String(cooperadoId||'').trim();
+    if(!id)return;
+    document.querySelectorAll(`#espera-lista .espera-chip[data-cooperado-id="${CSS.escape(id)}"]`)
+      .forEach(x=>x.remove());
+    renumerarFila();
+
+    // Qualquer select de atribuição que esteja aberto é reconstruído,
+    // eliminando imediatamente o cooperado que acabou de sair da fila.
+    document.querySelectorAll('.coop-edit-select[data-coopex-fix="1"]').forEach(sel=>{
+      const atual=String(sel.dataset.valorAtual||'');
+      montarOpcoes(sel, atual);
+    });
+  }
+
+  function listaTodos(){
+    const arr=Array.isArray(window.COOPERADOS)?window.COOPERADOS:[];
+    const seen=new Set();
+    return arr.filter(c=>{
+      const id=String(c?.id||'');
+      if(!id || seen.has(id))return false;
+      seen.add(id);
+      return true;
+    });
+  }
+
+  function findCoop(id){
+    return listaTodos().find(c=>String(c.id)===String(id))||null;
+  }
+
+  function addOption(sel,value,text,attrs={}){
+    const o=document.createElement('option');
+    o.value=String(value??'');
+    o.textContent=String(text??'');
+    Object.entries(attrs).forEach(([k,v])=>{
+      if(v!==undefined && v!==null)o.dataset[k]=String(v);
+    });
+    sel.appendChild(o);
+    return o;
+  }
+
+  function montarOpcoes(sel, atual){
+    const valorAtual=String(atual||'').trim();
+    const fila=filaAtual();
+    const idsFila=new Set(fila.map(x=>x.id));
+    const todos=listaTodos();
+
+    sel.innerHTML='';
+
+    // SEMPRE PRIMEIRO.
+    addOption(sel,'','Sem cooperado');
+
+    // Depois, somente quem está realmente na fila AGORA.
+    fila.forEach(item=>{
+      addOption(sel,item.id,`${item.pos}º da fila — ${item.nome}`,{fila:'1'});
+    });
+
+    // Depois os escalados BASE que não estão mais na fila.
+    const idsBase = window.__COOPEX_IDS_BASE instanceof Set
+      ? window.__COOPEX_IDS_BASE
+      : null;
+
+    const extras = todos.filter(c=>{
+      const id=String(c.id);
+      if(idsFila.has(id))return false;
+      if(idsBase && idsBase.size)return idsBase.has(id);
+      // fallback: mantém disponíveis sem rótulo antigo de fila
+      return !c.na_fila;
+    });
+
+    extras.sort((a,b)=>String(a.nome||'').localeCompare(String(b.nome||''),'pt-BR'));
+    extras.forEach(c=>addOption(sel,c.id,c.nome||c.rotulo||('Cooperado '+c.id)));
+
+    // Se a entrega já tinha cooperado e ele não está em nenhuma lista,
+    // mantém só para permitir visualizar/trocar.
+    if(valorAtual && ![...sel.options].some(o=>String(o.value)===valorAtual)){
+      const c=findCoop(valorAtual);
+      addOption(sel,valorAtual,c?.nome||'Cooperado atual');
+    }
+
+    addOption(sel,'__fora_escala__','Digitar outro cooperado');
+
+    // REGRA: se a entrega está sem cooperado, permanece "Sem cooperado".
+    // Não seleciona automaticamente o primeiro da fila.
+    sel.value = valorAtual && [...sel.options].some(o=>String(o.value)===valorAtual)
+      ? valorAtual
+      : '';
+
+    sel.dataset.valorAtual=valorAtual;
+  }
+
+  function escolherOutro(sel){
+    const termo=prompt('Digite parte do nome do cooperado:');
+    if(!termo){ sel.value=sel.dataset.valorAtual||''; return; }
+
+    const q=norm(termo);
+    let achados=listaTodos().filter(c=>norm(c.nome).includes(q));
+    if(!achados.length){
+      alert('Nenhum cooperado encontrado.');
+      sel.value=sel.dataset.valorAtual||'';
+      return;
+    }
+
+    let escolhido=achados[0];
+    if(achados.length>1){
+      achados=achados.slice(0,15);
+      const n=prompt('Digite o número do cooperado:\n'+achados.map((c,i)=>`${i+1}. ${c.nome}`).join('\n'));
+      const idx=Number(n)-1;
+      if(!(idx>=0 && idx<achados.length)){
+        sel.value=sel.dataset.valorAtual||'';
+        return;
+      }
+      escolhido=achados[idx];
+    }
+
+    if(![...sel.options].some(o=>String(o.value)===String(escolhido.id))){
+      const manual=[...sel.options].find(o=>o.value==='__fora_escala__');
+      const o=document.createElement('option');
+      o.value=String(escolhido.id);
+      o.textContent=escolhido.nome;
+      sel.insertBefore(o,manual||null);
+    }
+    sel.value=String(escolhido.id);
+    salvar(sel);
+  }
+
+  async function salvar(sel){
+    if(!sel || sel.dataset.salvando==='1')return;
+    const idEntrega=String(sel.dataset.entregaId||'');
+    if(!idEntrega)return;
+
+    if(sel.value==='__fora_escala__'){
+      escolherOutro(sel);
+      return;
+    }
+
+    sel.dataset.salvando='1';
+    sel.disabled=true;
+
+    const coopId=String(sel.value||'');
+    try{
+      window.__markActionStart&&window.__markActionStart();
+
+      const fd=new FormData();
+      fd.append('cooperado_id',coopId);
+      fd.append('notificar_painel','1');
+
+      const res=await fetch('/atribuir_cooperado/'+encodeURIComponent(idEntrega),{
+        method:'POST',
+        body:fd,
+        headers:{
+          'X-Requested-With':'fetch',
+          'Accept':'application/json'
+        }
+      });
+
+      const j=await res.json().catch(()=>({}));
+      if(!res.ok || j.ok===false)throw new Error(j.message||'Falha ao atribuir cooperado.');
+
+      if(coopId){
+        // O backend já remove o cooperado da fila. Aqui só sincronizamos a tela.
+        removerDaFilaVisual(coopId);
+      }
+
+      const coop=findCoop(coopId);
+      const span=document.createElement('span');
+      span.className='coop-editable';
+      span.dataset.id=idEntrega;
+      span.dataset.cooperadoId=coopId;
+      span.title='Clique para trocar o cooperado';
+      span.textContent=coopId ? (coop?.nome||'Cooperado') : 'Sem Cooperado';
+
+      const parent=sel.parentNode;
+      if(parent)parent.replaceChild(span,sel);
+
+      try{
+        if(typeof window.atualizarLinhaEntregaDepoisEdicao==='function'){
+          window.atualizarLinhaEntregaDepoisEdicao(span,coopId);
+        }else{
+          const tr=span.closest('tr');
+          if(tr){
+            tr.dataset.hasCoop=coopId?'1':'0';
+            tr.classList.toggle('row-open',!coopId);
+            tr.classList.toggle('row-assigned',!!coopId);
+          }
+        }
+      }catch(_){}
+
+      window.__markActionEnd&&window.__markActionEnd();
+      toast(coopId?'Cooperado atribuído. Ele foi removido da fila.':'Entrega deixada sem cooperado.');
+    }catch(e){
+      window.__markActionFail&&window.__markActionFail();
+      toast(e?.message||'Não foi possível atualizar o cooperado.');
+      sel.disabled=false;
+      sel.dataset.salvando='0';
+    }
+  }
+
+  function abrirEditor(el){
+    const idEntrega=String(el.dataset.id||'');
+    const atual=String(el.dataset.cooperadoId||'');
+    if(!idEntrega)return;
+
+    const sel=document.createElement('select');
+    sel.className='coop-edit-select';
+    sel.dataset.coopexFix='1';
+    sel.dataset.entregaId=idEntrega;
+    sel.dataset.valorAtual=atual;
+    sel.style.borderRadius='12px';
+    sel.style.padding='7px 10px';
+    sel.style.fontWeight='900';
+
+    montarOpcoes(sel,atual);
+    el.parentNode.replaceChild(sel,el);
+
+    // evita o handler antigo da tela.
+    sel.addEventListener('click',e=>e.stopPropagation());
+    sel.addEventListener('change',e=>{
+      e.stopPropagation();
+      if(sel.value==='__fora_escala__')escolherOutro(sel);
+      else salvar(sel);
+    });
+
+    requestAnimationFrame(()=>sel.focus());
+  }
+
+  // Intercepta ANTES do handler antigo do admin_original.html.
+  document.addEventListener('click',function(ev){
+    const el=ev.target.closest?.('.coop-editable');
+    if(!el)return;
+    ev.preventDefault();
+    ev.stopPropagation();
+    ev.stopImmediatePropagation();
+    abrirEditor(el);
+  },true);
+
+  // Mantém contador/numeração coerentes caso o DOM mude por outro recurso.
+  const obsTarget=document.getElementById('espera-lista');
+  if(obsTarget){
+    new MutationObserver(()=>renumerarFila()).observe(obsTarget,{childList:true});
+    renumerarFila();
+  }
+
+  // Disponibiliza para depuração/manual.
+  window.COOPEX_ADMIN_FILA_FIX={
+    filaAtual,renumerarFila,removerDaFilaVisual
+  };
+})();
+</script>
