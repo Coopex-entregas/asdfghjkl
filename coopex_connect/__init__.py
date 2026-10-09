@@ -227,5 +227,27 @@ def install(host):
             app.logger.exception('COOPEX Connect: erro ao processar webhook')
             return jsonify(ok=False), 503
 
+    @bp.get('/manifest.webmanifest')
+    def connect_manifest():
+        return jsonify({
+            "name": "COOPEX CONNECT",
+            "short_name": "CONNECT",
+            "start_url": "/coopex-connect/admin/conversas",
+            "scope": "/coopex-connect/",
+            "display": "standalone",
+            "background_color": "#f4f7fd",
+            "theme_color": "#1353cf",
+            "icons": [{"src": "/coopex-connect/icon.svg",
+                       "sizes": "any", "type": "image/svg+xml", "purpose": "any maskable"}]
+        }), 200, {"Content-Type": "application/manifest+json"}
+
+    @bp.get('/icon.svg')
+    def connect_icon():
+        svg = ('<svg xmlns="http://www.w3.org/2000/svg" width="192" height="192" viewBox="0 0 192 192">'
+               '<rect width="192" height="192" rx="42" fill="#1353cf"/>'
+               '<path d="M47 96l30 30 68-68" fill="none" stroke="#fff" stroke-width="15" '
+               'stroke-linecap="round" stroke-linejoin="round"/></svg>')
+        return app.response_class(svg, mimetype="image/svg+xml")
+
     app.register_blueprint(bp, url_prefix='/coopex-connect')
     app.logger.info('COOPEX Connect blueprint registered. Apply migration before using draft endpoints.')
