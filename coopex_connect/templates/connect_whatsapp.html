@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>COOPEX CONNECT | Atendimento</title>
+<style>
+:root{font-family:Arial,sans-serif;color:#182a52;background:#f4f7fd}
+*{box-sizing:border-box}body{margin:0}header{background:#1353cf;color:#fff;padding:20px}header h1{margin:0;font-size:22px}
+main{max-width:1250px;margin:auto;padding:20px;display:grid;grid-template-columns:310px 1fr;gap:16px}
+section{background:white;border:1px solid #dce5f4;border-radius:16px;min-height:65vh;padding:16px}
+button{cursor:pointer;border:0;background:#1353cf;color:white;border-radius:9px;padding:10px 14px}
+button.secondary{background:#edf3ff;color:#1353cf}button:disabled{opacity:.55;cursor:not-allowed}
+input,textarea{width:100%;font:inherit;border:1px solid #cdd7e7;border-radius:8px;padding:12px}
+textarea{resize:vertical;min-height:90px}nav button{display:block;width:100%;text-align:left;margin:6px 0;background:#edf3ff;color:#172e61}
+nav button.active{background:#1353cf;color:white}.messages{height:42vh;overflow:auto;background:#f6f9ff;padding:12px;border-radius:12px}
+.bubble{max-width:85%;padding:11px;margin:9px 0;border-radius:11px;background:white;border:1px solid #dce5f4;white-space:pre-wrap;overflow-wrap:anywhere}
+.bubble.out{margin-left:auto;background:#e1f0ff}.bar{display:flex;gap:8px;flex-wrap:wrap;margin-top:10px}
+small{color:#61728e}#notice{margin:9px 0;min-height:20px}
+@media(max-width:750px){main{display:block;padding:10px}section{min-height:auto;margin-bottom:12px}.messages{height:40vh}}
+</style></head>
+<body><header><h1>COOPEX CONNECT</h1><div>Central de atendimento WhatsApp - fase de testes</div></header>
+<main><section><h3>Conversas</h3><small>Mensagens recentes</small><nav id="contacts"></nav></section>
+<section><h3 id="selected">Selecione um contato</h3><div id="notice" role="status"></div>
+<div id="messages" class="messages"></div>
+<h4>Resposta do atendente</h4><textarea id="reply" placeholder="Digite ou peça uma sugestão de resposta"></textarea>
+<div class="bar"><button class="secondary" id="refresh">Atualizar</button><button class="secondary" id="suggest" disabled>Sugerir com GPT</button><button id="send" disabled>Enviar mensagem</button></div>
+<small>A IA apenas sugere texto. O atendente revisa e confirma o envio. Nenhuma entrega ou pagamento é aprovado aqui.</small>
+</section></main>
+<script>
+let messages=[],current=null;
+const el=id=>document.getElementById(id);
+function notice(t){el("notice").textContent=t}
+async function api(path,options){const r=await fetch(path,options);let d=await r.json();if(!r.ok||d.ok===false)throw Error(d.error||"Falha na solicitação");return d}
+function contacts(){const seen=new Map();for(const m of messages){const k=m.numero_whatsapp+":"+m.telefone;if(!seen.has(k))seen.set(k,{key:k,phone:m.telefone,nid:m.numero_whatsapp,last:m})}el("contacts").replaceChildren();for(const item of seen.values()){const btn=document.createElement("button");btn.textContent=item.phone+" · "+item.last.texto.slice(0,35);btn.className=current===item.key?"active":"";btn.onclick=()=>{current=item.key;draw()};el("contacts").appendChild(btn)}}
+function draw(){contacts();el("messages").replaceChildren();const subset=messages.filter(m=>m.numero_whatsapp+":"+m.telefone===current).reverse();el("selected").textContent=subset.length?("Conversa · "+subset[0].telefone):"Selecione um contato";for(const m of subset){const d=document.createElement("div");d.className="bubble "+(m.direcao==="out"?"out":"");d.textContent=m.texto;el("messages").appendChild(d)}el("suggest").disabled=el("send").disabled=!subset.length;el("messages").scrollTop=el("messages").scrollHeight}
+async function load(){try{const d=await api("/coopex-connect/admin/whatsapp");messages=d.mensagens;if(!current&&messages.length)current=messages[0].numero_whatsapp+":"+messages[0].telefone;draw();notice("")}catch(e){notice(e.message)}}
+function selected(){const m=messages.find(x=>x.numero_whatsapp+":"+x.telefone===current);return m?{telefone:m.telefone,numero_whatsapp:m.numero_whatsapp}:null}
+async function action(kind){const target=selected();if(!target)return;const btn=el(kind);btn.disabled=true;notice("Aguarde...");try{if(kind==="suggest"){const d=await api("/coopex-connect/admin/whatsapp/sugerir",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(target)});el("reply").value=d.sugestao;notice("Sugestão pronta. Revise antes de enviar.")}else{const mensagem=el("reply").value.trim();if(!mensagem)return notice("Digite uma mensagem.");if(!confirm("Enviar mensagem para "+target.telefone+"?"))return;await api("/coopex-connect/admin/whatsapp/responder",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({...target,mensagem})});el("reply").value="";await load();notice("Envio solicitado com sucesso.")}}catch(e){notice(e.message)}finally{btn.disabled=false}}
+el("refresh").onclick=load;el("suggest").onclick=()=>action("suggest");el("send").onclick=()=>action("send");load();
+</script></body></html>
