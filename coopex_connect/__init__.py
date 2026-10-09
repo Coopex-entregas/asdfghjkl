@@ -46,6 +46,8 @@ def install(host):
         aprovado_por = db.Column(db.String(100))
 
     bp = Blueprint('coopex_connect', __name__, template_folder='templates')
+    from .whatsapp_feature import install as install_whatsapp
+    process_whatsapp = install_whatsapp(app, db, bp)
 
     def admin_required(f):
         @wraps(f)
@@ -216,8 +218,14 @@ def install(host):
             abort(403)
         # Safe initial version: receives authenticated webhooks but does not send messages,
         # interpret audio, register deliveries, or persist personal data until queue integration.
-        app.logger.info('COOPEX Connect: webhook autenticado (processamento desativado)')
-        return jsonify(ok=True)
+        try:
+            payload = request.get_json(silent=True) or {}
+            received = process_whatsapp(payload)
+            return jsonify(ok=True, recebidas=received)
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('COOPEX Connect: erro ao processar webhook')
+            return jsonify(ok=False), 503
 
     app.register_blueprint(bp, url_prefix='/coopex-connect')
     app.logger.info('COOPEX Connect blueprint registered. Apply migration before using draft endpoints.')
