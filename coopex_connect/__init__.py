@@ -107,6 +107,29 @@ def install(host):
         d.status = 'incompleto' if problems else 'aguardando_aprovacao'
         return problems
 
+    @bp.get('/admin/diagnostico')
+    @admin_required
+    def diagnostico():
+        from sqlalchemy import inspect
+        required = ('connect_delivery_draft', 'connect_whatsapp_message')
+        try:
+            inspector = inspect(db.engine)
+            tables = {name: inspector.has_table(name) for name in required}
+        except Exception:
+            app.logger.exception('COOPEX CONNECT: verificacao de banco falhou')
+            return jsonify(ok=False, error='Banco indisponivel'), 503
+        return jsonify(
+            ok=all(tables.values()),
+            tabelas=tables,
+            integracoes={
+                'openai_configurada': bool(os.environ.get('OPENAI_API_KEY')),
+                'meta_token_configurado': bool(os.environ.get('COOPEX_META_ACCESS_TOKEN')),
+                'meta_app_secret_configurado': bool(os.environ.get('COOPEX_META_APP_SECRET')),
+                'meta_verify_token_configurado': bool(os.environ.get('COOPEX_META_VERIFY_TOKEN'))
+            },
+            modo='atendimento_manual_sem_envio_automatico'
+        )
+
     @bp.get('/admin')
     @admin_required
     def panel():
