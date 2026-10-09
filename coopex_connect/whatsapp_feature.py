@@ -74,6 +74,8 @@ def install(app, db, bp):
 
     @bp.post("/admin/whatsapp/responder")
     def whatsapp_reply():
+        if os.environ.get("COOPEX_CONNECT_WHATSAPP_SEND_ENABLED") != "1":
+            return jsonify(ok=False, error="Envio desativado ate homologacao"), 503
         if not session.get("is_admin"):
             return jsonify(ok=False, error="Acesso negado"), 403
         payload = request.get_json(silent=True) or {}
