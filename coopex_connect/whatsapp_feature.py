@@ -6,6 +6,7 @@ import urllib.error
 import urllib.request
 from datetime import datetime
 from flask import jsonify, request, session, render_template
+from sqlalchemy.exc import IntegrityError
 
 def _send(number_id, phone, body):
     token = os.environ.get("COOPEX_META_ACCESS_TOKEN", "").strip()
@@ -103,7 +104,7 @@ def install(app, db, bp):
                         continue
                     message_id = str(msg.get("id") or "")[:180]
                     phone = "".join(ch for ch in str(msg.get("from") or "") if ch.isdigit())
-                    body = str((msg.get("text") or {}).get("body") or "").strip()[:4000]
+                    body = str((msg.get("text") or {}).get("body") or "").strip()
                     if not (message_id and 10 <= len(phone) <= 15 and body):
                         continue
                     if ConnectWhatsAppMessage.query.filter_by(external_id=message_id).first():
@@ -113,7 +114,12 @@ def install(app, db, bp):
                     try:
                         db.session.commit()
                         added += 1
+                    except IntegrityError:
+                        db.session.rollback()
+                        if not ConnectWhatsAppMessage.query.filter_by(external_id=message_id).first():
+                            raise
                     except Exception:
                         db.session.rollback()
+                        raise
         return added
     return receive
