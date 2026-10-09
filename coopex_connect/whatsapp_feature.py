@@ -5,7 +5,7 @@ import secrets
 import urllib.error
 import urllib.request
 from datetime import datetime
-from flask import jsonify, request, session
+from flask import jsonify, request, session, render_template
 
 def _send(number_id, phone, body):
     token = os.environ.get("COOPEX_META_ACCESS_TOKEN", "").strip()
@@ -42,6 +42,34 @@ def install(app, db, bp):
         return jsonify(ok=True, mensagens=[{"id": m.id, "telefone": m.phone,
             "numero_whatsapp": m.phone_number_id, "direcao": m.direction,
             "texto": m.body, "criado_em": m.created_at.isoformat() + "Z"} for m in rows])
+
+    @bp.get("/admin/conversas")
+    def conversations():
+        if not session.get("is_admin"):
+            return jsonify(ok=False), 403
+        return render_template("connect_whatsapp.html")
+
+    @bp.post("/admin/whatsapp/sugerir")
+    def suggestion():
+        if not session.get("is_admin"):
+            return jsonify(ok=False), 403
+        data = request.get_json(silent=True) or {}
+        phone = "".join(ch for ch in str(data.get("telefone") or "") if ch.isdigit())
+        number_id = str(data.get("numero_whatsapp") or "")
+        if not (10 <= len(phone) <= 15 and number_id.isdigit()):
+            return jsonify(ok=False, error="Contato inválido"), 400
+        msgs = list(reversed(ConnectWhatsAppMessage.query.filter_by(
+            phone=phone, phone_number_id=number_id).order_by(
+            ConnectWhatsAppMessage.id.desc()).limit(12).all()))
+        if not msgs:
+            return jsonify(ok=False, error="Conversa não encontrada"), 404
+        from .gpt_feature import suggest
+        try:
+            draft = suggest(msgs)
+        except Exception:
+            app.logger.exception("COOPEX Connect GPT indisponível")
+            return jsonify(ok=False, error="GPT indisponível"), 503
+        return jsonify(ok=True, sugestao=draft)
 
     @bp.post("/admin/whatsapp/responder")
     def whatsapp_reply():
