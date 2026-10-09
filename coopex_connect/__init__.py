@@ -195,6 +195,8 @@ def install(host):
     @bp.post('/admin/rascunhos/<int:draft_id>/aprovar')
     @admin_required
     def approve(draft_id):
+        if os.environ.get('COOPEX_CONNECT_DELIVERY_APPROVAL_ENABLED') != '1':
+            return jsonify(ok=False, error='Aprovacao de entregas indisponivel ate homologacao'), 503
         # Lock the draft so two concurrent approvers cannot create two deliveries.
         d = db.session.query(ConnectDraft).filter_by(id=draft_id).with_for_update().first()
         if not d:
@@ -271,6 +273,18 @@ def install(host):
                '<path d="M47 96l30 30 68-68" fill="none" stroke="#fff" stroke-width="15" '
                'stroke-linecap="round" stroke-linejoin="round"/></svg>')
         return app.response_class(svg, mimetype="image/svg+xml")
+
+    # Automaticamente cria APENAS as duas tabelas novas. Uma falha nao impede
+    # o funcionamento do aplicativo principal; diagnostico informa pendencias.
+    try:
+        with app.app_context():
+            for table_name in ('connect_delivery_draft', 'connect_whatsapp_message'):
+                model_table = db.metadata.tables.get(table_name)
+                if model_table is None:
+                    raise RuntimeError('Modelo ausente: ' + table_name)
+                model_table.create(bind=db.engine, checkfirst=True)
+    except Exception:
+        app.logger.exception('COOPEX CONNECT: banco nao preparado; sistema principal preservado')
 
     app.register_blueprint(bp, url_prefix='/coopex-connect')
     app.logger.info('COOPEX Connect blueprint registered. Apply migration before using draft endpoints.')
