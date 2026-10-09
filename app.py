@@ -15208,6 +15208,12 @@ def api_rastreio_pos(token):
                    cooperado=coop.nome,
                    quando_local=when_local)
 
+# COOPEX CONNECT
+import sys
+import coopex_connect
+
+coopex_connect.install(sys.modules[__name__])
+
 
 if __name__ == '__main__':
     # Quando executado localmente/EXE, instala também os recursos de atualização
