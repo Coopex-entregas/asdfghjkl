@@ -418,3 +418,10 @@ body:not(.dark) #tbl .tabela .pill{opacity:1!important}
 .panel-head .cx-bulk-head-btn:hover{background:rgba(255,255,255,.24)!important}
 @media(max-width:650px){.panel-head .cx-bulk-head-btn{font-size:10px!important;padding:6px 8px!important}}
 </style>
+
+<style id="cx-remove-unneeded-quick-view-line">
+/* Guarda os elementos para os scripts existentes, mas nao ocupa altura */
+.quick-view-bar{display:none!important;height:0!important;min-height:0!important;margin:0!important;padding:0!important;border:0!important}
+#chipOpenOnly,#chipAssignedInfo{display:none!important}
+.panel .table-shell{margin-top:4px!important}
+</style>
