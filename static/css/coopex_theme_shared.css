@@ -1,0 +1,9 @@
+/* COOPEX: identidade visual compartilhada, sem remover nem substituir funcoes */
+:root{--coopex-royal:#1457e5;--coopex-royal-dark:#0b3eb8;--coopex-stroke:#d8e5fa;--coopex-radius:12px}
+body{font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+button,input,select,textarea{font-family:inherit}
+button,a,input,select,textarea{transition:border-color .14s ease,box-shadow .14s ease,background-color .14s ease}
+button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid #4585fc;outline-offset:2px}
+button:not(:disabled){cursor:pointer}
+.cx-back-compact{width:38px!important;min-width:38px!important;height:38px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;border-radius:10px!important;padding:0!important;font-size:20px!important;line-height:1!important}
+@media(max-width:700px){.cx-back-compact{width:36px!important;min-width:36px!important;height:36px!important}}
