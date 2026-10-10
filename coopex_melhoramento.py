@@ -2,7 +2,7 @@
 A chave da OpenAI recebida pelo formulario vive somente durante a requisicao.
 Nao gravar tokens em sessao, logs, banco ou repositorio.
 """
-import os, time, hmac, hashlib, collections
+import os, time, hmac, hashlib, collections, base64
 from datetime import datetime, timezone
 from flask import Blueprint, request, session, render_template_string, redirect, url_for, jsonify
 from sqlalchemy import text
@@ -49,8 +49,29 @@ def _health(app, db):
     add('Implantação','neutro','A verificação local não mede automaticamente o estado Live do Render')
     return checks
 
-PAGE = "<!doctype html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>COOPEX Melhoramento</title><style>\n*{box-sizing:border-box}body{margin:0;background:#eff5ff;font:14px Arial,sans-serif;color:#102752}header{background:linear-gradient(105deg,#1265eb,#0d378e);color:white;padding:18px 25px;display:flex;justify-content:space-between}header a{color:white}main{max-width:1060px;margin:24px auto;padding:0 15px}.card{background:white;border:1px solid #dfe8f7;border-radius:15px;padding:19px;margin:0 0 16px;box-shadow:0 7px 18px #12377a0c}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.check{border:1px solid #dbe6f8;background:#f9fbff;padding:13px;border-radius:11px}.check strong{display:block;margin-bottom:6px}label{display:block;font-weight:bold;margin:12px 0 6px}input,textarea{width:100%;padding:12px;border:1px solid #c0d0ed;border-radius:9px;font:inherit;color:#152e5e}textarea{height:130px}button{background:#155de1;color:white;padding:11px 16px;border:0;border-radius:9px;cursor:pointer;font-weight:bold}button:disabled{opacity:.6}.muted{color:#617395}#answer{white-space:pre-wrap;line-height:1.5;overflow-wrap:anywhere}@media(max-width:620px){.grid{grid-template-columns:1fr}}</style></head><body><header><strong>COOPEX • Melhoramento</strong><a href=\"/estatisticas_cooperado\">Voltar ao Dashboard</a></header><main>\n{% if not access %}<section class=\"card\"><h1>Acesso restrito</h1><p class=\"muted\">Credenciais adicionais da COOPEX</p>{% if error %}<p>{{error}}</p>{% endif %}<form method=\"post\"><label>Usuário</label><input name=\"usuario\" autocomplete=\"username\" required><label>Senha</label><input name=\"senha\" type=\"password\" autocomplete=\"current-password\" required><p><button>Entrar</button></p></form></section>\n{% else %}<h1>Saúde e melhorias do sistema</h1><p class=\"muted\">Diagnóstico local, sujeito a verificações complementares do Render e GitHub.</p><section class=\"card\"><h2>Saúde do sistema</h2><div class=\"grid\">{% for c in checks %}<div class=\"check\"><strong>{{c.name}} · {{c.status}}</strong><span>{{c.details}}</span></div>{% endfor %}</div></section>\n<section class=\"card\"><h2>COOPEX Assistente GPT</h2><p class=\"muted\">Solicite análise de lentidão, erros e melhorias. Sua chave, se digitada, será usada apenas nesta solicitação.</p><form id=\"improve\"><label>Chave OpenAI (opcional caso esteja no Render)</label><input id=\"key\" type=\"password\" autocomplete=\"off\"><label>O que deseja melhorar?</label><textarea id=\"ask\" required maxlength=\"3000\"></textarea><p><button id=\"run\">Analisar com GPT</button></p></form><div class=\"check\" id=\"answer\" hidden></div></section>\n<section class=\"card\"><h2>Aplicação de melhorias</h2><p>O diagnóstico propõe correções. Esta versão não aplica automaticamente código ao sistema: qualquer alteração exige revisão, teste e rollback.</p><form method=\"post\" action=\"/melhoramento/sair\"><button>Bloquear área</button></form></section>\n<script>\ndocument.getElementById('improve').addEventListener('submit',async e=>{e.preventDefault();let b=document.getElementById('run'),a=document.getElementById('answer');a.hidden=false;b.disabled=true;a.textContent='Analisando...';try{let r=await fetch('/melhoramento/analisar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({pedido:document.getElementById('ask').value,api_key:document.getElementById('key').value})});let j=await r.json();a.textContent=j.ok?j.analise+'\\\\n\\\\n'+j.nota:j.error}catch(e){a.textContent='Falha na conexão.'}finally{b.disabled=false;document.getElementById('key').value=''}})\n</script>{% endif %}</main></body></html>"
+PAGE = "<!doctype html><html lang=\"pt-br\"><head><meta charset=\"utf-8\"><meta name=\"viewport\" content=\"width=device-width,initial-scale=1\"><title>COOPEX Melhoramento</title><style>\n*{box-sizing:border-box}body{margin:0;background:#eff5ff;font:14px Arial,sans-serif;color:#102752}header{background:linear-gradient(105deg,#1265eb,#0d378e);color:white;padding:18px 25px;display:flex;justify-content:space-between}header a{color:white}main{max-width:1060px;margin:24px auto;padding:0 15px}.card{background:white;border:1px solid #dfe8f7;border-radius:15px;padding:19px;margin:0 0 16px;box-shadow:0 7px 18px #12377a0c}.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.check{border:1px solid #dbe6f8;background:#f9fbff;padding:13px;border-radius:11px}.check strong{display:block;margin-bottom:6px}label{display:block;font-weight:bold;margin:12px 0 6px}input,textarea{width:100%;padding:12px;border:1px solid #c0d0ed;border-radius:9px;font:inherit;color:#152e5e}textarea{height:130px}button{background:#155de1;color:white;padding:11px 16px;border:0;border-radius:9px;cursor:pointer;font-weight:bold}button:disabled{opacity:.6}.muted{color:#617395}#answer{white-space:pre-wrap;line-height:1.5;overflow-wrap:anywhere}@media(max-width:620px){.grid{grid-template-columns:1fr}}</style></head><body><header><strong>COOPEX • Melhoramento</strong><a href=\"/estatisticas_cooperado\">Voltar ao Dashboard</a></header><main>\n{% if not access %}<section class=\"card\"><h1>Acesso restrito</h1><p class=\"muted\">Credenciais adicionais da COOPEX</p>{% if error %}<p>{{error}}</p>{% endif %}<form method=\"post\"><label>Usuário</label><input name=\"usuario\" autocomplete=\"username\" required><label>Senha</label><input name=\"senha\" type=\"password\" autocomplete=\"current-password\" required><p><button>Entrar</button></p></form></section>\n{% else %}<h1>Saúde e melhorias do sistema</h1><p class=\"muted\">Diagnóstico local, sujeito a verificações complementares do Render e GitHub.</p><section class=\"card\"><h2>Saúde do sistema</h2><div class=\"grid\">{% for c in checks %}<div class=\"check\"><strong>{{c.name}} · {{c.status}}</strong><span>{{c.details}}</span></div>{% endfor %}</div></section>\n<section class=\"card\"><h2>COOPEX Assistente GPT</h2><p class=\"muted\">Solicite análise de lentidão, erros e melhorias. Sua chave, se digitada, será usada apenas nesta solicitação.</p><form id=\"improve\"><label>Chave OpenAI (opcional caso esteja no Render)</label><input id=\"key\" type=\"password\" autocomplete=\"off\"><div style=\"display:flex;gap:8px;align-items:center;margin-top:10px;flex-wrap:wrap\"><button type=\"button\" id=\"saveKey\">Salvar chave</button><button type=\"button\" id=\"removeKey\" style=\"background:#64748b\">Excluir chave salva</button><span id=\"keyStatus\" class=\"muted\">Verificando configuração...</span></div><label>Pergunte sobre entregas, clientes, cooperados, contratos, histórico ou melhorias</label><textarea id=\"ask\" required maxlength=\"3000\"></textarea><p><button id=\"run\">Consultar / Analisar com GPT</button></p></form><div class=\"check\" id=\"answer\" hidden></div></section>\n<section class=\"card\"><h2>Aplicação de melhorias</h2><p>O diagnóstico propõe correções. Esta versão não aplica automaticamente código ao sistema: qualquer alteração exige revisão, teste e rollback.</p><form method=\"post\" action=\"/melhoramento/sair\"><button>Bloquear área</button></form></section>\n<script>\ndocument.getElementById('improve').addEventListener('submit',async e=>{e.preventDefault();let b=document.getElementById('run'),a=document.getElementById('answer');a.hidden=false;b.disabled=true;a.textContent='Analisando...';try{let r=await fetch('/melhoramento/analisar',{method:'POST',headers:{'Content-Type':'application/json'},credentials:'same-origin',body:JSON.stringify({pedido:document.getElementById('ask').value,api_key:document.getElementById('key').value})});let j=await r.json();a.textContent=j.ok?j.analise+'\\\\n\\\\n'+j.nota:j.error}catch(e){a.textContent='Falha na conexão.'}finally{b.disabled=false;document.getElementById('key').value=''}})\nfetch('/melhoramento/chave').then(r=>r.json()).then(d=>{document.getElementById('keyStatus').textContent=d.salva?'Chave salva no sistema':(d.ambiente?'Chave configurada no Render':'Nenhuma chave salva')}).catch(()=>{});document.getElementById('saveKey').addEventListener('click',async()=>{let k=document.getElementById('key'),status=document.getElementById('keyStatus');try{let r=await fetch('/melhoramento/chave',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({api_key:k.value})});let d=await r.json();status.textContent=d.message||d.error;k.value=''}catch(e){status.textContent='Falha ao salvar'}});document.getElementById('removeKey').addEventListener('click',async()=>{if(!confirm('Excluir a chave salva?'))return;let r=await fetch('/melhoramento/chave',{method:'DELETE'});let d=await r.json();document.getElementById('keyStatus').textContent=d.ok?'Chave excluída':d.error});\n</script>{% endif %}</main></body></html>"
 
+def _key_cipher():
+    from cryptography.fernet import Fernet
+    secret=os.environ.get('COOPEX_API_ENCRYPTION_KEY') or os.environ.get('SECRET_KEY','')
+    if not secret or secret=='COOPEX_ULTRA_SEGURA_2024_FIXA' or len(secret)<24:
+        raise ValueError('Configure COOPEX_API_ENCRYPTION_KEY no ambiente do Render (mínimo 24 caracteres aleatórios).')
+    derived=base64.urlsafe_b64encode(hashlib.sha256(('coopex-api-key:v1:'+secret).encode()).digest())
+    return Fernet(derived)
+
+def _key_store(db):
+    db.session.execute(text('CREATE TABLE IF NOT EXISTS coopex_ai_secrets (id INTEGER PRIMARY KEY, ciphertext TEXT NOT NULL)'))
+    db.session.commit()
+
+def _saved_api_key(db):
+    try:
+        cipher=_key_cipher()
+        _key_store(db)
+        row=db.session.execute(text('SELECT ciphertext FROM coopex_ai_secrets WHERE id=1')).scalar()
+        return cipher.decrypt(row.encode()).decode() if row else ''
+    except Exception:
+        db.session.rollback()
+        return ''
 
 def _operational_snapshot(db, question):
     """Somente SQL parametrizado e tabelas permitidas. Nenhum SQL gerado pela IA."""
@@ -136,12 +157,37 @@ def install(app,db):
         if not _auth():return jsonify(ok=False,error='Não autorizado'),403
         return jsonify(ok=True,checks=_health(app,db),measured_at=datetime.now(timezone.utc).isoformat())
 
+
+    @bp.route('/chave',methods=['GET','POST','DELETE'])
+    def chave():
+        if not _auth():return jsonify(ok=False,error='Não autorizado'),403
+        if request.method=='GET':
+            return jsonify(ok=True,salva=bool(_saved_api_key(db)),ambiente=bool(os.environ.get('OPENAI_API_KEY')))
+        try:
+            cipher=_key_cipher()
+            _key_store(db)
+        except ValueError as exc:
+            return jsonify(ok=False,error=str(exc)),400
+        if request.method=='DELETE':
+            db.session.execute(text('DELETE FROM coopex_ai_secrets WHERE id=1'))
+            db.session.commit()
+            return jsonify(ok=True,salva=False)
+        payload=request.get_json(silent=True) or {}
+        key=str(payload.get('api_key') or '').strip()
+        if not key.startswith('sk-') or len(key)>260:
+            return jsonify(ok=False,error='Informe uma chave OpenAI válida.'),400
+        ciphertext=cipher.encrypt(key.encode()).decode()
+        db.session.execute(text('DELETE FROM coopex_ai_secrets WHERE id=1'))
+        db.session.execute(text('INSERT INTO coopex_ai_secrets (id,ciphertext) VALUES (1,:ciphertext)'),{'ciphertext':ciphertext})
+        db.session.commit()
+        return jsonify(ok=True,salva=True,message='Chave salva de forma criptografada no banco de dados.')
+
     @bp.route('/analisar',methods=['POST'])
     def analisar():
         if not _auth():return jsonify(ok=False,error='Não autorizado'),403
         payload=request.get_json(silent=True) or {}
         prompt=str(payload.get('pedido') or '').strip()[:_MAX_PROMPT]
-        key=str(payload.get('api_key') or '').strip() or os.environ.get('OPENAI_API_KEY','')
+        key=str(payload.get('api_key') or '').strip() or _saved_api_key(db) or os.environ.get('OPENAI_API_KEY','')
         if not prompt:return jsonify(ok=False,error='Descreva o que deseja melhorar.'),400
         if not key:return jsonify(ok=False,error='Insira sua chave da API OpenAI ou configure OPENAI_API_KEY no Render.'),400
         if len(key)>260:return jsonify(ok=False,error='Chave inválida.'),400
