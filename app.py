@@ -2083,8 +2083,8 @@ def sincronizar_credito_da_entrega(entrega_id: int) -> Decimal:
         e.recebido_por = "Valor foi estornado"
     elif usa_credito:
         e.status_pagamento = "pago"
-        if not (e.recebido_por or "").strip():
-            e.recebido_por = "Crédito automático"
+        # Credito automatico define pagamento, mas nao identifica o destinatario.
+        # Nao preencher o campo recebido_por automaticamente.
     # Movimento novo altera somente o saldo consolidado pela diferença:
     # débito => diminui saldo; estorno => aumenta saldo.
     if diferenca != Decimal("0.00"):
