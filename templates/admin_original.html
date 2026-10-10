@@ -3193,10 +3193,15 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
           const fd = new FormData();
           fd.append('cooperado_id', coopId);
           fd.append('notificar_painel', '1');
-          const res = await fetch('/atribuir_cooperado/' + encodeURIComponent(idEntrega), {
-            method:'POST',body:fd,headers:{'X-Requested-With':'fetch'},credentials:'same-origin'
+          const res = await fetch('/atribuir_cooperado/' + encodeURIComponent(idEntrega) + '?format=json', {
+            method:'POST',body:fd,
+            headers:{'X-Requested-With':'XMLHttpRequest','Accept':'application/json'},
+            credentials:'same-origin',redirect:'error'
           });
-          if(!res.ok) throw new Error('Falha ao atribuir (HTTP '+res.status+')');
+          const data = await res.json().catch(()=>({ok:false,message:'Resposta inválida do servidor.'}));
+          if(!res.ok || data.ok !== true || String(data.cooperado_id || '') !== String(coopId)){
+            throw new Error(data.message || 'O servidor não confirmou a atribuição (HTTP '+res.status+').');
+          }
           const novoSpan = restaurar(coopId);
           atualizarLinhaEntregaDepoisEdicao(novoSpan, coopId);
           if(coopId) removerDaFilaPorNome(escolhido?.nome || '');
