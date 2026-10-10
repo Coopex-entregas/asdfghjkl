@@ -3181,10 +3181,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       async function salvar(){
         if(salvando) return;
         const coopId = sel.value || '';
-        if(coopId === valorAnterior){
-          restaurar(valorAnterior);
-          return;
-        }
+        // Confirmar tambem ao escolher o mesmo nome ou "Sem Cooperado".
+        // Apenas restaurar visualmente depois da resposta efetiva do servidor.
         salvando = true;
         sel.disabled = true;
         const escolhido = (window.COOPERADOS || []).find(x => String(x.id) === String(coopId));
@@ -3226,10 +3224,14 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(sel.isConnected)sel.replaceWith(span);
         return span;
       }
-      // A escolha grava imediatamente. Sair do campo sem alterar nao atribui.
+      // Salvar tanto na selecao quanto ao clicar fora, inclusive mesmo valor.
       sel.addEventListener('change', salvar);
+      sel.addEventListener('blur', ()=>{
+        if(sel.isConnected && !salvando) salvar();
+      });
       sel.addEventListener('keydown', ev=>{
         if(ev.key==='Escape'){ev.preventDefault();restaurar(valorAnterior)}
+        if(ev.key==='Enter'){ev.preventDefault();salvar()}
       });
     });
 
