@@ -42,6 +42,7 @@
     @media print { .no-print { display:none !important; } body { margin:0; } }
     @page { size: 80mm auto; margin: 0; }
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
   <div class="ticket">
@@ -117,6 +118,7 @@
     // Autoimpressão ao abrir (pequeno atraso para carregar imagens)
     setTimeout(function(){ try { window.print(); } catch(e){} }, 300);
   </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
 

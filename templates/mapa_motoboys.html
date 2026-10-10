@@ -82,6 +82,7 @@
     .badge.mix-go{background:linear-gradient(90deg,#e9f9f0 0 50%,#fff4df 50%);color:#175c37;border-color:#dce9c0}
     .badge.mix-ro{background:linear-gradient(90deg,#fff0f0 0 50%,#fff4df 50%);color:#903322;border-color:#ffd8c8}
 </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
   <div id="map"></div>
@@ -344,5 +345,6 @@
     setInterval(fetchData, POLL_MS);
 
 </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>

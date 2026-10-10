@@ -25,6 +25,7 @@
     @media(max-width:720px){.scale-page{padding:10px}.summary-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.side-stack{grid-template-columns:1fr}.filter-grid{grid-template-columns:1fr 1fr}.filter-grid .cx-btn{width:100%}.scale-head-title small{display:none}.cx-topbar{position:sticky}.resolver{min-width:230px}.adjust-grid{grid-template-columns:1fr}.adjust-grid .full{grid-column:auto}.adjust-footer,.adjust-footer-left,.adjust-footer-right{flex-direction:column;width:100%}.adjust-footer .cx-btn{width:100%}}
     @media(max-width:440px){.summary-grid,.filter-grid{grid-template-columns:1fr}.summary-card{padding:11px}.cx-topbar .cx-btn{padding:8px}.hide-mobile{display:none}}
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body class="cx-page">
 <header class="cx-topbar">
@@ -229,5 +230,6 @@
   form.addEventListener('submit',()=>{salvar.disabled=true;salvar.textContent=editId?'Salvando...':'Adicionando...'});
 })();
 </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>

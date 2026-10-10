@@ -529,6 +529,7 @@
       .print-head p{font-size:12px;margin:4px 0;color:#111}
     }
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 
 <body>
@@ -1027,5 +1028,6 @@
     Promise.allSettled([loadRotas(), loadServicos(), loadRetorno()]);
     window.addEventListener('unhandledrejection',e=>{showMsg((e.reason&&e.reason.message)||'Erro ao comunicar com o servidor.');});
   </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>

@@ -24,6 +24,7 @@
     .leaflet-control-attribution{display:none}
     @media(max-width:760px){.top{left:12px;right:12px;top:12px}.bottom{left:12px;right:12px;bottom:12px;max-width:none}.range{width:160px}}
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
   <div id="map"></div>
@@ -122,5 +123,6 @@
 
     loadReplay().catch(err=>{ $('titleInfo').textContent = 'Falha ao carregar replay'; $('metaInfo').textContent = err.message || 'Erro'; console.error(err); });
   </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>

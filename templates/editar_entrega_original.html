@@ -21,6 +21,7 @@
     .btn-row{display:flex;gap:12px;flex-wrap:wrap}.btn,.btn-soft{border:none;border-radius:16px;padding:14px 18px;font:inherit;font-weight:900;cursor:pointer}.btn{background:linear-gradient(135deg,var(--royal),var(--royal2));color:#fff;box-shadow:var(--shadow2)}.btn-soft{background:#eef3ff;color:var(--royal)}.submit-row{display:flex;justify-content:flex-end;margin-top:8px}
     @media (max-width:760px){.grid,.grid-3{grid-template-columns:1fr}.submit-row .btn{width:100%}}
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
   <div class="wrap">
@@ -152,5 +153,6 @@
       }
     {% endif %}
   </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
