@@ -308,3 +308,40 @@
   else iniciar();
 })();
 </script>
+
+<style id="coopex-admin-mockup-final">
+/* Sobreposicao FINAL apos os estilos da toolbar - visual identico em estrutura
+   aos dois temas de referencia; nao altera rotas, botoes ou eventos. */
+:root{--cx-blue:#0069ff;--cx-navy:#06234a}
+body{background:#f6f9ff!important;color:#112d6d!important}
+body.dark{background:#06142c!important;color:#ebf3ff!important}
+.bank-toolbar-wrap{background:#fff!important;border:1px solid #dde9fb!important;box-shadow:0 2px 14px rgba(20,58,116,.07)!important;min-height:52px!important}
+body.dark .bank-toolbar-wrap{background:#071831!important;border-color:#17345f!important;box-shadow:none!important}
+.bank-toolbar{min-height:52px!important}
+.bank-toolbar .bank-group-btn{height:52px!important;color:#0d2d70!important;padding:0 12px!important;border-radius:8px!important}
+.bank-toolbar .bank-group-btn *{color:inherit!important}
+body.dark .bank-toolbar .bank-group-btn{color:#f1f6ff!important}
+.bank-toolbar .bank-group-btn:hover,.bank-toolbar .bank-group.open>.bank-group-btn{background:#eaf2ff!important;color:#0757d4!important;box-shadow:none!important}
+body.dark .bank-toolbar .bank-group-btn:hover,body.dark .bank-toolbar .bank-group.open>.bank-group-btn{background:#122b55!important;color:#fff!important}
+.admin-toolbar-right .kpi{background:#fff!important;color:#123879!important;border:1px solid #e1eafd!important;border-radius:9px!important}
+.admin-toolbar-right .kpi .kpi-icon,.admin-toolbar-right .kpi span:not(.kpi-icon){color:#0a56d8!important}
+.admin-toolbar-right .kpi small{color:#4f6795!important}
+body.dark .admin-toolbar-right .kpi{background:#102848!important;border-color:#25456f!important;color:#fff!important}
+body.dark .admin-toolbar-right .kpi small{color:#c0d0ee!important}
+body.dark .admin-toolbar-right .kpi .kpi-icon,body.dark .admin-toolbar-right .kpi span:not(.kpi-icon){color:#fff!important}
+.admin-toolbar-right .theme-toggle{width:42px!important;max-width:42px!important;min-width:42px!important;padding:0!important;background:#edf4ff!important;border:1px solid #d9e7ff!important;color:#0d58c6!important}
+body.dark .admin-toolbar-right .theme-toggle{background:#18375f!important;border-color:#345480!important;color:#fff!important}
+.admin-toolbar-right .theme-toggle #themeText{display:none!important}
+.admin-toolbar-right .theme-toggle .theme-icon{margin:auto!important;color:inherit!important;background:transparent!important}
+.admin-toolbar-right .logout{background:#ef4444!important;color:#fff!important;border-color:#ef4444!important}
+#supervisao-live-indicator{padding:0!important;width:16px!important;min-width:16px!important;height:16px!important;border-radius:999px!important;overflow:hidden!important;gap:0!important;box-shadow:none!important}
+#supervisao-live-indicator .txt{display:none!important}
+#supervisao-live-indicator .dot{margin:auto!important}
+.filters-actions{grid-template-columns:repeat(5,minmax(0,1fr))!important}
+#btnAutoGlobal,#btnAutoAbertas{display:none!important}
+.filters-bar .btn,.filters-actions button,.quick-view-chip,.bulk-admin-actions button{border-radius:9px!important}
+#tbl .tabela .actions{display:flex!important;gap:4px!important;flex-wrap:wrap!important;justify-content:center!important}
+#tbl .tabela td:nth-child(3){white-space:normal!important;overflow-wrap:anywhere!important}
+#tbl .tabela td:nth-child(3) div{white-space:normal!important}
+.value-request-tab[data-value-tab="historico"],.value-request-panel[data-value-panel="historico"]{display:none!important}
+</style>
