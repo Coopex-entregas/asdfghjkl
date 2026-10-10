@@ -5,4 +5,14 @@
 {% include 'dashboard_filter_vault_patch.html' %}
 {% include 'dashboard_blue_tabs_patch.html' %}
 
-{% include 'dashboard_export_pro_patch.html' %}
+
+<style id="cx-dashboard-final-font-fix">
+/* Aplicado depois dos patches de abas, para manter a leitura consistente. */
+body{font-size:14px!important;line-height:1.4!important}
+.dashboard-tab-panel{font-size:14px!important}
+.dashboard-tab-panel th{font-size:12px!important;color:#163969!important}
+.dashboard-tab-panel td{font-size:13px!important}
+.dashboard-tabs-bar button,.dashboard-tabs-bar a{font-size:13px!important}
+.dashboard-tab-panel h2{font-size:21px!important;letter-spacing:-.02em!important}
+.dashboard-tab-panel .kpi,.dashboard-tab-panel .card{font-size:14px!important}
+</style>
