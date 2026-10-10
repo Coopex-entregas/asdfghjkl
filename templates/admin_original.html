@@ -2135,6 +2135,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
   </style>
 
   <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_admin_fit_100.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 
 <body>
@@ -4004,6 +4005,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body></html>';
 
       return html;
