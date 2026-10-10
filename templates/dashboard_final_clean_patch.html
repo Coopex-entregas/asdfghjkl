@@ -417,14 +417,6 @@
   };
 
   Object.values(panels).forEach(item=>main.appendChild(item));
-  // Submenu nativo de Configuracoes, sem alterar o funcionamento das demais abas.
-  const melhoriaLink=document.createElement('a');
-  melhoriaLink.href='/melhoramento/';
-  melhoriaLink.className='cx-melhoramento-submenu-link';
-  melhoriaLink.textContent='🛠 Melhoramento · Saúde do sistema e GPT';
-  melhoriaLink.style.cssText='display:inline-flex;align-items:center;min-height:48px;padding:11px 18px;margin:14px 0 12px;border:1px solid #bfd4fc;border-radius:12px;background:linear-gradient(100deg,#1261e7,#0f42b1);color:white;font-size:14px;font-weight:850;text-decoration:none;box-shadow:0 7px 20px #134ec328;';
-  panels.configuracoes.insertBefore(melhoriaLink,panels.configuracoes.children[1]||null);
-
   function directChild(selector){return [...main.children].find(el=>el.matches?.(selector)&&!el.classList.contains('dashboard-tab-panel'))||null}
   function cardByTitle(text){
     const q=String(text).toLowerCase();
@@ -544,4 +536,3 @@
   activate(activeTab);
 })();
 </script>
-<!-- COOPEX menu de Melhoramento: em preparacao -->
