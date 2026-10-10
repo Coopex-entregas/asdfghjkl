@@ -2439,11 +2439,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                         {{ e.cooperado.nome if e.cooperado else 'Sem Cooperado' }}
                       </span>
 
-                      {% if not tem_coop %}
-                        <div class="sugestao-coop" data-entrega-id="{{ e.id }}">
-                          <span class="sug-loading">Calculando sugestão...</span>
-                        </div>
-                      {% endif %}
+
                     </div>
                   </td>
 
