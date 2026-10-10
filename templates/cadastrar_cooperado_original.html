@@ -386,6 +386,7 @@
     }
   </style>
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 
 <body>
@@ -677,5 +678,6 @@
       aplicarFiltros();
     })();
   </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
