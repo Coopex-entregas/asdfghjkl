@@ -2492,7 +2492,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                       {% if nome_recebedor|lower in ['crédito automático', 'credito automatico'] %}
                         {% set nome_recebedor = '' %}
                       {% endif %}
-                      {% set recebedor_exibido = ('Não informado' if nome_recebedor|length == 1 else nome_recebedor) %}
+                      {% set recebedor_exibido = (nome_recebedor if nome_recebedor|length >= 2 else 'Não informado') %}
                       <div class="recb-nome" title="{{ recebedor_exibido }}">{{ recebedor_exibido }}</div>
                     </div>
                   </td>
