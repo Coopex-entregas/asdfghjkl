@@ -187,3 +187,66 @@
 </script>
 
 <script defer src="{{ url_for('static', filename='js/coopex_payment_inline_v2.js') }}"></script>
+
+<style id="cx-history-status-compact-20261010">
+/* As abas ficam acessiveis; so a ativa mostra seu conteudo. */
+body .value-request-tab[data-value-tab="historico"]{display:inline-flex!important;align-items:center!important}
+body .value-request-panel[data-value-panel="historico"]{display:none!important}
+body .value-request-panel[data-value-panel="historico"].active{display:block!important}
+/* STATUS / PAGAMENTO COMPACTOS. Mantem classes de clique e controles JS. */
+#tbl .tabela th:nth-child(10),#tbl .tabela td:nth-child(10),
+#tbl .tabela th:nth-child(11),#tbl .tabela td:nth-child(11){
+ width:60px!important;min-width:52px!important;max-width:66px!important;
+ padding-left:3px!important;padding-right:3px!important;text-align:center!important
+}
+#tbl .tabela th:nth-child(9),#tbl .tabela td:nth-child(9){min-width:115px!important;width:130px!important}
+#tbl .tabela .status-editable,#tbl .tabela .pagamento-editable{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:33px!important;min-width:33px!important;height:30px!important;cursor:pointer!important
+}
+#tbl .tabela .status-editable .pill,#tbl .tabela .pagamento-editable .pill{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:26px!important;min-width:26px!important;height:26px!important;min-height:26px!important;
+ padding:0!important;border-radius:8px!important;font-size:0!important;line-height:0!important;
+ white-space:nowrap!important;overflow:hidden!important
+}
+#tbl .tabela .status-editable .pill::after,#tbl .tabela .pagamento-editable .pill::after{
+ display:block!important;font:900 15px/1 system-ui,Arial,sans-serif!important
+}
+#tbl .tabela .status-editable .pill.red::after{content:"!"!important}
+#tbl .tabela .status-editable .pill.yellow::after{content:"✓"!important}
+#tbl .tabela .status-editable .pill.blue::after{content:"◷"!important}
+#tbl .tabela .pagamento-editable .pill.green::after{content:"✓"!important}
+#tbl .tabela .pagamento-editable .pill.red::after{content:"!"!important}
+</style>
+<script id="cx-history-lazy-open-20261010">
+(function(){
+  var key='coopex_history_requested';
+  // Somente ao clicar na aba carregamos registros antigos do banco.
+  document.addEventListener('click',function(e){
+    var tab=e.target.closest('.value-request-tab[data-value-tab="historico"]');
+    if(!tab)return;
+    if(new URLSearchParams(location.search).get('solicitacoes_historico')==='1')return;
+    e.preventDefault();e.stopImmediatePropagation();
+    sessionStorage.setItem(key,'1');
+    var u=new URL(location.href);
+    u.searchParams.set('solicitacoes_historico','1');
+    location.assign(u.toString());
+  },true);
+  function boot(){
+    if(new URLSearchParams(location.search).get('solicitacoes_historico')!=='1')return;
+    var overlay=document.getElementById('valueRequestsOverlay');
+    if(!overlay)return;
+    document.querySelectorAll('.value-request-tab').forEach(function(el){el.classList.toggle('active',el.dataset.valueTab==='historico')});
+    document.querySelectorAll('.value-request-panel').forEach(function(el){
+      var on=el.dataset.valuePanel==='historico';el.classList.toggle('active',on);el.hidden=!on;
+    });
+    overlay.classList.add('open');overlay.setAttribute('aria-hidden','false');document.body.style.overflow='hidden';
+    sessionStorage.removeItem(key);
+    // Retirar marcador da barra de endereco; proximos acessos voltam a ser rapidos.
+    var u=new URL(location.href);u.searchParams.delete('solicitacoes_historico');
+    history.replaceState(history.state,'',u.pathname+u.search+u.hash);
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
