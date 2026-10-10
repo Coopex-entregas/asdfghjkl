@@ -250,3 +250,43 @@ body .value-request-panel[data-value-panel="historico"].active{display:block!imp
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script>
+
+<style id="cx-admin-half-width-20261010">
+@media (min-width:681px) and (max-width:1199px){
+  .filters-top{display:block!important}
+  .filters-top .quick-left{display:none!important}
+  .filters-form{width:100%!important}
+  .filters-actions{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;margin-top:8px!important}
+  .filters-actions>.btn{width:100%!important;min-width:0!important;flex:auto!important;min-height:40px!important;font-size:12px!important;white-space:normal!important;padding:6px!important}
+  .filters-actions>.btn.btn-primary-action{background:linear-gradient(180deg,#149bff,#0754ef)!important;color:#fff!important;border-color:#176af0!important}
+  .bank-toolbar-wrap{min-height:0!important}
+  .bank-toolbar{align-items:center!important;row-gap:3px!important}
+  .admin-toolbar-right{justify-content:flex-end!important;padding:4px 0!important}
+  .panel-head{min-height:40px!important}
+}
+@media (max-width:680px){
+  .filters-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:6px!important}
+  .filters-actions>.btn{width:100%!important;min-width:0!important;flex:auto!important;white-space:normal!important}
+  .filters-top .quick-left{display:none!important}
+}
+</style>
+<script id="cx-admin-responsive-actions-20261010">
+(function(){
+const query=window.matchMedia('(max-width:1199px)');
+function reorganize(){
+  const left=document.querySelector('.filters-top .quick-left');
+  const actions=document.querySelector('.filters-actions');
+  if(!left||!actions)return;
+  const quick=document.querySelector('.quick-left .btn-primary-action, .filters-actions .btn-primary-action');
+  const complete=document.getElementById('btnEntregaCompletaAdmin');
+  const escala=document.getElementById('btnEscalaAdmin');
+  // Aguarda o script legado criar botoes de entrega completa e escala.
+  if(!quick || !complete || !escala)return;
+  const all=[quick,complete,escala];
+  if(query.matches){for(let i=all.length-1;i>=0;i--)actions.insertBefore(all[i],actions.firstChild)}
+  else all.forEach(el=>left.appendChild(el));
+}
+function start(){reorganize();query.addEventListener('change',reorganize);const left=document.querySelector('.quick-left');if(left){new MutationObserver(()=>{if(!document.getElementById('btnEscalaAdmin'))return;reorganize()}).observe(left,{childList:true})}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
