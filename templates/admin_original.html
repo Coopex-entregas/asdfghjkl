@@ -3177,9 +3177,20 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       });
 
       let salvando = false;
+      let timerAtribuicao = null;
+      let ultimaEscolha = null;
       const valorAnterior = atual || '';
+      function agendarAtribuicao(){
+        clearTimeout(timerAtribuicao);
+        if(!sel.isConnected || salvando) return;
+        ultimaEscolha = sel.value || '';
+        timerAtribuicao = setTimeout(()=>{
+          if(sel.isConnected && !salvando && (sel.value || '') === ultimaEscolha) salvar();
+        },1000);
+      }
       async function salvar(){
-        if(salvando) return;
+        if(salvando || !sel.isConnected) return;
+        clearTimeout(timerAtribuicao);
         const coopId = sel.value || '';
         // Confirmar tambem ao escolher o mesmo nome ou "Sem Cooperado".
         // Apenas restaurar visualmente depois da resposta efetiva do servidor.
@@ -3214,6 +3225,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         }
       }
       function restaurar(id){
+        clearTimeout(timerAtribuicao);
+        document.removeEventListener('pointerdown',confirmarCliqueFora,true);
         const c = (window.COOPERADOS || []).find(x => String(x.id)===String(id));
         const span = document.createElement('span');
         span.className = 'coop-editable';
@@ -3226,7 +3239,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       }
       // Confirma ao mudar, ao perder foco e ao clicar em qualquer lugar fora.
       // O clique fora e capturado antes de outras acoes substituirem o elemento.
-      sel.addEventListener('change', salvar);
+      sel.addEventListener('change', agendarAtribuicao);
+      sel.addEventListener('input', agendarAtribuicao);
       sel.addEventListener('blur', ()=>{ if(sel.isConnected && !salvando) salvar(); });
       sel.addEventListener('focusout', ()=>{ if(sel.isConnected && !salvando) salvar(); });
       const confirmarCliqueFora = (evento)=>{
@@ -3237,6 +3251,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       };
       // Usa macrotarefa para que o clique inicial que abriu o select nao conte como clique externo.
       setTimeout(()=>{ if(sel.isConnected) document.addEventListener('pointerdown',confirmarCliqueFora,true); },0);
+      // Mesmo sem alterar a opção, um nome exibido por 1 segundo é confirmado.
+      agendarAtribuicao();
       sel.addEventListener('keydown', ev=>{
         if(ev.key==='Escape'){ev.preventDefault();restaurar(valorAnterior)}
         if(ev.key==='Enter'){ev.preventDefault();salvar()}
