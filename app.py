@@ -8715,6 +8715,8 @@ def api_atribuir_abertas_automaticamente():
 @app.post('/atribuir_cooperado/<int:id>')
 def atribuir_cooperado(id):
     if not session.get('is_admin'):
+        if _wants_json():
+            return jsonify(ok=False, message='Sessão expirada. Faça login novamente.'), 401
         return redirect(url_for('login'))
 
     entrega = Entrega.query.get_or_404(id)
@@ -8734,13 +8736,14 @@ def atribuir_cooperado(id):
                 status_corrida=entrega.status_corrida,
             )
 
-    except Exception:
+    except Exception as exc:
         db.session.rollback()
-        msg = 'Erro ao atribuir entrega'
+        current_app.logger.exception('Falha ao atribuir entrega %s ao cooperado %s', id, coop_id)
+        msg = 'Erro ao atribuir entrega: ' + (str(exc) if isinstance(exc, ValueError) else 'falha ao salvar no servidor.')
         flash(msg, 'danger')
 
         if _wants_json():
-            return jsonify(ok=False, message=msg), 500
+            return jsonify(ok=False, message=msg), (400 if isinstance(exc, ValueError) else 500)
 
     return redirect(request.referrer or url_for('admin'))
 
