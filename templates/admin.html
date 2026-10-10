@@ -284,7 +284,7 @@ function reorganize(){
   if(!quick || !complete || !escala)return;
   const all=[quick,complete,escala];
   if(query.matches){for(let i=all.length-1;i>=0;i--)actions.insertBefore(all[i],actions.firstChild)}
-  else all.forEach(el=>left.appendChild(el));
+  else all.forEach(el=>{if(el.parentElement!==left)left.appendChild(el)});
 }
 function start(){reorganize();query.addEventListener('change',reorganize);const left=document.querySelector('.quick-left');if(left){new MutationObserver(()=>{if(!document.getElementById('btnEscalaAdmin'))return;reorganize()}).observe(left,{childList:true})}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
