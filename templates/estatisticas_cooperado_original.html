@@ -953,32 +953,5 @@ body:not(.dark-mode) #cxExpOpen{font-size:12px!important;padding:8px 10px!import
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_dashboard_reference_unified.css') }}">
 
-<style id="cx-melhoramento-menu-visible-20261010">
-.dashboard-tab-panel[data-panel="configuracoes"] .cx-melhoramento-entry{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;padding:16px 20px!important;background:#fff!important;border:1px solid #ccdcf7!important;border-radius:15px!important;margin:0 0 16px!important;box-shadow:0 6px 16px #1744a012!important}
-.dashboard-tab-panel[data-panel="configuracoes"] .cx-melhoramento-entry strong{font-size:17px!important;color:#12356f!important}
-.dashboard-tab-panel[data-panel="configuracoes"] .cx-melhoramento-entry p{font-size:12px!important;color:#59749b!important;margin:4px 0 0!important}
-.dashboard-tab-panel[data-panel="configuracoes"] .cx-melhoramento-entry a{background:#125cea!important;color:#fff!important;text-decoration:none!important;font-weight:800!important;padding:12px 18px!important;border-radius:10px!important;white-space:nowrap!important}
-@media(max-width:620px){.cx-melhoramento-entry{flex-direction:column!important;align-items:stretch!important}}
-</style>
-<script id="cx-melhoramento-entry-init">
-(function(){
- function add(){
-  const panel=document.querySelector('.dashboard-tab-panel[data-panel="configuracoes"]');
-  if(!panel||panel.querySelector('.cx-melhoramento-entry'))return;
-  const area=document.createElement('section');
-  area.className='cx-melhoramento-entry';
-  const title=document.createElement('div');
-  const strong=document.createElement('strong');strong.textContent='🛠 Melhoramento';
-  const description=document.createElement('p');description.textContent='Saúde do sistema, análise de erros, lentidão e melhorias com GPT.';
-  title.append(strong,description);
-  const link=document.createElement('a');link.href='/melhoramento/';link.textContent='Abrir Melhoramento →';
-  area.append(title,link);
-  const header=panel.querySelector('.dashboard-panel-title');
-  if(header)header.insertAdjacentElement('afterend',area);else panel.prepend(area);
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',add,{once:true});else add();
- document.addEventListener('click',function(e){if(e.target.closest&&e.target.closest('[data-tab="configuracoes"]'))queueMicrotask(add)},true);
-})();
-</script>
 </body>
 </html>
