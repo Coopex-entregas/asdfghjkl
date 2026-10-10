@@ -11,6 +11,7 @@
     @media(max-width:860px){.rapid-grid{grid-template-columns:1fr}.side{position:static}.summary{grid-template-columns:1fr 1fr}}
     @media(max-width:520px){.summary{grid-template-columns:1fr}.cx-brand-title small{display:none}.top-actions .label{display:none}.cx-wrap{padding:10px}}
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body class="cx-page">
 <header class="cx-topbar">
@@ -128,5 +129,6 @@
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',aplicar,{once:true});else aplicar();
 })();
 </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
