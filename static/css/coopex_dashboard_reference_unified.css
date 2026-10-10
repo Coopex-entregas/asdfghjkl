@@ -1,0 +1,37 @@
+/* COOPEX Dashboard - visual unificado para TODAS as abas, referencia 2026. */
+body:not(.dark-mode){background:#f0f5fd!important;color:#0b1c47!important;font-family:Inter,Arial,sans-serif!important}
+body:not(.dark-mode).dashboard-blue-tabs-ready .dashboard-tabs-bar{background:linear-gradient(105deg,#1167eb,#0b3699)!important;box-shadow:0 3px 18px #154ca122!important;min-height:62px!important;height:62px!important;padding:0 25px!important;align-items:center!important}
+body:not(.dark-mode) .dashboard-tab-button{color:white!important;font-size:13px!important;font-weight:750!important;height:44px!important;min-height:44px!important;padding:0 13px!important;border-radius:9px!important;white-space:nowrap!important}
+body:not(.dark-mode) .dashboard-tab-button.active{color:#fff!important;background:#1876fa!important;box-shadow:inset 0 -3px #d5e7ff!important}
+body:not(.dark-mode) .dashboard-filter-shell{background:#fff!important;margin:19px 26px 16px!important;padding:13px 15px 15px!important;border:1px solid #e0eafa!important;border-radius:17px!important;box-shadow:0 8px 23px #0b3b8d0d!important}
+body:not(.dark-mode) .dashboard-filter-title-row{margin-bottom:12px!important;align-items:center!important}
+body:not(.dark-mode) .dashboard-filter-title{color:#112d6c!important;font-size:16px!important;font-weight:850!important}
+body:not(.dark-mode) .dashboard-filter-content .filters{gap:10px!important}
+body:not(.dark-mode) .dashboard-filter-content label{color:#345284!important;font-size:11px!important;font-weight:750!important;text-transform:none!important}
+body:not(.dark-mode) .dashboard-filter-content input,body:not(.dark-mode) .dashboard-filter-content select{color:#1c3970!important;background:#fff!important;border:1px solid #cbdaf1!important;border-radius:9px!important;font-size:12px!important;height:39px!important;min-height:39px!important}
+body:not(.dark-mode) .dashboard-filter-actions button{min-height:39px!important;border-radius:9px!important;font-size:12px!important}
+body:not(.dark-mode) .dashboard-tab-panel{color:#0e2859!important}
+body:not(.dark-mode) .wrap{padding:5px 27px 28px!important;max-width:none!important}
+body:not(.dark-mode) .dashboard-panel-title{border:0!important;border-left:5px solid #0963ef!important;padding:3px 0 5px 24px!important;min-height:72px!important;margin:2px 0 17px!important;align-items:center!important}
+body:not(.dark-mode) .dashboard-panel-title h2{color:#091942!important;font-size:34px!important;letter-spacing:-1px!important;font-weight:900!important;line-height:1.2!important}
+body:not(.dark-mode) .dashboard-panel-title p{color:#63799e!important;font-size:14px!important;margin-top:4px!important}
+body:not(.dark-mode) .gridKpi{gap:13px!important}
+body:not(.dark-mode) .dashboard-tab-panel .gridKpi>.kpi{background:#fff!important;border:1px solid #e5edfa!important;border-radius:13px!important;box-shadow:0 7px 21px #0f397b0b!important;min-height:112px!important;padding:12px 13px!important}
+body:not(.dark-mode) .dashboard-tab-panel .gridKpi>.kpi .lab{color:#304a7c!important;font-size:11px!important;line-height:1.25!important;font-weight:850!important}
+body:not(.dark-mode) .dashboard-tab-panel .gridKpi>.kpi .val{color:#0a1a46!important;font-weight:900!important;font-size:22px!important;line-height:1.1!important;letter-spacing:-.02em!important;overflow-wrap:normal!important;word-break:normal!important}
+body:not(.dark-mode) .dashboard-tab-panel .gridKpi>.kpi .hint{color:#61759c!important;font-size:11px!important;line-height:1.4!important}
+body:not(.dark-mode) .board{gap:16px!important;margin-top:17px!important;grid-template-columns:1.1fr .94fr!important}
+body:not(.dark-mode) .board>.card,body:not(.dark-mode) .dashboard-panel-grid>.card,body:not(.dark-mode) .year-compare-table-wrap{background:white!important;border:1px solid #e3ebf8!important;border-radius:17px!important;padding:16px!important;box-shadow:0 7px 18px #0d39730c!important}
+body:not(.dark-mode) .cardHead h2,body:not(.dark-mode) .dashboard-panel-grid h2{color:#0e306e!important;font-size:17px!important;font-weight:850!important}
+body:not(.dark-mode) .cardHead .sub{color:#62769c!important;font-size:12px!important}
+body:not(.dark-mode) .dashboard-tab-panel table{width:100%!important;font-size:13px!important;border-collapse:separate!important;border-spacing:0!important}
+body:not(.dark-mode) .dashboard-tab-panel table th{background:#eaf2ff!important;color:#23477d!important;font-size:12px!important;font-weight:800!important}
+body:not(.dark-mode) .dashboard-tab-panel table td{color:#183866!important;font-size:13px!important}
+body:not(.dark-mode) .board>.card>.gridKpi{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important}
+body:not(.dark-mode) .board>.card>.gridKpi>.kpi{display:flex!important;flex-direction:column!important;justify-content:center!important;grid-column:span 1!important;min-width:0!important;min-height:103px!important;padding:10px!important}
+body:not(.dark-mode) .board>.card>.gridKpi>.kpi .cx-dash-card-icon,body:not(.dark-mode) .board>.card>.gridKpi>.kpi .cx-dash-card-wave{display:none!important}
+body:not(.dark-mode) .board>.card>.gridKpi>.kpi .lab,body:not(.dark-mode) .board>.card>.gridKpi>.kpi .val,body:not(.dark-mode) .board>.card>.gridKpi>.kpi .hint{grid-column:auto!important;grid-row:auto!important;width:100%!important}
+body:not(.dark-mode) .board>.card>.gridKpi>.kpi .val{font-size:18px!important;white-space:nowrap!important}
+body:not(.dark-mode) #cxExpOpen{font-size:11px!important;min-height:34px!important;padding:7px 10px!important;white-space:nowrap!important}
+@media(max-width:1200px){body:not(.dark-mode) .board{grid-template-columns:1fr!important}body:not(.dark-mode) .dashboard-filter-shell{margin:12px!important}}
+@media(max-width:700px){body:not(.dark-mode) .wrap{padding:8px!important}body:not(.dark-mode) .dashboard-panel-title h2{font-size:26px!important}body:not(.dark-mode) .board>.card>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
