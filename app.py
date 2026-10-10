@@ -5036,13 +5036,13 @@ def admin():
         for c in cooperados_ordenados_atribuicao
     ]
 
+    # O ADMIN exibe apenas solicitacoes pendentes. As resolvidas permanecem
+    # no banco para auditoria, sem carregar todo o historico em cada acesso.
     solicitacoes_valor = (
         SolicitacaoAlteracaoValor.query
+        .filter(SolicitacaoAlteracaoValor.status == 'pendente')
         .options(joinedload(SolicitacaoAlteracaoValor.entrega), joinedload(SolicitacaoAlteracaoValor.cooperado))
-        .order_by(
-            case((SolicitacaoAlteracaoValor.status == 'pendente', 0), else_=1),
-            SolicitacaoAlteracaoValor.criado_em.desc()
-        )
+        .order_by(SolicitacaoAlteracaoValor.criado_em.desc())
         .all()
     )
 
