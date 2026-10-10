@@ -107,6 +107,40 @@ def install(host):
         d.status = 'incompleto' if problems else 'aguardando_aprovacao'
         return problems
 
+    @bp.post('/admin/entrega/<int:entrega_id>/forma-pagamento')
+    @admin_required
+    def mudar_forma_pagamento(entrega_id):
+        # Mesma origem, sessao de administrador e chamada explicita via painel.
+        origin = request.headers.get('Origin', '')
+        if origin and origin.rstrip('/') != request.host_url.rstrip('/'):
+            return jsonify(ok=False, error='Origem nao autorizada'), 403
+        if request.headers.get('X-Requested-With') != 'XMLHttpRequest':
+            return jsonify(ok=False, error='Requisicao invalida'), 403
+        data = request.get_json(silent=True) or {}
+        forma = str(data.get('pagamento') or '').strip()
+        permitidas = ('Pix', 'Pix (Cooperativa)', 'Dinheiro', 'Comanda', 'CREDITO_AUTO')
+        if forma not in permitidas:
+            return jsonify(ok=False, error='Forma de pagamento invalida'), 400
+        entrega = db.session.get(Entrega, entrega_id)
+        if not entrega:
+            return jsonify(ok=False, error='Entrega nao encontrada'), 404
+        antiga = entrega.pagamento
+        if antiga == forma:
+            return jsonify(ok=True, pagamento=forma)
+        entrega.pagamento = forma
+        db.session.commit()
+        try:
+            host.sincronizar_credito_da_entrega(entrega_id)
+        except Exception:
+            app.logger.exception('COOPEX: erro ao sincronizar credito na mudanca de forma')
+            # Evita informar sucesso se a forma depender de credito e o ajuste falhar.
+            return jsonify(ok=False, error='Forma salva; sincronizacao de credito requer conferencia'), 503
+        try:
+            host.emitir_atualizacao_entrega(entrega, 'editada')
+        except Exception:
+            app.logger.exception('COOPEX: falha ao informar alteracao da forma')
+        return jsonify(ok=True, pagamento=forma)
+
     @bp.get('/admin/diagnostico')
     @admin_required
     def diagnostico():
