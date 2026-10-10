@@ -3193,56 +3193,55 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       });
 
       let salvando = false;
+      const valorAnterior = atual || '';
       async function salvar(){
         if(salvando) return;
-        salvando = true;
         const coopId = sel.value || '';
-        const cooperadoEscolhido = (window.COOPERADOS || []).find(x => String(x.id) === String(coopId));
-        const nomeEscolhido = cooperadoEscolhido?.nome || 'Sem Cooperado';
-
-        let requestOk = false;
+        if(coopId === valorAnterior){
+          restaurar(valorAnterior);
+          return;
+        }
+        salvando = true;
+        sel.disabled = true;
+        const escolhido = (window.COOPERADOS || []).find(x => String(x.id) === String(coopId));
         try{
           window.__markActionStart&&window.__markActionStart();
-          const url = '/atribuir_cooperado/' + idEntrega;
-          const fd  = new FormData();
+          const fd = new FormData();
           fd.append('cooperado_id', coopId);
           fd.append('notificar_painel', '1');
-
-          const res = await fetch(url,{ method:'POST', body:fd, headers:{'X-Requested-With':'fetch'} });
-          requestOk = !!(res && res.ok);
-          if(requestOk){
-            if(coopId) removerDaFilaPorNome(nomeEscolhido);
-            window.__markActionEnd&&window.__markActionEnd();
-            showToast('<strong>Cooperado atualizado.</strong>');
-          }else{
-            window.__markActionFail&&window.__markActionFail();
-            showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
-          }
-        }catch(e){
+          const res = await fetch('/atribuir_cooperado/' + encodeURIComponent(idEntrega), {
+            method:'POST',body:fd,headers:{'X-Requested-With':'fetch'},credentials:'same-origin'
+          });
+          if(!res.ok) throw new Error('Falha ao atribuir (HTTP '+res.status+')');
+          restaurar(coopId);
+          atualizarLinhaEntregaDepoisEdicao(el, coopId);
+          if(coopId) removerDaFilaPorNome(escolhido?.nome || '');
+          atualizarBadgeAbertas();
+          window.__markActionEnd&&window.__markActionEnd();
+          showToast('<strong>Cooperado atribuído com sucesso.</strong>');
+        }catch(error){
+          console.error('COOPEX atribuição:',error);
+          restaurar(valorAnterior);
           window.__markActionFail&&window.__markActionFail();
-          showToast('<strong>Não foi possível atualizar o cooperado agora.</strong>');
+          showToast('<strong>Não foi possível atribuir. Nenhuma alteração foi confirmada.</strong>');
         }
-
+      }
+      function restaurar(id){
+        const c = (window.COOPERADOS || []).find(x => String(x.id)===String(id));
         const span = document.createElement('span');
         span.className = 'coop-editable';
         span.dataset.id = idEntrega;
-        span.dataset.cooperadoId = sel.value;
-        span.title = 'Clique para trocar o cooperado';
-
-        let nome = 'Sem Cooperado';
-        if(sel.value){
-          const found = (window.COOPERADOS || []).find(x => String(x.id)===String(sel.value));
-          if(found?.nome) nome = found.nome;
-        }
-        span.textContent = nome;
-        sel.parentNode.replaceChild(span, sel);
-
-        atualizarLinhaEntregaDepoisEdicao(span, sel.value);
-        atualizarBadgeAbertas();
+        span.dataset.cooperadoId = id;
+        span.title='Clique para trocar o cooperado';
+        span.textContent = c?.nome || (id ? 'Cooperado' : 'Sem Cooperado');
+        if(sel.isConnected)sel.replaceWith(span);
+        return span;
       }
-
+      // A escolha grava imediatamente. Sair do campo sem alterar nao atribui.
       sel.addEventListener('change', salvar);
-      sel.addEventListener('blur', ()=> salvar(), { once:true });
+      sel.addEventListener('keydown', ev=>{
+        if(ev.key==='Escape'){ev.preventDefault();restaurar(valorAnterior)}
+      });
     });
 
     async function salvarInlineEntrega(idEntrega, payload){
