@@ -3965,49 +3965,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             '<div class="small" style="text-align:center;">Obrigado por escolher a <strong>COOPEX</strong>!<br>Sua avaliação ajuda nosso serviço a melhorar.</div>' +
           '</div>' +
         '</div>' +
-        '<style id="cx-admin-refinamento-2026">
-/* Mesmo padrao visual, mantendo dados e funcionalidades. */
-#btnTheme.theme-toggle{width:44px!important;min-width:44px!important;max-width:44px!important;padding:0!important}
-#btnTheme #themeText{display:none!important}
-#btnTheme .theme-icon{margin:auto!important}
-.value-request-tab[data-value-tab="historico"],.value-request-panel[data-value-panel="historico"]{display:none!important}
-.cx-forma-pagamento{background:transparent;border:1px solid transparent;border-radius:7px;color:inherit;font:inherit;padding:5px 7px;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
-.cx-forma-pagamento:hover,.cx-forma-pagamento:focus-visible{border-color:#2f73ed;background:rgba(47,115,237,.12)}
-.cx-back-icon{display:inline-flex!important;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px}
-</style>
-<script id="cx-admin-interacoes-2026">
-(()=>{const init=()=>{
-  document.querySelectorAll('.cx-forma-pagamento').forEach(btn=>{
-    btn.addEventListener('click',async()=>{
-      const options=['Pix','Pix (Cooperativa)','Dinheiro','Comanda','CREDITO_AUTO'];
-      const current=btn.dataset.forma||'';
-      const sel=document.createElement('select');sel.className='cx-forma-select';sel.setAttribute('aria-label','Alterar forma de pagamento');
-      for(const item of options){const o=document.createElement('option');o.value=item;o.textContent=item;sel.appendChild(o)}
-      sel.value=options.includes(current)?current:'Pix';
-      const wrap=document.createElement('span');wrap.style.display='inline-flex';wrap.style.flexWrap='wrap';wrap.style.gap='4px';
-      const ok=document.createElement('button');ok.textContent='✓';ok.title='Salvar forma';ok.type='button';ok.className='cx-back-icon';
-      const cancel=document.createElement('button');cancel.textContent='✕';cancel.title='Cancelar';cancel.type='button';
-      wrap.append(sel,ok,cancel);btn.replaceWith(wrap);sel.focus();
-      const restore=()=>wrap.replaceWith(btn);
-      cancel.addEventListener('click',restore);
-      ok.addEventListener('click',async()=>{
-        ok.disabled=true;try{
-          const r=await fetch('/coopex-connect/admin/entrega/'+btn.dataset.entregaId+'/forma-pagamento',{
-            method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',body:JSON.stringify({pagamento:sel.value})
-          });const j=await r.json();
-          if(!r.ok||!j.ok)throw Error(j.error||'Nao foi possivel atualizar');
-          btn.dataset.forma=sel.value;btn.textContent=sel.value;restore();
-        }catch(e){alert(e.message);ok.disabled=false}
-      });
-    });
-  });
-  const theme=document.getElementById('btnTheme');if(theme){const sync=()=>{theme.setAttribute('aria-label',document.body.classList.contains('dark')?'Ativar modo claro':'Ativar modo escuro');theme.title=theme.getAttribute('aria-label')};sync();theme.addEventListener('click',()=>setTimeout(sync,0))}
-};
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
-})();
-</script>
-<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
-</body></html>';
+        '</body></body></html>';
 
       return html;
     }
@@ -4476,5 +4434,47 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 })();
 </script>
 {% include 'admin_queue_fix.html' %}
+<style id="cx-admin-refinamento-2026">
+/* Mesmo padrao visual, mantendo dados e funcionalidades. */
+#btnTheme.theme-toggle{width:44px!important;min-width:44px!important;max-width:44px!important;padding:0!important}
+#btnTheme #themeText{display:none!important}
+#btnTheme .theme-icon{margin:auto!important}
+.value-request-tab[data-value-tab="historico"],.value-request-panel[data-value-panel="historico"]{display:none!important}
+.cx-forma-pagamento{background:transparent;border:1px solid transparent;border-radius:7px;color:inherit;font:inherit;padding:5px 7px;cursor:pointer;max-width:100%;overflow-wrap:anywhere}
+.cx-forma-pagamento:hover,.cx-forma-pagamento:focus-visible{border-color:#2f73ed;background:rgba(47,115,237,.12)}
+.cx-back-icon{display:inline-flex!important;align-items:center;justify-content:center;width:38px;height:38px;border-radius:10px}
+</style>
+<script id="cx-admin-interacoes-2026">
+(()=>{const init=()=>{
+  document.querySelectorAll('.cx-forma-pagamento').forEach(btn=>{
+    btn.addEventListener('click',async()=>{
+      const options=['Pix','Pix (Cooperativa)','Dinheiro','Comanda','CREDITO_AUTO'];
+      const current=btn.dataset.forma||'';
+      const sel=document.createElement('select');sel.className='cx-forma-select';sel.setAttribute('aria-label','Alterar forma de pagamento');
+      for(const item of options){const o=document.createElement('option');o.value=item;o.textContent=item;sel.appendChild(o)}
+      sel.value=options.includes(current)?current:'Pix';
+      const wrap=document.createElement('span');wrap.style.display='inline-flex';wrap.style.flexWrap='wrap';wrap.style.gap='4px';
+      const ok=document.createElement('button');ok.textContent='✓';ok.title='Salvar forma';ok.type='button';ok.className='cx-back-icon';
+      const cancel=document.createElement('button');cancel.textContent='✕';cancel.title='Cancelar';cancel.type='button';
+      wrap.append(sel,ok,cancel);btn.replaceWith(wrap);sel.focus();
+      const restore=()=>wrap.replaceWith(btn);
+      cancel.addEventListener('click',restore);
+      ok.addEventListener('click',async()=>{
+        ok.disabled=true;try{
+          const r=await fetch('/coopex-connect/admin/entrega/'+btn.dataset.entregaId+'/forma-pagamento',{
+            method:'POST',headers:{'Content-Type':'application/json','X-Requested-With':'XMLHttpRequest'},credentials:'same-origin',body:JSON.stringify({pagamento:sel.value})
+          });const j=await r.json();
+          if(!r.ok||!j.ok)throw Error(j.error||'Nao foi possivel atualizar');
+          btn.dataset.forma=sel.value;btn.textContent=sel.value;restore();
+        }catch(e){alert(e.message);ok.disabled=false}
+      });
+    });
+  });
+  const theme=document.getElementById('btnTheme');if(theme){const sync=()=>{theme.setAttribute('aria-label',document.body.classList.contains('dark')?'Ativar modo claro':'Ativar modo escuro');theme.title=theme.getAttribute('aria-label')};sync();theme.addEventListener('click',()=>setTimeout(sync,0))}
+};
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
