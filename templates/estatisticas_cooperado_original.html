@@ -898,5 +898,25 @@ body:not(.dark-mode) .dashboard-tab-panel .gridKpi>.kpi .val{letter-spacing:-.02
 })();
 </script>
 
+
+<style id="cx-dashboard-alert-cards-final-20261010">
+/* Corrige a grade aninhada de Alertas: nao herda o layout dos cards grandes. */
+body .board>.card>.gridKpi{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;width:100%!important;min-width:0!important;align-items:stretch!important}
+body .board>.card>.gridKpi>.kpi,
+body:not(.dark-mode) .board>.card>.gridKpi>.kpi{display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;gap:5px!important;grid-column:span 1!important;grid-row:auto!important;min-width:0!important;width:100%!important;max-width:none!important;min-height:105px!important;height:auto!important;padding:12px 11px!important;border:1px solid #dce8f8!important;border-radius:14px!important;overflow:visible!important;background:#fff!important}
+body .board>.card>.gridKpi>.kpi:before,
+body .board>.card>.gridKpi>.kpi .cx-dash-card-icon,
+body .board>.card>.gridKpi>.kpi .cx-dash-card-wave{display:none!important}
+body .board>.card>.gridKpi>.kpi .lab{display:block!important;grid-column:auto!important;grid-row:auto!important;width:100%!important;font-size:10px!important;line-height:1.3!important;font-weight:800!important;color:#415e8d!important;white-space:normal!important;word-break:normal!important}
+body .board>.card>.gridKpi>.kpi .val{display:block!important;grid-column:auto!important;grid-row:auto!important;width:100%!important;font-size:18px!important;line-height:1.1!important;font-weight:900!important;color:#102b63!important;white-space:nowrap!important;word-break:normal!important;overflow:visible!important;text-overflow:clip!important;letter-spacing:-.035em!important;font-variant-numeric:tabular-nums!important}
+body .board>.card>.gridKpi>.kpi .hint{display:block!important;grid-column:auto!important;grid-row:auto!important;width:100%!important;font-size:10px!important;line-height:1.25!important;color:#6780a9!important;overflow-wrap:anywhere!important}
+body.dark-mode .board>.card>.gridKpi>.kpi{background:#102542!important;border-color:#24456f!important}
+body.dark-mode .board>.card>.gridKpi>.kpi .lab{color:#bad0f3!important}
+body.dark-mode .board>.card>.gridKpi>.kpi .val{color:#fff!important}
+body.dark-mode .board>.card>.gridKpi>.kpi .hint{color:#afc6e8!important}
+@media(max-width:1450px){body .board>.card>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}}
+@media(max-width:680px){body .board>.card>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}body .board>.card>.gridKpi>.kpi .val{font-size:16px!important}}
+</style>
+
 </body>
 </html>
