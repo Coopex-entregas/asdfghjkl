@@ -790,13 +790,13 @@ document.querySelectorAll('table th').forEach(th=>{
 
 </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
-{% include 'dashboard_export_pro_patch.html' %}
 
 {% include 'dashboard_comparativo_patch.html' %}
 {% include 'dashboard_final_clean_patch.html' %}
 {% include 'dashboard_tabs_runtime_fix.html' %}
 {% include 'dashboard_filter_vault_patch.html' %}
 {% include 'dashboard_blue_tabs_patch.html' %}
+{% include 'dashboard_export_pro_patch.html' %}
 <style id="cx-dashboard-final-font-fix">
 /* Aplicado depois dos patches de abas, para manter a leitura consistente. */
 body{font-size:14px!important;line-height:1.4!important}
