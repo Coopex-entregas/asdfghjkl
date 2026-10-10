@@ -15243,9 +15243,6 @@ import coopex_connect
 
 coopex_connect.install(sys.modules[__name__])
 
-# Diagnostico protegido em Configuracoes -> Melhoramento
-import coopex_melhoramento
-coopex_melhoramento.install(app, db)
 
 
 if __name__ == '__main__':
