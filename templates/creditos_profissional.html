@@ -372,6 +372,7 @@
     }
   </style>
 
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
 <header class="topbar">
@@ -566,5 +567,6 @@
 
   (function(){const button=document.getElementById('theme');const saved=localStorage.getItem('coopex_theme');if(saved==='dark')document.body.classList.add('dark');const sync=()=>button.textContent=document.body.classList.contains('dark')?'☀':'☾';button.addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()});sync()})();
 </script>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
