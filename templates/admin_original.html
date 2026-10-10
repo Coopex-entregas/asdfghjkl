@@ -2520,14 +2520,6 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                         </svg>
                       </a>
 
-                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
-                        <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
-                          <svg viewBox="0 0 24 24" fill="#1e40af">
-                            <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
-                          </svg>
-                        </button>
-                      </form>
-
                       <button type="button" class="act-ico" title="Imprimir cupom"
                         data-id="{{ e.id }}"
                         data-cliente="{{ e.cliente|e }}"
@@ -2554,6 +2546,14 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                         <button class="act-ico danger" title="Excluir" type="submit" aria-label="Excluir">
                           <svg viewBox="0 0 24 24" fill="#b91c1c">
                             <path d="M3 6h18v2H3V6zm2 3h14l-1.5 13H6.5L5 9zm2.5 2v9h2v-9h-2zm4 0v9h2v-9h-2z"/>
+                          </svg>
+                        </button>
+                      </form>
+
+                      <form action="{{ url_for('clonar_entrega', id=e.id) }}" method="POST" style="display:inline;">
+                        <button class="act-ico" title="Clonar" type="submit" aria-label="Clonar">
+                          <svg viewBox="0 0 24 24" fill="#1e40af">
+                            <path d="M16 1H4c-1.1 0-2 .9-2 2v12h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z"/>
                           </svg>
                         </button>
                       </form>
