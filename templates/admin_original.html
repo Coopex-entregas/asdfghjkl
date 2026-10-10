@@ -2382,8 +2382,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                   <th>💳 Forma</th>
                   <th>📦 Status</th>
                   <th>✔ Pagamento</th>
-                  <th>👤 Recebido por</th>
-                  <th>🛰 Rastreio</th>
+                  <th>👤 Recebedor</th>
+                  <th>⌖ GPS</th>
                   <th>⚙ Ações</th>
                 </tr>
               </thead>
@@ -2499,13 +2499,17 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 
                   <td>
                     {% set st_ent = (e.status or '')|lower %}
-                    {% if tem_coop and st_ent not in ['recebido','entregue'] %}
+                    {% if tem_coop and st_ent not in ['recebido','entregue','finalizada','finalizado','cancelado','cancelada'] %}
                       {% set rastreio_link = url_for('rastreio_publico', token=token_rastreio(e.id), _external=True) %}
-                      <a href="{{ rastreio_link }}" target="_blank" class="act-open" rel="noopener">Abrir</a>
+                      <a href="{{ rastreio_link }}" target="_blank" rel="noopener" class="cx-gps-icon cx-gps-active" title="Abrir rastreio GPS" aria-label="Abrir rastreio GPS do pedido {{ e.id }}">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3"/></svg>
+                      </a>
                     {% elif tem_coop %}
-                      <span class="small">Encerrado</span>
+                      <span class="cx-gps-icon cx-gps-closed" role="img" title="Rastreio encerrado" aria-label="Rastreio encerrado">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8"/><circle cx="12" cy="12" r="2.5"/><path d="M12 1v3m0 16v3M1 12h3m16 0h3"/></svg>
+                      </span>
                     {% else %}
-                      <span class="small">—</span>
+                      <span class="small" title="Sem cooperado atribuído">—</span>
                     {% endif %}
                   </td>
 
