@@ -5046,6 +5046,18 @@ def admin():
         .all()
     )
 
+    # Historico somente sob demanda, ao abrir a aba Historico.
+    carregar_historico_valor = request.args.get('solicitacoes_historico') == '1'
+    if carregar_historico_valor:
+        solicitacoes_valor += (
+            SolicitacaoAlteracaoValor.query
+            .filter(SolicitacaoAlteracaoValor.status != 'pendente')
+            .options(joinedload(SolicitacaoAlteracaoValor.entrega), joinedload(SolicitacaoAlteracaoValor.cooperado))
+            .order_by(SolicitacaoAlteracaoValor.criado_em.desc())
+            .limit(500)
+            .all()
+        )
+
     html = render_template(
         'admin.html',
         entregas=entregas,
@@ -5062,6 +5074,7 @@ def admin():
         cooperados_disponiveis=cooperados_disponiveis,
         cooperados_js=cooperados_js,
         solicitacoes_valor=solicitacoes_valor,
+        carregar_historico_valor=carregar_historico_valor,
         formas_pagamento_disponiveis=formas_pagamento_disponiveis,
     )
     return _patch_admin_top_link(html)
