@@ -2272,6 +2272,24 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
           <button class="btn cx-bulk-head-btn" type="button" id="btnMarcarTodasEntregues" title="Marcar todas as entregas exibidas como entregues">✓ Marcar todas como entregues</button>
+          <div class="filters-actions cx-head-actions">
+            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
+              Agendar
+            </button>
+            <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="true">
+              Ocultar
+            </button>
+            <button class="btn alt" id="btnCopyOpenBairros" type="button">
+              Bairros
+            </button>
+            <button class="btn alt" type="button" onclick="window.open('{{ url_for('mapa_motoboys') }}','_blank','noopener,noreferrer')">
+              Mapa
+            </button>
+            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ agenda_url }}'">
+              Agenda
+            </button>
+            
+          </div>
         </div>
 
         <!-- FILTROS -->
@@ -2337,24 +2355,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             </form>
           </div>
 
-          <div class="filters-actions">
-            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
-              + Agendar entrega
-            </button>
-            <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="true">
-              Ocultar atribuídas
-            </button>
-            <button class="btn alt" id="btnCopyOpenBairros" type="button">
-              Bairros em aberto
-            </button>
-            <button class="btn alt" type="button" onclick="window.open('{{ url_for('mapa_motoboys') }}','_blank','noopener,noreferrer')">
-              Mapa
-            </button>
-            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ agenda_url }}'">
-              Ver agenda
-            </button>
-            
-          </div>
+
         </div>
 
 
