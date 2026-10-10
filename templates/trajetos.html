@@ -38,6 +38,7 @@
     @media(max-width:1100px){.filters{grid-template-columns:1fr 1fr;}.kpis{grid-template-columns:repeat(2,1fr)}}
     @media(max-width:680px){.filters{grid-template-columns:1fr}.kpis{grid-template-columns:1fr}}
   </style>
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
   <div class="wrap">
@@ -130,5 +131,6 @@
       </div>
     </section>
   </div>
+<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
