@@ -2649,7 +2649,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         </div>
         <div class="value-request-list history" id="valueRequestHistoryList">
           {% for s in solicitacoes_valor if s.status != 'pendente' %}
-          {% set aprovado = s.status == 'aprovada' %}
+          {% set aprovado = s.status in ['aprovada', 'aprovado'] %}
           <article class="request-history-item {{ 'approved' if aprovado else 'rejected' }}">
             <div class="request-title-row">
               <strong>Entrega #{{ s.entrega_id }} — {{ s.entrega.cliente if s.entrega else '-' }}</strong>
@@ -4309,7 +4309,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         btnAprovarTodas.disabled = true;
         try{
           await postJson('/admin/solicitacoes-valor/aprovar-todas', {});
-          sessionStorage.setItem('coopexOpenValueRequests', 'historico');
+          sessionStorage.setItem('coopexOpenValueRequests', 'pendentes');
           window.location.reload();
         }catch(e){ alert(e.message); }
         finally{ btnAprovarTodas.disabled = false; }
