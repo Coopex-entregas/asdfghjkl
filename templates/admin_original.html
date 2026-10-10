@@ -3095,20 +3095,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
           dot.title = temCoop ? 'Com cooperado atribuído' : 'Sem cooperado';
         }
 
-        const sug = tr.querySelector('.sugestao-coop');
-        if(temCoop && sug){
-          sug.remove();
-        }else if(!temCoop && !sug){
-          const cell = tr.querySelector('.coop-cell');
-          if(cell){
-            const box = document.createElement('div');
-            box.className = 'sugestao-coop';
-            box.dataset.entregaId = tr.dataset.id || '';
-            box.innerHTML = '<span class="sug-loading">Calculando sugestão...</span>';
-            cell.appendChild(box);
-            if(typeof carregarSugestaoCooperado === 'function') carregarSugestaoCooperado(box);
-          }
-        }
+        // Sem caixa nem requisicao de sugestao; atribuicao manual permanece.
+        tr.querySelector('.sugestao-coop')?.remove();
         atualizarBadgeAbertas();
       }catch(e){}
     }
