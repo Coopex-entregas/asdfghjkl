@@ -3224,11 +3224,19 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(sel.isConnected)sel.replaceWith(span);
         return span;
       }
-      // Salvar tanto na selecao quanto ao clicar fora, inclusive mesmo valor.
+      // Confirma ao mudar, ao perder foco e ao clicar em qualquer lugar fora.
+      // O clique fora e capturado antes de outras acoes substituirem o elemento.
       sel.addEventListener('change', salvar);
-      sel.addEventListener('blur', ()=>{
-        if(sel.isConnected && !salvando) salvar();
-      });
+      sel.addEventListener('blur', ()=>{ if(sel.isConnected && !salvando) salvar(); });
+      sel.addEventListener('focusout', ()=>{ if(sel.isConnected && !salvando) salvar(); });
+      const confirmarCliqueFora = (evento)=>{
+        if(!sel.isConnected){ document.removeEventListener('pointerdown',confirmarCliqueFora,true); return; }
+        if(evento.target===sel || sel.contains(evento.target)) return;
+        document.removeEventListener('pointerdown',confirmarCliqueFora,true);
+        if(!salvando) salvar();
+      };
+      // Usa macrotarefa para que o clique inicial que abriu o select nao conte como clique externo.
+      setTimeout(()=>{ if(sel.isConnected) document.addEventListener('pointerdown',confirmarCliqueFora,true); },0);
       sel.addEventListener('keydown', ev=>{
         if(ev.key==='Escape'){ev.preventDefault();restaurar(valorAnterior)}
         if(ev.key==='Enter'){ev.preventDefault();salvar()}
