@@ -2271,7 +2271,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
-
+          <button class="btn cx-bulk-head-btn" type="button" id="btnMarcarTodasEntregues" title="Marcar todas as entregas exibidas como entregues">✓ Marcar todas como entregues</button>
         </div>
 
         <!-- FILTROS -->
@@ -2358,9 +2358,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         </div>
 
 
-          <div class="bulk-admin-actions">
-            <button class="btn" type="button" id="btnMarcarTodasEntregues">✓ Marcar todas as entregas exibidas como entregues</button>
-          </div>
+
 <!-- TABELA -->
         <div class="quick-view-bar">
           <div class="quick-view-chip active" id="chipOpenOnly">Em aberto primeiro</div>
