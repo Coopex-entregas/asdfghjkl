@@ -4983,7 +4983,7 @@ def admin():
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
 
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    cooperados = Cooperado.query.filter(Cooperado.ativo.is_(True)).order_by(Cooperado.nome).all()
     formas_pagamento_disponiveis = [
         (row[0] or '').strip()
         for row in db.session.query(Entrega.pagamento)
@@ -5012,6 +5012,8 @@ def admin():
 
     lista_espera = (
         ListaEspera.query
+        .join(Cooperado, ListaEspera.cooperado_id == Cooperado.id)
+        .filter(Cooperado.ativo.is_(True))
         .options(joinedload(ListaEspera.cooperado))
         .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
         .all()
@@ -8569,6 +8571,8 @@ def atribuir_entrega_para_cooperado_core(entrega: Entrega, cooperado_id, *, comm
         coop = Cooperado.query.get(int(cooperado_id))
         if not coop:
             raise ValueError('Cooperado não encontrado.')
+        if not coop.ativo:
+            raise ValueError('Cooperado desativado não pode receber novas entregas.')
         entrega.cooperado_id = coop.id
         entrega.data_atribuida = datetime.utcnow()
         entrega.status_corrida = 'aceita'
