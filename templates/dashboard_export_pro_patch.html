@@ -1,0 +1,74 @@
+<style id="cx-dashboard-improved-2026">
+body{font-size:14px!important;line-height:1.4!important}
+.dashboard-tab-panel,.dashboard-tab-panel p{font-size:14px!important}
+.dashboard-tab-panel h1,.dashboard-tab-panel h2{letter-spacing:-.02em!important}
+.dashboard-tab-panel table{font-size:13px!important}
+.dashboard-tab-panel th{font-size:12px!important;font-weight:800!important}
+.dashboard-tab-panel td{font-size:13px!important}
+.dashboard-tabs-bar button{font-size:13px!important}
+.hero{margin:5px 0 10px!important;padding:12px 18px!important;min-height:0!important}
+.hero h1{font-size:24px!important;margin:0!important}
+.hero p{display:none!important}
+.wrap{max-width:none!important;padding-top:10px!important}
+.cx-exp-btn{border:0;background:linear-gradient(110deg,#0874f6,#064bde);color:#fff;border-radius:9px;padding:10px 13px;font-weight:800;cursor:pointer}
+.cx-exp-shade{position:fixed;inset:0;background:#051630a8;z-index:99999;display:none;align-items:center;justify-content:center;padding:12px}
+.cx-exp-shade.open{display:flex}
+.cx-exp-dialog{background:#fff;color:#153363;width:min(720px,100%);max-height:90vh;overflow:auto;padding:22px;border-radius:16px;box-shadow:0 16px 70px #071b4155}
+.cx-exp-dialog h2{margin:0 0 6px;font-size:22px}
+.cx-exp-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px}
+.cx-exp-grid label{display:block;font-size:12px;font-weight:750;margin-bottom:4px}
+.cx-exp-grid input,.cx-exp-grid select,.cx-exp-grid textarea{width:100%;color:#163761;background:#fff;border:1px solid #bdcfee;border-radius:8px;padding:9px;font:inherit}
+.cx-exp-grid select[multiple],.cx-exp-grid textarea{height:112px}
+.cx-exp-actions{display:flex;justify-content:flex-end;gap:10px;margin-top:17px}
+.cx-exp-actions button{padding:9px 12px;border-radius:9px;border:1px solid #bdd0ed;font-weight:800;cursor:pointer}
+.cx-exp-actions .primary{background:#075fea;color:white;border-color:#075fea}
+body.dark .cx-exp-dialog,body.dark-mode .cx-exp-dialog{background:#102747;color:#f1f6ff}
+body.dark .cx-exp-grid input,body.dark .cx-exp-grid select,body.dark .cx-exp-grid textarea,body.dark-mode .cx-exp-grid input,body.dark-mode .cx-exp-grid select,body.dark-mode .cx-exp-grid textarea{background:#0d1e36;color:#fff;border-color:#345a8c}
+@media(max-width:700px){.cx-exp-grid{grid-template-columns:1fr}.cx-exp-dialog{padding:14px}}
+@media print{.cx-exp-shade,.cx-exp-btn{display:none!important}}
+</style>
+<div id="cxExportShade" class="cx-exp-shade noPrint" aria-hidden="true">
+<div class="cx-exp-dialog" role="dialog" aria-modal="true" aria-label="Exportar relatório Excel">
+<h2>Exportar relatório Excel</h2><p>Selecione dados, datas, clientes e cooperados. Os registros não serão alterados.</p>
+<div class="cx-exp-grid">
+<div><label>Dados</label><select id="cxExpType"><option value="completo">Todas as informações</option><option value="resumo">Resumo</option><option value="entregas">Entregas</option><option value="cooperados">Cooperados</option><option value="contratos">Contratos</option><option value="rotas">Rotas</option><option value="bairros">Bairros</option><option value="pagamentos">Pagamentos</option><option value="credito">Créditos</option></select></div>
+<div><label>Período</label><select id="cxExpPeriod"><option value="mes">Mês atual</option><option value="ano">Ano atual</option><option value="semana">Semana atual</option><option value="7dias">Últimos 7 dias</option><option value="mes-anterior">Mês anterior</option><option value="4semanas">Últimas 4 semanas</option><option value="personalizado">Intervalo personalizado</option></select></div>
+<div><label>De</label><input id="cxExpStart" type="date"></div><div><label>Até</label><input id="cxExpEnd" type="date"></div>
+<div><label>Cooperados (Ctrl para vários)</label><select id="cxExpCoops" multiple></select></div>
+<div><label>Clientes (um nome por linha)</label><textarea id="cxExpClients" placeholder="Deixe vazio para incluir todos"></textarea></div>
+</div><div class="cx-exp-actions"><button type="button" id="cxExpClose">Cancelar</button><button type="button" class="primary" id="cxExpGo">Exportar Excel</button></div>
+</div></div>
+<script id="cx-dashboard-export-ui-2026">
+(function(){
+function ready(){
+ if(document.getElementById('cxExpOpen'))return;
+ const host=document.querySelector('.proToolbar')||document.querySelector('.dashboard-tabs-bar')||document.querySelector('main');
+ if(!host)return;
+ const open=document.createElement('button');open.type='button';open.className='cx-exp-btn noPrint';open.id='cxExpOpen';open.textContent='↧ Exportar Excel';host.appendChild(open);
+ const shade=document.getElementById('cxExportShade'),close=document.getElementById('cxExpClose');
+ const range=document.getElementById('cxExpPeriod'),start=document.getElementById('cxExpStart'),end=document.getElementById('cxExpEnd');
+ const coops=document.getElementById('cxExpCoops');
+ const existing=document.querySelector('form.topbar select[name="cooperado_id"]');
+ if(existing){Array.from(existing.options).forEach(o=>{if(o.value==='todos')return;const opt=document.createElement('option');opt.value=o.value;opt.textContent=o.textContent;coops.appendChild(opt)})}
+ const fmt=d=>[d.getFullYear(),String(d.getMonth()+1).padStart(2,'0'),String(d.getDate()).padStart(2,'0')].join('-');
+ function setDates(){let today=new Date(),a=new Date(today),b=new Date(today);
+  switch(range.value){case'mes':a.setDate(1);break;case'ano':a.setMonth(0,1);break;case'semana':a.setDate(a.getDate()-((a.getDay()+6)%7));break;case'7dias':a.setDate(a.getDate()-6);break;case'4semanas':a.setDate(a.getDate()-27);break;case'mes-anterior':a=new Date(today.getFullYear(),today.getMonth()-1,1);b=new Date(today.getFullYear(),today.getMonth(),0);break;default:return}
+  start.value=fmt(a);end.value=fmt(b);
+ }
+ range.addEventListener('change',setDates);setDates();
+ const hide=()=>{shade.classList.remove('open');shade.setAttribute('aria-hidden','true')};
+ open.addEventListener('click',()=>{shade.classList.add('open');shade.setAttribute('aria-hidden','false')});
+ close.addEventListener('click',hide);shade.addEventListener('click',e=>{if(e.target===shade)hide()});
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&shade.classList.contains('open'))hide()});
+ document.getElementById('cxExpGo').addEventListener('click',()=>{
+  if(!start.value||!end.value||start.value>end.value){alert('Selecione um período válido.');return}
+  const q=new URLSearchParams({tipo:document.getElementById('cxExpType').value,periodo:'personalizado',data_inicio:start.value,data_fim:end.value});
+  const ids=Array.from(coops.selectedOptions).map(x=>x.value);if(ids.length)q.set('cooperados',ids.join(','));
+  const clients=document.getElementById('cxExpClients').value.trim();if(clients)q.set('clientes',clients);
+  window.location.href='/estatisticas_cooperado/exportar-dados?'+q.toString();
+  hide();
+ });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
+})();
+</script>

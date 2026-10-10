@@ -13169,7 +13169,12 @@ def estatisticas_cooperado_exportar_dados():
     query = Entrega.query.options(joinedload(Entrega.cooperado))
     query = _dash_range_q(query, di, df)
 
-    if cooperado_id and cooperado_id != 'todos':
+    # Selecao multipla usada pelo exportador avancado; filtro comum continua valido.
+    cooperados_export = [v.strip() for v in request.args.get('cooperados', '').split(',') if v.strip()]
+    ids_export = [int(v) for v in cooperados_export if v.isdigit()]
+    if ids_export:
+        query = query.filter(Entrega.cooperado_id.in_(ids_export[:500]))
+    elif cooperado_id and cooperado_id != 'todos':
         try:
             query = query.filter(Entrega.cooperado_id == int(cooperado_id))
         except Exception:
@@ -13184,7 +13189,11 @@ def estatisticas_cooperado_exportar_dados():
     if pagamento and pagamento != 'todos':
         query = query.filter(func.lower(func.coalesce(Entrega.pagamento, '')).like(f"%{pagamento.lower()}%"))
 
-    if cliente:
+    # Clientes separados por linhas: selecao precisa de multiplos estabelecimentos.
+    clientes_export = [v.strip().lower() for v in request.args.get('clientes', '').splitlines() if v.strip()]
+    if clientes_export:
+        query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).in_(clientes_export[:500]))
+    elif cliente:
         query = query.filter(func.lower(func.coalesce(Entrega.cliente, '')).like(f"%{cliente.lower()}%"))
 
     if grupo_id and grupo_id != 'todos':
