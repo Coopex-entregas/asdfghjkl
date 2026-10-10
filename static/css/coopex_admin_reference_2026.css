@@ -1,0 +1,50 @@
+/* COOPEX Admin 2026 - referencia visual azul royal (claro/escuro).
+   Somente aparencia; botoes, ids, rotas e interacoes sao preservados. */
+:root{--cx-ref-blue:#0869f4;--cx-ref-blue2:#0051ed;--cx-ref-border:#dce7fb;--cx-ref-text:#0a2869}
+body{font-family:Inter,system-ui,Arial,sans-serif!important;background:#f7faff!important;color:#0a2869!important}
+body.dark{background:#061327!important;color:#eaf2ff!important}
+header,.bank-toolbar-wrap{border-radius:12px!important}
+header{background:#fff!important;color:#0a2869!important;box-shadow:0 2px 12px #132d650b!important;border:1px solid #e3edfc!important}
+body.dark header{background:#071629!important;color:#f1f6ff!important;border-color:#132e55!important;box-shadow:none!important}
+header .topbar,.bank-toolbar-wrap{padding:7px 11px!important}
+.bank-toolbar-wrap{background:#fff!important;border:1px solid #e4ecf8!important;box-shadow:0 2px 12px #132d650b!important}
+body.dark .bank-toolbar-wrap{background:#06152b!important;border-color:#10315c!important}
+.bank-toolbar-wrap .bank-group-btn,.bank-toolbar-wrap button,.bank-toolbar-wrap a{font-weight:800!important}
+.panel,.filters-bar,.table-shell{border-radius:10px!important}
+.panel{background:#fff!important;border:1px solid #e4edfd!important;box-shadow:0 5px 22px #0a327113!important}
+body.dark .panel{background:#06172d!important;border-color:#12315c!important;box-shadow:none!important}
+.panel-head{background:linear-gradient(100deg,#0870f4,#0847d6)!important;border:0!important;border-radius:11px 11px 0 0!important;color:white!important;padding:11px 15px!important}
+body.dark .panel-head{background:linear-gradient(100deg,#07489e,#072963)!important}
+.panel-head h2,.panel-head .panel-title{color:#fff!important;font-weight:850!important}
+.filters-bar{background:#fff!important;border:0!important;padding:8px 10px!important}
+body.dark .filters-bar{background:#06182f!important}
+.filters-bar .btn,.filters-actions .btn{border-radius:9px!important;min-height:37px!important;box-shadow:none!important;font-weight:800!important}
+.filters-bar .btn-primary-action,.filters-bar .btn:first-of-type:not(.alt),.bulk-admin-actions .btn{background:linear-gradient(180deg,#0095ff,#064ff1)!important;color:#fff!important;border:1px solid #1984ff!important}
+.filters-bar .btn.alt{background:#fff!important;color:#123e91!important;border:1px solid #dbe5f8!important}
+body.dark .filters-bar .btn.alt{background:#0d2850!important;color:#e8f1ff!important;border-color:#234c84!important}
+.filters-bar input,.filters-bar select{background:#fff!important;color:#16306d!important;border:1px solid #d3e1f8!important;border-radius:9px!important;min-height:36px!important}
+body.dark .filters-bar input,body.dark .filters-bar select{background:#091a35!important;color:#e6efff!important;border-color:#264576!important}
+.filters-bar label{font-size:11px!important;font-weight:800!important;color:#345b9c!important}
+body.dark .filters-bar label{color:#a8c5f6!important}
+.quick-view-bar{padding:4px 8px!important}
+.quick-view-chip{border-radius:8px!important}
+.table-shell{padding:5px!important;background:transparent!important}
+#tbl.table-wrap{border:1px solid #e1eaf9!important;border-radius:12px!important;box-shadow:none!important;background:#fff!important}
+body.dark #tbl.table-wrap{border-color:#15365f!important;background:#06162e!important}
+#tbl .tabela thead th{background:linear-gradient(180deg,#eef5ff,#f9fbff)!important;color:#154b9d!important;border-bottom:1px solid #dce8fb!important;letter-spacing:0!important;text-transform:none!important}
+body.dark #tbl .tabela thead th{background:linear-gradient(180deg,#143e7d,#103062)!important;color:#fff!important;border-bottom:1px solid #204e8d!important}
+#tbl .tabela tbody td{border-color:#e2eaf8!important;background:#fff!important;color:#10295b!important}
+#tbl .tabela tbody tr:nth-child(2n) td{background:#f8fbff!important}
+body.dark #tbl .tabela tbody td{background:#07182f!important;color:#e8f1ff!important;border-color:#1d3b68!important}
+body.dark #tbl .tabela tbody tr:nth-child(2n) td{background:#081d39!important}
+#tbl .tabela tbody tr:hover td{background:#eaf4ff!important}
+body.dark #tbl .tabela tbody tr:hover td{background:#15345f!important}
+#tbl .tabela td:nth-child(3){white-space:normal!important;overflow-wrap:anywhere!important}
+#tbl .tabela td:nth-child(3) div{white-space:normal!important;line-height:1.35!important}
+#tbl .tabela .actions{display:flex!important;justify-content:center!important;flex-wrap:wrap!important;align-items:center!important;gap:4px!important}
+#tbl .tabela .act-ico{border-radius:9px!important}
+#btnTheme.theme-toggle{width:43px!important;min-width:43px!important;max-width:43px!important;padding:0!important}
+#btnTheme #themeText{display:none!important}
+#btnAutoGlobal,#btnAutoAbertas{display:none!important}
+.value-request-tab[data-value-tab="historico"],.value-request-panel[data-value-panel="historico"]{display:none!important}
+@media(max-width:1199px){#tbl.table-wrap{overflow-x:auto!important}}
