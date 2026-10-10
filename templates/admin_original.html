@@ -2488,7 +2488,12 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                       {% else %}
                         <span class="foto-btn foto-no" title="Sem foto">📷</span>
                       {% endif %}
-                      <div class="recb-nome" title="{{ e.recebido_por or '-' }}">{{ e.recebido_por or '-' }}</div>
+                      {% set nome_recebedor = (e.recebido_por or '')|trim %}
+                      {% if nome_recebedor|lower in ['crédito automático', 'credito automatico'] %}
+                        {% set nome_recebedor = '' %}
+                      {% endif %}
+                      {% set recebedor_exibido = ('Não informado' if nome_recebedor|length == 1 else nome_recebedor) %}
+                      <div class="recb-nome" title="{{ recebedor_exibido }}">{{ recebedor_exibido }}</div>
                     </div>
                   </td>
 
