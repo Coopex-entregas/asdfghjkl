@@ -1,0 +1,218 @@
+"""Integração Pix Sicoob - A1. Nunca registrar certificados ou tokens em logs."""
+import os, re, io, secrets
+from decimal import Decimal, InvalidOperation, ROUND_HALF_UP
+from datetime import datetime
+from flask import request, session, abort, jsonify, redirect, url_for, render_template_string
+from sqlalchemy import text
+
+API = "https://api.sicoob.com.br/pix/api/v2"
+TOKEN = "https://auth.sicoob.com.br/auth/realms/cooperado/protocol/openid-connect/token"
+SCOPES = "cob.read cob.write pix.read webhook.read webhook.write"
+
+def install(host):
+    app, db, Entrega = host.app, host.db, host.Entrega
+    from cryptography.fernet import Fernet
+    from requests_pkcs12 import Pkcs12Adapter
+    import requests
+
+    def cipher():
+        key = os.getenv("SICOOB_CONFIG_FERNET_KEY", "").encode()
+        if not key:
+            raise RuntimeError("Configure SICOOB_CONFIG_FERNET_KEY no ambiente do servidor")
+        return Fernet(key)
+
+    with app.app_context():
+        db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_config (
+            id INTEGER PRIMARY KEY, client_id TEXT NOT NULL, chave TEXT NOT NULL,
+            certificado BLOB NOT NULL, senha BLOB NOT NULL
+        )"""))
+        db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_cobranca (
+            entrega_id INTEGER PRIMARY KEY, txid VARCHAR(35) UNIQUE NOT NULL,
+            valor VARCHAR(20) NOT NULL, brcode TEXT,
+            e2eid VARCHAR(60) UNIQUE, pago_em VARCHAR(40),
+            status VARCHAR(30) NOT NULL DEFAULT 'PENDENTE'
+        )"""))
+        db.session.commit()
+
+    def master():
+        if not (session.get("is_admin") and session.get("is_master")):
+            abort(403)
+
+    def csrf():
+        if not session.get("sicoob_csrf"):
+            session["sicoob_csrf"] = secrets.token_urlsafe(32)
+        return session["sicoob_csrf"]
+
+    def check_csrf():
+        if not secrets.compare_digest(str(request.form.get("csrf") or request.headers.get("X-CSRF-Token") or ""), csrf()):
+            abort(403)
+
+    def conf():
+        row = db.session.execute(text("SELECT client_id,chave,certificado,senha FROM sicoob_pix_config WHERE id=1")).mappings().first()
+        if not row:
+            raise ValueError("Configure o Sicoob em Pix Sicoob")
+        c = cipher()
+        return row["client_id"], row["chave"], c.decrypt(bytes(row["certificado"])), c.decrypt(bytes(row["senha"])).decode()
+
+    def bank():
+        client_id, chave, pfx, password = conf()
+        s = requests.Session()
+        s.mount("https://", Pkcs12Adapter(pkcs12_data=pfx, pkcs12_password=password))
+        s.headers.update({"client_id":client_id,"Accept":"application/json"})
+        response = s.post(TOKEN, data={"grant_type":"client_credentials","client_id":client_id,"scope":SCOPES},timeout=20)
+        response.raise_for_status()
+        access = response.json()["access_token"]
+        s.headers["Authorization"] = "Bearer " + access
+        return s, chave
+
+    def bank_request(method, endpoint, payload=None):
+        s, chave = bank()
+        try:
+            r = s.request(method, API + endpoint, json=payload, timeout=25)
+            r.raise_for_status()
+            return (r.json() if r.content else {}), chave
+        finally:
+            s.close()
+
+    def money(value):
+        try:
+            result=Decimal(str(value)).quantize(Decimal(".01"), rounding=ROUND_HALF_UP)
+            if not result.is_finite() or result <= 0:
+                raise ValueError()
+            return result
+        except (InvalidOperation, ValueError):
+            raise ValueError("Valor inválido")
+
+    PAGE = """<!doctype html><html lang="pt-br"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>Pix Sicoob · COOPEX</title>
+<style>body{font:15px system-ui;background:#f3f6fc;color:#15233d;margin:0}.wrap{max-width:790px;margin:36px auto;padding:22px}h1{color:#1452bc}section{background:white;border:1px solid #dde4f0;border-radius:16px;padding:24px;margin:16px 0}label{display:block;margin:12px 0 5px;font-weight:650}input{box-sizing:border-box;width:100%;padding:12px;border:1px solid #bdcbe0;border-radius:9px}button{background:#1452bc;color:white;border:0;border-radius:9px;padding:12px 18px;cursor:pointer}a{color:#1452bc}.hint{font-size:13px;color:#58677e}.warn{background:#fff8ed;padding:12px;border-radius:8px;overflow-wrap:anywhere}pre{white-space:pre-wrap;overflow-wrap:anywhere}</style>
+<div class="wrap"><a href="/admin">← Voltar ao painel</a><h1>Pix Sicoob · COOPEX</h1><p>Configuração exclusiva do administrador master.</p>
+<section><h2>Certificado digital A1</h2><p class="hint">Certificado .pfx/.p12 e senha criptografados no banco de dados. A chave de criptografia deve estar somente nas variáveis protegidas do servidor.</p>
+<p><strong>Situação:</strong> {{ 'Configurado' if configured else 'Ainda não configurado' }}</p>
+<form action="/admin/pix-sicoob/config" method="post" enctype="multipart/form-data">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Client ID Sicoob</label><input name="client_id" required autocomplete="off">
+<label>Chave Pix</label><input name="chave" required autocomplete="off">
+<label>Certificado A1 (.pfx ou .p12)</label><input type="file" name="cert" accept=".pfx,.p12" required>
+<label>Senha do A1</label><input name="senha" type="password" required autocomplete="new-password">
+<p><button type="submit">Salvar configuração protegida</button></p>
+</form></section>
+<section><h2>Gerar Pix Copia e Cola</h2><p class="hint">Usa o valor já cadastrado na entrega. Não altera a forma de pagamento existente até a confirmação pelo banco.</p>
+<form id="pixForm"><input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Número da entrega</label><input name="entrega_id" type="number" min="1" required><p><button>Gerar/consultar cobrança</button></p></form>
+<label>Código Pix Copia e Cola</label><pre id="brcode" class="warn">Nenhum código gerado.</pre>
+<button type="button" onclick="navigator.clipboard.writeText(document.querySelector('#brcode').textContent)">Copiar Pix</button>
+<p id="situacao"></p><button type="button" onclick="consultar()">Verificar pagamento</button></section>
+<script>
+let id = null; const token = {{ csrf|tojson }};
+document.querySelector('#pixForm').onsubmit=async e=>{
+ e.preventDefault();id=e.target.entrega_id.value;
+ await chamar('/admin/pix-sicoob/cobrar/'+id,'POST');
+};
+async function consultar(){if(id)await chamar('/admin/pix-sicoob/verificar/'+id,'POST');}
+async function chamar(path,method){
+ const el=document.querySelector('#situacao'); el.textContent='Consultando o Sicoob...';
+ try{const r=await fetch(path,{method,headers:{'X-CSRF-Token':token}});
+ const d=await r.json();if(!r.ok)throw Error(d.erro||'Erro');
+ if(d.brcode) document.querySelector('#brcode').textContent=d.brcode;
+ el.textContent='Entrega '+d.entrega_id+' · R$ '+d.valor+' · '+d.status;
+ }catch(e){el.textContent='Não foi possível concluir: '+e.message}
+}
+</script></div></html>"""
+
+    @app.get("/admin/pix-sicoob")
+    def sicoob_painel():
+        master()
+        registered = bool(db.session.execute(text("SELECT id FROM sicoob_pix_config WHERE id=1")).first())
+        response = app.make_response(render_template_string(PAGE, configured=registered, csrf=csrf()))
+        response.headers["Cache-Control"]="no-store"
+        response.headers["X-Content-Type-Options"]="nosniff"
+        return response
+
+    @app.post("/admin/pix-sicoob/config")
+    def sicoob_config():
+        master(); check_csrf()
+        blob = request.files.get("cert")
+        if not blob or not blob.filename.lower().endswith((".pfx",".p12")):
+            return jsonify(erro="Selecione um certificado A1 .pfx ou .p12"),400
+        cert = blob.stream.read(65537)
+        if len(cert)>65536:
+            return jsonify(erro="Certificado muito grande"),400
+        senha = request.form.get("senha","")
+        client_id = request.form.get("client_id","").strip()
+        chave = request.form.get("chave","").strip()
+        if not senha or not client_id or not chave:
+            return jsonify(erro="Preencha todos os campos"),400
+        # Valida a senha e o conteúdo do certificado antes de armazenar.
+        from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
+        try:
+            private, cert_obj, _ = load_key_and_certificates(cert,senha.encode())
+            if not private or not cert_obj:
+                raise ValueError()
+        except Exception:
+            return jsonify(erro="Certificado inválido ou senha incorreta"),400
+        c = cipher()
+        db.session.execute(text("DELETE FROM sicoob_pix_config WHERE id=1"))
+        db.session.execute(text("INSERT INTO sicoob_pix_config(id,client_id,chave,certificado,senha) VALUES(1,:client,:chave,:cert,:pwd)"),
+                           {"client":client_id,"chave":chave,"cert":c.encrypt(cert),"pwd":c.encrypt(senha.encode())})
+        db.session.commit()
+        return redirect("/admin/pix-sicoob",303)
+
+    def get_record(entrega_id):
+        return db.session.execute(text("SELECT entrega_id,txid,valor,brcode,status,e2eid FROM sicoob_pix_cobranca WHERE entrega_id=:id"),{"id":entrega_id}).mappings().first()
+
+    def result(entrega_id,record):
+        return jsonify(entrega_id=entrega_id,txid=record["txid"],valor=record["valor"],brcode=record["brcode"],status=record["status"])
+
+    @app.post("/admin/pix-sicoob/cobrar/<int:entrega_id>")
+    def sicoob_cobrar(entrega_id):
+        master();check_csrf()
+        entrega=db.session.get(Entrega,entrega_id)
+        if not entrega:
+            return jsonify(erro="Entrega não encontrada"),404
+        record=get_record(entrega_id)
+        if record:
+            return result(entrega_id,record)
+        if (entrega.status_pagamento or "").lower()=="pago":
+            return jsonify(erro="Esta entrega já está marcada como paga"),409
+        amount=money(entrega.valor)
+        txid="COOPEX"+str(entrega_id).zfill(10)+secrets.token_hex(9).upper()
+        _, chave = conf()[0:2]
+        payload={"calendario":{"expiracao":3600},"valor":{"original":str(amount)},"chave":chave,"solicitacaoPagador":"Entrega COOPEX "+str(entrega_id)}
+        try:
+            data,_ = bank_request("PUT","/cob/"+txid,payload)
+        except Exception:
+            app.logger.exception("Falha na criação da cobrança Sicoob")
+            return jsonify(erro="Falha na comunicação com o Sicoob. Consulte o administrador."),502
+        brcode=data.get("brcode") or (data.get("loc") or {}).get("brcode")
+        if not brcode:
+            # Não cria outra cobrança automaticamente; deve haver reconciliação manual.
+            return jsonify(erro="Sicoob não retornou brcode; consulte a cobrança pelo txid antes de tentar novamente"),502
+        db.session.execute(text("INSERT INTO sicoob_pix_cobranca(entrega_id,txid,valor,brcode,status) VALUES(:id,:tx,:v,:bc,'PENDENTE')"),
+                           {"id":entrega_id,"tx":txid,"v":str(amount),"bc":brcode})
+        db.session.commit()
+        return result(entrega_id,get_record(entrega_id))
+
+    @app.post("/admin/pix-sicoob/verificar/<int:entrega_id>")
+    def sicoob_verificar(entrega_id):
+        master();check_csrf()
+        record=get_record(entrega_id)
+        if not record:
+            return jsonify(erro="Entrega sem cobrança Pix"),404
+        try:
+            data,_=bank_request("GET","/cob/"+record["txid"])
+        except Exception:
+            app.logger.exception("Falha na consulta da cobrança Sicoob")
+            return jsonify(erro="Não foi possível consultar o banco"),502
+        pix=data.get("pix") or []
+        expected=Decimal(record["valor"])
+        matches=[p for p in pix if p.get("txid",record["txid"])==record["txid"] and p.get("endToEndId")]
+        received=sum((Decimal(str(p.get("valor","0"))) for p in matches),Decimal("0"))
+        if data.get("status")=="CONCLUIDA" and received==expected and matches:
+            e=db.session.get(Entrega,entrega_id)
+            # Recusa baixa se houver intervenção manual com valor/formato divergente.
+            if e and money(e.valor)==expected:
+                e.status_pagamento="pago"
+                db.session.execute(text("UPDATE sicoob_pix_cobranca SET status='PAGO',e2eid=:e,pago_em=:d WHERE entrega_id=:id"),
+                                   {"id":entrega_id,"e":matches[0]["endToEndId"],"d":datetime.utcnow().isoformat(),"id":entrega_id})
+                db.session.commit()
+        return result(entrega_id,get_record(entrega_id))
