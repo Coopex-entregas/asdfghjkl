@@ -71,7 +71,7 @@ LIVE_SCRIPT = r"""
   'use strict';
 
   const URL_LIVE='/api/admin/live-state';
-  const INTERVALO=2000;
+  const INTERVALO=8000;
 
   let versao=null;
   let verificando=false;
@@ -225,7 +225,7 @@ LIVE_SCRIPT = r"""
   }
 
   async function loadPortalRequests(openOnNew){
-    if(portalLoading)return;portalLoading=true;
+    if(portalLoading || document.visibilityState==='hidden' || !navigator.onLine)return;portalLoading=true;
     try{
       const [cr,ca]=await Promise.all([
         fetch('/api/admin/solicitacoes-credito',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()),
@@ -433,12 +433,12 @@ LIVE_SCRIPT = r"""
     portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
     portalModal();
     loadPortalRequests(false);
-    setInterval(()=>loadPortalRequests(false),5000);
+    setInterval(()=>loadPortalRequests(false),15000);
     verificar();
     setInterval(verificar,INTERVALO);
 
     document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState==='visible') verificar();
+      if(document.visibilityState==='visible'){ verificar(); loadPortalRequests(false); }
     });
 
     document.addEventListener('focusout',()=>{
