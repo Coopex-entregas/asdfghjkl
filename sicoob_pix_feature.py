@@ -169,6 +169,8 @@ async function chamar(path,method){
         entrega=db.session.get(Entrega,entrega_id)
         if not entrega:
             return jsonify(erro="Entrega não encontrada"),404
+        if (entrega.pagamento or "").strip().casefold() not in ("pix (cooperativa)", "pix cooperativa", "pix da cooperativa"):
+            return jsonify(erro="Apenas entregas com pagamento Pix Cooperativa podem gerar cobrança Sicoob"),409
         record=get_record(entrega_id)
         if record:
             return result(entrega_id,record)
@@ -288,3 +290,78 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
                 return jsonify(sucesso=False,etapa="rede",mensagem="Falha de conexão HTTPS. Consulte logs protegidos do Render."),200
             except (ValueError,KeyError):
                 return jsonify(sucesso=False,etapa="OAuth",mensagem="Resposta de autenticação não reconhecida."),200
+
+    # Cobranças avulsas não dependem de entrega. Valor imutável após criação.
+    with app.app_context():
+        db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_avulso (
+            id VARCHAR(36) PRIMARY KEY, txid VARCHAR(35) UNIQUE NOT NULL,
+            valor VARCHAR(20) NOT NULL, brcode TEXT,
+            status VARCHAR(20) NOT NULL DEFAULT 'PENDENTE',
+            e2eid VARCHAR(60), criado_em VARCHAR(40) NOT NULL, pago_em VARCHAR(40)
+        )"""))
+        db.session.commit()
+
+    @app.post("/admin/pix-sicoob/avulso")
+    def sicoob_avulso_criar():
+        master();check_csrf()
+        payload=request.get_json(silent=True) or {}
+        try:
+            amount=money(str(payload.get("valor") or "").replace(",","."))
+        except ValueError:
+            return jsonify(erro="Informe um valor positivo, com duas casas decimais."),400
+        if amount > Decimal("100000.00"):
+            return jsonify(erro="Valor fora do limite de segurança."),400
+        import uuid
+        uid=str(uuid.uuid4())
+        txid="COOPEXAV"+uuid.uuid4().hex[:26].upper()
+        try:
+            _,chave=conf()[0:2]
+            dados,_=bank_request("PUT","/cob/"+txid,
+                {"calendario":{"expiracao":3600},"valor":{"original":str(amount)},
+                 "chave":chave,"solicitacaoPagador":"COOPEX Pagamento antecipado"})
+            brcode=dados.get("brcode") or dados.get("pixCopiaECola")
+            if not brcode:
+                # Consulte o mesmo txid; nunca gere cobrança substituta automaticamente.
+                dados,_=bank_request("GET","/cob/"+txid)
+                brcode=dados.get("brcode") or dados.get("pixCopiaECola")
+            if not brcode:
+                return jsonify(erro="Cobrança enviada ao banco, mas código Pix não disponível. Não tente gerar novamente antes de conciliar."),502
+            db.session.execute(text("""INSERT INTO sicoob_pix_avulso(id,txid,valor,brcode,status,criado_em)
+                VALUES(:id,:tx,:valor,:br,'PENDENTE',:criado)"""),
+                {"id":uid,"tx":txid,"valor":str(amount),"br":brcode,"criado":datetime.utcnow().isoformat()})
+            db.session.commit()
+            return jsonify(id=uid,valor=str(amount),brcode=brcode,status="PENDENTE")
+        except Exception:
+            app.logger.exception("Falha ao criar cobrança Pix avulsa")
+            return jsonify(erro="Não foi possível confirmar a geração no Sicoob. Verifique antes de repetir."),502
+
+    @app.get("/admin/pix-sicoob/avulsos")
+    def sicoob_avulsos_listar():
+        master()
+        rows=db.session.execute(text("""SELECT id,valor,status,criado_em,pago_em
+            FROM sicoob_pix_avulso ORDER BY criado_em DESC LIMIT 30""")).mappings().all()
+        return jsonify(cobrancas=[dict(row) for row in rows])
+
+    @app.post("/admin/pix-sicoob/avulso/<uid>/verificar")
+    def sicoob_avulso_verificar(uid):
+        master();check_csrf()
+        row=db.session.execute(text("SELECT * FROM sicoob_pix_avulso WHERE id=:id"),{"id":uid}).mappings().first()
+        if not row:
+            abort(404)
+        if row["status"]=="PAGO":
+            return jsonify(id=uid,status="PAGO")
+        try:
+            dados,_=bank_request("GET","/cob/"+row["txid"])
+            pix=dados.get("pix") or []
+            recebidos=[p for p in pix if p.get("endToEndId") and p.get("txid",row["txid"])==row["txid"]]
+            soma=sum((Decimal(str(p.get("valor","0"))) for p in recebidos),Decimal("0"))
+            if dados.get("status")=="CONCLUIDA" and soma==Decimal(row["valor"]) and recebidos:
+                db.session.execute(text("""UPDATE sicoob_pix_avulso
+                    SET status='PAGO', e2eid=:e, pago_em=:dt WHERE id=:id AND status='PENDENTE'"""),
+                    {"e":recebidos[0]["endToEndId"],"dt":datetime.utcnow().isoformat(),"id":uid})
+                db.session.commit()
+            current=db.session.execute(text("SELECT status FROM sicoob_pix_avulso WHERE id=:id"),{"id":uid}).scalar()
+            return jsonify(id=uid,status=current)
+        except Exception:
+            app.logger.exception("Falha na consulta do Pix avulso")
+            return jsonify(erro="Falha na consulta ao Sicoob."),502
