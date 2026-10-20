@@ -15242,6 +15242,11 @@ import sicoob_diagnostico_seguro
 import sys as _sicoob_sys
 sicoob_diagnostico_seguro.install(_sicoob_sys.modules[__name__])
 
+# Pix Sicoob: cobrancas e consulta bancaria vinculadas ao painel atual
+import sicoob_pix_feature
+import sys as _pix_sys
+sicoob_pix_feature.install(_pix_sys.modules[__name__])
+
 # COOPEX CONNECT
 import sys
 import coopex_connect
