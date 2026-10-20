@@ -35,8 +35,13 @@ def install(host):
         )"""))
         db.session.commit()
 
+    def admin():
+        if not session.get("is_admin"):
+            abort(403)
+
     def master():
-        if not (session.get("is_admin") and session.get("is_master")):
+        admin()
+        if not session.get("is_master") or session.get("user_nome") != "coopex":
             abort(403)
 
     def csrf():
@@ -166,7 +171,7 @@ async function chamar(path,method){
 
     @app.post("/admin/pix-sicoob/cobrar/<int:entrega_id>")
     def sicoob_cobrar(entrega_id):
-        master();check_csrf()
+        admin();check_csrf()
         entrega=db.session.get(Entrega,entrega_id)
         if not entrega:
             return jsonify(erro="Entrega não encontrada"),404
@@ -197,7 +202,7 @@ async function chamar(path,method){
 
     @app.post("/admin/pix-sicoob/verificar/<int:entrega_id>")
     def sicoob_verificar(entrega_id):
-        master();check_csrf()
+        admin();check_csrf()
         record=get_record(entrega_id)
         if not record:
             return jsonify(erro="Entrega sem cobrança Pix"),404
@@ -304,7 +309,7 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
 
     @app.post("/admin/pix-sicoob/avulso")
     def sicoob_avulso_criar():
-        master();check_csrf()
+        admin();check_csrf()
         payload=request.get_json(silent=True) or {}
         try:
             amount=money(str(payload.get("valor") or "").replace(",","."))
@@ -338,14 +343,14 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
 
     @app.get("/admin/pix-sicoob/avulsos")
     def sicoob_avulsos_listar():
-        master()
+        admin()
         rows=db.session.execute(text("""SELECT id,valor,status,criado_em,pago_em
             FROM sicoob_pix_avulso ORDER BY criado_em DESC LIMIT 30""")).mappings().all()
         return jsonify(cobrancas=[dict(row) for row in rows])
 
     @app.post("/admin/pix-sicoob/avulso/<uid>/verificar")
     def sicoob_avulso_verificar(uid):
-        master();check_csrf()
+        admin();check_csrf()
         row=db.session.execute(text("SELECT * FROM sicoob_pix_avulso WHERE id=:id"),{"id":uid}).mappings().first()
         if not row:
             abort(404)
@@ -369,7 +374,7 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
 
     @app.get("/admin/pix-sicoob/csrf")
     def sicoob_ui_csrf():
-        master()
+        admin()
         response=jsonify(csrf=csrf())
         response.headers["Cache-Control"]="no-store"
         return response
