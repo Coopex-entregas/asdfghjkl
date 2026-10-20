@@ -2190,6 +2190,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                 <a href="{{ url_for('agendar_entrega') }}"><span class="btn-ico">🗓</span>Agendar entrega</a>
                 <a href="{{ url_for('mapa_motoboys') }}" target="_blank" rel="noopener"><span class="btn-ico">📍</span>Mapa dos cooperados</a>
                 <a href="{{ url_for('trajetos') }}"><span class="btn-ico">🛣</span>Histórico de trajetos</a>
+                {% if session.get('is_master') and session.get('user_nome') == 'coopex' %}<a href="{{ url_for('sicoob_painel') }}"><span class="btn-ico">🔐</span>Certificado</a>{% endif %}
               </div>
             </div>
 
