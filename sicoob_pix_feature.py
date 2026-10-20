@@ -169,6 +169,13 @@ async function chamar(path,method){
     def result(entrega_id,record):
         return jsonify(entrega_id=entrega_id,txid=record["txid"],valor=record["valor"],brcode=record["brcode"],status=record["status"])
 
+    def _sicoob_bank_paid(record):
+        data,_=bank_request("GET","/cob/"+record["txid"])
+        pix=data.get("pix") or []
+        valid=[p for p in pix if p.get("endToEndId") and p.get("txid",record["txid"])==record["txid"]]
+        received=sum((Decimal(str(p.get("valor","0"))) for p in valid),Decimal("0"))
+        return data.get("status")=="CONCLUIDA" and bool(valid) and received==Decimal(record["valor"])
+
     @app.post("/admin/pix-sicoob/cobrar/<int:entrega_id>")
     def sicoob_cobrar(entrega_id):
         admin();check_csrf()
@@ -178,8 +185,17 @@ async function chamar(path,method){
         if (entrega.pagamento or "").strip().casefold() not in ("pix (cooperativa)", "pix cooperativa", "pix da cooperativa"):
             return jsonify(erro="Apenas entregas com pagamento Pix Cooperativa podem gerar cobrança Sicoob"),409
         record=get_record(entrega_id)
+        # Nao entregar uma chave de uma cobranca ja paga (manualmente ou no banco).
+        if (entrega.status_pagamento or "").lower()=="pago":
+            return jsonify(erro="Esta entrega ja esta paga; nao pode gerar nem copiar outro Pix."),409
         if record:
-            return result(entrega_id,record)
+            if record["status"]=="PAGO":
+                return jsonify(erro="Pix ja pago. Nao gere ou copie novamente."),409
+            try:
+                # Consulta o banco antes de reutilizar a cobranca pendente.
+                return sicoob_verificar(entrega_id) if _sicoob_bank_paid(record) else result(entrega_id,record)
+            except Exception:
+                return jsonify(erro="Nao foi possivel conferir o Pix existente no Sicoob. Tente consultar antes de copiar."),502
         if (entrega.status_pagamento or "").lower()=="pago":
             return jsonify(erro="Esta entrega já está marcada como paga"),409
         amount=money(entrega.valor)
