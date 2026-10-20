@@ -290,3 +290,66 @@ function start(){reorganize();query.addEventListener('change',reorganize);const 
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+
+
+<style id="cx-pix-sicoob-style">
+.cx-pix-copy{font:600 11px system-ui;border:1px solid #bfcef1;border-radius:8px;background:#edf3ff;color:#1745a0;padding:6px 8px;cursor:pointer;margin-left:5px;white-space:nowrap}
+.cx-pix-advance{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border:1px solid #dce5f5;border-radius:12px;padding:12px;margin:12px 0;background:#f4f7fd;color:#1e3a67}
+.cx-pix-advance input{width:130px;max-width:160px;padding:8px;border:1px solid #ccd9ec;border-radius:8px;color:#17345c;background:white}
+.cx-pix-advance span{font-size:12px;color:#52677e}
+body.dark .cx-pix-advance{background:#152139;color:#e4eafb}
+</style>
+<script id="cx-pix-sicoob-inline">
+(function(){
+let csrfPromise=null;
+const token=()=>csrfPromise||(csrfPromise=fetch('/admin/pix-sicoob/csrf',{credentials:'same-origin'}).then(async r=>{if(!r.ok)throw Error('Acesso restrito ao administrador master.');return (await r.json()).csrf}));
+async function create(url,body){
+const csrf=await token();
+const res=await fetch(url,{method:'POST',credentials:'same-origin',
+headers:{'Content-Type':'application/json','X-CSRF-Token':csrf},body:JSON.stringify(body||{})});
+const data=await res.json().catch(()=>({}));
+if(!res.ok)throw Error(data.erro||'Erro de comunicação com a API Pix');
+return data;
+}
+async function copy(code){
+if(!code)throw Error('O Sicoob não forneceu código Copia e Cola.');
+await navigator.clipboard.writeText(code);
+}
+async function copyDelivery(btn){
+btn.disabled=true;const before=btn.textContent;btn.textContent='Aguarde...';
+try{const result=await create('/admin/pix-sicoob/cobrar/'+btn.dataset.entregaId);await copy(result.brcode);btn.textContent='Copiado ✓';}
+catch(err){alert(err.message);btn.textContent=before;}finally{setTimeout(()=>{btn.disabled=false;btn.textContent=before},1700)}
+}
+function attach(){
+document.querySelectorAll('.cx-forma-pagamento[data-entrega-id]').forEach(el=>{
+const pix=/^pix\s*(?:\(\s*cooperativa\s*\)|cooperativa|da cooperativa)$/i.test((el.dataset.forma||'').trim());
+let btn=el.parentElement.querySelector('.cx-pix-copy');
+if(!pix){if(btn)btn.remove();return}
+if(btn)return;
+btn=document.createElement('button');btn.type='button';btn.className='cx-pix-copy';
+btn.dataset.entregaId=el.dataset.entregaId;btn.textContent='Copiar Pix';btn.title='Copiar Pix Cooperativa com valor desta entrega';
+btn.addEventListener('click',e=>{e.preventDefault();e.stopPropagation();copyDelivery(btn)});
+el.insertAdjacentElement('afterend',btn);
+});
+}
+function avulso(){
+if(document.getElementById('cx-pix-avulso'))return;
+const root=document.querySelector('.quick-view-bar')||document.querySelector('#tbl');
+if(!root)return;
+const host=document.createElement('div');
+host.id='cx-pix-avulso';host.className='cx-pix-advance';
+const label=document.createElement('strong');label.textContent='Pix antecipado';
+const input=document.createElement('input');input.type='text';input.inputMode='decimal';input.placeholder='Valor R$ 0,00';input.setAttribute('aria-label','Valor avulso em reais');
+const btn=document.createElement('button');btn.className='cx-pix-copy';btn.type='button';btn.textContent='Copiar Pix';
+const hint=document.createElement('span');hint.textContent='Para cliente que paga antes de lançar a entrega';
+host.append(label,input,btn,hint);root.parentElement.insertBefore(host,root);
+btn.addEventListener('click',async()=>{
+const raw=input.value.trim();if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(raw)){alert('Digite o valor, exemplo: 25,00');return}
+btn.disabled=true;btn.textContent='Aguarde...';
+try{let data=await create('/admin/pix-sicoob/avulso',{valor:raw.replace(',','.')});await copy(data.brcode);btn.textContent='Copiado ✓';hint.textContent='Cobrança avulsa gerada · '+data.id+' · Pendente';}
+catch(e){alert(e.message);btn.textContent='Copiar Pix'}finally{btn.disabled=false;}
+});
+}
+document.addEventListener('DOMContentLoaded',()=>{attach();avulso();const observer=new MutationObserver(()=>{attach();avulso()});observer.observe(document.body,{childList:true,subtree:true});});
+})();
+</script>
