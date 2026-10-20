@@ -306,6 +306,11 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
             e2eid VARCHAR(60), criado_em VARCHAR(40) NOT NULL, pago_em VARCHAR(40)
         )"""))
         db.session.commit()
+        from sqlalchemy import inspect
+        cols = {col["name"] for col in inspect(db.engine).get_columns("sicoob_pix_avulso")}
+        if "cliente_nome" not in cols:
+            db.session.execute(text("ALTER TABLE sicoob_pix_avulso ADD COLUMN cliente_nome VARCHAR(160)"))
+            db.session.commit()
 
     @app.post("/admin/pix-sicoob/avulso")
     def sicoob_avulso_criar():
@@ -317,6 +322,9 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
             return jsonify(erro="Informe um valor positivo, com duas casas decimais."),400
         if amount > Decimal("100000.00"):
             return jsonify(erro="Valor fora do limite de segurança."),400
+        nome_cliente=str(payload.get("cliente_nome") or "").strip()
+        if not nome_cliente or len(nome_cliente)>160:
+            return jsonify(erro="Informe o nome do cliente (até 160 caracteres)."),400
         import uuid
         uid=str(uuid.uuid4())
         txid="COOPEXAV"+uuid.uuid4().hex[:26].upper()
@@ -332,11 +340,11 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
                 brcode=dados.get("brcode") or dados.get("pixCopiaECola")
             if not brcode:
                 return jsonify(erro="Cobrança enviada ao banco, mas código Pix não disponível. Não tente gerar novamente antes de conciliar."),502
-            db.session.execute(text("""INSERT INTO sicoob_pix_avulso(id,txid,valor,brcode,status,criado_em)
-                VALUES(:id,:tx,:valor,:br,'PENDENTE',:criado)"""),
-                {"id":uid,"tx":txid,"valor":str(amount),"br":brcode,"criado":datetime.utcnow().isoformat()})
+            db.session.execute(text("""INSERT INTO sicoob_pix_avulso(id,txid,valor,brcode,status,criado_em,cliente_nome)
+                VALUES(:id,:tx,:valor,:br,'PENDENTE',:criado,:cliente_nome)"""),
+                {"id":uid,"tx":txid,"valor":str(amount),"br":brcode,"criado":datetime.utcnow().isoformat(),"cliente_nome":nome_cliente})
             db.session.commit()
-            return jsonify(id=uid,valor=str(amount),brcode=brcode,status="PENDENTE")
+            return jsonify(id=uid,cliente_nome=nome_cliente,valor=str(amount),brcode=brcode,status="PENDENTE")
         except Exception:
             app.logger.exception("Falha ao criar cobrança Pix avulsa")
             return jsonify(erro="Não foi possível confirmar a geração no Sicoob. Verifique antes de repetir."),502
@@ -344,8 +352,8 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
     @app.get("/admin/pix-sicoob/avulsos")
     def sicoob_avulsos_listar():
         admin()
-        rows=db.session.execute(text("""SELECT id,valor,status,criado_em,pago_em
-            FROM sicoob_pix_avulso ORDER BY criado_em DESC LIMIT 30""")).mappings().all()
+        rows=db.session.execute(text("""SELECT id,cliente_nome,valor,status,criado_em,pago_em,brcode
+            FROM sicoob_pix_avulso ORDER BY criado_em DESC LIMIT 100""")).mappings().all()
         return jsonify(cobrancas=[dict(row) for row in rows])
 
     @app.post("/admin/pix-sicoob/avulso/<uid>/verificar")
