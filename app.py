@@ -15237,7 +15237,12 @@ def api_rastreio_pos(token):
                    cooperado=coop.nome,
                    quando_local=when_local)
 
-# Diagnostico isolado Sicoob (sem geracao de pagamentos)\nimport sicoob_diagnostico_seguro\nimport sys as _sicoob_sys\nsicoob_diagnostico_seguro.install(_sicoob_sys.modules[__name__])\n\n# COOPEX CONNECT
+# Diagnostico isolado Sicoob (sem geracao de pagamentos)
+import sicoob_diagnostico_seguro
+import sys as _sicoob_sys
+sicoob_diagnostico_seguro.install(_sicoob_sys.modules[__name__])
+
+# COOPEX CONNECT
 import sys
 import coopex_connect
 
