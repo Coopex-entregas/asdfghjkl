@@ -193,7 +193,10 @@ async function chamar(path,method){
                 return jsonify(erro="Pix ja pago. Nao gere ou copie novamente."),409
             try:
                 # Consulta o banco antes de reutilizar a cobranca pendente.
-                return sicoob_verificar(entrega_id) if _sicoob_bank_paid(record) else result(entrega_id,record)
+                if _sicoob_bank_paid(record):
+                    sicoob_verificar(entrega_id)
+                    return jsonify(erro="O Sicoob confirmou que este Pix ja foi pago. Nao copie novamente."),409
+                return result(entrega_id,record)
             except Exception:
                 return jsonify(erro="Nao foi possivel conferir o Pix existente no Sicoob. Tente consultar antes de copiar."),502
         if (entrega.status_pagamento or "").lower()=="pago":
