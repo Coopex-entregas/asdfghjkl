@@ -22,9 +22,10 @@ def install(host):
         return Fernet(key)
 
     with app.app_context():
-        db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_config (
+        binary_type = "BYTEA" if db.engine.dialect.name == "postgresql" else "BLOB"
+        db.session.execute(text(f"""CREATE TABLE IF NOT EXISTS sicoob_pix_config (
             id INTEGER PRIMARY KEY, client_id TEXT NOT NULL, chave TEXT NOT NULL,
-            certificado BLOB NOT NULL, senha BLOB NOT NULL
+            certificado {binary_type} NOT NULL, senha {binary_type} NOT NULL
         )"""))
         db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_cobranca (
             entrega_id INTEGER PRIMARY KEY, txid VARCHAR(35) UNIQUE NOT NULL,
