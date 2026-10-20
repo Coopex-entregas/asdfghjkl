@@ -341,12 +341,13 @@ host.id='cx-pix-avulso';host.className='cx-pix-advance';
 const label=document.createElement('strong');label.textContent='Pix antecipado';
 const input=document.createElement('input');input.type='text';input.inputMode='decimal';input.placeholder='Valor R$ 0,00';input.setAttribute('aria-label','Valor avulso em reais');
 const btn=document.createElement('button');btn.className='cx-pix-copy';btn.type='button';btn.textContent='Copiar Pix';
+const cliente=document.createElement('input');cliente.placeholder='Nome do cliente';cliente.maxLength=160;cliente.setAttribute('aria-label','Nome do cliente Pix antecipado');cliente.style.width='170px';
 const hint=document.createElement('span');hint.textContent='Para cliente que paga antes de lançar a entrega';
-host.append(label,input,btn,hint);root.parentElement.insertBefore(host,root);
+host.append(label,cliente,input,btn,hint);root.parentElement.insertBefore(host,root);
 btn.addEventListener('click',async()=>{
-const raw=input.value.trim();if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(raw)){alert('Digite o valor, exemplo: 25,00');return}
+const raw=input.value.trim();if(!cliente.value.trim()){alert('Informe o nome do cliente');return}if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(raw)){alert('Digite o valor, exemplo: 25,00');return}
 btn.disabled=true;btn.textContent='Aguarde...';
-try{let data=await create('/admin/pix-sicoob/avulso',{valor:raw.replace(',','.')});await copy(data.brcode);btn.textContent='Copiado ✓';hint.textContent='Cobrança avulsa gerada · '+data.id+' · Pendente';}
+try{let data=await create('/admin/pix-sicoob/avulso',{valor:raw.replace(',','.'),cliente_nome:cliente.value.trim()});await copy(data.brcode);btn.textContent='Copiado ✓';hint.textContent='Cobrança avulsa gerada · '+data.id+' · Pendente';}
 catch(e){alert(e.message);btn.textContent='Copiar Pix'}finally{btn.disabled=false;}
 });
 }
