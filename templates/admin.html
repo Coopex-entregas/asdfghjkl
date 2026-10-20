@@ -312,8 +312,15 @@ if(!res.ok)throw Error(data.erro||'Erro de comunicação com a API Pix');
 return data;
 }
 async function copy(code){
-if(!code)throw Error('O Sicoob não forneceu código Copia e Cola.');
-await navigator.clipboard.writeText(code);
+if(!code || !String(code).startsWith('000201'))throw Error('A cobrança não tem código Pix Copia e Cola válido. Consulte o banco antes de pagar.');
+try{if(!document.hasFocus())throw Error('sem foco');await navigator.clipboard.writeText(code);return true}catch(err){
+const modal=document.createElement('div');modal.style.cssText='position:fixed;inset:0;z-index:999999;background:rgba(0,0,0,.65);display:grid;place-items:center;padding:15px';
+const box=document.createElement('section');box.style.cssText='background:#fff;color:#17294d;border-radius:14px;padding:20px;max-width:700px;width:100%;box-sizing:border-box';
+const title=document.createElement('h3');title.textContent='Pix Copia e Cola — selecione e copie o código';
+const area=document.createElement('textarea');area.value=code;area.readOnly=true;area.style.cssText='width:100%;height:125px;box-sizing:border-box;overflow-wrap:anywhere';
+const btn=document.createElement('button');btn.type='button';btn.textContent='Selecionar código';btn.onclick=()=>{area.focus();area.select();try{document.execCommand('copy')}catch(e){}};
+const close=document.createElement('button');close.type='button';close.textContent='Fechar';close.onclick=()=>modal.remove();box.append(title,area,btn,close);modal.append(box);document.body.append(modal);area.focus();area.select();return false;
+}
 }
 async function copyDelivery(btn){
 btn.disabled=true;const before=btn.textContent;btn.textContent='Aguarde...';
