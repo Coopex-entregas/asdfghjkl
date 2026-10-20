@@ -322,10 +322,20 @@ const btn=document.createElement('button');btn.type='button';btn.textContent='Se
 const close=document.createElement('button');close.type='button';close.textContent='Fechar';close.onclick=()=>modal.remove();box.append(title,area,btn,close);modal.append(box);document.body.append(modal);area.focus();area.select();return false;
 }
 }
+async function watchPix(kind,id,btn){
+const url=kind==='avulso'?'/admin/pix-sicoob/avulso/'+encodeURIComponent(id)+'/verificar':'/admin/pix-sicoob/verificar/'+encodeURIComponent(id);
+for(let n=0;n<36;n++){
+await new Promise(resolve=>setTimeout(resolve,5000));
+if(!document.body.contains(btn))return;
+try{const result=await create(url);if(result.status==='PAGO'){
+btn.textContent='Pago ✓';btn.disabled=true;btn.dataset.pixPago='1';btn.title='Pagamento confirmado pelo Sicoob';return;
+}}catch(err){}
+}
+}
 async function copyDelivery(btn){
 btn.disabled=true;const before=btn.textContent;btn.textContent='Aguarde...';
-try{const result=await create('/admin/pix-sicoob/cobrar/'+btn.dataset.entregaId);await copy(result.brcode);btn.textContent='Copiado ✓';}
-catch(err){alert(err.message);btn.textContent=before;}finally{setTimeout(()=>{btn.disabled=false;btn.textContent=before},1700)}
+try{const result=await create('/admin/pix-sicoob/cobrar/'+btn.dataset.entregaId);await copy(result.brcode);btn.textContent='Pix pendente';watchPix('entrega',btn.dataset.entregaId,btn);}
+catch(err){alert(err.message);btn.textContent=before;}finally{setTimeout(()=>{if(btn.dataset.pixPago!=='1'){btn.disabled=false;btn.textContent=before}},1700)}
 }
 function attach(){
 document.querySelectorAll('.cx-forma-pagamento[data-entrega-id]').forEach(el=>{
@@ -354,7 +364,7 @@ host.append(label,cliente,input,btn,hint);root.parentElement.insertBefore(host,r
 btn.addEventListener('click',async()=>{
 const raw=input.value.trim();if(!cliente.value.trim()){alert('Informe o nome do cliente');return}if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(raw)){alert('Digite o valor, exemplo: 25,00');return}
 btn.disabled=true;btn.textContent='Aguarde...';
-try{let data=await create('/admin/pix-sicoob/avulso',{valor:raw.replace(',','.'),cliente_nome:cliente.value.trim()});await copy(data.brcode);btn.textContent='Copiado ✓';hint.textContent='Cobrança avulsa gerada · '+data.id+' · Pendente';}
+try{let data=await create('/admin/pix-sicoob/avulso',{valor:raw.replace(',','.'),cliente_nome:cliente.value.trim()});await copy(data.brcode);btn.textContent='Pix pendente';hint.textContent='Cobrança avulsa gerada · '+data.id+' · Pendente';watchPix('avulso',data.id,btn);}
 catch(e){alert(e.message);btn.textContent='Copiar Pix'}finally{btn.disabled=false;}
 });
 }
