@@ -216,3 +216,75 @@ async function chamar(path,method){
                                    {"id":entrega_id,"e":matches[0]["endToEndId"],"d":datetime.utcnow().isoformat(),"id":entrega_id})
                 db.session.commit()
         return result(entrega_id,get_record(entrega_id))
+
+    # Painel de diagnóstico: APENAS leitura e sem expor token/certificado.
+    TEST_PAGE = """<!doctype html><html lang="pt-br"><meta charset="utf-8">
+<title>COOPEX | Diagnóstico Sicoob</title><meta name="viewport" content="width=device-width,initial-scale=1">
+<style>body{font:15px system-ui;background:#f4f7fd;color:#172b4d;margin:0}.main{max-width:760px;margin:32px auto;padding:18px}.box{background:white;border:1px solid #dce5f4;padding:24px;border-radius:14px;margin:16px 0}h1{color:#154db4}button{background:#1452bc;color:white;border:0;border-radius:8px;padding:12px 20px;cursor:pointer;margin:6px}code{word-break:break-all}#result{white-space:pre-wrap;background:#f3f7fc;padding:15px;border-radius:8px}a{color:#154db4}</style>
+<div class="main"><a href="/admin/pix-sicoob">← Configurações Pix</a><h1>Diagnóstico da API Sicoob</h1>
+<div class="box"><h3>Testes seguros e somente de leitura</h3>
+<p>1. Verificar se o certificado A1 está cadastrado.</p>
+<p>2. Solicitar token OAuth usando o certificado mTLS.</p>
+<p>3. Consultar a API Pix Recebimentos (webhooks cadastrados).</p>
+<p>Nenhum teste cria cobranças, altera webhooks ou movimenta dinheiro.</p>
+<button onclick="run('config')">Testar cadastro A1</button>
+<button onclick="run('token')">Testar autenticação</button>
+<button onclick="run('pix')">Testar acesso à API Pix</button>
+<h3>Resultado</h3><div id="result">Aguardando teste.</div></div></div>
+<script>async function run(step){
+let el=document.getElementById('result');el.textContent='Testando...';
+try{let r=await fetch('/admin/pix-sicoob/diagnostico/'+step,{method:'POST',headers:{'X-CSRF-Token':{{ csrf|tojson }}}});
+let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textContent='Falha de comunicação com o servidor.'}
+}</script></html>"""
+
+    @app.get("/admin/pix-sicoob/diagnostico")
+    def sicoob_diagnostico_pagina():
+        master()
+        response=app.make_response(render_template_string(TEST_PAGE,csrf=csrf()))
+        response.headers["Cache-Control"]="no-store"
+        response.headers["X-Frame-Options"]="DENY"
+        return response
+
+    @app.post("/admin/pix-sicoob/diagnostico/<step>")
+    def sicoob_diagnostico_acao(step):
+        master(); check_csrf()
+        if step not in ("config","token","pix"):
+            abort(404)
+        try:
+            client_id,chave,pfx,password=conf()
+            from cryptography.hazmat.primitives.serialization.pkcs12 import load_key_and_certificates
+            private,certificate,_=load_key_and_certificates(pfx,password.encode())
+            if not private or not certificate:
+                return jsonify(sucesso=False,etapa="certificado",mensagem="Arquivo PFX inválido ou sem chave privada"),422
+            if step=="config":
+                return jsonify(sucesso=True,etapa="certificado",mensagem="PFX e chave privada carregados. Client ID e chave Pix cadastrados.")
+        except Exception as e:
+            # Não vazar detalhes de descriptografia, chaves ou senhas.
+            return jsonify(sucesso=False,etapa="configuração",mensagem="Falha na configuração protegida ou certificado A1. Verifique os dados e a chave de criptografia."),422
+        import requests
+        from requests_pkcs12 import Pkcs12Adapter
+        with requests.Session() as s:
+            try:
+                s.mount("https://",Pkcs12Adapter(pkcs12_data=pfx,pkcs12_password=password))
+                resp=s.post(TOKEN,data={"grant_type":"client_credentials","client_id":client_id,"scope":SCOPES},
+                    headers={"Content-Type":"application/x-www-form-urlencoded"},timeout=20)
+                if resp.status_code!=200:
+                    return jsonify(sucesso=False,etapa="OAuth mTLS",http=resp.status_code,
+                        mensagem="Sicoob recusou a emissão do token. Verifique aprovação, certificado vinculado, permissões e credenciais."),200
+                token=resp.json().get("access_token")
+                if not token:
+                    return jsonify(sucesso=False,etapa="OAuth mTLS",mensagem="Resposta do Sicoob sem access_token."),200
+                if step=="token":
+                    return jsonify(sucesso=True,etapa="OAuth mTLS",mensagem="Token emitido com sucesso. Token não é exibido."),200
+                # GET é somente leitura; nunca devolva valores recebidos do banco ao navegador.
+                r=s.get(API+"/webhook",headers={"Authorization":"Bearer "+token,"client_id":client_id,"Accept":"application/json"},timeout=20)
+                return jsonify(sucesso=(r.status_code==200),etapa="Pix Recebimentos GET /webhook",http=r.status_code,
+                    mensagem=("Consulta autorizada." if r.status_code==200 else "Resposta do Sicoob. Verifique permissão webhook.read ou autorização da aplicação.")),200
+            except requests.exceptions.SSLError:
+                return jsonify(sucesso=False,etapa="TLS",mensagem="Falha na validação TLS/mTLS. Confira o certificado e a cadeia de confiança."),200
+            except requests.exceptions.Timeout:
+                return jsonify(sucesso=False,etapa="rede",mensagem="Tempo de conexão com o Sicoob excedido."),200
+            except requests.exceptions.RequestException:
+                return jsonify(sucesso=False,etapa="rede",mensagem="Falha de conexão HTTPS. Consulte logs protegidos do Render."),200
+            except (ValueError,KeyError):
+                return jsonify(sucesso=False,etapa="OAuth",mensagem="Resposta de autenticação não reconhecida."),200
