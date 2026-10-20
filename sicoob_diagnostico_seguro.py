@@ -14,6 +14,9 @@ HTML="""<!DOCTYPE html><html lang=pt-br><meta charset=utf-8><meta name=viewport 
 def install(host):
     app=host.app
     def master():
+        # Falha fechada: nao permite upload de certificado sem segredos de sessao e credenciais explicitos no Render.
+        if os.getenv("SICOOB_DIAG_ENABLED") != "1" or not os.getenv("SECRET_KEY") or not os.getenv("ADMIN_PWD_COOPEX_MASTER"):
+            abort(503)
         if not(session.get("is_admin") and session.get("is_master")): abort(403)
     def csrf():
         if "sicoob_diagnostic_csrf" not in session: session["sicoob_diagnostic_csrf"]=secrets.token_urlsafe(32)
