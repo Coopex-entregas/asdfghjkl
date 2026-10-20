@@ -365,3 +365,10 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
         except Exception:
             app.logger.exception("Falha na consulta do Pix avulso")
             return jsonify(erro="Falha na consulta ao Sicoob."),502
+
+    @app.get("/admin/pix-sicoob/csrf")
+    def sicoob_ui_csrf():
+        master()
+        response=jsonify(csrf=csrf())
+        response.headers["Cache-Control"]="no-store"
+        return response
