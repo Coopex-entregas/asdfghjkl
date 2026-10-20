@@ -15243,6 +15243,10 @@ import coopex_connect
 
 coopex_connect.install(sys.modules[__name__])
 
+# Integração isolada Sicoob Pix, cadastro A1 e cobrança imediata
+import sicoob_pix_feature
+sicoob_pix_feature.install(sys.modules[__name__])
+
 
 
 if __name__ == '__main__':
