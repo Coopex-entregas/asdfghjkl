@@ -360,7 +360,24 @@ const input=document.createElement('input');input.type='text';input.inputMode='d
 const btn=document.createElement('button');btn.className='cx-pix-copy';btn.type='button';btn.textContent='Copiar Pix';
 const cliente=document.createElement('input');cliente.placeholder='Nome do cliente';cliente.maxLength=160;cliente.setAttribute('aria-label','Nome do cliente Pix antecipado');cliente.style.width='170px';
 const hint=document.createElement('span');hint.textContent='Para cliente que paga antes de lançar a entrega';
-host.append(label,cliente,input,btn,hint);root.parentElement.insertBefore(host,root);
+const historicoBtn=document.createElement('button');historicoBtn.type='button';historicoBtn.className='cx-pix-copy';historicoBtn.textContent='Histórico Pix';
+const painel=document.createElement('div');painel.style.cssText='display:none;width:100%;max-height:350px;overflow:auto;border-top:1px solid #dce5f5;padding-top:10px';
+host.append(label,cliente,input,btn,historicoBtn,hint,painel);root.parentElement.insertBefore(host,root);
+async function atualizarHistorico(){
+const resp=await fetch('/admin/pix-sicoob/avulsos',{credentials:'same-origin',cache:'no-store'});
+if(!resp.ok)throw Error('Não foi possível consultar o histórico.');
+const dados=await resp.json();const itens=dados.cobrancas||[];painel.replaceChildren();
+if(!itens.length){painel.textContent='Nenhum Pix antecipado cadastrado.';return;}
+for(const item of itens){
+const linha=document.createElement('div');linha.style.cssText='display:flex;align-items:center;flex-wrap:wrap;gap:8px;padding:9px 0;border-bottom:1px solid #dce5f5';
+const info=document.createElement('span');info.style.flex='1 1 280px';
+let dia='';try{dia=new Date(item.criado_em+'Z').toLocaleString('pt-BR')}catch(e){}
+info.textContent=(item.cliente_nome||'Cliente não informado')+' · '+Number(item.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})+' · '+dia+' · '+(item.status==='PAGO'?'PAGO ✓':'Pendente');
+const verificar=document.createElement('button');verificar.type='button';verificar.className='cx-pix-copy';verificar.textContent='Verificar pagamento';
+verificar.onclick=async()=>{verificar.disabled=true;try{await create('/admin/pix-sicoob/avulso/'+encodeURIComponent(item.id)+'/verificar');await atualizarHistorico()}catch(e){alert(e.message)}finally{verificar.disabled=false}};
+linha.append(info,verificar);painel.append(linha);
+}}
+historicoBtn.onclick=async()=>{painel.style.display=painel.style.display==='none'?'block':'none';if(painel.style.display==='block'){painel.textContent='Carregando...';try{await atualizarHistorico()}catch(e){painel.textContent=e.message}}};
 btn.addEventListener('click',async()=>{
 const raw=input.value.trim();if(!cliente.value.trim()){alert('Informe o nome do cliente');return}if(!/^\d{1,6}(?:[,.]\d{1,2})?$/.test(raw)){alert('Digite o valor, exemplo: 25,00');return}
 btn.disabled=true;btn.textContent='Aguarde...';
