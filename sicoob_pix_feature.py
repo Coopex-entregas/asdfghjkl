@@ -368,6 +368,50 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
             app.logger.exception("Falha ao criar cobrança Pix avulsa")
             return jsonify(erro="Não foi possível confirmar a geração no Sicoob. Verifique antes de repetir."),502
 
+    HISTORY_PAGE = """<!doctype html><html lang="pt-BR"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>COOPEX | Histórico Pix</title>
+<style>body{font:15px system-ui;background:#f4f7fc;color:#19345e;margin:0}header{background:#1551b5;color:white;padding:18px 24px;display:flex;justify-content:space-between;gap:12px}header a{color:white}main{max-width:1200px;margin:25px auto;padding:0 16px}section{background:white;padding:22px;border-radius:16px}table{width:100%;border-collapse:collapse;min-width:680px}td,th{padding:12px;text-align:left;border-bottom:1px solid #e1e7f2}th{background:#edf3ff}button{padding:8px 11px;margin:2px;border:1px solid #bacbe8;border-radius:8px;background:#eef4ff;color:#1345a1;cursor:pointer}button:disabled{opacity:.5}.good{color:#087b4c;font-weight:bold}.warn{color:#996b00;font-weight:bold}.bad{color:#9e3333;font-weight:bold}.wrap{overflow:auto}small{color:#61748b}#message{padding:10px}</style>
+<header><strong>COOPEX · Histórico Pix antecipado</strong><a href="/admin" target="_blank" rel="noopener">Abrir painel ↗</a></header><main><section><p>Mantenha esta página aberta. Atualização da lista a cada 10 segundos; até cinco cobranças pendentes são consultadas no banco a cada ciclo.</p><button id="refresh">Atualizar agora</button> <small id="updated">Aguardando atualização</small><div id="message"></div><div class="wrap"><table><thead><tr><th>Cliente</th><th>Valor</th><th>Criado em</th><th>Situação</th><th>Pagamento</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div></section></main>
+<script>const csrf={{csrf|tojson}};let busy=false,offset=0,items=[];
+function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'})}
+function date(v){return v?new Date(v+'Z').toLocaleString('pt-BR'):'—'}
+async function post(url){const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':csrf}});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.erro||'Não foi possível confirmar operação no Sicoob');return j}
+function show(){const root=document.querySelector('#rows');root.replaceChildren();for(const c of items){const tr=document.createElement('tr');const paid=c.status==='PAGO',canceled=c.status==='CANCELADO';const data=[c.cliente_nome||'Não informado',money(c.valor),date(c.criado_em),paid?'Pago':canceled?'Cancelado':'Pendente',date(c.pago_em)];for(let i=0;i<data.length;i++){const td=document.createElement('td');td.textContent=data[i];if(i===3)td.className=paid?'good':canceled?'bad':'warn';tr.append(td)}const td=document.createElement('td');if(!paid&&!canceled){const check=document.createElement('button');check.textContent='Verificar';check.onclick=async()=>{check.disabled=true;try{await post('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.id)+'/verificar');await refresh(false)}catch(e){alert(e.message)}finally{check.disabled=false}};const cancel=document.createElement('button');cancel.textContent='Cancelar Pix';cancel.onclick=async()=>{if(!confirm('Solicitar cancelamento desta cobrança ainda pendente no Sicoob? Um pagamento já recebido não poderá ser cancelado.'))return;cancel.disabled=true;try{await post('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.id)+'/cancelar');await refresh(false)}catch(e){alert(e.message)}finally{cancel.disabled=false}};td.append(check,cancel)}tr.append(td);root.append(tr)}}
+async function refresh(checkPending=true){if(busy)return;busy=true;try{const r=await fetch('/admin/pix-sicoob/avulsos',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error('Sessão expirada ou erro ao consultar histórico');const j=await r.json();items=j.cobrancas||[];show();document.querySelector('#updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');document.querySelector('#message').textContent=items.length?items.length+' cobrança(s) no histórico':'Nenhuma cobrança registrada';if(checkPending){const pend=items.filter(x=>x.status==='PENDENTE');for(const c of pend.slice(offset%Math.max(pend.length,1),offset%Math.max(pend.length,1)+5)){try{await post('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.id)+'/verificar')}catch(e){}}offset+=5;if(pend.length){const r2=await fetch('/admin/pix-sicoob/avulsos',{credentials:'same-origin',cache:'no-store'});if(r2.ok){items=(await r2.json()).cobrancas||[];show()}}}}catch(e){document.querySelector('#message').textContent=e.message}finally{busy=false}}
+document.querySelector('#refresh').onclick=()=>refresh(true);refresh(true);setInterval(()=>refresh(true),10000);
+</script></html>"""
+
+    @app.get("/admin/pix-sicoob/historico")
+    def sicoob_historico_page():
+        admin()
+        response=app.make_response(render_template_string(HISTORY_PAGE,csrf=csrf()))
+        response.headers["Cache-Control"]="no-store"
+        return response
+
+    @app.post("/admin/pix-sicoob/avulso/<uid>/cancelar")
+    def sicoob_avulso_cancelar(uid):
+        admin();check_csrf()
+        row=db.session.execute(text("SELECT * FROM sicoob_pix_avulso WHERE id=:id"),{"id":uid}).mappings().first()
+        if not row:abort(404)
+        if row["status"]!="PENDENTE":
+            return jsonify(erro="Somente cobranças pendentes podem ser canceladas."),409
+        try:
+            status,_=bank_request("GET","/cob/"+row["txid"])
+            if status.get("status")=="CONCLUIDA" or status.get("pix"):
+                return jsonify(erro="O Sicoob indica pagamento recebido. Não é possível cancelar."),409
+            if status.get("status")=="REMOVIDA_PELO_USUARIO_RECEBEDOR":
+                pass
+            else:
+                bank_request("PATCH","/cob/"+row["txid"],{"status":"REMOVIDA_PELO_USUARIO_RECEBEDOR"})
+            confirm,_=bank_request("GET","/cob/"+row["txid"])
+            if confirm.get("status")!="REMOVIDA_PELO_USUARIO_RECEBEDOR":
+                return jsonify(erro="O Sicoob não confirmou o cancelamento; cobrança permanece pendente."),409
+            db.session.execute(text("UPDATE sicoob_pix_avulso SET status='CANCELADO' WHERE id=:id AND status='PENDENTE'"),{"id":uid})
+            db.session.commit()
+            return jsonify(id=uid,status="CANCELADO")
+        except Exception:
+            app.logger.exception("Falha ao cancelar cobrança Pix avulsa")
+            return jsonify(erro="Não foi possível confirmar o cancelamento no Sicoob."),502
+
     @app.get("/admin/pix-sicoob/avulsos")
     def sicoob_avulsos_listar():
         admin()
