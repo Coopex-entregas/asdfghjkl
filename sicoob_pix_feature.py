@@ -375,7 +375,7 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
 const el=id=>document.getElementById(id),money=x=>Number(x||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function date(s){if(!s)return '—';let raw=String(s).trim(),d;if(/^[A-Za-z]{3},? \d/.test(raw)){d=new Date(raw)}else if(/^\d{4}-\d\d-\d\d/.test(raw)){d=new Date(raw.replace(' ','T')+(raw.endsWith('Z')||/[+-]\d\d:\d\d$/.test(raw)?'':'Z'))}else d=new Date(raw);return Number.isNaN(d.getTime())?'Data indisponível':new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Recife',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d)}
 async function post(url){const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{'X-CSRF-Token':csrf}});const j=await r.json().catch(()=>({}));if(!r.ok)throw Error(j.erro||'Erro ao consultar Sicoob');return j}
-function display(){const body=el('rows');body.replaceChildren();const filtro=el('status').value,tipo=el('tipo').value,q=el('busca').value.trim().toLowerCase();const ini=el('dataInicio').value,fim=el('dataFim').value,manter=el('anteriores').checked;const filtered=items.filter(x=>{const st=x.status;const rawData=String(x.criado_em||'');const criado=new Date(rawData.includes('GMT')?rawData:rawData.replace(' ','T')+(rawData.endsWith('Z')||/[+-]\\d\\d:\\d\\d$/.test(rawData)?'':'Z'));const dia=Number.isNaN(criado.getTime())?'':new Intl.DateTimeFormat('en-CA',{timeZone:'America/Recife',year:'numeric',month:'2-digit',day:'2-digit'}).format(criado);const dentro=(!ini||dia>=ini)&&(!fim||dia<=fim);const pendenteAntigo=manter&&x.tipo==='Entrega'&&st==='PENDENTE';return (dentro||pendenteAntigo)&&(tipo==='todos'||x.tipo===tipo)&&(filtro==='todos'||(filtro==='pagos'&&(st==='PAGO'||st==='PAGO_MANUAL'||st==='APROVADO'))||(filtro==='pendentes'&&st==='PENDENTE')||(filtro==='cancelados'&&st==='CANCELADO'))&&(!q||String(x.cliente_nome||'').toLowerCase().includes(q)||String(x.uid).includes(q))});for(const c of filtered){const tr=document.createElement('tr');const paid=c.status==='PAGO'||c.status==='PAGO_MANUAL'||c.status==='APROVADO';const cancelled=c.status==='CANCELADO';const vals=[c.tipo+(c.tipo==='Entrega'?' #'+c.uid:''),c.cliente_nome||'Não informado',money(c.valor),date(c.criado_em),date(c.pago_em),c.status==='APROVADO'?'Aprovado · crédito lançado':c.status==='PAGO'?'Pago confirmado pelo Sicoob':c.status==='PAGO_MANUAL'?'Pago no painel (verificar banco)':cancelled?'Cancelado':'Pendente'];vals.forEach((v,i)=>{const td=document.createElement('td');if(i===1&&c.tipo==='Entrega'){const a=document.createElement('a');a.href='/admin?entrega_id='+encodeURIComponent(c.uid);a.target='_blank';a.rel='noopener';a.textContent=v;a.title='Abrir entrega #'+c.uid+' independente da data';a.style.cssText='color:#1551b5;text-decoration:underline;font-weight:700';td.append(a)}else td.textContent=v;if(i===5)td.className=paid?'paid':cancelled?'cancel':'pending';tr.append(td)});const actions=document.createElement('td');if(c.tipo==='Avulso'&&c.status!=='CANCELADO'){const copy=document.createElement('button');copy.textContent='Copiar Pix';copy.title='Copiar novamente o código Pix desta cobrança, sem gerar outra';copy.onclick=async()=>{copy.disabled=true;try{const rr=await fetch('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.uid)+'/codigo',{credentials:'same-origin',cache:'no-store'});const jj=await rr.json().catch(()=>({}));if(!rr.ok||!jj.brcode)throw Error(jj.erro||'Código Pix indisponível');if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(jj.brcode)}else{const ta=document.createElement('textarea');ta.value=jj.brcode;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();if(!document.execCommand('copy'))throw Error('Não foi possível copiar automaticamente');ta.remove()}copy.textContent='Copiado ✓';setTimeout(()=>{copy.textContent='Copiar Pix'},2200)}catch(e){alert('Não foi possível copiar o Pix: '+e.message)}finally{copy.disabled=false}};actions.append(copy)}if(c.status==='PENDENTE'){const verify=document.createElement('button');verify.textContent='Verificar';verify.onclick=async()=>{verify.disabled=true;try{verify.textContent='Consultando...';const resposta=await post((c.tipo==='Crédito'?'/api/admin/pix-creditos/'+encodeURIComponent(c.uid)+'/verificar':'/admin/pix-sicoob/'+(c.tipo==='Entrega'?'verificar/':'avulso/'+encodeURIComponent(c.uid)+'/verificar')+(c.tipo==='Entrega'?encodeURIComponent(c.uid):'')));await load(false);alert(resposta.status==='PAGO'?'Pagamento confirmado pelo Sicoob.':'Consulta concluída. O Sicoob ainda não confirmou a quitação integral desta cobrança.')}catch(e){alert('Erro na consulta: '+e.message)}finally{verify.disabled=false;verify.textContent='Verificar'}};actions.append(verify);if(c.tipo==='Avulso'){const cancel=document.createElement('button');cancel.textContent='Cancelar';cancel.onclick=async()=>{if(!confirm('Cancelar este Pix pendente no Sicoob?'))return;cancel.disabled=true;try{await post('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.uid)+'/cancelar');await load(false)}catch(e){alert(e.message)}finally{cancel.disabled=false}};actions.append(cancel)}}tr.append(actions);body.append(tr)}el('summary').textContent=filtered.length+' registros exibidos';}
+function display(){const body=el('rows');body.replaceChildren();const filtro=el('status').value,tipo=el('tipo').value,q=el('busca').value.trim().toLowerCase();const ini=el('dataInicio').value,fim=el('dataFim').value,manter=el('anteriores').checked;const filtered=items.filter(x=>{const st=x.status;const rawData=String(x.criado_em||'');const criado=new Date(rawData.includes('GMT')?rawData:rawData.replace(' ','T')+(rawData.endsWith('Z')||/[+-]\\d\\d:\\d\\d$/.test(rawData)?'':'Z'));const dia=Number.isNaN(criado.getTime())?'':new Intl.DateTimeFormat('en-CA',{timeZone:'America/Recife',year:'numeric',month:'2-digit',day:'2-digit'}).format(criado);const dentro=(!ini||dia>=ini)&&(!fim||dia<=fim);const pendenteAntigo=manter&&x.tipo==='Entrega'&&st==='PENDENTE';return (dentro||pendenteAntigo)&&(tipo==='todos'||x.tipo===tipo)&&(filtro==='todos'||(filtro==='pagos'&&(st==='PAGO'||st==='PAGO_MANUAL'||st==='APROVADO'))||(filtro==='pendentes'&&st==='PENDENTE')||(filtro==='cancelados'&&st==='CANCELADO'))&&(!q||String(x.cliente_nome||'').toLowerCase().includes(q)||String(x.uid).includes(q))});for(const c of filtered){const tr=document.createElement('tr');const paid=c.status==='PAGO'||c.status==='PAGO_MANUAL'||c.status==='APROVADO';const cancelled=c.status==='CANCELADO';const vals=[c.tipo+(c.tipo==='Entrega'?' #'+c.uid:''),c.cliente_nome||'Não informado',money(c.valor),date(c.criado_em),date(c.pago_em),c.status==='APROVADO'?'Aprovado · crédito lançado':c.status==='PAGO'?'Pago confirmado pelo Sicoob':c.status==='PAGO_MANUAL'?'Pago no painel (verificar banco)':cancelled?'Cancelado':'Pendente'];vals.forEach((v,i)=>{const td=document.createElement('td');if(i===1&&c.tipo==='Entrega'){const a=document.createElement('a');a.href='/admin?entrega_id='+encodeURIComponent(c.uid);a.target='_blank';a.rel='noopener';a.textContent=v;a.title='Abrir entrega #'+c.uid+' independente da data';a.style.cssText='color:#1551b5;text-decoration:underline;font-weight:700';td.append(a)}else td.textContent=v;if(i===5)td.className=paid?'paid':cancelled?'cancel':'pending';tr.append(td)});const actions=document.createElement('td');if(c.tipo==='Avulso'&&c.status!=='CANCELADO'){const copy=document.createElement('button');copy.textContent='Copiar Pix';copy.title='Copiar novamente o código Pix desta cobrança, sem gerar outra';copy.onclick=async()=>{copy.disabled=true;try{const rr=await fetch('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.uid)+'/codigo',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'X-CSRF-Token':csrf}});const jj=await rr.json().catch(()=>({}));if(!rr.ok||!jj.brcode)throw Error(jj.erro||'Código Pix indisponível');if(navigator.clipboard&&window.isSecureContext){await navigator.clipboard.writeText(jj.brcode)}else{const ta=document.createElement('textarea');ta.value=jj.brcode;ta.style.position='fixed';ta.style.opacity='0';document.body.append(ta);ta.select();if(!document.execCommand('copy'))throw Error('Não foi possível copiar automaticamente');ta.remove()}copy.textContent=jj.renovado?'Novo Pix copiado ✓':'Copiado ✓';if(jj.renovado)await load(false);setTimeout(()=>{copy.textContent='Copiar Pix'},2200)}catch(e){alert('Não foi possível copiar o Pix: '+e.message)}finally{copy.disabled=false}};actions.append(copy)}if(c.status==='PENDENTE'){const verify=document.createElement('button');verify.textContent='Verificar';verify.onclick=async()=>{verify.disabled=true;try{verify.textContent='Consultando...';const resposta=await post((c.tipo==='Crédito'?'/api/admin/pix-creditos/'+encodeURIComponent(c.uid)+'/verificar':'/admin/pix-sicoob/'+(c.tipo==='Entrega'?'verificar/':'avulso/'+encodeURIComponent(c.uid)+'/verificar')+(c.tipo==='Entrega'?encodeURIComponent(c.uid):'')));await load(false);alert(resposta.status==='PAGO'?'Pagamento confirmado pelo Sicoob.':'Consulta concluída. O Sicoob ainda não confirmou a quitação integral desta cobrança.')}catch(e){alert('Erro na consulta: '+e.message)}finally{verify.disabled=false;verify.textContent='Verificar'}};actions.append(verify);if(c.tipo==='Avulso'){const cancel=document.createElement('button');cancel.textContent='Cancelar';cancel.onclick=async()=>{if(!confirm('Cancelar este Pix pendente no Sicoob?'))return;cancel.disabled=true;try{await post('/admin/pix-sicoob/avulso/'+encodeURIComponent(c.uid)+'/cancelar');await load(false)}catch(e){alert(e.message)}finally{cancel.disabled=false}};actions.append(cancel)}}tr.append(actions);body.append(tr)}el('summary').textContent=filtered.length+' registros exibidos';}
 async function load(reconcile=true){if(busy)return;busy=true;try{let r=await fetch('/admin/pix-sicoob/historico/dados',{credentials:'same-origin',cache:'no-store'});if(!r.ok)throw Error('Erro ao carregar histórico');items=(await r.json()).cobrancas||[];display();el('updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');if(reconcile){const pending=items.filter(x=>x.status==='PENDENTE');const batch=pending.length?Array.from({length:Math.min(pending.length,5)},(_,i)=>pending[(offset+i)%pending.length]):[];offset+=5;for(const c of batch){try{await post((c.tipo==='Crédito'?'/api/admin/pix-creditos/'+encodeURIComponent(c.uid)+'/verificar':'/admin/pix-sicoob/'+(c.tipo==='Entrega'?'verificar/':'avulso/'+encodeURIComponent(c.uid)+'/verificar')+(c.tipo==='Entrega'?encodeURIComponent(c.uid):'')))}catch(e){}}if(batch.length){const refreshed=await fetch('/admin/pix-sicoob/historico/dados',{credentials:'same-origin',cache:'no-store'});if(refreshed.ok){items=(await refreshed.json()).cobrancas||[];display()}}}}catch(e){el('summary').textContent=e.message}finally{busy=false}}
 function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Recife',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}el('dataInicio').value=todayNatal();el('dataFim').value=todayNatal();['status','tipo','busca','dataInicio','dataFim','anteriores'].forEach(id=>el(id).addEventListener('input',display));el('refresh').onclick=()=>load(true);load(true);setInterval(()=>load(true),10000);
 </script></html>"""
@@ -460,19 +460,89 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
             FROM sicoob_pix_avulso ORDER BY criado_em DESC LIMIT 100""")).mappings().all()
         return jsonify(cobrancas=[dict(row) for row in rows])
 
-    @app.get("/admin/pix-sicoob/avulso/<uid>/codigo")
+    @app.post("/admin/pix-sicoob/avulso/<uid>/codigo")
     def sicoob_avulso_codigo(uid):
-        admin()
-        row=db.session.execute(text(
-            "SELECT brcode,status,valor FROM sicoob_pix_avulso WHERE id=:id"
-        ),{"id":uid}).mappings().first()
-        if not row:
-            abort(404)
-        if not row["brcode"]:
-            return jsonify(erro="Esta cobrança não possui código Pix gerado."),404
-        response=jsonify(brcode=row["brcode"],status=row["status"],valor=row["valor"])
-        response.headers["Cache-Control"]="no-store"
-        return response
+        admin();check_csrf()
+        import uuid
+        from datetime import timedelta
+        try:
+            # Lock prevents duplicate replacement charges on simultaneous clicks.
+            suffix=" FOR UPDATE" if db.engine.dialect.name=="postgresql" else ""
+            row=db.session.execute(text(
+                "SELECT * FROM sicoob_pix_avulso WHERE id=:id"+suffix
+            ),{"id":uid}).mappings().first()
+            if not row:
+                db.session.rollback()
+                abort(404)
+            if row["status"]=="CANCELADO":
+                db.session.rollback()
+                return jsonify(erro="Esta cobrança foi cancelada."),409
+            if not row["brcode"]:
+                db.session.rollback()
+                return jsonify(erro="Esta cobrança não possui código Pix gerado."),404
+            if row["status"]=="PAGO":
+                db.session.rollback()
+                return jsonify(erro="Cobrança já paga. Não é necessário gerar outro Pix."),409
+
+            bank_data,_=bank_request("GET","/cob/"+row["txid"])
+            pix=bank_data.get("pix") or []
+            if bank_data.get("status")=="CONCLUIDA" or pix:
+                received=[v for v in pix if v.get("endToEndId") and v.get("txid",row["txid"])==row["txid"]]
+                total=sum((Decimal(str(v.get("valor","0"))) for v in received),Decimal("0"))
+                if received and total==Decimal(str(row["valor"])):
+                    db.session.execute(text("UPDATE sicoob_pix_avulso SET status='PAGO',e2eid=:eid,pago_em=:dt WHERE id=:id"),
+                        {"eid":received[0]["endToEndId"],"dt":datetime.utcnow().isoformat(),"id":uid})
+                    db.session.commit()
+                    return jsonify(erro="Pagamento já confirmado pelo Sicoob. Não foi criado outro Pix.",status="PAGO"),409
+                db.session.rollback()
+                return jsonify(erro="O Sicoob informa movimentação nessa cobrança. Verifique a conciliação antes de substituir."),409
+
+            cal=bank_data.get("calendario") or {}
+            criacao=cal.get("criacao") or row["criado_em"]
+            from datetime import timezone
+            dt=datetime.fromisoformat(str(criacao).replace("Z","+00:00"))
+            if dt.tzinfo is None: dt=dt.replace(tzinfo=timezone.utc)
+            secs=int(cal.get("expiracao") or 86400)
+            expired=datetime.now(timezone.utc)>=dt+timedelta(seconds=secs)
+            if not expired and bank_data.get("status")=="ATIVA":
+                db.session.rollback()
+                return jsonify(brcode=row["brcode"],status="PENDENTE",renovado=False,valor=row["valor"])
+            if bank_data.get("status")=="ATIVA":
+                bank_request("PATCH","/cob/"+row["txid"],{"status":"REMOVIDA_PELO_USUARIO_RECEBEDOR"})
+            confirm,_=bank_request("GET","/cob/"+row["txid"])
+            if confirm.get("status")!="REMOVIDA_PELO_USUARIO_RECEBEDOR" or confirm.get("pix"):
+                db.session.rollback()
+                return jsonify(erro="Não foi possível confirmar o cancelamento do Pix anterior no banco. Nenhum novo Pix foi criado."),409
+
+            txid="COOPEXAV"+uuid.uuid4().hex[:26].upper()
+            _,chave=conf()[0:2]
+            created,_=bank_request("PUT","/cob/"+txid,{"calendario":{"expiracao":86400},
+                "valor":{"original":str(row["valor"])},"chave":chave,
+                "solicitacaoPagador":"COOPEX Pagamento antecipado"})
+            newcode=created.get("brcode") or created.get("pixCopiaECola")
+            if not newcode:
+                created,_=bank_request("GET","/cob/"+txid)
+                newcode=created.get("brcode") or created.get("pixCopiaECola")
+            if not newcode:
+                db.session.rollback()
+                return jsonify(erro="Cobrança anterior cancelada, mas o Sicoob não retornou o novo código. Consulte o banco antes de tentar novamente."),502
+            db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_avulso_renovacoes(
+                id VARCHAR(36) PRIMARY KEY, avulso_id VARCHAR(36) NOT NULL,
+                txid_antigo VARCHAR(35) NOT NULL, txid_novo VARCHAR(35) NOT NULL,
+                renovado_em VARCHAR(40) NOT NULL)"""))
+            db.session.execute(text("""INSERT INTO sicoob_pix_avulso_renovacoes
+                (id,avulso_id,txid_antigo,txid_novo,renovado_em)
+                VALUES(:rid,:id,:old,:new,:dt)"""),
+                {"rid":str(uuid.uuid4()),"id":uid,"old":row["txid"],"new":txid,"dt":datetime.utcnow().isoformat()})
+            db.session.execute(text("""UPDATE sicoob_pix_avulso SET txid=:tx,brcode=:br,
+                status='PENDENTE',criado_em=:dt WHERE id=:id"""),
+                {"tx":txid,"br":newcode,"dt":datetime.utcnow().isoformat(),"id":uid})
+            db.session.commit()
+            return jsonify(brcode=newcode,status="PENDENTE",renovado=True,valor=row["valor"])
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha ao copiar ou renovar Pix avulso")
+            return jsonify(erro="Não foi possível confirmar a situação da cobrança no Sicoob. Nenhum código antigo será apresentado como válido."),502
 
     @app.post("/admin/pix-sicoob/avulso/<uid>/verificar")
     def sicoob_avulso_verificar(uid):
