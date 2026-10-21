@@ -151,12 +151,14 @@ def install(h):
                 if exc.response is not None and exc.response.status_code==400:
                     try:
                         detail=exc.response.json()
+                        # Preserve the Sicoob/Bacen field-level validation reason,
+                        # without exposing bank credentials or payer data.
                         if isinstance(detail,list):
-                            reasons=[str(x.get("mensagem") or x.get("message") or "") for x in detail if isinstance(x,dict)]
+                            reasons=[str(x.get("razao") or x.get("mensagem") or x.get("message") or "") for x in detail if isinstance(x,dict)]
                         elif isinstance(detail,dict):
-                            vals=detail.get("mensagens") or detail.get("violacoes") or []
-                            reasons=[str(x.get("mensagem") or x.get("message") or x.get("razao") or "") for x in vals if isinstance(x,dict)] if isinstance(vals,list) else []
-                            reasons.append(str(detail.get("mensagem") or detail.get("message") or detail.get("detail") or ""))
+                            vals=detail.get("violacoes") or detail.get("mensagens") or detail.get("errors") or []
+                            reasons=[str(x.get("razao") or x.get("mensagem") or x.get("message") or "") for x in vals if isinstance(x,dict)] if isinstance(vals,list) else []
+                            reasons.append(str(detail.get("detail") or detail.get("mensagem") or detail.get("message") or detail.get("title") or ""))
                         else:reasons=[]
                         reason="; ".join(x for x in reasons if x)[:250]
                     except Exception:reason=""
