@@ -181,3 +181,17 @@ def install(h):
         if not row:return jsonify(ok=False,erro="Cobrança não encontrada"),404
         return jsonify(ok=True,solicitacao_id=sid,valor=row["valor"],status=row["status"],
             brcode=row["brcode"],qrcode_url="/api/cliente/pix-credito/"+str(sid)+"/qr")
+
+    @app.get("/api/admin/pix-creditos/novas-vendas")
+    def pix_credito_vendas_admin():
+        if not session.get("is_admin"):
+            abort(403)
+        rows=db.session.execute(text("""SELECT p.solicitacao_id, p.valor, p.pago_em,
+            c.nome AS cliente_nome
+            FROM sicoob_credito_pix p
+            JOIN cliente c ON c.id=p.cliente_id
+            WHERE p.status='PAGO' AND p.credito_id IS NOT NULL
+            ORDER BY p.solicitacao_id DESC LIMIT 30""")).mappings().all()
+        response=jsonify(vendas=[dict(x) for x in rows])
+        response.headers["Cache-Control"]="no-store"
+        return response
