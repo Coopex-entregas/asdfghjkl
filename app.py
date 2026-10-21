@@ -10103,7 +10103,7 @@ def api_credito_recarga():
         (solicitacao_id,cliente_id,txid,valor,status)
         VALUES(:sid,:cid,:tx,:valor,'CRIANDO')"""), {
             'sid': solicitacao.id, 'cid': cli.id,
-            'tx': 'COOPEXCR' + str(solicitacao.id).zfill(12),
+            'tx': 'COOPEXCR' + __import__('uuid').uuid4().hex[:26].upper(),
             'valor': str(Decimal(str(solicitacao.valor)).quantize(Decimal('0.01'))),
         })
     db.session.commit()
