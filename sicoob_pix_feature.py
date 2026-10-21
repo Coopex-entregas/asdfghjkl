@@ -231,6 +231,14 @@ async function chamar(path,method){
         record=get_record(entrega_id)
         if not record:
             return jsonify(erro="Entrega sem cobrança Pix"),404
+        # A baixa bancária já confirmada é definitiva, inclusive se algum
+        # formulário antigo tiver alterado o status local indevidamente.
+        if record["status"]=="PAGO" or record["e2eid"]:
+            entrega=db.session.get(Entrega,entrega_id)
+            if entrega and (entrega.status_pagamento or "").lower()!="pago":
+                entrega.status_pagamento="pago"
+                db.session.commit()
+            return result(entrega_id,get_record(entrega_id))
         try:
             data,_=bank_request("GET","/cob/"+record["txid"])
         except Exception:
