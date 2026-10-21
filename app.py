@@ -7714,6 +7714,19 @@ def api_precos_quick_create():
 
     return jsonify(ok=True, message='Rota precificada com sucesso.', item=item.to_dict())
 
+@app.get('/api/admin/pix-led-fila')
+def api_admin_pix_led_fila():
+    if not session.get('is_admin'):
+        return jsonify(erro='Acesso restrito'), 403
+    itens=(ListaEspera.query.options(joinedload(ListaEspera.cooperado))
+           .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+           .limit(60).all())
+    return jsonify(cooperados=[
+        {'nome': (item.cooperado.nome if item.cooperado else item.nome), 'pos': index}
+        for index,item in enumerate(itens,1)
+    ])
+
+
 @app.route('/cadastrar_entrega', methods=['GET', 'POST'])
 def cadastrar_entrega():
     if not session.get('is_admin'):
