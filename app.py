@@ -10778,26 +10778,9 @@ def _cancel_req_json(x):
 def api_admin_solicitacoes_credito():
     if not session.get('is_admin') and not session.get('is_master'):
         return jsonify(ok=False, error='unauthorized'), 401
-
-    pendentes = (
-        SolicitacaoCreditoCliente.query
-        .filter_by(status='pendente')
-        .filter(text('NOT EXISTS (SELECT 1 FROM sicoob_credito_pix p WHERE p.solicitacao_id = solicitacao_credito_cliente.id)'))
-        .order_by(SolicitacaoCreditoCliente.criado_em.asc())
-        .all()
-    )
-    recentes = (
-        SolicitacaoCreditoCliente.query
-        .filter(SolicitacaoCreditoCliente.status.in_(['aprovado', 'recusado']))
-        .order_by(SolicitacaoCreditoCliente.decidido_em.desc())
-        .limit(20).all()
-    )
-    return jsonify(
-        ok=True,
-        quantidade_pendente=len(pendentes),
-        pendentes=[_credito_req_json(x) for x in pendentes],
-        recentes=[_credito_req_json(x) for x in recentes],
-    )
+    # Compras de credito sao conciliadas pelo Sicoob e exibidas no Historico Pix.
+    # Solicitacoes anteriores continuam guardadas no banco, mas nao entram na fila manual.
+    return jsonify(ok=True, quantidade_pendente=0, pendentes=[], recentes=[])
 
 
 @app.post('/api/admin/solicitacoes-credito/<int:req_id>/aprovar')
