@@ -34,6 +34,12 @@ def install(host):
             status VARCHAR(30) NOT NULL DEFAULT 'PENDENTE'
         )"""))
         db.session.commit()
+        from sqlalchemy import inspect
+        cols={v["name"] for v in inspect(db.engine).get_columns("sicoob_pix_cobranca")}
+        for col in ("criado_em", "expira_em"):
+            if col not in cols:
+                db.session.execute(text("ALTER TABLE sicoob_pix_cobranca ADD COLUMN "+col+" VARCHAR(40)"))
+        db.session.commit()
 
     def admin():
         if not session.get("is_admin"):
@@ -214,8 +220,8 @@ async function chamar(path,method){
         if not brcode:
             # Não cria outra cobrança automaticamente; deve haver reconciliação manual.
             return jsonify(erro="Sicoob não retornou brcode; consulte a cobrança pelo txid antes de tentar novamente"),502
-        db.session.execute(text("INSERT INTO sicoob_pix_cobranca(entrega_id,txid,valor,brcode,status) VALUES(:id,:tx,:v,:bc,'PENDENTE')"),
-                           {"id":entrega_id,"tx":txid,"v":str(amount),"bc":brcode})
+        db.session.execute(text("INSERT INTO sicoob_pix_cobranca(entrega_id,txid,valor,brcode,status,criado_em,expira_em) VALUES(:id,:tx,:v,:bc,'PENDENTE',:dt,:exp)"),
+                           {"id":entrega_id,"tx":txid,"v":str(amount),"bc":brcode,"dt":datetime.utcnow().isoformat(),"exp":(datetime.utcnow()+__import__("datetime").timedelta(seconds=3600)).isoformat()})
         db.session.commit()
         return result(entrega_id,get_record(entrega_id))
 
@@ -331,6 +337,9 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
             db.session.execute(text("ALTER TABLE sicoob_pix_avulso ADD COLUMN cliente_nome VARCHAR(160)"))
             db.session.commit()
 
+        if "expira_em" not in cols:
+            db.session.execute(text("ALTER TABLE sicoob_pix_avulso ADD COLUMN expira_em VARCHAR(40)"))
+            db.session.commit()
         if "origem_renovacao" not in cols:
             db.session.execute(text("ALTER TABLE sicoob_pix_avulso ADD COLUMN origem_renovacao VARCHAR(36)"))
             db.session.commit()
@@ -365,9 +374,9 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
                 brcode=dados.get("brcode") or dados.get("pixCopiaECola")
             if not brcode:
                 return jsonify(erro="Cobrança enviada ao banco, mas código Pix não disponível. Não tente gerar novamente antes de conciliar."),502
-            db.session.execute(text("""INSERT INTO sicoob_pix_avulso(id,txid,valor,brcode,status,criado_em,cliente_nome)
-                VALUES(:id,:tx,:valor,:br,'PENDENTE',:criado,:cliente_nome)"""),
-                {"id":uid,"tx":txid,"valor":str(amount),"br":brcode,"criado":datetime.utcnow().isoformat(),"cliente_nome":nome_cliente})
+            db.session.execute(text("""INSERT INTO sicoob_pix_avulso(id,txid,valor,brcode,status,criado_em,cliente_nome,expira_em)
+                VALUES(:id,:tx,:valor,:br,'PENDENTE',:criado,:cliente_nome,:exp)"""),
+                {"id":uid,"tx":txid,"valor":str(amount),"br":brcode,"criado":datetime.utcnow().isoformat(),"cliente_nome":nome_cliente,"exp":(datetime.utcnow()+__import__("datetime").timedelta(hours=24)).isoformat()})
             db.session.commit()
             return jsonify(id=uid,cliente_nome=nome_cliente,valor=str(amount),brcode=brcode,status="PENDENTE")
         except Exception:
@@ -447,10 +456,10 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
             if not codigo:
                 return jsonify(erro="O banco criou uma cobrança, mas não retornou seu código. Consulte o Sicoob antes de repetir."),502
             db.session.execute(text("""INSERT INTO sicoob_pix_avulso
-                (id,txid,valor,brcode,status,criado_em,cliente_nome,origem_renovacao)
-                VALUES(:id,:tx,:valor,:br,'PENDENTE',:dt,:nome,:origem)"""),{
+                (id,txid,valor,brcode,status,criado_em,cliente_nome,origem_renovacao,expira_em)
+                VALUES(:id,:tx,:valor,:br,'PENDENTE',:dt,:nome,:origem,:exp)"""),{
                 "id":novo_id,"tx":novo_tx,"valor":row["valor"],"br":codigo,
-                "dt":datetime.utcnow().isoformat(),"nome":row["cliente_nome"],"origem":uid})
+                "dt":datetime.utcnow().isoformat(),"nome":row["cliente_nome"],"origem":uid,"exp":(datetime.utcnow()+__import__("datetime").timedelta(hours=24)).isoformat()})
             db.session.commit()
             return jsonify(id=novo_id,brcode=codigo,valor=row["valor"],status="PENDENTE")
         except Exception:
@@ -461,13 +470,13 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
     @app.get("/admin/pix-sicoob/historico/dados")
     def sicoob_historico_dados():
         admin()
-        avulsos=db.session.execute(text("""SELECT id,cliente_nome,valor,status,criado_em,pago_em
+        avulsos=db.session.execute(text("""SELECT id,cliente_nome,valor,status,criado_em,pago_em,expira_em
             FROM sicoob_pix_avulso
             WHERE (brcode IS NOT NULL AND brcode <> '') OR e2eid IS NOT NULL
             ORDER BY criado_em DESC LIMIT 300""")).mappings().all()
         entregas=db.session.execute(text("""SELECT c.entrega_id AS id, e.cliente AS cliente_nome,
             c.valor AS valor,c.status AS status,
-            e.data_envio AS criado_em,c.pago_em AS pago_em,e.status_pagamento AS entrega_pago
+            COALESCE(c.criado_em,e.data_envio) AS criado_em,c.expira_em AS expira_em,c.pago_em AS pago_em,e.status_pagamento AS entrega_pago
             FROM sicoob_pix_cobranca c JOIN entrega e ON e.id=c.entrega_id
             WHERE LOWER(TRIM(e.pagamento)) IN ('pix (cooperativa)', 'pix cooperativa', 'pix da cooperativa')
             ORDER BY e.data_envio DESC LIMIT 300""")).mappings().all()
@@ -580,8 +589,8 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
                 VALUES(:rid,:id,:old,:new,:dt)"""),
                 {"rid":str(uuid.uuid4()),"id":uid,"old":row["txid"],"new":txid,"dt":datetime.utcnow().isoformat()})
             db.session.execute(text("""UPDATE sicoob_pix_avulso SET txid=:tx,brcode=:br,
-                status='PENDENTE',criado_em=:dt WHERE id=:id"""),
-                {"tx":txid,"br":newcode,"dt":datetime.utcnow().isoformat(),"id":uid})
+                status='PENDENTE',criado_em=:dt,expira_em=:exp WHERE id=:id"""),
+                {"tx":txid,"br":newcode,"dt":datetime.utcnow().isoformat(),"id":uid,"exp":(datetime.utcnow()+timedelta(hours=24)).isoformat()})
             db.session.commit()
             return jsonify(brcode=newcode,status="PENDENTE",renovado=True,valor=row["valor"])
         except Exception:
