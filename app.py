@@ -7522,11 +7522,22 @@ def api_update_entrega_inline(entrega_id):
                 "AND (status='PAGO' OR e2eid IS NOT NULL) LIMIT 1"
             ), {"eid": e.id}).first() is not None
             if bank_paid and sp != 'pago':
-                return jsonify(ok=False, erro="Pagamento confirmado pelo Sicoob: não é permitido alterar para pendente.",status_pagamento='pago'), 409
+                if (e.status_pagamento or '').lower() != 'pago':
+                    e.status_pagamento = 'pago'
+                    db.session.commit()
+                aviso = 'Pagamento já confirmado pelo banco Sicoob. Esta entrega está paga e não pode ser alterada para pendente.'
+                return jsonify(ok=False, erro=aviso, message=aviso, motivo='sicoob_pago',status_pagamento='pago'), 409
             e.status_pagamento = 'pago' if bank_paid else sp
             changed = True
 
     if changed:
+        db.session.commit()
+
+    # O status bancário confirmado prevalece mesmo se a edição não incluiu pagamento.
+    if db.session.execute(db.text(
+        "SELECT 1 FROM sicoob_pix_cobranca WHERE entrega_id=:eid AND (status='PAGO' OR e2eid IS NOT NULL) LIMIT 1"
+    ), {"eid":e.id}).first() and (e.status_pagamento or '').lower() != 'pago':
+        e.status_pagamento='pago'
         db.session.commit()
 
     return jsonify(
