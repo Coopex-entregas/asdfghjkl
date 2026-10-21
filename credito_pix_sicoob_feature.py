@@ -131,11 +131,15 @@ def install(h):
             if not cfg:raise ValueError("Chave Pix não configurada")
             payload={"calendario":{"expiracao":3600},"valor":{"original":row["valor"]},
                      "chave":cfg,"solicitacaoPagador":"Crédito COOPEX #"+str(sid)}
+            # Sicoob pode retornar 400 ao GET de txid ainda inexistente.
+            # PUT com txid fixo identifica a mesma cobranca e evita criar outro pedido.
             try:
-                data,_=bank_call("GET","/cob/"+row["txid"])
-            except requests.HTTPError as exc:
-                if exc.response is None or exc.response.status_code!=404:raise
                 data,_=bank_call("PUT","/cob/"+row["txid"],payload)
+            except requests.HTTPError:
+                # Se o PUT foi recebido previamente, recuperar a cobranca original.
+                data,_=bank_call("GET","/cob/"+row["txid"])
+                if str(data.get("status") or "").upper() == "CONCLUIDA":
+                    return jsonify(ok=False,erro="Pix já pago: consulte a situação da solicitação; nenhuma nova cobrança será emitida."),409
             code=get_code(data)
             if not code:
                 data,_=bank_call("GET","/cob/"+row["txid"])
