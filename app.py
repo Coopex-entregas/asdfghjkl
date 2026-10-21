@@ -7517,7 +7517,13 @@ def api_update_entrega_inline(entrega_id):
     if "status_pagamento" in data:
         sp = (data.get("status_pagamento") or "").strip().lower()
         if sp:
-            e.status_pagamento = sp
+            bank_paid = db.session.execute(db.text(
+                "SELECT 1 FROM sicoob_pix_cobranca WHERE entrega_id=:eid "
+                "AND (status='PAGO' OR e2eid IS NOT NULL) LIMIT 1"
+            ), {"eid": e.id}).first() is not None
+            if bank_paid and sp != 'pago':
+                return jsonify(ok=False, erro="Pagamento confirmado pelo Sicoob: não é permitido alterar para pendente.",status_pagamento='pago'), 409
+            e.status_pagamento = 'pago' if bank_paid else sp
             changed = True
 
     if changed:
@@ -8117,7 +8123,7 @@ def editar_entrega(id):
         # Check the persisted bank result, never only the submitted form field.
         _pix_paid = db.session.execute(db.text(
             "SELECT 1 FROM sicoob_pix_cobranca WHERE entrega_id=:eid "
-            "AND status='PAGO' AND e2eid IS NOT NULL LIMIT 1"
+            "AND (status='PAGO' OR e2eid IS NOT NULL) LIMIT 1"
         ), {"eid": entrega.id}).first() is not None
         _new_payment = (request.form.get('status_pagamento') or entrega.status_pagamento or 'pendente').strip().lower()
         if _pix_paid and _new_payment != 'pago':
@@ -11940,6 +11946,16 @@ def credmov_excluir(mov_id):
 def toggle_pagamento(id):
     e = Entrega.query.get_or_404(id)
     _assert_entrega_do_cooperado(e)
+    bank_paid = db.session.execute(db.text(
+        "SELECT 1 FROM sicoob_pix_cobranca WHERE entrega_id=:eid "
+        "AND (status='PAGO' OR e2eid IS NOT NULL) LIMIT 1"
+    ), {"eid": e.id}).first() is not None
+    if bank_paid:
+        if (e.status_pagamento or '').lower() != 'pago':
+            e.status_pagamento = 'pago'
+            db.session.commit()
+        return jsonify(ok=False, status_pagamento='pago', confirmado_sicoob=True,
+            erro='Pagamento confirmado pelo Sicoob. Não é permitido voltar para pendente.'), 409
     atual = (e.status_pagamento or 'pendente').lower()
     novo = 'pago' if atual != 'pago' else 'pendente'
     e.status_pagamento = novo
