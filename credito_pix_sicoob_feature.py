@@ -127,23 +127,15 @@ def install(h):
             return jsonify(ok=True,solicitacao_id=sid,valor=row["valor"],brcode=row["brcode"],
                 qrcode_url="/api/cliente/pix-credito/"+str(sid)+"/qr",status=row["status"])
         try:
-            payload={"calendario":{"expiracao":3600},"valor":{"original":row["valor"]},
-                     "solicitacaoPagador":"Crédito COOPEX #"+str(sid)}
-            # Reuse stable txid in retries. PUT is idempotent by txid.
-            _,chave=bank_call("GET","/cob/"+row["txid"])
-        except requests.HTTPError as ex:
-            if ex.response is None or ex.response.status_code!=404:
-                return jsonify(ok=False,erro="Erro ao consultar cobrança existente no Sicoob"),502
-            try:
-                _,chave=bank_call("GET","/pix")
-            except Exception:
-                return jsonify(ok=False,erro="Falha ao validar autenticação Sicoob"),502
-        try:
-            # The config Pix key is read securely from server database, never from the client.
             cfg=db.session.execute(text("SELECT chave FROM sicoob_pix_config WHERE id=1")).scalar()
             if not cfg:raise ValueError("Chave Pix não configurada")
-            payload["chave"]=cfg
-            data,_=bank_call("PUT","/cob/"+row["txid"],payload)
+            payload={"calendario":{"expiracao":3600},"valor":{"original":row["valor"]},
+                     "chave":cfg,"solicitacaoPagador":"Crédito COOPEX #"+str(sid)}
+            try:
+                data,_=bank_call("GET","/cob/"+row["txid"])
+            except requests.HTTPError as exc:
+                if exc.response is None or exc.response.status_code!=404:raise
+                data,_=bank_call("PUT","/cob/"+row["txid"],payload)
             code=get_code(data)
             if not code:
                 data,_=bank_call("GET","/cob/"+row["txid"])
