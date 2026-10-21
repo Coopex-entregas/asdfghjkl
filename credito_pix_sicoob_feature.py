@@ -147,8 +147,20 @@ def install(h):
             # PUT com txid fixo identifica a mesma cobranca e evita criar outro pedido.
             try:
                 data,_=bank_call("PUT","/cob/"+row["txid"],payload)
-            except requests.HTTPError:
-                # Se o PUT foi recebido previamente, recuperar a cobranca original.
+            except requests.HTTPError as exc:
+                if exc.response is not None and exc.response.status_code==400:
+                    try:
+                        detail=exc.response.json()
+                        if isinstance(detail,list):
+                            reasons=[str(x.get("mensagem") or x.get("message") or "") for x in detail if isinstance(x,dict)]
+                        elif isinstance(detail,dict):
+                            vals=detail.get("mensagens") or detail.get("violacoes") or []
+                            reasons=[str(x.get("mensagem") or x.get("message") or x.get("razao") or "") for x in vals if isinstance(x,dict)] if isinstance(vals,list) else []
+                            reasons.append(str(detail.get("mensagem") or detail.get("message") or detail.get("detail") or ""))
+                        else:reasons=[]
+                        reason="; ".join(x for x in reasons if x)[:250]
+                    except Exception:reason=""
+                    return jsonify(ok=False,erro="O Sicoob recusou a cobrança (HTTP 400). "+(reason or "Confira a chave Pix vinculada à conta da API.")+" Tente novamente nesta solicitação após corrigir."),502
                 data,_=bank_call("GET","/cob/"+row["txid"])
                 if str(data.get("status") or "").upper() == "CONCLUIDA":
                     return jsonify(ok=False,erro="Pix já pago: consulte a situação da solicitação; nenhuma nova cobrança será emitida."),409
