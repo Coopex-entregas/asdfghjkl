@@ -373,3 +373,19 @@ catch(e){alert(e.message);btn.textContent='Copiar Pix'}finally{btn.disabled=fals
 document.addEventListener('DOMContentLoaded',()=>{attach();avulso();const observer=new MutationObserver(()=>{attach();avulso()});observer.observe(document.body,{childList:true,subtree:true});});
 })();
 </script>
+
+<script id="coopex-pix-credit-sale-alert">
+(function(){
+const url='/api/admin/pix-creditos/novas-vendas';
+let known=new Set(),ready=false,context=null,unlocked=false;
+const storageKey='coopex-credit-sales-notified';
+function loadSeen(){try{return JSON.parse(localStorage.getItem(storageKey)||'[]')}catch(e){return []}}
+function saveSeen(id){try{const a=loadSeen();if(!a.includes(id))localStorage.setItem(storageKey,JSON.stringify([...a,id].slice(-80)))}catch(e){}}
+function enableSound(){try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;context=context||new C();context.resume().then(()=>unlocked=context.state==='running').catch(()=>{})}catch(e){}}
+document.addEventListener('click',enableSound,{passive:true});document.addEventListener('keydown',enableSound,{passive:true});
+function beep(){if(!unlocked||!context)return;try{let now=context.currentTime;for(let n=0;n<2;n++){let o=context.createOscillator(),g=context.createGain();o.type='sine';o.frequency.value=n?1050:880;g.gain.setValueAtTime(0.0001,now+n*.2);g.gain.exponentialRampToValueAtTime(.15,now+n*.2+.015);g.gain.exponentialRampToValueAtTime(.0001,now+n*.2+.18);o.connect(g);g.connect(context.destination);o.start(now+n*.2);o.stop(now+n*.2+.19)}}catch(e){}}
+function notify(v){let id=String(v.solicitacao_id);saveSeen(id);beep();const box=document.createElement('div');box.style.cssText='position:fixed;z-index:1000000;top:10px;left:50%;transform:translateX(-50%);max-width:700px;width:calc(100% - 32px);padding:16px 22px;text-align:center;border-radius:12px;color:white;background:#159d50;box-shadow:0 6px 26px #0005;font:bold 17px system-ui;pointer-events:none';box.textContent='Você vendeu um novo crédito! '+(v.cliente_nome||'Cliente')+' · '+Number(v.valor).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});document.body.append(box);setTimeout(()=>box.remove(),2000)}
+async function refresh(){try{const response=await fetch(url,{cache:'no-store',credentials:'same-origin'});if(!response.ok)return;const rows=(await response.json()).vendas||[];const stored=new Set(loadSeen());if(!ready){rows.forEach(v=>known.add(String(v.solicitacao_id)));ready=true;return}for(const v of rows.slice().reverse()){const id=String(v.solicitacao_id);if(!known.has(id)&&!stored.has(id))notify(v);known.add(id)}}catch(e){}}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{refresh();setInterval(refresh,5000)});else{refresh();setInterval(refresh,5000)}
+})();
+</script>
