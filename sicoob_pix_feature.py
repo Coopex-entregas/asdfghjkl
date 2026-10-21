@@ -470,8 +470,40 @@ td a{font-weight:750;color:#064ac2}
 td.paid,td.pending,td.cancel{font-weight:800}
 td.paid{color:#058553}td.pending{color:#bb7300}td.cancel{color:#d12b52}
 .table{overflow-x:auto}
+</style><style id="coopex-pix-history-reference-exact">
+body{background:#f3f7ff;font-family:Inter,system-ui,'Segoe UI',sans-serif!important;font-size:14px!important;color:#213e70}
+header{height:60px;background:linear-gradient(105deg,#174399 0%,#1359c5 58%,#164cae 100%);padding:0 32px;display:flex;align-items:center;box-shadow:0 2px 8px #143f8115}
+header strong{font-size:16px;display:flex;align-items:center;gap:17px;font-weight:800}
+header strong:before{content:none!important;display:none!important}
+.sicoob-brand-icon{flex:none;display:block;filter:drop-shadow(0 1px 2px #011b3433)}
+header a{font-size:13px;display:inline-block;text-decoration:none}
+main{margin:0!important;padding:19px!important;max-width:none!important}
+section{background:white!important;border:1px solid #dfebfa!important;border-radius:11px!important;box-shadow:0 7px 21px #31558f0c!important;padding:19px!important;margin:0 0 18px!important}
+.history-filter-heading{display:flex;gap:14px;align-items:center;margin-bottom:20px}
+.history-filter-icon{height:40px;width:40px;border-radius:11px;background:#edf3fe;display:flex;align-items:center;justify-content:center;color:#1555d3;font-size:29px}
+.history-filter-heading b{font-size:16px;color:#213e75;display:block}
+.history-filter-heading small{display:block;font-size:12px;margin-top:3px;color:#8093b5}
+.tools{display:flex;align-items:end;flex-wrap:wrap;gap:12px;margin:0!important}
+.tools:before{display:none!important;content:none!important}
+.tools select,.tools input{height:41px!important;background:white!important;border:1px solid #cbdaf1!important;border-radius:8px!important;padding:8px 12px!important;font-size:13px!important}
+.tools select:first-child{width:230px}
+.tools select:nth-child(2){width:160px}
+.tools label{font-size:13px;color:#23416f;font-weight:700}
+.tools label input[type=date]{width:150px}
+.tools label:has(input[type=checkbox]){display:flex;align-items:center;gap:5px;white-space:nowrap;margin-bottom:10px}
+.tools input[type=checkbox]{height:auto!important}
+.tools #busca{width:245px;min-width:150px!important}
+.tools #refresh{background:linear-gradient(180deg,#1765ef,#064acb)!important;color:#fff!important;border-radius:8px!important;height:42px!important;font-size:13px!important;padding:0 18px!important}
+#updated{color:#54719d;font-size:12px;font-weight:500}
+.history-results{padding:20px 19px 23px!important}
+#summary{font-size:13px;color:#294a85;font-weight:700;margin:0;padding:0 0 22px!important}
+table{border-spacing:0!important;min-width:1000px}
+th{background:#edf3fb!important;color:#20396a!important;padding:14px 12px!important;font-size:13px!important;text-align:left}
+td{padding:11px 12px!important;font-size:13px!important;line-height:1.5!important;color:#2e4676!important}
+td button{padding:8px 11px!important;border-radius:8px!important;font-weight:700!important;font-size:12px!important;background:#eef4ff!important;color:#1155ce!important;border:1px solid #cbdbfc!important}
+td.paid{color:#058953!important}td.pending{color:#bb7908!important}td.cancel{color:#d52d5b!important}
 </style>
-<header><strong>COOPEX - Histórico Pix da Cooperativa - Sicoob</strong><a href="/admin" target="_blank" rel="noopener">Abrir painel ↗</a></header><main><section><div class="tools"><select id="status"><option value="todos">Todas as cobranças Sicoob</option><option value="pagos">Pagos</option><option value="pendentes">Não pagos</option><option value="cancelados">Cancelados</option></select><select id="tipo"><option value="todos">Avulsos e entregas</option><option value="Avulso">Pix antecipado</option><option value="Entrega">Pix de entrega</option><option value="Crédito">Compra de créditos</option></select><label>De <input id="dataInicio" type="date"></label><label>Até <input id="dataFim" type="date"></label><label style="display:flex;align-items:center;gap:5px"><input id="anteriores" type="checkbox" checked> Pix Cooperativa pendentes anteriores</label><input id="busca" placeholder="Pesquisar cliente ou número da entrega"><button id="refresh">Atualizar agora</button><span id="updated"></span></div><div id="summary"></div><div class="table"><table><thead><tr><th>Origem</th><th>Cliente</th><th>Valor</th><th>Data</th><th>Pagamento</th><th>Vencimento Pix</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div></section></main>
+<header><strong><svg class="sicoob-brand-icon" viewBox="0 0 156 140" width="37" height="37" aria-label="Símbolo do Sicoob" role="img"><path d="M14 16 L73 16 L44 67 Z" fill="#78bd27"/><path d="M73 16 L142 16 L105 84 Z" fill="#13a998"/><path d="M44 67 L75 123 L106 68 L92 44 L75 72 L60 44 Z" fill="#bfd510"/><path d="M45 66 L75 16 L91 44 L76 70 L62 44 Z" fill="#1c9f8f"/><path d="M75 123 L104 71 L74 71 L59 96 Z" fill="#b6cf13"/></svg><span>COOPEX - Histórico Pix da Cooperativa - Sicoob</span></strong><a href="/admin" target="_blank" rel="noopener">↗ &nbsp; Abrir painel ↗</a></header><main><section class="history-filters"><div class="history-filter-heading"><span class="history-filter-icon">▽</span><span><b>Filtros</b><small>Selecione os filtros para consultar o histórico de transações Pix da cooperativa.</small></span></div><div class="tools"><select id="status"><option value="todos">Todas as cobranças Sicoob</option><option value="pagos">Pagos</option><option value="pendentes">Não pagos</option><option value="cancelados">Cancelados</option></select><select id="tipo"><option value="todos">Avulsos e entregas</option><option value="Avulso">Pix antecipado</option><option value="Entrega">Pix de entrega</option><option value="Crédito">Compra de créditos</option></select><label>De <input id="dataInicio" type="date"></label><label>Até <input id="dataFim" type="date"></label><label style="display:flex;align-items:center;gap:5px"><input id="anteriores" type="checkbox" checked> Pix Cooperativa pendentes anteriores</label><input id="busca" placeholder="Pesquisar cliente ou número da entrega"><button id="refresh">Atualizar agora</button><span id="updated"></span></div></section><section class="history-results"><div id="summary"></div><div class="table"><table><thead><tr><th>Origem</th><th>Cliente</th><th>Valor</th><th>Data</th><th>Pagamento</th><th>Vencimento Pix</th><th>Situação</th><th>Ações</th></tr></thead><tbody id="rows"></tbody></table></div></section></main>
 <script>let items=[],busy=false,offset=0;const csrf={{csrf|tojson}};
 const el=id=>document.getElementById(id),money=x=>Number(x||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 function date(s){if(!s)return '—';let raw=String(s).trim(),d;if(/^[A-Za-z]{3},? \d/.test(raw)){d=new Date(raw)}else if(/^\d{4}-\d\d-\d\d/.test(raw)){d=new Date(raw.replace(' ','T')+(raw.endsWith('Z')||/[+-]\d\d:\d\d$/.test(raw)?'':'Z'))}else d=new Date(raw);return Number.isNaN(d.getTime())?'Data indisponível':new Intl.DateTimeFormat('pt-BR',{timeZone:'America/Recife',day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit',second:'2-digit'}).format(d)}
