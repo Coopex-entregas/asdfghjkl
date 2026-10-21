@@ -8113,6 +8113,22 @@ def editar_entrega(id):
         return redirect(url_for('painel_cooperado'))
 
     if request.method == 'POST':
+        # Sicoob confirmation has precedence over any manual payment status edit.
+        # Check the persisted bank result, never only the submitted form field.
+        _pix_paid = db.session.execute(db.text(
+            "SELECT 1 FROM sicoob_pix_cobranca WHERE entrega_id=:eid "
+            "AND status='PAGO' AND e2eid IS NOT NULL LIMIT 1"
+        ), {"eid": entrega.id}).first() is not None
+        _new_payment = (request.form.get('status_pagamento') or entrega.status_pagamento or 'pendente').strip().lower()
+        if _pix_paid and _new_payment != 'pago':
+            aviso = 'Esta entrega já está paga e o pagamento foi verificado pelo banco Sicoob. Não é permitido alterar para pendente.'
+            if _wants_json():
+                return jsonify(ok=False, erro=aviso, message=aviso, status_pagamento='pago'), 409
+            flash(aviso, 'warning')
+            return redirect(request.referrer or (url_for('editar_entrega', id=entrega.id)))
+        if _pix_paid and entrega.status_pagamento != 'pago':
+            entrega.status_pagamento = 'pago'
+            db.session.commit()
         if is_admin:
             novo_cliente_nome = (request.form.get('cliente') or '').strip()
             entrega.cliente = novo_cliente_nome
