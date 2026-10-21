@@ -210,7 +210,7 @@ async function chamar(path,method){
         amount=money(entrega.valor)
         txid="COOPEX"+str(entrega_id).zfill(10)+secrets.token_hex(9).upper()
         _, chave = conf()[0:2]
-        payload={"calendario":{"expiracao":3600},"valor":{"original":str(amount)},"chave":chave,"solicitacaoPagador":"Entrega COOPEX "+str(entrega_id)}
+        payload={"calendario":{"expiracao":86400},"valor":{"original":str(amount)},"chave":chave,"solicitacaoPagador":"Entrega COOPEX "+str(entrega_id)}
         try:
             data,_ = bank_request("PUT","/cob/"+txid,payload)
         except Exception:
@@ -221,7 +221,7 @@ async function chamar(path,method){
             # Não cria outra cobrança automaticamente; deve haver reconciliação manual.
             return jsonify(erro="Sicoob não retornou brcode; consulte a cobrança pelo txid antes de tentar novamente"),502
         db.session.execute(text("INSERT INTO sicoob_pix_cobranca(entrega_id,txid,valor,brcode,status,criado_em,expira_em) VALUES(:id,:tx,:v,:bc,'PENDENTE',:dt,:exp)"),
-                           {"id":entrega_id,"tx":txid,"v":str(amount),"bc":brcode,"dt":datetime.utcnow().isoformat(),"exp":(datetime.utcnow()+__import__("datetime").timedelta(seconds=3600)).isoformat()})
+                           {"id":entrega_id,"tx":txid,"v":str(amount),"bc":brcode,"dt":datetime.utcnow().isoformat(),"exp":(datetime.utcnow()+__import__("datetime").timedelta(hours=24)).isoformat()})
         db.session.commit()
         return result(entrega_id,get_record(entrega_id))
 
@@ -528,27 +528,10 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
     @app.get("/admin/pix-sicoob/avisos")
     def sicoob_pix_avisos():
         admin()
-        from datetime import timedelta, timezone
+        # A consulta do painel deve ser rápida: nunca realizar dezenas de chamadas
+        # síncronas ao banco Sicoob para descobrir vencimentos antigos.
         def expiry(row,kind):
-            if row["expira_em"]:return row["expira_em"]
-            try:
-                # Old charges used a shorter validity. Read the actual bank calendar.
-                info,_=bank_request("GET","/cob/"+row["txid"])
-                cal=info.get("calendario") or {}
-                if info.get("status")=="CONCLUIDA" or info.get("pix"):return None
-                criado=str(cal.get("criacao") or "").replace("Z","+00:00")
-                start=datetime.fromisoformat(criado)
-                if start.tzinfo is None:start=start.replace(tzinfo=timezone.utc)
-                end=(start+timedelta(seconds=int(cal.get("expiracao") or 86400))).astimezone(timezone.utc).replace(tzinfo=None).isoformat()
-                tab="sicoob_pix_cobranca" if kind=="Entrega" else "sicoob_pix_avulso"
-                key="entrega_id" if kind=="Entrega" else "id"
-                db.session.execute(text("UPDATE "+tab+" SET expira_em=:exp WHERE "+key+"=:id AND expira_em IS NULL"),
-                    {"exp":end,"id":row["id"]})
-                db.session.commit()
-                return end
-            except Exception:
-                db.session.rollback()
-                return None
+            return row["expira_em"]
         entregas=db.session.execute(text("""SELECT c.entrega_id AS id,c.txid,c.expira_em,e.cliente AS nome,
             c.valor FROM sicoob_pix_cobranca c JOIN entrega e ON e.id=c.entrega_id
             WHERE c.status='PENDENTE' AND LOWER(TRIM(e.pagamento)) IN
