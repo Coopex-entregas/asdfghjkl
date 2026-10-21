@@ -250,6 +250,63 @@ async function chamar(path,method){
                 db.session.commit()
         return result(entrega_id,get_record(entrega_id))
 
+    @app.post("/admin/pix-sicoob/entrega/<int:entrega_id>/modificar")
+    def sicoob_entrega_modificar(entrega_id):
+        admin();check_csrf()
+        import uuid
+        from datetime import timedelta
+        try:
+            suffix=" FOR UPDATE" if db.engine.dialect.name=="postgresql" else ""
+            row=db.session.execute(text("SELECT * FROM sicoob_pix_cobranca WHERE entrega_id=:id"+suffix),{"id":entrega_id}).mappings().first()
+            if not row:
+                db.session.rollback();return jsonify(erro="Pix de entrega não encontrado."),404
+            entrega=db.session.get(Entrega,entrega_id)
+            if row["status"]!="PENDENTE" or (entrega and str(entrega.status_pagamento).lower()=="pago"):
+                db.session.rollback();return jsonify(erro="Esta entrega já foi paga ou não está pendente."),409
+            original,_=bank_request("GET","/cob/"+row["txid"])
+            pix=original.get("pix") or []
+            if original.get("status")=="CONCLUIDA" or pix:
+                db.session.rollback()
+                return jsonify(erro="Sicoob informa pagamento ou movimentação. Verifique antes de substituir."),409
+            if original.get("status")=="ATIVA":
+                bank_request("PATCH","/cob/"+row["txid"],{"status":"REMOVIDA_PELO_USUARIO_RECEBEDOR"})
+            confirmed,_=bank_request("GET","/cob/"+row["txid"])
+            if confirmed.get("status")!="REMOVIDA_PELO_USUARIO_RECEBEDOR" or confirmed.get("pix"):
+                db.session.rollback()
+                return jsonify(erro="O Sicoob não confirmou o cancelamento do Pix anterior."),409
+            newtx="COOPEX"+str(entrega_id).zfill(10)+__import__("secrets").token_hex(9).upper()
+            _,chave=conf()[0:2]
+            novo,_=bank_request("PUT","/cob/"+newtx,{
+                "calendario":{"expiracao":86400},
+                "valor":{"original":str(row["valor"])},
+                "chave":chave,
+                "solicitacaoPagador":"Entrega COOPEX "+str(entrega_id)})
+            codigo=novo.get("brcode") or novo.get("pixCopiaECola")
+            if not codigo:
+                novo,_=bank_request("GET","/cob/"+newtx)
+                codigo=novo.get("brcode") or novo.get("pixCopiaECola")
+            if not codigo:
+                db.session.rollback()
+                return jsonify(erro="O Sicoob criou a cobrança, mas não informou o código. Não repita a operação antes de conciliar."),502
+            now=datetime.utcnow()
+            db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_pix_entrega_renovacoes
+                (id VARCHAR(36) PRIMARY KEY, entrega_id INTEGER NOT NULL, txid_antigo VARCHAR(35) NOT NULL,
+                 txid_novo VARCHAR(35) NOT NULL, criado_em VARCHAR(40) NOT NULL)"""))
+            db.session.execute(text("""INSERT INTO sicoob_pix_entrega_renovacoes(id,entrega_id,txid_antigo,txid_novo,criado_em)
+                VALUES(:id,:eid,:antigo,:novo,:dt)"""),{
+                "id":str(uuid.uuid4()),"eid":entrega_id,"antigo":row["txid"],
+                "novo":newtx,"dt":now.isoformat()})
+            db.session.execute(text("""UPDATE sicoob_pix_cobranca SET txid=:tx,brcode=:br,
+                criado_em=:dt,expira_em=:exp WHERE entrega_id=:eid AND status='PENDENTE'"""),{
+                "tx":newtx,"br":codigo,"dt":now.isoformat(),
+                "exp":(now+timedelta(hours=24)).isoformat(),"eid":entrega_id})
+            db.session.commit()
+            return jsonify(brcode=codigo,valor=row["valor"],status="PENDENTE",expira_em=(now+timedelta(hours=24)).isoformat())
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha ao modificar Pix de entrega")
+            return jsonify(erro="Não foi possível confirmar a substituição do Pix no banco."),502
+
     # Painel de diagnóstico: APENAS leitura e sem expor token/certificado.
     TEST_PAGE = """<!doctype html><html lang="pt-br"><meta charset="utf-8">
 <title>COOPEX | Diagnóstico Sicoob</title><meta name="viewport" content="width=device-width,initial-scale=1">
