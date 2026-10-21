@@ -10782,7 +10782,7 @@ def api_admin_solicitacoes_credito():
     pendentes = (
         SolicitacaoCreditoCliente.query
         .filter_by(status='pendente')
-        .filter(~SolicitacaoCreditoCliente.id.in_(db.session.query(text('solicitacao_id')).select_from(text('sicoob_credito_pix'))))
+        .filter(text('NOT EXISTS (SELECT 1 FROM sicoob_credito_pix p WHERE p.solicitacao_id = solicitacao_credito_cliente.id)'))
         .order_by(SolicitacaoCreditoCliente.criado_em.asc())
         .all()
     )
