@@ -578,7 +578,7 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
             ORDER BY criado_em DESC LIMIT 300""")).mappings().all()
         entregas=db.session.execute(text("""SELECT c.entrega_id AS id, e.cliente AS cliente_nome,
             c.valor AS valor,c.status AS status,
-            COALESCE(c.criado_em,e.data_envio) AS criado_em,c.expira_em AS expira_em,c.pago_em AS pago_em,e.status_pagamento AS entrega_pago
+            COALESCE(c.criado_em,CAST(e.data_envio AS VARCHAR)) AS criado_em,c.expira_em AS expira_em,c.pago_em AS pago_em,e.status_pagamento AS entrega_pago
             FROM sicoob_pix_cobranca c JOIN entrega e ON e.id=c.entrega_id
             WHERE LOWER(TRIM(e.pagamento)) IN ('pix (cooperativa)', 'pix cooperativa', 'pix da cooperativa')
             ORDER BY e.data_envio DESC LIMIT 300""")).mappings().all()
