@@ -141,7 +141,7 @@ def install(h):
         try:
             cfg=db.session.execute(text("SELECT chave FROM sicoob_pix_config WHERE id=1")).scalar()
             if not cfg:raise ValueError("Chave Pix não configurada")
-            payload={"calendario":{"expiracao":3600},"valor":{"original":row["valor"]},
+            payload={"calendario":{"expiracao":86400},"valor":{"original":row["valor"]},
                      "chave":cfg,"solicitacaoPagador":"Crédito COOPEX #"+str(sid)}
             # Sicoob pode retornar 400 ao GET de txid ainda inexistente.
             # PUT com txid fixo identifica a mesma cobranca e evita criar outro pedido.
