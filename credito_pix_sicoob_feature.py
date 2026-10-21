@@ -198,6 +198,23 @@ def install(h):
         return jsonify(ok=True,solicitacao_id=sid,valor=row["valor"],status=row["status"],
             brcode=row["brcode"],qrcode_url="/api/cliente/pix-credito/"+str(sid)+"/qr")
 
+    @app.post("/api/admin/pix-creditos/<int:sid>/verificar")
+    def pix_credito_admin_verificar(sid):
+        if not session.get("is_admin"):
+            abort(403)
+        if request.headers.get("X-CSRF-Token") != session.get("sicoob_csrf"):
+            abort(403)
+        req=Sol.query.get_or_404(sid)
+        row=get_row(sid)
+        if not row:abort(404)
+        try:
+            paid=reconcile(req,row)
+            return jsonify(ok=True,pago=bool(paid),status="APROVADO" if paid else "PENDENTE")
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha na verificacao de credito Pix admin")
+            return jsonify(erro="Falha ao conferir o Pix com o Sicoob."),502
+
     @app.get("/api/admin/pix-creditos/novas-vendas")
     def pix_credito_vendas_admin():
         if not session.get("is_admin"):
