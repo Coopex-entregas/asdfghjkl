@@ -10050,6 +10050,16 @@ def api_credito_recarga():
         criado_em=datetime.utcnow(),
     )
     db.session.add(solicitacao)
+    db.session.flush()
+    # Registro interno da cobranca (nao e pedido de aprovacao manual).
+    # Criar o vinculo na mesma transacao impede aparecer na fila administrativa.
+    db.session.execute(text("""INSERT INTO sicoob_credito_pix
+        (solicitacao_id,cliente_id,txid,valor,status)
+        VALUES(:sid,:cid,:tx,:valor,'CRIANDO')"""), {
+            'sid': solicitacao.id, 'cid': cli.id,
+            'tx': 'COOPEXCR' + str(solicitacao.id).zfill(12),
+            'valor': str(Decimal(str(solicitacao.valor)).quantize(Decimal('0.01'))),
+        })
     db.session.commit()
 
     from urllib.parse import quote
