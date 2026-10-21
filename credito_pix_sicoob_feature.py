@@ -148,7 +148,8 @@ def install(h):
             try:
                 data,_=bank_call("GET","/cob/"+row["txid"])
             except requests.HTTPError as lookup_error:
-                if lookup_error.response is not None and lookup_error.response.status_code==404:
+                if lookup_error.response is not None and lookup_error.response.status_code in (400,404):
+                    # Alguns retornos Sicoob usam 400 para txid ainda inexistente.
                     data=None
                 else:
                     raise
