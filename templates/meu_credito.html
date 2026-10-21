@@ -1340,7 +1340,7 @@ const line=document.createElement('div');line.style.margin='12px 0';line.textCon
 w.append(heading,line);
 const rp=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});
 const pix=await rp.json().catch(()=>({}));
-if(!rp.ok||!pix.ok){line.textContent=(pix.erro||'Pix indisponível. Não faça outra solicitação até conferirmos esta compra.');return}
+if(!rp.ok||!pix.ok){line.textContent=(pix.erro||'Pix indisponível. Tente novamente na mesma solicitação.');const retry=document.createElement('button');retry.type='button';retry.className='ghost';retry.textContent='Tentar novamente nesta solicitação';retry.style.marginTop='10px';retry.onclick=async()=>{retry.disabled=true;line.textContent='Consultando a mesma cobrança no Sicoob...';try{const r=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Pix indisponível');location.reload()}catch(e){line.textContent=e.message;retry.disabled=false}};w.append(retry);return}
 const img=document.createElement('img');img.alt='QR Code Pix COOPEX';img.src=pix.qrcode_url;img.style.cssText='display:block;width:220px;height:220px;max-width:100%;margin:16px auto';
 const ta=document.createElement('textarea');ta.readOnly=true;ta.value=pix.brcode;ta.style.cssText='width:100%;box-sizing:border-box;height:90px;padding:10px;border-radius:9px;border:1px solid #ccd7e8';
 const cp=document.createElement('button');cp.className='ghost';cp.textContent='Copiar Pix Copia e Cola';cp.type='button';
