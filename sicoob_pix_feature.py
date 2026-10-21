@@ -350,7 +350,7 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
         try:
             _,chave=conf()[0:2]
             dados,_=bank_request("PUT","/cob/"+txid,
-                {"calendario":{"expiracao":3600},"valor":{"original":str(amount)},
+                {"calendario":{"expiracao":315360000},"valor":{"original":str(amount)},
                  "chave":chave,"solicitacaoPagador":"COOPEX Pagamento antecipado"})
             brcode=dados.get("brcode") or dados.get("pixCopiaECola")
             if not brcode:
