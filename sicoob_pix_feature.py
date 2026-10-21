@@ -428,6 +428,8 @@ async function load(reconcile=true){if(busy)return;busy=true;try{let r=await fet
             s.status AS solicitacao_status, p.credito_id AS credito_id
             FROM sicoob_credito_pix p JOIN solicitacao_credito_cliente s ON s.id=p.solicitacao_id
             JOIN cliente c ON c.id=p.cliente_id
+            WHERE (p.brcode IS NOT NULL AND TRIM(p.brcode) <> '')
+               OR (p.status='PAGO' AND p.credito_id IS NOT NULL AND s.status='aprovado')
             ORDER BY s.criado_em DESC LIMIT 300""")).mappings().all()
         dados=[]
         for row in creditos:
