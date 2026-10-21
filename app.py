@@ -10782,6 +10782,7 @@ def api_admin_solicitacoes_credito():
     pendentes = (
         SolicitacaoCreditoCliente.query
         .filter_by(status='pendente')
+        .filter(~SolicitacaoCreditoCliente.id.in_(db.session.query(text('solicitacao_id')).select_from(text('sicoob_credito_pix'))))
         .order_by(SolicitacaoCreditoCliente.criado_em.asc())
         .all()
     )
