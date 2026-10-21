@@ -143,29 +143,56 @@ def install(h):
             if not cfg:raise ValueError("Chave Pix não configurada")
             payload={"calendario":{"expiracao":86400},"valor":{"original":row["valor"]},
                      "chave":cfg,"solicitacaoPagador":"COOPEX Compra de creditos"}
-            # Sicoob pode retornar 400 ao GET de txid ainda inexistente.
-            # PUT com txid fixo identifica a mesma cobranca e evita criar outro pedido.
+            # Consulte primeiro o mesmo txid: uma tentativa anterior pode ter sido
+            # criada pelo banco, mesmo quando o cliente nao recebeu o QR Code.
             try:
-                data,_=bank_call("PUT","/cob/"+row["txid"],payload)
-            except requests.HTTPError as exc:
-                if exc.response is not None and exc.response.status_code==400:
-                    try:
-                        detail=exc.response.json()
-                        # Preserve the Sicoob/Bacen field-level validation reason,
-                        # without exposing bank credentials or payer data.
-                        if isinstance(detail,list):
-                            reasons=[str(x.get("razao") or x.get("mensagem") or x.get("message") or "") for x in detail if isinstance(x,dict)]
-                        elif isinstance(detail,dict):
-                            vals=detail.get("violacoes") or detail.get("mensagens") or detail.get("errors") or []
-                            reasons=[str(x.get("razao") or x.get("mensagem") or x.get("message") or "") for x in vals if isinstance(x,dict)] if isinstance(vals,list) else []
-                            reasons.append(str(detail.get("detail") or detail.get("mensagem") or detail.get("message") or detail.get("title") or ""))
-                        else:reasons=[]
-                        reason="; ".join(x for x in reasons if x)[:250]
-                    except Exception:reason=""
-                    return jsonify(ok=False,erro="O Sicoob recusou a cobrança (HTTP 400). "+(reason or "Confira a chave Pix vinculada à conta da API.")+" Tente novamente nesta solicitação após corrigir."),502
                 data,_=bank_call("GET","/cob/"+row["txid"])
-                if str(data.get("status") or "").upper() == "CONCLUIDA":
-                    return jsonify(ok=False,erro="Pix já pago: consulte a situação da solicitação; nenhuma nova cobrança será emitida."),409
+            except requests.HTTPError as lookup_error:
+                if lookup_error.response is not None and lookup_error.response.status_code==404:
+                    data=None
+                else:
+                    raise
+            if data is None:
+                try:
+                    data,_=bank_call("PUT","/cob/"+row["txid"],payload)
+                except requests.HTTPError as exc:
+                    status_code=exc.response.status_code if exc.response is not None else None
+                    if status_code==400:
+                        # Nao atribua o 400 a chave Pix sem o banco informar essa causa.
+                        # Consulte novamente: o PUT pode ter sido processado.
+                        try:
+                            existing,_=bank_call("GET","/cob/"+row["txid"])
+                            data=existing
+                        except requests.HTTPError as lookup_error:
+                            if lookup_error.response is not None and lookup_error.response.status_code!=404:
+                                raise
+                            try:
+                                detail=exc.response.json()
+                            except ValueError:
+                                detail={}
+                            reasons=[]
+                            def collect_errors(value):
+                                if isinstance(value,list):
+                                    for item in value:collect_errors(item)
+                                elif isinstance(value,dict):
+                                    for field in ("razao","mensagem","message","detail","descricao","description"):
+                                        if isinstance(value.get(field),str) and value[field].strip():
+                                            reasons.append(value[field].strip())
+                                    for field in ("violacoes","mensagens","errors","erros"):
+                                        if field in value:collect_errors(value[field])
+                                elif isinstance(value,str) and value.strip():
+                                    reasons.append(value.strip())
+                            collect_errors(detail)
+                            # Nao exponha ao navegador o corpo integral de erros do banco.
+                            reason="; ".join(dict.fromkeys(reasons))[:300]
+                            app.logger.warning("Sicoob Pix credito rejeitado: solicitacao=%s http=400 motivo=%s",sid,reason or "sem detalhe")
+                            return jsonify(ok=False,erro="O Sicoob recusou a geração do Pix (HTTP 400). "+(reason or "O banco não informou o campo inválido; confira a configuração Pix no painel administrativo.")+" A solicitação #"+str(sid)+" foi preservada.",codigo="SICOOB_VALIDACAO"),502
+                    else:
+                        raise
+            if str(data.get("status") or "").upper()=="CONCLUIDA" or data.get("pix"):
+                return jsonify(ok=False,erro="O Sicoob já registra movimentação neste Pix. Verifique o pagamento desta solicitação antes de gerar outro código."),409
+            if str(data.get("status") or "").upper() in ("REMOVIDA_PELO_USUARIO_RECEBEDOR","REMOVIDA_PELO_PSP"):
+                return jsonify(ok=False,erro="O Pix desta solicitação foi removido pelo banco. Solicite análise do administrador; não será gerada cobrança duplicada."),409
             code=get_code_from_bank(data)
             if not code:
                 data,_=bank_call("GET","/cob/"+row["txid"])
