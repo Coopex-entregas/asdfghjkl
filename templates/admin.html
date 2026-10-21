@@ -403,20 +403,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </style>
 <script id="cx-pix-led-script">
 (function(){
-let list=[],lastSignature='',alerted=new Set();
-const parse=x=>{if(!x)return NaN;const s=String(x);return Date.parse(s.replace(' ','T')+((s.endsWith('Z')||/[+-]\d\d:\d\d$/.test(s))?'':'Z'))};
-function format(ms){if(ms<=0)return 'VENCIDO';const m=Math.ceil(ms/60000);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m'}
-function render(){
-const led=document.getElementById('cx-pix-led');if(!led)return;
-const now=Date.now();const visible=list.filter(x=>x.expira_em);const count=list.length;
-const messages=visible.map(x=>{const ms=parse(x.expira_em)-now;const title=(x.nome||'Cliente').slice(0,29);const label=x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO';const urg=ms<=0?'VENCIDO':ms<=15*60000?'URGENTE 15 MIN':ms<=30*60000?'ALERTA 30 MIN':ms<=60*60000?'ATENÇÃO 1 HORA':'PENDENTE';return label+' · '+title+' · '+format(ms)+' · '+urg});
-if(count>visible.length)messages.push((count-visible.length)+' PIX AGUARDANDO CONSULTA DO VENCIMENTO');
-const signature=messages.join('     ✦     ')||'NENHUM PIX PENDENTE';
-if(signature!==lastSignature){lastSignature=signature;led.querySelector('.cx-led-inner').textContent='  ✦  '+signature+'  ✦  '}
-led.querySelector('.cx-led-count').textContent='PIX '+count;
-}
-async function refresh(){try{const r=await fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;list=(await r.json()).cobrancas||[];render()}catch(e){}}
-function init(){const host=document.getElementById('cx-pix-avulso');if(!host){setTimeout(init,1100);return}if(document.getElementById('cx-pix-led'))return;const led=document.createElement('span');led.id='cx-pix-led';led.title='Pix pendentes, vencimentos e alertas. Clique para abrir o histórico.';led.innerHTML='<span class="cx-led-count">PIX 0</span><span class="cx-led-inner">CONSULTANDO PIX PENDENTES...</span>';led.onclick=()=>window.open('/admin/pix-sicoob/historico','_blank','noopener');host.appendChild(led);refresh();setInterval(refresh,30000);setInterval(render,10000)}
+let pix=[],fila=[],paidKnown=null,lastText='',audioContext=null,enabledSound=false,lastMode='';
+const parse=v=>{if(!v)return NaN;const s=String(v).replace(' ','T');return Date.parse(s+(s.endsWith('Z')||/[+-]\\d\\d:\\d\\d$/.test(s)?'':'Z'))};
+const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
+const countdown=ms=>{if(ms<=0)return 'VENCIDO';const m=Math.ceil(ms/60000);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m'};
+document.addEventListener('pointerdown',()=>{enabledSound=true},{once:true});
+function cashSound(){if(!enabledSound)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=audioContext||new C();if(audioContext.state==='suspended')audioContext.resume();const now=audioContext.currentTime;[880,1320,1760,2093].forEach((hz,i)=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.setValueAtTime(hz,now+i*.085);g.gain.setValueAtTime(.0001,now+i*.085);g.gain.exponentialRampToValueAtTime(.11,now+i*.085+.018);g.gain.exponentialRampToValueAtTime(.0001,now+i*.085+.14);o.connect(g);g.connect(audioContext.destination);o.start(now+i*.085);o.stop(now+i*.085+.15)})}catch(e){}}
+function paidToast(x){cashSound();const div=document.createElement('div');div.style.cssText='position:fixed;top:18px;right:18px;z-index:999999;max-width:430px;background:#063e22;border:2px solid #40ef82;box-shadow:0 7px 30px #0008;border-radius:12px;padding:16px 20px;color:#d7ffea;font:700 15px system-ui';div.textContent='💵 PIX RECEBIDO · '+(x.cliente_nome||'Cliente')+' · '+money(x.valor);document.body.appendChild(div);setTimeout(()=>div.remove(),6500)}
+async function paidRefresh(){try{const r=await fetch('/admin/pix-sicoob/historico/dados',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const all=(await r.json()).cobrancas||[];const good=all.filter(x=>x.status==='PAGO'||x.status==='APROVADO');const ids=new Set(good.map(x=>x.tipo+':'+x.uid+':'+x.status));if(paidKnown!==null){for(const x of good){const key=x.tipo+':'+x.uid+':'+x.status;if(!paidKnown.has(key))paidToast(x)}}paidKnown=ids}catch(e){}}
+function draw(){const led=document.getElementById('cx-pix-led');if(!led)return;const now=Date.now();const warnings=pix.map(x=>({...x,ms:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.ms)&&x.ms<=3600000).sort((a,b)=>a.ms-b.ms);const mode=warnings.length?'alert':'fila';const messages=warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(x.pos||i+1)+'º '+x.nome);const result=messages.join('     ✦     ')||(warnings.length?'AVISO PIX':'SEM COOPERADOS NA FILA');if(result!==lastText||mode!==lastMode){lastText=result;lastMode=mode;led.querySelector('.cx-led-inner').textContent='  ✦  '+result+'  ✦  ';led.classList.toggle('cx-led-blue',!warnings.length)}led.querySelector('.cx-led-count').textContent='PIX '+pix.length}
+async function refresh(){try{const [r,f]=await Promise.all([fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'}),fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'})]);if(r.ok)pix=(await r.json()).cobrancas||[];if(f.ok)fila=(await f.json()).cooperados||[];draw()}catch(e){}}
+function init(){const host=document.getElementById('cx-pix-avulso');if(!host){setTimeout(init,1000);return}if(document.getElementById('cx-pix-led'))return;const led=document.createElement('span');led.id='cx-pix-led';led.title='Fila de cooperados e alertas de vencimento Pix. Clique para ver o histórico.';led.innerHTML='<span class="cx-led-count">PIX 0</span><span class="cx-led-inner">CONSULTANDO...</span>';led.onclick=()=>window.open('/admin/pix-sicoob/historico','_blank','noopener');host.appendChild(led);refresh();paidRefresh();setInterval(refresh,30000);setInterval(draw,10000);setInterval(paidRefresh,30000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
+
+<style id="cx-pix-led-blue">#cx-pix-led.cx-led-blue{border-color:#2360aa;background:#06162b;box-shadow:inset 0 0 9px #000a,0 0 3px #2966c3}#cx-pix-led.cx-led-blue .cx-led-inner{color:#61b9ff;text-shadow:0 0 4px #369cff,0 0 9px #237aff}</style>
