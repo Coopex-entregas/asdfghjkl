@@ -135,6 +135,22 @@ def install(h):
             row=get_row(sid)
         if row["cliente_id"]!=req.cliente_id:abort(403)
         if row["status"]=="PAGO":return jsonify(ok=False,erro="Pix já pago"),409
+        # Bacen/Sicoob exige txid entre 26 e 35 caracteres para PUT /cob/{txid}.
+        # Versoes anteriores gravavam COOPEXCR + 12 digitos (20 caracteres).
+        # Esses identificadores nunca podem ser usados em uma cobranca valida.
+        # Corrigir somente o identificador invalido, preservando solicitacao,
+        # cliente, valor e todos os pagamentos existentes.
+        if not 26 <= len(str(row["txid"])) <= 35:
+            if row["brcode"] or row["e2eid"] or row["credito_id"]:
+                return jsonify(ok=False,erro="Pix existente requer conferência bancária."),409
+            import uuid
+            new_txid="COOPEXCR"+uuid.uuid4().hex[:26].upper()
+            db.session.execute(text("""UPDATE sicoob_credito_pix SET txid=:tx
+                WHERE solicitacao_id=:sid AND txid=:old AND brcode IS NULL
+                AND e2eid IS NULL AND credito_id IS NULL"""),
+                {"tx":new_txid,"sid":sid,"old":row["txid"]})
+            db.session.commit()
+            row=get_row(sid)
         if row["brcode"]:
             return jsonify(ok=True,solicitacao_id=sid,valor=row["valor"],brcode=row["brcode"],
                 qrcode_url="/api/cliente/pix-credito/"+str(sid)+"/qr",status=row["status"])
