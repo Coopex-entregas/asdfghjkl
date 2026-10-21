@@ -540,7 +540,7 @@ body.modo-vendedor .seller-topbar-compact{
 <section class="view principal-only" id="view-carteira">
   <div class="card credit-box"><h3>Comprar crédito</h3><div class="preset"><button data-v="20">R$ 20</button><button data-v="50">R$ 50</button><button data-v="100">R$ 100</button></div>
   <div class="field" style="margin-top:10px"><label>Valor do crédito</label><input class="input" id="creditValue" inputmode="decimal" placeholder="Ex.: 100,00"></div>
-  <button class="primary" id="requestCredit" style="width:100%;margin-top:10px">Solicitar crédito</button>
+  <button class="primary" id="requestCredit" style="width:100%;margin-top:10px">Gerar chave para pagamento</button>
   <div class="pix-result" id="pixResult"></div></div>
 </section>
 
@@ -1335,7 +1335,7 @@ try{
 const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});
 if(!j?.ok){toast(j?.msg||'Não foi possível criar solicitação');return}
 const w=$('pixResult');w.classList.add('show');w.replaceChildren();
-const heading=document.createElement('strong');heading.textContent='Solicitação #'+j.solicitacao_id+' · '+money(j.valor);
+const heading=document.createElement('strong');heading.textContent='Pagamento Pix #'+j.solicitacao_id+' · '+money(j.valor);
 const line=document.createElement('div');line.style.margin='12px 0';line.textContent='Gerando código Pix exclusivo para esta compra...';
 w.append(heading,line);
 const rp=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});
