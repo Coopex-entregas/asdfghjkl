@@ -10089,24 +10089,46 @@ def api_credito_recarga():
     if valor <= 0:
         return jsonify(ok=False, msg='Informe um valor válido.'), 400
 
-    solicitacao = SolicitacaoCreditoCliente(
-        cliente_id=cli.id,
-        valor=round(valor, 2),
-        status='pendente',
-        criado_em=datetime.utcnow(),
-    )
-    db.session.add(solicitacao)
-    db.session.flush()
-    # Registro interno da cobranca (nao e pedido de aprovacao manual).
-    # Criar o vinculo na mesma transacao impede aparecer na fila administrativa.
-    db.session.execute(text("""INSERT INTO sicoob_credito_pix
-        (solicitacao_id,cliente_id,txid,valor,status)
-        VALUES(:sid,:cid,:tx,:valor,'CRIANDO')"""), {
-            'sid': solicitacao.id, 'cid': cli.id,
-            'tx': 'COOPEXCR' + __import__('uuid').uuid4().hex[:26].upper(),
-            'valor': str(Decimal(str(solicitacao.valor)).quantize(Decimal('0.01'))),
-        })
-    db.session.commit()
+    # Reaproveitar compra pendente do mesmo cliente/valor em vez de criar
+    # pedidos duplicados quando o banco ainda nao gerou o QR Code.
+    valor = round(valor, 2)
+    try:
+        from sqlalchemy import inspect as _inspect
+        if not _inspect(db.engine).has_table('sicoob_credito_pix'):
+            db.session.execute(text("""CREATE TABLE IF NOT EXISTS sicoob_credito_pix (
+              solicitacao_id INTEGER PRIMARY KEY, cliente_id INTEGER NOT NULL,
+              txid VARCHAR(35) NOT NULL UNIQUE, valor VARCHAR(20) NOT NULL,
+              brcode TEXT, status VARCHAR(20) NOT NULL DEFAULT 'CRIANDO',
+              e2eid VARCHAR(60) UNIQUE, pago_em VARCHAR(40),
+              credito_id INTEGER)"""))
+            db.session.commit()
+        solicitacao = (SolicitacaoCreditoCliente.query
+            .filter_by(cliente_id=cli.id, status='pendente', valor=valor)
+            .order_by(SolicitacaoCreditoCliente.id.desc()).first())
+        if solicitacao:
+            pix_existente = db.session.execute(text(
+                "SELECT solicitacao_id FROM sicoob_credito_pix WHERE solicitacao_id=:sid"
+            ), {'sid': solicitacao.id}).first()
+            if not pix_existente:
+                solicitacao = None
+        if not solicitacao:
+            solicitacao = SolicitacaoCreditoCliente(
+                cliente_id=cli.id, valor=valor,
+                status='pendente', criado_em=datetime.utcnow())
+            db.session.add(solicitacao)
+            db.session.flush()
+            db.session.execute(text("""INSERT INTO sicoob_credito_pix
+                (solicitacao_id,cliente_id,txid,valor,status)
+                VALUES(:sid,:cid,:tx,:valor,'CRIANDO')"""), {
+                    'sid': solicitacao.id, 'cid': cli.id,
+                    'tx': 'COOPEXCR' + __import__('uuid').uuid4().hex[:26].upper(),
+                    'valor': str(Decimal(str(valor)).quantize(Decimal('0.01'))),
+                })
+            db.session.commit()
+    except Exception:
+        app.logger.exception("Falha ao preparar Pix de credito para cliente")
+        db.session.rollback()
+        return jsonify(ok=False, msg="Não foi possível iniciar o Pix. Verifique o log do servidor (rota /api/cliente/recarga)."), 500
 
     from urllib.parse import quote
     pix_chave = '05289938000197'
