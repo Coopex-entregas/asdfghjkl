@@ -421,6 +421,7 @@ async function load(reconcile=true){if(busy)return;busy=true;try{let r=await fet
             c.valor AS valor,c.status AS status,
             e.data_envio AS criado_em,c.pago_em AS pago_em,e.status_pagamento AS entrega_pago
             FROM sicoob_pix_cobranca c JOIN entrega e ON e.id=c.entrega_id
+            WHERE LOWER(TRIM(e.pagamento)) IN ('pix (cooperativa)', 'pix cooperativa', 'pix da cooperativa')
             ORDER BY e.data_envio DESC LIMIT 300""")).mappings().all()
         creditos=db.session.execute(text("""SELECT p.solicitacao_id AS id, c.nome AS cliente_nome,
             p.valor AS valor, p.status AS status, s.criado_em AS criado_em, p.pago_em AS pago_em,
