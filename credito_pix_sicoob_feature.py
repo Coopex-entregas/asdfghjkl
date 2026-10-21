@@ -127,7 +127,7 @@ def install(h):
         if req.status!="pendente":return jsonify(ok=False,erro="Solicitação já processada"),409
         row=get_row(sid)
         if not row:
-            txid=("COOPEXCR"+str(sid).zfill(18))[:35]  # 26 caracteres
+            txid="COOPEXCR"+__import__("uuid").uuid4().hex[:26].upper()  # mesmo formato de 34 caracteres dos Pix avulsos
             db.session.execute(text("""INSERT INTO sicoob_credito_pix(solicitacao_id,cliente_id,txid,valor)
                 VALUES(:sid,:cid,:tx,:v) ON CONFLICT(solicitacao_id) DO NOTHING"""),
                 {"sid":sid,"cid":req.cliente_id,"tx":txid,"v":str(amt(req.valor))})
@@ -142,7 +142,7 @@ def install(h):
             cfg=db.session.execute(text("SELECT chave FROM sicoob_pix_config WHERE id=1")).scalar()
             if not cfg:raise ValueError("Chave Pix não configurada")
             payload={"calendario":{"expiracao":86400},"valor":{"original":row["valor"]},
-                     "chave":cfg,"solicitacaoPagador":"Crédito COOPEX #"+str(sid)}
+                     "chave":cfg,"solicitacaoPagador":"COOPEX Compra de creditos"}
             # Sicoob pode retornar 400 ao GET de txid ainda inexistente.
             # PUT com txid fixo identifica a mesma cobranca e evita criar outro pedido.
             try:
