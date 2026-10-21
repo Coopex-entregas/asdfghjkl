@@ -3267,8 +3267,9 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
           headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
           body: JSON.stringify(payload || {})
         });
-        if(!r.ok) return null;
-        return await r.json();
+        const result=await r.json().catch(()=>({}));
+        if(!r.ok) return {ok:false,erro:result.erro||result.message||'Não foi possível atualizar.',status_pagamento:result.status_pagamento,motivo:result.motivo};
+        return result;
       }catch(e){
         return null;
       }
@@ -3394,16 +3395,17 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         const span = document.createElement('span');
         span.className='pagamento-editable';
         span.dataset.id=idEntrega;
-        span.dataset.statusPagamento=sp;
+        const finalStatus=(res&&res.status_pagamento)||atual||'pendente';
+        span.dataset.statusPagamento=finalStatus;
         span.title='Clique para alterar o status do pagamento';
-        span.innerHTML = makePillPagto(sp);
+        span.innerHTML = makePillPagto(finalStatus);
         sel.parentNode.replaceChild(span, sel);
 
         if(res && res.ok){
           window.__markActionEnd&&window.__markActionEnd();
           showToast('<strong>Pagamento atualizado.</strong>');
         }else{
-          showToast('<strong>Não foi possível atualizar o pagamento agora.</strong>');
+          showToast('<strong>'+((res&&res.erro)||'Não foi possível atualizar o pagamento agora.').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;')+'</strong>');
         }
       }
 
