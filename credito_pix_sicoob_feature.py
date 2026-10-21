@@ -67,7 +67,19 @@ def install(h):
         return db.session.execute(text("SELECT * FROM sicoob_credito_pix WHERE solicitacao_id=:sid"),{"sid":sid}).mappings().first()
 
     def get_code(data):
-        return data.get("pixCopiaECola") or data.get("brcode") or (data.get("loc") or {}).get("brcode")
+        if not isinstance(data,dict):return None
+        loc=data.get("loc") if isinstance(data.get("loc"),dict) else {}
+        return (data.get("pixCopiaECola") or data.get("brcode") or data.get("qrcode")
+                or loc.get("brcode") or loc.get("qrcode"))
+
+    def get_code_from_bank(data):
+        code=get_code(data)
+        if code:return code
+        loc=data.get("loc") if isinstance(data,dict) else None
+        if isinstance(loc,dict) and loc.get("id") is not None:
+            qr,_=bank_call("GET","/loc/"+str(loc["id"])+"/qrcode")
+            return get_code(qr)
+        return None
 
     def reconcile(req,row):
         if row["status"]=="PAGO" and req.status=="aprovado":
@@ -115,7 +127,7 @@ def install(h):
         if req.status!="pendente":return jsonify(ok=False,erro="Solicitação já processada"),409
         row=get_row(sid)
         if not row:
-            txid=("COOPEXCR"+str(sid).zfill(12))[:35]
+            txid=("COOPEXCR"+str(sid).zfill(18))[:35]  # 26 caracteres
             db.session.execute(text("""INSERT INTO sicoob_credito_pix(solicitacao_id,cliente_id,txid,valor)
                 VALUES(:sid,:cid,:tx,:v) ON CONFLICT(solicitacao_id) DO NOTHING"""),
                 {"sid":sid,"cid":req.cliente_id,"tx":txid,"v":str(amt(req.valor))})
@@ -140,10 +152,10 @@ def install(h):
                 data,_=bank_call("GET","/cob/"+row["txid"])
                 if str(data.get("status") or "").upper() == "CONCLUIDA":
                     return jsonify(ok=False,erro="Pix já pago: consulte a situação da solicitação; nenhuma nova cobrança será emitida."),409
-            code=get_code(data)
+            code=get_code_from_bank(data)
             if not code:
                 data,_=bank_call("GET","/cob/"+row["txid"])
-                code=get_code(data)
+                code=get_code_from_bank(data)
             if not code or not str(code).startswith("000201"):
                 return jsonify(ok=False,erro="Código Pix ainda não disponível. Reabra a mesma solicitação."),503
             db.session.execute(text("UPDATE sicoob_credito_pix SET brcode=:code,status='PENDENTE' WHERE solicitacao_id=:sid"),
