@@ -389,3 +389,34 @@ async function refresh(){try{const response=await fetch(url,{cache:'no-store',cr
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{refresh();setInterval(refresh,5000)});else{refresh();setInterval(refresh,5000)}
 })();
 </script>
+
+<style id="cx-pix-led-style">
+#cx-pix-avulso{flex-wrap:nowrap!important;min-width:0!important;overflow:hidden!important}
+#cx-pix-avulso>strong,#cx-pix-avulso>input,#cx-pix-avulso>button{flex-shrink:0!important}
+#cx-pix-avulso>span:not(#cx-pix-led){display:none!important}
+#cx-pix-led{flex:1 1 90px!important;min-width:40px;height:30px;display:flex;align-items:center;overflow:hidden;position:relative;border:1px solid #1a713d;border-radius:6px;background:repeating-linear-gradient(0deg,rgba(0,0,0,.16) 0 1px,transparent 1px 4px),#04180e;box-shadow:inset 0 0 10px #000b,0 0 3px #0e7f43;margin-left:6px;cursor:pointer}
+#cx-pix-led .cx-led-inner{white-space:nowrap;display:inline-block;min-width:100%;padding-left:100%;animation:cx-led-scroll 32s linear infinite;font:700 13px Consolas,'Courier New',monospace;letter-spacing:1px;color:#40ff81;text-shadow:0 0 3px #21fb6d,0 0 9px #26e879}
+#cx-pix-led:hover .cx-led-inner{animation-play-state:paused}
+@keyframes cx-led-scroll{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+#cx-pix-led .cx-led-count{position:absolute;z-index:2;left:0;top:0;bottom:0;display:flex;align-items:center;padding:0 8px;background:#071d10;border-right:1px solid #25854b;color:#8cffac;font:700 11px Consolas,monospace}
+@media(max-width:900px){#cx-pix-led .cx-led-inner{font-size:11px}#cx-pix-avulso>input{max-width:110px}}
+</style>
+<script id="cx-pix-led-script">
+(function(){
+let list=[],lastSignature='',alerted=new Set();
+const parse=x=>{if(!x)return NaN;const s=String(x);return Date.parse(s.replace(' ','T')+((s.endsWith('Z')||/[+-]\d\d:\d\d$/.test(s))?'':'Z'))};
+function format(ms){if(ms<=0)return 'VENCIDO';const m=Math.ceil(ms/60000);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m'}
+function render(){
+const led=document.getElementById('cx-pix-led');if(!led)return;
+const now=Date.now();const visible=list.filter(x=>x.expira_em);const count=list.length;
+const messages=visible.map(x=>{const ms=parse(x.expira_em)-now;const title=(x.nome||'Cliente').slice(0,29);const label=x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO';const urg=ms<=0?'VENCIDO':ms<=15*60000?'URGENTE 15 MIN':ms<=30*60000?'ALERTA 30 MIN':ms<=60*60000?'ATENÇÃO 1 HORA':'PENDENTE';return label+' · '+title+' · '+format(ms)+' · '+urg});
+if(count>visible.length)messages.push((count-visible.length)+' PIX AGUARDANDO CONSULTA DO VENCIMENTO');
+const signature=messages.join('     ✦     ')||'NENHUM PIX PENDENTE';
+if(signature!==lastSignature){lastSignature=signature;led.querySelector('.cx-led-inner').textContent='  ✦  '+signature+'  ✦  '}
+led.querySelector('.cx-led-count').textContent='PIX '+count;
+}
+async function refresh(){try{const r=await fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;list=(await r.json()).cobrancas||[];render()}catch(e){}}
+function init(){const host=document.getElementById('cx-pix-avulso');if(!host){setTimeout(init,1100);return}if(document.getElementById('cx-pix-led'))return;const led=document.createElement('span');led.id='cx-pix-led';led.title='Pix pendentes, vencimentos e alertas. Clique para abrir o histórico.';led.innerHTML='<span class="cx-led-count">PIX 0</span><span class="cx-led-inner">CONSULTANDO PIX PENDENTES...</span>';led.onclick=()=>window.open('/admin/pix-sicoob/historico','_blank','noopener');host.appendChild(led);refresh();setInterval(refresh,30000);setInterval(render,10000)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
+})();
+</script>
