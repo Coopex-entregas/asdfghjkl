@@ -382,7 +382,9 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
 
     @app.get("/admin/pix-sicoob/historico")
     def sicoob_historico_page():
-        admin()
+        if not session.get("is_admin"):
+            from flask import redirect, url_for
+            return redirect(url_for("login"))
         response=app.make_response(render_template_string(HISTORY_PAGE,csrf=csrf()))
         response.headers["Cache-Control"]="no-store"
         return response
