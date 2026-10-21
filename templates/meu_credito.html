@@ -1326,7 +1326,38 @@ async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBair
 $('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()||!$('coletaBairro').value.trim()){toast('Informe o endereço e o bairro da coleta.');return}if(!await saveFixedCollection(true)){toast('Não foi possível salvar o endereço de coleta no cadastro.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
 window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
-$('requestCredit').onclick=async()=>{const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));if(!v||v<=0){toast('Informe um valor válido.');return}const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});if(j?.ok){const w=$('pixResult');w.classList.add('show');w.innerHTML=`<strong>Solicitação #${j.solicitacao_id} enviada</strong><div style="margin-top:8px">Valor: <strong>${money(j.valor)}</strong></div><div style="margin-top:12px;font-size:11px;font-weight:900;color:#66758e">CHAVE PIX — CNPJ COOPEX</div><div class="pix-key">05289938000197</div><button class="ghost" style="margin-top:8px" onclick="copyPix()">Copiar chave Pix</button><a class="wa" href="${j.whatsapp_url}" target="_blank" rel="noopener">Favor enviar o comprovante direto para esse número: (84) 98111-0706</a><div style="font-size:11px;color:#6c7a93;margin-top:8px">O crédito será lançado após a COOPEX confirmar o pagamento.</div>`;toast('Solicitação enviada para o administrativo.')}};
+$('requestCredit').onclick=async()=>{
+const btn=$('requestCredit');if(btn.disabled)return;
+const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));
+if(!Number.isFinite(v)||v<=0){toast('Informe um valor válido.');return}
+btn.disabled=true;
+try{
+const j=await api(API.recarga,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({valor:v})});
+if(!j?.ok){toast(j?.msg||'Não foi possível criar solicitação');return}
+const w=$('pixResult');w.classList.add('show');w.replaceChildren();
+const heading=document.createElement('strong');heading.textContent='Solicitação #'+j.solicitacao_id+' · '+money(j.valor);
+const line=document.createElement('div');line.style.margin='12px 0';line.textContent='Gerando código Pix exclusivo para esta compra...';
+w.append(heading,line);
+const rp=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});
+const pix=await rp.json().catch(()=>({}));
+if(!rp.ok||!pix.ok){line.textContent=(pix.erro||'Pix indisponível. Não faça outra solicitação até conferirmos esta compra.');return}
+const img=document.createElement('img');img.alt='QR Code Pix COOPEX';img.src=pix.qrcode_url;img.style.cssText='display:block;width:220px;height:220px;max-width:100%;margin:16px auto';
+const ta=document.createElement('textarea');ta.readOnly=true;ta.value=pix.brcode;ta.style.cssText='width:100%;box-sizing:border-box;height:90px;padding:10px;border-radius:9px;border:1px solid #ccd7e8';
+const cp=document.createElement('button');cp.className='ghost';cp.textContent='Copiar Pix Copia e Cola';cp.type='button';
+cp.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);toast('Pix copiado')}catch(err){ta.focus();ta.select();toast('Selecione e copie o código Pix')}};
+const status=document.createElement('div');status.style.cssText='padding:12px;margin-top:12px;background:#eff4fc;border-radius:10px';status.textContent='Aguardando pagamento do Sicoob...';
+const check=document.createElement('button');check.className='ghost';check.type='button';check.textContent='Verificar pagamento';
+w.append(img,ta,cp,status,check);line.textContent='Pague exatamente '+money(j.valor)+' pelo QR Code ou pelo código abaixo.';
+let checking=false,paid=false;
+const verify=async()=>{if(checking||paid)return;checking=true;try{
+const res=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/status',{credentials:'same-origin',cache:'no-store'});
+const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(data.erro||'Falha na consulta ao banco');
+if(data.pago){paid=true;status.textContent='Pagamento confirmado pelo Sicoob! Crédito lançado no seu saldo: '+money(j.valor);status.style.background='#e3f7e9';check.disabled=true;toast('Crédito aprovado automaticamente');if(typeof loadSaldo==='function')loadSaldo();}
+else status.textContent='Aguardando pagamento. O saldo será creditado após a confirmação bancária.';
+}catch(error){status.textContent=error.message}finally{checking=false}};
+check.onclick=verify;const timer=setInterval(()=>{if(paid||!document.body.contains(w)){clearInterval(timer);return}verify()},7000);verify();
+}catch(error){toast(error.message||'Erro ao gerar Pix');}finally{btn.disabled=false}
+};
 
 async function loadSellers(){
   const j=await api(API.vendedores);

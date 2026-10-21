@@ -10804,6 +10804,8 @@ def api_admin_credito_aprovar(req_id):
     if not session.get('is_admin') and not session.get('is_master'):
         return jsonify(ok=False, error='unauthorized'), 401
     req = SolicitacaoCreditoCliente.query.get_or_404(req_id)
+    if db.session.execute(text("SELECT solicitacao_id FROM sicoob_credito_pix WHERE solicitacao_id=:id"),{"id":req_id}).first():
+        return jsonify(ok=False,error="Esta solicitação possui Pix dinâmico; somente a confirmação do Sicoob libera o crédito."),409
     if req.status != 'pendente':
         return jsonify(ok=False, error='Solicitação já processada.'), 409
 
@@ -10840,6 +10842,8 @@ def api_admin_credito_recusar(req_id):
     if not session.get('is_admin') and not session.get('is_master'):
         return jsonify(ok=False, error='unauthorized'), 401
     req = SolicitacaoCreditoCliente.query.get_or_404(req_id)
+    if db.session.execute(text("SELECT solicitacao_id FROM sicoob_credito_pix WHERE solicitacao_id=:id"),{"id":req_id}).first():
+        return jsonify(ok=False,error="Esta solicitação possui Pix dinâmico; somente a confirmação do Sicoob libera o crédito."),409
     if req.status != 'pendente':
         return jsonify(ok=False, error='Solicitação já processada.'), 409
     req.status = 'recusado'
@@ -15256,6 +15260,11 @@ sicoob_diagnostico_seguro.install(_sicoob_sys.modules[__name__])
 import sicoob_pix_feature
 import sys as _pix_sys
 sicoob_pix_feature.install(_pix_sys.modules[__name__])
+
+# Pix de compra de creditos do cliente - Sicoob
+import credito_pix_sicoob_feature
+import sys as _credito_pix_sys
+credito_pix_sicoob_feature.install(_credito_pix_sys.modules[__name__])
 
 # COOPEX CONNECT
 import sys
