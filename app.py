@@ -4925,10 +4925,20 @@ def admin():
 
     hoje = datetime.now(BRAZIL_TZ).date()
     query = Entrega.query
+    entrega_direta = request.args.get('entrega_id', type=int)
+    if entrega_direta is not None:
+        query = query.filter(Entrega.id == entrega_direta)
+        data_inicio = None
+        data_fim = None
+        cooperado_id = 'todos'
+        status_pagamento = 'todos'
+        forma_pagamento = 'todos'
+        cliente = ''
+        endereco = ''
 
     # Sem data informada, qualquer filtro considera somente as entregas de hoje.
     # Para consultar outro período ou todo o histórico, o usuário informa as datas.
-    if not data_inicio and not data_fim:
+    if entrega_direta is None and not data_inicio and not data_fim:
         inicio_utc, fim_utc = local_date_window_to_utc_range(hoje)
         query = query.filter(Entrega.data_envio >= inicio_utc, Entrega.data_envio <= fim_utc)
 
