@@ -31,7 +31,7 @@ def install(h):
 
     def me():
         cid=session.get("cliente_id")
-        if not cid or session.get("vendedor_cliente_id"):
+        if not cid or h._cliente_em_modo_vendedor():
             abort(403)
         return int(cid)
 
