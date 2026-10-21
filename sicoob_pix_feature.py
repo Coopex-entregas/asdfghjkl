@@ -331,6 +331,10 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
             db.session.execute(text("ALTER TABLE sicoob_pix_avulso ADD COLUMN cliente_nome VARCHAR(160)"))
             db.session.commit()
 
+        if "origem_renovacao" not in cols:
+            db.session.execute(text("ALTER TABLE sicoob_pix_avulso ADD COLUMN origem_renovacao VARCHAR(36) UNIQUE"))
+            db.session.commit()
+
     @app.post("/admin/pix-sicoob/avulso")
     def sicoob_avulso_criar():
         admin();check_csrf()
@@ -413,6 +417,44 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
         except Exception:
             app.logger.exception("Falha ao cancelar cobrança Pix avulsa")
             return jsonify(erro="Não foi possível confirmar o cancelamento no Sicoob."),502
+
+    @app.post("/admin/pix-sicoob/avulso/<uid>/reemitir")
+    def sicoob_avulso_reemitir(uid):
+        admin();check_csrf()
+        import uuid
+        try:
+            row=db.session.execute(text("SELECT * FROM sicoob_pix_avulso WHERE id=:id"),{"id":uid}).mappings().first()
+            if not row:abort(404)
+            if row["status"]!="CANCELADO":
+                return jsonify(erro="Primeiro cancele a cobrança anterior no Sicoob."),409
+            existing=db.session.execute(text("SELECT id,brcode FROM sicoob_pix_avulso WHERE origem_renovacao=:id"),{"id":uid}).mappings().first()
+            if existing:
+                return jsonify(id=existing["id"],brcode=existing["brcode"],ja_existe=True)
+            old,_=bank_request("GET","/cob/"+row["txid"])
+            if old.get("pix") or old.get("status")!="REMOVIDA_PELO_USUARIO_RECEBEDOR":
+                return jsonify(erro="O Sicoob não confirmou que a cobrança anterior foi cancelada e não paga."),409
+            novo_id=str(uuid.uuid4());novo_tx="COOPEXAV"+uuid.uuid4().hex[:26].upper()
+            _,chave=conf()[0:2]
+            result,_=bank_request("PUT","/cob/"+novo_tx,{
+                "calendario":{"expiracao":86400},"valor":{"original":str(row["valor"])},
+                "chave":chave,"solicitacaoPagador":"COOPEX Pagamento antecipado"})
+            codigo=result.get("brcode") or result.get("pixCopiaECola")
+            if not codigo:
+                result,_=bank_request("GET","/cob/"+novo_tx)
+                codigo=result.get("brcode") or result.get("pixCopiaECola")
+            if not codigo:
+                return jsonify(erro="O banco criou uma cobrança, mas não retornou seu código. Consulte o Sicoob antes de repetir."),502
+            db.session.execute(text("""INSERT INTO sicoob_pix_avulso
+                (id,txid,valor,brcode,status,criado_em,cliente_nome,origem_renovacao)
+                VALUES(:id,:tx,:valor,:br,'PENDENTE',:dt,:nome,:origem)"""),{
+                "id":novo_id,"tx":novo_tx,"valor":row["valor"],"br":codigo,
+                "dt":datetime.utcnow().isoformat(),"nome":row["cliente_nome"],"origem":uid})
+            db.session.commit()
+            return jsonify(id=novo_id,brcode=codigo,valor=row["valor"],status="PENDENTE")
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha ao reemitir Pix avulso")
+            return jsonify(erro="Não foi possível confirmar nova cobrança com o Sicoob."),502
 
     @app.get("/admin/pix-sicoob/historico/dados")
     def sicoob_historico_dados():
