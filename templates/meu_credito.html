@@ -435,6 +435,19 @@ body.modo-vendedor .seller-topbar-compact{
 
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+
+<style id="coopex-pix-responsive-2026">
+#pixResult{box-sizing:border-box;width:100%;max-width:100%;overflow:visible!important}
+#pixResult.show{display:flex!important;flex-direction:column;align-items:stretch;gap:10px}
+#pixResult .coopex-pix-brand{display:flex;align-items:center;justify-content:center;flex-wrap:wrap;gap:13px;padding:12px;background:#fff;border:1px solid #d5e3f5;border-radius:12px;text-align:center}
+#pixResult .coopex-pix-brand img{display:block;max-width:160px;width:38%;height:auto;object-fit:contain}
+#pixResult .coopex-pix-brand .coopex-pix-names{min-width:0;flex:1 1 180px;font-size:13px;line-height:1.45;color:#19314c}
+#pixResult .coopex-pix-brand strong{display:block;color:#083c50;font-size:16px}
+#pixResult img[alt^="QR Code Pix"]{display:block!important;width:min(220px,78vw)!important;max-width:100%!important;height:auto!important;aspect-ratio:1;object-fit:contain;margin:8px auto!important}
+#pixResult textarea{display:block!important;width:100%!important;max-width:100%!important;min-height:100px;box-sizing:border-box!important;overflow:hidden!important;overflow-wrap:anywhere!important;word-break:break-all!important;white-space:pre-wrap!important;resize:none!important;font:14px/1.5 ui-monospace,SFMono-Regular,Consolas,monospace!important;border:1px solid #d0dff2!important;border-radius:10px!important;padding:12px!important}
+#pixResult button{max-width:100%;white-space:normal}
+@media(max-width:580px){#pixResult .coopex-pix-brand{gap:8px;padding:10px}#pixResult .coopex-pix-brand img{max-width:130px}#pixResult .coopex-pix-brand .coopex-pix-names{flex-basis:145px;font-size:12px}#pixResult textarea{font-size:12px!important}#pixResult button{width:100%;min-height:44px}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1326,6 +1339,22 @@ async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBair
 $('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()||!$('coletaBairro').value.trim()){toast('Informe o endereço e o bairro da coleta.');return}if(!await saveFixedCollection(true)){toast('Não foi possível salvar o endereço de coleta no cadastro.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
 window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
+function coopexPixBrand(w){
+ if(w.querySelector('.coopex-pix-brand'))return;
+ const brand=document.createElement('div');brand.className='coopex-pix-brand';
+ const image=document.createElement('img');image.src='/static/img/sicoob-potiguar-coopex.svg';image.alt='Sicoob Potiguar';image.loading='lazy';
+ const names=document.createElement('div');names.className='coopex-pix-names';
+ const title=document.createElement('strong');title.textContent='COOPEX';
+ const desc=document.createElement('span');desc.textContent='Cooperativa de Trabalhadores de Entregas do Rio Grande do Norte · Instituição: Sicoob Potiguar';
+ names.append(title,desc);brand.append(image,names);
+ const heading=w.querySelector('strong');if(heading)heading.insertAdjacentElement('afterend',brand);else w.prepend(brand);
+}
+function coopexPixCodeFit(w){
+ const box=w.querySelector('textarea');if(!box)return;
+ const fit=()=>{box.style.height='auto';box.style.height=Math.max(100,box.scrollHeight+4)+'px'};
+ fit();requestAnimationFrame(fit);
+ if(!box.dataset.fitResize){box.dataset.fitResize='1';window.addEventListener('resize',fit,{passive:true})}
+}
 $('requestCredit').onclick=async()=>{
 const btn=$('requestCredit');if(btn.disabled)return;
 const v=Number(($('creditValue').value||'').replace(/\./g,'').replace(',','.'));
@@ -1337,17 +1366,17 @@ if(!j?.ok){toast(j?.msg||'Não foi possível criar solicitação');return}
 const w=$('pixResult');w.classList.add('show');w.replaceChildren();
 const heading=document.createElement('strong');heading.textContent='Pagamento Pix #'+j.solicitacao_id+' · '+money(j.valor);
 const line=document.createElement('div');line.style.margin='12px 0';line.textContent='Gerando código Pix exclusivo para esta compra...';
-w.append(heading,line);
+w.append(heading,line);coopexPixBrand(w);
 const rp=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});
 const pix=await rp.json().catch(()=>({}));
-if(!rp.ok||!pix.ok){line.textContent=(pix.erro||'Pix indisponível. Tente novamente na mesma solicitação.');const retry=document.createElement('button');retry.type='button';retry.className='ghost';retry.textContent='Tentar novamente nesta solicitação';retry.style.marginTop='10px';retry.onclick=async()=>{retry.disabled=true;line.textContent='Consultando a mesma cobrança no Sicoob...';try{const r=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Pix indisponível');const code=document.createElement('textarea');code.readOnly=true;code.value=d.brcode;code.style.cssText='width:100%;height:100px;box-sizing:border-box';const qr=document.createElement('img');qr.src=d.qrcode_url;qr.alt='QR Code Pix';qr.style.cssText='display:block;width:220px;height:220px;margin:10px auto';const cp=document.createElement('button');cp.type='button';cp.className='ghost';cp.textContent='Copiar Pix';cp.onclick=()=>{code.focus();code.select();navigator.clipboard?.writeText(code.value).catch(()=>{})};w.append(qr,code,cp);retry.remove();line.textContent='Pix gerado para solicitação #'+j.solicitacao_id+'. Consulte o saldo após pagar.'}catch(e){line.textContent=e.message;retry.disabled=false}};w.append(retry);return}
+if(!rp.ok||!pix.ok){line.textContent=(pix.erro||'Pix indisponível. Tente novamente na mesma solicitação.');const retry=document.createElement('button');retry.type='button';retry.className='ghost';retry.textContent='Tentar novamente nesta solicitação';retry.style.marginTop='10px';retry.onclick=async()=>{retry.disabled=true;line.textContent='Consultando a mesma cobrança no Sicoob...';try{const r=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Pix indisponível');const code=document.createElement('textarea');code.readOnly=true;code.value=d.brcode;code.style.cssText='width:100%;height:100px;box-sizing:border-box';const qr=document.createElement('img');qr.src=d.qrcode_url;qr.alt='QR Code Pix';qr.style.cssText='display:block;width:220px;height:220px;margin:10px auto';const cp=document.createElement('button');cp.type='button';cp.className='ghost';cp.textContent='Copiar Pix';cp.onclick=()=>{code.focus();code.select();navigator.clipboard?.writeText(code.value).catch(()=>{})};w.append(qr,code,cp);coopexPixCodeFit(w);retry.remove();line.textContent='Pix gerado para solicitação #'+j.solicitacao_id+'. Consulte o saldo após pagar.'}catch(e){line.textContent=e.message;retry.disabled=false}};w.append(retry);return}
 const img=document.createElement('img');img.alt='QR Code Pix COOPEX';img.src=pix.qrcode_url;img.style.cssText='display:block;width:220px;height:220px;max-width:100%;margin:16px auto';
 const ta=document.createElement('textarea');ta.readOnly=true;ta.value=pix.brcode;ta.style.cssText='width:100%;box-sizing:border-box;height:90px;padding:10px;border-radius:9px;border:1px solid #ccd7e8';
 const cp=document.createElement('button');cp.className='ghost';cp.textContent='Copiar Pix Copia e Cola';cp.type='button';
 cp.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);toast('Pix copiado')}catch(err){ta.focus();ta.select();toast('Selecione e copie o código Pix')}};
 const status=document.createElement('div');status.style.cssText='padding:12px;margin-top:12px;background:#eff4fc;border-radius:10px';status.textContent='Aguardando pagamento do Sicoob...';
 const check=document.createElement('button');check.className='ghost';check.type='button';check.textContent='Verificar pagamento';
-w.append(img,ta,cp,status,check);line.textContent='Pague exatamente '+money(j.valor)+' pelo QR Code ou pelo código abaixo.';
+w.append(img,ta,cp,status,check);coopexPixCodeFit(w);line.textContent='Pague exatamente '+money(j.valor)+' pelo QR Code ou pelo código abaixo.';
 let checking=false,paid=false;
 const verify=async()=>{if(checking||paid)return;checking=true;try{
 const res=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/status',{credentials:'same-origin',cache:'no-store'});
