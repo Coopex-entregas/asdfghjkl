@@ -59,7 +59,7 @@ socketio = SocketIO(
 # --- Admins fixos (usuario: coopex, 2 senhas) ---
 ADMIN_CREDENTIALS = {
     'coopex': {
-        os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'coopex05289'): {'is_master': True},
+        os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'COOPEX05289'): {'is_master': True},
         os.environ.get('ADMIN_PWD_COOPEX',        '84253700'):     {'is_master': False},
     }
 }
@@ -2682,12 +2682,24 @@ def login():
         # 1) Admin fixo
         if user_lc in ADMIN_CREDENTIALS:
             cred_map = ADMIN_CREDENTIALS[user_lc]
-            if senha in cred_map:
+            # Senha do administrador secundário configurável pelo master.
+            try:
+                from werkzeug.security import check_password_hash
+                override = db.session.execute(text(
+                    "SELECT senha_hash FROM coopex_admin_config WHERE id=1"
+                )).scalar()
+            except Exception:
+                db.session.rollback()
+                override = None
+            senha_secundaria_valida = bool(override and check_password_hash(override, senha))
+            is_master_password = senha == os.environ.get('ADMIN_PWD_COOPEX_MASTER', 'COOPEX05289')
+            is_legacy_secondary = not override and senha == os.environ.get('ADMIN_PWD_COOPEX', '84253700')
+            if is_master_password or senha_secundaria_valida or is_legacy_secondary:
                 session.clear()
                 session['user_id'] = 0
-                session['user_nome'] = usuario
+                session['user_nome'] = 'COOPEX' if is_master_password else 'Administrador'
                 session['is_admin'] = True
-                session['is_master'] = bool(cred_map[senha].get('is_master'))
+                session['is_master'] = bool(is_master_password)
                 return redirect(url_for('admin'))
             else:
                 flash('Usuário ou senha incorretos.', 'error')
@@ -2696,6 +2708,25 @@ def login():
                 except TemplateNotFound:
                     pass
 
+        # Supervisor com credencial individual (mesmo painel, sem privilégios master).
+        if user_lc != 'coopex':
+            try:
+                from werkzeug.security import check_password_hash
+                sup = db.session.execute(text(
+                    "SELECT id,nome,senha_hash,ativo FROM coopex_supervisores WHERE usuario=:u"
+                ), {'u':user_lc}).mappings().first()
+                if sup and sup['ativo'] and check_password_hash(sup['senha_hash'], senha):
+                    session.clear()
+                    session['user_id'] = 0
+                    session['user_nome'] = sup['nome']
+                    session['supervisor_id'] = sup['id']
+                    session['is_admin'] = True
+                    session['is_master'] = False
+                    session['tipo'] = 'supervisor'
+                    return redirect(url_for('admin'))
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Falha na autenticacao de supervisor')
         # 2) Cooperado (login pelo nome)
         cooperado = Cooperado.query.filter(func.lower(Cooperado.nome) == user_lc).first()
         if cooperado and cooperado.check_senha(senha):
