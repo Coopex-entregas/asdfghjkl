@@ -15373,6 +15373,10 @@ credito_pix_sicoob_feature.install(_credito_pix_sys.modules[__name__])
 import gestao_supervisores_feature
 gestao_supervisores_feature.install(_pix_sys.modules[__name__])
 
+# Matriz de permissões da Supervisão
+import supervisao_permissoes_feature
+supervisao_permissoes_feature.install(_pix_sys.modules[__name__])
+
 # COOPEX CONNECT
 import sys
 import coopex_connect
