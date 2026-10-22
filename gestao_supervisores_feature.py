@@ -15,6 +15,8 @@ def install(host):
           hora_normal NUMERIC(10,2) NOT NULL DEFAULT 0,
           hora_especial NUMERIC(10,2) NOT NULL DEFAULT 0,
           criado_em VARCHAR(32) NOT NULL)"""))
+        db.session.execute(text("""CREATE TABLE IF NOT EXISTS coopex_admin_config(
+          id INTEGER PRIMARY KEY, senha_hash VARCHAR(255) NOT NULL)"""))
         db.session.commit()
 
     def master():
@@ -50,6 +52,20 @@ def install(host):
                     except Exception:
                         db.session.rollback()
                         flash('Não foi possível cadastrar. Confira se o usuário já existe.')
+            elif action == 'admin_password':
+                nova = request.form.get('nova_senha') or ''
+                if not 10 <= len(nova) <= 128:
+                    flash('Nova senha do administrador deve ter entre 10 e 128 caracteres.')
+                else:
+                    try:
+                        db.session.execute(text("""INSERT INTO coopex_admin_config(id,senha_hash)
+                        VALUES(1,:h) ON CONFLICT(id) DO UPDATE SET senha_hash=:h"""),
+                        {'h':generate_password_hash(nova)})
+                        db.session.commit()
+                        flash('Senha do administrador secundário alterada.')
+                    except Exception:
+                        db.session.rollback()
+                        flash('Não foi possível alterar a senha administrativa.')
             elif action == 'password':
                 try:
                     ident = int(request.form.get('id', '0'))
@@ -113,6 +129,12 @@ table{width:100%;border-collapse:collapse}th{text-align:left;background:#103461;
 <div><label>Usuário</label><input name="usuario" maxlength="80" pattern="[A-Za-z0-9_]{3,80}" required></div>
 <div><label>Senha individual (mínimo 10 caracteres)</label><input name="senha" type="password" minlength="10" required autocomplete="new-password"></div></div>
 <p><button type="submit">Cadastrar supervisor</button></p></form></section>
+<section class="card"><h2>Senha do administrador secundário</h2>
+<p class="muted">Somente o master pode alterar. A senha anterior deixa de funcionar após salvar.</p>
+<form method="post"><input type="hidden" name="csrf" value="{{csrf}}">
+<input type="hidden" name="action" value="admin_password">
+<div class="fields"><div><label>Nova senha do administrador</label><input name="nova_senha" type="password" minlength="10" maxlength="128" autocomplete="new-password" required></div></div>
+<p><button type="submit">Alterar senha do administrador</button></p></form></section>
 <section class="card"><h2>Supervisores cadastrados ({{ rows|length }})</h2><div class="wrap"><table>
 <thead><tr><th>Nome</th><th>Usuário</th><th>Situação</th><th>Ações</th></tr></thead><tbody>
 {% for r in rows %}<tr><td>{{ r.nome }}</td><td>{{ r.usuario }}</td><td>{{ 'Ativo' if r.ativo else 'Inativo' }}</td>
