@@ -564,6 +564,9 @@ header{background:#051326!important;border-bottom:1px solid #0c70de!important;bo
 body{background:#020c19!important}
 header{position:relative!important;top:0!important;padding:0!important;border-radius:0!important}
 header .topbar{display:none!important}
+.coopex-nav-metrics{margin-left:auto;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.coopex-nav-metrics .kpi{display:flex!important;align-items:center!important;gap:8px!important;padding:6px 10px!important;min-width:85px!important}
+.coopex-nav-metrics .logout{display:inline-flex;align-items:center;padding:12px 17px;border-radius:10px;background:#e83851;color:white;font-weight:800;text-decoration:none}
 .bank-toolbar-wrap{position:sticky!important;top:0!important;z-index:120!important;border-radius:0!important}
 .bank-toolbar{min-height:65px!important;max-width:none!important}
 .bank-toolbar>.bank-group>.bank-group-btn{font-size:14px!important;min-height:45px!important}
@@ -600,6 +603,12 @@ body .bank-group .bank-submenu{z-index:150!important}
 (function(){
 function build(){
 const nav=document.querySelector('.bank-toolbar'),panel=document.querySelector('.panel'),table=document.querySelector('.tabela');if(!nav||!panel||!table)return;
+if(!document.querySelector('.coopex-nav-metrics')){
+ const metrics=document.createElement('div');metrics.className='coopex-nav-metrics';
+ document.querySelectorAll('header .topbar .kpi').forEach(k=>metrics.append(k));
+ const logout=document.querySelector('header .topbar .logout');if(logout)metrics.append(logout);
+ nav.append(metrics);
+}
 if(!document.querySelector('.coopex-led')){
 const led=document.createElement('div');led.className='coopex-led';led.setAttribute('role','status');
 const track=document.createElement('span');track.className='coopex-led-track';track.textContent='▶ AVISO OPERACIONAL: ACOMPANHE AS ENTREGAS, ESCALAS E A FILA DE ESPERA  ◀';
