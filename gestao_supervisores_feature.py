@@ -50,6 +50,20 @@ def install(host):
                     except Exception:
                         db.session.rollback()
                         flash('Não foi possível cadastrar. Confira se o usuário já existe.')
+            elif action == 'password':
+                try:
+                    ident = int(request.form.get('id', '0'))
+                    nova = request.form.get('nova_senha') or ''
+                    if not 10 <= len(nova) <= 128:
+                        flash('A nova senha deve ter entre 10 e 128 caracteres.')
+                    else:
+                        db.session.execute(text('UPDATE coopex_supervisores SET senha_hash=:h WHERE id=:id'),
+                                           {'h': generate_password_hash(nova), 'id': ident})
+                        db.session.commit()
+                        flash('Senha atualizada.')
+                except Exception:
+                    db.session.rollback()
+                    flash('Falha ao atualizar senha.')
             elif action in ('activate','deactivate'):
                 try:
                     ident = int(request.form.get('id','0'))
@@ -104,7 +118,12 @@ table{width:100%;border-collapse:collapse}th{text-align:left;background:#103461;
 {% for r in rows %}<tr><td>{{ r.nome }}</td><td>{{ r.usuario }}</td><td>{{ 'Ativo' if r.ativo else 'Inativo' }}</td>
 <td><form method="post"><input type="hidden" name="csrf" value="{{csrf}}"><input type="hidden" name="id" value="{{r.id}}">
 <input type="hidden" name="action" value="{{ 'deactivate' if r.ativo else 'activate' }}">
-<button class="secondary" type="submit">{{ 'Desativar' if r.ativo else 'Ativar' }}</button></form></td></tr>
+<button class="secondary" type="submit">{{ 'Desativar' if r.ativo else 'Ativar' }}</button></form>
+<details><summary style="cursor:pointer;color:#6bf">Alterar senha</summary>
+<form method="post"><input type="hidden" name="csrf" value="{{csrf}}">
+<input type="hidden" name="action" value="password"><input type="hidden" name="id" value="{{r.id}}">
+<label>Nova senha individual</label><input name="nova_senha" type="password" minlength="10" maxlength="128" required autocomplete="new-password">
+<button style="margin-top:8px" type="submit">Salvar senha</button></form></details></td></tr>
 {% else %}<tr><td colspan="4" class="muted">Nenhum supervisor cadastrado.</td></tr>{% endfor %}
 </tbody></table></div></section></main></body></html>
 """
