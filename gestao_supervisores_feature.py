@@ -98,6 +98,7 @@ def install(host):
 PAGE = """
 <!doctype html><html lang="pt-br"><head><meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_theme_shared.css') }}">
 <title>Gestão de Supervisores · COOPEX</title>
 <style>
 :root{color-scheme:dark;font-family:Inter,system-ui,Arial,sans-serif}
@@ -121,10 +122,10 @@ table{width:100%;border-collapse:collapse}th{text-align:left;background:#103461;
 <header><div class="brand">COOPEX | Gestão Operacional</div><a href="{{ url_for('admin') }}">← Voltar às Entregas</a></header>
 <main>
 <h1>Gestão de Supervisores</h1><p class="muted">Cadastros individuais e controle de acesso à equipe.</p>
-<nav><a class="active" href="{{ url_for('gestao_supervisores') }}">Supervisores</a><a href="{{ url_for('admin') }}">Dashboard operacional</a></nav>
-<div class="notice">Primeira etapa: cadastro seguro de supervisores. Jornada, permissões, auditoria, produtividade e bonificações serão integradas nas próximas etapas; não estão ativadas nesta página.</div>
+<nav class="cx-ui-nav"><a aria-current="page" class="active" href="{{ url_for('gestao_supervisores') }}">Supervisores</a><a href="{{ url_for('admin') }}">Dashboard operacional</a></nav>
+<div class="notice cx-ui-note">Primeira etapa: cadastro seguro de supervisores. Jornada, permissões, auditoria, produtividade e bonificações serão integradas nas próximas etapas; não estão ativadas nesta página.</div>
 {% with messages=get_flashed_messages() %}{% for m in messages %}<p class="notice">{{ m }}</p>{% endfor %}{% endwith %}
-<section class="card"><h2>Cadastrar supervisor</h2><form method="post"><input type="hidden" name="csrf" value="{{csrf}}">
+<section class="card cx-ui-card"><h2>Cadastrar supervisor</h2><form method="post"><input type="hidden" name="csrf" value="{{csrf}}">
 <div class="fields"><div><label>Nome completo</label><input name="nome" maxlength="150" required></div>
 <div><label>Usuário</label><input name="usuario" maxlength="80" pattern="[A-Za-z0-9_]{3,80}" required></div>
 <div><label>Senha individual (mínimo 10 caracteres)</label><input name="senha" type="password" minlength="10" required autocomplete="new-password"></div></div>
