@@ -419,3 +419,40 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 <style id="cx-pix-led-blue">#cx-pix-led.cx-led-blue{border-color:#2360aa;background:#06162b;box-shadow:inset 0 0 9px #000a,0 0 3px #2966c3}#cx-pix-led.cx-led-blue .cx-led-inner{color:#61b9ff;text-shadow:0 0 4px #369cff,0 0 9px #237aff}</style>
+
+<!-- COOPEX Gestao Operacional: visual escuro padrao em toda a supervisao -->
+<style id="coopex-gestao-dark-2026">
+html{color-scheme:dark!important}
+html body,html body.dark{--bg:#031021!important;--card:#081b32!important;--ink:#e6f1ff!important;--muted:#98b7db!important;--line:#244365!important;--line-2:#365a82!important;--royal:#006cf3!important;--royal-2:#0755c8!important;background:#031021!important;color:#e6f1ff!important}
+body header{background:linear-gradient(105deg,#031021,#06162c)!important;border-bottom:2px solid #047af0!important}
+body .bank-toolbar-wrap,body .bank-toolbar,body .topbar{background:#06162b!important;color:#f1f7ff!important}
+body .bank-group-btn,body .bank-submenu,body .card,body .box,body .panel,body .kpi,body .tabela,body table{background-color:#081b32!important;color:#e6f1ff!important;border-color:#244365!important}
+body .bank-group-btn:hover,body .bank-submenu a:hover{background:#12407a!important;color:#fff!important}
+body .bank-submenu a{color:#e6f1ff!important}
+body table thead th,body .tabela thead th{background:#0b3977!important;color:#fff!important}
+body table tbody tr,body .tabela tbody tr{background:#071a30!important;color:#e8f3ff!important}
+body table tbody tr:nth-child(even),body .tabela tbody tr:nth-child(even){background:#0b223d!important}
+body input,body select,body textarea{background:#071a30!important;color:#f0f6ff!important;border-color:#355a85!important;color-scheme:dark!important}
+body .theme-toggle,body #btnTheme{display:none!important}
+body .bank-group-btn{border-radius:10px!important}
+body .bank-toolbar{gap:8px!important}
+#coopex-gestao-access{background:linear-gradient(110deg,#0968db,#0046b8)!important;border:1px solid #3289fc!important;border-radius:10px!important;color:white!important;padding:9px 14px!important;font-weight:800!important;text-decoration:none!important}
+</style>
+<script id="coopex-gestao-dark-script">
+(function(){
+function apply(){
+ document.documentElement.classList.add('dark');
+ document.body.classList.add('dark');
+ document.body.classList.remove('light','light-mode');
+ document.documentElement.setAttribute('data-theme','dark');
+ document.body.setAttribute('data-theme','dark');
+ document.getElementById('btnTheme')?.remove();
+ if(!document.getElementById('coopex-gestao-access')){
+  const nav=document.querySelector('.bank-toolbar');
+  if(nav){const a=document.createElement('a');a.id='coopex-gestao-access';a.href='/gestao/supervisores';a.textContent='⚙ Gestão de Supervisores';nav.appendChild(a)}
+ }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply);else apply();
+window.addEventListener('load',apply);
+})();
+</script>
