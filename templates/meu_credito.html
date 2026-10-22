@@ -448,6 +448,25 @@ body.modo-vendedor .seller-topbar-compact{
 #pixResult button{max-width:100%;white-space:normal}
 @media(max-width:580px){ #pixResult .coopex-pix-brand{gap:8px;padding:10px}#pixResult .coopex-pix-brand img{max-width:130px}#pixResult .coopex-pix-brand .coopex-pix-names{flex-basis:145px;font-size:12px}#pixResult textarea{font-size:12px!important}#pixResult button{width:100%;min-height:44px}}
 </style>
+
+<style id="coopex-pix-approved-layout">
+#pixResult.show{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:10px!important;background:#fff!important;padding:14px!important;border-radius:18px!important;box-shadow:0 6px 20px #0a3c8119!important}
+#pixResult>strong:first-child{display:block!important;padding:15px!important;background:linear-gradient(90deg,#0755d2,#032c8c)!important;color:white!important;border-radius:11px!important;font-size:19px!important}
+#pixResult .coopex-pix-brand{display:grid!important;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr)!important;align-items:center!important;gap:12px!important;background:#f2f6fe!important;border:1px solid #d3e1f7!important;border-radius:12px!important;padding:12px!important;text-align:left!important}
+#pixResult .coopex-pix-information{display:flex;flex-direction:column;gap:12px;min-width:0}
+#pixResult .coopex-pix-recipient,#pixResult .coopex-pix-purpose{display:flex;flex-direction:column;gap:3px}
+#pixResult .coopex-pix-brand span{font-size:12px!important;color:#235187!important}
+#pixResult .coopex-pix-brand strong{display:block!important;font-size:13px!important;line-height:1.35!important;color:#092862!important}
+#pixResult .coopex-pix-bank{border-left:1px solid #b7cdeb;padding-left:12px;display:flex;flex-direction:column;align-items:center;gap:8px;min-width:0}
+#pixResult .coopex-pix-bank img{display:block!important;width:100%!important;max-width:170px!important;height:auto!important;aspect-ratio:auto!important;object-fit:contain!important;margin:0!important}
+#pixResult img[alt^="QR Code Pix"]{width:min(220px,75vw)!important;height:auto!important;aspect-ratio:1!important;object-fit:contain!important;margin:10px auto!important;box-sizing:border-box;border-radius:11px;padding:5px;background:white}
+#pixResult textarea{width:100%!important;max-width:100%!important;overflow:hidden!important;resize:none!important;word-break:break-all!important;overflow-wrap:anywhere!important;white-space:pre-wrap!important;border-radius:10px!important;background:#f3f6fc!important;color:#102b59!important;border:1px solid #cbdcf3!important;padding:12px!important;font:12px/1.65 Consolas,monospace!important}
+#pixResult button.ghost{width:min(100%,340px)!important;align-self:center!important;border-radius:11px!important;min-height:43px!important;font-weight:800!important}
+#pixResult button.ghost:first-of-type{color:white!important;background:linear-gradient(#087bff,#084bc8)!important}
+#pixResult .coopex-pix-status{background:#fff1ce!important;color:#102e61!important;border:1px solid #ffd472!important;border-radius:12px!important;padding:13px!important;text-align:left!important}
+#pixResult .coopex-pix-instruction{border-radius:10px!important;background:#eaf4ff!important;color:#123e7b!important;text-align:center!important;padding:11px!important}
+@media(max-width:540px){#pixResult.show{padding:9px!important}#pixResult .coopex-pix-brand{gap:8px!important;padding:9px!important}#pixResult .coopex-pix-bank{padding-left:8px}#pixResult .coopex-pix-brand strong{font-size:11px!important}#pixResult .coopex-pix-brand span{font-size:10px!important}#pixResult textarea{font-size:11px!important;padding:9px!important}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1374,7 +1393,7 @@ if(!j?.ok){toast(j?.msg||'Não foi possível criar solicitação');return}
 const w=$('pixResult');w.classList.add('show');w.replaceChildren();
 const heading=document.createElement('strong');heading.textContent='Pagamento Pix #'+j.solicitacao_id+' · '+money(j.valor);
 const line=document.createElement('div');line.style.margin='12px 0';line.textContent='Gerando código Pix exclusivo para esta compra...';
-w.append(heading,line);coopexPixBrand(w);
+w.append(heading,line);coopexPixBrand(w);line.classList.add('coopex-pix-instruction');
 const rp=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});
 const pix=await rp.json().catch(()=>({}));
 if(!rp.ok||!pix.ok){line.textContent=(pix.erro||'Pix indisponível. Tente novamente na mesma solicitação.');const retry=document.createElement('button');retry.type='button';retry.className='ghost';retry.textContent='Tentar novamente nesta solicitação';retry.style.marginTop='10px';retry.onclick=async()=>{retry.disabled=true;line.textContent='Consultando a mesma cobrança no Sicoob...';try{const r=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/criar',{method:'POST',credentials:'same-origin'});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Pix indisponível');const code=document.createElement('textarea');code.readOnly=true;code.value=d.brcode;code.style.cssText='width:100%;height:100px;box-sizing:border-box';const qr=document.createElement('img');qr.src=d.qrcode_url;qr.alt='QR Code Pix';qr.style.cssText='display:block;width:220px;height:220px;margin:10px auto';const cp=document.createElement('button');cp.type='button';cp.className='ghost';cp.textContent='Copiar Pix';cp.onclick=()=>{code.focus();code.select();navigator.clipboard?.writeText(code.value).catch(()=>{})};w.append(qr,code,cp);coopexPixCodeFit(w);retry.remove();line.textContent='Pix gerado para solicitação #'+j.solicitacao_id+'. Consulte o saldo após pagar.'}catch(e){line.textContent=e.message;retry.disabled=false}};w.append(retry);return}
@@ -1384,7 +1403,7 @@ const cp=document.createElement('button');cp.className='ghost';cp.textContent='C
 cp.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);toast('Pix copiado')}catch(err){ta.focus();ta.select();toast('Selecione e copie o código Pix')}};
 const status=document.createElement('div');status.style.cssText='padding:12px;margin-top:12px;background:#eff4fc;border-radius:10px';status.textContent='Aguardando pagamento do Sicoob...';
 const check=document.createElement('button');check.className='ghost';check.type='button';check.textContent='Verificar pagamento';
-w.append(img,ta,cp,status,check);coopexPixCodeFit(w);line.textContent='Pague exatamente '+money(j.valor)+' pelo QR Code ou pelo código abaixo.';
+w.append(img,ta,cp,status,check);status.classList.add('coopex-pix-status');coopexPixCodeFit(w);line.textContent='Pague exatamente '+money(j.valor)+' pelo QR Code ou pelo código abaixo.';
 let checking=false,paid=false;
 const verify=async()=>{if(checking||paid)return;checking=true;try{
 const res=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/status',{credentials:'same-origin',cache:'no-store'});
