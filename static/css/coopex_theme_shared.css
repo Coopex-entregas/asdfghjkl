@@ -16,3 +16,20 @@ input:not([type=checkbox]):not([type=radio]),select,textarea{color-scheme:dark}
 table{border-collapse:collapse}
 button,a,input,select,textarea{transition:border-color .12s ease,background-color .12s ease}
 @media(prefers-reduced-motion:reduce){button,a,input,select,textarea{transition:none!important}}
+
+/* Design system unificado COOPEX — tema escuro, componentes leves */
+:root{--cx-bg:#020d1c;--cx-surface:#07182e;--cx-surface-raised:#0b2340;--cx-header:#041326;--cx-blue:#087afa;--cx-border:#28496e;--cx-text:#edf6ff;--cx-subtext:#a9bfdc;--cx-radius:12px}
+html{color-scheme:dark}
+body{background:var(--cx-bg)!important;color:var(--cx-text)!important}
+body header{background:var(--cx-header);border-bottom:2px solid #087afa}
+body .cx-ui-card,body .card{border-radius:var(--cx-radius);border:1px solid var(--cx-border);background:var(--cx-surface);color:var(--cx-text)}
+body .cx-ui-button,body .btn-primary{border-radius:10px;background:linear-gradient(180deg,#079cfc,#0750d5);border:1px solid #148bfa;color:#fff;font-weight:700}
+body input:not([type=checkbox]):not([type=radio]),body select,body textarea{background:#07182d;color:#eff7ff;border:1px solid #35577f;border-radius:9px}
+body table{border-collapse:collapse;color:var(--cx-text)}
+body thead th{background:#0b3874;color:#fff}
+body tbody tr:nth-child(even){background:#0a2039}
+body .cx-ui-nav{display:flex;gap:8px;flex-wrap:wrap;padding:10px 16px}
+body .cx-ui-nav a{display:inline-flex;gap:8px;align-items:center;padding:10px 14px;background:#0a223e;border:1px solid #2b507a;border-radius:10px;color:#eaf5ff;text-decoration:none}
+body .cx-ui-nav a[aria-current=page]{background:linear-gradient(180deg,#079dfc,#074dda);border-color:#168afa}
+body .cx-ui-note{background:#0d294a;border-left:3px solid #049bff;padding:13px;border-radius:8px}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;animation-duration:.01ms!important}}
