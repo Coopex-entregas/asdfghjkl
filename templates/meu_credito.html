@@ -1372,7 +1372,7 @@ function coopexPixBrand(w){
  purpose.append(purposeLabel,purposeName);information.append(recipient,purpose);
  const bank=document.createElement('div');bank.className='coopex-pix-bank';
  const bankLabel=document.createElement('span');bankLabel.textContent='Instituição recebedora';
- const logo=document.createElement('img');logo.src='/static/img/sicoob-potiguar-coopex.svg';logo.alt='Sicoob Potiguar';logo.loading='lazy';bank.append(bankLabel,logo);
+ const logo=document.createElement('img');logo.src='/static/img/sicoob-potiguar-coopex.svg?v=2';logo.alt='Sicoob Potiguar';logo.loading='lazy';bank.append(bankLabel,logo);
  brand.append(information,bank);
  const heading=w.querySelector('strong');if(heading)heading.insertAdjacentElement('afterend',brand);else w.prepend(brand);
 }
