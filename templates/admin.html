@@ -606,6 +606,7 @@ const nav=document.querySelector('.bank-toolbar'),panel=document.querySelector('
 if(!document.querySelector('.coopex-nav-metrics')){
  const metrics=document.createElement('div');metrics.className='coopex-nav-metrics';
  document.querySelectorAll('header .topbar .kpi').forEach(k=>metrics.append(k));
+ const operator=document.querySelector('header .topbar .cx-operator-switch');if(operator)metrics.append(operator);
  const logout=document.querySelector('header .topbar .logout');if(logout)metrics.append(logout);
  nav.append(metrics);
 }
