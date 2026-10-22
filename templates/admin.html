@@ -492,6 +492,7 @@ function organize(){
  supervisorsLink.className='coopex-moved-action';
  (find('cadastros')?.querySelector('.bank-submenu') || manage.menu).append(supervisorsLink);
  const settings=makeGroup('⚙ Configurações');
+ const permissions=document.createElement('a');permissions.href='/configuracoes/permissoes';permissions.textContent='🔐 Permissões de acesso';permissions.className='coopex-moved-action';settings.menu.append(permissions);
  const more=getMenu(operation);
  function addAction(menu,selector,label){
   const el=document.querySelector(selector);if(!el||!menu)return;
@@ -500,7 +501,7 @@ function organize(){
   menu.append(el);
  }
  const queue=find('fila de espera');
- if(queue){manage.menu.append(queue);queue.classList.add('coopex-queue-inside')}
+ if(queue){queue.classList.add('coopex-queue-visible');queue.style.display='block'}
  const values=document.getElementById('btnSolicitacoesValorMenu');
  if(values){const wrapper=values.closest('.bank-group');if(wrapper){wrapper.style.display='block';manage.menu.append(wrapper)}}
  addAction(more,'#btnMarcarTodasEntregues');
@@ -531,4 +532,30 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <style id="coopex-submenu-open">
 body .bank-group .bank-submenu.coopex-menu-open,body .bank-group:hover>.bank-submenu.coopex-menu-open{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
 body .bank-group .bank-group .bank-submenu{left:100%!important;top:0!important}
+</style>
+
+<style id="coopex-layout-reference-v2">
+body{background:#020d1c!important;color:#edf6ff!important}
+header{background:#051326!important;border-bottom:1px solid #0c70de!important;box-shadow:none!important}
+.bank-toolbar-wrap{background:#041227!important;border-bottom:2px solid #078fff!important}
+.bank-toolbar{gap:10px!important;padding:9px 15px!important}
+.bank-toolbar>.bank-group>.bank-group-btn{border:0!important;background:transparent!important;color:#e9f5ff!important;font-weight:800!important;border-radius:12px!important;padding:10px 16px!important}
+.bank-toolbar>.bank-group:first-child>.bank-group-btn{background:linear-gradient(180deg,#069fff,#0646df)!important;border:1px solid #1594ff!important}
+.bank-toolbar>.bank-group>.bank-group-btn:hover{background:#123562!important}
+.bank-toolbar>.coopex-queue-visible{margin-left:auto!important}
+.bank-toolbar>.coopex-queue-visible>.bank-group-btn{border:1px solid #245985!important;background:#0d2745!important}
+.bank-toolbar .bank-submenu{background:#07182c!important;border:1px solid #265687!important;box-shadow:0 15px 30px #000b!important}
+.bank-submenu a,.bank-submenu button{color:#f2f7ff!important}
+.viewport{background:#020d1c!important}
+.panel{background:#061629!important;border:1px solid #234a75!important;box-shadow:none!important}
+.filters-bar,.filters-top,.filters-form{background:#06182e!important}
+.tabela thead th{background:linear-gradient(#0d4488,#07326c)!important;color:#fff!important}
+.tabela tbody tr:nth-child(odd) td{background:#061426!important}
+.tabela tbody tr:nth-child(even) td{background:#09213c!important}
+.tabela tbody tr:hover td{background:#123765!important}
+.tabela td,.tabela th{border-color:#1d3e60!important}
+.quick-view-bar{display:flex!important;gap:10px!important}
+.quick-view-chip{border-radius:11px!important;padding:11px 16px!important;background:#0a213e!important;color:#e9f5ff!important;border:1px solid #2b507b!important}
+.quick-view-chip.active{background:linear-gradient(180deg,#0798fa,#074bdf)!important;color:white!important}
+#btnTheme,.theme-toggle{display:none!important}
 </style>
