@@ -1404,14 +1404,37 @@ cp.onclick=async()=>{try{await navigator.clipboard.writeText(ta.value);toast('Pi
 const status=document.createElement('div');status.style.cssText='padding:12px;margin-top:12px;background:#eff4fc;border-radius:10px';status.textContent='Aguardando pagamento do Sicoob...';
 const check=document.createElement('button');check.className='ghost';check.type='button';check.textContent='Verificar pagamento';
 w.append(img,ta,cp,status,check);status.classList.add('coopex-pix-status');coopexPixCodeFit(w);line.textContent='Pague exatamente '+money(j.valor)+' pelo QR Code ou pelo código abaixo.';
-let checking=false,paid=false;
-const verify=async()=>{if(checking||paid)return;checking=true;try{
-const res=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/status',{credentials:'same-origin',cache:'no-store'});
-const data=await res.json().catch(()=>({}));if(!res.ok)throw Error(data.erro||'Falha na consulta ao banco');
-if(data.pago){paid=true;status.textContent='Pagamento confirmado pelo Sicoob! Crédito lançado no seu saldo: '+money(j.valor);status.style.background='#e3f7e9';check.disabled=true;toast('Crédito aprovado automaticamente');if(typeof loadSaldo==='function')loadSaldo();}
-else status.textContent='Aguardando pagamento. O saldo será creditado após a confirmação bancária.';
-}catch(error){status.textContent=error.message}finally{checking=false}};
-check.onclick=verify;const timer=setInterval(()=>{if(paid||!document.body.contains(w)){clearInterval(timer);return}verify()},7000);verify();
+let checking=false,paid=false,manualQueued=false;
+const verify=async(manual=false)=>{
+ if(paid){if(manual)toast('Este pagamento já foi confirmado.');return}
+ if(checking){if(manual){manualQueued=true;status.textContent='Consulta bancária em andamento. Aguarde o resultado...';}return}
+ checking=true;
+ if(manual){check.disabled=true;check.textContent='Consultando Sicoob...';}
+ status.textContent='Consultando a confirmação do pagamento no Sicoob...';
+ try{
+  const res=await fetch('/api/cliente/pix-credito/'+j.solicitacao_id+'/status',{credentials:'same-origin',cache:'no-store'});
+  const data=await res.json().catch(()=>({}));
+  if(!res.ok)throw Error(data.erro||'Não foi possível consultar o pagamento no momento.');
+  if(data.pago){
+   paid=true;
+   status.textContent='Pagamento confirmado pelo Sicoob! Crédito lançado no seu saldo: '+money(j.valor);
+   status.style.background='#e3f7e9';
+   check.textContent='Pagamento confirmado';check.disabled=true;
+   toast('Crédito aprovado automaticamente');
+   if(typeof loadSaldo==='function')loadSaldo();
+  }else{
+   status.textContent='Consulta concluída: pagamento ainda não confirmado pelo Sicoob. O saldo será creditado automaticamente após a confirmação bancária.';
+  }
+ }catch(error){status.textContent='Não foi possível verificar o pagamento: '+error.message}
+ finally{
+  checking=false;
+  if(!paid){check.disabled=false;check.textContent='Verificar pagamento'}
+  if(manualQueued&&!paid){manualQueued=false;verify(true)}
+ }
+};
+check.onclick=()=>verify(true);
+const timer=setInterval(()=>{if(paid||!document.body.contains(w)){clearInterval(timer);return}verify(false)},7000);
+verify(false);
 }catch(error){toast(error.message||'Erro ao gerar Pix');}finally{btn.disabled=false}
 };
 
