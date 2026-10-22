@@ -486,6 +486,11 @@ function organize(){
   group.append(button,menu);nav.append(group);return {group,button,menu};
  }
  const manage=makeGroup('⚙ Gestão');
+ const supervisorsLink=document.createElement('a');
+ supervisorsLink.href='/gestao/supervisores';
+ supervisorsLink.textContent='👤 Cadastro de Supervisores';
+ supervisorsLink.className='coopex-moved-action';
+ manage.menu.append(supervisorsLink);
  const settings=makeGroup('⚙ Configurações');
  const more=getMenu(operation);
  function addAction(menu,selector,label){
