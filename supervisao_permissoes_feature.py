@@ -50,6 +50,7 @@ def install(host):
   return render_template_string(PAGE,supervisors=supervisors,sid=sid,modules=MODULES,actions=ACTIONS,allowed=allowed,csrf=session['permissoes_csrf'])
 PAGE="""
 <!doctype html><html lang="pt-br"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_theme_shared.css') }}">
 <title>Permissões · COOPEX</title><style>
 :root{color-scheme:dark;font-family:Inter,system-ui,Arial,sans-serif}*{box-sizing:border-box}
 body{background:#031021;color:#edf6ff;margin:0}header{padding:18px 25px;background:#06172c;border-bottom:2px solid #078bff;display:flex;justify-content:space-between}
@@ -62,11 +63,11 @@ th:first-child,td:first-child{text-align:left}tr:nth-child(even){background:#0e2
 .notice{padding:12px;background:#11294a;border-radius:10px}
 </style></head><body><header><strong>COOPEX | Configurações · Permissões</strong><a href="{{ url_for('admin') }}">← Voltar ao painel</a></header>
 <main><h1>Permissões por supervisor</h1><p>Defina quais ações cada supervisor poderá executar nos módulos.</p>
-<div class="card"><form method="get"><label for="supervisor">Supervisor: </label>
+<div class="card cx-ui-card"><form method="get"><label for="supervisor">Supervisor: </label>
 <select name="supervisor_id" id="supervisor" onchange="this.form.submit()">
 {% for s in supervisors %}<option value="{{s.id}}" {% if sid==s.id %}selected{% endif %}>{{s.nome}} ({{s.usuario}})</option>{% endfor %}
 </select></form></div>
-{% with messages=get_flashed_messages() %}{% for m in messages %}<p class="notice">{{m}}</p>{% endfor %}{% endwith %}
+{% with messages=get_flashed_messages() %}{% for m in messages %}<p class="notice cx-ui-note">{{m}}</p>{% endfor %}{% endwith %}
 {% if sid %}
 <form method="post" class="card"><input type="hidden" name="csrf" value="{{csrf}}">
 <input type="hidden" name="supervisor_id" value="{{sid}}">
