@@ -559,3 +559,69 @@ header{background:#051326!important;border-bottom:1px solid #0c70de!important;bo
 .quick-view-chip.active{background:linear-gradient(180deg,#0798fa,#074bdf)!important;color:white!important}
 #btnTheme,.theme-toggle{display:none!important}
 </style>
+<style id="coopex-structural-2026">
+:root{color-scheme:dark}
+body{background:#020c19!important}
+header{position:relative!important;top:0!important;padding:0!important;border-radius:0!important}
+header .topbar{display:none!important}
+.bank-toolbar-wrap{position:sticky!important;top:0!important;z-index:120!important;border-radius:0!important}
+.bank-toolbar{min-height:65px!important;max-width:none!important}
+.bank-toolbar>.bank-group>.bank-group-btn{font-size:14px!important;min-height:45px!important}
+.coopex-led{height:72px;margin:12px 14px 16px;border:3px solid #0098ff;border-radius:16px;background:repeating-linear-gradient(90deg,#031429 0,#031429 3px,#051a31 4px,#051a31 6px);box-shadow:0 0 12px #007bf966,inset 0 0 14px #008bff33;overflow:hidden;display:flex;align-items:center}
+.coopex-led-track{white-space:nowrap;display:inline-block;min-width:100%;animation:coopex-led-move 24s linear infinite;font:700 27px monospace;letter-spacing:3px;color:#2bcaff;text-shadow:0 0 9px #00aaff}
+@keyframes coopex-led-move{0%{transform:translateX(100%)}100%{transform:translateX(-100%)}}
+@media(prefers-reduced-motion:reduce){.coopex-led-track{animation:none;text-align:center;white-space:normal;font-size:17px}}
+.viewport{padding:0 12px!important}
+.panel{padding:0!important;overflow:visible!important}
+.panel-head{margin:0!important;padding:12px 16px!important;border-bottom:1px solid #1a4775!important}
+.panel-title{font-size:19px!important;font-weight:800!important}
+.filters-bar{padding:12px!important;margin:0!important;border:0!important;border-radius:0!important}
+.filters-top{display:flex!important;align-items:end!important;gap:12px!important;flex-wrap:wrap!important}
+.filters-form{display:flex!important;gap:10px!important;flex:1 1 600px!important;align-items:end!important;flex-wrap:wrap!important}
+.filters-form .field{flex:1 1 130px!important;min-width:120px!important}
+.filters-form label{font-size:11px!important;margin-bottom:4px!important}
+.filters-form select,.filters-form input{height:40px!important}
+.quick-view-bar{margin:12px!important}
+.quick-view-chip{font-weight:800!important}
+.table-shell{margin:0 10px 12px!important;border:1px solid #294d76!important;overflow:hidden!important;border-radius:13px!important}
+.table-wrap{max-height:none!important}
+.tabela{width:100%!important;border-spacing:0!important;font-size:13px!important}
+.tabela thead th{position:sticky;top:0;z-index:2;padding:12px 9px!important;white-space:nowrap!important}
+.tabela tbody td{padding:10px 9px!important;vertical-align:middle!important}
+.coopex-delivery-tabs{display:flex;gap:9px;align-items:center;flex-wrap:wrap;padding:9px 12px}
+.coopex-delivery-tabs button{padding:10px 16px;border-radius:10px;background:#0b213d;border:1px solid #2c547d;color:#eaf5ff;font-weight:800;cursor:pointer}
+.coopex-delivery-tabs button[aria-pressed=true]{background:linear-gradient(180deg,#089dfa,#064bd7);border-color:#1da3ff;color:white}
+.coopex-delivery-tabs .cx-count{margin-left:4px;opacity:.9}
+body.coopex-tab-pending .tabela tbody tr[data-has-coop="1"],body.coopex-tab-linked .tabela tbody tr[data-has-coop="0"]{display:none!important}
+body .bank-group .bank-submenu{z-index:150!important}
+@media(max-width:900px){.coopex-led{height:55px}.coopex-led-track{font-size:16px}.bank-toolbar{overflow:visible!important}}
+</style>
+<script id="coopex-structural-script-2026">
+(function(){
+function build(){
+const nav=document.querySelector('.bank-toolbar'),panel=document.querySelector('.panel'),table=document.querySelector('.tabela');if(!nav||!panel||!table)return;
+if(!document.querySelector('.coopex-led')){
+const led=document.createElement('div');led.className='coopex-led';led.setAttribute('role','status');
+const track=document.createElement('span');track.className='coopex-led-track';track.textContent='▶ AVISO OPERACIONAL: ACOMPANHE AS ENTREGAS, ESCALAS E A FILA DE ESPERA  ◀';
+led.append(track);nav.closest('.bank-toolbar-wrap').insertAdjacentElement('afterend',led);
+}
+if(!document.querySelector('.coopex-delivery-tabs')){
+const tabs=document.createElement('div');tabs.className='coopex-delivery-tabs';
+const options=[['all','▤ Todas'],['pending','◷ Pendentes'],['linked','▰ Vinculadas']];
+let selected='all';
+const update=()=>{
+const rows=[...table.querySelectorAll('tbody tr[data-has-coop]')];
+for(const [id] of options){const b=tabs.querySelector('[data-filter="'+id+'"]');if(b){b.querySelector('.cx-count').textContent='('+rows.filter(r=>id==='all'||(id==='pending'?r.dataset.hasCoop==='0':r.dataset.hasCoop==='1')).length+')';b.setAttribute('aria-pressed',String(selected===id))}}
+document.body.classList.toggle('coopex-tab-pending',selected==='pending');
+document.body.classList.toggle('coopex-tab-linked',selected==='linked');
+};
+for(const [id,label] of options){const b=document.createElement('button');b.type='button';b.dataset.filter=id;b.setAttribute('aria-pressed',String(id==='all'));b.textContent=label+' ';const c=document.createElement('span');c.className='cx-count';b.append(c);b.addEventListener('click',()=>{selected=id;update()});tabs.append(b)}
+const view=panel.querySelector('.quick-view-bar');if(view)view.replaceWith(tabs);else panel.querySelector('.table-shell')?.before(tabs);
+update();
+new MutationObserver(()=>update()).observe(table.querySelector('tbody'),{childList:true,subtree:false});
+}
+const btn=document.getElementById('btnTheme');if(btn)btn.remove();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',build);else build();
+})();
+</script>
