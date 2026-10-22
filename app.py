@@ -15338,6 +15338,10 @@ import credito_pix_sicoob_feature
 import sys as _credito_pix_sys
 credito_pix_sicoob_feature.install(_credito_pix_sys.modules[__name__])
 
+# Gestão de supervisores: cadastro seguro e rota de administração
+import gestao_supervisores_feature
+gestao_supervisores_feature.install(_pix_sys.modules[__name__])
+
 # COOPEX CONNECT
 import sys
 import coopex_connect
