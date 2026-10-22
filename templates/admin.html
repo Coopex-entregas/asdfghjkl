@@ -456,3 +456,74 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('load',apply);
 })();
 </script>
+
+<style id="coopex-submenus-2026">
+body .bank-toolbar{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:9px!important}
+body .bank-group{position:relative}
+body .bank-group-btn{white-space:nowrap!important;padding:11px 16px!important}
+body .bank-submenu{z-index:999!important;min-width:238px!important;max-height:min(75vh,620px);overflow-y:auto}
+body .bank-submenu .coopex-moved-action{display:block!important;width:100%!important;text-align:left!important;margin:4px 0!important;min-height:38px!important;padding:9px 12px!important;border-radius:8px!important}
+body .bank-submenu .coopex-moved-action:hover{background:#0e4b91!important}
+body .bank-submenu .queue-add-form{width:310px;max-width:90vw}
+body .panel-head .cx-head-actions:empty{display:none!important}
+body .bank-toolbar .bank-direct-action{display:none!important}
+body .bank-submenu .bank-direct-action{display:block!important}
+</style>
+<script id="coopex-submenus-script-2026">
+(function(){
+function organize(){
+ const nav=document.querySelector('.bank-toolbar');if(!nav||nav.dataset.coopexOrganized)return;
+ nav.dataset.coopexOrganized='1';
+ const groups=[...nav.querySelectorAll(':scope > .bank-group')];
+ const find=k=>groups.find(g=>(g.querySelector('.bank-group-btn')?.textContent||'').toLowerCase().includes(k));
+ const operation=find('operações'),reports=find('relatórios'),finance=find('financeiro');
+ const getMenu=g=>g?.querySelector('.bank-submenu');
+ function makeGroup(label){
+  const group=document.createElement('div');group.className='bank-group';
+  const button=document.createElement('button');button.type='button';button.className='bank-group-btn';button.textContent=label+' ▾';
+  button.setAttribute('aria-expanded','false');
+  const menu=document.createElement('div');menu.className='bank-submenu';
+  group.append(button,menu);nav.append(group);return {group,button,menu};
+ }
+ const manage=makeGroup('⚙ Gestão');
+ const settings=makeGroup('⚙ Configurações');
+ const more=getMenu(operation);
+ function addAction(menu,selector,label){
+  const el=document.querySelector(selector);if(!el||!menu)return;
+  el.classList.add('coopex-moved-action');
+  if(label){const span=document.createElement('span');span.textContent=label;el.replaceChildren(span)}
+  menu.append(el);
+ }
+ const queue=find('fila de espera');
+ if(queue){manage.menu.append(queue);queue.classList.add('coopex-queue-inside')}
+ const values=document.getElementById('btnSolicitacoesValorMenu');
+ if(values){const wrapper=values.closest('.bank-group');if(wrapper){wrapper.style.display='block';manage.menu.append(wrapper)}}
+ addAction(more,'#btnMarcarTodasEntregues');
+ addAction(more,'#btnToggleAssigned');
+ addAction(more,'#btnCopyOpenBairros');
+ document.querySelectorAll('.panel-head .cx-head-actions > button').forEach(b=>{
+   b.classList.add('coopex-moved-action');more?.append(b);
+ });
+ const settingsLinks=[...document.querySelectorAll('.bank-submenu a')].filter(a=>/certificado/i.test(a.textContent||''));
+ settingsLinks.forEach(a=>settings.menu.append(a));
+ const adminAnalytics=[...document.querySelectorAll('.bank-submenu a')].filter(a=>/dashboard gerencial/i.test(a.textContent||''));
+ adminAnalytics.forEach(a=>manage.menu.append(a));
+ // Nenhuma rota nova sem backend: as demais funcoes existentes permanecem em seus menus.
+ if(!settings.menu.children.length){
+  const help=document.createElement('span');help.textContent='Configurações atuais nos módulos';help.style.cssText='display:block;padding:12px;color:#9eb9db';settings.menu.append(help);
+ }
+ const fake=document.getElementById('coopex-gestao-access');if(fake)fake.remove();
+ // Usar clique para abrir/fechar, sem depender do hover.
+ for(const group of [manage.group,settings.group]){
+  const b=group.querySelector('.bank-group-btn'),menu=group.querySelector('.bank-submenu');
+  b.addEventListener('click',ev=>{ev.stopPropagation();const open=menu.classList.toggle('coopex-menu-open');b.setAttribute('aria-expanded',String(open))});
+ }
+ document.addEventListener('click',ev=>{for(const group of [manage.group,settings.group])if(!group.contains(ev.target)){group.querySelector('.bank-submenu').classList.remove('coopex-menu-open');group.querySelector('.bank-group-btn').setAttribute('aria-expanded','false')}});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',organize);else organize();
+})();
+</script>
+<style id="coopex-submenu-open">
+body .bank-group .bank-submenu.coopex-menu-open,body .bank-group:hover>.bank-submenu.coopex-menu-open{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+body .bank-group .bank-group .bank-submenu{left:100%!important;top:0!important}
+</style>
