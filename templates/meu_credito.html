@@ -1355,7 +1355,34 @@ function scheduleFixedCollectionSave(){
 $('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
 let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['coletaEndereco','coletaBairro','coletaReferencia','entregaEndereco','entregaBairro'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
 async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;if(!j.valor_a_informar && j.preco!==null && j.preco!==undefined){j.preco=Math.ceil(Number(j.preco)-1e-9)}$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Valor conforme tabela de bairros':'Bairro sem valor cadastrado — a supervisão informará o preço';return j}
-$('sendOrder').onclick=async()=>{if(!$('coletaEndereco').value.trim()||!$('coletaBairro').value.trim()){toast('Informe o endereço e o bairro da coleta.');return}if(!await saveFixedCollection(true)){toast('Não foi possível salvar o endereço de coleta no cadastro.');return}if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}const q=await quote();if(!q)return;const pay=$('pedidoPagamento').value;if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}if(pay==='credito'&&q.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};const j=await api(API.pedido,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(j?.ok){if($('salvarDestino').checked){await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}toast(j.msg||'Pedido enviado.');loadActive();loadSaldo()}else if(j?.msg||j?.erro){toast(j.msg||j.erro)}};
+$('sendOrder').onclick=async()=>{
+  const btn=$('sendOrder');
+  if(btn.disabled)return;
+  if(!$('coletaEndereco').value.trim()||!$('coletaBairro').value.trim()){toast('Informe o endereço e o bairro da coleta.');return}
+  if(!$('entregaBairro').value.trim()){toast('Informe o bairro da entrega. O endereço completo é opcional.');return}
+  const pay=$('pedidoPagamento').value;
+  if(pay==='dinheiro'&&!$('recebeDinheiro').value){toast('Informe onde o dinheiro será recebido.');return}
+  btn.disabled=true;
+  const originalText=btn.textContent;
+  btn.textContent='Enviando pedido...';
+  try{
+    // O cadastro automático do endereço não pode bloquear a solicitação.
+    // O próprio pedido já contém os dados completos da coleta.
+    try{await saveFixedCollection(true)}catch(e){console.warn('Não foi possível atualizar o endereço fixo:',e)}
+    // Cotação é auxiliar. Se falhar, o servidor ainda valida o pedido.
+    let q=null;
+    try{q=await quote()}catch(e){console.warn('Cotação indisponível:',e)}
+    if(pay==='credito'&&q?.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}
+    const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};
+    const response=await fetch(API.pedido,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
+    const j=await response.json().catch(()=>null);
+    if(!response.ok||!j?.ok){toast(j?.msg||j?.erro||j?.error||('Não foi possível solicitar o pedido (HTTP '+response.status+').'));return}
+    toast(j.msg||'Pedido enviado.');
+    if($('salvarDestino').checked){try{await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}catch(e){console.warn('Endereço não salvo:',e)}}
+    await Promise.allSettled([loadActive(),loadSaldo()]);
+  }catch(e){console.error('Erro ao solicitar pedido:',e);toast('Falha ao enviar pedido: '+(e.message||'erro de conexão'))}
+  finally{btn.disabled=false;btn.textContent=originalText}
+};
 document.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>$('creditValue').value=b.dataset.v);
 window.copyPix=async()=>{try{await navigator.clipboard.writeText('05289938000197');toast('Chave Pix copiada.')}catch(e){prompt('Copie a chave Pix:','05289938000197')}};
 function coopexPixBrand(w){
