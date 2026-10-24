@@ -56,11 +56,15 @@ def install(m,feature=None):
      item=Model() if ROLE=="financeiro" else Model(data=dia,contrato=contrato,nome_planilha=nome,nome_norm=norm(nome)[:160],intervalos_json="[]",candidatos_json="[]",status_match="confirmado" if coop else "nao_encontrado")
      db.session.add(item)
     item.data=dia.isoformat() if ROLE=="financeiro" else dia
-    item.turno=str(r.get("turno") or "")[:30];item.contrato=contrato;item.cooperado_id=coop.id if coop else None
+    item.turno=str(r.get("turno") or "")[:30];item.contrato=contrato
+    # Nunca substituir cooperado ou nome ja vinculado no banco local.
+    if not item.cooperado_id and coop:item.cooperado_id=coop.id
     if ROLE=="financeiro":
-     item.horario=horario[:50];item.cooperado_nome=None if coop else nome
+     item.horario=horario[:50]
+     if not item.cooperado_nome and not item.cooperado_id:item.cooperado_nome=nome
     else:
-     item.horario_texto=horario[:120];item.nome_planilha=nome;item.nome_norm=norm(nome)[:160]
+     item.horario_texto=horario[:120]
+     if not item.nome_planilha:item.nome_planilha=nome;item.nome_norm=norm(nome)[:160]
     db.session.flush()
     db.session.execute(text("INSERT INTO escala_sync_link(source,remote_id,local_id) VALUES(:s,:r,:l) ON CONFLICT(source,remote_id) DO UPDATE SET local_id=EXCLUDED.local_id"),{"s":src,"r":rid,"l":item.id});total+=1
    db.session.commit()
