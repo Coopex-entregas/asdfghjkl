@@ -16,7 +16,8 @@ def install(m,feature=None):
  with app.app_context():
   db.session.execute(text("CREATE TABLE IF NOT EXISTS escala_sync_link(source VARCHAR(30),remote_id BIGINT,local_id BIGINT,PRIMARY KEY(source,remote_id))"));db.session.commit()
  def name(x):
-  return x.cooperado.nome if x.cooperado_id and x.cooperado else (x.cooperado_nome if ROLE=="financeiro" else x.nome_planilha) or ""
+  ref=db.session.get(Co,x.cooperado_id) if x.cooperado_id else None
+  return ref.nome if ref else ((x.cooperado_nome if ROLE=="financeiro" else x.nome_planilha) or "")
  def dump(x):
   return dict(id=x.id,data=str(x.data)[:10],turno=x.turno or "",horario=(x.horario if ROLE=="financeiro" else x.horario_texto) or "",contrato=x.contrato or "",cooperado_nome=name(x))
  def publish(rows):
