@@ -89,6 +89,8 @@ def post_worker_init(worker):
         _corrigir_serializacao_escala(escala_feature)
 
         escala_feature.install(app_module)
+        import coopex_escala_bridge
+        coopex_escala_bridge.install(app_module, escala_feature)
         escala_api_session_fix.install(app_module, escala_feature)
         escala_ajustes.install(app_module, escala_feature)
         escala_troca.install(app_module, escala_feature)
