@@ -146,7 +146,28 @@ def routes(app):
     if not con or not name or not dd or norm(con)=='folga':ignored+=1;continue
     ht=str(r.get(col['horarios'],'') or '').strip();turn=str(r.get(col['turno'],'') or '').strip() if col.get('turno') else '';qtd=str(r.get(col['qtd'],'') or '').strip() if col.get('qtd') else '';ints,est=parse_hours(ht,turn);cid,st,cands,detail=match_name(name,ctx);new.append(Item(data=dd,qtd=qtd[:30],turno=turn[:30],horario_texto=ht[:120],intervalos_json=json.dumps(ints,ensure_ascii=False),horario_estimado=est,contrato=con[:160],nome_planilha=name[:160],nome_norm=norm(name)[:160],cooperado_id=cid,status_match=st,candidatos_json=json.dumps(cands,ensure_ascii=False),detalhe_match=detail[:255],importado_em=stamp));dates.append(dd)
    if not new:raise ValueError('Nenhuma linha válida foi encontrada.')
-   Ajuste.query.delete(synchronize_session=False);Item.query.delete(synchronize_session=False);meta=Importacao.query.filter_by(id=1).first() or Importacao(id=1);DB.session.add(meta);DB.session.add_all(new);DB.session.flush();meta.arquivo_nome=f.filename[:255];meta.inicio_semana=min(dates);meta.fim_semana=max(dates);meta.importado_em=stamp;meta.linhas_ignoradas=ignored;recount(meta);DB.session.commit();clear_cache();getattr(MOD,'_coopex_escala_publish',lambda rows:None)(new);flash(f'Escala substituída: {meta.total_linhas} linhas válidas e {ignored} ignoradas.','success')
+   # Importacao incremental: nunca apagar a semana atual nem ajustes/trocas.
+   # Reenvios da mesma planilha nao duplicam linhas ja cadastradas.
+   existing=Item.query.filter(Item.data>=min(dates),Item.data<=max(dates)).all()
+   signatures={(x.data,norm(x.contrato),norm(x.horario_texto),norm(x.nome_planilha)) for x in existing}
+   added=[]
+   for x in new:
+    key=(x.data,norm(x.contrato),norm(x.horario_texto),norm(x.nome_planilha))
+    if key in signatures:continue
+    signatures.add(key);added.append(x)
+   meta=Importacao.query.filter_by(id=1).first() or Importacao(id=1)
+   DB.session.add(meta)
+   if added:DB.session.add_all(added)
+   DB.session.flush()
+   meta.arquivo_nome=f.filename[:255]
+   meta.inicio_semana=min(dates)
+   meta.fim_semana=max(dates)
+   meta.importado_em=stamp
+   meta.linhas_ignoradas=ignored
+   recount(meta)
+   DB.session.commit();clear_cache()
+   if added:getattr(MOD,'_coopex_escala_publish',lambda rows:None)(added)
+   flash(f'Escala adicionada com seguranca: {len(added)} linhas novas e {len(new)-len(added)} ja existentes. Escalas e trocas anteriores preservadas.','success')
   except Exception as e:DB.session.rollback();flash(f'Não foi possível importar a escala: {e}','error')
   return redirect(url_for('escala'))
  def link(i):
