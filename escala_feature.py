@@ -119,7 +119,10 @@ def context_now():
 def routes(app):
  def page():
   if not admin():return redirect(url_for('login'))
-  meta=Importacao.query.filter_by(id=1).first();today=now().date();default=meta.inicio_semana if meta and not(meta.inicio_semana<=today<=meta.fim_semana) else today;ds=request.args.get('data') or default.isoformat();contract=(request.args.get('contrato') or '').strip();cid=request.args.get('cooperado_id',type=int);status=request.args.get('status') or 'todos';q=(request.args.get('q') or '').strip();query=Item.query
+  meta=Importacao.query.filter_by(id=1).first();clock=now();today=clock.date();default=today
+  # A nova semana so assume como principal no domingo, as 19h20 (Fortaleza).
+  if today.weekday()==6 and (clock.hour,clock.minute)>=(19,20):default=today+timedelta(days=1)
+  ds=request.args.get('data') or default.isoformat();contract=(request.args.get('contrato') or '').strip();cid=request.args.get('cooperado_id',type=int);status=request.args.get('status') or 'todos';q=(request.args.get('q') or '').strip();query=Item.query
   try:d=date.fromisoformat(ds);query=query.filter(Item.data==d)
   except:d=default
   if contract:query=query.filter(Item.contrato==contract)
