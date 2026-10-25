@@ -26,8 +26,11 @@ def install(m,feature=None):
   def send():
    import requests
    try:
-    r=requests.post(PEER+"/integracao/escala/sync",json={"source":ROLE,"records":data},headers={"Authorization":"Bearer "+TOKEN},timeout=(2,5))
-    if not r.ok:app.logger.warning("Escala sync remoto HTTP %s",r.status_code)
+    for offset in range(0,len(data),40):
+     part=data[offset:offset+40]
+     r=requests.post(PEER+"/integracao/escala/sync",json={"source":ROLE,"records":part},headers={"Authorization":"Bearer "+TOKEN},timeout=(5,40))
+     if not r.ok:app.logger.warning("Escala sync lote %s HTTP %s",offset,r.status_code)
+     else:app.logger.info("Escala sync lote %s recebido: %s",offset,r.json().get("atualizados"))
    except Exception:app.logger.warning("Escala remota indisponivel; cadastro local mantido")
   threading.Thread(target=send,daemon=True).start()
  def co(nome):
