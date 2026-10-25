@@ -146,7 +146,7 @@ def routes(app):
     if not con or not name or not dd or norm(con)=='folga':ignored+=1;continue
     ht=str(r.get(col['horarios'],'') or '').strip();turn=str(r.get(col['turno'],'') or '').strip() if col.get('turno') else '';qtd=str(r.get(col['qtd'],'') or '').strip() if col.get('qtd') else '';ints,est=parse_hours(ht,turn);cid,st,cands,detail=match_name(name,ctx);new.append(Item(data=dd,qtd=qtd[:30],turno=turn[:30],horario_texto=ht[:120],intervalos_json=json.dumps(ints,ensure_ascii=False),horario_estimado=est,contrato=con[:160],nome_planilha=name[:160],nome_norm=norm(name)[:160],cooperado_id=cid,status_match=st,candidatos_json=json.dumps(cands,ensure_ascii=False),detalhe_match=detail[:255],importado_em=stamp));dates.append(dd)
    if not new:raise ValueError('Nenhuma linha válida foi encontrada.')
-   Ajuste.query.delete(synchronize_session=False);Item.query.delete(synchronize_session=False);meta=Importacao.query.filter_by(id=1).first() or Importacao(id=1);DB.session.add(meta);DB.session.add_all(new);DB.session.flush();meta.arquivo_nome=f.filename[:255];meta.inicio_semana=min(dates);meta.fim_semana=max(dates);meta.importado_em=stamp;meta.linhas_ignoradas=ignored;recount(meta);DB.session.commit();clear_cache();flash(f'Escala substituída: {meta.total_linhas} linhas válidas e {ignored} ignoradas.','success')
+   Ajuste.query.delete(synchronize_session=False);Item.query.delete(synchronize_session=False);meta=Importacao.query.filter_by(id=1).first() or Importacao(id=1);DB.session.add(meta);DB.session.add_all(new);DB.session.flush();meta.arquivo_nome=f.filename[:255];meta.inicio_semana=min(dates);meta.fim_semana=max(dates);meta.importado_em=stamp;meta.linhas_ignoradas=ignored;recount(meta);DB.session.commit();clear_cache();getattr(MOD,'_coopex_escala_publish',lambda rows:None)(new);flash(f'Escala substituída: {meta.total_linhas} linhas válidas e {ignored} ignoradas.','success')
   except Exception as e:DB.session.rollback();flash(f'Não foi possível importar a escala: {e}','error')
   return redirect(url_for('escala'))
  def link(i):
@@ -157,7 +157,7 @@ def routes(app):
   if a:a.cooperado_id=c.id;a.alias_texto=x.nome_planilha
   else:DB.session.add(Alias(cooperado_id=c.id,alias_texto=x.nome_planilha,alias_norm=n))
   for y in Item.query.filter_by(nome_norm=x.nome_norm).all():y.cooperado_id=c.id;y.status_match='confirmado';y.detalhe_match='Associação confirmada pelo administrador.'
-  meta=Importacao.query.filter_by(id=1).first();recount(meta) if meta else None;DB.session.commit();clear_cache();flash(f'{x.nome_planilha} foi associado a {c.nome}.','success');return redirect(request.referrer or url_for('escala'))
+  meta=Importacao.query.filter_by(id=1).first();recount(meta) if meta else None;DB.session.commit();clear_cache();getattr(MOD,'_coopex_escala_publish',lambda rows:None)(Item.query.filter_by(nome_norm=x.nome_norm).all());flash(f'{x.nome_planilha} foi associado a {c.nome}.','success');return redirect(request.referrer or url_for('escala'))
  def substitute(i):
   if not admin():return redirect(url_for('login'))
   x=Item.query.get_or_404(i);cid=request.form.get('cooperado_id',type=int);motivo=(request.form.get('motivo') or '').strip();c=MOD.Cooperado.query.get(cid) if cid else None
@@ -166,12 +166,12 @@ def routes(app):
   aj=Ajuste.query.filter_by(item_id=x.id).first()
   if not aj:aj=Ajuste(item_id=x.id,cooperado_original_id=x.cooperado_id,cooperado_novo_id=c.id,motivo=motivo[:255]);DB.session.add(aj)
   else:aj.cooperado_novo_id=c.id;aj.motivo=motivo[:255];aj.alterado_em=datetime.utcnow()
-  x.cooperado_id=c.id;x.status_match='substituido';x.detalhe_match=('Substituição: '+motivo)[:255];DB.session.commit();clear_cache();flash(f'Escala alterada para {c.nome}.','success');return redirect(request.referrer or url_for('escala'))
+  x.cooperado_id=c.id;x.status_match='substituido';x.detalhe_match=('Substituição: '+motivo)[:255];DB.session.commit();clear_cache();getattr(MOD,'_coopex_escala_publish',lambda rows:None)([x]);flash(f'Escala alterada para {c.nome}.','success');return redirect(request.referrer or url_for('escala'))
  def restore(i):
   if not admin():return redirect(url_for('login'))
   x=Item.query.get_or_404(i);aj=Ajuste.query.filter_by(item_id=x.id).first()
   if not aj:flash('Esta linha não possui substituição.','warning');return redirect(request.referrer or url_for('escala'))
-  x.cooperado_id=aj.cooperado_original_id;x.status_match='confirmado' if x.cooperado_id else 'nao_encontrado';x.detalhe_match='Substituição desfeita; escala importada restaurada.';DB.session.delete(aj);DB.session.commit();clear_cache();flash('Escala original restaurada.','success');return redirect(request.referrer or url_for('escala'))
+  x.cooperado_id=aj.cooperado_original_id;x.status_match='confirmado' if x.cooperado_id else 'nao_encontrado';x.detalhe_match='Substituição desfeita; escala importada restaurada.';DB.session.delete(aj);DB.session.commit();clear_cache();getattr(MOD,'_coopex_escala_publish',lambda rows:None)([x]);flash('Escala original restaurada.','success');return redirect(request.referrer or url_for('escala'))
  def clear():
   if not admin():return redirect(url_for('login'))
   Ajuste.query.delete(synchronize_session=False);Item.query.delete(synchronize_session=False);Importacao.query.delete(synchronize_session=False);DB.session.commit();clear_cache();flash('Escala atual removida. As associações de nomes foram mantidas.','success');return redirect(url_for('escala'))
