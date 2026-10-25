@@ -45,7 +45,7 @@ def install(m,feature=None):
     if rid<=0:continue
     dia=date.fromisoformat(str(r.get("data") or "")[:10]);contrato=str(r.get("contrato") or "").strip()[:80]
     nome=str(r.get("cooperado_nome") or "").strip()[:120];horario=str(r.get("horario") or "").strip()
-    if not contrato or not nome:continue
+    if not contrato:continue
     mid=db.session.execute(text("SELECT local_id FROM escala_sync_link WHERE source=:s AND remote_id=:r"),{"s":src,"r":rid}).scalar()
     item=db.session.get(Model,int(mid)) if mid else None
     if item is None:
@@ -58,13 +58,16 @@ def install(m,feature=None):
     item.data=dia.isoformat() if ROLE=="financeiro" else dia
     item.turno=str(r.get("turno") or "")[:30];item.contrato=contrato
     # Nunca substituir cooperado ou nome ja vinculado no banco local.
-    if coop and item.cooperado_id != coop.id:item.cooperado_id=coop.id
+    if coop:
+     item.cooperado_id=coop.id
+    elif mid:
+     item.cooperado_id=None
     if ROLE=="financeiro":
      item.horario=horario[:50]
-     if not item.cooperado_nome and not item.cooperado_id:item.cooperado_nome=nome
+     item.cooperado_nome=nome if not item.cooperado_id else None
     else:
      item.horario_texto=horario[:120]
-     if not item.nome_planilha:item.nome_planilha=nome;item.nome_norm=norm(nome)[:160]
+     item.nome_planilha=nome;item.nome_norm=norm(nome)[:160]
     db.session.flush()
     db.session.execute(text("INSERT INTO escala_sync_link(source,remote_id,local_id) VALUES(:s,:r,:l) ON CONFLICT(source,remote_id) DO UPDATE SET local_id=EXCLUDED.local_id"),{"s":src,"r":rid,"l":item.id});total+=1
    db.session.commit()
