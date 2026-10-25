@@ -58,7 +58,7 @@ def install(m,feature=None):
     item.data=dia.isoformat() if ROLE=="financeiro" else dia
     item.turno=str(r.get("turno") or "")[:30];item.contrato=contrato
     # Nunca substituir cooperado ou nome ja vinculado no banco local.
-    if not item.cooperado_id and coop:item.cooperado_id=coop.id
+    if coop and item.cooperado_id != coop.id:item.cooperado_id=coop.id
     if ROLE=="financeiro":
      item.horario=horario[:50]
      if not item.cooperado_nome and not item.cooperado_id:item.cooperado_nome=nome
