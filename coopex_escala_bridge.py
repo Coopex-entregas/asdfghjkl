@@ -105,3 +105,23 @@ def install(m,feature=None):
    return jsonify(ok=aprovado,origem=ROLE,destino=resultado.get("role"),autenticacao=aprovado,ida_e_volta=aprovado,escalas_alteradas=0),200 if aprovado else 502
   except (requests.RequestException,ValueError):
    return jsonify(ok=False,erro="Falha ao contactar o outro servidor",escalas_alteradas=0),502
+
+ @app.get("/admin/integracao/escala/reenviar")
+ def reenviar_escala_salva():
+  from flask import session
+  import requests
+  if not session.get("is_admin"):return jsonify(ok=False,erro="Acesso restrito"),403
+  if not TOKEN or not PEER:return jsonify(ok=False,erro="Ponte nao configurada"),503
+  rows=Model.query.filter(Model.data>=date(2026,10,26),Model.data<=date(2026,11,1)).order_by(Model.id).all()
+  enviados=0
+  erros=[]
+  for start in range(0,len(rows),30):
+   data=[dump(x) for x in rows[start:start+30]]
+   try:
+    res=requests.post(PEER+"/integracao/escala/sync",json={"source":ROLE,"records":data},headers={"Authorization":"Bearer "+TOKEN},timeout=(5,45))
+    body=res.json()
+    if res.ok and body.get("ok") and body.get("atualizados")==len(data):
+     enviados+=len(data)
+    else:erros.append({"inicio":start,"http":res.status_code,"resposta":body})
+   except Exception as exc:erros.append({"inicio":start,"tipo":type(exc).__name__})
+  return jsonify(ok=not erros,total=len(rows),enviados=enviados,lotes_com_erro=erros),200 if not erros else 502
