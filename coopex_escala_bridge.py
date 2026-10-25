@@ -76,3 +76,12 @@ def install(m,feature=None):
   except Exception:
    db.session.rollback();app.logger.exception("Erro ponte escala");return jsonify(ok=False),500
  m._coopex_escala_publish=publish
+
+ @app.post("/integracao/escala/prova")
+ def prova_integracao():
+  if not TOKEN or not hmac.compare_digest(request.headers.get("Authorization",""),"Bearer "+TOKEN):
+   return jsonify(ok=False),403
+  dado=request.get_json(silent=True) or {}
+  desafio=str(dado.get("desafio") or "")
+  if len(desafio)<12 or len(desafio)>100:return jsonify(ok=False),400
+  return jsonify(ok=True,role=ROLE,desafio=desafio,escala_alterada=False)
