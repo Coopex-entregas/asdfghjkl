@@ -85,3 +85,20 @@ def install(m,feature=None):
   desafio=str(dado.get("desafio") or "")
   if len(desafio)<12 or len(desafio)>100:return jsonify(ok=False),400
   return jsonify(ok=True,role=ROLE,desafio=desafio,escala_alterada=False)
+
+ @app.get("/admin/integracao/escala/teste")
+ def teste_escala_sem_escrita():
+  from flask import session
+  from secrets import token_urlsafe
+  if not (session.get("is_admin") or session.get("user_tipo")=="admin"):
+   return jsonify(ok=False,erro="Acesso administrativo necessario"),403
+  if not TOKEN or not PEER:return jsonify(ok=False,erro="Configuracao incompleta"),503
+  import requests
+  desafio=token_urlsafe(24)
+  try:
+   response=requests.post(PEER+"/integracao/escala/prova",json={"desafio":desafio},headers={"Authorization":"Bearer "+TOKEN},timeout=8)
+   resultado=response.json()
+   aprovado=(response.status_code==200 and resultado.get("ok") is True and resultado.get("desafio")==desafio and resultado.get("role")!=ROLE)
+   return jsonify(ok=aprovado,origem=ROLE,destino=resultado.get("role"),autenticacao=aprovado,ida_e_volta=aprovado,escalas_alteradas=0),200 if aprovado else 502
+  except (requests.RequestException,ValueError):
+   return jsonify(ok=False,erro="Falha ao contactar o outro servidor",escalas_alteradas=0),502
