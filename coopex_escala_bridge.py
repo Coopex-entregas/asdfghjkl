@@ -7,7 +7,7 @@ ROLE=os.getenv("COOPEX_ESCALA_ROLE","")
 PEER=os.getenv("COOPEX_ESCALA_PEER_URL","").rstrip("/")
 TOKEN=os.getenv("COOPEX_ESCALA_SYNC_TOKEN","")
 def norm(v):
- return re.sub(r"\\s+"," ","".join(c for c in unicodedata.normalize("NFD",str(v or "").lower()) if unicodedata.category(c)!="Mn")).strip()
+ return re.sub(r"\s+"," ","".join(c for c in unicodedata.normalize("NFD",str(v or "").lower()) if unicodedata.category(c)!="Mn")).strip()
 def install(m,feature=None):
  if ROLE not in ("financeiro","escalas"):return
  app,db=m.app,m.db
