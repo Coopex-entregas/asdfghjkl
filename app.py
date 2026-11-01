@@ -5620,6 +5620,47 @@ def api_cooperado_graficos():
     except Exception:
         ano = datetime.now(BRAZIL_TZ).year
 
+    # Filtro compartilhado: quando o cooperado define datas, os gráficos seguem o mesmo intervalo.
+    inicio_str = request.args.get('inicio')
+    fim_str = request.args.get('fim')
+    if inicio_str or fim_str:
+        try:
+            di = datetime.strptime(inicio_str or fim_str, '%Y-%m-%d').date()
+            df = datetime.strptime(fim_str or inicio_str, '%Y-%m-%d').date()
+            if di > df or (df-di).days > 3660:
+                return jsonify(ok=False,error='Período inválido'),400
+        except ValueError:
+            return jsonify(ok=False,error='Datas inválidas'),400
+        dt1,_ = local_date_window_to_utc_range(di)
+        _,dt2 = local_date_window_to_utc_range(df)
+        raw = Entrega.query.filter(Entrega.cooperado_id==user_id,Entrega.data_envio>=dt1,Entrega.data_envio<=dt2).with_entities(Entrega.data_envio,Entrega.pagamento,Entrega.valor,Entrega.status_pagamento).all()
+        monthly = (df-di).days > 62
+        keys=[]
+        if monthly:
+            year,month=di.year,di.month
+            while (year,month)<=(df.year,df.month):
+                keys.append('%04d-%02d'%(year,month))
+                month+=1
+                if month>12:year,month=year+1,1
+        else:
+            keys=[(di+timedelta(days=x)).isoformat() for x in range((df-di).days+1)]
+        indices={x:i for i,x in enumerate(keys)}
+        totals=[0.0]*len(keys); counts=[0]*len(keys)
+        categories={key:[0.0]*len(keys) for key in ('pix_cooperativa','comanda','credito','auto_pix','dinheiro','outros')}
+        paid=pending=0
+        for dt,pg,val,status in raw:
+            local=to_brasilia(dt).date()
+            key=local.strftime('%Y-%m') if monthly else local.isoformat()
+            idx=indices.get(key)
+            if idx is None:continue
+            amount=float(val or 0)
+            totals[idx]+=amount;counts[idx]+=1
+            categories[_coopex_tipo_pagamento(pg)][idx]+=amount
+            if (status or '').lower()=='pago':paid+=1
+            else:pending+=1
+        labels=[(key[5:7]+'/'+key[:4]) if monthly else key[8:10]+'/'+key[5:7] for key in keys]
+        return jsonify(ok=True,periodo='personalizado',ano=ano,labels=labels,valores=totals,quantidades=counts,formas_pagamento=categories,status={'pagas':paid,'pendentes':pending})
+
     ano_inicio, _ = local_date_window_to_utc_range(date(ano, 1, 1))
     _, ano_fim = local_date_window_to_utc_range(date(ano, 12, 31))
     base_ano = Entrega.query.filter(
