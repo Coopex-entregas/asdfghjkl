@@ -896,6 +896,31 @@
       #tab-resumo .mini-value{font-size:1rem}
     }
 
+
+/* COOPEX — visual claro de vidro 3D, cartões finos */
+body{background:linear-gradient(145deg,#f9fcff,#e8f3ff 65%,#f7fbff)!important}
+.shared-period,.hero-card,.mini-card,.surface,.filter-card,.chart-card,.delivery-card,.queue-position-card{border:1px solid rgba(255,255,255,.94)!important;box-shadow:0 5px 18px rgba(23,70,152,.11),inset 0 1px 0 #fff!important;backdrop-filter:blur(18px) saturate(1.3);-webkit-backdrop-filter:blur(18px) saturate(1.3)}
+.shared-period,.mini-card,.surface,.filter-card,.chart-card,.delivery-card,.queue-position-card{background:linear-gradient(150deg,#fff,rgba(230,241,255,.94))!important}
+.hero-card{background:linear-gradient(125deg,#36a1f3,#1766ed 60%,#1049c9)!important}
+.shared-period{display:block;flex:none;padding:8px 10px;border-radius:18px}
+.shared-period>strong{font-size:.84rem;color:#133a86;display:block;margin-bottom:5px}
+.shared-period .date-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;margin:0}
+.shared-period .field label{font-size:.65rem;margin-bottom:2px}
+.shared-period .field input{height:35px!important;border-radius:12px!important;font-size:.78rem!important;padding:0 8px!important;background:rgba(255,255,255,.8)!important}
+#tab-resumo.active{justify-content:flex-start!important;overflow-y:auto!important}
+#tab-resumo .hero-card{flex:0 0 auto!important;height:auto!important;min-height:88px!important}
+#tab-resumo .summary-grid{flex:0 0 auto!important;height:auto!important;grid-template-rows:repeat(2,minmax(73px,auto))!important;overflow:visible!important}
+#tab-resumo .mini-card{height:auto!important;min-height:73px!important;justify-content:center!important}
+#tab-graficos .chart-grid{grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+#tab-graficos .chart-card{padding:8px!important;min-width:0}
+#tab-graficos .chart-wrap,#tab-graficos .chart-wrap[style]{height:118px!important;max-height:118px!important}
+#tab-graficos .chart-card h3{font-size:.73rem!important}
+#tab-graficos .chart-note{display:none}
+#tab-graficos .filter-card{padding:6px!important;margin-bottom:6px!important}
+#tab-graficos .pill-btn{padding:7px!important;font-size:.72rem!important}
+.tab-bar{background:rgba(242,248,255,.88)!important;backdrop-filter:blur(20px)!important}
+.bulk-actions{display:flex;gap:6px;flex-wrap:wrap;margin:8px 0}.bulk-actions button{flex:1;min-width:135px;padding:10px;border-radius:13px;background:linear-gradient(120deg,#e9f3ff,#fff);border:1px solid #cde0fa;color:#17469b;font-weight:800}.chart-mode{width:100%;height:38px;border:1px solid #cbdcf6;border-radius:12px;background:#fff;color:#16366d;margin:5px 0}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -922,6 +947,7 @@
       </div>
     </section>
 
+<div class="shared-period" id="shared-period"><strong>▤ Período</strong></div>
 <section id="tab-resumo" class="tab-panel active">
       <div class="hero-card">
         <div class="hero-label" id="hero-label-resumo">Ganhos de hoje</div>
@@ -1017,6 +1043,7 @@
           </div>
         </div>
 
+        <div class="bulk-actions"><button type="button" id="bulk-paid">Marcar todas como pagas</button><button type="button" id="bulk-delivered">Marcar todas como entregues</button></div>
         <div class="delivery-list" id="delivery-list">
           {% for e in entregas %}
           {% set pago = (e.status_pagamento or 'pendente')|lower == 'pago' %}
@@ -1093,6 +1120,7 @@
           <div class="year-pills" id="year-pills"></div>
         </div>
 
+        <select id="chart-mode" class="chart-mode" aria-label="Forma de pagamento"><option value="todas">Todas juntas</option><option value="pix_cooperativa">Pix Cooperativa</option><option value="comanda">Comanda</option><option value="credito">Crédito</option><option value="auto_pix">Auto Pix</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select>
         <div class="chart-grid">
           <div class="chart-card">
             <h3><span>Ganhos (R$)</span><span id="chart-total-valor">R$ 0,00</span></h3>
@@ -1163,6 +1191,10 @@
   </div>
 
   <script>
+    // Um só filtro de período no topo das três telas.
+    const dateGridShared = document.querySelector('#tab-entregas .date-grid');
+    const sharedPeriodHost = document.getElementById('shared-period');
+    if(dateGridShared && sharedPeriodHost) sharedPeriodHost.appendChild(dateGridShared);
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
     const todayISO = {{ hoje|tojson }};
@@ -1382,6 +1414,7 @@
       if(state.search) params.set('cliente', state.search);
       if(state.inicio) params.set('inicio', state.inicio);
       if(state.fim) params.set('fim', state.fim);
+      if(state.allDates) params.set('todas_datas','1');
       return params;
     }
 
@@ -1453,7 +1486,7 @@
 
     async function loadDeliveries({useCache=true}={}){
       activateTab('tab-entregas');
-      ensureDateRangeDefaults();
+      if(!state.allDates) ensureDateRangeDefaults();
       syncFilterUrl();
       const params = filterParams();
       const cacheKey = params.toString();
@@ -1494,8 +1527,8 @@
     function listMatches(item){
       const search = state.search.trim().toLowerCase();
       const clientOk = !search || item.cliente.toLowerCase().includes(search);
-      const startOk = !state.inicio || item.data >= state.inicio;
-      const endOk = !state.fim || item.data <= state.fim;
+      const startOk = state.allDates || !state.inicio || item.data >= state.inicio;
+      const endOk = state.allDates || !state.fim || item.data <= state.fim;
       let statusOk = true;
       if (state.listFilter === 'pendente') statusOk = item.statusPagamento !== 'pago';
       if (state.listFilter === 'pago') statusOk = item.statusPagamento === 'pago';
@@ -1563,7 +1596,8 @@
     document.getElementById('card-pendencias').addEventListener('click', async () => {
       state.listFilter = 'pendente';
       state.search = (filtroCliente.value || '').trim();
-      ensureDateRangeDefaults();
+      state.inicio='';state.fim='';state.allDates=true;
+      filtroInicio.value='';filtroFim.value='';
       setFilter('pendente');
       await loadDeliveries();
     });
@@ -1868,7 +1902,9 @@
         await ensureChartJs();
         const data = await fetchChartData();
         destroyCharts();
-        const valores = (data.valores || []).map(Number);
+        const mode = document.getElementById('chart-mode')?.value || 'todas';
+        const rawValues = mode === 'todas' ? data.valores : ((data.formas_pagamento || {})[mode] || []);
+        const valores = (rawValues || []).map(Number);
         const quantidades = (data.quantidades || []).map(Number);
         const statusAgg = data.status || {pagas:0,pendentes:0};
         const totalValor = valores.reduce((sum,val)=>sum+Number(val||0),0);
@@ -1898,6 +1934,28 @@
     }
 
 
+    document.getElementById('chart-mode')?.addEventListener('change',buildCharts);
+    async function runBulk(acao){
+      const pending = deliveries.filter(item=>item.element.style.display!=='none' && (acao==='marcar_pago' ? item.statusPagamento!=='pago' : item.statusEntrega!=='entregue'));
+      if(!pending.length){alert('Não há entregas pendentes na seleção.');return;}
+      if(pending.length>300){alert('Selecione até 300 entregas por vez.');return;}
+      let recebido_por='';
+      if(acao==='marcar_entregue'){
+        recebido_por = (prompt('Informe quem recebeu estas entregas (obrigatório):') || '').trim();
+        if(recebido_por.length<2) return;
+      }
+      if(!confirm('Confirmar '+(acao==='marcar_pago'?'pagamento':'entrega')+' de '+pending.length+' registro(s)?'))return;
+      try{
+        const response=await fetch('/api/cooperado/entregas/lote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao,ids:pending.map(x=>x.id),recebido_por})});
+        const body=await response.json();
+        if(!response.ok||!body.ok)throw new Error(body.error||'Falha na operação');
+        deliveryCache.clear();summaryCache.clear();chartCache.clear();
+        alert(body.alteradas.length+' entrega(s) atualizada(s). '+body.ignoradas.length+' não alterada(s).');
+        await loadDeliveries({useCache:false});
+      }catch(err){alert(err.message||'Erro na operação');}
+    }
+    document.getElementById('bulk-paid')?.addEventListener('click',()=>runBulk('marcar_pago'));
+    document.getElementById('bulk-delivered')?.addEventListener('click',()=>runBulk('marcar_entregue'));
     const valorOverlay = document.getElementById('valor-overlay');
     const valorOriginalInput = document.getElementById('valor-original-input');
     const valorSolicitadoInput = document.getElementById('valor-solicitado-input');
