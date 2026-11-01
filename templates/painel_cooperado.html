@@ -1134,6 +1134,14 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #queue-before:not([hidden]){z-index:10}
 @media (max-height: 730px) { #tab-resumo.active{justify-content:flex-start!important}#tab-resumo .finance-detail{flex:0 0 auto}}
 
+
+/* Card carteira compacto: preservar largura, reduzir altura e liberar pendências */
+#tab-resumo .hero-card{min-height:76px!important;height:76px!important;padding:8px 16px!important;display:flex!important;flex-direction:column!important;justify-content:center!important;gap:2px!important}
+#tab-resumo .hero-label{font-size:.69rem!important;line-height:1.08!important;margin:0!important}
+#tab-resumo .hero-value{font-size:clamp(1.7rem,7vw,2.35rem)!important;line-height:1.05!important;margin:0!important}
+#tab-resumo .hero-pill[hidden]{display:none!important}
+#tab-resumo .hero-wallet{height:54px!important;width:60px!important;top:9px!important;right:13px!important}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1168,7 +1176,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         <div class="hero-wallet" aria-hidden="true"><svg viewBox="0 0 64 64" fill="none"><rect x="10" y="17" width="44" height="34" rx="7" stroke="white" stroke-width="3"/><path d="M15 17v-6c0-4 4-7 8-7h27" stroke="white" stroke-width="3"/><rect x="38" y="28" width="23" height="15" rx="5" fill="#3ab4fb" stroke="white" stroke-width="3"/><circle cx="47" cy="35.5" r="2" fill="white"/></svg></div>
         <div class="hero-label" id="hero-label-resumo">Ganhos de hoje</div>
         <div class="hero-value" id="ganhos-hoje">R$ 0,00</div>
-        <div class="hero-pill">💰 <span id="ganhos-hoje-sub">Total líquido do dia</span></div>
+        <div class="hero-pill" hidden>💰 <span id="ganhos-hoje-sub"></span></div>
       </div>
 
 <div class="finance-detail" id="finance-detail"><h3>DETALHAMENTO FINANCEIRO <span class="finance-coopex-pill">✓ COOPEX</span></h3>
