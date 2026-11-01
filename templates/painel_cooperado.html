@@ -896,6 +896,30 @@
       #tab-resumo .mini-value{font-size:1rem}
     }
 
+
+    /* Identidade vidro claro — sem alturas artificiais nos cartões */
+    body{background:linear-gradient(145deg,#f9fcff 0%,#eaf3ff 65%,#f7faff 100%)!important}
+    .hero-card,.mini-card,.surface,.filter-card,.chart-card,.delivery-card,.queue-position-card,.shared-period{border:1px solid rgba(255,255,255,.92)!important;box-shadow:0 6px 19px rgba(37,83,159,.11),inset 0 1px 0 #fff!important;backdrop-filter:blur(15px) saturate(1.35);-webkit-backdrop-filter:blur(15px) saturate(1.35)}
+    .mini-card,.surface,.filter-card,.chart-card,.delivery-card,.queue-position-card,.shared-period{background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(232,242,255,.88))!important}
+    .hero-card{background:linear-gradient(120deg,#42a8f5,#1472ef 54%,#1048cb)!important}
+    .shared-period{display:flex;flex:0 0 auto;flex-direction:column;gap:5px;padding:8px 10px;border-radius:17px}
+    .shared-period strong{font-size:.84rem;color:#133978}
+    .shared-period .date-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0}
+    .shared-period .field label{font-size:.65rem;margin:0 0 2px}
+    .shared-period .field input{height:35px!important;padding:0 8px!important;border-radius:12px!important;font-size:.78rem!important;background:rgba(255,255,255,.8)!important}
+    #tab-resumo.active{justify-content:flex-start!important;overflow:auto!important}
+    #tab-resumo .hero-card{flex:0 0 auto!important;height:auto!important;min-height:90px!important}
+    #tab-resumo .summary-grid{flex:0 0 auto!important;height:auto!important;grid-template-rows:repeat(2,minmax(76px,auto))!important;overflow:visible!important;align-content:start!important}
+    #tab-resumo .mini-card{min-height:76px!important;height:auto!important;justify-content:center!important}
+    #tab-graficos .chart-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:7px}
+    #tab-graficos .chart-card{min-width:0;padding:8px!important}
+    #tab-graficos .chart-wrap,#tab-graficos .chart-wrap[style]{height:125px!important;max-height:125px!important}
+    #tab-graficos .chart-card h3{font-size:.72rem!important}
+    #tab-graficos .chart-note{display:none}
+    #tab-graficos .filter-card{padding:6px!important;margin-bottom:6px!important}
+    #tab-graficos .pill-btn{padding:7px!important;font-size:.7rem!important}
+    .tab-bar{background:rgba(242,248,255,.86)!important;backdrop-filter:blur(20px) saturate(1.45)!important}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -922,6 +946,7 @@
       </div>
     </section>
 
+<div class="shared-period" id="shared-period"><strong>▤ Período</strong></div>
 <section id="tab-resumo" class="tab-panel active">
       <div class="hero-card">
         <div class="hero-label" id="hero-label-resumo">Ganhos de hoje</div>
@@ -1163,6 +1188,10 @@
   </div>
 
   <script>
+    // O mesmo filtro de datas fica visível acima das três abas, sem duplicar campos.
+    const sharedPeriod = document.getElementById('shared-period');
+    const originalDateGrid = document.querySelector('#tab-entregas .date-grid');
+    if(sharedPeriod && originalDateGrid) sharedPeriod.appendChild(originalDateGrid);
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
     const todayISO = {{ hoje|tojson }};
@@ -1382,6 +1411,7 @@
       if(state.search) params.set('cliente', state.search);
       if(state.inicio) params.set('inicio', state.inicio);
       if(state.fim) params.set('fim', state.fim);
+      if(state.allDates) params.set('todas_datas', '1');
       return params;
     }
 
@@ -1446,14 +1476,14 @@
         if(state.search) url.searchParams.set('cliente',state.search); else url.searchParams.delete('cliente');
         if(state.inicio) url.searchParams.set('inicio',state.inicio); else url.searchParams.delete('inicio');
         if(state.fim) url.searchParams.set('fim',state.fim); else url.searchParams.delete('fim');
-        url.searchParams.delete('todas_datas');
+        if(state.allDates) url.searchParams.set('todas_datas','1'); else url.searchParams.delete('todas_datas');
         history.replaceState(null,'',url.toString());
       }catch(_){ }
     }
 
     async function loadDeliveries({useCache=true}={}){
       activateTab('tab-entregas');
-      ensureDateRangeDefaults();
+      if(!state.allDates) ensureDateRangeDefaults();
       syncFilterUrl();
       const params = filterParams();
       const cacheKey = params.toString();
@@ -1558,7 +1588,9 @@
     document.getElementById('card-pendencias').addEventListener('click', async () => {
       state.listFilter = 'pendente';
       state.search = (filtroCliente.value || '').trim();
-      ensureDateRangeDefaults();
+      state.inicio = ''; state.fim = ''; state.allDates = true;
+      if(filtroInicio) filtroInicio.value = '';
+      if(filtroFim) filtroFim.value = '';
       setFilter('pendente');
       await loadDeliveries();
     });
