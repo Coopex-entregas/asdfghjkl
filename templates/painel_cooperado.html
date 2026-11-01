@@ -1524,7 +1524,12 @@
         const filter = btn.dataset.filter || 'todas';
         state.listFilter = filter;
         state.search = (filtroCliente.value || '').trim();
-        ensureDateRangeDefaults();
+        if(filter === 'pendente'){
+          state.inicio = ''; state.fim = ''; state.allDates = true;
+          filtroInicio.value = ''; filtroFim.value = '';
+        } else {
+          state.allDates = false; ensureDateRangeDefaults();
+        }
         document.querySelectorAll('.segment-btn').forEach(x => x.classList.toggle('active', x === btn));
         await loadDeliveries();
       });
