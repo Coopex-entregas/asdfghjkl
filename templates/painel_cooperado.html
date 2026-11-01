@@ -1255,7 +1255,14 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     const dateGridShared = document.querySelector('#tab-entregas .date-grid');
     const sharedPeriodHost = document.getElementById('shared-period');
     if(dateGridShared && sharedPeriodHost) sharedPeriodHost.appendChild(dateGridShared);
-    document.getElementById('period-filter-btn')?.addEventListener('click',()=>document.getElementById('aplicar-filtros')?.click());
+    document.getElementById('period-filter-btn')?.addEventListener('click',async()=>{
+      state.inicio=document.getElementById('filtro-inicio')?.value||'';
+      state.fim=document.getElementById('filtro-fim')?.value||'';
+      state.allDates=false;
+      deliveryCache.clear();summaryCache.clear();chartCache.clear();
+      if(state.tab==='tab-entregas')await loadDeliveries({useCache:false});
+      else{await loadSummaryForCurrentFilters({useCache:false});if(state.tab==='tab-graficos')await buildCharts();}
+    });
     document.getElementById('pending-quick')?.addEventListener('click',()=>document.getElementById('card-pendencias')?.click());
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
