@@ -1021,6 +1021,53 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .tab-btn.active{border-radius:20px!important;box-shadow:0 5px 12px #3a89c76b,inset 0 3px white!important}
 @media(max-width:360px){.finance-line{grid-template-columns:33px minmax(0,1fr) minmax(54px,auto)!important;gap:5px!important}.hero-wallet{width:61px;right:9px}.top-metric{gap:5px}}
 
+
+/* Harmonização final das três abas - vidro azul COOPEX */
+.queue-before[hidden]{display:none!important}
+.queue-before{flex:0 0 auto;max-height:145px;overflow-y:auto;border:2px solid white;border-radius:18px;padding:9px 13px;background:linear-gradient(150deg,#fff,#cce7ff);box-shadow:0 7px 15px #347fbf55;font-size:.77rem;color:#13366d}
+.queue-before strong{display:block;margin-bottom:5px}.queue-before div{padding:4px 0;border-top:1px solid #b7d7f0}
+.app{gap:6px!important}
+#tab-resumo.active{gap:7px!important}
+#tab-resumo .hero-card{min-height:86px!important;padding:10px 14px!important}
+#tab-resumo .hero-label{font-size:.67rem!important;margin-bottom:3px!important}
+#tab-resumo .hero-value{font-size:clamp(1.65rem,7vw,2.3rem)!important;margin:0 0 4px!important}
+.hero-wallet{height:61px!important;width:68px!important;top:12px!important}
+.finance-detail{padding:8px 12px 3px!important}
+.finance-detail>h3{margin:0 0 4px!important}
+.finance-line{min-height:48px!important;padding:5px 0!important}
+.finance-line .copy small{font-size:.61rem!important}
+.financial-pending{min-height:56px!important;padding:7px 10px!important}
+#tab-graficos>.surface,#tab-entregas>.surface{background:linear-gradient(140deg,#fff,#cfe6ff)!important;border:2px solid white!important;box-shadow:0 7px 18px #357ebe55!important;border-radius:23px!important}
+#tab-graficos.active{overflow-y:auto!important}
+#tab-graficos .period-pills,#tab-graficos .year-pills{display:none!important}
+#tab-graficos .filter-card{display:none!important}
+#tab-graficos .chart-mode-buttons{display:flex!important;gap:5px!important;flex-wrap:wrap!important;overflow:visible!important;padding:4px 0 7px!important}
+#tab-graficos .chart-mode-buttons button{padding:7px 9px!important;font-size:.66rem!important;flex:1 1 auto!important;box-shadow:0 5px 10px #377eb15a,inset 0 2px #fff!important}
+#tab-graficos .chart-payments{margin:3px 0 7px!important;padding:8px!important;border-radius:20px!important}
+#tab-graficos .chart-payments .chart-wrap{height:135px!important;max-height:135px!important}
+#tab-graficos .chart-legend{gap:5px!important;font-size:.65rem!important;grid-template-columns:repeat(2,minmax(0,1fr))}
+#tab-graficos .chart-grid .chart-card{border:2px solid white!important;border-radius:18px!important;background:linear-gradient(145deg,#fff,#cce5ff)!important;box-shadow:0 5px 12px #367bb94d!important}
+#tab-graficos .chart-grid .chart-card:last-child{display:none!important}
+#tab-graficos .chart-wrap{height:105px!important;max-height:105px!important}
+#tab-graficos .chart-note{display:none!important}
+#tab-entregas .filter-card{background:linear-gradient(#fff,#d5e9ff)!important}
+#tab-entregas .search-box input{border:2px solid white!important;background:linear-gradient(#fff,#e1f0ff)!important;box-shadow:0 4px 9px #417ebc3d!important}
+#tab-entregas .delivery-card{padding:10px!important;margin-bottom:4px!important}
+#tab-entregas .delivery-top{gap:7px!important;margin-bottom:5px!important}
+#tab-entregas .delivery-meta{gap:5px!important;margin-bottom:4px!important;font-size:.7rem!important}
+#tab-entregas .delivery-client{font-size:.89rem!important}
+#tab-entregas .delivery-value{font-size:1rem!important}
+#tab-entregas .delivery-address,#tab-entregas .delivery-note{font-size:.72rem!important;margin-bottom:4px!important;overflow-wrap:anywhere}
+#tab-entregas .delivery-actions{gap:5px!important}
+#tab-entregas .action-btn{padding:7px 9px!important;font-size:.72rem!important;border-radius:14px!important}
+#tab-entregas .entrega-row[data-pagamento*="comanda"]{border-left:5px solid #1165ea!important}
+#tab-entregas .entrega-row[data-pagamento*="dinheiro"]{border-left:5px solid #f8a21a!important}
+#tab-entregas .entrega-row[data-pagamento*="credito"]{border-left:5px solid #8d58df!important}
+#tab-entregas .entrega-row[data-pagamento*="cooperativa"]{border-left:5px solid #1cae68!important}
+#tab-entregas .entrega-row[data-pagamento*="pix"]:not([data-pagamento*="cooperativa"]){border-left:5px solid #12b7d4!important}
+.shared-period input{color:#163875!important;-webkit-text-fill-color:#163875!important;opacity:1!important}
+@media(max-height:750px){.topbar{min-height:95px!important}.top-metric{min-height:45px}.shared-period{padding-top:6px!important;padding-bottom:7px!important}.shared-period>strong{margin-bottom:5px!important}.shared-period .field input{height:37px!important}.finance-line{min-height:42px!important}}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1037,7 +1084,14 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         <button class="icon-circle" type="button" title="Atualizar" onclick="window.location.reload()">↻</button>
         <button class="logout-btn" type="button" onclick="window.location.href='{{ url_for('logout') }}'">Sair</button>
       </div>
-      <div class="coopex-top-metrics"><button type="button" class="top-metric" id="header-entregas" aria-label="Ver entregas"><span class="top-metric-icon">♧</span><span><b id="header-deliveries-count">0</b><small>entregas</small></span></button><button type="button" class="top-metric" id="header-pendencias" aria-label="Ver pendências"><span class="top-metric-icon">!</span><span><b id="header-pending-count">0</b><small>pendências</small></span></button></div>
+      <div class="coopex-top-metrics"><button type="button" class="top-metric" id="header-entregas" aria-label="Ver entregas"><span class="top-metric-icon">♧</span><span><b id="header-deliveries-count">0</b><small>entregas</small></span></button><button type="button" class="top-metric" id="header-pendencias" aria-label="Ver quem está antes de mim na fila"><span class="top-metric-icon">!</span><span><b id="header-pending-count">{{ posicao_fila if posicao_fila else "—" }}</b><small>na fila</small></span></button></div>
+    </div>
+    <div class="queue-before" id="queue-before" hidden><strong>Quem está antes de você na fila</strong>
+      {% if posicao_fila %}
+        {% if fila_anteriores %}
+          {% for pessoa in fila_anteriores %}<div><b>{{ pessoa.posicao }}º</b> {{ pessoa.nome }}</div>{% endfor %}
+        {% else %}<div>Você é o primeiro da fila.</div>{% endif %}
+      {% else %}<div>Você ainda não está na fila.</div>{% endif %}
     </div>
 
         <section class="queue-position-card {{ 'in-queue' if posicao_fila else 'out-queue' }}" id="queue-position-card">
@@ -1231,7 +1285,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         </div>
 
         <div class="chart-mode-buttons" id="chart-mode-buttons"></div>
-        <div class="chart-payments"><h3>Formas de pagamento • Participação</h3><div class="chart-wrap"><canvas id="chartPaymentMix"></canvas></div><div class="chart-legend" id="chart-payment-legend"></div></div>
+        <div class="chart-payments"><h3>Entregas por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPaymentMix"></canvas></div><div class="chart-legend" id="chart-payment-legend"></div></div>
         <select id="chart-mode" style="display:none" class="chart-mode" aria-label="Forma de pagamento"><option value="todas">Todas juntas</option><option value="pix_cooperativa">Pix Cooperativa</option><option value="comanda">Comanda</option><option value="credito">Crédito</option><option value="auto_pix">Auto Pix</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select>
         <div class="chart-grid">
           <div class="chart-card">
@@ -1316,7 +1370,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       else{await loadSummaryForCurrentFilters({useCache:false});if(state.tab==='tab-graficos')await buildCharts();}
     });
     document.getElementById('pending-quick')?.addEventListener('click',()=>document.getElementById('card-pendencias')?.click());
-    document.getElementById('header-pendencias')?.addEventListener('click',()=>document.getElementById('card-pendencias')?.click());
+    document.getElementById('header-pendencias')?.addEventListener('click',()=>{const el=document.getElementById('queue-before');if(el)el.hidden=!el.hidden;});
     document.getElementById('header-entregas')?.addEventListener('click',()=>activateTab('tab-entregas'));
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
@@ -1443,7 +1497,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       document.getElementById('metric-paid').textContent=money(summary.totalPago);
       document.getElementById('metric-pending').textContent=money(summary.totalPendente);
       document.getElementById('header-deliveries-count').textContent=String(summary.qtdTotal);
-      document.getElementById('header-pending-count').textContent=String(summary.qtdPendente);
+      // A posição na fila não depende da quantidade de pendências.
       const normalizePayment = v=>String(v||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase();
       const eligible = (items||[]).reduce((n,e)=>{
         const p=normalizePayment(e.pagamento);
@@ -1695,8 +1749,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         state.listFilter = filter;
         state.search = (filtroCliente.value || '').trim();
         if(filter === 'pendente'){
-          state.inicio = ''; state.fim = ''; state.allDates = true;
-          filtroInicio.value = ''; filtroFim.value = '';
+          state.allDates = true;
         } else {
           state.allDates = false; ensureDateRangeDefaults();
         }
@@ -1744,8 +1797,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     document.getElementById('card-pendencias').addEventListener('click', async () => {
       state.listFilter = 'pendente';
       state.search = (filtroCliente.value || '').trim();
-      state.inicio='';state.fim='';state.allDates=true;
-      filtroInicio.value='';filtroFim.value='';
+      state.allDates=true;
       setFilter('pendente');
       await loadDeliveries();
     });
@@ -2055,14 +2107,14 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         const mode = document.getElementById('chart-mode')?.value || 'todas';
         const rawValues = mode === 'todas' ? data.valores : ((data.formas_pagamento || {})[mode] || []);
         const valores = (rawValues || []).map(Number);
-        const paymentItems=[['comanda','Comanda','#0b58db'],['auto_pix','Pix','#49b0f2'],['pix_cooperativa','Pix Cooperativa','#1b94c8'],['dinheiro','Dinheiro','#2cc3ad'],['credito','Crédito Auto','#7e81e7']];
-        const totals=paymentItems.map(x=>({key:x[0],label:x[1],color:x[2],value:((data.formas_pagamento||{})[x[0]]||[]).reduce((a,b)=>a+Number(b||0),0)}));
+        const paymentItems=[['comanda','Comanda','#1165ea'],['auto_pix','Pix','#12b7d4'],['pix_cooperativa','Pix Cooperativa','#1cae68'],['dinheiro','Dinheiro','#f8a21a'],['credito','Crédito Auto','#8d58df']];
+        const totals=paymentItems.map(x=>({key:x[0],label:x[1],color:x[2],value:((data.formas_pagamento||{})[x[0]]||[]).reduce((a,b)=>a+Number(b||0),0),count:Number((data.quantidades_por_forma||{})[x[0]]||0)}));
         const box=document.getElementById('chart-mode-buttons'),select=document.getElementById('chart-mode');
         if(box){box.innerHTML='';[['todas','Tudo junto'],...paymentItems.map(x=>[x[0],x[1]])].forEach(([key,label])=>{const btn=document.createElement('button');btn.type='button';btn.textContent=label;btn.classList.toggle('active',key===mode);btn.onclick=()=>{select.value=key;buildCharts();};box.appendChild(btn);});}
         const legend=document.getElementById('chart-payment-legend');
-        if(legend)legend.innerHTML=totals.map(x=>'<span><b style="color:'+x.color+'">●</b> '+x.label+': '+money(x.value)+'</span>').join('');
+        if(legend)legend.innerHTML=totals.map(x=>'<span><b style="color:'+x.color+'">●</b> '+x.label+': '+x.count+' entregas • '+money(x.value)+'</span>').join('');
         const mix=document.getElementById('chartPaymentMix');
-        if(mix)chartPaymentMix=new Chart(mix,{type:'doughnut',data:{labels:totals.map(x=>x.label),datasets:[{data:totals.map(x=>x.value),backgroundColor:totals.map(x=>x.color),borderColor:'#f6fcff',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'63%',plugins:{legend:{display:false}}}});
+        if(mix)chartPaymentMix=new Chart(mix,{type:'doughnut',data:{labels:totals.map(x=>x.label),datasets:[{data:totals.map(x=>x.count),backgroundColor:totals.map(x=>x.color),borderColor:'#f6fcff',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'63%',plugins:{legend:{display:false}}}});
         const quantidades = (data.quantidades || []).map(Number);
         const statusAgg = data.status || {pagas:0,pendentes:0};
         const totalValor = valores.reduce((sum,val)=>sum+Number(val||0),0);
