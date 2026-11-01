@@ -5548,6 +5548,65 @@ def api_cooperado_filtrar_entregas():
     )
 
 
+def _coopex_tipo_pagamento(value):
+    import unicodedata
+    raw = unicodedata.normalize('NFKD', str(value or '')).encode('ascii','ignore').decode().lower().replace('-', ' ').replace('_', ' ')
+    raw = ' '.join(raw.split())
+    if 'comanda' in raw: return 'comanda'
+    if 'cooperativa' in raw and 'pix' in raw: return 'pix_cooperativa'
+    if 'credito' in raw: return 'credito'
+    if 'auto' in raw and 'pix' in raw: return 'auto_pix'
+    if 'dinheiro' in raw: return 'dinheiro'
+    if 'pix' in raw: return 'auto_pix'
+    return 'outros'
+
+
+@app.post('/api/cooperado/entregas/lote')
+def api_cooperado_entregas_lote():
+    """Ação explícita com confirmação no cliente, somente entregas do cooperado logado."""
+    uid = session.get('user_id')
+    if not uid or session.get('is_admin'):
+        return jsonify(ok=False,error='Não autorizado'),403
+    data = request.get_json(silent=True) or {}
+    action = data.get('acao')
+    if action not in ('marcar_pago','marcar_entregue'):
+        return jsonify(ok=False,error='Ação inválida'),400
+    try:
+        ids = sorted(set(int(n) for n in (data.get('ids') or [])))
+    except (ValueError,TypeError):
+        return jsonify(ok=False,error='IDs inválidos'),400
+    if not ids or len(ids)>300:
+        return jsonify(ok=False,error='Selecione de 1 a 300 entregas por vez'),400
+    recibo = (data.get('recebido_por') or '').strip()
+    if action == 'marcar_entregue' and (len(recibo)<2 or len(recibo)>100):
+        return jsonify(ok=False,error='Informe o nome de quem recebeu as entregas; não é permitido confirmar sem comprovante'),400
+    entregas = Entrega.query.filter(Entrega.cooperado_id==int(uid),Entrega.id.in_(ids)).all()
+    if len(entregas)!=len(ids):
+        return jsonify(ok=False,error='Existe entrega sem autorização. Nenhum registro foi alterado.'),403
+    protected = set()
+    if action=='marcar_pago':
+        found = db.session.execute(db.text(
+          "SELECT entrega_id FROM sicoob_pix_cobranca WHERE entrega_id IN (" +
+          ",".join(str(n) for n in ids) + ") AND (status='PAGO' OR e2eid IS NOT NULL)"
+        )).all()
+        protected={int(row[0]) for row in found}
+    changed=[]
+    for e in entregas:
+        if action=='marcar_pago':
+            if e.id in protected: continue
+            if (e.status_pagamento or '').lower() != 'pago':
+                e.status_pagamento='pago';changed.append(e.id)
+        else:
+            if (e.status or '').lower() not in ('entregue','recebido'):
+                e.status='recebido';e.status_corrida='finalizada';e.recebido_por=recibo;changed.append(e.id)
+    try: db.session.commit()
+    except Exception:
+        db.session.rollback()
+        return jsonify(ok=False,error='Não foi possível concluir a operação'),500
+    return jsonify(ok=True,alteradas=changed,ignoradas=[n for n in ids if n not in changed])
+
+
+
 @app.get('/api/cooperado/graficos')
 def api_cooperado_graficos():
     user_id = session.get('user_id')
@@ -5560,6 +5619,47 @@ def api_cooperado_graficos():
         ano = int(request.args.get('ano') or datetime.now(BRAZIL_TZ).year)
     except Exception:
         ano = datetime.now(BRAZIL_TZ).year
+
+    # Filtro compartilhado: quando o cooperado define datas, os gráficos seguem o mesmo intervalo.
+    inicio_str = request.args.get('inicio')
+    fim_str = request.args.get('fim')
+    if inicio_str or fim_str:
+        try:
+            di = datetime.strptime(inicio_str or fim_str, '%Y-%m-%d').date()
+            df = datetime.strptime(fim_str or inicio_str, '%Y-%m-%d').date()
+            if di > df or (df-di).days > 3660:
+                return jsonify(ok=False,error='Período inválido'),400
+        except ValueError:
+            return jsonify(ok=False,error='Datas inválidas'),400
+        dt1,_ = local_date_window_to_utc_range(di)
+        _,dt2 = local_date_window_to_utc_range(df)
+        raw = Entrega.query.filter(Entrega.cooperado_id==user_id,Entrega.data_envio>=dt1,Entrega.data_envio<=dt2).with_entities(Entrega.data_envio,Entrega.pagamento,Entrega.valor,Entrega.status_pagamento).all()
+        monthly = (df-di).days > 62
+        keys=[]
+        if monthly:
+            year,month=di.year,di.month
+            while (year,month)<=(df.year,df.month):
+                keys.append('%04d-%02d'%(year,month))
+                month+=1
+                if month>12:year,month=year+1,1
+        else:
+            keys=[(di+timedelta(days=x)).isoformat() for x in range((df-di).days+1)]
+        indices={x:i for i,x in enumerate(keys)}
+        totals=[0.0]*len(keys); counts=[0]*len(keys)
+        categories={key:[0.0]*len(keys) for key in ('pix_cooperativa','comanda','credito','auto_pix','dinheiro','outros')}
+        paid=pending=0
+        for dt,pg,val,status in raw:
+            local=to_brasilia(dt).date()
+            key=local.strftime('%Y-%m') if monthly else local.isoformat()
+            idx=indices.get(key)
+            if idx is None:continue
+            amount=float(val or 0)
+            totals[idx]+=amount;counts[idx]+=1
+            categories[_coopex_tipo_pagamento(pg)][idx]+=amount
+            if (status or '').lower()=='pago':paid+=1
+            else:pending+=1
+        labels=[(key[5:7]+'/'+key[:4]) if monthly else key[8:10]+'/'+key[5:7] for key in keys]
+        return jsonify(ok=True,periodo='personalizado',ano=ano,labels=labels,valores=totals,quantidades=counts,formas_pagamento=categories,status={'pagas':paid,'pendentes':pending})
 
     ano_inicio, _ = local_date_window_to_utc_range(date(ano, 1, 1))
     _, ano_fim = local_date_window_to_utc_range(date(ano, 12, 31))
@@ -5634,13 +5734,27 @@ def api_cooperado_graficos():
         valores = [mapa[d]['valor'] for d in dias]
         quantidades = [mapa[d]['qtd'] for d in dias]
 
+    # Cinco formas de pagamento, agrupadas pelos mesmos períodos do gráfico.
+    # Outros valores permanecem visíveis para não desaparecerem do consolidado.
+    categories = {key:[0.0]*len(labels) for key in ('pix_cooperativa','comanda','credito','auto_pix','dinheiro','outros')}
+    chart_rows = base_ano.with_entities(Entrega.data_envio,Entrega.pagamento,Entrega.valor).all() if periodo!='ano' else Entrega.query.filter(Entrega.cooperado_id==user_id).with_entities(Entrega.data_envio,Entrega.pagamento,Entrega.valor).all()
+    months = {i: i-1 for i in range(1,13)}
+    for dt,payment,amount in chart_rows:
+        if dt is None: continue
+        local = to_brasilia(dt).date()
+        if periodo=='mes':
+            idx=months.get(local.month)
+        elif periodo=='ano':
+            lbl=str(local.year)
+            idx=labels.index(lbl) if lbl in labels else None
+        else:
+            idx=(local-inicio_local).days
+        if idx is not None and 0<=idx<len(labels):
+            categories[_coopex_tipo_pagamento(payment)][idx]+=float(amount or 0)
     return jsonify(
-        ok=True,
-        periodo=periodo,
-        ano=ano,
-        labels=labels,
-        valores=valores,
-        quantidades=quantidades,
+        ok=True,periodo=periodo,ano=ano,labels=labels,
+        valores=valores,quantidades=quantidades,
+        formas_pagamento=categories,
         status={'pagas': int(status_row[0] or 0), 'pendentes': int(status_row[1] or 0)},
     )
 
