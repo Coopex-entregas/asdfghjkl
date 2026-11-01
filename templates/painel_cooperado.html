@@ -1578,18 +1578,29 @@ body{background:linear-gradient(145deg,#f9fcff,#e8f3ff 65%,#f7fbff)!important}
         renderList();
       });
     }
+    async function sharedPeriodChanged(){
+      state.inicio=filtroInicio.value||'';
+      state.fim=filtroFim.value||'';
+      state.allDates=false;
+      summaryCache.clear();chartCache.clear();
+      if(state.tab==='tab-entregas') await loadDeliveries({useCache:false});
+      else {
+        await loadSummaryForCurrentFilters({useCache:false});
+        if(state.tab==='tab-graficos') await buildCharts();
+      }
+    }
     if (filtroInicio){
       filtroInicio.addEventListener('change', () => {
         state.inicio = filtroInicio.value || '';
         state.allDates = false;
-        renderList();
+        sharedPeriodChanged().catch(console.error);
       });
     }
     if (filtroFim){
       filtroFim.addEventListener('change', () => {
         state.fim = filtroFim.value || '';
         state.allDates = false;
-        renderList();
+        sharedPeriodChanged().catch(console.error);
       });
     }
 
@@ -1885,9 +1896,11 @@ body{background:linear-gradient(145deg,#f9fcff,#e8f3ff 65%,#f7fbff)!important}
     }
 
     async function fetchChartData(){
-      const key = `${state.chartPeriod}:${state.chartYear}`;
+      const key = `${state.chartPeriod}:${state.chartYear}:${state.inicio}:${state.fim}`;
       if(chartCache.has(key)) return chartCache.get(key);
       const params = new URLSearchParams({periodo:state.chartPeriod,ano:String(state.chartYear)});
+      if(state.inicio) params.set('inicio',state.inicio);
+      if(state.fim) params.set('fim',state.fim);
       const response = await fetch(`{{ url_for('api_cooperado_graficos') }}?${params.toString()}`, {headers:{'Accept':'application/json'},cache:'no-store'});
       const data = await response.json();
       if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível carregar os gráficos.');
