@@ -1092,6 +1092,15 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-entregas .delivery-card{background:linear-gradient(145deg,#fff,#cee8ff)!important;box-shadow:0 8px 18px #287fb252,inset 0 2px white!important}
 @media(max-height:800px){.finance-detail{padding:7px 10px 2px!important}#tab-resumo .finance-detail .finance-line{min-height:46px!important;padding:5px 0!important}.financial-pending{min-height:53px!important}.topbar{min-height:96px!important}}
 
+
+#tab-entregas .delivery-action-menu{width:100%;border:1px solid #b9d8f2;border-radius:14px;background:linear-gradient(#faffff,#d8edff);box-shadow:0 4px 10px #3176ad44,inset 0 2px white}
+#tab-entregas .delivery-action-menu summary{list-style:none;cursor:pointer;padding:10px 13px;font-weight:850;font-size:.82rem;color:#1556af;display:flex;justify-content:space-between;align-items:center}
+#tab-entregas .delivery-action-menu summary::-webkit-details-marker{display:none}
+#tab-entregas .delivery-action-menu summary::after{content:'⌄';font-size:1.3rem}
+#tab-entregas .delivery-action-menu[open] summary::after{content:'⌃'}
+#tab-entregas .delivery-action-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:2px 8px 9px}
+#tab-entregas .delivery-action-items .action-btn{min-width:0;white-space:normal;overflow-wrap:anywhere}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1744,7 +1753,22 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       return clientOk && startOk && endOk && statusOk;
     }
 
+    function compactDeliveryActions(){
+      document.querySelectorAll('#delivery-list .delivery-actions').forEach(host=>{
+        if(host.dataset.compactReady==='1')return;
+        host.dataset.compactReady='1';
+        const details=document.createElement('details');
+        details.className='delivery-action-menu';
+        const summary=document.createElement('summary');
+        summary.textContent='Ações da entrega';
+        const inside=document.createElement('div');
+        inside.className='delivery-action-items';
+        while(host.firstChild)inside.appendChild(host.firstChild);
+        details.appendChild(summary);details.appendChild(inside);host.appendChild(details);
+      });
+    }
     function renderList(){
+      compactDeliveryActions();
       let visibleCount = 0;
       deliveries.forEach(item => {
         const show = listMatches(item);
