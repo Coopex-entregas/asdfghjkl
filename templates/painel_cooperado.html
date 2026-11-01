@@ -1142,6 +1142,21 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-resumo .hero-pill[hidden]{display:none!important}
 #tab-resumo .hero-wallet{height:54px!important;width:60px!important;top:9px!important;right:13px!important}
 
+
+/* Escalas: acesso consistente às operações reais do Financeiro */
+.tab-bar{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.tab-bar .tab-btn{min-width:0!important}
+.tab-bar .tab-btn>span:first-child{font-size:1.15rem!important}
+.tab-bar .tab-btn>span:last-child{font-size:clamp(.62rem,2.7vw,.79rem)!important}
+#tab-escalas.active{overflow-y:auto!important;display:flex!important;flex-direction:column;gap:9px}
+.scale-portal-card{border:2px solid #fff;border-radius:23px;padding:15px;background:linear-gradient(140deg,#fff,#cee8ff);box-shadow:0 8px 19px #367fb65b,inset 0 2px white;display:flex;flex-direction:column;gap:13px}
+.scale-portal-card .section-head{display:flex;justify-content:space-between;gap:8px;align-items:center}
+.scale-portal-card h2{font-size:1rem;color:#14376e;margin:0}
+.scale-portal-card p{font-size:.84rem;color:#345477;margin:0}
+.scale-portal-links{display:grid;gap:11px}
+.scale-portal-links a{display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:2px solid white;border-radius:18px;background:linear-gradient(140deg,#fff,#bedfff);color:#0a55bd;font-size:.93rem;font-weight:850;min-height:56px;padding:12px;box-shadow:0 6px 12px #347fba66,inset 0 2px #fff}
+.scale-portal-hint{font-size:.73rem!important}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1236,6 +1251,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     <div class="surface tab-bar">
       <button type="button" class="tab-btn active" data-tab="tab-resumo"><span>⌂</span><span>Resumo</span></button>
       <button type="button" class="tab-btn" data-tab="tab-entregas"><span>☰</span><span>Entregas</span></button>
+      <button type="button" class="tab-btn" data-tab="tab-escalas"><span>▦</span><span>Escalas</span></button>
       <button type="button" class="tab-btn" data-tab="tab-graficos"><span>▤</span><span>Gráficos</span></button>
     </div>
 
@@ -1324,6 +1340,18 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         </div>
 
         <div class="empty-state" id="empty-deliveries">Nenhuma entrega encontrada com os filtros informados.</div>
+      </div>
+    </section>
+
+    <section id="tab-escalas" class="tab-panel">
+      <div class="scale-portal-card">
+        <div class="section-head"><h2>Minhas escalas e trocas</h2><span class="chip">Finanças COOPEX</span></div>
+        <p>As escalas e trocas são as mesmas do Financeiro, com suas regras e confirmações originais.</p>
+        <div class="scale-portal-links">
+          <a href="https://financas-dxsu.onrender.com/portal/cooperado?active_tab=escalas" target="_blank" rel="noopener noreferrer">▦ Ver minhas escalas <span>↗</span></a>
+          <a href="https://financas-dxsu.onrender.com/portal/cooperado?active_tab=trocas" target="_blank" rel="noopener noreferrer">⇄ Solicitar e acompanhar trocas <span>↗</span></a>
+        </div>
+        <p class="scale-portal-hint">O login do Finanças continua necessário. Nenhuma escala será duplicada neste painel.</p>
       </div>
     </section>
 
