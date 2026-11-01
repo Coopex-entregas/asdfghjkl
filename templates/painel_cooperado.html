@@ -1101,6 +1101,30 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-entregas .delivery-action-items{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:6px;padding:2px 8px 9px}
 #tab-entregas .delivery-action-items .action-btn{min-width:0;white-space:normal;overflow-wrap:anywhere}
 
+
+/* Filtros compactos, busca instantânea e chips com identidade por pagamento */
+#tab-entregas .filter-card{display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:8px!important;padding:8px!important}
+#tab-entregas .filter-card>.date-grid{display:none!important}
+#tab-entregas .filter-card>.search-box{grid-column:1!important;min-width:0!important;margin:0!important}
+#tab-entregas .search-box input{height:43px!important;font-size:.88rem!important;padding-left:32px!important}
+#tab-entregas .delivery-filter-inline{grid-column:2!important;min-width:0!important}
+#tab-entregas #filtro-status{width:100%;height:43px;border:2px solid #fff;border-radius:18px;color:#124896;font-weight:800;font-size:.87rem;padding:0 8px;background:linear-gradient(160deg,#fff,#cde6ff);box-shadow:0 5px 13px #3d83bb66,inset 0 2px #fff}
+#tab-entregas .filter-action-row[hidden]{display:none!important}
+#tab-entregas .delivery-card{border:2px solid #fff!important;border-radius:20px!important;box-shadow:0 8px 18px #2b80bb68,inset 0 2px #fff!important}
+#tab-entregas .delivery-meta{font-size:.79rem!important;line-height:1.4!important}
+#tab-entregas .delivery-meta span:last-child{padding:4px 8px;border-radius:13px;border:1px solid #fff;font-weight:900;font-size:.8rem;background:#d7edff;color:#0d59c5;box-shadow:0 3px 8px #327cb659}
+#tab-entregas .entrega-row[data-pagamento*="dinheiro"] .delivery-meta span:last-child{background:#fff0c7!important;color:#ad6500!important}
+#tab-entregas .entrega-row[data-pagamento*="credito"] .delivery-meta span:last-child{background:#ede0ff!important;color:#7136ba!important}
+#tab-entregas .entrega-row[data-pagamento*="cooperativa"] .delivery-meta span:last-child{background:#d2f9e4!important;color:#127a45!important}
+#tab-entregas .entrega-row[data-pagamento*="pix"]:not([data-pagamento*="cooperativa"]) .delivery-meta span:last-child{background:#cff8ff!important;color:#00819b!important}
+#tab-entregas .delivery-client{font-size:1rem!important}
+#tab-entregas .delivery-value{font-size:1.08rem!important}
+#tab-entregas .delivery-address{font-size:.82rem!important}
+#tab-entregas .delivery-action-menu{background:linear-gradient(135deg,#fff,#bce1ff)!important;border:2px solid #fff!important;box-shadow:0 5px 12px #297eba68,inset 0 2px #fff!important}
+#tab-entregas .delivery-action-menu summary{font-size:.9rem!important}
+.chart-selected-payment{font-size:.91rem;font-weight:900;text-align:center;color:#0b4cb0;margin:6px 0;min-height:24px}
+#tab-graficos .chart-legend{font-size:.81rem!important;line-height:1.4!important}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1200,7 +1224,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 
     <section id="tab-entregas" class="tab-panel">
       <div class="surface">
-        <div class="section-head">
+        <div class="section-head" hidden>
           <h2>Entregas</h2>
           <span id="list-count-chip" hidden>0 entrega(s)</span>
         </div>
@@ -1222,15 +1246,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
             </div>
           </div>
 
-          <div class="segmented">
-            <button type="button" class="segment-btn active" data-filter="todas">Todas</button>
-            <button type="button" class="segment-btn" data-filter="pendente">Pendentes</button>
-            <button type="button" class="segment-btn" data-filter="pago">Pagas</button>
-          </div>
-          <div class="filter-action-row">
-            <button type="button" class="action-btn primary" id="aplicar-filtros">Buscar entregas</button>
-            <button type="button" class="action-btn reset-date-btn" id="redefinir-data">Redefinir para hoje</button>
-          </div>
+          <div class="delivery-filter-inline"><select id="filtro-status" aria-label="Filtrar entregas"><option value="todas">Todas</option><option value="pendente">Pendentes</option><option value="pago">Pagas</option><option value="entregue">Entregues</option><option value="nao_entregue">Não entregues</option></select></div><div class="filter-action-row" hidden><button type="button" id="aplicar-filtros">Buscar entregas</button><button type="button" id="redefinir-data">Redefinir para hoje</button></div>
         </div>
 
         <div class="bulk-actions"><button type="button" id="bulk-paid">Marcar todas como pagas</button><button type="button" id="bulk-delivered">Marcar todas como entregues</button></div>
@@ -1311,7 +1327,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         </div>
 
         <div class="chart-mode-buttons" id="chart-mode-buttons" hidden></div>
-        <div class="chart-payments"><h3>Entregas por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPaymentMix"></canvas></div><div class="chart-legend" id="chart-payment-legend"></div></div>
+        <div class="chart-payments"><h3>Entregas por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPaymentMix"></canvas></div><div id="chart-selected-payment" class="chart-selected-payment">Toque no gráfico para ver quantidade e valor.</div><div class="chart-legend" id="chart-payment-legend"></div></div>
         <select id="chart-mode" style="display:none" class="chart-mode" aria-label="Forma de pagamento"><option value="todas">Todas juntas</option><option value="pix_cooperativa">Pix Cooperativa</option><option value="comanda">Comanda</option><option value="credito">Crédito</option><option value="auto_pix">Auto Pix</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select>
         <div class="chart-grid">
           <div class="chart-card">
@@ -1750,6 +1766,8 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       let statusOk = true;
       if (state.listFilter === 'pendente') statusOk = item.statusPagamento !== 'pago';
       if (state.listFilter === 'pago') statusOk = item.statusPagamento === 'pago';
+      if (state.listFilter === 'entregue') statusOk = item.statusEntrega === 'entregue';
+      if (state.listFilter === 'nao_entregue') statusOk = item.statusEntrega !== 'entregue';
       return clientOk && startOk && endOk && statusOk;
     }
 
@@ -1781,7 +1799,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 
     function setFilter(filterName){
       state.listFilter = filterName;
-      document.querySelectorAll('.segment-btn').forEach(btn => btn.classList.toggle('active', btn.dataset.filter === filterName));
+      const select=document.getElementById('filtro-status'); if(select)select.value=filterName;
       renderList();
     }
 
@@ -1800,14 +1818,18 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       });
     });
 
+    document.getElementById('filtro-status')?.addEventListener('change',async e=>{state.listFilter=e.target.value;state.allDates=e.target.value==='pendente';await loadDeliveries({useCache:false});});
     const filtroCliente = document.getElementById('filtro-cliente');
     const filtroInicio = document.getElementById('filtro-inicio');
     const filtroFim = document.getElementById('filtro-fim');
 
     if (filtroCliente){
+      let searchDebounce;
       filtroCliente.addEventListener('input', () => {
         state.search = filtroCliente.value || '';
         renderList();
+        clearTimeout(searchDebounce);
+        searchDebounce=setTimeout(()=>loadDeliveries({useCache:false}).catch(console.error),250);
       });
     }
     async function sharedPeriodChanged(){
@@ -2156,7 +2178,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         const legend=document.getElementById('chart-payment-legend');
         if(legend)legend.innerHTML=totals.map(x=>'<span><b style="color:'+x.color+'">●</b> '+x.label+': '+x.count+' entregas • '+money(x.value)+'</span>').join('');
         const mix=document.getElementById('chartPaymentMix');
-        if(mix)chartPaymentMix=new Chart(mix,{type:'doughnut',data:{labels:totals.map(x=>x.label),datasets:[{data:totals.map(x=>x.count),backgroundColor:totals.map(x=>x.color),borderColor:'#f6fcff',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'63%',plugins:{legend:{display:false}}}});
+        if(mix)chartPaymentMix=new Chart(mix,{type:'doughnut',data:{labels:totals.map(x=>x.label),datasets:[{data:totals.map(x=>x.count),backgroundColor:totals.map(x=>x.color),borderColor:'#f6fcff',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'63%',plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>{const x=totals[ctx.dataIndex];return x.label+': '+x.count+' entregas • '+money(x.value);}}},onClick:(_event,items)=>{if(!items.length)return;const x=totals[items[0].index];const el=document.getElementById('chart-selected-payment');if(el)el.textContent=x.label+' — '+x.count+' entregas — '+money(x.value);}}});
         const quantidades = (data.quantidades || []).map(Number);
         const statusAgg = data.status || {pagas:0,pendentes:0};
         const totalValor = valores.reduce((sum,val)=>sum+Number(val||0),0);
