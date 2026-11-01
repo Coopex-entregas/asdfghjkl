@@ -1125,6 +1125,15 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .chart-selected-payment{font-size:.91rem;font-weight:900;text-align:center;color:#0b4cb0;margin:6px 0;min-height:24px}
 #tab-graficos .chart-legend{font-size:.81rem!important;line-height:1.4!important}
 
+
+/* Resumo: utilizar altura disponível sem esconder campos ou criar cartões gigantes */
+#tab-resumo.active{justify-content:space-between!important;gap:8px!important}
+#tab-resumo .finance-detail{flex:1 0 auto;display:flex;flex-direction:column;justify-content:space-evenly}
+#tab-resumo .financial-pending{flex:0 0 auto}
+#tab-resumo .hero-card{flex:0 0 auto!important}
+#queue-before:not([hidden]){z-index:10}
+@media(max-height:730px){#tab-resumo.active{justify-content:flex-start!important}#tab-resumo .finance-detail{flex:0 0 auto}}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
