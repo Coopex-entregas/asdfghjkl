@@ -5512,6 +5512,7 @@ def painel_cooperado():
         app_token=(coop.app_token if coop else ''),
         posicao_fila=posicao_fila,
         total_fila=len(fila_itens),
+        fila_anteriores=[{'nome': (item.cooperado.nome if item.cooperado else item.nome), 'posicao': idx} for idx,item in enumerate(fila_itens,1) if posicao_fila and idx < posicao_fila],
     )
 
 
