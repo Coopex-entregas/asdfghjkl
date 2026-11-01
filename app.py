@@ -5648,6 +5648,7 @@ def api_cooperado_graficos():
         indices={x:i for i,x in enumerate(keys)}
         totals=[0.0]*len(keys); counts=[0]*len(keys)
         categories={key:[0.0]*len(keys) for key in ('pix_cooperativa','comanda','credito','auto_pix','dinheiro','outros')}
+        category_counts={key:0 for key in categories}
         paid=pending=0
         for dt,pg,val,status in raw:
             local=to_brasilia(dt).date()
@@ -5656,11 +5657,13 @@ def api_cooperado_graficos():
             if idx is None:continue
             amount=float(val or 0)
             totals[idx]+=amount;counts[idx]+=1
-            categories[_coopex_tipo_pagamento(pg)][idx]+=amount
+            payment_key=_coopex_tipo_pagamento(pg)
+            categories[payment_key][idx]+=amount
+            category_counts[payment_key]+=1
             if (status or '').lower()=='pago':paid+=1
             else:pending+=1
         labels=[(key[5:7]+'/'+key[:4]) if monthly else key[8:10]+'/'+key[5:7] for key in keys]
-        return jsonify(ok=True,periodo='personalizado',ano=ano,labels=labels,valores=totals,quantidades=counts,formas_pagamento=categories,status={'pagas':paid,'pendentes':pending})
+        return jsonify(ok=True,periodo='personalizado',ano=ano,labels=labels,valores=totals,quantidades=counts,formas_pagamento=categories,quantidades_por_forma=category_counts,status={'pagas':paid,'pendentes':pending})
 
     ano_inicio, _ = local_date_window_to_utc_range(date(ano, 1, 1))
     _, ano_fim = local_date_window_to_utc_range(date(ano, 12, 31))
@@ -5738,6 +5741,7 @@ def api_cooperado_graficos():
     # Cinco formas de pagamento, agrupadas pelos mesmos períodos do gráfico.
     # Outros valores permanecem visíveis para não desaparecerem do consolidado.
     categories = {key:[0.0]*len(labels) for key in ('pix_cooperativa','comanda','credito','auto_pix','dinheiro','outros')}
+    category_counts={key:0 for key in categories}
     chart_rows = base_ano.with_entities(Entrega.data_envio,Entrega.pagamento,Entrega.valor).all() if periodo!='ano' else Entrega.query.filter(Entrega.cooperado_id==user_id).with_entities(Entrega.data_envio,Entrega.pagamento,Entrega.valor).all()
     months = {i: i-1 for i in range(1,13)}
     for dt,payment,amount in chart_rows:
@@ -5751,11 +5755,14 @@ def api_cooperado_graficos():
         else:
             idx=(local-inicio_local).days
         if idx is not None and 0<=idx<len(labels):
-            categories[_coopex_tipo_pagamento(payment)][idx]+=float(amount or 0)
+            payment_key=_coopex_tipo_pagamento(payment)
+            categories[payment_key][idx]+=float(amount or 0)
+            category_counts[payment_key]+=1
     return jsonify(
         ok=True,periodo=periodo,ano=ano,labels=labels,
         valores=valores,quantidades=quantidades,
         formas_pagamento=categories,
+        quantidades_por_forma=category_counts,
         status={'pagas': int(status_row[0] or 0), 'pendentes': int(status_row[1] or 0)},
     )
 
