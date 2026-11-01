@@ -2178,7 +2178,25 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         const legend=document.getElementById('chart-payment-legend');
         if(legend)legend.innerHTML=totals.map(x=>'<span><b style="color:'+x.color+'">●</b> '+x.label+': '+x.count+' entregas • '+money(x.value)+'</span>').join('');
         const mix=document.getElementById('chartPaymentMix');
-        if(mix)chartPaymentMix=new Chart(mix,{type:'doughnut',data:{labels:totals.map(x=>x.label),datasets:[{data:totals.map(x=>x.count),backgroundColor:totals.map(x=>x.color),borderColor:'#f6fcff',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,animation:false,cutout:'63%',plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>{const x=totals[ctx.dataIndex];return x.label+': '+x.count+' entregas • '+money(x.value);}}},onClick:(_event,items)=>{if(!items.length)return;const x=totals[items[0].index];const el=document.getElementById('chart-selected-payment');if(el)el.textContent=x.label+' — '+x.count+' entregas — '+money(x.value);}}});
+        if(mix){
+          chartPaymentMix=new Chart(mix,{
+            type:'doughnut',
+            data:{labels:totals.map(x=>x.label),datasets:[{data:totals.map(x=>x.count),backgroundColor:totals.map(x=>x.color),borderColor:'#f6fcff',borderWidth:3}]},
+            options:{
+              responsive:true,maintainAspectRatio:false,animation:false,cutout:'63%',
+              plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=>{
+                const x=totals[ctx.dataIndex];
+                return x.label+': '+x.count+' entregas • '+money(x.value);
+              }}}},
+              onClick:(_event,items)=>{
+                if(!items.length)return;
+                const x=totals[items[0].index];
+                const el=document.getElementById('chart-selected-payment');
+                if(el)el.textContent=x.label+' — '+x.count+' entregas — '+money(x.value);
+              }
+            }
+          });
+        }
         const quantidades = (data.quantidades || []).map(Number);
         const statusAgg = data.status || {pagas:0,pendentes:0};
         const totalValor = valores.reduce((sum,val)=>sum+Number(val||0),0);
