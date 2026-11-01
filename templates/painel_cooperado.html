@@ -1068,6 +1068,30 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .shared-period input{color:#163875!important;-webkit-text-fill-color:#163875!important;opacity:1!important}
 @media(max-height:750px){.topbar{min-height:95px!important}.top-metric{min-height:45px}.shared-period{padding-top:6px!important;padding-bottom:7px!important}.shared-period>strong{margin-bottom:5px!important}.shared-period .field input{height:37px!important}.finance-line{min-height:42px!important}}
 
+
+/* COOPEX glass definitivo — remoção de redundâncias e ícones elevados */
+#tab-resumo .finance-detail .finance-line{min-height:53px!important;padding:7px 0!important}
+#tab-resumo .finance-detail .copy strong{font-size:clamp(.9rem,3.9vw,1.12rem)!important}
+#tab-resumo .finance-detail .copy small{font-size:clamp(.69rem,2.7vw,.8rem)!important}
+#tab-resumo .finance-detail .amount{font-size:clamp(.88rem,3.7vw,1.15rem)!important}
+.finance-action{width:100%;text-align:left;background:transparent;border:0;border-bottom:1px solid #afcfe7!important;cursor:pointer;grid-template-columns:40px minmax(0,1fr) auto 27px!important}
+.finance-arrow,.glass-arrow{display:grid;place-items:center;width:27px;height:27px;border-radius:50%;font-size:1.45rem;line-height:1;background:linear-gradient(150deg,#fff,#b9e1ff);border:2px solid white;color:#186edb;box-shadow:0 4px 8px #3c7fac6b,inset 0 2px white}
+.finance-ico,.pending-ico{box-shadow:0 5px 11px #2875ab66,inset 0 2px white!important;border:2px solid #fff!important}
+.finance-insurance{background:linear-gradient(145deg,#fff,#b5dbff)!important;color:#125bd0!important}
+.finance-net{background:linear-gradient(145deg,#fff,#8bc7ff)!important;color:#064cce!important}
+.finance-coopex-pill{box-shadow:0 4px 10px #3c82ba60,inset 0 2px #fff!important}
+.finance-action .amount{color:#0ba15a!important}
+#tab-graficos .chart-mode-buttons[hidden]{display:none!important}
+#tab-graficos .chart-payments{padding:13px!important}
+#tab-graficos .chart-payments .chart-wrap{height:clamp(145px,24vh,205px)!important;max-height:none!important}
+#tab-graficos .chart-legend{font-size:.77rem!important}
+#tab-graficos .chart-grid{display:none!important}
+#tab-entregas .section-head{margin-bottom:4px!important}
+#tab-entregas .delivery-actions{display:flex!important;flex-wrap:wrap!important;gap:5px!important}
+#tab-entregas .delivery-actions .action-btn{flex:1 1 auto}
+#tab-entregas .delivery-card{background:linear-gradient(145deg,#fff,#cee8ff)!important;box-shadow:0 8px 18px #287fb252,inset 0 2px white!important}
+@media(max-height:800px){.finance-detail{padding:7px 10px 2px!important}#tab-resumo .finance-detail .finance-line{min-height:46px!important;padding:5px 0!important}.financial-pending{min-height:53px!important}.topbar{min-height:96px!important}}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1094,13 +1118,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       {% else %}<div>Você ainda não está na fila.</div>{% endif %}
     </div>
 
-        <section class="queue-position-card {{ 'in-queue' if posicao_fila else 'out-queue' }}" id="queue-position-card">
-      <div class="queue-position-icon">{{ posicao_fila if posicao_fila else '—' }}</div>
-      <div>
-        <strong>{% if posicao_fila %}Você é o {{ posicao_fila }}º da fila{% else %}Você não está na fila{% endif %}</strong>
-        <span>{% if posicao_fila %}Há {{ total_fila }} cooperado(s) na fila de espera.{% else %}Quando entrar na fila, sua posição aparecerá aqui.{% endif %}</span>
-      </div>
-    </section>
+        
 
 <div class="shared-period" id="shared-period"><strong>▤ Período</strong><button type="button" id="period-filter-btn" class="period-filter-btn" aria-label="Filtrar período" title="Filtrar período"><svg viewBox="0 0 24 24" width="23" height="23" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18l-7 8v6l-4 2v-8z"/></svg></button></div>
 <section id="tab-resumo" class="tab-panel active">
@@ -1112,13 +1130,12 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       </div>
 
 <div class="finance-detail" id="finance-detail"><h3>DETALHAMENTO FINANCEIRO <span class="finance-coopex-pill">✓ COOPEX</span></h3>
-<div class="finance-line"><span class="finance-ico finance-positive">↑</span><span class="copy"><strong>Receita do período</strong><small>Todas as entregas registradas</small></span><span class="amount" id="gross-amount">R$ 0,00</span></div>
+<button type="button" class="finance-line finance-action" id="receipt-details"><span class="finance-ico finance-positive">↑</span><span class="copy"><strong>Receita</strong><small>Entregas do período selecionado</small></span><span class="amount" id="gross-amount">R$ 0,00</span><span class="finance-arrow">›</span></button>
 <div class="finance-line"><span class="finance-ico finance-insurance">♢</span><span class="copy"><strong>INSS (4%)</strong><small>Comanda, Pix Cooperativa e Crédito Auto</small></span><span class="amount" id="inss-amount">R$ 0,00</span></div>
 <div class="finance-line"><span class="finance-ico finance-insurance">♢</span><span class="copy"><strong>SEST/SENAT (0,5%)</strong><small>Somente modalidades aplicáveis</small></span><span class="amount" id="sest-amount">R$ 0,00</span></div>
-<div class="finance-line"><span class="finance-ico finance-net">▤</span><span class="copy"><strong>Valor líquido estimado</strong><small>Receita menos INSS e SEST/SENAT</small></span><span class="amount" id="net-amount">R$ 0,00</span></div>
-<div class="finance-line"><span class="finance-ico">✓</span><span class="copy"><strong>Entregas realizadas</strong><small>Quantidade no período</small></span><span class="amount" id="metric-deliveries">0</span></div>
-<div class="finance-line"><span class="finance-ico">↘</span><span class="copy"><strong>Total recebido</strong><small>Pagamentos confirmados</small></span><span class="amount" id="metric-paid">R$ 0,00</span></div></div>
-<button type="button" class="financial-pending" id="pending-quick"><span class="pending-ico">◷</span><span class="pending-copy"><b>Pendências</b><small>Entregas com pagamento pendente</small></span><span class="pending-value" id="metric-pending">R$ 0,00</span><span class="pending-chevron">›</span></button>
+<div class="finance-line"><span class="finance-ico finance-net">▤</span><span class="copy"><strong>Valor líquido</strong><small>Receita menos INSS e SEST/SENAT</small></span><span class="amount" id="net-amount">R$ 0,00</span></div>
+</div>
+<button type="button" class="financial-pending" id="pending-quick"><span class="pending-ico">◷</span><span class="pending-copy"><b>Pendências</b><small>Entregas com pagamento pendente</small></span><span class="pending-value" id="metric-pending">R$ 0,00</span><span class="pending-chevron glass-arrow">›</span></button>
       <div class="summary-grid">
         <div class="mini-card success">
           <div class="mini-top">
@@ -1176,7 +1193,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       <div class="surface">
         <div class="section-head">
           <h2>Entregas</h2>
-          <div class="chip" id="list-count-chip">0 entrega(s)</div>
+          <span id="list-count-chip" hidden>0 entrega(s)</span>
         </div>
 
         <div class="filter-card">
@@ -1272,7 +1289,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       <div class="surface">
         <div class="section-head">
           <h2>Gráficos</h2>
-          <div class="chip" id="chart-period-chip">Semanal</div>
+          <span id="chart-period-chip" hidden>Semanal</span>
         </div>
 
         <div class="filter-card" style="margin-bottom:14px">
@@ -1284,7 +1301,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
           <div class="year-pills" id="year-pills"></div>
         </div>
 
-        <div class="chart-mode-buttons" id="chart-mode-buttons"></div>
+        <div class="chart-mode-buttons" id="chart-mode-buttons" hidden></div>
         <div class="chart-payments"><h3>Entregas por forma de pagamento</h3><div class="chart-wrap"><canvas id="chartPaymentMix"></canvas></div><div class="chart-legend" id="chart-payment-legend"></div></div>
         <select id="chart-mode" style="display:none" class="chart-mode" aria-label="Forma de pagamento"><option value="todas">Todas juntas</option><option value="pix_cooperativa">Pix Cooperativa</option><option value="comanda">Comanda</option><option value="credito">Crédito</option><option value="auto_pix">Auto Pix</option><option value="dinheiro">Dinheiro</option><option value="outros">Outros</option></select>
         <div class="chart-grid">
@@ -1372,6 +1389,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     document.getElementById('pending-quick')?.addEventListener('click',()=>document.getElementById('card-pendencias')?.click());
     document.getElementById('header-pendencias')?.addEventListener('click',()=>{const el=document.getElementById('queue-before');if(el)el.hidden=!el.hidden;});
     document.getElementById('header-entregas')?.addEventListener('click',()=>activateTab('tab-entregas'));
+    document.getElementById('receipt-details')?.addEventListener('click',async()=>{state.listFilter='todas';state.allDates=false;state.search='';const search=document.getElementById('filtro-cliente');if(search)search.value='';await loadDeliveries({useCache:false});});
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
     const todayISO = {{ hoje|tojson }};
@@ -1493,8 +1511,8 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 
       document.getElementById('ganhos-hoje').textContent = money(summary.totalGeral);
       document.getElementById('gross-amount').textContent=money(summary.totalGeral);
-      document.getElementById('metric-deliveries').textContent=String(summary.qtdTotal);
-      document.getElementById('metric-paid').textContent=money(summary.totalPago);
+      // Quantidade já exibida no cabeçalho.
+      // Total recebido removido por redundância.
       document.getElementById('metric-pending').textContent=money(summary.totalPendente);
       document.getElementById('header-deliveries-count').textContent=String(summary.qtdTotal);
       // A posição na fila não depende da quantidade de pendências.
