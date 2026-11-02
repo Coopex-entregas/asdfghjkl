@@ -1195,6 +1195,19 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .tab-bar .tab-btn .menu-glass-icon i{font-size:1rem!important}
 .tab-bar .tab-btn>span:last-child{font-size:clamp(.59rem,2.45vw,.74rem)!important;font-weight:750!important;white-space:nowrap!important;line-height:1.15!important}
 
+
+/* Colunas financeiras idênticas: valores e setas perfeitamente alinhados */
+#tab-resumo .finance-detail .finance-line{display:grid!important;grid-template-columns:40px minmax(0,1fr) minmax(94px,25%) 32px!important;align-items:center!important;column-gap:7px!important;padding-left:0!important;padding-right:0!important}
+#tab-resumo .finance-detail .finance-line:not(.finance-action)::after{content:"";grid-column:4!important;grid-row:1!important;width:32px;height:32px;visibility:hidden}
+#tab-resumo .finance-detail .finance-line .finance-ico{grid-column:1!important;justify-self:center!important}
+#tab-resumo .finance-detail .finance-line .copy{grid-column:2!important;min-width:0!important}
+#tab-resumo .finance-detail .finance-line .amount{grid-column:3!important;justify-self:end!important;text-align:right!important;white-space:nowrap!important;font-size:clamp(.89rem,3.8vw,1.11rem)!important;font-weight:850!important;font-variant-numeric:tabular-nums!important}
+#tab-resumo .finance-detail .finance-action .finance-arrow{grid-column:4!important;grid-row:1!important;justify-self:center!important}
+#tab-resumo .financial-pending{grid-template-columns:40px minmax(0,1fr) minmax(94px,25%) 32px!important;column-gap:7px!important}
+#tab-resumo .financial-pending .pending-value{grid-column:3!important;justify-self:end!important;text-align:right!important;white-space:nowrap!important;font-size:clamp(.89rem,3.8vw,1.11rem)!important;font-weight:850!important;font-variant-numeric:tabular-nums!important}
+#tab-resumo .financial-pending .pending-chevron{grid-column:4!important;justify-self:center!important}
+#tab-resumo .finance-detail .finance-arrow,#tab-resumo .financial-pending .pending-chevron{width:29px!important;height:29px!important;font-size:1.4rem!important;box-sizing:border-box!important;border-radius:50%!important;line-height:1!important;display:grid!important;place-items:center!important;background:linear-gradient(145deg,#fff,#b9dcff)!important;border:2px solid white!important;box-shadow:0 4px 8px #2d77b76b,inset 0 2px white!important}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
