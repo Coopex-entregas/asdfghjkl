@@ -5516,6 +5516,26 @@ def painel_cooperado():
     )
 
 
+@app.get('/api/cooperado/fila/estado')
+def api_cooperado_fila_estado():
+    """Consulta leve da fila, exclusiva do cooperado autenticado."""
+    user_id = session.get('user_id')
+    if not user_id or session.get('is_admin'):
+        return jsonify(ok=False, erro='Não autorizado'), 403
+    itens = ListaEspera.query.order_by(
+        ListaEspera.pos.asc(), ListaEspera.created_at.asc(), ListaEspera.id.asc()
+    ).all()
+    posicao = next((i for i, item in enumerate(itens, 1)
+                    if item.cooperado_id and int(item.cooperado_id) == int(user_id)), None)
+    anteriores = []
+    if posicao:
+        anteriores = [{'posicao': i, 'nome': str((item.cooperado.nome if item.cooperado else item.nome) or '')}
+                      for i, item in enumerate(itens, 1) if i < posicao]
+    response = jsonify(ok=True, posicao=posicao, anteriores=anteriores)
+    response.headers['Cache-Control'] = 'no-store, private'
+    return response
+
+
 @app.get('/api/cooperado/entregas')
 def api_cooperado_filtrar_entregas():
     user_id = session.get('user_id')
