@@ -5516,6 +5516,31 @@ def painel_cooperado():
     )
 
 
+
+@app.get('/api/cooperado/financas/escalas')
+def api_cooperado_financas_escalas():
+    import os
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False,erro="Não autorizado"),403
+    coop=Cooperado.query.get(int(session['user_id']))
+    if coop is None or not coop.ativo:
+        return jsonify(ok=False,erro="Cooperado inativo"),403
+    peer=os.getenv("COOPEX_ESCALA_PEER_URL","").rstrip("/")
+    token=os.getenv("COOPEX_ESCALA_SYNC_TOKEN","")
+    if not peer or not token:
+        return jsonify(ok=False,erro="Integração com Finanças não configurada"),503
+    try:
+        import requests
+        resposta=requests.post(peer+"/integracao/portal-cooperado/escala",
+            json={"nome":coop.nome},headers={"Authorization":"Bearer "+token},
+            timeout=(3,12))
+        dados=resposta.json()
+        return jsonify(dados),resposta.status_code
+    except Exception:
+        app.logger.exception("Falha ao consultar escalas do Finanças")
+        return jsonify(ok=False,erro="Finanças temporariamente indisponível"),503
+
+
 @app.get('/api/cooperado/entregas')
 def api_cooperado_filtrar_entregas():
     user_id = session.get('user_id')
