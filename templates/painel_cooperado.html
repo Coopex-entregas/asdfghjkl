@@ -1157,6 +1157,17 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .scale-portal-links a{display:flex;align-items:center;justify-content:space-between;text-decoration:none;border:2px solid white;border-radius:18px;background:linear-gradient(140deg,#fff,#bedfff);color:#0a55bd;font-size:.93rem;font-weight:850;min-height:56px;padding:12px;box-shadow:0 6px 12px #347fba66,inset 0 2px #fff}
 .scale-portal-hint{font-size:.73rem!important}
 
+
+#tab-escalas .scale-portal-card{gap:10px!important}
+#tab-escalas .scale-portal-card h2{font-size:1rem;margin:7px 0 2px;color:#113977}
+.scale-glass-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
+.scale-glass-list{display:grid;gap:8px}
+.scale-glass-item{display:flex;flex-direction:column;gap:4px;padding:12px;border:2px solid #fff;border-radius:17px;background:linear-gradient(140deg,#fff,#cfebff);box-shadow:0 5px 12px #3e86b955,inset 0 2px white;color:#1a3e6f}
+.scale-glass-item strong{font-size:.92rem;overflow-wrap:anywhere}
+.scale-glass-item span{font-size:.82rem;overflow-wrap:anywhere}
+.scale-error{padding:11px;border-radius:13px;background:#fff1e9;color:#853918}
+.scale-error[hidden]{display:none}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1344,14 +1355,14 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     </section>
 
     <section id="tab-escalas" class="tab-panel">
-      <div class="scale-portal-card">
-        <div class="section-head"><h2>Minhas escalas e trocas</h2><span class="chip">Finanças COOPEX</span></div>
-        <p>As escalas e trocas são as mesmas do Financeiro, com suas regras e confirmações originais.</p>
-        <div class="scale-portal-links">
-          <a href="https://financas-dxsu.onrender.com/portal/cooperado?active_tab=escalas" target="_blank" rel="noopener noreferrer">▦ Ver minhas escalas <span>↗</span></a>
-          <a href="https://financas-dxsu.onrender.com/portal/cooperado?active_tab=trocas" target="_blank" rel="noopener noreferrer">⇄ Solicitar e acompanhar trocas <span>↗</span></a>
-        </div>
-        <p class="scale-portal-hint">O login do Finanças continua necessário. Nenhuma escala será duplicada neste painel.</p>
+      <div class="scale-portal-card" id="scale-financas">
+        <h2>Documentos</h2>
+        <div id="scale-documents" class="scale-glass-grid"><p>Consultando documentos do Finanças…</p></div>
+        <h2>Minhas escalas</h2>
+        <div id="scale-schedule" class="scale-glass-list"></div>
+        <h2>Trocas de escala</h2>
+        <div id="scale-swaps" class="scale-glass-list"></div>
+        <div id="scale-error" role="status" class="scale-error" hidden></div>
       </div>
     </section>
 
@@ -1460,6 +1471,37 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     document.getElementById('header-pendencias')?.addEventListener('click',()=>{const el=document.getElementById('queue-before');if(el)el.hidden=!el.hidden;});
     document.getElementById('header-entregas')?.addEventListener('click',()=>activateTab('tab-entregas'));
     document.getElementById('receipt-details')?.addEventListener('click',async()=>{state.listFilter='todas';state.allDates=false;state.search='';const search=document.getElementById('filtro-cliente');if(search)search.value='';await loadDeliveries({useCache:false});});
+
+    let financeScaleLoaded=false;
+    async function loadFinancasScale(){
+      const root=document.getElementById('scale-financas');
+      if(!root)return;
+      const docs=document.getElementById('scale-documents'),schedule=document.getElementById('scale-schedule'),swaps=document.getElementById('scale-swaps'),err=document.getElementById('scale-error');
+      err.hidden=true;
+      try{
+        const res=await fetch('/api/cooperado/financas/escalas',{credentials:'same-origin',cache:'no-store'});
+        const data=await res.json();
+        if(!res.ok||!data.ok)throw new Error(data.erro||'Não foi possível carregar');
+        const card=(parent,label,parts)=>{
+          const e=document.createElement('div');e.className='scale-glass-item';
+          const h=document.createElement('strong');h.textContent=label;e.appendChild(h);
+          parts.forEach(v=>{const p=document.createElement('span');p.textContent=String(v||'');e.appendChild(p);});
+          parent.appendChild(e);
+        };
+        docs.replaceChildren();schedule.replaceChildren();swaps.replaceChildren();
+        for(const [kind,label] of [['cnh','CNH'],['crlv','Documento da moto']]){
+          const d=(data.documentos||{})[kind]||{};
+          card(docs,label,[d.status||'Não enviado',d.vencimento?'Validade: '+d.vencimento:'Sem validade informada']);
+        }
+        (data.escalas||[]).forEach(e=>card(schedule,e.estabelecimento||'Estabelecimento não informado',[e.data,e.turno,e.horario]));
+        if(!(data.escalas||[]).length)card(schedule,'Nenhuma escala encontrada',['Consulte a escala da semana no Finanças.']);
+        (data.trocas||[]).forEach(t=>card(swaps,'Troca '+t.id,[t.recebida?'Recebida de '+t.solicitante:'Enviada para '+t.destinatario,'Situação: '+t.status]));
+        if(!(data.trocas||[]).length)card(swaps,'Nenhuma troca registrada',['As trocas aparecerão nesta área.']);
+        financeScaleLoaded=true;
+      }catch(e){err.textContent=e.message;err.hidden=false;}
+    }
+    document.querySelector('[data-tab="tab-escalas"]')?.addEventListener('click',()=>{loadFinancasScale();});
+
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
     const todayISO = {{ hoje|tojson }};
