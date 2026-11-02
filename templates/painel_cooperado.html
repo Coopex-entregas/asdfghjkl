@@ -1228,6 +1228,16 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
   #tab-resumo .finance-detail .finance-line .copy small{font-size:clamp(.7rem,2.75vw,.83rem)!important}
 }
 
+
+/* Resumo sem título redundante: manter Pendências inteiramente acima do menu */
+#tab-resumo .finance-detail{padding-top:7px!important;padding-bottom:7px!important}
+#tab-resumo .finance-detail .finance-line{min-height:53px!important;padding-top:5px!important;padding-bottom:5px!important}
+#tab-resumo .finance-detail .finance-line .copy strong{font-size:clamp(.98rem,3.8vw,1.14rem)!important}
+#tab-resumo .finance-detail .finance-line .copy small{font-size:clamp(.73rem,2.8vw,.86rem)!important}
+#tab-resumo .finance-detail .finance-line .amount{font-size:clamp(1rem,3.9vw,1.17rem)!important}
+#tab-resumo .financial-pending{min-height:60px!important;padding-top:6px!important;padding-bottom:6px!important}
+#tab-resumo.active{gap:7px!important}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -1266,7 +1276,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         <div class="hero-pill" hidden>💰 <span id="ganhos-hoje-sub"></span></div>
       </div>
 
-<div class="finance-detail" id="finance-detail"><h3>DETALHAMENTO FINANCEIRO <span class="finance-coopex-pill">✓ COOPEX</span></h3>
+<div class="finance-detail" id="finance-detail">
 <button type="button" class="finance-line finance-action" id="receipt-details"><span class="finance-ico finance-positive">↑</span><span class="copy"><strong>Receita</strong><small>Entregas do período selecionado</small></span><span class="amount" id="gross-amount">R$ 0,00</span><span class="finance-arrow">›</span></button>
 <div class="finance-line"><span class="finance-ico finance-insurance"><i class="bi bi-shield"></i></span><span class="copy"><strong>INSS (4%)</strong><small>Comanda, Pix Cooperativa e Crédito Auto</small></span><span class="amount" id="inss-amount">R$ 0,00</span></div>
 <div class="finance-line"><span class="finance-ico finance-insurance"><i class="bi bi-shield"></i></span><span class="copy"><strong>SEST/SENAT (0,5%)</strong><small>Somente modalidades aplicáveis</small></span><span class="amount" id="sest-amount">R$ 0,00</span></div>
