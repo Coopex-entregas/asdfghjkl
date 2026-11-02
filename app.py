@@ -5541,6 +5541,34 @@ def api_cooperado_financas_escalas():
         return jsonify(ok=False,erro="Finanças temporariamente indisponível"),503
 
 
+
+@app.post('/api/cooperado/financas/trocas/acao')
+def api_cooperado_financas_troca_acao():
+    import os
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False,erro='Não autorizado'),403
+    coop=Cooperado.query.get(int(session['user_id']))
+    if not coop or not coop.ativo:
+        return jsonify(ok=False,erro='Cooperado inativo'),403
+    data=request.get_json(silent=True) or {}
+    acao=data.get('acao')
+    if acao not in ('solicitar','aceitar','recusar'):
+        return jsonify(ok=False,erro='Ação não permitida'),400
+    peer=os.getenv('COOPEX_ESCALA_PEER_URL','').rstrip('/')
+    token=os.getenv('COOPEX_ESCALA_SYNC_TOKEN','')
+    if not peer or not token:return jsonify(ok=False,erro='Integração não configurada'),503
+    payload={k:data.get(k) for k in ('acao','from_escala_id','to_cooperado_id','destino_escala_id','troca_id','mensagem')}
+    payload['nome']=coop.nome
+    try:
+        import requests
+        resposta=requests.post(peer+'/integracao/portal-cooperado/acao',json=payload,
+            headers={'Authorization':'Bearer '+token},timeout=(3,20))
+        return jsonify(resposta.json()),resposta.status_code
+    except Exception:
+        app.logger.exception('Falha na ação de troca do Finanças')
+        return jsonify(ok=False,erro='Não foi possível confirmar a troca no Finanças'),503
+
+
 @app.get('/api/cooperado/entregas')
 def api_cooperado_filtrar_entregas():
     user_id = session.get('user_id')
