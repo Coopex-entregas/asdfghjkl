@@ -2577,6 +2577,48 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       }
     }
 
+    // Atualização discreta da fila: apenas com painel visível, sem recarregar.
+    let filaRequestBusy=false;
+    async function atualizarFilaCooperado(){
+      if(document.hidden || filaRequestBusy)return;
+      filaRequestBusy=true;
+      try{
+        const response=await fetch('/api/cooperado/fila/estado',{
+          credentials:'same-origin',cache:'no-store',headers:{'Accept':'application/json'}
+        });
+        if(!response.ok)return;
+        const dados=await response.json();
+        if(!dados.ok)return;
+        const pos=document.getElementById('header-pending-count');
+        if(pos)pos.textContent=dados.posicao==null?'—':String(dados.posicao);
+        const lista=document.getElementById('queue-before');
+        if(!lista)return;
+        const heading=document.createElement('strong');
+        heading.textContent='Quem está antes de você na fila';
+        const content=document.createDocumentFragment();
+        content.appendChild(heading);
+        if(dados.posicao==null){
+          const p=document.createElement('div');p.textContent='Você ainda não está na fila.';content.appendChild(p);
+        }else if(!dados.anteriores?.length){
+          const p=document.createElement('div');p.textContent='Você é o primeiro da fila.';content.appendChild(p);
+        }else{
+          dados.anteriores.forEach(pessoa=>{
+            const linha=document.createElement('div');
+            const numero=document.createElement('b');
+            numero.textContent=String(pessoa.posicao)+'º ';
+            const nome=document.createElement('strong');
+            nome.className='queue-person-name';nome.textContent=pessoa.nome||'Cooperado';
+            linha.append(numero,nome);content.appendChild(linha);
+          });
+        }
+        lista.replaceChildren(content);
+      }catch(error){console.debug('Fila não atualizada nesta consulta');}
+      finally{filaRequestBusy=false;}
+    }
+    document.addEventListener('visibilitychange',()=>{
+      if(!document.hidden)atualizarFilaCooperado();
+    });
+    window.addEventListener('focus',atualizarFilaCooperado);
     document.addEventListener('DOMContentLoaded', () => {
       ensureDateRangeDefaults();
       activateTab(initialTab);
@@ -2584,6 +2626,8 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       renderList();
       loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
       requestAnimationFrame(()=>document.body.classList.add('ready'));
+      atualizarFilaCooperado();
+      setInterval(atualizarFilaCooperado, 12000);
       setTimeout(() => {
         requireLocation();
         fetchGpsStatus();
