@@ -1525,6 +1525,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     </div>
   </div>
 
+  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
   <script>
     // Um só filtro de período no topo das três telas.
     const dateGridShared = document.querySelector('#tab-entregas .date-grid');
@@ -2578,47 +2579,51 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     }
 
     // Atualização discreta da fila: apenas com painel visível, sem recarregar.
-    let filaRequestBusy=false;
-    async function atualizarFilaCooperado(){
-      if(document.hidden || filaRequestBusy)return;
-      filaRequestBusy=true;
-      try{
-        const response=await fetch('/api/cooperado/fila/estado',{
-          credentials:'same-origin',cache:'no-store',headers:{'Accept':'application/json'}
+    // Eventos emitidos pelo próprio sistema quando a fila muda (sem polling).
+    const filaCooperadoId=Number({{ cooperado_id|tojson }});
+    function atualizarFilaPorEvento(payload){
+      const itens=Array.isArray(payload?.itens)?payload.itens:null;
+      if(!itens)return;
+      const indice=itens.findIndex(item=>Number(item.cooperado_id)===filaCooperadoId);
+      const posicao=indice<0?null:indice+1;
+      const badge=document.getElementById('header-pending-count');
+      if(badge)badge.textContent=posicao===null?'—':String(posicao);
+      const container=document.getElementById('queue-before');
+      if(!container)return;
+      const children=document.createDocumentFragment();
+      const titulo=document.createElement('strong');titulo.textContent='Quem está antes de você na fila';
+      children.appendChild(titulo);
+      if(posicao===null){
+        const row=document.createElement('div');row.textContent='Você ainda não está na fila.';children.appendChild(row);
+      }else if(indice===0){
+        const row=document.createElement('div');row.textContent='Você é o primeiro da fila.';children.appendChild(row);
+      }else{
+        itens.slice(0,indice).forEach((item,i)=>{
+          const row=document.createElement('div'),numero=document.createElement('b'),nome=document.createElement('strong');
+          numero.textContent=String(i+1)+'º ';nome.className='queue-person-name';nome.textContent=String(item.nome||'Cooperado');
+          row.append(numero,nome);children.appendChild(row);
         });
-        if(!response.ok)return;
-        const dados=await response.json();
-        if(!dados.ok)return;
-        const pos=document.getElementById('header-pending-count');
-        if(pos)pos.textContent=dados.posicao==null?'—':String(dados.posicao);
-        const lista=document.getElementById('queue-before');
-        if(!lista)return;
-        const heading=document.createElement('strong');
-        heading.textContent='Quem está antes de você na fila';
-        const content=document.createDocumentFragment();
-        content.appendChild(heading);
-        if(dados.posicao==null){
-          const p=document.createElement('div');p.textContent='Você ainda não está na fila.';content.appendChild(p);
-        }else if(!dados.anteriores?.length){
-          const p=document.createElement('div');p.textContent='Você é o primeiro da fila.';content.appendChild(p);
-        }else{
-          dados.anteriores.forEach(pessoa=>{
-            const linha=document.createElement('div');
-            const numero=document.createElement('b');
-            numero.textContent=String(pessoa.posicao)+'º ';
-            const nome=document.createElement('strong');
-            nome.className='queue-person-name';nome.textContent=pessoa.nome||'Cooperado';
-            linha.append(numero,nome);content.appendChild(linha);
-          });
-        }
-        lista.replaceChildren(content);
-      }catch(error){console.debug('Fila não atualizada nesta consulta');}
-      finally{filaRequestBusy=false;}
+      }
+      container.replaceChildren(children);
     }
-    document.addEventListener('visibilitychange',()=>{
-      if(!document.hidden)atualizarFilaCooperado();
-    });
-    window.addEventListener('focus',atualizarFilaCooperado);
+    function conectarEventosFila(){
+      if(typeof io!=='function')return;
+      const socket=io({transports:['websocket','polling'],reconnection:true});
+      socket.on('fila_espera_atualizada',atualizarFilaPorEvento);
+      // Uma consulta somente na reconexão, para recuperar eventos perdidos.
+      socket.on('connect',async()=>{
+        try{
+          const response=await fetch('/api/cooperado/fila/estado',{credentials:'same-origin',cache:'no-store'});
+          if(!response.ok)return;
+          const data=await response.json();
+          if(!data.ok)return;
+          const itens=[];
+          (data.anteriores||[]).forEach(p=>itens.push({cooperado_id:null,nome:p.nome}));
+          if(data.posicao!=null)itens.push({cooperado_id:filaCooperadoId,nome:''});
+          atualizarFilaPorEvento({itens});
+        }catch(_){}
+      });
+    }
     document.addEventListener('DOMContentLoaded', () => {
       ensureDateRangeDefaults();
       activateTab(initialTab);
@@ -2626,8 +2631,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       renderList();
       loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
       requestAnimationFrame(()=>document.body.classList.add('ready'));
-      atualizarFilaCooperado();
-      setInterval(atualizarFilaCooperado, 12000);
+      conectarEventosFila();
       setTimeout(() => {
         requireLocation();
         fetchGpsStatus();
