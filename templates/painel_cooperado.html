@@ -2608,7 +2608,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     }
     function conectarEventosFila(){
       if(typeof io!=='function')return;
-      const socket=io({transports:['websocket','polling'],reconnection:true});
+      const socket=io({transports:['websocket'],reconnection:true});
       socket.on('fila_espera_atualizada',atualizarFilaPorEvento);
       // Uma consulta somente na reconexão, para recuperar eventos perdidos.
       socket.on('connect',async()=>{
