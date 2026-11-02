@@ -5569,6 +5569,44 @@ def api_cooperado_financas_troca_acao():
         return jsonify(ok=False,erro='Não foi possível confirmar a troca no Finanças'),503
 
 
+
+@app.route('/api/cooperado/financas/documento',methods=['GET','POST'])
+def api_cooperado_financas_documento():
+    import os
+    from flask import Response
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(ok=False,erro='Não autorizado'),403
+    coop=Cooperado.query.get(int(session['user_id']))
+    if not coop or not coop.ativo:return jsonify(ok=False,erro='Cooperado inativo'),403
+    token=os.getenv('COOPEX_ESCALA_SYNC_TOKEN','')
+    peer=os.getenv('COOPEX_ESCALA_PEER_URL','').rstrip('/')
+    if not token or not peer:return jsonify(ok=False,erro='Integração não configurada'),503
+    tipo=(request.values.get('tipo') or '').lower()
+    if tipo not in ('cnh','crlv'):return jsonify(ok=False,erro='Tipo inválido'),400
+    acao='baixar' if request.method=='GET' else 'enviar'
+    payload={'nome':coop.nome,'tipo':tipo,'acao':acao}
+    arquivo=request.files.get('documento') if acao=='enviar' else None
+    files=None
+    if acao=='enviar':
+        if not arquivo or not arquivo.filename:return jsonify(ok=False,erro='Selecione o arquivo'),400
+        conteudo=arquivo.read(5*1024*1024+1)
+        if not conteudo or len(conteudo)>5*1024*1024:
+            return jsonify(ok=False,erro='Máximo de 5 MB'),400
+        files={'documento':(arquivo.filename,conteudo,arquivo.mimetype or 'application/octet-stream')}
+    try:
+        import requests
+        resposta=requests.post(peer+'/integracao/portal-cooperado/documento',data=payload,files=files,
+            headers={'Authorization':'Bearer '+token},timeout=(3,25))
+        if acao=='baixar' and resposta.ok:
+            return Response(resposta.content,status=200,mimetype=resposta.headers.get('Content-Type','application/pdf'),
+                headers={'Content-Disposition':'attachment; filename="COOPEX_%s.pdf"'%tipo.upper(),
+                         'Cache-Control':'no-store'})
+        return jsonify(resposta.json()),resposta.status_code
+    except Exception:
+        app.logger.exception('Documento indisponível no Finanças')
+        return jsonify(ok=False,erro='Não foi possível acessar o documento'),503
+
+
 @app.get('/api/cooperado/entregas')
 def api_cooperado_filtrar_entregas():
     user_id = session.get('user_id')
