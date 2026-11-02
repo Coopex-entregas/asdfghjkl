@@ -1176,6 +1176,13 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .scale-swap-buttons{display:flex;gap:9px;margin-top:7px}
 .scale-swap-buttons button{flex:1}
 
+
+#tab-escalas details.scale-glass-item>summary{font-size:.95rem;font-weight:850;color:#114780;cursor:pointer;list-style:none}
+#tab-escalas details.scale-glass-item[open]{box-shadow:0 7px 14px #2e7bb65e}
+#tab-escalas .scale-doc-upload{display:grid;gap:7px;margin-top:8px}
+#tab-escalas .scale-doc-upload input{width:100%;font-size:.77rem}
+#tab-escalas .scale-doc-upload button,#tab-escalas .scale-doc-button{display:block;padding:10px;border:2px solid white;border-radius:13px;background:linear-gradient(140deg,#fff,#bbdcff);color:#1156bd;font-weight:850;text-decoration:none;box-shadow:0 4px 9px #3b7fa755}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1506,7 +1513,29 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         docs.replaceChildren();schedule.replaceChildren();swaps.replaceChildren();
         for(const [kind,label] of [['cnh','CNH'],['crlv','Documento da moto']]){
           const d=(data.documentos||{})[kind]||{};
-          card(docs,label,[d.status||'Não enviado',d.vencimento?'Validade: '+d.vencimento:'Sem validade informada']);
+          const detail=document.createElement('details');detail.className='scale-glass-item';
+          const heading=document.createElement('summary');heading.textContent=label+' — '+(d.status||'Não enviado');
+          detail.appendChild(heading);
+          const validity=document.createElement('span');validity.textContent=d.vencimento?'Validade: '+d.vencimento:'Sem validade informada';detail.appendChild(validity);
+          if(d.disponivel){const download=document.createElement('a');download.textContent='Baixar meu documento';download.href='/api/cooperado/financas/documento?tipo='+kind;download.className='scale-doc-button';detail.appendChild(download);}
+          const form=document.createElement('form');form.className='scale-doc-upload';
+          const input=document.createElement('input');input.type='file';input.accept='application/pdf,image/jpeg,image/png';input.required=true;
+          const button=document.createElement('button');button.type='submit';button.textContent='Enviar / substituir documento';
+          form.append(input,button);
+          form.addEventListener('submit',async event=>{
+            event.preventDefault();
+            if(!input.files?.length)return;
+            button.disabled=true;
+            try{
+              const body=new FormData();body.append('tipo',kind);body.append('documento',input.files[0]);
+              const response=await fetch('/api/cooperado/financas/documento',{method:'POST',credentials:'same-origin',body});
+              const result=await response.json();
+              if(!response.ok||!result.ok)throw new Error(result.erro||'Falha ao enviar documento');
+              alert(result.mensagem||'Documento recebido para conferência');await loadFinancasScale();
+            }catch(err){alert(err.message);}
+            finally{button.disabled=false;}
+          });
+          detail.appendChild(form);docs.appendChild(detail);
         }
         (data.escalas||[]).forEach(e=>card(schedule,e.estabelecimento||'Estabelecimento não informado',[e.data,e.turno,e.horario]));
         const source=document.getElementById('financas-from-scale');
