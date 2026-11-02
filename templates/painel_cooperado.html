@@ -1168,6 +1168,14 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .scale-error{padding:11px;border-radius:13px;background:#fff1e9;color:#853918}
 .scale-error[hidden]{display:none}
 
+
+#financas-swap-form{display:grid;gap:10px}
+#financas-swap-form label{display:grid;gap:5px;font-weight:750;font-size:.79rem;color:#164379}
+#financas-swap-form input,#financas-swap-form select{width:100%;min-width:0;padding:10px;border:2px solid white;border-radius:13px;background:#f7fcff;color:#123d77}
+.scale-glass-submit,.scale-swap-buttons button{border:2px solid white;border-radius:14px;padding:10px;background:linear-gradient(145deg,#48b9ff,#0b65d9);color:white;font-weight:850;box-shadow:0 5px 11px #337cae77}
+.scale-swap-buttons{display:flex;gap:9px;margin-top:7px}
+.scale-swap-buttons button{flex:1}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
@@ -1360,6 +1368,13 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         <div id="scale-documents" class="scale-glass-grid"><p>Consultando documentos do Finanças…</p></div>
         <h2>Minhas escalas</h2>
         <div id="scale-schedule" class="scale-glass-list"></div>
+        <h2>Solicitar troca</h2>
+        <form id="financas-swap-form" class="scale-glass-item">
+          <label>Minha escala <select id="financas-from-scale" required></select></label>
+          <label>Cooperado de destino <select id="financas-target" required></select></label>
+          <label>Mensagem (opcional) <input id="financas-message" maxlength="500" placeholder="Motivo da troca"></label>
+          <button class="scale-glass-submit" type="submit">Solicitar troca</button>
+        </form>
         <h2>Trocas de escala</h2>
         <div id="scale-swaps" class="scale-glass-list"></div>
         <div id="scale-error" role="status" class="scale-error" hidden></div>
@@ -1494,13 +1509,64 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
           card(docs,label,[d.status||'Não enviado',d.vencimento?'Validade: '+d.vencimento:'Sem validade informada']);
         }
         (data.escalas||[]).forEach(e=>card(schedule,e.estabelecimento||'Estabelecimento não informado',[e.data,e.turno,e.horario]));
+        const source=document.getElementById('financas-from-scale');
+        const dest=document.getElementById('financas-target');
+        source.replaceChildren();dest.replaceChildren();
+        for(const e of (data.escalas||[])){
+          const opt=document.createElement('option');opt.value=e.id;
+          opt.textContent=[e.data,e.turno,e.horario,e.estabelecimento].filter(Boolean).join(' • ');
+          source.appendChild(opt);
+        }
+        for(const c of (data.cooperados_destino||[])){
+          const opt=document.createElement('option');opt.value=c.id;opt.textContent=c.nome;dest.appendChild(opt);
+        }
         if(!(data.escalas||[]).length)card(schedule,'Nenhuma escala encontrada',['Consulte a escala da semana no Finanças.']);
-        (data.trocas||[]).forEach(t=>card(swaps,'Troca '+t.id,[t.recebida?'Recebida de '+t.solicitante:'Enviada para '+t.destinatario,'Situação: '+t.status]));
+        (data.trocas||[]).forEach(t=>{
+          const wrap=document.createElement('div');wrap.className='scale-glass-item';
+          const title=document.createElement('strong');title.textContent='Troca '+t.id;
+          const caption=document.createElement('span');caption.textContent=(t.recebida?'Recebida de '+t.solicitante:'Enviada para '+t.destinatario)+' — '+t.status;
+          wrap.append(title,caption);
+          if(t.recebida&&t.status==='pendente'){
+            const actions=document.createElement('div');actions.className='scale-swap-buttons';
+            for(const action of ['aceitar','recusar']){
+              const btn=document.createElement('button');btn.type='button';btn.textContent=action==='aceitar'?'Aceitar':'Recusar';
+              btn.addEventListener('click',()=>sendFinancasSwap({acao:action,troca_id:t.id}));
+              actions.appendChild(btn);
+            }
+            wrap.appendChild(actions);
+          }
+          swaps.appendChild(wrap);
+        });
         if(!(data.trocas||[]).length)card(swaps,'Nenhuma troca registrada',['As trocas aparecerão nesta área.']);
         financeScaleLoaded=true;
       }catch(e){err.textContent=e.message;err.hidden=false;}
     }
     document.querySelector('[data-tab="tab-escalas"]')?.addEventListener('click',()=>{loadFinancasScale();});
+
+    async function sendFinancasSwap(data){
+      if(!confirm('Confirmar esta operação de troca no Finanças?'))return;
+      const err=document.getElementById('scale-error');err.hidden=true;
+      try{
+        const response=await fetch('/api/cooperado/financas/trocas/acao',{
+          method:'POST',credentials:'same-origin',
+          headers:{'Content-Type':'application/json'},body:JSON.stringify(data)
+        });
+        const result=await response.json();
+        if(!response.ok||!result.ok)throw new Error(result.erro||'Operação recusada');
+        await loadFinancasScale();
+        alert(result.mensagem||'Operação registrada.');
+      }catch(e){err.textContent=e.message;err.hidden=false;}
+    }
+    document.getElementById('financas-swap-form')?.addEventListener('submit',event=>{
+      event.preventDefault();
+      const source=document.getElementById('financas-from-scale');
+      const target=document.getElementById('financas-target');
+      if(!source.value||!target.value)return;
+      sendFinancasSwap({acao:'solicitar',from_escala_id:Number(source.value),
+        to_cooperado_id:Number(target.value),
+        mensagem:document.getElementById('financas-message').value});
+    });
+
 
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
     let rows = Array.from(document.querySelectorAll('.entrega-row'));
