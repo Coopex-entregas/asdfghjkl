@@ -1208,6 +1208,26 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-resumo .financial-pending .pending-chevron{grid-column:4!important;justify-self:center!important}
 #tab-resumo .finance-detail .finance-arrow,#tab-resumo .financial-pending .pending-chevron{width:29px!important;height:29px!important;font-size:1.4rem!important;box-sizing:border-box!important;border-radius:50%!important;line-height:1!important;display:grid!important;place-items:center!important;background:linear-gradient(145deg,#fff,#b9dcff)!important;border:2px solid white!important;box-shadow:0 4px 8px #2d77b76b,inset 0 2px white!important}
 
+
+/* Ajuste de legibilidade: aproveitar a área livre na vertical sem rolagem forçada */
+@media (min-height: 740px) {
+  #tab-resumo.active{gap:9px!important}
+  #tab-resumo .finance-detail{padding:12px 14px!important}
+  #tab-resumo .finance-detail .finance-line{min-height:58px!important;padding:8px 0!important;column-gap:8px!important}
+  #tab-resumo .finance-detail .finance-line .copy strong{font-size:clamp(1.02rem,4.2vw,1.19rem)!important;line-height:1.18!important}
+  #tab-resumo .finance-detail .finance-line .copy small{font-size:clamp(.76rem,3.05vw,.9rem)!important;line-height:1.27!important}
+  #tab-resumo .finance-detail .finance-line .amount{font-size:clamp(1.04rem,4.2vw,1.24rem)!important}
+  #tab-resumo .financial-pending{min-height:69px!important;padding-top:9px!important;padding-bottom:9px!important}
+  #tab-resumo .financial-pending .pending-copy b{font-size:clamp(1.02rem,4vw,1.19rem)!important}
+  #tab-resumo .financial-pending .pending-copy small{font-size:clamp(.76rem,3.05vw,.9rem)!important}
+  #tab-resumo .financial-pending .pending-value{font-size:clamp(1.04rem,4.2vw,1.24rem)!important}
+  #tab-resumo .finance-detail h3{font-size:clamp(.98rem,4vw,1.16rem)!important}
+}
+@media (max-height:739px){
+  #tab-resumo .finance-detail .finance-line .copy strong{font-size:clamp(.91rem,3.5vw,1.05rem)!important}
+  #tab-resumo .finance-detail .finance-line .copy small{font-size:clamp(.7rem,2.75vw,.83rem)!important}
+}
+
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
