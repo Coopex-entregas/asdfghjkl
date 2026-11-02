@@ -1171,6 +1171,8 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-resumo .finance-detail .finance-line{min-height:44px!important;padding:4px 0!important}
 @media (max-height:810px) { #tab-resumo .hero-card{height:70px!important;min-height:70px!important}#tab-resumo .finance-detail{padding:6px 10px!important}#tab-resumo .financial-pending{min-height:49px!important}}
 
+
+#queue-before .queue-person-name{font-weight:850!important;color:#13356d!important;font-size:1.02em!important}
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -1193,7 +1195,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     <div class="queue-before" id="queue-before" hidden><strong>Quem está antes de você na fila</strong>
       {% if posicao_fila %}
         {% if fila_anteriores %}
-          {% for pessoa in fila_anteriores %}<div><b>{{ pessoa.posicao }}º</b> {{ pessoa.nome }}</div>{% endfor %}
+          {% for pessoa in fila_anteriores %}<div><b>{{ pessoa.posicao }}º</b> <strong class="queue-person-name">{{ pessoa.nome }}</strong></div>{% endfor %}
         {% else %}<div>Você é o primeiro da fila.</div>{% endif %}
       {% else %}<div>Você ainda não está na fila.</div>{% endif %}
     </div>
