@@ -481,3 +481,58 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 #cx-pix-led.cx-led-exit .cx-led-inner{color:#ff6d78!important;text-shadow:0 0 4px #ff183b,0 0 10px #fa3247!important;font-weight:900!important;}
 #cx-pix-led.cx-led-exit .cx-led-count{color:#fff1f3!important;background:#a70d27!important;border-color:#f35c6c!important;}
 </style>
+
+<!-- COOPEX: aviso temporario de ultima saida (15 segundos) -->
+<script id="coopex-ultima-saida-timeout">
+(function(){
+  'use strict';
+  const DURACAO=15000;
+  const expiracoes=new Map();
+  const temporizadores=new WeakMap();
+  let verificacaoPendente=false;
+
+  function candidatos(){
+    const raiz=document.querySelector('#espera-lista')?.parentElement?.parentElement || document;
+    return [...raiz.querySelectorAll('div,aside,section,li,p')].filter(el=>{
+      if(el.id==='espera-lista' || el.contains(document.getElementById('espera-lista')))return false;
+      const texto=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(!/^(?:🔴\s*)?Última saída\s*:/i.test(texto))return false;
+      return ![...el.children].some(filho=>/^(?:🔴\s*)?Última saída\s*:/i.test((filho.textContent||'').replace(/\s+/g,' ').trim()));
+    });
+  }
+  function ocultar(el){
+    if(!el.isConnected)return;
+    el.style.setProperty('display','none','important');
+    el.setAttribute('aria-hidden','true');
+  }
+  function verificar(){
+    verificacaoPendente=false;
+    const agora=Date.now();
+    for(const [chave,ate] of expiracoes){
+      if(ate < agora-60000)expiracoes.delete(chave);
+    }
+    for(const el of candidatos()){
+      const chave=(el.textContent||'').replace(/\s+/g,' ').trim();
+      if(!chave)continue;
+      let ate=expiracoes.get(chave);
+      if(!ate){ate=agora+DURACAO;expiracoes.set(chave,ate);}
+      if(agora>=ate){ocultar(el);continue;}
+      if(temporizadores.has(el))continue;
+      const timer=setTimeout(()=>{temporizadores.delete(el);ocultar(el);verificar();},Math.max(0,ate-agora));
+      temporizadores.set(el,timer);
+    }
+  }
+  function agendar(){
+    if(verificacaoPendente)return;
+    verificacaoPendente=true;
+    requestAnimationFrame(verificar);
+  }
+  function iniciar(){
+    verificar();
+    const alvo=document.querySelector('#espera-lista')?.parentElement?.parentElement || document.body;
+    if(alvo)new MutationObserver(agendar).observe(alvo,{childList:true,subtree:true,characterData:true});
+  }
+  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});
+  else iniciar();
+})();
+</script>
