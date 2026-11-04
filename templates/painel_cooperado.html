@@ -3098,5 +3098,82 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+<style id="coopex-resumo-sem-sobreposicao-v3">
+/* As linhas devem manter altura suficiente para títulos e descrições. */
+#tab-resumo.active{
+  overflow-y:auto!important;
+  overflow-x:hidden!important;
+  overscroll-behavior-y:contain;
+  -webkit-overflow-scrolling:touch;
+  scrollbar-width:none;
+}
+#tab-resumo.active::-webkit-scrollbar{display:none}
+#tab-resumo .finance-detail{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:flex-start!important;
+  flex:0 0 auto!important;
+  min-height:0!important;
+  height:auto!important;
+  overflow:visible!important;
+  padding:8px 12px!important;
+  box-sizing:border-box!important;
+}
+#tab-resumo .finance-detail .finance-line{
+  display:grid!important;
+  grid-template-columns:42px minmax(0,1fr) minmax(85px,auto)!important;
+  align-items:center!important;
+  flex:0 0 auto!important;
+  min-height:78px!important;
+  height:auto!important;
+  padding:10px 0!important;
+  column-gap:9px!important;
+  box-sizing:border-box!important;
+}
+#tab-resumo .finance-detail .finance-line.finance-action{
+  grid-template-columns:42px minmax(0,1fr) minmax(85px,auto) 32px!important;
+}
+#tab-resumo .finance-detail .finance-line .copy{
+  display:flex!important;
+  flex-direction:column!important;
+  justify-content:center!important;
+  min-width:0!important;
+  overflow:visible!important;
+  line-height:1.23!important;
+  gap:3px!important;
+}
+#tab-resumo .finance-detail .finance-line .copy strong{
+  display:block!important;
+  font-size:clamp(.93rem,3.9vw,1.15rem)!important;
+  line-height:1.2!important;
+  white-space:normal!important;
+}
+#tab-resumo .finance-detail .finance-line .copy small{
+  display:block!important;
+  font-size:clamp(.70rem,2.9vw,.85rem)!important;
+  line-height:1.28!important;
+  white-space:normal!important;
+  overflow-wrap:break-word!important;
+}
+#tab-resumo .finance-detail .finance-line .amount{
+  align-self:center!important;
+  margin:0!important;
+  min-width:0!important;
+  text-align:right!important;
+  font-size:clamp(.98rem,3.75vw,1.2rem)!important;
+  line-height:1.12!important;
+}
+#tab-resumo .finance-detail .finance-ico{
+  flex-shrink:0!important;
+  align-self:center!important;
+}
+#tab-resumo .financial-pending{flex:0 0 auto!important}
+@media(max-height:720px){
+ #tab-resumo .finance-detail .finance-line{min-height:69px!important;padding:7px 0!important}
+ #tab-resumo .finance-detail .finance-line .copy strong{font-size:.91rem!important}
+ #tab-resumo .finance-detail .finance-line .copy small{font-size:.7rem!important}
+}
+</style>
 </body>
 </html>
