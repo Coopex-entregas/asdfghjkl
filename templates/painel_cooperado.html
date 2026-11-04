@@ -2762,6 +2762,8 @@ async function exitQueue(){
 enter.addEventListener('click',join);leave.addEventListener('click',exitQueue);
 // Aviso de chegada apenas enquanto a página estiver ativa. Não substituir o GPS nativo em segundo plano.
 function startArrivalWatch(){
+ // O app Android usa serviço nativo para continuar avisando com a tela bloqueada.
+ if(/COOPEXAndroid\//.test(navigator.userAgent))return;
  if(!navigator.geolocation||watchId!==null)return;
  watchId=navigator.geolocation.watchPosition(p=>{
   if(!base||inQueue||offered||document.hidden)return;
