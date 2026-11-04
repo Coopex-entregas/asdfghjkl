@@ -7351,6 +7351,7 @@ def api_admin_cooperados_online():
             'lat': float(live.get('lat')) if live and live.get('lat') is not None else None,
             'lng': float(live.get('lng')) if live and live.get('lng') is not None else None,
             'ultima_atualizacao': (live.get('ultima_atualizacao') if live else ''),
+            'speed_kmh': round(float(live.get('speed')), 1) if live and live.get('speed') is not None else None,
             'idle_seconds': 0 if online else None,
             'modo': 'memoria_sem_salvar_banco',
         })
@@ -7516,6 +7517,7 @@ def mapa_motoboys():
             'idle_seconds': 0 if online else None,
             'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
             'accuracy_m': float(acc or 0),
+            'speed_kmh': round(float(live.get('speed')), 1) if live and live.get('speed') is not None else None,
             'heading': float(hdg or 0),
             'ultima_atualizacao': ultima_txt or 'Sem GPS enviado',
             'endereco': getattr(c, 'zona', None) or getattr(c, 'bairro', None) or '',
