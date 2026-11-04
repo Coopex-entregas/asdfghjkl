@@ -1959,11 +1959,12 @@ body.cx-modal-active{overflow:hidden!important}
 
     function filterParams(statusOverride=null){
       const params = new URLSearchParams();
-      params.set('status_pgto', statusOverride || state.listFilter || 'todas');
+      const status = statusOverride || state.listFilter || 'todas';
+      params.set('status_pgto', status);
       if(state.search) params.set('cliente', state.search);
       if(state.inicio) params.set('inicio', state.inicio);
       if(state.fim) params.set('fim', state.fim);
-      if(state.allDates) params.set('todas_datas','1');
+      if(status === 'pendente') params.set('todas_datas','1');
       return params;
     }
 
@@ -1989,7 +1990,14 @@ body.cx-modal-active{overflow:hidden!important}
     }
 
     async function loadSummaryForCurrentFilters({useCache=true, fallbackItems=null}={}){
+      // O resumo é sempre do intervalo mostrado, independente da lista Pendentes.
+      // Não reutilizar o sinal todas_datas da aba Produções, pois soma o histórico inteiro.
       const params = filterParams('todas');
+      params.delete('todas_datas');
+      if(!params.get('inicio') && !params.get('fim')){
+        params.set('inicio',todayISO);
+        params.set('fim',todayISO);
+      }
       const cacheKey = params.toString();
 
       if(Array.isArray(fallbackItems)){
@@ -2076,8 +2084,8 @@ body.cx-modal-active{overflow:hidden!important}
     function listMatches(item){
       const search = state.search.trim().toLowerCase();
       const clientOk = !search || item.cliente.toLowerCase().includes(search);
-      const startOk = state.allDates || !state.inicio || item.data >= state.inicio;
-      const endOk = state.allDates || !state.fim || item.data <= state.fim;
+      const startOk = state.listFilter === 'pendente' || !state.inicio || item.data >= state.inicio;
+      const endOk = state.listFilter === 'pendente' || !state.fim || item.data <= state.fim;
       let statusOk = true;
       if (state.listFilter === 'pendente') statusOk = item.statusPagamento !== 'pago';
       if (state.listFilter === 'pago') statusOk = item.statusPagamento === 'pago';
