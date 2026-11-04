@@ -37,6 +37,16 @@ from jinja2 import TemplateNotFound
 # =========================================================
 app = Flask(__name__)
 
+# Página pública de Termos de Serviço do aplicativo COOPEX Entregador.
+# Não exigir autenticação: Google Play e qualquer visitante devem poder acessar.
+@app.get('/termos-app')
+@app.get('/termos-de-servico')
+def termos_publicos_coopex_entregador():
+    response = current_app.make_response(render_template('termos_app.html'))
+    response.headers['Cache-Control'] = 'public, max-age=300'
+    return response
+
+
 # Usa a mesma chave que você já tinha, só mudando para config
 app.config['SECRET_KEY'] = os.environ.get(
     'SECRET_KEY',
