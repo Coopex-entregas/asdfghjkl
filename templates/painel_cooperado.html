@@ -1144,7 +1144,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 
 
 /* Escalas: acesso consistente às operações reais do Financeiro */
-.tab-bar{grid-template-columns:repeat(4,minmax(0,1fr))!important}
+.tab-bar{grid-template-columns:repeat(5,minmax(0,1fr))!important}
 .tab-bar .tab-btn{min-width:0!important}
 .tab-bar .tab-btn>span:first-child{font-size:1.15rem!important}
 .tab-bar .tab-btn>span:last-child{font-size:clamp(.62rem,2.7vw,.79rem)!important}
@@ -1188,7 +1188,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 
 
 /* Menu inferior no mesmo desenho compacto do portal Finanças */
-.tab-bar{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;align-items:stretch!important;gap:2px!important;min-height:64px!important;padding:5px 7px calc(5px + env(safe-area-inset-bottom))!important;border-radius:24px 24px 0 0!important;background:linear-gradient(155deg,#faffff,#d1e7ff)!important;border:2px solid #fff!important;box-shadow:0 -5px 17px #2c77b74d,inset 0 2px #fff!important}
+.tab-bar{display:grid!important;grid-template-columns:repeat(5,minmax(0,1fr))!important;align-items:stretch!important;gap:2px!important;min-height:64px!important;padding:5px 7px calc(5px + env(safe-area-inset-bottom))!important;border-radius:24px 24px 0 0!important;background:linear-gradient(155deg,#faffff,#d1e7ff)!important;border:2px solid #fff!important;box-shadow:0 -5px 17px #2c77b74d,inset 0 2px #fff!important}
 .tab-bar .tab-btn{display:flex!important;flex-direction:column!important;align-items:center!important;justify-content:center!important;gap:2px!important;border:1px solid transparent!important;background:transparent!important;box-shadow:none!important;border-radius:23px!important;min-height:55px!important;padding:3px 1px!important;color:#294875!important}
 .tab-bar .tab-btn.active{background:linear-gradient(145deg,#fafdff,#cde7ff)!important;border:2px solid #fff!important;box-shadow:0 5px 12px #367cb660,inset 0 2px white!important;color:#0958c8!important}
 .tab-bar .tab-btn .menu-glass-icon{height:27px!important;width:30px!important;border-radius:10px!important;border:1.5px solid white!important;box-shadow:0 3px 7px #2c7cb64f,inset 0 2px white!important}
@@ -1259,6 +1259,9 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #queue-exit{background:linear-gradient(145deg,#fff,#dcecff);color:#1753a2}
 .coopex-queue-hint{font-size:.8rem;line-height:1.4;color:#47658d}
 #queue-location-status{font-weight:800;color:#1549a0}
+/* Cinco abas na mesma linha em todas as telas, inclusive celular. */
+.tab-bar{grid-template-columns:repeat(5,minmax(0,1fr))!important;grid-auto-flow:row!important;}
+.tab-bar>.tab-btn{min-width:0!important;width:100%!important;box-sizing:border-box!important;}
 @media(max-width:410px){.tab-bar{gap:2px!important}.tab-bar .tab-btn{padding:4px 1px!important}.tab-bar .tab-btn .menu-glass-icon{width:27px!important;height:26px!important}.tab-bar .tab-btn>span:last-child{font-size:.61rem!important}}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
