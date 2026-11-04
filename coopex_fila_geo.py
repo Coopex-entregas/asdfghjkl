@@ -112,6 +112,17 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             for i,it in enumerate(itens,1): it.pos=i
             db.session.commit()
             emitir_lista_espera()
+            # O motivo e reservado aos administradores autenticados na sala LED.
+            try:
+                from app import socketio
+                socketio.emit('coopex_fila_saida_alerta', {
+                    'cooperado_id': coop.id,
+                    'nome': coop.nome,
+                    'motivo': motivo,
+                    'quando': datetime.utcnow().isoformat() + 'Z'
+                }, to='coopex-admin-led')
+            except Exception:
+                app.logger.exception('Saida salva, mas aviso LED nao emitido')
         except Exception:
             db.session.rollback()
             app.logger.exception('Falha ao sair da fila')
