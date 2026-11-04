@@ -1374,7 +1374,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
           <button id="queue-enter" type="button">Entrar na fila</button>
           <button id="queue-exit" type="button" style="display:none">Sair da fila</button>
         </div>
-        <p class="coopex-queue-hint">Para entrar, autorize a localização precisa do celular e esteja dentro de 100 metros da entrada da cooperativa. A posição é atualizada automaticamente.</p>
+        <p class="coopex-queue-hint">Sua posição na fila é atualizada automaticamente.</p>
       </div>
     </section>
 
@@ -2718,7 +2718,7 @@ async function fetchBase(){
   const d=await r.json();
   if(!r.ok||!d.ok)throw Error(d.erro||'Base não cadastrada');
   base=d.base;
-  $('queue-base-address').textContent='Base: '+base.endereco+' • Raio permitido: '+base.raio_m+' m';
+  $('queue-base-address').textContent='Base: '+base.endereco;
  }catch(e){notice(e.message);$('queue-base-address').textContent='Base ainda não configurada.';}
 }
 function distance(lat1,lon1,lat2,lon2){
