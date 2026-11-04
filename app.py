@@ -15001,8 +15001,13 @@ from flask import request
 @socketio.on("connect")
 def handle_connect(auth=None):
     try:
-        if current_user.is_authenticated and getattr(current_user, "tipo", "") == "admin":
+        # Apenas sessoes de administradores recebem notificacoes privadas do LED.
+        if session.get("is_admin"):
             join_room("admins")
+            join_room("coopex-admin-led")
+        elif current_user.is_authenticated and getattr(current_user, "tipo", "") == "admin":
+            join_room("admins")
+            join_room("coopex-admin-led")
     except Exception:
         pass
 
