@@ -5314,6 +5314,8 @@ def _cooperado_entregas_filtradas(user_id, *, inicio=None, fim=None, status_pgto
     query = Entrega.query.filter(Entrega.cooperado_id == int(user_id))
     cliente = (cliente or '').strip()
     status_pgto = (status_pgto or 'todas').lower()
+    # Pendências são uma lista global; Todas/Pagas obedecem ao período informado.
+    todas_datas = status_pgto == 'pendente'
 
     if cliente:
         query = query.filter(func.lower(Entrega.cliente).like(f"%{cliente.lower()}%"))
@@ -5448,7 +5450,7 @@ def painel_cooperado():
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
-    todas_datas_flag = (request.args.get('todas_datas') or '') == '1'
+    todas_datas_flag = status_pgto == 'pendente'
     cliente_busca = (request.args.get('cliente') or '').strip()
 
     entregas = _cooperado_entregas_filtradas(
@@ -5561,7 +5563,8 @@ def api_cooperado_filtrar_entregas():
     fim = request.args.get('fim')
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
     cliente = (request.args.get('cliente') or '').strip()
-    todas_datas = (request.args.get('todas_datas') or '') == '1'
+    # O parâmetro legado todas_datas não pode liberar histórico em Todas/Pagas.
+    todas_datas = status_pgto == 'pendente'
 
     entregas = _cooperado_entregas_filtradas(
         int(user_id), inicio=inicio, fim=fim, status_pgto=status_pgto,
