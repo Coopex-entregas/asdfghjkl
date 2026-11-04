@@ -108,6 +108,20 @@ def install(host):
 <label>Senha do A1</label><input name="senha" type="password" required autocomplete="new-password">
 <p><button type="submit">Salvar configuração protegida</button></p>
 </form></section>
+<section id="coopex-base-config">
+<h2>Localização da base COOPEX</h2>
+<p class="hint">Configure o endereço da cooperativa. O aplicativo utilizará estas coordenadas para validar a entrada na fila dentro do raio de 100 metros. Quando a sede mudar, atualize os campos aqui, sem precisar atualizar o app.</p>
+<form action="/admin/pix-sicoob/localizacao-base" method="post">
+<input type="hidden" name="csrf" value="{{ csrf }}">
+<label>Endereço completo da cooperativa</label><input name="endereco_base" maxlength="255" required value="{{ base_endereco }}" placeholder="Rua, número, bairro, Natal/RN">
+<label>Latitude da entrada da base</label><input id="coopex-base-lat" name="latitude" type="number" step="any" min="-90" max="90" required value="{{ base_latitude }}" placeholder="-5.000000">
+<label>Longitude da entrada da base</label><input id="coopex-base-lng" name="longitude" type="number" step="any" min="-180" max="180" required value="{{ base_longitude }}" placeholder="-35.000000">
+<p class="hint">Raio permitido: <strong>100 metros</strong>. Informe as coordenadas exatas da entrada; somente o endereço em texto não permite medir a distância. A precisão do GPS do cooperado também deverá ser conferida.</p>
+<button type="button" onclick="coopexPreencherLocalizacaoBase()" style="background:#e5f0ff;color:#114bb2;border:1px solid #afc9f5">Usar localização atual deste dispositivo</button>
+<p><button type="submit">Salvar endereço da cooperativa</button></p>
+</form>
+<p id="coopex-base-localizacao-msg" class="hint"></p>
+</section>
 <section><h2>Gerar Pix Copia e Cola</h2><p class="hint">Usa o valor já cadastrado na entrega. Não altera a forma de pagamento existente até a confirmação pelo banco.</p>
 <form id="pixForm"><input type="hidden" name="csrf" value="{{ csrf }}">
 <label>Número da entrega</label><input name="entrega_id" type="number" min="1" required><p><button>Gerar/consultar cobrança</button></p></form>
@@ -115,6 +129,17 @@ def install(host):
 <button type="button" onclick="navigator.clipboard.writeText(document.querySelector('#brcode').textContent)">Copiar Pix</button>
 <p id="situacao"></p><button type="button" onclick="consultar()">Verificar pagamento</button></section>
 <script>
+function coopexPreencherLocalizacaoBase(){
+ const el=document.getElementById('coopex-base-localizacao-msg');
+ if(!navigator.geolocation){el.textContent='Localização indisponível neste dispositivo.';return;}
+ el.textContent='Obtendo localização...';
+ navigator.geolocation.getCurrentPosition(p=>{
+  document.getElementById('coopex-base-lat').value=p.coords.latitude.toFixed(7);
+  document.getElementById('coopex-base-lng').value=p.coords.longitude.toFixed(7);
+  el.textContent='Coordenadas preenchidas. Confirme se está na entrada da cooperativa e salve.';
+ },e=>{el.textContent='Não foi possível obter a localização. Informe as coordenadas manualmente.';},
+ {enableHighAccuracy:true,timeout:15000,maximumAge:0});
+}
 let id = null; const token = {{ csrf|tojson }};
 document.querySelector('#pixForm').onsubmit=async e=>{
  e.preventDefault();id=e.target.entrega_id.value;
@@ -135,10 +160,50 @@ async function chamar(path,method){
     def sicoob_painel():
         master()
         registered = bool(db.session.execute(text("SELECT id FROM sicoob_pix_config WHERE id=1")).first())
-        response = app.make_response(render_template_string(PAGE, configured=registered, csrf=csrf()))
+        valores=dict(db.session.execute(text(
+            "SELECT chave,valor FROM config_sistema WHERE chave IN ('coopex_base_endereco','coopex_base_latitude','coopex_base_longitude')"
+        )).all())
+        response = app.make_response(render_template_string(
+            PAGE, configured=registered, csrf=csrf(),
+            base_endereco=valores.get('coopex_base_endereco',''),
+            base_latitude=valores.get('coopex_base_latitude',''),
+            base_longitude=valores.get('coopex_base_longitude','')
+        ))
         response.headers["Cache-Control"]="no-store"
         response.headers["X-Content-Type-Options"]="nosniff"
         return response
+
+    @app.post("/admin/pix-sicoob/localizacao-base")
+    def coopex_salvar_localizacao_base():
+        master()
+        check_csrf()
+        endereco=(request.form.get("endereco_base") or "").strip()
+        try:
+            lat=float(request.form.get("latitude") or "")
+            lng=float(request.form.get("longitude") or "")
+        except (TypeError,ValueError):
+            return jsonify(erro="Informe latitude e longitude válidas."),400
+        import math
+        if not endereco or len(endereco)>255 or not math.isfinite(lat) or not math.isfinite(lng) or not (-90<=lat<=90 and -180<=lng<=180):
+            return jsonify(erro="Endereço ou coordenadas inválidos."),400
+        valores={
+            "coopex_base_endereco":endereco,
+            "coopex_base_latitude":format(lat,'.7f'),
+            "coopex_base_longitude":format(lng,'.7f')
+        }
+        try:
+            for chave,valor in valores.items():
+                db.session.execute(text(
+                    "INSERT INTO config_sistema (chave,valor,criado_em,atualizado_em) "
+                    "VALUES (:chave,:valor,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP) "
+                    "ON CONFLICT (chave) DO UPDATE SET valor=EXCLUDED.valor, atualizado_em=CURRENT_TIMESTAMP"
+                ),{"chave":chave,"valor":valor})
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha ao salvar localização da base COOPEX")
+            return jsonify(erro="Não foi possível salvar a localização."),500
+        return redirect("/admin/pix-sicoob#coopex-base-config",303)
 
     @app.post("/admin/pix-sicoob/config")
     def sicoob_config():
