@@ -2995,5 +2995,108 @@ document.addEventListener('DOMContentLoaded',()=>{
 });
 })();
 </script>
+
+<style id="coopex-resumo-glass-calendar-v2">
+/* Melhor aproveitamento da altura do resumo, sem alterar suas contas. */
+.topbar{padding:12px 13px 11px!important;margin-bottom:4px!important;border-radius:25px!important;min-height:122px!important}
+.topbar .title-wrap small{font-size:.77rem!important;line-height:1.15!important}
+.topbar .title-wrap h1{font-size:clamp(1.1rem,4.4vw,1.37rem)!important;line-height:1.15!important}
+.topbar .top-actions{gap:8px!important}
+.topbar .icon-circle,.topbar .logout-btn{width:42px!important;min-width:42px!important;height:42px!important;font-size:.82rem!important}
+.topbar .coopex-top-metrics{gap:9px!important;margin-top:7px!important}
+.topbar .top-metric{min-height:54px!important;padding:7px 10px!important;border-radius:18px!important}
+.topbar .top-metric b{font-size:1.32rem!important}
+.topbar .top-metric small{font-size:.77rem!important}
+#shared-period.shared-period{padding:5px 9px!important;border-radius:20px!important;min-height:0!important}
+#shared-period .date-grid{gap:7px!important}
+#shared-period .field label{display:none!important}
+#shared-period .field input[type=date]{display:none!important}
+#shared-period .cx-glass-date{display:flex!important;align-items:center;justify-content:center;gap:6px;width:100%;height:38px;min-width:0;padding:0 6px;border:1.5px solid rgba(255,255,255,.98);border-radius:17px;background:linear-gradient(145deg,#fff,#d7ebff);box-shadow:0 3px 10px rgba(36,104,182,.12),inset 0 2px 3px white;color:#133f83;font-weight:900;font-size:clamp(.73rem,3vw,.9rem);white-space:nowrap;cursor:pointer}
+#shared-period .cx-glass-date .bi{color:#176cdc;font-size:1rem}
+#tab-resumo.active{gap:9px!important}
+#tab-resumo .hero-card{min-height:80px!important;padding:11px 14px!important}
+#tab-resumo .finance-detail{flex:1 1 auto!important;min-height:0!important;justify-content:space-evenly!important;padding:10px 13px!important}
+#tab-resumo .finance-detail .finance-line{flex:1 1 0!important;min-height:0!important;padding:7px 0!important}
+#tab-resumo .finance-detail .copy strong{font-size:clamp(.98rem,3.9vw,1.2rem)!important}
+#tab-resumo .finance-detail .copy small{font-size:clamp(.73rem,2.9vw,.9rem)!important}
+#tab-resumo .finance-detail .amount{font-size:clamp(1rem,4vw,1.24rem)!important}
+#tab-resumo .financial-pending{min-height:64px!important;padding:8px 10px!important}
+@media(max-height:720px){
+ .topbar{min-height:104px!important;padding:7px 10px!important}
+ .topbar .top-metric{min-height:43px!important;padding:4px 7px!important}
+ .topbar .icon-circle,.topbar .logout-btn{width:35px!important;min-width:35px!important;height:35px!important}
+ #tab-resumo.active{gap:5px!important}
+ #tab-resumo .hero-card{min-height:65px!important;padding:6px 10px!important}
+ #tab-resumo .finance-detail .finance-line{padding:3px 0!important}
+ #tab-resumo .financial-pending{min-height:45px!important;padding:5px!important}
+}
+.cx-calendar-backdrop[hidden]{display:none!important}
+.cx-calendar-backdrop{position:fixed;inset:0;z-index:100100;display:grid;place-items:center;padding:16px;background:rgba(6,28,73,.53);backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);box-sizing:border-box}
+.cx-calendar-card{width:min(100%,375px);padding:18px;border-radius:29px;border:2px solid #fff;background:linear-gradient(145deg,rgba(255,255,255,.98),rgba(208,231,255,.96));box-shadow:0 25px 60px rgba(3,35,99,.36),inset 0 3px 4px #fff;color:#153f86;box-sizing:border-box}
+.cx-calendar-head{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:14px}
+.cx-calendar-head strong{font-size:1.1rem;font-weight:950}
+.cx-calendar-nav{border:2px solid white;border-radius:13px;width:40px;height:39px;background:linear-gradient(145deg,#fff,#c5e2ff);color:#0e56af;font-size:1.55rem;font-weight:900;box-shadow:0 4px 9px #1d70be28}
+.cx-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cx-calendar-weekday{text-align:center;font-size:.7rem;font-weight:950;color:#6683a9;padding:5px 0}
+.cx-calendar-day{min-width:0;aspect-ratio:1;border:1px solid rgba(255,255,255,.95);border-radius:13px;background:rgba(255,255,255,.64);color:#16427f;font-weight:850;font-size:.9rem;box-shadow:inset 0 1px 2px white}
+.cx-calendar-day[disabled]{opacity:.2}
+.cx-calendar-day.cx-selected{background:linear-gradient(140deg,#38b5ff,#065bd6);color:white;box-shadow:0 4px 12px #1765d854}
+.cx-calendar-day.cx-today:not(.cx-selected){border:2px solid #2187ea}
+.cx-calendar-foot{display:flex;gap:8px;margin-top:15px}
+.cx-calendar-foot button{flex:1;min-height:42px;border-radius:15px;border:2px solid white;font-weight:900;background:linear-gradient(#fff,#d5eaff);color:#12529c}
+.cx-calendar-foot button:last-child{background:linear-gradient(130deg,#48baff,#0a64d5);color:#fff}
+</style>
+<script id="coopex-resumo-glass-calendar-v2-script">
+(function(){
+'use strict';
+const inputs=['filtro-inicio','filtro-fim'];
+const pad=n=>String(n).padStart(2,'0');
+const iso=(y,m,d)=>y+'-'+pad(m+1)+'-'+pad(d);
+const parse=v=>/^\d{4}-\d{2}-\d{2}$/.test(v||'')?new Date(Number(v.slice(0,4)),Number(v.slice(5,7))-1,Number(v.slice(8,10))):new Date();
+const format=v=>{if(!v)return 'Escolher data';const [y,m,d]=v.split('-');return d+'/'+m+'/'+y};
+let selectedInput=null,shownMonth=new Date();
+const overlay=document.createElement('div');
+overlay.className='cx-calendar-backdrop';overlay.hidden=true;
+overlay.innerHTML='<div class="cx-calendar-card" role="dialog" aria-modal="true" aria-label="Calendário COOPEX"><div class="cx-calendar-head"><button type="button" class="cx-calendar-nav" data-move="-1" aria-label="Mês anterior">‹</button><strong id="cx-calendar-month"></strong><button type="button" class="cx-calendar-nav" data-move="1" aria-label="Próximo mês">›</button></div><div class="cx-calendar-grid" id="cx-calendar-days"></div><div class="cx-calendar-foot"><button type="button" id="cx-calendar-cancel">Fechar</button><button type="button" id="cx-calendar-today">Hoje</button></div></div>';
+function close(){overlay.hidden=true;selectedInput=null;}
+function select(v){if(!selectedInput)return;selectedInput.value=v;selectedInput.dispatchEvent(new Event('input',{bubbles:true}));selectedInput.dispatchEvent(new Event('change',{bubbles:true}));sync();close();}
+function render(){
+ const month=document.getElementById('cx-calendar-month'),grid=document.getElementById('cx-calendar-days');
+ if(!month||!grid)return;
+ month.textContent=shownMonth.toLocaleDateString('pt-BR',{month:'long',year:'numeric'});
+ grid.replaceChildren();
+ ['D','S','T','Q','Q','S','S'].forEach(w=>{const e=document.createElement('span');e.className='cx-calendar-weekday';e.textContent=w;grid.append(e);});
+ const y=shownMonth.getFullYear(),m=shownMonth.getMonth(),offset=new Date(y,m,1).getDay(),days=new Date(y,m+1,0).getDate();
+ for(let n=0;n<offset;n++){const e=document.createElement('span');grid.append(e);}
+ const selected=selectedInput?.value,today=new Date(),todayISO=iso(today.getFullYear(),today.getMonth(),today.getDate());
+ for(let n=1;n<=days;n++){
+  const b=document.createElement('button');b.type='button';b.className='cx-calendar-day';b.textContent=String(n);
+  const value=iso(y,m,n);if(value===selected)b.classList.add('cx-selected');if(value===todayISO)b.classList.add('cx-today');
+  b.addEventListener('click',()=>select(value));grid.append(b);
+ }
+}
+function sync(){inputs.forEach(id=>{const el=document.getElementById(id);const btn=document.querySelector('[data-calendar-for="'+id+'"]');if(el&&btn)btn.querySelector('span').textContent=format(el.value);});}
+function init(){
+ const host=document.getElementById('shared-period');if(!host||document.getElementById('cx-calendar-days'))return;
+ document.body.append(overlay);
+ inputs.forEach(id=>{
+  const el=document.getElementById(id);if(!el)return;
+  const btn=document.createElement('button');btn.type='button';btn.className='cx-glass-date';btn.dataset.calendarFor=id;
+  btn.setAttribute('aria-label',id==='filtro-inicio'?'Selecionar data inicial':'Selecionar data final');
+  btn.innerHTML='<i class="bi bi-calendar3" aria-hidden="true"></i><span></span>';
+  el.after(btn);
+  btn.addEventListener('click',()=>{selectedInput=el;shownMonth=parse(el.value);shownMonth.setDate(1);overlay.hidden=false;render();});
+  el.addEventListener('change',sync);el.addEventListener('input',sync);
+ });
+ sync();
+ overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+ overlay.querySelectorAll('[data-move]').forEach(btn=>btn.addEventListener('click',()=>{shownMonth.setMonth(shownMonth.getMonth()+Number(btn.dataset.move));render();}));
+ document.getElementById('cx-calendar-cancel').addEventListener('click',close);
+ document.getElementById('cx-calendar-today').addEventListener('click',()=>{const d=new Date();select(iso(d.getFullYear(),d.getMonth(),d.getDate()));});
+ document.addEventListener('keydown',e=>{if(!overlay.hidden&&e.key==='Escape')close();});
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
 </body>
 </html>
