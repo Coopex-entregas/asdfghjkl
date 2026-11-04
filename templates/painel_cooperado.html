@@ -2075,7 +2075,21 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       }
       setFilter(state.listFilter);
       renderList();
-      loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
+      // A resposta HTML já contém as entregas do período: mostrar o Resumo
+      // imediatamente sem repetir a mesma consulta ao banco na abertura.
+      if(state.listFilter === 'todas' && !state.search && !state.allDates){
+        const initialItems=deliveries.map(e=>({
+          id:e.id,cliente:e.cliente,valor:e.valor,pagamento:e.pagamento,
+          status_pagamento:e.statusPagamento,status_entrega:e.statusEntrega,
+          data:e.data,hora:e.hora,origem:e.origem,destino:e.destino,
+          paradas:e.paradas
+        }));
+        const cacheKey=filterParams('todas').toString();
+        summaryCache.set(cacheKey,initialItems);
+        updateSummaryFromItems(initialItems);
+      }else{
+        loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
+      }
       if(chartsInitialized) buildCharts();
     }
 
