@@ -15507,6 +15507,10 @@ import coopex_connect
 
 coopex_connect.install(sys.modules[__name__])
 
+# Entrada na fila por proximidade e saída auditada
+import coopex_fila_geo
+coopex_fila_geo.install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
+
 
 
 if __name__ == '__main__':
