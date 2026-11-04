@@ -1306,6 +1306,21 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .cx-queue-confirm{background:linear-gradient(145deg,#55c1ff,#0c61d1)!important;color:white!important}
 .cx-queue-modal-buttons button:disabled{opacity:.55!important}
 body.cx-modal-active{overflow:hidden!important}
+
+/* Caixa de aviso, confirmação e entrada: mesmo vidro 3D do COOPEX. */
+.cx-action-dialog[hidden]{display:none!important}
+.cx-action-dialog{position:fixed;inset:0;z-index:100050;display:grid;place-items:center;padding:17px;background:rgba(3,19,48,.58);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);box-sizing:border-box}
+.cx-action-card{width:min(100%,410px);max-height:calc(100dvh - 38px);overflow-y:auto;border:2px solid #fff;border-radius:29px;padding:22px 20px 18px;background:linear-gradient(140deg,rgba(255,255,255,.97),rgba(201,226,255,.95));box-shadow:0 25px 55px rgba(2,32,95,.38),inset 0 3px 4px white;color:#123b80;box-sizing:border-box}
+.cx-action-symbol{width:48px;height:48px;display:grid;place-items:center;border-radius:18px;border:2px solid white;background:linear-gradient(140deg,#fff,#b7dcff);color:#0865cd;font-size:1.45rem;margin-bottom:9px;box-shadow:0 6px 15px #277ab057,inset 0 2px white}
+.cx-action-card h2{margin:0 0 9px!important;font-size:1.2rem!important;font-weight:900!important;color:#11498d}
+.cx-action-card p{white-space:pre-wrap;overflow-wrap:anywhere;margin:0 0 12px!important;font-size:.91rem;line-height:1.45;color:#294f82}
+.cx-action-card textarea{width:100%;min-height:85px;max-height:200px;resize:vertical;display:block;border-radius:15px;padding:11px;border:2px solid white;box-sizing:border-box;background:linear-gradient(#fff,#eaf4ff);color:#153f81;font:500 1rem system-ui;outline:none}
+.cx-action-card textarea:focus{border-color:#5da8ee}
+.cx-action-error{display:block;font-size:.78rem;font-weight:850;color:#b72439;min-height:18px;margin-top:4px}
+.cx-action-buttons{display:flex;gap:8px;margin-top:12px}
+.cx-action-buttons button{flex:1;min-height:45px;border:2px solid white;border-radius:16px;padding:7px 10px;font-weight:900;font-size:.89rem;box-shadow:0 5px 13px #287ab05e}
+.cx-action-no{background:linear-gradient(#fff,#d5e8fc);color:#134b9a}
+.cx-action-yes{background:linear-gradient(145deg,#55c4ff,#075dc9);color:white}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -1637,7 +1652,45 @@ body.cx-modal-active{overflow:hidden!important}
     </div>
   </div>
 
-  <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
+  <script id="cx-coopex-dialog-handler">
+(function(){
+ const host=document.createElement('div');host.className='cx-action-dialog';host.hidden=true;
+ host.innerHTML='<section class="cx-action-card" role="dialog" aria-modal="true" aria-labelledby="cx-action-title"><div class="cx-action-symbol" aria-hidden="true"><i class="bi bi-shield-check"></i></div><h2 id="cx-action-title">COOPEX</h2><p id="cx-action-text"></p><textarea id="cx-action-input" maxlength="500" hidden placeholder="Escreva aqui..."></textarea><small class="cx-action-error" id="cx-action-error" aria-live="polite"></small><div class="cx-action-buttons"><button type="button" class="cx-action-no" id="cx-action-no">Cancelar</button><button type="button" class="cx-action-yes" id="cx-action-yes">Confirmar</button></div></section>';
+ document.body.appendChild(host);
+ let close=null;
+ window.coopexDialog=function(opts){
+  if(close){close(null);}
+  const o=typeof opts==='string'?{message:opts}:opts||{};
+  host.querySelector('#cx-action-title').textContent=o.title||'COOPEX';
+  host.querySelector('#cx-action-text').textContent=String(o.message||'');
+  const field=host.querySelector('#cx-action-input'),no=host.querySelector('#cx-action-no'),yes=host.querySelector('#cx-action-yes'),error=host.querySelector('#cx-action-error');
+  const isInput=o.type==='input',isConfirm=o.type==='confirm';
+  field.hidden=!isInput;field.value='';field.placeholder=o.placeholder||'Informe aqui...';
+  no.hidden=!(isInput||isConfirm);
+  yes.textContent=o.okText||(isInput||isConfirm?'Confirmar':'Entendi');
+  error.textContent='';host.hidden=false;
+  return new Promise(resolve=>{
+   close=(v)=>{host.hidden=true;close=null;resolve(v);};
+   const cancel=()=>{cleanup();close(null);};
+   const ok=()=>{
+    if(isInput){
+     const v=field.value.trim();
+     if(v.length<(o.minLength||1)){error.textContent='Informe pelo menos '+(o.minLength||1)+' caracteres.';field.focus();return;}
+     cleanup();close(v);
+    }else{cleanup();close(true);}
+   };
+   const key=e=>{if(e.key==='Escape'){e.preventDefault();cancel();}else if(e.key==='Enter'&&!isInput){e.preventDefault();ok();}};
+   function cleanup(){no.removeEventListener('click',cancel);yes.removeEventListener('click',ok);document.removeEventListener('keydown',key);}
+   no.addEventListener('click',cancel);yes.addEventListener('click',ok);document.addEventListener('keydown',key);
+   requestAnimationFrame(()=>isInput?field.focus():yes.focus());
+  });
+ };
+ window.coopexMessage=(message,title='COOPEX')=>window.coopexDialog({message,title,type:'info'});
+ // Substitui alertas legados do painel para evitar caixas com a URL da página.
+ window.alert=(message)=>{window.coopexMessage(String(message));};
+})();
+</script>
+<script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
   <script>
     // Um só filtro de período no topo das três telas.
     const dateGridShared = document.querySelector('#tab-entregas .date-grid');
@@ -2478,23 +2531,24 @@ body.cx-modal-active{overflow:hidden!important}
 
     document.getElementById('chart-mode')?.addEventListener('change',buildCharts);
     async function runBulk(acao){
-      const pending = deliveries.filter(item=>item.element.style.display!=='none' && (acao==='marcar_pago' ? item.statusPagamento!=='pago' : item.statusEntrega!=='entregue'));
-      if(!pending.length){alert('Não há entregas pendentes na seleção.');return;}
-      if(pending.length>300){alert('Selecione até 300 entregas por vez.');return;}
+      const pending=deliveries.filter(item=>item.element.style.display!=='none'&&(acao==='marcar_pago'?item.statusPagamento!=='pago':item.statusEntrega!=='entregue'));
+      if(!pending.length){await coopexMessage('Não há entregas pendentes na seleção.');return;}
+      if(pending.length>300){await coopexMessage('Selecione até 300 entregas por vez.');return;}
       let recebido_por='';
       if(acao==='marcar_entregue'){
-        recebido_por = (prompt('Informe quem recebeu estas entregas (obrigatório):') || '').trim();
-        if(recebido_por.length<2) return;
+        recebido_por=await coopexDialog({type:'input',title:'Confirmar entregas',message:'Informe quem recebeu estas entregas.',placeholder:'Nome de quem recebeu',minLength:2,okText:'Continuar'});
+        if(!recebido_por)return;
       }
-      if(!confirm('Confirmar '+(acao==='marcar_pago'?'pagamento':'entrega')+' de '+pending.length+' registro(s)?'))return;
+      const confirmed=await coopexDialog({type:'confirm',title:'Confirmar operação',message:'Confirmar '+(acao==='marcar_pago'?'pagamento':'entrega')+' de '+pending.length+' registro(s)?',okText:'Confirmar'});
+      if(!confirmed)return;
       try{
         const response=await fetch('/api/cooperado/entregas/lote',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({acao,ids:pending.map(x=>x.id),recebido_por})});
         const body=await response.json();
         if(!response.ok||!body.ok)throw new Error(body.error||'Falha na operação');
         deliveryCache.clear();summaryCache.clear();chartCache.clear();
-        alert(body.alteradas.length+' entrega(s) atualizada(s). '+body.ignoradas.length+' não alterada(s).');
-        await loadDeliveries({useCache:false});
-      }catch(err){alert(err.message||'Erro na operação');}
+        await loadDeliveries({useCache:false,keepTab:true});
+        await coopexMessage(body.alteradas.length+' entrega(s) atualizada(s). '+body.ignoradas.length+' não alterada(s).','Operação concluída');
+      }catch(err){await coopexMessage(err.message||'Erro na operação','Não foi possível concluir');}
     }
     document.getElementById('bulk-paid')?.addEventListener('click',()=>runBulk('marcar_pago'));
     document.getElementById('bulk-delivered')?.addEventListener('click',()=>runBulk('marcar_entregue'));
