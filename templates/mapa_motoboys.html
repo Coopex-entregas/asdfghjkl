@@ -211,8 +211,9 @@
       return L.icon({iconUrl:'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(markerSvg(item)))), iconSize:[24,24], iconAnchor:[12,12], popupAnchor:[0,-12]});
     }
     function popupHtml(item){
+      const velocidade = item.speed_kmh !== null && item.speed_kmh !== undefined && Number.isFinite(Number(item.speed_kmh)) ? `<div class="popup-row"><strong>Velocidade GPS:</strong> ${Number(item.speed_kmh).toFixed(1)} km/h</div>` : '';
       const semEntrega = item.tempo_sem_entrega ? `<div class="popup-row"><strong>Sem entrega:</strong> ${fmt(item.tempo_sem_entrega)}</div>` : '';
-      return `<div class="popup-title">${item.nome || 'Cooperado'}</div><div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div><div class="popup-row"><strong>Pendentes:</strong> ${Number(item.entregas_abertas || 0)}</div><div class="popup-row"><strong>GPS:</strong> ${fmt(item.ultima_atualizacao)}</div>${semEntrega}`;
+      return `<div class="popup-title">${item.nome || 'Cooperado'}</div><div><span class="badge ${badgeClass(item)}">${statusLabel(item)}</span></div><div class="popup-row"><strong>Pendentes:</strong> ${Number(item.entregas_abertas || 0)}</div><div class="popup-row"><strong>GPS:</strong> ${fmt(item.ultima_atualizacao)}</div>${velocidade}${semEntrega}`;
     }
     function setInfo(item){ selected = item || null; }
     function filteredItems(){
