@@ -1702,8 +1702,12 @@ body.cx-modal-active{overflow:hidden!important}
       }catch(_){ }
       if(validTab === 'tab-graficos'){
         if(!chartsInitialized){buildYearPills();chartsInitialized = true;}
-        // Ao retornar aos gráficos, manter o mesmo período do Resumo e Produções.
+        // A mesma data selecionada permanece ativa ao trocar de aba.
         buildCharts();
+      } else if(validTab==='tab-entregas'){
+        // Recarregar só quando o intervalo ainda não existe no cache.
+        const params=filterParams().toString();
+        if(!deliveryCache.has(params))loadDeliveries({useCache:true,keepTab:true}).catch(console.error);
       }
     }
 
@@ -1940,7 +1944,7 @@ body.cx-modal-active{overflow:hidden!important}
     function syncFilterUrl(){
       try{
         const url = new URL(window.location.href);
-        url.searchParams.set('tab','tab-entregas');
+        url.searchParams.set('tab',state.tab);
         url.searchParams.set('status_pgto',state.listFilter || 'todas');
         if(state.search) url.searchParams.set('cliente',state.search); else url.searchParams.delete('cliente');
         if(state.inicio) url.searchParams.set('inicio',state.inicio); else url.searchParams.delete('inicio');
@@ -1950,8 +1954,8 @@ body.cx-modal-active{overflow:hidden!important}
       }catch(_){ }
     }
 
-    async function loadDeliveries({useCache=true}={}){
-      activateTab('tab-entregas');
+    async function loadDeliveries({useCache=true,keepTab=false}={}){
+      if(!keepTab)activateTab('tab-entregas');
       if(!state.allDates) ensureDateRangeDefaults();
       syncFilterUrl();
       const params = filterParams();
@@ -2068,12 +2072,12 @@ body.cx-modal-active{overflow:hidden!important}
       state.inicio=filtroInicio.value||'';
       state.fim=filtroFim.value||'';
       state.allDates=false;
+      ensureDateRangeDefaults();
       summaryCache.clear();chartCache.clear();deliveryCache.clear();
-      if(state.tab==='tab-entregas') await loadDeliveries({useCache:false});
-      else {
-        await loadSummaryForCurrentFilters({useCache:false});
-        if(state.tab==='tab-graficos') await buildCharts();
-      }
+      // Atualiza Resumo e Produções usando o mesmo período sem trocar a aba visível.
+      await loadDeliveries({useCache:false,keepTab:true});
+      // Gráficos utilizam o mesmo estado de datas; atualizar se estiverem visíveis.
+      if(state.tab==='tab-graficos')await buildCharts();
     }
     if (filtroInicio){
       filtroInicio.addEventListener('change', () => {
@@ -2105,7 +2109,7 @@ body.cx-modal-active{overflow:hidden!important}
         state.inicio = filtroInicio.value || '';
         state.fim = filtroFim.value || '';
         ensureDateRangeDefaults();
-        await loadDeliveries({useCache:false});
+        await sharedPeriodChanged();
       });
     }
 
@@ -2117,7 +2121,7 @@ body.cx-modal-active{overflow:hidden!important}
         state.inicio = todayISO;
         state.fim = todayISO;
         state.allDates = false;
-        await loadDeliveries();
+        await sharedPeriodChanged();
       });
     }
 
