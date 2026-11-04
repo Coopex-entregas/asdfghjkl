@@ -5415,6 +5415,21 @@ def _cooperado_dashboard_resumo(user_id):
     }
 
 
+@app.get('/api/mobile/cooperado/resumo')
+def api_mobile_cooperado_resumo():
+    """Resumo leve para o aplicativo Android nativo. Exige sessão do cooperado."""
+    user_id = session.get('user_id')
+    if not user_id or session.get('is_admin'):
+        return jsonify(ok=False, error='Não autorizado'), 401
+    coop = Cooperado.query.get(int(user_id))
+    if not coop or not getattr(coop, 'ativo', True):
+        return jsonify(ok=False, error='Cooperado inativo'), 403
+    data = _cooperado_dashboard_resumo(int(user_id))
+    response = jsonify(ok=True, **data)
+    response.headers['Cache-Control'] = 'no-store, private'
+    return response
+
+
 @app.route('/painel_cooperado')
 def painel_cooperado():
     if session.get('user_id') is None or session.get('is_admin'):
