@@ -2232,7 +2232,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                   <input name="nome" id="nome-espera" type="hidden">
                   <button type="submit" class="btn">Adicionar à fila</button>
                 </form>
-                <div id="coopex-led-saida" role="alert" aria-live="assertive" style="display:none;background:linear-gradient(140deg,#b20d19,#e12838);color:#fff;border:2px solid #ffabb2;border-radius:14px;padding:12px;margin:8px 0;font-weight:800;box-shadow:0 5px 15px rgba(160,0,22,.3)"></div>
+                
                 <ul id="espera-lista">
                   {% if lista_espera|length == 0 %}
                     <li id="fila-vazia" class="small">Nenhum cooperado na fila.</li>
@@ -4503,61 +4503,6 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 <script src="https://cdn.socket.io/4.8.1/socket.io.min.js" defer></script>
-<script id="coopex-admin-led-saida">
-(function(){
-let audioContext=null;
-function bip(){
- try{
-  const C=window.AudioContext||window.webkitAudioContext;if(!C)return;
-  const a=audioContext||(audioContext=new C());
-  if(a.state==='suspended')a.resume().catch(()=>{});
-  for(const [offset,freq] of [[0,900],[.16,1120],[.32,900]]){
-   const osc=a.createOscillator(),gain=a.createGain();
-   osc.type='sine';osc.frequency.value=freq;
-   gain.gain.setValueAtTime(0.0001,a.currentTime+offset);
-   gain.gain.exponentialRampToValueAtTime(.22,a.currentTime+offset+.02);
-   gain.gain.exponentialRampToValueAtTime(.0001,a.currentTime+offset+.13);
-   osc.connect(gain);gain.connect(a.destination);
-   osc.start(a.currentTime+offset);osc.stop(a.currentTime+offset+.14);
-  }
- }catch(_){}
-}
-function show(data){
- if(!data||!data.nome||!data.motivo)return;
- const box=document.getElementById('coopex-led-saida');
- if(!box)return;
- box.style.display='block';
- box.replaceChildren();
- const title=document.createElement('div');title.textContent='🔴 SAÍDA DA FILA DE ESPERA';
- const content=document.createElement('div');content.style.marginTop='6px';
- content.textContent=data.nome+' — Motivo: '+data.motivo;
- box.append(title,content);
- bip();
- if('Notification' in window&&Notification.permission==='granted'&&document.hidden){
-  try{new Notification('COOPEX • Saída da fila',{body:data.nome+': '+data.motivo});}catch(_){}
- }
-}
-function connect(){
- if(typeof io!=='function')return;
- const sock=io({transports:['websocket','polling'],reconnection:true});
- sock.on('coopex_fila_saida_alerta',show);
- sock.on('connect',()=>{
-  // Histórico consultado apenas quando o painel conecta; sem polling.
-  fetch('/api/admin/fila/saidas',{credentials:'same-origin',cache:'no-store'})
-  .then(r=>r.ok?r.json():null).then(d=>{
-    if(d&&d.ok&&d.itens&&d.itens.length){
-      const x=d.itens[0];
-      const box=document.getElementById('coopex-led-saida');
-      if(box){box.style.display='block';box.textContent='🔴 Última saída: '+x.nome+' — '+x.motivo;}
-    }
-  }).catch(()=>{});
- });
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',connect);else connect();
-document.addEventListener('pointerdown',()=>{
- try{const C=window.AudioContext||window.webkitAudioContext;if(C&&!audioContext)audioContext=new C();if(audioContext&&audioContext.state==='suspended')audioContext.resume().catch(()=>{});}catch(_){}
-},{once:true});
-})();
-</script>
+
 </body>
 </html>
