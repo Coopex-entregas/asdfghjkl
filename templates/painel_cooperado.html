@@ -1288,6 +1288,24 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .topbar .coopex-security-link{display:inline-flex!important;width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;font-size:0!important;border-radius:50%!important;}
 .topbar .coopex-security-link .coopex-lock-icon{font-size:17px!important;line-height:1!important;}
 @media(max-height:750px){.topbar{min-height:0!important;padding:6px 9px 5px!important}.topbar .top-metric{min-height:37px!important}}
+
+/* Diálogos COOPEX integrados, liquid glass 3D, sem prompt/URL do navegador. */
+.cx-queue-modal-backdrop[hidden]{display:none!important}
+.cx-queue-modal-backdrop{position:fixed;inset:0;z-index:99999;background:rgba(5,19,49,.56);backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);display:flex;align-items:center;justify-content:center;padding:16px;box-sizing:border-box}
+.cx-queue-modal{width:min(100%,420px);max-height:calc(100dvh - 36px);overflow-y:auto;box-sizing:border-box;text-align:left;padding:23px 20px 18px;border-radius:29px;border:2px solid rgba(255,255,255,.95);background:linear-gradient(140deg,rgba(254,255,255,.97),rgba(207,230,255,.94));box-shadow:0 23px 55px rgba(0,35,105,.38),inset 0 3px 3px rgba(255,255,255,.98),inset 0 -5px 15px rgba(36,105,195,.12);color:#103b81;transform:translateZ(0)}
+.cx-queue-modal-symbol{display:grid;place-items:center;width:48px;height:48px;border-radius:18px;margin-bottom:9px;color:#1268d4;font-size:1.45rem;background:linear-gradient(145deg,#fff,#b9ddff);border:2px solid #fff;box-shadow:0 7px 15px rgba(22,93,179,.25),inset 0 2px 3px #fff}
+.cx-queue-modal h2{font-size:1.22rem!important;margin:0 0 7px!important;font-weight:950!important;color:#104c9a!important}
+.cx-queue-modal p{font-size:.88rem;line-height:1.4;margin:0 0 15px;color:#315785}
+.cx-queue-modal label{display:block;font-weight:900;font-size:.83rem;margin:0 0 6px}
+.cx-queue-modal textarea{display:block;width:100%;box-sizing:border-box;resize:vertical;min-height:92px;max-height:170px;border:2px solid white;border-radius:17px;padding:12px;font-size:1rem;line-height:1.35;color:#173b7d;background:linear-gradient(#fff,#edf6ff);outline:none;box-shadow:0 5px 13px rgba(29,97,181,.14),inset 0 2px 4px rgba(58,120,193,.1)}
+.cx-queue-modal textarea:focus{border-color:#6cadf3;box-shadow:0 0 0 3px rgba(85,168,245,.2)}
+.cx-queue-modal small{display:block;min-height:20px;margin:5px 0;color:#bb2341;font-weight:800;font-size:.77rem}
+.cx-queue-modal-buttons{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:9px;margin-top:10px}
+.cx-queue-modal-buttons button{border-radius:17px!important;border:2px solid white!important;min-height:46px!important;padding:7px 8px!important;font-size:.88rem!important;font-weight:900!important;white-space:normal!important;line-height:1.15!important;box-shadow:0 7px 15px rgba(28,96,187,.22),inset 0 2px 3px rgba(255,255,255,.85)!important}
+.cx-queue-cancel{background:linear-gradient(#fff,#cbdff7)!important;color:#15498b!important}
+.cx-queue-confirm{background:linear-gradient(145deg,#55c1ff,#0c61d1)!important;color:white!important}
+.cx-queue-modal-buttons button:disabled{opacity:.55!important}
+body.cx-modal-active{overflow:hidden!important}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -1386,6 +1404,34 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       <button type="button" class="tab-btn" data-tab="tab-escalas"><span class="menu-glass-icon"><i class="bi bi-calendar3"></i></span><span>Escalas</span></button>
       <button type="button" class="tab-btn" data-tab="tab-graficos"><span class="menu-glass-icon"><i class="bi bi-bar-chart"></i></span><span>Gráficos</span></button>
       <button type="button" class="tab-btn" data-tab="tab-fila"><span class="menu-glass-icon"><i class="bi bi-people"></i></span><span>Fila</span></button>
+    </div>
+
+
+    <!-- Caixas de diálogo integradas ao painel, sem popup ou URL do navegador. -->
+    <div class="cx-queue-modal-backdrop" id="cx-exit-backdrop" hidden>
+      <section class="cx-queue-modal" role="dialog" aria-modal="true" aria-labelledby="cx-exit-title">
+        <div class="cx-queue-modal-symbol" aria-hidden="true"><i class="bi bi-box-arrow-right"></i></div>
+        <h2 id="cx-exit-title">Sair da fila de espera</h2>
+        <p>Informe o motivo da sua saída para a supervisão.</p>
+        <label for="cx-exit-reason">Motivo da saída</label>
+        <textarea id="cx-exit-reason" maxlength="500" rows="3" placeholder="Escreva o motivo..." required></textarea>
+        <small id="cx-exit-error" role="alert" aria-live="polite"></small>
+        <div class="cx-queue-modal-buttons">
+          <button type="button" class="cx-queue-cancel" id="cx-exit-cancel">Cancelar</button>
+          <button type="button" class="cx-queue-confirm" id="cx-exit-submit">Confirmar saída</button>
+        </div>
+      </section>
+    </div>
+    <div class="cx-queue-modal-backdrop" id="cx-arrival-backdrop" hidden>
+      <section class="cx-queue-modal" role="dialog" aria-modal="true" aria-labelledby="cx-arrival-title">
+        <div class="cx-queue-modal-symbol" aria-hidden="true"><i class="bi bi-geo-alt-fill"></i></div>
+        <h2 id="cx-arrival-title">Você chegou à COOPEX</h2>
+        <p>Deseja entrar na fila de espera?</p>
+        <div class="cx-queue-modal-buttons">
+          <button type="button" class="cx-queue-cancel" id="cx-arrival-no">Agora não</button>
+          <button type="button" class="cx-queue-confirm" id="cx-arrival-yes">Entrar na fila</button>
+        </div>
+      </section>
     </div>
 
     <section id="tab-fila" class="tab-panel">
@@ -2775,19 +2821,62 @@ async function join(){
  }catch(e){notice(e.message||'Não foi possível verificar sua localização.');}
  finally{enter.disabled=false;}
 }
+function showExitModal(){
+ const backdrop=$('cx-exit-backdrop'),field=$('cx-exit-reason'),error=$('cx-exit-error');
+ if(!backdrop||!field)return;
+ field.value='';error.textContent='';backdrop.hidden=false;
+ document.body.classList.add('cx-modal-active');
+ requestAnimationFrame(()=>field.focus());
+}
+function hideExitModal(){
+ $('cx-exit-backdrop').hidden=true;
+ document.body.classList.remove('cx-modal-active');
+ leave.focus();
+}
 async function exitQueue(){
- const reason=prompt('Informe o motivo da saída da fila (mínimo de 5 caracteres):');
- if(reason===null)return;
- if(reason.trim().length<5){notice('Informe o motivo da saída com ao menos 5 caracteres.');return;}
- leave.disabled=true;
+ const reason=($('cx-exit-reason').value||'').trim();
+ const error=$('cx-exit-error'),btn=$('cx-exit-submit');
+ if(reason.length<5){error.textContent='Escreva pelo menos 5 caracteres.';$('cx-exit-reason').focus();return;}
+ if(reason.length>500){error.textContent='O motivo deve ter até 500 caracteres.';return;}
+ btn.disabled=true;leave.disabled=true;error.textContent='';
  try{
   const r=await fetch('/api/cooperado/fila/sair',{method:'POST',credentials:'same-origin',
-   headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:reason.trim()})});
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:reason})});
   const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Falha ao sair.');
-  notice('Saída registrada. A supervisão poderá consultar seu motivo.');
- }catch(e){notice(e.message||'Não foi possível sair da fila.');}finally{leave.disabled=false;}
+  hideExitModal();
+  // Atualiza visual imediatamente; o evento WebSocket confirma a ordenação final.
+  inQueue=false;
+  pos.textContent='Você ainda não está na fila.';
+  leave.style.display='none';enter.style.display='inline-flex';
+  const x=document.createElement('p');x.textContent='Você não está na fila.';
+  people.replaceChildren(x);
+  notice('Saída confirmada. Motivo enviado à supervisão.');
+ }catch(e){error.textContent=e.message||'Não foi possível sair da fila.';}
+ finally{btn.disabled=false;leave.disabled=false;}
 }
-enter.addEventListener('click',join);leave.addEventListener('click',exitQueue);
+enter.addEventListener('click',join);
+leave.addEventListener('click',showExitModal);
+$('cx-exit-cancel').addEventListener('click',hideExitModal);
+$('cx-exit-submit').addEventListener('click',exitQueue);
+$('cx-exit-reason').addEventListener('input',()=>{$('cx-exit-error').textContent='';});
+$('cx-exit-backdrop').addEventListener('click',e=>{if(e.target.id==='cx-exit-backdrop')hideExitModal();});
+function askArrival(){
+ return new Promise(resolve=>{
+  const backdrop=$('cx-arrival-backdrop');
+  backdrop.hidden=false;
+  document.body.classList.add('cx-modal-active');
+  const close=answer=>{
+   backdrop.hidden=true;document.body.classList.remove('cx-modal-active');
+   $('cx-arrival-yes').removeEventListener('click',yes);
+   $('cx-arrival-no').removeEventListener('click',no);
+   resolve(answer);
+  };
+  const yes=()=>close(true),no=()=>close(false);
+  $('cx-arrival-yes').addEventListener('click',yes);
+  $('cx-arrival-no').addEventListener('click',no);
+  $('cx-arrival-yes').focus();
+ });
+}
 // Aviso de chegada apenas enquanto a página estiver ativa. Não substituir o GPS nativo em segundo plano.
 function startArrivalWatch(){
  // O app Android usa serviço nativo para continuar avisando com a tela bloqueada.
@@ -2803,10 +2892,11 @@ function startArrivalWatch(){
    const AudioCtx=window.AudioContext||window.webkitAudioContext;
    if(AudioCtx){const ctx=new AudioCtx(),o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=1050;g.gain.value=.2;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.18);o.onended=()=>ctx.close();}
   }catch(_){}
-  if(confirm('Você chegou à COOPEX. Deseja entrar na fila de espera?')){
+  askArrival().then(accepted=>{
+   if(!accepted)return;
    const btn=document.querySelector('.tab-btn[data-tab="tab-fila"]');if(btn)btn.click();
    join();
-  }
+  });
  },()=>{}, {enableHighAccuracy:true,maximumAge:30000,timeout:30000});
 }
 document.addEventListener('DOMContentLoaded',()=>{
