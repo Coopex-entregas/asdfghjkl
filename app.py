@@ -14580,6 +14580,7 @@ def lista_espera_add():
         )
         db.session.add(item)
         db.session.commit()
+        emitir_lista_espera()
         flash('Cooperado adicionado à lista de espera.')
         return redirect_back_to_admin()
 
@@ -14596,6 +14597,7 @@ def lista_espera_add():
     )
     db.session.add(item)
     db.session.commit()
+    emitir_lista_espera()
     flash('Nome adicionado à lista de espera.')
     return redirect_back_to_admin()
 
@@ -14608,6 +14610,7 @@ def lista_espera_remove(id):
     item = ListaEspera.query.get_or_404(id)
     db.session.delete(item)
     db.session.commit()
+    emitir_lista_espera()
     flash('Removido da lista de espera.')
     return redirect_back_to_admin()
 
@@ -14626,6 +14629,7 @@ def lista_espera_reordenar():
                 continue
             db.session.query(ListaEspera).filter_by(id=_id).update({"pos": i})
         db.session.commit()
+        emitir_lista_espera()
         return ("", 204)
     except Exception as e:
         db.session.rollback()
