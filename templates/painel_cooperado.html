@@ -1321,6 +1321,32 @@ body.cx-modal-active{overflow:hidden!important}
 .cx-action-buttons button{flex:1;min-height:45px;border:2px solid white;border-radius:16px;padding:7px 10px;font-weight:900;font-size:.89rem;box-shadow:0 5px 13px #287ab05e}
 .cx-action-no{background:linear-gradient(#fff,#d5e8fc);color:#134b9a}
 .cx-action-yes{background:linear-gradient(145deg,#55c4ff,#075dc9);color:white}
+
+/* Resumo compacto: sem barra de rolagem, mantendo todos os dados. */
+#tab-resumo.active{display:flex!important;flex:1 1 auto!important;min-height:0!important;flex-direction:column!important;justify-content:flex-start!important;gap:5px!important;overflow-y:hidden!important;overflow-x:hidden!important}
+#tab-resumo .hero-card{flex:0 0 auto!important;min-height:68px!important;height:auto!important;padding:7px 13px!important;margin:0!important}
+#tab-resumo .finance-detail{flex:1 1 auto!important;min-height:0!important;margin:0!important;padding:6px 10px 4px!important;overflow:hidden!important;display:flex!important;flex-direction:column!important;justify-content:space-between!important}
+#tab-resumo .finance-detail>h3{margin:0 0 1px!important;font-size:.83rem!important}
+#tab-resumo .finance-detail .finance-line{flex:1 1 0!important;min-height:0!important;padding:2px 0!important;gap:5px!important}
+#tab-resumo .finance-detail .copy strong{font-size:clamp(.83rem,3.5vw,1.02rem)!important}
+#tab-resumo .finance-detail .copy small{font-size:clamp(.67rem,2.6vw,.77rem)!important}
+#tab-resumo .finance-detail .amount{font-size:clamp(.88rem,3.6vw,1.09rem)!important}
+#tab-resumo .financial-pending{flex:0 0 auto!important;min-height:46px!important;padding:5px 9px!important;margin:0!important}
+@media (max-height:720px) { #tab-resumo.active{gap:3px!important} #tab-resumo .hero-card{min-height:62px!important;padding:5px 11px!important} #tab-resumo .finance-detail .finance-line{padding:1px 0!important} #tab-resumo .financial-pending{min-height:42px!important} }
+/* Fila com menos textos e maior legibilidade. */
+#tab-fila.active{display:flex!important;flex:1 1 auto!important;min-height:0!important;overflow:hidden!important;padding-bottom:0!important}
+#coopex-queue-panel{width:100%!important;max-height:none!important;height:100%!important;min-height:0!important;flex:1 1 auto!important;display:flex!important;flex-direction:column!important;gap:9px!important;overflow:hidden!important;padding:12px 13px 15px!important}
+#coopex-queue-panel h2{font-size:1.17rem!important;line-height:1.2!important;margin:0!important;font-weight:950!important}
+#queue-my-position{font-size:1.26rem!important;font-weight:950!important;line-height:1.25!important;margin:0!important;padding:12px!important}
+#coopex-queue-panel .coopex-queue-people{flex:1 1 auto!important;min-height:40px!important;max-height:none!important;overflow-y:auto!important;font-size:.98rem!important;line-height:1.4!important;padding:10px 12px!important}
+#coopex-queue-panel .coopex-queue-people strong{font-size:.99rem!important;font-weight:900!important}
+#coopex-queue-panel .coopex-queue-people div{font-size:.98rem!important;padding:7px 2px!important}
+#coopex-queue-panel .coopex-queue-people p{font-size:.96rem!important;line-height:1.35!important;margin:5px 0!important}
+#queue-base-address[hidden]{display:none!important}
+#queue-location-status{font-size:.87rem!important;line-height:1.33!important;flex:0 0 auto!important;min-height:0!important;margin:0!important}
+#queue-location-status:empty{display:none!important}
+#coopex-queue-panel .coopex-queue-actions{flex:0 0 auto!important;margin:0!important;gap:9px!important}
+#coopex-queue-panel .coopex-queue-actions button{min-height:47px!important;font-size:.95rem!important}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -1451,16 +1477,16 @@ body.cx-modal-active{overflow:hidden!important}
 
     <section id="tab-fila" class="tab-panel">
       <div class="surface" id="coopex-queue-panel">
-        <h2 style="margin:0 0 9px">Fila de espera COOPEX</h2>
+        <h2>Fila de espera</h2>
         <p id="queue-my-position" aria-live="polite">Consultando sua posição...</p>
         <div id="queue-people" class="coopex-queue-people">Carregando...</div>
-        <p id="queue-base-address" style="font-size:.83rem;color:#315681">Localização da cooperativa: consultando...</p>
+        <p id="queue-base-address" hidden></p>
         <p id="queue-location-status" role="status" aria-live="polite"></p>
         <div class="coopex-queue-actions">
           <button id="queue-enter" type="button">Entrar na fila</button>
           <button id="queue-exit" type="button" style="display:none">Sair da fila</button>
         </div>
-        <p class="coopex-queue-hint">Sua posição na fila é atualizada automaticamente.</p>
+        
       </div>
     </section>
 
@@ -2835,8 +2861,8 @@ function paint(items){
  enter.style.display=inQueue?'none':'inline-flex';
  people.replaceChildren();
  const lead=document.createElement('strong');
- lead.textContent='Quem está na sua frente';people.appendChild(lead);
- if(idx<0){const x=document.createElement('p');x.textContent='Entre na fila para visualizar sua posição.';people.appendChild(x);}
+ lead.textContent='À sua frente';people.appendChild(lead);
+ if(idx<0){const x=document.createElement('p');x.textContent='Nenhuma posição ativa.';people.appendChild(x);}
  else if(idx===0){const x=document.createElement('p');x.textContent='Você é o primeiro da fila.';people.appendChild(x);}
  else items.slice(0,idx).forEach((r,i)=>{const x=document.createElement('div'),n=document.createElement('b');n.textContent=(i+1)+'º ';x.appendChild(n);x.appendChild(document.createTextNode(String(r.nome||'Cooperado')));people.appendChild(x);});
 }
@@ -2847,8 +2873,8 @@ async function fetchBase(){
   const d=await r.json();
   if(!r.ok||!d.ok)throw Error(d.erro||'Base não cadastrada');
   base=d.base;
-  $('queue-base-address').textContent='Base: '+base.endereco;
- }catch(e){notice(e.message);$('queue-base-address').textContent='Base ainda não configurada.';}
+  $('queue-base-address').textContent='';
+ }catch(e){notice(e.message);}
 }
 function distance(lat1,lon1,lat2,lon2){
  const toRad=d=>d*Math.PI/180,a=toRad(lat2-lat1),b=toRad(lon2-lon1);
