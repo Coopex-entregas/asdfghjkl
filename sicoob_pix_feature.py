@@ -122,6 +122,11 @@ def install(host):
 </form>
 <p id="coopex-base-localizacao-msg" class="hint"></p>
 </section>
+<section id="coopex-fila-saidas"><h2>Histórico de saídas da fila</h2>
+<p class="hint">Cooperados que saíram voluntariamente, com data e justificativa.</p>
+<button type="button" onclick="coopexCarregarSaidas()">Consultar saídas</button>
+<div id="coopex-saidas-lista" style="margin-top:12px"></div>
+</section>
 <section><h2>Gerar Pix Copia e Cola</h2><p class="hint">Usa o valor já cadastrado na entrega. Não altera a forma de pagamento existente até a confirmação pelo banco.</p>
 <form id="pixForm"><input type="hidden" name="csrf" value="{{ csrf }}">
 <label>Número da entrega</label><input name="entrega_id" type="number" min="1" required><p><button>Gerar/consultar cobrança</button></p></form>
@@ -129,6 +134,21 @@ def install(host):
 <button type="button" onclick="navigator.clipboard.writeText(document.querySelector('#brcode').textContent)">Copiar Pix</button>
 <p id="situacao"></p><button type="button" onclick="consultar()">Verificar pagamento</button></section>
 <script>
+async function coopexCarregarSaidas(){
+ const host=document.getElementById('coopex-saidas-lista');host.textContent='Carregando...';
+ try{
+  const r=await fetch('/api/admin/fila/saidas',{credentials:'same-origin',cache:'no-store'});
+  const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Consulta indisponível');
+  host.replaceChildren();
+  if(!d.itens.length){host.textContent='Nenhuma saída voluntária registrada.';return;}
+  d.itens.forEach(x=>{
+   const card=document.createElement('div');card.style.cssText='border:1px solid #c5d7ed;border-radius:12px;padding:10px;margin:6px 0;background:#f5faff';
+   const h=document.createElement('strong');h.textContent=x.nome+' • '+new Date(x.quando).toLocaleString('pt-BR');
+   const p=document.createElement('p');p.textContent='Motivo: '+x.motivo;
+   card.append(h,p);host.appendChild(card);
+  });
+ }catch(e){host.textContent=e.message;}
+}
 function coopexPreencherLocalizacaoBase(){
  const el=document.getElementById('coopex-base-localizacao-msg');
  if(!navigator.geolocation){el.textContent='Localização indisponível neste dispositivo.';return;}
