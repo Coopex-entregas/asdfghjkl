@@ -1248,7 +1248,16 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-graficos .chart-legend strong{font-weight:950!important;color:#123e8c;}
 #tab-graficos .chart-legend span{font-weight:800!important;}
 
-#coopex-queue-panel{padding:17px 14px 24px!important;display:block!important}
+#coopex-queue-panel{padding:9px 10px 12px!important;display:flex!important;flex-direction:column!important;gap:5px!important;min-height:0!important;max-height:calc(100dvh - 207px)!important;overflow:hidden!important}
+#tab-fila.active{min-height:0!important;overflow:hidden!important;padding-bottom:0!important}
+#coopex-queue-panel h2{margin:0 0 2px!important;font-size:1.05rem!important}
+#queue-my-position{margin:0!important;padding:8px 11px!important;font-size:1.15rem!important}
+#queue-base-address,#queue-location-status,.coopex-queue-hint{margin:1px 0!important;font-size:.73rem!important;line-height:1.25!important}
+#coopex-queue-panel .coopex-queue-people{flex:1 1 auto!important;min-height:38px!important;max-height:none!important;overflow-y:auto!important;padding:6px 9px!important}
+#coopex-queue-panel .coopex-queue-people div{padding:4px 2px!important}
+#coopex-queue-panel .coopex-queue-actions{flex:0 0 auto!important;margin:2px 0!important}
+#coopex-queue-panel .coopex-queue-actions button{min-height:42px!important}
+@media(max-height:700px){#coopex-queue-panel{max-height:calc(100dvh - 182px)!important}}
 #coopex-queue-panel h2{color:#104ca9;font-size:1.15rem;font-weight:900}
 #queue-my-position{font-size:1.25rem;font-weight:950;color:#104da6;background:linear-gradient(145deg,#fff,#c5e4ff);border:2px solid #fff;border-radius:17px;padding:14px;box-shadow:0 5px 15px #448bc055}
 .coopex-queue-people{border:1px solid #bfdbf8;border-radius:16px;padding:12px;background:#f4faff;max-height:42vh;overflow-y:auto;color:#123e7c}
