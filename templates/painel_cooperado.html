@@ -1272,6 +1272,22 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 .tab-bar{grid-template-columns:repeat(5,minmax(0,1fr))!important;grid-auto-flow:row!important;}
 .tab-bar>.tab-btn{min-width:0!important;width:100%!important;box-sizing:border-box!important;}
 @media(max-width:410px){.tab-bar{gap:2px!important}.tab-bar .tab-btn{padding:4px 1px!important}.tab-bar .tab-btn .menu-glass-icon{width:27px!important;height:26px!important}.tab-bar .tab-btn>span:last-child{font-size:.61rem!important}}
+
+/* Cabeçalho COOPEX compacto, mantendo a área da câmera/relógio protegida pelo Android. */
+.topbar{min-height:0!important;padding:7px 10px 6px!important;gap:4px 7px!important;align-items:center!important;margin-bottom:5px!important;}
+.topbar .title-wrap{align-self:center!important;}
+.topbar .title-wrap small{font-size:.66rem!important;line-height:1!important;}
+.topbar .title-wrap h1{font-size:clamp(.91rem,3.6vw,1.13rem)!important;line-height:1.04!important;margin:2px 0!important;}
+.topbar .top-actions{align-self:center!important;display:flex!important;gap:4px!important;align-items:center!important;}
+.topbar .icon-circle,.topbar .logout-btn{height:32px!important;width:32px!important;min-width:32px!important;font-size:.70rem!important;}
+.topbar .coopex-top-metrics{gap:5px!important;padding:0!important;margin:0!important;}
+.topbar .top-metric{min-height:39px!important;padding:3px 6px!important;border-radius:14px!important;gap:5px!important;}
+.topbar .top-metric-icon{font-size:1.18rem!important;}
+.topbar .top-metric b{font-size:1.13rem!important;}
+.topbar .top-metric small{font-size:.66rem!important;}
+.topbar .coopex-security-link{display:inline-flex!important;width:32px!important;height:32px!important;min-width:32px!important;padding:0!important;align-items:center!important;justify-content:center!important;white-space:nowrap!important;font-size:0!important;border-radius:50%!important;}
+.topbar .coopex-security-link .coopex-lock-icon{font-size:17px!important;line-height:1!important;}
+@media(max-height:750px){.topbar{min-height:0!important;padding:6px 9px 5px!important}.topbar .top-metric{min-height:37px!important}}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
