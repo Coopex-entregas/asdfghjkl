@@ -1247,6 +1247,19 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
 #tab-graficos #chart-total-valor,#tab-graficos #chart-total-entregas,#tab-graficos #chart-total-status,#tab-graficos #chart-selected-payment{font-weight:950!important;}
 #tab-graficos .chart-legend strong{font-weight:950!important;color:#123e8c;}
 #tab-graficos .chart-legend span{font-weight:800!important;}
+
+#coopex-queue-panel{padding:17px 14px 24px!important;display:block!important}
+#coopex-queue-panel h2{color:#104ca9;font-size:1.15rem;font-weight:900}
+#queue-my-position{font-size:1.25rem;font-weight:950;color:#104da6;background:linear-gradient(145deg,#fff,#c5e4ff);border:2px solid #fff;border-radius:17px;padding:14px;box-shadow:0 5px 15px #448bc055}
+.coopex-queue-people{border:1px solid #bfdbf8;border-radius:16px;padding:12px;background:#f4faff;max-height:42vh;overflow-y:auto;color:#123e7c}
+.coopex-queue-people strong{display:block;margin-bottom:7px}
+.coopex-queue-people div{padding:7px 4px;border-top:1px solid #deecff;font-size:.93rem}
+.coopex-queue-actions{display:flex;gap:9px;flex-wrap:wrap;margin-top:10px}
+.coopex-queue-actions button{flex:1;min-height:48px;background:linear-gradient(145deg,#4db8ff,#065ed0);border:2px solid white;border-radius:16px;font-weight:900;color:white;box-shadow:0 5px 14px #357fbd77}
+#queue-exit{background:linear-gradient(145deg,#fff,#dcecff);color:#1753a2}
+.coopex-queue-hint{font-size:.8rem;line-height:1.4;color:#47658d}
+#queue-location-status{font-weight:800;color:#1549a0}
+@media(max-width:410px){.tab-bar{gap:2px!important}.tab-bar .tab-btn{padding:4px 1px!important}.tab-bar .tab-btn .menu-glass-icon{width:27px!important;height:26px!important}.tab-bar .tab-btn>span:last-child{font-size:.61rem!important}}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
@@ -1344,7 +1357,23 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
       <button type="button" class="tab-btn" data-tab="tab-entregas"><span class="menu-glass-icon"><i class="bi bi-bag-check"></i></span><span>Produções</span></button>
       <button type="button" class="tab-btn" data-tab="tab-escalas"><span class="menu-glass-icon"><i class="bi bi-calendar3"></i></span><span>Escalas</span></button>
       <button type="button" class="tab-btn" data-tab="tab-graficos"><span class="menu-glass-icon"><i class="bi bi-bar-chart"></i></span><span>Gráficos</span></button>
+      <button type="button" class="tab-btn" data-tab="tab-fila"><span class="menu-glass-icon"><i class="bi bi-people"></i></span><span>Fila</span></button>
     </div>
+
+    <section id="tab-fila" class="tab-panel">
+      <div class="surface" id="coopex-queue-panel">
+        <h2 style="margin:0 0 9px">Fila de espera COOPEX</h2>
+        <p id="queue-my-position" aria-live="polite">Consultando sua posição...</p>
+        <div id="queue-people" class="coopex-queue-people">Carregando...</div>
+        <p id="queue-base-address" style="font-size:.83rem;color:#315681">Localização da cooperativa: consultando...</p>
+        <p id="queue-location-status" role="status" aria-live="polite"></p>
+        <div class="coopex-queue-actions">
+          <button id="queue-enter" type="button">Entrar na fila</button>
+          <button id="queue-exit" type="button" style="display:none">Sair da fila</button>
+        </div>
+        <p class="coopex-queue-hint">Para entrar, autorize a localização precisa do celular e esteja dentro de 100 metros da entrada da cooperativa. A posição é atualizada automaticamente.</p>
+      </div>
+    </section>
 
     <section id="tab-entregas" class="tab-panel">
       <div class="surface">
@@ -1541,7 +1570,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     const sharedPeriodHost = document.getElementById('shared-period');
     if(dateGridShared && sharedPeriodHost) sharedPeriodHost.appendChild(dateGridShared);
     document.getElementById('pending-quick')?.addEventListener('click',()=>document.getElementById('card-pendencias')?.click());
-    document.getElementById('header-pendencias')?.addEventListener('click',()=>{const el=document.getElementById('queue-before');if(el)el.hidden=!el.hidden;});
+    document.getElementById('header-pendencias')?.addEventListener('click',()=>activateTab('tab-fila'));
     document.getElementById('header-entregas')?.addEventListener('click',()=>activateTab('tab-entregas'));
     document.getElementById('receipt-details')?.addEventListener('click',async()=>{state.listFilter='todas';state.allDates=false;state.search='';const search=document.getElementById('filtro-cliente');if(search)search.value='';await loadDeliveries({useCache:false});});
     const money = (n) => new Intl.NumberFormat('pt-BR', { style:'currency', currency:'BRL' }).format(Number(n || 0));
@@ -2620,6 +2649,7 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
         });
       }
       container.replaceChildren(children);
+      window.dispatchEvent(new CustomEvent('coopex-queue-update',{detail:{itens,posicao,indice}}));
     }
     function conectarEventosFila(){
       if(typeof io!=='function')return;
@@ -2655,5 +2685,111 @@ body{background:linear-gradient(145deg,#f7fcff,#c9e7ff)!important}
     });
   </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
+
+<script id="coopex-queue-geo-ui">
+(function(){
+'use strict';
+const $=id=>document.getElementById(id);
+const pos=$('queue-my-position'), people=$('queue-people'), hint=$('queue-location-status');
+const enter=$('queue-enter'), leave=$('queue-exit');
+let inQueue=false, base=null, offered=false, watchId=null;
+const selfId=Number({{ cooperado_id|tojson }});
+function notice(t){if(hint)hint.textContent=t;}
+function paint(items){
+ const idx=items.findIndex(r=>Number(r.cooperado_id)===selfId);
+ inQueue=idx>=0;
+ pos.textContent=inQueue?'Sua posição: '+(idx+1)+'º':'Você ainda não está na fila.';
+ leave.style.display=inQueue?'inline-flex':'none';
+ enter.style.display=inQueue?'none':'inline-flex';
+ people.replaceChildren();
+ const lead=document.createElement('strong');
+ lead.textContent='Quem está na sua frente';people.appendChild(lead);
+ if(idx<0){const x=document.createElement('p');x.textContent='Entre na fila para visualizar sua posição.';people.appendChild(x);}
+ else if(idx===0){const x=document.createElement('p');x.textContent='Você é o primeiro da fila.';people.appendChild(x);}
+ else items.slice(0,idx).forEach((r,i)=>{const x=document.createElement('div'),n=document.createElement('b');n.textContent=(i+1)+'º ';x.appendChild(n);x.appendChild(document.createTextNode(String(r.nome||'Cooperado')));people.appendChild(x);});
+}
+window.addEventListener('coopex-queue-update',e=>paint(e.detail.itens||[]));
+async function fetchBase(){
+ try{
+  const r=await fetch('/api/cooperado/fila/base',{credentials:'same-origin',cache:'no-store'});
+  const d=await r.json();
+  if(!r.ok||!d.ok)throw Error(d.erro||'Base não cadastrada');
+  base=d.base;
+  $('queue-base-address').textContent='Base: '+base.endereco+' • Raio permitido: '+base.raio_m+' m';
+ }catch(e){notice(e.message);$('queue-base-address').textContent='Base ainda não configurada.';}
+}
+function distance(lat1,lon1,lat2,lon2){
+ const toRad=d=>d*Math.PI/180,a=toRad(lat2-lat1),b=toRad(lon2-lon1);
+ const q=Math.sin(a/2)**2+Math.cos(toRad(lat1))*Math.cos(toRad(lat2))*Math.sin(b/2)**2;
+ return 6371000*2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));
+}
+function currentPosition(){
+ return new Promise((res,rej)=>{
+  if(!navigator.geolocation){rej(Error('Este celular não oferece localização.'));return;}
+  navigator.geolocation.getCurrentPosition(res,e=>rej(Error('Ative a localização precisa e autorize o COOPEX no Android.')),
+   {enableHighAccuracy:true,maximumAge:0,timeout:16000});
+ });
+}
+async function join(){
+ if(!base) await fetchBase();
+ if(!base)return;
+ enter.disabled=true;notice('Obtendo sua posição GPS...');
+ try{
+  const p=await currentPosition(),c=p.coords;
+  notice('Conferindo sua distância da base...');
+  const response=await fetch('/api/cooperado/fila/entrar',{
+   method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+   body:JSON.stringify({latitude:c.latitude,longitude:c.longitude,precisao_m:c.accuracy,timestamp_ms:p.timestamp})
+  });
+  const d=await response.json();
+  if(!response.ok||!d.ok)throw Error(d.erro||'Não foi possível entrar na fila.');
+  notice(d.ja_estava?'Você já está na fila.':'Entrada confirmada. Sua posição será atualizada.');
+ }catch(e){notice(e.message||'Não foi possível verificar sua localização.');}
+ finally{enter.disabled=false;}
+}
+async function exitQueue(){
+ const reason=prompt('Informe o motivo da saída da fila (mínimo de 5 caracteres):');
+ if(reason===null)return;
+ if(reason.trim().length<5){notice('Informe o motivo da saída com ao menos 5 caracteres.');return;}
+ leave.disabled=true;
+ try{
+  const r=await fetch('/api/cooperado/fila/sair',{method:'POST',credentials:'same-origin',
+   headers:{'Content-Type':'application/json'},body:JSON.stringify({motivo:reason.trim()})});
+  const d=await r.json();if(!r.ok||!d.ok)throw Error(d.erro||'Falha ao sair.');
+  notice('Saída registrada. A supervisão poderá consultar seu motivo.');
+ }catch(e){notice(e.message||'Não foi possível sair da fila.');}finally{leave.disabled=false;}
+}
+enter.addEventListener('click',join);leave.addEventListener('click',exitQueue);
+// Aviso de chegada apenas enquanto a página estiver ativa. Não substituir o GPS nativo em segundo plano.
+function startArrivalWatch(){
+ if(!navigator.geolocation||watchId!==null)return;
+ watchId=navigator.geolocation.watchPosition(p=>{
+  if(!base||inQueue||offered||document.hidden)return;
+  const c=p.coords;
+  if(c.accuracy>50)return;
+  if(distance(c.latitude,c.longitude,base.latitude,base.longitude)+c.accuracy>100)return;
+  offered=true;
+  try{
+   const AudioCtx=window.AudioContext||window.webkitAudioContext;
+   if(AudioCtx){const ctx=new AudioCtx(),o=ctx.createOscillator(),g=ctx.createGain();o.type='sine';o.frequency.value=1050;g.gain.value=.2;o.connect(g);g.connect(ctx.destination);o.start();o.stop(ctx.currentTime+.18);o.onended=()=>ctx.close();}
+  }catch(_){}
+  if(confirm('Você chegou à COOPEX. Deseja entrar na fila de espera?')){
+   const btn=document.querySelector('.tab-btn[data-tab="tab-fila"]');if(btn)btn.click();
+   join();
+  }
+ },()=>{}, {enableHighAccuracy:true,maximumAge:30000,timeout:30000});
+}
+document.addEventListener('DOMContentLoaded',()=>{
+ fetchBase().then(startArrivalWatch);
+ fetch('/api/cooperado/fila/estado',{credentials:'same-origin',cache:'no-store'})
+  .then(r=>r.json()).then(d=>{
+   if(!d.ok)return;
+   const rows=(d.anteriores||[]).map(x=>({nome:x.nome,cooperado_id:null}));
+   if(d.posicao!==null)rows.push({nome:'',cooperado_id:selfId});
+   paint(rows);
+  }).catch(()=>{});
+});
+})();
+</script>
 </body>
 </html>
