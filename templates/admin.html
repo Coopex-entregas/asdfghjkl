@@ -403,7 +403,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </style>
 <script id="cx-pix-led-script">
 (function(){
-let pix=[],fila=[],paidKnown=null,lastText='',audioContext=null,enabledSound=false,lastMode='',exitAlert=null,exitTimer=null;
+let pix=[],fila=[],paidKnown=null,lastText='',audioContext=null,enabledSound=false,lastMode='',exitAlert=null,exitTimer=null,entryAlert=[],entryTimer=null,entryUntil=0;
 const parse=v=>{if(!v)return NaN;const s=String(v).replace(' ','T');return Date.parse(s+(s.endsWith('Z')||/[+-]\\d\\d:\\d\\d$/.test(s)?'':'Z'))};
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const countdown=ms=>{if(ms<=0)return 'VENCIDO';const m=Math.ceil(ms/60000);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m'};
@@ -425,19 +425,22 @@ function draw(){
  const led=document.getElementById('cx-pix-led');if(!led)return;
  const now=Date.now();
  const exiting=exitAlert&&now<exitAlert.until;
+ const entering=entryAlert.length>0&&now<entryUntil;
  if(exitAlert&&!exiting)exitAlert=null;
+ if(entryAlert.length&&!entering)entryAlert=[];
  const warnings=pix.map(x=>({...x,ms:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.ms)&&x.ms<=3600000).sort((a,b)=>a.ms-b.ms);
- const mode=exiting?'saida':(warnings.length?'alert':'fila');
- const messages=exiting?['SAÍDA DA FILA · '+exitAlert.nome+' · MOTIVO: '+exitAlert.motivo]:warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(x.pos||i+1)+'º '+x.nome);
+ const mode=exiting?'saida':(entering?'entrada':(warnings.length?'alert':'fila'));
+ const messages=exiting?['SAÍDA DA FILA · '+exitAlert.nome+' · MOTIVO: '+exitAlert.motivo]:entering?['ENTRADA: '+entryAlert.map(x=>x.nome+' '+x.hora).join(' · ')]:warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(x.pos||i+1)+'º '+x.nome);
  const result=messages.join('     ✦     ')||(warnings.length?'AVISO PIX':'SEM COOPERADOS NA FILA');
  if(result!==lastText||mode!==lastMode){
   lastText=result;lastMode=mode;
   led.querySelector('.cx-led-inner').textContent='  ✦  '+result+'  ✦  ';
   led.classList.toggle('cx-led-blue',mode==='fila');
   led.classList.toggle('cx-led-exit',mode==='saida');
-  led.querySelector('.cx-led-inner').style.animationDuration=exiting?'13s':'32s';
+  led.classList.toggle('cx-led-entry',mode==='entrada');
+  led.querySelector('.cx-led-inner').style.animationDuration=(exiting||entering)?'13s':'32s';
  }
- led.querySelector('.cx-led-count').textContent=exiting?'SAÍDA':('PIX '+pix.length);
+ led.querySelector('.cx-led-count').textContent=exiting?'SAÍDA':entering?'ENTRADA':('PIX '+pix.length);
 }
 function queueExitSound(){
  if(!enabledSound||!audioContext)return;
@@ -455,6 +458,37 @@ function queueExitSound(){
   });
  }catch(e){}
 }
+function queueEntrySound(){
+ if(!enabledSound||!audioContext)return;
+ try{
+  if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
+  const now=audioContext.currentTime;
+  [[0,920],[.19,1180],[.38,1480]].forEach(([offset,freq])=>{
+   const osc=audioContext.createOscillator(),gain=audioContext.createGain();
+   osc.type='square';osc.frequency.value=freq;
+   gain.gain.setValueAtTime(.0001,now+offset);
+   gain.gain.exponentialRampToValueAtTime(.34,now+offset+.018);
+   gain.gain.exponentialRampToValueAtTime(.0001,now+offset+.19);
+   osc.connect(gain);gain.connect(audioContext.destination);
+   osc.start(now+offset);osc.stop(now+offset+.20);
+  });
+ }catch(e){}
+}
+function showQueueEntry(data){
+ if(!data||!data.nome)return;
+ const timestamp=Date.parse(String(data.quando||'')),moment=Number.isFinite(timestamp)?new Date(timestamp):new Date();
+ const hora=moment.toLocaleTimeString('pt-BR',{timeZone:'America/Fortaleza',hour:'2-digit',minute:'2-digit'});
+ const item={id:String(data.cooperado_id||''),nome:String(data.nome),hora};
+ // Acrescentar entradas sucessivas ao mesmo aviso, sem nomes repetidos.
+ if(entryAlert.some(x=>x.id===item.id&&x.hora===item.hora))return;
+ entryAlert.push(item);
+ if(entryAlert.length>25)entryAlert.shift();
+ entryUntil=Date.now()+15000;
+ if(entryTimer)clearTimeout(entryTimer);
+ queueEntrySound();
+ draw();
+ entryTimer=setTimeout(()=>{entryAlert=[];entryUntil=0;draw();entryTimer=null},15000);
+}
 function showQueueExit(data){
  if(!data||!data.nome||!data.motivo)return;
  exitAlert={nome:String(data.nome),motivo:String(data.motivo),until:Date.now()+15000};
@@ -467,6 +501,7 @@ function connectQueueExitSocket(){
  if(typeof io!=='function')return;
  const socket=io({transports:['websocket','polling'],reconnection:true});
  socket.on('coopex_fila_saida_alerta',showQueueExit);
+ socket.on('coopex_fila_entrada_alerta',showQueueEntry);
 }
 
 async function refresh(){try{const [r,f]=await Promise.all([fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'}),fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'})]);if(r.ok)pix=(await r.json()).cobrancas||[];if(f.ok)fila=(await f.json()).cooperados||[];draw()}catch(e){}}
@@ -476,6 +511,10 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 <style id="cx-pix-led-blue">#cx-pix-led.cx-led-blue{border-color:#2360aa;background:#06162b;box-shadow:inset 0 0 9px #000a,0 0 3px #2966c3}#cx-pix-led.cx-led-blue .cx-led-inner{color:#61b9ff;text-shadow:0 0 4px #369cff,0 0 9px #237aff}
+/* Aviso de entrada: TODO O LED verde, com nomes e horários por 15s após a última entrada. */
+#cx-pix-led.cx-led-entry{background:repeating-linear-gradient(0deg,rgba(0,0,0,.10) 0 1px,transparent 1px 4px),#057c34!important;border-color:#42ff84!important;box-shadow:inset 0 0 12px #064522,0 0 14px #26e879a8!important;}
+#cx-pix-led.cx-led-entry .cx-led-inner{color:#edfff2!important;text-shadow:0 0 6px #9dffba,0 0 12px #2af87d!important;font-weight:900!important;}
+#cx-pix-led.cx-led-entry .cx-led-count{color:#fff!important;background:#079744!important;border-color:#5aff96!important;}
 /* Aviso exclusivo de saída: LED vermelho por 15 segundos, sem bloquear o painel. */
 #cx-pix-led.cx-led-exit{background:repeating-linear-gradient(0deg,rgba(0,0,0,.15) 0 1px,transparent 1px 4px),#390509!important;border-color:#ff4d62!important;box-shadow:inset 0 0 11px #070000,0 0 10px #f1364d8a!important;}
 #cx-pix-led.cx-led-exit .cx-led-inner{color:#ff6d78!important;text-shadow:0 0 4px #ff183b,0 0 10px #fa3247!important;font-weight:900!important;}
