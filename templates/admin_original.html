@@ -2137,6 +2137,34 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
   <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_admin_fit_100.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_admin_reference_2026.css') }}">
+<style id="coopex-layout-inicial-sem-piscar-v41">
+/* Evita mostrar versões temporárias antes de mover os controles e construir o LED. */
+html.cx-admin-preparing body>header,
+html.cx-admin-preparing body>.bank-toolbar-wrap,
+html.cx-admin-preparing body>.viewport{visibility:hidden!important}
+</style>
+<script id="coopex-layout-inicial-sem-piscar-script-v41">
+(function(){
+ document.documentElement.classList.add('cx-admin-preparing');
+ function show(){document.documentElement.classList.remove('cx-admin-preparing')}
+ function ready(){
+  let frames=0;
+  function check(){
+   frames++;
+   const bar=document.querySelector('.bank-toolbar-wrap>.bank-toolbar');
+   const led=document.getElementById('cx-supervisao-board');
+   const pix=document.getElementById('cx-pix-avulso');
+   const calendars=document.querySelectorAll('.cx-date-icon-only').length;
+   if((bar&&led&&pix?.parentElement===bar&&calendars===2)||frames>45)show();
+   else requestAnimationFrame(check);
+  }
+  requestAnimationFrame(check);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});else ready();
+ window.addEventListener('load',()=>setTimeout(show,750),{once:true});
+ window.addEventListener('pageshow',e=>{if(e.persisted)show()});
+})();
+</script>
 </head>
 
 <body>
