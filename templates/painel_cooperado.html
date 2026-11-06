@@ -2709,7 +2709,6 @@ body.cx-modal-active{overflow:hidden!important}
     let gpsRequestPending=false;
     let gpsPermissionBlocked=false;
     function gpsPermissionNotice(message, denied=false){
-      if(window.AndroidBridge) return;
       // Não reapresentar banner por timeout, GPS desligado ou sinal temporariamente ausente.
       if(!denied){ paintWaiting(); return; }
       gpsPermissionBlocked=true;
@@ -2735,6 +2734,8 @@ body.cx-modal-active{overflow:hidden!important}
       }
       const info=document.getElementById('coopex-gps-permission-message');
       if(info) info.textContent=message;
+      const button=banner.querySelector('button');
+      if(button) button.textContent=denied?'Verificar permissão':'Conceder localização';
       banner.hidden=false;
       banner.style.display='flex';
     }
@@ -2751,7 +2752,7 @@ body.cx-modal-active{overflow:hidden!important}
     function gpsPermissionFailed(err){
       gpsRequestPending=false;
       if(err && err.code===1){
-        gpsPermissionNotice('A localização está bloqueada para este site. Libere o acesso nas permissões do navegador e toque em Tentar novamente.',true);
+        gpsPermissionNotice('A localização está bloqueada. No Chrome, toque no ícone ao lado do endereço do site, abra Permissões e permita Localização; depois toque em Verificar permissão.',true);
       }else{
         // Timeout ou sinal indisponível não equivalem a permissão negada.
         paintWaiting();
@@ -2759,8 +2760,10 @@ body.cx-modal-active{overflow:hidden!important}
     }
 
     function requestGpsPosition(fromUser=false){
-      if(window.AndroidBridge || gpsRequestPending || (gpsPermissionBlocked && !fromUser)) return;
+      if(gpsRequestPending || (gpsPermissionBlocked && !fromUser)) return;
       if(!navigator.geolocation){paintWaiting();return;}
+      // A solicitação feita pelo toque usa a API nativa do navegador/WebView.
+      // Se a permissão foi bloqueada permanentemente, só o usuário pode liberá-la.
       gpsRequestPending=true;
       navigator.geolocation.getCurrentPosition(gpsPermissionAccepted,gpsPermissionFailed,
         {enableHighAccuracy:true,timeout:20000,maximumAge:5000});
