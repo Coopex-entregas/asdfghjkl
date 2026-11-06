@@ -835,3 +835,84 @@ body.cx-sup-night .tabela tbody td a{color:#8ed0ff!important}
  body .bank-toolbar .cx-brightness-control{min-width:150px!important;width:150px!important;max-width:150px!important;flex-basis:150px!important}
 }
 </style>
+
+
+<style id="coopex-led-original-marquee-v9">
+/* A DATA ao lado do visor; o visor preserva o funcionamento e animação antigos. */
+body .panel-head:has(#cx-supervisao-board){display:grid!important;grid-template-columns:minmax(215px,23%) minmax(0,1fr)!important;grid-template-rows:auto!important;align-items:center!important;gap:12px!important;min-height:0!important;height:auto!important;padding:12px!important;border:2px solid #fff!important;border-radius:19px!important;background:linear-gradient(130deg,#f7fcffef,#b9dcffde)!important;box-shadow:inset 0 2px 3px #fff,0 8px 20px #1b63b041!important;backdrop-filter:blur(16px)!important;-webkit-backdrop-filter:blur(16px)!important}
+body .panel-head:has(#cx-supervisao-board)>.panel-title{display:none!important}
+body .panel-head:has(#cx-supervisao-board)>.cx-day-inline{grid-column:1!important;grid-row:1!important;display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:center!important;min-width:0!important;width:100%!important;max-width:100%!important;min-height:91px!important;padding:13px!important;margin:0!important;color:#114b9b!important;-webkit-text-fill-color:#114b9b!important;background:linear-gradient(145deg,#fff,#cce6ff)!important;border:2px solid #fff!important;border-radius:15px!important;box-shadow:inset 0 2px 3px #fff,0 6px 14px #18569b40!important;text-shadow:none!important;white-space:normal!important;overflow-wrap:anywhere!important;font:900 16px/1.5 system-ui!important}
+body .panel-head:has(#cx-supervisao-board)>.cx-day-inline .badge{display:inline-flex!important;padding:3px 9px!important;margin-top:4px!important;color:#fff!important;-webkit-text-fill-color:#fff!important;background:#1859bf!important;border:1px solid #fff!important}
+body .panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{grid-column:1!important;grid-row:2!important;position:static!important;top:auto!important;right:auto!important;align-self:start!important;justify-self:start!important;order:unset!important;margin:0!important;max-width:100%!important;padding:8px 12px!important;color:#1654a8!important;border:1px solid white!important;border-radius:12px!important;background:linear-gradient(#fff,#d2e7ff)!important;box-shadow:0 4px 9px #1857a043!important}
+body #cx-supervisao-board{grid-column:2!important;grid-row:1/span 2!important;order:unset!important;margin:0!important;width:100%!important;min-width:0!important;height:auto!important;min-height:116px!important;padding:10px 12px!important;border:2px solid #fff!important;border-radius:19px!important;background:linear-gradient(130deg,#fafdfff2,#9bceffed)!important;box-shadow:0 5px 0 #88bbea,0 11px 19px #0d509d5e,inset 0 2px 5px #fffffffa!important;backdrop-filter:blur(19px) saturate(1.25)!important;-webkit-backdrop-filter:blur(19px) saturate(1.25)!important}
+body #cx-supervisao-board .cx-led-top{display:flex!important;align-items:center!important;justify-content:space-between!important;gap:12px!important;min-height:34px!important;padding:0!important}
+body #cx-supervisao-board .cx-led-title{color:#124d9e!important;font:900 14px/1.3 Inter,system-ui,sans-serif!important;letter-spacing:.02em!important}
+body #cx-supervisao-board .cx-led-buttons{display:flex!important;gap:7px!important}
+body #cx-supervisao-board .cx-led-buttons button{font:800 12px system-ui!important;background:linear-gradient(160deg,#fff,#c6e4ff)!important;color:#1554ac!important;border:1px solid white!important;border-radius:10px!important;padding:8px 10px!important;box-shadow:inset 0 2px 2px white,0 4px 10px #1153a044!important}
+body #cx-supervisao-board .cx-led-screen{position:relative!important;height:80px!important;min-height:80px!important;max-height:80px!important;width:100%!important;overflow:hidden!important;display:flex!important;align-items:center!important;padding:0!important;border:2px solid #65aeea!important;border-radius:13px!important;background:linear-gradient(120deg,#071c33,#0b2b51)!important;box-shadow:inset 0 5px 13px #000a,0 2px 4px #fff!important}
+body #cx-supervisao-board .cx-led-screen>.cx-led-line{display:none!important}
+body #cx-supervisao-board .cx-gelo-led-track{display:inline-flex!important;align-items:center!important;gap:65px!important;flex:none!important;width:max-content!important;max-width:none!important;padding-left:100%!important;white-space:nowrap!important;animation:cx-original-led-flow var(--cx-led-duration,30s) linear infinite!important;will-change:transform;line-height:1.4!important}
+body #cx-supervisao-board .cx-gelo-led-track span{display:inline-block!important;font:900 clamp(16px,1.15vw,23px)/1.5 "Consolas",monospace!important;letter-spacing:.025em!important;white-space:nowrap!important;text-shadow:0 0 8px currentColor!important}
+body #cx-supervisao-board .cx-gelo-led-track .fila{color:#83cbff!important}
+body #cx-supervisao-board .cx-gelo-led-track .entrada{color:#6cffae!important}
+body #cx-supervisao-board .cx-gelo-led-track .saida{color:#ff8798!important}
+body #cx-supervisao-board .cx-gelo-led-track .pix{color:#ffdc83!important}
+body #cx-supervisao-board .cx-gelo-led-track .recado{color:#ffe19a!important}
+@keyframes cx-original-led-flow{from{transform:translateX(0)}to{transform:translateX(-100%)}}
+body #cx-supervisao-board .cx-led-screen:hover .cx-gelo-led-track{animation-play-state:paused!important}
+/* Menus 3D: legibilidade igual Finanças, sem apagar as letras. */
+body .bank-toolbar-wrap{background:linear-gradient(110deg,#5dbaff,#2c80db 58%,#1554ae)!important;border:2px solid white!important;border-radius:18px!important;box-shadow:inset 0 2px 3px #ffffffbd,0 7px 0 #165ba5aa,0 14px 24px #184f8e60!important}
+body .bank-toolbar{gap:8px!important;padding:8px 12px!important;align-items:center!important}
+body .bank-toolbar .bank-group-btn,body .bank-toolbar .bank-group-btn *,body .bank-toolbar .bank-direct-action .bank-group-btn{font:850 14px/1.25 Inter,system-ui,Arial,sans-serif!important;color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:0 1px 1px #0b3b7477!important;letter-spacing:0!important;opacity:1!important;visibility:visible!important}
+body .bank-toolbar .bank-group-btn{height:40px!important;padding:0 12px!important;display:inline-flex!important;align-items:center!important;gap:7px!important;white-space:nowrap!important;background:linear-gradient(#ffffff28,#ffffff11)!important;border:1px solid #ffffff91!important;border-radius:11px!important;box-shadow:inset 0 1px 3px #fff9,0 4px 11px #0c42886d!important}
+body .bank-toolbar .queue-count{color:#1558a4!important;-webkit-text-fill-color:#1558a4!important}
+body .bank-toolbar .cx-brightness-control{background:linear-gradient(145deg,#fff,#b9dcff)!important;border:2px solid white!important;box-shadow:inset 0 2px 3px #fff,0 4px 11px #124d8f55!important}
+body .filters-bar,body #cx-pix-avulso,body .table-wrap,body .panel{border:2px solid #fff!important;border-radius:16px!important;background:linear-gradient(130deg,#fafdfff4,#c9e3fff0)!important;box-shadow:inset 0 2px 4px #fff,0 6px 0 #c3def8,0 12px 22px #2463a83e!important;backdrop-filter:blur(16px) saturate(1.13)!important;-webkit-backdrop-filter:blur(16px) saturate(1.13)!important}
+body .filters-form input,body .filters-form select,body .quick-left .btn,body .quick-delivery-actions .btn,body .cx-pix-copy{border:1px solid #fff!important;border-radius:11px!important;box-shadow:inset 0 2px 3px #fff9,0 4px 11px #1f6bb347!important}
+body .tabela thead th{font-size:12px!important;color:#164780!important;background:linear-gradient(#e4f2ff,#cbe3fa)!important}
+body .tabela tbody td{font-size:12px!important}
+body #cx-pix-avulso .cx-led-shortcuts .btn{background:linear-gradient(145deg,#fff,#c0e0ff)!important;border:2px solid #fff!important;border-radius:12px!important;box-shadow:inset 0 2px 3px #fff,0 6px 13px #1858a559!important}
+body .tabela td button,body .tabela td .btn{border-radius:10px!important;border:1px solid #bed7f7!important;box-shadow:inset 0 2px 3px #fff8,0 3px 8px #15589b32!important}
+/* Preserva o LED azul-noite mesmo com o controle de luminosidade ativo. */
+body.cx-sup-night #cx-supervisao-board .cx-led-title{color:#e1f4ff!important}
+body.cx-sup-night .cx-day-inline{color:#d8edff!important;-webkit-text-fill-color:#d8edff!important;background:linear-gradient(#244d78,#153355)!important}
+@media(max-width:1050px){body .panel-head:has(#cx-supervisao-board){grid-template-columns:minmax(150px,25%) minmax(0,1fr)!important}body #cx-supervisao-board .cx-led-top{flex-wrap:wrap!important}}
+@media(max-width:700px){body .panel-head:has(#cx-supervisao-board){grid-template-columns:1fr!important}body .panel-head:has(#cx-supervisao-board)>.cx-day-inline,body #cx-supervisao-board,body .panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{grid-column:1!important;grid-row:auto!important}body #cx-supervisao-board .cx-led-screen{height:74px!important;min-height:74px!important}body #cx-supervisao-board .cx-gelo-led-track span{font-size:16px!important}}
+</style>
+
+<script id="coopex-led-classico-movimento-v9">
+(function(){
+'use strict';
+function start(){
+ const board=document.getElementById('cx-supervisao-board'),day=document.querySelector('.cx-day-inline'),head=document.querySelector('.panel-head'),source=document.querySelector('#cx-pix-led .cx-led-inner');
+ if(!board||!head||!source)return false;
+ if(day&&day.parentElement!==head)head.insertBefore(day,board);
+ const screen=board.querySelector('.cx-led-screen');
+ if(!screen)return false;
+ let track=screen.querySelector('.cx-gelo-led-track');
+ if(!track){track=document.createElement('div');track.className='cx-gelo-led-track';screen.appendChild(track)}
+ let previous='';
+ function paint(){
+  const text=(source.textContent||'').trim();
+  const note=board.querySelector('#cx-led-recado');
+  const noteText=note&&!note.hidden?(note.textContent||'').trim():'';
+  const original=document.getElementById('cx-pix-led');
+  const mode=original?.classList.contains('cx-led-exit')?'saida':original?.classList.contains('cx-led-entry')?'entrada':original?.classList.contains('cx-led-blue')?'fila':'pix';
+  const signature=mode+'|'+text+'|'+noteText;
+  if(previous===signature)return;
+  previous=signature;
+  track.replaceChildren();
+  const primary=document.createElement('span');primary.className=mode;primary.textContent=text||'✦ SEM COOPERADOS NA FILA ✦';track.appendChild(primary);
+  if(noteText){const extra=document.createElement('span');extra.className='recado';extra.textContent='✦ '+noteText+' ✦';track.appendChild(extra)}
+  track.style.setProperty('--cx-led-duration',Math.min(75,Math.max(21,(text.length+noteText.length)*0.23+18))+'s');
+ }
+ paint();
+ const original=document.getElementById('cx-pix-led');
+ if(original)new MutationObserver(paint).observe(original,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['class']});
+ new MutationObserver(paint).observe(board,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['hidden']});
+ return true;
+}
+function init(){if(start())return;let n=0;const id=setInterval(()=>{n++;if(start()||n>90)clearInterval(id)},250)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
