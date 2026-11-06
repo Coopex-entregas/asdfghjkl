@@ -758,6 +758,10 @@ function init(){
  }
  // Garante atualização de luminosidade mesmo quando o DOM do menu for reconstruído.
  const slider=document.getElementById('cx-brightness');
+ // Fica permanentemente visível junto ao menu, mesmo com os KPIs compactados.
+ if(slider&&nav&&slider.closest('.cx-brightness-control')?.parentElement!==nav){
+   nav.appendChild(slider.closest('.cx-brightness-control'));
+ }
  if(slider&&!slider.dataset.cxBind){slider.dataset.cxBind='1';const set=()=>{const value=Math.max(0,Math.min(100,Number(slider.value)));body.style.setProperty('--cx-dim',Math.round((100-value)*.88)+'%');body.classList.toggle('cx-sup-night',value<48);try{localStorage.setItem('cx_sup_brightness',String(value))}catch(e){}};try{slider.value=localStorage.getItem('cx_sup_brightness')||'100'}catch(e){}slider.addEventListener('input',set);set()}
  // Não converter LED em cartões: uma única área LED; texto comprido passa no próprio visor.
  const led=document.getElementById('cx-supervisao-board');
@@ -766,3 +770,9 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+<style id="cx-slider-na-barra-fix">
+.bank-toolbar .cx-brightness-control{display:inline-flex!important;align-items:center!important;visibility:visible!important;opacity:1!important;position:relative!important;flex:none!important;margin-left:auto!important;z-index:20!important;height:37px!important;min-width:168px!important;background:linear-gradient(135deg,#f9fdff,#bcdfff)!important;border:2px solid #fff!important;box-shadow:inset 0 2px 3px #fff,0 4px 10px #124f9744!important}
+.bank-toolbar .cx-brightness-control input{appearance:auto!important;-webkit-appearance:auto!important;display:block!important;opacity:1!important;visibility:visible!important;width:120px!important;max-width:120px!important;min-width:90px!important;cursor:pointer!important}
+@media(max-width:1050px){.bank-toolbar .cx-brightness-control{min-width:120px!important;margin-left:5px!important}.bank-toolbar .cx-brightness-control input{width:88px!important;min-width:70px!important}}
+</style>
