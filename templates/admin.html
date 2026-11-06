@@ -776,9 +776,16 @@ function init(){
  const form=document.querySelector('.filters-form');
  if(form&&!form.dataset.cxAuto){
   form.dataset.cxAuto='1';let timer=null;
-  const apply=()=>{if(!document.body.contains(form))return;window.__markActionStart&&window.__markActionStart();form.requestSubmit()};
+  const dates=()=>[form.querySelector('#data_inicio'),form.querySelector('#data_fim')];
+  const ready=()=>{const [a,b]=dates();return Boolean(a?.value&&b?.value&&a.value<=b.value)};
+  const apply=()=>{
+   if(!document.body.contains(form)||!ready())return;
+   window.__markActionStart&&window.__markActionStart();
+   form.requestSubmit();
+  };
   form.querySelectorAll('select,input[type="date"]').forEach(el=>el.addEventListener('change',()=>{clearTimeout(timer);apply()}));
   form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(apply,750)}));
+  form.addEventListener('submit',e=>{if(!ready()){e.preventDefault();e.stopImmediatePropagation();const [a,b]=dates();(a&&!a.value?a:b)?.focus();}},true);
  }
  // Garante atualização de luminosidade mesmo quando o DOM do menu for reconstruído.
  const slider=document.getElementById('cx-brightness');
@@ -1851,5 +1858,95 @@ body.cx-sup-night #tbl table.tabela tbody td .actions svg{
 @media(max-width:1300px){
  body #tbl table.tabela{min-width:1380px!important;table-layout:auto!important}
  body #tbl table.tabela tbody td:last-child{min-width:160px!important}
+}
+</style>
+
+
+<style id="coopex-uma-cor-vidro-real-v24">
+/* Tabela uniforme: toda linha na MESMA cor e com relevo de vidro — sem zebra. */
+body #tbl{
+ --cx-table-base:var(--cx-row);
+ --cx-table-text:var(--cx-title);
+ --cx-table-gloss:linear-gradient(125deg,rgba(255,255,255,.19) 0%,rgba(255,255,255,.06) 18%,rgba(255,255,255,.01) 60%,rgba(117,183,245,.09) 100%);
+ --cx-table-seam:rgba(117,167,221,.38);
+ border:2px solid var(--cx-ice-border)!important;
+ border-radius:17px!important;
+ background:linear-gradient(145deg,var(--cx-surface),var(--cx-surface2))!important;
+ box-shadow:inset 0 2px 5px rgba(255,255,255,.45),0 5px 0 var(--cx-glow),0 12px 20px var(--cx-softshadow)!important;
+}
+body.cx-sup-night #tbl{
+ --cx-table-gloss:linear-gradient(125deg,rgba(167,215,255,.18) 0%,rgba(141,190,240,.08) 20%,rgba(78,129,181,.02) 65%,rgba(145,195,255,.11) 100%);
+ --cx-table-seam:rgba(115,167,221,.35);
+}
+body #tbl table.tabela{
+ background:transparent!important;color:var(--cx-table-text)!important;
+ border-collapse:separate!important;border-spacing:0!important;
+}
+body #tbl table.tabela tbody,
+body #tbl table.tabela tbody > tr:nth-child(n){
+ background:var(--cx-table-base)!important;
+ background-color:var(--cx-table-base)!important;
+ background-image:none!important;
+ opacity:1!important;
+}
+body #tbl table.tabela tbody > tr:nth-child(n) > td:nth-child(n),
+body #tbl table.tabela tbody > tr:nth-child(even) > td:nth-child(n),
+body #tbl table.tabela tbody > tr:nth-child(odd) > td:nth-child(n),
+body #tbl table.tabela tbody > tr:hover > td:nth-child(n),
+body.cx-sup-night #tbl table.tabela tbody > tr:nth-child(n) > td:nth-child(n){
+ background:var(--cx-table-gloss),var(--cx-table-base)!important;
+ background-color:var(--cx-table-base)!important;
+ color:var(--cx-table-text)!important;
+ -webkit-text-fill-color:var(--cx-table-text)!important;
+ border-bottom:1px solid var(--cx-table-seam)!important;
+ border-right:1px solid rgba(131,183,231,.10)!important;
+ box-shadow:inset 0 1px 0 rgba(219,239,255,.16),inset 0 -2px 4px rgba(3,32,79,.055)!important;
+ opacity:1!important;filter:none!important;
+}
+body #tbl table.tabela thead th:nth-child(n){
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+ background:linear-gradient(135deg,var(--cx-th),var(--cx-surface2))!important;
+ border-color:var(--cx-table-seam)!important;
+ box-shadow:inset 0 2px 3px rgba(215,238,255,.24)!important;
+}
+body #tbl table.tabela tbody td :is(strong,b,span,small,div,label,time){
+ color:var(--cx-title)!important;
+ -webkit-text-fill-color:var(--cx-title)!important;
+ opacity:1!important
+}
+body #tbl table.tabela tbody td :is(a,a:visited),
+body #tbl table.tabela tbody td a :is(span,strong,b){
+ color:var(--cx-strong)!important;
+ -webkit-text-fill-color:var(--cx-strong)!important
+}
+body #tbl table.tabela tbody td .status-dot{
+ -webkit-text-fill-color:initial!important
+}
+/* Indicadores conservam cores sem ficar todos azuis. */
+body #tbl table.tabela tbody td .pill,
+body #tbl table.tabela tbody td .pill *{
+ color:inherit!important;-webkit-text-fill-color:initial!important
+}
+body #tbl table.tabela tbody td .actions :is(a,button){
+ color:var(--cx-icon-ink)!important;
+ background:linear-gradient(145deg,var(--cx-surface),var(--cx-surface2))!important;
+ border:1px solid var(--cx-ice-border)!important;
+ border-radius:10px!important;
+ box-shadow:inset 0 2px 3px rgba(245,252,255,.27),0 5px 9px rgba(8,49,99,.27)!important
+}
+body #tbl table.tabela tbody td .actions :is(a,button)[title*="Editar"]{border-bottom:3px solid #319aff!important}
+body #tbl table.tabela tbody td .actions :is(a,button)[title*="Imprimir"]{border-bottom:3px solid #2cce9c!important}
+body #tbl table.tabela tbody td .actions :is(a,button)[title*="Excluir"]{border-bottom:3px solid #ff5b7e!important}
+body #cx-pix-avulso>.cx-led-shortcuts .btn:nth-child(1){border-bottom:3px solid #23a8ee!important}
+body #cx-pix-avulso>.cx-led-shortcuts .btn:nth-child(2){border-bottom:3px solid #825cff!important}
+body #cx-pix-avulso>.cx-led-shortcuts .btn:nth-child(3){border-bottom:3px solid #20c994!important}
+body #cx-pix-avulso>.cx-led-shortcuts .btn:nth-child(4){border-bottom:3px solid #18b8cc!important}
+body #cx-pix-avulso>.cx-led-shortcuts .btn:nth-child(5){border-bottom:3px solid #ed9f24!important}
+/* Transparência e relevo em filtros, sem perder contraste no noturno. */
+body .filters-form input,body .filters-form select,body #cx-pix-avulso input{
+ background:linear-gradient(140deg,var(--cx-input),var(--cx-surface2))!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+ border:1px solid var(--cx-ice-border)!important;
+ box-shadow:inset 0 2px 4px rgba(225,245,255,.26),0 4px 9px var(--cx-softshadow)!important
 }
 </style>
