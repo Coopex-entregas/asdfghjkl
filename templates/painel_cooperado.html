@@ -2927,7 +2927,17 @@ async function join(){
   });
   const d=await response.json();
   if(!response.ok||!d.ok)throw Error(d.erro||'Não foi possível entrar na fila.');
-  notice(d.ja_estava?'Você já está na fila.':'Entrada confirmada. Sua posição será atualizada.');
+  // Não declarar sucesso antes de validar a posição persistida no banco.
+  const status=await fetch('/api/cooperado/fila/estado',{credentials:'same-origin',cache:'no-store'});
+  if(!status.ok)throw Error('Entrada enviada, mas não foi possível confirmar sua posição. Atualize o painel.');
+  const state=await status.json();
+  if(!state.ok||!Number.isInteger(Number(state.posicao))||Number(state.posicao)<1)
+   throw Error('A entrada ainda não consta na fila. Tente novamente ou informe a supervisão.');
+  const before=(state.anteriores||[]).map(p=>({cooperado_id:null,nome:p.nome}));
+  const itens=[...before,{cooperado_id:selfId,nome:''}];
+  paint(itens);
+  window.dispatchEvent(new CustomEvent('coopex-queue-update',{detail:{itens,posicao:state.posicao,indice:state.posicao-1}}));
+  notice((d.ja_estava?'Você já estava':'Entrada confirmada')+' na fila · posição '+state.posicao+'º.');
  }catch(e){notice(e.message||'Não foi possível verificar sua localização.');}
  finally{enter.disabled=false;}
 }
