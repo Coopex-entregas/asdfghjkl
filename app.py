@@ -7911,7 +7911,8 @@ def api_admin_pix_led_fila():
            .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
            .limit(60).all())
     return jsonify(cooperados=[
-        {'nome': (item.cooperado.nome if item.cooperado else item.nome), 'pos': index}
+        {'id': item.id, 'cooperado_id': item.cooperado_id,
+         'nome': (item.cooperado.nome if item.cooperado else item.nome), 'pos': index}
         for index,item in enumerate(itens,1)
     ])
 
@@ -14564,66 +14565,70 @@ def importar_clientes():
 # =========================================================
 @app.route('/lista_espera/add', methods=['POST'])
 def lista_espera_add():
+    ajax = request.accept_mimetypes.best == 'application/json'
     if not session.get('is_admin'):
+        if ajax:
+            return jsonify(ok=False, erro='Sessão expirada. Entre novamente.'), 401
         return redirect(url_for('login'))
 
     cooperado_id = request.form.get('cooperado_id')
     nome_form = (request.form.get('nome') or '').strip()
 
-    if not cooperado_id and not nome_form:
-        flash('Selecione um cooperado ou informe um nome.')
+    def responder(mensagem, ok=False, status=400):
+        if ajax:
+            return jsonify(ok=ok, message=mensagem), (200 if ok else status)
+        flash(mensagem)
         return redirect_back_to_admin()
 
+    if not cooperado_id and not nome_form:
+        return responder('Selecione um cooperado ou informe um nome.')
+
     if cooperado_id:
-        coop = Cooperado.query.get(int(cooperado_id))
+        coop = db.session.get(Cooperado, int(cooperado_id)) if str(cooperado_id).isdigit() else None
         if not coop:
-            flash('Cooperado inválido.')
-            return redirect_back_to_admin()
+            return responder('Cooperado inválido.')
 
         if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
-            flash('Este cooperado já está na fila de espera.')
-            return redirect_back_to_admin()
+            return responder('Este cooperado já está na fila de espera.', status=409)
 
         max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
         item = ListaEspera(
-            cooperado_id=coop.id,
-            nome=coop.nome,
-            pos=max_pos + 1,
+            cooperado_id=coop.id, nome=coop.nome, pos=max_pos + 1,
             created_at=datetime.utcnow()
         )
         db.session.add(item)
         db.session.commit()
         emitir_lista_espera()
-        flash('Cooperado adicionado à lista de espera.')
-        return redirect_back_to_admin()
+        return responder('Cooperado adicionado à lista de espera.', ok=True)
 
     if ListaEspera.query.filter(func.lower(ListaEspera.nome) == nome_form.lower()).first():
-        flash('Este nome já está na fila de espera.')
-        return redirect_back_to_admin()
+        return responder('Este nome já está na fila de espera.', status=409)
 
     max_pos = db.session.query(func.max(ListaEspera.pos)).scalar() or 0
     item = ListaEspera(
-        nome=nome_form,
-        cooperado_id=None,
-        pos=max_pos + 1,
+        nome=nome_form, cooperado_id=None, pos=max_pos + 1,
         created_at=datetime.utcnow()
     )
     db.session.add(item)
     db.session.commit()
     emitir_lista_espera()
-    flash('Nome adicionado à lista de espera.')
-    return redirect_back_to_admin()
+    return responder('Nome adicionado à lista de espera.', ok=True)
 
 
 @app.route('/lista_espera/remove/<int:id>', methods=['POST'])
 def lista_espera_remove(id):
+    ajax = request.accept_mimetypes.best == 'application/json'
     if not session.get('is_admin'):
+        if ajax:
+            return jsonify(ok=False, erro='Sessão expirada. Entre novamente.'), 401
         return redirect(url_for('login'))
 
     item = ListaEspera.query.get_or_404(id)
     db.session.delete(item)
     db.session.commit()
     emitir_lista_espera()
+    if ajax:
+        return jsonify(ok=True, message='Removido da lista de espera.')
     flash('Removido da lista de espera.')
     return redirect_back_to_admin()
 
