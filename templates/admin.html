@@ -3433,3 +3433,52 @@ body .viewport .panel .filters-form{min-width:0!important;align-items:center!imp
 body .viewport .panel .table-shell{margin:0!important;padding:0!important}
 body .viewport .panel .table-wrap#tbl{max-height:var(--cx-live-table-height,70dvh)!important;height:var(--cx-live-table-height,70dvh)!important}
 </style>
+
+
+<style id="coopex-total-destravado-v37">
+body .bank-toolbar .cx-total-number{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 auto!important;min-width:33px!important;height:36px!important;min-height:36px!important;
+ padding:0 4px!important;margin:0 3px!important;background:transparent!important;
+ border:0!important;border-radius:0!important;box-shadow:none!important;
+ color:#f9fcff!important;-webkit-text-fill-color:#f9fcff!important;
+ text-shadow:0 2px 4px #09275a9c!important
+}
+body .bank-toolbar .cx-total-number #kpiTotalDia{
+ display:inline!important;position:static!important;min-width:0!important;
+ font:950 20px/1 Inter,system-ui,sans-serif!important;
+ color:#f9fcff!important;-webkit-text-fill-color:#f9fcff!important;
+ opacity:1!important;visibility:visible!important;
+ text-shadow:0 2px 4px #0a2f65c5!important
+}
+body .admin-toolbar-right .kpi.kpi-delivery:has(#kpiTotalDia){display:none!important}
+body .admin-toolbar-right .kpi.kpi-delivery:empty{display:none!important}
+body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(14) .actions{overflow:visible!important}
+</style>
+<script id="coopex-total-destravado-script-v37">
+(function(){
+'use strict';
+function init(){
+ const nav=document.querySelector('.bank-toolbar'),num=document.getElementById('kpiTotalDia');
+ if(!nav||!num)return false;
+ let slot=document.getElementById('cx-total-number');
+ if(!slot){
+  slot=document.createElement('span');slot.id='cx-total-number';slot.className='cx-total-number';
+  slot.title='Quantidade de entregas do dia';slot.setAttribute('aria-label','Quantidade de entregas do dia');
+ }
+ const oldKpi=num.closest('.kpi.kpi-delivery');
+ if(num.parentElement!==slot)slot.appendChild(num);
+ if(oldKpi)oldKpi.style.setProperty('display','none','important');
+ if(slot.parentElement!==nav){
+  const theme=nav.querySelector('.cx-brightness-control');
+  const exit=nav.querySelector('a.logout');
+  if(theme)theme.insertAdjacentElement('afterend',slot);
+  else if(exit)exit.insertAdjacentElement('beforebegin',slot);
+  else nav.appendChild(slot);
+ }
+ return true;
+}
+function boot(){if(init())return;let n=0;const t=setInterval(()=>{if(init()||++n>100)clearInterval(t)},100)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
