@@ -2207,7 +2207,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             </div>
 
             <div class="bank-group">
-              <button type="button" class="bank-group-btn">🕒 Fila de espera <span class="queue-count">{{ lista_espera|length }}</span></button>
+              <button type="button" class="bank-group-btn">🕒 Fila <span class="queue-count">{{ lista_espera|length }}</span></button>
               <div class="bank-submenu queue-submenu">
                 <form action="{{ url_for('lista_espera_add') }}" method="POST" id="form-espera" class="queue-add-form">
                   {% set coops_select = cooperados_disponiveis if (cooperados_disponiveis is defined and cooperados_disponiveis|length > 0) else cooperados %}
