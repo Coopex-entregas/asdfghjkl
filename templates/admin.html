@@ -979,7 +979,32 @@ function init(){
   const v=Math.max(0,Math.min(100,Number(slider.value)));
   document.documentElement.style.filter='none';
   document.body.style.setProperty('--cx-dim','0%');
-  document.body.classList.toggle('cx-sup-night',v<48);
+  document.body.classList.toggle('cx-sup-night',v<52);
+  // Interpola os fundos em cada faixa, mas troca a cor do texto antes de perder contraste.
+  const night=v<52;
+  const t=night?v/51:(v-52)/48;
+  const blend=(first,last)=>'#'+first.map((part,i)=>Math.round(part+(last[i]-part)*t).toString(16).padStart(2,'0')).join('');
+  const colors=night?{
+   '--cx-bg':blend([13,35,63],[50,83,124]),
+   '--cx-surface':blend([26,57,91],[85,121,158]),
+   '--cx-surface2':blend([17,47,81],[66,108,151]),
+   '--cx-input':blend([22,53,85],[72,108,148]),
+   '--cx-row':blend([26,57,90],[78,115,151]),
+   '--cx-row2':blend([35,68,101],[87,123,157]),
+   '--cx-th':blend([33,73,110],[85,119,156])
+  }:{
+   '--cx-bg':blend([152,183,215],[230,243,255]),
+   '--cx-surface':blend([181,209,235],[245,251,255]),
+   '--cx-surface2':blend([158,191,223],[209,232,255]),
+   '--cx-input':blend([192,216,239],[247,252,255]),
+   '--cx-row':blend([186,212,237],[249,252,255]),
+   '--cx-row2':blend([174,204,232],[232,244,255]),
+   '--cx-th':blend([165,198,231],[217,234,254])
+  };
+  colors['--cx-title']=night?'#f1f8ff':'#103d7d';
+  colors['--cx-text']=night?'#e0f0ff':'#1b4e8b';
+  colors['--cx-strong']=night?'#b1dfff':'#0a48a7';
+  Object.entries(colors).forEach(([key,val])=>document.body.style.setProperty(key,val));
   document.body.style.setProperty('--cx-tone',(v/100).toFixed(2));
   slider.setAttribute('aria-valuetext',v<48?'Modo noturno legível':'Azul-gelo claro');
   try{localStorage.setItem('cx_sup_brightness',String(v))}catch(e){}
