@@ -7,3 +7,51 @@ button:focus-visible,a:focus-visible,input:focus-visible,select:focus-visible,te
 button:not(:disabled){cursor:pointer}
 .cx-back-compact{width:38px!important;min-width:38px!important;height:38px!important;display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:0!important;border-radius:10px!important;padding:0!important;font-size:20px!important;line-height:1!important}
 @media(max-width:700px){.cx-back-compact{width:36px!important;min-width:36px!important;height:36px!important}}
+
+
+/* COOPEX linked glass theme v1: opt-in for additional administrative screens. */
+body.cx-linked-glass{
+ --cx-linked-edge:rgba(255,255,255,.93);
+ --cx-linked-shadow:0 5px 0 rgba(66,120,180,.19),0 12px 26px rgba(19,65,133,.18),inset 0 2px 4px rgba(255,255,255,.84);
+ --cx-linked-glare:linear-gradient(120deg,rgba(255,255,255,.78),rgba(255,255,255,.30) 24%,rgba(134,196,255,.10) 70%,rgba(255,255,255,.24));
+ --bg:#e8f4ff;--card:#e5f3ff;--card-2:#d4eaff;--soft:#e0f0ff;
+ --text:#143d77;--ink:#143d77;--muted:#426e9e;--line:#bdd9f7;--line-strong:#91bde9
+}
+body.cx-linked-glass.dark{
+ --cx-linked-edge:rgba(132,184,231,.62);
+ --cx-linked-shadow:0 5px 0 #071c38,0 13px 25px #021329ab,inset 0 2px 5px #c2e6ff30;
+ --cx-linked-glare:linear-gradient(120deg,rgba(151,207,255,.20),rgba(84,142,202,.09) 28%,rgba(15,55,100,.03) 75%,rgba(148,202,255,.08));
+ --bg:#091f38;--card:#1b3c62;--card-2:#21436e;--soft:#183553;
+ --text:#f1f9ff;--ink:#f1f9ff;--muted:#c5ddf8;--line:#426e9c;--line-strong:#6496c7;
+ color-scheme:dark
+}
+body.cx-linked-glass :is(.card,.panel,.stat,.stat-card,.client,.modal,.box){
+ background:var(--cx-linked-glare),linear-gradient(137deg,var(--card),var(--card-2,var(--soft)))!important;
+ color:var(--text)!important;
+ border:1px solid var(--cx-linked-edge)!important;
+ border-radius:17px!important;
+ box-shadow:var(--cx-linked-shadow)!important;
+ backdrop-filter:blur(16px) saturate(1.22)!important;
+ -webkit-backdrop-filter:blur(16px) saturate(1.22)!important
+}
+body.cx-linked-glass :is(input,select,textarea){
+ background:linear-gradient(130deg,var(--card),var(--soft))!important;
+ color:var(--text)!important;-webkit-text-fill-color:var(--text)!important;
+ border:1px solid var(--cx-linked-edge)!important;border-radius:11px!important;
+ box-shadow:inset 0 2px 4px #c6e9ff34,0 3px 8px #123f751f!important
+}
+body.cx-linked-glass input::placeholder{color:var(--muted)!important;-webkit-text-fill-color:var(--muted)!important;opacity:1!important}
+body.cx-linked-glass select option{background:var(--card)!important;color:var(--text)!important}
+body.cx-linked-glass :is(.btn,button:not([hidden])){
+ border-radius:11px!important;box-shadow:inset 0 2px 3px #dceeff5a,0 4px 9px #12447b39!important
+}
+body.cx-linked-glass :is(.card,.panel,.client) :is(h1,h2,h3,h4,label,strong){
+ color:var(--text)!important
+}
+body.cx-linked-glass :is(table,th,td){
+ border-color:var(--line)!important;color:var(--text)!important
+}
+body.cx-linked-glass #theme{display:none!important}
+@media(max-width:700px){
+ body.cx-linked-glass :is(.card,.panel,.client){border-radius:13px!important}
+}
