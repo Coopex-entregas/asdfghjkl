@@ -2322,7 +2322,7 @@ html.cx-admin-preparing body>.viewport{visibility:hidden!important}
               <div class="field">
                 <label for="cooperado">Cooperado</label>
                 <select name="cooperado_id" id="cooperado">
-                  <option value="todos">Todos</option>
+                  <option value="todos" {% if request.args.get('cooperado_id','todos')=='todos' %}selected{% endif %}>Cooperados</option>
                   {% for c in cooperados %}
                     <option value="{{ c.id }}" {% if request.args.get('cooperado_id') == c.id|string %}selected{% endif %}>{{ c.nome }}</option>
                   {% endfor %}
@@ -2342,7 +2342,7 @@ html.cx-admin-preparing body>.viewport{visibility:hidden!important}
               <div class="field">
                 <label for="status_pagamento">Status do pagamento</label>
                 <select name="status_pagamento" id="status_pagamento">
-                  <option value="todos" {% if request.args.get('status_pagamento','todos')=='todos' %}selected{% endif %}>Todos</option>
+                  <option value="todos" {% if request.args.get('status_pagamento','todos')=='todos' %}selected{% endif %}>Status pagamento</option>
                   <option value="pago" {% if request.args.get('status_pagamento')=='pago' %}selected{% endif %}>Pago</option>
                   <option value="pendente" {% if request.args.get('status_pagamento')=='pendente' %}selected{% endif %}>Pendente</option>
                 </select>
@@ -2351,7 +2351,7 @@ html.cx-admin-preparing body>.viewport{visibility:hidden!important}
               <div class="field">
                 <label for="forma_pagamento">Forma de pagamento</label>
                 <select name="forma_pagamento" id="forma_pagamento">
-                  <option value="todos" {% if request.args.get('forma_pagamento','todos')=='todos' %}selected{% endif %}>Todas</option>
+                  <option value="todos" {% if request.args.get('forma_pagamento','todos')=='todos' %}selected{% endif %}>Forma de pagamento</option>
                   {% for fp in formas_pagamento_disponiveis %}
                     <option value="{{ fp }}" {% if request.args.get('forma_pagamento') == fp %}selected{% endif %}>{{ fp }}</option>
                   {% endfor %}
