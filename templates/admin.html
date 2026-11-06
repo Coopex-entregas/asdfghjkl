@@ -1183,3 +1183,55 @@ body .banner{display:none!important}
  body .table-wrap{max-height:68vh!important}
 }
 </style>
+<style id="coopex-atalhos-compactos-tabela-ampla-v17">
+/* Atalhos em conjunto: sem espaços distribuídos pela largura inteira. */
+body #cx-pix-avulso{
+  display:flex!important;align-items:center!important;justify-content:flex-start!important;
+  flex-wrap:wrap!important;gap:6px!important;padding:5px 9px!important;
+  min-height:0!important;height:auto!important;margin:3px 0!important;
+}
+body #cx-pix-avulso>.cx-led-shortcuts{
+  display:inline-flex!important;flex:0 0 auto!important;align-items:center!important;
+  justify-content:flex-end!important;gap:6px!important;column-gap:6px!important;
+  margin:0 0 0 auto!important;padding:0!important;
+  min-width:0!important;width:auto!important;max-width:100%!important;
+  flex-wrap:wrap!important;
+}
+body #cx-pix-avulso>.cx-led-shortcuts>.btn{
+  display:inline-flex!important;align-items:center!important;justify-content:center!important;
+  flex:0 0 36px!important;width:36px!important;height:36px!important;
+  min-width:36px!important;max-width:36px!important;min-height:36px!important;
+  margin:0!important;padding:0!important;border-radius:10px!important;
+  border:1px solid var(--cx-edge)!important;
+  background:var(--cx-shine),linear-gradient(145deg,var(--cx-surface),var(--cx-surface2))!important;
+  box-shadow:inset 0 2px 4px #ffffff9e,0 3px 9px var(--cx-softshadow)!important;
+}
+body #cx-pix-avulso>.cx-led-shortcuts>.btn::before{
+  width:19px!important;height:19px!important;min-width:19px!important;
+  background-size:contain!important;filter:none!important;
+}
+/* Aproveita a altura liberada pela barra compacta. */
+body .filters-bar{padding:4px 8px!important;margin-bottom:0!important}
+body .filters-top{gap:5px!important}
+body .filters-form{gap:5px!important}
+body .filters-form input,body .filters-form select{height:35px!important;min-height:35px!important}
+body .quick-left .btn,body .quick-delivery-actions .btn{height:38px!important;min-height:38px!important}
+body .table-shell{padding:3px 5px 0!important;margin:0!important}
+body .table-wrap{
+  margin:0!important;padding:0!important;
+  max-height:max(360px,calc(100dvh - 255px))!important;
+  min-height:min(520px,calc(100dvh - 270px))!important;
+}
+body .tabela thead th{padding:8px 7px!important}
+body .tabela tbody td{padding:7px 7px!important}
+body .tabela .actions{gap:4px!important;flex-wrap:nowrap!important}
+body .tabela .actions>*{min-width:30px!important;min-height:30px!important}
+@media(max-width:1100px){
+  body #cx-pix-avulso>.cx-led-shortcuts{margin-left:0!important;gap:6px!important}
+  body .table-wrap{max-height:max(330px,calc(100dvh - 305px))!important;min-height:300px!important}
+}
+@media(max-width:720px){
+  body #cx-pix-avulso>.cx-led-shortcuts{flex:0 1 auto!important;margin-left:0!important;justify-content:flex-start!important}
+  body .table-wrap{max-height:70dvh!important;min-height:300px!important}
+}
+</style>
