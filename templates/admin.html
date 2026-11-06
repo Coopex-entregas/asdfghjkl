@@ -2740,3 +2740,173 @@ body .viewport .panel,body .viewport .filters-bar,body .viewport .table-wrap{
  body .bank-toolbar .bank-group:hover:not(.open)>.bank-submenu{display:none!important}
 }
 </style>
+
+
+<style id="coopex-compactacao-contraste-v31">
+/* 1. Um único menu de vidro: indicadores de valor legíveis e ações compactas. */
+body .bank-toolbar-wrap,body.cx-sup-night .bank-toolbar-wrap{
+ border-bottom:2px solid rgba(255,255,255,.86)!important;
+ box-shadow:inset 0 2px 4px rgba(255,255,255,.35),0 5px 13px rgba(10,48,110,.22)!important
+}
+body .bank-toolbar #btnSolicitacoesValorMenu{
+ min-height:37px!important;letter-spacing:0!important;
+ font-weight:900!important;opacity:1!important;white-space:nowrap!important
+}
+body .bank-toolbar #btnSolicitacoesValorMenu .queue-count{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ color:#0b468e!important;-webkit-text-fill-color:#0b468e!important;
+ background:linear-gradient(145deg,#f3fbff,#b5ddff)!important;
+ border:1px solid #f8ffff!important;
+ box-shadow:inset 0 2px 4px #fff,0 3px 7px #071e5670!important;
+ font-size:13px!important;font-weight:950!important
+}
+body #supervisao-live-indicator{display:none!important}
+/* 2. Cartão do dia só contém título e contador de abertos; quantidade total só número. */
+body .bank-toolbar .cx-day-inline{
+ background:linear-gradient(125deg,#ffffff,#d9edff)!important;border:2px solid #fff!important;
+ box-shadow:inset 0 2px 4px #fff,0 4px 0 #5f9fd07a,0 8px 13px #07376a79!important;
+ color:#144d91!important;-webkit-text-fill-color:#144d91!important
+}
+body .bank-toolbar .cx-day-inline .cx-day-label strong,
+body .bank-toolbar .cx-day-inline .cx-day-label{
+ color:#144d91!important;-webkit-text-fill-color:#144d91!important;
+ font-weight:900!important;opacity:1!important;text-shadow:none!important
+}
+body .bank-toolbar .cx-day-inline #abertasBadge{
+ display:inline-flex!important;min-height:25px!important;
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ background:linear-gradient(140deg,#1376d5,#0d4b9b)!important;
+ border:1px solid #90cdfa!important;opacity:1!important
+}
+body.cx-sup-night .bank-toolbar .cx-day-inline{
+ background:linear-gradient(125deg,#315c8a,#193d66)!important;border-color:#91c4f3!important
+}
+body.cx-sup-night .bank-toolbar .cx-day-inline .cx-day-label strong,
+body.cx-sup-night .bank-toolbar .cx-day-inline .cx-day-label{
+ color:#f1f9ff!important;-webkit-text-fill-color:#f1f9ff!important
+}
+/* 3. Sair faz parte do vidro azul do menu com porta aberta; sem vermelho antigo. */
+body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout{
+ border:1px solid #c5e9ff!important;
+ color:#f2f9ff!important;-webkit-text-fill-color:#f2f9ff!important;
+ background:linear-gradient(140deg,rgba(197,229,255,.27),rgba(68,142,213,.14))!important;
+ box-shadow:inset 0 2px 4px rgba(255,255,255,.34),0 4px 10px rgba(1,32,86,.39)!important;
+ font:900 12px Inter,system-ui,sans-serif!important;min-width:75px!important;min-height:39px!important;
+ opacity:1!important
+}
+body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout svg{stroke:#ffe0e7!important;filter:drop-shadow(0 1px 2px #102f69)!important}
+body.cx-sup-night .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout{
+ color:#f6fbff!important;-webkit-text-fill-color:#f6fbff!important;
+ background:linear-gradient(140deg,rgba(110,165,213,.29),rgba(18,52,93,.23))!important;
+ border-color:#7fb4e6!important
+}
+/* 4. Área superior da tabela em um único vidro: remove faixa separada de controles. */
+body .viewport{margin:0!important;padding:2px 6px 0!important}
+body .viewport .grid,body .viewport .panel{margin:0!important;padding:0!important;gap:0!important}
+body .viewport .panel>.panel-head{display:none!important;min-height:0!important;height:0!important}
+body .viewport .panel>.filters-bar{
+ border:1px solid var(--cx-ice-border)!important;border-radius:14px 14px 0 0!important;
+ margin:0!important;padding:4px 7px 3px!important;
+ background:var(--cx-ice-glare),linear-gradient(135deg,var(--cx-surface),var(--cx-surface2))!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.30)!important
+}
+body .viewport .panel>.filters-bar>.filters-top{margin:0!important;padding:0!important;gap:5px!important}
+body .viewport .panel>.filters-bar>#cx-pix-avulso{
+ margin:3px 0 0!important;padding:4px 0 0!important;
+ border:0!important;border-top:1px solid var(--cx-table-seam,rgba(135,185,230,.30))!important;
+ border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;
+ min-height:0!important;height:auto!important
+}
+body .viewport .panel>.filters-bar>#cx-pix-avulso #cx-led-menu-controls{gap:4px!important}
+body .viewport .panel>.filters-bar>#cx-pix-avulso #cx-led-menu-controls button{min-height:29px!important;height:29px!important}
+body .viewport .panel>.table-shell{
+ background:transparent!important;margin:0!important;padding:0 1px!important;
+ border:0!important;border-radius:0!important;box-shadow:none!important
+}
+body .viewport .panel .table-wrap#tbl{
+ margin:0!important;border-radius:0 0 14px 14px!important;
+ min-height:220px!important;
+ overflow-x:auto!important;overflow-y:auto!important;
+ height:var(--cx-live-table-height,calc(100dvh - 180px))!important;
+ max-height:var(--cx-live-table-height,calc(100dvh - 180px))!important;
+ border:1px solid var(--cx-ice-border)!important;
+ box-shadow:inset 0 1px 4px rgba(220,245,255,.40),0 5px 12px rgba(8,52,118,.17)!important
+}
+/* 5. Contraste assegurado em menus, filtros, tabela e ícones em ambos os temas. */
+body .filters-form :is(input,select),body #cx-pix-avulso :is(input,select),
+body .bank-toolbar .bank-submenu :is(input,select){
+ color:var(--cx-title,#153d7b)!important;-webkit-text-fill-color:var(--cx-title,#153d7b)!important;
+ opacity:1!important
+}
+body .filters-form :is(label,.field),
+body .filters-form input::placeholder,body #cx-pix-avulso input::placeholder{
+ color:var(--cx-text,#355983)!important;-webkit-text-fill-color:var(--cx-text,#355983)!important;
+ opacity:1!important
+}
+body.cx-sup-night .filters-form :is(label,input,select),
+body.cx-sup-night #cx-pix-avulso :is(input,select),
+body.cx-sup-night .filters-form input::placeholder,
+body.cx-sup-night #cx-pix-avulso input::placeholder{
+ color:#edf7ff!important;-webkit-text-fill-color:#edf7ff!important;opacity:1!important
+}
+body #tbl table.tabela tbody tr:nth-child(n) td,
+body #tbl table.tabela tbody tr:nth-child(2n) td{
+ background:var(--cx-table-gloss),var(--cx-table-base)!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;opacity:1!important
+}
+body #tbl table.tabela tbody td :is(a,a:visited){color:var(--cx-strong)!important;-webkit-text-fill-color:var(--cx-strong)!important}
+body #tbl table.tabela tbody td .foto-no,
+body #tbl table.tabela tbody td .foto-ok{opacity:1!important}
+@media(max-width:1080px){
+ body .viewport .panel .table-wrap#tbl{height:var(--cx-live-table-height,65dvh)!important;max-height:var(--cx-live-table-height,65dvh)!important}
+}
+</style>
+
+<script id="coopex-compactacao-contraste-js-v31">
+(function(){
+'use strict';
+let raf=0;
+function fit(){
+ const table=document.getElementById('tbl');
+ if(!table)return;
+ const top=table.getBoundingClientRect().top;
+ // Área de rolagem interna até 6px antes do rodapé da janela.
+ const available=Math.max(220,window.innerHeight-top-6);
+ table.style.setProperty('--cx-live-table-height',Math.round(available)+'px');
+}
+function init(){
+ const nav=document.querySelector('.bank-toolbar');
+ const button=document.getElementById('btnSolicitacoesValorMenu');
+ if(button){
+   const nodes=Array.from(button.childNodes);
+   // Preserva span de número e listeners; altera apenas o texto do botão.
+   for(const node of nodes){if(node.nodeType===3&&node.textContent.trim())node.textContent=' Alteração ';}
+   button.title='Alteração de valores pendentes';
+ }
+ const badge=nav?.querySelector('.cx-day-inline');
+ if(badge){
+  const label=badge.querySelector('.cx-day-label');
+  if(label){
+   label.querySelector('small')?.remove();
+   const title=label.querySelector('strong');
+   if(title)title.textContent='Entregas do dia';
+  }
+ }
+ const filters=document.querySelector('.viewport .panel>.filters-bar');
+ const pix=document.getElementById('cx-pix-avulso');
+ if(filters&&pix&&pix.parentElement!==filters)filters.appendChild(pix);
+ const indicator=document.getElementById('supervisao-live-indicator');
+ if(indicator)indicator.setAttribute('aria-hidden','true');
+ fit();
+ if(typeof ResizeObserver==='function'){
+  const ro=new ResizeObserver(()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(fit)});
+  if(filters)ro.observe(filters);
+  if(nav)ro.observe(nav);
+ }
+ window.addEventListener('resize',()=>{cancelAnimationFrame(raf);raf=requestAnimationFrame(fit)});
+ window.addEventListener('pageshow',()=>requestAnimationFrame(fit));
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
