@@ -3851,3 +3851,124 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('pageshow',init);
 })();
 </script>
+
+
+<style id="coopex-fila-sem-navegar-v41">
+/* Mensagem contextual sem modificar tamanho, aba, foco ou posição da tela. */
+body .queue-submenu .cx-queue-feedback{
+ display:block;margin:5px 2px;padding:5px 8px;
+ border:1px solid #70b0ea;border-radius:10px;
+ background:linear-gradient(130deg,#e9f6ff,#bedfff);
+ color:#184579;-webkit-text-fill-color:#184579;
+ font:750 12px/1.3 Inter,system-ui,sans-serif;
+}
+body .queue-submenu .cx-queue-feedback[data-error="true"]{
+ border-color:#e6a2a8;background:#ffebef;color:#95334f;-webkit-text-fill-color:#95334f
+}
+body.cx-sup-night .queue-submenu .cx-queue-feedback{
+ background:#27537e;color:#eef9ff;-webkit-text-fill-color:#eef9ff;border-color:#70a9df
+}
+body.cx-sup-night .queue-submenu .cx-queue-feedback[data-error="true"]{
+ background:#70334f;color:#fff3f6;-webkit-text-fill-color:#fff3f6;border-color:#c27a9b
+}
+</style>
+<script id="coopex-fila-sem-navegar-v41">
+(function(){
+'use strict';
+const endpoint='/api/admin/pix-led-fila';
+const ul=()=>document.getElementById('espera-lista');
+function msg(text,error=false){
+ const host=document.querySelector('.queue-submenu');if(!host)return;
+ let el=host.querySelector('.cx-queue-feedback');
+ if(!el){el=document.createElement('div');el.className='cx-queue-feedback';el.setAttribute('role','status');host.querySelector('#form-espera')?.insertAdjacentElement('afterend',el)}
+ if(!el)return;
+ el.textContent=text;el.dataset.error=String(error);
+ el.hidden=false;
+}
+function queueBadge(){
+ return document.querySelector('.bank-toolbar .bank-group:has(.queue-submenu) .queue-count');
+}
+function makeItem(item,index){
+ const li=document.createElement('li');li.className='espera-chip';li.draggable=true;
+ li.dataset.id=String(item.id);
+ li.dataset.cooperadoId=String(item.cooperado_id||'');
+ li.dataset.cooperadoNome=String(item.nome||'');
+ const number=document.createElement('span');number.className='espera-chip-num';number.textContent=(index+1)+'º';
+ const text=document.createElement('span');text.className='espera-chip-text';text.textContent=String(item.nome||'Cooperado');
+ const form=document.createElement('form');form.action='/lista_espera/remove/'+encodeURIComponent(item.id);
+ form.method='POST';form.style.marginLeft='auto';
+ const btn=document.createElement('button');btn.type='submit';btn.title='Remover';btn.className='espera-chip-remove';btn.textContent='×';
+ form.appendChild(btn);li.append(number,text,form);return li;
+}
+function render(items){
+ if(!Array.isArray(items))return;
+ // O payload do Socket.IO possui IDs; não modificar a lista com dados incompletos.
+ if(items.some(item=>item.id==null)){load();return}
+ const list=ul();if(!list)return;
+ const oldIds=[...list.querySelectorAll('.espera-chip')].map(el=>el.dataset.id).join(',');
+ const newIds=items.map(item=>String(item.id)).join(',');
+ const oldNames=[...list.querySelectorAll('.espera-chip')].map(el=>el.dataset.cooperadoNome).join('|');
+ const newNames=items.map(item=>String(item.nome||'')).join('|');
+ if(oldIds!==newIds||oldNames!==newNames){
+  const y=list.scrollTop;
+  const nodes=items.length?items.map(makeItem):[Object.assign(document.createElement('li'),{id:'fila-vazia',className:'small',textContent:'Nenhum cooperado na fila.'})];
+  list.replaceChildren(...nodes);list.scrollTop=y;
+ }
+ const count=queueBadge();
+ if(count){count.textContent=String(items.length);count.title=items.length+' cooperados na fila'}
+}
+let pending=null;
+function load(){
+ if(pending)return pending;
+ pending=fetch(endpoint,{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}})
+ .then(r=>{if(!r.ok)throw Error('Consulta fila '+r.status);return r.json()})
+ .then(data=>{
+  if(Array.isArray(data.cooperados)){
+   render(data.cooperados);
+   window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:data.cooperados}));
+  }
+ })
+ .catch(e=>console.warn('Atualização da fila indisponível',e))
+ .finally(()=>{pending=null});
+ return pending;
+}
+async function submit(form){
+ const button=form.querySelector('[type="submit"]');
+ if(button?.disabled)return;
+ if(button)button.disabled=true;
+ try{
+  const body=new FormData(form);
+  const r=await fetch(form.action,{
+   method:'POST',body,credentials:'same-origin',
+   headers:{Accept:'application/json','X-Requested-With':'fetch'}
+  });
+  const data=await r.json();
+  if(!r.ok||!data.ok)throw Error(data.message||data.erro||'Não foi possível alterar a fila');
+  if(form.id==='form-espera'){
+   form.querySelector('#cooperado-espera').selectedIndex=0;
+   const hidden=form.querySelector('#nome-espera');if(hidden)hidden.value='';
+   const search=form.querySelector('#fila-busca');if(search)search.value='';
+  }
+  msg(data.message||'Fila atualizada');
+  await load();
+ }catch(e){msg(e.message||'Erro ao atualizar a fila',true)}
+ finally{if(button)button.disabled=false}
+}
+function init(){
+ // Captura primeiro; impede envio convencional com redirect e preserva a aba aberta.
+ document.addEventListener('submit',e=>{
+  const form=e.target;
+  if(form?.id==='form-espera'||form?.matches?.('#espera-lista form[action*="/lista_espera/remove/"]')){
+   e.preventDefault();e.stopImmediatePropagation();submit(form);
+  }
+ },true);
+ window.addEventListener('coopex-led-fila',e=>{
+  if(Array.isArray(e.detail)&&e.detail.every(x=>x.id!=null))render(e.detail);
+ });
+ window.addEventListener('coopex-led-socket-ready',load);
+ window.addEventListener('pageshow',e=>{if(e.persisted)load()});
+ load();
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
