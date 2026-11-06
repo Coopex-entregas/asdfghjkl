@@ -2704,10 +2704,15 @@ body.cx-modal-active{overflow:hidden!important}
       }catch(_){ }
     }
 
-    // No navegador, a localização é solicitada, mas nunca encerra a sessão.
-    // O aplicativo Android mantém a integração GPS nativa existente.
-    function gpsPermissionNotice(message, denied = false){
+    // GPS nunca controla login, sessão ou navegação do cooperado.
+    // No app Android, a permissão e o rastreamento são responsabilidade do serviço nativo.
+    let gpsRequestPending=false;
+    let gpsPermissionBlocked=false;
+    function gpsPermissionNotice(message, denied=false){
       if(window.AndroidBridge) return;
+      // Não reapresentar banner por timeout, GPS desligado ou sinal temporariamente ausente.
+      if(!denied){ paintWaiting(); return; }
+      gpsPermissionBlocked=true;
       let banner=document.getElementById('coopex-gps-permission-banner');
       if(!banner){
         banner=document.createElement('div');
@@ -2719,28 +2724,24 @@ body.cx-modal-active{overflow:hidden!important}
         info.style.cssText='flex:1;min-width:180px';
         const button=document.createElement('button');
         button.type='button';
-        button.textContent='Conceder localização';
+        button.textContent='Tentar novamente';
         button.style.cssText='background:#1355c9;color:white;border:0;border-radius:10px;padding:10px 13px;font:700 14px system-ui,sans-serif;cursor:pointer';
-        button.addEventListener('click', function(){
-          // Depois de uma negativa, recarrega para uma nova tentativa do navegador.
-          // O Safari pode manter a negativa salva; nesse caso é necessário liberar nos ajustes.
-          if(banner.dataset.permissionDenied === '1'){
-            window.location.reload();
-          }else{
-            requestGpsPosition();
-          }
+        button.addEventListener('click',function(){
+          // Nunca recarregar a página: autorização do navegador não pode reiniciar a sessão.
+          requestGpsPosition(true);
         });
         banner.append(info,button);
         document.body.appendChild(banner);
       }
       const info=document.getElementById('coopex-gps-permission-message');
       if(info) info.textContent=message;
-      banner.dataset.permissionDenied=denied?'1':'0';
       banner.hidden=false;
       banner.style.display='flex';
     }
 
     function gpsPermissionAccepted(pos){
+      gpsRequestPending=false;
+      gpsPermissionBlocked=false;
       const banner=document.getElementById('coopex-gps-permission-banner');
       if(banner){banner.hidden=true;banner.style.display='none';}
       sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true);
@@ -2748,36 +2749,42 @@ body.cx-modal-active{overflow:hidden!important}
     }
 
     function gpsPermissionFailed(err){
-      const blocked=err && err.code===1;
-      gpsPermissionNotice(blocked
-        ? 'Localização negada. Toque em Conceder localização para atualizar e tentar novamente. Se o navegador mantiver o bloqueio, libere a localização nos ajustes deste site.'
-        : 'Não foi possível obter sua localização. Verifique o GPS e tente novamente.', blocked);
+      gpsRequestPending=false;
+      if(err && err.code===1){
+        gpsPermissionNotice('A localização está bloqueada para este site. Libere o acesso nas permissões do navegador e toque em Tentar novamente.',true);
+      }else{
+        // Timeout ou sinal indisponível não equivalem a permissão negada.
+        paintWaiting();
+      }
     }
 
-    function requestGpsPosition(){
-      if(window.AndroidBridge) return;
-      if(!navigator.geolocation){
-        gpsPermissionNotice('Localização indisponível neste navegador. O painel continua disponível.');
-        return;
-      }
+    function requestGpsPosition(fromUser=false){
+      if(window.AndroidBridge || gpsRequestPending || (gpsPermissionBlocked && !fromUser)) return;
+      if(!navigator.geolocation){paintWaiting();return;}
+      gpsRequestPending=true;
       navigator.geolocation.getCurrentPosition(gpsPermissionAccepted,gpsPermissionFailed,
-        {enableHighAccuracy:true,timeout:12000,maximumAge:0});
+        {enableHighAccuracy:true,timeout:20000,maximumAge:5000});
     }
 
     function startGpsWatch(){
-      if(gpsWatchId!==null || !navigator.geolocation) return;
+      if(gpsWatchId!==null || !navigator.geolocation || window.AndroidBridge) return;
       gpsWatchId=navigator.geolocation.watchPosition(
         (pos)=>{
+          gpsPermissionBlocked=false;
+          const banner=document.getElementById('coopex-gps-permission-banner');
+          if(banner){banner.hidden=true;banner.style.display='none';}
           sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed);
         },
         (err)=>{
-          if(err && err.code===1 && !window.AndroidBridge){
+          if(err && err.code===1){
             if(gpsWatchId!==null) navigator.geolocation.clearWatch(gpsWatchId);
             gpsWatchId=null;
             gpsPermissionFailed(err);
+          }else{
+            paintWaiting();
           }
         },
-        {enableHighAccuracy:true,maximumAge:2000,timeout:10000}
+        {enableHighAccuracy:true,maximumAge:5000,timeout:20000}
       );
     }
 
@@ -2789,9 +2796,7 @@ body.cx-modal-active{overflow:hidden!important}
         paintWaiting();
         return;
       }
-      // Solicita ao abrir; Safari pode exigir toque para mostrar o diálogo nativo.
       requestGpsPosition();
-      // Nenhum caminho de erro GPS deve bloquear o HTML ou deslogar o cooperado.
     }
 
     async function fetchGpsStatus(){
