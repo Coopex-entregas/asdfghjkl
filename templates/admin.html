@@ -430,7 +430,7 @@ function draw(){
  if(entryAlert.length&&!entering)entryAlert=[];
  const warnings=pix.map(x=>({...x,ms:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.ms)&&x.ms<=3600000).sort((a,b)=>a.ms-b.ms);
  const mode=exiting?'saida':(entering?'entrada':(warnings.length?'alert':'fila'));
- const messages=exiting?['SAÍDA DA FILA · '+exitAlert.nome+' · MOTIVO: '+exitAlert.motivo]:entering?['ENTRADA: '+entryAlert.map(x=>x.nome+' '+x.hora).join(' · ')]:warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(x.pos||i+1)+'º '+x.nome);
+ const messages=exiting?['SAÍDA DA FILA · '+exitAlert.nome+' · '+exitAlert.hora+' · MOTIVO: '+exitAlert.motivo]:entering?['ENTRADA: '+entryAlert.map(x=>x.nome+' '+x.hora).join(' · ')]:warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(x.pos||i+1)+'º '+x.nome);
  const result=messages.join('     ✦     ')||(warnings.length?'AVISO PIX':'SEM COOPERADOS NA FILA');
  if(result!==lastText||mode!==lastMode){
   lastText=result;lastMode=mode;
@@ -474,37 +474,49 @@ function queueEntrySound(){
   });
  }catch(e){}
 }
+function queueClock(value){
+ const d=value?new Date(value):new Date();
+ return (Number.isFinite(d.getTime())?d:new Date()).toLocaleTimeString('pt-BR',{timeZone:'America/Fortaleza',hour:'2-digit',minute:'2-digit'});
+}
 function showQueueEntry(data){
  if(!data||!data.nome)return;
- window.dispatchEvent(new CustomEvent('coopex-led-entry',{detail:data}));
- const timestamp=Date.parse(String(data.quando||'')),moment=Number.isFinite(timestamp)?new Date(timestamp):new Date();
- const hora=moment.toLocaleTimeString('pt-BR',{timeZone:'America/Fortaleza',hour:'2-digit',minute:'2-digit'});
- const item={id:String(data.cooperado_id||''),nome:String(data.nome),hora};
- // Acrescentar entradas sucessivas ao mesmo aviso, sem nomes repetidos.
+ const item={id:String(data.cooperado_id||''),nome:String(data.nome),hora:queueClock(data.quando)};
  if(entryAlert.some(x=>x.id===item.id&&x.hora===item.hora))return;
  entryAlert.push(item);
  if(entryAlert.length>25)entryAlert.shift();
  entryUntil=Date.now()+15000;
  if(entryTimer)clearTimeout(entryTimer);
+ window.dispatchEvent(new CustomEvent('coopex-led-entry',{detail:{...data,hora:item.hora}}));
  queueEntrySound();
  draw();
  entryTimer=setTimeout(()=>{entryAlert=[];entryUntil=0;draw();entryTimer=null},15000);
 }
 function showQueueExit(data){
  if(!data||!data.nome||!data.motivo)return;
- window.dispatchEvent(new CustomEvent('coopex-led-exit',{detail:data}));
- exitAlert={nome:String(data.nome),motivo:String(data.motivo),until:Date.now()+15000};
+ const hora=queueClock(data.quando);
+ exitAlert={nome:String(data.nome),motivo:String(data.motivo),hora,until:Date.now()+15000};
  if(exitTimer)clearTimeout(exitTimer);
+ window.dispatchEvent(new CustomEvent('coopex-led-exit',{detail:{...data,hora}}));
  queueExitSound();
  draw();
  exitTimer=setTimeout(()=>{exitAlert=null;draw();exitTimer=null},15000);
 }
 function connectQueueExitSocket(){
- if(typeof io!=='function')return;
- const socket=io({transports:['websocket','polling'],reconnection:true});
+ if(window.__coopexLedSocketConnected)return;
+ // Socket.IO pode carregar depois do script do painel; faça novas tentativas curtas.
+ if(typeof io!=='function'){
+  if(!window.__coopexLedSocketRetries)window.__coopexLedSocketRetries=0;
+  if(window.__coopexLedSocketRetries++<50)setTimeout(connectQueueExitSocket,250);
+  return;
+ }
+ window.__coopexLedSocketConnected=true;
+ const socket=io({transports:['websocket','polling'],reconnection:true,reconnectionDelay:1000,reconnectionDelayMax:10000});
+ window.__coopexLedSocket=socket;
  socket.on('coopex_fila_saida_alerta',showQueueExit);
  socket.on('coopex_fila_entrada_alerta',showQueueEntry);
  socket.on('coopex_supervisao_recado_atualizado',()=>window.dispatchEvent(new Event('coopex-led-note-changed')));
+ socket.on('connect',()=>window.dispatchEvent(new Event('coopex-led-socket-ready')));
+ socket.on('connect_error',err=>console.warn('LED realtime: aguardando conexão',err&&err.message));
 }
 
 async function refresh(){try{const [r,f]=await Promise.all([fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'}),fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'})]);if(r.ok){pix=(await r.json()).cobrancas||[];window.dispatchEvent(new CustomEvent('coopex-led-pix',{detail:pix}));}if(f.ok){fila=(await f.json()).cooperados||[];window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));}draw()}catch(e){}}
@@ -637,7 +649,7 @@ function show(){
  ['cx-led-fila','FILA · '+(fila.length?fila.map((f,i)=>(f.pos||i+1)+'º '+f.nome).join('  ·  '):'SEM COOPERADOS NA FILA'),true],
  ['cx-led-recado',recado&&!recado.lido_em?'RECADO · '+recado.mensagem+' · '+recado.autor+' '+hora(recado.criado_em):'',Boolean(recado&&!recado.lido_em)],
  ['cx-led-entrada',entradas.length?'ENTRADA · '+entradas.map(x=>x.nome+' '+x.hora).join(' · '):'',Boolean(entradas.length)],
- ['cx-led-saida',saida?'SAÍDA · '+saida.nome+' · MOTIVO: '+saida.motivo:'',Boolean(saida)],
+ ['cx-led-saida',saida?'SAÍDA · '+saida.nome+' · '+saida.hora+' · MOTIVO: '+saida.motivo:'',Boolean(saida)],
  ['cx-led-pix',pix.length?'PIX · '+pix.map(x=>x.nome+' '+x.estado).join(' · '):'',Boolean(pix.length)]
  ];
  for(const [id,text,visible] of info){const el=get(id);if(el){el.hidden=!visible;if(visible)el.textContent=text}}
@@ -646,7 +658,7 @@ function show(){
 async function fetchNote(){try{const r=await fetch(endpoint,{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const data=await r.json();recado=data.recado||null;show()}catch(_){}}
 async function mutate(method,url,data){const r=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined});const j=await r.json();if(!r.ok||!j.ok)throw Error(j.erro||'Falha ao salvar');await fetchNote()}
 function onEntry(data){if(!data||!data.nome)return;const key=String(data.cooperado_id||'')+'|'+String(data.quando||'');if(entradas.some(x=>x.key===key))return;entradas.push({key,nome:String(data.nome),hora:hora(data.quando)});if(entradas.length>30)entradas.shift();show();clearTimeout(onEntry.timer);onEntry.timer=setTimeout(()=>{entradas=[];show()},15000)}
-function onExit(data){if(!data||!data.nome||!data.motivo)return;saida={nome:String(data.nome),motivo:String(data.motivo)};show();clearTimeout(onExit.timer);onExit.timer=setTimeout(()=>{saida=null;show()},15000)}
+function onExit(data){if(!data||!data.nome||!data.motivo)return;saida={nome:String(data.nome),motivo:String(data.motivo),hora:String(data.hora||hora(data.quando))};show();clearTimeout(onExit.timer);onExit.timer=setTimeout(()=>{saida=null;show()},15000)}
 function onPix(data){const now=Date.now();const parse=v=>{const s=String(v||'').replace(' ','T');return Date.parse(s+(/[Zz]$|[+-]\d\d:\d\d$/.test(s)?'':'Z'))};pix=(data||[]).map(x=>({nome:String(x.nome||'Cliente'),ms:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.ms)&&x.ms<=3600000).sort((a,b)=>a.ms-b.ms).slice(0,5).map(x=>({nome:x.nome,estado:x.ms<=0?'VENCIDO':Math.max(1,Math.ceil(x.ms/60000))+' MIN'}));show()}
 function build(){
  const head=document.querySelector('.panel-head'),actions=head?.querySelector('.cx-head-actions'),host=get('cx-pix-avulso'),old=get('cx-pix-led');if(!head||!actions||!host||!old)return false;if(get('cx-supervisao-board'))return true;
@@ -884,32 +896,38 @@ body.cx-sup-night .cx-day-inline{color:#d8edff!important;-webkit-text-fill-color
 (function(){
 'use strict';
 function start(){
- const board=document.getElementById('cx-supervisao-board'),day=document.querySelector('.cx-day-inline'),head=document.querySelector('.panel-head'),source=document.querySelector('#cx-pix-led .cx-led-inner');
- if(!board||!head||!source)return false;
-
+ const board=document.getElementById('cx-supervisao-board'),source=document.querySelector('#cx-pix-led .cx-led-inner');
+ if(!board||!source)return false;
  const screen=board.querySelector('.cx-led-screen');
  if(!screen)return false;
  let track=screen.querySelector('.cx-gelo-led-track');
  if(!track){track=document.createElement('div');track.className='cx-gelo-led-track';screen.appendChild(track)}
- let previous='';
+ let noteLine=screen.querySelector('.cx-led-note-static');
+ if(!noteLine){noteLine=document.createElement('div');noteLine.className='cx-led-note-static';noteLine.hidden=true;screen.appendChild(noteLine)}
+ const old=document.getElementById('cx-pix-led');
  function paint(){
   const text=(source.textContent||'').trim();
+  const mode=old?.classList.contains('cx-led-exit')?'saida':old?.classList.contains('cx-led-entry')?'entrada':old?.classList.contains('cx-led-blue')?'fila':'pix';
   const note=board.querySelector('#cx-led-recado');
   const noteText=note&&!note.hidden?(note.textContent||'').trim():'';
-  const original=document.getElementById('cx-pix-led');
-  const mode=original?.classList.contains('cx-led-exit')?'saida':original?.classList.contains('cx-led-entry')?'entrada':original?.classList.contains('cx-led-blue')?'fila':'pix';
-  const signature=mode+'|'+text+'|'+noteText;
-  if(previous===signature)return;
-  previous=signature;
-  track.replaceChildren();
-  const primary=document.createElement('span');primary.className=mode;primary.textContent=text||'✦ SEM COOPERADOS NA FILA ✦';track.appendChild(primary);
-  if(noteText){const extra=document.createElement('span');extra.className='recado';extra.textContent='✦ '+noteText+' ✦';track.appendChild(extra)}
-  track.style.setProperty('--cx-led-duration',Math.min(75,Math.max(21,(text.length+noteText.length)*0.23+18))+'s');
+  const sig=mode+'|'+text;
+  if(track.dataset.lastSignature!==sig){
+   track.dataset.lastSignature=sig;track.replaceChildren();
+   const primary=document.createElement('span');primary.className=mode;
+   primary.textContent=text||'✦ SEM COOPERADOS NA FILA ✦';track.appendChild(primary);
+   track.style.setProperty('--cx-led-duration',Math.min(75,Math.max(13,(text.length)*.22+12))+'s');
+  }
+  if(noteLine.textContent!==noteText)noteLine.textContent=noteText;
+  noteLine.hidden=!noteText;
+  screen.classList.toggle('cx-led-has-note',Boolean(noteText));
  }
  paint();
- const original=document.getElementById('cx-pix-led');
- if(original)new MutationObserver(paint).observe(original,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['class']});
- new MutationObserver(paint).observe(board,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['hidden']});
+ if(old)new MutationObserver(paint).observe(old,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['class']});
+ // Observe apenas a linha do recado, não a tela inteira: evita observer recursivo.
+ const noteSource=board.querySelector('#cx-led-recado');
+ if(noteSource)new MutationObserver(paint).observe(noteSource,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['hidden']});
+ window.addEventListener('coopex-led-entry',()=>setTimeout(paint,0));
+ window.addEventListener('coopex-led-exit',()=>setTimeout(paint,0));
  return true;
 }
 function init(){if(start())return;let n=0;const id=setInterval(()=>{n++;if(start()||n>90)clearInterval(id)},250)}
@@ -1379,3 +1397,57 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+
+<style id="coopex-fila-avisos-som-recado-v19">
+/* Comandos ao alcance, sem que o botão "Todas entregues" tape Recado. */
+body .panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{
+ position:static!important;display:inline-flex!important;vertical-align:middle!important;
+ margin:5px 0 0!important;top:auto!important;right:auto!important;z-index:1!important;
+}
+body #cx-supervisao-board .cx-led-top{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ min-height:37px!important;height:auto!important;padding:0!important;
+ flex-wrap:wrap!important;gap:6px!important
+}
+body #cx-supervisao-board .cx-led-buttons{
+ display:flex!important;flex-wrap:wrap!important;align-items:center!important;
+ gap:7px!important;margin-left:auto!important;position:relative!important;z-index:10!important
+}
+body #cx-supervisao-board .cx-led-buttons button{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ visibility:visible!important;opacity:1!important;
+ border:1px solid #d3e9ff!important;border-radius:10px!important;
+ padding:7px 11px!important;min-height:31px!important;
+ background:linear-gradient(135deg,#fff,#b9ddff)!important;color:#124a92!important;
+ box-shadow:inset 0 2px 4px #fff,0 4px 9px #104b9550!important;cursor:pointer!important
+}
+body #cx-supervisao-board .cx-led-buttons button[hidden]{display:none!important}
+body #cx-supervisao-board .cx-led-screen{
+ display:block!important;position:relative!important;
+ height:98px!important;min-height:98px!important;max-height:98px!important;overflow:hidden!important
+}
+body #cx-supervisao-board .cx-led-screen .cx-gelo-led-track{
+ position:relative!important;top:9px!important;align-items:center!important
+}
+body #cx-supervisao-board .cx-led-screen.cx-led-has-note .cx-gelo-led-track{top:1px!important}
+body #cx-supervisao-board .cx-led-note-static{
+ position:absolute!important;bottom:5px!important;left:12px!important;right:12px!important;
+ display:block!important;z-index:3!important;
+ color:#ffb85f!important;text-shadow:0 0 8px #d98b24b3!important;
+ font:800 13px/1.45 system-ui!important;letter-spacing:.01em!important;
+ background:linear-gradient(90deg,#50320ba8,#8c501b44)!important;
+ border:1px solid #d28a3f88!important;border-radius:8px!important;padding:4px 9px!important;
+ max-height:48px!important;overflow:auto!important;white-space:normal!important
+}
+body #cx-supervisao-board .cx-led-note-static[hidden]{display:none!important}
+body #cx-supervisao-board .cx-gelo-led-track .entrada{color:#60ffa4!important;text-shadow:0 0 11px #3df57d!important}
+body #cx-supervisao-board .cx-gelo-led-track .saida{color:#ff6e84!important;text-shadow:0 0 11px #f33f65!important}
+body #cx-supervisao-board .cx-gelo-led-track .fila{color:#8ad5ff!important}
+body #cx-supervisao-board .cx-gelo-led-track .pix{color:#ffda78!important}
+body #cx-supervisao-note-dialog{z-index:2147480000!important;border:2px solid #fff!important;border-radius:18px!important;
+ background:linear-gradient(145deg,#fff,#c2e0ff)!important;color:#19477c!important;box-shadow:0 18px 50px #08274896!important}
+body #cx-supervisao-note-dialog textarea{background:#fafdff!important;color:#173c72!important;border:1px solid #91bfea!important}
+body #cx-supervisao-note-dialog button{cursor:pointer!important}
+@media(max-width:900px){body #cx-supervisao-board .cx-led-top{padding-right:0!important}}
+</style>
