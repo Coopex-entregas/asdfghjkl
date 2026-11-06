@@ -2273,7 +2273,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             Entregas de {{ to_brasilia(now()).strftime('%d/%m/%Y') }}
             <span id="abertasBadge" class="badge neu" title="Entregas sem cooperado" style="display:none">0 em aberto</span>
           </h2>
-          <button class="btn cx-bulk-head-btn" type="button" id="btnMarcarTodasEntregues" title="Marcar todas as entregas exibidas como entregues">✓ Marcar todas como entregues</button>
+          <button class="btn cx-bulk-head-btn" type="button" id="btnMarcarTodasEntregues" title="Marcar todas as entregas exibidas como entregues">✓ Todas entregues</button>
           <div class="filters-actions cx-head-actions">
             <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
               Agendar
