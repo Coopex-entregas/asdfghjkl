@@ -3560,3 +3560,161 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+
+<style id="coopex-acoes-no-espaco-superior-v39">
+/* Faixa única: o Pix antecipado, os botões, o recado e os atalhos ocupam o espaço
+   livre do MENU. O LED permanece inteiro e fixo imediatamente abaixo. */
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso{
+ display:flex!important;align-items:center!important;justify-content:flex-end!important;
+ flex:1 1 710px!important;order:19!important;flex-wrap:wrap!important;
+ min-width:0!important;max-width:100%!important;width:auto!important;
+ min-height:35px!important;height:auto!important;max-height:none!important;
+ gap:4px!important;padding:0 3px!important;margin:0 4px 0 auto!important;
+ background:transparent!important;border:0!important;border-radius:0!important;
+ box-shadow:none!important;backdrop-filter:none!important;overflow:visible!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>strong{
+ flex:0 0 auto!important;margin:0 2px!important;
+ font:850 11px/1.1 Inter,system-ui,sans-serif!important;white-space:nowrap!important;
+ color:#f7fbff!important;-webkit-text-fill-color:#f7fbff!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>input{
+ flex:0 0 auto!important;min-width:0!important;max-width:125px!important;width:125px!important;
+ height:32px!important;min-height:32px!important;margin:0!important;padding:4px 8px!important;
+ border-radius:10px!important;border:1px solid #a6d2fa!important;
+ background:linear-gradient(140deg,#fafdff,#d5ebff)!important;
+ color:#12467e!important;-webkit-text-fill-color:#12467e!important;
+ box-shadow:inset 0 1px 3px #ffffffbd,0 2px 5px #0f3d7a69!important;
+ font:750 11px Inter,system-ui,sans-serif!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>input::placeholder{
+ color:#32669c!important;-webkit-text-fill-color:#32669c!important;opacity:1!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>button{
+ flex:0 0 auto!important;min-width:0!important;width:auto!important;
+ min-height:32px!important;height:32px!important;padding:4px 8px!important;margin:0!important;
+ color:#ecf7ff!important;-webkit-text-fill-color:#ecf7ff!important;
+ border:1px solid #a2cefa!important;border-radius:10px!important;
+ background:linear-gradient(145deg,#3f86c6,#1a4d83)!important;
+ box-shadow:inset 0 2px 3px #c0e9ff58,0 3px 7px #0a2c5c84!important;
+ font:800 11px/1.15 Inter,system-ui,sans-serif!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>#cx-led-menu-controls{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 auto!important;min-width:0!important;max-width:none!important;
+ flex-wrap:wrap!important;gap:4px!important;margin:0 2px!important;padding:0!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>#cx-led-menu-controls button.cx-symbol-action{
+ flex:0 0 31px!important;width:31px!important;max-width:31px!important;
+ height:31px!important;min-height:31px!important;min-width:31px!important;
+ padding:4px!important;position:relative!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>#cx-led-menu-controls #abertasBadge{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ min-width:67px!important;height:30px!important;min-height:30px!important;
+ padding:3px 8px!important;margin:0!important;white-space:nowrap!important;
+ color:#0a4489!important;-webkit-text-fill-color:#0a4489!important;
+ background:linear-gradient(140deg,#f5fbff,#b5dcff)!important;
+ border:1px solid #fff!important;border-radius:9px!important;
+ box-shadow:inset 0 1px 3px #fff,0 3px 7px #113c7e70!important;
+ font:900 11px/1 Inter,system-ui,sans-serif!important;
+ opacity:1!important;visibility:visible!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>.cx-led-shortcuts{
+ display:inline-flex!important;align-items:center!important;justify-content:flex-end!important;
+ flex:0 0 auto!important;flex-wrap:nowrap!important;gap:4px!important;
+ min-width:0!important;width:auto!important;max-width:none!important;
+ margin:0!important;padding:0!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>.cx-led-shortcuts>.btn{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 32px!important;width:32px!important;min-width:32px!important;max-width:32px!important;
+ height:32px!important;min-height:32px!important;max-height:32px!important;
+ padding:3px!important;margin:0!important;border:1px solid #9dc9ec!important;
+ border-radius:10px!important;box-shadow:inset 0 2px 3px #d0f0ff54,0 3px 7px #04295683!important
+}
+body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>.cx-led-shortcuts>.btn::before{
+ width:19px!important;height:19px!important;background-size:contain!important
+}
+body #cx-pix-led{display:none!important}
+body #cx-led-sound-enable{display:none!important}
+/* O antigo KPI vazio era a barra branca vertical: ele não deve ocupar espaço. */
+body header .topbar .kpis .kpi.kpi-delivery,
+body header .kpis .kpi.kpi-delivery,
+body header .kpi.kpi-delivery{display:none!important;width:0!important;min-width:0!important;max-width:0!important;
+ height:0!important;min-height:0!important;padding:0!important;margin:0!important;border:0!important;
+ visibility:hidden!important;box-shadow:none!important}
+body header .topbar .kpis:has(> .kpi.kpi-delivery):not(:has(.diag-mini:not([hidden]))){
+ min-width:0!important;width:0!important;max-width:0!important
+}
+/* Removida a faixa antiga, filtros e tabela passam a encostar sem margem sobrando. */
+body .viewport .panel .filters-bar{margin:0!important;border-radius:13px 13px 0 0!important}
+body .viewport .panel>.table-shell{margin:0!important;padding-top:0!important}
+body .viewport .panel .table-wrap#tbl{margin-top:0!important}
+body .bank-toolbar-wrap>.bank-toolbar{align-items:center!important;gap:4px!important;min-height:38px!important}
+/* Faixa fixada com LED completo. Em meia tela, botões quebram dentro da faixa superior. */
+body .bank-toolbar-wrap>#cx-supervisao-board.cx-led-compact{
+ width:100%!important;flex:0 0 51px!important;min-width:0!important;max-width:100%!important;
+ height:51px!important;min-height:51px!important
+}
+body.cx-sup-night .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>input{
+ background:linear-gradient(145deg,#315b87,#153759)!important;
+ color:#effaff!important;-webkit-text-fill-color:#effaff!important;border-color:#79a9d7!important
+}
+body.cx-sup-night .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>input::placeholder{
+ color:#d7ecff!important;-webkit-text-fill-color:#d7ecff!important
+}
+body.cx-sup-night .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>#cx-led-menu-controls #abertasBadge{
+ background:linear-gradient(145deg,#35638f,#1a406a)!important;
+ color:#effaff!important;-webkit-text-fill-color:#effaff!important;border-color:#87bae7!important
+}
+@media(max-width:1340px){
+ body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso{
+  order:30!important;flex:1 1 100%!important;width:100%!important;
+  margin:1px 0 0!important;justify-content:flex-start!important
+ }
+ body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>input{width:110px!important}
+}
+@media(max-width:750px){
+ body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso{
+  gap:3px!important;padding:2px 0!important
+ }
+ body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>strong{font-size:10px!important}
+ body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>input{width:103px!important;max-width:103px!important}
+ body .bank-toolbar-wrap>.bank-toolbar>#cx-pix-avulso>.cx-led-shortcuts{flex-wrap:wrap!important}
+}
+</style>
+<script id="coopex-acoes-topo-script-v39">
+(function(){
+'use strict';
+function organize(){
+ const nav=document.querySelector('.bank-toolbar-wrap>.bank-toolbar');
+ const pix=document.getElementById('cx-pix-avulso');
+ if(!nav||!pix)return false;
+ const sound=document.getElementById('cx-led-sound-enable');if(sound)sound.remove();
+ if(pix.parentElement!==nav){
+  const logout=nav.querySelector('a.logout.cx-menu-logout');
+  if(logout)nav.insertBefore(pix,logout);
+  else nav.appendChild(pix);
+ }
+ const kpi=document.querySelector('header .kpi.kpi-delivery');
+ if(kpi){kpi.setAttribute('aria-hidden','true');kpi.style.setProperty('display','none','important')}
+ const oldWhite=document.querySelector('header .topbar .kpis');
+ if(oldWhite&&!oldWhite.querySelector('.diag-mini:not([hidden])'))oldWhite.style.setProperty('display','none','important');
+ const badge=document.getElementById('abertasBadge');
+ const note=document.getElementById('cx-led-note-write');
+ const controls=document.getElementById('cx-led-menu-controls');
+ if(badge&&note&&controls&&badge.previousElementSibling!==note)note.insertAdjacentElement('afterend',badge);
+ // Todos os eventos e inputs continuam nos elementos originais.
+ return true;
+}
+function boot(){
+ if(organize())return;
+ let n=0;
+ const id=setInterval(()=>{if(organize()||++n>110)clearInterval(id)},100);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+window.addEventListener('pageshow',organize);
+})();
+</script>
