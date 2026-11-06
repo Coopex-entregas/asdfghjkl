@@ -108,81 +108,117 @@
 </style>
 <script id="supervisao-live-sync">
 (function(){
-  const URL_LIVE='{{ url_for("api_admin_live_state") }}';
-  const INTERVALO=2000;
-  const SCROLL_KEY='supervisao_live_scroll_y';
-  let assinatura=null;
-  let verificando=false;
-  let atualizacaoPendente=false;
-  let timer=null;
-
-  function indicador(){
-    let el=document.getElementById('supervisao-live-indicator');
-    if(!el){
-      el=document.createElement('div');
-      el.id='supervisao-live-indicator';
-      el.innerHTML='<span class="dot"></span><span class="txt">AO VIVO</span>';
-      document.body.appendChild(el);
-    }
-    return el;
+'use strict';
+// Conserva a tela e a posição: atualiza somente a lista de entregas quando a
+// assinatura do servidor muda, nunca recarrega o documento inteiro.
+const URL_LIVE='{{ url_for("api_admin_live_state") }}';
+const INTERVALO=6000;
+const SCROLL_KEY='coopex_sup_position_v41';
+let assinatura=null,verificando=false,atualizacaoPendente=false,atualizando=false,timer=null;
+function editing(){
+ const el=document.activeElement;
+ return !!(el?.matches?.('input,textarea,select,[contenteditable="true"]')||
+ document.querySelector('dialog[open],.modal.open,.modal.show,[role="dialog"].open,.value-requests-overlay.open')||
+ document.body.classList.contains('locked'));
+}
+function readPosition(){
+ try{return JSON.parse(sessionStorage.getItem(SCROLL_KEY)||'{}')}catch(e){return {}}
+}
+function savePosition(){
+ try{
+  const table=document.getElementById('tbl'),old=readPosition();
+  sessionStorage.setItem(SCROLL_KEY,JSON.stringify({
+   y:Math.max(0,window.scrollY||0),
+   tableY:table?table.scrollTop:(old.tableY||0),
+   tableX:table?table.scrollLeft:(old.tableX||0)
+  }));
+ }catch(e){}
+}
+function restorePosition(){
+ const p=readPosition(),table=document.getElementById('tbl');
+ if(table){
+  if(Number.isFinite(Number(p.tableY)))table.scrollTop=Number(p.tableY);
+  if(Number.isFinite(Number(p.tableX)))table.scrollLeft=Number(p.tableX);
+ }
+ if(Number(p.y)>0)window.scrollTo({top:Number(p.y),left:0,behavior:'instant'});
+}
+async function updateRows(){
+ if(atualizando||editing()){atualizacaoPendente=true;return}
+ atualizando=true;
+ const table=document.getElementById('tbl');
+ const scrollTop=table?.scrollTop||0,scrollLeft=table?.scrollLeft||0;
+ const pageY=window.scrollY;
+ try{
+  const r=await fetch(window.location.pathname+window.location.search,{
+   cache:'no-store',credentials:'same-origin',
+   headers:{Accept:'text/html','X-Requested-With':'fetch'}
+  });
+  if(!r.ok)throw Error('Atualização de entregas: '+r.status);
+  const html=await r.text(),doc=new DOMParser().parseFromString(html,'text/html');
+  const next=doc.querySelector('#tbl table.tabela tbody');
+  const current=document.querySelector('#tbl table.tabela tbody');
+  if(next&&current){
+   const oldRows=[...current.querySelectorAll(':scope>tr[data-id]')];
+   const newRows=[...next.querySelectorAll(':scope>tr[data-id]')];
+   // Se apenas a fila mudou, não tocar sequer nas linhas já renderizadas.
+   const signature=rows=>rows.map(tr=>[
+     tr.dataset.id,
+     tr.querySelector('.value-editable')?.dataset.valor,
+     tr.querySelector('.coop-editable')?.dataset.cooperadoId,
+     tr.querySelector('.status-editable')?.dataset.status,
+     tr.querySelector('.pagamento-editable')?.dataset.statusPagamento,
+     tr.querySelector('.cx-forma-pagamento')?.dataset.forma,
+     tr.querySelector('.recb-nome')?.textContent?.trim()
+   ].join(':')).join('|');
+   if(signature(oldRows)!==signature(newRows)){
+    current.replaceChildren(...[...next.children].map(node=>document.importNode(node,true)));
+    window.dispatchEvent(new Event('coopex-admin-table-updated'));
+    document.dispatchEvent(new Event('coopex-admin-table-updated'));
+   }
   }
-  function status(tipo,texto){
-    const el=indicador();
-    el.classList.toggle('wait',tipo==='wait');
-    el.classList.toggle('off',tipo==='off');
-    const txt=el.querySelector('.txt'); if(txt) txt.textContent=texto;
-  }
-  function usuarioEditando(){
-    const a=document.activeElement;
-    if(a && (a.matches?.('input,textarea,select,[contenteditable="true"]'))) return true;
-    if(document.querySelector('.modal.open,.modal.show,[role="dialog"].open,[role="dialog"][aria-hidden="false"],.value-requests-overlay.open')) return true;
-    if(document.body.classList.contains('locked')) return true;
-    return false;
-  }
-  function restaurarScroll(){
-    const y=Number(sessionStorage.getItem(SCROLL_KEY)||'');
-    if(Number.isFinite(y) && y>0){
-      sessionStorage.removeItem(SCROLL_KEY);
-      requestAnimationFrame(()=>window.scrollTo({top:y,left:0,behavior:'auto'}));
-    }
-  }
-  function atualizarTela(){
-    if(usuarioEditando()){
-      atualizacaoPendente=true;
-      status('wait','NOVA ATUALIZAÇÃO');
-      return;
-    }
-    atualizacaoPendente=false;
-    sessionStorage.setItem(SCROLL_KEY,String(Math.max(0,window.scrollY||0)));
-    status('wait','ATUALIZANDO');
-    window.location.reload();
-  }
-  async function verificar(){
-    if(verificando || document.visibilityState==='hidden') return;
-    verificando=true;
-    try{
-      const r=await fetch(URL_LIVE,{cache:'no-store',credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'fetch'}});
-      if(!r.ok) throw new Error('live-state '+r.status);
-      const d=await r.json();
-      if(!d.ok || !d.assinatura) throw new Error('live-state inválido');
-      status('ok','AO VIVO');
-      if(assinatura===null){assinatura=d.assinatura;return;}
-      if(d.assinatura!==assinatura){assinatura=d.assinatura;atualizarTela();}
-      else if(atualizacaoPendente && !usuarioEditando()) atualizarTela();
-    }catch(e){
-      status('off','SEM CONEXÃO');
-    }finally{verificando=false;}
-  }
-  function iniciar(){
-    restaurarScroll();
-    indicador();
-    verificar();
-    timer=setInterval(verificar,INTERVALO);
-    document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')verificar();});
-    document.addEventListener('focusout',()=>{if(atualizacaoPendente)setTimeout(verificar,180);},true);
-    window.addEventListener('online',()=>setTimeout(verificar,100));
-  }
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
+  const total=doc.querySelector('#kpiTotalDia'),realTotal=document.getElementById('kpiTotalDia');
+  if(total&&realTotal)realTotal.textContent=total.textContent;
+  if(table){table.scrollTop=scrollTop;table.scrollLeft=scrollLeft}
+  if(window.scrollY!==pageY)window.scrollTo({top:pageY,left:0,behavior:'instant'});
+  atualizacaoPendente=false;
+ }catch(e){console.warn('Sincronização parcial:',e);atualizacaoPendente=true}
+ finally{atualizando=false}
+}
+async function verificar(){
+ if(verificando||document.visibilityState==='hidden')return;
+ verificando=true;
+ try{
+  const r=await fetch(URL_LIVE,{cache:'no-store',credentials:'same-origin',
+   headers:{Accept:'application/json','X-Requested-With':'fetch'}});
+  if(!r.ok)return;
+  const d=await r.json();
+  if(!d.ok||!d.assinatura)return;
+  if(assinatura===null){assinatura=d.assinatura;return}
+  if(d.assinatura!==assinatura){assinatura=d.assinatura;await updateRows()}
+  else if(atualizacaoPendente&&!editing())await updateRows();
+ }catch(e){console.warn('Sincronização de entregas indisponível',e)}
+ finally{verificando=false}
+}
+function init(){
+ if('scrollRestoration'in history)history.scrollRestoration='manual';
+ const saved=readPosition();
+ if(!Number.isFinite(Number(saved.tableY)))saved.tableY=0;
+ requestAnimationFrame(()=>requestAnimationFrame(restorePosition));
+ const t=document.getElementById('tbl');
+ t?.addEventListener('scroll',savePosition,{passive:true});
+ window.addEventListener('scroll',savePosition,{passive:true});
+ document.addEventListener('submit',savePosition,true);
+ document.addEventListener('click',e=>{if(e.target.closest('a[href]'))savePosition()},true);
+ window.addEventListener('pagehide',savePosition);
+ window.addEventListener('pageshow',()=>requestAnimationFrame(restorePosition));
+ window.addEventListener('coopex-admin-table-updated',()=>requestAnimationFrame(restorePosition));
+ document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')verificar()});
+ window.addEventListener('online',verificar);
+ document.addEventListener('focusout',()=>{if(atualizacaoPendente)setTimeout(verificar,150)},true);
+ verificar();
+ timer=setInterval(verificar,INTERVALO);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
 
@@ -521,7 +557,7 @@ function connectQueueExitSocket(){
  // Atualiza a fila imediatamente quando o servidor grava ou altera a ordem.
  socket.on('fila_espera_atualizada',data=>{
   if(!data||!Array.isArray(data.itens))return;
-  fila=data.itens.map((item,i)=>({nome:String(item.nome||'Cooperado'),pos:Number(item.pos||i+1)}));
+  fila=data.itens.map((item,i)=>({id:item.id,cooperado_id:item.cooperado_id,nome:String(item.nome||'Cooperado'),pos:Number(item.pos||i+1)}));
   window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));
   draw();
  });
