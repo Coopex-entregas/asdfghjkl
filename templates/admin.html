@@ -2435,3 +2435,168 @@ body #cx-pix-avulso{gap:5px!important;min-height:0!important;align-items:center!
  body #cx-pix-avulso #cx-led-menu-controls{margin:2px 0!important}
 }
 </style>
+
+
+<style id="coopex-menu-icones-contadores-v29">
+/* Uma única faixa de vidro para todos os menus e o Sair. */
+body .bank-toolbar-wrap{overflow:visible!important}
+body .bank-toolbar-wrap>.bank-toolbar{
+ display:flex!important;align-items:center!important;flex-wrap:wrap!important;
+ gap:5px!important;min-height:51px!important;padding:4px 8px!important
+}
+body .bank-toolbar .bank-group{flex:0 0 auto!important;min-width:0!important}
+body .bank-toolbar .bank-group>.bank-group-btn{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:7px!important;
+ min-height:37px!important;height:38px!important;padding:4px 9px!important;
+ font:850 12px/1.2 Inter,system-ui,sans-serif!important;color:#f3faff!important;
+ -webkit-text-fill-color:#f3faff!important;
+ text-shadow:0 1px 1px #143c79!important;border-radius:11px!important;
+ white-space:nowrap!important
+}
+body .bank-toolbar .bank-group.cx-tab-selected>.bank-group-btn,
+body .bank-toolbar .bank-group.open>.bank-group-btn{
+ background:linear-gradient(145deg,#fafdff,#d0e9ff)!important;
+ color:#124681!important;-webkit-text-fill-color:#124681!important;
+ border:1px solid #fff!important;
+ box-shadow:inset 0 2px 4px #fff,0 4px 9px #144a8c73!important;text-shadow:none!important
+}
+body .bank-toolbar .cx-menu-icon{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 19px!important;width:19px!important;height:19px!important;
+ color:var(--cx-menu-icon-color,#b4eaff)!important;-webkit-text-fill-color:currentColor!important
+}
+body .bank-toolbar .cx-menu-icon svg{width:19px!important;height:19px!important;stroke:currentColor!important;fill:none!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+body .bank-toolbar .bank-group.cx-tab-selected>.bank-group-btn .cx-menu-icon,
+body .bank-toolbar .bank-group.open>.bank-group-btn .cx-menu-icon{color:#196abb!important}
+/* Contadores em um chip alto contraste, nunca branco sobre branco. */
+body .bank-toolbar .bank-group .queue-count,
+body .bank-toolbar .bank-group .queue-count *,
+body .bank-toolbar .bank-group [data-request-count]{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 auto!important;min-width:26px!important;height:24px!important;min-height:24px!important;
+ padding:2px 7px!important;margin-left:2px!important;
+ border-radius:9px!important;border:1px solid #ffffffd9!important;
+ background:linear-gradient(145deg,#eff8ff,#badcff)!important;
+ box-shadow:inset 0 2px 3px #ffffffcf,0 3px 8px #103e7c66!important;
+ color:#063f8e!important;-webkit-text-fill-color:#063f8e!important;
+ font:900 13px/1 Inter,system-ui,sans-serif!important;
+ letter-spacing:0!important;text-shadow:none!important;opacity:1!important;
+ visibility:visible!important
+}
+body .bank-toolbar .bank-group.cx-tab-selected .queue-count{background:#d8ecff!important;color:#124d9b!important;-webkit-text-fill-color:#124d9b!important}
+body.cx-sup-night .bank-toolbar .bank-group .queue-count,
+body.cx-sup-night .bank-toolbar .bank-group [data-request-count]{
+ background:linear-gradient(140deg,#d6edff,#8dbfea)!important;
+ color:#063d80!important;-webkit-text-fill-color:#063d80!important
+}
+body .bank-toolbar .bank-group .bank-submenu .btn-ico.cx-vector-icon{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ color:#2379cf!important;flex:0 0 20px!important;
+ background:none!important;text-shadow:none!important;
+}
+body .bank-toolbar .bank-group .bank-submenu .btn-ico.cx-vector-icon svg{width:18px!important;height:18px!important;stroke:currentColor!important;fill:none!important;stroke-width:2!important}
+/* Contador de entregas do topo: apenas valor, sem título DIA ou ícone de caixa. */
+body header .kpi.kpi-delivery,body header .kpis .kpi.kpi-delivery{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:auto!important;min-width:54px!important;height:43px!important;min-height:43px!important;
+ padding:5px 11px!important;margin:0!important;border:1px solid #fff!important;
+ border-radius:12px!important;background:linear-gradient(135deg,#f8fdff,#c1e1ff)!important;
+ box-shadow:inset 0 2px 3px #fff,0 4px 11px #17488272!important
+}
+body header .kpi.kpi-delivery .kpi-icon,body header .kpi.kpi-delivery small{display:none!important}
+body header .kpi.kpi-delivery span#kpiTotalDia{
+ display:block!important;min-width:26px!important;font:950 22px/1 Inter,system-ui,sans-serif!important;
+ text-align:center!important;color:#124c9b!important;-webkit-text-fill-color:#124c9b!important;
+ text-shadow:none!important
+}
+body.cx-sup-night header .kpi.kpi-delivery{
+ background:linear-gradient(135deg,#254e7b,#16365d)!important;border-color:#7caee1!important
+}
+body.cx-sup-night header .kpi.kpi-delivery span#kpiTotalDia{color:#e4f5ff!important;-webkit-text-fill-color:#e4f5ff!important}
+/* O Sair faz parte do MESMO vidro azul do menu, sem botão vermelho antigo. */
+body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ gap:7px!important;order:100!important;margin:0 0 0 auto!important;
+ min-height:39px!important;height:39px!important;min-width:77px!important;
+ padding:6px 12px!important;box-sizing:border-box!important;
+ border-radius:12px!important;border:1px solid #e4f4ffbf!important;
+ background:linear-gradient(145deg,#ffffff2e,#ffffff13)!important;
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ text-shadow:none!important;font:850 12px/1 Inter,system-ui,sans-serif!important;
+ box-shadow:inset 0 2px 3px #ffffff5c,0 4px 9px #092b635e!important;
+ text-decoration:none!important;white-space:nowrap!important
+}
+body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout:hover{
+ background:linear-gradient(145deg,#f7fcff,#cfe7ff)!important;
+ color:#164c92!important;-webkit-text-fill-color:#164c92!important
+}
+body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout svg{
+ width:19px!important;height:19px!important;fill:none!important;
+ stroke:currentColor!important;stroke-width:2.2!important;
+ stroke-linecap:round!important;stroke-linejoin:round!important
+}
+/* LED tem prioridade pelo espaço disponível, não encoberto pelo logout. */
+body .bank-toolbar #cx-supervisao-board.cx-led-compact{order:20!important;min-width:230px!important;flex:1 1 250px!important}
+body .bank-toolbar .cx-day-inline{order:10!important}
+@media(max-width:1120px){
+ body .bank-toolbar .bank-group>.bank-group-btn{font-size:11px!important;padding:4px 7px!important}
+ body .bank-toolbar #cx-supervisao-board.cx-led-compact{order:90!important;flex-basis:100%!important}
+ body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout{order:21!important}
+}
+@media(max-width:700px){
+ body .bank-toolbar-wrap .bank-toolbar{column-gap:3px!important}
+ body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout{margin-left:0!important}
+}
+</style>
+<script id="coopex-menu-icones-contadores-script-v29">
+(function(){
+'use strict';
+const defs=[
+ ['#8ad4ff','M12 2v3m0 14v3M4.9 4.9l2.2 2.2m9.8 9.8 2.2 2.2M2 12h3m14 0h3M4.9 19.1l2.2-2.2m9.8-9.8 2.2-2.2M12 8a4 4 0 1 0 0 8 4 4 0 0 0 0-8'],
+ ['#a5f2dc','M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 11a4 4 0 1 0 0-8 4 4 0 0 0 0 8M21 21v-2a4 4 0 0 0-3-3.8M16 3.2a4 4 0 0 1 0 7.6'],
+ ['#ffe29c','M3 6h18v14H3zM3 10h18M16 16h2M7 6V4a2 2 0 0 1 2-2h10'],
+ ['#cab7ff','M5 3h14v18H5zM9 16v-4m4 4V8m4 8v-5'],
+ ['#9adfff','M7 2v4m10-4v4M4 10h16M5 5h14v16H5zM9 14h6m-6 4h3'],
+ ['#ffce9d','M5 3h10l4 4v14H5zM15 3v5h5M9 12h6m-6 4h7']
+];
+const paths=['M3 8h12v11H3zM15 12h4l3 4v3h-7zM7 19a2 2 0 1 0 4 0M17 19a2 2 0 1 0 4 0','M7 2v4m10-4v4M4 10h16M5 5h14v16H5z','M12 22s8-7 8-13a8 8 0 0 0-16 0c0 6 8 13 8 13zM12 6a3 3 0 1 0 0 6 3 3 0 0 0 0-6','M3 16l6-6 4 4 8-8M15 6h6v6','M6 3h12v18H6zM9 7h6m-6 4h6m-6 4h4','M3 7h18v14H3zM3 11h18M16 16h2'];
+function svg(path){const wrap=document.createElement('span');wrap.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+path+'"/></svg>';return wrap.firstChild}
+function init(){
+ const nav=document.querySelector('.bank-toolbar');
+ if(!nav)return false;
+ nav.querySelectorAll('.bank-group').forEach((group,i)=>{
+  const btn=group.querySelector(':scope > .bank-group-btn');
+  if(!btn||btn.dataset.cxModernMenu)return;
+  btn.dataset.cxModernMenu='1';
+  // Remove apenas os emojis iniciais, mantendo o nome, badges e listeners originais.
+  const leading=[...btn.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());
+  if(leading)leading.textContent=leading.textContent.replace(/^\\s*[^\\p{L}\\p{N}]+\\s*/u,'').replace(/^\\s+/,'');
+  const spec=defs[Math.min(i,defs.length-1)];
+  const icon=document.createElement('span');icon.className='cx-menu-icon';icon.style.setProperty('--cx-menu-icon-color',spec[0]);icon.appendChild(svg(spec[1]));
+  btn.prepend(icon);
+  group.querySelectorAll('.bank-submenu .btn-ico').forEach((item,j)=>{
+   if(item.dataset.cxVector)return;
+   item.dataset.cxVector='1';item.classList.add('cx-vector-icon');item.replaceChildren(svg(paths[(i+j)%paths.length]));
+  });
+ });
+ const badge=nav.querySelector('.cx-day-inline');
+ if(badge){
+   // O contador \"em aberto\" fica aqui; a quantidade TOTAL no topo é só número.
+   const title=badge.querySelector('.cx-day-label strong');
+   if(title)title.textContent='Entregas do dia';
+   badge.querySelector('.cx-day-label small')?.remove();
+ }
+ const logout=document.querySelector('header a.logout')||nav.querySelector('a.logout');
+ if(logout){
+  if(logout.parentElement!==nav)nav.appendChild(logout);
+  logout.classList.add('cx-menu-logout');
+  logout.querySelector('svg')?.remove();
+  const ico=svg('M10 4H5a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h5M14 7l5 5-5 5M19 12H9');
+  logout.prepend(ico);
+ }
+ return true;
+}
+function start(){if(init())return;let n=0;const t=setInterval(()=>{if(init()||++n>100)clearInterval(t)},100)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
+})();
+</script>
