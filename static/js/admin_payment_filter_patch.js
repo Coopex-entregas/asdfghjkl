@@ -11,7 +11,7 @@
 
   function canonical(value){
     const key=norm(value);
-    if(!key||key==='todas'||key==='todos')return {key:'todas',value:'todas',label:'Todas'};
+    if(!key||key==='todas'||key==='todos')return {key:'todas',value:'todas',label:'Forma de pagamento'};
     if(['credito','credito auto','credito automatico','credito saldo cliente','credito automatico saldo cliente','saldo cliente'].includes(key)){
       return {key:'credito',value:'CREDITO_AUTO',label:'Crédito automático'};
     }
