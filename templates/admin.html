@@ -924,6 +924,32 @@ function start(){
  let noteLine=screen.querySelector('.cx-led-note-static');
  if(!noteLine){noteLine=document.createElement('div');noteLine.className='cx-led-note-static';noteLine.hidden=true;screen.appendChild(noteLine)}
  const old=document.getElementById('cx-pix-led');
+ let noteAnimationKey='';
+ function adjustNoteScroll(){
+  if(noteLine.hidden)return;
+  const text=noteLine.querySelector('.cx-led-note-message');
+  if(!text)return;
+  const available=noteLine.clientWidth-18,needed=text.scrollWidth;
+  const shouldScroll=needed>available+3;
+  noteLine.classList.toggle('cx-note-marquee',shouldScroll);
+  if(!shouldScroll){noteAnimationKey='';text.style.animationDuration='';return}
+  // A distância e o tempo variam com o tamanho real do recado.
+  const distance=needed+Math.max(0,available);
+  const seconds=Math.max(12,Math.min(180,distance/68));
+  const key=noteLine.dataset.noteValue+'|'+Math.round(available);
+  if(key!==noteAnimationKey){
+   noteAnimationKey=key;
+   text.style.animation='none';
+   noteLine.style.setProperty('--cx-recado-inicio',Math.max(0,available)+'px');
+   noteLine.style.setProperty('--cx-recado-fim',(-needed)+'px');
+   text.offsetWidth;
+   text.style.animation='';
+  }
+  noteLine.style.setProperty('--cx-recado-tempo',seconds+'s');
+ }
+ if(typeof ResizeObserver==='function'){
+  new ResizeObserver(()=>requestAnimationFrame(adjustNoteScroll)).observe(noteLine);
+ }else window.addEventListener('resize',adjustNoteScroll);
  function paint(){
   const text=(source.textContent||'').trim();
   const mode=old?.classList.contains('cx-led-exit')?'saida':old?.classList.contains('cx-led-entry')?'entrada':old?.classList.contains('cx-led-blue')?'fila':'pix';
@@ -936,9 +962,19 @@ function start(){
    primary.textContent=text||'✦ SEM COOPERADOS NA FILA ✦';track.appendChild(primary);
    track.style.setProperty('--cx-led-duration',Math.min(75,Math.max(13,(text.length)*.22+12))+'s');
   }
-  if(noteLine.textContent!==noteText)noteLine.textContent=noteText;
+  if(noteLine.dataset.noteValue!==noteText){
+   noteLine.dataset.noteValue=noteText;
+   noteLine.replaceChildren();
+   if(noteText){
+    const label=document.createElement('span');
+    label.className='cx-led-note-message';
+    label.textContent=noteText;
+    noteLine.appendChild(label);
+   }
+  }
   noteLine.hidden=!noteText;
   screen.classList.toggle('cx-led-has-note',Boolean(noteText));
+  if(noteText)requestAnimationFrame(adjustNoteScroll);
  }
  paint();
  if(old)new MutationObserver(paint).observe(old,{subtree:true,characterData:true,childList:true,attributes:true,attributeFilter:['class']});
@@ -2247,3 +2283,47 @@ function init(){if(move())return;let tries=0;const timer=setInterval(()=>{tries+
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+
+<style id="coopex-led-recado-inteligente-v27">
+/* Recado curto fixo; somente o recado que não cabe rola horizontalmente por inteiro. */
+body #cx-supervisao-board .cx-led-screen .cx-led-note-static{
+ display:flex!important;
+ align-items:center!important;
+ justify-content:flex-start!important;
+ box-sizing:border-box!important;
+ overflow:hidden!important;
+ white-space:nowrap!important;
+ height:26px!important;
+ max-height:26px!important;
+ padding:3px 9px!important;
+ font-size:12px!important;
+}
+body #cx-supervisao-board .cx-led-note-static[hidden]{display:none!important}
+body #cx-supervisao-board .cx-led-note-static .cx-led-note-message{
+ display:block!important;
+ width:max-content!important;
+ max-width:none!important;
+ min-width:0!important;
+ flex:none!important;
+ white-space:nowrap!important;
+ overflow:visible!important;
+ line-height:1.2!important;
+ transform:translateX(0);
+ will-change:auto;
+}
+body #cx-supervisao-board .cx-led-note-static.cx-note-marquee .cx-led-note-message{
+ animation:cx-recado-percorrer var(--cx-recado-tempo,20s) linear infinite!important;
+ will-change:transform!important;
+}
+@keyframes cx-recado-percorrer{
+ from{transform:translateX(var(--cx-recado-inicio,100%))}
+ to{transform:translateX(var(--cx-recado-fim,-100%))}
+}
+@media(prefers-reduced-motion:reduce){
+ body #cx-supervisao-board .cx-led-note-static.cx-note-marquee{overflow-x:auto!important}
+ body #cx-supervisao-board .cx-led-note-static.cx-note-marquee .cx-led-note-message{
+  animation:none!important;transform:none!important;will-change:auto!important
+ }
+}
+</style>
