@@ -3305,3 +3305,131 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+
+<style id="coopex-tabela-unica-compacta-v36">
+/* A tabela permanece TABELA em tela inteira e meia tela: sem cartões por pedido.
+   Reduz espaços internos e adapta ações em coluna conforme a largura. */
+body #tbl.table-wrap{
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ box-sizing:border-box!important;
+}
+body #tbl table.tabela,body #tbl table.tabela tbody,body #tbl table.tabela thead{
+ display:table!important;width:100%!important;max-width:100%!important;min-width:0!important;
+ table-layout:fixed!important;border-collapse:separate!important;border-spacing:0!important;
+ box-sizing:border-box!important;
+}
+body #tbl table.tabela tbody{display:table-row-group!important}
+body #tbl table.tabela thead{display:table-header-group!important}
+body #tbl table.tabela thead>tr{display:table-row!important}
+body #tbl table.tabela thead>tr>th:nth-child(n){
+ display:table-cell!important;vertical-align:middle!important;
+ min-width:0!important;max-width:none!important;
+ padding:7px 3px!important;
+ white-space:normal!important;overflow-wrap:break-word!important;
+ font:850 clamp(10px,.77vw,12px)/1.3 Inter,system-ui,sans-serif!important;
+ text-align:center!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+}
+body #tbl table.tabela tbody>tr:nth-child(n){
+ display:table-row!important;width:auto!important;min-width:0!important;
+ height:auto!important;min-height:0!important;max-height:none!important;
+ background:var(--cx-table-gloss),var(--cx-table-base)!important;
+ box-shadow:none!important;border:0!important;border-radius:0!important;
+ padding:0!important;margin:0!important;overflow:visible!important;
+}
+body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n){
+ display:table-cell!important;vertical-align:middle!important;
+ width:auto!important;min-width:0!important;max-width:none!important;
+ height:auto!important;min-height:0!important;max-height:none!important;
+ padding:6px 3px!important;box-sizing:border-box!important;
+ font:650 12px/1.35 Inter,system-ui,sans-serif!important;
+ white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;
+ text-align:center!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+ background:var(--cx-table-gloss),var(--cx-table-base)!important;
+ border-bottom:1px solid var(--cx-table-seam)!important;
+ border-right:1px solid rgba(136,184,230,.12)!important;
+ box-shadow:inset 0 1px 2px rgba(236,249,255,.18)!important
+}
+body #tbl table.tabela tbody>tr:nth-child(n)>td::before{display:none!important;content:none!important}
+body #tbl table.tabela tbody td:nth-child(2),body #tbl table.tabela tbody td:nth-child(3),
+body #tbl table.tabela tbody td:nth-child(8){text-align:left!important}
+body #tbl table.tabela tbody td:nth-child(3)>div{
+ text-align:left!important;font-size:11px!important;line-height:1.28!important;
+ overflow-wrap:anywhere!important;word-break:normal!important
+}
+body #tbl table.tabela tbody td:nth-child(3) strong{font-weight:850!important}
+body #tbl table.tabela tbody td .id-with-dot{justify-content:center!important;white-space:normal!important}
+body #tbl table.tabela tbody td :is(.value-editable,.coop-editable,.recb-nome){
+ font-size:11px!important;line-height:1.3!important;white-space:normal!important;
+ overflow-wrap:anywhere!important
+}
+body #tbl table.tabela tbody td:nth-child(8) .coop-cell{text-align:center!important}
+body #tbl table.tabela tbody td:nth-child(12) .recb-wrap{
+ display:flex!important;flex-direction:column!important;align-items:center!important;gap:3px!important;
+ min-width:0!important
+}
+body #tbl table.tabela tbody td:nth-child(14) .actions{
+ display:grid!important;grid-template-columns:repeat(2,30px)!important;
+ align-items:center!important;justify-content:center!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ gap:4px!important;white-space:normal!important
+}
+body #tbl table.tabela tbody td:nth-child(14) .actions>*{
+ width:30px!important;min-width:30px!important;max-width:30px!important;
+ height:30px!important;min-height:30px!important;
+ margin:0!important;padding:4px!important;box-sizing:border-box!important;
+ position:relative!important;transform:none
+}
+body #tbl table.tabela tbody td :is(.status-editable,.pagamento-editable){
+ min-width:30px!important;width:32px!important;height:32px!important
+}
+body #tbl table.tabela tbody td :is(.status-editable,.pagamento-editable)>.pill{
+ min-width:30px!important;width:30px!important;height:30px!important;min-height:30px!important
+}
+body #tbl table.tabela tbody td :is(.foto-btn,.foto-dl){
+ min-width:29px!important;width:29px!important;height:29px!important;min-height:29px!important
+}
+/* Proporções proporcionais; atribuição e pedido são apenas horas, bem estreitos. */
+body #tbl table.tabela tr>:nth-child(1){width:5%!important}
+body #tbl table.tabela tr>:nth-child(2){width:9.5%!important}
+body #tbl table.tabela tr>:nth-child(3){width:21%!important}
+body #tbl table.tabela tr>:nth-child(4){width:5.5%!important}
+body #tbl table.tabela tr>:nth-child(5){width:6.5%!important}
+body #tbl table.tabela tr>:nth-child(6){width:5%!important}
+body #tbl table.tabela tr>:nth-child(7){width:5%!important}
+body #tbl table.tabela tr>:nth-child(8){width:9.5%!important}
+body #tbl table.tabela tr>:nth-child(9){width:7%!important}
+body #tbl table.tabela tr>:nth-child(10){width:5.2%!important}
+body #tbl table.tabela tr>:nth-child(11){width:5.2%!important}
+body #tbl table.tabela tr>:nth-child(12){width:7.1%!important}
+body #tbl table.tabela tr>:nth-child(13){width:3.5%!important}
+body #tbl table.tabela tr>:nth-child(14){width:6%!important}
+/* Com largura limitada, a tabela CONTINUA igual e os botões viram coluna vertical.
+   Não há cartões nem rótulos de linha criados por breakpoint. */
+@media(max-width:1350px){
+ body #tbl table.tabela thead>tr>th:nth-child(n){padding:6px 2px!important;font-size:10px!important}
+ body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n){padding:5px 2px!important;font-size:11px!important}
+ body #tbl table.tabela tbody td:nth-child(14) .actions{
+  grid-template-columns:30px!important;gap:3px!important
+ }
+ body #tbl table.tabela tr>:nth-child(2){width:10%!important}
+ body #tbl table.tabela tr>:nth-child(3){width:21%!important}
+ body #tbl table.tabela tr>:nth-child(6),body #tbl table.tabela tr>:nth-child(7){width:4.5%!important}
+ body #tbl table.tabela tr>:nth-child(14){width:5%!important}
+}
+@media(max-width:980px){
+ body #tbl table.tabela thead>tr>th:nth-child(n){font-size:10px!important}
+ body #tbl table.tabela tbody td:nth-child(3)>div{font-size:10.5px!important}
+ body #tbl table.tabela tbody td:nth-child(14) .actions>*{width:28px!important;min-width:28px!important;height:28px!important;min-height:28px!important}
+ body #tbl table.tabela tbody td:nth-child(14) .actions{grid-template-columns:28px!important}
+}
+/* Na faixa superior, os controles ocupam a linha sem um espaço reservado vazio. */
+body .viewport .panel>.filters-bar{margin:0!important;min-height:0!important}
+body .viewport .panel .filters-top{gap:4px!important}
+body .viewport .panel .filters-form{min-width:0!important;align-items:center!important}
+body .viewport .panel .table-shell{margin:0!important;padding:0!important}
+body .viewport .panel .table-wrap#tbl{max-height:var(--cx-live-table-height,70dvh)!important;height:var(--cx-live-table-height,70dvh)!important}
+</style>
