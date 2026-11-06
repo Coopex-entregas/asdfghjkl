@@ -808,20 +808,70 @@ function init(){
    if(originalBadge)badge.appendChild(originalBadge);
    requests.closest('.bank-group')?.insertAdjacentElement('afterend',badge);
  }
- // Sem necessidade de botão Filtrar: selects/datas aplicam na alteração; texto com debounce.
+ // Filtros de hoje e periodo: consultar sem recarregar a interface inteira.
  const form=document.querySelector('.filters-form');
  if(form&&!form.dataset.cxAuto){
-  form.dataset.cxAuto='1';let timer=null;
+  form.dataset.cxAuto='2';
+  let timer=null,controller=null,serial=0;
   const dates=()=>[form.querySelector('#data_inicio'),form.querySelector('#data_fim')];
-  const ready=()=>{const [a,b]=dates();return Boolean(a?.value&&b?.value&&a.value<=b.value)};
-  const apply=()=>{
-   if(!document.body.contains(form)||!ready())return;
-   window.__markActionStart&&window.__markActionStart();
-   form.requestSubmit();
+  const ready=()=>{
+   const [start,end]=dates();
+   return !(start?.value&&end?.value&&start.value>end.value);
   };
-  form.querySelectorAll('select,input[type="date"]').forEach(el=>el.addEventListener('change',()=>{clearTimeout(timer);apply()}));
-  form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(apply,300)}));
-  form.addEventListener('submit',e=>{if(!ready()){e.preventDefault();e.stopImmediatePropagation();const [a,b]=dates();(a&&!a.value?a:b)?.focus();}},true);
+  const status=document.createElement('span');
+  status.id='cx-filter-ajax-status';
+  status.setAttribute('role','status');
+  status.style.cssText='display:none;align-self:center;font:700 12px system-ui;color:#205c9e;white-space:nowrap';
+  form.appendChild(status);
+  function note(msg,isError=false){
+   status.textContent=msg;
+   status.style.color=isError?'#bd3030':'#205c9e';
+   status.style.display=msg?'inline-flex':'none';
+  }
+  async function apply(){
+   if(!form.isConnected||!ready())return;
+   const url=new URL(form.action,window.location.href);
+   const params=new URLSearchParams(new FormData(form));
+   // Sem data preenchida, a rota consulta somente as entregas de hoje.
+   for(const [key,value] of [...params])if(!String(value).trim())params.delete(key);
+   url.search=params.toString();
+   const seq=++serial;
+   if(controller)controller.abort();
+   controller=new AbortController();
+   note('Filtrando…');
+   try{
+    const res=await fetch(url.pathname+url.search,{
+     method:'GET',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+     headers:{'Accept':'text/html','X-Requested-With':'fetch'}
+    });
+    if(!res.ok)throw new Error('Erro '+res.status+' ao filtrar. Tente novamente.');
+    const html=await res.text();
+    if(seq!==serial)return;
+    const parsed=new DOMParser().parseFromString(html,'text/html');
+    const target=document.querySelector('#tbl table.tabela tbody');
+    const replacement=parsed.querySelector('#tbl table.tabela tbody');
+    if(!target||!replacement)throw new Error('Tabela indisponível para atualização.');
+    const box=document.getElementById('tbl');
+    const y=box?.scrollTop||0,x=box?.scrollLeft||0;
+    target.replaceChildren(...[...replacement.childNodes].map(node=>document.importNode(node,true)));
+    if(box){box.scrollTop=y;box.scrollLeft=x;}
+    history.replaceState(history.state,'',url.pathname+url.search+url.hash);
+    window.dispatchEvent(new Event('coopex-admin-table-updated'));
+    document.dispatchEvent(new Event('coopex-admin-table-updated'));
+    note('');
+   }catch(e){
+    if(e.name==='AbortError'||seq!==serial)return;
+    note(e.message||'Não foi possível filtrar.',true);
+   }
+  }
+  const schedule=(delay=0)=>{clearTimeout(timer);timer=setTimeout(apply,delay);};
+  form.querySelectorAll('select,input[type="date"]').forEach(el=>el.addEventListener('change',()=>schedule(0)));
+  form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>schedule(250)));
+  form.addEventListener('submit',e=>{
+   e.preventDefault();
+   e.stopImmediatePropagation();
+   if(ready())schedule(0);
+  },true);
  }
  // Garante atualização de luminosidade mesmo quando o DOM do menu for reconstruído.
  const slider=document.getElementById('cx-brightness');
