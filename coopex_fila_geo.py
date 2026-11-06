@@ -152,3 +152,101 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
              'quando':r['ocorrido_em'].isoformat() if r['ocorrido_em'] else ''}
             for r in rows
         ])
+
+    # Recado persistente de passagem de turno. Independente da fila, saídas e Pix.
+    def ensure_recado_schema():
+        db.session.execute(text("""
+            CREATE TABLE IF NOT EXISTS supervisao_recado_turno (
+                chave VARCHAR(32) PRIMARY KEY,
+                mensagem TEXT NOT NULL,
+                autor VARCHAR(150) NOT NULL,
+                criado_em TIMESTAMP NOT NULL,
+                lido_por VARCHAR(150),
+                lido_em TIMESTAMP
+            )
+        """))
+        db.session.commit()
+
+    def admin_recado():
+        return bool(session.get('is_admin'))
+
+    def evento_recado():
+        try:
+            from app import socketio
+            socketio.emit('coopex_supervisao_recado_atualizado', {'atualizado': True},
+                          to='coopex-admin-led')
+        except Exception:
+            app.logger.exception('Recado salvo; aviso de atualização não emitido')
+
+    @app.get('/api/admin/supervisao/recado')
+    def supervisao_recado_ler():
+        if not admin_recado(): return jsonify(ok=False,erro='Não autorizado'),403
+        ensure_recado_schema()
+        row=db.session.execute(text(
+            "SELECT mensagem,autor,criado_em,lido_por,lido_em "
+            "FROM supervisao_recado_turno WHERE chave='turno' "
+        )).mappings().first()
+        return jsonify(ok=True,recado=({
+            'mensagem':row['mensagem'],'autor':row['autor'],
+            'criado_em':row['criado_em'].isoformat()+'Z' if row['criado_em'] else '',
+            'lido_por':row['lido_por'],
+            'lido_em':row['lido_em'].isoformat()+'Z' if row['lido_em'] else ''
+        } if row else None))
+
+    @app.post('/api/admin/supervisao/recado')
+    def supervisao_recado_salvar():
+        if not admin_recado(): return jsonify(ok=False,erro='Não autorizado'),403
+        data=request.get_json(silent=True) or {}
+        mensagem=str(data.get('mensagem') or '').strip()
+        if not mensagem or len(mensagem)>2000:
+            return jsonify(ok=False,erro='Digite um recado de até 2.000 caracteres.'),400
+        ensure_recado_schema()
+        autor=str(session.get('user_nome') or 'Supervisão')[:150]
+        agora=datetime.utcnow()
+        try:
+            updated=db.session.execute(text(
+                "UPDATE supervisao_recado_turno SET mensagem=:msg,autor=:autor,criado_em=:agora,"
+                "lido_por=NULL,lido_em=NULL WHERE chave='turno'"
+            ),{'msg':mensagem,'autor':autor,'agora':agora})
+            if not updated.rowcount:
+                db.session.execute(text(
+                    "INSERT INTO supervisao_recado_turno "
+                    "(chave,mensagem,autor,criado_em) VALUES ('turno',:msg,:autor,:agora)"
+                ),{'msg':mensagem,'autor':autor,'agora':agora})
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            app.logger.exception('Falha ao gravar recado de supervisão')
+            return jsonify(ok=False,erro='Não foi possível salvar o recado.'),500
+        evento_recado()
+        return jsonify(ok=True)
+
+    @app.post('/api/admin/supervisao/recado/confirmar')
+    def supervisao_recado_confirmar():
+        if not admin_recado(): return jsonify(ok=False,erro='Não autorizado'),403
+        ensure_recado_schema()
+        leitor=str(session.get('user_nome') or 'Supervisão')[:150]
+        try:
+            db.session.execute(text(
+                "UPDATE supervisao_recado_turno SET lido_por=:leitor,lido_em=:agora "
+                "WHERE chave='turno' AND lido_em IS NULL"
+            ),{'leitor':leitor,'agora':datetime.utcnow()})
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return jsonify(ok=False,erro='Não foi possível confirmar leitura.'),500
+        evento_recado()
+        return jsonify(ok=True)
+
+    @app.delete('/api/admin/supervisao/recado')
+    def supervisao_recado_excluir():
+        if not admin_recado(): return jsonify(ok=False,erro='Não autorizado'),403
+        ensure_recado_schema()
+        try:
+            db.session.execute(text("DELETE FROM supervisao_recado_turno WHERE chave='turno'"))
+            db.session.commit()
+        except Exception:
+            db.session.rollback()
+            return jsonify(ok=False,erro='Não foi possível excluir o recado.'),500
+        evento_recado()
+        return jsonify(ok=True)
