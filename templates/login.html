@@ -2,50 +2,117 @@
 <html lang="pt-br">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-  <title>Entrar · COOPEX</title>
-  <style>
-    :root{--royal:#003399;--royal2:#0757d8;--bg:#eef4ff;--card:#fff;--text:#0b1b3d;--muted:#667085;--line:#d8e5ff;--danger:#c62828;--green:#008060;--shadow:0 22px 55px rgba(0,51,153,.18)}
-    *{box-sizing:border-box}html,body{height:100%;margin:0;font-family:Arial,Helvetica,sans-serif;background:linear-gradient(135deg,#eef4ff,#ffffff);color:var(--text)}
-    body{display:flex;align-items:center;justify-content:center;padding:18px}.wrap{width:100%;max-width:430px}.card{background:var(--card);border:1px solid var(--line);border-radius:22px;box-shadow:var(--shadow);overflow:hidden}.top{background:linear-gradient(135deg,var(--royal),var(--royal2));color:#fff;padding:24px;text-align:left}.top small{font-weight:900;text-transform:uppercase;opacity:.9;letter-spacing:.4px}.top h1{margin:8px 0 0;font-size:25px;line-height:1.1}.body{padding:22px}.flash{border-radius:13px;padding:11px 12px;font-size:14px;font-weight:800;margin-bottom:12px}.flash.err{background:#fff5f5;color:#9b1c1c;border:1px solid #ffc6c6}.flash.ok{background:#f1fff8;color:#05603a;border:1px solid #b7e4d1}.tabs{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:16px}.tab{border:1px solid var(--line);background:#f8fbff;color:var(--royal);border-radius:13px;padding:11px;font-weight:950;cursor:pointer}.tab.active{background:var(--royal);color:#fff}.pane{display:none}.pane.active{display:block}.field{display:flex;flex-direction:column;gap:6px;margin-bottom:12px}.field label{font-size:13px;color:var(--muted);font-weight:850}input{border:1px solid var(--line);border-radius:13px;padding:13px 12px;font-size:15px;font-weight:700;outline:none}input:focus{border-color:var(--royal2);box-shadow:0 0 0 4px rgba(0,51,153,.10)}.btn{width:100%;border:0;border-radius:14px;padding:14px 16px;font-weight:950;cursor:pointer}.btn-primary{background:linear-gradient(135deg,var(--royal2),var(--royal));color:#fff}.btn-green{background:var(--green);color:#fff}.muted{font-size:13px;color:var(--muted);line-height:1.4}.link{display:block;text-align:center;margin-top:13px;color:var(--royal);font-weight:900;text-decoration:none}.foot{text-align:center;color:var(--muted);font-size:12px;margin-top:12px}.grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}@media(max-width:520px){.grid{grid-template-columns:1fr}.top h1{font-size:22px}}
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#e5f1ff">
+  <title>Entrar na sua conta · COOPEX</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+  <style id="coopex-login-glass-2026">
+    :root{color-scheme:light;--cx-blue:#0051cd;--cx-ink:#0c2e66;--cx-muted:#647a9e}
+    *,*::before,*::after{box-sizing:border-box}
+    html{min-height:100%;background:#e8f4ff}
+    body{margin:0;min-height:100vh;min-height:100dvh;display:flex;align-items:center;justify-content:center;padding:20px 16px 30px;background:radial-gradient(ellipse at 50% 10%,#f8fcff 0%,#e9f5ff 54%,#d6e9fc 100%);font:15px/1.45 Inter,system-ui,-apple-system,"Segoe UI",Arial,sans-serif;color:var(--cx-ink)}
+    .cx-login-wrap{width:min(100%,466px);margin:auto}
+    .cx-glass-card{position:relative;border-radius:30px;padding:34px 35px 29px;background:linear-gradient(145deg,rgba(255,255,255,.94),rgba(220,238,255,.83) 55%,rgba(205,229,252,.87));border:3px solid rgba(255,255,255,.92);box-shadow:0 7px 0 #d6e9fa,0 13px 0 #b3d4f4,0 18px 0 #83b4e7,0 25px 22px rgba(34,100,169,.25),0 42px 35px rgba(33,92,158,.12),inset 0 1px 5px rgba(255,255,255,1),inset 0 -8px 15px rgba(111,166,225,.12);backdrop-filter:blur(20px) saturate(1.25);-webkit-backdrop-filter:blur(20px) saturate(1.25);overflow:hidden}
+    .cx-glass-card::before{content:"";position:absolute;inset:5px;border:1px solid rgba(255,255,255,.78);border-radius:24px;pointer-events:none}
+    .cx-glass-card>*{position:relative;z-index:1}
+    .cx-accent{width:67px;height:5px;border-radius:99px;background:linear-gradient(90deg,#18bdf4,#004acc);box-shadow:0 2px 8px rgba(19,113,217,.26);margin:0 0 15px}
+    .cx-eyebrow{margin:0 0 5px;color:#005ed4;text-transform:uppercase;letter-spacing:2px;font-weight:850;font-size:12px}
+    h1{margin:0 0 26px;font-size:clamp(26px,5.5vw,32px);font-weight:850;line-height:1.15;letter-spacing:-.85px;color:#0b2d64}
+    .cx-flash{padding:10px 13px;margin:0 0 15px;border-radius:13px;font-weight:700;font-size:13px}
+    .cx-flash.error{color:#992222;background:#fff1f1;border:1px solid #efb0b0}
+    .cx-flash.ok{color:#126344;background:#eafff5;border:1px solid #b4e7cf}
+    .cx-panel[hidden]{display:none!important}
+    .cx-field{margin-bottom:16px}
+    .cx-field label{display:block;font-size:14px;font-weight:800;margin-bottom:7px;color:#143b79}
+    .cx-input-wrap{position:relative}
+    .cx-field input{display:block;width:100%;min-width:0;height:53px;border-radius:14px;padding:0 15px;background:linear-gradient(140deg,rgba(255,255,255,.95),rgba(221,239,255,.67));border:2px solid rgba(255,255,255,.92);box-shadow:0 5px 15px rgba(57,124,187,.15),inset 0 1px 3px rgba(255,255,255,.9);outline:none;font:400 15px system-ui,-apple-system,"Segoe UI",sans-serif;color:#143b79;transition:border-color .15s,box-shadow .15s}
+    .cx-field input:focus{border-color:#69b1ff;box-shadow:0 0 0 3px rgba(53,137,255,.17),0 5px 15px rgba(57,124,187,.15)}
+    .cx-field input::placeholder{color:#788eb4;opacity:1}
+    .cx-input-wrap input[type=password],.cx-input-wrap input[type=text].cx-password{padding-right:52px}
+    .cx-eye{position:absolute;right:8px;top:50%;transform:translateY(-50%);display:grid;place-items:center;width:40px;height:40px;border:0;background:transparent;color:#1459ae;border-radius:10px;cursor:pointer}
+    .cx-eye:focus-visible,.cx-link:focus-visible{outline:2px solid #0051cd;outline-offset:3px}
+    .cx-eye svg{width:23px;height:23px;stroke:currentColor}
+    .cx-options{display:flex;justify-content:space-between;align-items:center;gap:12px;margin:16px 0 24px;font-size:12px}
+    .cx-remember{display:inline-flex;align-items:center;gap:9px;cursor:pointer;color:#234473;white-space:nowrap}
+    .cx-remember input{appearance:none;-webkit-appearance:none;width:21px;height:21px;flex:none;margin:0;border-radius:6px;background:rgba(255,255,255,.8);border:2px solid #b7d2fe;cursor:pointer}
+    .cx-remember input:checked{background:#1764d9;border-color:#1764d9}
+    .cx-remember input:checked::after{content:"✓";display:block;text-align:center;color:white;font-weight:900;line-height:17px}
+    .cx-link{color:#0061e9;text-decoration:none;font-size:12px;cursor:pointer}
+    .cx-link:hover{text-decoration:underline}
+    .cx-button{width:100%;height:50px;display:flex;align-items:center;justify-content:center;cursor:pointer;border:2px solid rgba(255,255,255,.84);border-radius:13px;background:linear-gradient(110deg,#39b2ff 0%,#187aea 50%,#0343bd 100%);color:#fff;font-size:19px;font-weight:850;text-shadow:0 1px 1px #00398540;box-shadow:0 9px 17px rgba(25,86,165,.25),inset 0 1px 2px rgba(255,255,255,.48)}
+    .cx-button:hover{filter:brightness(1.04)}.cx-button:active{transform:translateY(1px)}
+    .cx-foot{margin:25px 0 0;text-align:center;font-size:12px;color:#5177ab;font-weight:500}
+    .cx-more{display:flex;justify-content:center;gap:15px;flex-wrap:wrap;margin:27px 0 0}
+    .cx-more .cx-link{font-size:12px;color:#325d96}
+    .cx-new-title{margin:0 0 20px;font-weight:850;font-size:24px;line-height:1.2}
+    .cx-new-back{border:0;background:transparent;color:#0061e9;font:700 13px inherit;cursor:pointer;padding:0;margin:0 0 18px}
+    .cx-new-sub{font-size:13px;color:#52719a;margin:-10px 0 17px}
+    @media(max-width:520px){body{padding:17px 18px 26px;align-items:center}.cx-glass-card{padding:32px 27px 26px;border-radius:29px}.cx-glass-card::before{border-radius:23px}h1{margin-bottom:27px}.cx-options{gap:7px}.cx-foot{margin-top:25px}}
+    @media(max-width:360px){.cx-glass-card{padding:25px 19px}.cx-options{font-size:11px}.cx-link{font-size:11px}h1{font-size:25px}}
   </style>
-<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
 <body>
-  <div class="wrap">
-    <div class="card">
-      <div class="top"><small>Acesso COOPEX</small><h1>Sistema de entregas</h1></div>
-      <div class="body">
-        {% with messages = get_flashed_messages(category_filter=['error']) %}{% if messages %}<div class="flash err">{{ messages[0] }}</div>{% endif %}{% endwith %}
-        {% with messages = get_flashed_messages(category_filter=['ok']) %}{% if messages %}<div class="flash ok">{{ messages[0] }}</div>{% endif %}{% endwith %}
-        <div class="tabs"><button class="tab active" data-pane="login" type="button">Entrar</button><button class="tab" data-pane="signup" type="button">Cliente novo</button></div>
-        <section class="pane active" id="pane-login">
-          <form method="POST" action="{{ url_for('login') }}" autocomplete="off">
-            <input type="hidden" name="next" value="{{ request.args.get('next') or url_for('meu_credito') }}">
-            <div class="field"><label>Usuário ou e-mail</label><input name="usuario" required placeholder="Digite seu usuário ou e-mail" autocomplete="username"></div>
-            <div class="field"><label>Senha</label><input type="password" name="senha" required placeholder="Digite sua senha" autocomplete="current-password"></div>
-            <button class="btn btn-primary" type="submit">Entrar</button>
-          </form>
-          <a class="link" href="{{ url_for('meu_credito') }}">Pedir entrega sem cadastro</a>
-        </section>
-        <section class="pane" id="pane-signup">
-          <form method="POST" action="{{ url_for('cliente_primeiro_acesso') }}" autocomplete="off">
-            <input type="hidden" name="perfil" value="cliente"><input type="hidden" name="next" value="{{ url_for('meu_credito') }}">
-            <div class="field"><label>Nome completo</label><input name="nome" required></div>
-            <div class="grid"><div class="field"><label>E-mail</label><input name="email" inputmode="email" required></div><div class="field"><label>WhatsApp</label><input name="telefone" inputmode="tel" required></div></div>
-            <div class="field"><label>Nome de usuário</label><input name="usuario" required></div>
-            <div class="grid"><div class="field"><label>Senha</label><input type="password" name="senha" minlength="6" required></div><div class="field"><label>Confirmar senha</label><input type="password" name="senha_conf" minlength="6" required></div></div>
-            <button class="btn btn-green" type="submit">Criar conta</button>
-          </form>
-        </section>
-      </div>
+  <main class="cx-login-wrap">
+    <div class="cx-glass-card">
+      <div class="cx-accent" aria-hidden="true"></div>
+      <p class="cx-eyebrow">ACESSO COOPEX</p>
+      <section id="cx-login-panel" class="cx-panel">
+        <h1>Entrar na sua conta</h1>
+        {% with messages = get_flashed_messages(category_filter=['error']) %}{% if messages %}<div class="cx-flash error" role="alert">{{ messages[0] }}</div>{% endif %}{% endwith %}
+        {% with messages = get_flashed_messages(category_filter=['ok']) %}{% if messages %}<div class="cx-flash ok" role="status">{{ messages[0] }}</div>{% endif %}{% endwith %}
+        <form id="cx-login-form" method="POST" action="{{ url_for('login') }}" autocomplete="on">
+          <input type="hidden" name="next" value="{{ request.args.get('next') or url_for('meu_credito') }}">
+          <div class="cx-field"><label for="cx-user">Usuário ou e-mail</label><div class="cx-input-wrap"><input id="cx-user" name="usuario" required placeholder="Digite seu usuário ou e-mail" autocomplete="username" autocapitalize="none" spellcheck="false"></div></div>
+          <div class="cx-field"><label for="cx-pass">Senha</label><div class="cx-input-wrap"><input id="cx-pass" name="senha" type="password" required placeholder="Digite sua senha" autocomplete="current-password"><button class="cx-eye" id="cx-eye" type="button" aria-label="Mostrar senha" aria-pressed="false"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 12s3.6-6 10-6 10 6 10 6-3.6 6-10 6S2 12 2 12Z"/><circle cx="12" cy="12" r="3"/></svg></button></div></div>
+          <div class="cx-options"><label class="cx-remember"><input id="cx-remember" type="checkbox" name="lembrar_acesso" value="1"><span>Lembrar acesso</span></label><a class="cx-link" href="https://wa.me/5584981110706?text=Preciso%20de%20ajuda%2C%20esqueci%20meu%20login%20e%20senha." target="_blank" rel="noopener noreferrer">Esqueci minha senha</a></div>
+          <button class="cx-button" type="submit">Entrar</button>
+        </form>
+      </section>
+      <section id="cx-signup-panel" class="cx-panel" hidden>
+        <button class="cx-new-back" type="button" id="cx-back-login">‹ Voltar para entrar</button>
+        <h2 class="cx-new-title">Criar conta de cliente</h2>
+        <p class="cx-new-sub">Informe seus dados para solicitar entregas.</p>
+        <form method="POST" action="{{ url_for('cliente_primeiro_acesso') }}" autocomplete="on">
+          <input type="hidden" name="perfil" value="cliente"><input type="hidden" name="next" value="{{ url_for('meu_credito') }}">
+          <div class="cx-field"><label>Nome completo</label><input name="nome" required autocomplete="name"></div>
+          <div class="cx-field"><label>E-mail</label><input name="email" type="email" required autocomplete="email"></div>
+          <div class="cx-field"><label>WhatsApp</label><input name="telefone" type="tel" required autocomplete="tel"></div>
+          <div class="cx-field"><label>Nome de usuário</label><input name="usuario" required autocomplete="username"></div>
+          <div class="cx-field"><label>Senha</label><input type="password" name="senha" minlength="6" required autocomplete="new-password"></div>
+          <div class="cx-field"><label>Confirmar senha</label><input type="password" name="senha_conf" minlength="6" required autocomplete="new-password"></div>
+          <button class="cx-button" type="submit">Criar conta</button>
+        </form>
+      </section>
+      <p class="cx-foot">CoopEX Entregas 2026</p>
     </div>
-    <div class="foot">COOPEX Entregas</div>
-  </div>
-<script>
-document.querySelectorAll('.tab').forEach(btn=>btn.addEventListener('click',()=>{document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active',b===btn));document.querySelectorAll('.pane').forEach(p=>p.classList.remove('active'));document.getElementById('pane-'+btn.dataset.pane).classList.add('active');history.replaceState(null,'',btn.dataset.pane==='signup'?'#primeiro':'#login');}));
-(function(){const u=new URL(location.href);if(location.hash==='#primeiro'||u.searchParams.get('signup')==='1'||u.searchParams.get('primeiro')==='1'){document.querySelector('[data-pane="signup"]').click();}})();
-</script>
-<script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
+    <nav class="cx-more" aria-label="Outros acessos"><a class="cx-link" href="#primeiro" id="cx-open-signup">Cliente novo</a><a class="cx-link" href="{{ url_for('meu_credito') }}">Pedir entrega sem cadastro</a></nav>
+  </main>
+  <script>
+    (function(){
+      'use strict';
+      const login=document.getElementById('cx-login-panel');
+      const signup=document.getElementById('cx-signup-panel');
+      function show(mode){
+        const newAccount=mode==='signup';
+        login.hidden=newAccount;signup.hidden=!newAccount;
+        history.replaceState(null,'',newAccount?'#primeiro':'#login');
+      }
+      document.getElementById('cx-open-signup').addEventListener('click',function(e){e.preventDefault();show('signup')});
+      document.getElementById('cx-back-login').addEventListener('click',function(){show('login')});
+      const params=new URLSearchParams(location.search);
+      if(location.hash==='#primeiro'||params.get('signup')==='1'||params.get('primeiro')==='1')show('signup');
+      const pass=document.getElementById('cx-pass'),eye=document.getElementById('cx-eye');
+      eye.addEventListener('click',function(){
+        const showing=pass.type==='password';pass.type=showing?'text':'password';
+        eye.setAttribute('aria-pressed',String(showing));eye.setAttribute('aria-label',showing?'Ocultar senha':'Mostrar senha');
+      });
+      // O checkbox sinaliza a preferência ao navegador; não guardamos senhas em localStorage.
+      const remember=document.getElementById('cx-remember');
+      remember.addEventListener('change',function(){
+        document.getElementById('cx-login-form').setAttribute('autocomplete',remember.checked?'on':'off');
+      });
+    })();
+  </script>
+  <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
 </body>
 </html>
