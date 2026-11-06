@@ -5023,7 +5023,10 @@ def admin():
         func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
         func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
         func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
-    ).select_from(Entrega).one()
+    ).select_from(Entrega).filter(
+        Entrega.data_envio >= ano_ini_utc,
+        Entrega.data_envio <= ano_fim_utc,
+    ).one()
     total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
