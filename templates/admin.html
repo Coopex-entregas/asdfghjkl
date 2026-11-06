@@ -3025,3 +3025,45 @@ function boot(){if(init())return;let n=0;const timer=setInterval(()=>{if(init()|
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
 })();
 </script>
+
+<style id="coopex-abertos-proximo-recado-v33">
+/* O cartão de data foi retirado. Contador de abertos fica ao lado do Recado. */
+body .bank-toolbar .cx-day-inline{display:none!important;width:0!important;min-width:0!important;height:0!important;min-height:0!important;max-height:0!important;margin:0!important;padding:0!important;border:0!important;overflow:hidden!important;box-shadow:none!important}
+body #cx-pix-avulso #cx-led-menu-controls #abertasBadge{
+ display:inline-flex!important;position:static!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 auto!important;margin:0!important;min-width:62px!important;min-height:29px!important;
+ padding:4px 9px!important;white-space:nowrap!important;
+ border:1px solid #b3deff!important;border-radius:10px!important;
+ background:linear-gradient(145deg,#e9f7ff,#a4d5ff)!important;
+ color:#0b468d!important;-webkit-text-fill-color:#0b468d!important;
+ box-shadow:inset 0 2px 3px #ffffffc7,0 3px 7px #143e7352!important;
+ font:900 11px/1 Inter,system-ui,sans-serif!important;
+ opacity:1!important;visibility:visible!important
+}
+body.cx-sup-night #cx-pix-avulso #cx-led-menu-controls #abertasBadge{
+ border-color:#8cbfeb!important;background:linear-gradient(140deg,#316594,#194774)!important;
+ color:#effaff!important;-webkit-text-fill-color:#effaff!important;
+ box-shadow:inset 0 2px 3px #d3efff35,0 4px 9px #01182f9c!important
+}
+</style>
+<script id="coopex-abertos-proximo-recado-script-v33">
+(function(){
+'use strict';
+function apply(){
+ const controls=document.getElementById('cx-led-menu-controls');
+ const badge=document.getElementById('abertasBadge');
+ const button=document.getElementById('cx-led-note-write');
+ if(!controls||!badge||!button)return false;
+ if(button.parentElement!==controls)controls.appendChild(button);
+ // Mantém o mesmo elemento, atualizado pelo sistema, sem duplicar contagens.
+ if(badge.parentElement!==controls||badge.previousElementSibling!==button)button.insertAdjacentElement('afterend',badge);
+ badge.setAttribute('aria-label','Entregas em aberto');
+ return true;
+}
+function init(){
+ if(apply())return;
+ let n=0;const t=setInterval(()=>{if(apply()||++n>120)clearInterval(t)},100);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
