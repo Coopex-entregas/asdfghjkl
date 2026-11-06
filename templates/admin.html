@@ -2600,3 +2600,143 @@ function start(){if(init())return;let n=0;const t=setInterval(()=>{if(init()||++
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+
+<style id="coopex-submenus-vidro-integrado-v30">
+/* Submenus do administrador: contraste, vidro e profundidade nos dois modos. */
+body .bank-toolbar-wrap{overflow:visible!important;position:relative!important;z-index:1000!important}
+body .bank-toolbar{overflow:visible!important;isolation:auto!important}
+body .bank-toolbar .bank-group{position:relative!important;isolation:auto!important}
+body .bank-toolbar .bank-group.open{z-index:1400!important}
+body .bank-toolbar .bank-submenu{
+ --cx-drop-text:#143f7b;
+ --cx-drop-muted:#406b9b;
+ --cx-drop-glow:rgba(255,255,255,.68);
+ display:none;
+ position:absolute!important;top:calc(100% + 5px)!important;left:0!important;
+ z-index:1600!important;
+ min-width:230px!important;width:max-content!important;max-width:min(94vw,380px)!important;
+ padding:9px!important;border-radius:17px!important;
+ border:2px solid rgba(255,255,255,.92)!important;
+ background:linear-gradient(132deg,rgba(255,255,255,.97),rgba(212,233,255,.96) 52%,rgba(173,212,252,.94))!important;
+ color:var(--cx-drop-text)!important;-webkit-text-fill-color:var(--cx-drop-text)!important;
+ box-shadow:inset 0 2px 5px #fff,0 6px 0 rgba(69,121,182,.32),0 15px 30px rgba(6,39,89,.30)!important;
+ backdrop-filter:blur(22px) saturate(1.5)!important;
+ -webkit-backdrop-filter:blur(22px) saturate(1.5)!important;
+ opacity:1!important;visibility:visible!important;
+}
+body .bank-toolbar .bank-group.open>.bank-submenu,
+body .bank-toolbar .bank-group:hover>.bank-submenu{
+ display:flex!important;flex-direction:column!important;gap:5px!important
+}
+body .bank-toolbar .bank-submenu>a,
+body .bank-toolbar .bank-submenu>a:visited{
+ display:flex!important;align-items:center!important;gap:9px!important;
+ min-height:40px!important;padding:8px 11px!important;
+ border-radius:11px!important;border:1px solid rgba(174,206,239,.80)!important;
+ background:linear-gradient(145deg,rgba(255,255,255,.65),rgba(210,233,255,.55))!important;
+ color:var(--cx-drop-text)!important;-webkit-text-fill-color:var(--cx-drop-text)!important;
+ font:800 13px/1.35 Inter,system-ui,sans-serif!important;
+ text-decoration:none!important;opacity:1!important;visibility:visible!important;
+ text-shadow:none!important;white-space:normal!important;
+ box-shadow:inset 0 1px 3px rgba(255,255,255,.95),0 3px 7px rgba(19,80,145,.13)!important
+}
+body .bank-toolbar .bank-submenu>a:hover,
+body .bank-toolbar .bank-submenu>a:focus-visible{
+ background:linear-gradient(145deg,#edf8ff,#a7d5ff)!important;
+ color:#063d84!important;-webkit-text-fill-color:#063d84!important;
+ border-color:#78b2f0!important;transform:translateY(-1px)!important
+}
+body .bank-toolbar .bank-submenu>a :is(span,i,strong),
+body .bank-toolbar .bank-submenu>a .btn-ico.cx-vector-icon{color:inherit!important;-webkit-text-fill-color:inherit!important;opacity:1!important}
+body .bank-toolbar .bank-submenu .cx-vector-icon svg{
+ stroke:#1672ca!important;filter:drop-shadow(0 1px 1px rgba(255,255,255,.75))!important
+}
+body .bank-toolbar .bank-submenu :is(input,select,textarea){
+ width:100%!important;max-width:100%!important;min-width:0!important;
+ border:1px solid #99c2ee!important;border-radius:10px!important;
+ background:linear-gradient(140deg,#fafdff,#d7ecff)!important;
+ color:#143f79!important;-webkit-text-fill-color:#143f79!important;
+ font:700 13px Inter,system-ui,sans-serif!important;
+ box-shadow:inset 0 2px 4px rgba(169,207,249,.22),0 2px 7px rgba(21,72,130,.14)!important
+}
+body .bank-toolbar .bank-submenu input::placeholder{
+ color:#496c97!important;-webkit-text-fill-color:#496c97!important;opacity:1!important
+}
+body .bank-toolbar .bank-submenu select option{background:#eff8ff!important;color:#174572!important}
+body .bank-toolbar .bank-submenu .queue-add-form .btn{
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ background:linear-gradient(145deg,#258af1,#1459bd)!important;border:1px solid #9dd7ff!important;
+ border-radius:10px!important;box-shadow:inset 0 2px 3px #ffffff5c,0 3px 8px rgba(21,68,126,.27)!important
+}
+body .bank-toolbar .queue-submenu{
+ width:min(380px,94vw)!important;max-height:min(65dvh,530px)!important;overflow:auto!important
+}
+body .bank-toolbar .queue-submenu #espera-lista,
+body .bank-toolbar .queue-submenu .espera-chip{
+ color:var(--cx-drop-text)!important;-webkit-text-fill-color:var(--cx-drop-text)!important
+}
+body .bank-toolbar .queue-submenu .espera-chip{
+ background:linear-gradient(140deg,#f7fcff,#d5ebff)!important;
+ border:1px solid #b3d3f6!important;border-radius:11px!important;
+ box-shadow:inset 0 1px 2px #fff,0 3px 8px #0e3d7920!important
+}
+body .bank-toolbar .queue-submenu .espera-chip :is(span,strong){
+ color:inherit!important;-webkit-text-fill-color:inherit!important;opacity:1!important
+}
+/* Tema noturno do admin mantém tudo num vidro azul, sem letras escuras. */
+body.cx-sup-night .bank-toolbar .bank-submenu{
+ --cx-drop-text:#edf7ff;
+ --cx-drop-muted:#cae3fc;
+ border-color:#8fc2ed!important;
+ background:linear-gradient(140deg,rgba(38,79,123,.97),rgba(19,46,79,.97) 53%,rgba(13,33,62,.97))!important;
+ color:var(--cx-drop-text)!important;-webkit-text-fill-color:var(--cx-drop-text)!important;
+ box-shadow:inset 0 2px 5px rgba(171,221,255,.28),0 5px 0 rgba(4,17,38,.55),0 17px 28px rgba(0,10,29,.65)!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu>a,
+body.cx-sup-night .bank-toolbar .bank-submenu>a:visited{
+ color:#eef8ff!important;-webkit-text-fill-color:#eef8ff!important;
+ background:linear-gradient(140deg,rgba(92,141,188,.32),rgba(37,83,133,.25))!important;
+ border-color:rgba(132,182,227,.57)!important;
+ text-shadow:none!important;
+ box-shadow:inset 0 2px 4px rgba(166,210,255,.17),0 3px 7px rgba(1,15,32,.40)!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu>a:hover,
+body.cx-sup-night .bank-toolbar .bank-submenu>a:focus-visible{
+ background:linear-gradient(145deg,#4579af,#28588b)!important;
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ border-color:#a6d3ff!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu :is(input,select,textarea){
+ background:linear-gradient(140deg,#234970,#132f51)!important;
+ color:#f3faff!important;-webkit-text-fill-color:#f3faff!important;
+ border-color:#6398c7!important;box-shadow:inset 0 1px 3px #0004,0 4px 8px #0003!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu input::placeholder{
+ color:#cee2fc!important;-webkit-text-fill-color:#cee2fc!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu select option{
+ background:#1d4169!important;color:#f3faff!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu .queue-add-form .btn{
+ background:linear-gradient(145deg,#3389d8,#15559b)!important;color:#fff!important;-webkit-text-fill-color:#fff!important
+}
+body.cx-sup-night .bank-toolbar .bank-submenu .cx-vector-icon svg{
+ stroke:#9cdbff!important;filter:drop-shadow(0 1px 2px #071e4b)!important
+}
+body.cx-sup-night .bank-toolbar .queue-submenu .espera-chip{
+ background:linear-gradient(130deg,#315b83,#1c3f67)!important;
+ border-color:#719eca!important;color:#f3faff!important;-webkit-text-fill-color:#f3faff!important
+}
+/* Unifica acabamento de outros elementos visíveis deste painel, sem interferir nas ações. */
+body .viewport .panel,body .viewport .filters-bar,body .viewport .table-wrap{
+ backdrop-filter:blur(16px) saturate(1.2)!important;-webkit-backdrop-filter:blur(16px) saturate(1.2)!important
+}
+@media(max-width:720px){
+ body .bank-toolbar .bank-group.open>.bank-submenu{
+  display:flex!important;position:fixed!important;top:calc(58px + env(safe-area-inset-top))!important;
+  left:8px!important;right:8px!important;max-height:72dvh!important;
+  width:auto!important;max-width:none!important;z-index:1900!important;overflow:auto!important
+ }
+ body .bank-toolbar .bank-group:hover:not(.open)>.bank-submenu{display:none!important}
+}
+</style>
