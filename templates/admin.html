@@ -407,15 +407,18 @@ let pix=[],fila=[],paidKnown=null,lastText='',audioContext=null,enabledSound=fal
 const parse=v=>{if(!v)return NaN;const s=String(v).replace(' ','T');return Date.parse(s+(s.endsWith('Z')||/[+-]\\d\\d:\\d\\d$/.test(s)?'':'Z'))};
 const money=v=>Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});
 const countdown=ms=>{if(ms<=0)return 'VENCIDO';const m=Math.ceil(ms/60000);return Math.floor(m/60)+'h'+String(m%60).padStart(2,'0')+'m'};
-function unlockSound(){
+async function unlockSound(){
  try{
   const C=window.AudioContext||window.webkitAudioContext;
-  if(!C)return;
+  if(!C)return false;
   audioContext=audioContext||new C();
-  if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
-  enabledSound=true;
- }catch(e){}
+  if(audioContext.state==='suspended')await audioContext.resume();
+  enabledSound=audioContext.state==='running';
+  window.dispatchEvent(new CustomEvent('coopex-led-audio-state',{detail:{enabled:enabledSound}}));
+  return enabledSound;
+ }catch(e){enabledSound=false;return false}
 }
+window.__coopexLedUnlockAudio=unlockSound;
 document.addEventListener('pointerdown',unlockSound,{once:true});
 document.addEventListener('keydown',unlockSound,{once:true});
 function cashSound(){if(!enabledSound)return;try{const C=window.AudioContext||window.webkitAudioContext;if(!C)return;audioContext=audioContext||new C();if(audioContext.state==='suspended')audioContext.resume();const now=audioContext.currentTime;[880,1320,1760,2093].forEach((hz,i)=>{const o=audioContext.createOscillator(),g=audioContext.createGain();o.type='sine';o.frequency.setValueAtTime(hz,now+i*.085);g.gain.setValueAtTime(.0001,now+i*.085);g.gain.exponentialRampToValueAtTime(.11,now+i*.085+.018);g.gain.exponentialRampToValueAtTime(.0001,now+i*.085+.14);o.connect(g);g.connect(audioContext.destination);o.start(now+i*.085);o.stop(now+i*.085+.15)})}catch(e){}}
@@ -515,12 +518,21 @@ function connectQueueExitSocket(){
  socket.on('coopex_fila_saida_alerta',showQueueExit);
  socket.on('coopex_fila_entrada_alerta',showQueueEntry);
  socket.on('coopex_supervisao_recado_atualizado',()=>window.dispatchEvent(new Event('coopex-led-note-changed')));
- socket.on('connect',()=>window.dispatchEvent(new Event('coopex-led-socket-ready')));
+ // Atualiza a fila imediatamente quando o servidor grava ou altera a ordem.
+ socket.on('fila_espera_atualizada',data=>{
+  if(!data||!Array.isArray(data.itens))return;
+  fila=data.itens.map((item,i)=>({nome:String(item.nome||'Cooperado'),pos:Number(item.pos||i+1)}));
+  window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));
+  draw();
+ });
+ socket.on('connect',()=>{refreshQueue();window.dispatchEvent(new Event('coopex-led-socket-ready'))});
  socket.on('connect_error',err=>console.warn('LED realtime: aguardando conexão',err&&err.message));
 }
 
-async function refresh(){try{const [r,f]=await Promise.all([fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'}),fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'})]);if(r.ok){pix=(await r.json()).cobrancas||[];window.dispatchEvent(new CustomEvent('coopex-led-pix',{detail:pix}));}if(f.ok){fila=(await f.json()).cooperados||[];window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));}draw()}catch(e){}}
-function init(){const host=document.getElementById('cx-pix-avulso');if(!host){setTimeout(init,1000);return}if(document.getElementById('cx-pix-led'))return;const led=document.createElement('span');led.id='cx-pix-led';led.title='Fila de cooperados e alertas de vencimento Pix. Clique para ver o histórico.';led.innerHTML='<span class="cx-led-count">PIX 0</span><span class="cx-led-inner">CONSULTANDO...</span>';led.onclick=()=>window.open('/admin/pix-sicoob/historico','_blank','noopener');host.appendChild(led);connectQueueExitSocket();refresh();paidRefresh();setInterval(refresh,30000);setInterval(draw,10000);setInterval(paidRefresh,30000)}
+async function refreshQueue(){try{const r=await fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;fila=(await r.json()).cooperados||[];window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));draw()}catch(e){console.warn('Fila LED: sincronização na conexão indisponível',e)}}
+async function refreshPix(){try{const r=await fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;pix=(await r.json()).cobrancas||[];window.dispatchEvent(new CustomEvent('coopex-led-pix',{detail:pix}));draw()}catch(e){}}
+function refresh(){refreshQueue();refreshPix()}
+function init(){const host=document.getElementById('cx-pix-avulso');if(!host){setTimeout(init,1000);return}if(document.getElementById('cx-pix-led'))return;const led=document.createElement('span');led.id='cx-pix-led';led.title='Fila de cooperados e alertas de vencimento Pix. Clique para ver o histórico.';led.innerHTML='<span class="cx-led-count">PIX 0</span><span class="cx-led-inner">CONSULTANDO...</span>';led.onclick=()=>window.open('/admin/pix-sicoob/historico','_blank','noopener');host.appendChild(led);connectQueueExitSocket();refresh();paidRefresh();setInterval(refreshPix,30000);setInterval(draw,10000);setInterval(paidRefresh,30000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
 </script>
@@ -1581,3 +1593,45 @@ body #cx-supervisao-board .cx-led-screen{
  background:linear-gradient(120deg,#061a32,#0b2e51)!important
 }
 </style>
+
+
+<style id="coopex-alerta-audio-real-time-v21">
+body #cx-led-sound-enable{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ gap:5px!important;min-height:32px!important;padding:6px 11px!important;
+ border:1px solid #a9d0f7!important;border-radius:11px!important;
+ background:linear-gradient(145deg,#fff,#c7e6ff)!important;
+ color:#15549f!important;-webkit-text-fill-color:#15549f!important;
+ font:800 12px system-ui!important;box-shadow:inset 0 2px 4px #fff,0 4px 10px #164e915b!important;cursor:pointer!important
+}
+body #cx-led-sound-enable[data-enabled=true]{
+ background:linear-gradient(140deg,#a6ffd7,#33b985)!important;
+ border-color:#69d9aa!important;color:#0a472f!important;-webkit-text-fill-color:#0a472f!important
+}
+body.cx-sup-night #cx-led-sound-enable{box-shadow:inset 0 2px 4px #ffffff76,0 5px 10px #041b39a8!important}
+</style>
+<script id="coopex-alerta-audio-real-time-v21">
+(function(){
+function init(){
+ const bar=document.querySelector('#cx-supervisao-board .cx-led-buttons');
+ if(!bar)return false;
+ if(document.getElementById('cx-led-sound-enable'))return true;
+ const btn=document.createElement('button');
+ btn.id='cx-led-sound-enable';btn.type='button';btn.dataset.enabled='false';
+ btn.textContent='🔔 Ativar som';btn.title='Habilitar áudio de entrada e saída da fila neste navegador';
+ bar.prepend(btn);
+ btn.addEventListener('click',async()=>{
+  // Desbloqueia o áudio no contexto de uma interação do usuário.
+  if(typeof window.__coopexLedUnlockAudio==='function'){
+   const ok=await window.__coopexLedUnlockAudio();
+   btn.dataset.enabled=String(ok);btn.textContent=ok?'🔊 Som ativo':'🔔 Ativar som';
+  }else{btn.textContent='Som indisponível';}
+ });
+ window.addEventListener('coopex-led-audio-state',e=>{
+  const ok=Boolean(e.detail?.enabled);btn.dataset.enabled=String(ok);btn.textContent=ok?'🔊 Som ativo':'🔔 Ativar som';
+ });
+ return true;
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{if(!init()){let i=0;const h=setInterval(()=>{if(init()||++i>60)clearInterval(h)},250)}},{once:true});else if(!init()){let i=0;const h=setInterval(()=>{if(init()||++i>60)clearInterval(h)},250)}
+})();
+</script>
