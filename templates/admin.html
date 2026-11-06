@@ -1749,3 +1749,107 @@ body:not(.cx-sup-night) #tbl .tabela tbody tr:nth-child(even) td{
  background:var(--cx-ice-glare),var(--cx-row2)!important
 }
 </style>
+
+
+<style id="coopex-tabela-glass-uniforme-v23">
+/* Elimina a alternância branco/azul legada e padroniza o vidro em cada célula. */
+body #tbl{
+ --cx-table-sheen:linear-gradient(120deg,rgba(255,255,255,.34) 0%,rgba(255,255,255,.10) 19%,rgba(255,255,255,.02) 62%,rgba(127,189,255,.13) 100%);
+ --cx-table-outline:rgba(133,183,234,.45);
+ --cx-td-odd:var(--cx-row);
+ --cx-td-even:var(--cx-row2);
+ overflow-x:auto!important;overflow-y:auto!important;
+ border:2px solid var(--cx-ice-border)!important;border-radius:16px!important;
+ background:var(--cx-ice-glare),linear-gradient(145deg,var(--cx-surface),var(--cx-surface2))!important;
+ box-shadow:inset 0 2px 5px #ffffff72,0 5px 0 var(--cx-glow),0 12px 22px var(--cx-softshadow)!important
+}
+body.cx-sup-night #tbl{
+ --cx-table-sheen:linear-gradient(120deg,rgba(146,201,255,.17) 0%,rgba(134,186,243,.08) 19%,rgba(28,70,117,.08) 70%,rgba(118,172,236,.11) 100%);
+ --cx-table-outline:rgba(116,169,223,.42);
+ --cx-td-odd:var(--cx-row);
+ --cx-td-even:var(--cx-row2)
+}
+body #tbl table.tabela,body #tbl table.tabela tbody{
+ background:transparent!important;color:var(--cx-title)!important
+}
+body #tbl table.tabela tbody > tr:nth-child(n){
+ background-color:var(--cx-td-odd)!important;
+ background-image:none!important;color:var(--cx-title)!important;
+ opacity:1!important;filter:none!important
+}
+body #tbl table.tabela tbody > tr:nth-child(even){
+ background-color:var(--cx-td-even)!important;
+ background-image:none!important
+}
+body #tbl table.tabela tbody > tr:nth-child(n) > td{
+ background-color:var(--cx-td-odd)!important;
+ background-image:var(--cx-table-sheen)!important;
+ background-clip:padding-box!important;
+ color:var(--cx-title)!important;
+ -webkit-text-fill-color:var(--cx-title)!important;
+ opacity:1!important;filter:none!important;
+ border-bottom:1px solid var(--cx-table-outline)!important;
+ border-right:1px solid rgba(140,185,230,.10)!important;
+ box-shadow:inset 0 1px 0 rgba(179,219,255,.13)!important
+}
+body #tbl table.tabela tbody > tr:nth-child(even) > td{
+ background-color:var(--cx-td-even)!important;
+ background-image:var(--cx-table-sheen)!important;
+}
+body #tbl table.tabela tbody > tr:hover > td{
+ background-color:var(--cx-surface2)!important;
+ background-image:var(--cx-table-sheen)!important
+}
+body #tbl table.tabela thead > tr > th{
+ background-color:var(--cx-th)!important;
+ background-image:var(--cx-table-sheen)!important;
+ color:var(--cx-title)!important;
+ -webkit-text-fill-color:var(--cx-title)!important;
+ border-color:var(--cx-table-outline)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.16),0 2px 6px rgba(20,66,120,.10)!important
+}
+body #tbl table.tabela tbody td :is(div,span,strong,b,small,label,time),
+body #tbl table.tabela tbody td .recb-nome,
+body #tbl table.tabela tbody td .small{
+ color:var(--cx-title)!important;
+ -webkit-text-fill-color:var(--cx-title)!important;
+ opacity:1!important;
+ text-shadow:none!important
+}
+body #tbl table.tabela tbody td :is(a,a:visited),
+body #tbl table.tabela tbody td :is(a,a:visited) *{
+ color:var(--cx-strong)!important;-webkit-text-fill-color:var(--cx-strong)!important;opacity:1!important
+}
+body #tbl table.tabela tbody td .pill,
+body #tbl table.tabela tbody td .pill *{color:inherit!important;-webkit-text-fill-color:initial!important}
+body #tbl table.tabela tbody td .status-dot{background-clip:padding-box!important}
+body #tbl table.tabela tbody td .actions{
+ display:flex!important;flex-wrap:nowrap!important;align-items:center!important;
+ gap:4px!important;min-width:max-content!important;max-width:none!important;
+ justify-content:center!important
+}
+body #tbl table.tabela tbody td .actions :is(button,a),
+body #tbl table.tabela tbody td .cx-gps-icon,
+body #tbl table.tabela tbody td .foto-btn{
+ background:linear-gradient(140deg,var(--cx-surface),var(--cx-surface2))!important;
+ color:var(--cx-strong)!important;
+ border:1px solid var(--cx-ice-border)!important;
+ border-radius:10px!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.4),0 3px 8px rgba(3,33,77,.22)!important
+}
+body #tbl table.tabela tbody td .actions :is(button,a)[title*="Editar"]{border-bottom:3px solid #2c89e5!important}
+body #tbl table.tabela tbody td .actions :is(button,a)[title*="Imprimir"]{border-bottom:3px solid #25b698!important}
+body #tbl table.tabela tbody td .actions :is(button,a)[title*="Excluir"]{border-bottom:3px solid #e95b77!important}
+body.cx-sup-night #tbl table.tabela tbody td .actions :is(button,a){
+ background:linear-gradient(145deg,#305d8c,#1a416c)!important;
+ color:#eaf6ff!important;-webkit-text-fill-color:#eaf6ff!important
+}
+body.cx-sup-night #tbl table.tabela tbody td .actions svg{
+ stroke:#d9efff!important;fill:none!important
+}
+/* A tabela continua utilizável em meia tela, sem comprimir as ações. */
+@media(max-width:1300px){
+ body #tbl table.tabela{min-width:1380px!important;table-layout:auto!important}
+ body #tbl table.tabela tbody td:last-child{min-width:160px!important}
+}
+</style>
