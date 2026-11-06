@@ -3718,3 +3718,100 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('pageshow',organize);
 })();
 </script>
+
+
+<style id="coopex-filtros-datas-icon-only-v40">
+/* Apenas o calendário ocupa espaço; os inputs reais continuam no form para GET/filtro. */
+body .viewport .panel .filters-form .field.cx-date-icon-only{
+ display:flex!important;position:relative!important;flex:0 0 38px!important;
+ width:38px!important;max-width:38px!important;min-width:38px!important;
+ height:35px!important;min-height:35px!important;max-height:35px!important;
+ margin:0!important;padding:0!important;align-self:center!important
+}
+body .viewport .panel .filters-form .field.cx-date-icon-only>label{display:none!important}
+body .viewport .panel .filters-form .field.cx-date-icon-only>input[type=date]{
+ position:absolute!important;inset:0!important;
+ width:100%!important;height:100%!important;max-width:100%!important;min-width:0!important;
+ margin:0!important;padding:0!important;
+ opacity:0!important;pointer-events:none!important;
+ border:0!important;box-shadow:none!important
+}
+body .viewport .panel .filters-form .field.cx-date-icon-only>.cx-cal-trigger{
+ position:relative!important;top:auto!important;bottom:auto!important;left:auto!important;right:auto!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 38px!important;
+ width:38px!important;height:35px!important;min-width:38px!important;min-height:35px!important;
+ max-width:38px!important;max-height:35px!important;margin:0!important;padding:0!important;
+ border-radius:10px!important;border:1px solid #a4d4fc!important;
+ background:linear-gradient(145deg,#fbfdff,#b9dcff)!important;
+ color:#18569f!important;-webkit-text-fill-color:#18569f!important;
+ box-shadow:inset 0 2px 3px #fff,0 4px 9px #154c916b!important;
+ cursor:pointer!important
+}
+body .viewport .panel .filters-form .field.cx-date-icon-only>.cx-cal-trigger svg{
+ width:20px!important;height:20px!important;stroke:currentColor!important;fill:none!important
+}
+body .viewport .panel .filters-form .field.cx-date-icon-only.cx-date-set>.cx-cal-trigger{
+ border-bottom:3px solid #19be90!important;
+}
+body .viewport .panel .filters-form .field.cx-date-icon-only.cx-date-end>.cx-cal-trigger{
+ border-bottom-color:#9270ee!important
+}
+body.cx-sup-night .viewport .panel .filters-form .field.cx-date-icon-only>.cx-cal-trigger{
+ background:linear-gradient(145deg,#356597,#173d6b)!important;
+ color:#ecf7ff!important;-webkit-text-fill-color:#ecf7ff!important;
+ border-color:#81b7e7!important;
+ box-shadow:inset 0 2px 3px #d6f2ff36,0 4px 9px #061b3b9c!important
+}
+/* Colunas adaptáveis: duas datas dividem menos de 80px, em vez de 300px. */
+@media(min-width:1351px){
+ body .viewport .panel .filters-form{
+  grid-template-columns:minmax(125px,1fr) 38px 38px minmax(125px,1fr) minmax(125px,1fr) minmax(125px,1fr) minmax(135px,1.2fr)!important;
+  column-gap:6px!important
+ }
+}
+@media(min-width:761px) and (max-width:1350px){
+ body .viewport .panel .filters-form{
+  grid-template-columns:minmax(115px,1fr) 38px 38px minmax(125px,1fr) minmax(125px,1fr) minmax(125px,1fr) minmax(135px,1fr)!important;
+  column-gap:5px!important
+ }
+}
+@media(max-width:760px){
+ body .viewport .panel .filters-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body .viewport .panel .filters-form .field.cx-date-icon-only{justify-self:start!important}
+}
+</style>
+<script id="coopex-filtros-datas-icon-only-script-v40">
+(function(){
+'use strict';
+function init(){
+ let ready=0;
+ for(const [id,name] of [['data_inicio','Data inicial'],['data_fim','Data final']]){
+  const input=document.getElementById(id);
+  const field=input?.closest('.field');
+  const btn=field?.querySelector('.cx-cal-trigger');
+  if(!input||!field||!btn)continue;
+  field.classList.add('cx-date-icon-only');
+  field.classList.toggle('cx-date-end',id==='data_fim');
+  const label=()=>input.value?input.value.split('-').reverse().join('/'): 'não selecionada';
+  function update(){
+   field.classList.toggle('cx-date-set',Boolean(input.value));
+   const description=name+': '+label()+'. Clique para escolher no calendário.';
+   btn.title=description;
+   btn.setAttribute('aria-label',description);
+   input.setAttribute('aria-label',name);
+   input.title=name+': '+label();
+  }
+  if(!field.dataset.cxDateIcon){input.addEventListener('change',update);field.dataset.cxDateIcon='1'}
+  update();ready++;
+ }
+ return ready===2;
+}
+function boot(){
+ if(init())return;
+ let n=0;const timer=setInterval(()=>{if(init()||++n>90)clearInterval(timer)},100);
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+window.addEventListener('pageshow',init);
+})();
+</script>
