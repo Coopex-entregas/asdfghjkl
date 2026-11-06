@@ -76,8 +76,12 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         # Considerar incerteza: não aceitar se o círculo de precisão alcançar fora do raio.
         if dist+precision>100:
             return jsonify(ok=False,erro='Você precisa estar dentro do raio de 100 metros da base.',distancia_m=round(dist),precisao_m=round(precision)),403
-        if ListaEspera.query.filter_by(cooperado_id=coop.id).first():
-            return jsonify(ok=True,ja_estava=True,mensagem='Você já está na fila.')
+        existente=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
+        if existente:
+            # Estado confirmado no mesmo banco da fila exibida pelo Admin.
+            emitir_lista_espera()
+            return jsonify(ok=True,ja_estava=True,posicao=existente.pos,
+                           mensagem='Você já está na fila.')
         max_pos=db.session.query(db.func.max(ListaEspera.pos)).scalar() or 0
         row=ListaEspera(cooperado_id=coop.id,nome=coop.nome,pos=max_pos+1,created_at=datetime.utcnow())
         try:
@@ -97,7 +101,14 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             db.session.rollback()
             app.logger.exception('Falha ao entrar na fila')
             return jsonify(ok=False,erro='Não foi possível entrar na fila.'),500
-        return jsonify(ok=True,entrou=True,posicao=row.pos)
+        # Confirma o registro persistido; a resposta não depende da entrega do socket.
+        confirmado=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
+        if not confirmado:
+            app.logger.error('Fila: inserção sem registro verificável cooperado_id=%s',coop.id)
+            return jsonify(ok=False,erro='Entrada ainda não confirmada. Tente novamente.'),503
+        response=jsonify(ok=True,entrou=True,posicao=confirmado.pos)
+        response.headers['Cache-Control']='no-store, private'
+        return response
 
     @app.post('/api/cooperado/fila/sair')
     def coopex_fila_geo_sair():
