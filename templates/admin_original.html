@@ -2159,10 +2159,10 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         <div class="kpi kpi-year"><div class="kpi-icon">📊</div><div><small>Ano</small><span id="kpiTotalAno">{{ estatisticas.total_ano }}</span></div></div>
       </div>
 
-      <button id="btnTheme" class="theme-toggle" type="button" aria-label="Alternar entre modo claro e modo escuro" title="Alternar tema">
-        <span id="themeIcon" class="theme-icon" aria-hidden="true">☾</span>
-        <span id="themeText" hidden>Modo escuro</span>
-      </button>
+      <label class="cx-brightness-control" for="cx-brightness" title="Ajustar luminosidade visual do painel">
+        <span aria-hidden="true">☀</span>
+        <input id="cx-brightness" type="range" min="65" max="110" value="100" step="1" aria-label="Luminosidade da tela">
+      </label>
       <a class="logout" href="{{ url_for('logout') }}">Sair</a>
     </div>
   </header>
@@ -2750,32 +2750,13 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       badge.style.display = 'inline-flex';
     }
 
+    // Supervisão utiliza uma só paleta (Finanças claro). Não alternar tema.
     (function(){
       try{
-        const saved = localStorage.getItem('coopex_theme') || 'light';
-        if(saved === 'dark') document.body.classList.add('dark');
-        const btn = document.getElementById('btnTheme');
-        const icon = document.getElementById('themeIcon');
-        const label = document.getElementById('themeText');
-        const sync = ()=>{
-          if(!btn) return;
-          const dark = document.body.classList.contains('dark');
-          if(icon) icon.textContent = dark ? '☀' : '☾';
-          if(label) label.textContent = dark ? 'Modo claro' : 'Modo escuro';
-          btn.setAttribute('aria-label', dark ? 'Ativar modo claro' : 'Ativar modo escuro');
-          btn.setAttribute('title', dark ? 'Ativar modo claro' : 'Ativar modo escuro');
-        };
-        if(btn){
-          sync();
-          btn.addEventListener('click', ()=>{
-            document.body.classList.toggle('dark');
-            localStorage.setItem('coopex_theme', document.body.classList.contains('dark') ? 'dark' : 'light');
-            sync();
-          });
-        }
-      }catch(e){}
+        document.body.classList.remove('dark');
+        localStorage.setItem('coopex_theme','light');
+      }catch(_){}
     })();
-
 
     function fallbackTextoBairrosEmAberto(){
       const grupos = new Map();
