@@ -820,7 +820,7 @@ function init(){
    form.requestSubmit();
   };
   form.querySelectorAll('select,input[type="date"]').forEach(el=>el.addEventListener('change',()=>{clearTimeout(timer);apply()}));
-  form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(apply,750)}));
+  form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>{clearTimeout(timer);timer=setTimeout(apply,300)}));
   form.addEventListener('submit',e=>{if(!ready()){e.preventDefault();e.stopImmediatePropagation();const [a,b]=dates();(a&&!a.value?a:b)?.focus();}},true);
  }
  // Garante atualização de luminosidade mesmo quando o DOM do menu for reconstruído.
