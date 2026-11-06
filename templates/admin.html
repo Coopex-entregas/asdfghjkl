@@ -1635,3 +1635,117 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{if(!init()){let i=0;const h=setInterval(()=>{if(init()||++i>60)clearInterval(h)},250)}},{once:true});else if(!init()){let i=0;const h=setInterval(()=>{if(init()||++i>60)clearInterval(h)},250)}
 })();
 </script>
+
+<style id="coopex-noturno-global-contraste-v22">
+/* O controle de luz altera toda a interface. Nada branco na tabela em modo noturno. */
+html:has(body.cx-sup-night){background:#0a203a!important;color-scheme:dark!important}
+body.cx-sup-night{
+ --cx-row-border:rgba(131,180,228,.32);
+ background:linear-gradient(150deg,var(--cx-bg),var(--cx-surface2))!important;
+ color:var(--cx-title)!important;color-scheme:dark!important
+}
+body.cx-sup-night .viewport,body.cx-sup-night main,body.cx-sup-night .main,
+body.cx-sup-night .panel,body.cx-sup-night .panel-head,
+body.cx-sup-night .filters-bar,body.cx-sup-night .table-shell,
+body.cx-sup-night .table-wrap,body.cx-sup-night #tbl,
+body.cx-sup-night #cx-pix-avulso{
+ color:var(--cx-title)!important;
+ background:var(--cx-ice-glare),linear-gradient(140deg,var(--cx-surface),var(--cx-surface2))!important;
+ border-color:var(--cx-ice-border)!important;
+ box-shadow:var(--cx-ice-depth)!important;
+}
+body.cx-sup-night .tabela,
+body.cx-sup-night .tabela thead,
+body.cx-sup-night .tabela tbody{
+ color:var(--cx-title)!important;background:transparent!important
+}
+body.cx-sup-night .tabela thead tr,
+body.cx-sup-night .tabela thead tr>th,
+body.cx-sup-night .tabela thead th{
+ background:linear-gradient(145deg,var(--cx-th),var(--cx-surface2))!important;
+ background-color:var(--cx-th)!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+ border-color:var(--cx-row-border)!important
+}
+body.cx-sup-night .tabela tbody>tr,
+body.cx-sup-night .tabela tbody>tr>td,
+body.cx-sup-night #tbl .tabela tbody tr td{
+ background:linear-gradient(135deg,var(--cx-row),color-mix(in srgb,var(--cx-row),#79b5f0 7%))!important;
+ background-color:var(--cx-row)!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+ border-color:var(--cx-row-border)!important;
+ text-shadow:none!important
+}
+body.cx-sup-night .tabela tbody>tr:nth-child(even)>td,
+body.cx-sup-night #tbl .tabela tbody tr:nth-child(even) td{
+ background:linear-gradient(135deg,var(--cx-row2),color-mix(in srgb,var(--cx-row2),#78b1ea 6%))!important;
+ background-color:var(--cx-row2)!important
+}
+body.cx-sup-night #tbl .tabela tbody tr:hover td{
+ background:linear-gradient(130deg,var(--cx-surface),var(--cx-surface2))!important
+}
+body.cx-sup-night #tbl .tabela tbody td :is(b,strong,small,span,div,p,label,time){
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important
+}
+body.cx-sup-night #tbl .tabela tbody td :is(a,a *,a:visited){
+ color:var(--cx-strong)!important;-webkit-text-fill-color:var(--cx-strong)!important
+}
+body.cx-sup-night #tbl .tabela tbody td .pill,
+body.cx-sup-night #tbl .tabela tbody td .pill *{
+ color:#fff!important;-webkit-text-fill-color:#fff!important
+}
+body.cx-sup-night #tbl .tabela tbody td .pill.green{background:#16845e!important}
+body.cx-sup-night #tbl .tabela tbody td .pill.red{background:#b53a56!important}
+body.cx-sup-night #tbl .tabela tbody td .actions :is(button,a),
+body.cx-sup-night #tbl .tabela tbody td .cx-gps-icon,
+body.cx-sup-night #tbl .tabela tbody td .foto-btn{
+ background:linear-gradient(145deg,#315a87,#1b406c)!important;
+ color:#daedff!important;-webkit-text-fill-color:#daedff!important;
+ border:1px solid #7aabe0!important;
+ box-shadow:inset 0 2px 3px #c4e3ff3d,0 4px 9px #051e40b3!important
+}
+body.cx-sup-night #tbl .tabela tbody td :is(.actions button,.actions a) svg,
+body.cx-sup-night #tbl .tabela tbody td .cx-gps-icon svg{
+ stroke:#d5edff!important;fill:none!important
+}
+body.cx-sup-night .filters-form .field,
+body.cx-sup-night .filters-form .field label,
+body.cx-sup-night .filters-bar label{
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important
+}
+body.cx-sup-night .filters-form .field :is(input,select),
+body.cx-sup-night .filters-bar :is(input,select),
+body.cx-sup-night #cx-pix-avulso input{
+ background:linear-gradient(145deg,var(--cx-input),var(--cx-surface))!important;
+ color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;
+ border:1px solid var(--cx-ice-border)!important;
+ box-shadow:inset 0 2px 3px #add4ff2b,0 4px 9px #031b39bb!important
+}
+body.cx-sup-night .filters-form .field input::placeholder,
+body.cx-sup-night #cx-pix-avulso input::placeholder{
+ color:#c4def9!important;-webkit-text-fill-color:#c4def9!important;opacity:1!important
+}
+body.cx-sup-night #cx-pix-avulso .cx-led-shortcuts .btn,
+body.cx-sup-night .quick-delivery-actions .btn:not(.primary),
+body.cx-sup-night .quick-left .btn:not(.primary),
+body.cx-sup-night #cx-supervisao-board .cx-led-buttons button{
+ background:linear-gradient(145deg,#3b6694,#1e4678)!important;
+ color:#f3faff!important;-webkit-text-fill-color:#f3faff!important;
+ border:1px solid #9bc3e9!important;box-shadow:inset 0 2px 3px #e4f3ff50,0 4px 11px #021934aa!important
+}
+body.cx-sup-night .cx-calendar-glass,body.cx-sup-night #cx-supervisao-note-dialog{
+ background:linear-gradient(145deg,var(--cx-surface),var(--cx-surface2))!important;
+ color:var(--cx-title)!important;border-color:var(--cx-ice-border)!important
+}
+body.cx-sup-night .cx-calendar-glass .cx-calendar-top,
+body.cx-sup-night .cx-calendar-glass .cx-calendar-grid span{
+ color:var(--cx-title)!important
+}
+/* Vidro claro idêntico em relevo, sem perder contraste de texto. */
+body:not(.cx-sup-night) #tbl .tabela tbody td{
+ color:var(--cx-title)!important;background:var(--cx-ice-glare),var(--cx-row)!important
+}
+body:not(.cx-sup-night) #tbl .tabela tbody tr:nth-child(even) td{
+ background:var(--cx-ice-glare),var(--cx-row2)!important
+}
+</style>
