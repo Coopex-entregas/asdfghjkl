@@ -2706,7 +2706,7 @@ body.cx-modal-active{overflow:hidden!important}
 
     // No navegador, a localização é solicitada, mas nunca encerra a sessão.
     // O aplicativo Android mantém a integração GPS nativa existente.
-    function gpsPermissionNotice(message){
+    function gpsPermissionNotice(message, denied = false){
       if(window.AndroidBridge) return;
       let banner=document.getElementById('coopex-gps-permission-banner');
       if(!banner){
@@ -2721,12 +2721,21 @@ body.cx-modal-active{overflow:hidden!important}
         button.type='button';
         button.textContent='Conceder localização';
         button.style.cssText='background:#1355c9;color:white;border:0;border-radius:10px;padding:10px 13px;font:700 14px system-ui,sans-serif;cursor:pointer';
-        button.addEventListener('click', requestGpsPosition);
+        button.addEventListener('click', function(){
+          // Depois de uma negativa, recarrega para uma nova tentativa do navegador.
+          // O Safari pode manter a negativa salva; nesse caso é necessário liberar nos ajustes.
+          if(banner.dataset.permissionDenied === '1'){
+            window.location.reload();
+          }else{
+            requestGpsPosition();
+          }
+        });
         banner.append(info,button);
         document.body.appendChild(banner);
       }
       const info=document.getElementById('coopex-gps-permission-message');
       if(info) info.textContent=message;
+      banner.dataset.permissionDenied=denied?'1':'0';
       banner.hidden=false;
       banner.style.display='flex';
     }
@@ -2741,8 +2750,8 @@ body.cx-modal-active{overflow:hidden!important}
     function gpsPermissionFailed(err){
       const blocked=err && err.code===1;
       gpsPermissionNotice(blocked
-        ? 'Localização negada. Para ativá-la, permita o acesso nas configurações deste site no Safari ou navegador e toque novamente em Conceder localização. O painel continua disponível.'
-        : 'Não foi possível obter sua localização. Verifique o GPS e tente novamente. O painel continua disponível.');
+        ? 'Localização negada. Toque em Conceder localização para atualizar e tentar novamente. Se o navegador mantiver o bloqueio, libere a localização nos ajustes deste site.'
+        : 'Não foi possível obter sua localização. Verifique o GPS e tente novamente.', blocked);
     }
 
     function requestGpsPosition(){
