@@ -2157,9 +2157,11 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         <div class="kpi kpi-delivery"><div class="kpi-icon">📦</div><div><small>Dia</small><span id="kpiTotalDia">{{ estatisticas.total_dia }}</span></div></div>
       </div>
 
-      <label class="cx-brightness-control" for="cx-brightness" title="Ajustar luminosidade visual do painel">
-        <span aria-hidden="true">☀</span>
-        <input id="cx-brightness" type="range" min="0" max="100" value="100" step="1" aria-label="Luminosidade da tela, do azul escuro ao azul-gelo claro">
+      <label class="cx-brightness-control" for="cx-brightness" title="Deslize para ajustar o azul-gelo até o modo escuro">
+        <span class="cx-brightness-moon" aria-hidden="true">☾</span>
+        <span class="cx-brightness-caption">Luz</span>
+        <input id="cx-brightness" type="range" min="0" max="100" value="100" step="1" aria-label="Luminosidade do painel, do azul-noturno ao azul-gelo claro">
+        <span class="cx-brightness-sun" aria-hidden="true">☀</span>
       </label>
       <a class="logout" href="{{ url_for('logout') }}">Sair</a>
     </div>
