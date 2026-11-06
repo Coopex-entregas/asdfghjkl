@@ -662,7 +662,7 @@ function build(){
  get('cx-note-save').addEventListener('click',async()=>{const msg=get('cx-note-editor').value.trim();if(!msg){get('cx-note-error').textContent='Digite um recado';return}const b=get('cx-note-save');b.disabled=true;try{await mutate('POST',endpoint,{mensagem:msg});dialog.close()}catch(e){get('cx-note-error').textContent=e.message}finally{b.disabled=false}});
  get('cx-led-note-read').addEventListener('click',async()=>{try{await mutate('POST',endpoint+'/confirmar')}catch(e){alert(e.message)}});
  get('cx-led-note-delete').addEventListener('click',async()=>{if(!confirm('Apagar o recado?'))return;try{await mutate('DELETE',endpoint)}catch(e){alert(e.message)}});
- const slider=get('cx-brightness');if(slider){try{slider.value=localStorage.getItem('cx_sup_brightness')||'100'}catch(_){}const change=()=>{const v=Math.max(0,Math.min(100,Number(slider.value)));document.documentElement.style.filter='';document.body.style.setProperty('--cx-dim',Math.round((100-v)*0.88)+'%');document.body.classList.toggle('cx-sup-night',v<48);slider.setAttribute('aria-valuetext',v<48?'Azul noturno':'Azul-gelo');try{localStorage.setItem('cx_sup_brightness',String(v))}catch(_){}};slider.addEventListener('input',change);change()}
+
  show();fetchNote();return true;
 }
 window.addEventListener('coopex-led-entry',e=>onEntry(e.detail));
@@ -765,7 +765,7 @@ function init(){
    if(bar&&group&&bar.previousElementSibling!==group)group.insertAdjacentElement('afterend',bar);
    else if(bar&&!bar.isConnected)nav.appendChild(bar);
  }
- if(slider&&!slider.dataset.cxBind){slider.dataset.cxBind='1';const set=()=>{const value=Math.max(0,Math.min(100,Number(slider.value)));body.style.setProperty('--cx-dim',Math.round((100-value)*.88)+'%');body.classList.toggle('cx-sup-night',value<48);try{localStorage.setItem('cx_sup_brightness',String(value))}catch(e){}};try{slider.value=localStorage.getItem('cx_sup_brightness')||'100'}catch(e){}slider.addEventListener('input',set);set()}
+
  // Não converter LED em cartões: uma única área LED; texto comprido passa no próprio visor.
  const led=document.getElementById('cx-supervisao-board');
  if(led&&!led.dataset.cxScroll){led.dataset.cxScroll='1';const update=()=>led.querySelectorAll('.cx-led-line').forEach(el=>el.classList.toggle('cx-led-scroll',!el.hidden&&el.textContent.length>75));update();new MutationObserver(update).observe(led,{subtree:true,childList:true,characterData:true,attributes:true,attributeFilter:['hidden']});}
@@ -886,7 +886,7 @@ body.cx-sup-night .cx-day-inline{color:#d8edff!important;-webkit-text-fill-color
 function start(){
  const board=document.getElementById('cx-supervisao-board'),day=document.querySelector('.cx-day-inline'),head=document.querySelector('.panel-head'),source=document.querySelector('#cx-pix-led .cx-led-inner');
  if(!board||!head||!source)return false;
- if(day&&day.parentElement!==head)head.insertBefore(day,board);
+
  const screen=board.querySelector('.cx-led-screen');
  if(!screen)return false;
  let track=screen.querySelector('.cx-gelo-led-track');
@@ -926,21 +926,68 @@ body .bank-toolbar .bank-group-btn{font-size:14px!important;font-weight:850!impo
 body .bank-toolbar .bank-group-btn,body .bank-toolbar .bank-direct-action .bank-group-btn{color:#fff!important;-webkit-text-fill-color:#fff!important;}
 body #cx-pix-avulso .cx-led-shortcuts .btn:hover{transform:translateY(-2px)!important;filter:saturate(1.13)!important}
 </style>
-<script id="coopex-luminosidade-tela-inteira-v10">
+
+
+<style id="coopex-financas-fiel-final-v11">
+html{filter:none!important;background:#dceeff!important}
+body{--cx-dim:0%!important;--cx-bg:#e6f3ff;--cx-surface:#f5fbff;--cx-surface2:#d1e8ff;--cx-title:#103d7d;--cx-text:#1b4e8b;--cx-input:#f7fcff;--cx-row:#f9fcff;--cx-row2:#e8f4ff;--cx-th:#d9eafe;--cx-strong:#0a48a7;--cx-sh:#1c62a733;--bg:var(--cx-bg)!important;--card:var(--cx-surface)!important;--ink:var(--cx-title)!important;--muted:var(--cx-text)!important;--line:#bad6f5!important;--line-2:#add0f3!important;background:linear-gradient(130deg,var(--cx-bg),var(--cx-surface2))!important;color:var(--cx-title)!important}
+body.cx-sup-night{--cx-bg:#112b4c;--cx-surface:#214365;--cx-surface2:#183454;--cx-title:#f0f8ff;--cx-text:#d5e9ff;--cx-input:#1a395a;--cx-row:#1a395a;--cx-row2:#244766;--cx-th:#2b547d;--cx-strong:#aad5ff;--cx-sh:#061a3666;--line:#557a9f!important;--line-2:#6487a9!important}
+body .panel,body .filters-bar,body #cx-pix-avulso,body .table-wrap,body .quick-view-bar,body .kpi,body .panel-head:has(#cx-supervisao-board){background:linear-gradient(135deg,var(--cx-surface),var(--cx-surface2))!important;color:var(--cx-title)!important;border:2px solid color-mix(in srgb,var(--cx-surface),white 40%)!important;border-radius:16px!important;box-shadow:inset 0 2px 3px #ffffff6e,0 7px 0 color-mix(in srgb,var(--cx-surface2),#709ec7 22%),0 10px 21px var(--cx-sh)!important;backdrop-filter:blur(16px)!important}
+body .panel-head:has(#cx-supervisao-board){min-height:0!important}
+body .panel-head:has(#cx-supervisao-board)>.cx-day-inline{display:none!important}
+body .panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{color:var(--cx-title)!important;background:linear-gradient(140deg,var(--cx-surface),var(--cx-surface2))!important;border:1px solid #ffffffa8!important}
+body #cx-supervisao-board{background:linear-gradient(135deg,var(--cx-surface),var(--cx-surface2))!important;border:2px solid #ffffffa8!important;box-shadow:inset 0 2px 5px #ffffff89,0 8px 18px var(--cx-sh)!important}
+body #cx-supervisao-board .cx-led-title{color:var(--cx-title)!important;text-shadow:none!important;font-size:14px!important}
+body #cx-supervisao-board .cx-led-screen{background:linear-gradient(130deg,#071a31,#0b2e50)!important}
+body .bank-toolbar-wrap{background:linear-gradient(115deg,#5ebdff,#318fe7 55%,#1559bc)!important;border:2px solid #fff!important;border-radius:18px!important;box-shadow:inset 0 2px 5px #ffffff99,0 7px 0 #1b66ba7d,0 13px 20px #0b44865a!important}
+body.cx-sup-night .bank-toolbar-wrap{background:linear-gradient(115deg,#295b8c,#1b467d 55%,#123760)!important}
+body .bank-toolbar .bank-group-btn,body .bank-toolbar .bank-group-btn *,body .bank-toolbar .bank-direct-action .bank-group-btn{color:white!important;-webkit-text-fill-color:white!important;font-size:14px!important;opacity:1!important;font-weight:850!important;text-shadow:0 1px 2px #194b89a3!important}
+body .bank-toolbar .bank-group-btn{height:43px!important;padding:0 12px!important;background:linear-gradient(160deg,#ffffff35,#ffffff12)!important;border:1px solid #fff9!important;box-shadow:inset 0 2px 4px #ffffff3d,0 4px 9px #12468c58!important}
+body .cx-day-inline{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex-direction:row!important;gap:7px!important;height:42px!important;min-height:42px!important;max-height:42px!important;padding:5px 12px!important;white-space:nowrap!important;color:#fff!important;-webkit-text-fill-color:#fff!important;background:linear-gradient(145deg,#67bdff,#1a65c7)!important;border:2px solid #ffffffd9!important;border-radius:13px!important;box-shadow:inset 0 2px 3px #ffffff77,0 5px 11px #1853a260!important;font:850 13px system-ui!important}
+body.cx-sup-night .cx-day-inline{background:linear-gradient(130deg,#285783,#16416a)!important}
+body .cx-day-inline .badge{display:inline-flex!important;padding:3px 8px!important;margin:0!important;background:#f1f8ff!important;color:#1454a5!important;-webkit-text-fill-color:#1454a5!important;border:1px solid white!important}
+body .filters-form label,body #cx-pix-avulso>strong{color:var(--cx-text)!important;-webkit-text-fill-color:var(--cx-text)!important;font-size:12px!important;font-weight:800!important}
+body .filters-form select,body .filters-form input,body #cx-pix-avulso input,body .cx-pix-copy{background:var(--cx-input)!important;color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;border:1px solid var(--line)!important;border-radius:11px!important;box-shadow:inset 0 1px 4px #ffffff52,0 4px 10px var(--cx-sh)!important}
+body .tabela thead th{background:var(--cx-th)!important;color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;border-color:var(--line)!important}
+body .tabela tbody td,body .tabela tbody tr td{background:var(--cx-row)!important;color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;border-color:var(--line)!important}
+body .tabela tbody tr:nth-child(2n) td{background:var(--cx-row2)!important}
+body .tabela tbody a{color:var(--cx-strong)!important;-webkit-text-fill-color:var(--cx-strong)!important}
+body .tabela tbody td button,body .tabela tbody td .btn{background:linear-gradient(130deg,var(--cx-surface),var(--cx-surface2))!important;border:1px solid #ffffff9c!important;color:var(--cx-title)!important;box-shadow:inset 0 1px 3px #ffffff92,0 4px 9px var(--cx-sh)!important}
+body .quick-left .btn,body .quick-delivery-actions .btn,body #cx-pix-avulso .cx-led-shortcuts .btn{border:2px solid #ffffffb8!important;border-radius:12px!important;box-shadow:inset 0 2px 5px #ffffffc2,0 6px 12px var(--cx-sh)!important}
+body #cx-pix-avulso .cx-led-shortcuts{display:flex!important;justify-content:space-evenly!important;gap:clamp(12px,3vw,65px)!important}
+body #cx-pix-avulso .cx-led-shortcuts .btn{width:45px!important;height:41px!important;background:linear-gradient(130deg,#fff,#b8dfff)!important}
+body.cx-sup-night #cx-supervisao-board .cx-led-buttons button{color:#154c94!important}
+body.cx-sup-night .filters-bar .field label{color:var(--cx-text)!important}
+body .cx-brightness-control{background:linear-gradient(140deg,#fff,#c0e2ff)!important}
+@media(max-width:750px){body .bank-toolbar .bank-group-btn{font-size:13px!important}body .cx-day-inline{height:38px!important;font-size:11px!important}}
+</style>
+
+<script id="cx-financas-light-dark-v11">
 (function(){
- function init(){
-  const slider=document.getElementById('cx-brightness');
-  if(!slider||slider.dataset.cxGlobalFilter)return Boolean(slider);
-  slider.dataset.cxGlobalFilter='1';
-  function paint(){
-   const n=Math.max(0,Math.min(100,Number(slider.value)));
-   document.documentElement.style.filter='brightness('+(0.78+0.0022*n).toFixed(3)+')';
-   slider.setAttribute('aria-valuenow',String(n));
-   slider.setAttribute('aria-valuetext',n<38?'Azul-noturno':n<75?'Azul intermediário':'Azul-gelo claro');
-  }
-  slider.addEventListener('input',paint);paint();
-  return true;
- }
- if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+'use strict';
+function init(){
+ const slider=document.getElementById('cx-brightness');
+ const nav=document.querySelector('.bank-toolbar');
+ const request=document.getElementById('btnSolicitacoesValorMenu');
+ const head=document.querySelector('.panel-head'),day=document.querySelector('.cx-day-inline');
+ // Cartão dia ao lado do controle na barra, sem duplicar ou pôr no cabeçalho do LED.
+ if(day&&nav){const bar=slider?.closest('.cx-brightness-control');if(bar&&bar.parentElement===nav){bar.insertAdjacentElement('afterend',day)}else if(request){request.closest('.bank-group')?.insertAdjacentElement('afterend',day)}}
+ if(!slider)return false;
+ if(slider.dataset.cxTheme11)return true;
+ slider.dataset.cxTheme11='1';
+ const paint=()=>{
+  const v=Math.max(0,Math.min(100,Number(slider.value)));
+  document.documentElement.style.filter='none';
+  document.body.style.setProperty('--cx-dim','0%');
+  document.body.classList.toggle('cx-sup-night',v<48);
+  document.body.style.setProperty('--cx-tone',(v/100).toFixed(2));
+  slider.setAttribute('aria-valuetext',v<48?'Modo noturno legível':'Azul-gelo claro');
+  try{localStorage.setItem('cx_sup_brightness',String(v))}catch(e){}
+ };
+ try{slider.value=localStorage.getItem('cx_sup_brightness')||'100'}catch(e){}
+ slider.addEventListener('input',paint);paint();
+ return true;
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{init()},{once:true});else init();
 })();
 </script>
