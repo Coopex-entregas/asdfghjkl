@@ -3195,3 +3195,113 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+<style id="coopex-menu-e-cartoes-fluidos-v35">
+/* Vidro royal brilhante inspirado no menu Finanças: fixo e com LED inteiro. */
+body .bank-toolbar-wrap{
+ background:linear-gradient(113deg,#64c0fc 0%,#358fdf 27%,#2576cb 61%,#16499f 100%)!important;
+ border:2px solid #e4f5ff!important;border-radius:17px!important;
+ box-shadow:inset 0 2px 5px #ffffffa6,inset 0 -2px 4px #1d5ab671,0 5px 0 #17559c82,0 12px 20px #0b2f7073!important;
+ backdrop-filter:blur(18px) saturate(1.5)!important;-webkit-backdrop-filter:blur(18px) saturate(1.5)!important
+}
+body.cx-sup-night .bank-toolbar-wrap{
+ background:linear-gradient(115deg,#32679b,#205080 42%,#123c75 75%,#0c2e5c)!important;
+ border-color:#9bc8ee!important
+}
+body .bank-toolbar .bank-group>.bank-group-btn{
+ background:transparent!important;border:1px solid transparent!important;border-radius:12px!important;
+ color:#f6fcff!important;-webkit-text-fill-color:#f6fcff!important;box-shadow:none!important
+}
+body .bank-toolbar .bank-group.open>.bank-group-btn,
+body .bank-toolbar .bank-group.cx-tab-selected>.bank-group-btn{
+ background:linear-gradient(143deg,#fff,#d0e9ff)!important;border:1px solid white!important;
+ color:#124991!important;-webkit-text-fill-color:#124991!important;
+ box-shadow:inset 0 2px 3px #fff,0 4px 9px #143e8b78!important
+}
+/* Total do dia: SOMENTE número, integrado ao menu sem quadrado ou etiqueta DIA. */
+body .admin-toolbar-right .kpi.kpi-delivery,
+body .bank-toolbar .kpi.kpi-delivery,
+body header .kpi.kpi-delivery{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:auto!important;min-width:31px!important;max-width:none!important;
+ height:37px!important;min-height:37px!important;max-height:37px!important;
+ padding:0 5px!important;margin:0 4px!important;border:0!important;border-radius:0!important;
+ background:transparent!important;box-shadow:none!important;grid-template-columns:none!important
+}
+body .kpi.kpi-delivery .kpi-icon,body .kpi.kpi-delivery small,
+body .admin-toolbar-right .kpi.kpi-delivery :is(.kpi-icon,small){display:none!important}
+body .admin-toolbar-right .kpi.kpi-delivery #kpiTotalDia,
+body .bank-toolbar .kpi.kpi-delivery #kpiTotalDia,
+body header .kpi.kpi-delivery #kpiTotalDia{
+ display:block!important;position:static!important;width:auto!important;min-width:30px!important;
+ font:950 19px/1 Inter,system-ui,sans-serif!important;
+ color:#fff!important;-webkit-text-fill-color:#fff!important;text-shadow:0 2px 4px #113c78a8!important
+}
+/* Remover a linha de nomes acima dos filtros: os campos mantêm tooltip e rótulo acessível. */
+body .viewport .panel .filters-form .field>label{
+ display:none!important;min-height:0!important;height:0!important;padding:0!important;margin:0!important
+}
+body .viewport .panel .filters-form .field{gap:0!important;margin:0!important}
+body .viewport .panel .filters-form :is(input,select){min-height:35px!important;height:35px!important;font-size:13px!important}
+body .viewport .panel .filters-form .cx-cal-trigger{bottom:3px!important}
+body .viewport .panel .filters-top{margin:0!important;padding:0!important;gap:4px!important}
+body .viewport .panel>.filters-bar{padding-top:3px!important;padding-bottom:3px!important}
+body .viewport .panel>.filters-bar>#cx-pix-avulso{padding-top:3px!important}
+/* Na meia tela, blocos empurram conteúdos naturalmente para baixo, sem sobreposição. */
+@media(max-width:1370px){
+ body #tbl table.tabela tbody>tr:nth-child(n){
+  height:auto!important;min-height:0!important;max-height:none!important;
+  grid-auto-flow:row!important;grid-auto-rows:auto!important;align-items:start!important;
+  overflow:visible!important
+ }
+ body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n){
+  min-height:0!important;max-height:none!important;height:auto!important;
+  align-self:start!important;overflow:visible!important;white-space:normal!important
+ }
+ body #tbl table.tabela tbody>tr>td:nth-child(14){
+  grid-column:1/-1!important;grid-row:auto!important;min-width:0!important;
+  border-top:1px solid var(--cx-table-seam,rgba(139,182,230,.40))!important;
+  padding-top:7px!important;margin-top:2px!important
+ }
+ body #tbl table.tabela tbody>tr>td:nth-child(14)>.actions{
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  display:flex!important;flex-wrap:wrap!important;align-items:center!important;
+  justify-content:flex-start!important;gap:6px!important
+ }
+ body #tbl table.tabela tbody>tr>td:nth-child(14)>.actions>*{flex:0 0 auto!important}
+}
+@media(max-width:1050px){
+ body .viewport .panel .filters-form{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ body #tbl table.tabela tbody>tr:nth-child(n){
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:5px 9px!important;
+  padding:10px!important
+ }
+ body #tbl table.tabela tbody>tr>td:nth-child(1){grid-column:1!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(2){grid-column:2!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(3){grid-column:1/-1!important;grid-row:auto!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(n+4):nth-child(-n+13){grid-column:auto!important;grid-row:auto!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(14){grid-column:1/-1!important;grid-row:auto!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(n){font-size:13px!important;line-height:1.4!important}
+ body #tbl table.tabela tbody td::before{font-size:11px!important}
+ body #tbl table.tabela tbody td .actions :is(a,button){min-width:33px!important;min-height:33px!important}
+}
+@media(max-width:620px){
+ body .viewport .panel .filters-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+</style>
+<script id="coopex-menu-e-cartoes-fluidos-script-v35">
+(function(){
+function init(){
+ const kpi=document.querySelector('.kpi.kpi-delivery');
+ if(kpi)kpi.setAttribute('aria-label','Total de entregas do dia');
+ document.querySelectorAll('.filters-form .field>label').forEach(label=>{
+  const el=label.htmlFor?document.getElementById(label.htmlFor):label.parentElement?.querySelector('input,select');
+  if(el){
+   if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',label.textContent.trim());
+   if(!el.hasAttribute('title'))el.setAttribute('title',label.textContent.trim());
+  }
+ });
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
