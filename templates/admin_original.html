@@ -2153,6 +2153,37 @@ html.cx-admin-preparing body>.viewport{visibility:visible!important}
 </head>
 
 <body>
+<script id="coopex-theme-initial-paint-v43">
+/* Aplica o tema DEFINITIVO salvo antes da primeira pintura.
+   Usa a mesma curva e cores do controle de luminosidade atual. */
+(function(){
+ try{
+  const body=document.body;
+  const saved=localStorage.getItem('cx_sup_brightness');
+  const v=saved===null?100:Math.max(0,Math.min(100,Number(saved)));
+  const t=Math.pow(v/100,3),night=v<80;
+  const mix=(dark,light)=>'#'+dark.map((n,i)=>Math.round(n+(light[i]-n)*t).toString(16).padStart(2,'0')).join('');
+  body.classList.toggle('cx-sup-night',night);
+  const theme=localStorage.getItem('coopex_theme');
+  if(theme==='dark')body.classList.add('dark');
+  else if(theme==='light')body.classList.remove('dark');
+  const colors={
+   '--cx-bg':mix([10,31,58],[230,243,255]),
+   '--cx-surface':mix([19,44,73],[245,251,255]),
+   '--cx-surface2':mix([23,49,81],[209,232,255]),
+   '--cx-input':mix([16,41,69],[247,252,255]),
+   '--cx-row':mix([15,41,68],[249,252,255]),
+   '--cx-row2':mix([20,47,75],[232,244,255]),
+   '--cx-th':mix([24,55,88],[217,234,254]),
+   '--cx-title':night?'#f4faff':'#12376f',
+   '--cx-text':night?'#e1f1ff':'#19477d',
+   '--cx-strong':night?'#bfe4ff':'#0a48a7'
+  };
+  for(const [key,val] of Object.entries(colors))body.style.setProperty(key,val);
+  body.style.setProperty('--cx-tone',String(v/100));
+ }catch(e){}
+})();
+</script>
   <!-- HEADER -->
   <header>
     <div class="topbar">
