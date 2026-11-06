@@ -507,7 +507,7 @@ function connectQueueExitSocket(){
  socket.on('coopex_supervisao_recado_atualizado',()=>window.dispatchEvent(new Event('coopex-led-note-changed')));
 }
 
-async function refresh(){try{const [r,f]=await Promise.all([fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'}),fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'})]);if(r.ok){pix=(await r.json()).cobrancas||[];window.dispatchEvent(new CustomEvent('coopex-led-pix',{detail:pix}));}if(f.ok)fila=(await f.json()).cooperados||[];draw()}catch(e){}}
+async function refresh(){try{const [r,f]=await Promise.all([fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'}),fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'})]);if(r.ok){pix=(await r.json()).cobrancas||[];window.dispatchEvent(new CustomEvent('coopex-led-pix',{detail:pix}));}if(f.ok){fila=(await f.json()).cooperados||[];window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));}draw()}catch(e){}}
 function init(){const host=document.getElementById('cx-pix-avulso');if(!host){setTimeout(init,1000);return}if(document.getElementById('cx-pix-led'))return;const led=document.createElement('span');led.id='cx-pix-led';led.title='Fila de cooperados e alertas de vencimento Pix. Clique para ver o histórico.';led.innerHTML='<span class="cx-led-count">PIX 0</span><span class="cx-led-inner">CONSULTANDO...</span>';led.onclick=()=>window.open('/admin/pix-sicoob/historico','_blank','noopener');host.appendChild(led);connectQueueExitSocket();refresh();paidRefresh();setInterval(refresh,30000);setInterval(draw,10000);setInterval(paidRefresh,30000)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init);else init();
 })();
@@ -580,156 +580,97 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 </script>
 
 
-<style id="coopex-supervisao-led-board-v1">
-/* Cabeçalho amplo: LED multi-eventos ocupa o lugar dos antigos botões. */
-.panel-head:has(#cx-supervisao-board){display:grid!important;grid-template-columns:minmax(180px,25%) minmax(0,1fr)!important;grid-template-rows:auto 1fr;align-items:start!important;gap:8px 15px!important;min-height:0!important;padding:10px 12px!important}
-.panel-head:has(#cx-supervisao-board)>.panel-title{grid-column:1;grid-row:1;line-height:1.35;align-self:center;min-width:0}
-.panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{grid-column:1;grid-row:2;justify-self:start;align-self:start;max-width:100%;white-space:nowrap;padding:7px 12px!important;font-size:.78rem!important}
-#cx-supervisao-board{grid-column:2;grid-row:1/span 2;min-width:0;display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;color:#eaf6ff;text-align:left}
-#cx-supervisao-board .cx-led-card{min-width:0;overflow:hidden;border:1px solid #27517d;border-radius:10px;background:#091e39;box-shadow:inset 0 1px 9px #0005;padding:9px 11px;min-height:74px}
-#cx-supervisao-board .cx-led-caption{font:800 10px/1.35 system-ui,sans-serif;letter-spacing:.05em;text-transform:uppercase;margin-bottom:6px;color:#abd0ff!important}
-#cx-supervisao-board .cx-led-text{font:700 12px/1.42 system-ui,sans-serif;color:#fff!important;overflow-wrap:anywhere;max-height:68px;overflow-y:auto;scrollbar-width:thin}
-#cx-supervisao-board .cx-led-note{grid-column:1/-1;background:linear-gradient(105deg,#30230c,#554017);border-color:#d2a43b;min-height:66px;display:flex;align-items:center;justify-content:space-between;gap:12px}
-#cx-supervisao-board .cx-led-note .cx-led-caption{color:#ffd979!important}
-#cx-supervisao-board .cx-led-note .cx-led-text{max-height:66px}
-#cx-supervisao-board .cx-led-entry{background:#073d22;border-color:#2edb70}
-#cx-supervisao-board .cx-led-entry .cx-led-caption{color:#65ff9f!important}
-#cx-supervisao-board .cx-led-exit{background:#4f1320;border-color:#d64d6d}
-#cx-supervisao-board .cx-led-exit .cx-led-caption{color:#ffa9b8!important}
-#cx-supervisao-board .cx-led-pix{background:#4e320b;border-color:#e5a73d}
-#cx-supervisao-board .cx-led-pix .cx-led-caption{color:#ffda8f!important}
-#cx-supervisao-board button{border:1px solid #aac8fb!important;background:#e5efff!important;color:#123b7c!important;border-radius:8px;padding:6px 9px;font:800 11px system-ui;white-space:nowrap;cursor:pointer;flex-shrink:0}
-#cx-supervisao-board .cx-note-body{flex:1;min-width:0}
-#cx-supervisao-board .cx-note-actions{display:flex;align-items:center;flex-wrap:wrap;gap:5px}
-#cx-supervisao-board .cx-note-actions .cx-delete{background:#5c2230!important;border-color:#bd5269!important;color:#ffdee4!important}
-#cx-supervisao-board .cx-board-topline{grid-column:1/-1;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
-#cx-supervisao-board .cx-board-title{font:800 11px system-ui;color:#d5f1ff!important;letter-spacing:.06em}
-#cx-supervisao-board #cx-pix-led{display:inline-flex;flex:1;min-width:125px;margin:0;height:24px;border-radius:6px;vertical-align:middle}
-#cx-supervisao-board #cx-pix-led .cx-led-inner{font-size:11px}
-#cx-pix-avulso .cx-led-shortcuts{display:flex;align-items:center;gap:5px;margin-left:auto;flex-wrap:nowrap}
-#cx-pix-avulso .cx-led-shortcuts>.btn{flex:0 0 auto!important;width:35px!important;min-width:35px!important;height:32px!important;padding:0!important;font-size:0!important;display:grid!important;place-items:center;border:1px solid #31507e!important;border-radius:8px!important;background:#142747!important;color:#eaf4ff!important}
-#cx-pix-avulso .cx-led-shortcuts>.btn::before{font-size:16px!important;line-height:1;color:#d3e9ff!important}
-#cx-pix-avulso .cx-led-shortcuts>.btn:nth-child(1)::before{content:"🗓"}
-#cx-pix-avulso .cx-led-shortcuts>.btn:nth-child(2)::before{content:"◉"}
-#cx-pix-avulso .cx-led-shortcuts>.btn:nth-child(3)::before{content:"📍"}
-#cx-pix-avulso .cx-led-shortcuts>.btn:nth-child(4)::before{content:"🗺"}
-#cx-pix-avulso .cx-led-shortcuts>.btn:nth-child(5)::before{content:"📅"}
-#cx-pix-avulso .cx-led-shortcuts>.btn:focus-visible{outline:2px solid #67b9ff!important;outline-offset:2px}
-#cx-supervisao-note-dialog{border:1px solid #7aa9e8;background:#eaf3ff;color:#17365f;border-radius:17px;padding:19px;width:min(94vw,470px);box-shadow:0 20px 60px #0007}
-#cx-supervisao-note-dialog::backdrop{background:#00132aab}
-#cx-supervisao-note-dialog textarea{width:100%;min-height:105px;border:1px solid #9ebdeb;background:#fff!important;color:#122f5d!important;border-radius:10px;padding:11px;font:500 14px system-ui;resize:vertical}
-#cx-supervisao-note-dialog menu{display:flex;justify-content:end;gap:10px;margin:12px 0 0;padding:0}
-#cx-supervisao-note-dialog button{border:0;border-radius:9px;padding:10px 15px;background:#0e58ce;color:#fff;font-weight:800;cursor:pointer}
-#cx-supervisao-note-dialog button[value="cancel"]{background:#b8cce8;color:#15345b}
-@media(max-width:1150px){.panel-head:has(#cx-supervisao-board){grid-template-columns:minmax(160px,26%) minmax(0,1fr)!important}#cx-pix-avulso .cx-led-shortcuts>.btn{width:30px!important;min-width:30px!important}}
-@media(max-width:790px){.panel-head:has(#cx-supervisao-board){grid-template-columns:1fr!important;grid-template-rows:auto!important}.panel-head:has(#cx-supervisao-board)>.panel-title,.panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues,#cx-supervisao-board{grid-column:1;grid-row:auto}#cx-supervisao-board{grid-template-columns:1fr;gap:6px}#cx-supervisao-board .cx-led-note{grid-column:1}#cx-supervisao-board .cx-led-card{min-height:0}#cx-supervisao-board .cx-led-text{max-height:70px}#cx-pix-avulso .cx-led-shortcuts{flex-wrap:wrap}#cx-pix-avulso .cx-led-shortcuts>.btn{min-width:32px!important}}
+<style id="coopex-supervisao-gelo-3d-v5">
+/* Único tema do Finanças: vidro azul-gelo com borda e relevo */
+body{--bg:#e9f4ff;--card:#f3f9ff;--ink:#173a69;--muted:#52759c;--line:#bdd8f6;--line-2:#a9c7ee;--shadow:0 10px 25px #225c9f24;background:linear-gradient(130deg,#f7fcff,#deeeff)!important;color:#163763}
+header .topbar{background:linear-gradient(110deg,#69bfff,#3587df 62%,#155db6)!important;box-shadow:0 7px 20px #1c64ad38!important}
+body .kpi-month,body .kpi-year{display:none!important}
+.bank-toolbar-wrap,.banner,.panel,.filters-bar,.table-wrap,.kpi,.quick-view-chip,.cx-pix-advance{border:1px solid rgba(255,255,255,.94)!important;background:linear-gradient(130deg,rgba(255,255,255,.94),rgba(204,230,255,.83))!important;box-shadow:inset 0 2px 4px #fff,0 8px 18px #1e6db129!important;backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px)}
+.panel-head:has(#cx-supervisao-board){position:relative;display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:8px!important;height:auto!important;min-height:unset!important;padding:11px 13px 16px!important;background:linear-gradient(135deg,#fbfdff,#cfe8ff)!important;border:2px solid white!important;border-radius:17px 17px 0 0!important;box-shadow:inset 0 2px 3px #fff,0 7px 17px #276ab33d!important}
+.panel-head:has(#cx-supervisao-board)>.panel-title{width:auto;max-width:calc(100% - 175px);color:#164587!important;font-weight:900!important}
+.panel-head:has(#cx-supervisao-board)>.panel-title *{color:#164587!important}
+.panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{position:absolute;top:9px;right:12px;white-space:nowrap;font-size:12px!important;padding:8px 12px!important;border-radius:12px!important;color:#1452a4!important;background:linear-gradient(#fff,#d6eaff)!important;border:1px solid white!important;box-shadow:0 4px 9px #245ea742!important}
+#cx-supervisao-board{width:100%!important;min-width:0!important;display:flex!important;flex-direction:column!important;gap:8px!important;padding:12px 14px!important;color:#183a70!important;border:2px solid #fff!important;border-radius:21px!important;background:linear-gradient(145deg,rgba(247,253,255,.98),rgba(174,217,255,.9))!important;box-shadow:0 5px 0 #a1c7ea,0 11px 20px #1e6bb04a,inset 0 3px 5px #fff!important;backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px)}
+#cx-supervisao-board .cx-led-top{display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap}
+#cx-supervisao-board .cx-led-title{font:900 13px system-ui;color:#12519b!important;letter-spacing:.07em}
+#cx-supervisao-board .cx-led-buttons{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+#cx-supervisao-board button{border:1px solid white!important;border-radius:11px!important;padding:8px 12px!important;color:#1453a1!important;background:linear-gradient(150deg,#fff,#cde6ff)!important;box-shadow:inset 0 2px 3px #fff,0 4px 10px #2869ab40!important;font:800 12px system-ui!important;cursor:pointer}
+#cx-supervisao-board button[hidden]{display:none!important}
+#cx-supervisao-board .cx-led-screen{min-height:59px;max-height:160px;overflow:auto;padding:10px 14px;border-radius:13px;border:1px solid #67b5e7;background:linear-gradient(135deg,#081c33,#0d2d43)!important;box-shadow:inset 0 5px 14px #0008,0 2px 3px #fff9!important;scrollbar-width:thin}
+#cx-supervisao-board .cx-led-line{display:block;margin:3px 0;overflow-wrap:anywhere;font:800 clamp(13px,1.1vw,16px)/1.45 Consolas,monospace;letter-spacing:.01em}
+#cx-supervisao-board .cx-led-line[hidden]{display:none!important}
+#cx-supervisao-board .cx-led-line.queue{color:#a5e1ff;text-shadow:0 0 8px #4cafff}
+#cx-supervisao-board .cx-led-line.note{color:#ffe290;text-shadow:0 0 8px #e4aa39}
+#cx-supervisao-board .cx-led-line.entry{color:#64ffa4;text-shadow:0 0 8px #1ce578}
+#cx-supervisao-board .cx-led-line.exit{color:#ff8193;text-shadow:0 0 8px #f24765}
+#cx-supervisao-board .cx-led-line.pix{color:#ffcf75;text-shadow:0 0 8px #e5a334}
+#cx-pix-led{display:none!important} /* visor original oculto, áudio/eventos preservados */
+#cx-pix-avulso{display:flex!important;flex-wrap:wrap!important;align-items:center!important;overflow:visible!important;gap:9px!important;padding:10px 12px!important;background:linear-gradient(135deg,#f9fcff,#d9edff)!important;border:2px solid white!important;border-radius:15px!important;box-shadow:inset 0 1px 3px white,0 5px 14px #276bb739!important}
+#cx-pix-avulso .cx-led-shortcuts{display:flex!important;align-items:center;justify-content:space-around!important;gap:9px!important;flex:1 1 260px!important;margin:0!important}
+#cx-pix-avulso .cx-led-shortcuts .btn{display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 44px!important;width:44px!important;height:39px!important;min-width:44px!important;padding:0!important;white-space:nowrap!important;overflow:hidden!important;font-size:0!important;border:1px solid #fff!important;border-radius:12px!important;color:#1557a8!important;background:linear-gradient(145deg,#fff,#d3e9ff)!important;box-shadow:inset 0 2px 3px #fff,0 5px 10px #1a65ac40!important;cursor:pointer}
+#cx-pix-avulso .cx-led-shortcuts .btn::before{font-size:20px;line-height:1}
+#cx-pix-avulso .cx-led-shortcuts .btn:nth-child(1)::before{content:"🗓"}
+#cx-pix-avulso .cx-led-shortcuts .btn:nth-child(2)::before{content:"◉"}
+#cx-pix-avulso .cx-led-shortcuts .btn:nth-child(3)::before{content:"📍"}
+#cx-pix-avulso .cx-led-shortcuts .btn:nth-child(4)::before{content:"🗺"}
+#cx-pix-avulso .cx-led-shortcuts .btn:nth-child(5)::before{content:"📅"}
+#cx-pix-avulso .cx-led-shortcuts .btn:hover{transform:translateY(-2px);box-shadow:inset 0 2px 3px #fff,0 7px 15px #1b69bd55!important}
+.cx-brightness-control{display:flex;align-items:center;gap:7px;padding:7px 10px;border:1px solid white;border-radius:12px;background:linear-gradient(#f9fcff,#d2e7fe);box-shadow:0 4px 10px #2561a441;color:#1755a1}
+.cx-brightness-control input{width:100px;accent-color:#1369d6;cursor:pointer}
+#cx-supervisao-note-dialog{width:min(95vw,490px);padding:20px;border:2px solid white;border-radius:19px;background:linear-gradient(140deg,#fff,#d9edff);box-shadow:0 18px 50px #1039777a;color:#164586}
+#cx-supervisao-note-dialog::backdrop{background:#001b3d99}
+#cx-supervisao-note-dialog textarea{width:100%;min-height:100px;border:1px solid #90bdec!important;border-radius:12px;padding:12px;background:#fff!important;color:#19457e!important;font:500 14px system-ui}
+#cx-supervisao-note-dialog menu{display:flex;justify-content:flex-end;gap:9px;margin:12px 0 0;padding:0}
+#cx-supervisao-note-dialog button{border:1px solid white;padding:9px 14px;border-radius:10px;background:linear-gradient(#56acfa,#155ac5);color:#fff;font-weight:800;cursor:pointer}
+#cx-supervisao-note-dialog button[value=cancel]{background:#d3e7fc;color:#18528d}
+@media(max-width:750px){.panel-head:has(#cx-supervisao-board)>.panel-title{max-width:100%}.panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{position:static;align-self:flex-start}#cx-pix-avulso .cx-led-shortcuts{flex-basis:100%!important}#cx-supervisao-board{padding:10px!important}.cx-brightness-control input{width:65px}}
 </style>
-
-<script id="coopex-supervisao-led-board-script">
+<script id="coopex-supervisao-gelo-led-script-v5">
 (function(){
 'use strict';
-const ENDPOINT='/api/admin/supervisao/recado';
-let currentNote=null;
-const $=id=>document.getElementById(id);
-function clock(value){
-  const d=new Date(value);
-  return Number.isFinite(d.getTime())?d.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Fortaleza'}):'';
+const endpoint='/api/admin/supervisao/recado';
+const get=id=>document.getElementById(id);
+let recado=null,entradas=[],saida=null,pix=[],fila=[];
+const hora=v=>{const date=new Date(v||Date.now());return Number.isFinite(date.getTime())?date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Fortaleza'}):''};
+function show(){
+ const info=[
+ ['cx-led-fila','FILA · '+(fila.length?fila.map((f,i)=>(f.pos||i+1)+'º '+f.nome).join('  ·  '):'SEM COOPERADOS NA FILA'),true],
+ ['cx-led-recado',recado&&!recado.lido_em?'RECADO · '+recado.mensagem+' · '+recado.autor+' '+hora(recado.criado_em):'',Boolean(recado&&!recado.lido_em)],
+ ['cx-led-entrada',entradas.length?'ENTRADA · '+entradas.map(x=>x.nome+' '+x.hora).join(' · '):'',Boolean(entradas.length)],
+ ['cx-led-saida',saida?'SAÍDA · '+saida.nome+' · MOTIVO: '+saida.motivo:'',Boolean(saida)],
+ ['cx-led-pix',pix.length?'PIX · '+pix.map(x=>x.nome+' '+x.estado).join(' · '):'',Boolean(pix.length)]
+ ];
+ for(const [id,text,visible] of info){const el=get(id);if(el){el.hidden=!visible;if(visible)el.textContent=text}}
+ const read=get('cx-led-note-read'),del=get('cx-led-note-delete');if(read)read.hidden=!recado||Boolean(recado.lido_em);if(del)del.hidden=!recado;
 }
-function updateNote(){
-  const data=currentNote;
-  const message=$('cx-led-note-message'),meta=$('cx-led-note-meta');
-  const read=$('cx-led-note-read'),del=$('cx-led-note-delete');
-  if(!message||!meta)return;
-  message.textContent=data?data.mensagem:'Nenhum recado pendente para o próximo supervisor.';
-  meta.textContent=data?('Supervisor: '+data.autor+' · '+clock(data.criado_em)+(data.lido_em?' · Lido por '+data.lido_por:'')):'';
-  read.hidden=!data||Boolean(data.lido_em);
-  del.hidden=!data;
-}
-async function getNote(){
-  try{
-    const r=await fetch(ENDPOINT,{credentials:'same-origin',cache:'no-store'});
-    if(!r.ok)return;
-    const j=await r.json();
-    currentNote=j.recado||null;
-    updateNote();
-  }catch(e){}
-}
-async function changeNote(verb,url,body){
-  const r=await fetch(url,{method:verb,credentials:'same-origin',cache:'no-store',headers:body?{'Content-Type':'application/json'}:{},body:body?JSON.stringify(body):undefined});
-  const j=await r.json();
-  if(!r.ok||!j.ok)throw Error(j.erro||'Não foi possível salvar.');
-  await getNote();
-}
-function showEvent(kind,data){
- const e=$(kind==='entry'?'cx-led-entry-text':'cx-led-exit-text');
- if(!e||!data)return;
- if(kind==='entry'){
-   const d=new Date(data.quando||Date.now());
-   const hour=Number.isFinite(d.getTime())?clock(d.toISOString()):clock(new Date().toISOString());
-   // O evento principal já acumula entradas; adicionar em sequência sem apagar as anteriores.
-   const previous=e.dataset.entries?JSON.parse(e.dataset.entries):[];
-   const key=String(data.cooperado_id||'')+'|'+hour;
-   if(!previous.some(p=>p.key===key))previous.push({key,text:String(data.nome||'')+' '+hour});
-   while(previous.length>20)previous.shift();
-   e.dataset.entries=JSON.stringify(previous);
-   e.textContent=previous.map(p=>p.text).join(' · ');
-   clearTimeout(e._clearTimer);
-   e._clearTimer=setTimeout(()=>{e.textContent='Aguardando entradas';e.dataset.entries='';},15000);
- }else{
-   e.textContent=String(data.nome||'')+' · Motivo: '+String(data.motivo||'');
-   clearTimeout(e._clearTimer);
-   e._clearTimer=setTimeout(()=>{e.textContent='Nenhuma saída recente';},15000);
- }
-}
-function updatePix(items){
- const e=$('cx-led-pix-text');
- if(!e)return;
- const now=Date.now(), parse=v=>Date.parse(String(v||'').replace(' ','T')+(/[Zz]$|[+-]\d\d:\d\d$/.test(String(v||''))?'':'Z'));
- const warning=(items||[]).map(x=>({...x,delta:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.delta)&&x.delta<=3600000).sort((a,b)=>a.delta-b.delta);
- e.textContent=warning.length?warning.slice(0,5).map(x=>String(x.nome||'Cliente')+' · '+(x.delta<=0?'VENCIDO':Math.max(1,Math.ceil(x.delta/60000))+' min')).join(' · '):'Nenhum Pix próximo do vencimento';
-}
+async function fetchNote(){try{const r=await fetch(endpoint,{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const data=await r.json();recado=data.recado||null;show()}catch(_){}}
+async function mutate(method,url,data){const r=await fetch(url,{method,credentials:'same-origin',cache:'no-store',headers:data?{'Content-Type':'application/json'}:{},body:data?JSON.stringify(data):undefined});const j=await r.json();if(!r.ok||!j.ok)throw Error(j.erro||'Falha ao salvar');await fetchNote()}
+function onEntry(data){if(!data||!data.nome)return;const key=String(data.cooperado_id||'')+'|'+String(data.quando||'');if(entradas.some(x=>x.key===key))return;entradas.push({key,nome:String(data.nome),hora:hora(data.quando)});if(entradas.length>30)entradas.shift();show();clearTimeout(onEntry.timer);onEntry.timer=setTimeout(()=>{entradas=[];show()},15000)}
+function onExit(data){if(!data||!data.nome||!data.motivo)return;saida={nome:String(data.nome),motivo:String(data.motivo)};show();clearTimeout(onExit.timer);onExit.timer=setTimeout(()=>{saida=null;show()},15000)}
+function onPix(data){const now=Date.now();const parse=v=>{const s=String(v||'').replace(' ','T');return Date.parse(s+(/[Zz]$|[+-]\d\d:\d\d$/.test(s)?'':'Z'))};pix=(data||[]).map(x=>({nome:String(x.nome||'Cliente'),ms:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.ms)&&x.ms<=3600000).sort((a,b)=>a.ms-b.ms).slice(0,5).map(x=>({nome:x.nome,estado:x.ms<=0?'VENCIDO':Math.max(1,Math.ceil(x.ms/60000))+' MIN'}));show()}
 function build(){
- const head=document.querySelector('.panel-head');
- const actions=head?.querySelector('.cx-head-actions');
- const pix=$('cx-pix-avulso');
- const led=$('cx-pix-led');
- if(!head||!actions||!pix||!led||$('cx-supervisao-board'))return false;
- const board=document.createElement('div');
- board.id='cx-supervisao-board';
- board.innerHTML='<div class="cx-board-topline"><span class="cx-board-title">◉ LED · SUPERVISÃO</span></div>'+
- '<section class="cx-led-card cx-led-note"><div class="cx-note-body"><div class="cx-led-caption">📝 Recado do turno anterior <small id="cx-led-note-meta"></small></div><div class="cx-led-text" id="cx-led-note-message">Carregando recado...</div></div><div class="cx-note-actions"><button type="button" id="cx-led-note-write">Escrever</button><button type="button" id="cx-led-note-read" hidden>Li o aviso ✓</button><button type="button" id="cx-led-note-delete" class="cx-delete" hidden>Apagar</button></div></section>'+
- '<section class="cx-led-card cx-led-entry"><div class="cx-led-caption">🟢 Entrada · LED verde</div><div class="cx-led-text" id="cx-led-entry-text">Aguardando entradas</div></section>'+
- '<section class="cx-led-card cx-led-exit"><div class="cx-led-caption">🔴 Saída · LED vermelho</div><div class="cx-led-text" id="cx-led-exit-text">Nenhuma saída recente</div></section>'+
- '<section class="cx-led-card cx-led-pix"><div class="cx-led-caption">🟡 Pix · Vencendo</div><div class="cx-led-text" id="cx-led-pix-text">Consultando...</div></section>';
+ const head=document.querySelector('.panel-head'),actions=head?.querySelector('.cx-head-actions'),host=get('cx-pix-avulso'),old=get('cx-pix-led');if(!head||!actions||!host||!old)return false;if(get('cx-supervisao-board'))return true;
+ const board=document.createElement('div');board.id='cx-supervisao-board';
+ board.innerHTML='<div class="cx-led-top"><span class="cx-led-title">◈ LED · SUPERVISÃO</span><div class="cx-led-buttons"><button id="cx-led-note-write" type="button">✎ Recado</button><button id="cx-led-note-read" type="button" hidden>✓ Li o aviso</button><button id="cx-led-note-delete" type="button" hidden>Apagar</button></div></div>'+
+ '<div class="cx-led-screen" aria-label="Avisos da supervisão"><div class="cx-led-line queue" id="cx-led-fila"></div><div class="cx-led-line note" id="cx-led-recado" hidden></div><div class="cx-led-line entry" id="cx-led-entrada" hidden></div><div class="cx-led-line exit" id="cx-led-saida" hidden></div><div class="cx-led-line pix" id="cx-led-pix" hidden></div></div>';
  head.appendChild(board);
- board.querySelector('.cx-board-topline').appendChild(led);
- const shortcuts=document.createElement('div');
- shortcuts.className='cx-led-shortcuts';
- const titles=['Agendar entrega','Ocultar ou mostrar atribuídas','Bairros','Mapa','Agenda'];
- [...actions.querySelectorAll('button')].forEach((b,i)=>{b.title=titles[i]||b.textContent.trim();b.setAttribute('aria-label',b.title);shortcuts.appendChild(b);});
- pix.appendChild(shortcuts);
- actions.remove();
- // Dialog separado, fora do LED para evitar clipping do cabeçalho.
- const dialog=document.createElement('dialog');dialog.id='cx-supervisao-note-dialog';
- dialog.innerHTML='<form method="dialog"><h3 style="margin:0 0 12px">Recado para o próximo supervisor</h3><textarea id="cx-note-editor" maxlength="2000" required placeholder="Escreva a orientação do turno..."></textarea><p id="cx-note-error" role="alert" style="color:#a5242b;font-size:12px;min-height:17px;margin:5px 0"></p><menu><button value="cancel" type="submit">Cancelar</button><button id="cx-note-save" type="button">Salvar recado</button></menu></form>';
- document.body.appendChild(dialog);
- $('cx-led-note-write').addEventListener('click',()=>{$('cx-note-editor').value=currentNote?.mensagem||'';$('cx-note-error').textContent='';dialog.showModal();});
- $('cx-note-save').addEventListener('click',async()=>{const msg=$('cx-note-editor').value.trim();if(!msg){$('cx-note-error').textContent='Digite o recado.';return;}const btn=$('cx-note-save');btn.disabled=true;try{await changeNote('POST',ENDPOINT,{mensagem:msg});dialog.close();}catch(e){$('cx-note-error').textContent=e.message;}finally{btn.disabled=false;}});
- $('cx-led-note-delete').addEventListener('click',async()=>{if(!confirm('Apagar o recado atual?'))return;try{await changeNote('DELETE',ENDPOINT);}catch(e){alert(e.message);}});
- $('cx-led-note-read').addEventListener('click',async()=>{try{await changeNote('POST',ENDPOINT+'/confirmar');}catch(e){alert(e.message);}});
- getNote();
- return true;
+ const shortcuts=document.createElement('div');shortcuts.className='cx-led-shortcuts';const labels=['Agendar entrega','Ocultar ou mostrar atribuídas','Bairros','Mapa','Agenda'];
+ [...actions.querySelectorAll('button')].forEach((b,i)=>{b.title=labels[i]||b.textContent.trim();b.setAttribute('aria-label',b.title);shortcuts.appendChild(b)});
+ host.appendChild(shortcuts);actions.remove();
+ const dialog=document.createElement('dialog');dialog.id='cx-supervisao-note-dialog';dialog.innerHTML='<form method="dialog"><h3>Recado para o próximo supervisor</h3><textarea id="cx-note-editor" maxlength="2000" required placeholder="Escreva o recado do turno..."></textarea><p id="cx-note-error" role="alert"></p><menu><button value="cancel">Cancelar</button><button type="button" id="cx-note-save">Salvar recado</button></menu></form>';document.body.appendChild(dialog);
+ get('cx-led-note-write').addEventListener('click',()=>{get('cx-note-editor').value=recado?.mensagem||'';get('cx-note-error').textContent='';dialog.showModal()});
+ get('cx-note-save').addEventListener('click',async()=>{const msg=get('cx-note-editor').value.trim();if(!msg){get('cx-note-error').textContent='Digite um recado';return}const b=get('cx-note-save');b.disabled=true;try{await mutate('POST',endpoint,{mensagem:msg});dialog.close()}catch(e){get('cx-note-error').textContent=e.message}finally{b.disabled=false}});
+ get('cx-led-note-read').addEventListener('click',async()=>{try{await mutate('POST',endpoint+'/confirmar')}catch(e){alert(e.message)}});
+ get('cx-led-note-delete').addEventListener('click',async()=>{if(!confirm('Apagar o recado?'))return;try{await mutate('DELETE',endpoint)}catch(e){alert(e.message)}});
+ const slider=get('cx-brightness');if(slider){try{slider.value=localStorage.getItem('cx_sup_brightness')||'100'}catch(_){}const change=()=>{document.documentElement.style.filter='brightness('+(Number(slider.value)/100)+')';try{localStorage.setItem('cx_sup_brightness',slider.value)}catch(_){}};slider.addEventListener('input',change);change()}
+ show();fetchNote();return true;
 }
-function init(){
- if(!build()){
-  let tries=0;
-  const t=setInterval(()=>{tries++;if(build()||tries>45)clearInterval(t)},400);
- }
-}
-window.addEventListener('coopex-led-entry',e=>showEvent('entry',e.detail));
-window.addEventListener('coopex-led-exit',e=>showEvent('exit',e.detail));
-window.addEventListener('coopex-led-pix',e=>updatePix(e.detail));
-window.addEventListener('coopex-led-note-changed',getNote);
+window.addEventListener('coopex-led-entry',e=>onEntry(e.detail));
+window.addEventListener('coopex-led-exit',e=>onExit(e.detail));
+window.addEventListener('coopex-led-pix',e=>onPix(e.detail));
+window.addEventListener('coopex-led-fila',e=>{fila=e.detail||[];show()});
+window.addEventListener('coopex-led-note-changed',fetchNote);
+function init(){if(!build()){let attempt=0;const timer=setInterval(()=>{attempt++;if(build()||attempt>80)clearInterval(timer)},250)}}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
