@@ -1950,3 +1950,109 @@ body .filters-form input,body .filters-form select,body #cx-pix-avulso input{
  box-shadow:inset 0 2px 4px rgba(225,245,255,.26),0 4px 9px var(--cx-softshadow)!important
 }
 </style>
+
+<style id="coopex-iconografia-colorida-vidro-v25">
+/* Ícones gráficos em vez de caracteres (!) indistintos. Contraste para os dois temas. */
+body #tbl .tabela :is(.status-editable,.pagamento-editable){
+ width:38px!important;height:38px!important;min-width:38px!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ cursor:pointer!important;vertical-align:middle!important
+}
+body #tbl .tabela :is(.status-editable,.pagamento-editable)>.pill{
+ display:inline-flex!important;position:relative!important;
+ align-items:center!important;justify-content:center!important;
+ width:34px!important;height:34px!important;min-height:34px!important;min-width:34px!important;
+ padding:0!important;margin:0!important;border-radius:11px!important;
+ border:1px solid var(--cx-icon-border)!important;
+ background:linear-gradient(145deg,var(--cx-icon-top),var(--cx-icon-bottom))!important;
+ color:var(--cx-icon-color)!important;
+ -webkit-text-fill-color:var(--cx-icon-color)!important;
+ box-shadow:inset 0 2px 2px #ffffffbf,0 3px 0 var(--cx-icon-shadow),0 6px 12px #173b6970!important;
+ font-size:0!important;text-shadow:none!important;
+ transition:transform .16s ease,box-shadow .16s ease!important
+}
+body #tbl .tabela :is(.status-editable,.pagamento-editable):hover>.pill{transform:translateY(-2px)!important}
+body #tbl .tabela :is(.status-editable,.pagamento-editable)>.pill::after{
+ content:""!important;display:block!important;
+ width:21px!important;height:21px!important;flex:none!important;
+ background:var(--cx-icon-color)!important;
+ -webkit-mask-image:var(--cx-icon-image)!important;mask-image:var(--cx-icon-image)!important;
+ -webkit-mask-position:center!important;mask-position:center!important;
+ -webkit-mask-repeat:no-repeat!important;mask-repeat:no-repeat!important;
+ -webkit-mask-size:contain!important;mask-size:contain!important;
+ filter:none!important
+}
+body #tbl .tabela .status-editable .pill.red{--cx-icon-color:#bd5718!important;--cx-icon-top:#fff!important;--cx-icon-bottom:#fff2e1!important;--cx-icon-border:#f4ab55!important;--cx-icon-shadow:color-mix(in srgb,#bd5718,transparent 67%)!important;--cx-icon-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.25%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M12%203a9%209%200%201%200%209%209M12%207v5l3%202%22%2F%3E%3C%2Fsvg%3E")!important}
+body #tbl .tabela .status-editable .pill.yellow{--cx-icon-color:#187b54!important;--cx-icon-top:#fff!important;--cx-icon-bottom:#e2fff0!important;--cx-icon-border:#61d6a7!important;--cx-icon-shadow:color-mix(in srgb,#187b54,transparent 67%)!important;--cx-icon-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.25%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M20%207%2010%2017l-5-5%20M12%202a10%2010%200%201%200%2010%2010%22%2F%3E%3C%2Fsvg%3E")!important}
+body #tbl .tabela .status-editable .pill.blue{--cx-icon-color:#6344b5!important;--cx-icon-top:#fff!important;--cx-icon-bottom:#efe8ff!important;--cx-icon-border:#ad92ef!important;--cx-icon-shadow:color-mix(in srgb,#6344b5,transparent 67%)!important;--cx-icon-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.25%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M7%202v4%20M17%202v4%20M3%209h18%20M5%204h14a2%202%200%200%201%202%202v13a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V6a2%202%200%200%201%202-2Z%20M9%2013h6%22%2F%3E%3C%2Fsvg%3E")!important}
+body #tbl .tabela .pagamento-editable .pill.red{--cx-icon-color:#ad3a66!important;--cx-icon-top:#fff!important;--cx-icon-bottom:#ffe6ef!important;--cx-icon-border:#f5a1bd!important;--cx-icon-shadow:color-mix(in srgb,#ad3a66,transparent 67%)!important;--cx-icon-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.25%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M3%207h16a2%202%200%200%201%202%202v10a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V7Z%20M3%207V5a2%202%200%200%201%202-2h13%20M15%2014h3%20M16.5%2012.5v3%22%2F%3E%3C%2Fsvg%3E")!important}
+body #tbl .tabela .pagamento-editable .pill.green{--cx-icon-color:#087a62!important;--cx-icon-top:#fff!important;--cx-icon-bottom:#d9fff0!important;--cx-icon-border:#5bdbaf!important;--cx-icon-shadow:color-mix(in srgb,#087a62,transparent 67%)!important;--cx-icon-image:url("data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2024%2024%22%3E%3Cpath%20fill%3D%22none%22%20stroke%3D%22black%22%20stroke-width%3D%222.25%22%20stroke-linecap%3D%22round%22%20stroke-linejoin%3D%22round%22%20d%3D%22M3%207h16a2%202%200%200%201%202%202v10a2%202%200%200%201-2%202H5a2%202%200%200%201-2-2V7Z%20M3%207V5a2%202%200%200%201%202-2h13%20M12%2014l2%202%204-4%22%2F%3E%3C%2Fsvg%3E")!important}
+
+/* Temas: botões permanecem coloridos e visíveis, sem ícone sumir no gelo. */
+body.cx-sup-night #tbl .tabela :is(.status-editable,.pagamento-editable)>.pill{
+ --cx-icon-top:#315478!important;--cx-icon-bottom:#203c60!important;
+ box-shadow:inset 0 2px 3px #c5eaff43,0 3px 0 #071a36,0 6px 12px #041631b5!important
+}
+body.cx-sup-night #tbl .tabela .status-editable .pill.red,body.cx-sup-night #tbl .tabela .pagamento-editable .pill.red{--cx-icon-color:#ffb4c0!important;--cx-icon-border:#d66a83!important}
+body.cx-sup-night #tbl .tabela .status-editable .pill.yellow,body.cx-sup-night #tbl .tabela .pagamento-editable .pill.green{--cx-icon-color:#7cfdc2!important;--cx-icon-border:#46b78e!important}
+body.cx-sup-night #tbl .tabela .status-editable .pill.blue{--cx-icon-color:#d1b4ff!important;--cx-icon-border:#9b7ddc!important}
+/* Câmera e download: ícones vetoriais preservando links e permissões. */
+body #tbl .tabela .recb-wrap{display:flex!important;flex-direction:column!important;align-items:center!important;gap:3px!important;min-width:0!important}
+body #tbl .tabela .foto-btn,body #tbl .tabela .foto-dl{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:35px!important;height:35px!important;min-width:35px!important;min-height:35px!important;
+ padding:0!important;margin:0!important;vertical-align:middle!important;
+ border-radius:11px!important;border:1px solid #9ac6ee!important;
+ background:linear-gradient(140deg,#fff,#d0ecff)!important;
+ box-shadow:inset 0 2px 3px #fff,0 3px 0 #8bb9db66,0 6px 11px #1d477963!important;
+ font-size:0!important;color:#145aa9!important;-webkit-text-fill-color:#145aa9!important;
+ text-decoration:none!important;opacity:1!important;filter:none!important
+}
+body #tbl .tabela .foto-btn.foto-ok{border-color:#63caa1!important;background:linear-gradient(145deg,#fff,#bdf4d8)!important;color:#087f60!important;-webkit-text-fill-color:#087f60!important}
+body #tbl .tabela .foto-btn.foto-no{border-color:#df9fa6!important;background:linear-gradient(145deg,#fff,#f8dce1)!important;color:#a34d5d!important;-webkit-text-fill-color:#a34d5d!important}
+body #tbl .tabela .foto-btn svg,body #tbl .tabela .foto-dl svg{
+ width:21px!important;height:21px!important;flex:none!important;display:block!important;
+ stroke:currentColor!important;fill:none!important;stroke-width:2!important;
+ filter:drop-shadow(0 1px 1px #ffffffa8)!important
+}
+body.cx-sup-night #tbl .tabela .foto-btn,body.cx-sup-night #tbl .tabela .foto-dl{
+ background:linear-gradient(145deg,#355a82,#1e4066)!important;
+ color:#c4e2ff!important;-webkit-text-fill-color:#c4e2ff!important;
+ border-color:#6b9dcc!important;box-shadow:inset 0 2px 3px #ffffff42,0 4px 10px #04172dae!important
+}
+body.cx-sup-night #tbl .tabela .foto-btn.foto-ok{color:#78e9b6!important;-webkit-text-fill-color:#78e9b6!important;border-color:#42b989!important}
+body.cx-sup-night #tbl .tabela .foto-btn.foto-no{color:#ffb9c5!important;-webkit-text-fill-color:#ffb9c5!important;border-color:#c3788c!important}
+body #tbl .tabela .recb-nome{color:var(--cx-title)!important;-webkit-text-fill-color:var(--cx-title)!important;font-weight:750!important;opacity:1!important}
+body #tbl .tabela .foto-btn:hover,body #tbl .tabela .foto-dl:hover{transform:translateY(-2px)!important}
+/* Status e pagamento conservam comportamento clicável e nomes acessíveis. */
+</style>
+
+<script id="coopex-camera-vetorial-v25">
+(function(){
+ const icons={
+  camera:'<svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M3 7h4l2-3h6l2 3h4v12H3z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  download:'<svg viewBox="0 0 24 24" role="img" aria-hidden="true"><path d="M12 3v12m-5-5 5 5 5-5M4 17v4h16v-4"/></svg>'
+ };
+ function apply(root){
+  (root||document).querySelectorAll('#tbl .tabela .foto-btn,#tbl .tabela .foto-dl').forEach(el=>{
+   if(el.dataset.cxCameraVector==='1')return;
+   el.dataset.cxCameraVector='1';
+   const isDownload=el.classList.contains('foto-dl');
+   el.replaceChildren();
+   const holder=document.createElement('span');holder.innerHTML=isDownload?icons.download:icons.camera;
+   el.appendChild(holder.firstElementChild);
+   if(!el.hasAttribute('aria-label'))el.setAttribute('aria-label',el.title|| (isDownload?'Baixar foto':'Foto do recebedor'));
+  });
+ }
+ function init(){
+  const table=document.getElementById('tbl');if(!table)return;
+  apply(table);
+  // Cobre eventuais atualizações de linhas sem recriar nem alterar os links.
+  const observer=new MutationObserver(mutations=>{
+   if(mutations.some(m=>m.addedNodes.length))apply(table);
+  });
+  observer.observe(table,{childList:true,subtree:true});
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
