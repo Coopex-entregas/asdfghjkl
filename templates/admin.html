@@ -2910,3 +2910,118 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+<style id="coopex-meia-tela-toggle-v32">
+/* Alternador binário, com a cor de todo o sistema herdada do tema existente. */
+body .bank-toolbar .cx-brightness-control{
+ width:43px!important;min-width:43px!important;max-width:43px!important;flex:0 0 43px!important;
+ height:39px!important;min-height:39px!important;
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ gap:0!important;margin:0 3px!important;padding:0!important;
+ cursor:pointer!important;overflow:hidden!important;
+ background:linear-gradient(140deg,#eaf7ff,#a7d4fc)!important;
+ border:2px solid #fff!important;border-radius:12px!important;
+ box-shadow:inset 0 2px 3px #ffffffd6,0 4px 9px #0a438582!important
+}
+body .bank-toolbar .cx-brightness-control input#cx-brightness{
+ position:absolute!important;width:1px!important;height:1px!important;
+ min-width:0!important;max-width:1px!important;
+ opacity:0!important;overflow:hidden!important;
+ pointer-events:none!important;clip-path:inset(50%)!important
+}
+body .bank-toolbar .cx-brightness-control :is(.cx-brightness-caption,.cx-brightness-moon,.cx-brightness-sun){display:none!important}
+body .bank-toolbar .cx-brightness-control .cx-theme-glyph{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:26px!important;height:26px!important;color:#0a54a5!important;
+}
+body .bank-toolbar .cx-brightness-control .cx-theme-glyph svg{width:22px!important;height:22px!important;stroke:currentColor!important;fill:none!important;stroke-width:2!important;stroke-linecap:round!important;stroke-linejoin:round!important}
+body.cx-sup-night .bank-toolbar .cx-brightness-control{
+ background:linear-gradient(145deg,#345f8f,#163960)!important;border-color:#8ebde8!important
+}
+body.cx-sup-night .bank-toolbar .cx-brightness-control .cx-theme-glyph{color:#fff1b0!important}
+/* Zoom 75% ou 80% e meia tela: layout fluido, sem comprimir fonte ou sobrepor ações. */
+body .bank-toolbar-wrap,body .bank-toolbar{max-width:100%!important;box-sizing:border-box!important}
+body .bank-toolbar{display:flex!important;flex-wrap:wrap!important;align-items:center!important;justify-content:flex-start!important;gap:4px!important}
+body .bank-toolbar .bank-group>.bank-group-btn{
+ font-size:13px!important;line-height:1.25!important;white-space:nowrap!important;
+ min-height:39px!important;height:39px!important;padding:5px 9px!important
+}
+body .bank-toolbar .cx-menu-icon svg{width:18px!important;height:18px!important}
+body .bank-toolbar .cx-day-inline{max-width:100%!important;min-width:0!important}
+body .bank-toolbar .cx-day-inline .cx-day-label strong{font-size:12px!important}
+body .bank-toolbar #cx-supervisao-board.cx-led-compact{min-width:260px!important}
+body .filters-form{min-width:0!important;max-width:100%!important}
+body .filters-form .field{min-width:0!important}
+body .filters-form label{font-size:12px!important}
+body .filters-form :is(input,select){font-size:13px!important}
+body .quick-delivery-actions{display:flex!important;flex-wrap:wrap!important;align-items:center!important;gap:5px!important;min-width:0!important;max-width:100%!important}
+body .quick-delivery-actions .btn{width:auto!important;min-height:36px!important;flex:0 0 auto!important}
+body #tbl{width:100%!important;max-width:100%!important;overflow-x:auto!important;overflow-y:auto!important}
+body #tbl table.tabela{min-width:1320px!important;table-layout:auto!important}
+body #tbl table.tabela tbody td:nth-child(3){min-width:250px!important}
+body #tbl table.tabela tbody td:last-child{min-width:155px!important}
+body #tbl table.tabela tbody td .actions{display:flex!important;flex-wrap:nowrap!important;min-width:max-content!important}
+@media(max-width:1280px){
+ body .bank-toolbar #cx-supervisao-board.cx-led-compact{flex:1 1 100%!important;order:95!important;min-width:0!important;margin:2px 0!important}
+ body .bank-toolbar-wrap .bank-toolbar>a.logout.cx-menu-logout{margin-left:auto!important;order:21!important}
+ body .filters-top{display:flex!important;flex-direction:column!important;align-items:stretch!important;gap:6px!important}
+ body .filters-form{
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+  flex:0 0 auto!important;width:100%!important;gap:6px!important
+ }
+ body .quick-delivery-actions{width:100%!important}
+ body .viewport .panel .table-wrap#tbl{max-width:100%!important}
+}
+@media(max-width:750px){
+ body .filters-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body .bank-toolbar{gap:3px!important}
+ body .bank-toolbar .bank-group>.bank-group-btn{font-size:12px!important;padding:4px 7px!important}
+ body .bank-toolbar #cx-supervisao-board.cx-led-compact{order:95!important}
+ body #cx-pix-avulso{flex-wrap:wrap!important}
+ body #tbl table.tabela{min-width:1260px!important}
+}
+</style>
+
+<script id="coopex-meia-tela-toggle-script-v32">
+(function(){
+'use strict';
+function init(){
+ const input=document.getElementById('cx-brightness');
+ const wrapper=input?.closest('.cx-brightness-control');
+ if(!wrapper)return false;
+ if(wrapper.dataset.cxBinaryToggle)return true;
+ wrapper.dataset.cxBinaryToggle='1';
+ const icon=document.createElement('span');icon.className='cx-theme-glyph';icon.setAttribute('aria-hidden','true');wrapper.appendChild(icon);
+ wrapper.tabIndex=0;wrapper.setAttribute('role','button');
+ const sun='<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2v2m0 16v2M4.93 4.93l1.42 1.42m11.3 11.3 1.42 1.42M2 12h2m16 0h2M4.93 19.07l1.42-1.42m11.3-11.3 1.42-1.42"/></svg>';
+ const moon='<svg viewBox="0 0 24 24"><path d="M20.7 13.1A8.6 8.6 0 0 1 10.9 3.3 8.8 8.8 0 1 0 20.7 13.1Z"/></svg>';
+ function update(){
+  const night=Number(input.value)<80;
+  icon.innerHTML=night?moon:sun;
+  wrapper.setAttribute('aria-label',night?'Modo escuro ativo. Alternar para modo claro':'Modo claro ativo. Alternar para modo escuro');
+  wrapper.title=night?'Mudar para o modo claro':'Mudar para o modo escuro';
+  wrapper.setAttribute('aria-pressed',String(night));
+ }
+ function toggle(){
+  input.value=Number(input.value)<80?'100':'0';
+  input.dispatchEvent(new Event('input',{bubbles:true}));
+  input.dispatchEvent(new Event('change',{bubbles:true}));
+  update();
+ }
+ wrapper.addEventListener('click',e=>{if(e.target===input)return;toggle()});
+ wrapper.addEventListener('keydown',e=>{if(e.key==='Enter'||e.key===' '){e.preventDefault();toggle()}});
+ input.addEventListener('input',update);
+ // Retém preferência de outras páginas sem trocar para um terceiro tema intermediário.
+ try{
+  const stored=localStorage.getItem('cx_sup_brightness');
+  if(stored!==null){
+   const desired=Number(stored)<80?'0':'100';
+   if(input.value!==desired){input.value=desired;input.dispatchEvent(new Event('input',{bubbles:true}))}
+  }
+ }catch(e){}
+ update();
+}
+function boot(){if(init())return;let n=0;const timer=setInterval(()=>{if(init()||++n>100)clearInterval(timer)},100)}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
