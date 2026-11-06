@@ -3067,3 +3067,131 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
+
+<style id="coopex-led-meiatela-sem-rolagem-v34">
+/* Uma faixa fixa com menu de vidro e LED em 100% da largura. */
+body .bank-toolbar-wrap{position:sticky!important;top:0!important;z-index:5000!important;
+ display:flex!important;flex-direction:column!important;gap:3px!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;
+ padding:5px 8px!important;box-sizing:border-box!important;
+ border:2px solid #dff1ff!important;border-radius:15px!important;
+ background:linear-gradient(120deg,#3489d2,#205da8 56%,#153e7a)!important;
+ box-shadow:inset 0 2px 4px #e8faff8a,0 5px 0 #1c467554,0 10px 20px #04244b67!important;
+ backdrop-filter:blur(18px) saturate(1.25)!important;-webkit-backdrop-filter:blur(18px) saturate(1.25)!important;
+ overflow:visible!important}
+body.cx-sup-night .bank-toolbar-wrap{background:linear-gradient(120deg,#25517d,#163c66 55%,#0c2b51)!important;border-color:#8bbdec!important}
+body .bank-toolbar-wrap>.bank-toolbar{display:flex!important;align-items:center!important;flex-wrap:wrap!important;
+ gap:3px!important;width:100%!important;min-height:38px!important;padding:0 2px!important;box-sizing:border-box!important;
+ border:0!important;box-shadow:none!important;background:transparent!important}
+body .bank-toolbar .bank-group>.bank-group-btn{min-height:36px!important;height:36px!important;font-size:12px!important;padding:4px 8px!important;white-space:nowrap!important}
+body .bank-toolbar-wrap>#cx-supervisao-board.cx-led-compact{
+ display:block!important;flex:0 0 51px!important;order:2!important;
+ width:100%!important;min-width:0!important;max-width:100%!important;height:51px!important;min-height:51px!important;max-height:51px!important;
+ margin:0!important;padding:3px!important;box-sizing:border-box!important;border-radius:12px!important;
+ background:linear-gradient(135deg,#285a8a,#17436c)!important;border:1px solid #9ad0fa!important;
+ box-shadow:inset 0 2px 4px #d5ecff7b,0 4px 8px #0a2a558c!important}
+body .bank-toolbar-wrap>#cx-supervisao-board .cx-led-top{display:none!important}
+body .bank-toolbar-wrap>#cx-supervisao-board .cx-led-screen{
+ height:43px!important;min-height:43px!important;max-height:43px!important;
+ width:100%!important;overflow:hidden!important;border:1px solid #579ad6!important;
+ border-radius:9px!important;background:linear-gradient(125deg,#04182c,#0a2a4e)!important}
+body .bank-toolbar-wrap>#cx-supervisao-board .cx-gelo-led-track{
+ position:absolute!important;inset:2px 5px auto!important;display:flex!important;align-items:center!important;
+ width:calc(100% - 10px)!important;height:22px!important;min-height:22px!important}
+body .bank-toolbar-wrap>#cx-supervisao-board .cx-gelo-led-track span{
+ font-size:clamp(12px,1vw,17px)!important;white-space:nowrap!important}
+body .bank-toolbar-wrap>#cx-supervisao-board .cx-led-note-static{
+ height:16px!important;max-height:16px!important;min-height:16px!important;
+ padding:1px 5px!important;font-size:10px!important;bottom:2px!important;left:5px!important;right:5px!important}
+body .bank-toolbar-wrap .cx-day-inline{display:none!important}
+body .viewport .panel .table-wrap#tbl{height:var(--cx-live-table-height,65dvh)!important;max-height:var(--cx-live-table-height,65dvh)!important}
+/* Meio monitor: cartão por entrega, sem reduzir fonte nem exigir scroll horizontal. */
+@media(max-width:1370px){
+ body .filters-top{flex-direction:column!important;align-items:stretch!important;gap:5px!important}
+ body .filters-form{display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ width:100%!important;min-width:0!important;gap:6px!important;flex:0 0 auto!important}
+ body .filters-form .field{min-width:0!important}
+ body #tbl.table-wrap{overflow-x:hidden!important;overflow-y:auto!important;max-width:100%!important}
+ body #tbl table.tabela{display:block!important;min-width:0!important;max-width:100%!important;width:100%!important;table-layout:auto!important}
+ body #tbl table.tabela thead{display:none!important}
+ body #tbl table.tabela tbody{display:flex!important;flex-direction:column!important;gap:7px!important;padding:6px!important;background:transparent!important}
+ body #tbl table.tabela tbody>tr:nth-child(n){
+  display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:4px 7px!important;
+  width:100%!important;max-width:100%!important;min-width:0!important;
+  padding:9px!important;box-sizing:border-box!important;
+  background:var(--cx-table-gloss),var(--cx-table-base)!important;
+  border:1px solid var(--cx-ice-border)!important;border-radius:14px!important;
+  box-shadow:inset 0 2px 4px #c9ebff27,0 4px 8px #052f6b40!important}
+ body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n){
+  display:flex!important;flex-direction:column!important;align-items:flex-start!important;justify-content:flex-start!important;
+  gap:2px!important;min-width:0!important;max-width:100%!important;width:auto!important;
+  padding:3px 4px!important;box-sizing:border-box!important;font-size:12px!important;line-height:1.35!important;
+  white-space:normal!important;overflow-wrap:anywhere!important;word-break:normal!important;
+  border:0!important;background:transparent!important;background-image:none!important;box-shadow:none!important}
+ body #tbl table.tabela tbody>tr>td::before{
+  content:attr(data-cx-label);display:block!important;font:900 10px/1.2 Inter,system-ui,sans-serif!important;
+  color:var(--cx-text)!important;-webkit-text-fill-color:var(--cx-text)!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(1){grid-column:1!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(2){grid-column:2/span 2!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(4){grid-column:4!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(3){grid-column:1/-1!important;grid-row:2!important;min-width:0!important;
+  border-top:1px solid var(--cx-table-seam)!important;padding-top:6px!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(5){grid-column:1!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(6){grid-column:2!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(7){grid-column:3!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(8){grid-column:4!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(9){grid-column:1!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(10){grid-column:2!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(11){grid-column:3!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(12){grid-column:4!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(13){grid-column:1!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(14){grid-column:2/-1!important;min-width:0!important;white-space:normal!important}
+ body #tbl table.tabela tbody td .actions{min-width:0!important;max-width:100%!important;flex-wrap:wrap!important;justify-content:flex-start!important}
+ body #tbl table.tabela tbody td :is(.value-editable,.coop-editable,.recb-nome){font-size:12px!important}
+ body #tbl table.tabela tbody td .foto-btn{min-width:30px!important;width:30px!important;min-height:30px!important;height:30px!important}
+}
+@media(max-width:760px){
+ body .filters-form{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body #tbl table.tabela tbody>tr:nth-child(n){grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(1){grid-column:1!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(2){grid-column:2!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(3){grid-column:1/-1!important;grid-row:auto!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(n+4):nth-child(-n+13){grid-column:auto!important}
+ body #tbl table.tabela tbody>tr>td:nth-child(14){grid-column:1/-1!important}
+}
+</style>
+
+<script id="coopex-led-meiatela-script-v34">
+(function(){
+'use strict';
+const labels=['Pedido','Cliente','Endereço','Valor','Data','Pedido às','Atribuição','Cooperado','Forma','Status','Pagamento','Recebedor','GPS','Ações'];
+function labelCards(){
+ const t=document.querySelector('#tbl table.tabela tbody');if(!t)return;
+ for(const tr of t.rows){Array.from(tr.cells).forEach((td,i)=>{if(i<labels.length)td.setAttribute('data-cx-label',labels[i])})}
+}
+function move(){
+ const board=document.getElementById('cx-supervisao-board'),wrap=document.querySelector('.bank-toolbar-wrap');
+ if(!board||!wrap)return false;
+ if(board.parentElement!==wrap)wrap.appendChild(board);
+ board.classList.add('cx-led-compact');
+ return true;
+}
+function fit(){
+ const t=document.getElementById('tbl');if(!t)return;
+ t.style.setProperty('--cx-live-table-height',Math.max(180,window.innerHeight-t.getBoundingClientRect().top-5)+'px');
+}
+function init(){
+ move();labelCards();fit();
+ const body=document.querySelector('#tbl table.tabela tbody');
+ if(body)new MutationObserver(m=>{if(m.some(x=>x.addedNodes.length))labelCards()}).observe(body,{childList:true});
+ if(typeof ResizeObserver==='function'){
+  const ro=new ResizeObserver(()=>requestAnimationFrame(fit));
+  for(const el of [document.querySelector('.bank-toolbar-wrap'),document.querySelector('.filters-bar')])if(el)ro.observe(el);
+ }
+ window.addEventListener('resize',()=>requestAnimationFrame(fit));
+ window.addEventListener('pageshow',()=>{move();fit()});
+ if(!document.getElementById('cx-supervisao-board')){let n=0;const h=setInterval(()=>{if(move()||++n>80)clearInterval(h)},100)}
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
+})();
+</script>
