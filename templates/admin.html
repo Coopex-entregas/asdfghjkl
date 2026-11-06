@@ -1653,31 +1653,7 @@ body #cx-led-sound-enable[data-enabled=true]{
 }
 body.cx-sup-night #cx-led-sound-enable{box-shadow:inset 0 2px 4px #ffffff76,0 5px 10px #041b39a8!important}
 </style>
-<script id="coopex-alerta-audio-real-time-v21">
-(function(){
-function init(){
- const bar=document.querySelector('#cx-led-menu-controls')||document.querySelector('#cx-supervisao-board .cx-led-buttons');
- if(!bar)return false;
- if(document.getElementById('cx-led-sound-enable'))return true;
- const btn=document.createElement('button');
- btn.id='cx-led-sound-enable';btn.type='button';btn.dataset.enabled='false';
- btn.textContent='🔔 Ativar som';btn.title='Habilitar áudio de entrada e saída da fila neste navegador';
- bar.prepend(btn);
- btn.addEventListener('click',async()=>{
-  // Desbloqueia o áudio no contexto de uma interação do usuário.
-  if(typeof window.__coopexLedUnlockAudio==='function'){
-   const ok=await window.__coopexLedUnlockAudio();
-   btn.dataset.enabled=String(ok);btn.textContent=ok?'🔊 Som ativo':'🔔 Ativar som';
-  }else{btn.textContent='Som indisponível';}
- });
- window.addEventListener('coopex-led-audio-state',e=>{
-  const ok=Boolean(e.detail?.enabled);btn.dataset.enabled=String(ok);btn.textContent=ok?'🔊 Som ativo':'🔔 Ativar som';
- });
- return true;
-}
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{if(!init()){let i=0;const h=setInterval(()=>{if(init()||++i>60)clearInterval(h)},250)}},{once:true});else if(!init()){let i=0;const h=setInterval(()=>{if(init()||++i>60)clearInterval(h)},250)}
-})();
-</script>
+
 
 <style id="coopex-noturno-global-contraste-v22">
 /* O controle de luz altera toda a interface. Nada branco na tabela em modo noturno. */
@@ -3480,5 +3456,107 @@ function init(){
 }
 function boot(){if(init())return;let n=0;const t=setInterval(()=>{if(init()||++n>100)clearInterval(t)},100)}
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',boot,{once:true});else boot();
+})();
+</script>
+
+
+<style id="coopex-fila-contador-acoes-v38">
+/* Sem botão redundante para som: áudio desbloqueado na primeira interação com a página. */
+body #cx-led-sound-enable{display:none!important}
+body .bank-toolbar .bank-group .queue-count,
+body .bank-toolbar .bank-group [data-request-count]{
+ min-width:28px!important;min-height:23px!important;
+ font:950 13px/1 Inter,system-ui,sans-serif!important;
+ opacity:1!important;visibility:visible!important
+}
+/* Comandos compactos em símbolos de vidro, acessíveis por título e leitor de tela. */
+body #cx-led-menu-controls button.cx-symbol-action{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ flex:0 0 32px!important;width:32px!important;max-width:32px!important;
+ min-width:32px!important;min-height:32px!important;height:32px!important;
+ padding:4px!important;margin:0!important;border-radius:10px!important;
+ border:1px solid var(--cx-ice-border)!important;
+ background:linear-gradient(140deg,var(--cx-surface),var(--cx-surface2))!important;
+ color:var(--cx-icon-ink)!important;-webkit-text-fill-color:var(--cx-icon-ink)!important;
+ box-shadow:inset 0 2px 3px #ffffff69,0 3px 8px #052a5e78!important;
+ font-size:0!important
+}
+body #cx-led-menu-controls button.cx-symbol-action svg{
+ display:block!important;width:19px!important;height:19px!important;
+ stroke:currentColor!important;fill:none!important;stroke-width:2!important;
+ stroke-linecap:round!important;stroke-linejoin:round!important
+}
+body #cx-led-menu-controls #cx-led-note-write.cx-symbol-action{
+ border-color:#edb35e!important;
+ background:linear-gradient(145deg,#fff5dd,#f0bd6c)!important;
+ color:#8c4b12!important;-webkit-text-fill-color:#8c4b12!important
+}
+body.cx-sup-night #cx-led-menu-controls button.cx-symbol-action{
+ background:linear-gradient(145deg,#396595,#1c406a)!important;
+ color:#dcefff!important;-webkit-text-fill-color:#dcefff!important
+}
+body.cx-sup-night #cx-led-menu-controls #cx-led-note-write.cx-symbol-action{
+ background:linear-gradient(145deg,#9b6c36,#5d371b)!important;color:#ffe6ae!important
+}
+</style>
+<script id="coopex-fila-contador-acoes-script-v38">
+(function(){
+'use strict';
+const paths={
+ 'btnMarcarTodasEntregues':'M4 12l5 5L20 6M4 5h8M4 20h12',
+ 'cx-led-note-write':'M12 20h9M16 4l4 4-11 11-5 1 1-5L16 4z',
+ 'cx-led-note-read':'M20 6 9 17l-5-5',
+ 'cx-led-note-delete':'M4 7h16M9 7V4h6v3m-9 0 1 14h10l1-14M10 11v6m4-6v6'
+};
+const labels={
+ 'btnMarcarTodasEntregues':'Marcar todas as entregas exibidas como entregues',
+ 'cx-led-note-write':'Escrever recado',
+ 'cx-led-note-read':'Confirmar leitura do recado',
+ 'cx-led-note-delete':'Apagar recado'
+};
+function queueBadge(){
+ return document.querySelector('.bank-toolbar .bank-group:has(.queue-submenu) > .bank-group-btn .queue-count');
+}
+function setQueueCount(items){
+ if(!Array.isArray(items))return;
+ const badge=queueBadge();
+ if(!badge)return;
+ badge.textContent=String(items.length);
+ badge.setAttribute('aria-label',items.length+' cooperados na fila');
+ badge.title=items.length+' cooperados na fila';
+}
+async function restoreQueue(){
+ try{
+  const r=await fetch('/api/admin/pix-led-fila',{credentials:'same-origin',cache:'no-store'});
+  if(!r.ok)return;
+  const result=await r.json();
+  if(Array.isArray(result.cooperados))setQueueCount(result.cooperados);
+ }catch(e){console.warn('Contador da fila: sincronização indisponível',e)}
+}
+function compactButtons(){
+ for(const [id,path] of Object.entries(paths)){
+  const button=document.getElementById(id);
+  if(!button||button.dataset.cxSymbolAction)return;
+  button.dataset.cxSymbolAction='1';
+  button.classList.add('cx-symbol-action');
+  button.setAttribute('aria-label',labels[id]);
+  button.title=labels[id];
+  button.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true"><path d="'+path+'"/></svg>';
+ }
+}
+function init(){
+ compactButtons();
+ const sound=document.getElementById('cx-led-sound-enable');if(sound)sound.remove();
+ restoreQueue();
+ // Reutiliza os eventos do LED e do socket: sem consulta repetida ao banco.
+ window.addEventListener('coopex-led-fila',e=>setQueueCount(e.detail));
+ window.addEventListener('coopex-led-socket-ready',restoreQueue);
+ window.addEventListener('pageshow',restoreQueue);
+ if(typeof MutationObserver==='function'){
+  const bar=document.getElementById('cx-led-menu-controls');
+  if(bar)new MutationObserver(()=>compactButtons()).observe(bar,{childList:true});
+ }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',init,{once:true});else init();
 })();
 </script>
