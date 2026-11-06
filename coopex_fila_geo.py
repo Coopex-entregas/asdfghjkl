@@ -83,6 +83,16 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         try:
             db.session.add(row);db.session.commit()
             emitir_lista_espera()
+            # Notificar apenas ENTRADA efetiva; reentradas já existentes não geram bip.
+            try:
+                from app import socketio
+                socketio.emit('coopex_fila_entrada_alerta', {
+                    'cooperado_id': coop.id,
+                    'nome': coop.nome,
+                    'quando': datetime.utcnow().isoformat() + 'Z'
+                }, to='coopex-admin-led')
+            except Exception:
+                app.logger.exception('Entrada salva, mas aviso LED nao emitido')
         except Exception:
             db.session.rollback()
             app.logger.exception('Falha ao entrar na fila')
