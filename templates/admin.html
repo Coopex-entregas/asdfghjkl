@@ -991,3 +991,15 @@ function init(){
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>{init()},{once:true});else init();
 })();
 </script>
+
+<style id="coopex-vidro-led-full-width-v12">
+/* Remover a coluna vazia criada quando o cartão do dia voltou ao menu. */
+body .panel-head:has(#cx-supervisao-board){display:grid!important;grid-template-columns:minmax(0,1fr)!important;grid-template-rows:auto auto!important;gap:6px!important;padding:9px 11px 12px!important}
+body .panel-head:has(#cx-supervisao-board)>#cx-supervisao-board{grid-column:1!important;grid-row:1/span 2!important;width:100%!important;min-width:0!important;margin:0!important}
+body .panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{position:absolute!important;top:14px!important;right:160px!important;left:auto!important;margin:0!important;z-index:5!important;grid-column:1!important;grid-row:1!important;max-width:150px!important;font-size:11px!important}
+body #cx-supervisao-board .cx-led-top{padding-right:310px!important;min-height:40px!important}
+body #cx-supervisao-board .cx-led-screen{height:94px!important;min-height:94px!important;max-height:94px!important}
+body #cx-supervisao-board .cx-gelo-led-track span{font-size:clamp(17px,1.3vw,24px)!important}
+body .bank-toolbar .cx-day-inline{flex:none!important;min-width:170px!important;padding:5px 11px!important;font-size:12px!important}
+@media(max-width:980px){body .panel-head:has(#cx-supervisao-board)>#btnMarcarTodasEntregues{position:static!important;grid-row:1!important;justify-self:start!important;max-width:none!important}body #cx-supervisao-board .cx-led-top{padding-right:0!important}body .panel-head:has(#cx-supervisao-board)>#cx-supervisao-board{grid-row:2!important}}
+</style>
