@@ -2155,8 +2155,6 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
           <span class="diag-chip" id="diagConn"><span class="diag-label">Conexão</span><span class="diag-value">--</span></span>
         </div>
         <div class="kpi kpi-delivery"><div class="kpi-icon">📦</div><div><small>Dia</small><span id="kpiTotalDia">{{ estatisticas.total_dia }}</span></div></div>
-        <div class="kpi kpi-month"><div class="kpi-icon">🗓</div><div><small>Mês</small><span id="kpiTotalMes">{{ estatisticas.total_mes }}</span></div></div>
-        <div class="kpi kpi-year"><div class="kpi-icon">📊</div><div><small>Ano</small><span id="kpiTotalAno">{{ estatisticas.total_ano }}</span></div></div>
       </div>
 
       <label class="cx-brightness-control" for="cx-brightness" title="Ajustar luminosidade visual do painel">
@@ -2353,7 +2351,6 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                 <input type="text" name="endereco" id="endereco" placeholder="Rua, nº, ponto de ref." value="{{ request.args.get('endereco','') }}" />
               </div>
 
-              <button class="btn" type="submit">Filtrar</button>
             </form>
           </div>
 
