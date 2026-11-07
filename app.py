@@ -7541,14 +7541,16 @@ def mapa_motoboys():
         hdg = live.get('heading') if live else None
         speed_saved = live.get('speed') if live else None
         last_seen = live.get('ultima_atualizacao') if live else None
-        online = bool(live and live.get('online'))
+        online_gps = bool(live and live.get('online'))
+        online_painel = bool(c.online and _coopex_online_recente(c.last_ping))
+        online = bool(online_gps or online_painel)
 
         if not _coord_valida(lat, lng):
             latitude_db = saved.latitude if saved and saved.latitude is not None else c.last_lat
             longitude_db = saved.longitude if saved and saved.longitude is not None else c.last_lng
             if _coord_valida(latitude_db, longitude_db):
                 lat, lng = latitude_db, longitude_db
-                online = False
+                # A recuperação de localização não altera a presença online.
                 acc = saved.accuracy if saved else getattr(c, 'last_accuracy_m', None)
                 hdg = saved.heading if saved else getattr(c, 'last_heading', None)
                 speed_saved = saved.speed if saved else getattr(c, 'last_speed_kmh', None)
@@ -7584,6 +7586,8 @@ def mapa_motoboys():
             'lng': float(lng) if tem_localizacao else None,
             'tem_localizacao': bool(tem_localizacao),
             'online': bool(online),
+            'gps_ao_vivo': bool(online_gps),
+            'presenca_painel': bool(online_painel),
             'status': status,
             'idle_seconds': 0 if online else None,
             'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
