@@ -161,6 +161,12 @@ $("addStop").onclick=()=>{const p=selectedAddress||viewPoint||dest();if(!p){$("a
 $("stopsClear").onclick=()=>{stops=[];stopRender();};
 $("routeOpen").onclick=openRoute;$("openNav").onclick=openRoute;$("streetView").onclick=street;$("streetTool").onclick=street;
 
+function showSttuStatus(){
+ const title=$("trafficStatus"),message=$("trafficText");
+ title.textContent="Avisos oficiais STTU";
+ title.style.color="#175aa3";
+ message.textContent="Interdições, obras e alterações de circulação. Ainda não há feed público validado para congestionamentos automáticos.";
+}
 function phase(){document.body.classList.remove("is-night");}
 const rainFx=$("weatherFx");function rain(level){weatherLevel=level;document.body.classList.toggle("is-rain",level>0);rainFx.replaceChildren();if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;const count=[0,8,18,35][level]||0;const frag=document.createDocumentFragment();for(let i=0;i<count;i++){const d=document.createElement("i");d.className="drop";d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.4)+"s";frag.append(d)}rainFx.append(frag)}
 async function weather(){
