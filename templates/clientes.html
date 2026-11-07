@@ -261,20 +261,24 @@
   </style>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_clientes_glass.css') }}">
 </head>
-<body>
+<body class="cx-clientes-2026 cx-linked-glass">
+<script id="cx-clientes-tema-antes-dos-cards">
+(function(){try{const v=localStorage.getItem('cx_sup_brightness');document.body.classList.toggle('dark',v===null?localStorage.getItem('coopex_theme')==='dark':Number(v)<80)}catch(e){}})();
+</script>
 <div class="wrap">
   <div class="top">
     <div class="brand-wrap">
-      <div class="brand-icon">👥</div>
+      <a class="cc-back" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a>
       <div class="title-wrap">
         <h1>Cadastro de Clientes</h1>
         <p>Gerencie e cadastre seus clientes no sistema.</p>
       </div>
     </div>
     <div class="actions">
-      <button id="theme" class="btn alt" type="button" title="Alternar modo claro/escuro">☾</button>
-      <a class="btn alt" href="{{ url_for('admin') }}">← Painel administrativo</a>
+      
+      
       <a class="btn" href="{{ url_for('creditos') }}">Créditos</a>
     </div>
   </div>
@@ -514,37 +518,7 @@ document.getElementById('btnConfirmarSenha').addEventListener('click', () => {
   form.submit();
 });
 
-(function(){
-  const button=document.getElementById('theme');
-  const saved=localStorage.getItem('coopex_theme');
-  if(saved==='dark') document.body.classList.add('dark');
 
-  function syncThemeButton(){
-    if(!button) return;
-    button.textContent=document.body.classList.contains('dark')?'☀':'☾';
-    button.title=document.body.classList.contains('dark')?'Usar modo claro':'Usar modo noturno';
-  }
-
-  if(button){
-    button.addEventListener('click',()=>{
-      document.body.classList.toggle('dark');
-      localStorage.setItem(
-        'coopex_theme',
-        document.body.classList.contains('dark')?'dark':'light'
-      );
-      syncThemeButton();
-    });
-  }
-
-  window.addEventListener('storage',(event)=>{
-    if(event.key==='coopex_theme'){
-      document.body.classList.toggle('dark',event.newValue==='dark');
-      syncThemeButton();
-    }
-  });
-
-  syncThemeButton();
-})();
 
 </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
@@ -556,7 +530,7 @@ document.getElementById('btnConfirmarSenha').addEventListener('click', () => {
   let value=100;
   try{const stored=localStorage.getItem('cx_sup_brightness');if(stored!==null)value=Math.max(0,Math.min(100,Number(stored)||0))}catch(e){}
   const night=value<80;
-  document.body.classList.add('cx-linked-glass');
+  document.body.classList.add('cx-clientes-2026','cx-linked-glass');
   document.body.classList.toggle('dark',night);
   document.body.classList.toggle('cx-sup-night',night);
   document.body.dataset.cxBrightness=String(value);
@@ -566,7 +540,17 @@ document.getElementById('btnConfirmarSenha').addEventListener('click', () => {
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
  window.addEventListener('pageshow',apply);
+ window.addEventListener('focus',apply);
  window.addEventListener('storage',e=>{if(e.key==='cx_sup_brightness')apply()});
+})();
+</script>
+<script id="cx-clientes-voltar-esc">
+(function(){
+ document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape'||e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(document.getElementById('senhaModalBg')?.classList.contains('show'))return;
+  e.preventDefault();window.location.assign('{{ url_for('admin') }}');
+ });
 })();
 </script>
 </body>
