@@ -628,8 +628,7 @@ body.dark-mode .proCompare .box b{color:#dce8ff}
         <div><label>Nomes vinculados</label><textarea name="nomes_clientes" placeholder="Mexicano&#10;Território Mexicano&#10;Mexicano Ponta Negra" required></textarea></div>
         <button class="btn primary" type="submit">Salvar grupo</button>
       </form>
-      <div class="line"></div>
-      <div class="sub"><b>Clientes encontrados:</b> {{ nomes_clientes[:40]|join(', ') }}{% if nomes_clientes|length > 40 %}...{% endif %}</div>
+
     </div>
     <div class="card">
       <div class="cardHead"><div><h2>Grupos cadastrados</h2><div class="sub">Use o filtro “Grupo/Contrato” no topo</div></div></div>
