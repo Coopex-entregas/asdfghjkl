@@ -59,3 +59,32 @@ body.cx-waze-mode .top-mini .title::after{content:" · Waze ao vivo"}
 body.cx-waze-mode #cx-waze iframe{background:#dceafa}
 body.cx-waze-mode #cx-tools{z-index:715}
 @media(max-width:760px){body.cx-waze-mode #map{left:9px!important;bottom:9px!important;width:min(48vw,225px)!important;height:190px!important;border-radius:16px!important}body.cx-waze-mode .kpi-strip{bottom:204px!important;left:9px!important}body.cx-waze-mode #cx-waze-note{display:none}body.cx-waze-mode #cx-weather{bottom:9px;right:9px;max-width:45vw}}
+
+/* Clima adaptativo: brilho diurno, céu cinzento sob chuva e tema escuro à noite.
+   O conteúdo interno do Waze é de terceiro e não permite alterar suas camadas individualmente. */
+body.cx-night{--cx-glass:rgba(14,27,53,.80);--cx-border:rgba(185,207,248,.23);--cx-ink:#f3f7ff;--cx-elev:0 18px 48px rgba(0,8,25,.5),inset 0 1px rgba(255,255,255,.14);color:#f3f7ff!important}
+body.cx-night .card,body.cx-night .stat-pill,body.cx-night .mini-icon,body.cx-night .filter-icon{color:#ecf3ff!important}
+body.cx-night .top-mini .sub,body.cx-night #cx-weather-msg,body.cx-night .stat-pill .k{color:#bdcceb!important}
+body.cx-night .cx-btn{background:rgba(40,66,113,.94);color:#eef5ff;border-color:rgba(210,224,255,.26)}
+body.cx-night .cx-btn.primary,body.cx-night .cx-btn.active{background:#2b66f6;color:white}
+body.cx-night .cx-kvs>div,body.cx-night .cx-co-located{background:rgba(28,51,93,.8);color:#eff5ff}
+body.cx-night .cx-kvs small,body.cx-night .cx-profile-sub{color:#c0cfef}
+body.cx-night #cx-search-address label,body.cx-night #cx-weather-credit,body.cx-night #cx-weather-credit a{color:#c7d8ff}
+body.cx-night #cx-address,body.cx-night #searchInput{background:#1c3155!important;color:#f3f7ff!important;border-color:#45669a}
+body.cx-night #cx-address::placeholder,body.cx-night #searchInput::placeholder{color:#a9bddf}
+body.cx-night #cx-results,body.cx-night .autocomplete{background:#142845;color:#fff}
+body.cx-night #cx-results .cx-place,body.cx-night .ac-item{color:#f3f7ff;border-color:#37537d}
+body.cx-night .leaflet-popup-content-wrapper{background:#142642!important;color:#fff!important}
+body.cx-night .popup-row{color:#e1ebff}
+body.cx-night .popup-title{color:#a9c6ff}
+body.cx-night #cx-waze iframe{filter:brightness(.63) saturate(.78) contrast(1.08)}
+body.cx-rainy:not(.cx-night) #cx-waze iframe{filter:brightness(.88) saturate(.82)}
+body.cx-heavy-rain:not(.cx-night) #cx-waze iframe{filter:brightness(.78) saturate(.76)}
+body.cx-rainy:not(.cx-night){--cx-glass:rgba(224,236,249,.85);--cx-border:rgba(255,255,255,.83)}
+body.cx-dusk:not(.cx-night) #cx-waze iframe{filter:brightness(.90) saturate(.92) sepia(.09)}
+body.cx-night #cx-waze-note{color:#eef4ff}
+body.cx-night .cx-pin-shape{box-shadow:0 0 0 2px rgba(255,255,255,.28),0 8px 24px rgba(0,0,0,.6)}
+body.cx-rainy #cx-weatherfx{background:linear-gradient(180deg,rgba(30,67,111,.14),transparent 68%)}
+body.cx-night #cx-weatherfx{background:linear-gradient(180deg,rgba(5,18,40,.17),transparent 65%)}
+body.cx-heavy-rain #cx-weatherfx .cx-drop{height:38px;width:2px;opacity:.8}
+@media(prefers-reduced-motion:reduce){body.cx-night #cx-waze iframe,body.cx-rainy #cx-waze iframe{transition:none}}
