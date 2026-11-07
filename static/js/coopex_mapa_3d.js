@@ -102,7 +102,7 @@ function showDetails(i){
  const group=clusters().find(g=>g.some(x=>String(x.id)===String(i.id)))||[],host=$("stack");host.replaceChildren();
  if(group.length>1){const title=document.createElement("small");title.textContent=group.length+" cooperados neste ponto:";host.append(title);for(const p of group){const b=document.createElement("button");b.textContent=initials(p.nome);b.title=p.nome;b.onclick=()=>selectCooperado(p.id);host.append(b);}}
 }
-function selectCooperado(id){selectedId=String(id);following=false;const i=itemById(id);if(!i)return;render();if(hasCoord(i))map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),15),pitch:0,bearing:0,duration:650});}
+function selectCooperado(id){selectedId=String(id);following=false;if(cameraPanelOpen)renderCameraPanel();const i=itemById(id);if(!i)return;render();if(hasCoord(i))map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),15),pitch:0,bearing:0,duration:650});}
 async function updateGps(){
  if(fetching||document.hidden)return;fetching=true;
  try{
@@ -211,6 +211,59 @@ async function weather(){
  $("temperature").textContent=Math.round(details.air_temperature)+"°C";$("conditions").textContent=["Sem chuva prevista","Previsão de chuva fraca","Previsão de chuva","Previsão de chuva forte"][level];$("humidity").textContent=details.relative_humidity+"%";$("wind").textContent=Math.round(details.wind_speed||0)+" m/s";$("weatherAlert").textContent=["Sem alerta de chuva na próxima hora.","Possibilidade de pista molhada.","⚠ Chuva prevista: atenção ao deslocamento.","⚠ Previsão de chuva intensa e possíveis alagamentos."][level];rain(level);
  }catch(e){$("conditions").textContent="Previsão indisponível";$("weatherAlert").textContent="Sem informação meteorológica atualizada";rain(0)}
 }
+
+/* Fontes públicas de vídeo: apenas URLs verificadas, jamais câmeras privadas.
+   Coordenadas só entram quando geocodificadas; streams sem ponto preciso são listados como gerais. */
+const publicCameras=[
+ {id:"roberto",name:"Av. Eng. Roberto Freire",region:"Ponta Negra / Capim Macio",
+  url:"https://seetheview.com/cam/2717/natal-traffic-live-av-roberto-freire",
+  geocode:"Avenida Engenheiro Roberto Freire, Natal, Rio Grande do Norte"},
+ {id:"geral",name:"Trânsito 360º — Natal",region:"Várias vias de Natal",
+  url:"https://seetheview.com/cam/1589/natal-traffic-live-multiple-camera-views",general:true},
+ {id:"sttu",name:"STTU — Câmeras de Trânsito",region:"Fonte municipal · disponibilidade a conferir",
+  url:"https://natal.rn.gov.br/sttu",general:true}
+];
+let cameraMode="map",cameraLocationReady=false,cameraPanelOpen=false;
+function cameraReference(){
+ const selected=itemById(selectedId);
+ if(cameraMode==="coop"&&selected&&hasCoord(selected))return {lat:+selected.lat,lng:+selected.lng,description:"próximas ao cooperado "+selected.nome};
+ const p=map.getCenter();return {lat:p.lat,lng:p.lng,description:"próximas ao centro do mapa"};
+}
+function cameraDistanceKm(p,q){let deltaLat=(p.lat-q.lat)*111.2,deltaLng=(p.lng-q.lng)*111.2*Math.cos(p.lat*Math.PI/180);return Math.sqrt(deltaLat**2+deltaLng**2);}
+function renderCameraPanel(){
+ if(!cameraPanelOpen)return;
+ const ref=cameraReference(),host=$("cameraList");host.replaceChildren();
+ $("cameraContext").textContent="Buscando fontes "+ref.description+". Atualiza ao movimentar o mapa.";
+ const local=publicCameras.filter(c=>c.coords&&cameraDistanceKm(ref,c.coords)<=12).sort((a,b)=>cameraDistanceKm(ref,a.coords)-cameraDistanceKm(ref,b.coords));
+ const general=publicCameras.filter(c=>c.general);
+ const rows=local.concat(general);
+ if(!local.length){const info=document.createElement("p");info.className="cx-camera-empty";info.textContent="Nenhuma câmera com localização confirmada nesta área. Abaixo estão fontes gerais de Natal.";host.append(info);}
+ for(const c of rows){const a=document.createElement("a");a.className="cx-camera-row";a.href=c.url;a.target="_blank";a.rel="noopener noreferrer";a.innerHTML='<span class="cx-camera-symbol">▣</span><span><strong>'+esc(c.name)+'</strong><small>'+esc(c.region)+(c.coords?" · aprox. "+cameraDistanceKm(ref,c.coords).toFixed(1)+" km":" · localização não individualizada")+'</small></span><span aria-hidden="true">↗</span>';host.append(a);}
+ $("camerasCoop").disabled=!(itemById(selectedId)&&hasCoord(itemById(selectedId)));
+}
+async function resolveCameraCoordinates(){
+ if(cameraLocationReady)return;cameraLocationReady=true;
+ const camera=publicCameras.find(c=>c.id==="roberto");
+ try{
+ const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&countrycodes=br&q="+encodeURIComponent(camera.geocode);
+ const response=await fetch(url,{headers:{Accept:"application/json"}});if(!response.ok)return;
+ const rows=await response.json(),first=rows?.[0];
+ if(first&&Number.isFinite(+first.lat)&&Number.isFinite(+first.lon)){
+   const coords={lat:+first.lat,lng:+first.lon};
+   if(coords.lat< -5.6&&coords.lat> -6.05&&coords.lng< -35.05&&coords.lng> -35.45){camera.coords=coords;renderCameraPanel();}
+ }
+ }catch(e){}
+}
+$("camerasTool").onclick=()=>{
+ cameraPanelOpen=!cameraPanelOpen;$("cameraPanel").hidden=!cameraPanelOpen;
+ $("toolbar").classList.remove("open");
+ if(cameraPanelOpen){resolveCameraCoordinates();renderCameraPanel();}
+};
+$("camerasClose").onclick=()=>{cameraPanelOpen=false;$("cameraPanel").hidden=true;};
+$("camerasHere").onclick=()=>{cameraMode="map";$("camerasHere").classList.add("active");$("camerasCoop").classList.remove("active");renderCameraPanel();};
+$("camerasCoop").onclick=()=>{if(!itemById(selectedId)||!hasCoord(itemById(selectedId)))return;cameraMode="coop";$("camerasCoop").classList.add("active");$("camerasHere").classList.remove("active");renderCameraPanel();};
+map.on("moveend",()=>{if(cameraMode==="map")renderCameraPanel();});
+
 function gpsSocket(){
  // GPS periódico moderado e consulta de fallback, sem criar mais um mapa.
  const socketApi=window.io;if(typeof socketApi!=="function")return;
