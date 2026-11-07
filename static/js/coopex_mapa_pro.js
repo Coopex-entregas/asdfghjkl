@@ -71,6 +71,6 @@ async function updateWeather(){try{var r=await fetch("https://api.met.no/weather
 $("cx-weather-temp").textContent=Math.round(details.air_temperature)+"°";var labels=["Sem chuva prevista na próxima hora.","Possibilidade de garoa. Atenção à pista molhada.","Previsão de chuva: pode haver deslocamentos mais lentos.","Previsão de chuva intensa: atenção à visibilidade e áreas alagadas."];var txt=labels[level];if(typeof rain==="number")txt+=" Precipitação estimada: "+rain.toFixed(1)+" mm.";txt+=" Não é confirmação de congestionamento."; $("cx-weather-msg").textContent=txt;setWeatherFx(level);
 }catch(e){$("cx-weather-msg").textContent="Previsão indisponível no momento. Consulte o trânsito no Waze.";setWeatherFx(0);}dayPhase();}
 dayPhase();
-toggleMode("waze");
+toggleMode("coopex");
 updateWeather();setInterval(updateWeather,20*60*1000);setInterval(dayPhase,60*1000);
 })();
