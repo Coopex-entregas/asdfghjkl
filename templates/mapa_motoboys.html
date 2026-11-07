@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-globe13">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-side14">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -13,7 +13,15 @@
 <div id="ui">
 <a class="back-link glass" href="{{ url_for('admin') }}" aria-label="Voltar ao painel" title="Voltar ao painel">←</a>
 <span id="gpsStatus" hidden aria-live="polite"></span>
-<section class="search glass"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" placeholder="Buscar cooperado..." aria-label="Buscar cooperado"></section>
+<aside id="coopexSide" class="coopex-side glass" aria-label="Painel de cooperados">
+  <div class="coopex-side-header"><span class="coopex-side-mark">C</span><div><strong>COOPEX</strong><small>Mapa dos cooperados</small></div><button type="button" id="sideToggle" class="coopex-side-collapse" title="Recolher painel" aria-label="Recolher painel">‹</button></div>
+  <div class="coopex-side-intro">Acompanhe seus cooperados ou explore ruas e endereços no mapa.</div>
+  <button type="button" id="sideSearchAddress" class="coopex-side-address">⌕ &nbsp; Pesquisar ruas e endereços</button>
+  <div class="coopex-side-list-title"><strong>Cooperados no mapa</strong><span id="sideCount">0</span></div>
+  <div id="sideCourierList" class="coopex-side-list" aria-live="off"></div>
+ </aside>
+ <button type="button" id="sideExpand" class="coopex-side-expand glass" title="Abrir painel COOPEX" aria-label="Abrir painel COOPEX">☰</button>
+ <section class="search glass"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" placeholder="Buscar cooperado..." aria-label="Buscar cooperado"></section>
 <div class="search-results glass" id="results"></div>
 <nav class="filters glass" aria-label="Filtrar cooperados">
 <button type="button" class="pill active" data-filter="todos">Todos</button>
@@ -71,6 +79,6 @@
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};</script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-globe13"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-side14"></script>
 </body>
 </html>
