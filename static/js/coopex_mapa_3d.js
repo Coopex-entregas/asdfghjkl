@@ -262,7 +262,7 @@ function street(){const p=viewPoint||dest();if(!p){$("addressMessage").textConte
 let searchingAddress=false,oldMapView=null;
 function applySearchVisibility(){
  for(const id of ["coopex-gps-halo","coopex-gps-pins","coopex-gps-glass","coopex-gps-initials"]){
-  if(map.getLayer(id))map.setLayoutProperty(id,"visibility",searchingAddress?"none":"visible");
+  if(map.getLayer(id))map.setLayoutProperty(id,"visibility","visible");
  }
  document.body.classList.toggle("cx-address-mode",searchingAddress);
  window.dispatchEvent(new CustomEvent("coopex:map-mode",{detail:{searchingAddress}}));
