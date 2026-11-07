@@ -58,3 +58,29 @@ body.is-night .detail-line label,body.is-night .fine,body.is-night .small-muted{
 body.is-night .person-head strong,body.is-night .temp,body.is-night .weather h3{color:#fff}
 @media(max-width:900px){.back-link{top:10px;left:10px;width:42px;height:42px}.brand{left:60px}.address-panel{right:10px;top:195px;max-height:55vh;overflow:auto}}
 @media(max-width:560px){.brand{left:60px}.brand strong{font-size:12px}.brand small{font-size:9px}.brand-icon{display:none}.address-panel{top:200px;width:calc(100vw - 20px)}}
+
+/* Tema diurno automático: vidro claro com conteúdo contrastante. */
+body:not(.is-night){--txt:#10294a;--sub:#506c88;--glass:rgba(248,252,255,.91);--line:rgba(255,255,255,.96);--shadow:0 13px 40px rgba(16,52,92,.17),inset 0 1px rgba(255,255,255,.92)}
+body:not(.is-night) .glass{background:linear-gradient(145deg,rgba(255,255,255,.83),rgba(231,242,255,.65)),var(--glass);color:#10294a}
+body:not(.is-night) .brand small,body:not(.is-night) .stat-label,body:not(.is-night) .fine,body:not(.is-night) .small-muted,body:not(.is-night) .detail-line label{color:#466583}
+body:not(.is-night) .search input{color:#10294a}
+body:not(.is-night) .search input::placeholder{color:#55718e}
+body:not(.is-night) .pill{background:rgba(238,246,255,.9);color:#12385f;border-color:#c9def4}
+body:not(.is-night) .pill.active{background:linear-gradient(145deg,#247bfa,#1259d7);color:white}
+body:not(.is-night) .toolbar>button{color:#173c67}
+body:not(.is-night) .menu button{background:#e7f1ff;color:#153d6f;border-color:#abccec}
+body:not(.is-night) .result{color:#1c4169}
+body:not(.is-night) .result small{color:#55718e}
+body:not(.is-night) .details .person-head strong,body:not(.is-night) .weather h3{color:#123455}
+body:not(.is-night) .details .detail-line{border-color:#cbdff0}
+body:not(.is-night) .weather-alert{background:#fff2d9;color:#754b11}
+body:not(.is-night) .address-panel input{background:#f8fcff;border-color:#b9d2e8;color:#143b62}
+body:not(.is-night) .address-panel input::placeholder{color:#6885a0}
+body:not(.is-night) #addressMessage{color:#355b7b}
+body:not(.is-night) .address-actions button,body:not(.is-night) .stop-row button{background:#dcecff;color:#164678;border-color:#9dc5ec}
+body:not(.is-night) .address-actions button.primary{background:#246ce6;color:white}
+body:not(.is-night) .stop-row{background:#e4f0fc}
+body:not(.is-night) .btn:not(.primary){background:#e5f1ff;color:#164477}
+body:not(.is-night) .state{color:#115236}
+body:not(.is-night) .weather .small-muted,body:not(.is-night) .weather .fine{color:#456481}
+body:not(.is-night) .notice{background:#fff8e9;color:#8b5009}
