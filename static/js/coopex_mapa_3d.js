@@ -10,6 +10,14 @@ map.addControl(new ml.NavigationControl({showCompass:false,showZoom:true,visuali
 let selectedId=null,following=false,filter="todos",items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],searchText="",trafficEvents=[],selectedAddress=null,viewPoint=null,fetching=false,lastFit=false,satellite=false,weatherLevel=0;
 let dynamicMarkers=new Map(),stops=[],stopsMarkers=[],placePin=null;
 const lastConfirmedGps=new Map();
+let mapReady=false;
+// Guardar o último ponto conhecido desde os dados iniciais do servidor.
+for(const i of items){
+ if(i&&i.id!=null&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)){
+  lastConfirmedGps.set(String(i.id),{lat:+i.lat,lng:+i.lng,source:i.gps_ao_vivo?"live":"last-known"});
+ }
+}
+
 function keepLastPosition(arr){
   // A coordenada offline fica imutável até chegar um novo GPS real.
   // O servidor pode alternar entre memória e localização histórica; isso NÃO
@@ -55,7 +63,7 @@ function buildings(){
  if(trafficEvents.length)drawTraffic();
 }
 function setStyle(){document.body.classList.remove("is-night");}
-map.on("style.load",()=>{if(satellite)installSatellite();installPins();});
+map.on("style.load",()=>{mapReady=true;if(satellite)installSatellite();installPins();});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
@@ -111,7 +119,7 @@ map.on("mouseenter","coopex-gps-pins",()=>{map.getCanvas().style.cursor="pointer
 map.on("mouseleave","coopex-gps-pins",()=>{map.getCanvas().style.cursor=""});
 function render(){
  counts();
- if(map.isStyleLoaded())installPins();
+ if(mapReady&&map.isStyleLoaded())installPins();
  const current=itemById(selectedId);
  if(current){showDetails(current);
   if(following&&hasCoord(current))map.easeTo({center:[+current.lng,+current.lat],duration:350});
@@ -139,7 +147,7 @@ async function updateGps(){
   if(!response.ok)throw Error("GPS HTTP "+response.status);
   const data=await response.json();if(!Array.isArray(data))throw Error("Formato GPS inválido");
   items=keepLastPosition(data);render();$("gpsStatus").textContent="GPS ativo";
-  if(!lastFit){const good=clusters().map(g=>g[0]);if(good.length){let b=new ml.LngLatBounds();good.forEach(i=>b.extend([+i.lng,+i.lat]));map.fitBounds(b,{padding:{top:160,right:365,bottom:180,left:320},maxZoom:13,duration:0});lastFit=true;}}
+  if(!lastFit&&mapReady){const good=clusters().map(g=>g[0]);if(good.length){let b=new ml.LngLatBounds();good.forEach(i=>b.extend([+i.lng,+i.lat]));map.fitBounds(b,{padding:{top:160,right:365,bottom:180,left:320},maxZoom:13,duration:0});lastFit=true;}}
  }catch(e){$("gpsStatus").textContent="GPS temporariamente indisponível";console.warn("GPS:",e.message)}
  finally{fetching=false;}
 }
@@ -271,7 +279,7 @@ map.on("moveend",()=>{if(cameraMode==="map")renderCameraPanel();});
 function gpsSocket(){
  // GPS periódico moderado e consulta de fallback, sem criar mais um mapa.
  const socketApi=window.io;if(typeof socketApi!=="function")return;
- try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old))lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng,source:"live"});render()}else updateGps()});}catch(e){}
+ try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old)&&d.lat!=null&&d.lng!=null)lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng,source:"live"});render()}else updateGps()});}catch(e){}
 }
 map.on("load",()=>{updateGps();});
 render();updateGps();stopRender();weather();showSttuStatus();gpsSocket();
