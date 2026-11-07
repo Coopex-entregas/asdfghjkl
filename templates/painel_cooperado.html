@@ -2928,7 +2928,7 @@ async function join(){
  enter.disabled=true;notice('Obtendo sua posição GPS...');
  try{
   const p=await currentPosition(),c=p.coords;
-  notice('Conferindo sua distância da base...');
+  notice('Verificando se você está na cooperativa...');
   const response=await fetch('/api/cooperado/fila/entrar',{
    method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({latitude:c.latitude,longitude:c.longitude,precisao_m:c.accuracy,timestamp_ms:p.timestamp})
