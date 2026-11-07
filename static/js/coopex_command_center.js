@@ -89,6 +89,9 @@ function apply(){
  body.classList.add('cx-command-center','cx-report-glass');
  // The old scripts can rebuild this menu once; reconstruct only for a NEW navigation node.
  if(nav===activeNav&&nav.classList.contains('cx-horizontal-nav')){
+  const exp=document.getElementById('cxExpOpen');
+  const host=nav.querySelector('.cx-nav-tools');
+  if(exp&&host&&!host.contains(exp))host.appendChild(exp);
   formatKpis();return true;
  }
  activeNav=nav;
