@@ -47,12 +47,14 @@
     @media (max-width:560px){.footer-actions{flex-direction:column}.footer-actions button{width:100%}}
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_delivery_glass.css') }}">
 </head>
-<body>
+<body class="cx-delivery-glass cx-delivery-complete">
+<header class="cx-delivery-bar"><a class="cx-back-arrow" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a><strong class="cx-delivery-heading">Entrega completa</strong></header>
   <h1>Cadastrar Entrega</h1>
 
   <div class="top-actions">
-    <a class="link" href="{{ url_for('admin') }}">← Voltar ao Painel</a>
+    
     <a class="link" href="{{ url_for('clientes') }}">⚙️ Gerenciar Clientes</a>
   </div>
 
@@ -351,5 +353,6 @@
     resetarCadastroEntrega();
   </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
+<script src="{{ url_for('static', filename='js/coopex_delivery_theme.js') }}"></script>
 </body>
 </html>
