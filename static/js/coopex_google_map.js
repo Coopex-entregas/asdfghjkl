@@ -36,21 +36,24 @@ function embedUrl(mode,params){
 }
 function embedMode(enabled){
  if(!exploreFrame)return;
- if(enabled){
-  exploreFrame.hidden=false;
-  if(!exploreFrame.src||exploreFrame.src==="about:blank")exploreFrame.src=embedUrl("view",{center:"-5.7945,-35.211",zoom:13,maptype:"roadmap"});
- }else{
+ if(!enabled){
   exploreFrame.hidden=true;
-  // Libera o iframe sem interromper os cooperados do Google Maps.
   exploreFrame.removeAttribute("src");
+  document.body.classList.remove("cx-explore-results");
+  updateMode();
  }
+ // Abrir o painel NÃO abre outro mapa: mantém o Google JavaScript e os cooperados.
 }
 function embeddedGoogleSearch(){
  const q=String(exploreInput?.value||"").trim();
  if(q.length<3){if(exploreMsg)exploreMsg.textContent="Informe um endereço ou local para pesquisar.";return;}
  exploreFrame.hidden=false;
+ document.body.classList.add("cx-explore-results");
  exploreFrame.src=embedUrl("search",{q:q+", Rio Grande do Norte, Brasil",center:"-5.7945,-35.211",zoom:13});
- if(exploreMsg)exploreMsg.textContent="Pesquisa aberta diretamente no mapa do Google.";
+ document.getElementById("cxExploreTitle").textContent=q;
+ document.getElementById("cxExploreSubtitle").textContent="Resultados da pesquisa no Google Maps";
+ if(exploreMsg)exploreMsg.textContent="Resultados exibidos no Google Maps. Feche a pesquisa para voltar a ver os cooperados.";
+ updateMode();
 }
 exploreButton?.addEventListener("click",event=>{
  if(!document.body.classList.contains("cx-address-mode"))return;
@@ -62,6 +65,9 @@ exploreInput?.addEventListener("keydown",event=>{
  }
 },true);
 window.addEventListener("coopex:map-mode",event=>embedMode(!!event.detail?.searchingAddress));
+document.querySelectorAll("[data-google-category]").forEach(button=>{
+ button.addEventListener("click",()=>{if(exploreInput)exploreInput.value=button.dataset.googleCategory;embeddedGoogleSearch()});
+});
 
 const markers=new Map(),lastPositions=new Map();
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
@@ -123,7 +129,7 @@ function updateMarkers(list,chosen){
 function updateMode(){
  if(!googleMap)return;
  for(const marker of markers.values()){
-  const wanted=searchingAddress?null:googleMap;
+  const wanted=document.body.classList.contains("cx-explore-results")?null:googleMap;
   if(marker.getMap()!==wanted)marker.setMap(wanted);
  }
 }
