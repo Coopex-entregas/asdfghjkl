@@ -35,7 +35,7 @@ function buildings(){
  if(trafficEvents.length)drawTraffic();
 }
 function setStyle(){document.body.classList.remove("is-night");}
-map.on("style.load",()=>{buildings();if(satellite)installSatellite();});
+map.on("style.load",()=>{if(satellite)installSatellite();if(trafficEvents.length)drawTraffic();});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
@@ -100,7 +100,7 @@ $("toolbarToggle").onclick=()=>{$("toolbar").classList.toggle("open");$("toolbar
 $("fit").onclick=()=>{const i=clusters().map(x=>x[0]);if(i.length){let b=new ml.LngLatBounds();i.forEach(x=>b.extend([+x.lng,+x.lat]));map.fitBounds(b,{padding:100,maxZoom:15})}$("toolbar").classList.remove("open")};
 $("refresh").onclick=()=>{updateGps();$("toolbar").classList.remove("open")};
 $("locate").onclick=()=>{navigator.geolocation?.getCurrentPosition(p=>map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16,pitch:0,bearing:0}),()=>{}, {enableHighAccuracy:true,timeout:10000});$("toolbar").classList.remove("open")};
-function installSatellite(){if(!map.getSource("cx-sat"))map.addSource("cx-sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,attribution:"Tiles © Esri"});if(!map.getLayer("cx-sat-layer"))map.addLayer({id:"cx-sat-layer",type:"raster",source:"cx-sat"});if(map.getLayer("coopex-buildings-3d"))map.moveLayer("coopex-buildings-3d");}
+function installSatellite(){if(!map.getSource("cx-sat"))map.addSource("cx-sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,attribution:"Tiles © Esri"});if(!map.getLayer("cx-sat-layer"))map.addLayer({id:"cx-sat-layer",type:"raster",source:"cx-sat"});}
 $("mapStreet").onclick=()=>{satellite=false;if(map.getLayer("cx-sat-layer"))map.removeLayer("cx-sat-layer");$("toolbar").classList.remove("open")};
 $("mapSatellite").onclick=()=>{satellite=true;if(map.isStyleLoaded())installSatellite();$("toolbar").classList.remove("open")};
 const dest=()=>selectedAddress||(hasCoord(itemById(selectedId))?{lat:+itemById(selectedId).lat,lng:+itemById(selectedId).lng,label:itemById(selectedId).nome}:null);
@@ -114,7 +114,7 @@ $("addressClose").onclick=()=>{$("addressPanel").hidden=true};
 $("addressGo").onclick=async()=>{
  const q=$("address").value.trim();if(q.length<3)return;
  try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=3&countrycodes=br&q="+encodeURIComponent(q+", Natal, Rio Grande do Norte"));if(!r.ok)throw Error();const list=await r.json();if(!list.length){$("addressMessage").textContent="Endereço não encontrado";return;}
- const first=list[0];selectedAddress={lat:+first.lat,lng:+first.lon,label:first.display_name};viewPoint=selectedAddress;map.flyTo({center:[selectedAddress.lng,selectedAddress.lat],zoom:16,pitch:55});$("addressMessage").textContent="Endereço encontrado. Pode adicionar como parada.";
+ const first=list[0];selectedAddress={lat:+first.lat,lng:+first.lon,label:first.display_name};viewPoint=selectedAddress;map.flyTo({center:[selectedAddress.lng,selectedAddress.lat],zoom:16,pitch:0,bearing:0});$("addressMessage").textContent="Endereço encontrado. Pode adicionar como parada.";
  if(placePin)placePin.remove();placePin=new ml.Marker({color:"#276bff",pitchAlignment:"viewport"}).setLngLat([selectedAddress.lng,selectedAddress.lat]).addTo(map);
  }catch(e){$("addressMessage").textContent="Busca indisponível no momento";}
 };
@@ -147,7 +147,7 @@ function gpsSocket(){
  const socketApi=window.io;if(typeof socketApi!=="function")return;
  try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);render()}else updateGps()});}catch(e){}
 }
-map.on("load",()=>{buildings();updateGps();});
+map.on("load",()=>{updateGps();});
 render();updateGps();stopRender();weather();traffic();gpsSocket();
 setInterval(updateGps,12000);setInterval(traffic,15*60*1000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
 })();
