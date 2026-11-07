@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-fixpins04">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-cameras05">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -25,8 +25,16 @@
 <section id="toolbar" class="toolbar glass"><button type="button" id="toolbarToggle" aria-expanded="false">⚙ Ferramentas <span>⌄</span></button><div class="menu">
 <button id="mapStreet" type="button">🗺 Ruas</button><button id="mapSatellite" type="button">🛰 Satélite</button>
 <button id="fit" type="button">⛶ Enquadrar</button><button id="locate" type="button">◎ Minha posição</button>
-<button id="refresh" type="button">↻ Atualizar</button><button id="streetTool" type="button">👁 Visão da rua</button>
+<button id="refresh" type="button">↻ Atualizar</button><button id="camerasTool" type="button">📹 Câmeras</button><button id="streetTool" type="button">👁 Visão da rua</button>
 </div></section>
+
+<section id="cameraPanel" class="cx-camera-panel glass" hidden aria-label="Câmeras públicas da região">
+ <div class="address-head"><strong>📹 Câmeras de Natal</strong><button type="button" class="close" id="camerasClose" aria-label="Fechar câmeras">×</button></div>
+ <p class="cx-camera-context" id="cameraContext">Mostrando fontes públicas na região do mapa.</p>
+ <div class="cx-camera-switch"><button type="button" class="cx-cam-filter active" id="camerasHere">Área do mapa</button><button type="button" class="cx-cam-filter" id="camerasCoop">Cooperado selecionado</button></div>
+ <div id="cameraList" class="cx-camera-list" aria-live="polite"></div>
+ <small class="cx-camera-disclaimer">Transmissões externas: podem estar indisponíveis ou fora do ar. A COOPEX não controla as imagens. A indicação de proximidade depende de localização verificada.</small>
+</section>
 <section id="addressPanel" class="address-panel glass" hidden>
 <div class="address-head"><strong>Endereços e paradas</strong><button id="addressClose" class="close" type="button" aria-label="Fechar">×</button></div>
 <input id="address" placeholder="Rua, número e bairro em Natal" aria-label="Pesquisar endereço">
@@ -56,6 +64,6 @@
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};</script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-fixpins04"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-cameras05"></script>
 </body>
 </html>
