@@ -50,16 +50,34 @@ function clusters(){
 function counts(){for(const k of ["online","ocioso","offline"])$(k+"Count").textContent=items.filter(x=>state(x)===k).length;}
 function render(){
  counts();
- const gs=clusters(),keep=new Set();
- for(const group of gs){
-   const target=group.find(i=>String(i.id)===String(selectedId))||group[0],key=String(group[0].id),coord=[+group[0].lng,+group[0].lat];keep.add(key);
+ // Um marcador por ID do cooperado, sem reagrupar nem substituir coordenadas
+ // ao mudar filtros ou zoom. Apenas um novo GPS altera a posição geográfica.
+ const keep=new Set();
+ for(const i of items.filter(inFilter).filter(hasCoord)){
+   const key=String(i.id),coords=[Number(i.lng),Number(i.lat)];keep.add(key);
    let m=dynamicMarkers.get(key);
-   if(!m){const el=pin(target,group.length);m=new ml.Marker({element:el,anchor:"bottom",pitchAlignment:"viewport",rotationAlignment:"viewport"}).setLngLat(coord).addTo(map);dynamicMarkers.set(key,m);}
-   else{m.setLngLat(coord);const old=m.getElement(),newEl=pin(target,group.length);old.className=newEl.className;old.innerHTML=newEl.innerHTML;old.title=newEl.title;old.setAttribute("aria-label",newEl.getAttribute("aria-label"));}
-   m.getElement().onclick=e=>{e.preventDefault();const at=group.findIndex(i=>String(i.id)===String(selectedId));selectCooperado(group[(at+1)%group.length].id);};
+   if(!m){
+     const el=pin(i,1);
+     m=new ml.Marker({element:el,anchor:"bottom",pitchAlignment:"viewport",rotationAlignment:"viewport"}).setLngLat(coords).addTo(map);
+     dynamicMarkers.set(key,m);
+   }else{
+     const previous=m.getLngLat();
+     if(Math.abs(previous.lng-coords[0])>.0000001||Math.abs(previous.lat-coords[1])>.0000001)m.setLngLat(coords);
+     const current=m.getElement(),fresh=pin(i,1);
+     current.className=fresh.className;
+     current.innerHTML=fresh.innerHTML;
+     current.title=fresh.title;
+     current.setAttribute("aria-label",fresh.getAttribute("aria-label"));
+   }
+   m.getElement().onclick=e=>{e.preventDefault();e.stopPropagation();selectCooperado(i.id)};
  }
- for(const [key,m]of dynamicMarkers){if(!keep.has(key)){m.remove();dynamicMarkers.delete(key)}}
- const sel=itemById(selectedId);if(sel){showDetails(sel);if(following&&hasCoord(sel))map.easeTo({center:[+sel.lng,+sel.lat],duration:350});}
+ for(const [key,m]of dynamicMarkers){
+   if(!keep.has(key)){m.remove();dynamicMarkers.delete(key)}
+ }
+ const current=itemById(selectedId);
+ if(current){showDetails(current);
+   if(following&&hasCoord(current))map.easeTo({center:[Number(current.lng),Number(current.lat)],duration:350});
+ }
 }
 function kmDistance(a,b){const dx=(a.lat-b.lat)*111,dy=(a.lng-b.lng)*111*Math.cos(a.lat*Math.PI/180);return Math.hypot(dx,dy);}
 function toIncidentPoint(f){let c=f?.geometry?.coordinates;if(!Array.isArray(c))return null;if(f.geometry.type==="LineString")c=c[Math.floor(c.length/2)];else if(f.geometry.type==="MultiLineString")c=c[0]?.[Math.floor(c[0].length/2)];return c&&Number.isFinite(+c[0])?{lng:+c[0],lat:+c[1]}:null;}
