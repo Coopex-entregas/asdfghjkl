@@ -9,6 +9,15 @@ const map=new ml.Map({container:"map",style:DAY_STYLE,center:[-35.211,-5.7945],z
 map.addControl(new ml.NavigationControl({showCompass:false,showZoom:true,visualizePitch:false}),"top-right");
 let selectedId=null,following=false,filter="todos",items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],searchText="",trafficEvents=[],selectedAddress=null,viewPoint=null,fetching=false,lastFit=false,satellite=false,weatherLevel=0;
 let dynamicMarkers=new Map(),stops=[],stopsMarkers=[],placePin=null;
+const lastConfirmedGps=new Map();
+function keepLastPosition(arr){
+ for(const v of arr){const id=String(v.id);if(!hasCoord(v))continue;
+   if(v.gps_ao_vivo===true){lastConfirmedGps.set(id,{lat:+v.lat,lng:+v.lng});continue;}
+   const p=lastConfirmedGps.get(id);
+   if(p){v.lat=p.lat;v.lng=p.lng;v.ultima_atualizacao=v.ultima_atualizacao||"Última posição GPS";}
+ }
+ return arr;
+}
 const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
 const state=i=>!i.online?"offline":i.status==="ocioso"?"ocioso":"online";
 const stateNames={online:"Online",ocioso:"Ocioso",offline:"Offline"};
@@ -100,7 +109,7 @@ async function updateGps(){
   const response=await fetch("/mapa_motoboys?format=json",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
   if(!response.ok)throw Error("GPS HTTP "+response.status);
   const data=await response.json();if(!Array.isArray(data))throw Error("Formato GPS inválido");
-  items=data;render();$("gpsStatus").textContent="GPS ativo";
+  items=keepLastPosition(data);render();$("gpsStatus").textContent="GPS ativo";
   if(!lastFit){const good=clusters().map(g=>g[0]);if(good.length){let b=new ml.LngLatBounds();good.forEach(i=>b.extend([+i.lng,+i.lat]));map.fitBounds(b,{padding:{top:160,right:365,bottom:180,left:320},maxZoom:13,duration:0});lastFit=true;}}
  }catch(e){$("gpsStatus").textContent="GPS temporariamente indisponível";console.warn("GPS:",e.message)}
  finally{fetching=false;}
@@ -205,7 +214,7 @@ async function weather(){
 function gpsSocket(){
  // GPS periódico moderado e consulta de fallback, sem criar mais um mapa.
  const socketApi=window.io;if(typeof socketApi!=="function")return;
- try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);render()}else updateGps()});}catch(e){}
+ try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old))lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng});render()}else updateGps()});}catch(e){}
 }
 map.on("load",()=>{updateGps();});
 render();updateGps();stopRender();weather();checkFlow();traffic();gpsSocket();
