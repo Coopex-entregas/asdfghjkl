@@ -7490,7 +7490,8 @@ def mapa_motoboys():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
-    cooperados = Cooperado.query.order_by(Cooperado.nome).all()
+    # Nunca incluir contas excluídas/inativas nos indicadores ou no mapa.
+    cooperados = Cooperado.query.filter(Cooperado.ativo.is_(True)).order_by(Cooperado.nome).all()
     motoboys_js = []
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
@@ -7612,6 +7613,7 @@ def mapa_motoboys():
 
         motoboys_js.append({
             'id': c.id,
+            'ativo': True,
             'nome': nome,
             'lat': float(lat) if tem_localizacao else None,
             'lng': float(lng) if tem_localizacao else None,
