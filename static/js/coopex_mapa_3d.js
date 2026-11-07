@@ -129,6 +129,22 @@ function clusters(){
  return groups;
 }
 function counts(){for(const k of ["online","ocioso","offline"])$(k+"Count").textContent=items.filter(x=>state(x)===k).length;}
+function updateSidebarList(){
+ const host=$("sideCourierList");if(!host)return;
+ const visible=items.filter(inFilter);
+ $("sideCount").textContent=String(visible.length);
+ const fragment=document.createDocumentFragment();
+ for(const i of visible.slice(0,125)){
+  const btn=document.createElement("button");btn.type="button";btn.className="coopex-side-person";
+  const color=colors[state(i)];
+  btn.innerHTML='<span class="coopex-person-dot" style="background:'+color+'"></span><span class="coopex-side-person-name">'+esc(i.nome)+'</span><small>'+stateNames[state(i)]+'</small>';
+  btn.onclick=()=>{if(searchingAddress)setAddressMode(false);selectCooperado(i.id);};
+  fragment.appendChild(btn);
+ }
+ if(!visible.length){const label=document.createElement("p");label.className="coopex-side-empty";label.textContent="Nenhum cooperado neste filtro.";fragment.appendChild(label)}
+ host.replaceChildren(fragment);
+}
+
 
 /* Pontos nativos WebGL ancorados a longitude/latitude: não usam CSS transform,
    não são reagrupados ao aplicar filtros e nunca mudam por causa do zoom. */
@@ -171,7 +187,7 @@ map.on("click","coopex-gps-pins",e=>{
 map.on("mouseenter","coopex-gps-pins",()=>{map.getCanvas().style.cursor="pointer"});
 map.on("mouseleave","coopex-gps-pins",()=>{map.getCanvas().style.cursor=""});
 function render(){
- counts();
+ counts();updateSidebarList();
  if(mapReady&&map.isStyleLoaded()){installPins();applySearchVisibility();}
  const current=itemById(selectedId);
  if(current){showDetails(current);
@@ -233,6 +249,7 @@ function applySearchVisibility(){
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",searchingAddress?"none":"visible");
  }
  document.body.classList.toggle("cx-address-mode",searchingAddress);
+ if(searchingAddress)document.body.classList.remove("cx-side-collapsed");
 }
 function setAddressMode(enabled){
  if(enabled===searchingAddress){if(enabled&&!$("addressPanel").classList.contains("collapsed"))$("address").focus();return;}
@@ -261,6 +278,9 @@ function setAddressMode(enabled){
  if(mapReady&&map.isStyleLoaded())installPins();
  applySearchVisibility();
 }
+$("sideToggle").onclick=()=>document.body.classList.add("cx-side-collapsed");
+$("sideExpand").onclick=()=>document.body.classList.remove("cx-side-collapsed");
+$("sideSearchAddress").onclick=()=>setAddressMode(true);
 $("addressToggle").onclick=()=>setAddressMode(true);
 $("addressClose").onclick=()=>setAddressMode(false);
 $("addressCollapse").onclick=()=>{
