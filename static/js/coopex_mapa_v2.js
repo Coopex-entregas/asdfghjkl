@@ -21,7 +21,7 @@ map.on("click",e=>{viewPoint={lat:e.latlng.lat,lng:e.latlng.lng,label:"Ponto sel
 
 const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const online=i=>i?.online===true||["livre","em_corrida"].includes(i?.status);
-const status=i=>!online(i)?"offline":Number(i.entregas_abertas||0)>0?"online":"ocioso";
+const status=i=>!online(i)?"offline":i.status==="ocioso"?"ocioso":"online";
 const colors={online:"#14d97b",ocioso:"#ff9f26",offline:"#fa4a58"};
 const names={online:"Online",ocioso:"Ocioso",offline:"Offline"};
 const valid=i=>i&&Number.isFinite(Number(i.lat))&&Number.isFinite(Number(i.lng))&&i.lat!==null&&i.lng!==null&&Number(i.lat)<0&&Number(i.lng)<0;
