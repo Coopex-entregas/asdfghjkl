@@ -3219,5 +3219,24 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  #tab-resumo .finance-detail .finance-line .copy small{font-size:.7rem!important}
 }
 </style>
+
+<script id="coopex-panel-presence-live">
+(function(){
+ 'use strict';
+ let inflight=false;
+ async function presence(){
+  if(inflight || document.hidden) return;
+  inflight=true;
+  try{
+   await fetch('/api/cooperado/presenca',{method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Accept':'application/json'}});
+  }catch(_){}
+  finally{inflight=false;}
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',presence,{once:true});else presence();
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)presence();});
+ window.addEventListener('pageshow',presence);
+ setInterval(presence,45000);
+})();
+</script>
 </body>
 </html>
