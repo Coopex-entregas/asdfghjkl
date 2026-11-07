@@ -250,3 +250,36 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 body.cx-globe-space #map{background:#081a36!important}
 body:not(.cx-globe-space) #map{background:#d8eaf6!important}
 .cx-address-mode .address-panel .cx-address-collapse{color:#fff!important}
+
+/* Barra lateral COOPEX permanente com experiência semelhante a mapas. */
+.coopex-side{position:absolute!important;left:12px!important;top:12px!important;bottom:14px!important;width:336px!important;border-radius:24px!important;padding:16px 14px!important;display:flex!important;flex-direction:column!important;gap:0!important;z-index:620!important;background:linear-gradient(140deg,rgba(254,255,255,.97),rgba(227,240,253,.95))!important;box-shadow:0 18px 55px #173c6842!important;border:1px solid #ffffffeb!important;color:#143859!important;overflow:hidden!important}
+.coopex-side-header{display:flex;align-items:center;gap:11px;min-height:46px;padding:1px 1px 8px 41px}
+.coopex-side-mark{display:grid;place-items:center;width:36px;height:36px;flex:none;border-radius:12px;background:linear-gradient(145deg,#278bff,#0649bc);color:#fff;font-weight:900;font-size:18px;box-shadow:0 5px 11px #2874d84d}
+.coopex-side-header strong{display:block;font-weight:900;font-size:16px;letter-spacing:.3px;color:#073f80}
+.coopex-side-header small{display:block;font-size:11px;color:#497092}
+.coopex-side-collapse{margin-left:auto;flex:none;border:none;border-radius:12px;background:#d7eafb;color:#174b81;font-size:24px;font-weight:750;width:36px;height:37px}
+.coopex-side-intro{font-size:12px;line-height:1.5;color:#587695;margin:6px 4px 91px}
+.coopex-side-address{width:100%;min-height:45px;background:linear-gradient(135deg,#2789f9,#0759cf)!important;border:1px solid #4e9af3!important;border-radius:13px;color:#fff!important;font-size:13px;font-weight:800;text-align:left;padding:0 14px;box-shadow:0 8px 17px #0963ce34}
+.coopex-side-list-title{display:flex;align-items:center;justify-content:space-between;padding:17px 5px 9px;color:#173c5d;font-size:13px}
+.coopex-side-list-title span{border-radius:13px;background:#dcecff;color:#175baa;font-size:12px;padding:3px 9px;font-weight:850}
+.coopex-side-list{overflow:auto;min-height:0;flex:1;padding:2px 2px 12px}
+.coopex-side-person{display:flex;align-items:center;gap:9px;border:1px solid transparent;border-bottom-color:#d6e5f1;background:transparent;padding:12px 7px;text-align:left;width:100%;min-width:0;color:#193e61;border-radius:9px}
+.coopex-side-person:hover,.coopex-side-person:focus-visible{background:#d9ebff;border-color:#bfd9fa}
+.coopex-person-dot{width:10px;height:10px;border:2px solid #ffffff;border-radius:50%;flex:none;box-shadow:0 0 0 1px #aac2d3}
+.coopex-side-person-name{font-weight:750;font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;flex:1}
+.coopex-side-person small{font-size:10px;color:#627d95}
+.coopex-side-empty{font-size:12px;color:#577895;padding:9px}
+.coopex-side-expand{position:absolute;left:14px;top:14px;z-index:700;width:46px;height:46px;border-radius:15px!important;border:1px solid #e8f4ff;background:#e6f3ff!important;color:#174f91!important;box-shadow:0 6px 17px #173c6838!important;font-size:22px;font-weight:700;display:none}
+#ui>.back-link{z-index:710!important;top:20px!important;left:20px!important;width:34px!important;height:34px!important;min-width:34px!important;min-height:34px!important;display:grid;place-items:center}
+body:not(.cx-side-collapsed):not(.cx-address-mode) #ui>.search{z-index:660!important;top:129px!important;left:27px!important;width:306px!important;background:#fff!important;border:1px solid #b8d7ee!important;box-shadow:0 3px 12px #0c4b8030!important;border-radius:15px!important}
+body:not(.cx-side-collapsed):not(.cx-address-mode) #ui>.search input{color:#153c62!important;font-weight:650}
+body:not(.cx-side-collapsed):not(.cx-address-mode) #ui>.search input::placeholder{color:#577b9b!important}
+body:not(.cx-side-collapsed):not(.cx-address-mode) #ui>.search-results{top:177px!important;left:27px!important;width:306px!important;background:#f8fcff!important;color:#173d62!important}
+body:not(.cx-side-collapsed):not(.cx-address-mode) .search-results .result{color:#163c5f!important}
+body.cx-side-collapsed .coopex-side{display:none!important}
+body.cx-side-collapsed #sideExpand{display:block!important}
+body.cx-side-collapsed #ui>.search{left:72px!important;top:17px!important}
+body.cx-side-collapsed #ui>.back-link{left:16px!important;top:79px!important}
+body.cx-address-mode .coopex-side,body.cx-address-mode #sideExpand{display:none!important}
+body.cx-address-mode #ui>.back-link{left:20px!important;top:20px!important}
+@media(max-width:720px){.coopex-side{width:min(335px,calc(100vw - 24px))!important}.coopex-side-intro{margin-bottom:91px!important}body:not(.cx-side-collapsed):not(.cx-address-mode) #ui>.search{width:min(305px,calc(100vw - 55px))!important}}
