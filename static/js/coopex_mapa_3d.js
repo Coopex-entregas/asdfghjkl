@@ -167,16 +167,30 @@ function installPins(){
  });
  if(!map.getLayer("coopex-gps-pins"))map.addLayer({
   id:"coopex-gps-pins",type:"circle",source:PINS_SOURCE,
-  paint:{"circle-radius":["interpolate",["linear"],["zoom"],8,12,12,18,17,21],
-  "circle-color":["match",["get","status"],"online","#08c977","ocioso","#f39b21","offline","#f04659","#2772e7"],
-  "circle-stroke-color":"#ffffff","circle-stroke-width":3,
-  "circle-opacity":1}
+  paint:{
+   "circle-radius":["interpolate",["linear"],["zoom"],8,14,12,19,17,22],
+   "circle-color":["match",["get","status"],"online","#08c977","ocioso","#f4a230","offline","#ef485e","#1977d5"],
+   "circle-stroke-color":"#ffffff","circle-stroke-width":2.5,
+   "circle-opacity":0.98,"circle-blur":0
+  }
+ });
+ // Vidro translúcido dentro do aro de status, desenhado no mapa (sem marcador HTML).
+ if(!map.getLayer("coopex-gps-glass"))map.addLayer({
+  id:"coopex-gps-glass",type:"circle",source:PINS_SOURCE,
+  paint:{
+   "circle-radius":["interpolate",["linear"],["zoom"],8,10,12,14.4,17,17.1],
+   "circle-color":"#f6fcff",
+   "circle-opacity":0.9,
+   "circle-stroke-width":1.2,
+   "circle-stroke-color":"#ffffff"
+  }
  });
  if(!map.getLayer("coopex-gps-initials"))map.addLayer({
   id:"coopex-gps-initials",type:"symbol",source:PINS_SOURCE,
-  layout:{"text-field":["get","initials"],"text-size":12,
-   "text-allow-overlap":true,"text-ignore-placement":true,"text-anchor":"center"},
-  paint:{"text-color":"#ffffff","text-halo-color":"#12395a","text-halo-width":0.6}
+  layout:{"text-field":["get","initials"],"text-size":["interpolate",["linear"],["zoom"],8,11,12,12.5,17,14],
+   "text-allow-overlap":true,"text-ignore-placement":true,"text-anchor":"center",
+   "text-font":["Open Sans Bold","Arial Unicode MS Bold"]},
+  paint:{"text-color":"#0b1928","text-halo-color":"#ffffff","text-halo-width":0.25}
  });
 }
 map.on("click","coopex-gps-pins",e=>{
@@ -245,7 +259,7 @@ function street(){const p=viewPoint||dest();if(!p){$("addressMessage").textConte
 
 let searchingAddress=false,oldMapView=null;
 function applySearchVisibility(){
- for(const id of ["coopex-gps-halo","coopex-gps-pins","coopex-gps-initials"]){
+ for(const id of ["coopex-gps-halo","coopex-gps-pins","coopex-gps-glass","coopex-gps-initials"]){
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",searchingAddress?"none":"visible");
  }
  document.body.classList.toggle("cx-address-mode",searchingAddress);
