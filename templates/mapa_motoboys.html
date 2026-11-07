@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-googleonly20">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-realgoogle21">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -21,7 +21,7 @@
   <div class="coopex-side-list-title"><strong>Cooperados no mapa</strong><span id="sideCount">0</span></div>
   <div id="sideCourierList" class="coopex-side-list" aria-live="off"></div>
  </aside>
- <button type="button" id="sideExpand" class="coopex-side-expand glass" title="Abrir painel COOPEX" aria-label="Abrir painel COOPEX">☰</button>
+ <button type="button" id="sideExpand" class="coopex-side-expand glass" title="Pesquisar no Google Maps" aria-label="Abrir pesquisa do Google Maps">☰ &nbsp; Explorar Google Maps</button>
  <section class="search glass"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" placeholder="Buscar cooperado..." aria-label="Buscar cooperado"></section>
 <div class="search-results glass" id="results"></div>
 <nav class="filters glass" aria-label="Filtrar cooperados">
@@ -52,15 +52,15 @@
  <small class="cx-camera-disclaimer">Transmissões externas: podem estar indisponíveis ou fora do ar. A COOPEX não controla as imagens. A indicação de proximidade depende de localização verificada.</small>
 </section>
 <section id="addressPanel" class="address-panel glass" hidden aria-label="Pesquisa de endereços"><button id="addressCollapse" class="cx-address-collapse" type="button" title="Recolher ou expandir pesquisa" aria-label="Recolher pesquisa">‹</button>
-<div class="address-head"><strong>Endereços e paradas</strong><button id="addressClose" class="close" type="button" aria-label="Fechar">×</button></div>
-<input id="address" placeholder="Rua, número e bairro em Natal" aria-label="Pesquisar endereço">
+<div class="address-head"><strong>Explorar no Google Maps</strong><button id="addressClose" class="close" type="button" aria-label="Fechar">×</button></div>
+<input id="address" placeholder="Pesquise uma rua, lugar ou endereço" aria-label="Pesquisar endereço">
 <div class="address-actions">
 <button id="addressGo" type="button" class="primary">⌕ Pesquisar</button><button id="addStop" type="button">＋ Adicionar parada</button>
 <button id="streetView" type="button">👁 Ver rua</button><button id="routeOpen" class="primary" type="button">↗ Abrir rota</button>
 </div><div id="addressMessage" aria-live="polite"></div>
 <div class="small-muted">Paradas intermediárias: <b id="stopsCount">0</b> de 3</div>
 <div id="stopsList"></div><button id="stopsClear" class="btn" type="button">Limpar paradas</button>
-<small class="small-muted">Visão de rua e navegação abrem no Google Maps. A disponibilidade depende da cobertura.</small>
+<small class="small-muted">Pesquise e explore as ruas no próprio mapa; a função de rota externa abre o site de navegação.</small>
 </section>
 <section id="details" class="details glass" aria-live="polite">
 <div class="person-head"><span id="personAvatar" class="person-avatar">--</span><div><strong id="personName">Cooperado</strong><span id="personState" class="state">Online</span></div><button id="detailsClose" class="close" type="button" aria-label="Fechar">×</button></div>
@@ -80,7 +80,7 @@
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261107-googleonly20"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-googleonly20"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261107-realgoogle21"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-realgoogle21"></script>
 </body>
 </html>
