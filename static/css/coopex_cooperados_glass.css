@@ -1,0 +1,137 @@
+/* COOPEX | Cooperados liquid-glass 3D, controlled only by admin */
+body.cx-coop-glass{
+ --cg-text:#133b73;--cg-muted:#5076a1;--cg-border:rgba(255,255,255,.89);
+ --cg-sheen:linear-gradient(124deg,rgba(255,255,255,.83),rgba(251,255,255,.36) 22%,rgba(153,209,255,.12) 70%,rgba(255,255,255,.36));
+ --cg-panel:rgba(212,236,254,.60);
+ --cg-depth:inset 0 2px 4px rgba(255,255,255,.93),inset 0 -3px 9px rgba(49,105,170,.14),0 5px 0 rgba(86,146,207,.13),0 14px 26px rgba(8,50,104,.18);
+ --bg:#e8f5ff;--card:#e1f1ff;--soft:#d7eaff;--ink:var(--cg-text);--text:var(--cg-text);--muted:var(--cg-muted);--line:var(--cg-border);--line-strong:var(--cg-border);
+ background:radial-gradient(ellipse at 20% 0%,rgba(121,194,252,.26),transparent 55%),linear-gradient(154deg,#f0f9ff,#cde7fd)!important;
+ color:var(--cg-text)!important;min-height:100vh!important;
+}
+body.cx-coop-glass.dark{
+ --cg-text:#f1f9ff;--cg-muted:#bbd7f2;--cg-border:rgba(140,198,248,.54);
+ --cg-sheen:linear-gradient(124deg,rgba(165,213,253,.22),rgba(90,165,232,.09) 25%,rgba(13,52,96,.07) 70%,rgba(158,211,251,.13));
+ --cg-panel:rgba(24,66,109,.62);
+ --cg-depth:inset 0 2px 4px rgba(204,234,255,.23),inset 0 -4px 9px rgba(0,21,47,.28),0 5px 0 rgba(3,19,41,.60),0 15px 29px rgba(1,16,35,.47);
+ --bg:#0a2645;--card:#153a62;--soft:#1c466f;--ink:var(--cg-text);--text:var(--cg-text);--muted:var(--cg-muted);--line:var(--cg-border);--line-strong:var(--cg-border);
+ background:radial-gradient(ellipse at 20% 0%,rgba(80,150,223,.27),transparent 58%),linear-gradient(154deg,#06192f,#123455 70%,#0a2441)!important;
+ color:var(--cg-text)!important;color-scheme:dark!important;
+}
+body.cx-coop-glass .topbar{
+ min-height:62px!important;padding:9px clamp(12px,1.3vw,24px)!important;gap:13px!important;
+ background:linear-gradient(122deg,#286db1,#184e86 51%,#123863)!important;
+ border-bottom:1px solid rgba(202,237,255,.59)!important;
+ box-shadow:inset 0 2px 3px rgba(250,255,255,.37),inset 0 -3px 6px rgba(0,30,75,.25),0 6px 18px rgba(2,31,76,.30)!important;
+}
+body.cx-coop-glass .topbar .brand{gap:11px!important}
+body.cx-coop-glass .brand-symbol{display:none!important}
+body.cx-coop-glass .brand-title strong{color:#f4fbff!important;font-size:17px!important}
+body.cx-coop-glass .brand-title small{color:#d1e9fc!important}
+body.cx-coop-glass .cg-back{
+ display:inline-flex!important;flex:0 0 40px!important;width:40px!important;height:40px!important;
+ align-items:center!important;justify-content:center!important;text-decoration:none!important;
+ background:linear-gradient(132deg,rgba(255,255,255,.34),rgba(166,220,255,.09))!important;
+ color:white!important;border:1px solid rgba(229,249,255,.69)!important;
+ border-radius:12px!important;font:850 27px/1 Inter,system-ui!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.43),0 4px 11px rgba(0,25,62,.30)!important;
+}
+body.cx-coop-glass #btnTheme,body.cx-coop-glass #coopexVisualTools{display:none!important}
+body.cx-coop-glass .topbar .logout{
+ min-height:38px!important;height:38px!important;padding:0 15px!important;
+ background:linear-gradient(135deg,rgba(255,255,255,.25),rgba(133,191,246,.11))!important;
+ border:1px solid rgba(225,247,255,.55)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.33),0 4px 10px rgba(2,29,73,.23)!important;
+}
+body.cx-coop-glass .page{
+ width:100%!important;max-width:none!important;margin:0!important;
+ padding:clamp(11px,1.2vw,22px)!important;gap:clamp(12px,1.2vw,22px)!important;
+ grid-template-columns:minmax(270px,21%) minmax(0,1fr)!important;align-items:start!important;
+}
+body.cx-coop-glass .page>section.card{
+ min-width:0!important;overflow:hidden!important;
+ background:var(--cg-sheen),var(--cg-panel)!important;
+ border:1px solid var(--cg-border)!important;border-radius:19px!important;
+ box-shadow:var(--cg-depth)!important;
+ backdrop-filter:blur(15px) saturate(1.18)!important;
+ -webkit-backdrop-filter:blur(15px) saturate(1.18)!important;
+}
+body.cx-coop-glass .page>section.card .card-body{padding:clamp(14px,1.18vw,22px)!important}
+body.cx-coop-glass :is(.title-block h1,.title-block h2,.coop-ident,.card-title,.field-note,label,.kpi){color:var(--cg-text)!important}
+body.cx-coop-glass .title-block p{color:var(--cg-muted)!important}
+body.cx-coop-glass .title-icon{
+ background:linear-gradient(138deg,rgba(121,193,255,.32),rgba(27,97,182,.22))!important;
+ color:var(--cg-text)!important;border:1px solid var(--cg-border)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.23),0 4px 11px rgba(8,46,97,.23)!important;
+}
+body.cx-coop-glass .card-title{padding-bottom:13px!important;border-bottom:1px solid var(--cg-border)!important}
+body.cx-coop-glass :is(input[type=text],input[type=password],select,.table-input){
+ background:linear-gradient(132deg,rgba(192,226,254,.21),rgba(75,146,221,.11)),var(--cg-panel)!important;
+ color:var(--cg-text)!important;-webkit-text-fill-color:var(--cg-text)!important;
+ border:1px solid var(--cg-border)!important;border-radius:11px!important;
+ box-shadow:inset 0 2px 5px rgba(4,42,89,.17),0 3px 8px rgba(3,43,89,.10)!important;
+}
+body.cx-coop-glass:not(.dark) :is(input[type=text],input[type=password],select,.table-input){
+ background:linear-gradient(122deg,rgba(255,255,255,.68),rgba(204,232,254,.45))!important;
+}
+body.cx-coop-glass input::placeholder{color:var(--cg-muted)!important;-webkit-text-fill-color:var(--cg-muted)!important}
+body.cx-coop-glass select option{background:var(--card)!important;color:var(--cg-text)!important}
+body.cx-coop-glass .btn{
+ min-height:39px!important;
+ background:linear-gradient(145deg,#3789ef,#1755c8 56%,#103e9e)!important;
+ border:1px solid rgba(198,233,255,.42)!important;
+ box-shadow:inset 0 2px 3px rgba(250,255,255,.41),inset 0 -3px 5px rgba(3,30,91,.24),0 4px 10px rgba(4,39,93,.24)!important;
+ color:#faffff!important;
+}
+body.cx-coop-glass .btn.alt,body.cx-coop-glass .btn.success{
+ background:var(--cg-sheen),rgba(94,158,221,.20)!important;
+ color:var(--cg-text)!important;border-color:var(--cg-border)!important;
+ box-shadow:inset 0 2px 3px rgba(238,250,255,.21),0 4px 9px rgba(4,43,87,.14)!important;
+}
+body.cx-coop-glass .btn.danger{
+ background:linear-gradient(145deg,#ed6170,#c72a49 60%,#a3213b)!important;
+ color:white!important;
+}
+body.cx-coop-glass .kpi,body.cx-coop-glass .info-strip,body.cx-coop-glass .messages{
+ background:var(--cg-sheen),rgba(93,164,234,.17)!important;
+ color:var(--cg-text)!important;border:1px solid var(--cg-border)!important;
+ border-radius:12px!important;box-shadow:inset 0 2px 3px rgba(255,255,255,.20),0 4px 10px rgba(4,37,82,.11)!important;
+}
+body.cx-coop-glass .table-shell{
+ max-height:calc(100vh - 295px)!important;min-height:min(400px,55vh)!important;
+ border:1px solid var(--cg-border)!important;border-radius:15px!important;
+ background:linear-gradient(125deg,rgba(134,199,253,.10),rgba(49,117,192,.08))!important;
+ box-shadow:inset 0 3px 8px rgba(2,34,74,.15),0 5px 14px rgba(4,38,81,.14)!important;
+ overflow:auto!important;
+}
+body.cx-coop-glass .coop-table thead th{
+ background:linear-gradient(135deg,#4b83b8,#215280 57%,#103a66)!important;
+ color:#f5fbff!important;border-color:rgba(187,226,255,.36)!important;
+ box-shadow:inset 0 2px 2px rgba(255,255,255,.27),inset 0 -3px 5px rgba(3,33,75,.23)!important;
+}
+body.cx-coop-glass .coop-table tbody td{
+ background:linear-gradient(115deg,rgba(164,211,251,.13),rgba(72,145,219,.045))!important;
+ border-bottom:1px solid rgba(155,207,251,.23)!important;color:var(--cg-text)!important;
+}
+body.cx-coop-glass .coop-table tbody tr:nth-child(even) td{background:linear-gradient(115deg,rgba(137,194,245,.19),rgba(72,148,221,.09))!important}
+body.cx-coop-glass .coop-table tbody tr:hover td{background:linear-gradient(115deg,rgba(137,205,255,.30),rgba(84,151,227,.18))!important}
+body.cx-coop-glass .avatar{
+ background:linear-gradient(145deg,#699fee,#3f67c2)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.4),0 3px 9px rgba(4,41,94,.24)!important;
+}
+body.cx-coop-glass .badge-status.ativo{background:linear-gradient(130deg,rgba(25,175,106,.20),rgba(9,124,73,.11))!important;border-color:rgba(69,210,141,.54)!important;color:#13a364!important}
+body.cx-coop-glass .badge-status.inativo{background:linear-gradient(130deg,rgba(237,71,91,.24),rgba(158,31,58,.12))!important;border-color:rgba(233,110,124,.5)!important;color:#f17485!important}
+body.cx-coop-glass:not(.dark) .badge-status.ativo{color:#057747!important}
+body.cx-coop-glass:not(.dark) .badge-status.inativo{color:#b62944!important}
+body.cx-coop-glass .row-actions{flex-wrap:wrap!important;gap:7px!important}
+body.cx-coop-glass .row-actions .btn.small{min-width:0!important;min-height:35px!important;padding:7px 10px!important}
+@media(max-width:1050px){
+ body.cx-coop-glass .page{grid-template-columns:minmax(0,1fr)!important}
+ body.cx-coop-glass .table-shell{max-height:65vh!important}
+}
+@media(max-width:680px){
+ body.cx-coop-glass .topbar{padding:9px 10px!important}
+ body.cx-coop-glass .brand-title strong{font-size:15px!important}
+ body.cx-coop-glass .brand-title small{display:none!important}
+ body.cx-coop-glass .page{padding:10px!important}
+ body.cx-coop-glass .toolbar{grid-template-columns:1fr!important}
+}
