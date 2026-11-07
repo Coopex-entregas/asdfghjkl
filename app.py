@@ -1521,6 +1521,28 @@ def _registrar_localizacao_em_memoria(auth_info, lat, lng, acc=None, spd=None, h
         info['last_emit_ts'] = agora_ts
 
     _LIVE_LOCATION_BY_ID[coop_id] = info
+
+    # Grava apenas um retrato GPS periódico para manter a última posição após
+    # desconexão ou reinício do servidor, sem gravar cada ping recebido.
+    last_saved_ts = float((anterior or {}).get('last_saved_ts') or 0)
+    if agora_ts - last_saved_ts >= 180:
+        try:
+            db.session.query(Cooperado).filter(Cooperado.id == coop_id).update({
+                Cooperado.last_lat: float(lat),
+                Cooperado.last_lng: float(lng),
+                Cooperado.last_ping: agora_dt,
+                Cooperado.last_speed_kmh: float(spd) if spd is not None else None,
+                Cooperado.last_heading: float(hdg) if hdg is not None else None,
+                Cooperado.last_accuracy_m: float(acc) if acc is not None else None,
+            }, synchronize_session=False)
+            db.session.commit()
+            info['last_saved_ts'] = agora_ts
+        except Exception:
+            db.session.rollback()
+            info['last_saved_ts'] = agora_ts
+    else:
+        info['last_saved_ts'] = last_saved_ts
+
     _evict_live_location_cache()
 
     if emitir_agora:
@@ -7451,6 +7473,14 @@ def mapa_motoboys():
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
 
+    # Última posição persistida: carregamento em lote (inclusive para offline).
+    # Nunca atribuir coordenadas falsas para cooperados sem GPS registrado.
+    posicoes_salvas = {}
+    try:
+        posicoes_salvas = {int(p.cooperado_id): p for p in LocalizacaoCooperado.query.all()}
+    except Exception:
+        posicoes_salvas = {}
+
     # Conta entregas abertas uma única vez para não fazer uma consulta por cooperado.
     abertas_por_coop = {}
     try:
@@ -7503,13 +7533,29 @@ def mapa_motoboys():
 
     for c in cooperados:
         live = _get_live_location(c.id)
-
+        saved = posicoes_salvas.get(int(c.id))
+        # Preferir GPS vivo; na ausência, usar o último sinal conhecido no banco.
         lat = live.get('lat') if live else None
         lng = live.get('lng') if live else None
         acc = live.get('accuracy') if live else None
         hdg = live.get('heading') if live else None
+        speed_saved = live.get('speed') if live else None
+        last_seen = live.get('ultima_atualizacao') if live else None
         online = bool(live and live.get('online'))
-        tem_localizacao = bool(live and _coord_valida(lat, lng))
+
+        if not _coord_valida(lat, lng):
+            latitude_db = saved.latitude if saved and saved.latitude is not None else c.last_lat
+            longitude_db = saved.longitude if saved and saved.longitude is not None else c.last_lng
+            if _coord_valida(latitude_db, longitude_db):
+                lat, lng = latitude_db, longitude_db
+                online = False
+                acc = saved.accuracy if saved else getattr(c, 'last_accuracy_m', None)
+                hdg = saved.heading if saved else getattr(c, 'last_heading', None)
+                speed_saved = saved.speed if saved else getattr(c, 'last_speed_kmh', None)
+                when = saved.atualizado_em if saved else c.last_ping
+                last_seen = _format_brasilia_from_utc(when) if when else 'Última posição registrada'
+
+        tem_localizacao = bool(_coord_valida(lat, lng))
 
         entregas_abertas = abertas_por_coop.get(int(c.id), 0)
 
@@ -7523,7 +7569,7 @@ def mapa_motoboys():
         if live:
             live['status'] = status
 
-        ultima_txt = live.get('ultima_atualizacao') if live else ''
+        ultima_txt = last_seen or ''
 
         nome = c.nome or f'Cooperado {c.id}'
         try:
@@ -7542,7 +7588,7 @@ def mapa_motoboys():
             'idle_seconds': 0 if online else None,
             'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
             'accuracy_m': float(acc or 0),
-            'speed_kmh': round(float(live.get('speed')), 1) if live and live.get('speed') is not None else None,
+            'speed_kmh': round(float(speed_saved), 1) if speed_saved is not None else None,
             'heading': float(hdg or 0),
             'ultima_atualizacao': ultima_txt or 'Sem GPS enviado',
             'endereco': getattr(c, 'zona', None) or getattr(c, 'bairro', None) or '',
