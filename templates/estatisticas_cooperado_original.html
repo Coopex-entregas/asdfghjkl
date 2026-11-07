@@ -379,6 +379,13 @@ body.dark-mode .proCompare .box b{color:#dce8ff}
   </form>
 </header>
 
+<section class="cx-period-counts noPrint" id="cx-period-counts" aria-label="Entregas por período">
+  <div class="cx-period-item"><span class="cx-period-icon" aria-hidden="true">◷</span><div><span class="cx-period-label">Hoje</span><strong>{{ entregas_periodos.dia }}</strong><small>Entregas do dia</small></div></div>
+  <div class="cx-period-item"><span class="cx-period-icon" aria-hidden="true">▦</span><div><span class="cx-period-label">Esta semana</span><strong>{{ entregas_periodos.semana }}</strong><small>{{ entregas_periodos.semana_inicio }} a {{ entregas_periodos.semana_fim }} · seg–dom</small></div></div>
+  <div class="cx-period-item"><span class="cx-period-icon" aria-hidden="true">▣</span><div><span class="cx-period-label">Este mês</span><strong>{{ entregas_periodos.mes }}</strong><small>Entregas no mês</small></div></div>
+  <div class="cx-period-item"><span class="cx-period-icon" aria-hidden="true">◫</span><div><span class="cx-period-label">Este ano</span><strong>{{ entregas_periodos.ano }}</strong><small>Entregas no ano</small></div></div>
+</section>
+
 <main class="wrap">
 <div id="sec-resumo" class="proSection"></div>
   <section class="hero">
