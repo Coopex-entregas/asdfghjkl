@@ -251,3 +251,181 @@ body.cx-command-center .dashboard-tabs-bar button,.dashboard-tabs-bar a{transiti
  body.cx-command-center main.wrap{margin:0!important;width:100%!important}
  body.cx-command-center .dashboard-filter-shell{display:none!important}
 }
+
+/* v2 — fill the entire available monitor, minimize vertical scrolling. */
+html body.cx-report-glass.cx-command-center{
+ --cx-desk-width:216px!important;
+}
+html body.cx-report-glass.cx-command-center.dashboard-blue-tabs-ready .dashboard-tabs-bar.cx-report-rail,
+html body.cx-report-glass.cx-command-center .dashboard-tabs-bar.cx-report-rail{
+ position:fixed!important;left:0!important;top:0!important;bottom:0!important;right:auto!important;
+ width:var(--cx-desk-width)!important;min-width:var(--cx-desk-width)!important;max-width:var(--cx-desk-width)!important;
+ height:100dvh!important;min-height:100dvh!important;
+ margin:0!important;padding:10px!important;gap:3px!important;
+ display:flex!important;flex-direction:column!important;align-items:stretch!important;flex-wrap:nowrap!important;
+ overflow-x:hidden!important;overflow-y:auto!important;
+ background:linear-gradient(160deg,#124b80,#0a2947 48%,#071a30)!important;
+ border:0!important;border-right:1px solid rgba(204,239,255,.3)!important;
+ box-shadow:inset -2px 0 4px rgba(200,235,255,.1),4px 0 18px rgba(2,23,55,.23)!important;
+ z-index:4000!important;
+}
+html body.cx-report-glass.cx-command-center .cx-rail-brand{
+ display:flex!important;min-height:51px!important;flex:0 0 51px!important;
+ align-items:center!important;padding:5px 4px 9px!important;margin-bottom:4px!important;
+}
+html body.cx-report-glass.cx-command-center .cx-rail-back{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;flex:0 0 37px!important;
+ width:37px!important;height:37px!important;
+ border-radius:10px!important;
+ color:white!important;text-decoration:none!important;font:850 25px/1 system-ui!important;
+ background:linear-gradient(145deg,rgba(225,249,255,.29),rgba(93,171,240,.10))!important;
+ border:1px solid rgba(234,247,255,.63)!important;
+ box-shadow:inset 0 2px 4px rgba(246,254,255,.33),0 3px 8px rgba(0,17,45,.26)!important;
+}
+html body.cx-report-glass.cx-command-center .cx-report-rail .dashboard-tab-button{
+ display:flex!important;flex:0 0 39px!important;width:100%!important;
+ height:39px!important;min-height:39px!important;
+ color:#e9f6ff!important;text-shadow:none!important;
+ border-radius:10px!important;padding:0 11px!important;
+}
+html body.cx-report-glass.cx-command-center .cx-report-rail .dashboard-tab-button.active{
+ background:linear-gradient(135deg,rgba(122,200,250,.37),rgba(38,114,204,.35))!important;
+ color:white!important;
+}
+html body.cx-report-glass.cx-command-center .cx-report-rail .report-back,
+html body.cx-report-glass.cx-command-center .cx-report-rail .dashboard-tabs-actions,
+html body.cx-report-glass.cx-command-center .cx-report-rail .cx-rail-footer{display:none!important}
+html body.cx-report-glass.cx-command-center .cx-report-heading{
+ min-height:49px!important;margin-left:var(--cx-desk-width)!important;
+ padding:6px 15px!important;
+}
+html body.cx-report-glass.cx-command-center .cx-report-heading h1{font-size:17px!important}
+html body.cx-report-glass.cx-command-center .cx-report-heading .cx-report-context{font-size:10px!important}
+html body.cx-report-glass.cx-command-center .cx-report-heading .heroChip,
+html body.cx-report-glass.cx-command-center .cx-report-heading .btn{
+ height:31px!important;min-height:31px!important;padding:0 9px!important;font-size:11px!important;
+}
+html body.cx-report-glass.cx-command-center .cx-period-counts{
+ margin:8px 12px 7px calc(var(--cx-desk-width) + 12px)!important;
+ width:calc(100% - var(--cx-desk-width) - 24px)!important;
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;
+}
+html body.cx-report-glass.cx-command-center .cx-period-item{
+ min-width:0!important;min-height:70px!important;display:flex!important;align-items:center!important;
+ gap:10px!important;padding:9px 13px!important;
+ border:1px solid var(--cx-border)!important;border-radius:13px!important;
+ background:var(--cx-glass),var(--cx-surface)!important;box-shadow:var(--cx-shadow)!important;
+ color:var(--cx-ink)!important;
+}
+html body.cx-report-glass.cx-command-center .cx-period-item>div{min-width:0!important;display:grid!important;grid-template-columns:auto 1fr!important;column-gap:8px!important;align-items:center!important}
+html body.cx-report-glass.cx-command-center .cx-period-label{
+ font-size:11px!important;font-weight:850!important;color:var(--cx-sub)!important;
+ white-space:nowrap!important;
+}
+html body.cx-report-glass.cx-command-center .cx-period-item strong{
+ font:950 clamp(18px,1.3vw,25px)/1.05 Inter,system-ui!important;color:var(--cx-ink)!important;
+ white-space:nowrap!important;font-variant-numeric:tabular-nums!important;
+}
+html body.cx-report-glass.cx-command-center .cx-period-item small{
+ grid-column:1/-1!important;color:var(--cx-sub)!important;font-size:10px!important;white-space:nowrap!important;
+}
+html body.cx-report-glass.cx-command-center .cx-period-icon{
+ display:grid!important;place-items:center!important;flex:0 0 32px!important;
+ width:32px!important;height:32px!important;border-radius:10px!important;
+ color:var(--cx-blue)!important;border:1px solid rgba(122,195,252,.35)!important;
+ background:rgba(126,190,243,.14)!important;font-weight:900!important;font-size:18px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-filter-shell{
+ margin:8px 12px 7px calc(var(--cx-desk-width) + 12px)!important;
+ padding:9px 12px!important;border-radius:13px!important;min-height:0!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-filter-title-row{
+ margin:0 0 6px!important;min-height:26px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-filter-shell.cx-filters-compact .dashboard-filter-content .filters{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-filter-shell .dashboard-filter-content :is(input,select){
+ min-height:33px!important;height:33px!important;padding:5px 8px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-filter-shell .dashboard-filter-content label{margin:0 0 3px!important;font-size:10px!important}
+html body.cx-report-glass.cx-command-center .dashboard-filter-actions button{min-height:33px!important;padding:0 10px!important;font-size:11px!important}
+html body.cx-report-glass.cx-command-center main.wrap{
+ margin:0 0 0 var(--cx-desk-width)!important;
+ width:calc(100% - var(--cx-desk-width))!important;max-width:none!important;
+ padding:8px 12px 16px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi{
+ grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;margin:0!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi>.kpi{
+ grid-column:auto!important;min-width:0!important;min-height:94px!important;max-height:110px!important;
+ padding:11px 14px!important;gap:5px!important;border-radius:14px!important;
+ background:var(--cx-glass),var(--cx-surface)!important;
+ box-shadow:var(--cx-shadow)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi>.kpi .lab{
+ min-height:18px!important;font-size:11px!important;
+ gap:7px!important;line-height:1.1!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi>.kpi .val{
+ font-size:clamp(20px,1.45vw,27px)!important;min-width:0!important;
+ white-space:nowrap!important;line-height:1.06!important;
+ overflow:visible!important;overflow-wrap:normal!important;
+ font-variant-numeric:tabular-nums!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi>.kpi .val.cx-long-value{font-size:clamp(16px,1.12vw,21px)!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi>.kpi .val.cx-extra-long-value{font-size:clamp(12px,.92vw,18px)!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi>.kpi .hint{font-size:10px!important;line-height:1.12!important}
+html body.cx-report-glass.cx-command-center .cx-kpi-icon{width:21px!important;height:21px!important;flex:0 0 21px!important}
+html body.cx-report-glass.cx-command-center .cx-kpi-icon svg{width:13px!important;height:13px!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .cx-dash-card-wave{display:none!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board{
+ display:grid!important;grid-template-columns:minmax(0,1.35fr) minmax(0,1fr)!important;
+ gap:9px!important;margin-top:10px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .card{
+ padding:12px!important;border-radius:14px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .cardHead{margin-bottom:8px!important;padding-bottom:7px!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .cardHead h2{font-size:14px!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .chartBox{
+ height:clamp(170px,24vh,240px)!important;min-height:165px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .chartBox.tall{
+ height:clamp(190px,27vh,270px)!important;
+}
+@media(max-width:1300px){
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board{grid-template-columns:minmax(0,1fr)!important}
+}
+@media(max-width:930px){
+ html body.cx-report-glass.cx-command-center{--cx-desk-width:68px!important}
+ html body.cx-report-glass.cx-command-center .cx-rail-title,.cx-report-rail .cx-rail-kicker{display:none!important}
+ html body.cx-report-glass.cx-command-center .cx-rail-brand{justify-content:center!important}
+ html body.cx-report-glass.cx-command-center .cx-report-rail .dashboard-tab-button{justify-content:center!important;padding:0!important}
+ html body.cx-report-glass.cx-command-center .cx-report-rail .dashboard-tab-button>span:not(.tab-icon){display:none!important}
+ html body.cx-report-glass.cx-command-center .cx-period-counts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:650px){
+ html body.cx-report-glass.cx-command-center{--cx-desk-width:0px!important}
+ html body.cx-report-glass.cx-command-center.dashboard-blue-tabs-ready .dashboard-tabs-bar.cx-report-rail,
+ html body.cx-report-glass.cx-command-center .dashboard-tabs-bar.cx-report-rail{
+  position:sticky!important;top:0!important;bottom:auto!important;
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  height:48px!important;min-height:48px!important;flex-direction:row!important;
+  align-items:center!important;overflow-x:auto!important;padding:5px!important;
+ }
+ html body.cx-report-glass.cx-command-center .cx-report-rail .cx-rail-brand{flex:0 0 38px!important;margin:0!important;padding:0!important;border:0!important}
+ html body.cx-report-glass.cx-command-center .cx-report-rail .dashboard-tab-button{flex:0 0 40px!important;width:40px!important;height:37px!important;min-height:37px!important}
+ html body.cx-report-glass.cx-command-center .cx-report-heading{margin:0!important}
+ html body.cx-report-glass.cx-command-center .cx-period-counts,
+ html body.cx-report-glass.cx-command-center .dashboard-filter-shell{
+  width:calc(100% - 16px)!important;margin:8px!important;
+ }
+ html body.cx-report-glass.cx-command-center .dashboard-filter-shell .dashboard-filter-content{display:flex!important;flex-direction:column!important}
+ html body.cx-report-glass.cx-command-center .dashboard-filter-shell .dashboard-filter-content .filters{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ html body.cx-report-glass.cx-command-center main.wrap{margin:0!important;width:100%!important;padding:8px!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral]>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
