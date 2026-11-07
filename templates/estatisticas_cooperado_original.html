@@ -340,8 +340,15 @@ body.dark-mode .proCompare .box b{color:#dce8ff}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 </head>
-<body>
-
+<body class="cx-report-glass">
+<script id="cx-report-theme-first-paint">
+(function(){try{
+ const saved=localStorage.getItem('cx_sup_brightness');
+ const night=saved===null?localStorage.getItem('coopex_theme')==='dark':Number(saved)<80;
+ document.body.classList.toggle('dark-mode',night);
+ document.documentElement.classList.toggle('dark-mode',night);
+}catch(e){}})();
+</script>
 
 <header class="top noPrint">
   <form class="topbar" method="get" action="{{ url_for('estatisticas_cooperado') }}">
@@ -654,48 +661,18 @@ async function copiarResumo(){const t=document.getElementById('resumoZap'); try{
    ========================================================= */
 (function iniciarPreferenciasDashboard(){
   try{
-    const darkSaved = localStorage.getItem('coopex_estatisticas_dark');
-    const adminDark = localStorage.getItem('coopex_admin_dark') || localStorage.getItem('coopex_dark_mode') || localStorage.getItem('darkMode');
-
-    const deveEscurecer = (
-      darkSaved === '1' ||
-      darkSaved === 'true' ||
-      (darkSaved === null && (adminDark === '1' || adminDark === 'true' || adminDark === 'dark'))
-    );
-
-    document.body.classList.toggle('dark-mode', !!deveEscurecer);
-    document.documentElement.classList.toggle('dark-mode', !!deveEscurecer);
-    atualizarBotaoDarkMode();
-
-    const lc = localStorage.getItem('coopex_rank_coop_limit') || '20';
-    const lt = localStorage.getItem('coopex_rank_contrato_limit') || '20';
-    const selC = document.getElementById('limitCoop');
-    const selT = document.getElementById('limitContrato');
-    if(selC) selC.value = lc;
-    if(selT) selT.value = lt;
+    const saved=localStorage.getItem('cx_sup_brightness');
+    const night=saved===null?localStorage.getItem('coopex_theme')==='dark':Number(saved)<80;
+    document.body.classList.toggle('dark-mode',night);
+    document.documentElement.classList.toggle('dark-mode',night);
+    const selC=document.getElementById('limitCoop'),selT=document.getElementById('limitContrato');
+    if(selC)selC.value=localStorage.getItem('coopex_rank_coop_limit')||'20';
+    if(selT)selT.value=localStorage.getItem('coopex_rank_contrato_limit')||'20';
     aplicarLimitesRankings();
   }catch(e){}
 })();
-
-function atualizarBotaoDarkMode(){
-  const btn = document.getElementById('darkModeBtn');
-  if(!btn) return;
-  const ativo = document.body.classList.contains('dark-mode');
-  btn.textContent = ativo ? '☀️ Modo claro' : '🌙 Modo noturno';
-}
-
-function toggleDarkMode(){
-  const ativo = !document.body.classList.contains('dark-mode');
-  document.body.classList.toggle('dark-mode', ativo);
-  document.documentElement.classList.toggle('dark-mode', ativo);
-  try{
-    localStorage.setItem('coopex_estatisticas_dark', ativo ? '1' : '0');
-    localStorage.setItem('coopex_admin_dark', ativo ? '1' : '0');
-    localStorage.setItem('coopex_dark_mode', ativo ? 'dark' : 'light');
-  }catch(e){}
-  atualizarBotaoDarkMode();
-}
-
+function atualizarBotaoDarkMode(){}
+function toggleDarkMode(){/* Tema alterado somente no administrador. */}
 function aplicarLimitesRankings(){
   const selC = document.getElementById('limitCoop');
   const selT = document.getElementById('limitContrato');
@@ -952,6 +929,47 @@ body:not(.dark-mode) #cxExpOpen{font-size:12px!important;padding:8px 10px!import
 @media(max-width:700px){body:not(.dark-mode) .dashboard-filter-shell{margin:9px!important}body:not(.dark-mode) .wrap{padding:9px!important}}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_dashboard_reference_unified.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_dashboard_glass_2026.css') }}">
+<script id="cx-report-admin-theme-and-nav">
+(function(){
+ function sync(){
+  try{
+   const v=localStorage.getItem('cx_sup_brightness');
+   const dark=v===null?localStorage.getItem('coopex_theme')==='dark':Number(v)<80;
+   document.body.classList.toggle('dark-mode',dark);
+   document.documentElement.classList.toggle('dark-mode',dark);
+  }catch(e){}
+ }
+ sync();window.addEventListener('pageshow',sync);window.addEventListener('focus',sync);
+ window.addEventListener('storage',function(e){if(e.key==='cx_sup_brightness'||e.key==='coopex_theme')sync()});
+ function build(){
+  const tabbar=document.querySelector('.dashboard-tabs-bar');
+  if(tabbar&&!tabbar.querySelector('.report-back')){
+    const a=document.createElement('a');a.className='report-back';a.href='{{ url_for('admin') }}';
+    a.setAttribute('aria-label','Voltar ao administrador');a.title='Voltar ao administrador';a.textContent='‹';
+    tabbar.prepend(a);
+  }
+  document.querySelectorAll('.dashboard-tab-panel[data-panel="geral"]>.dashboard-panel-title').forEach(node=>node.remove());
+  document.querySelectorAll('.dashboard-tabs-bar .dashboard-tab-button').forEach(button=>{
+   const mapping={'▦':'layout-dashboard','♙':'users','▥':'briefcase','⌖':'map-pin','↗':'chart-no-axes-column-increasing','⚙':'settings'};
+   const first=[...button.childNodes].find(n=>n.nodeType===3);
+   if(!first)return;
+   // Preserve native click listeners: only text content is normalized.
+   let text=first.textContent;
+   text=text.replace(/[▦♙▥⌖↗⚙]/g,'').trim();
+   if(text)first.textContent=' '+text;
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>requestAnimationFrame(build),{once:true});
+ else requestAnimationFrame(build);
+ document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape'||e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey)return;
+  if(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'))return;
+  if(document.activeElement?.matches('input,textarea,select,[contenteditable]'))return;
+  e.preventDefault();location.assign('{{ url_for('admin') }}');
+ });
+})();
+</script>
 
 </body>
 </html>
