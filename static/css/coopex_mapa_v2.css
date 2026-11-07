@@ -35,3 +35,26 @@ button,input{font:inherit}button{cursor:pointer}button:focus-visible,input:focus
 @media(max-width:900px){.filters{top:82px;right:10px;max-width:calc(100vw - 20px);overflow:auto}.brand{top:10px;left:10px;padding:9px;min-width:0}.toolbar{top:145px;right:10px}.search{top:145px;left:10px;width:min(245px,calc(100vw - 195px))}.search-results{top:194px;left:10px}.details{right:10px;top:205px;width:min(320px,calc(100vw - 20px));max-height:42vh}.stats{left:10px;bottom:9px;gap:5px}.stat{min-width:68px;padding:8px}.stat .num{font-size:21px}.weather{right:10px;bottom:9px;width:215px;padding:10px}.notice{right:10px;bottom:169px}.weather-grid{gap:7px}.weather-grid>div+div{padding-left:7px}.temp{font-size:21px}}
 @media(max-width:560px){.brand strong{font-size:12px}.brand small{font-size:9px}.brand-icon{width:37px;height:37px;font-size:19px}.filters{top:68px}.pill{padding:9px 11px}.toolbar{top:170px}.search{top:117px;width:220px}.search-results{top:164px;width:265px}.details{top:224px}.weather{width:160px}.weather-grid{grid-template-columns:1fr}.weather-grid>div+div{border-left:0;border-top:1px solid #9ac9fa55;padding:8px 0 0}.stats{bottom:8px}.stat{min-width:61px}.weather-alert{display:none}}
 @media(prefers-reduced-motion:reduce){.drop{animation:none;display:none}#map .leaflet-tile-pane{transition:none}}
+
+.address-panel{position:absolute;right:22px;top:155px;width:345px;padding:16px;z-index:690}
+.address-panel[hidden]{display:none!important}
+.address-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.address-head strong{font-size:14px}
+.address-panel input{width:100%;height:41px;border-radius:12px;background:#0e325e;border:1px solid #749bc1;color:#fff;padding:0 12px;margin-bottom:8px}
+.address-panel input::placeholder{color:#d2e5f7}
+.address-actions{display:grid;grid-template-columns:1fr 1fr;gap:7px}
+.address-actions button{border:1px solid #6c9ac8;background:#205481;color:white;border-radius:10px;padding:10px 6px;font-size:11px;font-weight:800}
+.address-actions button.primary{background:#236fea}
+#addressMessage{font-size:11px;line-height:1.4;color:#dbedff;min-height:17px;margin-top:8px}
+#stopsList{display:grid;gap:5px;margin:9px 0;max-height:105px;overflow:auto}
+.stop-row{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:7px;background:#27577b88;border-radius:9px;font-size:11px}
+.stop-row span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stop-row button{border:0;border-radius:7px;background:#5780a0;color:white;padding:3px 8px}
+.back-link{position:absolute;left:22px;top:18px;z-index:710;width:44px;height:44px;display:grid;place-items:center;text-decoration:none;font-size:23px;font-weight:750;border-radius:15px}
+.brand{left:76px;min-width:280px}
+body.is-night .glass{--glass:rgba(8,28,55,.95);--txt:#f6fbff;--sub:#c6daee;border-color:rgba(132,186,239,.5)}
+body.is-night .weather,body.is-night .details{background:linear-gradient(135deg,rgba(32,78,122,.33),rgba(9,29,59,.3)),rgba(7,28,54,.94)}
+body.is-night .detail-line label,body.is-night .fine,body.is-night .small-muted{color:#d0e2f5}
+body.is-night .person-head strong,body.is-night .temp,body.is-night .weather h3{color:#fff}
+@media(max-width:900px){.back-link{top:10px;left:10px;width:42px;height:42px}.brand{left:60px}.address-panel{right:10px;top:195px;max-height:55vh;overflow:auto}}
+@media(max-width:560px){.brand{left:60px}.brand strong{font-size:12px}.brand small{font-size:9px}.brand-icon{display:none}.address-panel{top:200px;width:calc(100vw - 20px)}}
