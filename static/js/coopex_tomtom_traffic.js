@@ -21,7 +21,7 @@ const layer=L.geoJSON(null,{
     l.bindPopup(node);
   }
 }).addTo(map);
-function setStatus(msg){banner.textContent=msg;}
+function setStatus(msg,ok){banner.textContent=msg;banner.classList.toggle("cx-tt-failed",ok===false);banner.title=ok===false?"A chave TomTom está recusando a consulta do servidor Render. Configure uma chave exclusiva para servidor, sem restrição de domínio, guardada somente em TOMTOM_API_KEY.":"";}
 async function load(){
  try{
   const r=await fetch("/api/coopex/tomtom/incidentes",{credentials:"same-origin",cache:"no-store"});
@@ -30,8 +30,8 @@ async function load(){
   layer.clearLayers();
   layer.addData({type:"FeatureCollection",features:data.features||[]});
   const n=(data.features||[]).length;
-  setStatus("🚦 TomTom • "+n+" ocorrência"+(n===1?"":"s")+" na região de Natal");
- }catch(e){setStatus("🚦 TomTom indisponível • "+e.message);}
+  setStatus("🚦 Trânsito • "+n+" ocorrência"+(n===1?"":"s"),true);
+ }catch(e){setStatus("🚦 Trânsito indisponível",false);console.warn("COOPEX TomTom:",e.message);}
 }
 load();setInterval(load,15*60*1000);
 })();
