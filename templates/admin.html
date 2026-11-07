@@ -4170,3 +4170,42 @@ body #tbl table.tabela tbody>tr:hover>td:nth-child(n){
  background:linear-gradient(135deg,rgba(136,205,255,.31),rgba(97,164,227,.15)),var(--cx-row)!important;
 }
 </style>
+
+<script id="coopex-admin-pintura-final-v44">
+(function(){
+ 'use strict';
+ const release=()=>window.__coopexAdminReleaseLayout?.();
+ let complete=false;
+ function layoutReady(){
+  const nav=document.querySelector('.bank-toolbar');
+  const table=document.querySelector('#tbl table.tabela');
+  const pix=document.getElementById('cx-pix-avulso');
+  const board=document.getElementById('cx-supervisao-board');
+  const menus=nav?.querySelectorAll('.bank-group>.bank-group-btn');
+  return Boolean(nav&&table&&pix&&board&&board.closest('.bank-toolbar')===nav&&
+   menus?.length&&[...menus].every(b=>b.querySelector('.cx-menu-icon')));
+ }
+ function finish(){
+  if(complete)return;
+  complete=true;
+  // Completa os rearranjos e restaura a posição de rolagem antes de revelar.
+  requestAnimationFrame(()=>requestAnimationFrame(()=>{
+   release();
+   window.dispatchEvent(new Event('coopex-admin-layout-ready'));
+  }));
+ }
+ function ready(){
+  let checks=0;
+  const tryShow=()=>{
+   if(complete)return;
+   if(layoutReady()||++checks>=30){finish();return}
+   setTimeout(tryShow,100);
+  };
+  // Os scripts de UI são executados após DOMContentLoaded, sem atualizar a página.
+  setTimeout(tryShow,150);
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',ready,{once:true});
+ else ready();
+ window.addEventListener('pageshow',e=>{if(e.persisted)finish()});
+})();
+</script>
