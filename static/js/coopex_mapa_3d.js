@@ -55,7 +55,7 @@ function buildings(){
  if(trafficEvents.length)drawTraffic();
 }
 function setStyle(){document.body.classList.remove("is-night");}
-map.on("style.load",()=>{if(satellite)installSatellite();if(trafficEvents.length)drawTraffic();if(flowAuthorized)mountFlowLayer();});
+map.on("style.load",()=>{if(satellite)installSatellite();});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
@@ -161,60 +161,6 @@ $("addStop").onclick=()=>{const p=selectedAddress||viewPoint||dest();if(!p){$("a
 $("stopsClear").onclick=()=>{stops=[];stopRender();};
 $("routeOpen").onclick=openRoute;$("openNav").onclick=openRoute;$("streetView").onclick=street;$("streetTool").onclick=street;
 
-/* Fluxo de trânsito NÃO depende do GPS dos cooperados.
-   O raster transparente da TomTom colore as ruas com trânsito e é renovado
-   a cada 2 minutos, retirando congestionamentos que desapareceram na fonte. */
-let flowAuthorized=false,flowRefreshStamp=0;
-function mountFlowLayer(){
- if(!flowAuthorized||!map.isStyleLoaded())return;
- const old=map.getLayer("coopex-congestion-flow");
- if(old)map.removeLayer("coopex-congestion-flow");
- if(map.getSource("coopex-congestion-source"))map.removeSource("coopex-congestion-source");
- const v=Math.floor(Date.now()/120000);
- flowRefreshStamp=v;
- map.addSource("coopex-congestion-source",{
-  type:"raster",tileSize:256,minzoom:8,maxzoom:18,
-  tiles:["/api/coopex/tomtom/flow/{z}/{x}/{y}.png?v="+v]
- });
- const before=(map.getStyle().layers||[]).find(l=>l.type==="symbol");
- map.addLayer({id:"coopex-congestion-flow",type:"raster",source:"coopex-congestion-source",paint:{"raster-opacity":.82,"raster-fade-duration":0}},before?.id);
-}
-async function checkFlow(){
- try{
-  const r=await fetch("/api/coopex/tomtom/flow/status",{credentials:"same-origin",cache:"no-store"});
-  const d=await r.json();
-  if(!r.ok||!d.ok)throw Error(d.code||"FLOW_NOT_AUTHORIZED");
-  flowAuthorized=true;
-  if(map.isStyleLoaded())mountFlowLayer();
-  $("trafficStatus").textContent="Trânsito em tempo real";
-  $("trafficStatus").style.color="#15804d";
-  $("trafficText").textContent="Vias congestionadas em vermelho/laranja. Atualização a cada 2 minutos. Quando normalizar, a marcação desaparece.";
- }catch(e){
-  flowAuthorized=false;
-  if(map.getLayer("coopex-congestion-flow"))map.removeLayer("coopex-congestion-flow");
-  if(map.getSource("coopex-congestion-source"))map.removeSource("coopex-congestion-source");
-  $("trafficStatus").textContent="Trânsito sem conexão";
-  $("trafficText").textContent="TomTom ainda não autorizou os dados de fluxo. O mapa e GPS seguem disponíveis.";
- }
-}
-function refreshFlow(){
- if(!flowAuthorized)return;
- if(!document.hidden&&Math.floor(Date.now()/120000)!==flowRefreshStamp&&map.isStyleLoaded())mountFlowLayer();
-}
-
-function drawTraffic(){
- if(!map.isStyleLoaded())return;
- if(!map.getSource("coopex-traffic"))map.addSource("coopex-traffic",{type:"geojson",data:{type:"FeatureCollection",features:trafficEvents}});
- else map.getSource("coopex-traffic").setData({type:"FeatureCollection",features:trafficEvents});
- if(!map.getLayer("coopex-traffic-lines"))map.addLayer({id:"coopex-traffic-lines",type:"line",source:"coopex-traffic",paint:{"line-color":"#f04a36","line-width":["interpolate",["linear"],["zoom"],10,3,16,7],"line-opacity":.85}});
- if(!map.getLayer("coopex-traffic-points"))map.addLayer({id:"coopex-traffic-points",type:"circle",source:"coopex-traffic",filter:["==",["geometry-type"],"Point"],paint:{"circle-color":"#f15d31","circle-radius":8,"circle-stroke-color":"#ffffff","circle-stroke-width":2}});
-}
-async function traffic(){
- try{
- const r=await fetch("/api/coopex/tomtom/incidentes",{credentials:"same-origin",cache:"no-store"});const d=await r.json();if(!r.ok||!d.ok)throw Error(d.code==="KEY_REJECTED"?"TomTom HTTP 403: chave sem autorização":d.error||"Serviço de trânsito indisponível");
- trafficEvents=Array.isArray(d.features)?d.features:[];drawTraffic();if(!flowAuthorized){$("trafficStatus").textContent="Ocorrências TomTom";$("trafficStatus").style.color="#15804d";$("trafficText").textContent=trafficEvents.length+" ocorrência(s) reportada(s) na região.";}if(selectedId){const p=itemById(selectedId);if(p)showDetails(p)}
- }catch(e){if(!flowAuthorized){$("trafficStatus").textContent="Sem dados de trânsito";$("trafficStatus").style.color="var(--orange)";$("trafficText").textContent="TomTom não autorizada. Não é possível exibir congestionamento real.";}console.warn("TomTom:",e.message)}
-}
 function phase(){document.body.classList.remove("is-night");}
 const rainFx=$("weatherFx");function rain(level){weatherLevel=level;document.body.classList.toggle("is-rain",level>0);rainFx.replaceChildren();if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;const count=[0,8,18,35][level]||0;const frag=document.createDocumentFragment();for(let i=0;i<count;i++){const d=document.createElement("i");d.className="drop";d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.4)+"s";frag.append(d)}rainFx.append(frag)}
 async function weather(){
@@ -304,6 +250,6 @@ function gpsSocket(){
  try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old))lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng,source:"live"});render()}else updateGps()});}catch(e){}
 }
 map.on("load",()=>{updateGps();});
-render();updateGps();stopRender();weather();checkFlow();traffic();gpsSocket();
-setInterval(updateGps,12000);setInterval(refreshFlow,30000);setInterval(checkFlow,5*60*1000);setInterval(traffic,15*60*1000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
+render();updateGps();stopRender();weather();showSttuStatus();gpsSocket();
+setInterval(updateGps,12000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
 })();
