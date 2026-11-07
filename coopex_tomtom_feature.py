@@ -23,7 +23,7 @@ def install(app):
             return jsonify({"ok": False, "error": "Acesso restrito ao administrador."}), 403
         key = os.environ.get("TOMTOM_API_KEY", "").strip()
         if not key:
-            return jsonify({"ok": False, "error": "TOMTOM_API_KEY não configurada no Render."}), 503
+            return jsonify({"ok": False, "error": "TOMTOM_API_KEY não configurada no Render.", "code": "MISSING_KEY"}), 503
         now = time.monotonic()
         with _LOCK:
             if _CACHE["payload"] is not None and now - _CACHE["at"] < _TTL:
@@ -32,7 +32,7 @@ def install(app):
                 "key": key,
                 "bbox": _BBOX,
                 "fields": _FIELDS,
-                "language": "pt-BR",
+                "language": "pt-PT",
                 "timeValidityFilter": "present",
             })
             try:
@@ -78,6 +78,8 @@ def install(app):
                            "da chave, o plano e os produtos habilitados." if status in (401, 403)
                            else "Limite da TomTom atingido." if status == 429
                            else "TomTom temporariamente indisponível.")
-                return jsonify({"ok": False, "error": message, "upstream_status": status}), 503
+                code = ("KEY_REJECTED" if status in (401, 403) else "QUOTA" if status == 429 else "UPSTREAM")
+                app.logger.warning("COOPEX TomTom Traffic: HTTP %s (%s), sem expor credenciais", status, code)
+                return jsonify({"ok": False, "error": message, "upstream_status": status, "code": code}), 503
             except (URLError, TimeoutError, OSError, ValueError, json.JSONDecodeError):
                 return jsonify({"ok": False, "error": "Não foi possível consultar o trânsito da TomTom."}), 503
