@@ -5,11 +5,12 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-height23">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-embed24">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
-<div id="googleMap" aria-label="Google Maps e cooperados da COOPEX"></div><div id="googleMapStatus" role="status" aria-live="polite" hidden></div>
+<div id="googleMap" aria-label="Google Maps e cooperados da COOPEX"></div>
+<iframe id="googleExplore" title="Pesquisar e explorar no Google Maps" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen loading="eager" hidden></iframe><div id="googleMapStatus" role="status" aria-live="polite" hidden></div>
 <div id="weatherFx" class="weather-fx" aria-hidden="true"></div>
 <div id="ui">
 <a class="back-link glass" href="{{ url_for('admin') }}" aria-label="Voltar ao painel" title="Voltar ao painel">←</a>
@@ -80,7 +81,7 @@
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261107-height23"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-height23"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261107-embed24"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-embed24"></script>
 </body>
 </html>
