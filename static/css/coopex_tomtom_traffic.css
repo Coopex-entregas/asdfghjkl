@@ -1,3 +1,6 @@
 #cx-tt-status{position:absolute;top:215px;right:16px;pointer-events:auto;z-index:715;border-radius:14px;padding:10px 13px;max-width:285px;font-size:.75rem;font-weight:800;color:var(--cx-ink);text-wrap:balance}
 @media(max-width:1020px){#cx-tt-status{top:195px}}
 @media(max-width:600px){#cx-tt-status{top:auto;bottom:105px;left:9px;right:auto;max-width:210px;font-size:.66rem;padding:8px}body.cx-waze-mode #cx-tt-status{bottom:245px}}
+
+#cx-tt-status{top:auto!important;right:auto!important;left:50%!important;bottom:16px!important;transform:translateX(-50%)!important;max-width:min(390px,44vw)!important;padding:8px 13px!important;border-radius:14px!important;font-size:.7rem!important;white-space:normal!important;z-index:715!important}
+@media(max-width:800px){#cx-tt-status{left:9px!important;bottom:95px!important;transform:none!important;max-width:48vw!important}}
