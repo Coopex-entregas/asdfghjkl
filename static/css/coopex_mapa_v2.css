@@ -341,3 +341,31 @@ html,body{min-height:100%!important}
 }
 #googleMap>.gm-style{height:100%!important;width:100%!important}
 body.cx-google-only #map{display:none!important}
+
+/* Google Maps Embed API: pesquisa de tela inteira dentro da COOPEX. */
+#googleExplore[hidden]{display:none!important}
+#googleExplore{
+ position:fixed!important;
+ inset:0!important;
+ width:100vw!important;height:100vh!important;
+ width:100dvw!important;height:100dvh!important;
+ border:0!important;z-index:2!important;
+ display:block!important;background:#dcebf5!important
+}
+body.cx-address-mode #googleExplore{pointer-events:auto!important}
+body.cx-address-mode #googleMap{visibility:hidden!important;pointer-events:none!important}
+body.cx-address-mode #ui>.weather,body.cx-address-mode .weather,
+body.cx-address-mode .stats,body.cx-address-mode .toolbar,
+body.cx-address-mode .filters,body.cx-address-mode #ui>.search{display:none!important}
+body.cx-address-mode .address-panel{
+ left:10px!important;top:10px!important;bottom:auto!important;
+ max-height:min(75vh,500px)!important;
+ width:min(430px,calc(100vw - 20px))!important;
+ padding:15px!important;
+ z-index:800!important;
+ background:rgba(255,255,255,.97)!important
+}
+body.cx-address-mode .address-panel .address-actions{grid-template-columns:1fr 1fr!important}
+body.cx-address-mode .address-panel #address{font-size:15px!important}
+body.cx-address-mode .address-panel .small-muted{display:none!important}
+body.cx-address-mode #ui>.back-link{display:none!important}
