@@ -1,0 +1,155 @@
+/* COOPEX — Créditos de Clientes | Liquid Glass 3D | tema exclusivo do admin */
+html{color-scheme:light}
+body.cx-creditos-glass{
+ --cg-ink:#153d76;--cg-muted:#51759b;--cg-line:rgba(255,255,255,.87);
+ --cg-pane:rgba(219,239,255,.61);
+ --cg-sheen:linear-gradient(122deg,rgba(255,255,255,.84),rgba(247,253,255,.35) 23%,rgba(130,196,250,.12) 69%,rgba(255,255,255,.35));
+ --cg-shadow:inset 0 2px 3px rgba(255,255,255,.95),inset 0 -4px 8px rgba(40,100,176,.14),0 5px 0 rgba(58,124,194,.13),0 13px 25px rgba(14,50,103,.19);
+ --bg:#dfedfc;--card:#e0f0ff;--soft:#d1e9fd;
+ --text:var(--cg-ink);--muted:var(--cg-muted);--line:var(--cg-line);
+ margin:0!important;min-height:100vh!important;
+ background:radial-gradient(ellipse at 18% 0%,rgba(119,196,254,.27),transparent 57%),linear-gradient(153deg,#f2f9ff,#cde7fa)!important;
+ color:var(--cg-ink)!important;font-family:Inter,system-ui,Arial,sans-serif!important;
+}
+body.cx-creditos-glass.dark{
+ --cg-ink:#f0f9ff;--cg-muted:#bdd8f4;--cg-line:rgba(133,193,244,.55);
+ --cg-pane:rgba(24,64,105,.62);
+ --cg-sheen:linear-gradient(122deg,rgba(164,217,255,.23),rgba(96,169,234,.08) 24%,rgba(10,48,92,.08) 69%,rgba(169,213,250,.12));
+ --cg-shadow:inset 0 2px 4px rgba(208,239,255,.25),inset 0 -4px 10px rgba(0,22,49,.28),0 5px 0 rgba(2,22,45,.61),0 16px 29px rgba(0,13,34,.45);
+ --bg:#102c4b;--card:#183c62;--soft:#22486b;
+ --text:var(--cg-ink);--muted:var(--cg-muted);--line:var(--cg-line);
+ background:radial-gradient(ellipse at 17% 0%,rgba(70,142,216,.27),transparent 57%),linear-gradient(153deg,#06182c,#123455 66%,#0b2542)!important;
+ color:var(--cg-ink)!important;color-scheme:dark;
+}
+body.cx-creditos-glass header{
+ background:linear-gradient(125deg,#296eac,#194e86 53%,#123861)!important;
+ border-bottom:1px solid rgba(206,235,253,.64)!important;
+ box-shadow:inset 0 2px 3px rgba(248,254,255,.33),inset 0 -3px 8px rgba(1,34,77,.24),0 6px 19px rgba(0,28,70,.30)!important;
+}
+body.cx-creditos-glass header .top{
+ padding:10px clamp(12px,1.2vw,24px)!important;min-height:62px!important;gap:12px!important;
+}
+body.cx-creditos-glass header .top>strong{
+ color:#f7fcff!important;font-weight:900!important;font-size:17px!important;
+}
+body.cx-creditos-glass .cg-back{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:40px!important;min-width:40px!important;height:40px!important;
+ border-radius:12px!important;text-decoration:none!important;
+ color:#fff!important;font-size:27px!important;font-weight:900!important;
+ border:1px solid rgba(230,248,255,.72)!important;
+ background:linear-gradient(136deg,rgba(255,255,255,.30),rgba(159,212,255,.13))!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.43),0 4px 11px rgba(1,28,68,.29)!important;
+}
+body.cx-creditos-glass header .top .btn.alt{
+ color:#f4fbff!important;-webkit-text-fill-color:#f4fbff!important;
+ background:linear-gradient(132deg,rgba(255,255,255,.28),rgba(147,204,254,.12))!important;
+ border:1px solid rgba(221,245,255,.54)!important;
+}
+body.cx-creditos-glass #theme{display:none!important}
+body.cx-creditos-glass .wrap{
+ width:100%!important;max-width:none!important;
+ margin:0!important;padding:clamp(11px,1.05vw,20px)!important;
+ grid-template-columns:minmax(290px,22%) minmax(0,1fr)!important;
+ gap:clamp(12px,1.2vw,22px)!important;
+ align-items:start!important;
+}
+body.cx-creditos-glass :is(.card,.sum,.client,.flash,.pill,.history-summary,.table-wrap){
+ border:1px solid var(--cg-line)!important;
+ background:var(--cg-sheen),var(--cg-pane)!important;
+ border-radius:17px!important;
+ color:var(--cg-ink)!important;
+ box-shadow:var(--cg-shadow)!important;
+ backdrop-filter:blur(16px) saturate(1.18)!important;
+ -webkit-backdrop-filter:blur(16px) saturate(1.18)!important;
+}
+body.cx-creditos-glass .card{min-width:0!important;overflow:hidden!important}
+body.cx-creditos-glass .card>.body{padding:clamp(15px,1.24vw,24px)!important}
+body.cx-creditos-glass h2,body.cx-creditos-glass h3,
+body.cx-creditos-glass label,body.cx-creditos-glass .sum small,
+body.cx-creditos-glass .client-name,body.cx-creditos-glass .client-head{
+ color:var(--cg-ink)!important;
+}
+body.cx-creditos-glass h2,body.cx-creditos-glass h3{
+ font-weight:900!important;letter-spacing:-.025em!important;
+}
+body.cx-creditos-glass .card h2,body.cx-creditos-glass .card h3{
+ padding-bottom:12px!important;margin-bottom:14px!important;
+ border-bottom:1px solid var(--cg-line)!important;
+}
+body.cx-creditos-glass .summary{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:clamp(10px,1vw,17px)!important;margin-bottom:16px!important;
+}
+body.cx-creditos-glass .sum{
+ padding:clamp(13px,1.15vw,22px)!important;min-width:0!important;
+}
+body.cx-creditos-glass .sum strong{
+ color:var(--cg-ink)!important;font-weight:950!important;
+ font-size:clamp(16px,1.32vw,23px)!important;
+}
+body.cx-creditos-glass :is(input,select,textarea){
+ border:1px solid var(--cg-line)!important;border-radius:12px!important;
+ background:linear-gradient(124deg,rgba(180,223,255,.18),rgba(76,153,231,.09)),var(--cg-pane)!important;
+ color:var(--cg-ink)!important;-webkit-text-fill-color:var(--cg-ink)!important;
+ min-height:44px!important;
+ box-shadow:inset 0 2px 5px rgba(3,38,82,.17),0 3px 8px rgba(1,38,82,.10)!important;
+}
+body.cx-creditos-glass:not(.dark) :is(input,select,textarea){
+ background:linear-gradient(125deg,rgba(255,255,255,.74),rgba(196,229,252,.47))!important;
+}
+body.cx-creditos-glass :is(input,textarea)::placeholder{
+ color:var(--cg-muted)!important;-webkit-text-fill-color:var(--cg-muted)!important;opacity:1;
+}
+body.cx-creditos-glass select option{background:var(--card)!important;color:var(--cg-ink)!important}
+body.cx-creditos-glass .btn{
+ border-radius:11px!important;min-height:39px!important;
+ box-shadow:inset 0 2px 4px rgba(241,251,255,.39),inset 0 -2px 5px rgba(2,28,84,.19),0 4px 10px rgba(4,39,96,.21)!important;
+}
+body.cx-creditos-glass .btn:not(.alt):not(.danger){
+ color:#fff!important;background:linear-gradient(145deg,#4092f3,#1a56c8 57%,#103d9d)!important;
+}
+body.cx-creditos-glass .btn.alt{
+ color:var(--cg-ink)!important;-webkit-text-fill-color:var(--cg-ink)!important;
+ border:1px solid var(--cg-line)!important;
+ background:var(--cg-sheen),rgba(109,173,234,.16)!important;
+}
+body.cx-creditos-glass .btn.danger{
+ color:#fff!important;background:linear-gradient(145deg,#e85c73,#c72a48 59%,#a91d3e)!important;
+ border:1px solid rgba(248,183,192,.41)!important;
+}
+body.cx-creditos-glass .client-list{
+ max-height:calc(100dvh - 245px)!important;min-height:min(250px,45vh)!important;
+ gap:10px!important;padding:5px!important;
+}
+body.cx-creditos-glass .client{
+ border-radius:14px!important;
+ box-shadow:inset 0 2px 3px rgba(239,250,255,.18),0 4px 12px rgba(3,35,85,.13)!important;
+}
+body.cx-creditos-glass .client-head{padding:13px 15px!important;min-height:51px!important}
+body.cx-creditos-glass .client-head:hover{background:linear-gradient(120deg,rgba(176,217,253,.17),rgba(57,138,227,.12))!important}
+body.cx-creditos-glass .client-body{
+ background:linear-gradient(145deg,rgba(136,198,246,.12),rgba(55,132,212,.08))!important;
+ border-top:1px solid var(--cg-line)!important;
+}
+body.cx-creditos-glass :is(.pill,.history-summary){border-radius:12px!important}
+body.cx-creditos-glass table th{
+ background:linear-gradient(132deg,#4f89ba,#235582 60%,#103d69)!important;
+ color:#f4fbff!important;
+ border-bottom:1px solid rgba(208,236,254,.48)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.22),inset 0 -2px 5px rgba(1,29,66,.24)!important;
+}
+body.cx-creditos-glass table td{border-color:rgba(158,206,246,.32)!important;color:var(--cg-ink)!important}
+body.cx-creditos-glass tbody tr:nth-child(even){background:rgba(121,188,244,.10)!important}
+body.cx-creditos-glass .saldo,body.cx-creditos-glass .credit{color:#14af70!important}
+body.cx-creditos-glass:not(.dark) .saldo,body.cx-creditos-glass:not(.dark) .credit{color:#078052!important}
+body.cx-creditos-glass .debit{color:#ed566d!important}
+@media(max-width:1050px){
+ body.cx-creditos-glass .wrap{grid-template-columns:minmax(0,1fr)!important}
+ body.cx-creditos-glass .client-list{max-height:65vh!important}
+}
+@media(max-width:650px){
+ body.cx-creditos-glass header .top{gap:7px!important;padding:9px!important}
+ body.cx-creditos-glass .wrap{padding:10px!important}
+ body.cx-creditos-glass .summary{grid-template-columns:1fr!important}
+}
