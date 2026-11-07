@@ -123,6 +123,11 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    const styled=!!googleRoot.querySelector(".gm-style");
    const size=googleRoot.getBoundingClientRect();
    if(!styled||size.width<100||size.height<100)return;
+   if(googleRoot.querySelector(".gm-err-container")){
+    authFailed=true;
+    reportGoogleStatus("Google Maps informou erro de autorização ou faturamento. Consulte o Console para o código exato.");
+    return;
+   }
    loadFinished=true;tilesVisible=true;
    updateMarkers(lastItems,selectedId);
    document.body.classList.remove("cx-google-error");
@@ -133,15 +138,10 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   }
   // Os mapas vetoriais recentes do Google podem não emitir tilesloaded.
   // O evento idle é a confirmação de que o mapa terminou a primeira renderização.
-  googleMap.addListener("idle",()=>{
-   const pos=googleMap.getCenter();
-   if(pos&&window.COOPEX_MAP_ACTIONS?.syncMapView){
-    syncingFromGoogle=true;
-    window.COOPEX_MAP_ACTIONS.syncMapView(pos.lat(),pos.lng(),googleMap.getZoom());
-    Promise.resolve().then(()=>{syncingFromGoogle=false});
-   }
-   finishGoogleLoad();
-  });
+  // O Google controla a própria navegação, sem ciclo de retorno para o MapLibre.
+  googleMap.addListener("idle",finishGoogleLoad);
+  googleMap.addListener("bounds_changed",finishGoogleLoad);
+  googleMap.addListener("projection_changed",finishGoogleLoad);
   googleMap.addListener("tilesloaded",finishGoogleLoad);
 
   // Pesquisa oficial Google Geocoding na mesma cartografia, sem abrir outra aba.
@@ -181,8 +181,14 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   // Em caso de falha de autorização, gm_authFailure mostra o diagnóstico.
   setTimeout(()=>{
    if(!loadFinished&&!authFailed){
-    document.body.classList.add("cx-google-error");
-    reportGoogleStatus("Google Maps não terminou de iniciar. Abra o Console e procure um erro da API do Google (sem compartilhar a chave).");
+    const rect=googleRoot.getBoundingClientRect();
+    const hasStyle=!!googleRoot.querySelector(".gm-style");
+    const hasError=!!googleRoot.querySelector(".gm-err-container");
+    const text="Google Maps: "+(hasError?"erro de autorização/faturamento no Google":!hasStyle?"interface não foi criada":"interface criada, mas sem confirmar renderização")+
+      " · área "+Math.round(rect.width)+"×"+Math.round(rect.height)+
+      ". Confira o Console por mensagens de Maps JavaScript API.";
+    reportGoogleStatus(text);
+    console.warn(text);
    }
   },14000);
  }catch(e){document.body.classList.add("cx-google-error");reportGoogleStatus("Falha ao iniciar Google Maps: "+String(e.message||e).slice(0,170));console.warn("COOPEX Google Maps:",e);}
