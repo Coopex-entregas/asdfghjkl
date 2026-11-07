@@ -95,7 +95,7 @@ function colorizeCoopexMap(){
     }
    }else if(layer.type==="symbol"){
     const layout=layer.layout||{};
-    if(layout["text-field"]==null)return;
+    if(layout["text-field"]==null)continue;
     const roadLabel=isRoad||/road_label|street_label|street-name/.test(id);
     const waterLabel=isWater;
     map.setPaintProperty(layer.id,"text-color",waterLabel?"#075b9d":roadLabel?"#25466a":"#365169");
