@@ -530,13 +530,16 @@
     }
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_rotas_glass.css') }}">
 </head>
 
-<body>
+<body class="cx-rotas-glass cx-linked-glass">
+<script id="cx-rotas-theme-early">
+(function(){try{const v=localStorage.getItem("cx_sup_brightness");document.body.classList.toggle("dark",v===null?localStorage.getItem("coopex_theme")==="dark":Number(v)<80)}catch(e){}})();
+</script>
   <header class="topbar no-print">
+    <a class="rg-back" href="{{ url_for('admin') }}" title="Voltar ao administrador" aria-label="Voltar ao administrador">‹</a>
     <div class="brand">
-      <img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX"
-           onerror="this.onerror=null;this.src='https://via.placeholder.com/80x42?text=COOPEX'">
       <div class="brand-title">
         <strong>Preços e Rotas</strong>
         <small>Tabela por bairro, KM, serviços e retorno</small>
@@ -545,8 +548,7 @@
 
     <div class="spacer"></div>
 
-    <a class="top-btn admin" href="{{ url_for('admin') }}">← Admin</a>
-    <button id="btnTheme" class="top-btn theme" type="button">🌙 Modo escuro</button>
+
   </header>
 
   <main>
@@ -776,39 +778,25 @@
       }
     }
 
-    // Tema claro/escuro: salva e tenta acompanhar o padrão usado no admin.
+    // Aparência controlada exclusivamente no painel administrador.
     (function(){
-      try{
-        const saved =
-          localStorage.getItem('coopex_theme') ||
-          localStorage.getItem('coopex_admin_dark') ||
-          localStorage.getItem('coopex_dark_mode') ||
-          'light';
-
-        const dark = saved === 'dark' || saved === '1' || saved === 'true';
-        if(dark) document.body.classList.add('dark');
-
-        const btn = document.getElementById('btnTheme');
-
-        function sync(){
-          if(!btn) return;
-          const ativo = document.body.classList.contains('dark');
-          btn.textContent = ativo ? '☀️ Modo claro' : '🌙 Modo escuro';
-        }
-
-        sync();
-
-        if(btn){
-          btn.addEventListener('click', function(){
-            document.body.classList.toggle('dark');
-            const ativo = document.body.classList.contains('dark');
-            localStorage.setItem('coopex_theme', ativo ? 'dark' : 'light');
-            localStorage.setItem('coopex_admin_dark', ativo ? '1' : '0');
-            localStorage.setItem('coopex_dark_mode', ativo ? 'dark' : 'light');
-            sync();
-          });
-        }
-      }catch(e){}
+      function apply(){
+        try{
+          const v=localStorage.getItem('cx_sup_brightness');
+          const night=v===null?localStorage.getItem('coopex_theme')==='dark':Number(v)<80;
+          document.body.classList.toggle('dark',night);
+          document.body.classList.toggle('cx-sup-night',night);
+        }catch(e){}
+      }
+      apply();
+      window.addEventListener('pageshow',apply);
+      window.addEventListener('focus',apply);
+      window.addEventListener('storage',e=>{if(e.key==='cx_sup_brightness')apply()});
+      document.addEventListener('keydown',function(e){
+        if(e.key!=='Escape'||e.defaultPrevented||e.ctrlKey||e.metaKey||e.altKey)return;
+        if(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'))return;
+        e.preventDefault();location.assign('{{ url_for('admin') }}');
+      });
     })();
 
     function setTab(t){
