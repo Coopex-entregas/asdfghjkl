@@ -2389,6 +2389,20 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 
 
 
+{% macro telefone_formatado(telefone) -%}
+  {%- set raw = telefone|string -%}
+  {%- set digits = raw|replace('(', '')|replace(')', '')|replace(' ', '')|replace('-', '')|replace('.', '')|replace('+', '') -%}
+  {%- if digits|length in [12, 13] and digits[:2] == '55' -%}
+    {%- set digits = digits[2:] -%}
+  {%- endif -%}
+  {%- if digits|length == 10 -%}
+    ({{ digits[:2] }}) {{ digits[2:6] }}-{{ digits[6:] }}
+  {%- elif digits|length == 11 -%}
+    ({{ digits[:2] }}) {{ digits[2:7] }}-{{ digits[7:] }}
+  {%- else -%}
+    {{ raw }}
+  {%- endif -%}
+{%- endmacro %}
 <!-- TABELA -->
         <div class="quick-view-bar">
           <div class="quick-view-chip active" id="chipOpenOnly">Em aberto primeiro</div>
@@ -2437,8 +2451,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
                     <div><strong>Coleta:</strong> {{ e.origem_endereco if e.origem_endereco is defined else '-' }}</div>
                     <div><strong>Entrega:</strong> {{ e.destino_endereco if e.destino_endereco is defined else '-' }}</div>
                     {% if e.paradas_texto is defined and e.paradas_texto %}<div><strong>Paradas:</strong> {{ e.paradas_texto }}</div>{% endif %}
-                    {% if e.contato_coleta is defined and e.contato_coleta %}<div><strong>Contato coleta:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ e.telefone_coleta }}</a>{% endif %}</div>{% endif %}
-                    {% if e.contato_entrega is defined and e.contato_entrega %}<div><strong>Contato entrega:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ e.telefone_entrega }}</a>{% endif %}</div>{% endif %}
+                    {% if e.contato_coleta is defined and e.contato_coleta %}<div><strong>Contato coleta:</strong> {{ e.contato_coleta }}{% if e.telefone_coleta %} • <a href="tel:{{ e.telefone_coleta }}">{{ telefone_formatado(e.telefone_coleta) }}</a>{% endif %}</div>{% endif %}
+                    {% if e.contato_entrega is defined and e.contato_entrega %}<div><strong>Contato entrega:</strong> {{ e.contato_entrega }}{% if e.telefone_entrega %} • <a href="tel:{{ e.telefone_entrega }}">{{ telefone_formatado(e.telefone_entrega) }}</a>{% endif %}</div>{% endif %}
                     {% if e.observacao_entrega is defined and e.observacao_entrega %}<div><strong>Obs:</strong> {{ e.observacao_entrega }}</div>{% endif %}
                   </td>
 
