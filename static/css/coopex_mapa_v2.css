@@ -297,3 +297,32 @@ body.cx-google-only.cx-google-error #googleMap{visibility:visible!important;opac
 #googleMapStatus[data-kind="loading"]{background:rgba(242,248,255,.96);color:#1c527c;border-color:#b8d9f6}
 #googleMapStatus[hidden]{display:none!important}
 @media(max-width:700px){#googleMapStatus{top:70px;left:10px;max-width:calc(100vw - 20px)}}
+
+/* Substitui completamente o painel-lista antigo. Só Google Maps com controles COOPEX. */
+body .coopex-side{display:none!important}
+body #sideExpand,body.cx-side-collapsed #sideExpand{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ width:220px!important;max-width:calc(100vw - 85px)!important;min-height:46px!important;height:46px!important;
+ top:16px!important;left:72px!important;right:auto!important;padding:0 12px!important;
+ background:linear-gradient(145deg,rgba(255,255,255,.97),rgba(226,241,255,.96))!important;
+ color:#154b87!important;font-size:12px!important;font-weight:850!important;
+ border-radius:17px!important;border:1px solid #ffffff!important;
+ box-shadow:0 7px 24px #133f722e!important;z-index:710!important;white-space:nowrap!important
+}
+body:not(.cx-address-mode) #ui>.back-link{top:19px!important;left:16px!important;z-index:725!important}
+body:not(.cx-address-mode) #ui>.search{
+ top:73px!important;left:17px!important;width:min(300px,calc(100vw - 34px))!important;
+ background:rgba(255,255,255,.96)!important;border:1px solid #c5d9ed!important;
+ border-radius:17px!important;box-shadow:0 4px 15px #14477421!important;z-index:711!important
+}
+body:not(.cx-address-mode) #ui>.search input{color:#153a5d!important;font-weight:700!important}
+body:not(.cx-address-mode) #ui>.search input::placeholder{color:#6a8296!important}
+body:not(.cx-address-mode) #ui>.search-results{top:122px!important;left:17px!important;width:min(300px,calc(100vw - 34px))!important;z-index:719!important;background:rgba(255,255,255,.98)!important}
+body:not(.cx-address-mode) #ui>.search-results .result{color:#144876!important}
+body.cx-address-mode #sideExpand{display:none!important}
+body.cx-address-mode .address-panel{left:12px!important;top:12px!important;width:min(440px,calc(100vw - 24px))!important;z-index:730!important;background:rgba(255,255,255,.97)!important;backdrop-filter:blur(23px)!important}
+body.cx-address-mode .address-panel input{font-size:15px!important;min-height:48px!important}
+body.cx-address-mode .address-panel .address-head{min-height:44px!important}
+body.cx-address-mode .filters{opacity:.12!important;pointer-events:none!important}
+body.cx-address-mode .toolbar{opacity:.2!important;pointer-events:none!important}
+@media(max-width:650px){body #sideExpand,body.cx-side-collapsed #sideExpand{left:62px!important;top:12px!important;width:194px!important;min-height:42px!important;height:42px!important}body:not(.cx-address-mode) #ui>.search{top:62px!important}}
