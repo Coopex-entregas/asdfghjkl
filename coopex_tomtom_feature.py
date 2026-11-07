@@ -1,12 +1,13 @@
 """TomTom traffic for COOPEX map; never expose TOMTOM_API_KEY to clients."""
 import json
+import io
 import os
 import threading
 import time
 from urllib.parse import urlencode
 from urllib.request import Request, urlopen
 from urllib.error import HTTPError, URLError
-from flask import jsonify, session
+from flask import jsonify, session, send_file, make_response
 
 _LOCK = threading.Lock()
 _CACHE = {"at": 0.0, "payload": None}
@@ -16,7 +17,68 @@ _BBOX = "-35.40,-6.05,-35.08,-5.66"
 _FIELDS = "{incidents{type,geometry{type,coordinates},properties{id,iconCategory,magnitudeOfDelay,events{description,code},from,to,delay,roadNumbers,length}}}"
 
 
+# Tile transparente para não mostrar quadrados de erro no mapa.
+_EMPTY_PNG = bytes.fromhex(
+    "89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489"
+    "0000000b49444154789c636000020000050001a5f645400000000049454e44ae426082"
+)
+_FLOW_CACHE = {}
+_FLOW_LOCK = threading.Lock()
+_FLOW_TTL = 90
+
+
+def _flow_png(key, z, x, y):
+    url = ("https://api.tomtom.com/maps/orbis/traffic/flow/raster/tile/"
+           f"{z}/{x}/{y}?apiVersion=2&style=light&tileSize=256")
+    req = Request(url, headers={
+        "TomTom-Api-Key": key,
+        "TomTom-Api-Version": "2",
+        "Accept": "image/png",
+        "User-Agent": "COOPEX-Traffic/2.0",
+    })
+    with urlopen(req, timeout=7) as result:
+        if "image/png" not in result.headers.get("Content-Type", ""):
+            raise ValueError("TomTom returned an unexpected content type")
+        return result.read(250000)
+
+
 def install(app):
+    @app.get("/api/coopex/tomtom/flow/<int:z>/<int:x>/<int:y>.png")
+    def coopex_tomtom_flow_tile(z, x, y):
+        if not session.get("is_admin"):
+            return ("", 403)
+        if z < 8 or z > 18 or x < 0 or y < 0 or x >= 2**z or y >= 2**z:
+            return ("", 404)
+        key = os.environ.get("TOMTOM_API_KEY", "").strip()
+        if not key:
+            return make_response(_EMPTY_PNG, 200, {"Content-Type": "image/png", "Cache-Control": "no-store"})
+
+        cache_key = (z, x, y)
+        now = time.monotonic()
+        with _FLOW_LOCK:
+            stored = _FLOW_CACHE.get(cache_key)
+            if stored and now - stored[0] < _FLOW_TTL:
+                data = stored[1]
+            else:
+                data = None
+        if data is None:
+            try:
+                data = _flow_png(key, z, x, y)
+                with _FLOW_LOCK:
+                    if len(_FLOW_CACHE) >= 400:
+                        _FLOW_CACHE.clear()
+                    _FLOW_CACHE[cache_key] = (now, data)
+            except HTTPError as exc:
+                app.logger.warning("COOPEX TomTom flow HTTP %s, z=%s; credentials redacted", exc.code, z)
+                data = _EMPTY_PNG
+            except (URLError, TimeoutError, OSError, ValueError):
+                data = _EMPTY_PNG
+        response = make_response(data)
+        response.headers["Content-Type"] = "image/png"
+        response.headers["Cache-Control"] = "private, max-age=60"
+        return response
+
+
     @app.get("/api/coopex/tomtom/incidentes")
     def coopex_tomtom_incidentes():
         if not session.get("is_admin"):
