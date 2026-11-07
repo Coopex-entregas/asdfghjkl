@@ -8,7 +8,7 @@ const key=window.COOPEX_GOOGLE_KEY;
 if(typeof key!=="string"||!key.trim())return;
 const googleRoot=document.getElementById("googleMap");
 if(!googleRoot)return;
-let googleMap=null;
+let googleMap=null,tilesVisible=false;
 const markers=new Map(),lastPositions=new Map();
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
@@ -110,13 +110,23 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    // Liberar a sincronização na próxima microtarefa para evitar mudanças recursivas.
    Promise.resolve().then(()=>{syncingFromGoogle=false;});
   });
-  updateMarkers(lastItems,selectedId);
-  document.body.classList.add("cx-google-ready");
+  // Só ocultar o mapa de reserva quando os blocos do Google estiverem visíveis.
+  google.maps.event.addListenerOnce(googleMap,"tilesloaded",()=>{
+   tilesVisible=true;
+   updateMarkers(lastItems,selectedId);
+   document.body.classList.add("cx-google-ready");
+   document.body.classList.remove("cx-google-error");
+   window.dispatchEvent(new CustomEvent("coopex:google-ready"));
+  });
+  googleMap.addListener("idle",()=>{if(!tilesVisible)google.maps.event.trigger(googleMap,"resize");});
+  setTimeout(()=>{
+   if(!tilesVisible){document.body.classList.add("cx-google-error");console.warn("Google Maps não disponibilizou blocos cartográficos; mantendo mapa alternativo.");}
+  },12000);
  }catch(e){console.warn("COOPEX Google Maps:",e);}
 };
 const script=document.createElement("script");
 script.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(key)+"&callback=COOPEX_GOOGLE_MAP_ONLOAD&loading=async&v=weekly&language=pt-BR&region=BR";
 script.async=true;
-script.onerror=()=>{googleRoot.style.display="none";console.warn("Google Maps não carregou. Mapa alternativo mantido.");};
+script.onerror=()=>{document.body.classList.add("cx-google-error");console.warn("Google Maps não carregou. Mapa alternativo mantido.");};
 document.head.appendChild(script);
 })();
