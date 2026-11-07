@@ -2677,7 +2677,11 @@ function init(){
   btn.dataset.cxModernMenu='1';
   // Remove apenas os emojis iniciais, mantendo o nome, badges e listeners originais.
   const leading=[...btn.childNodes].find(n=>n.nodeType===3&&n.textContent.trim());
-  if(leading)leading.textContent=leading.textContent.replace(/^\\s*[^\\p{L}\\p{N}]+\\s*/u,'').replace(/^\\s+/,'');
+  // Remover emojis antigos dos textos sem alterar o nome, a seta ou os contadores.
+  [...btn.childNodes].filter(n=>n.nodeType===3).forEach(n=>{
+    n.textContent=n.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D\u20E3]/gu,'').replace(/\s{2,}/g,' ');
+  });
+  btn.querySelectorAll(':scope > .btn-ico,:scope > .kpi-icon,:scope > svg').forEach(el=>el.remove());
   const spec=defs[Math.min(i,defs.length-1)];
   const icon=document.createElement('span');icon.className='cx-menu-icon';icon.style.setProperty('--cx-menu-icon-color',spec[0]);icon.appendChild(svg(spec[1]));
   btn.prepend(icon);
@@ -4123,3 +4127,46 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 window.addEventListener('pageshow',clean);
 })();
 </script>
+
+
+<style id="coopex-admin-vidro-tabela-menu-v43">
+/* Mantém todas as colunas, tamanhos, ações e filtros. Apenas harmoniza o vidro. */
+body #tbl.table-wrap{
+ --cx-glass-header:linear-gradient(145deg,rgba(74,149,224,.54),rgba(17,64,119,.90));
+ --cx-glass-cell:linear-gradient(122deg,rgba(250,254,255,.43) 0%,rgba(207,233,255,.28) 13%,rgba(128,186,235,.13) 50%,rgba(255,255,255,.13) 100%);
+ --cx-glass-bg:linear-gradient(150deg,var(--cx-surface),var(--cx-row));
+ --cx-glass-edge:rgba(227,246,255,.75);
+ --cx-glass-text:var(--cx-title);
+ border:1px solid var(--cx-glass-edge)!important;
+ background:var(--cx-glass-bg)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.48),0 5px 12px rgba(7,52,110,.26),0 13px 28px rgba(5,38,84,.17)!important;
+ border-radius:15px!important;
+}
+body.cx-sup-night #tbl.table-wrap{
+ --cx-glass-header:linear-gradient(145deg,rgba(65,121,180,.75),rgba(13,44,82,.95));
+ --cx-glass-cell:linear-gradient(120deg,rgba(156,208,255,.18),rgba(90,153,217,.11) 28%,rgba(20,66,113,.24) 85%,rgba(110,166,223,.15));
+ --cx-glass-bg:linear-gradient(145deg,var(--cx-surface),var(--cx-row));
+ --cx-glass-edge:rgba(139,187,238,.55);
+ box-shadow:inset 0 2px 3px rgba(202,234,255,.17),0 5px 13px rgba(0,15,43,.38),0 13px 28px rgba(0,11,35,.30)!important;
+}
+body #tbl table.tabela thead>tr>th:nth-child(n),
+body.cx-sup-night #tbl table.tabela thead>tr>th:nth-child(n){
+ background:var(--cx-glass-header)!important;
+ color:#f4fbff!important;-webkit-text-fill-color:#f4fbff!important;
+ border-right:1px solid rgba(195,231,255,.26)!important;
+ border-bottom:1px solid rgba(198,231,255,.60)!important;
+ box-shadow:inset 0 2px 2px rgba(236,251,255,.26),inset 0 -2px 3px rgba(4,34,78,.18)!important;
+ text-shadow:0 1px 1px rgba(0,24,62,.40)!important;
+}
+body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n),
+body.cx-sup-night #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n){
+ background:var(--cx-glass-cell),var(--cx-row)!important;
+ color:var(--cx-glass-text)!important;-webkit-text-fill-color:var(--cx-glass-text)!important;
+ border-right:1px solid rgba(152,194,237,.22)!important;
+ border-bottom:1px solid rgba(145,192,232,.40)!important;
+ box-shadow:inset 0 1px 1px rgba(236,249,255,.18),inset 0 -2px 4px rgba(12,50,103,.10)!important;
+}
+body #tbl table.tabela tbody>tr:hover>td:nth-child(n){
+ background:linear-gradient(135deg,rgba(136,205,255,.31),rgba(97,164,227,.15)),var(--cx-row)!important;
+}
+</style>
