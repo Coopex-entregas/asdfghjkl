@@ -37,6 +37,10 @@ from jinja2 import TemplateNotFound
 # =========================================================
 app = Flask(__name__)
 
+# TomTom: rota de ocorrências com cache e autenticação, sem expor a chave ao navegador.
+import coopex_tomtom_feature
+coopex_tomtom_feature.install(app)
+
 # Página pública de Termos de Serviço do aplicativo COOPEX Entregador.
 # Não exigir autenticação: Google Play e qualquer visitante devem poder acessar.
 @app.get('/termos-app')
