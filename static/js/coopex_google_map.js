@@ -108,9 +108,16 @@ window.addEventListener("coopex:map-view",event=>{
  if(!center||Math.abs(center.lat()-d.lat)>0.00005||Math.abs(center.lng()-d.lng)>0.00005)googleMap.panTo({lat:d.lat,lng:d.lng});
  if(Number.isFinite(d.zoom)&&Math.abs((googleMap.getZoom()||0)-d.zoom)>0.4)googleMap.setZoom(Math.round(d.zoom));
 });
+function setGoogleCanvasSize(){
+ const height=Math.max(document.documentElement.clientHeight||0,window.innerHeight||0,400);
+ googleRoot.style.setProperty("height",height+"px","important");
+ googleRoot.style.setProperty("width","100vw","important");
+}
+window.addEventListener("resize",setGoogleCanvasSize,{passive:true});
 window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
  try{
   reportGoogleStatus("Carregando a cartografia oficial do Google Maps…","loading");
+  setGoogleCanvasSize();
   googleMap=new google.maps.Map(googleRoot,{
    center:{lat:-5.7945,lng:-35.211},zoom:12,
    mapTypeId:"roadmap",streetViewControl:true,fullscreenControl:false,
@@ -154,7 +161,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    const query=String(addressField?.value||"").trim();if(!query)return;
    if(addressMessage)addressMessage.textContent="Pesquisando no Google Maps...";
    geocoder.geocode({address:query+", Rio Grande do Norte, Brasil"},(results,status)=>{
-    if(status!=="OK"||!results?.length){if(addressMessage)addressMessage.textContent="Endereço não encontrado pelo Google Maps ("+status+").";return;}
+    if(status!=="OK"||!results?.length){if(addressMessage)addressMessage.textContent=status==="REQUEST_DENIED"?"Pesquisa do Google bloqueada: Geocoding API não está autorizada. Não ative serviços pagos sem revisar os custos.":"Endereço não encontrado pelo Google Maps ("+status+").";return;}
     const target=results[0];
     if(target.geometry.viewport)googleMap.fitBounds(target.geometry.viewport);
     else{googleMap.panTo(target.geometry.location);googleMap.setZoom(16);}
