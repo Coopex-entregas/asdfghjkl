@@ -163,7 +163,16 @@
   function chartTextColor(){return document.body.classList.contains('dark-mode')?'#cbd8f2':'#334155'}
   function chartGridColor(){return document.body.classList.contains('dark-mode')?'rgba(99,130,180,.18)':'#eaf1ff'}
   function chartOptions(money){
-    return {responsive:true,maintainAspectRatio:false,interaction:{mode:'index',intersect:false},plugins:{legend:{display:true,labels:{boxWidth:11,color:chartTextColor(),font:{size:11,weight:'800'}}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: ${money?currency(ctx.raw):integer(ctx.raw)}`}}},scales:{x:{grid:{display:false},ticks:{color:chartTextColor(),font:{size:10,weight:'700'}}},y:{beginAtZero:true,grid:{color:chartGridColor()},ticks:{color:chartTextColor(),font:{size:10,weight:'700'},callback:value=>money?'R$ '+Number(value).toLocaleString('pt-BR'):Number(value).toLocaleString('pt-BR')}}}};
+    const ink=document.body.classList.contains('dark-mode')?'#e1f2ff':'#2c5279';
+    const grid=document.body.classList.contains('dark-mode')?'rgba(170,213,246,.13)':'rgba(52,106,159,.13)';
+    return {responsive:true,maintainAspectRatio:false,
+      layout:{padding:{top:12,right:20,bottom:15,left:12}},
+      interaction:{mode:'index',intersect:false},
+      plugins:{legend:{display:true,labels:{boxWidth:11,color:ink,padding:13,font:{size:11,weight:'700'}}},
+       tooltip:{backgroundColor:'#142f4d',titleColor:'#fff',bodyColor:'#e5f5ff',callbacks:{label:ctx=>`${ctx.dataset.label}: ${money?currency(ctx.raw):integer(ctx.raw)}`}}},
+      scales:{x:{grid:{display:false},border:{color:grid},ticks:{color:ink,padding:10,font:{size:11,weight:'600'}}},
+       y:{beginAtZero:true,grace:'8%',grid:{color:grid,lineWidth:.65},border:{color:grid},
+        ticks:{color:ink,padding:9,autoSkip:true,maxTicksLimit:6,font:{size:11,weight:'600'},callback:value=>money?'R$ '+Number(value).toLocaleString('pt-BR'):Number(value).toLocaleString('pt-BR')}}}};
   }
 
   function renderCharts(data){
