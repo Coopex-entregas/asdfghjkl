@@ -2,7 +2,9 @@ import * as ml from "https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.mjs";
 (()=>{
 "use strict";
 const $=id=>document.getElementById(id),esc=x=>String(x??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const DAY_STYLE="https://tiles.openfreemap.org/styles/liberty";
+// Com a chave do Google configurada, MapLibre serve apenas ao legado interno
+// e não faz download de tiles/fontes de outro provedor.
+const DAY_STYLE=window.COOPEX_GOOGLE_KEY?{version:8,sources:{},layers:[]}: "https://tiles.openfreemap.org/styles/liberty";
 const night=false;
 document.body.classList.remove("is-night");
 const map=new ml.Map({container:"map",style:DAY_STYLE,center:[-35.211,-5.7945],zoom:12,pitch:0,bearing:0,antialias:true,maxPitch:0,attributionControl:true,dragRotate:false,touchPitch:false});
