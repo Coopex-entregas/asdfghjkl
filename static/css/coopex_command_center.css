@@ -452,3 +452,134 @@ html body.cx-report-glass.cx-command-center .dashboard-tab-panel .card:has(#char
  html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .groupGrid{grid-template-columns:minmax(0,1fr)!important}
 }
+
+/* v5: the ACTUAL runtime tab layout uses dashboard-panel-grid, not .board. */
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three{
+ display:grid!important;
+ grid-template-columns:minmax(0,1.08fr) minmax(0,1fr) minmax(0,.94fr)!important;
+ gap:11px!important;align-items:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card{
+ display:flex!important;flex-direction:column!important;min-width:0!important;
+ height:min(64vh,530px)!important;min-height:320px!important;max-height:530px!important;
+ align-self:stretch!important;overflow:hidden!important;
+ background:var(--cc-gleam),var(--cc-pane)!important;
+ border:1px solid var(--cc-edge)!important;box-shadow:var(--cc-shadow)!important;
+ border-radius:14px!important;padding:13px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card .cardHead{
+ flex:0 0 auto!important;min-height:42px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card .tableWrap{
+ flex:1 1 auto!important;height:100%!important;max-height:none!important;min-height:0!important;
+ overflow:auto!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card:has(#resumoZap) #resumoZap{
+ display:block!important;flex:1 1 auto!important;width:100%!important;
+ height:auto!important;max-height:none!important;min-height:0!important;
+ resize:none!important;padding:15px!important;
+ color:var(--cc-ink)!important;font-size:12px!important;line-height:1.6!important;font-weight:600!important;
+ background:rgba(134,187,232,.07)!important;border:1px solid var(--cc-edge)!important;
+ border-radius:10px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card:has(#chartCliente) .chartBox,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card:has(#chartCliente) .chartBox.small{
+ flex:1 1 auto!important;min-height:0!important;height:auto!important;max-height:none!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-title{
+ display:none!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.gridKpi{
+ width:100%!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:10px!important;margin:0 0 11px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.gridKpi>.kpi{
+ grid-column:auto!important;width:auto!important;height:82px!important;min-height:82px!important;max-height:82px!important;
+ padding:11px 13px!important;min-width:0!important;overflow:hidden!important;
+ border-radius:13px!important;background:var(--cc-gleam),var(--cc-pane)!important;
+ border:1px solid var(--cc-edge)!important;box-shadow:var(--cc-shadow)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.gridKpi>.kpi .lab{
+ font-size:11px!important;font-weight:750!important;color:var(--cc-muted)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.gridKpi>.kpi .val{
+ font-size:clamp(18px,1.3vw,25px)!important;line-height:1.1!important;
+ color:var(--cc-ink)!important;white-space:nowrap!important;overflow:visible!important;
+ word-break:normal!important;overflow-wrap:normal!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.board{
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+ gap:10px!important;align-items:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.board>.card{
+ display:flex!important;flex-direction:column!important;min-width:0!important;
+ min-height:250px!important;height:min(38vh,350px)!important;max-height:350px!important;
+ align-self:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.board>.card .tableWrap{
+ flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow:auto!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-grid.one{
+ display:grid!important;grid-template-columns:minmax(0,1fr)!important;gap:10px!important;margin-top:10px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-grid.one>.card{
+ display:grid!important;grid-template-columns:200px minmax(0,1fr)!important;
+ gap:12px!important;align-items:center!important;padding:12px!important;
+ min-height:205px!important;max-height:235px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-grid.one>.card>.cardHead{
+ border-bottom:0!important;padding:0!important;margin:0!important;
+ align-self:center!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-grid.one>.card .chartBox,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-grid.one>.card .chartBox.small{
+ height:205px!important;min-height:180px!important;max-height:205px!important;
+ overflow:hidden!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=configuracoes]>.board{
+ display:grid!important;grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)!important;
+ gap:10px!important;align-items:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=configuracoes]>.board>.card{
+ display:flex!important;flex-direction:column!important;
+ align-self:stretch!important;min-height:380px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=configuracoes] .groupGrid{
+ flex:1 1 auto!important;overflow:auto!important;align-content:start!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .rowItem .right,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .rowItem .right *,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .list .rowItem .right{
+ color:var(--cc-ink)!important;-webkit-text-fill-color:var(--cc-ink)!important;opacity:1!important;
+ font-weight:850!important;font-variant-numeric:tabular-nums!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .chartBox{
+ background:rgba(126,180,229,.05)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .cardHead .sub,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .cardHead p,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .cardHead small{
+ color:var(--cc-muted)!important;opacity:1!important;
+}
+@media(max-width:1240px){
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ }
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.gridKpi{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ }
+}
+@media(max-width:800px){
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=contratos]>.dashboard-panel-grid.three>.card{
+  min-height:290px!important;height:auto!important;max-height:470px!important;
+ }
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.board,
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=configuracoes]>.board{
+  grid-template-columns:minmax(0,1fr)!important;
+ }
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=financeiro]>.dashboard-panel-grid.one>.card{
+  grid-template-columns:minmax(0,1fr)!important;max-height:none!important;
+ }
+}
