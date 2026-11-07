@@ -55,7 +55,7 @@ function buildings(){
  if(trafficEvents.length)drawTraffic();
 }
 function setStyle(){document.body.classList.remove("is-night");}
-map.on("style.load",()=>{if(satellite)installSatellite();});
+map.on("style.load",()=>{if(satellite)installSatellite();installPins();});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
@@ -68,35 +68,53 @@ function clusters(){
  return groups;
 }
 function counts(){for(const k of ["online","ocioso","offline"])$(k+"Count").textContent=items.filter(x=>state(x)===k).length;}
+
+/* Pontos nativos WebGL ancorados a longitude/latitude: não usam CSS transform,
+   não são reagrupados ao aplicar filtros e nunca mudam por causa do zoom. */
+const PINS_SOURCE="coopex-cooperados-gps";
+function pinsGeoJson(){
+ return {type:"FeatureCollection",features:items.filter(inFilter).filter(hasCoord).map(i=>({
+  type:"Feature",id:Number(i.id),geometry:{type:"Point",coordinates:[+i.lng,+i.lat]},
+  properties:{id:String(i.id),name:i.nome||"Cooperado",initials:initials(i.nome),status:state(i),selected:String(i.id)===String(selectedId)?1:0}
+ }))};
+}
+function installPins(){
+ if(!map.isStyleLoaded())return;
+ const data=pinsGeoJson();
+ if(!map.getSource(PINS_SOURCE))map.addSource(PINS_SOURCE,{type:"geojson",data});
+ else map.getSource(PINS_SOURCE).setData(data);
+ if(!map.getLayer("coopex-gps-halo"))map.addLayer({
+  id:"coopex-gps-halo",type:"circle",source:PINS_SOURCE,
+  filter:["==",["get","selected"],1],
+  paint:{"circle-radius":27,"circle-color":"#1485f9","circle-opacity":0.22,"circle-blur":0.45}
+ });
+ if(!map.getLayer("coopex-gps-pins"))map.addLayer({
+  id:"coopex-gps-pins",type:"circle",source:PINS_SOURCE,
+  paint:{"circle-radius":["interpolate",["linear"],["zoom"],8,12,12,18,17,21],
+  "circle-color":["match",["get","status"],"online","#08c977","ocioso","#f39b21","offline","#f04659","#2772e7"],
+  "circle-stroke-color":"#ffffff","circle-stroke-width":3,
+  "circle-opacity":1}
+ });
+ if(!map.getLayer("coopex-gps-initials"))map.addLayer({
+  id:"coopex-gps-initials",type:"symbol",source:PINS_SOURCE,
+  layout:{"text-field":["get","initials"],"text-size":12,
+   "text-allow-overlap":true,"text-ignore-placement":true,"text-anchor":"center"},
+  paint:{"text-color":"#ffffff","text-halo-color":"#12395a","text-halo-width":0.6}
+ });
+}
+map.on("click","coopex-gps-pins",e=>{
+ const feature=e.features&&e.features[0];if(!feature)return;
+ e.originalEvent?.stopPropagation();
+ selectCooperado(feature.properties.id);
+});
+map.on("mouseenter","coopex-gps-pins",()=>{map.getCanvas().style.cursor="pointer"});
+map.on("mouseleave","coopex-gps-pins",()=>{map.getCanvas().style.cursor=""});
 function render(){
  counts();
- // Um marcador por ID do cooperado, sem reagrupar nem substituir coordenadas
- // ao mudar filtros ou zoom. Apenas um novo GPS altera a posição geográfica.
- const keep=new Set();
- for(const i of items.filter(inFilter).filter(hasCoord)){
-   const key=String(i.id),coords=[Number(i.lng),Number(i.lat)];keep.add(key);
-   let m=dynamicMarkers.get(key);
-   if(!m){
-     const el=pin(i,1);
-     m=new ml.Marker({element:el,anchor:"bottom",pitchAlignment:"viewport",rotationAlignment:"viewport"}).setLngLat(coords).addTo(map);
-     dynamicMarkers.set(key,m);
-   }else{
-     const previous=m.getLngLat();
-     if(Math.abs(previous.lng-coords[0])>.0000001||Math.abs(previous.lat-coords[1])>.0000001)m.setLngLat(coords);
-     const current=m.getElement(),fresh=pin(i,1);
-     current.className=fresh.className;
-     current.innerHTML=fresh.innerHTML;
-     current.title=fresh.title;
-     current.setAttribute("aria-label",fresh.getAttribute("aria-label"));
-   }
-   m.getElement().onclick=e=>{e.preventDefault();e.stopPropagation();selectCooperado(i.id)};
- }
- for(const [key,m]of dynamicMarkers){
-   if(!keep.has(key)){m.remove();dynamicMarkers.delete(key)}
- }
+ if(map.isStyleLoaded())installPins();
  const current=itemById(selectedId);
  if(current){showDetails(current);
-   if(following&&hasCoord(current))map.easeTo({center:[Number(current.lng),Number(current.lat)],duration:350});
+  if(following&&hasCoord(current))map.easeTo({center:[+current.lng,+current.lat],duration:350});
  }
 }
 function kmDistance(a,b){const dx=(a.lat-b.lat)*111,dy=(a.lng-b.lng)*111*Math.cos(a.lat*Math.PI/180);return Math.hypot(dx,dy);}
