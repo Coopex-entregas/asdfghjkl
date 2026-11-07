@@ -103,3 +103,31 @@ body.is-night.is-rain #map .leaflet-tile-pane{filter:saturate(1.24) contrast(1.1
 .weather-fx{mask-image:linear-gradient(90deg,#000 0%,#000 70%,transparent 99%)}
 @media(max-width:1080px){.filters{right:16px!important;top:72px!important}.toolbar{top:16px!important}}
 @media(max-width:800px){.search{top:116px!important;left:10px!important;width:min(260px,calc(100vw - 92px))!important}.search-results{top:165px!important;left:10px!important}.filters{top:67px!important}.toolbar{top:16px!important;right:10px!important}.leaflet-top.leaflet-right{top:160px!important;right:8px!important}}
+
+/* MapLibre COOPEX 3D - um único renderer vetorial WebGL. */
+#map{position:fixed!important;inset:0!important;z-index:0!important;width:100vw!important;height:100vh!important;background:#a5c1de}
+#map .maplibregl-canvas{outline:none}
+#map .maplibregl-control-container{position:static}
+#map .maplibregl-ctrl-top-right{top:145px!important;right:14px!important}
+#map .maplibregl-ctrl-group{border:1px solid rgba(155,205,248,.58)!important;background:linear-gradient(155deg,rgba(20,65,110,.97),rgba(7,32,67,.98))!important;border-radius:14px!important;overflow:hidden;box-shadow:0 13px 32px rgba(8,33,68,.34)!important}
+#map .maplibregl-ctrl-group button{width:42px!important;height:41px!important;color:white!important;border-bottom:1px solid rgba(166,210,246,.3)!important}
+#map .maplibregl-ctrl-group button .maplibregl-ctrl-icon{filter:brightness(0) invert(1)}
+#map .maplibregl-ctrl-group button:hover{background:rgba(89,153,225,.42)}
+#map .maplibregl-ctrl-attrib{font-size:10px!important}
+#map .maplibregl-ctrl-attrib a{font-size:10px!important}
+#map .maplibregl-popup-content{border-radius:14px;padding:14px;background:#143755;color:#fff}
+.cx-map-marker{position:relative;display:block;width:49px;height:62px;padding:0;border:none;background:none;cursor:pointer;filter:drop-shadow(0 8px 8px rgba(0,22,47,.45))}
+.cx-pin-orb{display:grid;place-items:center;width:43px;height:43px;margin:auto;border:3px solid #fff;border-radius:50%;color:#fff;font-weight:900;font-size:12px;text-shadow:0 1px 3px #092143aa;background:linear-gradient(140deg,var(--pin),color-mix(in srgb,var(--pin) 65%,#0b376b));box-shadow:inset 0 2px 5px rgba(255,255,255,.55),0 0 0 3px color-mix(in srgb,var(--pin) 27%,transparent)}
+.cx-pin-orb:after{content:"";position:absolute;top:41px;left:19px;border-left:6px solid transparent;border-right:6px solid transparent;border-top:9px solid var(--pin)}
+.cx-pin-counter{position:absolute;top:-9px;right:-5px;color:#fff;font-size:11px;font-weight:850;background:#184bce;border:2px solid #fff;border-radius:30px;padding:2px 6px}
+.cx-map-marker.cx-chosen .cx-pin-orb{box-shadow:0 0 0 7px rgba(45,181,255,.45),inset 0 2px 5px #ffffff88;transform:scale(1.09)}
+.cx-map-marker:hover .cx-pin-orb{transform:scale(1.09)}
+.weather-fx{z-index:550!important;pointer-events:none!important}
+#ui{z-index:600}
+#ui .glass{backdrop-filter:blur(25px) saturate(155%)!important;-webkit-backdrop-filter:blur(25px) saturate(155%)!important}
+body.is-night .details,body.is-night .weather{color:#fff!important}
+body.is-night .details b,body.is-night .weather b,body.is-night .details label{color:#e9f6ff!important}
+body.is-night #personState{color:#fff}
+body:not(.is-night) .details .detail-line b{color:#11355b}
+@media(max-width:800px){#map .maplibregl-ctrl-top-right{top:205px!important;right:9px!important}}
+@media(max-width:560px){#map .maplibregl-ctrl-top-right{top:210px!important;right:7px!important}}
