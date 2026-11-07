@@ -1,7 +1,7 @@
 /* Command Center: reorganize existing working report UI, do not replace data/actions. */
 (function(){
 'use strict';
-let built=false;
+let builtNav=null;
 const icons={
  geral:'<rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>',
  cooperados:'<circle cx="12" cy="7" r="4"/><path d="M4 21v-2a8 8 0 0 1 16 0v2"/>',
@@ -27,19 +27,19 @@ const kpiIcons=[
 ];
 function svg(paths){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+paths+'</svg>'}
 function apply(){
- if(built)return true;
  const nav=document.querySelector('.dashboard-tabs-bar');
+ if(nav && builtNav===nav && nav.classList.contains('cx-report-rail'))return true;
  const filter=document.querySelector('.dashboard-filter-shell');
  const content=document.querySelector('main.wrap');
  const buttons=nav?.querySelectorAll('[data-tab]');
  if(!nav||!filter||!content||!buttons||buttons.length<5)return false;
- built=true;
+ builtNav=nav;
  const body=document.body;
  body.classList.add('cx-command-center');
  nav.classList.add('cx-report-rail');
  nav.setAttribute('aria-label','Áreas do painel gerencial');
  const brand=document.createElement('div');brand.className='cx-rail-brand';
- brand.innerHTML='<span class="cx-rail-mark" aria-hidden="true">▦</span><span class="cx-rail-title">COOPEX <small style="display:block;font-size:10px;color:#b3d4ed;font-weight:650">Centro gerencial</small></span>';
+ brand.innerHTML='<a class="cx-rail-back" href="/admin" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a><span class="cx-rail-title">COOPEX <small style="display:block;font-size:10px;color:#b3d4ed;font-weight:650">Centro gerencial</small></span>';
  nav.prepend(brand);
  const kicker=document.createElement('div');kicker.className='cx-rail-kicker';kicker.textContent='Áreas de análise';brand.after(kicker);
  const names={
@@ -57,12 +57,15 @@ function apply(){
  });
  const before=nav.querySelector('.report-back');
  if(before)before.remove();
- const footer=document.createElement('div');footer.className='cx-rail-footer';
- footer.innerHTML='<a href="/admin" title="Voltar ao administrador"><span style="font-size:21px" aria-hidden="true">‹</span><span>Voltar ao administrador</span></a>';
- nav.appendChild(footer);
- const heading=document.createElement('header');heading.className='cx-report-heading noPrint';
- heading.innerHTML='<div><h1>Centro Gerencial</h1><div class="cx-report-context">Operação, clientes, cooperados e resultados</div></div><div class="cx-report-head-actions"></div>';
+ // Keep one heading even when an older dashboard patch rebuilds the tab menu.
+ let heading=document.querySelector('.cx-report-heading');
+ if(!heading){
+  heading=document.createElement('header');heading.className='cx-report-heading noPrint';
+  heading.innerHTML='<div><h1>Centro Gerencial</h1><div class="cx-report-context">Operação, clientes, cooperados e resultados</div></div><div class="cx-report-head-actions"></div>';
+ }
  nav.after(heading);
+ const periods=document.getElementById('cx-period-counts');
+ if(periods)heading.after(periods);
  const actionHost=heading.querySelector('.cx-report-head-actions');
  const oldActions=nav.querySelector('.dashboard-tabs-actions');
  if(oldActions){[...oldActions.children].forEach(item=>{
@@ -113,9 +116,16 @@ function apply(){
  return true;
 }
 function start(){
- if(apply())return;
- let count=0;
- const poll=setInterval(()=>{if(apply()||++count>40)clearInterval(poll);},75);
+ apply();
+ // Older report scripts may replace the navigation once during initialization.
+ // Reattach the new layout only when the actual navigation node changes.
+ const watcher=new MutationObserver(()=>{
+   const nav=document.querySelector('.dashboard-tabs-bar');
+   if(nav && nav!==builtNav)apply();
+ });
+ watcher.observe(document.body,{childList:true});
+ let attempts=0;
+ const timer=setInterval(()=>{if(apply()||++attempts>=35)clearInterval(timer);},90);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
 else start();
