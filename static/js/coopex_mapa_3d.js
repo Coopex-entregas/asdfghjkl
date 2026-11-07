@@ -237,8 +237,8 @@ function renderCameraPanel(){
  const local=publicCameras.filter(c=>c.coords&&cameraDistanceKm(ref,c.coords)<=12).sort((a,b)=>cameraDistanceKm(ref,a.coords)-cameraDistanceKm(ref,b.coords));
  const general=publicCameras.filter(c=>c.general);
  const rows=local.concat(general);
- if(!local.length){const info=document.createElement("p");info.className="cx-camera-empty";info.textContent="Nenhuma câmera com localização confirmada nesta área. Abaixo estão fontes gerais de Natal.";host.append(info);}
- for(const c of rows){const a=document.createElement("a");a.className="cx-camera-row";a.href=c.url;a.target="_blank";a.rel="noopener noreferrer";a.innerHTML='<span class="cx-camera-symbol">▣</span><span><strong>'+esc(c.name)+'</strong><small>'+esc(c.region)+(c.coords?" · aprox. "+cameraDistanceKm(ref,c.coords).toFixed(1)+" km":" · localização não individualizada")+'</small></span><span aria-hidden="true">↗</span>';host.append(a);}
+ if(!local.length){const info=document.createElement("p");info.className="cx-camera-empty";info.textContent="Não há transmissão com ponto de câmera verificado nesta área. Veja abaixo fontes gerais e avenidas com cobertura aproximada.";host.append(info);}
+ for(const c of rows){const a=document.createElement("a");a.className="cx-camera-row";a.href=c.url;a.target="_blank";a.rel="noopener noreferrer";a.innerHTML='<span class="cx-camera-symbol">▣</span><span><strong>'+esc(c.name)+'</strong><small>'+esc(c.region)+(c.coords?" · via próxima à região do mapa (ponto exato não informado)":" · localização não individualizada")+'</small></span><span aria-hidden="true">↗</span>';host.append(a);}
  $("camerasCoop").disabled=!(itemById(selectedId)&&hasCoord(itemById(selectedId)));
 }
 async function resolveCameraCoordinates(){
