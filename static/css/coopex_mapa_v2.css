@@ -287,9 +287,17 @@ body.cx-address-mode #ui>.back-link{left:20px!important;top:20px!important}
 /* A cartografia oficial do Google ocupa exatamente o espaço antes usado pelo MapLibre. */
 #googleMap{position:fixed;inset:0;z-index:1;background:#d9e8f5}
 body.cx-google-ready #map{visibility:hidden!important}
-body:not(.cx-google-ready) #googleMap{visibility:hidden!important;pointer-events:none!important}
+/* Não usar visibility:hidden: o Google precisa desenhar tiles para disparar tilesloaded. */
+body:not(.cx-google-ready) #googleMap{visibility:visible!important;pointer-events:none!important}
+body:not(.cx-google-ready) #map{z-index:2!important;visibility:visible!important}
+body.cx-google-ready #map{z-index:0!important;visibility:hidden!important}
 body.cx-google-error #googleMap{visibility:hidden!important;pointer-events:none!important}
 body.cx-google-error #map{visibility:visible!important}
 #googleMap .gm-style{font-family:Inter,system-ui,"Segoe UI",sans-serif}
 #googleMap [title="COOPEX"]{cursor:pointer}
 @media(max-width:720px){#googleMap .gm-style-mtc{top:65px}}
+
+#googleMapStatus{position:absolute;z-index:760;top:76px;left:365px;max-width:min(560px,calc(100vw - 400px));border-radius:12px;padding:11px 15px;font-size:13px;font-weight:700;color:#7a2b1f;background:rgba(255,246,233,.97);border:1px solid #ffd6ab;box-shadow:0 8px 22px #1b3e6b35}
+#googleMapStatus[data-kind="loading"]{background:rgba(242,248,255,.96);color:#1c527c;border-color:#b8d9f6}
+#googleMapStatus[hidden]{display:none!important}
+@media(max-width:700px){#googleMapStatus{top:70px;left:10px;max-width:calc(100vw - 20px)}}
