@@ -652,10 +652,62 @@ const coops = {{ grafico_cooperados|tojson }};
 const clientes = {{ grafico_clientes|tojson }};
 const pagamentos = {{ grafico_pagamento|tojson }};
 function br(v){ return Number(v||0).toLocaleString('pt-BR',{minimumFractionDigits:2,maximumFractionDigits:2}); }
-function baseOptions(){return {responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:(ctx)=> ctx.dataset.label + ': ' + (ctx.dataset.money?'R$ '+br(ctx.raw):ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#334155',font:{size:10,weight:'700'}}},y:{beginAtZero:true,grid:{color:'#eaf1ff'},ticks:{color:'#334155',font:{size:10,weight:'700'}}}}};}
-function chartBar(id, labels, vals, label, color='#003399', money=true){const el=document.getElementById(id); if(!el)return; new Chart(el.getContext('2d'),{type:'bar',data:{labels,datasets:[{label,data:vals,money,backgroundColor:color,borderRadius:8,maxBarThickness:34}]},options:baseOptions()});}
-function chartLine(id){const el=document.getElementById(id); if(!el)return; new Chart(el.getContext('2d'),{data:{labels:dia.map(x=>x.label),datasets:[{type:'bar',label:'Faturamento',data:dia.map(x=>x.valor),money:true,backgroundColor:'#15b46f',borderRadius:8,maxBarThickness:28},{type:'line',label:'Entregas',data:dia.map(x=>x.qtd),money:false,borderColor:'#003399',backgroundColor:'#003399',borderWidth:3,tension:.35,pointRadius:3,yAxisID:'y1'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:true,labels:{boxWidth:10,font:{size:11,weight:'800'}}}},scales:{x:{grid:{display:false},ticks:{font:{size:10,weight:'700'}}},y:{beginAtZero:true,grid:{color:'#eaf1ff'},title:{display:true,text:'R$'}},y1:{beginAtZero:true,position:'right',grid:{drawOnChartArea:false},title:{display:true,text:'Qtd'}}}}});}
-function chartDoughnut(id, labels, vals){const el=document.getElementById(id); if(!el)return; new Chart(el.getContext('2d'),{type:'doughnut',data:{labels,datasets:[{data:vals,backgroundColor:['#003399','#15b46f','#f59e0b','#0891b2','#dc2626','#64748b'],borderColor:'#fff',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,cutout:'62%',plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10,weight:'800'}}},tooltip:{callbacks:{label:(ctx)=>ctx.label+': R$ '+br(ctx.raw)}}}}});}
+/* Eixos e legendas devem nascer com contraste legível, sem depender do CSS. */
+function reportPalette(){
+ const night=document.body.classList.contains('dark-mode');
+ return {text:night?'#dcecff':'#365476',grid:night?'rgba(165,208,241,.12)':'rgba(61,107,159,.13)',blue:night?'#71bfff':'#246db4',green:night?'#4ad6ac':'#14a47c',bg:night?'#163958':'#f6fbff'};
+}
+function reportAxis(extra={}){
+ const p=reportPalette();
+ return {beginAtZero:true,grid:{color:p.grid,lineWidth:.7,drawTicks:false},ticks:{color:p.text,padding:9,font:{family:'Inter, system-ui, sans-serif',size:11,weight:'600'}},border:{color:p.grid},...extra};
+}
+function baseOptions(){
+ const p=reportPalette();
+ return {responsive:true,maintainAspectRatio:false,
+  plugins:{
+   legend:{display:false,labels:{color:p.text,font:{size:11,weight:'650'}}},
+   tooltip:{backgroundColor:'#122e4d',titleColor:'#f7fcff',bodyColor:'#e6f4ff',callbacks:{label:(ctx)=> ctx.dataset.label + ': ' + (ctx.dataset.money?'R$ '+br(ctx.raw):ctx.raw)}}
+  },
+  scales:{x:reportAxis({grid:{display:false}}),y:reportAxis()}
+ };
+}
+function chartBar(id, labels, vals, label, color, money=true){
+ const el=document.getElementById(id);if(!el)return;
+ const p=reportPalette();
+ new Chart(el.getContext('2d'),{
+  type:'bar',
+  data:{labels,datasets:[{label,data:vals,money,backgroundColor:id==='chartCoop'?p.blue:p.green,borderRadius:7,maxBarThickness:42}]},
+  options:baseOptions()
+ });
+}
+function chartLine(id){
+ const el=document.getElementById(id);if(!el)return;
+ const p=reportPalette();
+ new Chart(el.getContext('2d'),{
+  data:{labels:dia.map(x=>x.label),datasets:[
+   {type:'bar',label:'Faturamento',data:dia.map(x=>x.valor),money:true,backgroundColor:p.green,borderRadius:7,maxBarThickness:37},
+   {type:'line',label:'Entregas',data:dia.map(x=>x.qtd),money:false,borderColor:p.blue,backgroundColor:p.blue,borderWidth:2.5,tension:.35,pointRadius:3,yAxisID:'y1'}
+  ]},
+  options:{responsive:true,maintainAspectRatio:false,
+   plugins:{legend:{display:true,labels:{color:p.text,boxWidth:10,padding:12,font:{size:11,weight:'650'}}},
+    tooltip:{backgroundColor:'#122e4d',titleColor:'#fff',bodyColor:'#e6f4ff'}},
+   scales:{x:reportAxis({grid:{display:false}}),y:reportAxis({title:{display:false}}),
+    y1:reportAxis({position:'right',grid:{drawOnChartArea:false},title:{display:false}})}
+  }
+ });
+}
+function chartDoughnut(id, labels, vals){
+ const el=document.getElementById(id);if(!el)return;
+ const p=reportPalette();
+ new Chart(el.getContext('2d'),{
+  type:'doughnut',
+  data:{labels,datasets:[{data:vals,backgroundColor:[p.blue,p.green,'#ecaa49','#5bc8e0','#ef6d86','#a2a9d2'],borderColor:p.bg,borderWidth:2}]},
+  options:{responsive:true,maintainAspectRatio:false,cutout:'68%',
+   plugins:{legend:{position:'bottom',labels:{color:p.text,boxWidth:10,padding:12,font:{size:11,weight:'650'}}},
+    tooltip:{backgroundColor:'#122e4d',titleColor:'#fff',bodyColor:'#e6f4ff',callbacks:{label:(ctx)=>ctx.label+': R$ '+br(ctx.raw)}}}
+  }
+ });
+}
 chartLine('chartDia');
 chartBar('chartCoop', coops.map(x=>x.label), coops.map(x=>x.valor), 'Faturamento', '#003399', true);
 chartBar('chartCliente', clientes.map(x=>x.label), clientes.map(x=>x.valor), 'Faturamento', '#15b46f', true);
