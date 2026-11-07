@@ -30,7 +30,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             return None
         if not endereco or not isfinite(lat) or not isfinite(lng) or abs(lat)>90 or abs(lng)>180:
             return None
-        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':100}
+        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':30}
 
     def authorized():
         uid=session.get('user_id')
@@ -50,7 +50,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         if not authorized():return jsonify(ok=False,erro='Não autorizado'),403
         item=base()
         if not item:return jsonify(ok=False,configurada=False,erro='Base ainda não configurada no Admin → Certificado'),503
-        return jsonify(ok=True,configurada=True,base=item)
+        return jsonify(ok=True,configurada=True,base={'endereco':item['endereco'],'latitude':item['latitude'],'longitude':item['longitude']})
 
     @app.post('/api/cooperado/fila/entrar')
     def coopex_fila_geo_entrar():
@@ -74,8 +74,8 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             return jsonify(ok=False,erro='Localização antiga. Atualize o GPS e tente novamente.'),409
         dist=meters(item['latitude'],item['longitude'],lat,lng)
         # Considerar incerteza: não aceitar se o círculo de precisão alcançar fora do raio.
-        if dist+precision>100:
-            return jsonify(ok=False,erro='Você só poderá entrar na fila quando chegar à base da COOPEX (até 100 metros). Aproxime-se da base e tente novamente.',distancia_m=round(dist),precisao_m=round(precision)),403
+        if dist+precision>item['raio_m']:
+            return jsonify(ok=False,erro='Você só pode entrar na fila quando estiver na cooperativa. Dirija-se à base da COOPEX e tente novamente.'),403
         existente=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
         if existente:
             # Estado confirmado no mesmo banco da fila exibida pelo Admin.
