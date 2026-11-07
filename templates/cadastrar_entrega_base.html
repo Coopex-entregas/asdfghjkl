@@ -51,9 +51,9 @@
       if(note){note.style.display='none';note.textContent=''}
     }
     function setup(){
-      if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');
+      /* O tema é definido exclusivamente no administrador. */
       const h1=document.querySelector('h1');if(h1&&!document.getElementById('deliveryModeSwitch')){const nav=document.createElement('div');nav.id='deliveryModeSwitch';nav.className='delivery-mode-switch';nav.innerHTML='<a href="{{ url_for('cadastrar_entrega') }}">⚡ Entrega rápida</a><a class="active" href="{{ url_for('cadastrar_entrega', modo='completo') }}">📋 Entrega completa</a>';h1.insertAdjacentElement('afterend',nav)}
-      if(!document.getElementById('completeTheme')){const b=document.createElement('button');b.id='completeTheme';b.className='complete-theme';b.type='button';const sync=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()};document.body.appendChild(b);sync()}
+      
       const pg=document.getElementById('pagamento');if(pg){pg.innerHTML='<option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Pix (Cooperativa)">3. Pix Cooperativa</option><option id="completeCreditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option><option value="Comanda">5. Comanda</option>';let note=document.getElementById('completeCreditNote');if(!note){note=document.createElement('div');note.id='completeCreditNote';note.className='complete-credit-note';pg.insertAdjacentElement('afterend',note)}}
       const original=window.escolher;if(typeof original==='function'&&!original.__coopexWrapped){const wrapped=function(item){original(item);loadCredit(item)};wrapped.__coopexWrapped=true;window.escolher=wrapped}
       const clientInput=document.getElementById('cliente_manual');if(clientInput&&!clientInput.dataset.creditReset){clientInput.dataset.creditReset='1';clientInput.addEventListener('input',()=>{const clientId=document.getElementById('cliente_id');if(!clientId||!clientId.value)resetCredit()})}
