@@ -469,7 +469,7 @@ function draw(){
  if(entryAlert.length&&!entering)entryAlert=[];
  const warnings=pix.map(x=>({...x,ms:parse(x.expira_em)-now})).filter(x=>Number.isFinite(x.ms)&&x.ms<=3600000).sort((a,b)=>a.ms-b.ms);
  const mode=exiting?'saida':(entering?'entrada':(warnings.length?'alert':'fila'));
- const messages=exiting?['SAÍDA DA FILA · '+exitAlert.nome+' · '+exitAlert.hora+' · MOTIVO: '+exitAlert.motivo]:entering?['ENTRADA: '+entryAlert.map(x=>x.nome+' '+x.hora).join(' · ')]:warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(x.pos||i+1)+'º '+x.nome);
+ const messages=exiting?['SAÍDA DA FILA · '+exitAlert.nome+' · '+exitAlert.hora+' · MOTIVO: '+exitAlert.motivo]:entering?['ENTRADA: '+entryAlert.map(x=>x.nome+' '+x.hora).join(' · ')]:warnings.length?warnings.map(x=>(x.tipo==='Entrega'?'ENTREGA #'+x.id:'AVULSO')+' · '+(x.nome||'Cliente')+' · '+countdown(x.ms)+' · '+(x.ms<=0?'VENCIDO':x.ms<=900000?'ALERTA 15 MIN':x.ms<=1800000?'ALERTA 30 MIN':'ATENÇÃO 1 HORA')):fila.map((x,i)=>String(i+1)+'º '+x.nome);
  const result=messages.join('     ✦     ')||(warnings.length?'AVISO PIX':'SEM COOPERADOS NA FILA');
  if(result!==lastText||mode!==lastMode){
   lastText=result;lastMode=mode;
@@ -557,7 +557,7 @@ function connectQueueExitSocket(){
  // Atualiza a fila imediatamente quando o servidor grava ou altera a ordem.
  socket.on('fila_espera_atualizada',data=>{
   if(!data||!Array.isArray(data.itens))return;
-  fila=data.itens.map((item,i)=>({id:item.id,cooperado_id:item.cooperado_id,nome:String(item.nome||'Cooperado'),pos:Number(item.pos||i+1)}));
+  fila=data.itens.map((item,i)=>({id:item.id,cooperado_id:item.cooperado_id,nome:String(item.nome||'Cooperado'),pos:i+1}));
   window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));
   draw();
  });
@@ -694,7 +694,7 @@ let recado=null,entradas=[],saida=null,pix=[],fila=[];
 const hora=v=>{const date=new Date(v||Date.now());return Number.isFinite(date.getTime())?date.toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',timeZone:'America/Fortaleza'}):''};
 function show(){
  const info=[
- ['cx-led-fila','FILA · '+(fila.length?fila.map((f,i)=>(f.pos||i+1)+'º '+f.nome).join('  ·  '):'SEM COOPERADOS NA FILA'),true],
+ ['cx-led-fila','FILA · '+(fila.length?fila.map((f,i)=>(i+1)+'º '+f.nome).join('  ·  '):'SEM COOPERADOS NA FILA'),true],
  ['cx-led-recado',recado&&!recado.lido_em?'RECADO · '+recado.mensagem+' · '+recado.autor+' '+hora(recado.criado_em):'',Boolean(recado&&!recado.lido_em)],
  ['cx-led-entrada',entradas.length?'ENTRADA · '+entradas.map(x=>x.nome+' '+x.hora).join(' · '):'',Boolean(entradas.length)],
  ['cx-led-saida',saida?'SAÍDA · '+saida.nome+' · '+saida.hora+' · MOTIVO: '+saida.motivo:'',Boolean(saida)],
