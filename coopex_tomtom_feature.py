@@ -43,6 +43,27 @@ def _flow_png(key, z, x, y):
 
 
 def install(app):
+    @app.get("/api/coopex/tomtom/flow/status")
+    def coopex_tomtom_flow_status():
+        if not session.get("is_admin"):
+            return jsonify({"ok": False, "error": "Acesso restrito"}), 403
+        key = os.environ.get("TOMTOM_API_KEY", "").strip()
+        if not key:
+            return jsonify({"ok": False, "code": "MISSING_KEY"}), 503
+        import math
+        z = 11
+        x = int(((-35.211 + 180) / 360) * (1 << z))
+        latrad = math.radians(-5.7945)
+        y = int((1 - math.asinh(math.tan(latrad)) / math.pi) / 2 * (1 << z))
+        try:
+            _flow_png(key, z, x, y)
+            return jsonify({"ok": True, "source": "TomTom Orbis Traffic Flow"})
+        except HTTPError as exc:
+            return jsonify({"ok": False, "code": "KEY_REJECTED" if exc.code in (401,403) else "UPSTREAM",
+                            "upstream_status": exc.code}), 503
+        except (URLError, TimeoutError, OSError, ValueError):
+            return jsonify({"ok": False, "code": "UPSTREAM"}), 503
+
     @app.get("/api/coopex/tomtom/flow/<int:z>/<int:x>/<int:y>.png")
     def coopex_tomtom_flow_tile(z, x, y):
         if not session.get("is_admin"):
