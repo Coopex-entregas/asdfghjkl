@@ -1,8 +1,9 @@
 
 (()=>{"use strict";
 const $=id=>document.getElementById(id), esc=s=>String(s??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const map=L.map("map",{zoomControl:true,preferCanvas:true,maxZoom:19,zoomSnap:.5,worldCopyJump:false}).setView([-5.7945,-35.2110],12);
+const map=L.map("map",{zoomControl:false,preferCanvas:true,maxZoom:19,zoomSnap:.5,worldCopyJump:false}).setView([-5.7945,-35.2110],12);
 const road=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,maxNativeZoom:19,attribution:'© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>',keepBuffer:2,updateWhenIdle:true}).addTo(map);
+L.control.zoom({position:"topright",zoomInTitle:"Aproximar",zoomOutTitle:"Afastar"}).addTo(map);
 const satellite=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,maxNativeZoom:18,attribution:"Tiles © Esri — World Imagery",keepBuffer:2});
 let items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],filter="todos",selectedId=null,following=false,mode="road",fetching=false,activeSearch="",incidentList=[],lastWeather="",lastData="",lastCenter=false;
 const markers=new Map(),iconCache=new Map();
