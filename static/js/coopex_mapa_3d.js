@@ -188,8 +188,7 @@ function installPins(){
  if(!map.getLayer("coopex-gps-initials"))map.addLayer({
   id:"coopex-gps-initials",type:"symbol",source:PINS_SOURCE,
   layout:{"text-field":["get","initials"],"text-size":["interpolate",["linear"],["zoom"],8,11,12,12.5,17,14],
-   "text-allow-overlap":true,"text-ignore-placement":true,"text-anchor":"center",
-   "text-font":["Open Sans Bold","Arial Unicode MS Bold"]},
+   "text-allow-overlap":true,"text-ignore-placement":true ,"text-anchor":"center"},
   paint:{"text-color":"#0b1928","text-halo-color":"#ffffff","text-halo-width":0.25}
  });
 }
