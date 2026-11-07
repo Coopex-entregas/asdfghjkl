@@ -12,12 +12,14 @@
     @media(max-width:520px){.summary{grid-template-columns:1fr}.cx-brand-title small{display:none}.top-actions .label{display:none}.cx-wrap{padding:10px}}
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_delivery_glass.css') }}">
 </head>
-<body class="cx-page">
+<body class="cx-page cx-delivery-glass">
 <header class="cx-topbar">
-  <div class="cx-brand"><img src="{{ url_for('static', filename='logo_coopex.png') }}" alt="COOPEX" onerror="this.style.display='none'"><div class="cx-brand-title"><strong>Entrega rápida</strong><small>Cadastro em poucos segundos</small></div></div>
+  <a class="cx-back-arrow" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a>
+  <div class="cx-brand"><div class="cx-brand-title"><strong>Entrega rápida</strong><small>Cadastro em poucos segundos</small></div></div>
   <div class="cx-spacer"></div>
-  <div class="top-actions"><button id="theme" class="cx-btn ghost" type="button">☾</button><a class="cx-btn ghost" href="{{ url_for('admin') }}"><span>←</span><span class="label">Admin</span></a></div>
+  
 </header>
 
 <main class="cx-wrap">
@@ -33,7 +35,7 @@
           <div class="cx-grid-2"><div class="cx-field"><label for="coleta_bairro">Bairro da coleta</label><input class="cx-input" id="coleta_bairro" name="coleta_bairro" required placeholder="Preenchido pelo cliente"></div><div class="cx-field"><label for="entrega_bairro">Bairro da entrega</label><input class="cx-input" id="entrega_bairro" name="entrega_bairro" required placeholder="Digite o destino"></div></div>
           <div class="cx-grid-2"><div class="cx-field"><label for="valor">Valor</label><input class="cx-input" id="valor" name="valor" required inputmode="decimal" placeholder="Calculado pela rota"><span id="routeMsg" class="route-msg">Selecione o cliente e informe o destino.</span></div><div class="cx-field"><label for="pagamento">Forma de pagamento</label><select class="cx-select" id="pagamento" name="pagamento" required><option value="Pix" selected>1. Pix</option><option value="Dinheiro">2. Dinheiro</option><option value="Comanda">3. Comanda</option><option id="creditOption" value="CREDITO_AUTO" hidden disabled>4. Crédito automático</option></select><span id="creditMsg" class="credit-msg"></span></div></div>
           <div class="cx-field"><label for="cooperado_id">Atribuir cooperado</label><select class="cx-select" id="cooperado_id" name="cooperado_id"><option value="" selected>Sem cooperado</option>{% for c in cooperados %}<option value="{{ c.id }}">{% if c.id in fila_por_id %}{{ fila_por_id[c.id] }}º da fila — {% endif %}{{ c.nome }}</option>{% endfor %}</select><span class="cx-hint fila-note">Sem cooperado é a opção inicial. Depois aparecem a fila de espera e os escalados na BASE.</span></div>
-          <div class="cx-actions"><button class="cx-btn" type="submit">Cadastrar entrega rápida</button><a class="cx-btn alt" href="{{ url_for('clientes') }}">Cadastrar cliente</a><a class="cx-btn alt" href="{{ url_for('cadastrar_entrega', modo='completo') }}">Abrir completa</a><a class="cx-btn alt" href="{{ url_for('admin') }}">← Voltar ao Admin</a></div>
+          <div class="cx-actions"><button class="cx-btn" type="submit">Cadastrar entrega rápida</button><a class="cx-btn alt" href="{{ url_for('clientes') }}">Cadastrar cliente</a></div>
         </form>
       </div>
     </section>
@@ -94,7 +96,7 @@
   };
   function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';coop.value='';routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
   window.addEventListener('pageshow',reset);reset();
-  (function(){const b=el('theme');if(localStorage.getItem('coopex_theme')==='dark')document.body.classList.add('dark');const s=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');s()};s()})();
+  
 </script>
 <script id="coopex-quick-schedule">
 (function(){
@@ -157,5 +159,6 @@
 })();
 </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
+<script src="{{ url_for('static', filename='js/coopex_delivery_theme.js') }}"></script>
 </body>
 </html>
