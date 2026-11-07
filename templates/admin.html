@@ -448,49 +448,56 @@ async function unlockSound(){
   const C=window.AudioContext||window.webkitAudioContext;
   if(!C)return false;
   audioContext=audioContext||new C();
-  if(audioContext.state==='suspended')await audioContext.resume();
+  if(audioContext.state!=='running')await audioContext.resume();
   enabledSound=audioContext.state==='running';
   window.dispatchEvent(new CustomEvent('coopex-led-audio-state',{detail:{enabled:enabledSound}}));
   return enabledSound;
  }catch(e){enabledSound=false;return false}
 }
 window.__coopexLedUnlockAudio=unlockSound;
-document.addEventListener('pointerdown',unlockSound,{once:true});
-document.addEventListener('keydown',unlockSound,{once:true});
-// Moedas de metal batendo no chão, com repiques e eco discreto.
+// A primeira interação libera o Web Audio; as seguintes recuperam contexto suspenso.
+// Não remover após a primeira tentativa, que pode acontecer antes de o áudio estar pronto.
+document.addEventListener('pointerdown',()=>{if(!enabledSound||audioContext?.state!=='running')unlockSound()},{capture:true,passive:true});
+document.addEventListener('keydown',()=>{if(!enabledSound||audioContext?.state!=='running')unlockSound()},true);
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&audioContext?.state==='running')enabledSound=true});
+// Som ORIGINAL: várias moedas de metal atingindo o chão, repiques e eco audível.
+// Volume mais forte com compressor para evitar distorção excessiva no alto-falante.
 function cashSound(){
- if(!enabledSound||!audioContext||audioContext.state!=='running')return;
+ if(!enabledSound||!audioContext||audioContext.state!=='running')return false;
  try{
   const ctx=audioContext,now=ctx.currentTime;
-  const master=ctx.createGain();master.gain.value=.56;master.connect(ctx.destination);
-  const delay=ctx.createDelay(.45);delay.delayTime.value=.155;
-  const feedback=ctx.createGain();feedback.gain.value=.22;
-  const echo=ctx.createGain();echo.gain.value=.28;
-  delay.connect(feedback);feedback.connect(delay);delay.connect(echo);echo.connect(master);
-  // Quatro moedas com alturas distintas, batida metálica e quique decrescente.
-  [1050,1480,1210,1780,1380].forEach((base,i)=>{
-   const start=now+.035+i*.115;
-   [0,.072,.123].forEach((bounce,j)=>{
-    const time=start+bounce;
-    const env=ctx.createGain();
-    const peak=.16*Math.pow(.48,j)*(1-i*.085);
-    env.gain.setValueAtTime(.0001,time);
-    env.gain.exponentialRampToValueAtTime(Math.max(.001,peak),time+.003);
-    env.gain.exponentialRampToValueAtTime(.0001,time+.19-j*.025);
-    env.connect(master);env.connect(delay);
-    [1,2.37,3.84].forEach((ratio,k)=>{
-     const osc=ctx.createOscillator();
+  const compressor=ctx.createDynamicsCompressor();
+  compressor.threshold.value=-16;compressor.knee.value=9;
+  compressor.ratio.value=5;compressor.attack.value=.002;compressor.release.value=.19;
+  const output=ctx.createGain();output.gain.value=1.65;
+  compressor.connect(output);output.connect(ctx.destination);
+  const delay=ctx.createDelay(.6);delay.delayTime.value=.19;
+  const feedback=ctx.createGain();feedback.gain.value=.29;
+  const echo=ctx.createGain();echo.gain.value=.45;
+  delay.connect(feedback);feedback.connect(delay);delay.connect(echo);echo.connect(compressor);
+  [1250,1740,1120,2030,1510,970].forEach((base,i)=>{
+   const start=now+.025+i*.115;
+   [0,.075,.13].forEach((bounce,j)=>{
+    const when=start+bounce,env=ctx.createGain();
+    const peak=.31*Math.pow(.51,j)*(1-i*.055);
+    env.gain.setValueAtTime(.0001,when);
+    env.gain.exponentialRampToValueAtTime(Math.max(.001,peak),when+.0025);
+    env.gain.exponentialRampToValueAtTime(.0001,when+.20-j*.028);
+    env.connect(compressor);env.connect(delay);
+    [1,2.42,3.75,5.12].forEach((ratio,k)=>{
+     const osc=ctx.createOscillator(),partial=ctx.createGain();
      osc.type='sine';
-     osc.frequency.setValueAtTime(base*ratio,time);
-     osc.frequency.exponentialRampToValueAtTime(base*ratio*.87,time+.13);
-     const partial=ctx.createGain();partial.gain.value=[.65,.24,.11][k];
+     osc.frequency.setValueAtTime(base*ratio,when);
+     osc.frequency.exponentialRampToValueAtTime(base*ratio*.86,when+.14);
+     partial.gain.value=[.83,.36,.15,.065][k];
      osc.connect(partial);partial.connect(env);
-     osc.start(time);osc.stop(time+.2);
+     osc.start(when);osc.stop(when+.21);
     });
    });
   });
-  setTimeout(()=>{try{master.disconnect();delay.disconnect();feedback.disconnect();echo.disconnect()}catch(e){}},1900);
- }catch(e){console.warn('Som de Pix indisponível',e)}
+  setTimeout(()=>{try{delay.disconnect();feedback.disconnect();echo.disconnect();compressor.disconnect();output.disconnect()}catch(e){}},2600);
+  return true;
+ }catch(e){console.warn('Som de moedas Pix indisponível',e);return false}
 }
 function paidToast(x){cashSound();const div=document.createElement('div');div.style.cssText='position:fixed;top:18px;right:18px;z-index:999999;max-width:430px;background:#063e22;border:2px solid #40ef82;box-shadow:0 7px 30px #0008;border-radius:12px;padding:16px 20px;color:#d7ffea;font:700 15px system-ui';div.textContent='💵 PIX RECEBIDO · '+(x.cliente_nome||'Cliente')+' · '+money(x.valor);document.body.appendChild(div);setTimeout(()=>div.remove(),6500)}
 async function paidRefresh(){try{const r=await fetch('/admin/pix-sicoob/historico/dados',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const all=(await r.json()).cobrancas||[];const good=all.filter(x=>x.status==='PAGO'||x.status==='APROVADO');const ids=new Set(good.map(x=>x.tipo+':'+x.uid+':'+x.status));if(paidKnown!==null){for(const x of good){const key=x.tipo+':'+x.uid+':'+x.status;if(!paidKnown.has(key))paidToast(x)}}paidKnown=ids}catch(e){}}
