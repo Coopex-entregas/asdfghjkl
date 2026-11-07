@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-cartografia10">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-search12">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -20,7 +20,7 @@
 <button type="button" class="pill" data-filter="online"><span class="dot"></span>Online</button>
 <button type="button" class="pill orange" data-filter="ocioso"><span class="dot"></span>Ocioso</button>
 <button type="button" class="pill red" data-filter="offline"><span class="dot"></span>Offline</button>
-<button type="button" class="pill" id="addressToggle">⌕ Endereço</button>
+<button type="button" class="pill" id="addressToggle">⌕ Pesquisar endereço</button>
 </nav>
 <section id="toolbar" class="toolbar glass"><button type="button" id="toolbarToggle" aria-expanded="false">⚙ Ferramentas <span>⌄</span></button><div class="menu">
 <button id="mapStreet" type="button">🗺 Ruas</button><button id="mapSatellite" type="button">🛰 Satélite</button>
@@ -42,7 +42,7 @@
  <div id="cameraList" class="cx-camera-list" aria-live="polite"></div>
  <small class="cx-camera-disclaimer">Transmissões externas: podem estar indisponíveis ou fora do ar. A COOPEX não controla as imagens. A indicação de proximidade depende de localização verificada.</small>
 </section>
-<section id="addressPanel" class="address-panel glass" hidden>
+<section id="addressPanel" class="address-panel glass" hidden aria-label="Pesquisa de endereços"><button id="addressCollapse" class="cx-address-collapse" type="button" title="Recolher ou expandir pesquisa" aria-label="Recolher pesquisa">‹</button>
 <div class="address-head"><strong>Endereços e paradas</strong><button id="addressClose" class="close" type="button" aria-label="Fechar">×</button></div>
 <input id="address" placeholder="Rua, número e bairro em Natal" aria-label="Pesquisar endereço">
 <div class="address-actions">
@@ -71,6 +71,6 @@
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};</script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-cartografia10"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-search12"></script>
 </body>
 </html>
