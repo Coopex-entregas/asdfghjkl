@@ -131,3 +131,38 @@ body.is-night #personState{color:#fff}
 body:not(.is-night) .details .detail-line b{color:#11355b}
 @media(max-width:800px){#map .maplibregl-ctrl-top-right{top:205px!important;right:9px!important}}
 @media(max-width:560px){#map .maplibregl-ctrl-top-right{top:210px!important;right:7px!important}}
+
+/* COOPEX CARTOGRAFIA CLARA — vista 2D superior, marcadores ancorados */
+html,body{background:#e7f4ff!important}
+#map{background:#d8eaf6!important}
+body,body.is-night{--txt:#153557!important;--sub:#4c6882!important;--glass:rgba(250,253,255,.88)!important;--line:rgba(255,255,255,.96)!important;--shadow:0 12px 35px rgba(14,54,100,.18),inset 0 1px rgba(255,255,255,.98)!important}
+body .glass,body.is-night .glass{background:linear-gradient(140deg,rgba(255,255,255,.88),rgba(232,246,255,.85))!important;border:1px solid rgba(255,255,255,.98)!important;box-shadow:0 14px 40px rgba(10,47,91,.2),inset 0 2px rgba(255,255,255,.97)!important;color:#13375b!important}
+body .glass *:not(.btn):not(.pill):not(.dot):not(.person-avatar):not(.cx-pin-orb):not(.cx-pin-counter){color:inherit}
+body .filters .pill{color:#164169!important;background:#eaf5ff!important;border:1px solid #c6def5!important}
+body .filters .pill.active{color:white!important;background:linear-gradient(150deg,#277fff,#0c56cb)!important}
+body .filters .pill .dot{background:#0cdb7b!important}
+body .filters .pill.orange .dot{background:#ff9f30!important}
+body .filters .pill.red .dot{background:#fa4b56!important}
+body .search input,body .search input::placeholder{color:#275478!important}
+body .toolbar>button{color:#173c67!important}
+body .menu button{background:#edf7ff!important;color:#194870!important;border:1px solid #bfddf5!important}
+body .details,body .weather{color:#193d63!important}
+body .details .detail-line label,body .weather .fine,body .weather .small-muted{color:#42617f!important}
+body .details .detail-line b,body .weather .temp,body .weather h3,body .details .person-head strong{color:#14365a!important}
+body .weather-alert{background:rgba(255,235,200,.95)!important;color:#79511e!important}
+body .address-panel input{background:#fff!important;color:#183b5b!important;border:1px solid #bed7ee!important}
+body .address-panel input::placeholder{color:#6886a2!important}
+body .address-panel .address-actions button:not(.primary){background:#e7f2ff!important;color:#174f8b!important}
+body .address-panel .address-actions button.primary{background:#2471eb!important;color:white!important}
+body .address-panel #addressMessage{color:#245074!important}
+body .stat-label,body .stat .num{color:#163c60!important}
+/* Importante: MapLibre controla a matriz de transformação geográfica do elemento raiz do pin. */
+.maplibregl-marker.cx-map-marker{position:absolute!important;top:0!important;left:0!important;margin:0!important;right:auto!important;bottom:auto!important;transform-origin:center bottom!important}
+.maplibregl-marker.cx-map-marker .cx-pin-orb{position:relative}
+.cx-map-marker .cx-pin-orb{background:linear-gradient(145deg,var(--pin),color-mix(in srgb,var(--pin) 72%,#18538a))!important;color:#fff!important}
+#map .maplibregl-canvas{filter:none!important}
+body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filter:none!important}
+#weatherFx{pointer-events:none!important;z-index:550!important}
+/* Zoom na lateral direita, sempre fora da barra superior */
+#map .maplibregl-ctrl-top-right{top:155px!important;right:12px!important}
+@media(max-width:800px){#map .maplibregl-ctrl-top-right{top:205px!important;right:8px!important}}
