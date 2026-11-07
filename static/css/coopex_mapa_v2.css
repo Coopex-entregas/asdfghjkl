@@ -185,3 +185,19 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 .cx-camera-empty{font-size:11px;color:#59738c;line-height:1.5;margin:4px}
 .cx-camera-disclaimer{display:block;margin-top:13px;font-size:10px;color:#5a7187;line-height:1.5}
 @media(max-width:800px){.cx-camera-panel{top:199px;right:9px;max-height:calc(100vh - 320px)}}
+
+/* Modal de câmeras: zoom digital, sem afirmar suporte a zoom óptico */
+.cx-camera-viewer[hidden]{display:none!important}
+.cx-camera-viewer{position:absolute;z-index:790;left:50%;top:50%;transform:translate(-50%,-50%);width:min(900px,calc(100vw - 32px));height:min(640px,calc(100vh - 70px));padding:12px!important;display:flex;flex-direction:column;gap:10px;pointer-events:auto}
+.cx-camera-viewer-bar{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;padding:4px 4px 2px}
+.cx-camera-viewer-bar strong{font-size:14px;color:#153b60!important}
+.cx-camera-zoom-controls{display:flex;align-items:center;gap:6px}
+.cx-camera-zoom-controls button{height:32px;min-width:34px;padding:4px 9px;border:1px solid #bdd9f3;border-radius:9px;background:#dbeeff;color:#124878;font-weight:800}
+.cx-camera-zoom-controls span{font-size:12px;font-weight:800;color:#17446b!important;min-width:46px;text-align:center}
+.cx-camera-viewport{flex:1;min-height:0;overflow:hidden;background:#17304d;border-radius:15px;position:relative}
+.cx-camera-viewport iframe{position:absolute;inset:0;width:100%;height:100%;border:0;transform-origin:center center;transition:transform .18s ease;background:#fff}
+.cx-camera-viewer-footer{display:flex;align-items:center;justify-content:space-between;gap:9px;flex-wrap:wrap;color:#466785;font-size:11px;line-height:1.4}
+.cx-camera-viewer-footer a{font-size:12px;font-weight:800;color:#1565c5}
+.cx-camera-row{width:100%;text-align:left;cursor:pointer;font:inherit}
+.cx-camera-row span:last-child{font-weight:900}
+@media(max-width:640px){.cx-camera-viewer{height:calc(100vh - 40px)}.cx-camera-zoom-controls{flex-wrap:wrap}}
