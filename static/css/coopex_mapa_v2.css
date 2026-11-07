@@ -229,3 +229,19 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 .weather .weather-grid>div{min-width:0!important}
 .weather .weather-grid strong,.weather .weather-grid p{overflow-wrap:anywhere!important}
 @media(max-width:560px){.details .detail-actions{gap:6px!important}.details .detail-actions .btn{padding:9px 5px!important;font-size:11px!important}.details #stack small{font-size:10px!important}}
+
+/* Pesquisa COOPEX: barra lateral de mapas e mesma cartografia no fundo */
+.cx-address-mode .details,.cx-address-mode .stats{display:none!important}
+.cx-address-mode .search{opacity:.18;pointer-events:none!important}
+.cx-address-mode .address-panel{position:absolute!important;left:12px!important;right:auto!important;top:78px!important;bottom:14px!important;width:min(360px,calc(100vw - 50px))!important;max-height:none!important;overflow-y:auto!important;z-index:725!important;border-radius:23px!important;padding:20px 18px!important;background:linear-gradient(150deg,rgba(255,255,255,.97),rgba(227,241,255,.95))!important;box-shadow:0 18px 65px #144b8a44!important;color:#13395c!important;transition:width .2s ease, padding .2s ease}
+.cx-address-mode .address-panel .address-head{padding-left:4px}
+.cx-address-collapse{position:absolute;top:9px;right:8px;height:34px;width:30px;border-radius:10px;background:#1f73db;color:#fff!important;font-size:23px;font-weight:800;border:0;cursor:pointer;z-index:3}
+.cx-address-mode .address-panel .address-head .close{margin-right:32px}
+.cx-address-mode .address-panel input{width:100%;margin-top:8px;border-radius:12px;background:#fff!important;border:1px solid #accbed!important;padding:12px;color:#174269!important}
+.cx-address-mode .address-panel .address-actions{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px!important}
+.cx-address-mode .address-panel .address-actions button{min-width:0!important;white-space:normal!important;color:#154575!important;background:#dbeeff!important;border:1px solid #b9d7f4!important;min-height:42px}
+.cx-address-mode .address-panel .address-actions button.primary{background:#176fe9!important;color:#fff!important}
+.cx-address-mode .address-panel.collapsed{width:42px!important;height:64px!important;min-height:0!important;bottom:auto!important;overflow:visible!important;padding:0!important;background:transparent!important;border:none!important;box-shadow:none!important}
+.cx-address-mode .address-panel.collapsed>*:not(.cx-address-collapse){display:none!important}
+.cx-address-mode .address-panel.collapsed .cx-address-collapse{top:0;right:0;border-radius:12px;height:54px;width:40px;box-shadow:0 8px 22px #144b8a55}
+@media(max-width:700px){.cx-address-mode .address-panel{top:106px!important;left:8px!important;bottom:8px!important;width:min(330px,calc(100vw - 30px))!important}.cx-address-mode .filters{z-index:680!important}}
