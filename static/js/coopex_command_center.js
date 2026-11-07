@@ -37,9 +37,17 @@ function formatKpis(){
   card.classList.add('cx-main-kpi');
   // The four period counters already show today's volume; do not show it twice.
   if(i===0){card.classList.add('cx-kpi-duplicated');return;}
-  card.querySelectorAll('.cx-dash-card-wave').forEach(node=>node.remove());
+  // Legacy dashboard injected a second emoji/icon outside the label.
+  // Remove those separate decorations; keep the SVG badge inside the label.
+  card.querySelectorAll('.cx-dash-card-wave,.cx-dash-card-icon,.kpi-icon,.legacy-icon').forEach(node=>node.remove());
+  [...card.childNodes].filter(n=>n.nodeType===3).forEach(n=>{
+   if(/[\p{Extended_Pictographic}\uFE0F\u200D]/u.test(n.textContent||'')){
+    n.textContent=n.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu,'').trim();
+   }
+  });
   const label=card.querySelector('.lab');
   if(label&&!label.querySelector('.cx-kpi-icon')){
+   label.querySelectorAll('.cx-dash-card-icon,.legacy-icon,.kpi-icon').forEach(node=>node.remove());
    const oldIcon=label.querySelector('img,.icon');
    if(oldIcon)oldIcon.remove();
    [...label.childNodes].filter(n=>n.nodeType===3).forEach(n=>{
