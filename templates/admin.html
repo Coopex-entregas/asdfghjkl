@@ -588,6 +588,10 @@ function connectQueueExitSocket(){
  socket.on('coopex_fila_saida_alerta',showQueueExit);
  socket.on('coopex_fila_entrada_alerta',showQueueEntry);
  socket.on('coopex_supervisao_recado_atualizado',()=>window.dispatchEvent(new Event('coopex-led-note-changed')));
+ // A confirmação bancária já foi gravada: atualizar o aviso e tocar moedas imediatamente.
+ socket.on('entrega_atualizada',data=>{
+  if(data&&data.acao==='pagamento_confirmado_sicoob')paidRefresh();
+ });
  // Atualiza a fila imediatamente quando o servidor grava ou altera a ordem.
  socket.on('fila_espera_atualizada',data=>{
   if(!data||!Array.isArray(data.itens))return;
