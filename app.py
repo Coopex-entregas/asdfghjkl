@@ -12686,7 +12686,7 @@ def _dash_aplica_periodo(periodo, data_inicio, data_fim):
         return hoje - timedelta(days=6), hoje, 'Últimos 7 dias'
     if periodo == 'semana':
         ini = hoje - timedelta(days=hoje.weekday())
-        return ini, hoje, 'Semana atual'
+        return ini, ini + timedelta(days=6), 'Semana atual (seg–dom)'
     if periodo == 'mes':
         return hoje.replace(day=1), hoje, 'Mês atual'
     if periodo == 'ano':
@@ -13284,10 +13284,31 @@ def estatisticas_cooperado():
     top_cooperados_view = _coopex_limitar_lista(top_cooperados, limite_ranking)
     top_contratos_view = _coopex_limitar_lista(top_contratos, limite_ranking)
 
+    # Mostradores operacionais independentes do filtro do relatório.
+    # Datas consideradas no fuso de Brasília; semana sempre segunda a domingo.
+    hoje_operacional = datetime.now(BRAZIL_TZ).date()
+    inicio_semana = hoje_operacional - timedelta(days=hoje_operacional.weekday())
+    fim_semana = inicio_semana + timedelta(days=6)
+    periodos_operacionais = {
+        'dia': (hoje_operacional, hoje_operacional),
+        'semana': (inicio_semana, fim_semana),
+        'mes': (hoje_operacional.replace(day=1), hoje_operacional),
+        'ano': (hoje_operacional.replace(month=1, day=1), hoje_operacional),
+    }
+    entregas_periodos = {}
+    for chave, (inicio, fim) in periodos_operacionais.items():
+        contagem = _dash_range_q(
+            db.session.query(func.count(Entrega.id)), inicio, fim
+        ).scalar()
+        entregas_periodos[chave] = int(contagem or 0)
+    entregas_periodos['semana_inicio'] = inicio_semana.strftime('%d/%m')
+    entregas_periodos['semana_fim'] = fim_semana.strftime('%d/%m')
+
     return render_template(
         'estatisticas_cooperado.html',
         filtros=filtros,
         periodo_legivel=periodo_legivel,
+        entregas_periodos=entregas_periodos,
         resumo=resumo,
         cooperados=cooperados,
         grupos_cliente=grupos_cliente,
