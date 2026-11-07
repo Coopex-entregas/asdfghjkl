@@ -339,3 +339,116 @@ html body.cx-report-glass.cx-command-center .dashboard-tab-panel .alerts .alert{
  background:white!important;box-shadow:none!important;color:#111!important;border:1px solid #ccc!important;
  }
 }
+/* v4 — precise dashboard finish */
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi{
+ grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:7px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi{
+ height:68px!important;min-height:68px!important;max-height:68px!important;
+ padding:8px 12px!important;gap:4px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi .lab{
+ display:flex!important;align-items:center!important;gap:7px!important;min-height:16px!important;
+ margin:0!important;font-size:10px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi .val{
+ font-size:clamp(20px,1.38vw,26px)!important;line-height:1.02!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi .hint{
+ display:none!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi .cx-dash-card-icon,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi>.cx-dash-card-wave,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi>.kpi-icon,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi>.icon{
+ display:none!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi .cx-kpi-icon{height:18px!important;width:18px!important;flex-basis:18px!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi>.kpi .cx-kpi-icon svg{height:14px!important;width:14px!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board:has(#resumoZap){
+ display:grid!important;grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;
+ gap:10px!important;align-items:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board:has(#resumoZap)>.card{
+ height:min(67vh,570px)!important;max-height:570px!important;
+ min-height:260px!important;display:flex!important;flex-direction:column!important;
+ overflow:hidden!important;align-self:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board:has(#resumoZap)>.card .tableWrap{
+ flex:1 1 auto!important;min-height:0!important;max-height:none!important;overflow:auto!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board:has(#resumoZap)>.card:has(#resumoZap) #resumoZap{
+ flex:1 1 auto!important;height:auto!important;min-height:0!important;max-height:none!important;
+ resize:none!important;padding:14px!important;border-radius:11px!important;
+ background:rgba(117,175,225,.10)!important;color:var(--cc-ink)!important;
+ border:1px solid var(--cc-edge)!important;
+ font-size:12px!important;font-weight:600!important;line-height:1.65!important;
+}
+html body.cx-report-glass.cx-command-center.dark-mode .dashboard-tab-panel .chartBox,
+html body.cx-report-glass.cx-command-center.dark-mode .dashboard-tab-panel .chartBox.small{
+ background:rgba(134,192,239,.065)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .card:has(#resumoZap) .cardHead{
+ flex:0 0 auto!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="financeiro"]>.dashboard-panel-title{
+ display:none!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="financeiro"]>.gridKpi{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:9px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="financeiro"]>.gridKpi>.kpi{
+ grid-column:auto!important;width:100%!important;min-width:0!important;
+ height:91px!important;min-height:91px!important;max-height:91px!important;
+ padding:10px 13px!important;
+ background:var(--cc-gleam),var(--cc-pane)!important;border:1px solid var(--cc-edge)!important;
+ border-radius:13px!important;box-shadow:var(--cc-shadow)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="financeiro"]>.gridKpi>.kpi .val{
+ font-size:clamp(19px,1.35vw,26px)!important;white-space:nowrap!important;
+ overflow:visible!important;overflow-wrap:normal!important;word-break:normal!important;
+ font-variant-numeric:tabular-nums!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="financeiro"]>.gridKpi>.kpi .lab{font-size:10px!important}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .dashboard-panel-grid,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .board{
+ align-items:stretch!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .board>.card{
+ min-height:310px!important;align-self:stretch!important;
+ display:flex!important;flex-direction:column!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .miniForm{
+ display:flex!important;flex-direction:column!important;gap:10px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .miniForm textarea{
+ min-height:170px!important;max-height:230px!important;
+ font-size:12px!important;line-height:1.5!important;color:var(--cc-ink)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .groupGrid{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:10px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .groupBox{
+ background:var(--cc-gleam),var(--cc-pane)!important;color:var(--cc-ink)!important;
+ border:1px solid var(--cc-edge)!important;border-radius:11px!important;
+ box-shadow:var(--cc-shadow)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .groupBox strong,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .groupBox small{
+ color:var(--cc-ink)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .card:has(#chartCoop) .chartBox,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .card:has(#chartCliente) .chartBox{
+ height:250px!important;max-height:250px!important;
+}
+@media(max-width:1100px){
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi{grid-template-columns:repeat(3,minmax(0,1fr))!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board:has(#resumoZap){grid-template-columns:minmax(0,1fr)!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel .board:has(#resumoZap)>.card{min-height:240px!important;height:auto!important;max-height:500px!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="financeiro"]>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+}
+@media(max-width:630px){
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="geral"]>.gridKpi{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel="configuracoes"] .groupGrid{grid-template-columns:minmax(0,1fr)!important}
+}
