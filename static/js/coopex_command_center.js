@@ -26,107 +26,134 @@ const kpiIcons=[
  '<rect x="3" y="7" width="18" height="14" rx="2"/><path d="M3 12h18M7 4h10"/>'
 ];
 function svg(paths){return '<svg viewBox="0 0 24 24" aria-hidden="true">'+paths+'</svg>'}
+
+const titles={geral:"Panorama",cooperados:"Cooperados",contratos:"Clientes e contratos",rotas:"Bairros e rotas",financeiro:"Financeiro",comparativo:"Evolução",configuracoes:"Configurações"};
+let activeNav=null;
+function formatKpis(){
+ const overview=document.querySelector('.dashboard-tab-panel[data-panel="geral"]');
+ const grid=overview?.querySelector(':scope > .gridKpi');
+ if(!grid)return;
+ [...grid.children].filter(el=>el.classList.contains('kpi')).forEach((card,i)=>{
+  card.classList.add('cx-main-kpi');
+  // The four period counters already show today's volume; do not show it twice.
+  if(i===0){card.classList.add('cx-kpi-duplicated');return;}
+  card.querySelectorAll('.cx-dash-card-wave').forEach(node=>node.remove());
+  const label=card.querySelector('.lab');
+  if(label&&!label.querySelector('.cx-kpi-icon')){
+   const oldIcon=label.querySelector('img,.icon');
+   if(oldIcon)oldIcon.remove();
+   [...label.childNodes].filter(n=>n.nodeType===3).forEach(n=>{
+     n.textContent=n.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D]/gu,'').trim();
+   });
+   const icon=document.createElement('span');icon.className='cx-kpi-icon';
+   icon.innerHTML=svg(kpiIcons[i]||kpiIcons[0]);label.prepend(icon);
+  }
+  const val=card.querySelector('.val');
+  if(val){
+   const t=(val.textContent||'').trim();
+   val.title=t;
+   val.classList.toggle('cx-long-value',t.length>12);
+   val.classList.toggle('cx-extra-long-value',t.length>17);
+  }
+ });
+}
+function chartColors(){
+ const dark=document.body.classList.contains('dark-mode');
+ const ink=dark?'#d6e9fc':'#36597e';
+ const grid=dark?'rgba(178,213,243,.13)':'rgba(64,115,170,.12)';
+ try{
+  if(!window.Chart)return;
+  const charts=window.Chart.instances?Object.values(window.Chart.instances):[];
+  charts.forEach(chart=>{
+   if(!chart||!chart.options)return;
+   const scales=chart.options.scales||{};
+   Object.values(scales).forEach(axis=>{
+    if(!axis)return;
+    axis.grid=axis.grid||{};axis.grid.color=grid;axis.grid.lineWidth=.7;
+    axis.ticks=axis.ticks||{};axis.ticks.color=ink;axis.ticks.font={size:11,weight:'500'};
+    axis.border=axis.border||{};axis.border.color=grid;
+   });
+   if(chart.options.plugins?.legend?.labels){
+    chart.options.plugins.legend.labels.color=ink;
+   }
+   chart.update('none');
+  });
+ }catch(e){}
+}
 function apply(){
  const nav=document.querySelector('.dashboard-tabs-bar');
- if(nav && builtNav===nav && nav.classList.contains('cx-report-rail'))return true;
  const filter=document.querySelector('.dashboard-filter-shell');
- const content=document.querySelector('main.wrap');
- const buttons=nav?.querySelectorAll('[data-tab]');
- if(!nav||!filter||!content||!buttons||buttons.length<5)return false;
- builtNav=nav;
+ const main=document.querySelector('main.wrap');
+ if(!nav||!filter||!main||nav.querySelectorAll('[data-tab]').length<5)return false;
  const body=document.body;
- body.classList.add('cx-command-center');
- nav.classList.add('cx-report-rail');
- nav.setAttribute('aria-label','Áreas do painel gerencial');
- const brand=document.createElement('div');brand.className='cx-rail-brand';
- brand.innerHTML='<a class="cx-rail-back" href="/admin" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a><span class="cx-rail-title">COOPEX <small style="display:block;font-size:10px;color:#b3d4ed;font-weight:650">Centro gerencial</small></span>';
+ body.classList.add('cx-command-center','cx-report-glass');
+ // The old scripts can rebuild this menu once; reconstruct only for a NEW navigation node.
+ if(nav===activeNav&&nav.classList.contains('cx-horizontal-nav')){
+  formatKpis();return true;
+ }
+ activeNav=nav;
+ nav.classList.remove('cx-report-rail');
+ nav.classList.add('cx-horizontal-nav');
+ nav.setAttribute('aria-label','Seções do centro gerencial');
+ nav.querySelectorAll('.cx-rail-brand,.cx-rail-kicker,.cx-rail-footer,.report-back,.cx-menu-brand,.cx-nav-tools').forEach(el=>el.remove());
+ const brand=document.createElement('div');brand.className='cx-menu-brand';
+ brand.innerHTML='<a href="/admin" class="cx-back" title="Voltar ao administrador" aria-label="Voltar ao administrador">‹</a><span class="cx-brand-name">Centro Gerencial</span>';
  nav.prepend(brand);
- const kicker=document.createElement('div');kicker.className='cx-rail-kicker';kicker.textContent='Áreas de análise';brand.after(kicker);
- const names={
-  geral:'Panorama',cooperados:'Cooperados',contratos:'Clientes e contratos',
-  rotas:'Bairros e rotas',financeiro:'Financeiro',comparativo:'Evolução',configuracoes:'Configurações'
- };
- buttons.forEach(button=>{
-  const id=button.dataset.tab;
-  const icon=button.querySelector('.tab-icon');
-  if(icon){icon.innerHTML=svg(icons[id]||icons.geral);}
-  const spans=button.querySelectorAll('span');
-  if(spans.length>1)spans[1].textContent=names[id]||id;
-  button.title=names[id]||id;
-  button.setAttribute('aria-label',names[id]||id);
+ nav.querySelectorAll('.dashboard-tab-button').forEach(btn=>{
+  const id=btn.dataset.tab;
+  const icon=btn.querySelector('.tab-icon');
+  if(icon)icon.innerHTML=svg(icons[id]||icons.geral);
+  const spans=btn.querySelectorAll('span');
+  if(spans.length>1)spans[1].textContent=titles[id]||id;
+  btn.title=titles[id]||id;
  });
- const before=nav.querySelector('.report-back');
- if(before)before.remove();
- // Keep one heading even when an older dashboard patch rebuilds the tab menu.
- let heading=document.querySelector('.cx-report-heading');
- if(!heading){
-  heading=document.createElement('header');heading.className='cx-report-heading noPrint';
-  heading.innerHTML='<div><h1>Centro Gerencial</h1><div class="cx-report-context">Operação, clientes, cooperados e resultados</div></div><div class="cx-report-head-actions"></div>';
- }
- nav.after(heading);
- const periods=document.getElementById('cx-period-counts');
- if(periods)heading.after(periods);
- const actionHost=heading.querySelector('.cx-report-head-actions');
+ const tools=document.createElement('div');tools.className='cx-nav-tools';nav.appendChild(tools);
+ // Keep one actual export button, preserving the original event listener.
+ const exportBtn=document.getElementById('cxExpOpen');
+ if(exportBtn)tools.appendChild(exportBtn);
  const oldActions=nav.querySelector('.dashboard-tabs-actions');
- if(oldActions){[...oldActions.children].forEach(item=>{
-  const t=(item.textContent||'').toLowerCase();
-  if(/voltar|imprimir|modo (noturno|claro)/i.test(t))return;
-  actionHost.appendChild(item);
- });}
- // Keep actual export buttons with their existing click handlers.
- const reportSummary= document.querySelector('.dashboard-tabs-summary');
- if(reportSummary){[...reportSummary.children].forEach(item=>actionHost.appendChild(item));}
- const filterTitle=filter.querySelector('.dashboard-filter-title-row');
- const toggle=document.createElement('button');toggle.type='button';toggle.className='cx-filter-details-button';
- toggle.textContent='Mais filtros';
- toggle.setAttribute('aria-expanded','false');
- filter.classList.add('cx-filters-compact');
- if(filterTitle)filterTitle.appendChild(toggle);
- toggle.addEventListener('click',()=>{
-  const compact=filter.classList.toggle('cx-filters-compact');
-  toggle.textContent=compact?'Mais filtros':'Menos filtros';
-  toggle.setAttribute('aria-expanded',String(!compact));
- });
- const general=document.querySelector('.dashboard-tab-panel[data-panel="geral"]');
- if(general){
-  general.querySelectorAll(':scope > .dashboard-panel-title').forEach(node=>node.remove());
-  const metrics=general.querySelector(':scope > .gridKpi');
-  if(metrics){
-   [...metrics.children].forEach((card,i)=>{
-    if(!card.classList.contains('kpi'))return;
-    card.classList.add('cx-main-kpi');
-    card.querySelectorAll('.cx-dash-card-wave').forEach(wave=>wave.remove());
-    const lab=card.querySelector('.lab');
-    if(lab&&!lab.querySelector('.cx-kpi-icon')){
-     const icon=document.createElement('span');icon.className='cx-kpi-icon';
-     icon.innerHTML=svg(kpiIcons[i]||kpiIcons[0]);lab.prepend(icon);
-    }
-    const amount=card.querySelector('.val');
-    if(amount){
-     const val=(amount.textContent||'').trim();
-     amount.classList.toggle('cx-long-value',val.length>=14);
-     amount.classList.toggle('cx-extra-long-value',val.length>=18);
-     if(val.length>=21)amount.style.fontSize='clamp(12px,.88vw,17px)';
-     amount.title=val;
-    }
-   });
-  }
+ if(oldActions){
+  const otherExport=[...oldActions.querySelectorAll('button,a')].find(x=>/exportar/i.test(x.textContent||''));
+  if(!exportBtn&&otherExport)tools.appendChild(otherExport);
+  oldActions.remove();
  }
- // Keep all functional existing tab switching, filters and export handlers.
+ const heading=document.querySelector('.cx-report-heading');
+ if(heading){
+   const otherExport=heading.querySelector('#cxExpOpen');
+   if(otherExport)tools.appendChild(otherExport);
+   heading.remove();
+ }
+ const periods=document.getElementById('cx-period-counts');
+ if(periods)nav.after(periods);
+ filter.classList.add('cx-filters-compact');
+ let toggle=filter.querySelector('.cx-filter-details-button');
+ if(!toggle){
+  toggle=document.createElement('button');toggle.type='button';
+  toggle.className='cx-filter-details-button';
+  filter.querySelector('.dashboard-filter-title-row')?.appendChild(toggle);
+  toggle.addEventListener('click',()=>{
+   const compact=filter.classList.toggle('cx-filters-compact');
+   toggle.textContent=compact?'Mais filtros':'Menos filtros';
+   toggle.setAttribute('aria-expanded',String(!compact));
+  });
+ }
+ toggle.textContent=filter.classList.contains('cx-filters-compact')?'Mais filtros':'Menos filtros';
+ const grid=main.querySelector('.dashboard-tab-panel[data-panel="geral"] > .gridKpi');
+ formatKpis();
+ chartColors();
  return true;
 }
 function start(){
  apply();
- // Older report scripts may replace the navigation once during initialization.
- // Reattach the new layout only when the actual navigation node changes.
- const watcher=new MutationObserver(()=>{
-   const nav=document.querySelector('.dashboard-tabs-bar');
-   if(nav && nav!==builtNav)apply();
+ const watch=new MutationObserver(()=>{
+  const nav=document.querySelector('.dashboard-tabs-bar');
+  if(nav&&nav!==activeNav)apply();
  });
- watcher.observe(document.body,{childList:true});
- let attempts=0;
- const timer=setInterval(()=>{if(apply()||++attempts>=35)clearInterval(timer);},90);
+ watch.observe(document.body,{childList:true,subtree:false});
+ let count=0;
+ const interval=setInterval(()=>{if(apply()||++count>30)clearInterval(interval);},100);
+ window.addEventListener('pageshow',()=>{apply();chartColors()});
+ window.addEventListener('focus',()=>{apply();chartColors()});
 }
-if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});
-else start();
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
