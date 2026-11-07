@@ -142,3 +142,141 @@ html body.cx-delivery-glass.cx-delivery-complete .delivery-mode-switch>a{
  html body.cx-delivery-glass .rapid-grid{grid-template-columns:minmax(0,1fr)!important}
  html body.cx-delivery-glass .cx-wrap{padding:10px!important}
 }
+
+
+/* v3 — Full-height liquid-glass workspace. Glass is transparent, not solid blue. */
+html body.cx-page.cx-delivery-glass{
+ display:flex!important;flex-direction:column!important;
+ min-height:100vh!important;min-height:100dvh!important;
+ overflow-x:hidden!important;
+ --cx-glass-glint:linear-gradient(116deg,rgba(246,252,255,.28) 0%,rgba(154,212,255,.09) 17%,transparent 37%,rgba(172,223,255,.07) 65%,rgba(253,255,255,.15) 100%);
+ --cx-glass-depth:0 2px 0 rgba(228,247,255,.38) inset,0 -4px 9px rgba(1,26,60,.21) inset,0 10px 25px rgba(1,23,54,.38),0 2px 7px rgba(0,19,49,.31);
+}
+html body.cx-page.cx-delivery-glass:not(.dark){
+ --cx-glass-depth:0 2px 0 rgba(255,255,255,.9) inset,0 -3px 10px rgba(31,108,181,.16) inset,0 9px 23px rgba(15,60,112,.23),0 2px 8px rgba(15,60,112,.16);
+ --cx-glass-glint:linear-gradient(115deg,rgba(255,255,255,.77),rgba(244,253,255,.28) 25%,rgba(128,189,248,.07) 60%,rgba(255,255,255,.37));
+}
+html body.cx-page.cx-delivery-glass .cx-wrap{
+ flex:1 1 auto!important;display:flex!important;flex-direction:column!important;
+ height:auto!important;min-height:0!important;padding:clamp(10px,1.1vw,18px)!important;
+}
+html body.cx-page.cx-delivery-glass .mode-links.cx-tabs{
+ flex:0 0 auto!important;margin-bottom:clamp(8px,1vh,14px)!important;
+ background:var(--cx-glass-glint),rgba(76,143,211,.17)!important;
+ box-shadow:var(--cx-glass-depth)!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid{
+ flex:1 1 auto!important;min-height:0!important;align-items:stretch!important;
+ grid-template-columns:minmax(0,1.85fr) minmax(300px,.8fr)!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card{
+ display:flex!important;flex-direction:column!important;min-height:0!important;
+ border:1px solid rgba(177,227,255,.64)!important;
+ background:var(--cx-glass-glint),linear-gradient(150deg,rgba(104,179,243,.28),rgba(13,62,116,.24) 48%,rgba(80,154,224,.25))!important;
+ box-shadow:var(--cx-glass-depth)!important;isolation:isolate!important;
+}
+html body.cx-page.cx-delivery-glass:not(.dark) .rapid-grid>.cx-card{
+ background:var(--cx-glass-glint),linear-gradient(150deg,rgba(231,247,255,.72),rgba(167,209,246,.49) 48%,rgba(238,249,255,.62))!important;
+ border-color:rgba(255,255,255,.96)!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card>.cx-card-head{
+ flex:0 0 auto!important;padding:clamp(14px,1.3vw,23px)!important;
+ background:linear-gradient(112deg,rgba(233,247,255,.17),rgba(75,141,216,.12) 44%,rgba(10,58,114,.06))!important;
+ border-bottom:1px solid rgba(199,232,255,.39)!important;
+ box-shadow:inset 0 2px 3px rgba(238,248,255,.17),0 4px 13px rgba(0,25,59,.12)!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card>.cx-card-body{
+ display:flex!important;flex-direction:column!important;flex:1 1 auto!important;
+ min-height:0!important;padding:clamp(13px,1.4vw,25px)!important;
+ background:transparent!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm{
+ flex:1 1 auto!important;display:flex!important;flex-direction:column!important;
+ justify-content:space-evenly!important;min-height:0!important;gap:clamp(9px,1.3vh,17px)!important;
+ padding:clamp(12px,1.25vw,20px)!important;margin:0!important;
+ border:1px solid rgba(197,231,255,.45)!important;
+ background:linear-gradient(128deg,rgba(206,235,255,.16),rgba(107,174,242,.065) 40%,rgba(163,215,254,.13))!important;
+ box-shadow:inset 0 2px 4px rgba(246,253,255,.19),inset 0 -4px 10px rgba(0,28,75,.16),0 3px 9px rgba(2,35,72,.14)!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm>.cx-field,
+html body.cx-page.cx-delivery-glass #quickForm>.cx-grid-2{
+ margin:0!important;flex:0 0 auto!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm .cx-field{
+ margin-bottom:0!important;min-width:0!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm .cx-input,
+html body.cx-page.cx-delivery-glass #quickForm .cx-select{
+ height:clamp(46px,5.4vh,60px)!important;
+ min-height:46px!important;
+ border:1px solid rgba(173,216,252,.57)!important;
+ background:linear-gradient(120deg,rgba(194,228,255,.17),rgba(59,127,197,.10),rgba(165,217,255,.13))!important;
+ box-shadow:inset 0 2px 5px rgba(2,34,75,.24),inset 0 -1px 1px rgba(217,243,255,.18),0 2px 7px rgba(2,35,79,.13)!important;
+}
+html body.cx-page.cx-delivery-glass:not(.dark) #quickForm .cx-input,
+html body.cx-page.cx-delivery-glass:not(.dark) #quickForm .cx-select{
+ background:linear-gradient(120deg,rgba(255,255,255,.67),rgba(204,229,251,.51),rgba(244,251,255,.62))!important;
+ box-shadow:inset 0 2px 4px rgba(54,114,180,.14),0 2px 6px rgba(24,77,140,.10)!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm .cx-actions{
+ flex:0 0 auto!important;margin-top:0!important;
+ padding-top:clamp(4px,1vh,10px)!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm .cx-btn{
+ min-height:clamp(44px,5.4vh,58px)!important;
+ border:1px solid rgba(183,226,255,.55)!important;
+ background:linear-gradient(145deg,#358af4,#1752c8 48%,#0a3b9b)!important;
+ color:#fafdff!important;-webkit-text-fill-color:#fafdff!important;
+ box-shadow:inset 0 2px 4px rgba(244,253,255,.40),inset 0 -3px 5px rgba(0,21,72,.26),0 4px 12px rgba(0,33,94,.27)!important;
+}
+html body.cx-page.cx-delivery-glass #quickForm .cx-btn.alt{
+ background:linear-gradient(130deg,rgba(200,230,255,.26),rgba(50,116,187,.23))!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card.side{
+ position:relative!important;top:auto!important;align-self:stretch!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card.side .summary{
+ display:grid!important;grid-template-columns:1fr!important;
+ flex:1 1 auto!important;grid-auto-rows:minmax(42px,1fr)!important;
+ gap:clamp(9px,1.2vh,17px)!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card.side .summary div{
+ align-items:center!important;padding:clamp(10px,1.3vh,17px)!important;
+ border:1px solid rgba(187,227,255,.55)!important;
+ background:linear-gradient(112deg,rgba(185,225,253,.22),rgba(69,142,213,.13) 62%,rgba(173,221,254,.17))!important;
+ box-shadow:inset 0 2px 3px rgba(237,250,255,.22),0 3px 7px rgba(2,32,79,.17)!important;
+}
+html body.cx-page.cx-delivery-glass:not(.dark) .rapid-grid>.cx-card.side .summary div{
+ background:linear-gradient(112deg,rgba(255,255,255,.62),rgba(189,219,249,.42))!important;
+}
+html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card.side .cx-note{
+ margin-top:clamp(10px,1.4vh,18px)!important;padding:clamp(12px,1.5vh,20px)!important;
+ border:1px solid rgba(190,231,255,.47)!important;
+ background:linear-gradient(114deg,rgba(172,217,255,.25),rgba(52,130,207,.12))!important;
+ box-shadow:inset 0 2px 5px rgba(241,251,255,.15),0 4px 12px rgba(0,24,58,.19)!important;
+}
+html body.cx-page.cx-delivery-glass .mode-links .cx-tab:not(.active){
+ color:var(--cx-g-text)!important;-webkit-text-fill-color:var(--cx-g-text)!important;
+ background:linear-gradient(115deg,rgba(185,222,253,.18),rgba(80,149,222,.07))!important;
+}
+html body.cx-page.cx-delivery-glass .mode-links .cx-tab.active{
+ color:#fff!important;-webkit-text-fill-color:#fff!important;
+ background:linear-gradient(145deg,#378ff6,#1756cb 55%,#103c9c)!important;
+ box-shadow:inset 0 2px 4px rgba(255,255,255,.48),inset 0 -3px 5px rgba(4,25,83,.26),0 4px 11px rgba(0,36,98,.23)!important;
+}
+@media(max-width:850px){
+ html body.cx-page.cx-delivery-glass .rapid-grid{
+  grid-template-columns:minmax(0,1fr)!important;flex:0 0 auto!important;
+ }
+ html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card.side .summary{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+  grid-auto-rows:auto!important;
+ }
+ html body.cx-page.cx-delivery-glass #quickForm{gap:12px!important}
+}
+@media(max-height:690px) and (min-width:851px){
+ html body.cx-page.cx-delivery-glass #quickForm{gap:6px!important;padding:11px!important}
+ html body.cx-page.cx-delivery-glass #quickForm .cx-input,
+ html body.cx-page.cx-delivery-glass #quickForm .cx-select{height:43px!important;min-height:43px!important}
+ html body.cx-page.cx-delivery-glass .rapid-grid>.cx-card.side .summary{gap:6px!important}
+}
