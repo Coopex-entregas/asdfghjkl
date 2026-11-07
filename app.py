@@ -7568,15 +7568,24 @@ def mapa_motoboys():
         online = bool(online_gps or online_painel)
 
         if not _coord_valida(lat, lng):
-            latitude_db = saved.latitude if saved and saved.latitude is not None else c.last_lat
-            longitude_db = saved.longitude if saved and saved.longitude is not None else c.last_lng
-            if _coord_valida(latitude_db, longitude_db):
-                lat, lng = latitude_db, longitude_db
-                # A recuperação de localização não altera a presença online.
-                acc = saved.accuracy if saved else getattr(c, 'last_accuracy_m', None)
-                hdg = saved.heading if saved else getattr(c, 'last_heading', None)
-                speed_saved = saved.speed if saved else getattr(c, 'last_speed_kmh', None)
-                when = saved.atualizado_em if saved else c.last_ping
+            # A coluna Cooperado.last_lat/last_lng recebe os snapshots GPS novos.
+            # LocalizacaoCooperado pode conter latitude mais antiga, até após login.
+            # Escolher o par completo (nunca misturar lat e lng de fontes diferentes).
+            if _coord_valida(c.last_lat, c.last_lng):
+                lat, lng = c.last_lat, c.last_lng
+                acc = getattr(c, 'last_accuracy_m', None)
+                hdg = getattr(c, 'last_heading', None)
+                speed_saved = getattr(c, 'last_speed_kmh', None)
+                when = c.last_ping
+            elif saved and _coord_valida(saved.latitude, saved.longitude):
+                lat, lng = saved.latitude, saved.longitude
+                acc = saved.accuracy
+                hdg = saved.heading
+                speed_saved = saved.speed
+                when = saved.atualizado_em
+            else:
+                when = None
+            if _coord_valida(lat, lng):
                 last_seen = _format_brasilia_from_utc(when) if when else 'Última posição registrada'
 
         tem_localizacao = bool(_coord_valida(lat, lng))
