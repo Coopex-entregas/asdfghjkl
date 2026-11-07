@@ -213,3 +213,19 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 .maplibregl-marker.cx-map-marker{width:49px!important;height:52px!important;padding:0!important}
 .cx-map-marker{width:49px!important;height:52px!important}
 .cx-pin-orb:after{top:41px!important}
+
+/* Controles em uma única linha: seguir/parar, cooperados no mesmo ponto e opções compactas */
+.details .detail-actions{display:flex!important;flex-flow:row nowrap!important;align-items:center!important;gap:8px!important;width:100%!important}
+.details .detail-actions .btn{min-width:0!important;flex:1 1 0!important;white-space:nowrap!important;overflow:hidden;text-overflow:ellipsis;min-height:40px!important;line-height:1.2!important;font-size:12px!important;font-weight:800!important}
+.details .detail-actions .btn:disabled{opacity:.62!important;color:#375b7c!important;background:#d9e7f4!important}
+.details .detail-actions .btn.primary{background:linear-gradient(160deg,#258dff,#095ed5)!important;color:#fff!important;box-shadow:0 7px 17px #0e64d53d!important}
+.details #stack{display:flex!important;flex-wrap:nowrap!important;align-items:center!important;gap:6px!important;overflow-x:auto!important;overflow-y:hidden!important;width:100%;padding-bottom:4px}
+.details #stack small{white-space:nowrap!important;flex-shrink:0!important;font-size:11px!important}
+.details #stack button{flex:none!important;white-space:nowrap!important;min-width:34px!important;padding:7px!important;border-radius:10px!important;background:linear-gradient(135deg,#2678c6,#154578)!important;color:#fff!important}
+.camera-zoom-controls,.cx-camera-zoom-controls{flex-flow:row nowrap!important}
+.cx-camera-switch{flex-flow:row nowrap!important}
+.cx-cam-filter{min-width:0!important;font-size:11px!important;white-space:nowrap!important}
+.weather .weather-grid{grid-template-columns:minmax(0,1fr) minmax(0,1fr)!important;align-items:start!important}
+.weather .weather-grid>div{min-width:0!important}
+.weather .weather-grid strong,.weather .weather-grid p{overflow-wrap:anywhere!important}
+@media(max-width:560px){.details .detail-actions{gap:6px!important}.details .detail-actions .btn{padding:9px 5px!important;font-size:11px!important}.details #stack small{font-size:10px!important}}
