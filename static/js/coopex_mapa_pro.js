@@ -22,12 +22,23 @@ var msg=el("div",{id:"cx-map-alert",class:"card","aria-live":"polite"});body.app
 var street=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20,maxNativeZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
 var satellite=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,maxNativeZoom:18,attribution:'Tiles &copy; Esri — World Imagery'});
 var isWaze=false, selectedItem=null, placeMarker=null, placePoint=null, weatherLevel=0;
+var darkTiles=L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:20,maxNativeZoom:19,attribution:'&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+var userChoseSatellite=false;
+function renderMapLighting(){
+  var night=body.classList.contains("cx-night"), cloudy=body.classList.contains("cx-rainy");
+  if(userChoseSatellite)return;
+  map.eachLayer(function(layer){
+    if(layer instanceof L.TileLayer && layer!==darkTiles && layer!==street)map.removeLayer(layer);
+  });
+  if(night){if(map.hasLayer(street))map.removeLayer(street);if(!map.hasLayer(darkTiles))darkTiles.addTo(map);}
+  else {if(map.hasLayer(darkTiles))map.removeLayer(darkTiles);if(!map.hasLayer(street))street.addTo(map);}
+}
 function alertBrief(t){msg.textContent=t;msg.classList.add("show");clearTimeout(alertBrief.timer);alertBrief.timer=setTimeout(function(){msg.classList.remove("show");},5500);}
 function toggleMode(mode){isWaze=mode==="waze";waze.classList.toggle("open",isWaze);body.classList.toggle("cx-waze-mode",isWaze);$("cx-traffic").classList.toggle("active",isWaze);$("cx-coop").classList.toggle("active",!isWaze);if(isWaze){setTimeout(function(){map.invalidateSize();},150);var c=map.getCenter();var z=Math.max(3,Math.min(17,Math.round(map.getZoom())));waze.querySelector("iframe").src="https://embed.waze.com/iframe?zoom="+z+"&lat="+c.lat.toFixed(6)+"&lon="+c.lng.toFixed(6);}else{setTimeout(function(){map.invalidateSize();},150);}}
 $("cx-traffic").addEventListener("click",function(){toggleMode("waze");});
 $("cx-coop").addEventListener("click",function(){toggleMode("coopex");});
-$("cx-base").addEventListener("click",function(){toggleMode("coopex");if(map.hasLayer(satellite))map.removeLayer(satellite);if(!map.hasLayer(street))street.addTo(map);});
-$("cx-satellite").addEventListener("click",function(){toggleMode("coopex");if(map.hasLayer(street))map.removeLayer(street);map.eachLayer(function(layer){if(layer instanceof L.TileLayer && layer!==satellite)map.removeLayer(layer);});satellite.addTo(map);});
+$("cx-base").addEventListener("click",function(){toggleMode("coopex");userChoseSatellite=false;if(map.hasLayer(satellite))map.removeLayer(satellite);renderMapLighting();});
+$("cx-satellite").addEventListener("click",function(){toggleMode("coopex");userChoseSatellite=true;map.eachLayer(function(layer){if(layer instanceof L.TileLayer && layer!==satellite)map.removeLayer(layer);});satellite.addTo(map);});
 $("cx-location").addEventListener("click",function(){toggleMode("coopex");if(!navigator.geolocation){alertBrief("Localização indisponível neste navegador.");return;}navigator.geolocation.getCurrentPosition(function(p){map.setView([p.coords.latitude,p.coords.longitude],16);},function(){alertBrief("Autorize a localização do navegador para centralizar o mapa.");},{enableHighAccuracy:true,timeout:10000});});
 function focusedItem(){return selectedItem && hasCoord(selectedItem)?selectedItem:null;}
 $("cx-open-maps").addEventListener("click",function(){var i=focusedItem();if(i)window.open("https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(i.lat+","+i.lng),"_blank","noopener");});
@@ -48,11 +59,18 @@ $("cx-find").addEventListener("click",searchAddress);$("cx-address").addEventLis
 document.addEventListener("click",function(e){if(!search.contains(e.target))$("cx-results").classList.remove("open");});
 /* As informações meteorológicas são previsões, nunca prova de chuva no ponto GPS. */
 function precipClass(code){code=String(code||"");if(/thunder|heavyrain|heavysleet|heavysnow/.test(code))return 3;if(/rain|sleet|showers/.test(code))return 2;if(/drizzle/.test(code))return 1;return 0;}
-function setWeatherFx(level){weatherLevel=level;fx.querySelectorAll(".cx-drop").forEach(function(x){x.remove();});if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var count=[0,12,35,75][level]||0;for(var j=0;j<count;j++){var d=el("i",{class:"cx-drop"});d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.3)+"s";fx.appendChild(d);}}
-function dayPhase(){var hr=Number(new Intl.DateTimeFormat("en-GB",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date()));fx.classList.toggle("night",hr<5||hr>=19);fx.classList.toggle("dusk",(hr>=5&&hr<7)||(hr>=17&&hr<19));}
+function setWeatherFx(level){weatherLevel=level;body.classList.toggle("cx-rainy",level>0);body.classList.toggle("cx-heavy-rain",level>=3);fx.querySelectorAll(".cx-drop").forEach(function(x){x.remove();});if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var count=[0,12,35,75][level]||0;for(var j=0;j<count;j++){var d=el("i",{class:"cx-drop"});d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.3)+"s";fx.appendChild(d);}}
+function dayPhase(){
+ var hr=Number(new Intl.DateTimeFormat("en-GB",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date()));
+ var night=hr<5||hr>=18, dusk=(hr>=5&&hr<6)||(hr>=17&&hr<18);
+ fx.classList.toggle("night",night);fx.classList.toggle("dusk",dusk);
+ body.classList.toggle("cx-night",night);body.classList.toggle("cx-dusk",dusk);
+ renderMapLighting();
+}
 async function updateWeather(){try{var r=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-5.7945&lon=-35.2110",{headers:{"Accept":"application/json"}});if(!r.ok)throw Error("Previsão indisponível");var data=await r.json();var point=data.properties.timeseries[0];var details=point.data.instant.details;var hour=point.data.next_1_hours||point.data.next_6_hours||{};var symbol=hour.summary&&hour.summary.symbol_code||"";var rain=hour.details&&hour.details.precipitation_amount;var level=precipClass(symbol);if(typeof rain==="number"){if(rain>=6)level=3;else if(rain>=2)level=Math.max(level,2);else if(rain>0)level=Math.max(level,1);}
 $("cx-weather-temp").textContent=Math.round(details.air_temperature)+"°";var labels=["Sem chuva prevista na próxima hora.","Possibilidade de garoa. Atenção à pista molhada.","Previsão de chuva: pode haver deslocamentos mais lentos.","Previsão de chuva intensa: atenção à visibilidade e áreas alagadas."];var txt=labels[level];if(typeof rain==="number")txt+=" Precipitação estimada: "+rain.toFixed(1)+" mm.";txt+=" Não é confirmação de congestionamento."; $("cx-weather-msg").textContent=txt;setWeatherFx(level);
 }catch(e){$("cx-weather-msg").textContent="Previsão indisponível no momento. Consulte o trânsito no Waze.";setWeatherFx(0);}dayPhase();}
+dayPhase();
 toggleMode("waze");
 updateWeather();setInterval(updateWeather,20*60*1000);setInterval(dayPhase,60*1000);
 })();
