@@ -1,0 +1,49 @@
+
+/* COOPEX — Central cartográfica 2026. Extensão isolada do mapa existente. */
+:root{--cx-glass:rgba(251,254,255,.79);--cx-border:rgba(255,255,255,.85);--cx-ink:#10254a;--cx-elev:0 16px 48px rgba(21,52,92,.20),inset 0 1px rgba(255,255,255,.9)}
+body{font-family:Inter,system-ui,"Segoe UI",sans-serif!important}
+.overlay{z-index:700}.card,.mini-icon,.filter-icon,.stat-pill{background:var(--cx-glass)!important;backdrop-filter:blur(24px) saturate(165%)!important;-webkit-backdrop-filter:blur(24px) saturate(165%)!important;border:1px solid var(--cx-border)!important;box-shadow:var(--cx-elev)!important}
+.top-mini{top:14px;left:16px;border-radius:20px;padding:12px 17px}.top-mini .title{font-size:1rem}.top-mini .sub{display:block!important;font-size:.7rem}
+.tool-rail{top:14px;right:16px;max-width:calc(100vw - 345px);gap:5px;overflow-x:auto;padding:0 0 5px;scrollbar-width:thin}
+.mini-icon,.filter-icon{height:35px;padding:0 12px;font-size:.76rem;font-weight:750;transition:transform .15s,background .15s}
+.mini-icon:hover,.filter-icon:hover{transform:translateY(-2px);background:#fff!important}.filter-icon.active{background:#1248dc!important;color:white!important}
+.left-search{left:16px;top:81px;width:min(325px,calc(100vw - 32px));border-radius:20px;padding:10px}
+.input{background:rgba(255,255,255,.83)!important}.kpi-strip{left:16px;bottom:16px}.stat-pill{padding:10px 14px;border-radius:16px;min-width:85px}.stat-pill .v{font-size:1.2rem}
+.leaflet-control-attribution{display:block!important;font-size:9px!important;background:rgba(255,255,255,.83)!important}
+.leaflet-top.leaflet-left{top:140px}.leaflet-popup-content{max-width:260px;min-width:240px;margin:12px 14px}
+#cx-search-address{position:absolute;top:160px;left:16px;width:min(325px,calc(100vw - 32px));padding:13px;border-radius:20px;pointer-events:auto;z-index:710}
+#cx-search-address label{display:block;color:#244b87;font-size:.72rem;font-weight:800;margin-bottom:7px}
+.cx-address-line{display:flex;gap:7px}.cx-address-line input{min-width:0;flex:1;height:39px;border-radius:12px;border:1px solid #d6e2f9;padding:0 12px;background:#fff;outline:none}
+.cx-btn{border:1px solid rgba(30,74,154,.15);border-radius:12px;background:#fff;color:#16419f;padding:9px 12px;font:inherit;font-size:.76rem;font-weight:800;cursor:pointer;box-shadow:0 5px 14px rgba(17,53,115,.08)}
+.cx-btn.active,.cx-btn.primary{background:#1551e8;color:#fff}
+#cx-results{display:none;max-height:180px;overflow:auto;margin-top:6px;border-radius:12px;background:rgba(255,255,255,.98)}
+#cx-results.open{display:block}.cx-place{padding:9px;border-bottom:1px solid #e4ebf7;cursor:pointer;font-size:.76rem}.cx-place:hover{background:#edf3ff}
+#cx-tools{position:absolute;top:81px;right:16px;display:flex;gap:6px;flex-wrap:wrap;justify-content:flex-end;max-width:calc(100vw - 370px);pointer-events:auto}
+#cx-weather{position:absolute;right:16px;bottom:16px;width:262px;padding:13px;border-radius:20px;pointer-events:auto;font-size:.79rem;z-index:711}
+.cx-weather-head{display:flex;justify-content:space-between;gap:10px;align-items:center}.cx-weather-head strong{font-size:.86rem}.cx-weather-temp{font-size:1.5rem;font-weight:900}
+#cx-weather-msg{margin-top:7px;line-height:1.45;color:#23416e}
+#cx-weather-credit{display:block;font-size:.63rem;margin-top:8px;color:#53688a}
+#cx-weather-credit a{color:inherit}
+#cx-selected{display:none;position:absolute;right:16px;top:140px;width:min(328px,calc(100vw - 32px));padding:16px;border-radius:23px;pointer-events:auto;z-index:714}
+#cx-selected.open{display:block}
+.cx-profile-top{display:flex;align-items:center;gap:12px;margin-bottom:12px}
+.cx-avatar{height:58px;width:58px;flex:0 0 58px;border-radius:20px;display:grid;place-items:center;color:#fff;font-size:1.15rem;font-weight:900;background:linear-gradient(145deg,#286bfa,#123189);box-shadow:0 8px 20px rgba(36,89,203,.28);overflow:hidden}
+.cx-avatar img{width:100%;height:100%;object-fit:cover}
+.cx-profile-title{font-weight:900;font-size:1rem;line-height:1.2}.cx-profile-sub{font-size:.76rem;color:#506585;margin-top:5px}
+.cx-kvs{display:grid;grid-template-columns:1fr 1fr;gap:7px;margin-top:12px}
+.cx-kvs>div{background:rgba(244,248,255,.88);border:1px solid rgba(76,112,177,.1);border-radius:12px;padding:9px}
+.cx-kvs small{display:block;font-size:.67rem;color:#587099}.cx-kvs b{display:block;font-size:.85rem;margin-top:3px}
+.cx-profile-actions{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+#cx-waze{position:fixed;inset:0;display:none;z-index:600;background:#dceafa}
+#cx-waze.open{display:block}#cx-waze iframe{width:100%;height:100%;border:0}
+#cx-waze-note{position:absolute;bottom:19px;left:50%;transform:translateX(-50%);z-index:2;max-width:min(680px,95vw);padding:10px 16px;border-radius:18px;text-align:center;font-size:.75rem}
+#cx-weatherfx{pointer-events:none;position:fixed;inset:0;z-index:650;overflow:hidden}
+.cx-drop{position:absolute;top:-40px;background:linear-gradient(transparent,rgba(71,160,255,.37));width:1px;height:24px;animation:cx-fall linear infinite;transform:rotate(13deg);opacity:.7}
+@keyframes cx-fall{to{translate:-85px 110vh}}
+#cx-weatherfx.night{background:linear-gradient(180deg,rgba(10,26,66,.12),transparent 60%)}#cx-weatherfx.dusk{background:linear-gradient(180deg,rgba(245,124,66,.09),transparent 55%)}
+#cx-map-alert{position:fixed;left:50%;bottom:18px;transform:translateX(-50%);z-index:720;pointer-events:none;max-width:min(620px,88vw);padding:9px 15px;border-radius:15px;color:#163c70;font-size:.76rem;font-weight:750;display:none}
+#cx-map-alert.show{display:block}
+body.cx-waze-mode .leaflet-container{visibility:hidden}body.cx-waze-mode #cx-selected{display:none}
+@media(max-width:1020px){.tool-rail{top:58px;right:10px;max-width:calc(100vw - 20px)}.top-mini{top:9px;left:10px}.left-search{top:105px;left:10px}#cx-search-address{top:182px;left:10px}#cx-tools{top:10px;right:10px;max-width:calc(100vw - 220px)}#cx-selected{top:245px;right:10px}#cx-weather{right:10px;bottom:10px}.leaflet-top.leaflet-left{top:250px}}
+@media(max-width:600px){.top-mini{max-width:160px;padding:9px 10px}.top-mini .title{font-size:.78rem}.top-mini .sub{font-size:.59rem}.tool-rail{top:53px}.mini-icon,.filter-icon{height:31px;padding:0 9px;font-size:.7rem}.left-search{top:96px;width:215px}.left-search .input{height:33px}#cx-tools{top:10px;max-width:calc(100vw - 182px)}#cx-tools .cx-btn{padding:8px;font-size:.68rem}#cx-search-address{top:164px;width:min(260px,calc(100vw - 20px))}#cx-selected{top:235px;right:9px}#cx-weather{bottom:9px;right:9px;width:170px;padding:9px;font-size:.69rem}#cx-weather-msg{max-height:57px;overflow:auto}.cx-weather-temp{font-size:1.15rem}.kpi-strip{left:9px;bottom:9px}.stat-pill{min-width:52px;padding:7px}.stat-pill .v{font-size:.92rem}.stat-pill .k{font-size:.57rem}.leaflet-top.leaflet-left{top:215px}}
+@media(prefers-reduced-motion:reduce){.cx-drop{animation:none;display:none}.mini-icon,.filter-icon{transition:none}}
