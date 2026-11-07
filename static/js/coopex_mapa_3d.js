@@ -63,7 +63,55 @@ function buildings(){
  if(trafficEvents.length)drawTraffic();
 }
 function setStyle(){document.body.classList.remove("is-night");}
-map.on("style.load",()=>{mapReady=true;if(satellite)installSatellite();installPins();});
+
+/* Paleta cartográfica COOPEX: água azul e nomes de ruas nítidos.
+   Usa somente atributos públicos do estilo vetorial, sem tiles do Google. */
+function colorizeCoopexMap(){
+ const style=map.getStyle();
+ if(!style?.layers)return;
+ for(const layer of style.layers){
+  const id=String(layer.id||"").toLowerCase(), source=String(layer["source-layer"]||"").toLowerCase();
+  const isWater=/water|ocean|sea|lake|river|stream|canal|bay/.test(id+" "+source);
+  const isWaterway=/waterway|river|stream|canal/.test(id+" "+source);
+  const isRoad=/road|street|highway|motorway|primary|secondary|tertiary|transportation/.test(id+" "+source);
+  const isLanduse=/park|grass|forest|garden|wood|nature|landcover/.test(id+" "+source);
+  try{
+   if(layer.type==="background"){
+    map.setPaintProperty(layer.id,"background-color","#f5f5f2");
+   }else if(layer.type==="fill" && isWater){
+    map.setPaintProperty(layer.id,"fill-color","#79c9f4");
+    map.setPaintProperty(layer.id,"fill-opacity",1);
+   }else if(layer.type==="line" && isWaterway){
+    map.setPaintProperty(layer.id,"line-color","#58b6ed");
+    map.setPaintProperty(layer.id,"line-opacity",1);
+   }else if(layer.type==="fill" && isLanduse){
+    map.setPaintProperty(layer.id,"fill-color","#cfeacb");
+   }else if(layer.type==="line" && isRoad){
+    // Estilos de camada individual (túneis, vias principais e contornos).
+    if(/motorway|trunk|primary|major/.test(id)){
+     if(!/casing|outline|bridge/.test(id))map.setPaintProperty(layer.id,"line-color","#f4bd70");
+    }else if(/secondary|tertiary/.test(id)){
+     if(!/casing|outline|bridge/.test(id))map.setPaintProperty(layer.id,"line-color","#fff4cf");
+    }
+   }else if(layer.type==="symbol"){
+    const layout=layer.layout||{};
+    if(layout["text-field"]==null)return;
+    const roadLabel=isRoad||/road_label|street_label|street-name/.test(id);
+    const waterLabel=isWater;
+    map.setPaintProperty(layer.id,"text-color",waterLabel?"#075b9d":roadLabel?"#25466a":"#365169");
+    map.setPaintProperty(layer.id,"text-halo-color","#ffffff");
+    map.setPaintProperty(layer.id,"text-halo-width",roadLabel?2.2:1.7);
+    map.setPaintProperty(layer.id,"text-halo-blur",0.2);
+    if(roadLabel){
+     map.setLayoutProperty(layer.id,"text-optional",true);
+     // Preserve o tamanho que o estilo escolhe para cada zoom.
+    }
+   }
+  }catch(error){ /* Atributo não compatível nesta camada: preserva o padrão. */ }
+ }
+}
+
+map.on("style.load",()=>{mapReady=true;colorizeCoopexMap();if(satellite)installSatellite();installPins();});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
