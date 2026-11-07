@@ -387,13 +387,17 @@
   </style>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_cooperados_glass.css') }}">
 </head>
 
-<body>
+<body class="cx-coop-glass">
+<script id="cx-coop-theme-initial">
+(function(){try{const saved=localStorage.getItem("cx_sup_brightness");document.body.classList.toggle("dark",saved===null?localStorage.getItem("coopex_theme")==="dark":Number(saved)<80)}catch(e){}})();
+</script>
   <header class="topbar">
-    
+    <a class="cg-back" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a>
     <div class="brand">
-      <div class="brand-symbol" aria-hidden="true">✱</div>
+
       <div class="brand-title">
         <strong>Gestão de Cooperados</strong>
         <small>Cadastro, acesso e situação operacional</small>
@@ -403,11 +407,7 @@
 
     <div class="spacer"></div>
 
-    <a class="top-btn admin" href="{{ url_for('admin') }}"><i class="bi bi-arrow-left"></i> Painel administrativo</a>
-    <button id="btnTheme" class="top-btn theme icon-only" type="button" aria-label="Alternar tema" title="Alternar tema"><i class="bi bi-moon-stars"></i></button>
-    <a class="top-btn logout" href="{{ url_for('logout') }}">
-      <i class="bi bi-box-arrow-right"></i> Sair
-    </a>
+
   </header>
 
   <main class="page">
@@ -572,43 +572,26 @@
   </main>
 
   <script>
-    // Tema claro/escuro: salva e tenta acompanhar o padrão usado no admin.
+    // O tema é somente definido pelo administrador. Atualiza sem nova tela.
     (function(){
-      try{
-        const saved =
-          localStorage.getItem('coopex_theme') ||
-          localStorage.getItem('coopex_admin_dark') ||
-          localStorage.getItem('coopex_dark_mode') ||
-          'light';
-
-        const dark = saved === 'dark' || saved === '1' || saved === 'true';
-        if(dark) document.body.classList.add('dark');
-
-        const btn = document.getElementById('btnTheme');
-
-        function sync(){
-          if(!btn) return;
-          const ativo = document.body.classList.contains('dark');
-          btn.innerHTML = ativo
-            ? '<i class="bi bi-sun"></i> Modo claro'
-            : '<i class="bi bi-moon-stars"></i> Modo escuro';
-        }
-
-        sync();
-
-        if(btn){
-          btn.addEventListener('click', function(){
-            document.body.classList.toggle('dark');
-            const ativo = document.body.classList.contains('dark');
-            localStorage.setItem('coopex_theme', ativo ? 'dark' : 'light');
-            localStorage.setItem('coopex_admin_dark', ativo ? '1' : '0');
-            localStorage.setItem('coopex_dark_mode', ativo ? 'dark' : 'light');
-            sync();
-          });
-        }
-      }catch(e){}
+      function apply(){
+        try{
+          const saved=localStorage.getItem('cx_sup_brightness');
+          const night=saved===null?localStorage.getItem('coopex_theme')==='dark':Number(saved)<80;
+          document.body.classList.toggle('dark',night);
+          document.body.classList.toggle('cx-sup-night',night);
+        }catch(e){}
+      }
+      apply();
+      window.addEventListener('pageshow',apply);
+      window.addEventListener('focus',apply);
+      window.addEventListener('storage',e=>{if(e.key==='cx_sup_brightness')apply()});
+      document.addEventListener('keydown',function(e){
+        if(e.key!=='Escape'||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey)return;
+        if(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'))return;
+        e.preventDefault();window.location.assign('{{ url_for('admin') }}');
+      });
     })();
-
 
     // Mostrar/ocultar senha inicial.
     (function(){
