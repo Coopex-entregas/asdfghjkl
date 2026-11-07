@@ -10,9 +10,13 @@
     *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:var(--bg);color:var(--text);font-family:Arial,Helvetica,sans-serif}header{position:sticky;top:0;z-index:10;background:linear-gradient(90deg,#0a319c,#1e55e4);color:#fff}.top{min-height:64px;padding:10px 16px;display:flex;align-items:center;gap:10px}.top strong{font-size:1.05rem}.spacer{flex:1}.btn{display:inline-flex;align-items:center;justify-content:center;min-height:39px;padding:8px 13px;border-radius:10px;border:0;background:var(--blue);color:#fff;text-decoration:none;font-weight:800;cursor:pointer}.btn.alt{background:#eef3ff;color:var(--blue2);border:1px solid #cad8f5}.btn.danger{background:#fff0f0;color:var(--red);border:1px solid #ecc3c3}.top .btn.alt{background:rgba(255,255,255,.15);color:#fff;border-color:rgba(255,255,255,.35)}.wrap{display:grid;grid-template-columns:350px minmax(0,1fr);gap:14px;padding:14px;max-width:1500px;margin:auto}.card{background:var(--card);border:1px solid var(--line);border-radius:16px;box-shadow:0 8px 22px rgba(17,55,145,.07);overflow:hidden}.body{padding:15px}h2,h3{margin:0 0 10px;color:var(--text)}label{display:block;font-size:.78rem;font-weight:800;color:var(--blue2);margin:10px 0 5px}body.dark label{color:#b8caff}select,input{width:100%;height:42px;border:1px solid var(--line);border-radius:10px;padding:0 10px;background:var(--card);color:var(--text)}.summary{display:grid;grid-template-columns:repeat(3,minmax(140px,1fr));gap:8px;margin-bottom:12px}.sum{border:1px solid var(--line);border-radius:12px;padding:10px;background:var(--soft)}.sum small{display:block;color:var(--muted);font-weight:700}.sum strong{display:block;margin-top:4px;color:var(--blue2);font-size:1.05rem}body.dark .sum strong{color:#cbd9ff}.search{margin-bottom:10px}.client-list{display:flex;flex-direction:column;gap:8px;max-height:calc(100vh - 225px);overflow:auto;padding-right:3px}.client{border:1px solid var(--line);border-radius:13px;background:var(--card);overflow:hidden}.client-head{display:grid;grid-template-columns:minmax(160px,1fr) auto auto;gap:8px;align-items:center;padding:11px;cursor:pointer}.client-head:hover{background:var(--soft)}.client-name{font-weight:900;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.saldo{font-size:.78rem;font-weight:900;color:var(--green);white-space:nowrap}.arrow{font-size:.8rem;transition:.18s}.client.open .arrow{transform:rotate(90deg)}.client-body{display:none;border-top:1px solid var(--line);background:var(--soft)}.client.open .client-body{display:block}.client-tools{display:flex;gap:7px;flex-wrap:wrap;padding:10px;border-bottom:1px solid var(--line)}.client-tools form{margin:0}.history{padding:10px}.loading,.empty{padding:18px;text-align:center;color:var(--muted)}.history-summary{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:9px}.pill{display:inline-flex;padding:6px 9px;border-radius:999px;background:#edf3ff;color:var(--blue2);font-size:.76rem;font-weight:900;border:1px solid #d3def5}.pill.green{background:#e9f9f0;color:var(--green);border-color:#c7ebd7}.pill.red{background:#fff0f0;color:var(--red);border-color:#efcccc}.table-wrap{overflow:auto;border:1px solid var(--line);border-radius:10px}table{width:100%;min-width:760px;border-collapse:collapse}th{background:var(--blue2);color:#fff;text-align:left;padding:9px;font-size:.78rem}td{padding:8px;border-top:1px solid var(--line);font-size:.82rem}tbody tr:nth-child(even){background:var(--soft)}.money{font-weight:900}.credit{color:var(--green)}.debit{color:var(--red)}.form-actions{display:flex;gap:8px;margin-top:12px;flex-wrap:wrap}.form-actions .btn{flex:1}.flash{padding:10px 12px;margin-bottom:10px;border-radius:10px;background:#edf4ff;border:1px solid #ccdbf7}.hidden{display:none!important}@media(max-width:900px){.wrap{grid-template-columns:1fr}.client-list{max-height:none}.summary{grid-template-columns:1fr}}@media(max-width:560px){.wrap{padding:9px}.top{padding:9px}.top strong{font-size:.9rem}.top .btn{padding:7px 9px;font-size:.76rem}.client-head{grid-template-columns:1fr auto}.client-head .saldo{display:none}.body{padding:12px}}
   </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_creditos_glass.css') }}">
 </head>
-<body>
-<header><div class="top"><strong>Créditos de Clientes — COOPEX</strong><div class="spacer"></div><button id="theme" class="btn alt" type="button">☾</button><a class="btn alt" href="{{ url_for('clientes') }}">Clientes</a><a class="btn alt" href="{{ url_for('admin') }}">Admin</a></div></header>
+<body class="cx-creditos-glass cx-linked-glass">
+<script id="cx-creditos-theme-before-paint">
+(function(){try{const v=localStorage.getItem("cx_sup_brightness");document.body.classList.toggle("dark",v===null?localStorage.getItem("coopex_theme")==="dark":Number(v)<80)}catch(e){}})();
+</script>
+<header><div class="top"><a class="cg-back" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a><strong>Créditos de Clientes</strong><div class="spacer"></div><a class="btn alt" href="{{ url_for('clientes') }}">Clientes</a></div></header>
 
 <main class="wrap">
   <section class="card"><div class="body">
@@ -106,7 +110,7 @@
 
   document.getElementById('search').addEventListener('input',e=>{const q=e.target.value.toLowerCase().trim();document.querySelectorAll('.client').forEach(c=>c.classList.toggle('hidden',q&&!c.dataset.name.includes(q)))});
 
-  (function(){const b=document.getElementById('theme');const saved=localStorage.getItem('coopex_theme');if(saved==='dark')document.body.classList.add('dark');const sync=()=>b.textContent=document.body.classList.contains('dark')?'☀':'☾';b.onclick=()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()};sync()})();
+  // Tema central: somente o administrador altera claro/noturno.
 
   const selected={{ (cliente_id or 0)|tojson }};
   if(selected){const card=document.querySelector(`.client[data-id="${selected}"]`);if(card){card.classList.add('open');loadHistory(card);card.scrollIntoView({block:'center'})}}
@@ -120,7 +124,7 @@
   let value=100;
   try{const stored=localStorage.getItem('cx_sup_brightness');if(stored!==null)value=Math.max(0,Math.min(100,Number(stored)||0))}catch(e){}
   const night=value<80;
-  document.body.classList.add('cx-linked-glass');
+  document.body.classList.add('cx-linked-glass','cx-creditos-glass');
   document.body.classList.toggle('dark',night);
   document.body.classList.toggle('cx-sup-night',night);
   document.body.dataset.cxBrightness=String(value);
@@ -130,8 +134,16 @@
  }
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',apply,{once:true});else apply();
  window.addEventListener('pageshow',apply);
+ window.addEventListener('focus',apply);
  window.addEventListener('storage',e=>{if(e.key==='cx_sup_brightness')apply()});
 })();
+</script>
+<script id="cx-creditos-back-esc">
+document.addEventListener('keydown',function(e){
+ if(e.key!=='Escape'||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey)return;
+ if(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'))return;
+ e.preventDefault();location.assign('{{ url_for('admin') }}');
+});
 </script>
 </body>
 </html>
