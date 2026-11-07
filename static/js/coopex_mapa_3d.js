@@ -111,7 +111,12 @@ function colorizeCoopexMap(){
  }
 }
 
-map.on("style.load",()=>{mapReady=true;colorizeCoopexMap();if(satellite)installSatellite();installPins();applySearchVisibility();});
+map.on("style.load",()=>{
+ mapReady=true;
+ // O planeta aparece quando o usuário afasta o mapa; em zoom de rua, MapLibre volta suavemente à projeção local.
+ try{map.setProjection({type:"globe"});map.setSky({"atmosphere-blend":["interpolate",["linear"],["zoom"],0,1,5,1,7,0]});}catch(e){console.warn("Globo não suportado neste navegador:",e.message)}
+ colorizeCoopexMap();if(satellite)installSatellite();installPins();applySearchVisibility();
+});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
@@ -259,9 +264,8 @@ function setAddressMode(enabled){
 $("addressToggle").onclick=()=>setAddressMode(true);
 $("addressClose").onclick=()=>setAddressMode(false);
 $("addressCollapse").onclick=()=>{
- const pane=$("addressPanel"),collapsed=pane.classList.toggle("collapsed");
- $("addressCollapse").textContent=collapsed?"›":"‹";
- $("addressCollapse").setAttribute("aria-label",collapsed?"Expandir pesquisa":"Recolher pesquisa");
+ // Recolher significa voltar ao mapa COOPEX, e não continuar no modo de busca.
+ setAddressMode(false);
 };
 
 $("addressGo").onclick=async()=>{
@@ -364,6 +368,11 @@ $("camerasClose").onclick=()=>{cameraPanelOpen=false;$("cameraPanel").hidden=tru
 $("camerasHere").onclick=()=>{cameraMode="map";$("camerasHere").classList.add("active");$("camerasCoop").classList.remove("active");renderCameraPanel();};
 $("camerasCoop").onclick=()=>{if(!itemById(selectedId)||!hasCoord(itemById(selectedId)))return;cameraMode="coop";$("camerasCoop").classList.add("active");$("camerasHere").classList.remove("active");renderCameraPanel();};
 map.on("moveend",()=>{if(cameraMode==="map")renderCameraPanel();});
+function updateSpaceMode(){
+ document.body.classList.toggle("cx-globe-space",map.getZoom()<3.25);
+}
+map.on("zoom",updateSpaceMode);
+map.on("load",updateSpaceMode);
 
 function gpsSocket(){
  // GPS periódico moderado e consulta de fallback, sem criar mais um mapa.
