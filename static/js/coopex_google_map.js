@@ -24,6 +24,45 @@ window.gm_authFailure=()=>{
 const googleRoot=document.getElementById("googleMap");
 if(!googleRoot)return;
 let googleMap=null,tilesVisible=false,authFailed=false,loadFinished=false;
+const exploreFrame=document.getElementById("googleExplore");
+const exploreInput=document.getElementById("address");
+const exploreButton=document.getElementById("addressGo");
+const exploreMsg=document.getElementById("addressMessage");
+function embedUrl(mode,params){
+ const url=new URL("https://www.google.com/maps/embed/v1/"+mode);
+ url.searchParams.set("key",key);url.searchParams.set("language","pt-BR");url.searchParams.set("region","BR");
+ for(const [k,v] of Object.entries(params))url.searchParams.set(k,String(v));
+ return url.toString();
+}
+function embedMode(enabled){
+ if(!exploreFrame)return;
+ if(enabled){
+  exploreFrame.hidden=false;
+  if(!exploreFrame.src||exploreFrame.src==="about:blank")exploreFrame.src=embedUrl("view",{center:"-5.7945,-35.211",zoom:13,maptype:"roadmap"});
+ }else{
+  exploreFrame.hidden=true;
+  // Libera o iframe sem interromper os cooperados do Google Maps.
+  exploreFrame.removeAttribute("src");
+ }
+}
+function embeddedGoogleSearch(){
+ const q=String(exploreInput?.value||"").trim();
+ if(q.length<3){if(exploreMsg)exploreMsg.textContent="Informe um endereço ou local para pesquisar.";return;}
+ exploreFrame.hidden=false;
+ exploreFrame.src=embedUrl("search",{q:q+", Rio Grande do Norte, Brasil",center:"-5.7945,-35.211",zoom:13});
+ if(exploreMsg)exploreMsg.textContent="Pesquisa aberta diretamente no mapa do Google.";
+}
+exploreButton?.addEventListener("click",event=>{
+ if(!document.body.classList.contains("cx-address-mode"))return;
+ event.stopImmediatePropagation();event.preventDefault();embeddedGoogleSearch();
+},true);
+exploreInput?.addEventListener("keydown",event=>{
+ if(event.key==="Enter"&&document.body.classList.contains("cx-address-mode")){
+  event.preventDefault();event.stopImmediatePropagation();embeddedGoogleSearch();
+ }
+},true);
+window.addEventListener("coopex:map-mode",event=>embedMode(!!event.detail?.searchingAddress));
+
 const markers=new Map(),lastPositions=new Map();
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
@@ -169,10 +208,8 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
     if(addressMessage)addressMessage.textContent=target.formatted_address||"Endereço encontrado";
    });
   }
-  addressGo?.addEventListener("click",event=>{event.stopImmediatePropagation();findOnGoogle();},true);
-  addressField?.addEventListener("keydown",event=>{
-   if(event.key==="Enter"){event.preventDefault();event.stopImmediatePropagation();findOnGoogle();}
-  },true);
+  // A busca é feita pela Maps Embed API; Geocoding API não é necessária.
+
   streetButton?.addEventListener("click",event=>{
    event.stopImmediatePropagation();
    const position=placeMarker.getPosition()||googleMap.getCenter();
