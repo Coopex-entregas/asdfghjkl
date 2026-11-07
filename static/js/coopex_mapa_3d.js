@@ -11,12 +11,23 @@ let selectedId=null,following=false,filter="todos",items=Array.isArray(window.CO
 let dynamicMarkers=new Map(),stops=[],stopsMarkers=[],placePin=null;
 const lastConfirmedGps=new Map();
 function keepLastPosition(arr){
- for(const v of arr){const id=String(v.id);if(!hasCoord(v))continue;
-   if(v.gps_ao_vivo===true){lastConfirmedGps.set(id,{lat:+v.lat,lng:+v.lng});continue;}
-   const p=lastConfirmedGps.get(id);
-   if(p){v.lat=p.lat;v.lng=p.lng;v.ultima_atualizacao=v.ultima_atualizacao||"Última posição GPS";}
- }
- return arr;
+  // A coordenada offline fica imutável até chegar um novo GPS real.
+  // O servidor pode alternar entre memória e localização histórica; isso NÃO
+  // pode deslocar um alfinete offline durante zoom, filtro ou atualização.
+  for(const v of arr){
+    const id=String(v.id);
+    if(v.gps_ao_vivo===true && hasCoord(v)){
+      lastConfirmedGps.set(id,{lat:Number(v.lat),lng:Number(v.lng),source:"live"});
+      continue;
+    }
+    const stored=lastConfirmedGps.get(id);
+    if(stored){
+      v.lat=stored.lat;v.lng=stored.lng;
+    }else if(hasCoord(v)){
+      lastConfirmedGps.set(id,{lat:Number(v.lat),lng:Number(v.lng),source:"last-known"});
+    }
+  }
+  return arr;
 }
 const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
 const state=i=>!i.online?"offline":i.status==="ocioso"?"ocioso":"online";
@@ -230,6 +241,29 @@ function cameraReference(){
  const p=map.getCenter();return {lat:p.lat,lng:p.lng,description:"próximas ao centro do mapa"};
 }
 function cameraDistanceKm(p,q){let deltaLat=(p.lat-q.lat)*111.2,deltaLng=(p.lng-q.lng)*111.2*Math.cos(p.lat*Math.PI/180);return Math.sqrt(deltaLat**2+deltaLng**2);}
+
+let cameraZoom=1,activeCamera=null;
+function renderCameraViewer(){
+ const host=$("cameraViewport");
+ if(!activeCamera)return;
+ const frame=$("cameraFrame");
+ frame.style.transform="scale("+cameraZoom+")";
+ $("cameraZoomLevel").textContent=Math.round(cameraZoom*100)+"%";
+ $("cameraTitle").textContent=activeCamera.name;
+ $("cameraOriginal").href=activeCamera.url;
+}
+function showCameraViewer(cam){
+ activeCamera=cam;cameraZoom=1;
+ const frame=$("cameraFrame");
+ frame.src=cam.url;
+ $("cameraViewer").hidden=false;
+ renderCameraViewer();
+}
+$("cameraZoomIn").onclick=()=>{cameraZoom=Math.min(3,Math.round((cameraZoom+.25)*100)/100);renderCameraViewer();};
+$("cameraZoomOut").onclick=()=>{cameraZoom=Math.max(1,Math.round((cameraZoom-.25)*100)/100);renderCameraViewer();};
+$("cameraZoomReset").onclick=()=>{cameraZoom=1;renderCameraViewer();};
+$("cameraViewerClose").onclick=()=>{$("cameraViewer").hidden=true;$("cameraFrame").src="about:blank";activeCamera=null;};
+
 function renderCameraPanel(){
  if(!cameraPanelOpen)return;
  const ref=cameraReference(),host=$("cameraList");host.replaceChildren();
@@ -238,7 +272,7 @@ function renderCameraPanel(){
  const general=publicCameras.filter(c=>c.general);
  const rows=local.concat(general);
  if(!local.length){const info=document.createElement("p");info.className="cx-camera-empty";info.textContent="Não há transmissão com ponto de câmera verificado nesta área. Veja abaixo fontes gerais e avenidas com cobertura aproximada.";host.append(info);}
- for(const c of rows){const a=document.createElement("a");a.className="cx-camera-row";a.href=c.url;a.target="_blank";a.rel="noopener noreferrer";a.innerHTML='<span class="cx-camera-symbol">▣</span><span><strong>'+esc(c.name)+'</strong><small>'+esc(c.region)+(c.coords?" · via próxima à região do mapa (ponto exato não informado)":" · localização não individualizada")+'</small></span><span aria-hidden="true">↗</span>';host.append(a);}
+ for(const c of rows){const a=document.createElement("button");a.type="button";a.className="cx-camera-row";a.onclick=()=>showCameraViewer(c);a.innerHTML='<span class="cx-camera-symbol">▣</span><span><strong>'+esc(c.name)+'</strong><small>'+esc(c.region)+(c.coords?" · via próxima à região do mapa (ponto exato não informado)":" · localização não individualizada")+'</small></span><span aria-hidden="true">↗</span>';host.append(a);}
  $("camerasCoop").disabled=!(itemById(selectedId)&&hasCoord(itemById(selectedId)));
 }
 async function resolveCameraCoordinates(){
@@ -267,7 +301,7 @@ map.on("moveend",()=>{if(cameraMode==="map")renderCameraPanel();});
 function gpsSocket(){
  // GPS periódico moderado e consulta de fallback, sem criar mais um mapa.
  const socketApi=window.io;if(typeof socketApi!=="function")return;
- try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old))lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng});render()}else updateGps()});}catch(e){}
+ try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old))lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng,source:"live"});render()}else updateGps()});}catch(e){}
 }
 map.on("load",()=>{updateGps();});
 render();updateGps();stopRender();weather();checkFlow();traffic();gpsSocket();
