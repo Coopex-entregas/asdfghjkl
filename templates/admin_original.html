@@ -2137,17 +2137,42 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
   <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_admin_fit_100.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_admin_reference_2026.css') }}">
-<style id="coopex-layout-inicial-sem-piscar-v42">
-/* Painel sempre visivel durante retorno, F5 e navegacao pelo historico.
-   O JS de reorganizacao atua sem ocultar as areas operacionais. */
-html.cx-admin-preparing body>header,
-html.cx-admin-preparing body>.bank-toolbar-wrap,
-html.cx-admin-preparing body>.viewport{visibility:visible!important}
+<style id="coopex-layout-inicial-estado-final-v44">
+/* Primeira pintura: apresentar somente o estado final do administrador.
+   Uma tela de carregamento estável substitui os layouts temporários.
+   Sem visibility:hidden persistente: liberação com fallback garantido. */
+html.cx-admin-assembling body>header,
+html.cx-admin-assembling body>.bank-toolbar-wrap,
+html.cx-admin-assembling body>.viewport{
+ opacity:0!important;
+ pointer-events:none!important;
+}
+html.cx-admin-assembling body::after{
+ content:"COOPEX  ·  Supervisão";
+ position:fixed!important;inset:0!important;z-index:2147483000!important;
+ display:flex!important;justify-content:center!important;align-items:center!important;
+ background:linear-gradient(145deg,#103f7d,#0a264a 65%,#061c38)!important;
+ color:#eaf6ff!important;font:800 19px/1.5 Inter,system-ui,sans-serif!important;
+ letter-spacing:.035em!important;text-shadow:0 2px 8px #001c46!important;
+ opacity:1!important;pointer-events:none!important
+}
+html:not(.cx-admin-assembling) body>header,
+html:not(.cx-admin-assembling) body>.bank-toolbar-wrap,
+html:not(.cx-admin-assembling) body>.viewport{opacity:1}
 </style>
-<script id="coopex-layout-inicial-sem-piscar-script-v42">
+<script id="coopex-layout-inicial-estado-final-script-v44">
 (function(){
+ // O modo antigo mostrava múltiplas versões até a composição dos scripts.
  document.documentElement.classList.remove('cx-admin-preparing');
- window.addEventListener('pageshow',()=>document.documentElement.classList.remove('cx-admin-preparing'));
+ document.documentElement.classList.add('cx-admin-assembling');
+ function release(){document.documentElement.classList.remove('cx-admin-assembling')}
+ window.__coopexAdminReleaseLayout=release;
+ // Fail-safe: mesmo com script assíncrono ou erro, nunca deixar o admin oculto.
+ window.setTimeout(release,4500);
+ window.addEventListener('pageshow',function(event){
+  if(event.persisted)release();
+ });
+ window.addEventListener('pagehide',release);
 })();
 </script>
 </head>
