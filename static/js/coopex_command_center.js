@@ -116,6 +116,131 @@ function chartColors(){
   });
  }catch(e){}
 }
+
+let cxReportCalendarInitialized=false;
+function setupReportCalendar(){
+ if(cxReportCalendarInitialized)return;
+ const shell=document.querySelector('.dashboard-filter-shell');
+ const filters=shell?.querySelector('.filters');
+ const from=filters?.querySelector('[name="data_inicio"]');
+ const to=filters?.querySelector('[name="data_fim"]');
+ const form=from?.form||document.querySelector('form.topbar');
+ if(!shell||!filters||!from||!to||!form)return;
+ cxReportCalendarInitialized=true;
+ shell.classList.add('cx-filter-calendar-ui','cx-filters-compact');
+ const period=filters.querySelector('[name="periodo"]');
+ // There is no contract selector in this report: keep only the client field.
+ const contract=filters.querySelector('[name="grupo_id"]');
+ if(contract){
+  contract.value='todos';contract.disabled=true;
+  contract.closest('.f')?.classList.add('cx-no-contract');
+ }
+ const client=filters.querySelector('[name="cliente"]');
+ if(client){
+  client.placeholder='Nome do cliente';
+  const label=client.closest('.f')?.querySelector('label');
+  if(label)label.textContent='Cliente';
+ }
+ shell.querySelectorAll('.apply-filter,[data-clear]').forEach(x=>x.style.setProperty('display','none','important'));
+ const actions=shell.querySelector('.dashboard-filter-actions');
+ if(actions)actions.style.setProperty('display','none','important');
+ const bar=document.createElement('div');bar.className='cx-calendar-quickbar';
+ const format=x=>{const t=/^(\d{4})-(\d{2})-(\d{2})$/.exec(x||'');return t?t[3]+'/'+t[2]+'/'+t[1]:'Selecionar'};
+ const sym='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="5" width="18" height="16" rx="3"/><path d="M8 3v4M16 3v4M3 10h18"/></svg>';
+ function makeButton(label){const b=document.createElement('button');b.type='button';b.className='cx-date-quick';b.innerHTML=sym+'<span class="cx-date-label">'+label+'</span><strong></strong>';return b;}
+ const bFrom=makeButton('De'),bTo=makeButton('Até');
+ function redraw(){
+  bFrom.querySelector('strong').textContent=format(from.value);
+  bTo.querySelector('strong').textContent=format(to.value);
+ }
+ redraw();bar.append(bFrom,bTo);
+ shell.querySelector('.dashboard-filter-title-row')?.after(bar);
+ const pop=document.createElement('div');pop.className='cx-calendar-pop';pop.hidden=true;
+ pop.setAttribute('role','dialog');pop.setAttribute('aria-label','Selecionar dia no calendário');
+ document.body.appendChild(pop);
+ const months=['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+ const weekdays=['D','S','T','Q','Q','S','S'];
+ let target=null,year=0,month=0;
+ const fmt=(y,m,d)=>String(y)+'-'+String(m+1).padStart(2,'0')+'-'+String(d).padStart(2,'0');
+ function close(){pop.hidden=true;target=null;}
+ function submit(){
+  if(period)period.value='personalizado';
+  if(!from.value)from.value=to.value;
+  if(!to.value)to.value=from.value;
+  if(from.value>to.value){
+   if(target===from)to.value=from.value;
+   else from.value=to.value;
+  }
+  redraw();close();
+  try{form.requestSubmit()}catch(e){form.submit()}
+ }
+ function render(){
+  if(!target)return;
+  pop.replaceChildren();
+  const header=document.createElement('div');header.className='cx-cal-head';
+  const prev=document.createElement('button'),next=document.createElement('button');
+  const title=document.createElement('strong');
+  prev.type=next.type='button';prev.textContent='‹';next.textContent='›';
+  prev.title='Mês anterior';next.title='Próximo mês';
+  prev.onclick=()=>{month--;if(month<0){month=11;year--}render()};
+  next.onclick=()=>{month++;if(month>11){month=0;year++}render()};
+  title.textContent=months[month]+' '+year;header.append(prev,title,next);pop.append(header);
+  const grid=document.createElement('div');grid.className='cx-cal-grid';
+  weekdays.forEach(w=>{const x=document.createElement('span');x.className='cx-cal-weekday';x.textContent=w;grid.appendChild(x)});
+  // First column is Sunday, identical to the admin calendar.
+  const offset=new Date(year,month,1).getDay();
+  for(let i=0;i<offset;i++)grid.appendChild(document.createElement('span'));
+  const last=new Date(year,month+1,0).getDate();
+  const today=new Date(),tod=fmt(today.getFullYear(),today.getMonth(),today.getDate());
+  for(let day=1;day<=last;day++){
+   const value=fmt(year,month,day);
+   const b=document.createElement('button');b.type='button';b.textContent=String(day);
+   b.className='cx-cal-day';if(value===tod)b.classList.add('today');
+   if(value===target.value)b.classList.add('selected');
+   b.addEventListener('click',()=>{target.value=value;submit()});
+   grid.appendChild(b);
+  }
+  pop.append(grid);
+  const footer=document.createElement('div');footer.className='cx-cal-footer';
+  const todayBtn=document.createElement('button');todayBtn.type='button';todayBtn.textContent='Hoje';
+  todayBtn.onclick=()=>{const n=new Date();target.value=fmt(n.getFullYear(),n.getMonth(),n.getDate());submit()};
+  const closeBtn=document.createElement('button');closeBtn.type='button';closeBtn.textContent='Fechar';closeBtn.onclick=close;
+  footer.append(todayBtn,closeBtn);pop.append(footer);
+ }
+ function open(input,button){
+  target=input;
+  const date=input.value?new Date(input.value+'T12:00:00'):new Date();
+  year=date.getFullYear();month=date.getMonth();render();
+  pop.hidden=false;
+  const rect=button.getBoundingClientRect();
+  pop.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-336))+'px';
+  pop.style.top=Math.max(8,Math.min(rect.bottom+8,window.innerHeight-354))+'px';
+ }
+ bFrom.onclick=()=>open(from,bFrom);bTo.onclick=()=>open(to,bTo);
+ document.addEventListener('pointerdown',e=>{
+  if(!pop.hidden&&!pop.contains(e.target)&&!bar.contains(e.target))close();
+ });
+ document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!pop.hidden){close();e.stopPropagation()}},true);
+ // These are all real report filters, not decorative controls.
+ // Additional selects still submit when changed, without the obsolete Apply button.
+ filters.querySelectorAll('select:not([name="grupo_id"])').forEach(el=>{
+  el.addEventListener('change',()=>{if(el===period && el.value==='personalizado')return;form.requestSubmit();});
+ });
+ const pickerField=filters.querySelector('[name="cliente"]');
+ if(pickerField)pickerField.addEventListener('change',()=>form.requestSubmit());
+}
+function fitReportValues(){
+ document.querySelectorAll('.dashboard-tab-panel.active .kpi .val,.dashboard-tab-panel.active .metric .mval,.dashboard-tab-panel.active .year-compare-kpi strong').forEach(el=>{
+  const p=el.parentElement;if(!p)return;
+  el.style.whiteSpace='nowrap';
+  const max=Math.min(26,parseFloat(getComputedStyle(el).fontSize)||24);
+  el.style.fontSize=max+'px';
+  const width=p.clientWidth-5;
+  let size=max;
+  while(el.scrollWidth>width&&size>14){size-=1;el.style.fontSize=size+'px'}
+ });
+}
+
 function apply(){
  const nav=document.querySelector('.dashboard-tabs-bar');
  const filter=document.querySelector('.dashboard-filter-shell');
@@ -128,7 +253,7 @@ function apply(){
   const exp=document.getElementById('cxExpOpen');
   const host=nav.querySelector('.cx-nav-tools');
   if(exp&&host&&!host.contains(exp))host.appendChild(exp);
-  formatKpis();return true;
+  formatKpis();setupReportCalendar();requestAnimationFrame(fitReportValues);return true;
  }
  activeNav=nav;
  nav.classList.remove('cx-report-rail');
@@ -179,6 +304,8 @@ function apply(){
  toggle.textContent=filter.classList.contains('cx-filters-compact')?'Mais filtros':'Menos filtros';
  const grid=main.querySelector('.dashboard-tab-panel[data-panel="geral"] > .gridKpi');
  formatKpis();
+ setupReportCalendar();
+ requestAnimationFrame(fitReportValues);
  chartColors();
  return true;
 }
@@ -193,6 +320,8 @@ function start(){
  const interval=setInterval(()=>{if(apply()||++count>30)clearInterval(interval);},100);
  window.addEventListener('pageshow',()=>{apply();chartColors()});
  window.addEventListener('focus',()=>{apply();chartColors()});
+ document.addEventListener('click',e=>{if(e.target.closest('.dashboard-tab-button'))setTimeout(fitReportValues,75)});
+ window.addEventListener('resize',fitReportValues);
 }
 if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
