@@ -234,10 +234,10 @@ function fitReportValues(){
   const p=el.parentElement;if(!p)return;
   el.style.whiteSpace='nowrap';
   const max=Math.min(26,parseFloat(getComputedStyle(el).fontSize)||24);
-  el.style.fontSize=max+'px';
+  el.style.setProperty('font-size',max+'px','important');
   const width=p.clientWidth-5;
   let size=max;
-  while(el.scrollWidth>width&&size>14){size-=1;el.style.fontSize=size+'px'}
+  while(el.scrollWidth>width&&size>13){size-=1;el.style.setProperty('font-size',size+'px','important')}
  });
 }
 
