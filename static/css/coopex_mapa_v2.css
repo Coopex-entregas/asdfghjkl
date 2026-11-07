@@ -283,3 +283,11 @@ body.cx-side-collapsed #ui>.back-link{left:16px!important;top:79px!important}
 body.cx-address-mode .coopex-side,body.cx-address-mode #sideExpand{display:none!important}
 body.cx-address-mode #ui>.back-link{left:20px!important;top:20px!important}
 @media(max-width:720px){.coopex-side{width:min(335px,calc(100vw - 24px))!important}.coopex-side-intro{margin-bottom:91px!important}body:not(.cx-side-collapsed):not(.cx-address-mode) #ui>.search{width:min(305px,calc(100vw - 55px))!important}}
+
+/* A cartografia oficial do Google ocupa exatamente o espaço antes usado pelo MapLibre. */
+#googleMap{position:fixed;inset:0;z-index:1;background:#d9e8f5}
+body.cx-google-ready #map{visibility:hidden!important}
+body:not(.cx-google-ready) #googleMap{display:none!important}
+#googleMap .gm-style{font-family:Inter,system-ui,"Segoe UI",sans-serif}
+#googleMap [title="COOPEX"]{cursor:pointer}
+@media(max-width:720px){#googleMap .gm-style-mtc{top:65px}}
