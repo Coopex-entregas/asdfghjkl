@@ -341,6 +341,7 @@ async function chamar(path,method){
                 db.session.execute(text("UPDATE sicoob_pix_cobranca SET status='PAGO',e2eid=:e,pago_em=:d WHERE entrega_id=:id"),
                                    {"id":entrega_id,"e":matches[0]["endToEndId"],"d":datetime.utcnow().isoformat(),"id":entrega_id})
                 db.session.commit()
+                host.emitir_atualizacao_entrega(e, "pagamento_confirmado_sicoob")
         return result(entrega_id,get_record(entrega_id))
 
     @app.post("/admin/pix-sicoob/entrega/<int:entrega_id>/modificar")
@@ -907,6 +908,76 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
         except Exception:
             app.logger.exception("Falha na consulta do Pix avulso")
             return jsonify(erro="Falha na consulta ao Sicoob."),502
+
+
+    # Confirmacao automatica: webhook informa o txid, mas nao serve como prova
+    # de pagamento. A confirmacao e sempre conferida na API autenticada do banco.
+    @app.post("/api/sicoob/pix/webhook/<token>")
+    @app.post("/api/sicoob/pix/webhook/<token>/pix")
+    def sicoob_pix_webhook(token):
+        import hmac
+        configured=os.getenv("SICOOB_PIX_WEBHOOK_TOKEN","")
+        if not configured or not hmac.compare_digest(token,configured):
+            abort(404)
+        if request.content_length and request.content_length>65536:
+            abort(413)
+        body=request.get_json(silent=True)
+        if not isinstance(body,dict) or not isinstance(body.get("pix"),list):
+            return jsonify(ok=False),400
+        ids=list(dict.fromkeys(
+            str(x.get("txid")) for x in body["pix"]
+            if isinstance(x,dict) and re.fullmatch(r"[A-Za-z0-9]{1,35}",str(x.get("txid") or ""))
+        ))[:30]
+        paid=0
+        try:
+            for txid in ids:
+                entrega=db.session.execute(text(
+                    "SELECT entrega_id,valor,status FROM sicoob_pix_cobranca WHERE txid=:tx"),
+                    {"tx":txid}).mappings().first()
+                avulso=None
+                if not entrega:
+                    avulso=db.session.execute(text(
+                        "SELECT id,valor,status FROM sicoob_pix_avulso WHERE txid=:tx"),
+                        {"tx":txid}).mappings().first()
+                row=entrega or avulso
+                if not row or row["status"]!="PENDENTE":
+                    continue
+                bank_data,_=bank_request("GET","/cob/"+txid)
+                if bank_data.get("status")!="CONCLUIDA":
+                    continue
+                pix=[p for p in (bank_data.get("pix") or [])
+                     if p.get("endToEndId") and p.get("txid",txid)==txid]
+                amount=sum((Decimal(str(p.get("valor","0"))) for p in pix),Decimal("0"))
+                expected=Decimal(str(row["valor"]))
+                if not pix or amount!=expected:
+                    continue
+                data_pagamento=datetime.utcnow().isoformat()
+                if entrega:
+                    entrega_obj=db.session.get(Entrega,entrega["entrega_id"])
+                    if not entrega_obj or Decimal(str(entrega_obj.valor)).quantize(Decimal(".01"))!=expected:
+                        continue
+                    changed=db.session.execute(text(
+                        "UPDATE sicoob_pix_cobranca SET status='PAGO',e2eid=:eid,pago_em=:dt "
+                        "WHERE entrega_id=:id AND status='PENDENTE'"),
+                        {"eid":pix[0]["endToEndId"],"dt":data_pagamento,"id":entrega["entrega_id"]})
+                    if changed.rowcount:
+                        entrega_obj.status_pagamento="pago"
+                        db.session.commit()
+                        paid+=1
+                        host.emitir_atualizacao_entrega(entrega_obj,"pagamento_confirmado_sicoob")
+                else:
+                    changed=db.session.execute(text(
+                        "UPDATE sicoob_pix_avulso SET status='PAGO',e2eid=:eid,pago_em=:dt "
+                        "WHERE id=:id AND status='PENDENTE'"),
+                        {"eid":pix[0]["endToEndId"],"dt":data_pagamento,"id":avulso["id"]})
+                    if changed.rowcount:
+                        db.session.commit()
+                        paid+=1
+            return jsonify(ok=True,confirmados=paid)
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha de conciliacao bancaria automatica Sicoob Pix")
+            return jsonify(ok=False),503
 
     @app.get("/admin/pix-sicoob/csrf")
     def sicoob_ui_csrf():
