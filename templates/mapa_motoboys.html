@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-embed24">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261108-explore25">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -52,16 +52,23 @@
  <div id="cameraList" class="cx-camera-list" aria-live="polite"></div>
  <small class="cx-camera-disclaimer">Transmissões externas: podem estar indisponíveis ou fora do ar. A COOPEX não controla as imagens. A indicação de proximidade depende de localização verificada.</small>
 </section>
-<section id="addressPanel" class="address-panel glass" hidden aria-label="Pesquisa de endereços"><button id="addressCollapse" class="cx-address-collapse" type="button" title="Recolher ou expandir pesquisa" aria-label="Recolher pesquisa">‹</button>
-<div class="address-head"><strong>Explorar no Google Maps</strong><button id="addressClose" class="close" type="button" aria-label="Fechar">×</button></div>
-<input id="address" placeholder="Pesquise uma rua, lugar ou endereço" aria-label="Pesquisar endereço">
-<div class="address-actions">
-<button id="addressGo" type="button" class="primary">⌕ Pesquisar</button><button id="addStop" type="button">＋ Adicionar parada</button>
-<button id="streetView" type="button">👁 Ver rua</button><button id="routeOpen" class="primary" type="button">↗ Abrir rota</button>
-</div><div id="addressMessage" aria-live="polite"></div>
-<div class="small-muted">Paradas intermediárias: <b id="stopsCount">0</b> de 3</div>
-<div id="stopsList"></div><button id="stopsClear" class="btn" type="button">Limpar paradas</button>
-<small class="small-muted">Pesquise e explore as ruas no próprio mapa; a função de rota externa abre o site de navegação.</small>
+<section id="addressPanel" class="address-panel glass cx-explore-panel" hidden aria-label="Explorar no Google Maps">
+ <div class="cx-explore-rail"><span class="cx-rail-logo">C</span><button id="addressCollapse" type="button" title="Voltar ao mapa COOPEX" aria-label="Recolher barra lateral">‹</button><small>COOPEX</small></div>
+ <div class="cx-explore-content">
+  <div class="cx-explore-search"><input id="address" placeholder="Pesquisar ruas, locais e endereços" aria-label="Pesquisar no Google Maps" autocomplete="off"><button id="addressGo" type="button" aria-label="Pesquisar" title="Pesquisar">⌕</button><button id="addressClose" type="button" class="close" title="Fechar pesquisa" aria-label="Fechar pesquisa">×</button></div>
+  <div class="cx-explore-hero"><div class="cx-explore-hero-art"><span>⌖</span></div><strong>Explore Natal e região</strong><small>Mapa oficial do Google • COOPEX</small></div>
+  <div class="cx-explore-place"><strong id="cxExploreTitle">Natal, RN</strong><small id="cxExploreSubtitle">Pesquise endereços ou consulte estabelecimentos</small></div>
+  <div class="cx-explore-categories">
+   <button type="button" data-google-category="Restaurantes em Natal RN">🍽 <span>Restaurantes</span></button>
+   <button type="button" data-google-category="Farmácias em Natal RN">✚ <span>Farmácias</span></button>
+   <button type="button" data-google-category="Hotéis em Natal RN">⌂ <span>Hotéis</span></button>
+   <button type="button" data-google-category="Postos de combustível em Natal RN">⛽ <span>Postos</span></button>
+  </div>
+  <div class="cx-explore-meta"><strong>Pesquisar e explorar</strong><p id="addressMessage" aria-live="polite">Os cooperados permanecem no mapa enquanto você utiliza a barra lateral. Ao fazer uma pesquisa, o Google abre os resultados no mapa.</p></div>
+  <div class="cx-explore-tools"><button id="streetView" type="button">◎ Ver rua</button><button id="routeOpen" type="button" class="primary">↗ Rotas</button></div>
+  <div class="cx-explore-more"><button id="addStop" type="button">＋ Adicionar parada</button><span>Paradas: <b id="stopsCount">0</b>/3</span><div id="stopsList"></div><button id="stopsClear" type="button">Limpar paradas</button></div>
+  <p class="cx-explore-tip">O modo de pesquisa utiliza o Google Maps incorporado; os alfinetes da COOPEX voltam ao sair dos resultados.</p>
+ </div>
 </section>
 <section id="details" class="details glass" aria-live="polite">
 <div class="person-head"><span id="personAvatar" class="person-avatar">--</span><div><strong id="personName">Cooperado</strong><span id="personState" class="state">Online</span></div><button id="detailsClose" class="close" type="button" aria-label="Fechar">×</button></div>
@@ -81,7 +88,7 @@
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261107-embed24"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-embed24"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-explore25"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-explore25"></script>
 </body>
 </html>
