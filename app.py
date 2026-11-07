@@ -2901,6 +2901,7 @@ def logout():
         coop = Cooperado.query.get(uid)
         if coop:
             coop.online = False
+            _LIVE_LOCATION_BY_ID.pop(int(coop.id), None)
             loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
             if loc:
                 loc.online = False
@@ -6224,6 +6225,24 @@ def api_app_localizacao():
         return jsonify({'ok': False, 'error': 'falha ao processar localização em memória'}), 500
 
 
+@app.post('/api/cooperado/presenca')
+def coopex_cooperado_presenca():
+    """Heartbeat autenticado do painel, independente da posição GPS."""
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify({'ok': False, 'error': 'Não autorizado'}), 403
+    try:
+        cid = int(session['user_id'])
+        db.session.query(Cooperado).filter(Cooperado.id == cid).update({
+            Cooperado.online: True,
+            Cooperado.last_ping: datetime.utcnow(),
+        }, synchronize_session=False)
+        db.session.commit()
+        return jsonify({'ok': True, 'online': True})
+    except Exception:
+        db.session.rollback()
+        return jsonify({'ok': False, 'error': 'Não foi possível atualizar presença'}), 503
+
+
 @app.get('/api/cooperado/localizacao_status')
 def api_cooperado_localizacao_status():
     if session.get('user_id') is None or session.get('is_admin'):
@@ -6233,11 +6252,13 @@ def api_cooperado_localizacao_status():
     info = _get_live_location(cooperado_id)
 
     if not info or info.get('lat') is None or info.get('lng') is None:
+        coop = Cooperado.query.get(cooperado_id)
+        presente = bool(coop and coop.online and _coopex_online_recente(coop.last_ping))
         return jsonify({
             'ok': True,
             'tem_localizacao': False,
-            'online': False,
-            'mensagem': 'Sincronizando localização do app...'
+            'online': presente,
+            'mensagem': 'Online no painel; aguardando GPS' if presente else 'Sincronizando localização do app...'
         }), 200
 
     return jsonify({
