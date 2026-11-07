@@ -727,3 +727,45 @@ html body.cx-report-glass.cx-command-center .dashboard-tab-panel .year-compare-k
  html body.cx-report-glass.cx-command-center .dashboard-filter-shell.cx-filter-calendar-ui .cx-calendar-quickbar{width:100%!important;max-width:none!important}
  html body.cx-report-glass.cx-command-center .cx-date-quick{padding:0 8px!important}
 }
+
+/* v7 — equal-width comparison figures and no broken monetary values. */
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral] .board .card:has(.alerts)>.gridKpi{
+ display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ gap:8px!important;grid-auto-rows:74px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral] .board .card:has(.alerts)>.gridKpi>.kpi{
+ grid-column:auto!important;width:100%!important;min-width:0!important;
+ height:74px!important;min-height:74px!important;max-height:74px!important;
+ padding:10px 13px!important;gap:5px!important;
+ display:flex!important;flex-direction:column!important;justify-content:center!important;
+ background:var(--cc-gleam),var(--cc-pane)!important;border:1px solid var(--cc-edge)!important;
+ box-shadow:var(--cc-shadow)!important;border-radius:12px!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral] .board .card:has(.alerts)>.gridKpi>.kpi .lab{
+ font-size:11px!important;font-weight:750!important;color:var(--cc-muted)!important;line-height:1.1!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral] .board .card:has(.alerts)>.gridKpi>.kpi .val{
+ font-size:clamp(17px,1.2vw,23px)!important;color:var(--cc-ink)!important;
+ font-variant-numeric:tabular-nums!important;letter-spacing:-.035em!important;
+ white-space:nowrap!important;word-break:normal!important;overflow-wrap:normal!important;
+ line-height:1.05!important;overflow:visible!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral] .board .card:has(.alerts)>.gridKpi>.kpi .hint{
+ display:block!important;font-size:10px!important;color:var(--cc-muted)!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .year-compare-kpi strong{
+ font-size:clamp(15px,1.12vw,22px)!important;white-space:nowrap!important;
+ overflow:visible!important;max-width:100%!important;font-variant-numeric:tabular-nums!important;
+}
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .year-compare-card .chartBox,
+html body.cx-report-glass.cx-command-center .dashboard-tab-panel .year-compare-charts .chartBox{
+ min-height:250px!important;height:clamp(250px,36vh,390px)!important;max-height:390px!important;
+}
+html body.cx-report-glass.cx-command-center.dark-mode .dashboard-tab-panel .chartBox canvas{
+ filter:none!important;opacity:1!important;
+}
+@media(max-width:820px){
+ html body.cx-report-glass.cx-command-center .dashboard-tab-panel[data-panel=geral] .board .card:has(.alerts)>.gridKpi{
+  grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ }
+}
