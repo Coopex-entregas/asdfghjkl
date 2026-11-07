@@ -28,15 +28,21 @@ def install(app):
         with _LOCK:
             if _CACHE["payload"] is not None and now - _CACHE["at"] < _TTL:
                 return jsonify(_CACHE["payload"])
-            url = "https://api.tomtom.com/traffic/services/5/incidentDetails?" + urlencode({
-                "key": key,
+            # Traffic API Orbis v2 é o produto disponível no portal TomTom atual.
+            url = "https://api.tomtom.com/maps/orbis/traffic/incidents/details?" + urlencode({
                 "bbox": _BBOX,
-                "fields": _FIELDS,
-                "language": "pt-PT",
-                "timeValidityFilter": "present",
+                "apiVersion": 2,
+                "timeValidity": "present",
             })
             try:
-                req = Request(url, headers={"Accept": "application/json", "User-Agent": "COOPEX-Traffic/1.0"})
+                req = Request(url, headers={
+                    "Accept": "application/json",
+                    "TomTom-Api-Key": key,
+                    "TomTom-Api-Version": "2",
+                    "Attributes": "incidents(type,geometry(type,coordinates),properties(id,iconCategory,events(description),from,to,delayInSeconds))",
+                    "Accept-Language": "pt-PT",
+                    "User-Agent": "COOPEX-Traffic/2.0",
+                })
                 with urlopen(req, timeout=9) as response:
                     raw = json.loads(response.read(1024 * 1024))
                 incidents = raw.get("incidents", []) if isinstance(raw, dict) else []
@@ -59,11 +65,11 @@ def install(app):
                             "description": title or "Ocorrência no trânsito",
                             "from": str(props.get("from", ""))[:140],
                             "to": str(props.get("to", ""))[:140],
-                            "delay": props.get("delay"),
+                            "delay": props.get("delayInSeconds"),
                         }
                     })
                 payload = {
-                    "ok": True, "source": "TomTom Traffic",
+                    "ok": True, "source": "TomTom Traffic Orbis v2",
                     "updated_at": int(time.time()),
                     "refresh_after_seconds": _TTL,
                     "bbox": _BBOX,
