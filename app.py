@@ -6250,10 +6250,10 @@ def api_cooperado_localizacao_status():
 
     cooperado_id = session['user_id']
     info = _get_live_location(cooperado_id)
+    coop = Cooperado.query.get(cooperado_id)
+    presente = bool(coop and coop.online and _coopex_online_recente(coop.last_ping))
 
     if not info or info.get('lat') is None or info.get('lng') is None:
-        coop = Cooperado.query.get(cooperado_id)
-        presente = bool(coop and coop.online and _coopex_online_recente(coop.last_ping))
         return jsonify({
             'ok': True,
             'tem_localizacao': False,
@@ -6264,14 +6264,14 @@ def api_cooperado_localizacao_status():
     return jsonify({
         'ok': True,
         'tem_localizacao': True,
-        'online': bool(info.get('online')),
+        'online': bool(info.get('online') or presente),
         'latitude': info.get('lat'),
         'longitude': info.get('lng'),
         'accuracy': info.get('accuracy'),
         'speed': info.get('speed'),
         'heading': info.get('heading'),
         'atualizado_em': info.get('ultima_atualizacao') or '',
-        'mensagem': 'Localização ativa' if info.get('online') else 'Aguardando nova localização...',
+        'mensagem': 'Localização ativa' if info.get('online') else 'Online no painel; GPS aguardando' if presente else 'Aguardando nova localização...',
         'modo': 'memoria_sem_salvar_banco',
     }), 200
 
