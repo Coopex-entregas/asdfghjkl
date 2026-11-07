@@ -47,3 +47,15 @@ body.cx-waze-mode .leaflet-container{visibility:hidden}body.cx-waze-mode #cx-sel
 @media(max-width:1020px){.tool-rail{top:58px;right:10px;max-width:calc(100vw - 20px)}.top-mini{top:9px;left:10px}.left-search{top:105px;left:10px}#cx-search-address{top:182px;left:10px}#cx-tools{top:10px;right:10px;max-width:calc(100vw - 220px)}#cx-selected{top:245px;right:10px}#cx-weather{right:10px;bottom:10px}.leaflet-top.leaflet-left{top:250px}}
 @media(max-width:600px){.top-mini{max-width:160px;padding:9px 10px}.top-mini .title{font-size:.78rem}.top-mini .sub{font-size:.59rem}.tool-rail{top:53px}.mini-icon,.filter-icon{height:31px;padding:0 9px;font-size:.7rem}.left-search{top:96px;width:215px}.left-search .input{height:33px}#cx-tools{top:10px;max-width:calc(100vw - 182px)}#cx-tools .cx-btn{padding:8px;font-size:.68rem}#cx-search-address{top:164px;width:min(260px,calc(100vw - 20px))}#cx-selected{top:235px;right:9px}#cx-weather{bottom:9px;right:9px;width:170px;padding:9px;font-size:.69rem}#cx-weather-msg{max-height:57px;overflow:auto}.cx-weather-temp{font-size:1.15rem}.kpi-strip{left:9px;bottom:9px}.stat-pill{min-width:52px;padding:7px}.stat-pill .v{font-size:.92rem}.stat-pill .k{font-size:.57rem}.leaflet-top.leaflet-left{top:215px}}
 @media(prefers-reduced-motion:reduce){.cx-drop{animation:none;display:none}.mini-icon,.filter-icon{transition:none}}
+
+/* Waze principal e rastreamento simultâneo em mini-mapa GPS. */
+body.cx-waze-mode .leaflet-container{visibility:visible!important}
+body.cx-waze-mode #map{position:fixed!important;inset:auto auto 20px 18px!important;width:360px!important;height:240px!important;z-index:705!important;border:2px solid rgba(255,255,255,.95)!important;border-radius:22px!important;overflow:hidden!important;box-shadow:0 20px 65px rgba(13,37,78,.35)!important;backdrop-filter:blur(15px)!important}
+body.cx-waze-mode .kpi-strip{bottom:270px!important;z-index:710!important}
+body.cx-waze-mode .leaflet-top.leaflet-left{top:2px}
+body.cx-waze-mode #cx-selected{display:none}
+body.cx-waze-mode #cx-waze-note{bottom:18px;left:50%;max-width:390px}
+body.cx-waze-mode .top-mini .title::after{content:" · Waze ao vivo"}
+body.cx-waze-mode #cx-waze iframe{background:#dceafa}
+body.cx-waze-mode #cx-tools{z-index:715}
+@media(max-width:760px){body.cx-waze-mode #map{left:9px!important;bottom:9px!important;width:min(48vw,225px)!important;height:190px!important;border-radius:16px!important}body.cx-waze-mode .kpi-strip{bottom:204px!important;left:9px!important}body.cx-waze-mode #cx-waze-note{display:none}body.cx-waze-mode #cx-weather{bottom:9px;right:9px;max-width:45vw}}
