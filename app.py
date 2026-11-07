@@ -1023,12 +1023,12 @@ def emitir_lista_espera():
             .all()
         )
         payload = []
-        for item in itens:
+        for index, item in enumerate(itens, start=1):
             payload.append({
                 "id": item.id,
                 "cooperado_id": item.cooperado_id,
                 "nome": item.cooperado.nome if item.cooperado else item.nome,
-                "pos": item.pos,
+                "pos": index,
                 "created_at": to_brasilia(item.created_at).strftime('%d/%m %H:%M')
                               if item.created_at else "",
             })
