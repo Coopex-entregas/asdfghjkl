@@ -15,6 +15,13 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_delivery_glass.css') }}">
 </head>
 <body class="cx-page cx-delivery-glass">
+<script id="cx-delivery-early-theme">
+(function(){try{
+ const value=localStorage.getItem('cx_sup_brightness');
+ const dark=value===null?localStorage.getItem('coopex_theme')==='dark':Number(value)<80;
+ document.body.classList.toggle('dark',dark);
+}catch(e){}})();
+</script>
 <header class="cx-topbar">
   <a class="cx-back-arrow" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a>
   <div class="cx-brand"><div class="cx-brand-title"><strong>Entrega rápida</strong><small>Cadastro em poucos segundos</small></div></div>
