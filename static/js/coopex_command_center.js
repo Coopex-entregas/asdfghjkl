@@ -59,23 +59,51 @@ function formatKpis(){
 }
 function chartColors(){
  const dark=document.body.classList.contains('dark-mode');
- const ink=dark?'#d6e9fc':'#36597e';
- const grid=dark?'rgba(178,213,243,.13)':'rgba(64,115,170,.12)';
+ const ink=dark?'#d9eaff':'#355b84';
+ const grid=dark?'rgba(182,218,247,.105)':'rgba(57,111,169,.12)';
  try{
   if(!window.Chart)return;
   const charts=window.Chart.instances?Object.values(window.Chart.instances):[];
   charts.forEach(chart=>{
-   if(!chart||!chart.options)return;
+   if(!chart?.options)return;
    const scales=chart.options.scales||{};
    Object.values(scales).forEach(axis=>{
     if(!axis)return;
-    axis.grid=axis.grid||{};axis.grid.color=grid;axis.grid.lineWidth=.7;
-    axis.ticks=axis.ticks||{};axis.ticks.color=ink;axis.ticks.font={size:11,weight:'500'};
+    axis.grid=axis.grid||{};
+    axis.grid.color=grid;axis.grid.lineWidth=.6;
+    axis.ticks=axis.ticks||{};
+    axis.ticks.color=ink;axis.ticks.font={size:11,weight:'600'};
+    axis.title=axis.title||{};axis.title.color=ink;
     axis.border=axis.border||{};axis.border.color=grid;
    });
-   if(chart.options.plugins?.legend?.labels){
-    chart.options.plugins.legend.labels.color=ink;
-   }
+   chart.options.plugins=chart.options.plugins||{};
+   chart.options.plugins.legend=chart.options.plugins.legend||{};
+   chart.options.plugins.legend.labels=chart.options.plugins.legend.labels||{};
+   chart.options.plugins.legend.labels.color=ink;
+   chart.options.plugins.legend.labels.font={size:11,weight:'700'};
+   chart.options.plugins.tooltip=chart.options.plugins.tooltip||{};
+   chart.options.plugins.tooltip.backgroundColor=dark?'rgba(7,29,53,.98)':'rgba(19,55,92,.96)';
+   chart.options.plugins.tooltip.titleColor='#f5fbff';
+   chart.options.plugins.tooltip.bodyColor='#e1f2ff';
+   chart.data?.datasets?.forEach((d,i)=>{
+     if(chart.config.type==='doughnut') {
+      d.borderColor=dark?'#163958':'#f1f8ff';
+      return;
+     }
+     if(d.type==='line'||chart.config.type==='line'){
+      d.borderColor=dark?'#79d7ff':'#177ec0';
+      d.backgroundColor=d.borderColor;
+      d.pointBackgroundColor=d.borderColor;
+      d.borderWidth=2.6;d.tension=.36;
+      d.pointRadius=chart.data.labels?.length>15?1.5:3;
+     }else if(chart.canvas?.id==='chartDia'){
+      d.backgroundColor=dark?'#42c7a6':'#20aa86';
+      d.borderRadius=7;d.maxBarThickness=36;
+     }else{
+      d.backgroundColor=i===0?(dark?'#5aa8ee':'#276db5'):(dark?'#44c7ad':'#19a37d');
+      d.borderRadius=7;
+     }
+   });
    chart.update('none');
   });
  }catch(e){}
