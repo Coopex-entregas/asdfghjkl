@@ -296,7 +296,7 @@ function setAddressMode(enabled){
  applySearchVisibility();
 }
 $("sideToggle").onclick=()=>document.body.classList.add("cx-side-collapsed");
-$("sideExpand").onclick=()=>document.body.classList.remove("cx-side-collapsed");
+$("sideExpand").onclick=()=>setAddressMode(true);
 $("sideSearchAddress").onclick=()=>setAddressMode(true);
 $("addressToggle").onclick=()=>setAddressMode(true);
 $("addressClose").onclick=()=>setAddressMode(false);
