@@ -1525,12 +1525,13 @@ def _registrar_localizacao_em_memoria(auth_info, lat, lng, acc=None, spd=None, h
     # Grava apenas um retrato GPS periódico para manter a última posição após
     # desconexão ou reinício do servidor, sem gravar cada ping recebido.
     last_saved_ts = float((anterior or {}).get('last_saved_ts') or 0)
-    if agora_ts - last_saved_ts >= 180:
+    if agora_ts - last_saved_ts >= 75:
         try:
             db.session.query(Cooperado).filter(Cooperado.id == coop_id).update({
                 Cooperado.last_lat: float(lat),
                 Cooperado.last_lng: float(lng),
                 Cooperado.last_ping: agora_dt,
+                Cooperado.online: True,
                 Cooperado.last_speed_kmh: float(spd) if spd is not None else None,
                 Cooperado.last_heading: float(hdg) if hdg is not None else None,
                 Cooperado.last_accuracy_m: float(acc) if acc is not None else None,
