@@ -75,7 +75,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         dist=meters(item['latitude'],item['longitude'],lat,lng)
         # Considerar incerteza: não aceitar se o círculo de precisão alcançar fora do raio.
         if dist+precision>100:
-            return jsonify(ok=False,erro='Você precisa estar dentro do raio de 100 metros da base.',distancia_m=round(dist),precisao_m=round(precision)),403
+            return jsonify(ok=False,erro='Você só poderá entrar na fila quando chegar à base da COOPEX (até 100 metros). Aproxime-se da base e tente novamente.',distancia_m=round(dist),precisao_m=round(precision)),403
         existente=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
         if existente:
             # Estado confirmado no mesmo banco da fila exibida pelo Admin.
