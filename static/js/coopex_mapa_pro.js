@@ -52,7 +52,7 @@ $("cx-find").addEventListener("click",searchAddress);$("cx-address").addEventLis
 document.addEventListener("click",function(e){if(!search.contains(e.target))$("cx-results").classList.remove("open");});
 /* As informações meteorológicas são previsões, nunca prova de chuva no ponto GPS. */
 function precipClass(code){code=String(code||"");if(/thunder|heavyrain|heavysleet|heavysnow/.test(code))return 3;if(/rain|sleet|showers/.test(code))return 2;if(/drizzle/.test(code))return 1;return 0;}
-function setWeatherFx(level){weatherLevel=level;body.classList.toggle("cx-rainy",level>0);body.classList.toggle("cx-heavy-rain",level>=3);fx.querySelectorAll(".cx-drop").forEach(function(x){x.remove();});if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var count=[0,12,35,75][level]||0;for(var j=0;j<count;j++){var d=el("i",{class:"cx-drop"});d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.3)+"s";fx.appendChild(d);}}
+function setWeatherFx(level){weatherLevel=level;body.classList.toggle("cx-rainy",level>0);body.classList.toggle("cx-heavy-rain",level>=3);fx.querySelectorAll(".cx-drop").forEach(function(x){x.remove();});if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;var count=[0,8,18,35][level]||0;for(var j=0;j<count;j++){var d=el("i",{class:"cx-drop"});d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.3)+"s";fx.appendChild(d);}}
 function dayPhase(){
  var hr=Number(new Intl.DateTimeFormat("en-GB",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date()));
  var night=hr<5||hr>=18, dusk=(hr>=5&&hr<6)||(hr>=17&&hr<18);
@@ -63,6 +63,32 @@ function dayPhase(){
 async function updateWeather(){try{var r=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-5.7945&lon=-35.2110",{headers:{"Accept":"application/json"}});if(!r.ok)throw Error("Previsão indisponível");var data=await r.json();var point=data.properties.timeseries[0];var details=point.data.instant.details;var hour=point.data.next_1_hours||point.data.next_6_hours||{};var symbol=hour.summary&&hour.summary.symbol_code||"";var rain=hour.details&&hour.details.precipitation_amount;var level=precipClass(symbol);if(typeof rain==="number"){if(rain>=6)level=3;else if(rain>=2)level=Math.max(level,2);else if(rain>0)level=Math.max(level,1);}
 $("cx-weather-temp").textContent=Math.round(details.air_temperature)+"°";var labels=["Sem chuva prevista na próxima hora.","Possibilidade de garoa. Atenção à pista molhada.","Previsão de chuva: pode haver deslocamentos mais lentos.","Previsão de chuva intensa: atenção à visibilidade e áreas alagadas."];var txt=labels[level];if(typeof rain==="number")txt+=" Precipitação estimada: "+rain.toFixed(1)+" mm.";txt+=" Não é confirmação de congestionamento."; $("cx-weather-msg").textContent=txt;setWeatherFx(level);
 }catch(e){$("cx-weather-msg").textContent="Previsão indisponível no momento. Consulte o trânsito no Waze.";setWeatherFx(0);}dayPhase();}
+
+/* Interface compacta: controles secundários dentro de menu recolhível. */
+(function(){
+ const rail=document.querySelector(".tool-rail"), extras=document.getElementById("cx-tools");
+ if(!rail||!extras)return;
+ const menu=document.createElement("div");menu.id="cx-menu";menu.className="card";
+ menu.innerHTML='<button type="button" id="cx-menu-toggle" aria-expanded="false" aria-controls="cx-menu-panel" title="Ferramentas do mapa">☷ Ferramentas <span aria-hidden="true">⌄</span></button><div id="cx-menu-panel" hidden></div>';
+ document.querySelector(".overlay").append(menu);
+ const panel=menu.querySelector("#cx-menu-panel");
+ const movingIds=["btnFollowSelected","btnClearFollow","btnFitAll","btnRefresh"];
+ movingIds.forEach(id=>{const node=document.getElementById(id);if(node)panel.append(node);});
+ Array.from(extras.children).forEach(node=>panel.append(node));
+ extras.remove();
+ // Busca de endereços aparece quando o operador precisa, não cobre o mapa permanentemente.
+ const address=document.getElementById("cx-search-address");
+ if(address){address.classList.add("cx-collapsed");const trigger=document.createElement("button");trigger.type="button";trigger.id="cx-address-toggle";trigger.className="mini-icon";trigger.textContent="⌕ Endereço";trigger.setAttribute("aria-expanded","false");rail.append(trigger);trigger.addEventListener("click",()=>{const open=address.classList.toggle("cx-collapsed")===false;trigger.setAttribute("aria-expanded",String(open));if(open)document.getElementById("cx-address").focus();});}
+ const toggle=menu.querySelector("#cx-menu-toggle");
+ toggle.addEventListener("click",()=>{const open=panel.hidden;panel.hidden=!open;toggle.setAttribute("aria-expanded",String(open));});
+ document.addEventListener("keydown",e=>{if(e.key==="Escape"){panel.hidden=true;toggle.setAttribute("aria-expanded","false");}});
+ document.addEventListener("click",e=>{if(!menu.contains(e.target)){panel.hidden=true;toggle.setAttribute("aria-expanded","false");}});
+ // Fecha o painel ao escolher uma ferramenta, sem remover seus listeners existentes.
+ panel.addEventListener("click",e=>{if(e.target.closest("button")){panel.hidden=true;toggle.setAttribute("aria-expanded","false");}});
+ // Sempre garante uma única camada raster, evitando Carto ou mapas antigos em paralelo.
+ try{renderMapLighting();}catch(_){}
+})();
+
 dayPhase();
 toggleMode("coopex");
 updateWeather();setInterval(updateWeather,20*60*1000);setInterval(dayPhase,60*1000);
