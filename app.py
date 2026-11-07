@@ -5934,8 +5934,13 @@ def cooperado_aceitar_entrega():
     entrega.status = "em_andamento"   # usa o mesmo campo que você já usa no sistema
     entrega.status_corrida = "aceita"
     entrega.data_atribuida = datetime.utcnow()
-
+    # Aceite de entrega também retira o cooperado da fila e publica LED.
+    coop_atribuido = Cooperado.query.get(cooperado_id)
+    if coop_atribuido:
+        remover_cooperado_da_fila(coop_atribuido, commit=False)
     db.session.commit()
+    emitir_lista_espera()
+    emitir_atualizacao_entrega(entrega, 'atribuida')
 
     entrega_json = {
         "id": entrega.id,
@@ -8005,9 +8010,13 @@ def cadastrar_entrega():
         db.session.add(entrega)
 
         if cooperado_id:
-            ListaEspera.query.filter_by(cooperado_id=int(cooperado_id)).delete()
+            coop_atribuido = Cooperado.query.get(int(cooperado_id))
+            if coop_atribuido:
+                remover_cooperado_da_fila(coop_atribuido, commit=False)
 
         db.session.commit()
+        if cooperado_id:
+            emitir_lista_espera()
 
         # COOPEX_ATRIB_AUTO_CADASTRAR_ENTREGA
         # Se o automático estiver ligado, uma entrega nova sem cooperado pode ser atribuída sozinha.
@@ -8346,7 +8355,9 @@ def editar_entrega(id):
                 if entrega.cooperado_id != novo_coop_id:
                     entrega.cooperado_id = novo_coop_id
                     entrega.data_atribuida = datetime.utcnow()
-                    ListaEspera.query.filter_by(cooperado_id=novo_coop_id).delete()
+                    coop_atribuido = Cooperado.query.get(novo_coop_id)
+                    if coop_atribuido:
+                        remover_cooperado_da_fila(coop_atribuido, commit=False)
             else:
                 entrega.cooperado_id = None
 
@@ -8362,6 +8373,8 @@ def editar_entrega(id):
             ).strip()
 
             db.session.commit()
+            if novo_coop_id:
+                emitir_lista_espera()
 
             try:
                 # Sincroniza crédito sempre após edição:
