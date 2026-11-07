@@ -153,3 +153,104 @@ body.cx-creditos-glass .debit{color:#ed566d!important}
  body.cx-creditos-glass .wrap{padding:10px!important}
  body.cx-creditos-glass .summary{grid-template-columns:1fr!important}
 }
+
+/* CREDITOS PROFISSIONAL — template que realmente atende /creditos */
+body.cx-creditos-pro{
+ --pro-ink:#f4faff;--pro-muted:#c1def9;--pro-edge:rgba(158,211,251,.62);
+ --pro-glass:linear-gradient(124deg,rgba(187,225,255,.27),rgba(122,190,251,.12) 27%,rgba(16,68,122,.16) 72%,rgba(169,222,255,.19));
+ --pro-fill:rgba(39,91,142,.38);
+ --pro-depth:inset 0 2px 3px rgba(226,246,255,.31),inset 0 -4px 9px rgba(0,24,51,.29),0 6px 0 rgba(0,15,33,.45),0 16px 30px rgba(0,15,40,.42);
+ --bg:#092442;--card:#183b61;--card-2:#244b71;--text:var(--pro-ink);--muted:var(--pro-muted);--line:var(--pro-edge);--line-strong:var(--pro-edge);
+ min-height:100vh!important;background:radial-gradient(ellipse at 16% 0%,rgba(85,162,228,.31),transparent 57%),linear-gradient(148deg,#061b34,#103758 67%,#081f3d)!important;color:var(--pro-ink)!important;
+}
+body.cx-creditos-pro:not(.dark){
+ --pro-ink:#12396e;--pro-muted:#527ba4;--pro-edge:rgba(255,255,255,.95);
+ --pro-glass:linear-gradient(120deg,rgba(255,255,255,.78),rgba(231,249,255,.33) 26%,rgba(137,202,255,.20) 66%,rgba(255,255,255,.45));
+ --pro-fill:rgba(206,232,255,.57);
+ --pro-depth:inset 0 2px 3px rgba(255,255,255,.94),inset 0 -3px 7px rgba(33,104,169,.14),0 5px 0 rgba(62,131,198,.14),0 14px 26px rgba(12,59,116,.17);
+ --bg:#e2f2ff;--card:#dbedfb;--card-2:#d0e6f9;--text:var(--pro-ink);--muted:var(--pro-muted);--line:var(--pro-edge);--line-strong:var(--pro-edge);
+ background:radial-gradient(ellipse at 16% 0%,rgba(107,186,251,.29),transparent 58%),linear-gradient(148deg,#f3faff,#cde7fc)!important;color:var(--pro-ink)!important;
+}
+body.cx-creditos-pro.dark{color-scheme:dark!important}
+body.cx-creditos-pro .topbar{
+ min-height:62px!important;padding:9px clamp(12px,1.25vw,24px)!important;gap:12px!important;
+ background:linear-gradient(130deg,#2c70b4,#184b80 55%,#10375f)!important;
+ border-bottom:1px solid rgba(204,235,255,.61)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.34),inset 0 -3px 7px rgba(0,25,65,.23),0 7px 18px rgba(0,24,65,.33)!important;
+}
+body.cx-creditos-pro .cg-back{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:40px!important;min-width:40px!important;height:40px!important;text-decoration:none!important;
+ color:white!important;-webkit-text-fill-color:white!important;font:bold 27px/1 system-ui!important;
+ border:1px solid rgba(236,250,255,.75)!important;border-radius:12px!important;
+ background:linear-gradient(130deg,rgba(255,255,255,.35),rgba(166,218,254,.12))!important;
+ box-shadow:inset 0 2px 4px rgba(255,255,255,.41),0 4px 11px rgba(0,27,72,.35)!important;
+}
+body.cx-creditos-pro .brand-text strong{color:#f4fbff!important}
+body.cx-creditos-pro .brand-text small{color:#d3eaff!important}
+body.cx-creditos-pro #theme{display:none!important}
+body.cx-creditos-pro .topbar .btn.light{
+ color:#f7fbff!important;background:linear-gradient(135deg,rgba(255,255,255,.29),rgba(122,185,239,.13))!important;
+ border:1px solid rgba(227,244,255,.59)!important;
+ box-shadow:inset 0 2px 3px rgba(255,255,255,.27),0 3px 10px rgba(0,26,71,.2)!important;
+}
+body.cx-creditos-pro .workspace{
+ width:100%!important;max-width:none!important;margin:0!important;
+ grid-template-columns:minmax(290px,22%) minmax(0,1fr)!important;
+ padding:clamp(12px,1.13vw,21px)!important;gap:clamp(12px,1.1vw,20px)!important;
+}
+body.cx-creditos-pro :is(.card,.metric,.client-card,.count-badge,.mini,.flash,.credit-status,.client-picker-results){
+ background:var(--pro-glass),var(--pro-fill)!important;
+ border:1px solid var(--pro-edge)!important;border-radius:17px!important;
+ box-shadow:var(--pro-depth)!important;color:var(--pro-ink)!important;
+ backdrop-filter:blur(15px) saturate(1.17)!important;-webkit-backdrop-filter:blur(15px) saturate(1.17)!important;
+}
+body.cx-creditos-pro .card-head{
+ background:linear-gradient(125deg,rgba(228,246,255,.19),rgba(83,160,230,.10))!important;
+ border-bottom:1px solid var(--pro-edge)!important;
+ box-shadow:inset 0 2px 3px rgba(246,253,255,.22)!important;
+}
+body.cx-creditos-pro :is(.card-head h1,.card-head h2,.export-title strong,.client-name,.balance-box,.metric small,.export-title small,.card-head p,.metric span){
+ color:var(--pro-ink)!important;
+}
+body.cx-creditos-pro :is(.card-head p,.export-title small,.metric span,.balance-box small){color:var(--pro-muted)!important}
+body.cx-creditos-pro .metric{min-height:118px!important;padding-top:18px!important}
+body.cx-creditos-pro .metric strong{font-size:clamp(17px,1.25vw,24px)!important}
+body.cx-creditos-pro .metric:nth-child(2) strong,body.cx-creditos-pro .metric:nth-child(4) strong{color:var(--pro-ink)!important}
+body.cx-creditos-pro .client-card{border-radius:14px!important;box-shadow:inset 0 2px 3px rgba(244,253,255,.18),0 4px 11px rgba(2,33,79,.13)!important}
+body.cx-creditos-pro .client-summary{
+ background:linear-gradient(115deg,rgba(170,221,255,.16),rgba(70,149,225,.075))!important;color:var(--pro-ink)!important;
+}
+body.cx-creditos-pro .client-summary:hover{background:linear-gradient(115deg,rgba(168,220,255,.30),rgba(82,165,235,.19))!important}
+body.cx-creditos-pro :is(.control,input,select){
+ border:1px solid var(--pro-edge)!important;border-radius:11px!important;
+ background:linear-gradient(120deg,rgba(182,222,252,.23),rgba(72,154,225,.09)),var(--pro-fill)!important;
+ color:var(--pro-ink)!important;-webkit-text-fill-color:var(--pro-ink)!important;
+ box-shadow:inset 0 2px 5px rgba(4,39,86,.17),0 3px 8px rgba(4,36,81,.10)!important;
+}
+body.cx-creditos-pro:not(.dark) :is(.control,input,select){background:linear-gradient(120deg,rgba(255,255,255,.74),rgba(197,231,253,.51))!important}
+body.cx-creditos-pro :is(input,.control)::placeholder{color:var(--pro-muted)!important;-webkit-text-fill-color:var(--pro-muted)!important}
+body.cx-creditos-pro .field label,body.cx-creditos-pro .export-field label{color:var(--pro-ink)!important}
+body.cx-creditos-pro .btn{
+ border-radius:11px!important;
+ box-shadow:inset 0 2px 4px rgba(242,253,255,.34),inset 0 -3px 6px rgba(0,28,76,.22),0 4px 10px rgba(2,39,93,.24)!important;
+}
+body.cx-creditos-pro .btn:not(.light):not(.danger){
+ background:linear-gradient(145deg,#3e91f4,#1d59cb 53%,#103c9b)!important;color:#fff!important;
+}
+body.cx-creditos-pro .btn.light{
+ background:var(--pro-glass),rgba(126,185,240,.18)!important;
+ color:var(--pro-ink)!important;border:1px solid var(--pro-edge)!important;
+}
+body.cx-creditos-pro .clients-grid{gap:12px!important;padding:clamp(12px,1.1vw,19px)!important}
+body.cx-creditos-pro :is(.mini,.count-badge){border-radius:10px!important;color:var(--pro-ink)!important}
+body.cx-creditos-pro table th{
+ background:linear-gradient(140deg,#4e89bc,#245480 60%,#103b66)!important;color:#fff!important;
+ border-bottom:1px solid rgba(208,238,255,.4)!important;
+}
+body.cx-creditos-pro table td{border-color:rgba(167,211,250,.30)!important;color:var(--pro-ink)!important}
+body.cx-creditos-pro .export-card{gap:clamp(9px,1vw,17px)!important}
+@media(max-width:1020px){
+ body.cx-creditos-pro .workspace{grid-template-columns:minmax(0,1fr)!important}
+ body.cx-creditos-pro .register-card{position:static!important}
+}
