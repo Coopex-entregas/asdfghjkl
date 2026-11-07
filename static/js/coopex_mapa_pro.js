@@ -8,10 +8,10 @@ function el(tag,attrs,html){var n=document.createElement(tag);if(attrs)Object.ke
 function safe(t){return String(t==null?"":t).replace(/[&<>"']/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c];});}
 function getInitials(name){return String(name||"Cooperado").trim().split(/\s+/).filter(Boolean).slice(0,2).map(function(s){return s[0].toLocaleUpperCase("pt-BR");}).join("");}
 function button(id,label){return '<button class="cx-btn" id="'+id+'" type="button">'+label+'</button>';}
-var waze=el("section",{id:"cx-waze","aria-label":"Mapa de trânsito do Waze"},'<iframe title="Waze Live Map — trânsito de Natal" loading="lazy" referrerpolicy="strict-origin-when-cross-origin"></iframe><div id="cx-waze-note" class="card">Trânsito e ocorrências exibidos pelo Waze. Os marcadores da COOPEX estão disponíveis em <b>Cooperados</b>.</div>');body.insertBefore(waze,overlay);
+
 var search=el("section",{id:"cx-search-address",class:"card"},'<label for="cx-address">⌕ Buscar rua, endereço ou bairro de Natal</label><div class="cx-address-line"><input id="cx-address" type="search" autocomplete="off" placeholder="Rua, bairro, número..."><button class="cx-btn primary" id="cx-find" type="button">Buscar</button></div><div id="cx-results" role="listbox"></div>');
 overlay.appendChild(search);
-var tools=el("div",{id:"cx-tools"},button("cx-base","🗺 Ruas")+button("cx-satellite","🛰 Satélite")+button("cx-traffic","🚦 Trânsito")+button("cx-coop","🛵 Cooperados")+button("cx-routes","↗ Rotas")+button("cx-location","◎ Local"));
+var tools=el("div",{id:"cx-tools"},button("cx-base","🗺 Ruas")+button("cx-satellite","🛰 Satélite")+button("cx-routes","↗ Rotas")+button("cx-location","◎ Local"));
 overlay.appendChild(tools);
 var weather=el("div",{id:"cx-weather",class:"card"},'<div class="cx-weather-head"><strong>☁ Clima • Natal/RN</strong><span id="cx-weather-temp" class="cx-weather-temp">—</span></div><div id="cx-weather-msg">Consultando a previsão...</div><small id="cx-weather-credit">Fonte: <a href="https://www.met.no/en" target="_blank" rel="noopener">MET Norway</a> · previsão estimada</small>');
 overlay.appendChild(weather);
@@ -21,22 +21,15 @@ var fx=el("div",{id:"cx-weatherfx","aria-hidden":"true"});body.appendChild(fx);
 var msg=el("div",{id:"cx-map-alert",class:"card","aria-live":"polite"});body.appendChild(msg);
 var street=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:20,maxNativeZoom:19,attribution:'&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
 var satellite=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,maxNativeZoom:18,attribution:'Tiles &copy; Esri — World Imagery'});
-var isWaze=false, selectedItem=null, placeMarker=null, placePoint=null, weatherLevel=0;
-var darkTiles=L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",{maxZoom:20,maxNativeZoom:19,attribution:'&copy; <a href="https://carto.com/attributions">CARTO</a> &copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'});
+var selectedItem=null, placeMarker=null, placePoint=null, weatherLevel=0;
 var userChoseSatellite=false;
 function renderMapLighting(){
-  var night=body.classList.contains("cx-night"), cloudy=body.classList.contains("cx-rainy");
-  if(userChoseSatellite)return;
-  map.eachLayer(function(layer){
-    if(layer instanceof L.TileLayer && layer!==darkTiles && layer!==street)map.removeLayer(layer);
-  });
-  if(night){if(map.hasLayer(street))map.removeLayer(street);if(!map.hasLayer(darkTiles))darkTiles.addTo(map);}
-  else {if(map.hasLayer(darkTiles))map.removeLayer(darkTiles);if(!map.hasLayer(street))street.addTo(map);}
+ if(userChoseSatellite)return;
+ map.eachLayer(function(layer){if(layer instanceof L.TileLayer && layer!==street)map.removeLayer(layer);});
+ if(!map.hasLayer(street))street.addTo(map);
 }
 function alertBrief(t){msg.textContent=t;msg.classList.add("show");clearTimeout(alertBrief.timer);alertBrief.timer=setTimeout(function(){msg.classList.remove("show");},5500);}
-function toggleMode(mode){isWaze=mode==="waze";waze.classList.toggle("open",isWaze);body.classList.toggle("cx-waze-mode",isWaze);$("cx-traffic").classList.toggle("active",isWaze);$("cx-coop").classList.toggle("active",!isWaze);if(isWaze){setTimeout(function(){map.invalidateSize();},150);var c=map.getCenter();var z=Math.max(3,Math.min(17,Math.round(map.getZoom())));waze.querySelector("iframe").src="https://embed.waze.com/iframe?zoom="+z+"&lat="+c.lat.toFixed(6)+"&lon="+c.lng.toFixed(6);}else{setTimeout(function(){map.invalidateSize();},150);}}
-$("cx-traffic").addEventListener("click",function(){toggleMode("waze");});
-$("cx-coop").addEventListener("click",function(){toggleMode("coopex");});
+function toggleMode(mode){setTimeout(function(){map.invalidateSize();},100);}
 $("cx-base").addEventListener("click",function(){toggleMode("coopex");userChoseSatellite=false;if(map.hasLayer(satellite))map.removeLayer(satellite);renderMapLighting();});
 $("cx-satellite").addEventListener("click",function(){toggleMode("coopex");userChoseSatellite=true;map.eachLayer(function(layer){if(layer instanceof L.TileLayer && layer!==satellite)map.removeLayer(layer);});satellite.addTo(map);});
 $("cx-location").addEventListener("click",function(){toggleMode("coopex");if(!navigator.geolocation){alertBrief("Localização indisponível neste navegador.");return;}navigator.geolocation.getCurrentPosition(function(p){map.setView([p.coords.latitude,p.coords.longitude],16);},function(){alertBrief("Autorize a localização do navegador para centralizar o mapa.");},{enableHighAccuracy:true,timeout:10000});});
