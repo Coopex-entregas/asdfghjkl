@@ -14,12 +14,14 @@ if(typeof key!=="string"||!key.trim()){
  return;
 }
 window.gm_authFailure=()=>{
+ authFailed=true;
+ document.body.classList.remove("cx-google-ready");
  document.body.classList.add("cx-google-error");
  reportGoogleStatus("Google recusou a chave. Confira se Maps JavaScript API está ativada, faturamento e restrição de site no Google Cloud.");
 };
 const googleRoot=document.getElementById("googleMap");
 if(!googleRoot)return;
-let googleMap=null,tilesVisible=false;
+let googleMap=null,tilesVisible=false,authFailed=false,loadFinished=false;
 const markers=new Map(),lastPositions=new Map();
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
@@ -114,27 +116,38 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    rotateControl:false,gestureHandling:"greedy",
    clickableIcons:true
   });
+  function finishGoogleLoad(){
+   if(loadFinished||authFailed)return;
+   const styled=!!googleRoot.querySelector(".gm-style");
+   const size=googleRoot.getBoundingClientRect();
+   if(!styled||size.width<100||size.height<100)return;
+   loadFinished=true;tilesVisible=true;
+   updateMarkers(lastItems,selectedId);
+   document.body.classList.remove("cx-google-error");
+   document.body.classList.add("cx-google-ready");
+   const statusNode=document.getElementById("googleMapStatus");
+   if(statusNode)statusNode.hidden=true;
+   window.dispatchEvent(new CustomEvent("coopex:google-ready"));
+  }
+  // Os mapas vetoriais recentes do Google podem não emitir tilesloaded.
+  // O evento idle é a confirmação de que o mapa terminou a primeira renderização.
   googleMap.addListener("idle",()=>{
    const pos=googleMap.getCenter();
-   if(!pos||!window.COOPEX_MAP_ACTIONS?.syncMapView)return;
-   syncingFromGoogle=true;
-   window.COOPEX_MAP_ACTIONS.syncMapView(pos.lat(),pos.lng(),googleMap.getZoom());
-   // Liberar a sincronização na próxima microtarefa para evitar mudanças recursivas.
-   Promise.resolve().then(()=>{syncingFromGoogle=false;});
+   if(pos&&window.COOPEX_MAP_ACTIONS?.syncMapView){
+    syncingFromGoogle=true;
+    window.COOPEX_MAP_ACTIONS.syncMapView(pos.lat(),pos.lng(),googleMap.getZoom());
+    Promise.resolve().then(()=>{syncingFromGoogle=false});
+   }
+   finishGoogleLoad();
   });
-  // Só ocultar o mapa de reserva quando os blocos do Google estiverem visíveis.
-  google.maps.event.addListenerOnce(googleMap,"tilesloaded",()=>{
-   tilesVisible=true;
-   updateMarkers(lastItems,selectedId);
-   document.body.classList.add("cx-google-ready");
-   const statusNode=document.getElementById("googleMapStatus");if(statusNode)statusNode.hidden=true;
-   document.body.classList.remove("cx-google-error");
-   window.dispatchEvent(new CustomEvent("coopex:google-ready"));
-  });
-  googleMap.addListener("idle",()=>{if(!tilesVisible)google.maps.event.trigger(googleMap,"resize");});
+  googleMap.addListener("tilesloaded",finishGoogleLoad);
+  // Em caso de falha de autorização, gm_authFailure mantém o mapa alternativo.
   setTimeout(()=>{
-   if(!tilesVisible){document.body.classList.add("cx-google-error");reportGoogleStatus("Não foi possível carregar a cartografia do Google. Verifique a autorização da chave ou os erros do Google no navegador.");console.warn("Google Maps não disponibilizou blocos cartográficos; mantendo mapa alternativo.");}
-  },12000);
+   if(!loadFinished&&!authFailed){
+    document.body.classList.add("cx-google-error");
+    reportGoogleStatus("Google Maps não terminou de iniciar. Abra o Console e procure um erro da API do Google (sem compartilhar a chave).");
+   }
+  },14000);
  }catch(e){document.body.classList.add("cx-google-error");reportGoogleStatus("Falha ao iniciar Google Maps: "+String(e.message||e).slice(0,170));console.warn("COOPEX Google Maps:",e);}
 };
 const script=document.createElement("script");
