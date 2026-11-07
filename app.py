@@ -7648,7 +7648,7 @@ def mapa_motoboys():
         resp.headers['Cache-Control'] = 'no-store, no-cache, must-revalidate, max-age=0'
         return resp
 
-    return render_template('mapa_motoboys.html', motoboys_js=motoboys_js)
+    return render_template('mapa_motoboys.html', motoboys_js=motoboys_js, google_maps_api_key=os.environ.get('GOOGLE_MAPS_API_KEY', '').strip())
 
 
 # ENTREGAS: CADASTRAR / AGENDAR / EDITAR / EXCLUIR
