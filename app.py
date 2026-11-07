@@ -13255,14 +13255,9 @@ def estatisticas_cooperado():
 
     cooperados = Cooperado.query.order_by(Cooperado.nome.asc()).all()
 
-    # Lista de clientes existentes para facilitar montagem dos grupos.
+    # Cadastro de clientes já é mantido pelo sistema. A listagem textual foi
+    # retirada da interface; evita duas consultas pesadas a cada dashboard.
     nomes_clientes = []
-    try:
-        nomes_db = [x[0] for x in db.session.query(Cliente.nome).filter(Cliente.nome != None).order_by(Cliente.nome.asc()).limit(600).all()]
-        nomes_ent = [x[0] for x in db.session.query(Entrega.cliente).filter(Entrega.cliente != None).group_by(Entrega.cliente).order_by(Entrega.cliente.asc()).limit(600).all()]
-        nomes_clientes = sorted({_dash_title_case(n) for n in nomes_db + nomes_ent if (n or '').strip()}, key=lambda x: _norm(x))
-    except Exception:
-        nomes_clientes = []
 
     filtros = {
         'periodo': periodo,
