@@ -206,6 +206,7 @@ function render(){
  if(current){showDetails(current);
   if(following&&hasCoord(current))map.easeTo({center:[+current.lng,+current.lat],duration:350});
  }
+ window.dispatchEvent(new CustomEvent("coopex:map-data",{detail:{items,selectedId,filter,searchingAddress:typeof searchingAddress!=="undefined"&&searchingAddress}}));
 }
 function kmDistance(a,b){const dx=(a.lat-b.lat)*111,dy=(a.lng-b.lng)*111*Math.cos(a.lat*Math.PI/180);return Math.hypot(dx,dy);}
 function toIncidentPoint(f){let c=f?.geometry?.coordinates;if(!Array.isArray(c))return null;if(f.geometry.type==="LineString")c=c[Math.floor(c.length/2)];else if(f.geometry.type==="MultiLineString")c=c[0]?.[Math.floor(c[0].length/2)];return c&&Number.isFinite(+c[0])?{lng:+c[0],lat:+c[1]}:null;}
@@ -262,6 +263,7 @@ function applySearchVisibility(){
   if(map.getLayer(id))map.setLayoutProperty(id,"visibility",searchingAddress?"none":"visible");
  }
  document.body.classList.toggle("cx-address-mode",searchingAddress);
+ window.dispatchEvent(new CustomEvent("coopex:map-mode",{detail:{searchingAddress}}));
  if(searchingAddress)document.body.classList.remove("cx-side-collapsed");
 }
 function setAddressMode(enabled){
@@ -412,6 +414,11 @@ function gpsSocket(){
  const socketApi=window.io;if(typeof socketApi!=="function")return;
  try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old)&&d.lat!=null&&d.lng!=null)lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng,source:"live"});render()}else updateGps()});}catch(e){}
 }
+window.COOPEX_MAP_ACTIONS={
+ selectCooperado:id=>selectCooperado(id),
+ setAddressMode:enabled=>setAddressMode(enabled),
+ syncMapView:(lat,lng,zoom)=>{if(Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(zoom))map.jumpTo({center:[lng,lat],zoom,pitch:0,bearing:0})}
+};
 map.on("load",()=>{updateGps();});
 render();updateGps();stopRender();weather();showSttuStatus();gpsSocket();
 setInterval(updateGps,12000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
