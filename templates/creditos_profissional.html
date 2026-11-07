@@ -373,17 +373,20 @@
   </style>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_creditos_glass.css') }}">
 </head>
-<body>
+<body class="cx-creditos-pro cx-linked-glass">
+<script id="cx-creditos-pro-theme-initial">
+(function(){try{const v=localStorage.getItem("cx_sup_brightness");document.body.classList.toggle("dark",v===null?localStorage.getItem("coopex_theme")==="dark":Number(v)<80)}catch(e){}})();
+</script>
 <header class="topbar">
+  <a class="cg-back" href="{{ url_for('admin') }}" aria-label="Voltar ao administrador" title="Voltar ao administrador">‹</a>
   <div class="brand">
     <div class="brand-text"><strong>Créditos de Clientes</strong><small>Gestão de saldo, lançamentos e consumos</small></div>
   </div>
   <div class="top-spacer"></div>
   <div class="top-actions">
-    <button id="theme" class="btn light" type="button">☾</button>
     <a class="btn light" href="{{ url_for('clientes') }}">Clientes</a>
-    <a class="btn light" href="{{ url_for('admin') }}">Admin</a>
   </div>
 </header>
 
@@ -565,8 +568,29 @@
     window.location.href=`/creditos/exportar-excel?${params.toString()}`;
   });
 
-  (function(){const button=document.getElementById('theme');const saved=localStorage.getItem('coopex_theme');if(saved==='dark')document.body.classList.add('dark');const sync=()=>button.textContent=document.body.classList.contains('dark')?'☀':'☾';button.addEventListener('click',()=>{document.body.classList.toggle('dark');localStorage.setItem('coopex_theme',document.body.classList.contains('dark')?'dark':'light');sync()});sync()})();
+  // O tema segue exclusivamente a configuração no administrador.
 </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
+<script id="cx-creditos-pro-theme-and-back">
+(function(){
+ function apply(){
+  try{
+   const v=localStorage.getItem('cx_sup_brightness');
+   const isDark=v===null?localStorage.getItem('coopex_theme')==='dark':Number(v)<80;
+   document.body.classList.toggle('dark',isDark);
+   document.body.classList.toggle('cx-sup-night',isDark);
+  }catch(e){}
+ }
+ apply();
+ window.addEventListener('pageshow',apply);
+ window.addEventListener('focus',apply);
+ window.addEventListener('storage',e=>{if(e.key==='cx_sup_brightness')apply()});
+ document.addEventListener('keydown',function(e){
+  if(e.key!=='Escape'||e.defaultPrevented||e.ctrlKey||e.altKey||e.metaKey)return;
+  if(document.querySelector('dialog[open], [role="dialog"][aria-modal="true"]'))return;
+  e.preventDefault();location.assign('{{ url_for('admin') }}');
+ });
+})();
+</script>
 </body>
 </html>
