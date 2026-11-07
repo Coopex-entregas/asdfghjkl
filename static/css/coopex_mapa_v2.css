@@ -201,3 +201,15 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 .cx-camera-row{width:100%;text-align:left;cursor:pointer;font:inherit}
 .cx-camera-row span:last-child{font-weight:900}
 @media(max-width:640px){.cx-camera-viewer{height:calc(100vh - 40px)}.cx-camera-zoom-controls{flex-wrap:wrap}}
+
+/* Atribuição cartográfica não é botão de trânsito, e nunca deve ficar atrás do clima. */
+#map .maplibregl-ctrl-bottom-right{right:360px!important;bottom:8px!important;z-index:2!important}
+#map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib{background:rgba(255,255,255,.96)!important;border-radius:9px!important;padding:3px 5px!important;box-shadow:0 2px 9px rgba(3,35,70,.15)}
+#map .maplibregl-ctrl-bottom-right .maplibregl-ctrl-attrib-button{background-color:rgba(255,255,255,.95)!important;border-radius:50%!important}
+.sttu-official{font-size:11px!important;display:inline-block;margin-top:5px;color:#095db3!important;font-weight:800!important;text-decoration:underline!important}
+@media(max-width:900px){#map .maplibregl-ctrl-bottom-right{right:238px!important;bottom:9px!important}}
+@media(max-width:560px){#map .maplibregl-ctrl-bottom-right{right:12px!important;bottom:220px!important}}
+/* O fundo do marcador acompanha o ponto; sem deslocamento visual entre zooms. */
+.maplibregl-marker.cx-map-marker{width:49px!important;height:52px!important;padding:0!important}
+.cx-map-marker{width:49px!important;height:52px!important}
+.cx-pin-orb:after{top:41px!important}
