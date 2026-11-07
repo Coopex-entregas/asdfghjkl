@@ -83,6 +83,7 @@
     .badge.mix-ro{background:linear-gradient(90deg,#fff0f0 0 50%,#fff4df 50%);color:#903322;border-color:#ffd8c8}
 </style>
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_mapa_pro.css') }}?v=20261107a">
 </head>
 <body>
   <div id="map"></div>
@@ -91,7 +92,7 @@
       <span class="dot"></span>
       <div>
         <div class="title">Mapa dos motoboys</div>
-        <div class="sub">Mapa livre e controles mínimos</div>
+        <div class="sub">GPS ao vivo • Navegação • Clima</div>
       </div>
     </div>
 
@@ -347,5 +348,6 @@
 
 </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
+<script defer src="{{ url_for('static', filename='js/coopex_mapa_pro.js') }}?v=20261107a"></script>
 </body>
 </html>
