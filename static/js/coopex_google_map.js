@@ -143,7 +143,42 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    finishGoogleLoad();
   });
   googleMap.addListener("tilesloaded",finishGoogleLoad);
-  // Em caso de falha de autorização, gm_authFailure mantém o mapa alternativo.
+
+  // Pesquisa oficial Google Geocoding na mesma cartografia, sem abrir outra aba.
+  const addressField=document.getElementById("address"),addressGo=document.getElementById("addressGo"),
+        addressMessage=document.getElementById("addressMessage"),streetButton=document.getElementById("streetView");
+  const geocoder=new google.maps.Geocoder();
+  const panorama=googleMap.getStreetView();
+  const placeMarker=new google.maps.Marker({map:null,icon:{url:"https://maps.google.com/mapfiles/ms/icons/blue-dot.png"}});
+  function findOnGoogle(){
+   const query=String(addressField?.value||"").trim();if(!query)return;
+   if(addressMessage)addressMessage.textContent="Pesquisando no Google Maps...";
+   geocoder.geocode({address:query+", Rio Grande do Norte, Brasil"},(results,status)=>{
+    if(status!=="OK"||!results?.length){if(addressMessage)addressMessage.textContent="Endereço não encontrado pelo Google Maps ("+status+").";return;}
+    const target=results[0];
+    if(target.geometry.viewport)googleMap.fitBounds(target.geometry.viewport);
+    else{googleMap.panTo(target.geometry.location);googleMap.setZoom(16);}
+    placeMarker.setPosition(target.geometry.location);placeMarker.setMap(googleMap);
+    if(addressMessage)addressMessage.textContent=target.formatted_address||"Endereço encontrado";
+   });
+  }
+  addressGo?.addEventListener("click",event=>{event.stopImmediatePropagation();findOnGoogle();},true);
+  addressField?.addEventListener("keydown",event=>{
+   if(event.key==="Enter"){event.preventDefault();event.stopImmediatePropagation();findOnGoogle();}
+  },true);
+  streetButton?.addEventListener("click",event=>{
+   event.stopImmediatePropagation();
+   const position=placeMarker.getPosition()||googleMap.getCenter();
+   if(!position)return;
+   panorama.setPosition(position);panorama.setPov({heading:0,pitch:0});panorama.setVisible(true);
+  },true);
+  window.addEventListener("coopex:map-mode",event=>{
+   if(!event.detail?.searchingAddress){
+    placeMarker.setMap(null);panorama.setVisible(false);
+   }
+  });
+
+  // Em caso de falha de autorização, gm_authFailure mostra o diagnóstico.
   setTimeout(()=>{
    if(!loadFinished&&!authFailed){
     document.body.classList.add("cx-google-error");
