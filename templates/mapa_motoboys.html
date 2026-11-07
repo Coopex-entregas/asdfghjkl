@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-camzoom07">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261107-sttu08">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -65,12 +65,12 @@
 </section>
 <div class="stats" aria-label="Indicadores"><div class="stat glass"><span class="stat-label"><i class="dot"></i>Online</span><b class="num" id="onlineCount">0</b></div><div class="stat orange glass"><span class="stat-label"><i class="dot"></i>Ocioso</span><b class="num" id="ociosoCount">0</b></div><div class="stat red glass"><span class="stat-label"><i class="dot"></i>Offline</span><b class="num" id="offlineCount">0</b></div></div>
 <section class="weather glass">
-<h3>☁ Clima e trânsito · Natal/RN</h3><div class="weather-grid"><div><div class="small-muted">TEMPO</div><strong class="temp" id="temperature">—</strong><div id="conditions" class="fine">Consultando clima</div><div class="fine">Umidade <b id="humidity">—</b> · Vento <b id="wind">—</b></div></div><div><div class="small-muted">TRÂNSITO</div><strong id="trafficStatus" style="font-size:13px">Consultando...</strong><p id="trafficText" class="fine">Avisos reais quando disponíveis</p></div></div>
-<div id="weatherAlert" class="weather-alert">Verificando previsão de chuva</div><small class="small-muted">Previsão para Natal · Ocorrências TomTom quando autorizadas</small>
+<h3>☁ Clima e trânsito · Natal/RN</h3><div class="weather-grid"><div><div class="small-muted">TEMPO</div><strong class="temp" id="temperature">—</strong><div id="conditions" class="fine">Consultando clima</div><div class="fine">Umidade <b id="humidity">—</b> · Vento <b id="wind">—</b></div></div><div><div class="small-muted">MOBILIDADE URBANA</div><strong id="trafficStatus" style="font-size:13px">Consultando...</strong><p id="trafficText" class="fine">Comunicados da STTU de Natal.</p><a class="sttu-official" href="https://natal.rn.gov.br/sttu" target="_blank" rel="noopener noreferrer">Consultar comunicados STTU</a></div></div>
+<div id="weatherAlert" class="weather-alert">Verificando previsão de chuva</div><small class="small-muted">Previsão meteorológica · Informações oficiais da STTU</small>
 </section>
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};</script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-camzoom07"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261107-sttu08"></script>
 </body>
 </html>
