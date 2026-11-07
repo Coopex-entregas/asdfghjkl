@@ -362,6 +362,11 @@
   if(!form.checkValidity())return;
   event.preventDefault();
   if(sending)return;
+  const cooperado=form.querySelector('#cooperado_id');
+  if(cooperado?.value==='__fora_escala__'){
+   alert('Escolha o cooperado antes de cadastrar.');
+   cooperado.focus();return;
+  }
   sending=true;
   const button=form.querySelector('[type="submit"]');
   const label=button?.textContent;
