@@ -9,8 +9,10 @@ function reportGoogleStatus(message,kind="error"){
  const node=document.getElementById("googleMapStatus");if(!node)return;
  node.textContent=message;node.hidden=false;node.dataset.kind=kind;
 }
+// O Google é a única cartografia visível, inclusive durante o carregamento.
+document.body.classList.add("cx-google-only");
 if(typeof key!=="string"||!key.trim()){
- reportGoogleStatus("Google Maps não iniciado: a variável GOOGLE_MAPS_API_KEY não foi encontrada neste serviço do Render.");
+ reportGoogleStatus("A chave Google Maps não foi encontrada no Render. O mapa da COOPEX está configurado para usar somente Google Maps.");
  return;
 }
 window.gm_authFailure=()=>{
