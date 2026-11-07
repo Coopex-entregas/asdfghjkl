@@ -419,6 +419,10 @@ window.COOPEX_MAP_ACTIONS={
  setAddressMode:enabled=>setAddressMode(enabled),
  syncMapView:(lat,lng,zoom)=>{if(Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(zoom))map.jumpTo({center:[lng,lat],zoom,pitch:0,bearing:0})}
 };
+map.on("moveend",()=>{
+ const c=map.getCenter();
+ window.dispatchEvent(new CustomEvent("coopex:map-view",{detail:{lat:c.lat,lng:c.lng,zoom:map.getZoom()}}));
+});
 map.on("load",()=>{updateGps();});
 render();updateGps();stopRender();weather();showSttuStatus();gpsSocket();
 setInterval(updateGps,12000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
