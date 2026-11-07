@@ -6,6 +6,18 @@ const road=L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{max
 const satellite=L.tileLayer("https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}",{maxZoom:19,maxNativeZoom:18,attribution:"Tiles © Esri — World Imagery",keepBuffer:2});
 let items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],filter="todos",selectedId=null,following=false,mode="road",fetching=false,activeSearch="",incidentList=[],lastWeather="",lastData="",lastCenter=false;
 const markers=new Map(),iconCache=new Map();
+const stops=[],stopPins=L.layerGroup().addTo(map);let selectedAddress=null,viewPoint=null;
+function routeDest(){return selectedAddress||(selectedId&&valid(getItem(selectedId))?{lat:Number(getItem(selectedId).lat),lng:Number(getItem(selectedId).lng),label:getItem(selectedId).nome}:null);}
+function renderStops(){
+ const box=$("stopsList");box.replaceChildren();stopPins.clearLayers();
+ stops.forEach((p,n)=>{const line=document.createElement("div");line.className="stop-row";const label=document.createElement("span");label.textContent=(n+1)+". "+p.label;const remove=document.createElement("button");remove.type="button";remove.textContent="×";remove.setAttribute("aria-label","Remover parada");remove.onclick=()=>{stops.splice(n,1);renderStops()};line.append(label,remove);box.append(line);L.marker([p.lat,p.lng]).addTo(stopPins).bindTooltip((n+1)+". "+p.label)});
+ $("stopsCount").textContent=String(stops.length);
+}
+function addStop(p){if(stops.length>=3){$("addressMessage").textContent="O navegador aceita até 3 paradas intermediárias nesta opção.";return;}if(!p||!Number.isFinite(Number(p.lat)))return;stops.push({lat:Number(p.lat),lng:Number(p.lng),label:String(p.label||"Parada")});renderStops();$("addressMessage").textContent="Parada adicionada.";}
+function openStreetView(){const p=viewPoint||routeDest();if(!p){$("addressMessage").textContent="Escolha uma rua ou um ponto do mapa.";return;}window.open("https://www.google.com/maps/@?api=1&map_action=pano&viewpoint="+encodeURIComponent(p.lat+","+p.lng),"_blank","noopener,noreferrer");}
+function openStopsRoute(){const dest=routeDest()||stops[stops.length-1];if(!dest){$("addressMessage").textContent="Escolha um destino ou cooperado.";return;}const intermediate=stops.filter(p=>p!==dest).slice(0,3);let url="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+encodeURIComponent(dest.lat+","+dest.lng);if(intermediate.length)url+="&waypoints="+encodeURIComponent(intermediate.map(p=>p.lat+","+p.lng).join("|"));window.open(url,"_blank","noopener,noreferrer");}
+map.on("click",e=>{viewPoint={lat:e.latlng.lat,lng:e.latlng.lng,label:"Ponto selecionado"};});
+
 const norm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const online=i=>i?.online===true||["livre","em_corrida"].includes(i?.status);
 const status=i=>!online(i)?"offline":Number(i.entregas_abertas||0)>0?"online":"ocioso";
@@ -42,7 +54,7 @@ function showDetails(i){
  $("personArea").textContent=i.endereco||"Natal/RN";$("personSeen").textContent=i.ultima_atualizacao||"Sem sinal";$("personSpeed").textContent=i.speed_kmh==null?"—":Number(i.speed_kmh).toLocaleString("pt-BR",{maximumFractionDigits:1})+" km/h";
  $("personJobs").textContent=Number(i.entregas_abertas||0);$("follow").disabled=!valid(i);$("follow").textContent=following?"Acompanhando":"◎ Seguir";$("stop").disabled=!following;
  let nearby=incidentList.filter(f=>distanceKm(i,f)<1.5);
- const alert=$("nearby");alert.classList.toggle("visible",!!nearby.length);alert.textContent=nearby.length?"⚠ "+nearby.length+" ocorrência(s) de trânsito a menos de 1,5 km do último GPS. Isso não confirma que estejam na rota.":"";
+ const alert=$("nearby");alert.classList.toggle("visible",!!nearby.length);alert.textContent=nearby.length?"⚠ "+nearby.length+" ocorrência(s) próximas à última posição GPS. Isso não confirma que estejam na rota.":"";
  const stack=groups().find(g=>g.some(x=>String(x.id)===String(i.id)))||[];
  const host=$("stack");host.replaceChildren();if(stack.length>1){const label=document.createElement("small");label.textContent=stack.length+" cooperados nesta localização";host.append(label);stack.forEach(x=>{const b=document.createElement("button");b.textContent=initials(x.nome);b.title=x.nome;b.onclick=()=>choose(x.id);host.append(b)})}
 }
@@ -63,14 +75,21 @@ $("fit").onclick=()=>{const g=groups();if(g.length)map.fitBounds(L.latLngBounds(
 $("refresh").onclick=()=>{poll();$("toolbar").classList.remove("open")};
 $("locate").onclick=()=>{map.locate({setView:true,maxZoom:15});$("toolbar").classList.remove("open")};
 $("addressToggle").onclick=()=>{$("addressPanel").hidden=!$("addressPanel").hidden;if(!$("addressPanel").hidden)$("address").focus()};
-$("addressGo").onclick=async()=>{let q=$("address").value.trim();if(q.length<3)return;try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=4&countrycodes=br&q="+encodeURIComponent(q+", Natal, RN"));const a=await r.json();if(!a.length){$("addressMessage").textContent="Endereço não localizado";return;}map.setView([Number(a[0].lat),Number(a[0].lon)],16);L.marker([a[0].lat,a[0].lon]).addTo(map).bindPopup(document.createTextNode(a[0].display_name)).openPopup();$("addressPanel").hidden=true;}catch(e){$("addressMessage").textContent="Pesquisa indisponível"}};
+$("addressGo").onclick=async()=>{let q=$("address").value.trim();if(q.length<3)return;try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=4&countrycodes=br&q="+encodeURIComponent(q+", Natal, RN"));const a=await r.json();if(!a.length){$("addressMessage").textContent="Endereço não localizado";return;}selectedAddress={lat:Number(a[0].lat),lng:Number(a[0].lon),label:a[0].display_name};viewPoint=selectedAddress;map.setView([selectedAddress.lat,selectedAddress.lng],16);$("addressMessage").textContent="Endereço localizado. Adicione uma parada ou abra a visão de rua.";}catch(e){$("addressMessage").textContent="Pesquisa indisponível"}};
 $("address").onkeydown=e=>{if(e.key==="Enter")$("addressGo").click()};
-$("openNav").onclick=()=>{const i=getItem(selectedId);if(i&&valid(i))window.open("https://www.google.com/maps/dir/?api=1&destination="+encodeURIComponent(i.lat+","+i.lng),"_blank","noopener")};
+$("openNav").onclick=openStopsRoute;
+$("routeOpen").onclick=openStopsRoute;
+$("streetView").onclick=openStreetView;
+$("streetTool").onclick=openStreetView;
+$("addStop").onclick=()=>addStop(selectedAddress||viewPoint||routeDest());
+$("stopsClear").onclick=()=>{stops.length=0;renderStops();};
+$("addressClose").onclick=()=>{$("addressPanel").hidden=true;};
+renderStops();
 const incidentLayer=L.geoJSON(null,{style:{color:"#fa5b47",weight:5,opacity:.75},pointToLayer:(f,latlng)=>L.circleMarker(latlng,{radius:7,color:"#fff",fillColor:"#e85d30",fillOpacity:1,weight:2}),onEachFeature:(f,l)=>{const d=f.properties?.description||"Ocorrência";l.bindPopup("TomTom Traffic: "+esc(d))}}).addTo(map);
-async function traffic(){try{let r=await fetch("/api/coopex/tomtom/incidentes",{cache:"no-store"}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||"Sem conexão");incidentList=Array.isArray(d.features)?d.features:[];incidentLayer.clearLayers();incidentLayer.addData({type:"FeatureCollection",features:incidentList});$("trafficText").textContent=incidentList.length+" ocorrências reportadas na região";$("trafficStatus").textContent="TomTom conectado";$("trafficStatus").style.color="#8cffe1";if(selectedId)showDetails(getItem(selectedId));}catch(e){$("trafficStatus").textContent="Trânsito indisponível";$("trafficText").textContent="A TomTom não autorizou a consulta. Sem dados reais de congestionamento.";}}
+async function traffic(){try{let r=await fetch("/api/coopex/tomtom/incidentes",{cache:"no-store"}),d=await r.json();if(!r.ok||!d.ok)throw Error(d.error||"Sem conexão");incidentList=Array.isArray(d.features)?d.features:[];incidentLayer.clearLayers();incidentLayer.addData({type:"FeatureCollection",features:incidentList});$("trafficText").textContent=incidentList.length+" ocorrências reportadas na região";$("trafficStatus").textContent="TomTom conectado";$("trafficStatus").style.color="#8cffe1";if(selectedId){const item=getItem(selectedId);if(item)showDetails(item);}}catch(e){$("trafficStatus").textContent="Trânsito indisponível";$("trafficText").textContent="A TomTom não autorizou a consulta. Sem dados reais de congestionamento.";}}
 function phase(){const hr=Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date()));document.body.classList.toggle("is-night",hr>=18||hr<6);}
 const weatherDots=$("weatherFx");
 function rain(level){document.body.classList.toggle("is-rain",level>0);weatherDots.replaceChildren();if(matchMedia("(prefers-reduced-motion: reduce)").matches)return;const n=[0,9,23,45][level];const f=document.createDocumentFragment();for(let i=0;i<n;i++){let d=document.createElement("i");d.className="drop";d.style.left=Math.random()*100+"%";d.style.animationDuration=.8+Math.random()*1.3+"s";d.style.animationDelay=-Math.random()*3+"s";f.append(d)}weatherDots.append(f)}
 async function weather(){try{const r=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-5.7945&lon=-35.2110");if(!r.ok)throw Error();const d=await r.json(),p=d.properties.timeseries[0].data,now=p.instant.details,hour=p.next_1_hours||p.next_6_hours||{},mm=Number(hour.details?.precipitation_amount||0),code=hour.summary?.symbol_code||"";const level=mm>=6||/heavyrain|thunder/.test(code)?3:mm>=2||/rain|showers/.test(code)?2:mm>0||/drizzle/.test(code)?1:0;$("temperature").textContent=Math.round(now.air_temperature)+"°C";$("conditions").textContent=["Sem chuva prevista","Previsão de chuva fraca","Previsão de chuva","Previsão de chuva forte"][level];$("humidity").textContent=now.relative_humidity+"%";$("wind").textContent=Math.round(now.wind_speed||0)+" m/s";$("weatherAlert").textContent=level===3?"⚠ Previsão de chuva intensa. Atenção à visibilidade e alagamentos.":level===2?"⚠ Chuva prevista: o deslocamento pode ficar mais lento.":level===1?"Pista possivelmente molhada. Redobre a atenção.":"Sem alerta de chuva na próxima hora.";rain(level);}catch(e){$("conditions").textContent="Previsão temporariamente indisponível";rain(0)}}
-phase();render();poll();weather();traffic();setInterval(poll,8000);setInterval(weather,20*60*1000);setInterval(traffic,15*60*1000);setInterval(phase,60000);
+phase();render();poll();weather();traffic();setInterval(poll,10000);setInterval(weather,20*60*1000);setInterval(traffic,15*60*1000);setInterval(phase,60000);
 })();
