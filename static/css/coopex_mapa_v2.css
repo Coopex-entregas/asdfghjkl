@@ -326,3 +326,18 @@ body.cx-address-mode .address-panel .address-head{min-height:44px!important}
 body.cx-address-mode .filters{opacity:.12!important;pointer-events:none!important}
 body.cx-address-mode .toolbar{opacity:.2!important;pointer-events:none!important}
 @media(max-width:650px){body #sideExpand,body.cx-side-collapsed #sideExpand{left:62px!important;top:12px!important;width:194px!important;min-height:42px!important;height:42px!important}body:not(.cx-address-mode) #ui>.search{top:62px!important}}
+
+/* Google Maps exige dimensões explícitas; inset sozinho estava resultando em 1920x0. */
+html,body{min-height:100%!important}
+#googleMap{
+ position:fixed!important;
+ display:block!important;
+ top:0!important;right:0!important;bottom:0!important;left:0!important;
+ width:100vw!important;height:100vh!important;
+ width:100dvw!important;height:100dvh!important;
+ min-height:400px!important;
+ max-height:none!important;overflow:hidden!important;
+ z-index:1!important;
+}
+#googleMap>.gm-style{height:100%!important;width:100%!important}
+body.cx-google-only #map{display:none!important}
