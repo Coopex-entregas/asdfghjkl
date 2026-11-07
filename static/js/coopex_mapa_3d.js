@@ -111,7 +111,7 @@ function colorizeCoopexMap(){
  }
 }
 
-map.on("style.load",()=>{mapReady=true;colorizeCoopexMap();if(satellite)installSatellite();installPins();});
+map.on("style.load",()=>{mapReady=true;colorizeCoopexMap();if(satellite)installSatellite();installPins();applySearchVisibility();});
 map.on("click",e=>{viewPoint={lat:e.lngLat.lat,lng:e.lngLat.lng,label:"Ponto no mapa"};});
 function pin(i,count){
  const el=document.createElement("button");el.type="button";el.className="cx-map-marker";el.title=i.nome||"Cooperado";el.setAttribute("aria-label",(i.nome||"Cooperado")+" "+stateNames[state(i)]);
@@ -129,7 +129,7 @@ function counts(){for(const k of ["online","ocioso","offline"])$(k+"Count").text
    não são reagrupados ao aplicar filtros e nunca mudam por causa do zoom. */
 const PINS_SOURCE="coopex-cooperados-gps";
 function pinsGeoJson(){
- return {type:"FeatureCollection",features:items.filter(inFilter).filter(hasCoord).map(i=>({
+ return {type:"FeatureCollection",features:(searchingAddress?[]:items.filter(inFilter).filter(hasCoord)).map(i=>({
   type:"Feature",id:Number(i.id),geometry:{type:"Point",coordinates:[+i.lng,+i.lat]},
   properties:{id:String(i.id),name:i.nome||"Cooperado",initials:initials(i.nome),status:state(i),selected:String(i.id)===String(selectedId)?1:0}
  }))};
@@ -167,7 +167,7 @@ map.on("mouseenter","coopex-gps-pins",()=>{map.getCanvas().style.cursor="pointer
 map.on("mouseleave","coopex-gps-pins",()=>{map.getCanvas().style.cursor=""});
 function render(){
  counts();
- if(mapReady&&map.isStyleLoaded())installPins();
+ if(mapReady&&map.isStyleLoaded()){installPins();applySearchVisibility();}
  const current=itemById(selectedId);
  if(current){showDetails(current);
   if(following&&hasCoord(current))map.easeTo({center:[+current.lng,+current.lat],duration:350});
@@ -221,8 +221,49 @@ function stopRender(){for(const m of stopsMarkers)m.remove();stopsMarkers=[];con
 }
 function openRoute(){const destination=dest()||stops[stops.length-1];if(!destination){$("addressMessage").textContent="Selecione um cooperado ou um endereço.";return}const middle=stops.filter(x=>x!==destination).slice(0,3);let url="https://www.google.com/maps/dir/?api=1&travelmode=driving&destination="+encodeURIComponent(destination.lat+","+destination.lng);if(middle.length)url+="&waypoints="+encodeURIComponent(middle.map(p=>p.lat+","+p.lng).join("|"));window.open(url,"_blank","noopener,noreferrer")}
 function street(){const p=viewPoint||dest();if(!p){$("addressMessage").textContent="Selecione um endereço ou ponto do mapa.";return}window.open("https://www.google.com/maps/@?api=1&map_action=pano&viewpoint="+encodeURIComponent(p.lat+","+p.lng),"_blank","noopener,noreferrer");}
-$("addressToggle").onclick=()=>{$("addressPanel").hidden=!$("addressPanel").hidden;if(!$("addressPanel").hidden)$("address").focus()};
-$("addressClose").onclick=()=>{$("addressPanel").hidden=true};
+
+let searchingAddress=false,oldMapView=null;
+function applySearchVisibility(){
+ for(const id of ["coopex-gps-halo","coopex-gps-pins","coopex-gps-initials"]){
+  if(map.getLayer(id))map.setLayoutProperty(id,"visibility",searchingAddress?"none":"visible");
+ }
+ document.body.classList.toggle("cx-address-mode",searchingAddress);
+}
+function setAddressMode(enabled){
+ if(enabled===searchingAddress){if(enabled&&!$("addressPanel").classList.contains("collapsed"))$("address").focus();return;}
+ searchingAddress=enabled;
+ if(enabled){
+  const center=map.getCenter();
+  oldMapView={center:[center.lng,center.lat],zoom:map.getZoom()};
+  $("addressPanel").hidden=false;
+  $("addressPanel").classList.remove("collapsed");
+  $("addressCollapse").textContent="‹";
+  $("addressCollapse").setAttribute("aria-label","Recolher pesquisa");
+  following=false;
+  $("details").classList.remove("visible");
+  $("search").value="";searchText="";
+  $("results").classList.remove("open");
+  $("address").focus();
+ }else{
+  $("addressPanel").hidden=true;
+  if(placePin){placePin.remove();placePin=null;}
+  selectedAddress=null;viewPoint=null;
+  $("addressMessage").textContent="";
+  $("address").value="";
+  if(oldMapView)map.easeTo({...oldMapView,duration:300});
+  oldMapView=null;
+ }
+ if(mapReady&&map.isStyleLoaded())installPins();
+ applySearchVisibility();
+}
+$("addressToggle").onclick=()=>setAddressMode(true);
+$("addressClose").onclick=()=>setAddressMode(false);
+$("addressCollapse").onclick=()=>{
+ const pane=$("addressPanel"),collapsed=pane.classList.toggle("collapsed");
+ $("addressCollapse").textContent=collapsed?"›":"‹";
+ $("addressCollapse").setAttribute("aria-label",collapsed?"Expandir pesquisa":"Recolher pesquisa");
+};
+
 $("addressGo").onclick=async()=>{
  const q=$("address").value.trim();if(q.length<3)return;
  try{const r=await fetch("https://nominatim.openstreetmap.org/search?format=json&limit=3&countrycodes=br&q="+encodeURIComponent(q+", Natal, Rio Grande do Norte"));if(!r.ok)throw Error();const list=await r.json();if(!list.length){$("addressMessage").textContent="Endereço não encontrado";return;}
