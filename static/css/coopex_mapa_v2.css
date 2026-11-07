@@ -245,3 +245,8 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 .cx-address-mode .address-panel.collapsed>*:not(.cx-address-collapse){display:none!important}
 .cx-address-mode .address-panel.collapsed .cx-address-collapse{top:0;right:0;border-radius:12px;height:54px;width:40px;box-shadow:0 8px 22px #144b8a55}
 @media(max-width:700px){.cx-address-mode .address-panel{top:106px!important;left:8px!important;bottom:8px!important;width:min(330px,calc(100vw - 30px))!important}.cx-address-mode .filters{z-index:680!important}}
+
+/* Espaço somente na vista global; cartografia de ruas continua clara e azulada. */
+body.cx-globe-space #map{background:#081a36!important}
+body:not(.cx-globe-space) #map{background:#d8eaf6!important}
+.cx-address-mode .address-panel .cx-address-collapse{color:#fff!important}
