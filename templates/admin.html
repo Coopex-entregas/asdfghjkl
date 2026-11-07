@@ -930,7 +930,7 @@ function init(){
   pop.appendChild(top);
   const grid=document.createElement('div');grid.className='cx-calendar-grid';
   labels.forEach(label=>{const sp=document.createElement('span');sp.textContent=label;grid.appendChild(sp)});
-  const empty=(new Date(year,month,1).getDay()+6)%7;
+  const empty=new Date(year,month,1).getDay(); // D S T Q Q S S: domingo é a primeira coluna
   for(let i=0;i<empty;i++){const blank=document.createElement('span');grid.appendChild(blank)}
   const end=new Date(year,month+1,0).getDate();
   const today=new Date(),todayDate=fmt(today.getFullYear(),today.getMonth(),today.getDate());
