@@ -166,3 +166,22 @@ body.is-rain #map .maplibregl-canvas,body.is-night #map .maplibregl-canvas{filte
 /* Zoom na lateral direita, sempre fora da barra superior */
 #map .maplibregl-ctrl-top-right{top:155px!important;right:12px!important}
 @media(max-width:800px){#map .maplibregl-ctrl-top-right{top:205px!important;right:8px!important}}
+
+/* Câmeras: janela contextual à direita, sem cobrir o mapa inteiro. */
+.cx-camera-panel{position:absolute;top:155px;right:22px;width:min(370px,calc(100vw - 24px));max-height:calc(100vh - 360px);overflow:auto;padding:16px;z-index:740;pointer-events:auto}
+.cx-camera-panel[hidden]{display:none!important}
+.cx-camera-context{font-size:12px;color:#416684;margin:3px 0 12px;line-height:1.5}
+.cx-camera-switch{display:flex;gap:7px;margin-bottom:12px}
+.cx-cam-filter{border-radius:11px;border:1px solid #bad6f1;background:#eef7ff;color:#185080;font-size:12px;font-weight:750;padding:8px;flex:1}
+.cx-cam-filter.active{background:#196dec;color:white}
+.cx-cam-filter:disabled{opacity:.5;cursor:not-allowed}
+.cx-camera-list{display:grid;gap:8px}
+.cx-camera-row{display:flex;gap:11px;align-items:center;text-decoration:none!important;color:#183e64!important;background:rgba(227,241,255,.82);border:1px solid rgba(165,202,242,.65);border-radius:14px;padding:11px;min-width:0}
+.cx-camera-row:hover{background:#d5eaff}
+.cx-camera-row>span:nth-child(2){flex:1;min-width:0}
+.cx-camera-row strong{font-size:12px;display:block;color:#143d65}
+.cx-camera-row small{display:block;font-size:10px;margin-top:4px;color:#496b8e;line-height:1.4}
+.cx-camera-symbol{height:32px;width:32px;display:grid;place-items:center;border-radius:10px;background:#2370d9;color:white!important}
+.cx-camera-empty{font-size:11px;color:#59738c;line-height:1.5;margin:4px}
+.cx-camera-disclaimer{display:block;margin-top:13px;font-size:10px;color:#5a7187;line-height:1.5}
+@media(max-width:800px){.cx-camera-panel{top:199px;right:9px;max-height:calc(100vh - 320px)}}
