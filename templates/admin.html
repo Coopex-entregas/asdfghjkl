@@ -4209,3 +4209,105 @@ body #tbl table.tabela tbody>tr:hover>td:nth-child(n){
  window.addEventListener('pageshow',e=>{if(e.persisted)finish()});
 })();
 </script>
+
+
+<style id="coopex-tabela-vidro-real-v45">
+/* Refino localizado: manter estrutura e dimensões da tabela atual. */
+body #tbl.table-wrap{
+ --cx-table-pane:linear-gradient(140deg,rgba(122,191,248,.24),rgba(22,69,118,.17) 42%,rgba(95,160,220,.19));
+ --cx-table-rowglass:linear-gradient(116deg,rgba(198,231,255,.20) 0%,rgba(102,169,229,.10) 38%,rgba(43,93,155,.055) 68%,rgba(160,207,251,.16) 100%);
+ --cx-table-headglass:linear-gradient(145deg,#4f89bf,#254f7f 45%,#153962 78%,#3b709f);
+ border:2px solid rgba(174,214,255,.65)!important;
+ background:var(--cx-table-pane),var(--cx-surface)!important;
+ box-shadow:inset 0 2px 3px rgba(239,250,255,.42),0 5px 12px rgba(4,40,93,.24),0 12px 26px rgba(4,34,80,.20)!important;
+ border-radius:14px!important;
+}
+body:not(.cx-sup-night) #tbl.table-wrap{
+ --cx-table-pane:linear-gradient(137deg,rgba(255,255,255,.63),rgba(182,219,252,.25),rgba(250,253,255,.42));
+ --cx-table-rowglass:linear-gradient(113deg,rgba(255,255,255,.63),rgba(216,239,255,.33) 32%,rgba(175,215,252,.20) 72%,rgba(255,255,255,.32));
+ --cx-table-headglass:linear-gradient(145deg,#7cb5eb,#437bb6 48%,#24538e 80%,#578ec2);
+}
+body.cx-sup-night #tbl.table-wrap{
+ --cx-table-pane:linear-gradient(137deg,rgba(97,158,222,.22),rgba(10,37,74,.21) 50%,rgba(75,136,198,.22));
+ --cx-table-rowglass:linear-gradient(118deg,rgba(162,205,246,.20),rgba(91,155,218,.13) 30%,rgba(8,35,73,.11) 67%,rgba(101,164,224,.14));
+ --cx-table-headglass:linear-gradient(145deg,#446f9c,#234b7a 44%,#0c3056 80%,#335e8a);
+}
+body #tbl table.tabela thead>tr>th:nth-child(n){
+ background:var(--cx-table-headglass)!important;
+ border-bottom:1px solid rgba(215,239,255,.72)!important;
+ border-right:1px solid rgba(184,228,255,.36)!important;
+ box-shadow:inset 0 2px 2px rgba(255,255,255,.31),inset 0 -3px 4px rgba(9,44,91,.32),0 3px 7px rgba(0,29,70,.11)!important;
+ color:#f4fbff!important;-webkit-text-fill-color:#f4fbff!important;
+ text-shadow:0 1px 2px rgba(0,26,60,.55)!important;
+}
+body #tbl table.tabela tbody>tr:nth-child(n)>td:nth-child(n){
+ background:var(--cx-table-rowglass),var(--cx-row)!important;
+ border-right:1px solid rgba(147,200,250,.25)!important;
+ border-bottom:1px solid rgba(168,214,253,.42)!important;
+ box-shadow:inset 0 2px 2px rgba(228,247,255,.19),inset 0 -3px 5px rgba(7,43,87,.13)!important;
+}
+body #tbl table.tabela tbody>tr:hover>td:nth-child(n){
+ background:linear-gradient(130deg,rgba(134,197,255,.32),rgba(92,159,234,.22)),var(--cx-row)!important;
+}
+body #tbl .id-with-dot{display:inline-flex!important;align-items:center!important;justify-content:center!important;gap:6px!important;white-space:nowrap!important}
+body #tbl .id-with-dot>.status-dot{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:21px!important;height:21px!important;min-width:21px!important;min-height:21px!important;
+ box-sizing:border-box!important;margin:0!important;flex:0 0 21px!important;
+ border-radius:8px!important;border:1px solid rgba(255,255,255,.75)!important;
+ box-shadow:inset 0 2px 2px rgba(255,255,255,.27),0 2px 7px rgba(0,25,55,.34)!important;
+ opacity:1!important;
+}
+body #tbl .id-with-dot>.status-dot.ok{background:linear-gradient(145deg,#27da7c,#098b49)!important}
+body #tbl .id-with-dot>.status-dot.no{background:linear-gradient(145deg,#ff777f,#c52e42)!important}
+body #tbl .id-with-dot>.status-dot::after{
+ display:block!important;width:auto!important;height:auto!important;
+ line-height:1!important;font:900 15px/1 system-ui,sans-serif!important;
+ color:white!important;-webkit-text-fill-color:white!important;
+ text-shadow:0 1px 2px rgba(0,0,0,.22)!important;
+}
+body #tbl .id-with-dot>.status-dot.ok::after{content:"✓"!important}
+body #tbl .id-with-dot>.status-dot.no::after{content:"!"!important}
+body #tbl .tabela thead .cx-table-head-icon{
+ display:inline-flex!important;align-items:center!important;justify-content:center!important;
+ width:14px!important;height:14px!important;margin-right:4px!important;
+ vertical-align:-2px!important;color:#a9e2ff!important;
+}
+body #tbl .tabela thead .cx-table-head-icon svg{width:14px;height:14px;fill:none;stroke:currentColor;stroke-width:2;stroke-linejoin:round;stroke-linecap:round}
+</style>
+<script id="coopex-tabela-icones-colunas-v45">
+(function(){
+ 'use strict';
+ // Modernizar SOMENTE os emojis dos títulos. Não alterar texto ou colunas.
+ const paths=[
+ 'M4 5h16v14H4zM8 9h8M8 13h5',
+ 'M16 20v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2M9 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+ 'M12 22s8-7 8-13a8 8 0 0 0-16 0c0 6 8 13 8 13zM12 7a2 2 0 1 0 0 4 2 2 0 0 0 0-4',
+ 'M12 2v20M5 6h14M5 10h14M5 14h14M5 18h14',
+ 'M7 3v3m10-3v3M4 8h16M5 5h14v16H5z',
+ 'M12 8v5l3 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20',
+ 'M12 8v5l4 2M12 22a10 10 0 1 0 0-20 10 10 0 0 0 0 20',
+ 'M7 20v-2a4 4 0 0 1 4-4h2a4 4 0 0 1 4 4v2M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+ 'M3 6h18v13H3zM3 10h18M7 15h4',
+ 'M4 7l8-4 8 4v10l-8 4-8-4zM4 7l8 5 8-5M12 12v9',
+ 'M4 12l5 5L20 6',
+ 'M5 20v-2a5 5 0 0 1 5-5h4a5 5 0 0 1 5 5v2M12 10a4 4 0 1 0 0-8 4 4 0 0 0 0 8',
+ 'M12 3a8 8 0 0 0-8 8c0 6 8 11 8 11s8-5 8-11a8 8 0 0 0-8-8M12 9h.01',
+ 'M12 3v2m0 14v2M3 12h2m14 0h2M12 16a4 4 0 1 0 0-8 4 4 0 0 0 0 8'
+ ];
+ function modernize(){
+  const heads=document.querySelectorAll('#tbl table.tabela thead th');
+  heads.forEach((th,i)=>{
+   if(th.querySelector('.cx-table-head-icon')||!paths[i])return;
+   const node=[...th.childNodes].find(n=>n.nodeType===3);
+   if(!node)return;
+   node.textContent=node.textContent.replace(/[\p{Extended_Pictographic}\uFE0F\u200D\u20E3]/gu,'').replace(/\s{2,}/g,' ').trimStart();
+   const wrap=document.createElement('span');
+   wrap.className='cx-table-head-icon';wrap.setAttribute('aria-hidden','true');
+   wrap.innerHTML='<svg viewBox="0 0 24 24"><path d="'+paths[i]+'"/></svg>';
+   th.prepend(wrap);
+  });
+ }
+ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',modernize,{once:true});else modernize();
+})();
+</script>
