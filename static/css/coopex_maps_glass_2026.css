@@ -1528,3 +1528,27 @@ body #cxTopControlDock>.weather.glass:focus-visible{outline:3px solid #1678d2!im
   max-width:none!important;
  }
 }
+
+/* Símbolos meteorológicos aparecem também no mapa do Brasil; desaparecem só no zoom de rua. */
+.cx-weather-map-symbol{
+ position:absolute!important;
+ display:block!important;
+ transform:translate(-50%,-50%)!important;
+ font-size:clamp(23px,2.6vw,43px)!important;
+ line-height:1!important;
+ text-align:center!important;
+ text-shadow:0 2px 3px #fff,0 4px 9px #2356757a!important;
+ opacity:.86!important;
+ pointer-events:none!important;
+ user-select:none!important;
+ z-index:0!important;
+ filter:drop-shadow(0 2px 5px rgba(0,50,99,.19))!important;
+ animation:cx-region-weather 52s ease-in-out infinite alternate!important;
+}
+.cx-weather-map-symbol.cx-weather-sun{opacity:.91!important}
+.cx-weather-map-symbol.cx-weather-rain,.cx-weather-map-symbol.cx-weather-snow{opacity:.83!important}
+@keyframes cx-region-weather{
+ from{translate:0 0}
+ to{translate:var(--w-x,12px) var(--w-y,0px)}
+}
+@media(prefers-reduced-motion:reduce){.cx-weather-map-symbol{animation:none!important}}
