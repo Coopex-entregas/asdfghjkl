@@ -46,7 +46,34 @@ routeInfo.innerHTML='<strong>Rotas sugeridas</strong>';
 if(routeResultPanel)routeResultPanel.before(routeInfo);
 const depRow=originMount;depRow.classList.add("cx-waypoint-row","cx-waypoint-start");
 const arrivalRow=destinationMount;arrivalRow.classList.add("cx-waypoint-row","cx-waypoint-finish");
-const routeMarker=document.createElement("span");routeMarker.className="cx-waypoint-dot";routeMarker.textContent="●";arrivalRow.prepend(routeMarker);
+const routeMarker=document.createElement("span");routeMarker.className="cx-waypoint-dot";routeMarker.innerHTML='<svg viewBox="0 0 24 24" width="19" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>';arrivalRow.prepend(routeMarker);
+if(stopsPanel)group.insertBefore(stopsPanel,arrivalRow);
+const grip='<svg viewBox="0 0 15 22" width="15" height="22" aria-hidden="true"><g fill="currentColor"><circle cx="4" cy="3" r="1.5"/><circle cx="11" cy="3" r="1.5"/><circle cx="4" cy="9" r="1.5"/><circle cx="11" cy="9" r="1.5"/><circle cx="4" cy="15" r="1.5"/><circle cx="11" cy="15" r="1.5"/></g></svg>';
+for(const row of [originMount,arrivalRow]){
+ const handle=document.createElement("span");handle.className="cx-waypoint-grip";handle.innerHTML=grip;handle.title="Arraste para mudar a ordem dos destinos";
+ row.prepend(handle);row.draggable=true;
+}
+const routeDrop=(from,to)=>window.COOPEX_ROUTE_ACTIONS?.reorder?.(from,to);
+function wireWaypointDnD(){
+ const stopRows=[...stopsPanel.querySelectorAll(".cx-stop-line")];
+ const all=[originMount,...stopRows,arrivalRow];
+ all.forEach((node,i)=>{
+  node.dataset.cxRouteIndex=String(i);node.draggable=true;
+  if(node.dataset.cxRouteDnD==="yes")return;
+  node.dataset.cxRouteDnD="yes";
+  node.addEventListener("dragstart",e=>{e.dataTransfer?.setData("application/x-coopex-route",node.dataset.cxRouteIndex);e.dataTransfer.effectAllowed="move";},true);
+  node.addEventListener("dragover",e=>{e.preventDefault();},true);
+  node.addEventListener("drop",e=>{
+   const index=e.dataTransfer?.getData("application/x-coopex-route");
+   if(index===undefined||index==="")return;
+   e.preventDefault();e.stopImmediatePropagation();
+   routeDrop(Number(index),Number(node.dataset.cxRouteIndex));
+  },true);
+ });
+}
+const waypointObserver=new MutationObserver(wireWaypointDnD);
+if(stopsPanel)waypointObserver.observe(stopsPanel,{childList:true});
+wireWaypointDnD();
 
 const coopBox=document.createElement("div");coopBox.id="cxCoopSearch";coopBox.className="glass";
 coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisar cooperado..." aria-label="Pesquisar cooperado" autocomplete="off"><div id="cxCoopHits" hidden></div>';
