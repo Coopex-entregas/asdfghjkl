@@ -223,3 +223,21 @@ body .cx-route-option small{font-size:12px;color:#2362a4}
  body .weather.glass,body.cx-address-mode #ui>.weather.glass{top:auto!important;bottom:8px!important;right:8px!important;left:auto!important;width:auto!important;min-width:0!important;max-width:calc(100dvw - 16px)!important}
  body .filters.glass,body.cx-address-mode .filters.glass{top:8px!important;right:8px!important;height:40px!important}
 }
+
+/* Ficha Google Places com fotos, horários e avaliação no painel lateral */
+body .cx-place-details{flex:0 1 auto!important;overflow-y:auto!important;max-height:min(56dvh,580px)!important;padding:12px!important;border-radius:20px!important;scrollbar-width:thin}
+.cx-place-title{font-size:17px!important;line-height:1.25;color:#153e66}
+.cx-place-address{display:block;font-size:12px;color:#64829a;line-height:1.5}
+.cx-place-state{font-size:12px;color:#456c87;font-weight:750;line-height:1.4}
+.cx-place-state[data-open=yes]{color:#0b9658}.cx-place-state[data-open=no]{color:#bb5d2f}
+body .cx-place-gallery{display:flex;gap:7px;max-width:100%;overflow-x:auto;scrollbar-width:thin;scroll-snap-type:x mandatory;padding:3px 0!important}
+body .cx-place-gallery img{height:172px;width:min(270px,88%);flex:none;max-width:none;border-radius:14px;object-fit:cover;box-shadow:0 4px 13px #255c763b;scroll-snap-align:start}
+.cx-place-credit{font-size:10px;color:#66839a}
+.cx-place-metadata{display:flex;flex-direction:column;gap:7px}
+.cx-place-data{font-size:12px;color:#355d7e}
+.cx-place-rating{font-weight:850;color:#825f12;font-size:13px}
+.cx-place-hours{margin-top:3px;padding:9px 10px;background:rgba(255,255,255,.58);border:1px solid #fff;border-radius:12px;color:#315c78;font-size:11px;line-height:1.65}
+.cx-place-hours summary{font-size:12px;font-weight:850;cursor:pointer;color:#174d7a;margin-bottom:5px}
+.cx-place-link{display:block;width:fit-content;font-size:12px;color:#1266ac;text-decoration:none}
+.cx-place-shortcuts{display:flex;gap:5px;position:sticky;bottom:0;background:rgba(228,244,254,.78);padding:7px 0 0;backdrop-filter:blur(12px)}
+@media(max-width:700px){body .cx-place-details{max-height:42dvh!important}body .cx-place-gallery img{height:120px;width:210px}}
