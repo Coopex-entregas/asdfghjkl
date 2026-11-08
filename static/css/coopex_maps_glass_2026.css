@@ -2112,3 +2112,32 @@ body #addressPanel.cx-search-idle.cx-search-suggesting #cxUnifiedResults:not([hi
  body #cxTopControlDock>#cxCoopSearch{overflow:visible!important;min-width:115px!important}
  body #cxCoopInput{font-size:13px!important}
 }
+
+/* Ficha de endereço: botão de direções no padrão visual Maps. */
+body #cxPlaceDetails .cx-place-shortcuts .cx-place-directions{
+ display:flex!important;flex-direction:column!important;align-items:center!important;
+ justify-content:center!important;gap:6px!important;
+ padding:9px 6px!important;min-height:76px!important;
+ background:linear-gradient(150deg,#237ff2,#0d60ca)!important;
+ color:white!important;border-radius:17px!important;
+ border:1px solid #7fc0ff!important;
+ box-shadow:0 7px 17px #1665a544,inset 0 2px 2px #93caff80!important;
+ font-size:12px!important;font-weight:750!important;
+}
+body #cxPlaceDetails .cx-place-shortcuts .cx-place-directions .cx-directions-symbol{
+ display:grid!important;place-items:center!important;width:28px!important;height:28px!important;
+ color:#fff!important;
+}
+body #cxPlaceDetails .cx-place-shortcuts .cx-place-directions svg{
+ display:block!important;width:27px!important;height:27px!important;stroke:currentColor!important;
+}
+body #cxPlaceDetails .cx-place-shortcuts .cx-place-directions:hover{
+ background:linear-gradient(150deg,#318df7,#176fd7)!important;
+ box-shadow:0 10px 21px #1665a555,inset 0 2px 2px #acd7ff!important;
+}
+body #cxPlaceDetails .cx-place-shortcuts button:not(.cx-place-directions){
+ min-height:76px!important;border-radius:17px!important;font-size:12px!important;
+}
+/* Não manter o cartão de histórico visível ao abrir o resultado do endereço. */
+body #addressPanel.cx-place-view #cxUnifiedResults,
+body #addressPanel.cx-directions-mode #cxUnifiedResults{display:none!important}
