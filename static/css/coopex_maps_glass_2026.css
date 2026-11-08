@@ -1393,3 +1393,17 @@ body #addressPanel.cx-directions-mode #cxRouteEditor .cx-travel-modes{
  body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints{padding-right:40px!important}
  body #addressPanel.cx-directions-mode #cxRouteEditor #stopsList{padding-right:40px!important}
 }
+
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry{
+ position:relative!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry button{
+ right:0!important;
+ top:2px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-destination-mount .cx-dest-row{
+ padding:3px 5px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-origin-mount input{
+ padding:7px 11px!important;
+}
