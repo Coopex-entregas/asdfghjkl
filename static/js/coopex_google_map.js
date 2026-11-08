@@ -171,7 +171,7 @@ async function showPlaceDetails(point,knownPlace=null){
  }
  if(!knownPlace){state.textContent="Endereço localizado pelo Google. Mais informações dependem do cadastro do estabelecimento.";return}
  try{
-  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","currentOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName","editorialSummary","addressComponents"]});
+  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","currentOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName"]});
   if(seq!==placeSequenceInfo)return;
   if(knownPlace.displayName)heading.textContent=knownPlace.displayName;
   if(knownPlace.formattedAddress)address.textContent=knownPlace.formattedAddress;
@@ -225,9 +225,7 @@ async function showPlaceDetails(point,knownPlace=null){
    box.append(days);
    metadata.append(box);
   }
-  if(knownPlace.editorialSummary){
-   const summary=knownPlace.editorialSummary;detail(typeof summary==="string"?summary:summary.text||"","cx-place-description");
-  }
+  
   if(knownPlace.formattedAddress)detail("📍 "+knownPlace.formattedAddress,"cx-place-location");
   if(knownPlace.nationalPhoneNumber){
    const link=document.createElement("a");link.href="tel:"+knownPlace.nationalPhoneNumber.replace(/[^\d+]/g,"");link.textContent="☎ "+knownPlace.nationalPhoneNumber;link.className="cx-place-link";metadata.append(link);
@@ -312,9 +310,9 @@ async function searchAddress(){
  if(hits)hits.hidden=true;
  searchNotice("Pesquisando: "+q+"…");
  info("Localizando estabelecimento ou endereço...");
- // Modo econômico: desativar Places Text Search Pro em pesquisas comuns.
- // Endereços e bairros são localizados por Geocoding Essentials.
- const cxEnablePaidTextSearch=false;
+ // Pesquisas de empresas pelo nome usam Places; ruas usam Geocoding.
+ // Consultas de dados comerciais podem ter cobrança na Google Maps Platform.
+ const cxAddressQuery=/\d|\b(?:rua|av\.?|avenida|travessa|estrada|rodovia|praça|praca|alameda|bairro|cep)\b/i.test(q);\n  const cxEnablePaidTextSearch=!cxAddressQuery;
  if(cxEnablePaidTextSearch)try{
   const {Place}=await google.maps.importLibrary("places");
   const response=await Place.searchByText({
@@ -983,15 +981,14 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   suggestions();loadPreferences();
   // Clique num estabelecimento abre a ficha dentro do COOPEX Maps.
   // event.stop() remove o popup Google que oferece abrir outro site.
-  // Somente Geocoding já usado na pesquisa; não ativa Places Details paga.
+  // Usa Places Details no clique para exibir a ficha comercial.
   const poiGeocodingCache=new Map();
   googleMap.addListener("click",event=>{
-   if(event.placeId){
-    event.stop?.();
+   if(event.placeId){\n    ++placeSequenceInfo;\n    event.stop?.();
     const placeId=event.placeId;
     const fallback=event.latLng?{lat:event.latLng.lat(),lng:event.latLng.lng()}:null;
     const cached=poiGeocodingCache.get(placeId);
-    if(cached){destination(cached.point,cached.label);return}
+    if(cached){\n    google.maps.importLibrary("places").then(({Place})=>destination(cached.point,cached.label,new Place({id:placeId})))\n     .catch(()=>destination(cached.point,cached.label));\n    return;\n   }
     if(!geocoder){if(fallback)destination(fallback,"Local selecionado");return}
     geocoder.geocode({placeId},(results,status)=>{
      const found=status==="OK"&&results?.length?results[0]:null;
@@ -1001,8 +998,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
      const label=found?.formatted_address||"Estabelecimento selecionado";
      poiGeocodingCache.set(placeId,{point,label});
      if(poiGeocodingCache.size>90)poiGeocodingCache.delete(poiGeocodingCache.keys().next().value);
-     destination(point,label);
-    });
+     google.maps.importLibrary("places").then(({Place})=>destination(point,label,new Place({id:placeId})))\n      .catch(error=>{console.warn("Ficha do Google Places:",error);destination(point,label)});\n    });
     return;
    }
    if(event.latLng&&document.body.classList.contains("cx-address-mode"))
