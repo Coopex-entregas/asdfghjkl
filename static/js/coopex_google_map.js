@@ -714,7 +714,12 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   googleMap.addListener("projection_changed",finishGoogleLoad);
   googleMap.addListener("tilesloaded",finishGoogleLoad);
   window.dispatchEvent(new CustomEvent("coopex:google-native-ready"));
-  geocoder=new google.maps.Geocoder();streetPanorama=googleMap.getStreetView();suggestions();
+  geocoder=new google.maps.Geocoder();streetPanorama=googleMap.getStreetView();
+  streetPanorama.addListener("visible_changed",()=>{
+   document.body.classList.toggle("cx-street-visible",!!streetPanorama.getVisible());
+   if(!streetPanorama.getVisible())window.dispatchEvent(new Event("coopex:street-closed"));
+  });
+  suggestions();
   googleMap.addListener("click",async event=>{
    if(event.placeId){
     event.stop();
