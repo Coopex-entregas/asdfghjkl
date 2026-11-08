@@ -3,8 +3,9 @@
 "use strict";
 const find=()=>document.querySelector("#cxTopControlDock>.weather.glass")||document.querySelector("#ui .weather.glass");
 let lastFetch=0,forecast=null,request=null,panel=null,source=null;
-const ICON=(code)=>code===0?"☀️":code<=3?"⛅":code<=48?"🌫️":code<=67?"🌧️":code<=77?"🌨️":code<=82?"🌦️":code<=86?"🌨️":"⛈️";
-const DESC=(code)=>code===0?"Sol":code<=3?"Sol entre nuvens":code<=48?"Neblina":code<=67?"Chuva possível":code<=77?"Granizo/neve":code<=82?"Pancadas possíveis":code<=86?"Neve":"Trovoadas";
+const ICON=(code,isDay=true)=>code===0?(isDay?"☀️":"🌙"):code<=3?(isDay?"⛅":"☁️"):code<=48?"🌫️":code<=67?"🌧️":code<=77?"🌨️":code<=82?"🌦️":code<=86?"🌨️":"⛈️";
+const DESC=(code,isDay=true)=>code===0?(isDay?"Céu limpo":"Céu limpo à noite"):code<=3?(isDay?"Parcialmente nublado":"Nuvens à noite"):code<=48?"Neblina":code<=67?"Chuva possível":code<=77?"Granizo/neve":code<=82?"Pancadas possíveis":code<=86?"Neve":"Trovoadas";
+const localHour=()=>Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date())));
 function position(){
  if(!panel||panel.hidden||!source)return;
  const r=source.getBoundingClientRect(),w=panel.offsetWidth||330;
@@ -24,10 +25,10 @@ function setup(){
  document.body.append(panel);
  async function load(){
   panel.textContent="Consultando previsão para os próximos sete dias…";position();
-  if(forecast&&Date.now()-lastFetch<15*60*1000){show(forecast);return}
+  if(forecast&&Date.now()-lastFetch<10*60*1000){show(forecast);return}
   if(request)return;
   try{
-   request=fetch("https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&current=temperature_2m,weather_code&hourly=precipitation_probability,weather_code,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7",{cache:"default"});
+   request=fetch("https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day&hourly=precipitation_probability,weather_code,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7",{cache:"no-store"});
    const response=await request;if(!response.ok)throw Error("HTTP "+response.status);
    const data=await response.json();forecast=data;if(!forecast?.daily?.time?.length)throw Error("Previsão sem dados");
    lastFetch=Date.now();show(forecast);
@@ -42,11 +43,23 @@ function setup(){
   const closeBtn=document.createElement("button");closeBtn.type="button";closeBtn.textContent="×";closeBtn.setAttribute("aria-label","Fechar previsão");closeBtn.onclick=close;
   head.append(title,closeBtn);panel.append(head);
   const nowCode=Number(current.weather_code);
-  const nowDescription=Number.isFinite(nowCode)?DESC(nowCode):"Não disponível";
+  const dayFlag=current.is_day===1||current.is_day===true;
+  const nowDescription=Number.isFinite(nowCode)?DESC(nowCode,dayFlag):"Não disponível";
+  const weatherIcon=document.getElementById("weatherIcon"),temperature=document.getElementById("temperature");
+  if(weatherIcon){weatherIcon.textContent=Number.isFinite(nowCode)?ICON(nowCode,dayFlag):"—";weatherIcon.title=nowDescription;weatherIcon.classList.toggle("cx-moon",!dayFlag&&nowCode<=3);weatherIcon.classList.toggle("cx-sun-hot",dayFlag&&nowCode===0&&Number(current.temperature_2m)>=32);weatherIcon.classList.toggle("cx-sun-warm",dayFlag&&nowCode===0&&Number(current.temperature_2m)<32);}
+  if(temperature)temperature.textContent=Number.isFinite(Number(current.temperature_2m))?Math.round(current.temperature_2m)+"°C":"—";
+  const humidity=document.getElementById("humidity"),wind=document.getElementById("wind"),alert=document.getElementById("weatherAlert");
+  if(humidity)humidity.textContent=Number.isFinite(Number(current.relative_humidity_2m))?Math.round(current.relative_humidity_2m)+"%":"—";
+  if(wind)wind.textContent=Number.isFinite(Number(current.wind_speed_10m))?Math.round(current.wind_speed_10m)+" km/h":"—";
+  if(alert)alert.textContent=Number(current.precipitation)>0?"Precipitação indicada no período atual. Cuidado ao dirigir.":"Previsão meteorológica regional, sem confirmação por bairro.";
+  const observedAt=current.time?String(current.time).slice(11,16):"";
+  const observedText=observedAt?" · Atualizado às "+observedAt+"h (Natal)":"";
+  const topIcon=source.querySelector("#weatherIcon");
+  if(topIcon)topIcon.title=nowDescription+observedText;
   const topCondition=source.querySelector("#conditions");
   if(topCondition)topCondition.textContent=nowDescription+" agora";
   const currentText=document.createElement("div");currentText.className="cx-weather-now";
-  currentText.textContent="Agora: "+nowDescription+(Number.isFinite(Number(current.temperature_2m))?" · "+Math.round(current.temperature_2m)+"°C":"");
+  currentText.textContent="Agora: "+nowDescription+(Number.isFinite(Number(current.temperature_2m))?" · "+Math.round(current.temperature_2m)+"°C":"")+observedText;
   panel.append(currentText);
   const today=(new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()));
   const hourly=[];
@@ -67,7 +80,7 @@ function setup(){
    hourly.forEach(x=>{
     const item=document.createElement("div");item.className="cx-weather-hour";
     const at=document.createElement("strong");at.textContent=String(x.hour).padStart(2,"0")+"h";
-    const icon=document.createElement("span");icon.textContent=ICON(x.code);
+    const icon=document.createElement("span");icon.textContent=ICON(x.code,false);
     const prob=document.createElement("small");prob.textContent=Number.isFinite(x.prob)?x.prob+"%":"—";
     item.append(at,icon,prob);hours.append(item);
    });
@@ -82,7 +95,7 @@ function setup(){
    const code=Number(d.weather_code?.[i]||0);
    const percent=Math.round(d.precipitation_probability_max?.[i]||0);
    const weather=document.createElement("span");
-   weather.textContent=ICON(code)+" "+(percent<20&&code>=51?"Chuva pouco provável":DESC(code));
+   weather.textContent=ICON(code,true)+" "+(percent<20&&code>=51?"Chuva pouco provável":DESC(code,true));
    const temp=document.createElement("b");temp.textContent=Math.round(d.temperature_2m_min?.[i])+"° / "+Math.round(d.temperature_2m_max?.[i])+"°";
    const prob=document.createElement("small");prob.textContent="☂ "+percent+"%";
    row.append(weekday,weather,temp,prob);panel.append(row);
@@ -104,8 +117,10 @@ function setup(){
  window.addEventListener("coopex:traffic-panel-open",close);
  window.addEventListener("resize",position);
  window.addEventListener("scroll",position,true);
- // Atualiza a condição do topo também antes de abrir a previsão.
+ // Uma fonte meteorológica para a faixa superior e para a previsão.
+ // Atualizações periódicas sem consultar a API a cada movimento do mapa.
  load();
+ setInterval(()=>{if(!panel.hidden||Date.now()-lastFetch>=10*60*1000)load()},10*60*1000);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
 })();
