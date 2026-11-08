@@ -82,7 +82,9 @@ async function showPlaceDetails(point,knownPlace=null){
  root.append(gallery,heading,overview,address,state,actions,metadata);
  const mainPanel=document.getElementById("addressPanel");
  mainPanel?.classList.add("cx-place-view");
+ mainPanel?.classList.remove("cx-search-idle","cx-search-suggesting");
  root.hidden=false;
+ window.dispatchEvent(new Event("coopex:place-details-ready"));
  function detail(text,cls=""){
   const line=document.createElement("div");line.className="cx-place-data "+cls;line.textContent=text;metadata.append(line);return line;
  }
