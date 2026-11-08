@@ -41,7 +41,12 @@ function keepLastPosition(arr){
   return arr;
 }
 const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
-const state=i=>!i.online?"offline":i.status==="ocioso"?"ocioso":"online";
+const MAP_SIGNAL_TIMEOUT_MS=60000; // Uma regra visual apenas no COOPEX Maps.
+const state=i=>{
+ if(!i.online)return "offline";
+ if(Number.isFinite(i.__lastSignalAt)&&Date.now()-i.__lastSignalAt>MAP_SIGNAL_TIMEOUT_MS)return "offline";
+ return i.status==="ocioso"?"ocioso":"online";
+};
 const stateNames={online:"Online",ocioso:"Ocioso",offline:"Offline"};
 const colors={online:"#0cdb7b",ocioso:"#f5a12c",offline:"#ff4758"};
 const initials=n=>String(n||"CO").trim().split(/\s+/).filter(Boolean).slice(0,2).map(v=>v[0].toLocaleUpperCase("pt-BR")).join("");
@@ -246,7 +251,13 @@ async function updateGps(){
   const response=await fetch("/mapa_motoboys?format=json",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
   if(!response.ok)throw Error("GPS HTTP "+response.status);
   const data=await response.json();if(!Array.isArray(data))throw Error("Formato GPS inválido");
-  items=keepLastPosition(data);render();$("gpsStatus").textContent="GPS ativo";
+  items=keepLastPosition(data);
+   const clock=Date.now();
+   for(const coop of items){
+    const age=Number(coop.sinal_idade_segundos);
+    coop.__lastSignalAt=coop.online&&Number.isFinite(age)&&age>=0?clock-age*1000:null;
+   }
+   render();$("gpsStatus").textContent="GPS ativo";
   if(!lastFit&&mapReady){const good=clusters().map(g=>g[0]);if(good.length){let b=new ml.LngLatBounds();good.forEach(i=>b.extend([+i.lng,+i.lat]));map.fitBounds(b,{padding:{top:160,right:365,bottom:180,left:320},maxZoom:13,duration:0});lastFit=true;}}
  }catch(e){$("gpsStatus").textContent="GPS temporariamente indisponível";console.warn("GPS:",e.message)}
  finally{fetching=false;}
@@ -457,6 +468,8 @@ function gpsSocket(){
    if(!record){updateGps();return}
    const oldLat=record.lat,oldLng=record.lng;
    Object.assign(record,event);
+    if(event.online===false)record.__lastSignalAt=null;
+    else if(event.online===true)record.__lastSignalAt=Date.now();
    if(event.velocidade_kmh!=null&&event.speed_kmh==null)record.speed_kmh=event.velocidade_kmh;
    if(event.lat==null)record.lat=oldLat;
    if(event.lng==null)record.lng=oldLng;
@@ -484,5 +497,8 @@ map.on("moveend",()=>{
 });
 map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();gpsSocket();
-setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);setInterval(updateGps,60000);/* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
+setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);
+ setInterval(updateGps,60000);
+ // Envelhece status localmente sem chamadas extras à API nem depender de evento de logout.
+ setInterval(()=>{if(!document.hidden&&items.some(x=>x.online&&Number.isFinite(x.__lastSignalAt)&&Date.now()-x.__lastSignalAt>MAP_SIGNAL_TIMEOUT_MS))render()},5000);/* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
 })();
