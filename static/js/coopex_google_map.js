@@ -147,11 +147,18 @@ async function showPlaceDetails(point,knownPlace=null){
  const metadata=document.createElement("div");metadata.className="cx-place-metadata";
  const actions=document.createElement("div");actions.className="cx-place-shortcuts";
  for(const [label,action] of [
-  ["↗ Direções",()=>{const input=document.getElementById("cxDestinationMirror");if(input)input.value=(knownPlace?.formattedAddress||point.label||"");document.querySelector("[data-cx-nav=rotas]")?.click();}],
+  ["Rotas",()=>{const input=document.getElementById("cxDestinationMirror");if(input)input.value=(knownPlace?.formattedAddress||point.label||"");document.querySelector("[data-cx-nav=rotas]")?.click();}],
   ["◎ Ver em frente",openStreet],
   ["＋ Parada",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxStopInput");if(input){input.value=point.label||"";input.focus()}}]
  ]){
-  const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=action;actions.append(b);
+  const b=document.createElement("button");b.type="button";b.onclick=action;
+   if(label==="Rotas"){
+    b.className="cx-place-directions";
+    const icon=document.createElement("span");icon.className="cx-directions-symbol";
+    icon.innerHTML='<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round" stroke-linejoin="round"><path d="M11.3 2.6 2.6 11.3a1 1 0 0 0 0 1.4l8.7 8.7a1 1 0 0 0 1.4 0l8.7-8.7a1 1 0 0 0 0-1.4l-8.7-8.7a1 1 0 0 0-1.4 0Z"/><path d="M8 13h8m-3-3 3 3-3 3"/></svg>';
+    const caption=document.createElement("span");caption.textContent="Rotas";b.append(icon,caption);
+   }else b.textContent=label;
+   actions.append(b);
  }
  root.append(gallery,heading,overview,address,state,actions,metadata);
  const mainPanel=document.getElementById("addressPanel");
