@@ -98,7 +98,9 @@ async function showPlaceDetails(point,knownPlace=null){
   const pStatus=String(knownPlace.businessStatus||"");
   const translateStatus={CLOSED_TEMPORARILY:"Temporariamente fechado",CLOSED_PERMANENTLY:"Fechado permanentemente",FUTURE_OPENING:"Ainda não inaugurado"};
   state.textContent=translateStatus[pStatus]||"";
-  const openStatus=typeof knownPlace.isOpen==="function"?await knownPlace.isOpen().catch(()=>undefined):undefined;
+  let openStatus=typeof knownPlace.isOpen==="function"?await knownPlace.isOpen().catch(()=>undefined):undefined;
+  if(typeof openStatus!=="boolean"&&typeof knownPlace.currentOpeningHours?.openNow==="boolean")
+   openStatus=knownPlace.currentOpeningHours.openNow;
   if(seq!==placeSequenceInfo)return;
   if(typeof openStatus==="boolean")state.textContent=openStatus?"Aberto agora":"Fechado agora";
   if(!state.textContent)state.textContent="Informações disponibilizadas pelo Google";
@@ -340,7 +342,7 @@ async function calculateRoutes(){
    option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
   showRoute(0);
-  window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives}}));
+  window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives,origin:a,destination:b}}));
   info("");
  }catch(e){info("Não foi possível calcular: "+String(e.message||e));console.warn("COOPEX Routes",e)}
  finally{routeInFlight=false;button.disabled=false}
