@@ -224,6 +224,11 @@ async function searchAddress(){
   if(seq!==placeSequenceInfo)return;
   if(status!=="OK"||!results?.length){info("Não foi possível localizar: "+q);return}
   const r=results[0],p=r.geometry.location;
+  const addressQuery=/\d|\b(rua|av\.?|avenida|travessa|estrada|rodovia|praça|alameda)\b/i.test(q);
+  const addressTypes=r.types||[];
+  if(!addressQuery&&addressTypes.some(type=>["locality","administrative_area_level_1","administrative_area_level_2","country"].includes(type))){
+   info("O Google encontrou apenas a cidade, não o estabelecimento pesquisado. Selecione um resultado da pesquisa de locais.");return;
+  }
   let place=null;
   if(r.place_id){
    try{const {Place}=await google.maps.importLibrary("places");place=new Place({id:r.place_id})}
