@@ -3015,7 +3015,7 @@ function startArrivalWatch(){
   if(!base||inQueue||offered||document.hidden)return;
   const c=p.coords;
   if(c.accuracy>50)return;
-  if(distance(c.latitude,c.longitude,base.latitude,base.longitude)+c.accuracy>100)return;
+  if(distance(c.latitude,c.longitude,base.latitude,base.longitude)+c.accuracy>30)return;
   offered=true;
   try{
    const AudioCtx=window.AudioContext||window.webkitAudioContext;
