@@ -324,6 +324,36 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   googleMap.addListener("projection_changed",finishGoogleLoad);
   googleMap.addListener("tilesloaded",finishGoogleLoad);
   geocoder=new google.maps.Geocoder();streetPanorama=googleMap.getStreetView();suggestions();
+  googleMap.addListener("click",event=>{
+   if(event.latLng&&document.body.classList.contains("cx-address-mode"))
+    destination({lat:event.latLng.lat(),lng:event.latLng.lng()},"Ponto marcado no mapa");
+  });
+  // As ferramentas precisam agir no mapa oficial visível, não no MapLibre oculto.
+  const mapActions={
+   mapSatellite:()=>googleMap.setMapTypeId("satellite"),
+   mapStreet:()=>googleMap.setMapTypeId("roadmap"),
+   fit:()=>{
+    const bounds=new google.maps.LatLngBounds();let found=0;
+    for(const m of markers.values())if(m.getMap()&&m.getPosition()){bounds.extend(m.getPosition());found++}
+    if(found)googleMap.fitBounds(bounds,65);else info("Nenhum cooperado com GPS para enquadrar.");
+   },
+   locate:()=>{
+    if(!navigator.geolocation){info("Seu navegador não disponibiliza localização.");return}
+    navigator.geolocation.getCurrentPosition(p=>{
+     googleMap.panTo({lat:p.coords.latitude,lng:p.coords.longitude});googleMap.setZoom(16)
+    },()=>info("Permissão de localização não concedida."),{enableHighAccuracy:true,timeout:9000});
+   },
+   refresh:()=>{info("Atualizando as posições dos cooperados…");window.COOPEX_MAP_ACTIONS?.refresh?.()}
+  };
+  for(const [id,fn]of Object.entries(mapActions)){
+   document.getElementById(id)?.addEventListener("click",event=>{
+    event.preventDefault();event.stopImmediatePropagation();fn();
+   },true);
+  }
+  document.getElementById("streetTool")?.addEventListener("click",event=>{
+   event.preventDefault();event.stopImmediatePropagation();openStreet();
+  },true);
+
 
   // Em caso de falha de autorização, gm_authFailure mostra o diagnóstico.
   setTimeout(()=>{
@@ -343,6 +373,6 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
 const script=document.createElement("script");
 script.src="https://maps.googleapis.com/maps/api/js?key="+encodeURIComponent(key)+"&callback=COOPEX_GOOGLE_MAP_ONLOAD&loading=async&v=beta&language=pt-BR&region=BR";
 script.async=true;
-script.onerror=()=>{document.body.classList.add("cx-google-error");reportGoogleStatus("Não foi possível baixar a biblioteca do Google Maps. Confira a chave, a rede e a API ativada.");console.warn("Google Maps não carregou. Mapa alternativo mantido.");};
+script.onerror=()=>{document.body.classList.add("cx-google-error");reportGoogleStatus("Não foi possível carregar Google Maps. Confira a chave e a disponibilidade da API.");console.warn("Google Maps não carregou.");};
 document.head.appendChild(script);
 })();
