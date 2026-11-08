@@ -2199,3 +2199,51 @@ body #cxWeatherWeek .cx-weather-disclaimer{display:block;font-size:10px;line-hei
  body #cxWeatherWeek{width:calc(100dvw - 16px)!important}
  body #cxWeatherWeek .cx-week-day{grid-template-columns:57px minmax(98px,1fr) 67px 42px!important}
 }
+
+/* 08/11 — barra superior: priorizar clima legível, cooperado proporcional. */
+@media(min-width:1600px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(285px,385px) 92px minmax(320px,395px) max-content 44px!important;
+  column-gap:7px!important;justify-content:space-between!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{max-width:385px!important;width:100%!important}
+ body #cxTopControlDock>.weather.glass{
+  min-width:320px!important;max-width:395px!important;width:100%!important;
+  flex:0 0 auto!important;
+ }
+}
+@media(min-width:1280px) and (max-width:1599px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(190px,1fr) 80px minmax(220px,275px) max-content 40px!important;
+  column-gap:5px!important;justify-content:stretch!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{min-width:0!important;max-width:345px!important}
+ body #cxTopControlDock>.weather.glass{
+  min-width:220px!important;max-width:275px!important;width:100%!important;
+ }
+ body #cxTopControlDock>#cxTrafficTopButton{
+  width:80px!important;min-width:80px!important;max-width:80px!important;
+ }
+}
+body #cxTopControlDock>.weather.glass{
+ display:flex!important;gap:6px!important;align-items:center!important;
+ padding:5px 11px!important;
+}
+body #cxTopControlDock>.weather.glass #temperature{flex:none!important}
+body #cxTopControlDock>.weather.glass .cx-weather-place{
+ flex:none!important;font-size:11px!important;white-space:nowrap!important;
+}
+body #cxTopControlDock>.weather.glass .cx-weather-condition{
+ flex:1 1 auto!important;min-width:0!important;max-width:none!important;
+ font-size:12px!important;font-weight:600!important;
+ overflow:hidden!important;text-overflow:ellipsis!important;
+}
+/* ESC: recolhe inteiramente o painel de resultados; não deixar uma barra residual. */
+body #addressPanel.cx-search-idle:not(.cx-search-history-open):not(.cx-search-suggesting) #cxUnifiedResults{
+ display:none!important;visibility:hidden!important;height:0!important;max-height:0!important;
+ margin:0!important;padding:0!important;border:0!important;box-shadow:none!important;
+}
+body #addressPanel.cx-search-idle .cx-drawer-content{
+ box-shadow:none!important;filter:none!important;
+}
+body #addressPanel.cx-search-idle .cx-drawer-top{margin-bottom:0!important}
