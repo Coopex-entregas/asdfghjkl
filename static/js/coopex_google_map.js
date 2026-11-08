@@ -139,21 +139,10 @@ function suggestions(){
  const q=(field?.value||"").trim();if(!q){
   const d=document.createElement("div");d.className="cx-drawer-welcome";
   const title=document.createElement("strong");title.textContent="Pesquisar no mapa";
-  const note=document.createElement("small");note.textContent="Busque cooperados, ruas, bairros ou locais. A cartografia e os alfinetes permanecem no Google Maps.";
+  const note=document.createElement("small");note.textContent="Busque ruas, endereços e estabelecimentos. Os cooperados têm pesquisa própria ao lado do clima.";
   d.append(title,note);hits.append(d);
  }
  let count=0;
- const matching=lastItems.filter(i=>i.ativo!==false&&i.id!=null&&(!q||queryNorm(i.nome).includes(queryNorm(q)))).slice(0,q?12:5);
- for(const i of matching){count++;const st=state(i);
-  makeHit(i.nome||"Cooperado",st==="offline"?"Offline":st==="ocioso"?"Ocioso":"Online",palette[st],()=>{
-   field.value=i.nome||"";
-   if(routeActive){destination({lat:i.lat,lng:i.lng},i.nome)}else{
-    window.COOPEX_MAP_ACTIONS?.selectCooperado?.(i.id);
-    if(Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)){googleMap.panTo({lat:+i.lat,lng:+i.lng});googleMap.setZoom(16)}
-   }
-   info("Cooperado: "+i.nome);
-  });
- }
  for(const qSaved of readHistory().filter(s=>!q||queryNorm(s).includes(queryNorm(q))).slice(0,5)){
   count++;makeHit(qSaved,"Pesquisa anterior da COOPEX","#5284b5",()=>{field.value=qSaved;searchAddress()});
  }
@@ -163,8 +152,6 @@ function suggestions(){
 function searchAddress(){
  if(!googleMap||!geocoder){info("Google Maps ainda está inicializando.");return}
  const q=(field?.value||"").trim();if(q.length<3){info("Digite pelo menos três caracteres.");return}
- const coop=lastItems.find(i=>queryNorm(i.nome)===queryNorm(q)&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng));
- if(coop){destination({lat:+coop.lat,lng:+coop.lng},coop.nome);window.COOPEX_MAP_ACTIONS?.selectCooperado?.(coop.id);return}
  info("Pesquisando endereço no Google Maps...");
  geocoder.geocode({address:q+", Brasil"},(results,status)=>{
   if(status!=="OK"||!results?.length){info(status==="REQUEST_DENIED"?"Geocoding API não autorizada para esta chave. Verifique a restrição no Google Cloud.":"Endereço não localizado: "+status);return}
