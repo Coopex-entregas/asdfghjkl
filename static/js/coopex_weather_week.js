@@ -49,7 +49,6 @@ function setup(){
    const prob=document.createElement("small");prob.textContent="☂ "+Math.round(d.precipitation_probability_max?.[i]||0)+"%";
    row.append(weekday,weather,temp,prob);panel.append(row);
   });
-  const foot=document.createElement("small");foot.className="cx-week-source";foot.textContent="Previsão aproximada do modelo Open-Meteo para Natal/RN. Não é radar por bairro.";panel.append(foot);
   position();
  }
  function toggle(){
