@@ -8,12 +8,12 @@ function clear(){overlays.forEach(o=>o.setMap(null));overlays=[];}
 function render(locations){
  if(!map||!window.google?.maps)return;clear();
  for(const record of locations){
-  if(record.cloud<57&&record.rain<0.12)continue;
+  if(record.rain<=0)continue;
   const overlay=new google.maps.OverlayView();
   overlay.onAdd=function(){
    const el=document.createElement("div");el.className="cx-cloud-location";
    el.title=record.name+" · previsão aproximada · "+record.rain.toFixed(1)+" mm na última hora";
-   el.style.opacity=String(Math.min(.42,Math.max(.12,record.cloud/300)));
+   el.style.opacity=String(Math.min(.42,Math.max(.16,record.rain/8+.14)));
    el.style.setProperty("--cx-cloud-wind-angle",(record.windDir+180)+"deg");
    el.style.setProperty("--cx-cloud-wind-duration",Math.max(26,85-record.windSpeed*6)+"s");
    el.innerHTML='<span class="cx-cloud-shape">☁</span>'+(record.rain>=.12?'<span class="cx-cloud-rain">╱╱╱╱╱</span>':"");
@@ -37,8 +37,8 @@ async function refresh(){
   const rows=await response.json(),list=Array.isArray(rows)?rows:[rows];
   const data=sites.map((s,i)=>({name:s[0],lat:s[1],lng:s[2],rain:Number(list[i]?.current?.precipitation||0),cloud:Number(list[i]?.current?.cloud_cover||0),windDir:Number(list[i]?.current?.wind_direction_10m||0),windSpeed:Number(list[i]?.current?.wind_speed_10m||0)})).filter(x=>valid(x.rain)&&valid(x.cloud));
   render(data);
-  const raining=data.filter(x=>x.rain>=.12);
-  if(raining.length){const condition=document.getElementById("conditions");if(condition)condition.textContent="Chuva prevista: "+raining.slice(0,2).map(x=>x.name).join(", ")+(raining.length>2?" e região":"");}
+  const raining=data.filter(x=>x.rain>0);
+  if(raining.length){const condition=document.getElementById("conditions");if(condition)condition.textContent="Modelo indica chuva: "+raining.slice(0,2).map(x=>x.name).join(", ")+(raining.length>2?" e região":"");}
  }catch(e){console.debug("Previsão localizada indisponível:",e.message);clear()}
  finally{loading=false}
 }
