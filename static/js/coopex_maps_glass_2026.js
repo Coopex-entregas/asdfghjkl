@@ -100,6 +100,11 @@ window.addEventListener("coopex:routes-changed",()=>{
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
+ const placeDetails=$("cxPlaceDetails");
+ if(placeDetails)placeDetails.hidden=id==="rotas";
+ // A pesquisa de locais e a tela de direções não podem coexistir visualmente.
+ panel.classList.toggle("cx-place-view",!!placeDetails&&id!=="rotas");
+ inside.scrollTop=0;
  for(const [key,b] of navBtns)b.classList.toggle("active",key===id);
  group.hidden=id!=="rotas";
  routeInfo.hidden=id!=="rotas";
@@ -112,11 +117,11 @@ function setTab(id){
   if(search.value&&!destMirror.value)destMirror.value=search.value;
   $("routeOpen").textContent="Rotas";
   $("routeOpen").hidden=false;
-  $("cxUnifiedResults").hidden=false;
+  $("cxUnifiedResults").hidden=true;
   if(org?.value.trim())destMirror.focus();else org?.focus();
  }else{
   if(org)org.hidden=true;
-  if(id==="explorar")document.getElementById("cxPlaceDetails")?.remove();
+  if(id==="explorar"&&document.getElementById("cxPlaceDetails"))document.getElementById("cxPlaceDetails").hidden=false;
   $("routeOpen").textContent="↗ Direções";
   search.placeholder="Pesquisar rua, número ou estabelecimento";
   if(id==="camadas")$("toolbarToggle")?.click();
