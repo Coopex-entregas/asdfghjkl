@@ -236,6 +236,7 @@ window.addEventListener("coopex:map-data",suggestions);
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
 const markers=new Map(),lastPositions=new Map();
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
+let googleStatusFilter="todos";
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
 const state=i=>!i.online?"offline":i.status==="ocioso"?"ocioso":"online";
 const normPos=i=>i&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&+i.lat<-3&&+i.lng<-32;
@@ -277,7 +278,7 @@ function updateMarkers(list,chosen){
    }
   }else{
    const marker=new google.maps.Marker({
-    map:searchingAddress?null:googleMap,position:finalPoint,
+    map:(googleStatusFilter==="todos"||googleStatusFilter===status)?googleMap:null,position:finalPoint,
     title:(i.nome||"Cooperado")+" · "+(status==="offline"?"Offline":status==="ocioso"?"Ocioso":"Online"),
     icon:iconFor(status,chosenNow),
     label:{text:initials(i.nome),color:"#111c2a",fontWeight:"800",fontSize:"12px"},
@@ -294,10 +295,24 @@ function updateMarkers(list,chosen){
 function updateMode(){
  if(!googleMap)return;
  for(const marker of markers.values()){
-  const wanted=googleMap;
+  const wanted=(googleStatusFilter==="todos"||marker.__status===googleStatusFilter)?googleMap:null;
   if(marker.getMap()!==wanted)marker.setMap(wanted);
  }
 }
+function selectGoogleStatus(status){
+ if(!["todos","online","ocioso","offline"].includes(status))return;
+ googleStatusFilter=status;
+ document.querySelectorAll(".filters [data-filter]").forEach(button=>{
+  const active=button.dataset.filter===status;
+  button.classList.toggle("active",active);
+  button.setAttribute("aria-pressed",String(active));
+ });
+ updateMode();
+}
+document.querySelectorAll(".filters [data-filter]").forEach(button=>{
+ button.setAttribute("aria-pressed",String(button.dataset.filter==="todos"));
+ button.addEventListener("click",()=>selectGoogleStatus(button.dataset.filter));
+});
 function onMapData(event){
  const detail=event.detail||{};
  if(Array.isArray(detail.items))lastItems=detail.items;
