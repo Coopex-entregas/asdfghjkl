@@ -193,9 +193,13 @@ function suggestions(){
  }
  let count=0;
  for(const qSaved of readHistory().filter(s=>!q||queryNorm(s).includes(queryNorm(q))).slice(0,5)){
-  count++;makeHit(qSaved,"Pesquisa anterior da COOPEX","#5284b5",()=>{field.value=qSaved;searchAddress()});
+  count++;makeHit(qSaved,"Pesquisa anterior da COOPEX","#5284b5",()=>{
+  field.value=qSaved;++placeSequence;clearTimeout(placeTimer);hits.hidden=true;searchAddress();
+ });
  }
- if(q.length>=2){count++;makeHit("Pesquisar no Google",q,"#187aff",searchAddress)}
+ if(q.length>=2){count++;makeHit("Pesquisar no Google",q,"#187aff",()=>{
+  ++placeSequence;clearTimeout(placeTimer);hits.hidden=true;searchAddress();
+ })}
  if(!count)info("Nenhum resultado local. Pressione Enter para pesquisar o endereço no Google.");
 }
 document.addEventListener("click",event=>{
@@ -228,15 +232,26 @@ async function searchAddress(){
    const query=normalize(q);
    const exact=candidates.find(place=>normalize(place.displayName)===query);
    const contains=candidates.find(place=>normalize(place.displayName).includes(query));
-   const words=query.split(/\s+/).filter(x=>x.length>2);
-   const match=candidates.find(place=>words.every(word=>normalize(place.displayName).includes(word)));
+   // O bairro pesquisado pode fazer parte do endereço, sem fazer parte do nome comercial.
+   // Ex.: "China in Box Ponta Negra" corresponde ao estabelecimento "China in Box".
+   const words=query.split(/\s+/).filter(word=>word.length>2);
+   const ranked=candidates.map(place=>{
+    const name=normalize(place.displayName),address=normalize(place.formattedAddress);
+    const nameWords=name.split(" ");
+    const hits=words.filter(word=>nameWords.includes(word)).length;
+    const matchesAddress=words.filter(word=>address.includes(word)).length;
+    return {place,hits,score:hits*4+matchesAddress+(name.includes(query)?10:0)};
+   }).sort((one,two)=>two.score-one.score);
+   const match=ranked.find(item=>item.hits>=Math.min(2,words.length)&&item.score>=4)?.place;
    const choice=exact||contains||match;
    if(!choice){
-    // Não exibir uma cidade genérica como se fosse a empresa procurada.
     const addressSearch=/\d|\b(rua|av\.?|avenida|travessa|estrada|rodovia|praça|alameda)\b/i.test(q);
-    if(!addressSearch){info("Estabelecimento não encontrado com esse nome. Escolha uma sugestão do Google.");return}
+    if(!addressSearch){
+     info("Estabelecimento não localizado com segurança. Escolha uma sugestão ou informe o bairro.");
+     return;
+    }
+    throw Error("Usar geocodificação para endereço");
    }
-   if(!choice)throw Error("Usar geocodificação para endereço");
    const p=choice.location;
    destination({lat:p.lat(),lng:p.lng()},choice.displayName||choice.formattedAddress||q,choice);
    remember(q);suggestions();return;
@@ -370,7 +385,9 @@ async function cxAddPrices(routes,from,to,generation,withStops){
   const rows=(data.items||[]).map(x=>({o:cxNorm(x.origem),d:cxNorm(x.destino),price:Number(x.valor)}));
   const fixed=rows.find(x=>origins.includes(x.o)&&destinations.includes(x.d))
    ||rows.find(x=>origins.includes(x.d)&&destinations.includes(x.o));
-  const perKm=Number(data.per_km);
+  // A tarifa informada pela COOPEX é R$ 2,00/km quando não há preço por bairro.
+  const configuredKm=Number(data.per_km);
+  const perKm=configuredKm>0?configuredKm:2;
   routes.forEach((route,i)=>{
    const option=routesHost?.querySelectorAll(".cx-route-option")[i];
    if(!option)return;
@@ -385,9 +402,14 @@ async function cxAddPrices(routes,from,to,generation,withStops){
  }catch(error){
   if(generation!==routeGeneration)return;
   console.warn("COOPEX Preços e Rotas:",error);
-  routesHost?.querySelectorAll(".cx-route-option").forEach(option=>{
+  routesHost?.querySelectorAll(".cx-route-option").forEach((option,i)=>{
+   option.querySelector(".cx-route-price")?.remove();
+   const distance=Number(routes[i]?.distanceMeters);
    const p=document.createElement("span");p.className="cx-route-price";
-   p.textContent="Valor indisponível";option.append(p);
+   p.textContent=Number.isFinite(distance)
+    ?cxMoney(distance/1000*2)+" · Estimativa por km (R$ 2,00/km)"
+    :"Valor indisponível";
+   option.append(p);
   });
  }
 }
@@ -492,7 +514,13 @@ field?.addEventListener("input",()=>{
  clearTimeout(placeTimer);const q=(field.value||"").trim();
  if(q.length>=3&&!placesDisabled)placeTimer=setTimeout(loadGoogleSuggestions,230);
 });
-field?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();searchAddress()}},true);
+field?.addEventListener("keydown",e=>{
+ if(e.key==="Enter"&&!e.isComposing){
+  e.preventDefault();e.stopImmediatePropagation();
+  ++placeSequence;clearTimeout(placeTimer);hits.hidden=true;
+  searchAddress();
+ }
+},true);
 submit?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();searchAddress()},true);
 clear?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();resetSearch()},true);
 document.getElementById("cxDrawerMenu")?.addEventListener("click",()=>{field.value="";suggestions()});
