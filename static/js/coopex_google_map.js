@@ -507,7 +507,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   googleMap=new google.maps.Map(googleRoot,{
    center:{lat:-5.7945,lng:-35.211},zoom:12,
    mapTypeId:"roadmap",streetViewControl:true,fullscreenControl:false,
-   mapTypeControl:true,zoomControl:true,scaleControl:true,
+   mapTypeControl:false,zoomControl:true,scaleControl:true,
    rotateControl:false,gestureHandling:"greedy",
    clickableIcons:true
   });
