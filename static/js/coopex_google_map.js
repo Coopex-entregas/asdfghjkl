@@ -366,7 +366,7 @@ function resetSearch(){
  clearTimeout(placeTimer);
  if(streetPanorama?.getVisible())streetPanorama.setVisible(false);
  if(field)field.value="";
- if(placeMarker)placeMarker.setMap(null);
+ if(placeMarker){placeMarker.setMap(null);placeMarker=null}
  placePoint=null;hideRoutes();
  document.getElementById("cxPlaceDetails")?.remove();
  if(hits){hits.replaceChildren();hits.hidden=true}
@@ -427,7 +427,9 @@ document.addEventListener("keydown",event=>{
  }
  const panel=document.getElementById("addressPanel");
  const hasSearch=!!field?.value.trim()||!!document.getElementById("cxPlaceDetails");
- if(hasSearch||panel?.classList.contains("cx-place-view")){
+ // Inclui alfinete colocado diretamente no mapa, mesmo sem endereço digitado.
+ const hasPin=!!placePoint||!!placeMarker?.getMap();
+ if(hasSearch||hasPin||panel?.classList.contains("cx-place-view")){
   event.preventDefault();event.stopImmediatePropagation();
   resetSearch();
  }
