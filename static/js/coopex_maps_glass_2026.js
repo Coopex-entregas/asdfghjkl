@@ -6,7 +6,7 @@ if(!panel||!inside||!top)return;
 const brand=document.createElement("div");brand.className="cx-maps-brand";brand.innerHTML='<span class="cx-map-pin">📍</span><strong>Google Maps · COOPEX</strong><small>Natal / RN</small>';
 inside.insertBefore(brand,inside.firstChild);
 const nav=document.createElement("nav");nav.className="cx-map-nav";
-const tabs=[["explorar","⌕","Explorar"],["rotas","↗","Rotas"],["cooperados","♙","Cooperados"],["camadas","▱","Camadas"]];
+const tabs=[["explorar","⌕","Explorar"],["rotas","↗","Rotas"],["camadas","▱","Camadas"]];
 let activeTab="explorar",collapsed=false;
 const results=$("cxUnifiedResults"),routes=$("cxRoutes"),search=$("address"),org=$("cxRouteOrigin");
 const group=document.createElement("section");group.id="cxRouteEditor";group.className="cx-route-editor";group.hidden=true;
@@ -19,6 +19,32 @@ const destMirror=destRow.querySelector("input");
 destMirror.addEventListener("input",()=>{search.value=destMirror.value;search.dispatchEvent(new Event("input",{bubbles:true}));});
 destRow.querySelector("button").onclick=()=>{search.value=destMirror.value;$("addressGo")?.click()};
 search.addEventListener("input",()=>{if(document.activeElement!==destMirror)destMirror.value=search.value});
+
+const swap=document.createElement("button");swap.type="button";swap.id="cxSwapRoute";swap.textContent="⇅ Inverter origem e destino";
+swap.onclick=()=>{const first=org.value;org.value=destMirror.value;destMirror.value=first;search.value=first;};
+group.append(swap);
+const stopRow=document.createElement("div");stopRow.id="cxStopEntry";stopRow.className="cx-stop-input-row";
+stopRow.innerHTML='<input id="cxStopInput" type="search" placeholder="Adicionar parada: rua e número" aria-label="Adicionar parada"><button id="cxStopSubmit" type="button" title="Adicionar parada">＋</button>';
+group.append(stopRow);
+stopRow.querySelector("button").onclick=()=>document.getElementById("addStop")?.click();
+stopRow.querySelector("input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();document.getElementById("addStop")?.click()}});
+const coopBox=document.createElement("div");coopBox.id="cxCoopSearch";coopBox.className="glass";
+coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisar cooperado..." aria-label="Pesquisar cooperado" autocomplete="off"><div id="cxCoopHits" hidden></div>';
+document.body.append(coopBox);
+const coopInput=coopBox.querySelector("input"),coopHits=coopBox.querySelector("#cxCoopHits");
+let cooperados=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[];
+window.addEventListener("coopex:map-data",e=>{if(Array.isArray(e.detail?.items))cooperados=e.detail.items;});
+coopInput.addEventListener("input",()=>{
+ const normalize=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
+ const query=normalize(coopInput.value.trim());coopHits.replaceChildren();coopHits.hidden=!query;
+ if(!query)return;
+ cooperados.filter(i=>normalize(i.nome).includes(query)).slice(0,10).forEach(i=>{
+  const button=document.createElement("button");button.type="button";button.textContent=(i.online?"🟢 ":"🔴 ")+(i.nome||"Cooperado");
+  button.onclick=()=>{coopInput.value=i.nome||"";coopHits.hidden=true;window.COOPEX_MAP_ACTIONS?.selectCooperado?.(i.id)};
+  coopHits.append(button);
+ });
+});
+
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
@@ -26,7 +52,7 @@ function setTab(id){
  group.hidden=id!=="rotas";
  if(id==="rotas"){
   if(org&&org.parentElement!==originMount)originMount.append(org);
-  if(org){org.hidden=false;org.placeholder="⚪ A — origem: rua, número ou cooperado"}
+  if(org){org.hidden=false;org.placeholder="⚪ A — origem: rua e número"}
   if(search.value&&!destMirror.value)destMirror.value=search.value;
   $("routeOpen").textContent="Calcular rotas e quilômetros";
   $("routeOpen").hidden=false;
@@ -35,8 +61,7 @@ function setTab(id){
  }else{
   if(org)org.hidden=true;
   $("routeOpen").textContent="↗ Rotas A → B";
-  if(id==="cooperados"){search.placeholder="Pesquisar cooperado pelo nome";search.value="";search.dispatchEvent(new Event("input",{bubbles:true}));}
-  else search.placeholder="Pesquisar rua, número ou estabelecimento";
+  search.placeholder="Pesquisar rua, número ou estabelecimento";
   if(id==="camadas")$("toolbarToggle")?.click();
  }
 }
@@ -47,7 +72,7 @@ for(const [id,ic,label] of tabs){
 top.after(nav);
 $("cxDrawerMenu").addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapse()},true);
 const edge=$("addressCollapse"),expandButton=$("sideExpand");
-const previousRoute=$("routeOpen");
+
 function collapse(){collapsed=true;document.body.classList.add("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","false");edge.textContent="›";edge.setAttribute("aria-label","Expandir menu");if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}
 function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");}
 edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapsed?expand():collapse()},true);
