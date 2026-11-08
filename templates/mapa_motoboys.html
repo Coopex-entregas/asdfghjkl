@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261108-explore25">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261108-unified26">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -52,23 +52,16 @@
  <div id="cameraList" class="cx-camera-list" aria-live="polite"></div>
  <small class="cx-camera-disclaimer">Transmissões externas: podem estar indisponíveis ou fora do ar. A COOPEX não controla as imagens. A indicação de proximidade depende de localização verificada.</small>
 </section>
-<section id="addressPanel" class="address-panel glass cx-explore-panel" hidden aria-label="Explorar no Google Maps">
- <div class="cx-explore-rail"><span class="cx-rail-logo">C</span><button id="addressCollapse" type="button" title="Voltar ao mapa COOPEX" aria-label="Recolher barra lateral">‹</button><small>COOPEX</small></div>
- <div class="cx-explore-content">
-  <div class="cx-explore-search"><input id="address" placeholder="Pesquisar ruas, locais e endereços" aria-label="Pesquisar no Google Maps" autocomplete="off"><button id="addressGo" type="button" aria-label="Pesquisar" title="Pesquisar">⌕</button><button id="addressClose" type="button" class="close" title="Fechar pesquisa" aria-label="Fechar pesquisa">×</button></div>
-  <div class="cx-explore-hero"><div class="cx-explore-hero-art"><span>⌖</span></div><strong>Explore Natal e região</strong><small>Mapa oficial do Google • COOPEX</small></div>
-  <div class="cx-explore-place"><strong id="cxExploreTitle">Natal, RN</strong><small id="cxExploreSubtitle">Pesquise endereços ou consulte estabelecimentos</small></div>
-  <div class="cx-explore-categories">
-   <button type="button" data-google-category="Restaurantes em Natal RN">🍽 <span>Restaurantes</span></button>
-   <button type="button" data-google-category="Farmácias em Natal RN">✚ <span>Farmácias</span></button>
-   <button type="button" data-google-category="Hotéis em Natal RN">⌂ <span>Hotéis</span></button>
-   <button type="button" data-google-category="Postos de combustível em Natal RN">⛽ <span>Postos</span></button>
-  </div>
-  <div class="cx-explore-meta"><strong>Pesquisar e explorar</strong><p id="addressMessage" aria-live="polite">Os cooperados permanecem no mapa enquanto você utiliza a barra lateral. Ao fazer uma pesquisa, o Google abre os resultados no mapa.</p></div>
-  <div class="cx-explore-tools"><button id="streetView" type="button">◎ Ver rua</button><button id="routeOpen" type="button" class="primary">↗ Rotas</button></div>
-  <div class="cx-explore-more"><button id="addStop" type="button">＋ Adicionar parada</button><span>Paradas: <b id="stopsCount">0</b>/3</span><div id="stopsList"></div><button id="stopsClear" type="button">Limpar paradas</button></div>
-  <p class="cx-explore-tip">O modo de pesquisa utiliza o Google Maps incorporado; os alfinetes da COOPEX voltam ao sair dos resultados.</p>
- </div>
+<section id="addressPanel" class="address-panel cx-unified-drawer" hidden aria-label="Pesquisar no mapa COOPEX">
+ <div class="cx-drawer-content">
+  <div class="cx-drawer-top"><button id="cxDrawerMenu" type="button" aria-label="Mostrar cooperados" title="Mostrar cooperados">☰</button><input id="address" type="search" autocomplete="off" placeholder="Pesquisar cooperado ou endereço" aria-label="Pesquisar cooperado, rua ou estabelecimento"><button id="addressGo" type="button" aria-label="Pesquisar" title="Pesquisar">⌕</button><button id="addressClose" type="button" title="Limpar pesquisa" aria-label="Limpar pesquisa">×</button></div>
+  <div id="cxUnifiedResults" class="cx-drawer-results"><div class="cx-drawer-welcome"><strong>Mapa COOPEX</strong><small>Encontre cooperados, bairros, ruas e estabelecimentos.</small></div></div>
+  <div class="cx-drawer-actions"><button id="addStop" type="button">＋ Parada</button><button id="routeOpen" type="button">↗ Rotas</button><button id="streetView" type="button">◎ Ver rua</button></div>
+  <div id="cxRoutes" class="cx-route-results" hidden></div>
+  <div class="cx-drawer-stops"><span>Paradas <b id="stopsCount">0</b></span><button id="stopsClear" type="button">Limpar</button></div>
+  <div id="stopsList" class="cx-drawer-stoplist"></div>
+  <p id="addressMessage" class="cx-drawer-message" aria-live="polite">Os cooperados permanecem no mapa durante a pesquisa.</p>
+ </div><button id="addressCollapse" class="cx-drawer-edge" type="button" aria-label="Recolher a barra lateral" title="Recolher barra lateral">‹</button>
 </section>
 <section id="details" class="details glass" aria-live="polite">
 <div class="person-head"><span id="personAvatar" class="person-avatar">--</span><div><strong id="personName">Cooperado</strong><span id="personState" class="state">Online</span></div><button id="detailsClose" class="close" type="button" aria-label="Fechar">×</button></div>
@@ -81,14 +74,14 @@
 <div class="detail-actions"><button id="openNav" class="btn" type="button">↗ Navegação / Paradas</button></div>
 </section>
 <div class="stats" aria-label="Indicadores"><div class="stat glass"><span class="stat-label"><i class="dot"></i>Online</span><b class="num" id="onlineCount">0</b></div><div class="stat orange glass"><span class="stat-label"><i class="dot"></i>Ocioso</span><b class="num" id="ociosoCount">0</b></div><div class="stat red glass"><span class="stat-label"><i class="dot"></i>Offline</span><b class="num" id="offlineCount">0</b></div></div>
-<section class="weather glass">
-<h3>☁ Clima e trânsito · Natal/RN</h3><div class="weather-grid"><div><div class="small-muted">TEMPO</div><strong class="temp" id="temperature">—</strong><div id="conditions" class="fine">Consultando clima</div><div class="fine">Umidade <b id="humidity">—</b> · Vento <b id="wind">—</b></div></div><div><div class="small-muted">MOBILIDADE URBANA</div><strong id="trafficStatus" style="font-size:13px">Consultando...</strong><p id="trafficText" class="fine">Comunicados da STTU de Natal.</p><a class="sttu-official" href="https://natal.rn.gov.br/sttu" target="_blank" rel="noopener noreferrer">Consultar comunicados STTU</a></div></div>
-<div id="weatherAlert" class="weather-alert">Verificando previsão de chuva</div><small class="small-muted">Previsão meteorológica · Informações oficiais da STTU</small>
-</section>
+<section class="weather glass" aria-label="Tempo em Natal">
+ <span id="weatherIcon" aria-hidden="true">☀️</span><strong id="temperature" class="temp">—</strong><span class="cx-weather-place">Natal/RN</span><span id="conditions" class="cx-weather-condition">Consultando...</span>
+ <div hidden><span id="humidity"></span><span id="wind"></span><span id="weatherAlert"></span><span id="trafficStatus"></span><span id="trafficText"></span></div>
+ </section>
 </div>
 
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-explore25"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-explore25"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-unified26"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-unified26"></script>
 </body>
 </html>
