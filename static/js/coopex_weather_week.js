@@ -4,7 +4,7 @@
 const find=()=>document.querySelector("#cxTopControlDock>.weather.glass")||document.querySelector("#ui .weather.glass");
 let lastFetch=0,forecast=null,request=null,panel=null,source=null;
 const ICON=(code)=>code===0?"☀️":code<=3?"⛅":code<=48?"🌫️":code<=67?"🌧️":code<=77?"🌨️":code<=82?"🌦️":code<=86?"🌨️":"⛈️";
-const DESC=(code)=>code===0?"Ensolarado":code<=3?"Parcialmente nublado":code<=48?"Neblina":code<=67?"Chuva":code<=77?"Granizo/neve":code<=82?"Pancadas de chuva":code<=86?"Neve":"Trovoadas";
+const DESC=(code)=>code===0?"Sol":code<=3?"Sol entre nuvens":code<=48?"Neblina":code<=67?"Chuva possível":code<=77?"Granizo/neve":code<=82?"Pancadas possíveis":code<=86?"Neve":"Trovoadas";
 function position(){
  if(!panel||panel.hidden||!source)return;
  const r=source.getBoundingClientRect(),w=panel.offsetWidth||330;
@@ -27,30 +27,72 @@ function setup(){
   if(forecast&&Date.now()-lastFetch<15*60*1000){show(forecast);return}
   if(request)return;
   try{
-   request=fetch("https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7",{cache:"default"});
+   request=fetch("https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&current=temperature_2m,weather_code&hourly=precipitation_probability,weather_code,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7",{cache:"default"});
    const response=await request;if(!response.ok)throw Error("HTTP "+response.status);
-   forecast=(await response.json()).daily;if(!forecast?.time?.length)throw Error("Previsão sem dados");
+   const data=await response.json();forecast=data;if(!forecast?.daily?.time?.length)throw Error("Previsão sem dados");
    lastFetch=Date.now();if(!panel.hidden)show(forecast);
   }catch(e){if(!panel.hidden)panel.textContent="Previsão indisponível no momento. Tente novamente.";console.warn("CoopEX clima:",e)}
   finally{request=null;position()}
  }
- function show(d){
+ function show(data){
+  const d=data.daily,h=data.hourly||{},current=data.current||{};
   panel.replaceChildren();
   const head=document.createElement("div");head.className="cx-week-title";
-  const title=document.createElement("strong");title.textContent="Natal · Próximos 7 dias";
+  const title=document.createElement("strong");title.textContent="Natal · Previsão do tempo";
   const closeBtn=document.createElement("button");closeBtn.type="button";closeBtn.textContent="×";closeBtn.setAttribute("aria-label","Fechar previsão");closeBtn.onclick=close;
   head.append(title,closeBtn);panel.append(head);
+  const nowCode=Number(current.weather_code);
+  const nowDescription=Number.isFinite(nowCode)?DESC(nowCode):"Não disponível";
+  const topCondition=source.querySelector("#conditions");
+  if(topCondition)topCondition.textContent=nowDescription+" agora";
+  const currentText=document.createElement("div");currentText.className="cx-weather-now";
+  currentText.textContent="Agora: "+nowDescription+(Number.isFinite(Number(current.temperature_2m))?" · "+Math.round(current.temperature_2m)+"°C":"");
+  panel.append(currentText);
+  const today=(new Intl.DateTimeFormat("en-CA",{timeZone:"America/Fortaleza",year:"numeric",month:"2-digit",day:"2-digit"}).format(new Date()));
+  const hourly=[];
+  for(let i=0;i<(h.time||[]).length;i++){
+   const iso=String(h.time[i]),day=iso.slice(0,10),hour=Number(iso.slice(11,13));
+   if(day===today&&hour>=18&&hour<=22)hourly.push({hour,prob:Number(h.precipitation_probability?.[i]),code:Number(h.weather_code?.[i])});
+  }
+  const headline=document.createElement("div");headline.className="cx-weather-evening";
+  const header=document.createElement("strong");header.textContent="Hoje · 18h às 22h";
+  headline.append(header);
+  if(hourly.length){
+   const valid=hourly.filter(x=>Number.isFinite(x.prob));
+   const max=valid.length?Math.max(...valid.map(x=>x.prob)):null;
+   const statement=document.createElement("p");
+   statement.textContent=max===null?"Probabilidade indisponível":max<20?"Baixa chance de chuva no período (até "+max+"%)":max<50?"Existe possibilidade de chuva (até "+max+"%)":"Chance elevada de chuva em parte do período (até "+max+"%)";
+   headline.append(statement);
+   const hours=document.createElement("div");hours.className="cx-weather-hours";
+   hourly.forEach(x=>{
+    const item=document.createElement("div");item.className="cx-weather-hour";
+    const at=document.createElement("strong");at.textContent=String(x.hour).padStart(2,"0")+"h";
+    const icon=document.createElement("span");icon.textContent=ICON(x.code);
+    const prob=document.createElement("small");prob.textContent=Number.isFinite(x.prob)?x.prob+"%":"—";
+    item.append(at,icon,prob);hours.append(item);
+   });
+   headline.append(hours);
+  }else{const note=document.createElement("p");note.textContent="Previsão horária das 18h às 22h disponível ao longo do dia.";headline.append(note)}
+  panel.append(headline);
+  const weekTitle=document.createElement("strong");weekTitle.className="cx-week-subtitle";weekTitle.textContent="Próximos 7 dias";panel.append(weekTitle);
   d.time.forEach((date,i)=>{
    const row=document.createElement("div");row.className="cx-week-day";
    const weekday=document.createElement("strong");
    weekday.textContent=new Intl.DateTimeFormat("pt-BR",{weekday:"short",day:"2-digit",timeZone:"UTC"}).format(new Date(date+"T12:00:00Z")).replace(".","");
-   const weather=document.createElement("span");weather.textContent=ICON(Number(d.weather_code?.[i]||0))+" "+DESC(Number(d.weather_code?.[i]||0));
+   const code=Number(d.weather_code?.[i]||0);
+   const percent=Math.round(d.precipitation_probability_max?.[i]||0);
+   const weather=document.createElement("span");
+   weather.textContent=ICON(code)+" "+(percent<20&&code>=51?"Chuva pouco provável":DESC(code));
    const temp=document.createElement("b");temp.textContent=Math.round(d.temperature_2m_min?.[i])+"° / "+Math.round(d.temperature_2m_max?.[i])+"°";
-   const prob=document.createElement("small");prob.textContent="☂ "+Math.round(d.precipitation_probability_max?.[i]||0)+"%";
+   const prob=document.createElement("small");prob.textContent="☂ "+percent+"%";
    row.append(weekday,weather,temp,prob);panel.append(row);
   });
+  const disclaimer=document.createElement("small");disclaimer.className="cx-weather-disclaimer";
+  disclaimer.textContent="Probabilidades são previsões da Open-Meteo, não confirmação de chuva no bairro. A chance diária representa o maior percentual previsto em uma hora.";
+  panel.append(disclaimer);
   position();
  }
+
  function toggle(){
   if(!panel.hidden){close();return}
   panel.hidden=false;source.setAttribute("aria-expanded","true");position();load();
