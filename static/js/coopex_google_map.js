@@ -60,29 +60,71 @@ async function showPlaceDetails(point,knownPlace=null){
  const root=document.getElementById("cxPlaceDetails")||document.createElement("section");
  root.id="cxPlaceDetails";root.className="cx-place-details";root.replaceChildren();
  if(!root.isConnected)document.querySelector(".cx-drawer-actions")?.before(root);
- const name=document.createElement("strong");name.textContent=point.label||"Local selecionado";
- const coords=document.createElement("small");coords.textContent="Localização selecionada • "+point.lat.toFixed(5)+", "+point.lng.toFixed(5);
+ const heading=document.createElement("strong");heading.className="cx-place-title";heading.textContent=point.label||"Local selecionado";
+ const address=document.createElement("small");address.className="cx-place-address";address.textContent=point.label||"Localização selecionada";
+ const state=document.createElement("div");state.className="cx-place-state";state.textContent="Buscando detalhes disponíveis do local…";
+ const gallery=document.createElement("div");gallery.className="cx-place-gallery";
+ const metadata=document.createElement("div");metadata.className="cx-place-metadata";
  const actions=document.createElement("div");actions.className="cx-place-shortcuts";
- for(const [label,action] of [["↗ Rotas",()=>document.querySelector("[data-cx-nav=rotas]")?.click()],["◎ Ver em frente",openStreet],["＋ Parada",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxStopInput");if(input){input.value=point.label||"";input.focus()}}]]){
+ for(const [label,action] of [
+  ["↗ Rotas",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxDestinationMirror");if(input){input.value=point.label||"";input.dispatchEvent(new Event("change",{bubbles:true}))}}],
+  ["◎ Ver em frente",openStreet],
+  ["＋ Parada",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxStopInput");if(input){input.value=point.label||"";input.focus()}}]
+ ]){
   const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=action;actions.append(b);
  }
- root.append(name,coords,actions);
- if(!knownPlace)return;
+ root.append(heading,address,state,gallery,metadata,actions);
+ function detail(text,cls=""){
+  const line=document.createElement("div");line.className="cx-place-data "+cls;line.textContent=text;metadata.append(line);return line;
+ }
+ if(!knownPlace){state.textContent="Endereço localizado pelo Google. Mais informações dependem do cadastro do estabelecimento.";return}
  try{
-  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","websiteURI","nationalPhoneNumber","regularOpeningHours"]});
+  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName"]});
   if(seq!==placeSequenceInfo)return;
-  if(knownPlace.formattedAddress)coords.textContent=knownPlace.formattedAddress;
-  const photos=(knownPlace.photos||[]).slice(0,3);
-  if(photos.length){
-   const gallery=document.createElement("div");gallery.className="cx-place-gallery";
-   for(const photo of photos){const img=document.createElement("img");img.loading="lazy";img.alt="Foto do estabelecimento fornecida pelo Google";img.src=photo.getURI({maxWidth:500,maxHeight:300});gallery.append(img)}
-   root.insertBefore(gallery,actions);
-   const attribution=document.createElement("small");attribution.textContent="Fotos e informações: Google Maps";root.insertBefore(attribution,actions);
+  if(knownPlace.displayName)heading.textContent=knownPlace.displayName;
+  if(knownPlace.formattedAddress)address.textContent=knownPlace.formattedAddress;
+  const pStatus=String(knownPlace.businessStatus||"");
+  const translateStatus={CLOSED_TEMPORARILY:"Temporariamente fechado",CLOSED_PERMANENTLY:"Fechado permanentemente",FUTURE_OPENING:"Ainda não inaugurado"};
+  state.textContent=translateStatus[pStatus]||"";
+  const openStatus=typeof knownPlace.isOpen==="function"?await knownPlace.isOpen().catch(()=>undefined):undefined;
+  if(seq!==placeSequenceInfo)return;
+  if(typeof openStatus==="boolean")state.textContent=openStatus?"Aberto agora":"Fechado agora";
+  if(!state.textContent)state.textContent="Informações disponibilizadas pelo Google";
+  state.dataset.open=openStatus===true?"yes":openStatus===false?"no":"unknown";
+  const photos=(knownPlace.photos||[]).slice(0,8);
+  for(const photo of photos){
+   try{
+    const url=photo.getURI({maxWidth:720,maxHeight:430});
+    if(!url)continue;
+    const img=document.createElement("img");img.loading="lazy";img.decoding="async";img.src=url;img.alt="Foto do local — Google Maps";gallery.append(img);
+   }catch(e){console.debug("Foto indisponível",e)}
   }
-  if(knownPlace.rating){const rating=document.createElement("small");rating.textContent="★ "+knownPlace.rating+" · "+(knownPlace.userRatingCount||0)+" avaliações";root.insertBefore(rating,actions)}
-  if(knownPlace.nationalPhoneNumber){const phone=document.createElement("small");phone.textContent="Telefone: "+knownPlace.nationalPhoneNumber;root.insertBefore(phone,actions)}
-  if(knownPlace.websiteURI){const link=document.createElement("a");link.href=knownPlace.websiteURI;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Site do estabelecimento ↗";root.insertBefore(link,actions)}
- }catch(e){console.debug("Informações adicionais não disponíveis:",e.message)}
+  if(photos.length){
+   const credit=document.createElement("small");credit.className="cx-place-credit";credit.textContent="Fotos: Google Maps e colaboradores";gallery.after(credit);
+  }else gallery.hidden=true;
+  if(knownPlace.primaryTypeDisplayName){
+   const value=knownPlace.primaryTypeDisplayName;detail(typeof value==="string"?value:value.toString(),"cx-place-category");
+  }
+  if(typeof knownPlace.rating==="number")detail("★ "+knownPlace.rating.toLocaleString("pt-BR",{maximumFractionDigits:1})+" · "+Number(knownPlace.userRatingCount||0).toLocaleString("pt-BR")+" avaliações","cx-place-rating");
+  const hours=knownPlace.regularOpeningHours?.weekdayDescriptions||[];
+  if(hours.length){
+   const box=document.createElement("details");box.className="cx-place-hours";box.open=true;
+   const summary=document.createElement("summary");summary.textContent="Horários de funcionamento";box.append(summary);
+   for(const item of hours){const line=document.createElement("div");line.textContent=item;box.append(line)}
+   metadata.append(box);
+  }
+  if(knownPlace.nationalPhoneNumber){
+   const link=document.createElement("a");link.href="tel:"+knownPlace.nationalPhoneNumber.replace(/[^\d+]/g,"");link.textContent="☎ "+knownPlace.nationalPhoneNumber;link.className="cx-place-link";metadata.append(link);
+  }
+  for(const [url,label] of [[knownPlace.websiteURI,"Site do estabelecimento"],[knownPlace.googleMapsURI,"Ver ficha no Google Maps"]]){
+   if(typeof url!=="string"||!/^https:\/\//.test(url))continue;
+   const link=document.createElement("a");link.href=url;link.target="_blank";link.rel="noopener noreferrer";link.className="cx-place-link";link.textContent=label+" ↗";metadata.append(link);
+  }
+ }catch(error){
+  console.warn("COOPEX Places details:",error);
+  if(seq!==placeSequenceInfo)return;
+  state.textContent="Detalhes indisponíveis para esta pesquisa. Confira as permissões e a cobrança da Places API (New).";
+ }
 }
 
 function makeHit(primary,secondary,color,onClick){
@@ -128,6 +170,12 @@ function searchAddress(){
   if(status!=="OK"||!results?.length){info(status==="REQUEST_DENIED"?"Geocoding API não autorizada para esta chave. Verifique a restrição no Google Cloud.":"Endereço não localizado: "+status);return}
   const p=results[0].geometry.location;
   destination({lat:p.lat(),lng:p.lng()},results[0].formatted_address||q);
+  // Se a busca geocodificada aponta para um Place ID, também carregue os detalhes.
+  if(results[0].place_id&&google.maps.places?.Place){
+   try{const p2=new google.maps.places.Place({id:results[0].place_id});
+    showPlaceDetails({lat:p.lat(),lng:p.lng(),label:results[0].formatted_address||q},p2)
+   }catch(e){console.debug("Sem ficha de local para o endereço:",e)}
+  }
   remember(q);suggestions();
  });
 }
