@@ -284,3 +284,12 @@ body #addressPanel[data-cx-tab=explorar] #streetView{min-width:140px}
 .cx-route-maplabel.selected{color:#fff;background:#163ce5;border-color:#1537d5;box-shadow:0 3px 9px #1743b785}
 .cx-route-maplabel small{font-size:10px;color:inherit;font-weight:500}
 @media(max-width:700px){#cxStreetPreview{bottom:58px;right:53px;width:110px;height:76px}body #cxRoutes{max-height:35dvh!important}}
+
+/* Ficha substitui lista de sugestões, como na página de local do Maps. */
+body #addressPanel:has(#cxPlaceDetails) #cxUnifiedResults{display:none!important}
+body #addressPanel .cx-place-details{max-height:calc(100dvh - 225px)!important;flex:1 1 auto!important;min-height:0!important;overflow-y:auto!important;margin:3px 10px 0!important}
+body #addressPanel .cx-place-gallery img{height:195px!important;width:92%!important}
+body #cxStreetPreview[hidden]{display:none!important}
+body.cx-map-sidebar-closed .cx-unified-drawer{visibility:hidden!important}
+body.cx-map-sidebar-closed #cxReopenMap{display:grid!important;place-items:center!important;visibility:visible!important}
+body.cx-map-sidebar-closed #sideExpand,body.cx-map-sidebar-closed #addressCollapse{display:none!important}
