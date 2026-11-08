@@ -13,14 +13,16 @@ function render(locations){
   overlay.onAdd=function(){
    const el=document.createElement("div");el.className="cx-cloud-location";
    el.title=record.name+" · previsão aproximada · "+record.rain.toFixed(1)+" mm na última hora";
-   el.style.opacity=String(Math.min(.52,Math.max(.15,record.cloud/230)));
+   el.style.opacity=String(Math.min(.42,Math.max(.12,record.cloud/300)));
+   el.style.setProperty("--cx-cloud-wind-angle",(record.windDir+180)+"deg");
+   el.style.setProperty("--cx-cloud-wind-duration",Math.max(26,85-record.windSpeed*6)+"s");
    el.innerHTML='<span class="cx-cloud-shape">☁</span>'+(record.rain>=.12?'<span class="cx-cloud-rain">╱╱╱╱╱</span>':"");
    this.node=el;this.getPanes().overlayLayer.appendChild(el);
   };
   overlay.draw=function(){
    if(!this.node)return;const p=this.getProjection().fromLatLngToDivPixel(new google.maps.LatLng(record.lat,record.lng));
    if(!p)return;this.node.style.transform="translate("+Math.round(p.x)+"px,"+Math.round(p.y)+"px) translate(-50%,-50%)";
-   const z=map.getZoom()||12;this.node.style.display=z<9||z>17?"none":"";
+   const z=map.getZoom()||12;this.node.style.display=z<9||z>=15?"none":"";
   };
   overlay.onRemove=function(){this.node?.remove();this.node=null};
   overlay.setMap(map);overlays.push(overlay);
@@ -30,10 +32,10 @@ async function refresh(){
  if(loading||document.hidden)return;loading=true;
  try{
   const lat=sites.map(x=>x[1]).join(","),lon=sites.map(x=>x[2]).join(",");
-  const url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current=cloud_cover,precipitation,rain&forecast_days=1&timezone=America%2FFortaleza";
+  const url="https://api.open-meteo.com/v1/forecast?latitude="+lat+"&longitude="+lon+"&current=cloud_cover,precipitation,rain,wind_speed_10m,wind_direction_10m&forecast_days=1&timezone=America%2FFortaleza";
   const response=await fetch(url,{cache:"default"});if(!response.ok)throw Error("Weather API "+response.status);
   const rows=await response.json(),list=Array.isArray(rows)?rows:[rows];
-  const data=sites.map((s,i)=>({name:s[0],lat:s[1],lng:s[2],rain:Number(list[i]?.current?.precipitation||0),cloud:Number(list[i]?.current?.cloud_cover||0)})).filter(x=>valid(x.rain)&&valid(x.cloud));
+  const data=sites.map((s,i)=>({name:s[0],lat:s[1],lng:s[2],rain:Number(list[i]?.current?.precipitation||0),cloud:Number(list[i]?.current?.cloud_cover||0),windDir:Number(list[i]?.current?.wind_direction_10m||0),windSpeed:Number(list[i]?.current?.wind_speed_10m||0)})).filter(x=>valid(x.rain)&&valid(x.cloud));
   render(data);
   const raining=data.filter(x=>x.rain>=.12);
   if(raining.length){const condition=document.getElementById("conditions");if(condition)condition.textContent="Chuva prevista: "+raining.slice(0,2).map(x=>x.name).join(", ")+(raining.length>2?" e região":"");}
