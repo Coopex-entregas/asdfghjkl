@@ -2009,57 +2009,106 @@ body #cxUnifiedResults .cx-history-row .cx-history-edit{
  body #cxTopControlDock>#cxTrafficTopButton{flex:0 0 auto!important}
 }
 
-/* 08/11: visual refinado, histórico igual à caixa Google e busca dos cooperados legível. */
+
+/* Layout definitivo: uma única faixa de vidro, sem linhas automáticas no desktop. */
+@media (min-width:1280px){
+ body #cxTopControlDock{
+  display:grid!important;
+  grid-template-columns:minmax(245px,1fr) 92px minmax(155px,194px) max-content 44px!important;
+  grid-template-rows:52px!important;
+  grid-auto-rows:0!important;
+  column-gap:7px!important;row-gap:0!important;
+  align-items:center!important;justify-content:stretch!important;
+  flex-wrap:nowrap!important;top:11px!important;
+  left:calc(min(450px,100dvw - 54px) + 24px)!important;
+  right:11px!important;max-width:none!important;
+ }
+ body:has(#addressPanel:not(.cx-search-idle)) #cxTopControlDock{
+  left:calc(min(508px,100dvw - 36px) + 27px)!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{
+  order:1!important;grid-column:1!important;grid-row:1!important;
+  width:100%!important;max-width:none!important;min-width:0!important;
+  height:52px!important;flex:none!important;justify-self:stretch!important;
+  overflow:visible!important;isolation:isolate!important;
+ }
+ body #cxTopControlDock>#cxTrafficTopButton{
+  order:2!important;grid-column:2!important;grid-row:1!important;
+  width:92px!important;min-width:92px!important;max-width:92px!important;height:52px!important;
+  padding:0 6px!important;
+ }
+ body #cxTopControlDock>.weather.glass{
+  order:3!important;grid-column:3!important;grid-row:1!important;
+  width:100%!important;max-width:none!important;min-width:0!important;
+  height:52px!important;min-height:52px!important;
+ }
+ body #cxTopControlDock>.filters.glass{
+  order:4!important;grid-column:4!important;grid-row:1!important;
+  min-height:52px!important;height:52px!important;
+  width:max-content!important;max-width:none!important;
+ }
+ body #cxTopControlDock>.back-link{
+  order:5!important;grid-column:5!important;grid-row:1!important;
+  width:44px!important;min-width:44px!important;height:52px!important;min-height:52px!important;
+ }
+}
+@media (min-width:960px) and (max-width:1279px){
+ body #cxTopControlDock{
+  display:grid!important;
+  grid-template-columns:minmax(155px,1fr) 77px 118px max-content 39px!important;
+  grid-template-rows:48px!important;column-gap:4px!important;row-gap:0!important;
+  flex-wrap:nowrap!important;align-items:center!important;top:10px!important;
+  right:9px!important;max-width:none!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{order:1!important;grid-column:1!important;grid-row:1!important;width:100%!important;min-width:0!important;max-width:none!important;height:48px!important;overflow:visible!important}
+ body #cxTopControlDock>#cxTrafficTopButton{order:2!important;grid-column:2!important;grid-row:1!important;width:77px!important;min-width:77px!important;height:48px!important;min-height:48px!important;padding:0 3px!important}
+ body #cxTopControlDock>.weather.glass{order:3!important;grid-column:3!important;grid-row:1!important;width:118px!important;max-width:118px!important;min-width:0!important;height:48px!important;min-height:48px!important}
+ body #cxTopControlDock>.filters.glass{order:4!important;grid-column:4!important;grid-row:1!important;height:48px!important;min-height:48px!important;max-width:none!important}
+ body #cxTopControlDock>.back-link{order:5!important;grid-column:5!important;grid-row:1!important;width:39px!important;min-width:39px!important;height:48px!important;min-height:48px!important}
+ body #cxTopControlDock>.filters.glass .pill{padding:5px!important;font-size:10px!important}
+}
+body #cxTopControlDock>#cxCoopSearch{
+ background:linear-gradient(150deg,rgba(255,255,255,.94),rgba(226,245,255,.84) 55%,rgba(194,226,249,.78))!important;
+ box-shadow:0 9px 20px rgba(16,69,109,.20),inset 0 2px 3px #fff,inset 0 -1px 3px rgba(43,101,153,.12)!important;
+ border:1px solid white!important;border-radius:19px!important;
+}
+body #cxCoopSearch #cxCoopInput{font-size:14px!important;letter-spacing:0!important;font-weight:600!important}
+body #cxTopControlDock>#cxTrafficTopButton,
+body #cxTopControlDock>.weather.glass,
+body #cxTopControlDock>.filters.glass,
+body #cxTopControlDock>.back-link{
+ border:1px solid white!important;border-radius:19px!important;
+ background:linear-gradient(145deg,rgba(255,255,255,.95),rgba(219,240,254,.87),rgba(184,220,246,.77))!important;
+ box-shadow:0 8px 20px rgba(22,72,113,.19),inset 0 2px 3px white,inset 0 -2px 3px rgba(53,116,170,.13)!important;
+ backdrop-filter:blur(23px) saturate(160%)!important;
+}
+body #cxTopControlDock>.filters.glass .pill{border-radius:13px!important}
+body #cxCoopHits{z-index:1999!important;min-width:100%!important;box-sizing:border-box!important}
 body #cxUnifiedResults .cx-history-icon{
  display:grid!important;place-items:center!important;flex:0 0 38px!important;
  width:38px!important;height:38px!important;border-radius:50%!important;
- background:#daf3fa!important;color:#087b91!important;
- box-shadow:inset 0 1px 2px #fff!important;
+ background:#d9f3f8!important;color:#087d95!important;box-shadow:inset 0 1px 2px white!important;
 }
 body #cxUnifiedResults .cx-history-icon svg{width:22px!important;height:22px!important}
 body #cxUnifiedResults .cx-history-clock{background:#eff1f4!important;color:#586674!important}
-body #cxUnifiedResults .cx-history-row{min-height:62px!important;border-radius:13px!important;align-items:center!important}
+body #cxUnifiedResults .cx-history-row{min-height:62px!important;border-radius:12px!important;align-items:center!important}
 body #cxUnifiedResults .cx-history-row .cx-drawer-hit{
  min-height:62px!important;gap:12px!important;padding:8px 11px!important;
  background:transparent!important;box-shadow:none!important;border:0!important;
 }
 body #cxUnifiedResults .cx-history-row .cx-drawer-hit strong{font-size:14px!important;font-weight:650!important;color:#293f50!important}
 body #cxUnifiedResults .cx-history-row .cx-drawer-hit small{font-size:12px!important;max-width:none!important}
-body #cxUnifiedResults .cx-history-edit{font-size:13px!important;padding:9px 11px!important;color:#007d98!important}
 body #addressPanel.cx-search-idle #cxUnifiedResults:not([hidden]){
  left:0!important;right:0!important;width:100%!important;box-sizing:border-box!important;
  background:linear-gradient(155deg,rgba(255,255,255,.98),rgba(239,249,255,.96))!important;
  backdrop-filter:blur(26px) saturate(165%)!important;
- -webkit-backdrop-filter:blur(26px) saturate(165%)!important;
  border:1px solid rgba(255,255,255,.97)!important;
- box-shadow:0 13px 30px rgba(30,76,114,.25),inset 0 1px 2px #fff!important;
+ box-shadow:0 13px 30px rgba(30,76,114,.25),inset 0 1px 2px white!important;
 }
-body #cxTopControlDock>#cxCoopSearch{overflow:visible!important;isolation:isolate!important}
-body #cxCoopSearch #cxCoopInput{font-size:14px!important;letter-spacing:0!important;font-weight:600!important}
-body #cxCoopHits{z-index:1999!important;box-sizing:border-box!important;min-width:100%!important}
-@media (min-width:1280px){
- body #cxTopControlDock{
-  display:grid!important;grid-template-columns:minmax(245px,1fr) 88px minmax(150px,195px) max-content 44px!important;
-  column-gap:7px!important;row-gap:0!important;align-items:center!important;
- }
- body #cxTopControlDock>#cxCoopSearch{
-  grid-column:1!important;width:100%!important;min-width:0!important;
-  max-width:none!important;justify-self:stretch!important;overflow:visible!important;
- }
- body #cxTopControlDock>#cxTrafficTopButton{grid-column:2!important;width:88px!important;min-width:88px!important;max-width:88px!important}
- body #cxTopControlDock>.weather.glass{grid-column:3!important;width:100%!important;min-width:0!important;max-width:195px!important}
- body #cxTopControlDock>.filters.glass{grid-column:4!important}
- body #cxTopControlDock>.back-link{grid-column:5!important}
-}
-@media (min-width:960px) and (max-width:1279px){
- body #cxTopControlDock{
-  display:flex!important;flex-wrap:wrap!important;justify-content:flex-end!important;
-  gap:6px!important;
- }
- body #cxTopControlDock>#cxCoopSearch{flex:1 1 250px!important;max-width:none!important;min-width:180px!important}
- body #cxTopControlDock>.weather.glass{flex:0 1 165px!important}
-}
+body #addressPanel.cx-search-idle:not(.cx-search-history-open):not(.cx-search-suggesting) #cxUnifiedResults{display:none!important}
+body #addressPanel.cx-search-idle.cx-search-history-open #cxUnifiedResults:not([hidden]),
+body #addressPanel.cx-search-idle.cx-search-suggesting #cxUnifiedResults:not([hidden]){display:flex!important}
 @media (max-width:959px){
- body #cxTopControlDock>#cxCoopSearch{overflow:visible!important;min-width:155px!important}
+ body #cxTopControlDock>#cxCoopSearch{overflow:visible!important;min-width:115px!important}
  body #cxCoopInput{font-size:13px!important}
 }
