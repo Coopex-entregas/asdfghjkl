@@ -1789,3 +1789,22 @@ body #cxCoopSearch #cxCoopClear{
 }
 body #cxCoopSearch #cxCoopClear[hidden]{display:none!important}
 body #cxCoopSearch #cxCoopClear:hover{background:#dcefff!important}
+
+/* Street View: legenda nativa do Google à direita do botão de reabrir o menu.
+   Não escondemos nome, fotos nem atribuição do Street View. */
+body.cx-street-visible .gm-iv-container{
+ left:76px!important;
+ max-width:calc(100dvw - 90px)!important;
+}
+body.cx-street-visible .gm-iv-address{
+ max-width:min(320px,calc(100dvw - 100px))!important;
+}
+body.cx-street-visible #cxReopenMap{
+ top:18px!important;
+ left:14px!important;
+ z-index:1800!important;
+}
+@media(max-width:600px){
+ body.cx-street-visible .gm-iv-container{left:65px!important;max-width:calc(100dvw - 75px)!important}
+ body.cx-street-visible .gm-iv-address{max-width:calc(100dvw - 85px)!important}
+}
