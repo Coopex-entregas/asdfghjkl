@@ -1,7 +1,7 @@
 /* CoopEX Maps — camadas nativas do Google Maps, sem recriar o mapa e os alfinetes. */
 (()=>{
 "use strict";
-let map=null,traffic=null;
+let map=null;
 const widget=document.createElement("div");widget.id="cxLayersWidget";
 widget.innerHTML=[
 '<button id="cxLayersToggle" type="button" aria-label="Abrir camadas" aria-expanded="false" aria-controls="cxLayersPanel">',
@@ -13,7 +13,7 @@ widget.innerHTML=[
 '<button type="button" data-cx-maptype="roadmap" aria-pressed="true"><span class="cx-layer-preview cx-layer-road"></span>Mapa</button>',
 '<button type="button" data-cx-maptype="hybrid" aria-pressed="false"><span class="cx-layer-preview cx-layer-satellite"></span>Satélite</button>',
 '<button type="button" data-cx-maptype="terrain" aria-pressed="false"><span class="cx-layer-preview cx-layer-terrain"></span>Relevo</button>',
-'</div><label class="cx-layer-traffic"><input id="cxTrafficLayer" type="checkbox"><span>Mostrar trânsito</span></label></section>'
+'</div></section>'
 ].join("");
 document.body.append(widget);
 // Barra de trânsito entre pesquisa de cooperados e clima, alinhada ao topo.
@@ -25,10 +25,10 @@ trafficButton.setAttribute("aria-expanded","false");
 const trafficPanel=document.createElement("section");
 trafficPanel.id="cxTrafficPanel";trafficPanel.hidden=true;
 trafficPanel.innerHTML=[
- '<div class="cx-traffic-panel-head"><strong>Trânsito nas rotas</strong><button type="button" id="cxTrafficPanelClose" aria-label="Fechar trânsito">×</button></div>',
- '<div id="cxTrafficFindings">Calcule uma rota para verificar lentidão no trajeto.</div>',
+ '<div class="cx-traffic-panel-head"><strong>Trânsito · informações do trajeto</strong><button type="button" id="cxTrafficPanelClose" aria-label="Fechar trânsito">×</button></div>',
+ '<div id="cxTrafficFindings">Sem rota calculada. Calcule um trajeto para consultar atrasos disponíveis.</div>',
  '<label class="cx-traffic-sound"><input type="checkbox" id="cxTrafficBeep"> Avisar com som ao detectar lentidão</label>',
- '<small class="cx-traffic-help">A camada de trânsito mostra as vias por cores. Avisos de tempo são obtidos das rotas calculadas; motivos de congestionamento só aparecem quando houver fonte confirmada.</small>'
+ '<small class="cx-traffic-help">Somente informações das rotas já calculadas. Não monitora todas as ruas de Natal, nem ativa camada de trânsito ou gera consultas adicionais.</small>'
 ].join("");
 document.body.append(trafficPanel);
 const trafficFindings=trafficPanel.querySelector("#cxTrafficFindings");
@@ -43,17 +43,10 @@ function positionTraffic(){
  trafficPanel.style.left=Math.max(8,Math.min(box.left,innerWidth-trafficPanel.offsetWidth-8))+"px";
  trafficPanel.style.top=Math.min(innerHeight-140,box.bottom+9)+"px";
 }
-function openTraffic(){trafficPanel.hidden=false;trafficButton.setAttribute("aria-expanded","true");positionTraffic()}
-trafficButton.addEventListener("click",()=>{
- trafficPanel.hidden?openTraffic():closeTraffic();
- if(map){
-  if(!traffic)traffic=new google.maps.TrafficLayer();
-  traffic.setMap(map);
-  const checkbox=widget.querySelector("#cxTrafficLayer");
-  if(checkbox)checkbox.checked=true;
- }
-});
+function openTraffic(){trafficPanel.hidden=false;trafficButton.setAttribute("aria-expanded","true");window.dispatchEvent(new Event("coopex:traffic-panel-open"));positionTraffic()}
+trafficButton.addEventListener("click",()=>{trafficPanel.hidden?openTraffic():closeTraffic()});
 trafficPanel.querySelector("#cxTrafficPanelClose").addEventListener("click",closeTraffic);
+window.addEventListener("coopex:weather-panel-open",closeTraffic);
 trafficPanel.querySelector("#cxTrafficBeep").addEventListener("change",e=>{
  beepEnabled=e.target.checked;
  if(beepEnabled&&window.AudioContext)audioContext=audioContext||new AudioContext();
@@ -78,13 +71,13 @@ function playBeep(){
 function showTraffic(){
  trafficFindings.replaceChildren();
  if(!slowRoutes.length){
-  trafficFindings.textContent="Nenhuma lentidão significativa identificada nas rotas calculadas. Isso não verifica todas as ruas da cidade.";
+  trafficFindings.textContent="Nenhum atraso significativo informado nas rotas calculadas. Isso não confirma trânsito livre em Natal.";
   return;
  }
  for(const result of slowRoutes){
   const row=document.createElement("div");row.className="cx-traffic-slow-row";
   const name=document.createElement("strong");
-  name.textContent="Trânsito lento · "+result.name;
+  name.textContent="Lentidão na rota · "+result.name;
   const details=document.createElement("span");
   details.textContent="Acréscimo estimado de "+result.delay+" min no trajeto ("+result.current+" min com trânsito).";
   row.append(name,details);trafficFindings.append(row);
@@ -121,11 +114,6 @@ buttons.forEach(button=>button.addEventListener("click",()=>{
  if(!map)return;
  map.setMapTypeId(button.dataset.cxMaptype);sync();close();
 }));
-widget.querySelector("#cxTrafficLayer").addEventListener("change",e=>{
- if(!map)return;
- if(!traffic)traffic=new google.maps.TrafficLayer();
- traffic.setMap(e.target.checked?map:null);
-});
 document.addEventListener("pointerdown",e=>{if(!widget.contains(e.target))close();if(!trafficButton.contains(e.target)&&!trafficPanel.contains(e.target))closeTraffic()});
 // Esc antes do atalho global de endereço e Street View.
 window.addEventListener("keydown",event=>{
