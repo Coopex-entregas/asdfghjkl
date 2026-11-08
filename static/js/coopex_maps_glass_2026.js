@@ -111,34 +111,88 @@ for(const element of [coopBox,$("ui")?.querySelector(".weather.glass"),$("ui")?.
 }
 const coopInput=coopBox.querySelector("input"),coopHits=coopBox.querySelector("#cxCoopHits");
 let cooperados=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[];
-
+// Resultados fora da barra para que o overflow do topo não esconda a lista.
+document.body.append(coopHits);
+coopHits.setAttribute("role","listbox");
+coopInput.setAttribute("aria-controls","cxCoopHits");
+coopInput.setAttribute("aria-expanded","false");
+const coopNormalize=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().trim();
 function statusOf(i){const online=i.online===true||i.online===1||i.online==="true"||i.online==="1";return !online?"offline":i.status==="ocioso"?"ocioso":"online"}
-function renderCoopHits(){
- const normalize=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
- const query=normalize(coopInput.value.trim());
- coopHits.replaceChildren();coopHits.hidden=!query;
- if(!query)return;
- const matches=cooperados.filter(i=>normalize(i.nome).includes(query)).slice(0,12);
- for(const person of matches){
-  const state=statusOf(person);
-  const button=document.createElement("button");button.type="button";
-  const dot=document.createElement("span");dot.className="cx-coop-search-dot";dot.style.background=state==="online"?"#0cba71":state==="ocioso"?"#f7a52c":"#f14d62";
-  const name=document.createElement("span");name.textContent=person.nome||"Cooperado";
-  button.append(dot,name);button.onclick=()=>{
-   coopInput.value=person.nome||"";coopHits.hidden=true;
-   window.COOPEX_MAP_ACTIONS?.selectCooperado?.(person.id);
-   const lat=Number(person.lat),lng=Number(person.lng),googleMap=window.COOPEX_GOOGLE_NATIVE;
-   if(googleMap&&Number.isFinite(lat)&&Number.isFinite(lng)){
-    googleMap.panTo({lat,lng});
-    googleMap.setZoom(17);
-   }
-  };
-  coopHits.append(button);
+function positionCoopHits(){
+ const rect=coopBox.getBoundingClientRect();
+ const width=Math.max(230,Math.min(rect.width,window.innerWidth-16));
+ coopHits.style.left=Math.max(8,Math.min(rect.left,window.innerWidth-width-8))+"px";
+ coopHits.style.top=Math.min(window.innerHeight-100,rect.bottom+6)+"px";
+ coopHits.style.width=width+"px";
+}
+function closeCoopHits(){coopHits.hidden=true;coopInput.setAttribute("aria-expanded","false")}
+function chooseCooperado(person){
+ if(!person)return;
+ coopInput.value=person.nome||"Cooperado";
+ closeCoopHits();
+ const selected=window.COOPEX_MAP_ACTIONS?.selectCooperado;
+ if(typeof selected==="function")selected(person.id);
+ const map=window.COOPEX_GOOGLE_NATIVE;
+ const lat=Number(person.lat),lng=Number(person.lng);
+ if(map&&Number.isFinite(lat)&&Number.isFinite(lng)){
+  map.panTo({lat,lng});map.setZoom(17);
  }
 }
+function renderCoopHits(){
+ const query=coopNormalize(coopInput.value);
+ coopHits.replaceChildren();
+ if(!query){closeCoopHits();return}
+ const matches=cooperados.filter(i=>
+  i&&i.id!=null&&i.ativo!==false&&coopNormalize(i.nome).includes(query)
+ ).slice(0,14);
+ if(!matches.length){
+  const empty=document.createElement("div");empty.className="cx-coop-empty";
+  empty.textContent="Nenhum cooperado com esse nome";
+  coopHits.append(empty);
+ }else for(const person of matches){
+  const state=statusOf(person),button=document.createElement("button");
+  button.type="button";button.setAttribute("role","option");
+  const dot=document.createElement("span");
+  dot.className="cx-coop-search-dot";
+  dot.style.background=state==="online"?"#0cba71":state==="ocioso"?"#f7a52c":"#f14d62";
+  const title=document.createElement("span");title.textContent=person.nome||"Cooperado";
+  const status=document.createElement("small");status.textContent=state==="online"?"Online":state==="ocioso"?"Ocioso":"Offline";
+  button.append(dot,title,status);
+  button.addEventListener("pointerdown",e=>e.preventDefault());
+  button.addEventListener("click",()=>chooseCooperado(person));
+  coopHits.append(button);
+ }
+ positionCoopHits();
+ coopHits.hidden=false;
+ coopInput.setAttribute("aria-expanded","true");
+}
 coopInput.addEventListener("input",renderCoopHits);
-window.addEventListener("coopex:map-data",e=>{
- if(Array.isArray(e.detail?.items)){cooperados=e.detail.items;if(coopInput.value.trim()&&!coopHits.hidden)renderCoopHits()}
+coopInput.addEventListener("focus",()=>{if(coopInput.value.trim())renderCoopHits()});
+coopInput.addEventListener("keydown",event=>{
+ if(event.key==="Escape"){event.stopPropagation();closeCoopHits();return}
+ if(event.key==="Enter"&&!event.isComposing){
+  event.preventDefault();event.stopImmediatePropagation();
+  const first=cooperados.find(i=>i&&i.id!=null&&i.ativo!==false&&coopNormalize(i.nome).includes(coopNormalize(coopInput.value)));
+  if(first)chooseCooperado(first);else renderCoopHits();
+ }
+ if(event.key==="ArrowDown"&&!coopHits.hidden){
+  event.preventDefault();coopHits.querySelector("button")?.focus();
+ }
+});
+coopHits.addEventListener("keydown",event=>{
+ if(event.key==="Escape"){event.stopPropagation();closeCoopHits();coopInput.focus();return}
+ if(event.key==="Enter"&&document.activeElement?.tagName==="BUTTON")document.activeElement.click();
+});
+document.addEventListener("pointerdown",event=>{
+ if(!coopBox.contains(event.target)&&!coopHits.contains(event.target))closeCoopHits();
+});
+window.addEventListener("resize",()=>{if(!coopHits.hidden)positionCoopHits()});
+window.addEventListener("scroll",()=>{if(!coopHits.hidden)positionCoopHits()},true);
+window.addEventListener("coopex:map-data",event=>{
+ if(Array.isArray(event.detail?.items)){
+  cooperados=event.detail.items;
+  if(coopInput.value.trim()&&document.activeElement===coopInput)renderCoopHits();
+ }
 });
 
 let lastAutoQuery="";
