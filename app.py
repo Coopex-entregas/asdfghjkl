@@ -2691,6 +2691,13 @@ def _coopex_registrar_login_cooperado_no_mapa(coop, fonte="login_web"):
 
         db.session.add(coop)
         db.session.commit()
+        try:
+            socketio.emit('coopex_presenca_atualizada', {
+                'id': int(coop.id), 'online': True,
+                'status': 'livre', 'presenca_painel': True
+            })
+        except Exception:
+            pass
 
     except Exception:
         try:
@@ -2908,6 +2915,13 @@ def logout():
                 loc.online = False
                 loc.atualizado_em = datetime.utcnow()
             db.session.commit()
+            try:
+                socketio.emit('coopex_presenca_atualizada', {
+                    'id': int(coop.id), 'online': False,
+                    'status': 'offline', 'presenca_painel': False
+                })
+            except Exception:
+                pass
             try:
                 _close_active_trajeto(coop.id, datetime.utcnow())
             except Exception:
