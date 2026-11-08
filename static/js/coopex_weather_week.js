@@ -95,12 +95,13 @@ function setup(){
 
  function toggle(){
   if(!panel.hidden){close();return}
-  panel.hidden=false;source.setAttribute("aria-expanded","true");position();load();
+  panel.hidden=false;source.setAttribute("aria-expanded","true");window.dispatchEvent(new Event("coopex:weather-panel-open"));position();load();
  }
  source.addEventListener("click",toggle);
  source.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle()}});
  document.addEventListener("pointerdown",e=>{if(!panel.hidden&&!panel.contains(e.target)&&!source.contains(e.target))close()});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden){e.preventDefault();e.stopImmediatePropagation();close()}},true);
+ window.addEventListener("coopex:traffic-panel-open",close);
  window.addEventListener("resize",position);
  window.addEventListener("scroll",position,true);
  // Atualiza a condição do topo também antes de abrir a previsão.
