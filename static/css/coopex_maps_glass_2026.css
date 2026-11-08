@@ -2141,3 +2141,61 @@ body #cxPlaceDetails .cx-place-shortcuts button:not(.cx-place-directions){
 /* Não manter o cartão de histórico visível ao abrir o resultado do endereço. */
 body #addressPanel.cx-place-view #cxUnifiedResults,
 body #addressPanel.cx-directions-mode #cxUnifiedResults{display:none!important}
+
+/* Equilíbrio visual: limitar busca cooperado e deixar condição completa do tempo. */
+@media(min-width:1500px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(240px,380px) 92px minmax(230px,270px) max-content 44px!important;
+  justify-content:end!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{max-width:380px!important}
+ body #cxTopControlDock>.weather.glass{max-width:270px!important;padding:7px 12px!important}
+}
+@media(min-width:1280px) and (max-width:1499px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(165px,1fr) 82px minmax(155px,225px) max-content 40px!important;
+  column-gap:5px!important;
+ }
+ body #cxTopControlDock>#cxTrafficTopButton{width:82px!important;min-width:82px!important;max-width:82px!important}
+ body #cxTopControlDock>.weather.glass{max-width:225px!important}
+ body #cxTopControlDock>.back-link{width:40px!important;min-width:40px!important}
+}
+body #cxTopControlDock>.weather.glass .cx-weather-condition{
+ flex:1 1 auto!important;min-width:0!important;
+ font-size:12px!important;font-weight:650!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body #cxTopControlDock>.weather.glass .cx-weather-place{font-size:10px!important;flex:none!important}
+body #cxWeatherWeek{width:min(455px,calc(100dvw - 16px))!important;max-height:min(660px,calc(100dvh - 25px))!important}
+body #cxWeatherWeek .cx-week-day{
+ grid-template-columns:65px minmax(135px,1fr) 74px 46px!important;
+}
+body #cxWeatherWeek .cx-week-day span{line-height:1.35!important}
+body #cxWeatherWeek .cx-weather-now{
+ border-radius:12px;background:rgba(255,255,255,.60);
+ padding:10px 12px;color:#194f73;font-size:13px;font-weight:750;
+}
+body #cxWeatherWeek .cx-weather-evening{
+ margin:10px 0 15px!important;padding:13px!important;
+ border:1px solid rgba(255,255,255,.95)!important;
+ border-radius:17px!important;
+ background:linear-gradient(145deg,rgba(255,255,255,.82),rgba(219,240,253,.75))!important;
+ box-shadow:0 4px 12px rgba(31,84,120,.09),inset 0 1px 2px white!important;
+}
+body #cxWeatherWeek .cx-weather-evening>strong{display:block;color:#173e63;font-size:14px!important}
+body #cxWeatherWeek .cx-weather-evening p{font-size:12px!important;line-height:1.5!important;margin:7px 0 9px!important;color:#2b5a7a!important}
+body #cxWeatherWeek .cx-weather-hours{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:6px}
+body #cxWeatherWeek .cx-weather-hour{
+ display:flex;flex-direction:column;align-items:center;gap:3px;
+ border-radius:12px;background:rgba(238,248,255,.90);
+ border:1px solid #fff;padding:8px 2px;color:#204d70;
+}
+body #cxWeatherWeek .cx-weather-hour strong{font-size:12px!important}
+body #cxWeatherWeek .cx-weather-hour span{font-size:17px!important}
+body #cxWeatherWeek .cx-weather-hour small{font-size:12px!important;font-weight:800;color:#1385b0}
+body #cxWeatherWeek .cx-week-subtitle{display:block;font-size:13px;margin:5px 1px 0;color:#1a4467}
+body #cxWeatherWeek .cx-weather-disclaimer{display:block;font-size:10px;line-height:1.5;color:#52718a;margin:9px 0 0}
+@media(max-width:500px){
+ body #cxWeatherWeek{width:calc(100dvw - 16px)!important}
+ body #cxWeatherWeek .cx-week-day{grid-template-columns:57px minmax(98px,1fr) 67px 42px!important}
+}
