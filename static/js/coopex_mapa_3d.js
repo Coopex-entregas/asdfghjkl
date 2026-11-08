@@ -428,5 +428,5 @@ map.on("moveend",()=>{
 });
 map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();weather();gpsSocket();
-setInterval(updateGps,12000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
+setInterval(updateGps,30000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
 })();
