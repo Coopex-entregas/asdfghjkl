@@ -203,12 +203,17 @@ window.addEventListener("coopex:map-data",event=>{
  }
 });
 
-let lastAutoQuery="";
+let lastAutoQuery="",lastAutoAt=0;
 function calculateWhenReady(){
  if(activeTab!=="rotas")return;
  if(!org?.value.trim()||!destMirror.value.trim())return;
+ const key=[org.value.trim(),destMirror.value.trim(),
+  ...[...document.querySelectorAll("#stopsList input")].map(input=>input.value.trim())].join("|").toLowerCase();
+ // Uma mudança pode disparar change, routes-changed e Enter simultaneamente.
+ // Evitar múltiplas cobranças de Compute Routes para a MESMA sequência.
+ if(key===lastAutoQuery&&Date.now()-lastAutoAt<20000)return;
+ lastAutoQuery=key;lastAutoAt=Date.now();
  search.value=destMirror.value;
- lastAutoQuery=org.value.trim()+"|"+destMirror.value.trim();
  document.getElementById("routeOpen")?.click();
 }
 destMirror.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopPropagation();calculateWhenReady()}});
