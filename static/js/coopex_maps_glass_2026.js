@@ -270,7 +270,15 @@ $("cxDrawerMenu").addEventListener("click",e=>{e.preventDefault();e.stopImmediat
 const edge=$("addressCollapse"),expandButton=$("sideExpand");
 
 function collapse(){
- // Recolher um painel de local ou rotas retorna à pesquisa, nunca a um hamburger isolado.
+ // No Street View, recolher só o painel: nunca limpar o local nem fechar a imagem.
+ if(window.COOPEX_GOOGLE_NATIVE?.getStreetView()?.getVisible()){
+  collapsed=true;
+  document.body.classList.add("cx-map-sidebar-closed","cx-street-sidebar-collapsed");
+  panel.setAttribute("aria-expanded","false");
+  edge.setAttribute("aria-label","Reabrir menu");
+  syncStatsLocation();
+  return;
+ }
  collapsed=false;
  document.body.classList.remove("cx-map-sidebar-closed");
  panel.setAttribute("aria-expanded","true");
@@ -280,7 +288,7 @@ function collapse(){
  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
  syncStatsLocation();
 }
-function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");syncStatsLocation();}
+function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed","cx-street-sidebar-collapsed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");syncStatsLocation();}
 edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapsed?expand():collapse()},true);
 expandButton?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();expand()},true);
 const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="";reopen.append(vector("menu"));reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
@@ -308,6 +316,13 @@ window.addEventListener("coopex:place-selected",event=>{
  const info=$("cxPlaceDetails");
  if(info){info.hidden=false;panel.classList.add("cx-place-view")}
 });
+// Permitir recolher a ficha sobre o Street View e reabri-la sem perder a posição.
+function syncStreetCollapse(){
+ const pano=window.COOPEX_GOOGLE_NATIVE?.getStreetView();
+ if(!pano)return;
+ if(!pano.getVisible()&&document.body.classList.contains("cx-street-sidebar-collapsed"))expand();
+}
+window.addEventListener("coopex:street-closed",syncStreetCollapse);
 // Não recuperar o hamburger antigo ao fechar uma busca.
 document.body.classList.remove("cx-map-sidebar-closed");
 setTab("explorar");
