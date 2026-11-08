@@ -194,6 +194,8 @@ window.addEventListener("coopex:search-reset",returnToEmptySearch);
 window.addEventListener("coopex:place-details-ready",()=>{panel.classList.remove("cx-search-idle");panel.classList.add("cx-place-view");syncStatsLocation();});
 const navBtns=new Map();
 function setTab(id){
+ const wasDirections=activeTab==="rotas";
+ if(wasDirections&&id!=="rotas")window.dispatchEvent(new Event("coopex:exit-directions"));
  activeTab=id;panel.dataset.cxTab=id;
  panel.classList.toggle("cx-search-idle",id==="explorar"&&!$("cxPlaceDetails")?.isConnected);
  const placeDetails=$("cxPlaceDetails");
