@@ -1808,3 +1808,31 @@ body.cx-street-visible #cxReopenMap{
  body.cx-street-visible .gm-iv-container{left:65px!important;max-width:calc(100dvw - 75px)!important}
  body.cx-street-visible .gm-iv-address{max-width:calc(100dvw - 85px)!important}
 }
+
+/* Cartografia: seletor de camadas no canto inferior esquerdo, acima do contador. */
+body #cxLayersWidget{position:fixed!important;left:14px!important;bottom:93px!important;width:103px!important;height:87px!important;z-index:860!important;pointer-events:none!important;font:12px Arial,sans-serif!important}
+body #cxLayersToggle{display:block!important;position:relative!important;overflow:hidden!important;width:103px!important;height:87px!important;padding:4px!important;border:2px solid #fff!important;border-radius:14px!important;background:#f7fcff!important;box-shadow:0 5px 16px #284e6566!important;cursor:pointer!important;pointer-events:auto!important}
+body #cxLayersToggle .cx-layer-thumb{display:block!important;width:100%!important;height:100%!important;border-radius:10px!important;background:radial-gradient(ellipse at 37% 37%,#668763 0 17%,transparent 18%),radial-gradient(ellipse at 72% 55%,#50734e 0 26%,transparent 27%),linear-gradient(110deg,#556f51,#9d9c77 50%,#425c46)!important}
+body #cxLayersToggle .cx-layer-caption{position:absolute!important;bottom:4px!important;left:4px!important;right:4px!important;text-align:center!important;color:white!important;font-weight:800!important;border-radius:8px!important;padding:5px 1px!important;background:#102c3bbb!important}
+body #cxLayersWidget[data-type="terrain"] .cx-layer-thumb{background:linear-gradient(120deg,#bdb998,#98b583,#d5c7a7,#7fa37c)!important}
+body #cxLayersPanel{display:block!important;position:absolute!important;bottom:calc(100% + 9px)!important;left:0!important;width:min(340px,calc(100dvw - 28px))!important;box-sizing:border-box!important;padding:14px!important;border:1px solid white!important;border-radius:19px!important;background:linear-gradient(140deg,#f8fdfff9,#dceffcf7)!important;box-shadow:0 12px 34px #2455755b!important;backdrop-filter:blur(20px)!important;color:#1c4665!important;pointer-events:auto!important}
+body #cxLayersPanel[hidden]{display:none!important}
+body #cxLayersPanel .cx-layers-panel-header{display:flex!important;align-items:center!important;justify-content:space-between!important;margin-bottom:10px!important;font-weight:800!important}
+body #cxLayersPanel .cx-layers-panel-header button{width:30px!important;height:30px!important;border:1px solid white!important;border-radius:9px!important;background:#e5f5ff!important;color:#235777!important;font-size:20px!important;cursor:pointer!important}
+body #cxLayersPanel .cx-layers-grid{display:grid!important;grid-template-columns:repeat(3,1fr)!important;gap:8px!important}
+body #cxLayersPanel [data-cx-maptype]{min-width:0!important;display:flex!important;flex-direction:column!important;gap:5px!important;align-items:center!important;padding:5px!important;border:1px solid #b8d6e9!important;border-radius:12px!important;background:#ffffffb9!important;color:#22506e!important;font-weight:750!important;cursor:pointer!important}
+body #cxLayersPanel [data-cx-maptype][aria-pressed="true"]{border:2px solid #2788f1!important;background:#d6ecff!important}
+body #cxLayersPanel .cx-layer-preview{width:100%!important;height:53px!important;border-radius:8px!important}
+body #cxLayersPanel .cx-layer-road{background:linear-gradient(47deg,#dcead8 0 37%,#fff 38% 45%,#d1e4ef 46% 55%,#fff 56% 62%,#daead6 63%)!important}
+body #cxLayersPanel .cx-layer-satellite{background:linear-gradient(29deg,#496c44,#77926d 45%,#384c47 75%,#8f9a74)!important}
+body #cxLayersPanel .cx-layer-terrain{background:repeating-linear-gradient(33deg,#a5bc8e 0 9px,#d1c3a2 10px 18px,#90a67d 19px 28px)!important}
+body #cxLayersPanel .cx-layer-traffic{display:flex!important;align-items:center!important;gap:9px!important;margin:11px 0!important;font-weight:700!important;cursor:pointer!important}
+body #cxLayersPanel .cx-layer-traffic input{width:18px!important;height:18px!important;accent-color:#1479d8!important}
+body #cxLayersPanel .cx-traffic-sound{display:flex!important;align-items:center!important;gap:8px!important;border-top:1px solid #bad6e3!important;padding-top:10px!important;font-size:12px!important;font-weight:650!important}
+body #cxLayersPanel .cx-traffic-sound input{accent-color:#087dc6!important}
+body #cxLayersPanel .cx-traffic-help{display:block!important;color:#55798d!important;font-size:10px!important;line-height:1.4!important;margin-top:7px!important}
+body #cxTrafficNotice{display:flex!important;align-items:center!important;gap:9px!important;position:fixed!important;z-index:1001!important;left:50%!important;bottom:22px!important;transform:translateX(-50%)!important;max-width:min(560px,calc(100dvw - 28px))!important;min-width:220px!important;padding:12px 16px!important;border:1px solid white!important;border-radius:18px!important;background:linear-gradient(125deg,#f8fdfff5,#cfecfff0)!important;backdrop-filter:blur(22px)!important;box-shadow:0 10px 26px #174c6d52!important;color:#19496d!important;font-size:12px!important;font-weight:750!important;pointer-events:auto!important}
+body #cxTrafficNotice[hidden]{display:none!important}
+body #cxTrafficNotice button{margin-left:auto!important;cursor:pointer!important;border:0!important;background:transparent!important;color:#28628b!important;font-size:20px!important}
+@media(min-width:700px){body.cx-stats-in-menu #cxLayersWidget{left:calc(min(508px,100dvw - 36px) + 15px)!important;bottom:18px!important}}
+@media(max-width:699px){body #cxLayersWidget{left:8px!important;bottom:84px!important}body #cxTrafficNotice{bottom:8px!important}}
