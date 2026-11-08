@@ -2661,46 +2661,6 @@ body.cx-modal-active{overflow:hidden!important}
     let lastGpsSentAt = 0;
     let lastGpsCoords = null;
 
-    // Controle de teste somente para navegadores iOS; o Android permanece inalterado.
-    const cxIsIOSBrowser = /iPad|iPhone|iPod/.test(navigator.userAgent)
-      || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
-    let cxIOSGpsControl = null;
-    function cxIOSGpsMessage(message, color) {
-      if (!cxIOSGpsControl) return;
-      const status = cxIOSGpsControl.querySelector('[data-cx-ios-status]');
-      if (status) { status.textContent = message; status.style.color = color || '#183967'; }
-    }
-    function cxIOSGpsControlSetup(){
-      if (!cxIsIOSBrowser || window.AndroidBridge || cxIOSGpsControl) return;
-      const wrap = document.createElement('section');
-      wrap.id = 'cx-ios-gps-test';
-      wrap.style.cssText = 'position:fixed;right:12px;bottom:16px;z-index:100002;max-width:310px;background:#f8fbff;border:1px solid #abc8ec;border-radius:16px;box-shadow:0 8px 24px #163e7d35;padding:12px;color:#123a76;font:600 13px/1.4 system-ui,sans-serif';
-      const title = document.createElement('strong');
-      title.textContent = 'COOPEX · GPS do iPhone';
-      title.style.cssText = 'display:block;margin-bottom:8px';
-      const button = document.createElement('button');
-      button.type='button';
-      button.textContent='Ativar GPS no iPhone';
-      button.style.cssText='width:100%;background:#1463d7;color:#fff;border:0;border-radius:10px;padding:11px 12px;font:700 14px system-ui,sans-serif;cursor:pointer';
-      const status = document.createElement('div');
-      status.dataset.cxIosStatus = '1';
-      status.textContent = 'Toque para autorizar o envio de localização ao mapa.';
-      status.style.cssText = 'margin-top:8px;color:#183967';
-      const close = document.createElement('button');
-      close.type='button';
-      close.textContent='×';
-      close.setAttribute('aria-label','Ocultar teste de GPS do iPhone');
-      close.style.cssText='position:absolute;top:6px;right:8px;border:0;background:transparent;color:#123a76;font-size:21px';
-      close.addEventListener('click',()=>wrap.remove());
-      button.addEventListener('click',()=>{
-        cxIOSGpsMessage('Solicitando localização ao Safari…');
-        requestGpsPosition(true);
-      });
-      wrap.append(title,button,status,close);
-      document.body.appendChild(wrap);
-      cxIOSGpsControl=wrap;
-    }
-
     function distanceMeters(a, b){
       if (!a || !b) return Infinity;
       const R = 6371000;
@@ -2786,7 +2746,6 @@ body.cx-modal-active{overflow:hidden!important}
       gpsPermissionBlocked=false;
       const banner=document.getElementById('coopex-gps-permission-banner');
       if(banner){banner.hidden=true;banner.style.display='none';}
-      cxIOSGpsMessage('Localização autorizada. Enviando GPS ao servidor COOPEX…','#14652e');
       sendPosition(pos.coords.latitude,pos.coords.longitude,pos.coords.accuracy,pos.coords.heading,pos.coords.speed,true);
       startGpsWatch();
     }
@@ -2794,18 +2753,16 @@ body.cx-modal-active{overflow:hidden!important}
     function gpsPermissionFailed(err){
       gpsRequestPending=false;
       if(err && err.code===1){
-        cxIOSGpsMessage('Permissão negada. Verifique Localização nas configurações do Safari e nos Ajustes do iPhone.','#aa2d24');
-        gpsPermissionNotice(cxIsIOSBrowser ? 'Localização bloqueada. No Safari, abra as configurações deste site e permita Localização; depois toque em Verificar permissão.' : 'A localização está bloqueada. No Chrome, toque no ícone ao lado do endereço do site, abra Permissões e permita Localização; depois toque em Verificar permissão.',true);
+        gpsPermissionNotice('A localização está bloqueada. No Chrome, toque no ícone ao lado do endereço do site, abra Permissões e permita Localização; depois toque em Verificar permissão.',true);
       }else{
         // Timeout ou sinal indisponível não equivalem a permissão negada.
-        cxIOSGpsMessage('Sem posição: verifique GPS, sinal e conexão; toque novamente para testar.','#aa6423');
         paintWaiting();
       }
     }
 
     function requestGpsPosition(fromUser=false){
       if(gpsRequestPending || (gpsPermissionBlocked && !fromUser)) return;
-      if(!navigator.geolocation){cxIOSGpsMessage('Safari não disponibilizou o GPS. Abra o site em HTTPS.','#aa2d24');paintWaiting();return;}
+      if(!navigator.geolocation){paintWaiting();return;}
       // A solicitação feita pelo toque usa a API nativa do navegador/WebView.
       // Se a permissão foi bloqueada permanentemente, só o usuário pode liberá-la.
       gpsRequestPending=true;
@@ -2913,7 +2870,6 @@ body.cx-modal-active{overflow:hidden!important}
       loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
       requestAnimationFrame(()=>document.body.classList.add('ready'));
       conectarEventosFila();
-      cxIOSGpsControlSetup();
       setTimeout(() => {
         requireLocation();
         fetchGpsStatus();
