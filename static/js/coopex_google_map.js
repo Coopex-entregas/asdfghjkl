@@ -137,7 +137,9 @@ async function showPlaceDetails(point,knownPlace=null){
    const label=document.createElement("span");label.className="cx-hours-label";label.textContent=" · Horários de funcionamento";
    const chevron=document.createElement("span");chevron.className="cx-hours-chevron";chevron.setAttribute("aria-hidden","true");chevron.textContent="⌄";
    summary.append(status,label,chevron);box.append(summary);
-   for(const item of hours){const line=document.createElement("div");line.textContent=item;box.append(line)}
+   const days=document.createElement("div");days.className="cx-hours-days";
+   for(const item of hours){const line=document.createElement("div");line.className="cx-hours-day";line.textContent=item;days.append(line)}
+   box.append(days);
    metadata.append(box);
   }
   if(knownPlace.editorialSummary){
