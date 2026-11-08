@@ -649,3 +649,108 @@ body.cx-map-sidebar-closed #cxTopControlDock>#cxCoopSearch{left:auto!important;r
 
 /* Controles legados de mapa/relevo não fazem parte da interface CoopEX Maps. */
 body #mapStreet,body #mapSatellite,body #googleMap .gm-style-mtc,body #googleMap .gm-style-mtc-bbw{display:none!important}
+
+/* Ficha de estabelecimento: UMA rolagem vertical contínua, padrão Maps */
+body #addressPanel.cx-place-view .cx-drawer-content{
+ display:flex!important;flex-direction:column!important;
+ overflow-y:auto!important;overflow-x:hidden!important;
+ overscroll-behavior:contain!important;
+ scrollbar-width:thin!important;
+ scrollbar-color:#b1c7d7 transparent!important;
+}
+body #addressPanel.cx-place-view .cx-maps-brand,
+body #addressPanel.cx-place-view .cx-drawer-top,
+body #addressPanel.cx-place-view .cx-map-nav{
+ position:relative!important;flex:none!important;
+}
+body #addressPanel.cx-place-view #cxUnifiedResults,
+body #addressPanel.cx-place-view .cx-drawer-actions,
+body #addressPanel.cx-place-view .cx-drawer-stops,
+body #addressPanel.cx-place-view .cx-drawer-stoplist,
+body #addressPanel.cx-place-view #stopsList,
+body #addressPanel.cx-place-view .cx-drawer-message,
+body #addressPanel.cx-place-view .cx-route-summary,
+body #addressPanel.cx-place-view #cxRoutes,
+body #addressPanel.cx-place-view #cxRouteEditor{
+ display:none!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails{
+ display:flex!important;flex-direction:column!important;
+ flex:0 0 auto!important;position:relative!important;
+ overflow:visible!important;overflow-x:visible!important;
+ max-height:none!important;min-height:unset!important;
+ height:auto!important;width:auto!important;
+ margin:4px 10px 15px!important;padding:0 0 19px!important;
+ border-radius:20px!important;background:rgba(255,255,255,.77)!important;
+ scrollbar-width:none!important;gap:8px!important;
+ box-shadow:0 7px 22px #1c649423!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails[hidden]{display:none!important}
+body #cxPlaceDetails .cx-place-gallery{
+ order:0!important;display:block!important;position:relative!important;
+ overflow:hidden!important;max-width:100%!important;width:100%!important;
+ height:222px!important;min-height:222px!important;max-height:none!important;
+ padding:0!important;margin:0!important;
+ border-radius:18px 18px 0 0!important;scroll-snap-type:none!important;
+}
+body #cxPlaceDetails .cx-place-gallery[hidden]{display:none!important}
+body #cxPlaceDetails .cx-place-hero-photo{
+ position:absolute!important;inset:0!important;display:block!important;
+ height:100%!important;width:100%!important;max-width:none!important;min-width:0!important;
+ border-radius:0!important;object-fit:cover!important;margin:0!important;
+ box-shadow:none!important;
+}
+body #cxPlaceDetails .cx-place-photo-next{
+ position:absolute!important;left:12px!important;bottom:12px!important;
+ background:rgba(13,44,63,.62)!important;color:white!important;
+ border-radius:10px!important;padding:6px 13px!important;border:1px solid #ffffffa0!important;
+ box-shadow:0 4px 12px #062f4755!important;z-index:2!important;
+}
+body #cxPlaceDetails .cx-place-credit{order:1!important;margin:0 15px!important;color:#5a748c!important;font-size:10px!important}
+body #cxPlaceDetails .cx-place-title{
+ order:2!important;display:block!important;margin:7px 16px 0!important;
+ font-size:21px!important;font-weight:780!important;line-height:1.3!important;color:#18394d!important;
+}
+body #cxPlaceDetails .cx-place-address{
+ order:3!important;display:block!important;margin:0 16px!important;
+ font-size:12px!important;color:#547089!important;line-height:1.5!important;
+}
+body #cxPlaceDetails .cx-place-state{
+ order:4!important;margin:2px 16px!important;
+ font-size:12px!important;font-weight:700!important;line-height:1.35!important;
+}
+body #cxPlaceDetails .cx-place-shortcuts{
+ order:5!important;position:relative!important;bottom:auto!important;
+ display:flex!important;gap:6px!important;padding:12px 10px!important;
+ margin-top:7px!important;border-top:1px solid #d9e7f2!important;
+ border-bottom:1px solid #d9e7f2!important;
+ background:transparent!important;backdrop-filter:none!important;
+}
+body #cxPlaceDetails .cx-place-shortcuts button{flex:1 1 0!important;min-width:0!important;padding:9px 4px!important;font-size:11px!important}
+body #cxPlaceDetails .cx-place-metadata{
+ order:6!important;display:flex!important;flex-direction:column!important;
+ gap:0!important;overflow:visible!important;max-height:none!important;
+ padding:3px 16px 12px!important;background:none!important;
+}
+body #cxPlaceDetails .cx-place-metadata>*{
+ padding:11px 0!important;border-bottom:1px solid rgba(165,192,211,.37)!important;
+ margin:0!important;min-height:0!important;
+}
+body #cxPlaceDetails .cx-place-hours{
+ display:block!important;overflow:visible!important;max-height:none!important;
+ background:transparent!important;border:0!important;border-radius:0!important;
+ font-size:12px!important;line-height:1.55!important;
+}
+body #cxPlaceDetails .cx-place-hours summary{
+ list-style:auto!important;cursor:pointer!important;display:list-item!important;
+ font-size:13px!important;font-weight:750!important;color:#245e77!important;
+}
+body #cxPlaceDetails .cx-place-hours div{
+ display:flex!important;justify-content:space-between!important;gap:15px!important;
+ padding:8px 0!important;border-bottom:1px solid #e0eaf2!important;
+ font-size:12px!important;color:#435b6f!important;
+}
+body #cxPlaceDetails .cx-place-link{font-size:13px!important;color:#127599!important;word-break:break-word!important}
+body #cxPlaceDetails .cx-place-rating{color:#a46b09!important}
+body #cxPlaceDetails .cx-place-description{font-size:13px!important;line-height:1.6!important}
+@media(max-width:700px){body #cxPlaceDetails .cx-place-gallery{height:180px!important;min-height:180px!important}}
