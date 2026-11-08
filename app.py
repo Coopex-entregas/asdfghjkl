@@ -2783,6 +2783,12 @@ def login():
             session['is_admin'] = False
             session['is_master'] = False
             session['tipo'] = 'cooperado'   # 👈 ESSENCIAL PARA /cooperado/atualizar_localizacao
+            # Redirecionar SOMENTE cooperado no navegador Android depois do login.
+            # O login nativo do app usa /api/mobile/login_cooperado e não passa aqui.
+            agent = (request.headers.get('User-Agent') or '').lower()
+            android_browser = 'android' in agent and 'wv' not in agent and 'version/4.0' not in agent
+            if android_browser:
+                return redirect(url_for('cooperado_app_android'))
             return redirect(url_for('painel_cooperado'))
 
         # 3) Cliente (login por username OU e-mail)
@@ -5502,6 +5508,19 @@ def api_mobile_cooperado_resumo():
         return jsonify(ok=False, error='Cooperado inativo'), 403
     data = _cooperado_dashboard_resumo(int(user_id))
     response = jsonify(ok=True, **data)
+    response.headers['Cache-Control'] = 'no-store, private'
+    return response
+
+
+@app.get('/cooperado/app-android')
+def cooperado_app_android():
+    """Página de instalação somente para cooperados autenticados no navegador Android."""
+    if session.get('user_id') is None or session.get('is_admin'):
+        return redirect(url_for('login'))
+    agent = (request.headers.get('User-Agent') or '').lower()
+    if 'android' not in agent:
+        return redirect(url_for('painel_cooperado'))
+    response = make_response(render_template('cooperado_app_android.html'))
     response.headers['Cache-Control'] = 'no-store, private'
     return response
 
