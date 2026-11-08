@@ -646,3 +646,6 @@ body.cx-map-sidebar-closed #cxTopControlDock>#cxCoopSearch{left:auto!important;r
  body #cxTopControlDock>.weather.glass{order:3!important;flex:1 1 160px!important;max-width:none!important}
  body #cxTopControlDock>.filters.glass{order:4!important;flex:0 1 auto!important;max-width:100%!important}
 }
+
+/* Controles legados de mapa/relevo não fazem parte da interface CoopEX Maps. */
+body #mapStreet,body #mapSatellite,body #googleMap .gm-style-mtc,body #googleMap .gm-style-mtc-bbw{display:none!important}
