@@ -417,3 +417,74 @@ body.cx-address-mode .cx-explore-search #address{border:0!important;outline:0!im
 .cx-explore-tip{font-size:11px;color:#7c8b97;padding:0 22px 25px;line-height:1.5}
 body.cx-address-mode .cx-explore-panel .cx-explore-rail button{pointer-events:auto!important}
 @media(max-width:650px){body.cx-address-mode .cx-explore-panel{width:min(460px,calc(100vw - 12px))!important;left:6px!important;top:6px!important;height:calc(100dvh - 12px)!important;bottom:6px!important}.cx-explore-rail{width:48px}.cx-explore-hero{height:150px}.cx-explore-place strong{font-size:17px}.cx-explore-categories span{font-size:9px}}
+
+/* Layout COOPEX — pesquisa única, barra lateral recolhível e mapa Google em tela inteira. */
+body #ui>.search,body #ui>.search-results,body #sideExpand{display:none!important}
+body .coopex-side{display:none!important}
+body .cx-unified-drawer{
+ position:absolute!important;display:flex!important;top:10px!important;left:10px!important;bottom:10px!important;
+ width:min(405px,calc(100vw - 42px))!important;height:calc(100dvh - 20px)!important;max-height:none!important;
+ padding:0!important;overflow:visible!important;background:none!important;border:none!important;
+ border-radius:0!important;box-shadow:none!important;z-index:800!important;pointer-events:auto!important;
+ transform:translateX(0);transition:transform .28s cubic-bezier(.2,.7,.2,1)!important
+}
+body .cx-unified-drawer[hidden]{display:none!important}
+body.cx-address-mode .cx-unified-drawer{display:flex!important}
+.cx-drawer-content{
+ display:flex;flex-direction:column;min-width:0;flex:1;overflow:hidden;
+ background:rgba(255,255,255,.97);color:#163550;
+ border:1px solid #ffffff;box-shadow:0 15px 48px #0f426234;
+ border-radius:21px;backdrop-filter:blur(22px) saturate(135%)
+}
+.cx-drawer-top{display:flex;align-items:center;gap:2px;margin:12px;padding:3px 5px;
+ border:1px solid #d9e5ef;border-radius:16px;min-height:51px;background:white;box-shadow:0 3px 11px #183e5917}
+.cx-drawer-top>input#address{width:1px;flex:1;min-width:0;outline:0!important;border:0!important;background:transparent!important;
+ color:#173b58!important;font-size:13px!important;font-weight:650;min-height:39px!important;padding:0 5px!important}
+.cx-drawer-top>button{width:35px;min-width:35px;height:39px;border:0!important;border-radius:11px!important;
+ background:transparent!important;color:#375b7b!important;font-size:22px!important;display:grid;place-items:center}
+.cx-drawer-top>button:hover{background:#eaf4ff!important}
+.cx-drawer-results{flex:1;overflow-y:auto;padding:8px 13px;min-height:0}
+.cx-drawer-welcome{display:flex;flex-direction:column;gap:9px;padding:28px 20px;
+ background:linear-gradient(140deg,#eaf5ff,#fff);border-radius:17px;color:#1c4e7e}
+.cx-drawer-welcome strong{font-size:20px}
+.cx-drawer-welcome small{font-size:12px;line-height:1.6;color:#587b96}
+.cx-drawer-hit{width:100%;display:flex;align-items:center;gap:11px;padding:12px 9px;
+ border:0;border-bottom:1px solid #eaf0f6;background:transparent;text-align:left;color:#204564;cursor:pointer;border-radius:10px}
+.cx-drawer-hit:hover{background:#e8f3ff}
+.cx-drawer-hit strong{font-size:13px;display:block}
+.cx-drawer-hit small{font-size:11px;display:block;margin-top:3px;color:#69849b}
+.cx-hit-dot{width:12px;height:12px;flex:none;border-radius:50%;border:2px solid white;box-shadow:0 0 0 1px #aebfcf}
+.cx-drawer-actions{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:7px;padding:12px;border-top:1px solid #edf1f5}
+.cx-drawer-actions button{font-size:12px;font-weight:800;color:#165a99!important;border:1px solid #d6e6f5!important;
+ min-height:42px;border-radius:12px!important;background:#edf6ff!important}
+.cx-route-results{padding:10px 14px;background:#f4f9ff;max-height:38vh;overflow-y:auto;color:#31516e}
+.cx-route-option{display:flex;justify-content:space-between;gap:8px;text-align:left;width:100%;padding:11px;border:1px solid #dde9f5;border-radius:11px;margin:5px 0;background:#fff;color:#234c75;font-weight:700}
+.cx-route-option.active{background:#dcebff;border-color:#1973e6;color:#1254ae}
+.cx-drawer-stops{display:flex;align-items:center;justify-content:space-between;padding:8px 18px;border-top:1px solid #eaf0f6;color:#476b8b;font-size:12px}
+.cx-drawer-stops button{border:0;background:transparent;color:#2869a4;padding:7px}
+.cx-drawer-stoplist{max-height:140px;overflow:auto;padding:0 16px;font-size:12px;color:#3e607b}
+.cx-drawer-message{color:#687f94;font-size:11px;line-height:1.5;padding:8px 18px 17px;margin:0}
+body .cx-drawer-edge{position:absolute!important;top:80px!important;right:-25px!important;left:auto!important;z-index:820!important;
+ width:28px!important;height:53px!important;border:1px solid #dae7f4!important;border-radius:0 12px 12px 0!important;
+ background:rgba(255,255,255,.97)!important;color:#295b84!important;font-size:22px!important;
+ box-shadow:3px 3px 9px #22557924!important}
+body:not(.cx-address-mode) #sideExpand{display:flex!important;position:absolute!important;top:80px!important;left:0!important;right:auto!important;width:32px!important;height:53px!important;
+ padding:0!important;border-radius:0 12px 12px 0!important;font-size:0!important;min-width:0!important;max-width:32px!important;
+ background:rgba(255,255,255,.95)!important;z-index:820!important}
+body:not(.cx-address-mode) #sideExpand::after{content:"›";font-size:25px;color:#235a8d}
+body .weather.glass{position:absolute!important;left:auto!important;right:14px!important;bottom:11px!important;top:auto!important;
+ width:auto!important;min-width:0!important;max-width:350px!important;height:39px!important;
+ padding:4px 11px!important;border-radius:14px!important;display:flex!important;align-items:center!important;gap:8px!important;
+ z-index:700!important;background:rgba(255,255,255,.91)!important;color:#234f78!important;font-size:12px!important}
+body .weather .temp{font-size:15px!important;color:#184b78!important;line-height:1!important}
+.cx-weather-place,.cx-weather-condition{font-size:11px;white-space:nowrap;color:#406b8d}
+body #weatherIcon{font-size:19px!important}
+body.cx-address-mode #googleExplore{display:none!important}
+body.cx-address-mode #googleMap{visibility:visible!important;pointer-events:auto!important}
+body.cx-address-mode .filters,body.cx-address-mode .toolbar{opacity:1!important;pointer-events:auto!important}
+body #ui>.back-link{top:16px!important;left:auto!important;right:16px!important;z-index:820!important}
+@media(max-width:660px){
+ body .cx-unified-drawer{left:5px!important;top:5px!important;bottom:5px!important;height:calc(100dvh - 10px)!important;width:calc(100vw - 37px)!important}
+ body .weather.glass{right:8px!important;bottom:8px!important;max-width:calc(100vw - 16px)!important}
+ body .cx-weather-condition{display:none}
+}
