@@ -35,7 +35,7 @@ origin.setAttribute("aria-label","Origem da rota");origin.hidden=true;
 document.querySelector(".cx-drawer-top")?.after(origin);
 let geocoder,streetPanorama,streetService,placePoint=null,placeMarker=null,routeActive=false;
 let routeInFlight=false,placeSequenceInfo=0;
-let routeAlternatives=[],routePolylines=[],routeStops=[],searchFocus="destination";
+let routeAlternatives=[],routePolylines=[],routeStops=[],routeMode="DRIVING",searchFocus="destination";
 const queryNorm=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const historyKey="coopex-map-own-search-history-v1";
 function readHistory(){try{return JSON.parse(localStorage.getItem(historyKey)||"[]").filter(s=>typeof s==="string").slice(0,20)}catch(e){return []}}
@@ -139,7 +139,7 @@ function suggestions(){
  const q=(field?.value||"").trim();if(!q){
   const d=document.createElement("div");d.className="cx-drawer-welcome";
   const title=document.createElement("strong");title.textContent="Pesquisar no mapa";
-  const note=document.createElement("small");note.textContent="Busque ruas, endereços e estabelecimentos. Os cooperados têm pesquisa própria ao lado do clima.";
+  const note=document.createElement("small");note.textContent="";
   d.append(title,note);hits.append(d);
  }
  let count=0;
@@ -149,6 +149,15 @@ function suggestions(){
  if(q.length>=2){count++;makeHit("Pesquisar no Google",q,"#187aff",searchAddress)}
  if(!count)info("Nenhum resultado local. Pressione Enter para pesquisar o endereço no Google.");
 }
+document.addEventListener("click",event=>{
+ const b=event.target.closest?.("[data-cx-mode]");
+ if(!b)return;
+ const selected=b.dataset.cxMode;
+ if(!["DRIVING","TWO_WHEELER","TRANSIT","WALKING","BICYCLING"].includes(selected))return;
+ routeMode=selected;
+ document.querySelectorAll("[data-cx-mode]").forEach(button=>button.classList.toggle("active",button===b));
+ if(document.getElementById("cxRouteOrigin")?.value.trim()&&document.getElementById("cxDestinationMirror")?.value.trim())calculateRoutes();
+});
 function searchAddress(){
  if(!googleMap||!geocoder){info("Google Maps ainda está inicializando.");return}
  const q=(field?.value||"").trim();if(q.length<3){info("Digite pelo menos três caracteres.");return}
@@ -239,7 +248,8 @@ async function calculateRoutes(){
   const [a,b]=await Promise.all([resolveLocation(origin.value),resolveLocation(destinationText)]);
   info("Calculando percurso, km e duração no Google...");
   const {Route}=await google.maps.importLibrary("routes");
-  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:"DRIVING",routingPreference:"TRAFFIC_AWARE",computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","description","routeLabels"],language:"pt-BR",region:"BR"};
+  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:routeMode,computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","description","routeLabels"],language:"pt-BR",region:"BR"};
+  if(routeMode==="DRIVING"||routeMode==="TWO_WHEELER")options.routingPreference="TRAFFIC_AWARE";
   if(routeStops.length)options.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng}}));
   const response=await Route.computeRoutes(options);
   const found=(response.routes||[]).slice(0,3);
@@ -248,7 +258,7 @@ async function calculateRoutes(){
   routeAlternatives=found.map(r=>({distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():Number(p.lat),lng:typeof p.lng==="function"?p.lng():Number(p.lng)}))}));
   routesHost.hidden=false;
   routeAlternatives.forEach((r,i)=>{
-   const poly=new google.maps.Polyline({map:googleMap,path:r.path,strokeColor:i===0?"#1479ee":"#9caec5",strokeOpacity:1,strokeWeight:i===0?7:5,zIndex:i===0?90:2});
+   const poly=new google.maps.Polyline({map:googleMap,path:r.path,strokeColor:i===0?"#193feb":"#6894ec",strokeOpacity:i===0?1:.75,strokeWeight:i===0?7:4,zIndex:i===0?90:2});
    poly.addListener("click",()=>showRoute(i));routePolylines.push(poly);
    const option=document.createElement("button");option.type="button";option.className="cx-route-option";
    const title=document.createElement("strong");title.textContent=r.description||("Rota "+(i+1));
@@ -256,7 +266,7 @@ async function calculateRoutes(){
    option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
   showRoute(0);
-  info(routeStops.length?"Rota pelas paradas pronta. Reordene ou edite e recalcule.":"Clique na linha ou alternativa para mudar de rota.");
+  info("");
  }catch(e){info("Não foi possível calcular: "+String(e.message||e));console.warn("COOPEX Routes",e)}
  finally{routeInFlight=false;button.disabled=false}
 }
