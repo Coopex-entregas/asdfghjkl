@@ -314,6 +314,12 @@ $("sideExpand").onclick=()=>setAddressMode(true);
 $("sideSearchAddress").onclick=()=>setAddressMode(true);
 $("addressToggle").onclick=()=>setAddressMode(true);
 $("addressClose").onclick=()=>{const q=$("address");if(q)q.value="";};
+window.addEventListener("coopex:search-reset",()=>{
+ if(placePin){placePin.remove();placePin=null}
+ selectedAddress=null;
+ viewPoint=null;
+ stops=[];stopsMarkers.forEach(marker=>marker.remove());stopsMarkers=[];
+});
 $("addressCollapse").onclick=()=>{
  // Recolher significa voltar ao mapa COOPEX, e não continuar no modo de busca.
  setAddressMode(false);
