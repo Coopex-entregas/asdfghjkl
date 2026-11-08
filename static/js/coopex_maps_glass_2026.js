@@ -153,11 +153,19 @@ search.addEventListener("input",()=>{
 });
 search.addEventListener("focus",syncSearchStage);
 search.addEventListener("blur",()=>setTimeout(syncSearchStage,180));
-$("addressClose")?.addEventListener("click",()=>{
+function returnToEmptySearch(){
  $("cxPlaceDetails")?.remove();
  search.value="";
- setTab("explorar");syncSearchStage();
-});
+ destMirror.value="";
+ setTab("explorar");
+ panel.classList.remove("cx-place-view","cx-directions-mode","cx-search-suggesting");
+ panel.classList.add("cx-search-idle");
+ $("cxUnifiedResults").hidden=true;
+ $("addressMessage").textContent="";
+ syncSearchStage();
+}
+$("addressClose")?.addEventListener("click",returnToEmptySearch);
+window.addEventListener("coopex:search-reset",returnToEmptySearch);
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
