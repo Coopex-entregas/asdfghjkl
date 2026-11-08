@@ -213,5 +213,17 @@ $("routeOpen").addEventListener("click",()=>{if(activeTab!=="rotas")setTab("rota
 const hint=document.createElement("div");hint.className="cx-route-hint";hint.textContent="";routes?.after(hint);
 const welcome=results.querySelector(".cx-drawer-welcome");if(welcome)welcome.innerHTML="<strong>Explore no mapa</strong>";
 $("addressMessage").textContent="";
+// Seleção de estabelecimentos e ícones no Google: ficha aberta sem sair do CoopEX Maps.
+window.addEventListener("coopex:place-selected",event=>{
+ const place=event.detail?.point;
+ if(place?.label){
+  search.value=place.label;
+  destMirror.value=place.label;
+ }
+ setTab("explorar");
+ expand();
+ const info=$("cxPlaceDetails");
+ if(info){info.hidden=false;panel.classList.add("cx-place-view")}
+});
 setTab("explorar");
 })();
