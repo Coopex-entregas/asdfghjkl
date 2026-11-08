@@ -33,7 +33,8 @@ const origin=document.createElement("input");
 origin.id="cxRouteOrigin";origin.placeholder="Origem (endereço ou cooperado)";
 origin.setAttribute("aria-label","Origem da rota");origin.hidden=true;
 document.querySelector(".cx-drawer-top")?.after(origin);
-let geocoder,streetPanorama,placePoint=null,placeMarker=null,routeActive=false;
+let geocoder,streetPanorama,streetService,placePoint=null,placeMarker=null,routeActive=false;
+let routeInFlight=false,placeSequenceInfo=0;
 let routeAlternatives=[],routePolylines=[],routeStops=[],searchFocus="destination";
 const queryNorm=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const historyKey="coopex-map-own-search-history-v1";
@@ -44,7 +45,7 @@ function remember(q){
 }
 function info(t){if(message)message.textContent=t;}
 function hideRoutes(){routePolylines.forEach(p=>p.setMap(null));routePolylines=[];routeAlternatives=[];if(routesHost){routesHost.replaceChildren();routesHost.hidden=true}}
-function destination(p,name){
+function destination(p,name,googlePlace=null){
  if(!p||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lng)){info("Local sem GPS válido.");return}
  placePoint={lat:+p.lat,lng:+p.lng,label:name||"Destino"};
  if(!placeMarker)placeMarker=new google.maps.Marker({map:googleMap,position:placePoint,title:placePoint.label});
@@ -52,7 +53,38 @@ function destination(p,name){
  googleMap.panTo(placePoint);googleMap.setZoom(Math.max(googleMap.getZoom()||0,15));
  info("Local selecionado: "+placePoint.label);
  hideRoutes();
+ showPlaceDetails(placePoint,googlePlace);
 }
+async function showPlaceDetails(point,knownPlace=null){
+ const seq=++placeSequenceInfo;
+ const root=document.getElementById("cxPlaceDetails")||document.createElement("section");
+ root.id="cxPlaceDetails";root.className="cx-place-details";root.replaceChildren();
+ if(!root.isConnected)document.querySelector(".cx-drawer-actions")?.before(root);
+ const name=document.createElement("strong");name.textContent=point.label||"Local selecionado";
+ const coords=document.createElement("small");coords.textContent="Localização selecionada • "+point.lat.toFixed(5)+", "+point.lng.toFixed(5);
+ const actions=document.createElement("div");actions.className="cx-place-shortcuts";
+ for(const [label,action] of [["↗ Rotas",()=>{if(!routeActive)calculateRoutes();else calculateRoutes()}],["◎ Ver rua",openStreet],["＋ Parada",()=>document.getElementById("addStop")?.click()]]){
+  const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=action;actions.append(b);
+ }
+ root.append(name,coords,actions);
+ if(!knownPlace)return;
+ try{
+  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","websiteURI","nationalPhoneNumber","regularOpeningHours"]});
+  if(seq!==placeSequenceInfo)return;
+  if(knownPlace.formattedAddress)coords.textContent=knownPlace.formattedAddress;
+  const photos=(knownPlace.photos||[]).slice(0,3);
+  if(photos.length){
+   const gallery=document.createElement("div");gallery.className="cx-place-gallery";
+   for(const photo of photos){const img=document.createElement("img");img.loading="lazy";img.alt="Foto do estabelecimento fornecida pelo Google";img.src=photo.getURI({maxWidth:500,maxHeight:300});gallery.append(img)}
+   root.insertBefore(gallery,actions);
+   const attribution=document.createElement("small");attribution.textContent="Fotos e informações: Google Maps";root.insertBefore(attribution,actions);
+  }
+  if(knownPlace.rating){const rating=document.createElement("small");rating.textContent="★ "+knownPlace.rating+" · "+(knownPlace.userRatingCount||0)+" avaliações";root.insertBefore(rating,actions)}
+  if(knownPlace.nationalPhoneNumber){const phone=document.createElement("small");phone.textContent="Telefone: "+knownPlace.nationalPhoneNumber;root.insertBefore(phone,actions)}
+  if(knownPlace.websiteURI){const link=document.createElement("a");link.href=knownPlace.websiteURI;link.target="_blank";link.rel="noopener noreferrer";link.textContent="Site do estabelecimento ↗";root.insertBefore(link,actions)}
+ }catch(e){console.debug("Informações adicionais não disponíveis:",e.message)}
+}
+
 function makeHit(primary,secondary,color,onClick){
  const b=document.createElement("button");b.type="button";b.className="cx-drawer-hit";
  const dot=document.createElement("span");dot.className="cx-hit-dot";dot.style.background=color;
@@ -134,7 +166,8 @@ function showRoute(idx){
 }
 async function calculateRoutes(){
  if(!googleMap)return;
- if(!routeActive){routeActive=true;origin.hidden=false;document.getElementById("routeOpen").textContent="🚘 Calcular";info("Defina a origem. Se ficar vazia, será usado o centro do mapa.");return}
+ if(!routeActive){routeActive=true;origin.hidden=false;document.getElementById("routeOpen").textContent="🚘 Calcular";info("Informe A (origem) e pesquise B (destino). Os km e o tempo aparecem depois de calcular.");return}
+ if(routeInFlight)return;routeInFlight=true;document.getElementById("routeOpen").disabled=true;
  try{
   if(!placePoint){await new Promise((resolve,reject)=>{
     const q=(field.value||"").trim();if(!q){reject(Error("Pesquise primeiro um destino."));return}
@@ -143,11 +176,12 @@ async function calculateRoutes(){
       else reject(Error("Destino não encontrado: "+status));
     });
   })}
+  if(!origin.value.trim())throw Error("Informe a rua e o número da origem A.");
   const first=await resolveOrigin();if(!first||!placePoint)throw Error("Defina a origem e o destino.");
   const {Route}=await google.maps.importLibrary("routes");
   info("Calculando quilômetros e rotas pelas vias do Google...");
   const opts={origin:first,destination:{lat:placePoint.lat,lng:placePoint.lng},travelMode:"DRIVING",
-   fields:["path","distanceMeters","durationMillis","routeLabels"],computeAlternativeRoutes:routeStops.length===0,
+   fields:["path","distanceMeters","durationMillis","routeLabels"],computeAlternativeRoutes:routeStops.length===0,routingPreference:"TRAFFIC_AWARE",
    language:"pt-BR",region:"BR"};
   if(routeStops.length)opts.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng},stopover:true}));
   const result=await Route.computeRoutes(opts);
@@ -163,22 +197,27 @@ async function calculateRoutes(){
    const b=document.createElement("button");b.type="button";b.className="cx-route-option";
    const kms=(route.distanceMeters/1000).toLocaleString("pt-BR",{maximumFractionDigits:1});
    const mins=Math.round(route.durationMillis/60000);
-   b.textContent=(i===0?"Melhor rota":"Alternativa "+(i+1))+" · "+kms+" km · "+mins+" min";
+   b.textContent=(i===0?"Rota recomendada":"Alternativa "+(i+1))+"  •  "+kms+" km  •  "+mins+" min";
    b.onclick=()=>showRoute(i);routesHost.append(b);
   });
   showRoute(0);info(routeStops.length?"Rota completa pelas vias, passando pelas paradas.":"Selecione uma rota: azul é a ativa; cinza são alternativas.");
- }catch(e){info("Rotas indisponíveis: "+String(e.message||e).slice(0,180)+". Confira a Routes API e as restrições da chave.");console.warn("COOPEX Routes",e)}
+ }catch(e){info("Rotas: "+String(e.message||e).slice(0,180)+". Confira a Routes API e as restrições da chave.");console.warn("COOPEX Routes",e)}finally{routeInFlight=false;document.getElementById("routeOpen").disabled=false}
 }
 function openStreet(){
  if(!googleMap)return;
  const p=placePoint||currentCoords();
  if(!p){info("Selecione um local no mapa.");return}
  streetPanorama=googleMap.getStreetView();
- streetPanorama.setPosition(p);streetPanorama.setPov({heading:0,pitch:0});streetPanorama.setVisible(true);
- info("Street View: arraste para olhar e clique nas setas da imagem para avançar pela rua.");
+ if(!streetService)streetService=new google.maps.StreetViewService();
+ info("Procurando imagem de rua próxima ao ponto selecionado…");
+ streetService.getPanorama({location:p,radius:120,source:google.maps.StreetViewSource.OUTDOOR},(data,status)=>{
+  if(status!=="OK"||!data?.location){info("Não há imagem Street View disponível neste local.");return}
+  streetPanorama.setPano(data.location.pano);streetPanorama.setPov({heading:0,pitch:0});streetPanorama.setVisible(true);
+  info("Street View aberto na rua mais próxima disponível. Arraste para olhar e use as setas para avançar.");
+ });
 }
 function resetSearch(){
- if(field)field.value="";if(placeMarker)placeMarker.setMap(null);placePoint=null;hideRoutes();suggestions();
+ if(field)field.value="";if(placeMarker)placeMarker.setMap(null);placePoint=null;hideRoutes();document.getElementById("cxPlaceDetails")?.remove();suggestions();
  info("Pesquisa limpa. Os cooperados continuam visíveis.");
 }
 // Places API (New): previsões reais do Google quando autorizada, sem duplicar a busca.
@@ -202,7 +241,7 @@ async function loadGoogleSuggestions(){
      await place.fetchFields({fields:["location","displayName","formattedAddress"]});
      if(!place.location)throw Error("O local não possui coordenadas.");
      const p=place.location;
-     destination({lat:p.lat(),lng:p.lng()},place.formattedAddress||label);
+     destination({lat:p.lat(),lng:p.lng()},place.displayName||label,place);
      field.value=label;
      // Guarda somente a pesquisa escrita/selecionada pelo operador.
      remember(q);placeToken=null;suggestions();
