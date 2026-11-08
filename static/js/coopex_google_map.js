@@ -264,8 +264,11 @@ document.addEventListener("click",event=>{
  if(!b)return;
  const selected=b.dataset.cxMode;
  if(!["DRIVING","TWO_WHEELER","TRANSIT","WALKING","BICYCLING"].includes(selected))return;
- routeMode=selected;
- document.querySelectorAll("[data-cx-mode]").forEach(button=>button.classList.toggle("active",button===b));
+ // TWO_WHEELER aciona cobrança superior. Com custo zero como prioridade,
+ // mostrar rota de carro explicitamente, sem simular roteamento para moto.
+ routeMode=selected==="TWO_WHEELER"?"DRIVING":selected;
+ document.querySelectorAll("[data-cx-mode]").forEach(button=>button.classList.toggle("active",button.dataset.cxMode===routeMode));
+ if(selected==="TWO_WHEELER")info("Modo moto tem custo superior na API. Usando rota de carro para evitar cobrança avançada.");
  if(document.getElementById("cxRouteOrigin")?.value.trim()&&document.getElementById("cxDestinationMirror")?.value.trim())calculateRoutes();
 });
 async function searchAddress(){
