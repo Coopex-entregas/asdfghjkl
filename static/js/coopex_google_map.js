@@ -474,30 +474,39 @@ async function cxBairros(point){
    2) Apenas para trecho sem cadastro: quilômetros do trecho x preço/km.
    As rotas alternativas compartilham o mesmo orçamento; só distância e tempo variam.
 */
-function cxBairroCandidates(label,geocoded,tableNames){
- const text=cxNorm(label);
- const variants=new Set((geocoded||[]).map(cxNorm).filter(Boolean));
- const known=(tableNames||[]).map(cxNorm).filter(Boolean).sort((a,b)=>b.length-a.length);
- // Nomes "Planalto - Natal" e "Planalto" devem corresponder.
- const short=name=>name.replace(/\s+(natal|rn|rio grande do norte)$/,"").trim();
- const add=value=>{if(value){variants.add(value);variants.add(short(value));}};
- for(const item of known){
-  const bare=short(item);
-  if(bare.length>2&&(" "+text+" ").includes(" "+bare+" "))add(item);
- }
- for(const part of String(label||"").split(/[,–—]/)){
-  const value=cxNorm(part);
-  if(value.length>2&&value.length<65)add(value);
- }
- for(const value of [...variants])add(value);
- return [...variants];
+/* Prioridade absoluta para bairro digitado no campo.
+   Nunca usar um bairro secundário da geocodificação quando o campo já
+   identifica explicitamente um bairro existente em Preços e Rotas. */
+function cxCanonicalBairro(value){
+ return cxNorm(value)
+  .replace(/\b(?:rio grande do norte)\b/g," ")
+  .replace(/\b(?:natal|rn|brasil)\b/g," ")
+  .replace(/\s+/g," ").trim();
 }
-function cxFindFixed(rows,originNames,destinationNames){
- // Respeitar o sentido: Planalto -> Lagoa Nova ≠ Lagoa Nova -> Planalto.
- for(const a of originNames){
-  for(const b of destinationNames){
-   const match=rows.find(r=>r.o===a&&r.d===b&&Number.isFinite(r.price));
-   if(match)return match;
+function cxBairroCandidates(label,geocoded,tableNames){
+ const labelNorm=cxNorm(label);
+ const typedParts=String(label||"").split(/[,–—]/).map(cxCanonicalBairro).filter(Boolean);
+ const known=(tableNames||[]).map(name=>({original:cxNorm(name),canonical:cxCanonicalBairro(name)}))
+  .filter(item=>item.canonical.length>=3);
+ // Match de bairro digitado, sem confundir rua, município ou outra região.
+ const typed=known.filter(item=>typedParts.some(part=>part===item.canonical)
+  ||labelNorm===item.original||labelNorm===item.canonical);
+ if(typed.length){
+  return {names:[...new Set(typed.map(x=>x.original))],source:"digitado",label:label};
+ }
+ // Para endereços completos, utilizar bairro da geocodificação apenas
+ // depois de descartar qualquer correspondência explícita do usuário.
+ const geoNames=new Set((geocoded||[]).map(cxCanonicalBairro).filter(Boolean));
+ const discovered=known.filter(item=>geoNames.has(item.canonical));
+ if(discovered.length)return {names:[...new Set(discovered.map(x=>x.original))],source:"google",label};
+ return {names:[],source:"sem-bairro",label};
+}
+function cxFindFixed(rows,origin,destination){
+ if(!origin.names.length||!destination.names.length)return null;
+ for(const a of origin.names){
+  for(const b of destination.names){
+   const row=rows.find(r=>r.o===a&&r.d===b&&Number.isFinite(r.price));
+   if(row)return row;
   }
  }
  return null;
@@ -511,6 +520,9 @@ async function cxAddPrices(routes,waypoints,generation){
   const knownNames=[...new Set(rows.flatMap(r=>[r.o,r.d]))];
   const perKm=Number(data.per_km)>0?Number(data.per_km):2;
   const candidates=await Promise.all(waypoints.map(async point=>{
+   // Evitar consulta a endereço inverso quando o bairro já foi digitado.
+   const typed=cxBairroCandidates(point.label,[],knownNames);
+   if(typed.names.length)return typed;
    let names=[];
    try{names=await cxBairros(point)}catch(error){console.debug("Bairro não identificado:",point.label)}
    return cxBairroCandidates(point.label,names,knownNames);
@@ -544,7 +556,7 @@ async function cxAddPrices(routes,waypoints,generation){
     const from=waypoints[j].label?.split(",")[0]||("Ponto "+(j+1));
     const to=waypoints[j+1].label?.split(",")[0]||("Ponto "+(j+2));
     description.textContent=(j+1)+". "+from+" → "+to+
-     (fixed?" · Tabela por bairro":" · "+km+" km × R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2}));
+     (fixed?" · Tabela: "+fixed.o+" → "+fixed.d:" · "+km+" km × R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2}));
     const value=document.createElement("b");value.textContent=cxMoney(amount);
     row.append(description,value);breakdown.append(row);
    });
