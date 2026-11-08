@@ -44,6 +44,17 @@ function remember(q){
  try{localStorage.setItem(historyKey,JSON.stringify([q,...readHistory().filter(x=>queryNorm(x)!==queryNorm(q))].slice(0,20)))}catch(e){}
 }
 function info(t){if(message)message.textContent=t;}
+let cxSearchNotice=null;
+function searchNotice(text,kind="loading"){
+ if(!cxSearchNotice){
+  cxSearchNotice=document.createElement("div");cxSearchNotice.id="cxSearchNotice";
+  cxSearchNotice.setAttribute("role","status");
+  (document.getElementById("addressPanel")||document.body).append(cxSearchNotice);
+ }
+ cxSearchNotice.textContent=text||"";
+ cxSearchNotice.dataset.kind=kind;
+ cxSearchNotice.hidden=!text;
+}
 let routeGeneration=0;
 function hideRoutes(){
  routePolylines.forEach(p=>p.setMap(null));routePolylines=[];routeAlternatives=[];
@@ -216,6 +227,8 @@ async function searchAddress(){
  const q=(field?.value||"").trim();
  if(q.length<3){info("Digite pelo menos três caracteres.");return}
  const seq=++placeSequenceInfo;
+ if(hits)hits.hidden=true;
+ searchNotice("Pesquisando: "+q+"…");
  info("Localizando estabelecimento ou endereço...");
  // Text Search identifica estabelecimentos pelo nome; Geocoding é apenas fallback.
  try{
@@ -246,6 +259,7 @@ async function searchAddress(){
    const choice=exact||contains||(best?.hits>=1?best.place:null);
    if(!choice)throw Error("Nenhum estabelecimento com nome compatível; tentando endereço");
    const p=choice.location;
+   searchNotice("");
    destination({lat:p.lat(),lng:p.lng()},choice.displayName||choice.formattedAddress||q,choice);
    remember(q);suggestions();return;
   }
@@ -255,12 +269,17 @@ async function searchAddress(){
  if(seq!==placeSequenceInfo)return;
  geocoder.geocode({address:q+", Brasil"},async (results,status)=>{
   if(seq!==placeSequenceInfo)return;
-  if(status!=="OK"||!results?.length){info("Não foi possível localizar: "+q);return}
+  if(status!=="OK"||!results?.length){
+   info("Não foi possível localizar: "+q);
+   searchNotice("Não encontrei '"+q+"'. Tente acrescentar Natal/RN ou o nome da rua.","error");
+   return;
+  }
   const r=results[0],p=r.geometry.location;
   const addressQuery=/\d|\b(rua|av\.?|avenida|travessa|estrada|rodovia|praça|alameda)\b/i.test(q);
   const addressTypes=r.types||[];
   if(!addressQuery&&addressTypes.some(type=>["locality","administrative_area_level_1","administrative_area_level_2","country"].includes(type))){
-   info("O Google encontrou apenas a cidade, não o estabelecimento pesquisado. Selecione um resultado da pesquisa de locais.");return;
+   info("A busca retornou apenas a cidade, não o estabelecimento.");
+   searchNotice("Não localizei esse estabelecimento. Tente informar o bairro e Natal/RN.","error");return;
   }
   let place=null;
   if(r.place_id){
@@ -268,6 +287,7 @@ async function searchAddress(){
    catch(error){console.debug("Place Details indisponível",error)}
   }
   if(seq!==placeSequenceInfo)return;
+  searchNotice("");
   destination({lat:p.lat(),lng:p.lng()},r.formatted_address||q,place);
   remember(q);suggestions();
  });
@@ -461,6 +481,7 @@ function resetSearch(){
  clearTimeout(placeTimer);
  if(streetPanorama?.getVisible())streetPanorama.setVisible(false);
  if(field)field.value="";
+ searchNotice("");
  if(placeMarker){placeMarker.setMap(null);placeMarker=null}
  placePoint=null;exitDirections();
  document.getElementById("cxPlaceDetails")?.remove();
