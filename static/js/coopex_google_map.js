@@ -468,43 +468,80 @@ async function cxBairros(point){
  }
  return [...names].filter(Boolean);
 }
-async function cxAddPrices(routes,from,to,generation,withStops){
+function cxPriceBairroSet(label,names){
+ const variants=new Set((names||[]).map(cxNorm));
+ const text=cxNorm(label);
+ // A referência digitada em primeiro plano prevalece quando há nome de bairro.
+ for(const row of window.COOPEX_PRECO_BAIRROS||[]){
+  const value=cxNorm(row);
+  if(value&&(" "+text+" ").includes(" "+value+" "))variants.add(value);
+ }
+ for(const part of String(label||"").split(/[,–—-]/)){
+  const v=cxNorm(part);
+  if(v.length>=3&&v.length<=55)variants.add(v);
+ }
+ return [...variants];
+}
+function cxPriceMatch(rows,originNames,destinationNames){
+ // As tarifas são por sentido. Não trocar origem e destino automaticamente.
+ return rows.find(row=>originNames.includes(row.o)&&destinationNames.includes(row.d));
+}
+async function cxAddPrices(routes,waypoints,generation){
+ const rowNodes=[...routesHost.querySelectorAll(".cx-route-option")];
  try{
   const data=await cxFetchPrices();
+  const rows=(data.items||[]).map(r=>({o:cxNorm(r.origem),d:cxNorm(r.destino),price:Number(r.valor)}));
+  const perKm=Number(data.per_km)>0?Number(data.per_km):2;
+  const places=await Promise.all(waypoints.map(async p=>{
+   try{return cxPriceBairroSet(p.label,await cxBairros(p))}
+   catch(error){console.debug("Bairro não identificado para preço:",p.label);return cxPriceBairroSet(p.label,[])}
+  }));
   if(generation!==routeGeneration)return;
-  const [origins,destinations]=withStops?[[],[]]:await Promise.all([cxBairros(from),cxBairros(to)]);
-  if(generation!==routeGeneration)return;
-  const rows=(data.items||[]).map(x=>({o:cxNorm(x.origem),d:cxNorm(x.destino),price:Number(x.valor)}));
-  const fixed=rows.find(x=>origins.includes(x.o)&&destinations.includes(x.d))
-   ||rows.find(x=>origins.includes(x.d)&&destinations.includes(x.o));
-  // A tarifa informada pela COOPEX é R$ 2,00/km quando não há preço por bairro.
-  const configuredKm=Number(data.per_km);
-  const perKm=configuredKm>0?configuredKm:2;
   routes.forEach((route,i)=>{
-   const option=routesHost?.querySelectorAll(".cx-route-option")[i];
-   if(!option)return;
+   const option=rowNodes[i];if(!option)return;
    option.querySelector(".cx-route-price")?.remove();
-   const value=fixed?fixed.price:perKm>0?perKm*cxBillableKm(route.distanceMeters):NaN;
-   const p=document.createElement("span");p.className="cx-route-price";
-   p.textContent=Number.isFinite(value)&&value>=0
-    ?cxMoney(value)+(fixed?" · Tabela por bairro":" · Calculado por km")
-    :"Valor não configurado";
-   option.append(p);
+   const legs=route.legs||[];
+   const ready=legs.length===waypoints.length-1;
+   const price=document.createElement("div");price.className="cx-route-price";
+   if(!ready){
+    price.textContent="Preço indisponível por trecho";
+    option.append(price);return;
+   }
+   let total=0,allFixed=true;
+   const breakdown=document.createElement("div");breakdown.className="cx-route-price-breakdown";
+   legs.forEach((leg,j)=>{
+    const fixed=cxPriceMatch(rows,places[j],places[j+1]);
+    const amount=fixed&&Number.isFinite(fixed.price)?fixed.price:cxBillableKm(leg.distanceMeters)*perKm;
+    total+=amount;if(!fixed)allFixed=false;
+    const line=document.createElement("div");line.className="cx-leg-price";
+    const destination=waypoints[j+1].label?.split(",")[0]||("Destino "+(j+1));
+    const from=waypoints[j].label?.split(",")[0]||("Partida "+(j+1));
+    const left=document.createElement("span");
+    left.textContent=(j+1)+". "+from+" → "+destination+(fixed?" · Bairro":" · "+cxBillableKm(leg.distanceMeters)+" km");
+    const value=document.createElement("b");value.textContent=cxMoney(amount);
+    line.append(left,value);breakdown.append(line);
+   });
+   const headline=document.createElement("strong");
+   headline.textContent="Total: "+cxMoney(total);
+   price.append(headline,breakdown);
+   if(!allFixed){
+    const note=document.createElement("small");note.textContent="Trechos sem tabela: R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2})+"/km";
+    price.append(note);
+   }
+   option.append(price);
   });
  }catch(error){
   if(generation!==routeGeneration)return;
   console.warn("COOPEX Preços e Rotas:",error);
-  routesHost?.querySelectorAll(".cx-route-option").forEach((option,i)=>{
+  rowNodes.forEach(option=>{
    option.querySelector(".cx-route-price")?.remove();
-   const distance=Number(routes[i]?.distanceMeters);
-   const p=document.createElement("span");p.className="cx-route-price";
-   p.textContent=Number.isFinite(distance)
-    ?cxMoney(cxBillableKm(distance)*2)+" · Estimativa por km (R$ 2,00/km)"
-    :"Valor indisponível";
-   option.append(p);
+   const value=document.createElement("span");value.className="cx-route-price";
+   value.textContent="Preço indisponível — consulte Preços e Rotas";
+   option.append(value);
   });
  }
 }
+
 async function calculateRoutes(){
  if(!googleMap||routeInFlight)return;
  const generation=++routeGeneration;
@@ -514,17 +551,21 @@ async function calculateRoutes(){
   const destinationText=(document.getElementById("cxDestinationMirror")?.value||"").trim();
   if(!origin.value.trim()||!destinationText)throw Error("Preencha partida e destino.");
   const [a,b]=await Promise.all([resolveLocation(origin.value),resolveLocation(destinationText)]);
+  // 'Adicionar destino' acrescenta uma entrega DEPOIS do destino atual.
+  const waypoints=[a,b,...routeStops.map(p=>({...p}))];
+  const final=waypoints[waypoints.length-1];
+  const intermediates=waypoints.slice(1,-1);
   info("");
   const {Route}=await google.maps.importLibrary("routes");
-  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:routeMode,computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","description","routeLabels"],language:"pt-BR",region:"BR"};
+  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:final.lat,lng:final.lng},travelMode:routeMode,computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","description","routeLabels","legs"],language:"pt-BR",region:"BR"};
   if(routeMode==="DRIVING"||routeMode==="TWO_WHEELER")options.routingPreference="TRAFFIC_AWARE";
-  if(routeStops.length)options.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng}}));
+  if(intermediates.length)options.intermediates=intermediates.map(p=>({location:{lat:p.lat,lng:p.lng}}));
   const response=await Route.computeRoutes(options);
   if(generation!==routeGeneration||!document.getElementById("addressPanel")?.classList.contains("cx-directions-mode"))return;
   const found=(response.routes||[]).slice(0,3);
   if(!found.length)throw Error("Nenhum trajeto disponível.");
   hideRoutes();
-  routeAlternatives=found.map(r=>({distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():Number(p.lat),lng:typeof p.lng==="function"?p.lng():Number(p.lng)}))}));
+  routeAlternatives=found.map(r=>({distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",legs:(r.legs||[]).map(leg=>({distanceMeters:leg.distanceMeters,durationMillis:leg.durationMillis})),path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():Number(p.lat),lng:typeof p.lng==="function"?p.lng():Number(p.lng)}))}));
   routesHost.hidden=false;
   routeAlternatives.forEach((r,i)=>{
    const poly=new google.maps.Polyline({map:googleMap,path:r.path,strokeColor:i===0?"#193feb":"#6894ec",strokeOpacity:i===0?1:.75,strokeWeight:i===0?7:4,zIndex:i===0?90:2});
@@ -536,8 +577,8 @@ async function calculateRoutes(){
   });
   showRoute(0);
   remember(origin.value);remember(destinationText);
-  cxAddPrices(routeAlternatives,a,b,generation,routeStops.length>0);
-  window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives,origin:a,destination:b}}));
+  cxAddPrices(routeAlternatives,waypoints,generation);
+  window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives,origin:a,destination:final}}));
   info("");
  }catch(e){info("Não foi possível calcular: "+String(e.message||e));console.warn("COOPEX Routes",e)}
  finally{routeInFlight=false;button.disabled=false}
