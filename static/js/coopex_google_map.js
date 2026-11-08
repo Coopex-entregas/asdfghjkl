@@ -516,43 +516,44 @@ async function cxAddPrices(routes,waypoints,generation){
    return cxBairroCandidates(point.label,names,knownNames);
   }));
   if(generation!==routeGeneration)return;
-  // Um único preço da sequência, independente do caminho alternativo desenhado.
-  // A referência de distância de cada trecho sem tabela é o menor trajeto
-  // retornado pela API para aquela sequência, evitando cobranças diferentes
-  // para os mesmos endereços só por alternar a linha azul.
+  // Preço fixo é sempre o mesmo por par de bairros, independente da rota.
+  // Apenas os trechos sem preço cadastrado usam a distância de CADA alternativa.
   const segmentCount=waypoints.length-1;
-  const valid=routes.filter(route=>Array.isArray(route.legs)&&route.legs.length===segmentCount);
-  if(!valid.length)throw Error("A resposta da rota não separou as entregas em trechos.");
-  const segments=Array.from({length:segmentCount},(_,j)=>{
-   const fixed=cxFindFixed(rows,candidates[j],candidates[j+1]);
-   const minMeters=Math.min(...valid.map(route=>Number(route.legs[j]?.distanceMeters)).filter(Number.isFinite));
-   if(fixed)return {amount:fixed.price,fixed:true,from:candidates[j][0],to:candidates[j+1][0]};
-   if(!Number.isFinite(minMeters))return {amount:null,fixed:false};
-   return {amount:cxBillableKm(minMeters)*perKm,fixed:false,km:cxBillableKm(minMeters)};
-  });
-  if(segments.some(segment=>segment.amount===null))throw Error("Distância indisponível para algum trecho.");
-  const total=segments.reduce((sum,segment)=>sum+segment.amount,0);
-  for(const option of cards){
+  const fixedByLeg=Array.from({length:segmentCount},(_,j)=>
+   cxFindFixed(rows,candidates[j],candidates[j+1])
+  );
+  for(let i=0;i<cards.length;i++){
+   const option=cards[i],route=routes[i];
    option.querySelector(".cx-route-price")?.remove();
    const wrap=document.createElement("div");wrap.className="cx-route-price";
-   const headline=document.createElement("strong");
-   headline.textContent="Total: "+cxMoney(total);
-   wrap.append(headline);
+   const legs=route?.legs||[];
+   if(legs.length!==segmentCount){
+    wrap.textContent="Não foi possível identificar os trechos da rota";
+    option.append(wrap);continue;
+   }
+   let total=0,valid=true;
    const breakdown=document.createElement("div");breakdown.className="cx-route-price-breakdown";
-   segments.forEach((segment,j)=>{
+   legs.forEach((leg,j)=>{
+    const fixed=fixedByLeg[j];
+    const km=Number.isFinite(Number(leg.distanceMeters))?cxBillableKm(leg.distanceMeters):null;
+    const amount=fixed?fixed.price:km!==null?km*perKm:null;
+    if(amount===null||!Number.isFinite(amount)){valid=false;return}
+    total+=amount;
     const row=document.createElement("div");row.className="cx-leg-price";
     const description=document.createElement("span");
     const from=waypoints[j].label?.split(",")[0]||("Ponto "+(j+1));
     const to=waypoints[j+1].label?.split(",")[0]||("Ponto "+(j+2));
-    description.textContent=(j+1)+". "+from+" → "+to+(segment.fixed?" · Tabela":" · "+segment.km+" km");
-    const amount=document.createElement("b");amount.textContent=cxMoney(segment.amount);
-    row.append(description,amount);breakdown.append(row);
+    description.textContent=(j+1)+". "+from+" → "+to+
+     (fixed?" · Tabela por bairro":" · "+km+" km × R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2}));
+    const value=document.createElement("b");value.textContent=cxMoney(amount);
+    row.append(description,value);breakdown.append(row);
    });
-   wrap.append(breakdown);
-   if(segments.some(seg=>!seg.fixed)){
-    const note=document.createElement("small");
-    note.textContent="Sem preço por bairro: R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2})+"/km";
-    wrap.append(note);
+   if(!valid){
+    wrap.textContent="Preço indisponível: falta distância de um trecho";
+   }else{
+    const headline=document.createElement("strong");
+    headline.textContent="Total: "+cxMoney(total);
+    wrap.append(headline,breakdown);
    }
    option.append(wrap);
   }
