@@ -12,7 +12,7 @@ function start(){
  preview.setAttribute("aria-label","Abrir visualização da rua selecionada");
  const image=document.createElement("div");image.id="cxStreetPreviewImage";
  const caption=document.createElement("span");caption.textContent="Ver rua";
- preview.append(image,caption);document.body.append(preview);
+ preview.append(image,caption);preview.hidden=true;document.body.append(preview);
  preview.onclick=()=>{
   if(!selected){$("streetView")?.click();return}
   const panorama=map.getStreetView();
@@ -29,8 +29,8 @@ function start(){
   preview.hidden=false;
   streetService.getPanorama({location:selected,radius:150,source:google.maps.StreetViewSource.OUTDOOR},(data,status)=>{
    if(!preview.isConnected)return;
-   if(status!=="OK"||!data?.location){preview.classList.add("cx-street-unavailable");image.replaceChildren();return}
-   preview.classList.remove("cx-street-unavailable");
+   if(status!=="OK"||!data?.location){preview.hidden=true;preview.classList.add("cx-street-unavailable");image.replaceChildren();return}
+   preview.hidden=false;preview.classList.remove("cx-street-unavailable");
    try{
     if(!previewPano)previewPano=new google.maps.StreetViewPanorama(image,{
      pano:data.location.pano,visible:true,disableDefaultUI:true,clickToGo:false,linksControl:false,
@@ -41,6 +41,7 @@ function start(){
   });
  }
  window.addEventListener("coopex:place-selected",e=>updateStreet(e.detail?.point));
+ window.addEventListener("coopex:search-reset",()=>{selected=null;preview.hidden=true;image.replaceChildren()});
  function clearRouteTags(){for(const tag of routeTags)tag.setMap(null);routeTags=[]}
  function labels({routes,selectedIndex=0}){
   clearRouteTags();if(!Array.isArray(routes))return;
