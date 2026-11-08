@@ -148,3 +148,22 @@ body #weatherIcon.cx-sun-hot{color:#ed442c!important;font-size:32px!important;fo
 body #weatherIcon.cx-moon{filter:drop-shadow(0 0 7px rgba(255,245,201,.36))}
 @keyframes cx-sun-heat{0%,100%{filter:drop-shadow(0 0 3px #ff912b)}50%{filter:drop-shadow(0 0 11px #f65526)}}
 @media(prefers-reduced-motion:reduce){body #weatherIcon.cx-sun-hot{animation:none!important}}
+
+/* Card fixo visível sobre Google Maps, inclusive quando painel de pesquisa está ativo */
+body #ui #details.details,body.cx-address-mode #ui #details.details{
+ position:fixed!important;display:none!important;top:82px!important;left:auto!important;right:16px!important;
+ bottom:auto!important;width:min(342px,calc(100dvw - 34px))!important;max-height:calc(100dvh - 105px)!important;
+ overflow-y:auto!important;z-index:1190!important;color:#183d5d!important;
+ border-radius:23px!important;border:1px solid rgba(255,255,255,.94)!important;
+ padding:16px!important;background:linear-gradient(145deg,rgba(239,249,255,.89),rgba(212,236,252,.82))!important;
+ box-shadow:0 20px 48px #0b3e6b49,inset 0 2px 2px #ffffff!important;
+ backdrop-filter:blur(28px) saturate(170%)!important;pointer-events:auto!important;
+}
+body #ui #details.details.visible,body.cx-address-mode #ui #details.details.visible{display:block!important;visibility:visible!important;opacity:1!important;pointer-events:auto!important}
+body #details .person-head{align-items:center!important}
+body #details .detail-actions button{border-radius:12px!important;min-height:39px!important;box-shadow:0 4px 11px #255a831e!important}
+.cx-pin-preview{display:flex;flex-direction:column;gap:5px;color:#173c61;font-family:Arial,sans-serif;min-width:155px;padding:3px 2px}
+.cx-pin-preview strong{font-size:13px;font-weight:800}.cx-pin-preview small{font-size:11px;color:#52748d;line-height:1.4}
+@media(max-width:700px){
+ body #ui #details.details,body.cx-address-mode #ui #details.details{top:auto!important;bottom:54px!important;right:8px!important;left:auto!important;max-height:55dvh!important;width:min(340px,calc(100dvw - 16px))!important;padding:12px!important}
+}
