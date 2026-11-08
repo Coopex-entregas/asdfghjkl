@@ -500,5 +500,14 @@ render();setAddressMode(true);updateGps();stopRender();gpsSocket();
 setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);
  setInterval(updateGps,60000);
  // Envelhece status localmente sem chamadas extras à API nem depender de evento de logout.
- setInterval(()=>{if(!document.hidden&&items.some(x=>x.online&&Number.isFinite(x.__lastSignalAt)&&Date.now()-x.__lastSignalAt>MAP_SIGNAL_TIMEOUT_MS))render()},5000);/* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
+ setInterval(()=>{
+  if(document.hidden)return;
+  let changed=false;
+  for(const x of items){
+   if(x.online&&Number.isFinite(x.__lastSignalAt)&&Date.now()-x.__lastSignalAt>MAP_SIGNAL_TIMEOUT_MS){
+    x.online=false;x.gps_ao_vivo=false;x.presenca_painel=false;x.status="offline";changed=true;
+   }
+  }
+  if(changed)render();
+ },5000);/* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
 })();
