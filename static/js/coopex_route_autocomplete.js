@@ -17,7 +17,7 @@ function position(input){
 }
 async function query(input){
  const value=input.value.trim(),id=++sequence;
- if(value.length<3||!panel.classList.contains("cx-directions-mode")){close();return}
+ if(value.length<4||!panel.classList.contains("cx-directions-mode")){close();return}
  if(!window.google?.maps?.importLibrary||placesDisabled)return;
  try{
   const {AutocompleteSuggestion,AutocompleteSessionToken}=await google.maps.importLibrary("places");
@@ -56,9 +56,9 @@ for(const input of inputs){
  input.setAttribute("autocomplete","off");
  input.addEventListener("input",()=>{
   clearTimeout(timer);sequence++;close();
-  if(input.value.trim().length>=3)timer=setTimeout(()=>query(input),450);
+  if(input.value.trim().length>=4)timer=setTimeout(()=>query(input),750);
  });
- input.addEventListener("focus",()=>{if(input.value.trim().length>=3){clearTimeout(timer);timer=setTimeout(()=>query(input),300)}});
+ input.addEventListener("focus",()=>{if(input.value.trim().length>=4){clearTimeout(timer);timer=setTimeout(()=>query(input),600)}});
  input.addEventListener("keydown",e=>{
   if(e.key==="Escape"){close();return}
   if(menu.hidden||currentInput!==input)return;
