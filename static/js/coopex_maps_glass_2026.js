@@ -131,9 +131,37 @@ destMirror.addEventListener("change",calculateWhenReady);
 window.addEventListener("coopex:routes-changed",()=>{
  if(activeTab==="rotas"&&org.value.trim()&&destMirror.value.trim())calculateWhenReady();
 });
+// A pesquisa começa como uma barra compacta. O painel completo só surge ao selecionar um lugar.
+const searchDirections=document.createElement("button");
+searchDirections.type="button";searchDirections.id="cxQuickDirections";
+searchDirections.title="Direções";searchDirections.setAttribute("aria-label","Abrir rotas");
+searchDirections.innerHTML='<svg viewBox="0 0 24 24" width="21" height="21" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M11 3 3 11l8 8 8-8-8-8Z"/><path d="M8 12h7m-3-3 3 3-3 3"/></svg>';
+searchDirections.onclick=()=>setTab("rotas");
+top.append(searchDirections);
+function syncSearchStage(){
+ const hasPlace=!!$("cxPlaceDetails")?.isConnected&&activeTab!=="rotas";
+ const typed=!!search.value.trim();
+ const idle=activeTab==="explorar"&&!hasPlace;
+ panel.classList.toggle("cx-search-idle",idle);
+ panel.classList.toggle("cx-search-suggesting",idle&&typed&&document.activeElement===search);
+ panel.classList.toggle("cx-place-view",hasPlace);
+ if(activeTab==="explorar")results.hidden=!typed;
+}
+search.addEventListener("input",()=>{
+ if($("cxPlaceDetails")?.isConnected){$("cxPlaceDetails").remove()}
+ syncSearchStage();
+});
+search.addEventListener("focus",syncSearchStage);
+search.addEventListener("blur",()=>setTimeout(syncSearchStage,180));
+$("addressClose")?.addEventListener("click",()=>{
+ $("cxPlaceDetails")?.remove();
+ search.value="";
+ setTab("explorar");syncSearchStage();
+});
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
+ panel.classList.toggle("cx-search-idle",id==="explorar"&&!$("cxPlaceDetails")?.isConnected);
  const placeDetails=$("cxPlaceDetails");
  if(placeDetails)placeDetails.hidden=id==="rotas";
  // A pesquisa de locais e a tela de direções não podem coexistir visualmente.
@@ -221,9 +249,11 @@ window.addEventListener("coopex:place-selected",event=>{
   destMirror.value=place.label;
  }
  setTab("explorar");
+ panel.classList.remove("cx-search-idle","cx-search-suggesting");
  expand();
  const info=$("cxPlaceDetails");
  if(info){info.hidden=false;panel.classList.add("cx-place-view")}
 });
 setTab("explorar");
+syncSearchStage();
 })();
