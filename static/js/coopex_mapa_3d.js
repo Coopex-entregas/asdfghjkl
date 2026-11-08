@@ -323,11 +323,25 @@ function showSttuStatus(){
  title.style.color="#175aa3";
  message.textContent="Interdições, obras e alterações de circulação. Ainda não há feed público validado para congestionamentos automáticos.";
 }
+function moonPhaseNow(){
+ // Ciclo sinódico aproximado; referência astronômica da lua nova de 06/01/2000 às 18:14 UTC.
+ const synodic=29.530588853*86400000;
+ const fraction=((Date.now()-Date.UTC(2000,0,6,18,14))%synodic+synodic)%synodic/synodic;
+ const index=Math.floor(fraction*8+.5)%8;
+ const icons=["🌑","🌒","🌓","🌔","🌕","🌖","🌗","🌘"];
+ const labels=["Lua nova","Lua crescente fina","Quarto crescente","Lua gibosa crescente","Lua cheia","Lua gibosa minguante","Quarto minguante","Lua minguante fina"];
+ return {icon:icons[index],label:labels[index]};
+}
 function phase(){document.body.classList.remove("is-night");}
 const rainFx=$("weatherFx");function rain(level){weatherLevel=level;document.body.classList.toggle("is-rain",level>0);rainFx.replaceChildren();if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;const count=0;/* Sem efeito de chuva em toda a cidade: exige chuva geográfica confiável. */const frag=document.createDocumentFragment();for(let i=0;i<count;i++){const d=document.createElement("i");d.className="drop";d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.4)+"s";frag.append(d)}rainFx.append(frag)}
 async function weather(){
  try{const r=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-5.7945&lon=-35.2110",{cache:"default"});if(!r.ok)throw Error("Weather HTTP");const data=await r.json(),t=data.properties.timeseries[0].data,details=t.instant.details,next=t.next_1_hours||t.next_6_hours||{},mm=Number(next.details?.precipitation_amount||0),code=next.summary?.symbol_code||"";const level=mm>=6||/heavyrain|thunder/.test(code)?3:mm>=2||/rain|showers/.test(code)?2:mm>0||/drizzle/.test(code)?1:0;
- $("temperature").textContent=Math.round(details.air_temperature)+"°C";const ico=$("weatherIcon");if(ico){const hour=Number(new Intl.DateTimeFormat("pt-BR",{hour:"numeric",hour12:false,timeZone:"America/Fortaleza"}).format(new Date()));ico.textContent=level>0?"🌧️":hour>=18||hour<6?"🌙":"☀️";}$("conditions").textContent=["Sem chuva prevista","Previsão de chuva fraca","Previsão de chuva","Previsão de chuva forte"][level];$("humidity").textContent=details.relative_humidity+"%";$("wind").textContent=Math.round(details.wind_speed||0)+" m/s";$("weatherAlert").textContent=["Sem alerta de chuva na próxima hora.","Possibilidade de pista molhada.","⚠ Chuva prevista: atenção ao deslocamento.","⚠ Previsão de chuva intensa e possíveis alagamentos."][level];rain(level);
+ $("temperature").textContent=Math.round(details.air_temperature)+"°C";const ico=$("weatherIcon");if(ico){const hour=Number(new Intl.DateTimeFormat("pt-BR",{hour:"numeric",hour12:false,timeZone:"America/Fortaleza"}).format(new Date()));const lunar=moonPhaseNow();const hot=Number(details.air_temperature)>=32;const isNight=hour>=18||hour<6;
+ ico.textContent=level>0?"🌧️":isNight?lunar.icon:"☀";
+ ico.title=level>0?"Previsão de chuva":isNight?lunar.label:(hot?"Sol forte e calor":"Sol");
+ ico.classList.toggle("cx-sun-hot",!isNight&&level===0&&hot);
+ ico.classList.toggle("cx-sun-warm",!isNight&&level===0&&!hot);
+ ico.classList.toggle("cx-moon",isNight&&level===0);}$("conditions").textContent=["Sem chuva prevista","Previsão de chuva fraca","Previsão de chuva","Previsão de chuva forte"][level];$("humidity").textContent=details.relative_humidity+"%";$("wind").textContent=Math.round(details.wind_speed||0)+" m/s";$("weatherAlert").textContent=["Sem alerta de chuva na próxima hora.","Possibilidade de pista molhada.","⚠ Chuva prevista: atenção ao deslocamento.","⚠ Previsão de chuva intensa e possíveis alagamentos."][level];rain(level);
  }catch(e){$("conditions").textContent="Previsão indisponível";$("weatherAlert").textContent="Sem informação meteorológica atualizada";rain(0)}
 }
 
