@@ -38,34 +38,52 @@ let routeInFlight=false,placeSequenceInfo=0;
 let routeAlternatives=[],routePolylines=[],routeStops=[],routeMode="DRIVING",searchFocus="destination";
 const queryNorm=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const historyKey="coopex-map-own-search-history-v1";
-const HISTORY_LIMIT=30;
-function historyCutoff(){
- const d=new Date();d.setMonth(d.getMonth()-3);return d.getTime();
-}
-function readHistory(){
+const preferencesUrl="/api/coopex/mapa/preferencias";
+let sharedHistory=[],sharedPlaces={home:"",work:""},sharedLoaded=false;
+function historyCutoff(){const d=new Date();d.setMonth(d.getMonth()-3);return d.getTime()}
+function localHistory(){
  try{
-  const now=Date.now(),cutoff=historyCutoff();
-  const raw=JSON.parse(localStorage.getItem(historyKey)||"[]");
-  const valid=(Array.isArray(raw)?raw:[]).map(item=>{
-   if(typeof item==="string")return {q:item,ts:now}; // migração sem perder buscas antigas
-   return item&&typeof item.q==="string"?{q:item.q,ts:Number(item.ts)}:null;
-  }).filter(item=>item&&item.q.trim()&&Number.isFinite(item.ts)&&item.ts>=cutoff&&item.ts<=now+60000)
-   .slice(0,HISTORY_LIMIT);
-  localStorage.setItem(historyKey,JSON.stringify(valid));
-  return valid;
- }catch(error){return []}
+  const items=JSON.parse(localStorage.getItem(historyKey)||"[]");
+  return (Array.isArray(items)?items:[]).map(x=>typeof x==="string"?{q:x,ts:Date.now()}:x)
+   .filter(x=>x&&typeof x.q==="string"&&Number(x.ts)>=historyCutoff()).slice(0,30);
+ }catch(e){return []}
+}
+function readHistory(){return sharedLoaded?sharedHistory:localHistory()}
+function applyPreferences(value){
+ if(!Array.isArray(value?.history))return;
+ sharedHistory=value.history;sharedPlaces={home:value.places?.home||"",work:value.places?.work||""};
+ sharedLoaded=true;
+ try{localStorage.setItem(historyKey,JSON.stringify(sharedHistory))}catch(e){}
+}
+async function loadPreferences(){
+ try{
+  const r=await fetch(preferencesUrl,{credentials:"same-origin",cache:"no-store"});
+  if(r.ok){applyPreferences(await r.json());if(document.activeElement===field&&hits&&!hits.hidden)suggestions()}
+ }catch(e){console.warn("Histórico compartilhado:",e)}
+}
+async function writePreferences(action,payload={}){
+ try{
+  const r=await fetch(preferencesUrl,{method:"POST",credentials:"same-origin",headers:{"Content-Type":"application/json"},body:JSON.stringify({action,...payload})});
+  if(r.ok)applyPreferences(await r.json());else console.warn("Histórico COOPEX HTTP",r.status);
+ }catch(e){console.warn("Histórico COOPEX:",e)}
 }
 function remember(q){
- const label=String(q||"").trim();if(!label)return;
- try{
-  const items=[{q:label,ts:Date.now()},...readHistory().filter(item=>queryNorm(item.q)!==queryNorm(label))].slice(0,HISTORY_LIMIT);
-  localStorage.setItem(historyKey,JSON.stringify(items));
- }catch(error){}
+ const value=String(q||"").trim();if(!value)return;
+ sharedHistory=[{q:value,ts:Date.now()},...readHistory().filter(x=>queryNorm(x.q)!==queryNorm(value))].slice(0,30);sharedLoaded=true;
+ try{localStorage.setItem(historyKey,JSON.stringify(sharedHistory))}catch(e){}
+ writePreferences("remember",{q:value});
 }
 function forgetHistory(q){
- try{
-  localStorage.setItem(historyKey,JSON.stringify(readHistory().filter(item=>queryNorm(item.q)!==queryNorm(q))));
- }catch(error){}
+ sharedHistory=readHistory().filter(x=>queryNorm(x.q)!==queryNorm(q));sharedLoaded=true;
+ try{localStorage.setItem(historyKey,JSON.stringify(sharedHistory))}catch(e){}
+ writePreferences("delete",{q});
+}
+function editSavedPlace(key){
+ const label=key==="home"?"Casa":"Trabalho";
+ const value=prompt("Endereço de "+label+" (vazio para apagar):",sharedPlaces[key]||"");
+ if(value===null)return;
+ const q=value.trim().slice(0,240);sharedPlaces[key]=q;
+ writePreferences("save_place",{key,q}).then(()=>{if(!field.value.trim()){suggestions();hits.hidden=false}});
 }
 function info(t){if(message)message.textContent=t;}
 let cxSearchNotice=null;
@@ -227,38 +245,39 @@ function makeHit(primary,secondary,color,onClick){
 function suggestions(){
  if(!hits)return;
  hits.replaceChildren();
- const q=(field?.value||"").trim();if(!q){
-  const d=document.createElement("div");d.className="cx-drawer-welcome";
-  const title=document.createElement("strong");title.textContent="Pesquisar no mapa";
-  const note=document.createElement("small");note.textContent="";
-  d.append(title,note);hits.append(d);
+ const q=String(field?.value||"").trim();
+ if(!q){
+  for(const [key,title,icon] of [["home","Casa","⌂"],["work","Trabalho","▣"]]){
+   const address=sharedPlaces[key]||"";
+   const row=document.createElement("div");row.className="cx-history-row cx-saved-place";
+   const action=document.createElement("button");action.type="button";action.className="cx-drawer-hit";
+   const mark=document.createElement("span");mark.className="cx-history-icon";mark.textContent=icon;
+   const titleBox=document.createElement("span");const name=document.createElement("strong");name.textContent=title;
+   const detail=document.createElement("small");detail.textContent=address||"Definir endereço";
+   titleBox.append(name,detail);action.append(mark,titleBox);
+   action.onclick=()=>{if(address){field.value=address;hits.hidden=true;searchAddress()}else editSavedPlace(key)};
+   const edit=document.createElement("button");edit.type="button";edit.textContent="Editar";edit.className="cx-history-edit";edit.onclick=()=>editSavedPlace(key);
+   row.append(action,edit);hits.append(row);
+  }
  }
  let count=0;
  for(const saved of readHistory().filter(item=>!q||queryNorm(item.q).includes(queryNorm(q))).slice(0,q?6:8)){
   const label=saved.q;
-  const button=makeHit(label,"Pesquisa recente · COOPEX","#5284b5",()=>{
-   field.value=label;++placeSequence;clearTimeout(placeTimer);
-   hits.hidden=true;searchAddress();
+  const button=makeHit(label,"Pesquisa recente","#5284b5",()=>{
+   field.value=label;clearTimeout(placeTimer);hits.hidden=true;searchAddress();
   });
   button.classList.add("cx-history-hit");
-  const remove=document.createElement("button");
-  remove.type="button";remove.className="cx-history-remove";
+  const remove=document.createElement("button");remove.type="button";remove.className="cx-history-remove";
   remove.textContent="×";remove.title="Excluir do histórico";
   remove.setAttribute("aria-label","Excluir "+label+" do histórico");
-  remove.addEventListener("click",event=>{
-   event.preventDefault();event.stopPropagation();forgetHistory(label);suggestions();
-   hits.hidden=false;
-  });
-  // O botão Excluir não pode ficar dentro de outro botão (HTML inválido).
+  remove.onclick=e=>{e.preventDefault();e.stopPropagation();forgetHistory(label);suggestions();hits.hidden=false};
   const row=document.createElement("div");row.className="cx-history-row";
-  button.replaceWith(row);row.append(button,remove);
-  count++;
+  button.replaceWith(row);row.append(button,remove);count++;
  }
- if(q.length>=2){count++;makeHit("Pesquisar no Google",q,"#187aff",()=>{
-  ++placeSequence;clearTimeout(placeTimer);hits.hidden=true;searchAddress();
- })}
- if(!count&&q)info("Nenhum resultado local. Pressione Enter para pesquisar o endereço no Google.");
+ if(q.length>=2){count++;makeHit("Pesquisar endereço",q,"#187aff",()=>{clearTimeout(placeTimer);hits.hidden=true;searchAddress()})}
+ if(!count&&q)info("Pressione Enter para pesquisar o endereço.");
 }
+
 document.addEventListener("click",event=>{
  const b=event.target.closest?.("[data-cx-mode]");
  if(!b)return;
@@ -312,7 +331,7 @@ async function searchAddress(){
    const p=choice.location;
    searchNotice("");
    destination({lat:p.lat(),lng:p.lng()},choice.displayName||choice.formattedAddress||q,choice);
-   remember(q);suggestions();return;
+   remember(q);hits.hidden=true;return;
   }
  }catch(error){
   console.warn("Text Search (Places New):",error);
@@ -336,7 +355,7 @@ async function searchAddress(){
   if(seq!==placeSequenceInfo)return;
   searchNotice("");
   destination({lat:p.lat(),lng:p.lng()},r.formatted_address||q);
-  remember(q);suggestions();
+  remember(q);hits.hidden=true;
  });
 }
 function resolveLocation(value){
@@ -938,7 +957,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    document.body.classList.toggle("cx-street-visible",!!streetPanorama.getVisible());
    if(!streetPanorama.getVisible())window.dispatchEvent(new Event("coopex:street-closed"));
   });
-  suggestions();
+  suggestions();loadPreferences();
   googleMap.addListener("click",async event=>{
    // POI continua com a ficha nativa do Google; sem chamadas Places Pro
    // disparadas pelo CoopEX ao tocar um estabelecimento.
