@@ -181,13 +181,13 @@ async function calculateRoutes(){
   const {Route}=await google.maps.importLibrary("routes");
   info("Calculando quilômetros e rotas pelas vias do Google...");
   const opts={origin:first,destination:{lat:placePoint.lat,lng:placePoint.lng},travelMode:"DRIVING",
-   fields:["path","distanceMeters","durationMillis","routeLabels"],computeAlternativeRoutes:routeStops.length===0,routingPreference:"TRAFFIC_AWARE",
+   fields:["path","distanceMeters","durationMillis","description","routeLabels"],computeAlternativeRoutes:routeStops.length===0,routingPreference:"TRAFFIC_AWARE",
    language:"pt-BR",region:"BR"};
   if(routeStops.length)opts.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng},stopover:true}));
   const result=await Route.computeRoutes(opts);
   const routes=(result.routes||[]).slice(0,3);if(!routes.length)throw Error("Não há rota disponível para esse trajeto.");
   hideRoutes();routeAlternatives=routes.map(r=>({
-   distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,
+   distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",
    path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():+p.lat,lng:typeof p.lng==="function"?p.lng():+p.lng}))
   }));
   routesHost.hidden=false;
@@ -197,7 +197,9 @@ async function calculateRoutes(){
    const b=document.createElement("button");b.type="button";b.className="cx-route-option";
    const kms=(route.distanceMeters/1000).toLocaleString("pt-BR",{maximumFractionDigits:1});
    const mins=Math.round(route.durationMillis/60000);
-   b.textContent=(i===0?"Rota recomendada":"Alternativa "+(i+1))+"  •  "+kms+" km  •  "+mins+" min";
+   const title=document.createElement("strong");title.textContent=route.description|| (i===0?"Melhor rota":"Alternativa "+(i+1));
+   const metrics=document.createElement("small");metrics.textContent=kms+" km  ·  "+mins+" min";
+   b.append(title,metrics);
    b.onclick=()=>showRoute(i);routesHost.append(b);
   });
   showRoute(0);info(routeStops.length?"Rota completa pelas vias, passando pelas paradas.":"Selecione uma rota: azul é a ativa; cinza são alternativas.");
@@ -389,6 +391,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    rotateControl:false,gestureHandling:"greedy",
    clickableIcons:true
   });
+  window.COOPEX_GOOGLE_NATIVE=googleMap;
   function finishGoogleLoad(){
    if(loadFinished||authFailed)return;
    const styled=!!googleRoot.querySelector(".gm-style");
@@ -414,6 +417,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   googleMap.addListener("bounds_changed",finishGoogleLoad);
   googleMap.addListener("projection_changed",finishGoogleLoad);
   googleMap.addListener("tilesloaded",finishGoogleLoad);
+  window.dispatchEvent(new CustomEvent("coopex:google-native-ready"));
   geocoder=new google.maps.Geocoder();streetPanorama=googleMap.getStreetView();suggestions();
   googleMap.addListener("click",event=>{
    if(event.latLng&&document.body.classList.contains("cx-address-mode"))
