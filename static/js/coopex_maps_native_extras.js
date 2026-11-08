@@ -28,6 +28,7 @@ function start(){
   const id=++streetRequest;
   selected=null;
   preview.hidden=true;
+  if(previewPano){previewPano.setVisible(false);previewPano=null}
   image.replaceChildren();
   if(!point||!Number.isFinite(+point.lat)||!Number.isFinite(+point.lng))return;
   const requested={lat:+point.lat,lng:+point.lng};
