@@ -17,11 +17,11 @@ const destRow=document.createElement("div");destRow.className="cx-dest-row";dest
 destinationMount.append(destRow);
 const destMirror=destRow.querySelector("input");
 destMirror.addEventListener("input",()=>{search.value=destMirror.value;search.dispatchEvent(new Event("input",{bubbles:true}));});
-destRow.querySelector("button").onclick=()=>{search.value=destMirror.value;$("addressGo")?.click()};
+destRow.querySelector("button").onclick=()=>{search.value=destMirror.value;calculateWhenReady()};
 search.addEventListener("input",()=>{if(document.activeElement!==destMirror)destMirror.value=search.value});
 
 const swap=document.createElement("button");swap.type="button";swap.id="cxSwapRoute";swap.textContent="⇅ Inverter origem e destino";
-swap.onclick=()=>{const first=org.value;org.value=destMirror.value;destMirror.value=first;search.value=first;};
+swap.onclick=()=>{const first=org.value;org.value=destMirror.value;destMirror.value=first;search.value=first;calculateWhenReady()};
 group.append(swap);
 const stopRow=document.createElement("div");stopRow.id="cxStopEntry";stopRow.className="cx-stop-input-row";
 stopRow.innerHTML='<input id="cxStopInput" type="search" placeholder="Adicionar parada: rua e número" aria-label="Adicionar parada"><button id="cxStopSubmit" type="button" title="Adicionar parada">＋</button>';
@@ -45,6 +45,17 @@ coopInput.addEventListener("input",()=>{
  });
 });
 
+let lastAutoQuery="";
+function calculateWhenReady(){
+ if(activeTab!=="rotas")return;
+ if(!org?.value.trim()||!destMirror.value.trim())return;
+ search.value=destMirror.value;
+ lastAutoQuery=org.value.trim()+"|"+destMirror.value.trim();
+ document.getElementById("routeOpen")?.click();
+}
+destMirror.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopPropagation();calculateWhenReady()}});
+org?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();destMirror.focus();calculateWhenReady()}});
+destMirror.addEventListener("change",calculateWhenReady);
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
@@ -57,7 +68,7 @@ function setTab(id){
   $("routeOpen").textContent="Calcular rotas e quilômetros";
   $("routeOpen").hidden=false;
   $("cxUnifiedResults").hidden=false;
-  org?.focus();
+  if(org?.value.trim())destMirror.focus();else org?.focus();
  }else{
   if(org)org.hidden=true;
   $("routeOpen").textContent="↗ Rotas A → B";
