@@ -181,7 +181,44 @@ function resetSearch(){
  if(field)field.value="";if(placeMarker)placeMarker.setMap(null);placePoint=null;hideRoutes();suggestions();
  info("Pesquisa limpa. Os cooperados continuam visíveis.");
 }
+// Places API (New): previsões reais do Google quando autorizada, sem duplicar a busca.
+let placeToken=null,placeTimer=null,placeSequence=0,placesDisabled=false;
+async function loadGoogleSuggestions(){
+ const q=(field?.value||"").trim(),seq=++placeSequence;
+ if(!googleMap||q.length<4||placesDisabled)return;
+ try{
+  const {AutocompleteSuggestion,AutocompleteSessionToken}=await google.maps.importLibrary("places");
+  if(!placeToken)placeToken=new AutocompleteSessionToken();
+  const request={input:q,sessionToken:placeToken,language:"pt-BR",region:"br",locationBias:{radius:25000,center:googleMap.getCenter()}};
+  const data=await AutocompleteSuggestion.fetchAutocompleteSuggestions(request);
+  if(seq!==placeSequence||q!==(field?.value||"").trim())return;
+  for(const entry of (data.suggestions||[]).slice(0,6)){
+   const prediction=entry.placePrediction;if(!prediction)continue;
+   const label=prediction.text.toString();
+   makeHit(label,"Sugestão do Google Maps","#438de0",async()=>{
+    try{
+     info("Abrindo local selecionado...");
+     const place=prediction.toPlace();
+     await place.fetchFields({fields:["location","displayName","formattedAddress"]});
+     if(!place.location)throw Error("O local não possui coordenadas.");
+     const p=place.location;
+     destination({lat:p.lat(),lng:p.lng()},place.formattedAddress||label);
+     field.value=label;
+     // Guarda somente a pesquisa escrita/selecionada pelo operador.
+     remember(q);placeToken=null;suggestions();
+    }catch(e){info("Não foi possível obter este local: "+String(e.message||e))}
+   });
+  }
+ }catch(e){
+  // Sem Places API (New) ativa: mantém histórico e cooperados, sem chamadas repetidas.
+  placesDisabled=true;console.warn("COOPEX: Autocomplete do Google precisa da Places API (New) autorizada.",e);
+ }
+}
 field?.addEventListener("input",suggestions);
+field?.addEventListener("input",()=>{
+ clearTimeout(placeTimer);const q=(field.value||"").trim();
+ if(q.length>=4&&!placesDisabled)placeTimer=setTimeout(loadGoogleSuggestions,750);
+});
 field?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();searchAddress()}},true);
 submit?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();searchAddress()},true);
 clear?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();resetSearch()},true);
