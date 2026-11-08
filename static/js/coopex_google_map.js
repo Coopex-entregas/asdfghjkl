@@ -69,6 +69,7 @@ async function showPlaceDetails(point,knownPlace=null){
  const address=document.createElement("small");address.className="cx-place-address";address.textContent=point.label||"Localização selecionada";
  const state=document.createElement("div");state.className="cx-place-state";state.textContent="Buscando detalhes disponíveis do local…";
  const gallery=document.createElement("div");gallery.className="cx-place-gallery";
+ const overview=document.createElement("div");overview.className="cx-place-overview";
  const metadata=document.createElement("div");metadata.className="cx-place-metadata";
  const actions=document.createElement("div");actions.className="cx-place-shortcuts";
  for(const [label,action] of [
@@ -78,7 +79,7 @@ async function showPlaceDetails(point,knownPlace=null){
  ]){
   const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=action;actions.append(b);
  }
- root.append(gallery,heading,address,state,actions,metadata);
+ root.append(gallery,heading,overview,address,state,actions,metadata);
  const mainPanel=document.getElementById("addressPanel");
  mainPanel?.classList.add("cx-place-view");
  root.hidden=false;
@@ -87,7 +88,7 @@ async function showPlaceDetails(point,knownPlace=null){
  }
  if(!knownPlace){state.textContent="Endereço localizado pelo Google. Mais informações dependem do cadastro do estabelecimento.";return}
  try{
-  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName","editorialSummary","addressComponents"]});
+  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","currentOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName","editorialSummary","addressComponents"]});
   if(seq!==placeSequenceInfo)return;
   if(knownPlace.displayName)heading.textContent=knownPlace.displayName;
   if(knownPlace.formattedAddress)address.textContent=knownPlace.formattedAddress;
@@ -117,10 +118,15 @@ async function showPlaceDetails(point,knownPlace=null){
    const credit=document.createElement("small");credit.className="cx-place-credit";credit.textContent="Fotos: Google Maps e colaboradores";gallery.after(credit);
   }else gallery.hidden=true;
   if(knownPlace.primaryTypeDisplayName){
-   const value=knownPlace.primaryTypeDisplayName;detail(typeof value==="string"?value:value.toString(),"cx-place-category");
+   const value=knownPlace.primaryTypeDisplayName;
+   const category=document.createElement("span");category.className="cx-place-category";category.textContent=typeof value==="string"?value:value.toString();overview.append(category);
   }
-  if(typeof knownPlace.rating==="number")detail("★ "+knownPlace.rating.toLocaleString("pt-BR",{maximumFractionDigits:1})+" · "+Number(knownPlace.userRatingCount||0).toLocaleString("pt-BR")+" avaliações","cx-place-rating");
-  const hours=knownPlace.regularOpeningHours?.weekdayDescriptions||[];
+  if(typeof knownPlace.rating==="number"){
+   const rating=document.createElement("span");rating.className="cx-place-rating";
+   rating.textContent="★ "+knownPlace.rating.toLocaleString("pt-BR",{maximumFractionDigits:1})+" · "+Number(knownPlace.userRatingCount||0).toLocaleString("pt-BR")+" avaliações";
+   overview.prepend(rating);
+  }
+  const hours=(knownPlace.currentOpeningHours?.weekdayDescriptions||knownPlace.regularOpeningHours?.weekdayDescriptions||[]);
   if(hours.length){
    const box=document.createElement("details");box.className="cx-place-hours";
    const summary=document.createElement("summary");summary.textContent=(typeof openStatus==="boolean"?(openStatus?"Aberto agora":"Fechado agora")+" · ":"")+"Horários de funcionamento";box.append(summary);
@@ -197,7 +203,15 @@ async function searchAddress(){
    const query=normalize(q);
    const exact=candidates.find(place=>normalize(place.displayName)===query);
    const contains=candidates.find(place=>normalize(place.displayName).includes(query));
-   const choice=exact||contains||candidates[0];
+   const words=query.split(/\s+/).filter(x=>x.length>2);
+   const match=candidates.find(place=>words.every(word=>normalize(place.displayName).includes(word)));
+   const choice=exact||contains||match;
+   if(!choice){
+    // Não exibir uma cidade genérica como se fosse a empresa procurada.
+    const addressSearch=/\d|\b(rua|av\.?|avenida|travessa|estrada|rodovia|praça|alameda)\b/i.test(q);
+    if(!addressSearch){info("Estabelecimento não encontrado com esse nome. Escolha uma sugestão do Google.");return}
+   }
+   if(!choice)throw Error("Usar geocodificação para endereço");
    const p=choice.location;
    destination({lat:p.lat(),lng:p.lng()},choice.displayName||choice.formattedAddress||q,choice);
    remember(q);suggestions();return;
