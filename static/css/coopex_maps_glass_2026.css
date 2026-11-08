@@ -1900,3 +1900,81 @@ body #cxTrafficPanel .cx-traffic-help{color:#557b8f!important;font-size:10px!imp
  body #cxTopControlDock>.filters.glass{order:4!important}
  body #cxTopControlDock>.back-link{order:5!important}
 }
+
+/* Pesquisa estilo Google: abrir Casa, Trabalho e histórico ao focar,
+   manter aberta após excluir um item, sair somente clicando fora. */
+body #addressPanel.cx-search-idle #cxUnifiedResults:not([hidden]){
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ position:relative!important;top:5px!important;width:100%!important;
+ padding:5px!important;max-height:min(490px,72dvh)!important;
+ border:1px solid rgba(255,255,255,.98)!important;
+ border-radius:20px!important;background:rgba(249,253,255,.98)!important;
+ overflow:auto!important;box-shadow:0 13px 26px rgba(32,83,125,.24)!important;
+}
+body #cxUnifiedResults .cx-history-row{
+ display:flex!important;align-items:stretch!important;gap:0!important;
+ width:100%!important;min-width:0!important;border-radius:11px!important;
+ border-bottom:1px solid rgba(147,180,205,.20)!important;
+}
+body #cxUnifiedResults .cx-history-row:hover{background:rgba(225,240,250,.75)!important}
+body #cxUnifiedResults .cx-history-row .cx-drawer-hit{
+ flex:1 1 auto!important;min-width:0!important;width:auto!important;
+ display:flex!important;align-items:center!important;gap:11px!important;
+ padding:10px 8px!important;
+}
+body #cxUnifiedResults .cx-history-row .cx-drawer-hit span:nth-child(2){
+ min-width:0!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body #cxUnifiedResults .cx-history-row .cx-drawer-hit small{
+ display:block!important;color:#688296!important;
+ font-size:11px!important;max-width:290px!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body #cxUnifiedResults .cx-history-row .cx-history-remove,
+body #cxUnifiedResults .cx-history-row .cx-history-edit{
+ flex:0 0 auto!important;margin:auto 2px!important;border:0!important;
+ border-radius:10px!important;box-shadow:none!important;
+ background:transparent!important;color:#087a98!important;
+ cursor:pointer!important;
+}
+body #cxUnifiedResults .cx-history-row .cx-history-remove{
+ min-width:31px!important;font-size:20px!important;line-height:1!important;
+}
+body #cxUnifiedResults .cx-history-row .cx-history-edit{
+ padding:7px 9px!important;font-size:12px!important;font-weight:700!important;
+}
+body #cxUnifiedResults .cx-saved-place .cx-history-icon{
+ width:35px!important;height:35px!important;display:grid!important;
+ place-items:center!important;border-radius:50%!important;
+ background:#d6f4fa!important;color:#0b8197!important;
+ flex:0 0 35px!important;font-size:22px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-travel-modes{display:none!important}
+body #addressPanel.cx-directions-mode #stopsList .cx-stop-line .cx-waypoint-dot{
+ display:grid!important;place-items:center!important;color:#f4474e!important;
+ flex:0 0 20px!important;width:20px!important;
+}
+body #addressPanel.cx-directions-mode #stopsList .cx-stop-line:not(.cx-last-destination) .cx-waypoint-dot{display:none!important}
+body #addressPanel.cx-directions-mode .cx-waypoint-finish:not(.cx-last-destination) .cx-waypoint-dot{display:none!important}
+body #addressPanel.cx-directions-mode #stopsList .cx-stop-line .cx-waypoint-dot svg{display:block!important}
+/* O seletor de camadas pertence ao mapa, não à imagem panorâmica. */
+body.cx-street-visible #cxLayersWidget{display:none!important}
+/* Proporção do cabeçalho: pesquisa mais larga que trânsito, sem quebra no PC. */
+@media(min-width:1280px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(185px,1fr) 86px minmax(138px,185px) max-content 42px!important;
+  column-gap:6px!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{max-width:420px!important;justify-self:stretch!important}
+ body #cxTopControlDock>#cxTrafficTopButton{
+  width:86px!important;max-width:86px!important;min-width:86px!important;
+  padding:0 5px!important;font-size:11px!important;
+ }
+}
+@media(min-width:960px) and (max-width:1279px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(115px,1fr) 76px minmax(100px,136px) max-content 36px!important;
+  gap:4px!important;
+ }
+ body #cxTopControlDock>#cxTrafficTopButton{width:76px!important;min-width:76px!important;padding:0 4px!important;font-size:10px!important}
+}
