@@ -130,3 +130,13 @@ body.cx-map-sidebar-closed .filters.glass{max-width:calc(100dvw - 440px)!importa
  body:not(.cx-map-sidebar-closed) .filters.glass{opacity:0!important;pointer-events:none!important}
  body.cx-map-sidebar-closed .weather.glass,body.cx-map-sidebar-closed.cx-address-mode #ui>.weather.glass{left:auto!important;right:8px!important}
 }
+
+/* Somente ícone de nuvem se move: coordenada do OverlayView não é alterada */
+.cx-cloud-location{will-change:auto;overflow:visible;contain:layout style}
+.cx-cloud-shape,.cx-cloud-rain{animation:cx-cloud-drift var(--cx-cloud-wind-duration,55s) ease-in-out infinite alternate}
+.cx-cloud-rain{animation-duration:calc(var(--cx-cloud-wind-duration,55s) * .8)}
+@keyframes cx-cloud-drift{
+ 0%{translate:-16px -3px}
+ 100%{translate:22px 4px}
+}
+@media(prefers-reduced-motion:reduce){.cx-cloud-shape,.cx-cloud-rain{animation:none!important}}
