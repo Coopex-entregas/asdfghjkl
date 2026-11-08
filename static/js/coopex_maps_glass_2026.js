@@ -86,11 +86,14 @@ function wireWaypointDnD(){
   if(node.dataset.cxRouteDnD==="yes")return;
   node.dataset.cxRouteDnD="yes";
   node.addEventListener("dragstart",e=>{e.dataTransfer?.setData("application/x-coopex-route",node.dataset.cxRouteIndex);e.dataTransfer.effectAllowed="move";},true);
-  node.addEventListener("dragover",e=>{e.preventDefault();},true);
+  node.addEventListener("dragover",e=>{e.preventDefault();if(e.dataTransfer)e.dataTransfer.dropEffect="move";node.classList.add("cx-route-drag-over");},true);
+  node.addEventListener("dragleave",()=>node.classList.remove("cx-route-drag-over"),true);
+  node.addEventListener("dragend",()=>document.querySelectorAll(".cx-route-drag-over").forEach(el=>el.classList.remove("cx-route-drag-over")),true);
   node.addEventListener("drop",e=>{
    const index=e.dataTransfer?.getData("application/x-coopex-route");
    if(index===undefined||index==="")return;
    e.preventDefault();e.stopImmediatePropagation();
+   document.querySelectorAll(".cx-route-drag-over").forEach(el=>el.classList.remove("cx-route-drag-over"));
    routeDrop(Number(index),Number(node.dataset.cxRouteIndex));
   },true);
  });
