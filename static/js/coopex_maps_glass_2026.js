@@ -10,21 +10,21 @@ const tabs=[["explorar","⌕","Explorar"],["rotas","↗","Rotas"],["camadas","�
 let activeTab="explorar",collapsed=false;
 const results=$("cxUnifiedResults"),routes=$("cxRoutes"),search=$("address"),org=$("cxRouteOrigin");
 const group=document.createElement("section");group.id="cxRouteEditor";group.className="cx-route-editor";group.hidden=true;
-group.innerHTML='<div class="cx-route-title"><strong>🚘 Planejar trajeto</strong><small>De A até B · percurso pelas ruas</small></div><div class="cx-origin-mount"></div><div class="cx-destination-mount"></div><div class="cx-route-tip">Adicione paradas e escolha entre as rotas disponibilizadas pelo Google. O tempo e os km aparecerão abaixo.</div>';
+group.innerHTML='<div class="cx-travel-modes" role="group" aria-label="Meio de transporte"><button type="button" data-cx-mode="DRIVING" class="active" title="Carro">🚘</button><button type="button" data-cx-mode="TWO_WHEELER" title="Moto">🏍</button><button type="button" data-cx-mode="TRANSIT" title="Transporte público">🚉</button><button type="button" data-cx-mode="WALKING" title="A pé">🚶</button><button type="button" data-cx-mode="BICYCLING" title="Bicicleta">🚲</button></div><div class="cx-origin-mount"></div><div class="cx-destination-mount"></div>';
 top.after(group);
 const destinationMount=group.querySelector(".cx-destination-mount");const originMount=group.querySelector(".cx-origin-mount");
-const destRow=document.createElement("div");destRow.className="cx-dest-row";destRow.innerHTML='<span>📍 B</span><input id="cxDestinationMirror" type="search" placeholder="Destino B — rua e número" aria-label="Destino da rota B"><button type="button" id="cxDestSearch" aria-label="Localizar destino">⌕</button>';
+const destRow=document.createElement("div");destRow.className="cx-dest-row";destRow.innerHTML='<span>📍</span><input id="cxDestinationMirror" type="search" placeholder="Escolha o destino" aria-label="Destino"><button type="button" id="cxDestSearch" aria-label="Localizar destino">⌕</button>';
 destinationMount.append(destRow);
 const destMirror=destRow.querySelector("input");
 destMirror.addEventListener("input",()=>{search.value=destMirror.value;search.dispatchEvent(new Event("input",{bubbles:true}));});
 destRow.querySelector("button").onclick=()=>{search.value=destMirror.value;calculateWhenReady()};
 search.addEventListener("input",()=>{if(document.activeElement!==destMirror)destMirror.value=search.value});
 
-const swap=document.createElement("button");swap.type="button";swap.id="cxSwapRoute";swap.textContent="⇅ Inverter origem e destino";
+const swap=document.createElement("button");swap.type="button";swap.id="cxSwapRoute";swap.textContent="⇅";swap.title="Inverter partida e destino";swap.setAttribute("aria-label","Inverter partida e destino");
 swap.onclick=()=>{const first=org.value;org.value=destMirror.value;destMirror.value=first;search.value=first;calculateWhenReady()};
 group.append(swap);
 const stopRow=document.createElement("div");stopRow.id="cxStopEntry";stopRow.className="cx-stop-input-row";
-stopRow.innerHTML='<input id="cxStopInput" type="search" placeholder="Adicionar parada: rua e número" aria-label="Adicionar parada"><button id="cxStopSubmit" type="button" title="Adicionar parada">＋</button>';
+stopRow.innerHTML='<input id="cxStopInput" type="search" placeholder="Adicionar destino" aria-label="Adicionar destino"><button id="cxStopSubmit" type="button" title="Adicionar destino">＋</button>';
 group.append(stopRow);
 stopRow.querySelector("button").onclick=()=>document.getElementById("addStop")?.click();
 stopRow.querySelector("input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();document.getElementById("addStop")?.click()}});
@@ -66,15 +66,15 @@ function setTab(id){
  group.hidden=id!=="rotas";
  if(id==="rotas"){
   if(org&&org.parentElement!==originMount)originMount.append(org);
-  if(org){org.hidden=false;org.placeholder="⚪ A — origem: rua e número"}
+  if(org){org.hidden=false;org.placeholder="Selecione o ponto de partida"}
   if(search.value&&!destMirror.value)destMirror.value=search.value;
-  $("routeOpen").textContent="Calcular rotas e quilômetros";
+  $("routeOpen").textContent="Rotas";
   $("routeOpen").hidden=false;
   $("cxUnifiedResults").hidden=false;
   if(org?.value.trim())destMirror.focus();else org?.focus();
  }else{
   if(org)org.hidden=true;
-  $("routeOpen").textContent="↗ Rotas A → B";
+  $("routeOpen").textContent="↗ Direções";
   search.placeholder="Pesquisar rua, número ou estabelecimento";
   if(id==="camadas")$("toolbarToggle")?.click();
  }
@@ -93,8 +93,8 @@ edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation(
 expandButton?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();expand()},true);
 const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="☰";reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
 $("routeOpen").addEventListener("click",()=>{if(activeTab!=="rotas")setTab("rotas")},true);
-const hint=document.createElement("div");hint.className="cx-route-hint";hint.textContent="Clique sobre uma alternativa para alterar a rota azul no mapa.";routes?.after(hint);
-const welcome=results.querySelector(".cx-drawer-welcome");if(welcome)welcome.innerHTML="<strong>Explorar Natal e região</strong><small>Pesquise estabelecimentos, endereços ou cooperados. Os alfinetes continuam no mapa.</small>";
-$("addressMessage").textContent="Google Maps · informações conforme disponibilidade das APIs.";
+const hint=document.createElement("div");hint.className="cx-route-hint";hint.textContent="";routes?.after(hint);
+const welcome=results.querySelector(".cx-drawer-welcome");if(welcome)welcome.innerHTML="<strong>Explore no mapa</strong>";
+$("addressMessage").textContent="";
 setTab("explorar");
 })();
