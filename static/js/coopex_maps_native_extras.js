@@ -23,25 +23,52 @@ function start(){
    panorama.setVisible(true);
   });
  };
+ let streetRequest=0;
  function updateStreet(point){
+  const id=++streetRequest;
+  selected=null;
+  preview.hidden=true;
+  image.replaceChildren();
   if(!point||!Number.isFinite(+point.lat)||!Number.isFinite(+point.lng))return;
-  selected={lat:+point.lat,lng:+point.lng};
-  preview.hidden=false;
-  streetService.getPanorama({location:selected,radius:150,source:google.maps.StreetViewSource.OUTDOOR},(data,status)=>{
-   if(!preview.isConnected)return;
-   if(status!=="OK"||!data?.location){preview.hidden=true;preview.classList.add("cx-street-unavailable");image.replaceChildren();return}
-   preview.hidden=false;preview.classList.remove("cx-street-unavailable");
+  const requested={lat:+point.lat,lng:+point.lng};
+  streetService.getPanorama({location:requested,radius:250,source:google.maps.StreetViewSource.OUTDOOR},(data,status)=>{
+   if(id!==streetRequest||!preview.isConnected)return;
+   if(status!=="OK"||!data?.location?.pano){
+    preview.hidden=true;return;
+   }
+   selected=requested;
+   preview.hidden=false;
+   preview.classList.remove("cx-street-unavailable");
    try{
-    if(!previewPano)previewPano=new google.maps.StreetViewPanorama(image,{
-     pano:data.location.pano,visible:true,disableDefaultUI:true,clickToGo:false,linksControl:false,
-     scrollwheel:false,panControl:false,zoomControl:false,addressControl:false,motionTracking:false
+    if(!previewPano){
+     previewPano=new google.maps.StreetViewPanorama(image,{
+      pano:data.location.pano,
+      position:data.location.latLng,
+      pov:{heading:0,pitch:0},zoom:0,visible:true,
+      disableDefaultUI:true,clickToGo:false,linksControl:false,
+      scrollwheel:false,panControl:false,zoomControl:false,
+      addressControl:false,motionTracking:false,showRoadLabels:false
+     });
+    }else{
+     previewPano.setPano(data.location.pano);
+     previewPano.setVisible(true);
+    }
+    // A miniatura precisa ter dimensões antes de solicitar os pixels do panorama.
+    requestAnimationFrame(()=>{
+     if(id!==streetRequest)return;
+     google.maps.event.trigger(previewPano,"resize");
+     previewPano.setPano(data.location.pano);
     });
-    else previewPano.setPano(data.location.pano);
-   }catch(e){console.debug("Street View preview:",e)}
+   }catch(error){console.warn("Miniatura de rua indisponível:",error);preview.hidden=true}
   });
  }
+
  window.addEventListener("coopex:place-selected",e=>updateStreet(e.detail?.point));
- window.addEventListener("coopex:search-reset",()=>{selected=null;preview.hidden=true;image.replaceChildren()});
+ window.addEventListener("coopex:search-reset",()=>{
+  streetRequest++;selected=null;preview.hidden=true;
+  previewPano?.setVisible(false);previewPano=null;
+  image.replaceChildren();
+ });
  function clearRouteTags(){for(const tag of routeTags)tag.setMap(null);routeTags=[]}
  function labels({routes,selectedIndex=0}){
   clearRouteTags();if(!Array.isArray(routes))return;
@@ -60,6 +87,8 @@ function start(){
    overlay.setMap(map);routeTags.push(overlay);
   });
  }
+ window.addEventListener("coopex:routes-cleared",()=>{routePositions=[];clearRouteTags()});
+ window.addEventListener("coopex:exit-directions",()=>{routePositions=[];clearRouteTags()});
  window.addEventListener("coopex:routes-ready",e=>{routePositions=e.detail?.routes||[];labels({routes:routePositions})});
  window.addEventListener("coopex:selected-route",e=>{if(routePositions.length)labels({routes:routePositions,selectedIndex:e.detail?.index??0})});
 }
