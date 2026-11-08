@@ -60,7 +60,7 @@ async function showPlaceDetails(point,knownPlace=null){
  const seq=++placeSequenceInfo;
  const root=document.getElementById("cxPlaceDetails")||document.createElement("section");
  root.id="cxPlaceDetails";root.className="cx-place-details";root.replaceChildren();
- if(!root.isConnected)document.querySelector(".cx-drawer-actions")?.before(root);
+ if(!root.isConnected)(document.querySelector(".cx-map-nav")||document.querySelector(".cx-drawer-top"))?.after(root);
  const heading=document.createElement("strong");heading.className="cx-place-title";heading.textContent=point.label||"Local selecionado";
  const address=document.createElement("small");address.className="cx-place-address";address.textContent=point.label||"Localização selecionada";
  const state=document.createElement("div");state.className="cx-place-state";state.textContent="Buscando detalhes disponíveis do local…";
@@ -327,6 +327,7 @@ async function loadGoogleSuggestions(){
   placesDisabled=true;console.warn("COOPEX: Autocomplete do Google precisa da Places API (New) autorizada.",e);
  }
 }
+field?.addEventListener("input",()=>{document.getElementById("cxPlaceDetails")?.remove()});
 field?.addEventListener("input",suggestions);
 field?.addEventListener("input",()=>{
  clearTimeout(placeTimer);const q=(field.value||"").trim();
