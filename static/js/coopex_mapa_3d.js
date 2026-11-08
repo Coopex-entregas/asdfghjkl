@@ -264,8 +264,8 @@ $("fit").onclick=()=>{const i=clusters().map(x=>x[0]);if(i.length){let b=new ml.
 $("refresh").onclick=()=>{updateGps();$("toolbar").classList.remove("open")};
 $("locate").onclick=()=>{navigator.geolocation?.getCurrentPosition(p=>map.flyTo({center:[p.coords.longitude,p.coords.latitude],zoom:16,pitch:0,bearing:0}),()=>{}, {enableHighAccuracy:true,timeout:10000});$("toolbar").classList.remove("open")};
 function installSatellite(){if(!map.getSource("cx-sat"))map.addSource("cx-sat",{type:"raster",tiles:["https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"],tileSize:256,attribution:"Tiles © Esri"});if(!map.getLayer("cx-sat-layer"))map.addLayer({id:"cx-sat-layer",type:"raster",source:"cx-sat"});}
-$("mapStreet").onclick=()=>{satellite=false;if(map.getLayer("cx-sat-layer"))map.removeLayer("cx-sat-layer");$("toolbar").classList.remove("open")};
-$("mapSatellite").onclick=()=>{satellite=true;if(map.isStyleLoaded())installSatellite();$("toolbar").classList.remove("open")};
+
+
 const dest=()=>selectedAddress||(hasCoord(itemById(selectedId))?{lat:+itemById(selectedId).lat,lng:+itemById(selectedId).lng,label:itemById(selectedId).nome}:null);
 function stopRender(){for(const m of stopsMarkers)m.remove();stopsMarkers=[];const container=$("stopsList");container.replaceChildren();$("stopsCount").textContent=stops.length;
  stops.forEach((p,index)=>{const line=document.createElement("div");line.className="stop-row";const label=document.createElement("span");label.textContent=(index+1)+". "+p.label;const remove=document.createElement("button");remove.textContent="×";remove.title="Remover parada";remove.onclick=()=>{stops.splice(index,1);stopRender()};line.append(label,remove);container.append(line);const marker=new ml.Marker({color:"#ffb13c",pitchAlignment:"viewport"}).setLngLat([p.lng,p.lat]).addTo(map);stopsMarkers.push(marker);});
