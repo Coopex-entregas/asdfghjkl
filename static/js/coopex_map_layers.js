@@ -127,7 +127,12 @@ widget.querySelector("#cxTrafficLayer").addEventListener("change",e=>{
  traffic.setMap(e.target.checked?map:null);
 });
 document.addEventListener("pointerdown",e=>{if(!widget.contains(e.target))close();if(!trafficButton.contains(e.target)&&!trafficPanel.contains(e.target))closeTraffic()});
-document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden)close()},true);
+// Esc antes do atalho global de endereço e Street View.
+window.addEventListener("keydown",event=>{
+ if(event.key!=="Escape"||event.repeat)return;
+ if(!trafficPanel.hidden){event.preventDefault();event.stopImmediatePropagation();closeTraffic();trafficButton.blur();return}
+ if(!panel.hidden){event.preventDefault();event.stopImmediatePropagation();close();toggle.blur()}
+},true);
 function connect(){
  if(map||!window.COOPEX_GOOGLE_NATIVE)return;
  map=window.COOPEX_GOOGLE_NATIVE;
