@@ -244,9 +244,16 @@ $("addressMessage").textContent="";
 // Seleção de estabelecimentos e ícones no Google: ficha aberta sem sair do CoopEX Maps.
 window.addEventListener("coopex:place-selected",event=>{
  const place=event.detail?.point;
- if(place?.label){
-  search.value=place.label;
-  destMirror.value=place.label;
+ if(!place?.label)return;
+ search.value=place.label;
+ destMirror.value=place.label;
+ // Se o operador já está montando uma rota, selecionar o mapa define o destino,
+ // mas NÃO volta para a ficha de um estabelecimento.
+ if(activeTab==="rotas"){
+  panel.classList.remove("cx-place-view","cx-search-idle","cx-search-suggesting");
+  expand();
+  calculateWhenReady();
+  return;
  }
  setTab("explorar");
  panel.classList.remove("cx-search-idle","cx-search-suggesting");
