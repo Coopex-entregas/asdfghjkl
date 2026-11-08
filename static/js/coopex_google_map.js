@@ -366,15 +366,20 @@ function resolveLocation(value){
  const coop=lastItems.find(i=>queryNorm(i.nome)===queryNorm(query)&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng));
  if(coop)return Promise.resolve({lat:+coop.lat,lng:+coop.lng,label:coop.nome});
  if(!geocoder)return Promise.reject(Error("Geocodificação ainda indisponível."));
- return new Promise((resolve,reject)=>geocoder.geocode({address:query+", Brasil"},(found,status)=>{
-  if(status!=="OK"||!found?.length){reject(Error("Endereço não localizado ("+status+"): "+query));return}
-  const p=found[0].geometry.location;resolve({lat:p.lat(),lng:p.lng(),label:found[0].formatted_address||query});
+ // Endereços e bairros de operação priorizam exclusivamente o RN.
+ const address=/\b(?:RN|Rio Grande do Norte)\b/i.test(query)?query+", Brasil":query+", Rio Grande do Norte, Brasil";
+ return new Promise((resolve,reject)=>geocoder.geocode({address,componentRestrictions:{country:"BR",administrativeArea:"RN"}},(found,status)=>{
+  if(status!=="OK"||!found?.length){reject(Error("Endereço não localizado no RN ("+status+"): "+query));return}
+  const result=found.find(item=>item.address_components?.some(c=>c.short_name==="RN"&&c.types?.includes("administrative_area_level_1")));
+  if(!result){reject(Error("Endereço encontrado fora do Rio Grande do Norte: "+query));return}
+  const p=result.geometry.location;
+  resolve({lat:p.lat(),lng:p.lng(),label:query,resolvedAddress:result.formatted_address||query});
  }));
 }
 async function addRouteStop(){
  const input=document.getElementById("cxStopInput");const value=(input?.value||"").trim();
  if(!value){info("Informe o endereço da parada.");input?.focus();return}
- if(routeStops.length>=25){info("Máximo de 25 paradas.");return}
+ if(routeStops.length>=10){info("Limite de 10 destinos adicionais no modo econômico.");return}
  try{const location=await resolveLocation(value);routeStops.push(location);input.value="";stopRender();hideRoutes();info("Parada adicionada: "+location.label);window.dispatchEvent(new Event("coopex:routes-changed"))}
  catch(e){info(String(e.message||e))}
 }
