@@ -293,6 +293,9 @@ document.addEventListener("pointerdown",event=>{
 });
 
 function returnToEmptySearch(){
+ results.dataset.cxHistoryOpen="no";
+ panel.classList.remove("cx-search-history-open","cx-search-suggesting");
+ if(document.activeElement===search)search.blur();
  $("cxPlaceDetails")?.remove();
  search.value="";
  destMirror.value="";
