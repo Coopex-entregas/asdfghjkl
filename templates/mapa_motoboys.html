@@ -5,8 +5,8 @@
 <meta name="viewport" content="width=device-width, initial-scale=1,viewport-fit=cover">
 <title>Mapa dos cooperados · COOPEX</title>
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261108-status70">
-<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_maps_glass_2026.css') }}?v=20261108-glass70">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261108-status75">
+<link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_maps_glass_2026.css') }}?v=20261108-glass75">
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -83,9 +83,9 @@
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-status70"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-status70"></script>
-<script defer src="{{ url_for('static',filename='js/coopex_maps_glass_2026.js') }}?v=20261108-glass70"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-status75"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-status75"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_maps_glass_2026.js') }}?v=20261108-glass75"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_mapa_nuvens.js') }}?v=20261108-cloud40"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_maps_native_extras.js') }}?v=20261108-native62"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_route_autocomplete.js') }}?v=20261108-route62"></script>
