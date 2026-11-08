@@ -276,8 +276,10 @@ async function searchAddress(){
  if(hits)hits.hidden=true;
  searchNotice("Pesquisando: "+q+"…");
  info("Localizando estabelecimento ou endereço...");
- // Text Search identifica estabelecimentos pelo nome; Geocoding é apenas fallback.
- try{
+ // Modo econômico: desativar Places Text Search Pro em pesquisas comuns.
+ // Endereços e bairros são localizados por Geocoding Essentials.
+ const cxEnablePaidTextSearch=false;
+ if(cxEnablePaidTextSearch)try{
   const {Place}=await google.maps.importLibrary("places");
   const response=await Place.searchByText({
    textQuery:q,fields:["id","displayName","formattedAddress","location","primaryTypeDisplayName"],
@@ -313,7 +315,7 @@ async function searchAddress(){
   console.warn("Text Search (Places New):",error);
  }
  if(seq!==placeSequenceInfo)return;
- geocoder.geocode({address:q+", Brasil"},async (results,status)=>{
+ geocoder.geocode({address:/\b(?:RN|Rio Grande do Norte)\b/i.test(q)?q+", Brasil":q+", Rio Grande do Norte, Brasil"},async (results,status)=>{
   if(seq!==placeSequenceInfo)return;
   if(status!=="OK"||!results?.length){
    info("Não foi possível localizar: "+q);
