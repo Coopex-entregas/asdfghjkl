@@ -80,7 +80,8 @@ for(const row of [originMount,arrivalRow]){
 const routeDrop=(from,to)=>window.COOPEX_ROUTE_ACTIONS?.reorder?.(from,to);
 function wireWaypointDnD(){
  const stopRows=[...stopsPanel.querySelectorAll(".cx-stop-line")];
- const all=[originMount,...stopRows,arrivalRow];
+ // O painel exibe partida, primeiro destino e depois os demais destinos.
+  const all=[originMount,arrivalRow,...stopRows];
  all.forEach((node,i)=>{
   node.dataset.cxRouteIndex=String(i);node.draggable=true;
   if(node.dataset.cxRouteDnD==="yes")return;
