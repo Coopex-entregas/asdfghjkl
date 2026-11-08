@@ -1479,3 +1479,23 @@ body #cxTopControlDock>.weather.glass:focus-visible{outline:3px solid #1678d2!im
 @media(prefers-reduced-motion:reduce){
  .cx-cloud-location .cx-cloud-shape,.cx-cloud-location .cx-cloud-rain{animation:none!important}
 }
+
+/* Ajuste final de altura: input de endereços 15px acima, na mesma linha do clima. */
+@media(min-width:960px){
+ body #addressPanel.cx-search-idle:not(.cx-directions-mode),
+ body.cx-address-mode #addressPanel.cx-search-idle:not(.cx-directions-mode){
+  top:-14px!important;
+ }
+}
+/* Legenda discreta: mosaico de precipitação PREVISTA, não radar em tempo real. */
+#cxPrecipitationCredit{
+ position:fixed;left:12px;bottom:74px;z-index:710;
+ padding:5px 8px;border-radius:9px;
+ color:#315d79;font:10px/1.35 Arial,sans-serif;
+ background:rgba(246,252,255,.86);
+ border:1px solid rgba(255,255,255,.95);
+ backdrop-filter:blur(8px);pointer-events:auto;
+ box-shadow:0 2px 8px #1b577630;
+}
+#cxPrecipitationCredit a{color:#12668d;text-decoration:none}
+@media(max-width:700px){#cxPrecipitationCredit{left:8px;bottom:62px;font-size:9px}}
