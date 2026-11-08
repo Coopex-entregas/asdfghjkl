@@ -63,7 +63,7 @@ async function showPlaceDetails(point,knownPlace=null){
  const name=document.createElement("strong");name.textContent=point.label||"Local selecionado";
  const coords=document.createElement("small");coords.textContent="Localização selecionada • "+point.lat.toFixed(5)+", "+point.lng.toFixed(5);
  const actions=document.createElement("div");actions.className="cx-place-shortcuts";
- for(const [label,action] of [["↗ Rotas",()=>{if(!routeActive)calculateRoutes();else calculateRoutes()}],["◎ Ver rua",openStreet],["＋ Parada",()=>document.getElementById("addStop")?.click()]]){
+ for(const [label,action] of [["↗ Rotas",()=>document.querySelector("[data-cx-nav=rotas]")?.click()],["◎ Ver em frente",openStreet],["＋ Parada",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxStopInput");if(input){input.value=point.label||"";input.focus()}}]]){
   const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=action;actions.append(b);
  }
  root.append(name,coords,actions);
@@ -148,7 +148,7 @@ async function addRouteStop(){
  const input=document.getElementById("cxStopInput");const value=(input?.value||"").trim();
  if(!value){info("Informe o endereço da parada.");input?.focus();return}
  if(routeStops.length>=25){info("Máximo de 25 paradas.");return}
- try{const location=await resolveLocation(value);routeStops.push(location);input.value="";stopRender();hideRoutes();info("Parada adicionada: "+location.label)}
+ try{const location=await resolveLocation(value);routeStops.push(location);input.value="";stopRender();hideRoutes();info("Parada adicionada: "+location.label);window.dispatchEvent(new Event("coopex:routes-changed"))}
  catch(e){info(String(e.message||e))}
 }
 
@@ -166,7 +166,7 @@ function stopRender(){
   ];
   for(const [symbol,title,run,disabled] of controls){
    const control=document.createElement("button");control.type="button";control.textContent=symbol;control.title=title;control.disabled=disabled;
-   control.onclick=()=>{run();stopRender();hideRoutes();info("Ordem ou parada alterada. Recalcule a rota.");};line.append(control);
+   control.onclick=()=>{run();stopRender();hideRoutes();info("Ordem ou parada alterada.");window.dispatchEvent(new Event("coopex:routes-changed"));};line.append(control);
   }
   stopHost.append(line);
  });
@@ -287,7 +287,7 @@ document.getElementById("cxDrawerMenu")?.addEventListener("click",()=>{field.val
 document.getElementById("routeOpen")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();calculateRoutes()},true);
 document.getElementById("streetView")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();openStreet()},true);
 document.getElementById("addStop")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();addRouteStop()},true);
-document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();routeStops=[];stopRender();hideRoutes()},true);
+document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();routeStops=[];stopRender();hideRoutes();window.dispatchEvent(new Event("coopex:routes-changed"))},true);
 window.addEventListener("coopex:map-data",suggestions);
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
 const markers=new Map(),lastPositions=new Map();
