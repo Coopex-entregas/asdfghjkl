@@ -312,7 +312,8 @@ async function searchAddress(){
  info("Localizando estabelecimento ou endereço...");
  // Pesquisas de empresas pelo nome usam Places; ruas usam Geocoding.
  // Consultas de dados comerciais podem ter cobrança na Google Maps Platform.
- const cxAddressQuery=/\d|\b(?:rua|av\.?|avenida|travessa|estrada|rodovia|praça|praca|alameda|bairro|cep)\b/i.test(q);\n  const cxEnablePaidTextSearch=!cxAddressQuery;
+ const cxAddressQuery=/\d|\b(?:rua|av\.?|avenida|travessa|estrada|rodovia|praça|praca|alameda|bairro|cep)\b/i.test(q);
+  const cxEnablePaidTextSearch=!cxAddressQuery;
  if(cxEnablePaidTextSearch)try{
   const {Place}=await google.maps.importLibrary("places");
   const response=await Place.searchByText({
@@ -984,11 +985,17 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   // Usa Places Details no clique para exibir a ficha comercial.
   const poiGeocodingCache=new Map();
   googleMap.addListener("click",event=>{
-   if(event.placeId){\n    ++placeSequenceInfo;\n    event.stop?.();
+   if(event.placeId){
+    ++placeSequenceInfo;
+    event.stop?.();
     const placeId=event.placeId;
     const fallback=event.latLng?{lat:event.latLng.lat(),lng:event.latLng.lng()}:null;
     const cached=poiGeocodingCache.get(placeId);
-    if(cached){\n    google.maps.importLibrary("places").then(({Place})=>destination(cached.point,cached.label,new Place({id:placeId})))\n     .catch(()=>destination(cached.point,cached.label));\n    return;\n   }
+    if(cached){
+    google.maps.importLibrary("places").then(({Place})=>destination(cached.point,cached.label,new Place({id:placeId})))
+     .catch(()=>destination(cached.point,cached.label));
+    return;
+   }
     if(!geocoder){if(fallback)destination(fallback,"Local selecionado");return}
     geocoder.geocode({placeId},(results,status)=>{
      const found=status==="OK"&&results?.length?results[0]:null;
@@ -998,7 +1005,9 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
      const label=found?.formatted_address||"Estabelecimento selecionado";
      poiGeocodingCache.set(placeId,{point,label});
      if(poiGeocodingCache.size>90)poiGeocodingCache.delete(poiGeocodingCache.keys().next().value);
-     google.maps.importLibrary("places").then(({Place})=>destination(point,label,new Place({id:placeId})))\n      .catch(error=>{console.warn("Ficha do Google Places:",error);destination(point,label)});\n    });
+     google.maps.importLibrary("places").then(({Place})=>destination(point,label,new Place({id:placeId})))
+      .catch(error=>{console.warn("Ficha do Google Places:",error);destination(point,label)});
+    });
     return;
    }
    if(event.latLng&&document.body.classList.contains("cx-address-mode"))
