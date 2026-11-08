@@ -981,10 +981,30 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
    if(!streetPanorama.getVisible())window.dispatchEvent(new Event("coopex:street-closed"));
   });
   suggestions();loadPreferences();
-  googleMap.addListener("click",async event=>{
-   // POI continua com a ficha nativa do Google; sem chamadas Places Pro
-   // disparadas pelo CoopEX ao tocar um estabelecimento.
-   if(event.placeId)return;
+  // Clique num estabelecimento abre a ficha dentro do COOPEX Maps.
+  // event.stop() remove o popup Google que oferece abrir outro site.
+  // Somente Geocoding já usado na pesquisa; não ativa Places Details paga.
+  const poiGeocodingCache=new Map();
+  googleMap.addListener("click",event=>{
+   if(event.placeId){
+    event.stop?.();
+    const placeId=event.placeId;
+    const fallback=event.latLng?{lat:event.latLng.lat(),lng:event.latLng.lng()}:null;
+    const cached=poiGeocodingCache.get(placeId);
+    if(cached){destination(cached.point,cached.label);return}
+    if(!geocoder){if(fallback)destination(fallback,"Local selecionado");return}
+    geocoder.geocode({placeId},(results,status)=>{
+     const found=status==="OK"&&results?.length?results[0]:null;
+     const location=found?.geometry?.location;
+     const point=location?{lat:location.lat(),lng:location.lng()}:fallback;
+     if(!point)return;
+     const label=found?.formatted_address||"Estabelecimento selecionado";
+     poiGeocodingCache.set(placeId,{point,label});
+     if(poiGeocodingCache.size>90)poiGeocodingCache.delete(poiGeocodingCache.keys().next().value);
+     destination(point,label);
+    });
+    return;
+   }
    if(event.latLng&&document.body.classList.contains("cx-address-mode"))
     destination({lat:event.latLng.lat(),lng:event.latLng.lng()},"Ponto marcado no mapa");
   });
