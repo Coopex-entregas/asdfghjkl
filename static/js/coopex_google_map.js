@@ -365,6 +365,7 @@ function showRoute(idx){
    O preço por bairro prevalece; sem correspondência, utiliza o valor por km configurado. */
 let cxPricesRequest=null;
 const cxMoney=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const cxBillableKm=meters=>Math.max(1,Math.round(Number(meters)/1000));
 const cxNorm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
 function cxFetchPrices(){
  if(!cxPricesRequest)cxPricesRequest=fetch("/api/precos",{
@@ -405,7 +406,7 @@ async function cxAddPrices(routes,from,to,generation,withStops){
    const option=routesHost?.querySelectorAll(".cx-route-option")[i];
    if(!option)return;
    option.querySelector(".cx-route-price")?.remove();
-   const value=fixed?fixed.price:perKm>0?perKm*Number(route.distanceMeters||0)/1000:NaN;
+   const value=fixed?fixed.price:perKm>0?perKm*cxBillableKm(route.distanceMeters):NaN;
    const p=document.createElement("span");p.className="cx-route-price";
    p.textContent=Number.isFinite(value)&&value>=0
     ?cxMoney(value)+(fixed?" · Tabela por bairro":" · Calculado por km")
@@ -420,7 +421,7 @@ async function cxAddPrices(routes,from,to,generation,withStops){
    const distance=Number(routes[i]?.distanceMeters);
    const p=document.createElement("span");p.className="cx-route-price";
    p.textContent=Number.isFinite(distance)
-    ?cxMoney(distance/1000*2)+" · Estimativa por km (R$ 2,00/km)"
+    ?cxMoney(cxBillableKm(distance)*2)+" · Estimativa por km (R$ 2,00/km)"
     :"Valor indisponível";
    option.append(p);
   });
@@ -452,7 +453,7 @@ async function calculateRoutes(){
    poly.addListener("click",()=>showRoute(i));routePolylines.push(poly);
    const option=document.createElement("button");option.type="button";option.className="cx-route-option";
    const title=document.createElement("strong");title.textContent=r.description||("Rota "+(i+1));
-   const meta=document.createElement("small");meta.textContent=(r.distanceMeters/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" km · "+Math.round(r.durationMillis/60000)+" min";
+   const meta=document.createElement("small");meta.textContent=cxBillableKm(r.distanceMeters).toLocaleString("pt-BR")+" km · "+Math.round(r.durationMillis/60000)+" min";
    option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
   showRoute(0);
