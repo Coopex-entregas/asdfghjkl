@@ -222,7 +222,7 @@ async function searchAddress(){
   const {Place}=await google.maps.importLibrary("places");
   const response=await Place.searchByText({
    textQuery:q,fields:["id","displayName","formattedAddress","location","primaryTypeDisplayName"],
-   locationBias:googleMap.getCenter(),language:"pt-BR",region:"BR",maxResultCount:5
+   locationBias:googleMap.getCenter(),language:"pt-BR",region:"BR",maxResultCount:10
   });
   if(seq!==placeSequenceInfo)return;
   const candidates=(response.places||[]).filter(place=>place.location);
@@ -234,24 +234,17 @@ async function searchAddress(){
    const contains=candidates.find(place=>normalize(place.displayName).includes(query));
    // O bairro pesquisado pode fazer parte do endereço, sem fazer parte do nome comercial.
    // Ex.: "China in Box Ponta Negra" corresponde ao estabelecimento "China in Box".
-   const words=query.split(/\s+/).filter(word=>word.length>2);
-   const ranked=candidates.map(place=>{
+   // O nome comercial pode vir sem a referência de bairro.
+   const words=query.split(/\s+/).filter(w=>w.length>2);
+   const rankings=candidates.map(place=>{
     const name=normalize(place.displayName),address=normalize(place.formattedAddress);
-    const nameWords=name.split(" ");
-    const hits=words.filter(word=>nameWords.includes(word)).length;
-    const matchesAddress=words.filter(word=>address.includes(word)).length;
-    return {place,hits,score:hits*4+matchesAddress+(name.includes(query)?10:0)};
-   }).sort((one,two)=>two.score-one.score);
-   const match=ranked.find(item=>item.hits>=Math.min(2,words.length)&&item.score>=4)?.place;
-   const choice=exact||contains||match;
-   if(!choice){
-    const addressSearch=/\d|\b(rua|av\.?|avenida|travessa|estrada|rodovia|praça|alameda)\b/i.test(q);
-    if(!addressSearch){
-     info("Estabelecimento não localizado com segurança. Escolha uma sugestão ou informe o bairro.");
-     return;
-    }
-    throw Error("Usar geocodificação para endereço");
-   }
+    const hits=words.filter(word=>name.split(" ").some(part=>part===word||part.startsWith(word))).length;
+    const addressHits=words.filter(word=>address.includes(word)).length;
+    return {place,hits,score:hits*6+addressHits+(name===query?20:0)};
+   }).sort((a,b)=>b.score-a.score);
+   const best=rankings[0];
+   const choice=exact||contains||(best?.hits>=1?best.place:null);
+   if(!choice)throw Error("Nenhum estabelecimento com nome compatível; tentando endereço");
    const p=choice.location;
    destination({lat:p.lat(),lng:p.lng()},choice.displayName||choice.formattedAddress||q,choice);
    remember(q);suggestions();return;
