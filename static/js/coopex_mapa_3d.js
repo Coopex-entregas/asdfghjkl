@@ -483,6 +483,6 @@ map.on("moveend",()=>{
  window.dispatchEvent(new CustomEvent("coopex:map-view",{detail:{lat:c.lat,lng:c.lng,zoom:map.getZoom()}}));
 });
 map.on("load",()=>{updateGps();});
-render();setAddressMode(true);updateGps();stopRender();weather();gpsSocket();
-setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);setInterval(updateGps,60000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
+render();setAddressMode(true);updateGps();stopRender();gpsSocket();
+setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);setInterval(updateGps,60000);/* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
 })();
