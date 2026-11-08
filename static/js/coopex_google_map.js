@@ -388,8 +388,9 @@ async function reorderEntireRoute(from,to){
  const fromField=document.getElementById("cxRouteOrigin");
  const toField=document.getElementById("cxDestinationMirror");
  if(!fromField||!toField)return;
- const original=[{label:fromField.value.trim()},...routeStops.map(p=>({...p})),{label:toField.value.trim()}];
- if(!original[0].label||!original[original.length-1].label){
+ // A sequência visual é partida → primeiro destino → demais destinos.
+ const original=[{label:fromField.value.trim()},{label:toField.value.trim()},...routeStops.map(p=>({...p}))];
+ if(!original[0].label||!original[1].label){
   info("Preencha partida e destino antes de mudar a ordem.");
   return;
  }
@@ -400,12 +401,12 @@ async function reorderEntireRoute(from,to){
   invalidateRoutes();
   const moving=original.splice(from,1)[0];
   original.splice(to,0,moving);
-  const intermediate=await Promise.all(original.slice(1,-1).map(async item=>{
+  const intermediate=await Promise.all(original.slice(2).map(async item=>{
    if(Number.isFinite(item.lat)&&Number.isFinite(item.lng))return item;
    return resolveLocation(item.label);
   }));
   fromField.value=original[0].label;
-  toField.value=original[original.length-1].label;
+  toField.value=original[1].label;
   if(field)field.value=toField.value;
   routeStops=intermediate;
   stopRender();
@@ -468,76 +469,101 @@ async function cxBairros(point){
  }
  return [...names].filter(Boolean);
 }
-function cxPriceBairroSet(label,names){
- const variants=new Set((names||[]).map(cxNorm));
+/* Valor padronizado por sequência de entregas:
+   1) Preço cadastrado para bairro de origem -> bairro de destino de cada trecho.
+   2) Apenas para trecho sem cadastro: quilômetros do trecho x preço/km.
+   As rotas alternativas compartilham o mesmo orçamento; só distância e tempo variam.
+*/
+function cxBairroCandidates(label,geocoded,tableNames){
  const text=cxNorm(label);
- // A referência digitada em primeiro plano prevalece quando há nome de bairro.
- for(const row of window.COOPEX_PRECO_BAIRROS||[]){
-  const value=cxNorm(row);
-  if(value&&(" "+text+" ").includes(" "+value+" "))variants.add(value);
+ const variants=new Set((geocoded||[]).map(cxNorm).filter(Boolean));
+ const known=(tableNames||[]).map(cxNorm).filter(Boolean).sort((a,b)=>b.length-a.length);
+ // Nomes "Planalto - Natal" e "Planalto" devem corresponder.
+ const short=name=>name.replace(/\s+(natal|rn|rio grande do norte)$/,"").trim();
+ const add=value=>{if(value){variants.add(value);variants.add(short(value));}};
+ for(const item of known){
+  const bare=short(item);
+  if(bare.length>2&&(" "+text+" ").includes(" "+bare+" "))add(item);
  }
- for(const part of String(label||"").split(/[,–—-]/)){
-  const v=cxNorm(part);
-  if(v.length>=3&&v.length<=55)variants.add(v);
+ for(const part of String(label||"").split(/[,–—]/)){
+  const value=cxNorm(part);
+  if(value.length>2&&value.length<65)add(value);
  }
+ for(const value of [...variants])add(value);
  return [...variants];
 }
-function cxPriceMatch(rows,originNames,destinationNames){
- // As tarifas são por sentido. Não trocar origem e destino automaticamente.
- return rows.find(row=>originNames.includes(row.o)&&destinationNames.includes(row.d));
+function cxFindFixed(rows,originNames,destinationNames){
+ // Respeitar o sentido: Planalto -> Lagoa Nova ≠ Lagoa Nova -> Planalto.
+ for(const a of originNames){
+  for(const b of destinationNames){
+   const match=rows.find(r=>r.o===a&&r.d===b&&Number.isFinite(r.price));
+   if(match)return match;
+  }
+ }
+ return null;
 }
 async function cxAddPrices(routes,waypoints,generation){
- const rowNodes=[...routesHost.querySelectorAll(".cx-route-option")];
+ const cards=[...routesHost.querySelectorAll(".cx-route-option")];
  try{
   const data=await cxFetchPrices();
+  if(generation!==routeGeneration)return;
   const rows=(data.items||[]).map(r=>({o:cxNorm(r.origem),d:cxNorm(r.destino),price:Number(r.valor)}));
+  const knownNames=[...new Set(rows.flatMap(r=>[r.o,r.d]))];
   const perKm=Number(data.per_km)>0?Number(data.per_km):2;
-  const places=await Promise.all(waypoints.map(async p=>{
-   try{return cxPriceBairroSet(p.label,await cxBairros(p))}
-   catch(error){console.debug("Bairro não identificado para preço:",p.label);return cxPriceBairroSet(p.label,[])}
+  const candidates=await Promise.all(waypoints.map(async point=>{
+   let names=[];
+   try{names=await cxBairros(point)}catch(error){console.debug("Bairro não identificado:",point.label)}
+   return cxBairroCandidates(point.label,names,knownNames);
   }));
   if(generation!==routeGeneration)return;
-  routes.forEach((route,i)=>{
-   const option=rowNodes[i];if(!option)return;
+  // Um único preço da sequência, independente do caminho alternativo desenhado.
+  // A referência de distância de cada trecho sem tabela é o menor trajeto
+  // retornado pela API para aquela sequência, evitando cobranças diferentes
+  // para os mesmos endereços só por alternar a linha azul.
+  const segmentCount=waypoints.length-1;
+  const valid=routes.filter(route=>Array.isArray(route.legs)&&route.legs.length===segmentCount);
+  if(!valid.length)throw Error("A resposta da rota não separou as entregas em trechos.");
+  const segments=Array.from({length:segmentCount},(_,j)=>{
+   const fixed=cxFindFixed(rows,candidates[j],candidates[j+1]);
+   const minMeters=Math.min(...valid.map(route=>Number(route.legs[j]?.distanceMeters)).filter(Number.isFinite));
+   if(fixed)return {amount:fixed.price,fixed:true,from:candidates[j][0],to:candidates[j+1][0]};
+   if(!Number.isFinite(minMeters))return {amount:null,fixed:false};
+   return {amount:cxBillableKm(minMeters)*perKm,fixed:false,km:cxBillableKm(minMeters)};
+  });
+  if(segments.some(segment=>segment.amount===null))throw Error("Distância indisponível para algum trecho.");
+  const total=segments.reduce((sum,segment)=>sum+segment.amount,0);
+  for(const option of cards){
    option.querySelector(".cx-route-price")?.remove();
-   const legs=route.legs||[];
-   const ready=legs.length===waypoints.length-1;
-   const price=document.createElement("div");price.className="cx-route-price";
-   if(!ready){
-    price.textContent="Preço indisponível por trecho";
-    option.append(price);return;
-   }
-   let total=0,allFixed=true;
-   const breakdown=document.createElement("div");breakdown.className="cx-route-price-breakdown";
-   legs.forEach((leg,j)=>{
-    const fixed=cxPriceMatch(rows,places[j],places[j+1]);
-    const amount=fixed&&Number.isFinite(fixed.price)?fixed.price:cxBillableKm(leg.distanceMeters)*perKm;
-    total+=amount;if(!fixed)allFixed=false;
-    const line=document.createElement("div");line.className="cx-leg-price";
-    const destination=waypoints[j+1].label?.split(",")[0]||("Destino "+(j+1));
-    const from=waypoints[j].label?.split(",")[0]||("Partida "+(j+1));
-    const left=document.createElement("span");
-    left.textContent=(j+1)+". "+from+" → "+destination+(fixed?" · Bairro":" · "+cxBillableKm(leg.distanceMeters)+" km");
-    const value=document.createElement("b");value.textContent=cxMoney(amount);
-    line.append(left,value);breakdown.append(line);
-   });
+   const wrap=document.createElement("div");wrap.className="cx-route-price";
    const headline=document.createElement("strong");
    headline.textContent="Total: "+cxMoney(total);
-   price.append(headline,breakdown);
-   if(!allFixed){
-    const note=document.createElement("small");note.textContent="Trechos sem tabela: R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2})+"/km";
-    price.append(note);
+   wrap.append(headline);
+   const breakdown=document.createElement("div");breakdown.className="cx-route-price-breakdown";
+   segments.forEach((segment,j)=>{
+    const row=document.createElement("div");row.className="cx-leg-price";
+    const description=document.createElement("span");
+    const from=waypoints[j].label?.split(",")[0]||("Ponto "+(j+1));
+    const to=waypoints[j+1].label?.split(",")[0]||("Ponto "+(j+2));
+    description.textContent=(j+1)+". "+from+" → "+to+(segment.fixed?" · Tabela":" · "+segment.km+" km");
+    const amount=document.createElement("b");amount.textContent=cxMoney(segment.amount);
+    row.append(description,amount);breakdown.append(row);
+   });
+   wrap.append(breakdown);
+   if(segments.some(seg=>!seg.fixed)){
+    const note=document.createElement("small");
+    note.textContent="Sem preço por bairro: R$ "+perKm.toLocaleString("pt-BR",{minimumFractionDigits:2})+"/km";
+    wrap.append(note);
    }
-   option.append(price);
-  });
+   option.append(wrap);
+  }
  }catch(error){
   if(generation!==routeGeneration)return;
   console.warn("COOPEX Preços e Rotas:",error);
-  rowNodes.forEach(option=>{
+  cards.forEach(option=>{
    option.querySelector(".cx-route-price")?.remove();
-   const value=document.createElement("span");value.className="cx-route-price";
-   value.textContent="Preço indisponível — consulte Preços e Rotas";
-   option.append(value);
+   const label=document.createElement("span");label.className="cx-route-price";
+   label.textContent="Não foi possível calcular o preço por trecho";
+   option.append(label);
   });
  }
 }
