@@ -44,7 +44,21 @@ function remember(q){
  try{localStorage.setItem(historyKey,JSON.stringify([q,...readHistory().filter(x=>queryNorm(x)!==queryNorm(q))].slice(0,20)))}catch(e){}
 }
 function info(t){if(message)message.textContent=t;}
-function hideRoutes(){routePolylines.forEach(p=>p.setMap(null));routePolylines=[];routeAlternatives=[];if(routesHost){routesHost.replaceChildren();routesHost.hidden=true}}
+let routeGeneration=0;
+function hideRoutes(){
+ routePolylines.forEach(p=>p.setMap(null));routePolylines=[];routeAlternatives=[];
+ if(routesHost){routesHost.replaceChildren();routesHost.hidden=true}
+ window.dispatchEvent(new Event("coopex:routes-cleared"));
+}
+function exitDirections(){
+ routeGeneration++;
+ routeActive=false;
+ routeStops=[];
+ const result=document.getElementById("cxStopInput");if(result)result.value="";
+ const originField=document.getElementById("cxRouteOrigin");if(originField)originField.value="";
+ const destField=document.getElementById("cxDestinationMirror");if(destField)destField.value="";
+ hideRoutes();stopRender();
+}
 function destination(p,name,googlePlace=null){
  if(!p||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lng)){info("Local sem GPS válido.");return}
  placePoint={lat:+p.lat,lng:+p.lng,label:name||"Destino"};
@@ -320,6 +334,7 @@ function showRoute(idx){
 }
 async function calculateRoutes(){
  if(!googleMap||routeInFlight)return;
+ const generation=++routeGeneration;
  routeActive=true;origin.hidden=false;routeInFlight=true;
  const button=document.getElementById("routeOpen");button.disabled=true;
  try{
@@ -332,6 +347,7 @@ async function calculateRoutes(){
   if(routeMode==="DRIVING"||routeMode==="TWO_WHEELER")options.routingPreference="TRAFFIC_AWARE";
   if(routeStops.length)options.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng}}));
   const response=await Route.computeRoutes(options);
+  if(generation!==routeGeneration||!document.getElementById("addressPanel")?.classList.contains("cx-directions-mode"))return;
   const found=(response.routes||[]).slice(0,3);
   if(!found.length)throw Error("Nenhum trajeto disponível.");
   hideRoutes();
@@ -371,7 +387,7 @@ function resetSearch(){
  if(streetPanorama?.getVisible())streetPanorama.setVisible(false);
  if(field)field.value="";
  if(placeMarker){placeMarker.setMap(null);placeMarker=null}
- placePoint=null;hideRoutes();
+ placePoint=null;exitDirections();
  document.getElementById("cxPlaceDetails")?.remove();
  if(hits){hits.replaceChildren();hits.hidden=true}
  info("");
@@ -381,7 +397,7 @@ function resetSearch(){
 let placeToken=null,placeTimer=null,placeSequence=0,placesDisabled=false;
 async function loadGoogleSuggestions(){
  const q=(field?.value||"").trim(),seq=++placeSequence;
- if(!googleMap||q.length<4||placesDisabled)return;
+ if(!googleMap||q.length<3||placesDisabled)return;
  try{
   const {AutocompleteSuggestion,AutocompleteSessionToken}=await google.maps.importLibrary("places");
   if(!placeToken)placeToken=new AutocompleteSessionToken();
@@ -414,7 +430,7 @@ field?.addEventListener("input",()=>{document.getElementById("cxPlaceDetails")?.
 field?.addEventListener("input",suggestions);
 field?.addEventListener("input",()=>{
  clearTimeout(placeTimer);const q=(field.value||"").trim();
- if(q.length>=4&&!placesDisabled)placeTimer=setTimeout(loadGoogleSuggestions,750);
+ if(q.length>=3&&!placesDisabled)placeTimer=setTimeout(loadGoogleSuggestions,230);
 });
 field?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopImmediatePropagation();searchAddress()}},true);
 submit?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();searchAddress()},true);
@@ -440,6 +456,7 @@ document.addEventListener("keydown",event=>{
 },true);
 document.getElementById("addStop")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();addRouteStop()},true);
 document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();routeStops=[];stopRender();hideRoutes();window.dispatchEvent(new Event("coopex:routes-changed"))},true);
+window.addEventListener("coopex:exit-directions",exitDirections);
 window.addEventListener("coopex:map-data",suggestions);
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
 const markers=new Map(),lastPositions=new Map();
