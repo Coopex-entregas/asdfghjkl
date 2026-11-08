@@ -419,7 +419,8 @@ function gpsSocket(){
 window.COOPEX_MAP_ACTIONS={
  selectCooperado:id=>selectCooperado(id),
  setAddressMode:enabled=>setAddressMode(enabled),
- syncMapView:(lat,lng,zoom)=>{if(Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(zoom))map.jumpTo({center:[lng,lat],zoom,pitch:0,bearing:0})}
+ syncMapView:(lat,lng,zoom)=>{if(Number.isFinite(lat)&&Number.isFinite(lng)&&Number.isFinite(zoom))map.jumpTo({center:[lng,lat],zoom,pitch:0,bearing:0})},
+ refresh:()=>updateGps()
 };
 map.on("moveend",()=>{
  const c=map.getCenter();
