@@ -1484,7 +1484,7 @@ body #cxTopControlDock>.weather.glass:focus-visible{outline:3px solid #1678d2!im
 @media(min-width:960px){
  body #addressPanel.cx-search-idle:not(.cx-directions-mode),
  body.cx-address-mode #addressPanel.cx-search-idle:not(.cx-directions-mode){
-  top:-14px!important;
+  top:10px!important;
  }
 }
 /* Legenda discreta: mosaico de precipitação PREVISTA, não radar em tempo real. */
@@ -1499,3 +1499,32 @@ body #cxTopControlDock>.weather.glass:focus-visible{outline:3px solid #1678d2!im
 }
 #cxPrecipitationCredit a{color:#12668d;text-decoration:none}
 @media(max-width:700px){#cxPrecipitationCredit{left:8px;bottom:62px;font-size:9px}}
+
+/* Barra de endereços nivelada com todos os controles, sem sombra duplicada. */
+@media(min-width:960px){
+ body #addressPanel.cx-search-idle:not(.cx-directions-mode),
+ body.cx-address-mode #addressPanel.cx-search-idle:not(.cx-directions-mode){
+  top:10px!important;
+  padding:0!important;
+  box-shadow:none!important;
+  filter:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-content{
+  transform:none!important;
+  box-shadow:none!important;
+  filter:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top{
+  top:0!important;
+  height:52px!important;
+  min-height:52px!important;
+  max-height:52px!important;
+  box-shadow:0 6px 15px rgba(29,83,117,.19),inset 0 1px 2px #fff!important;
+  border-radius:19px!important;
+  filter:none!important;
+ }
+ body:has(#addressPanel.cx-directions-mode) #cxTopControlDock{
+  left:calc(min(508px,100dvw - 36px) + 20px)!important;
+  max-width:none!important;
+ }
+}
