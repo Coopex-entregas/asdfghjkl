@@ -5,6 +5,26 @@ const $=id=>document.getElementById(id), panel=$("addressPanel"), inside=panel?.
 if(!panel||!inside||!top)return;
 const brand=document.createElement("div");brand.className="cx-maps-brand";brand.innerHTML='<span class="cx-map-pin">📍</span><strong>CoopEX Maps</strong>';
 inside.insertBefore(brand,inside.firstChild);
+const stats=document.querySelector("#ui>.stats");
+const statsHome=stats?.parentElement||null;
+const statsPlaceholder=document.createComment("coopex-stats-home");
+if(stats&&statsHome)statsHome.insertBefore(statsPlaceholder,stats);
+function animateStats(nextParent,before=null){
+ if(!stats||!nextParent||(before?stats.parentElement===nextParent:stats.parentElement===nextParent))return;
+ const old=stats.getBoundingClientRect();
+ if(before)nextParent.insertBefore(stats,before);else nextParent.append(stats);
+ const now=stats.getBoundingClientRect();
+ const deltaX=old.left-now.left,deltaY=old.top-now.top;
+ if(old.width&&now.width&&Math.abs(deltaX)<2000&&Math.abs(deltaY)<2000&&stats.animate){
+  stats.animate([{transform:`translate(${deltaX}px,${deltaY}px) scale(.92)`,opacity:.65},{transform:"translate(0,0) scale(1)",opacity:1}],
+  {duration:360,easing:"cubic-bezier(.2,1.2,.24,1)"});
+ }
+}
+function syncStatsLocation(){
+ const compact=panel.classList.contains("cx-search-idle")||document.body.classList.contains("cx-map-sidebar-closed");
+ if(compact){if(statsHome)animateStats(statsHome,statsPlaceholder.nextSibling);document.body.classList.remove("cx-stats-in-menu")}
+ else{animateStats(brand);document.body.classList.add("cx-stats-in-menu")}
+}
 const nav=document.createElement("nav");nav.className="cx-map-nav";
 const tabs=[["explorar","⌕","Explorar"],["rotas","↗","Rotas"],["camadas","▱","Camadas"]];
 let activeTab="explorar",collapsed=false;
@@ -146,6 +166,7 @@ function syncSearchStage(){
  panel.classList.toggle("cx-search-suggesting",idle&&typed&&document.activeElement===search);
  panel.classList.toggle("cx-place-view",hasPlace);
  if(activeTab==="explorar")results.hidden=!typed;
+ syncStatsLocation();
 }
 search.addEventListener("input",()=>{
  if($("cxPlaceDetails")?.isConnected){$("cxPlaceDetails").remove()}
@@ -180,6 +201,7 @@ function setTab(id){
  routeInfo.hidden=id!=="rotas";
  nav.hidden=id==="rotas";
  panel.classList.toggle("cx-directions-mode",id==="rotas");
+ syncStatsLocation();
  if(id!=="rotas"){$("cxRoutes").hidden=true}
  if(id==="rotas"){
   if(org&&org.parentElement!==originMount)originMount.append(org);
@@ -240,8 +262,18 @@ const hamburger=$("cxDrawerMenu");if(hamburger)hamburger.replaceChildren(vector(
 $("cxDrawerMenu").addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapse()},true);
 const edge=$("addressCollapse"),expandButton=$("sideExpand");
 
-function collapse(){collapsed=true;document.body.classList.add("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","false");edge.textContent="›";edge.setAttribute("aria-label","Expandir menu");if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}
-function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");}
+function collapse(){
+ // Recolher um painel de local ou rotas retorna à pesquisa, nunca a um hamburger isolado.
+ collapsed=false;
+ document.body.classList.remove("cx-map-sidebar-closed");
+ panel.setAttribute("aria-expanded","true");
+ edge.textContent="‹";
+ document.getElementById("addressClose")?.click();
+ returnToEmptySearch();
+ if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
+ syncStatsLocation();
+}
+function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");syncStatsLocation();}
 edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapsed?expand():collapse()},true);
 expandButton?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();expand()},true);
 const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="";reopen.append(vector("menu"));reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
@@ -269,6 +301,8 @@ window.addEventListener("coopex:place-selected",event=>{
  const info=$("cxPlaceDetails");
  if(info){info.hidden=false;panel.classList.add("cx-place-view")}
 });
+// Não recuperar o hamburger antigo ao fechar uma busca.
+document.body.classList.remove("cx-map-sidebar-closed");
 setTab("explorar");
 syncSearchStage();
 })();
