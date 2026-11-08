@@ -30,7 +30,7 @@ const tabs=[["explorar","⌕","Explorar"],["rotas","↗","Rotas"],["camadas","�
 let activeTab="explorar",collapsed=false;
 const results=$("cxUnifiedResults"),routes=$("cxRoutes"),search=$("address"),org=$("cxRouteOrigin");
 const group=document.createElement("section");group.id="cxRouteEditor";group.className="cx-route-editor";group.hidden=true;
-group.innerHTML='<div class="cx-travel-modes" role="group" aria-label="Meio de transporte"><button type="button" data-cx-mode="DRIVING" class="active" title="Carro">🚘</button><button type="button" data-cx-mode="TWO_WHEELER" title="Moto">🏍</button><button type="button" data-cx-mode="TRANSIT" title="Transporte público">🚉</button><button type="button" data-cx-mode="WALKING" title="A pé">🚶</button><button type="button" data-cx-mode="BICYCLING" title="Bicicleta">🚲</button></div><div class="cx-origin-mount"></div><div class="cx-destination-mount"></div>';
+group.innerHTML='<div class="cx-travel-modes" role="group" aria-label="Rota econômica de carro"><button type="button" data-cx-mode="DRIVING" class="active" title="Rota econômica">🚘</button></div><div class="cx-origin-mount"></div><div class="cx-destination-mount"></div>';
 top.after(group);
 const destinationMount=group.querySelector(".cx-destination-mount");const originMount=group.querySelector(".cx-origin-mount");
 const destRow=document.createElement("div");destRow.className="cx-dest-row";destRow.innerHTML='<span>📍</span><input id="cxDestinationMirror" type="search" placeholder="Escolha o destino" aria-label="Destino"><button type="button" id="cxDestSearch" aria-label="Localizar destino">⌕</button>';
@@ -67,6 +67,14 @@ if(routeResultPanel)routeResultPanel.before(routeInfo);
 const depRow=originMount;depRow.classList.add("cx-waypoint-row","cx-waypoint-start");
 const arrivalRow=destinationMount;arrivalRow.classList.add("cx-waypoint-row","cx-waypoint-finish");
 const routeMarker=document.createElement("span");routeMarker.className="cx-waypoint-dot";routeMarker.innerHTML='<svg viewBox="0 0 24 24" width="19" height="22" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><path d="M20 10c0 5-8 12-8 12S4 15 4 10a8 8 0 1 1 16 0Z"/><circle cx="12" cy="10" r="2.5"/></svg>';arrivalRow.prepend(routeMarker);
+function syncFinalMarker(){
+ const stops=[...stopsPanel?.querySelectorAll(".cx-stop-line")||[]];
+ const target=stops.length?stops[stops.length-1]:arrivalRow;
+ if(routeMarker.parentElement!==target)target.prepend(routeMarker);
+ // O pin vermelho identifica somente o último destino, inclusive após arrastar.
+ arrivalRow.classList.toggle("cx-last-destination",!stops.length);
+ stops.forEach((row,index)=>row.classList.toggle("cx-last-destination",index===stops.length-1));
+}
 // Origem, destinos e botão de inverter compõem uma única coluna compacta.
 const waypoints=document.createElement("div");waypoints.className="cx-waypoints";
 group.insertBefore(waypoints,originMount);
@@ -101,6 +109,9 @@ function wireWaypointDnD(){
 }
 const waypointObserver=new MutationObserver(wireWaypointDnD);
 if(stopsPanel)waypointObserver.observe(stopsPanel,{childList:true});
+const finalMarkerObserver=new MutationObserver(()=>syncFinalMarker());
+if(stopsPanel)finalMarkerObserver.observe(stopsPanel,{childList:true});
+syncFinalMarker();
 wireWaypointDnD();
 
 const coopBox=document.createElement("div");coopBox.id="cxCoopSearch";coopBox.className="glass";
@@ -236,14 +247,21 @@ function syncSearchStage(){
  panel.classList.toggle("cx-search-idle",idle);
  panel.classList.toggle("cx-search-suggesting",idle&&typed&&document.activeElement===search);
  panel.classList.toggle("cx-place-view",hasPlace);
- if(activeTab==="explorar")results.hidden=!typed;
+ if(activeTab==="explorar")results.hidden=!(typed||document.activeElement===search);
  syncStatsLocation();
 }
 search.addEventListener("input",()=>{
  if($("cxPlaceDetails")?.isConnected){$("cxPlaceDetails").remove()}
  syncSearchStage();
 });
-search.addEventListener("focus",syncSearchStage);
+search.addEventListener("focus",()=>{
+ syncSearchStage();
+ if(activeTab==="explorar"&&!search.value.trim()){
+  results.hidden=false;
+  // Recarrega Casa, Trabalho e pesquisas compartilhadas para todos os admins.
+  window.dispatchEvent(new Event("coopex:history-focus"));
+ }
+});
 search.addEventListener("blur",()=>setTimeout(syncSearchStage,180));
 function returnToEmptySearch(){
  $("cxPlaceDetails")?.remove();
