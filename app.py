@@ -7658,7 +7658,7 @@ def mapa_motoboys():
             'idle_seconds': 0 if online else None,
             'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
             'accuracy_m': float(acc or 0),
-            'speed_kmh': round(float(speed_saved), 1) if speed_saved is not None else None,
+            'speed_kmh': round(float(speed_saved), 1) if online_gps and speed_saved is not None else None,
             'heading': float(hdg or 0),
             'ultima_atualizacao': ultima_txt or 'Sem GPS enviado',
             'endereco': getattr(c, 'zona', None) or getattr(c, 'bairro', None) or '',
