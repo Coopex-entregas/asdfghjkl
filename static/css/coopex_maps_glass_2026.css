@@ -1746,3 +1746,33 @@ body #cxCoopHits button>span:nth-child(2){
 }
 body #cxCoopHits button small{font-size:11px!important;color:#527a96!important;flex:0 0 auto!important}
 body #cxCoopHits .cx-coop-empty{padding:12px 14px;color:#55728c;font-size:12px}
+
+/* Arrastar endereços e paradas: alças acessíveis e realce do ponto de soltura. */
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-waypoint-grip{
+ display:grid!important;place-items:center!important;
+ width:20px!important;min-width:20px!important;
+ height:37px!important;flex:0 0 20px!important;
+ opacity:.72!important;color:#4b7694!important;
+ cursor:grab!important;touch-action:none!important;
+}
+body #addressPanel.cx-directions-mode .cx-waypoint-row,
+body #addressPanel.cx-directions-mode #stopsList .cx-stop-line{
+ cursor:grab!important;
+}
+body #addressPanel.cx-directions-mode .cx-waypoint-row:active,
+body #addressPanel.cx-directions-mode #stopsList .cx-stop-line:active{
+ cursor:grabbing!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints{
+ padding-left:0!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-origin-mount,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-destination-mount{
+ gap:5px!important;
+}
+body #addressPanel.cx-directions-mode .cx-waypoint-row.cx-route-drag-over,
+body #addressPanel.cx-directions-mode .cx-stop-line.cx-route-drag-over{
+ outline:2px dashed #297ed6!important;
+ outline-offset:2px!important;
+ background:rgba(189,221,250,.32)!important;
+}
