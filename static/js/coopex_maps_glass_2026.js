@@ -45,10 +45,11 @@ for(const [id,ic,label] of tabs){
  b.onclick=()=>setTab(id);nav.append(b);navBtns.set(id,b);
 }
 top.after(nav);
-$("cxDrawerMenu").onclick=()=>{if(collapsed)expand();else setTab("explorar")};
+$("cxDrawerMenu").addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapse()},true);
 const edge=$("addressCollapse"),expandButton=$("sideExpand");
-function collapse(){collapsed=true;body.classList.add("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","false");edge.textContent="›";edge.setAttribute("aria-label","Expandir menu");document.activeElement?.blur?.();}
-function expand(){collapsed=false;body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");}
+const previousRoute=$("routeOpen");
+function collapse(){collapsed=true;document.body.classList.add("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","false");edge.textContent="›";edge.setAttribute("aria-label","Expandir menu");if(document.activeElement instanceof HTMLElement)document.activeElement.blur();}
+function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");}
 edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapsed?expand():collapse()},true);
 expandButton?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();expand()},true);
 const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="☰";reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
