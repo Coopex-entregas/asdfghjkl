@@ -61,7 +61,7 @@ function destination(p,name,googlePlace=null){
  showPlaceDetails(placePoint,googlePlace);
 }
 async function showPlaceDetails(point,knownPlace=null){
- const seq=++placeSequenceInfo;
+ const seq=placeSequenceInfo;
  const root=document.getElementById("cxPlaceDetails")||document.createElement("section");
  root.id="cxPlaceDetails";root.className="cx-place-details";root.replaceChildren();
  if(!root.isConnected)(document.querySelector(".cx-map-nav")||document.querySelector(".cx-drawer-top"))?.after(root);
@@ -78,13 +78,16 @@ async function showPlaceDetails(point,knownPlace=null){
  ]){
   const b=document.createElement("button");b.type="button";b.textContent=label;b.onclick=action;actions.append(b);
  }
- root.append(heading,address,state,gallery,metadata,actions);
+ root.append(gallery,heading,address,state,actions,metadata);
+ const mainPanel=document.getElementById("addressPanel");
+ mainPanel?.classList.add("cx-place-view");
+ root.hidden=false;
  function detail(text,cls=""){
   const line=document.createElement("div");line.className="cx-place-data "+cls;line.textContent=text;metadata.append(line);return line;
  }
  if(!knownPlace){state.textContent="Endereço localizado pelo Google. Mais informações dependem do cadastro do estabelecimento.";return}
  try{
-  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName"]});
+  await knownPlace.fetchFields({fields:["displayName","formattedAddress","photos","rating","userRatingCount","regularOpeningHours","nationalPhoneNumber","websiteURI","googleMapsURI","businessStatus","primaryTypeDisplayName","editorialSummary","addressComponents"]});
   if(seq!==placeSequenceInfo)return;
   if(knownPlace.displayName)heading.textContent=knownPlace.displayName;
   if(knownPlace.formattedAddress)address.textContent=knownPlace.formattedAddress;
@@ -100,14 +103,17 @@ async function showPlaceDetails(point,knownPlace=null){
   if(!state.textContent)state.textContent="Informações disponibilizadas pelo Google";
   state.dataset.open=openStatus===true?"yes":openStatus===false?"no":"unknown";
   const photos=(knownPlace.photos||[]).slice(0,8);
-  for(const photo of photos){
-   try{
-    const url=photo.getURI({maxWidth:720,maxHeight:430});
-    if(!url)continue;
-    const img=document.createElement("img");img.loading="lazy";img.decoding="async";img.src=url;img.alt="Foto do local — Google Maps";gallery.append(img);
-   }catch(e){console.debug("Foto indisponível",e)}
-  }
   if(photos.length){
+   const mainPhoto=document.createElement("img");
+   mainPhoto.className="cx-place-hero-photo";mainPhoto.loading="eager";mainPhoto.alt="Foto do estabelecimento";
+   const first=photos[0].getURI({maxWidth:900,maxHeight:600});
+   mainPhoto.src=first;gallery.append(mainPhoto);
+   if(photos.length>1){
+    const photoButton=document.createElement("button");photoButton.type="button";photoButton.className="cx-place-photo-next";
+    photoButton.textContent="Ver fotos";let position=0;
+    photoButton.onclick=()=>{position=(position+1)%photos.length;mainPhoto.src=photos[position].getURI({maxWidth:900,maxHeight:600})};
+    gallery.append(photoButton);
+   }
    const credit=document.createElement("small");credit.className="cx-place-credit";credit.textContent="Fotos: Google Maps e colaboradores";gallery.after(credit);
   }else gallery.hidden=true;
   if(knownPlace.primaryTypeDisplayName){
@@ -116,11 +122,15 @@ async function showPlaceDetails(point,knownPlace=null){
   if(typeof knownPlace.rating==="number")detail("★ "+knownPlace.rating.toLocaleString("pt-BR",{maximumFractionDigits:1})+" · "+Number(knownPlace.userRatingCount||0).toLocaleString("pt-BR")+" avaliações","cx-place-rating");
   const hours=knownPlace.regularOpeningHours?.weekdayDescriptions||[];
   if(hours.length){
-   const box=document.createElement("details");box.className="cx-place-hours";box.open=true;
-   const summary=document.createElement("summary");summary.textContent="Horários de funcionamento";box.append(summary);
+   const box=document.createElement("details");box.className="cx-place-hours";
+   const summary=document.createElement("summary");summary.textContent=(typeof openStatus==="boolean"?(openStatus?"Aberto agora":"Fechado agora")+" · ":"")+"Horários de funcionamento";box.append(summary);
    for(const item of hours){const line=document.createElement("div");line.textContent=item;box.append(line)}
    metadata.append(box);
   }
+  if(knownPlace.editorialSummary){
+   const summary=knownPlace.editorialSummary;detail(typeof summary==="string"?summary:summary.text||"","cx-place-description");
+  }
+  if(knownPlace.formattedAddress)detail("📍 "+knownPlace.formattedAddress,"cx-place-location");
   if(knownPlace.nationalPhoneNumber){
    const link=document.createElement("a");link.href="tel:"+knownPlace.nationalPhoneNumber.replace(/[^\d+]/g,"");link.textContent="☎ "+knownPlace.nationalPhoneNumber;link.className="cx-place-link";metadata.append(link);
   }
@@ -166,20 +176,47 @@ document.addEventListener("click",event=>{
  document.querySelectorAll("[data-cx-mode]").forEach(button=>button.classList.toggle("active",button===b));
  if(document.getElementById("cxRouteOrigin")?.value.trim()&&document.getElementById("cxDestinationMirror")?.value.trim())calculateRoutes();
 });
-function searchAddress(){
+async function searchAddress(){
  if(!googleMap||!geocoder){info("Google Maps ainda está inicializando.");return}
- const q=(field?.value||"").trim();if(q.length<3){info("Digite pelo menos três caracteres.");return}
- info("Pesquisando endereço no Google Maps...");
- geocoder.geocode({address:q+", Brasil"},(results,status)=>{
-  if(status!=="OK"||!results?.length){info(status==="REQUEST_DENIED"?"Geocoding API não autorizada para esta chave. Verifique a restrição no Google Cloud.":"Endereço não localizado: "+status);return}
-  const p=results[0].geometry.location;
-  destination({lat:p.lat(),lng:p.lng()},results[0].formatted_address||q);
-  // Se a busca geocodificada aponta para um Place ID, também carregue os detalhes.
-  if(results[0].place_id&&google.maps.places?.Place){
-   try{const p2=new google.maps.places.Place({id:results[0].place_id});
-    showPlaceDetails({lat:p.lat(),lng:p.lng(),label:results[0].formatted_address||q},p2)
-   }catch(e){console.debug("Sem ficha de local para o endereço:",e)}
+ const q=(field?.value||"").trim();
+ if(q.length<3){info("Digite pelo menos três caracteres.");return}
+ const seq=++placeSequenceInfo;
+ info("Localizando estabelecimento ou endereço...");
+ // Text Search identifica estabelecimentos pelo nome; Geocoding é apenas fallback.
+ try{
+  const {Place}=await google.maps.importLibrary("places");
+  const response=await Place.searchByText({
+   textQuery:q,fields:["id","displayName","formattedAddress","location","primaryTypeDisplayName"],
+   locationBias:googleMap.getCenter(),language:"pt-BR",region:"BR",maxResultCount:5
+  });
+  if(seq!==placeSequenceInfo)return;
+  const candidates=(response.places||[]).filter(place=>place.location);
+  if(candidates.length){
+   // Evita selecionar um município quando a consulta é o nome de uma empresa.
+   const normalize=x=>queryNorm(String(x||"").replace(/[^\p{L}\p{N} ]/gu," "));
+   const query=normalize(q);
+   const exact=candidates.find(place=>normalize(place.displayName)===query);
+   const contains=candidates.find(place=>normalize(place.displayName).includes(query));
+   const choice=exact||contains||candidates[0];
+   const p=choice.location;
+   destination({lat:p.lat(),lng:p.lng()},choice.displayName||choice.formattedAddress||q,choice);
+   remember(q);suggestions();return;
   }
+ }catch(error){
+  console.warn("Text Search (Places New):",error);
+ }
+ if(seq!==placeSequenceInfo)return;
+ geocoder.geocode({address:q+", Brasil"},async (results,status)=>{
+  if(seq!==placeSequenceInfo)return;
+  if(status!=="OK"||!results?.length){info("Não foi possível localizar: "+q);return}
+  const r=results[0],p=r.geometry.location;
+  let place=null;
+  if(r.place_id){
+   try{const {Place}=await google.maps.importLibrary("places");place=new Place({id:r.place_id})}
+   catch(error){console.debug("Place Details indisponível",error)}
+  }
+  if(seq!==placeSequenceInfo)return;
+  destination({lat:p.lat(),lng:p.lng()},r.formatted_address||q,place);
   remember(q);suggestions();
  });
 }
