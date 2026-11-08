@@ -33,16 +33,34 @@ coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisa
 document.body.append(coopBox);
 const coopInput=coopBox.querySelector("input"),coopHits=coopBox.querySelector("#cxCoopHits");
 let cooperados=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[];
-window.addEventListener("coopex:map-data",e=>{if(Array.isArray(e.detail?.items))cooperados=e.detail.items;});
-coopInput.addEventListener("input",()=>{
+
+function statusOf(i){const online=i.online===true||i.online===1||i.online==="true"||i.online==="1";return !online?"offline":i.status==="ocioso"?"ocioso":"online"}
+function renderCoopHits(){
  const normalize=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
- const query=normalize(coopInput.value.trim());coopHits.replaceChildren();coopHits.hidden=!query;
+ const query=normalize(coopInput.value.trim());
+ coopHits.replaceChildren();coopHits.hidden=!query;
  if(!query)return;
- cooperados.filter(i=>normalize(i.nome).includes(query)).slice(0,10).forEach(i=>{
-  const button=document.createElement("button");button.type="button";button.textContent=(i.online?"🟢 ":"🔴 ")+(i.nome||"Cooperado");
-  button.onclick=()=>{coopInput.value=i.nome||"";coopHits.hidden=true;window.COOPEX_MAP_ACTIONS?.selectCooperado?.(i.id)};
+ const matches=cooperados.filter(i=>normalize(i.nome).includes(query)).slice(0,12);
+ for(const person of matches){
+  const state=statusOf(person);
+  const button=document.createElement("button");button.type="button";
+  const dot=document.createElement("span");dot.className="cx-coop-search-dot";dot.style.background=state==="online"?"#0cba71":state==="ocioso"?"#f7a52c":"#f14d62";
+  const name=document.createElement("span");name.textContent=person.nome||"Cooperado";
+  button.append(dot,name);button.onclick=()=>{
+   coopInput.value=person.nome||"";coopHits.hidden=true;
+   window.COOPEX_MAP_ACTIONS?.selectCooperado?.(person.id);
+   const lat=Number(person.lat),lng=Number(person.lng),googleMap=window.COOPEX_GOOGLE_NATIVE;
+   if(googleMap&&Number.isFinite(lat)&&Number.isFinite(lng)){
+    googleMap.panTo({lat,lng});
+    googleMap.setZoom(17);
+   }
+  };
   coopHits.append(button);
- });
+ }
+}
+coopInput.addEventListener("input",renderCoopHits);
+window.addEventListener("coopex:map-data",e=>{
+ if(Array.isArray(e.detail?.items)){cooperados=e.detail.items;if(coopInput.value.trim()&&!coopHits.hidden)renderCoopHits()}
 });
 
 let lastAutoQuery="";
