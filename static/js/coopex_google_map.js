@@ -72,7 +72,7 @@ async function showPlaceDetails(point,knownPlace=null){
  const metadata=document.createElement("div");metadata.className="cx-place-metadata";
  const actions=document.createElement("div");actions.className="cx-place-shortcuts";
  for(const [label,action] of [
-  ["↗ Rotas",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxDestinationMirror");if(input){input.value=point.label||"";input.dispatchEvent(new Event("change",{bubbles:true}))}}],
+  ["↗ Direções",()=>{const input=document.getElementById("cxDestinationMirror");if(input)input.value=(knownPlace?.formattedAddress||point.label||"");document.querySelector("[data-cx-nav=rotas]")?.click();}],
   ["◎ Ver em frente",openStreet],
   ["＋ Parada",()=>{document.querySelector("[data-cx-nav=rotas]")?.click();const input=document.getElementById("cxStopInput");if(input){input.value=point.label||"";input.focus()}}]
  ]){
@@ -88,6 +88,9 @@ async function showPlaceDetails(point,knownPlace=null){
   if(seq!==placeSequenceInfo)return;
   if(knownPlace.displayName)heading.textContent=knownPlace.displayName;
   if(knownPlace.formattedAddress)address.textContent=knownPlace.formattedAddress;
+  // O trajeto permanece interno e usa o endereço preciso fornecido pelo Google.
+  const routeDestination=document.getElementById("cxDestinationMirror");
+  if(routeDestination&&!document.getElementById("addressPanel")?.classList.contains("cx-directions-mode"))routeDestination.value=knownPlace.formattedAddress||point.label||"";
   const pStatus=String(knownPlace.businessStatus||"");
   const translateStatus={CLOSED_TEMPORARILY:"Temporariamente fechado",CLOSED_PERMANENTLY:"Fechado permanentemente",FUTURE_OPENING:"Ainda não inaugurado"};
   state.textContent=translateStatus[pStatus]||"";
