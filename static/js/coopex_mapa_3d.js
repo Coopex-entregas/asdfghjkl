@@ -224,7 +224,18 @@ function showDetails(i){
  const group=clusters().find(g=>g.some(x=>String(x.id)===String(i.id)))||[],host=$("stack");host.replaceChildren();
  if(group.length>1){const title=document.createElement("small");title.textContent=group.length+" cooperados neste ponto:";host.append(title);for(const p of group){const b=document.createElement("button");b.textContent=initials(p.nome);b.title=p.nome;b.onclick=()=>selectCooperado(p.id);host.append(b);}}
 }
-function selectCooperado(id){selectedId=String(id);following=false;if(cameraPanelOpen)renderCameraPanel();const i=itemById(id);if(!i)return;render();if(hasCoord(i))map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),15),pitch:0,bearing:0,duration:650});}
+function selectCooperado(id){
+ const next=String(id);
+ const i=itemById(next);if(!i)return;
+ if(selectedId===next&&$("details").classList.contains("visible")){
+  selectedId=null;following=false;$("details").classList.remove("visible");render();return;
+ }
+ selectedId=next;following=false;
+ if(cameraPanelOpen)renderCameraPanel();
+ render();
+ // Somente um mapa visível: movimenta Google quando disponível, mantendo o GPS original.
+ if(hasCoord(i)&&!window.COOPEX_GOOGLE_NATIVE)map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),15),pitch:0,bearing:0,duration:650});
+}
 async function updateGps(){
  if(fetching||document.hidden)return;fetching=true;
  try{
