@@ -3,7 +3,7 @@
 "use strict";
 const $=id=>document.getElementById(id), panel=$("addressPanel"), inside=panel?.querySelector(".cx-drawer-content"), top=panel?.querySelector(".cx-drawer-top");
 if(!panel||!inside||!top)return;
-const brand=document.createElement("div");brand.className="cx-maps-brand";brand.innerHTML='<span class="cx-map-pin">📍</span><strong>Google Maps · COOPEX</strong><small>Natal / RN</small>';
+const brand=document.createElement("div");brand.className="cx-maps-brand";brand.innerHTML='<span class="cx-map-pin">📍</span><strong>CoopEX Maps</strong>';
 inside.insertBefore(brand,inside.firstChild);
 const nav=document.createElement("nav");nav.className="cx-map-nav";
 const tabs=[["explorar","⌕","Explorar"],["rotas","↗","Rotas"],["camadas","▱","Camadas"]];
