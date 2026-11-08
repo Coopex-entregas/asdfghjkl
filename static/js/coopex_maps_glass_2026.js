@@ -104,7 +104,7 @@ if(stopsPanel)waypointObserver.observe(stopsPanel,{childList:true});
 wireWaypointDnD();
 
 const coopBox=document.createElement("div");coopBox.id="cxCoopSearch";coopBox.className="glass";
-coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisar cooperado..." aria-label="Pesquisar cooperado" autocomplete="off"><div id="cxCoopHits" hidden></div>';
+coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisar cooperado..." aria-label="Pesquisar cooperado" autocomplete="off"><button id="cxCoopClear" type="button" aria-label="Limpar pesquisa do cooperado" title="Limpar pesquisa" hidden>×</button><div id="cxCoopHits" hidden></div>';
 document.body.append(coopBox);
 // Uma única barra responsiva: cooperados | clima | filtros | Voltar.
 const topDock=document.createElement("div");topDock.id="cxTopControlDock";
@@ -113,7 +113,10 @@ document.body.append(topDock);
 for(const element of [coopBox,$("ui")?.querySelector(".weather.glass"),$("ui")?.querySelector(".filters.glass"),$("ui")?.querySelector(".back-link")]){
  if(element)topDock.append(element);
 }
-const coopInput=coopBox.querySelector("input"),coopHits=coopBox.querySelector("#cxCoopHits");
+const coopInput=coopBox.querySelector("input"),coopHits=coopBox.querySelector("#cxCoopHits"),coopClear=coopBox.querySelector("#cxCoopClear");
+function syncCoopClear(){coopClear.hidden=!coopInput.value.trim()}
+function clearCoopQuery(){coopInput.value="";closeCoopHits();syncCoopClear()}
+coopClear.addEventListener("click",()=>{clearCoopQuery();coopInput.focus()});
 let cooperados=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[];
 // Resultados fora da barra para que o overflow do topo não esconda a lista.
 document.body.append(coopHits);
@@ -132,8 +135,8 @@ function positionCoopHits(){
 function closeCoopHits(){coopHits.hidden=true;coopInput.setAttribute("aria-expanded","false")}
 function chooseCooperado(person){
  if(!person)return;
- coopInput.value=person.nome||"Cooperado";
- closeCoopHits();
+ // Após localizar, liberar a pesquisa para outro cooperado sem fechar a ficha.
+ clearCoopQuery();
  const selected=window.COOPEX_MAP_ACTIONS?.selectCooperado;
  if(typeof selected==="function")selected(person.id);
  const map=window.COOPEX_GOOGLE_NATIVE;
@@ -144,6 +147,7 @@ function chooseCooperado(person){
 }
 function renderCoopHits(){
  const query=coopNormalize(coopInput.value);
+ syncCoopClear();
  coopHits.replaceChildren();
  if(!query){closeCoopHits();return}
  const matches=cooperados.filter(i=>
