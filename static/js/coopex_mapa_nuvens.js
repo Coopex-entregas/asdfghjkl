@@ -4,18 +4,52 @@
 (()=>{
 "use strict";
 let map=null,overlays=[],timer=0,loading=false,firstLoad=true,previousKey="",lastLoad=0;
+let precipitationLayer=null;
+function precipitationFrame(hoursAgo=1){
+ const d=new Date(Date.now()-hoursAgo*3600000);
+ return d.getUTCFullYear()+String(d.getUTCMonth()+1).padStart(2,"0")+
+ String(d.getUTCDate()).padStart(2,"0")+String(d.getUTCHours()).padStart(2,"0");
+}
+function installPrecipitation(){
+ if(!map||precipitationLayer||!google.maps.ImageMapType)return;
+ // WeatherAPI oferece mosaicos globais por hora, gratuitos e sem chave.
+ // O mosaico representa precipitação estimada por modelo, não radar observado.
+ precipitationLayer=new google.maps.ImageMapType({
+  name:"Precipitação estimada",
+  tileSize:new google.maps.Size(256,256),
+  opacity:.54,
+  minZoom:2,maxZoom:9,
+  getTile(coord,zoom,ownerDocument){
+   const holder=ownerDocument.createElement("div");
+   holder.style.cssText="width:256px;height:256px;pointer-events:none";
+   if(zoom<2||zoom>9)return holder;
+   const n=2**zoom,x=((coord.x%n)+n)%n,y=coord.y;
+   if(y<0||y>=n)return holder;
+   const img=ownerDocument.createElement("img");
+   img.alt="";img.draggable=false;
+   img.style.cssText="width:256px;height:256px;display:block;opacity:.82;pointer-events:none";
+   const base="https://weathermaps.weatherapi.com/precip/tiles/";
+   img.src=base+precipitationFrame(1)+"/"+zoom+"/"+x+"/"+y+".png";
+   img.onerror=()=>{img.onerror=null;img.src=base+precipitationFrame(2)+"/"+zoom+"/"+x+"/"+y+".png"};
+   holder.append(img);return holder;
+  }
+ });
+ // A camada é associada ao Google Maps; não altera posições dos cooperados.
+ map.overlayMapTypes.push(precipitationLayer);
+}
+
 const BRAZIL={south:-34,north:5.5,west:-74,east:-34};
 const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
 function clean(){overlays.forEach(o=>o.setMap(null));overlays=[]}
 function sample(){
  if(!map)return {key:"",locations:[]};
  const z=map.getZoom()||10,b=map.getBounds();
- if(!b||z<4||z>=15)return {key:"hidden",locations:[]};
+ if(!b||z<3||z>=15)return {key:"hidden",locations:[]};
  const ne=b.getNorthEast(),sw=b.getSouthWest();
  const south=Math.max(BRAZIL.south,sw.lat()),north=Math.min(BRAZIL.north,ne.lat());
  const west=Math.max(BRAZIL.west,sw.lng()),east=Math.min(BRAZIL.east,ne.lng());
  if(south>=north||west>=east)return {key:"outside",locations:[]};
- const rows=z>=12?4:3,cols=z>=12?5:4;
+ const rows=z<=7?6:z>=12?4:4,cols=z<=7?8:z>=12?5:5;
  const locations=[];
  for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
   const lat=south+(r+.5)/rows*(north-south),lng=west+(c+.5)/cols*(east-west);
@@ -49,7 +83,7 @@ function render(data){
    const pixel=this.getProjection()?.fromLatLngToDivPixel(new google.maps.LatLng(row.lat,row.lng));
    if(!pixel)return;
    this.node.style.transform="translate("+Math.round(pixel.x)+"px,"+Math.round(pixel.y)+"px) translate(-50%,-50%)";
-   const zoom=map.getZoom()||12;this.node.style.display=zoom<4||zoom>=15?"none":"";
+   const zoom=map.getZoom()||12;this.node.style.display=zoom<3||zoom>=15?"none":"";
   };
   overlay.onRemove=function(){this.node?.remove();this.node=null};
   overlay.setMap(map);overlays.push(overlay);
@@ -87,6 +121,7 @@ function schedule(){
 function setup(){
  if(map||!window.COOPEX_GOOGLE_NATIVE)return;
  map=window.COOPEX_GOOGLE_NATIVE;
+ installPrecipitation();
  map.addListener("idle",schedule);
  map.addListener("zoom_changed",()=>{
   if((map.getZoom()||0)>=15)clean();
