@@ -1836,3 +1836,67 @@ body #cxTrafficNotice[hidden]{display:none!important}
 body #cxTrafficNotice button{margin-left:auto!important;cursor:pointer!important;border:0!important;background:transparent!important;color:#28628b!important;font-size:20px!important}
 @media(min-width:700px){body.cx-stats-in-menu #cxLayersWidget{left:calc(min(508px,100dvw - 36px) + 15px)!important;bottom:18px!important}}
 @media(max-width:699px){body #cxLayersWidget{left:8px!important;bottom:84px!important}body #cxTrafficNotice{bottom:8px!important}}
+
+/* Barra superior: cooperados compacta | Trânsito | Clima | Estados | Voltar. */
+@media(min-width:960px){
+ body #cxTopControlDock{
+  grid-template-columns:minmax(125px,1fr) minmax(90px,107px) minmax(125px,175px) max-content 42px!important;
+  grid-template-rows:var(--cx-top-h,52px)!important;
+  column-gap:6px!important;row-gap:0!important;
+  align-items:center!important;flex-wrap:nowrap!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{
+  width:100%!important;min-width:0!important;max-width:100%!important;
+  flex:none!important;overflow:hidden!important;
+ }
+ body #cxTopControlDock>.weather.glass{min-width:0!important;max-width:175px!important;flex:none!important}
+}
+body #cxTopControlDock>#cxTrafficTopButton{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ gap:6px!important;min-width:0!important;padding:0 10px!important;
+ height:var(--cx-top-h,52px)!important;min-height:var(--cx-top-h,52px)!important;
+ max-height:var(--cx-top-h,52px)!important;
+ border:1px solid #fff!important;border-radius:18px!important;
+ background:linear-gradient(145deg,#f8fdfff2,#cceeffeb)!important;
+ box-shadow:0 6px 14px #20577d43,inset 0 2px 2px #fff!important;
+ backdrop-filter:blur(15px)!important;
+ color:#1c5375!important;font:700 12px/1.2 Arial,sans-serif!important;
+ cursor:pointer!important;white-space:nowrap!important;box-sizing:border-box!important;
+}
+body #cxTopControlDock>#cxTrafficTopButton[aria-expanded="true"]{
+ background:linear-gradient(145deg,#e0f2ff,#a9d9fa)!important;
+ border-color:#70b7ed!important;
+}
+body #cxTrafficTopButton .cx-traffic-indicator{color:#ed9a24!important;font-size:12px!important}
+body #cxTrafficPanel{
+ display:block!important;position:fixed!important;z-index:1800!important;
+ width:min(355px,calc(100dvw - 16px))!important;max-height:min(65dvh,420px)!important;
+ box-sizing:border-box!important;overflow-y:auto!important;
+ padding:15px!important;border:1px solid #fff!important;border-radius:20px!important;
+ background:linear-gradient(140deg,#f9fdfffa,#d8effbf7)!important;
+ color:#1d4567!important;
+ box-shadow:0 12px 30px #22557852,inset 0 2px 2px #fff!important;
+ backdrop-filter:blur(20px)!important;
+}
+body #cxTrafficPanel[hidden]{display:none!important}
+body #cxTrafficPanel .cx-traffic-panel-head{
+ display:flex!important;align-items:center!important;justify-content:space-between!important;
+ margin-bottom:10px!important;font-size:14px!important;
+}
+body #cxTrafficPanelClose{border:0!important;border-radius:9px!important;background:#edf8ff!important;font-size:22px!important;color:#276087!important;cursor:pointer!important}
+body #cxTrafficFindings{font-size:12px!important;line-height:1.55!important}
+body #cxTrafficFindings .cx-traffic-slow-row{padding:11px 0!important;border-bottom:1px solid #bdd9e8!important;display:flex!important;flex-direction:column!important;gap:3px!important}
+body #cxTrafficFindings .cx-traffic-slow-row strong{color:#b05e0f!important}
+body #cxTrafficPanel .cx-traffic-sound{display:flex!important;align-items:center!important;gap:8px!important;margin:13px 0!important;font-size:12px!important}
+body #cxTrafficPanel .cx-traffic-help{color:#557b8f!important;font-size:10px!important;line-height:1.45!important}
+@media(min-width:700px) and (max-width:959px){
+ body #cxTopControlDock>#cxTrafficTopButton{flex:0 0 94px!important;height:45px!important;min-height:45px!important}
+ body #cxTopControlDock>#cxCoopSearch{flex:1 1 130px!important;max-width:260px!important}
+}
+@media(max-width:699px){
+ body #cxTopControlDock>#cxTrafficTopButton{order:2!important;flex:0 0 90px!important;height:41px!important;min-height:41px!important}
+ body #cxTopControlDock>#cxCoopSearch{order:1!important;flex:1 1 160px!important}
+ body #cxTopControlDock>.weather.glass{order:3!important}
+ body #cxTopControlDock>.filters.glass{order:4!important}
+ body #cxTopControlDock>.back-link{order:5!important}
+}
