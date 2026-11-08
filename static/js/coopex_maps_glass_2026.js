@@ -259,6 +259,7 @@ search.addEventListener("input",()=>{
  syncSearchStage();
 });
 search.addEventListener("focus",()=>{
+ if(activeTab==="explorar"&&!search.value.trim())panel.classList.add("cx-search-history-open");
  results.dataset.cxHistoryOpen="yes";
  syncSearchStage();
  if(activeTab==="explorar"&&!search.value.trim()){
