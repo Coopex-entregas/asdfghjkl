@@ -51,8 +51,12 @@ function destination(p,name,googlePlace=null){
  if(!placeMarker)placeMarker=new google.maps.Marker({map:googleMap,position:placePoint,title:placePoint.label});
  else{placeMarker.setPosition(placePoint);placeMarker.setTitle(placePoint.label);placeMarker.setMap(googleMap)}
  googleMap.panTo(placePoint);googleMap.setZoom(Math.max(googleMap.getZoom()||0,15));
- info("Local selecionado: "+placePoint.label);
+ info("");
  hideRoutes();
+ // Pesquisa e destinos sincronizados com a ficha que foi selecionada no mapa.
+ if(field)field.value=placePoint.label;
+ const mirror=document.getElementById("cxDestinationMirror");
+ if(mirror)mirror.value=placePoint.label;
  window.dispatchEvent(new CustomEvent("coopex:place-selected",{detail:{point:placePoint}}));
  showPlaceDetails(placePoint,googlePlace);
 }
@@ -539,7 +543,26 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   googleMap.addListener("tilesloaded",finishGoogleLoad);
   window.dispatchEvent(new CustomEvent("coopex:google-native-ready"));
   geocoder=new google.maps.Geocoder();streetPanorama=googleMap.getStreetView();suggestions();
-  googleMap.addListener("click",event=>{
+  googleMap.addListener("click",async event=>{
+   if(event.placeId){
+    event.stop();
+    const position=event.latLng?{lat:event.latLng.lat(),lng:event.latLng.lng()}:null;
+    try{
+     const {Place}=await google.maps.importLibrary("places");
+     const place=new Place({id:event.placeId});
+     await place.fetchFields({fields:["location","displayName","formattedAddress"]});
+     const p=place.location||position;
+     if(!p)throw Error("Sem coordenadas");
+     const lat=typeof p.lat==="function"?p.lat():p.lat;
+     const lng=typeof p.lng==="function"?p.lng():p.lng;
+     destination({lat,lng},place.displayName||place.formattedAddress||"Local selecionado",place);
+    }catch(error){
+     console.warn("CoopEX: não foi possível carregar os dados do local:",error);
+     if(position)destination(position,"Local selecionado");
+     info("Detalhes adicionais indisponíveis para este local.");
+    }
+    return;
+   }
    if(event.latLng&&document.body.classList.contains("cx-address-mode"))
     destination({lat:event.latLng.lat(),lng:event.latLng.lng()},"Ponto marcado no mapa");
   });
