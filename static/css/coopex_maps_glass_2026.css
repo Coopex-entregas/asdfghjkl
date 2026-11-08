@@ -2008,3 +2008,58 @@ body #cxUnifiedResults .cx-history-row .cx-history-edit{
  body #cxTopControlDock>#cxCoopSearch{min-width:0!important;max-width:none!important}
  body #cxTopControlDock>#cxTrafficTopButton{flex:0 0 auto!important}
 }
+
+/* 08/11: visual refinado, histórico igual à caixa Google e busca dos cooperados legível. */
+body #cxUnifiedResults .cx-history-icon{
+ display:grid!important;place-items:center!important;flex:0 0 38px!important;
+ width:38px!important;height:38px!important;border-radius:50%!important;
+ background:#daf3fa!important;color:#087b91!important;
+ box-shadow:inset 0 1px 2px #fff!important;
+}
+body #cxUnifiedResults .cx-history-icon svg{width:22px!important;height:22px!important}
+body #cxUnifiedResults .cx-history-clock{background:#eff1f4!important;color:#586674!important}
+body #cxUnifiedResults .cx-history-row{min-height:62px!important;border-radius:13px!important;align-items:center!important}
+body #cxUnifiedResults .cx-history-row .cx-drawer-hit{
+ min-height:62px!important;gap:12px!important;padding:8px 11px!important;
+ background:transparent!important;box-shadow:none!important;border:0!important;
+}
+body #cxUnifiedResults .cx-history-row .cx-drawer-hit strong{font-size:14px!important;font-weight:650!important;color:#293f50!important}
+body #cxUnifiedResults .cx-history-row .cx-drawer-hit small{font-size:12px!important;max-width:none!important}
+body #cxUnifiedResults .cx-history-edit{font-size:13px!important;padding:9px 11px!important;color:#007d98!important}
+body #addressPanel.cx-search-idle #cxUnifiedResults:not([hidden]){
+ left:0!important;right:0!important;width:100%!important;box-sizing:border-box!important;
+ background:linear-gradient(155deg,rgba(255,255,255,.98),rgba(239,249,255,.96))!important;
+ backdrop-filter:blur(26px) saturate(165%)!important;
+ -webkit-backdrop-filter:blur(26px) saturate(165%)!important;
+ border:1px solid rgba(255,255,255,.97)!important;
+ box-shadow:0 13px 30px rgba(30,76,114,.25),inset 0 1px 2px #fff!important;
+}
+body #cxTopControlDock>#cxCoopSearch{overflow:visible!important;isolation:isolate!important}
+body #cxCoopSearch #cxCoopInput{font-size:14px!important;letter-spacing:0!important;font-weight:600!important}
+body #cxCoopHits{z-index:1999!important;box-sizing:border-box!important;min-width:100%!important}
+@media (min-width:1280px){
+ body #cxTopControlDock{
+  display:grid!important;grid-template-columns:minmax(245px,1fr) 88px minmax(150px,195px) max-content 44px!important;
+  column-gap:7px!important;row-gap:0!important;align-items:center!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{
+  grid-column:1!important;width:100%!important;min-width:0!important;
+  max-width:none!important;justify-self:stretch!important;overflow:visible!important;
+ }
+ body #cxTopControlDock>#cxTrafficTopButton{grid-column:2!important;width:88px!important;min-width:88px!important;max-width:88px!important}
+ body #cxTopControlDock>.weather.glass{grid-column:3!important;width:100%!important;min-width:0!important;max-width:195px!important}
+ body #cxTopControlDock>.filters.glass{grid-column:4!important}
+ body #cxTopControlDock>.back-link{grid-column:5!important}
+}
+@media (min-width:960px) and (max-width:1279px){
+ body #cxTopControlDock{
+  display:flex!important;flex-wrap:wrap!important;justify-content:flex-end!important;
+  gap:6px!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{flex:1 1 250px!important;max-width:none!important;min-width:180px!important}
+ body #cxTopControlDock>.weather.glass{flex:0 1 165px!important}
+}
+@media (max-width:959px){
+ body #cxTopControlDock>#cxCoopSearch{overflow:visible!important;min-width:155px!important}
+ body #cxCoopInput{font-size:13px!important}
+}
