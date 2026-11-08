@@ -370,3 +370,21 @@ body .cx-drawer-edge{
  body.cx-map-sidebar-closed #ui>.stats{max-width:calc(100dvw - 18px)!important;bottom:7px!important}
  body.cx-map-sidebar-closed #ui>.toolbar{left:9px!important;bottom:66px!important}
 }
+
+/* Botão de retorno acompanha as ferramentas, sem ficar atrás do menu */
+body #ui>.back-link,body.cx-address-mode #ui>.back-link{
+ display:grid!important;place-items:center!important;
+ position:fixed!important;left:var(--cx-floating-left)!important;right:auto!important;
+ top:auto!important;bottom:126px!important;z-index:760!important;
+ width:38px!important;min-width:38px!important;height:38px!important;min-height:38px!important;
+ border-radius:12px!important;font-size:18px!important;
+ color:#245883!important;background:rgba(233,247,255,.82)!important;
+ border:1px solid white!important;box-shadow:0 5px 13px #184e7736!important;
+ transition:left .22s ease!important;
+}
+body #ui>.toolbar{bottom:76px!important}
+@media(max-width:1000px){body #ui>.back-link,body.cx-address-mode #ui>.back-link{bottom:115px!important}}
+@media(max-width:700px){
+ body.cx-map-sidebar-closed #ui>.back-link,body.cx-map-sidebar-closed.cx-address-mode #ui>.back-link{left:9px!important;bottom:111px!important}
+ body:not(.cx-map-sidebar-closed) #ui>.back-link,body.cx-address-mode:not(.cx-map-sidebar-closed) #ui>.back-link{left:auto!important;right:5px!important;bottom:153px!important;width:35px!important;height:35px!important}
+}
