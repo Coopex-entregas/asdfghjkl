@@ -38,10 +38,34 @@ let routeInFlight=false,placeSequenceInfo=0;
 let routeAlternatives=[],routePolylines=[],routeStops=[],routeMode="DRIVING",searchFocus="destination";
 const queryNorm=t=>String(t||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const historyKey="coopex-map-own-search-history-v1";
-function readHistory(){try{return JSON.parse(localStorage.getItem(historyKey)||"[]").filter(s=>typeof s==="string").slice(0,20)}catch(e){return []}}
+const HISTORY_LIMIT=30;
+function historyCutoff(){
+ const d=new Date();d.setMonth(d.getMonth()-3);return d.getTime();
+}
+function readHistory(){
+ try{
+  const now=Date.now(),cutoff=historyCutoff();
+  const raw=JSON.parse(localStorage.getItem(historyKey)||"[]");
+  const valid=(Array.isArray(raw)?raw:[]).map(item=>{
+   if(typeof item==="string")return {q:item,ts:now}; // migração sem perder buscas antigas
+   return item&&typeof item.q==="string"?{q:item.q,ts:Number(item.ts)}:null;
+  }).filter(item=>item&&item.q.trim()&&Number.isFinite(item.ts)&&item.ts>=cutoff&&item.ts<=now+60000)
+   .slice(0,HISTORY_LIMIT);
+  localStorage.setItem(historyKey,JSON.stringify(valid));
+  return valid;
+ }catch(error){return []}
+}
 function remember(q){
- // Apenas texto digitado pelo operador, não resultados/descrições recebidos do Google.
- try{localStorage.setItem(historyKey,JSON.stringify([q,...readHistory().filter(x=>queryNorm(x)!==queryNorm(q))].slice(0,20)))}catch(e){}
+ const label=String(q||"").trim();if(!label)return;
+ try{
+  const items=[{q:label,ts:Date.now()},...readHistory().filter(item=>queryNorm(item.q)!==queryNorm(label))].slice(0,HISTORY_LIMIT);
+  localStorage.setItem(historyKey,JSON.stringify(items));
+ }catch(error){}
+}
+function forgetHistory(q){
+ try{
+  localStorage.setItem(historyKey,JSON.stringify(readHistory().filter(item=>queryNorm(item.q)!==queryNorm(q))));
+ }catch(error){}
 }
 function info(t){if(message)message.textContent=t;}
 let cxSearchNotice=null;
@@ -61,14 +85,21 @@ function hideRoutes(){
  if(routesHost){routesHost.replaceChildren();routesHost.hidden=true}
  window.dispatchEvent(new Event("coopex:routes-cleared"));
 }
-function exitDirections(){
- routeGeneration++;
+function invalidateRoutes(){
+ // Uma edição em qualquer endereço invalida imediatamente o trajeto anterior.
+ ++routeGeneration;
  routeActive=false;
+ routeInFlight=false;
+ const button=document.getElementById("routeOpen");if(button)button.disabled=false;
+ hideRoutes();
+}
+function exitDirections(){
+ invalidateRoutes();
  routeStops=[];
  const result=document.getElementById("cxStopInput");if(result)result.value="";
  const originField=document.getElementById("cxRouteOrigin");if(originField)originField.value="";
  const destField=document.getElementById("cxDestinationMirror");if(destField)destField.value="";
- hideRoutes();stopRender();
+ stopRender();
 }
 function destination(p,name,googlePlace=null){
  if(!p||!Number.isFinite(+p.lat)||!Number.isFinite(+p.lng)){info("Local sem GPS válido.");return}
@@ -191,7 +222,7 @@ function makeHit(primary,secondary,color,onClick){
  const b=document.createElement("button");b.type="button";b.className="cx-drawer-hit";
  const dot=document.createElement("span");dot.className="cx-hit-dot";dot.style.background=color;
  const body=document.createElement("span");const title=document.createElement("strong");title.textContent=primary;
- const sub=document.createElement("small");sub.textContent=secondary;body.append(title,sub);b.append(dot,body);b.onclick=onClick;hits.append(b);
+ const sub=document.createElement("small");sub.textContent=secondary;body.append(title,sub);b.append(dot,body);b.onclick=onClick;hits.append(b);return b;
 }
 function suggestions(){
  if(!hits)return;
@@ -203,15 +234,30 @@ function suggestions(){
   d.append(title,note);hits.append(d);
  }
  let count=0;
- for(const qSaved of readHistory().filter(s=>!q||queryNorm(s).includes(queryNorm(q))).slice(0,5)){
-  count++;makeHit(qSaved,"Pesquisa anterior da COOPEX","#5284b5",()=>{
-  field.value=qSaved;++placeSequence;clearTimeout(placeTimer);hits.hidden=true;searchAddress();
- });
+ for(const saved of readHistory().filter(item=>!q||queryNorm(item.q).includes(queryNorm(q))).slice(0,q?6:8)){
+  const label=saved.q;
+  const button=makeHit(label,"Pesquisa recente · COOPEX","#5284b5",()=>{
+   field.value=label;++placeSequence;clearTimeout(placeTimer);
+   hits.hidden=true;searchAddress();
+  });
+  button.classList.add("cx-history-hit");
+  const remove=document.createElement("button");
+  remove.type="button";remove.className="cx-history-remove";
+  remove.textContent="×";remove.title="Excluir do histórico";
+  remove.setAttribute("aria-label","Excluir "+label+" do histórico");
+  remove.addEventListener("click",event=>{
+   event.preventDefault();event.stopPropagation();forgetHistory(label);suggestions();
+   hits.hidden=false;
+  });
+  // O botão Excluir não pode ficar dentro de outro botão (HTML inválido).
+  const row=document.createElement("div");row.className="cx-history-row";
+  button.replaceWith(row);row.append(button,remove);
+  count++;
  }
  if(q.length>=2){count++;makeHit("Pesquisar no Google",q,"#187aff",()=>{
   ++placeSequence;clearTimeout(placeTimer);hits.hidden=true;searchAddress();
  })}
- if(!count)info("Nenhum resultado local. Pressione Enter para pesquisar o endereço no Google.");
+ if(!count&&q)info("Nenhum resultado local. Pressione Enter para pesquisar o endereço no Google.");
 }
 document.addEventListener("click",event=>{
  const b=event.target.closest?.("[data-cx-mode]");
@@ -433,7 +479,7 @@ async function calculateRoutes(){
  routeActive=true;origin.hidden=false;routeInFlight=true;
  const button=document.getElementById("routeOpen");button.disabled=true;
  try{
-  const destinationText=(document.getElementById("cxDestinationMirror")?.value||field.value||"").trim();
+  const destinationText=(document.getElementById("cxDestinationMirror")?.value||"").trim();
   if(!origin.value.trim()||!destinationText)throw Error("Preencha partida e destino.");
   const [a,b]=await Promise.all([resolveLocation(origin.value),resolveLocation(destinationText)]);
   info("");
@@ -457,6 +503,7 @@ async function calculateRoutes(){
    option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
   showRoute(0);
+  remember(origin.value);remember(destinationText);
   cxAddPrices(routeAlternatives,a,b,generation,routeStops.length>0);
   window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives,origin:a,destination:b}}));
   info("");
@@ -559,6 +606,15 @@ document.addEventListener("keydown",event=>{
 },true);
 document.getElementById("addStop")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();addRouteStop()},true);
 document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();routeStops=[];stopRender();hideRoutes();window.dispatchEvent(new Event("coopex:routes-changed"))},true);
+// Os resultados só são válidos enquanto os dois endereços permanecem preenchidos.
+for(const input of [origin,document.getElementById("cxDestinationMirror")]){
+ if(!input)continue;
+ input.addEventListener("input",invalidateRoutes);
+ input.addEventListener("change",()=>{
+  if(!origin.value.trim()||!document.getElementById("cxDestinationMirror")?.value.trim())invalidateRoutes();
+ });
+}
+window.addEventListener("coopex:route-fields-cleared",invalidateRoutes);
 window.addEventListener("coopex:exit-directions",exitDirections);
 window.addEventListener("coopex:map-data",suggestions);
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
