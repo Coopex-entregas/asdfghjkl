@@ -129,7 +129,12 @@ async function showPlaceDetails(point,knownPlace=null){
   const hours=(knownPlace.currentOpeningHours?.weekdayDescriptions||knownPlace.regularOpeningHours?.weekdayDescriptions||[]);
   if(hours.length){
    const box=document.createElement("details");box.className="cx-place-hours";
-   const summary=document.createElement("summary");summary.textContent=(typeof openStatus==="boolean"?(openStatus?"Aberto agora":"Fechado agora")+" · ":"")+"Horários de funcionamento";box.append(summary);
+   const summary=document.createElement("summary");summary.className="cx-hours-summary";
+   const status=document.createElement("span");status.className="cx-hours-status";status.textContent=typeof openStatus==="boolean"?(openStatus?"Aberto agora":"Fechado agora"):"Horários";
+   status.dataset.open=openStatus===true?"yes":openStatus===false?"no":"unknown";
+   const label=document.createElement("span");label.className="cx-hours-label";label.textContent=" · Horários de funcionamento";
+   const chevron=document.createElement("span");chevron.className="cx-hours-chevron";chevron.setAttribute("aria-hidden","true");chevron.textContent="⌄";
+   summary.append(status,label,chevron);box.append(summary);
    for(const item of hours){const line=document.createElement("div");line.textContent=item;box.append(line)}
    metadata.append(box);
   }
@@ -354,8 +359,17 @@ function openStreet(){
  });
 }
 function resetSearch(){
- if(field)field.value="";if(placeMarker)placeMarker.setMap(null);placePoint=null;hideRoutes();document.getElementById("cxPlaceDetails")?.remove();suggestions();
- info("Pesquisa limpa. Os cooperados continuam visíveis.");
+ ++placeSequenceInfo; // Cancela qualquer ficha pendente e impede que a busca antiga reapareça.
+ ++placeSequence;
+ clearTimeout(placeTimer);
+ if(streetPanorama?.getVisible())streetPanorama.setVisible(false);
+ if(field)field.value="";
+ if(placeMarker)placeMarker.setMap(null);
+ placePoint=null;hideRoutes();
+ document.getElementById("cxPlaceDetails")?.remove();
+ if(hits){hits.replaceChildren();hits.hidden=true}
+ info("");
+ window.dispatchEvent(new Event("coopex:search-reset"));
 }
 // Places API (New): previsões reais do Google quando autorizada, sem duplicar a busca.
 let placeToken=null,placeTimer=null,placeSequence=0,placesDisabled=false;
@@ -402,6 +416,20 @@ clear?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagatio
 document.getElementById("cxDrawerMenu")?.addEventListener("click",()=>{field.value="";suggestions()});
 document.getElementById("routeOpen")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();calculateRoutes()},true);
 document.getElementById("streetView")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();openStreet()},true);
+document.addEventListener("keydown",event=>{
+ if(event.key!=="Escape"||event.repeat||event.defaultPrevented)return;
+ if(streetPanorama?.getVisible()){
+  event.preventDefault();event.stopImmediatePropagation();
+  streetPanorama.setVisible(false);
+  return;
+ }
+ const panel=document.getElementById("addressPanel");
+ const hasSearch=!!field?.value.trim()||!!document.getElementById("cxPlaceDetails");
+ if(hasSearch||panel?.classList.contains("cx-place-view")){
+  event.preventDefault();event.stopImmediatePropagation();
+  resetSearch();
+ }
+},true);
 document.getElementById("addStop")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();addRouteStop()},true);
 document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();routeStops=[];stopRender();hideRoutes();window.dispatchEvent(new Event("coopex:routes-changed"))},true);
 window.addEventListener("coopex:map-data",suggestions);
