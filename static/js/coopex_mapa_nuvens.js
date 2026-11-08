@@ -36,6 +36,11 @@ function installPrecipitation(){
  });
  // A camada é associada ao Google Maps; não altera posições dos cooperados.
  map.overlayMapTypes.push(precipitationLayer);
+ if(!document.getElementById("cxPrecipitationCredit")){
+  const credit=document.createElement("div");credit.id="cxPrecipitationCredit";
+  credit.innerHTML='Chuva prevista · <a href="https://www.weatherapi.com/" target="_blank" rel="noopener noreferrer">WeatherAPI</a> + <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>';
+  document.body.append(credit);
+ }
 }
 
 const BRAZIL={south:-34,north:5.5,west:-74,east:-34};
@@ -127,6 +132,13 @@ function setup(){
   if((map.getZoom()||0)>=15)clean();
   schedule();
  });
+ // As previsões são horárias: renovar os tiles sem recarregar a página.
+ setInterval(()=>{
+  if(document.hidden||!precipitationLayer)return;
+  const index=map.overlayMapTypes.getArray().indexOf(precipitationLayer);
+  if(index>=0)map.overlayMapTypes.removeAt(index);
+  precipitationLayer=null;installPrecipitation();
+ },60*60*1000);
  schedule();
  setInterval(refresh,20*60*1000);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)schedule()});
