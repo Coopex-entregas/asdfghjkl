@@ -332,6 +332,65 @@ function showRoute(idx){
  if(!bounds.isEmpty())googleMap.fitBounds(bounds,{top:80,bottom:70,left:Math.min(480,window.innerWidth*.30),right:70});
  window.dispatchEvent(new CustomEvent("coopex:selected-route",{detail:{route:selected,index:idx}}));
 }
+
+/* Preços e Rotas — utiliza a tabela existente no financeiro (/api/precos).
+   O preço por bairro prevalece; sem correspondência, utiliza o valor por km configurado. */
+let cxPricesRequest=null;
+const cxMoney=n=>Number(n).toLocaleString("pt-BR",{style:"currency",currency:"BRL"});
+const cxNorm=s=>String(s||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase().replace(/[^a-z0-9 ]/g," ").replace(/\s+/g," ").trim();
+function cxFetchPrices(){
+ if(!cxPricesRequest)cxPricesRequest=fetch("/api/precos",{
+  credentials:"same-origin",cache:"no-store",
+  headers:{"Accept":"application/json","X-Requested-With":"fetch"}
+ }).then(async response=>{
+  if(!response.ok)throw Error("Tabela de preços inacessível");
+  const data=await response.json();
+  if(!data.ok)throw Error(data.error||"Tabela de preços não autorizada");
+  return data;
+ }).catch(error=>{cxPricesRequest=null;throw error});
+ return cxPricesRequest;
+}
+async function cxBairros(point){
+ const {results=[]}=await geocoder.geocode({location:{lat:point.lat,lng:point.lng}});
+ const names=new Set();
+ for(const result of results.slice(0,6)){
+  for(const c of result.address_components||[]){
+   if(c.types?.some(type=>["sublocality_level_1","sublocality","neighborhood","administrative_area_level_3"].includes(type)))
+    names.add(cxNorm(c.long_name));
+  }
+ }
+ return [...names].filter(Boolean);
+}
+async function cxAddPrices(routes,from,to,generation,withStops){
+ try{
+  const data=await cxFetchPrices();
+  if(generation!==routeGeneration)return;
+  const [origins,destinations]=withStops?[[],[]]:await Promise.all([cxBairros(from),cxBairros(to)]);
+  if(generation!==routeGeneration)return;
+  const rows=(data.items||[]).map(x=>({o:cxNorm(x.origem),d:cxNorm(x.destino),price:Number(x.valor)}));
+  const fixed=rows.find(x=>origins.includes(x.o)&&destinations.includes(x.d))
+   ||rows.find(x=>origins.includes(x.d)&&destinations.includes(x.o));
+  const perKm=Number(data.per_km);
+  routes.forEach((route,i)=>{
+   const option=routesHost?.querySelectorAll(".cx-route-option")[i];
+   if(!option)return;
+   option.querySelector(".cx-route-price")?.remove();
+   const value=fixed?fixed.price:perKm>0?perKm*Number(route.distanceMeters||0)/1000:NaN;
+   const p=document.createElement("span");p.className="cx-route-price";
+   p.textContent=Number.isFinite(value)&&value>=0
+    ?cxMoney(value)+(fixed?" · Tabela por bairro":" · Calculado por km")
+    :"Valor não configurado";
+   option.append(p);
+  });
+ }catch(error){
+  if(generation!==routeGeneration)return;
+  console.warn("COOPEX Preços e Rotas:",error);
+  routesHost?.querySelectorAll(".cx-route-option").forEach(option=>{
+   const p=document.createElement("span");p.className="cx-route-price";
+   p.textContent="Valor indisponível";option.append(p);
+  });
+ }
+}
 async function calculateRoutes(){
  if(!googleMap||routeInFlight)return;
  const generation=++routeGeneration;
@@ -362,6 +421,7 @@ async function calculateRoutes(){
    option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
   showRoute(0);
+  cxAddPrices(routeAlternatives,a,b,generation,routeStops.length>0);
   window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives,origin:a,destination:b}}));
   info("");
  }catch(e){info("Não foi possível calcular: "+String(e.message||e));console.warn("COOPEX Routes",e)}
