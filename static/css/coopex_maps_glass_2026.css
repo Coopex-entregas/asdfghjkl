@@ -1463,3 +1463,19 @@ body #cxTopControlDock>.weather.glass:focus-visible{outline:3px solid #1678d2!im
 @media(max-width:959px){
  body #addressPanel.cx-search-idle:not(.cx-directions-mode){top:3px!important}
 }
+
+/* Movimento das nuvens conforme direção do vento estimada pela previsão. */
+@keyframes cx-cloud-drift-wind{
+ 0%{translate:0 0}
+ 100%{translate:var(--cx-cloud-wind-x,16px) var(--cx-cloud-wind-y,0px)}
+}
+.cx-cloud-location .cx-cloud-shape,.cx-cloud-location .cx-cloud-rain{
+ animation-name:cx-cloud-drift-wind!important;
+ animation-duration:var(--cx-cloud-wind-duration,55s)!important;
+ animation-timing-function:ease-in-out!important;
+ animation-iteration-count:infinite!important;
+ animation-direction:alternate!important;
+}
+@media(prefers-reduced-motion:reduce){
+ .cx-cloud-location .cx-cloud-shape,.cx-cloud-location .cx-cloud-rain{animation:none!important}
+}
