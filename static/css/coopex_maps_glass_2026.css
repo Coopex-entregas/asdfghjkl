@@ -1978,3 +1978,33 @@ body.cx-street-visible #cxLayersWidget{display:none!important}
  }
  body #cxTopControlDock>#cxTrafficTopButton{width:76px!important;min-width:76px!important;padding:0 4px!important;font-size:10px!important}
 }
+
+/* Pesquisa Google: histórico imediato mesmo sem digitar; o menu não corta resultados. */
+body #addressPanel.cx-search-idle.cx-search-history-open,
+body #addressPanel.cx-search-idle:focus-within{
+ overflow:visible!important;
+}
+body #addressPanel.cx-search-idle.cx-search-history-open .cx-drawer-content,
+body #addressPanel.cx-search-idle:focus-within .cx-drawer-content{
+ overflow:visible!important;
+}
+body #addressPanel.cx-search-idle.cx-search-history-open #cxUnifiedResults:not([hidden]),
+body #addressPanel.cx-search-idle:focus-within #cxUnifiedResults:not([hidden]){
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ position:absolute!important;
+ left:0!important;right:0!important;top:calc(var(--cx-header-h,54px) + 6px)!important;
+ width:100%!important;max-height:min(490px,65dvh)!important;overflow:auto!important;
+ z-index:1400!important;
+ border:1px solid #fff!important;border-radius:18px!important;
+ background:rgba(247,252,255,.98)!important;
+ box-shadow:0 12px 32px rgba(31,77,111,.27)!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults[hidden]{display:none!important}
+body #cxUnifiedResults .cx-history-row .cx-history-remove,
+body #cxUnifiedResults .cx-history-row .cx-history-edit{
+ pointer-events:auto!important;position:relative!important;z-index:2!important;
+}
+@media(min-width:960px){
+ body #cxTopControlDock>#cxCoopSearch{min-width:0!important;max-width:none!important}
+ body #cxTopControlDock>#cxTrafficTopButton{flex:0 0 auto!important}
+}
