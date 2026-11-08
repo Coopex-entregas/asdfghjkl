@@ -131,14 +131,44 @@ function searchAddress(){
   remember(q);suggestions();
  });
 }
+function resolveLocation(value){
+ const query=String(value||"").trim();
+ if(!query)return Promise.reject(Error("Informe um endereço."));
+ const coordinates=query.match(/^(-?\d+(?:\.\d+)?)\s*,\s*(-?\d+(?:\.\d+)?)$/);
+ if(coordinates)return Promise.resolve({lat:Number(coordinates[1]),lng:Number(coordinates[2]),label:query});
+ const coop=lastItems.find(i=>queryNorm(i.nome)===queryNorm(query)&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng));
+ if(coop)return Promise.resolve({lat:+coop.lat,lng:+coop.lng,label:coop.nome});
+ if(!geocoder)return Promise.reject(Error("Geocodificação ainda indisponível."));
+ return new Promise((resolve,reject)=>geocoder.geocode({address:query+", Brasil"},(found,status)=>{
+  if(status!=="OK"||!found?.length){reject(Error("Endereço não localizado ("+status+"): "+query));return}
+  const p=found[0].geometry.location;resolve({lat:p.lat(),lng:p.lng(),label:found[0].formatted_address||query});
+ }));
+}
+async function addRouteStop(){
+ const input=document.getElementById("cxStopInput");const value=(input?.value||"").trim();
+ if(!value){info("Informe o endereço da parada.");input?.focus();return}
+ if(routeStops.length>=25){info("Máximo de 25 paradas.");return}
+ try{const location=await resolveLocation(value);routeStops.push(location);input.value="";stopRender();hideRoutes();info("Parada adicionada: "+location.label)}
+ catch(e){info(String(e.message||e))}
+}
+
 function stopRender(){
- if(stopCounter)stopCounter.textContent=String(routeStops.length);
- if(!stopHost)return;stopHost.replaceChildren();
- routeStops.forEach((p,i)=>{
-  const item=document.createElement("button");item.type="button";item.className="cx-stop-entry";
-  item.textContent=(i+1)+". "+(p.label||"Parada")+"  ×";
-  item.title="Remover esta parada";item.onclick=()=>{routeStops.splice(i,1);stopRender();hideRoutes()};
-  stopHost.append(item);
+ stopCounter.textContent=String(routeStops.length);
+ stopHost.replaceChildren();
+ routeStops.forEach((place,index)=>{
+  const line=document.createElement("div");line.className="cx-stop-line";
+  const name=document.createElement("span");name.textContent=(index+1)+". "+place.label;name.title=place.label;line.append(name);
+  const controls=[
+   ["↑","Mover para cima",()=>{[routeStops[index-1],routeStops[index]]=[routeStops[index],routeStops[index-1]]},index===0],
+   ["↓","Mover para baixo",()=>{[routeStops[index+1],routeStops[index]]=[routeStops[index],routeStops[index+1]]},index===routeStops.length-1],
+   ["✎","Editar",()=>{const input=document.getElementById("cxStopInput");if(input){input.value=place.label;input.focus()}routeStops.splice(index,1)},false],
+   ["×","Excluir",()=>routeStops.splice(index,1),false]
+  ];
+  for(const [symbol,title,run,disabled] of controls){
+   const control=document.createElement("button");control.type="button";control.textContent=symbol;control.title=title;control.disabled=disabled;
+   control.onclick=()=>{run();stopRender();hideRoutes();info("Ordem ou parada alterada. Recalcule a rota.");};line.append(control);
+  }
+  stopHost.append(line);
  });
 }
 function currentCoords(){
@@ -165,45 +195,35 @@ function showRoute(idx){
  if(!bounds.isEmpty())googleMap.fitBounds(bounds,{top:80,bottom:70,left:Math.min(410,window.innerWidth*.25),right:70});
 }
 async function calculateRoutes(){
- if(!googleMap)return;
- if(!routeActive){routeActive=true;origin.hidden=false;document.getElementById("routeOpen").textContent="🚘 Calcular";info("Informe A (origem) e pesquise B (destino). Os km e o tempo aparecem depois de calcular.");return}
- if(routeInFlight)return;routeInFlight=true;document.getElementById("routeOpen").disabled=true;
+ if(!googleMap||routeInFlight)return;
+ routeActive=true;origin.hidden=false;routeInFlight=true;
+ const button=document.getElementById("routeOpen");button.disabled=true;
  try{
-  if(!placePoint){await new Promise((resolve,reject)=>{
-    const q=(field.value||"").trim();if(!q){reject(Error("Pesquise primeiro um destino."));return}
-    geocoder.geocode({address:q+", Brasil"},(r,status)=>{
-      if(status==="OK"&&r?.length){const p=r[0].geometry.location;destination({lat:p.lat(),lng:p.lng()},r[0].formatted_address);resolve()}
-      else reject(Error("Destino não encontrado: "+status));
-    });
-  })}
-  if(!origin.value.trim())throw Error("Informe a rua e o número da origem A.");
-  const first=await resolveOrigin();if(!first||!placePoint)throw Error("Defina a origem e o destino.");
+  const destinationText=(document.getElementById("cxDestinationMirror")?.value||field.value||"").trim();
+  if(!origin.value.trim()||!destinationText)throw Error("Informe origem A e destino B.");
+  const [a,b]=await Promise.all([resolveLocation(origin.value),resolveLocation(destinationText)]);
+  info("Calculando percurso, km e duração no Google...");
   const {Route}=await google.maps.importLibrary("routes");
-  info("Calculando quilômetros e rotas pelas vias do Google...");
-  const opts={origin:first,destination:{lat:placePoint.lat,lng:placePoint.lng},travelMode:"DRIVING",
-   fields:["path","distanceMeters","durationMillis","description","routeLabels"],computeAlternativeRoutes:routeStops.length===0,routingPreference:"TRAFFIC_AWARE",
-   language:"pt-BR",region:"BR"};
-  if(routeStops.length)opts.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng},stopover:true}));
-  const result=await Route.computeRoutes(opts);
-  const routes=(result.routes||[]).slice(0,3);if(!routes.length)throw Error("Não há rota disponível para esse trajeto.");
-  hideRoutes();routeAlternatives=routes.map(r=>({
-   distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",
-   path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():+p.lat,lng:typeof p.lng==="function"?p.lng():+p.lng}))
-  }));
+  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:"DRIVING",routingPreference:"TRAFFIC_AWARE",computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","description","routeLabels"],language:"pt-BR",region:"BR"};
+  if(routeStops.length)options.intermediates=routeStops.map(p=>({location:{lat:p.lat,lng:p.lng}}));
+  const response=await Route.computeRoutes(options);
+  const found=(response.routes||[]).slice(0,3);
+  if(!found.length)throw Error("Nenhum trajeto disponível.");
+  hideRoutes();
+  routeAlternatives=found.map(r=>({distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():Number(p.lat),lng:typeof p.lng==="function"?p.lng():Number(p.lng)}))}));
   routesHost.hidden=false;
-  routeAlternatives.forEach((route,i)=>{
-   const line=new google.maps.Polyline({path:route.path,map:googleMap,strokeColor:i===0?"#1379ee":"#94a5bb",strokeOpacity:i===0?1:.7,strokeWeight:i===0?7:5,zIndex:i===0?100:1});
-   line.addListener("click",()=>showRoute(i));routePolylines.push(line);
-   const b=document.createElement("button");b.type="button";b.className="cx-route-option";
-   const kms=(route.distanceMeters/1000).toLocaleString("pt-BR",{maximumFractionDigits:1});
-   const mins=Math.round(route.durationMillis/60000);
-   const title=document.createElement("strong");title.textContent=route.description|| (i===0?"Melhor rota":"Alternativa "+(i+1));
-   const metrics=document.createElement("small");metrics.textContent=kms+" km  ·  "+mins+" min";
-   b.append(title,metrics);
-   b.onclick=()=>showRoute(i);routesHost.append(b);
+  routeAlternatives.forEach((r,i)=>{
+   const poly=new google.maps.Polyline({map:googleMap,path:r.path,strokeColor:i===0?"#1479ee":"#9caec5",strokeOpacity:1,strokeWeight:i===0?7:5,zIndex:i===0?90:2});
+   poly.addListener("click",()=>showRoute(i));routePolylines.push(poly);
+   const option=document.createElement("button");option.type="button";option.className="cx-route-option";
+   const title=document.createElement("strong");title.textContent=r.description||("Rota "+(i+1));
+   const meta=document.createElement("small");meta.textContent=(r.distanceMeters/1000).toLocaleString("pt-BR",{maximumFractionDigits:1})+" km · "+Math.round(r.durationMillis/60000)+" min";
+   option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
-  showRoute(0);info(routeStops.length?"Rota completa pelas vias, passando pelas paradas.":"Selecione uma rota: azul é a ativa; cinza são alternativas.");
- }catch(e){info("Rotas: "+String(e.message||e).slice(0,180)+". Confira a Routes API e as restrições da chave.");console.warn("COOPEX Routes",e)}finally{routeInFlight=false;document.getElementById("routeOpen").disabled=false}
+  showRoute(0);
+  info(routeStops.length?"Rota pelas paradas pronta. Reordene ou edite e recalcule.":"Clique na linha ou alternativa para mudar de rota.");
+ }catch(e){info("Não foi possível calcular: "+String(e.message||e));console.warn("COOPEX Routes",e)}
+ finally{routeInFlight=false;button.disabled=false}
 }
 function openStreet(){
  if(!googleMap)return;
@@ -266,12 +286,7 @@ clear?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagatio
 document.getElementById("cxDrawerMenu")?.addEventListener("click",()=>{field.value="";suggestions()});
 document.getElementById("routeOpen")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();calculateRoutes()},true);
 document.getElementById("streetView")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();openStreet()},true);
-document.getElementById("addStop")?.addEventListener("click",e=>{
- e.preventDefault();e.stopImmediatePropagation();
- if(!placePoint){info("Pesquise ou selecione uma localização para adicionar como parada.");return}
- if(routeStops.length>=25){info("Limite de 25 paradas.");return}
- routeStops.push({...placePoint});stopRender();hideRoutes();info("Parada adicionada. Escolha o próximo destino.");
-},true);
+document.getElementById("addStop")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();addRouteStop()},true);
 document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();routeStops=[];stopRender();hideRoutes()},true);
 window.addEventListener("coopex:map-data",suggestions);
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
