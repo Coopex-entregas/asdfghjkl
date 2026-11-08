@@ -53,6 +53,7 @@ function destination(p,name,googlePlace=null){
  googleMap.panTo(placePoint);googleMap.setZoom(Math.max(googleMap.getZoom()||0,15));
  info("Local selecionado: "+placePoint.label);
  hideRoutes();
+ window.dispatchEvent(new CustomEvent("coopex:place-selected",{detail:{point:placePoint}}));
  showPlaceDetails(placePoint,googlePlace);
 }
 async function showPlaceDetails(point,knownPlace=null){
@@ -200,7 +201,11 @@ function stopRender(){
  stopCounter.textContent=String(routeStops.length);
  stopHost.replaceChildren();
  routeStops.forEach((place,index)=>{
-  const line=document.createElement("div");line.className="cx-stop-line";
+  const line=document.createElement("div");line.className="cx-stop-line";line.draggable=true;
+  const handle=document.createElement("span");handle.className="cx-stop-handle";handle.textContent="⠿";line.append(handle);
+  line.addEventListener("dragstart",e=>{e.dataTransfer?.setData("text/plain",String(index))});
+  line.addEventListener("dragover",e=>e.preventDefault());
+  line.addEventListener("drop",e=>{e.preventDefault();const from=Number(e.dataTransfer?.getData("text/plain"));if(!Number.isInteger(from)||from<0||from>=routeStops.length||from===index)return;const item=routeStops.splice(from,1)[0];routeStops.splice(index,0,item);stopRender();hideRoutes();window.dispatchEvent(new Event("coopex:routes-changed"))});
   const name=document.createElement("span");name.textContent=(index+1)+". "+place.label;name.title=place.label;line.append(name);
   const controls=[
    ["↑","Mover para cima",()=>{[routeStops[index-1],routeStops[index]]=[routeStops[index],routeStops[index-1]]},index===0],
@@ -236,7 +241,8 @@ function showRoute(idx){
  const selected=routeAlternatives[idx];if(!selected)return;
  const bounds=new google.maps.LatLngBounds();
  for(const p of selected.path||[])bounds.extend({lat:p.lat,lng:p.lng});
- if(!bounds.isEmpty())googleMap.fitBounds(bounds,{top:80,bottom:70,left:Math.min(410,window.innerWidth*.25),right:70});
+ if(!bounds.isEmpty())googleMap.fitBounds(bounds,{top:80,bottom:70,left:Math.min(480,window.innerWidth*.30),right:70});
+ window.dispatchEvent(new CustomEvent("coopex:selected-route",{detail:{route:selected,index:idx}}));
 }
 async function calculateRoutes(){
  if(!googleMap||routeInFlight)return;
@@ -244,9 +250,9 @@ async function calculateRoutes(){
  const button=document.getElementById("routeOpen");button.disabled=true;
  try{
   const destinationText=(document.getElementById("cxDestinationMirror")?.value||field.value||"").trim();
-  if(!origin.value.trim()||!destinationText)throw Error("Informe origem A e destino B.");
+  if(!origin.value.trim()||!destinationText)throw Error("Preencha partida e destino.");
   const [a,b]=await Promise.all([resolveLocation(origin.value),resolveLocation(destinationText)]);
-  info("Calculando percurso, km e duração no Google...");
+  info("");
   const {Route}=await google.maps.importLibrary("routes");
   const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:b.lat,lng:b.lng},travelMode:routeMode,computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","description","routeLabels"],language:"pt-BR",region:"BR"};
   if(routeMode==="DRIVING"||routeMode==="TWO_WHEELER")options.routingPreference="TRAFFIC_AWARE";
@@ -266,6 +272,7 @@ async function calculateRoutes(){
    option.append(title,meta);option.onclick=()=>showRoute(i);routesHost.append(option);
   });
   showRoute(0);
+  window.dispatchEvent(new CustomEvent("coopex:routes-ready",{detail:{routes:routeAlternatives}}));
   info("");
  }catch(e){info("Não foi possível calcular: "+String(e.message||e));console.warn("COOPEX Routes",e)}
  finally{routeInFlight=false;button.disabled=false}
