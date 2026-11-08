@@ -230,6 +230,10 @@ function calculateWhenReady(){
 destMirror.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopPropagation();calculateWhenReady()}});
 org?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();destMirror.focus();calculateWhenReady()}});
 destMirror.addEventListener("change",calculateWhenReady);
+org?.addEventListener("change",calculateWhenReady);
+for(const node of [org,destMirror]){
+ node?.addEventListener("blur",()=>{if(activeTab==="rotas")calculateWhenReady()});
+}
 window.addEventListener("coopex:routes-changed",()=>{
  if(activeTab==="rotas"&&org.value.trim()&&destMirror.value.trim())calculateWhenReady();
 });
@@ -247,7 +251,7 @@ function syncSearchStage(){
  panel.classList.toggle("cx-search-idle",idle);
  panel.classList.toggle("cx-search-suggesting",idle&&typed&&document.activeElement===search);
  panel.classList.toggle("cx-place-view",hasPlace);
- if(activeTab==="explorar")results.hidden=!(typed||document.activeElement===search);
+ if(activeTab==="explorar")results.hidden=!(typed||document.activeElement===search||results.dataset.cxHistoryOpen==="yes");
  syncStatsLocation();
 }
 search.addEventListener("input",()=>{
@@ -255,6 +259,7 @@ search.addEventListener("input",()=>{
  syncSearchStage();
 });
 search.addEventListener("focus",()=>{
+ results.dataset.cxHistoryOpen="yes";
  syncSearchStage();
  if(activeTab==="explorar"&&!search.value.trim()){
   results.hidden=false;
@@ -263,6 +268,13 @@ search.addEventListener("focus",()=>{
  }
 });
 search.addEventListener("blur",()=>setTimeout(syncSearchStage,180));
+document.addEventListener("pointerdown",event=>{
+ if(activeTab!=="explorar")return;
+ if(search.contains(event.target)||results.contains(event.target))return;
+ results.dataset.cxHistoryOpen="no";
+ if(!search.value.trim())results.hidden=true;
+});
+
 function returnToEmptySearch(){
  $("cxPlaceDetails")?.remove();
  search.value="";
@@ -301,7 +313,7 @@ function setTab(id){
   if(search.value&&!destMirror.value)destMirror.value=search.value;
   $("routeOpen").textContent="Rotas";
   $("routeOpen").hidden=false;
-  $("cxUnifiedResults").hidden=true;
+  $("cxUnifiedResults").hidden=true;$("cxUnifiedResults").dataset.cxHistoryOpen="no";
   if(org?.value.trim())destMirror.focus();else org?.focus();
  }else{
   if(org)org.hidden=true;
