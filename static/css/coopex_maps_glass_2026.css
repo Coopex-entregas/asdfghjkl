@@ -241,3 +241,46 @@ body .cx-place-gallery img{height:172px;width:min(270px,88%);flex:none;max-width
 .cx-place-link{display:block;width:fit-content;font-size:12px;color:#1266ac;text-decoration:none}
 .cx-place-shortcuts{display:flex;gap:5px;position:sticky;bottom:0;background:rgba(228,244,254,.78);padding:7px 0 0;backdrop-filter:blur(12px)}
 @media(max-width:700px){body .cx-place-details{max-height:42dvh!important}body .cx-place-gallery img{height:120px;width:210px}}
+
+/* Interface funcional de direções, ordem por arraste e Street View do Google */
+body #cxRouteEditor{display:flex;flex-direction:column;gap:10px;overflow:visible;position:relative}
+body #cxRouteEditor[hidden]{display:none!important}
+#cxRouteEditor .cx-travel-modes{display:flex!important;justify-content:space-around;align-items:center;flex:none;gap:3px;border-bottom:2px solid rgba(32,74,104,.20);padding:5px 0 9px}
+#cxRouteEditor .cx-travel-modes button{height:42px;min-width:44px;flex:1;border:0;border-radius:25px;background:transparent;font-size:22px;cursor:pointer;box-shadow:none}
+#cxRouteEditor .cx-travel-modes button.active{background:rgba(108,207,230,.42);color:#02668a}
+#cxRouteEditor #cxRouteOrigin{width:100%!important;margin:0!important}
+#cxRouteEditor .cx-origin-mount:before{content:"◯";color:#144b78;margin-right:10px}
+#cxRouteEditor .cx-origin-mount{display:flex;align-items:center;gap:4px}
+#cxRouteEditor .cx-origin-mount input{flex:1;min-width:0}
+#cxRouteEditor .cx-dest-row{background:#fff}
+#cxRouteEditor #cxSwapRoute{position:absolute;right:15px;top:108px;min-height:32px;width:35px;padding:0;font-size:23px;z-index:4}
+#cxRouteEditor .cx-stop-input-row{margin:3px 0 0}
+#cxRouteEditor .cx-stop-input-row input{border:0;background:transparent;font-weight:700}
+#cxRouteEditor .cx-stop-input-row button{border:0;border-radius:50%;box-shadow:none;background:transparent;font-weight:500}
+body #cxRoutes{overflow:auto!important;max-height:44dvh!important;flex:none!important;scrollbar-width:thin}
+body #cxRoutes .cx-route-option{width:100%;border:0!important;border-bottom:1px solid #d3e7f3!important;border-left:5px solid transparent!important;border-radius:0!important;background:rgba(255,255,255,.60)!important;box-shadow:none!important;text-align:left;align-items:flex-start!important;padding:16px!important;color:#304d63!important;font-size:13px}
+body #cxRoutes .cx-route-option.active{border-left-color:#00879a!important;background:#d9efff!important}
+body #cxRoutes .cx-route-option strong{font-size:13px}
+.cx-stop-handle{cursor:grab;font-size:22px!important;width:25px!important;flex:none!important;color:#788998}
+.cx-stop-line[draggable=true]{cursor:grab}
+.cx-stop-line:active{cursor:grabbing}
+body #cxUnifiedResults{flex:0 1 auto!important;max-height:35dvh!important;overflow:auto!important}
+body #addressPanel[data-cx-tab=rotas] .cx-drawer-stops{margin-top:4px}
+body #addressPanel[data-cx-tab=rotas] .cx-drawer-top{display:none!important}
+body #addressPanel[data-cx-tab=rotas] .cx-drawer-actions{display:none!important}
+body #addressPanel[data-cx-tab=rotas] #cxUnifiedResults:not(:has(.cx-drawer-hit)){display:none!important}
+body #addressPanel[data-cx-tab=rotas] .cx-drawer-content{gap:4px!important}
+body #addressPanel[data-cx-tab=explorar] .cx-drawer-stops,body #addressPanel[data-cx-tab=explorar] #stopsList{display:none!important}
+body #addressPanel[data-cx-tab=explorar] #addStop,body #addressPanel[data-cx-tab=explorar] #routeOpen{display:none!important}
+body #addressPanel[data-cx-tab=explorar] .cx-drawer-actions{justify-content:flex-start}
+body #addressPanel[data-cx-tab=explorar] #streetView{min-width:140px}
+#cxStreetPreview{position:fixed;right:62px;bottom:18px;z-index:850;width:150px;height:100px;overflow:hidden;display:flex;flex-direction:column;border:3px solid #fff;border-radius:15px;background:rgba(219,239,250,.95);box-shadow:0 4px 15px #10435a5c;cursor:pointer;padding:0}
+#cxStreetPreview[hidden]{display:none!important}
+#cxStreetPreviewImage{position:relative;width:100%;flex:1;min-height:0;overflow:hidden;pointer-events:none}
+#cxStreetPreviewImage .gm-style{pointer-events:none!important}
+#cxStreetPreview span{font-size:11px;font-weight:800;color:#205581;line-height:19px;background:rgba(241,249,255,.94)}
+#cxStreetPreview.cx-street-unavailable{opacity:.6}
+.cx-route-maplabel{position:absolute;transform:translate(-50%,-50%);background:rgba(255,255,255,.95);border:1px solid #b9d9f1;border-radius:7px;box-shadow:0 2px 9px #3c709c62;display:flex;flex-direction:column;align-items:center;gap:2px;padding:6px 10px;color:#33506b;font-weight:750;white-space:nowrap;cursor:pointer;pointer-events:auto;font-size:12px}
+.cx-route-maplabel.selected{color:#fff;background:#163ce5;border-color:#1537d5;box-shadow:0 3px 9px #1743b785}
+.cx-route-maplabel small{font-size:10px;color:inherit;font-weight:500}
+@media(max-width:700px){#cxStreetPreview{bottom:58px;right:53px;width:110px;height:76px}body #cxRoutes{max-height:35dvh!important}}
