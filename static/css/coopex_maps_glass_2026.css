@@ -1552,3 +1552,61 @@ body #cxTopControlDock>.weather.glass:focus-visible{outline:3px solid #1678d2!im
  to{translate:var(--w-x,12px) var(--w-y,0px)}
 }
 @media(prefers-reduced-motion:reduce){.cx-weather-map-symbol{animation:none!important}}
+
+/* Street View pode ocupar toda a tela sem perder o panorama ao recolher o menu. */
+body.cx-street-sidebar-collapsed #addressPanel.cx-unified-drawer,
+body.cx-street-sidebar-collapsed.cx-address-mode #addressPanel.cx-unified-drawer{
+ transform:translateX(calc(-100% - 35px))!important;
+ visibility:hidden!important;
+ pointer-events:none!important;
+}
+body.cx-street-sidebar-collapsed #cxReopenMap,
+body.cx-street-sidebar-collapsed.cx-map-sidebar-closed #cxReopenMap{
+ display:grid!important;
+ place-items:center!important;
+ visibility:visible!important;
+ pointer-events:auto!important;
+ position:fixed!important;
+ top:16px!important;
+ left:14px!important;
+ width:43px!important;
+ height:43px!important;
+ z-index:1800!important;
+ background:linear-gradient(150deg,rgba(255,255,255,.97),rgba(207,234,252,.94))!important;
+ border:1px solid #fff!important;
+ border-radius:15px!important;
+ box-shadow:0 5px 16px #235b8545,inset 0 2px 2px #fff!important;
+}
+body.cx-street-sidebar-collapsed #cxTopControlDock{
+ left:75px!important;
+}
+body .cx-route-option .cx-route-price{
+ display:block!important;
+ margin-top:5px!important;
+ padding-top:5px!important;
+ border-top:1px solid rgba(114,163,195,.28)!important;
+ color:#16805e!important;
+ font-weight:800!important;
+ font-size:13px!important;
+ line-height:1.35!important;
+}
+body #addressPanel.cx-directions-mode #cxRoutes .cx-route-price{
+ white-space:normal!important;
+}
+/* Faixa superior: busca de cooperados respeita o menu lateral de 508px. */
+@media(min-width:960px){
+ body:has(#addressPanel:not(.cx-search-idle)) #cxTopControlDock{
+  left:calc(min(508px,100dvw - 36px) + 17px)!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{
+  min-width:0!important;
+  width:100%!important;
+  max-width:100%!important;
+  flex:1 1 auto!important;
+  overflow:hidden!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch input{
+  min-width:0!important;
+  max-width:100%!important;
+ }
+}
