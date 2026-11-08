@@ -267,11 +267,27 @@ search.addEventListener("focus",()=>{
   window.dispatchEvent(new Event("coopex:history-focus"));
  }
 });
+// Clicar em qualquer parte da caixa do Maps abre Casa, Trabalho e histórico,
+// inclusive no ícone de pesquisa, sem precisar digitar primeiro.
+const searchBar=search.closest(".cx-drawer-top");
+function openSearchHistory(){
+ if(activeTab!=="explorar")return;
+ results.dataset.cxHistoryOpen="yes";
+ results.hidden=false;
+ panel.classList.add("cx-search-history-open");
+ window.dispatchEvent(new Event("coopex:history-focus"));
+ syncSearchStage();
+}
+searchBar?.addEventListener("click",event=>{
+ if(event.target.closest("#addressClose,#cxDrawerMenu,#cxQuickDirections"))return;
+ if(!search.value.trim())openSearchHistory();
+});
 search.addEventListener("blur",()=>setTimeout(syncSearchStage,180));
 document.addEventListener("pointerdown",event=>{
  if(activeTab!=="explorar")return;
  if(search.contains(event.target)||results.contains(event.target))return;
  results.dataset.cxHistoryOpen="no";
+ panel.classList.remove("cx-search-history-open");
  if(!search.value.trim())results.hidden=true;
 });
 
