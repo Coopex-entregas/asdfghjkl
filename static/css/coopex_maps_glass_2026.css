@@ -167,3 +167,59 @@ body #details .detail-actions button{border-radius:12px!important;min-height:39p
 @media(max-width:700px){
  body #ui #details.details,body.cx-address-mode #ui #details.details{top:auto!important;bottom:54px!important;right:8px!important;left:auto!important;max-height:55dvh!important;width:min(340px,calc(100dvw - 16px))!important;padding:12px!important}
 }
+
+/* Topo Google COOPEX: busca dos cooperados, tempo e filtros na mesma linha */
+#cxCoopSearch{
+ position:fixed;z-index:890;top:12px;
+ left:calc(min(450px,100dvw - 54px) + 18px);
+ width:clamp(170px,20vw,295px);height:46px;
+ display:flex;align-items:center;gap:8px;padding:0 13px;
+ border:1px solid rgba(255,255,255,.98);border-radius:18px;
+ background:linear-gradient(145deg,rgba(222,245,255,.84),rgba(236,248,255,.67));
+ box-shadow:0 7px 23px rgba(23,94,145,.24),inset 0 2px 2px #fff;
+ backdrop-filter:blur(24px) saturate(170%);color:#1e6390;
+}
+#cxCoopSearch>span{font-size:23px}
+#cxCoopInput{flex:1;width:0;min-width:0;border:0;background:transparent;outline:0;color:#153d60;font-size:13px;font-weight:650}
+#cxCoopHits{position:absolute;top:calc(100% + 7px);left:0;right:0;display:flex;flex-direction:column;max-height:min(300px,60dvh);overflow:auto;border-radius:16px;border:1px solid white;background:rgba(239,250,255,.95);box-shadow:0 11px 25px #184f8060}
+#cxCoopHits[hidden]{display:none!important}
+#cxCoopHits button{padding:11px 13px;background:transparent;border:0;border-bottom:1px solid #d4e5f0;text-align:left;color:#19456a;font-size:12px;cursor:pointer}
+#cxCoopHits button:hover{background:#e0effd}
+body .weather.glass,body.cx-address-mode #ui>.weather.glass{
+ top:12px!important;bottom:auto!important;left:auto!important;
+ right:calc(14px + 300px)!important;width:245px!important;min-width:200px!important;
+ max-width:245px!important;transform:none!important;
+}
+body .filters.glass,body.cx-address-mode .filters.glass{
+ top:12px!important;right:14px!important;max-width:290px!important;width:auto!important;
+ height:46px!important;min-height:46px!important;white-space:nowrap!important;
+}
+body.cx-map-sidebar-closed #cxCoopSearch{left:75px}
+body.cx-map-sidebar-closed .weather.glass,body.cx-map-sidebar-closed.cx-address-mode #ui>.weather.glass{left:auto!important;right:calc(14px + 300px)!important}
+.cx-stop-input-row{display:flex;gap:5px;flex:none;padding:2px 0}
+.cx-stop-input-row input{flex:1;min-width:0;height:42px;padding:0 10px;border:1px solid #bfdbef;background:rgba(255,255,255,.85);border-radius:12px;color:#194566;font-size:12px}
+.cx-stop-input-row button,#cxSwapRoute{border-radius:12px;border:1px solid #fff;background:linear-gradient(145deg,#e9f7ff,#d2e9fa);box-shadow:0 4px 10px #2c67802a;cursor:pointer;color:#125a95;font-weight:800}
+.cx-stop-input-row button{min-width:40px;font-size:20px}
+#cxSwapRoute{min-height:36px;padding:6px 12px;font-size:12px}
+.cx-stop-line{display:flex;align-items:center;gap:4px;padding:7px 2px;border-bottom:1px solid #dfebf5}
+.cx-stop-line span{flex:1;white-space:nowrap;text-overflow:ellipsis;overflow:hidden;font-size:11px;color:#284c6f}
+.cx-stop-line button{flex:none;border:1px solid #fff;background:rgba(236,247,255,.83);border-radius:9px;min-width:28px;height:28px;color:#1b659d;cursor:pointer}
+.cx-stop-line button:disabled{opacity:.28}
+body .cx-route-option{display:flex!important;flex-direction:column!important;gap:5px!important}
+body .cx-route-option small{font-size:12px;color:#2362a4}
+@media(max-width:1450px) and (min-width:901px){
+ #cxCoopSearch{width:205px}
+ body .weather.glass,body.cx-address-mode #ui>.weather.glass{right:calc(12px + 290px)!important;width:200px!important;min-width:0!important}
+ body .filters.glass,body.cx-address-mode .filters.glass{right:12px!important;max-width:278px!important}
+}
+@media(max-width:1180px) and (min-width:701px){
+ #cxCoopSearch{width:185px}
+ body .weather.glass,body.cx-address-mode #ui>.weather.glass{top:65px!important;right:14px!important;width:235px!important}
+ body .filters.glass,body.cx-address-mode .filters.glass{top:12px!important}
+}
+@media(max-width:700px){
+ #cxCoopSearch{top:57px!important;left:auto!important;right:8px!important;width:min(230px,calc(100dvw - 70px));height:42px}
+ body.cx-map-sidebar-closed #cxCoopSearch{left:75px!important;right:auto!important}
+ body .weather.glass,body.cx-address-mode #ui>.weather.glass{top:auto!important;bottom:8px!important;right:8px!important;left:auto!important;width:auto!important;min-width:0!important;max-width:calc(100dvw - 16px)!important}
+ body .filters.glass,body.cx-address-mode .filters.glass{top:8px!important;right:8px!important;height:40px!important}
+}
