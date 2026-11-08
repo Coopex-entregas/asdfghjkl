@@ -1776,3 +1776,16 @@ body #addressPanel.cx-directions-mode .cx-stop-line.cx-route-drag-over{
  outline-offset:2px!important;
  background:rgba(189,221,250,.32)!important;
 }
+
+/* X da busca dos cooperados: só aparece enquanto há texto digitado. */
+body #cxCoopSearch #cxCoopClear{
+ display:grid!important;place-items:center!important;
+ flex:0 0 27px!important;width:27px!important;height:27px!important;
+ padding:0!important;margin:0!important;border:1px solid rgba(255,255,255,.96)!important;
+ border-radius:50%!important;background:rgba(240,249,255,.65)!important;
+ color:#28638d!important;font:22px/1 Arial,sans-serif!important;
+ cursor:pointer!important;box-shadow:inset 0 1px 2px #fff,0 2px 5px #2e71902a!important;
+ pointer-events:auto!important;
+}
+body #cxCoopSearch #cxCoopClear[hidden]{display:none!important}
+body #cxCoopSearch #cxCoopClear:hover{background:#dcefff!important}
