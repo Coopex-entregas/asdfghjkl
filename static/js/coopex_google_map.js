@@ -382,6 +382,38 @@ function stopRender(){
   stopHost.append(line);
  });
 }
+// Arrastar origem, destinos intermediários e destino final, como no Google Maps.
+let coopexReordering=false;
+async function reorderEntireRoute(from,to){
+ const fromField=document.getElementById("cxRouteOrigin");
+ const toField=document.getElementById("cxDestinationMirror");
+ if(!fromField||!toField)return;
+ const original=[{label:fromField.value.trim()},...routeStops.map(p=>({...p})),{label:toField.value.trim()}];
+ if(!original[0].label||!original[original.length-1].label){
+  info("Preencha partida e destino antes de mudar a ordem.");
+  return;
+ }
+ if(!Number.isInteger(from)||!Number.isInteger(to)||from<0||to<0||from>=original.length||to>=original.length||from===to)return;
+ if(coopexReordering)return;
+ coopexReordering=true;
+ try{
+  invalidateRoutes();
+  const moving=original.splice(from,1)[0];
+  original.splice(to,0,moving);
+  const intermediate=await Promise.all(original.slice(1,-1).map(async item=>{
+   if(Number.isFinite(item.lat)&&Number.isFinite(item.lng))return item;
+   return resolveLocation(item.label);
+  }));
+  fromField.value=original[0].label;
+  toField.value=original[original.length-1].label;
+  if(field)field.value=toField.value;
+  routeStops=intermediate;
+  stopRender();
+  window.dispatchEvent(new Event("coopex:routes-changed"));
+ }catch(error){info("Não foi possível mudar a ordem: "+String(error.message||error))}
+ finally{coopexReordering=false}
+}
+window.COOPEX_ROUTE_ACTIONS={...(window.COOPEX_ROUTE_ACTIONS||{}),reorder:reorderEntireRoute};
 function currentCoords(){
  const center=googleMap?.getCenter();
  return center?{lat:center.lat(),lng:center.lng()}:null;
