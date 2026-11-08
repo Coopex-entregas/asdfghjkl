@@ -140,3 +140,11 @@ body.cx-map-sidebar-closed .filters.glass{max-width:calc(100dvw - 440px)!importa
  100%{translate:22px 4px}
 }
 @media(prefers-reduced-motion:reduce){.cx-cloud-shape,.cx-cloud-rain{animation:none!important}}
+
+/* Sol reativo à temperatura, Lua conforme fase aproximada */
+body #weatherIcon{display:inline-grid!important;place-items:center!important;width:32px!important;height:32px!important;flex:none!important;font-family:"Segoe UI Symbol","Apple Color Emoji",sans-serif;font-size:27px!important;line-height:1!important;transition:color .25s,filter .25s!important}
+body #weatherIcon.cx-sun-warm{color:#ee9315!important;text-shadow:0 0 9px rgba(244,160,30,.35)}
+body #weatherIcon.cx-sun-hot{color:#ed442c!important;font-size:32px!important;font-weight:900!important;text-shadow:0 0 7px rgba(255,64,13,.78),0 0 17px rgba(255,104,26,.55);animation:cx-sun-heat 2.4s ease-in-out infinite}
+body #weatherIcon.cx-moon{filter:drop-shadow(0 0 7px rgba(255,245,201,.36))}
+@keyframes cx-sun-heat{0%,100%{filter:drop-shadow(0 0 3px #ff912b)}50%{filter:drop-shadow(0 0 11px #f65526)}}
+@media(prefers-reduced-motion:reduce){body #weatherIcon.cx-sun-hot{animation:none!important}}
