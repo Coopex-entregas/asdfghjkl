@@ -1,148 +1,97 @@
-/* Nuvens leves localizadas. Open-Meteo é MODELO, não radar de chuva observada.
-   Cobertura adaptativa do mapa em território brasileiro: grade regional dinâmica,
-   sem consultas a cada movimento e sem impedir visualização de GPS. */
+/* CoopEX Maps: condições por região do Brasil.
+   Fonte Open-Meteo: estimativas meteorológicas, não observações de radar. */
 (()=>{
 "use strict";
-let map=null,overlays=[],timer=0,loading=false,firstLoad=true,previousKey="",lastLoad=0;
-let precipitationLayer=null;
-function precipitationFrame(hoursAgo=1){
- const d=new Date(Date.now()-hoursAgo*3600000);
- return d.getUTCFullYear()+String(d.getUTCMonth()+1).padStart(2,"0")+
- String(d.getUTCDate()).padStart(2,"0")+String(d.getUTCHours()).padStart(2,"0");
+const BOX={s:-34,n:5.5,w:-74,e:-34};
+let map=null,overlays=[],timer=null,busy=false,latest="",lastTime=0;
+const cache=new Map();
+const emoji={sun:"☀️",partly:"🌤️",cloud:"☁️",rain:"🌧️",storm:"⛈️",snow:"🌨️",fog:"🌫️"};
+const names={sun:"Sol",partly:"Sol entre nuvens",cloud:"Nublado",rain:"Chuva prevista",storm:"Trovoada prevista",snow:"Neve prevista",fog:"Névoa"};
+function type(code,mm,cover){
+ if([71,73,75,77,85,86].includes(code))return "snow";
+ if([95,96,99].includes(code))return "storm";
+ if(mm>.08||[51,53,55,56,57,61,63,65,66,67,80,81,82].includes(code))return "rain";
+ if([45,48].includes(code))return "fog";
+ if(code===3||cover>=80)return "cloud";
+ if(code===1||code===2||cover>=28)return "partly";
+ return "sun";
 }
-function installPrecipitation(){
- if(!map||precipitationLayer||!google.maps.ImageMapType)return;
- // WeatherAPI oferece mosaicos globais por hora, gratuitos e sem chave.
- // O mosaico representa precipitação estimada por modelo, não radar observado.
- precipitationLayer=new google.maps.ImageMapType({
-  name:"Precipitação estimada",
-  tileSize:new google.maps.Size(256,256),
-  opacity:.54,
-  minZoom:2,maxZoom:9,
-  getTile(coord,zoom,ownerDocument){
-   const holder=ownerDocument.createElement("div");
-   holder.style.cssText="width:256px;height:256px;pointer-events:none";
-   if(zoom<2||zoom>9)return holder;
-   const n=2**zoom,x=((coord.x%n)+n)%n,y=coord.y;
-   if(y<0||y>=n)return holder;
-   const img=ownerDocument.createElement("img");
-   img.alt="";img.draggable=false;
-   img.style.cssText="width:256px;height:256px;display:block;opacity:.82;pointer-events:none";
-   const base="https://weathermaps.weatherapi.com/precip/tiles/";
-   img.src=base+precipitationFrame(1)+"/"+zoom+"/"+x+"/"+y+".png";
-   img.onerror=()=>{img.onerror=null;img.src=base+precipitationFrame(2)+"/"+zoom+"/"+x+"/"+y+".png"};
-   holder.append(img);return holder;
-  }
- });
- // A camada é associada ao Google Maps; não altera posições dos cooperados.
- map.overlayMapTypes.push(precipitationLayer);
- if(!document.getElementById("cxPrecipitationCredit")){
-  const credit=document.createElement("div");credit.id="cxPrecipitationCredit";
-  credit.innerHTML='Chuva prevista · <a href="https://www.weatherapi.com/" target="_blank" rel="noopener noreferrer">WeatherAPI</a> + <a href="https://open-meteo.com/" target="_blank" rel="noopener noreferrer">Open-Meteo</a>';
-  document.body.append(credit);
- }
+function clear(){for(const o of overlays)o.setMap(null);overlays=[]}
+function grid(){
+ const z=map?.getZoom()||0,bounds=map?.getBounds();
+ if(!bounds||z<3||z>=16)return {key:"hidden",points:[]};
+ const sw=bounds.getSouthWest(),ne=bounds.getNorthEast();
+ const south=Math.max(BOX.s,sw.lat()),north=Math.min(BOX.n,ne.lat());
+ const west=Math.max(BOX.w,sw.lng()),east=Math.min(BOX.e,ne.lng());
+ if(south>=north||west>=east)return {key:"outside",points:[]};
+ const rows=z<=6?6:z<=9?5:4,columns=z<=6?7:z<=9?6:5;
+ const dy=(north-south)/rows,dx=(east-west)/columns,points=[];
+ for(let y=0;y<rows;y++)for(let x=0;x<columns;x++)
+  points.push({lat:+(south+(y+.5)*dy).toFixed(3),lng:+(west+(x+.5)*dx).toFixed(3)});
+ return {z,key:points.map(p=>p.lat+","+p.lng).join("|"),points};
 }
-
-const BRAZIL={south:-34,north:5.5,west:-74,east:-34};
-const clamp=(x,a,b)=>Math.max(a,Math.min(b,x));
-function clean(){overlays.forEach(o=>o.setMap(null));overlays=[]}
-function sample(){
- if(!map)return {key:"",locations:[]};
- const z=map.getZoom()||10,b=map.getBounds();
- if(!b||z<3||z>=15)return {key:"hidden",locations:[]};
- const ne=b.getNorthEast(),sw=b.getSouthWest();
- const south=Math.max(BRAZIL.south,sw.lat()),north=Math.min(BRAZIL.north,ne.lat());
- const west=Math.max(BRAZIL.west,sw.lng()),east=Math.min(BRAZIL.east,ne.lng());
- if(south>=north||west>=east)return {key:"outside",locations:[]};
- const rows=z<=7?6:z>=12?4:4,cols=z<=7?8:z>=12?5:5;
- const locations=[];
- for(let r=0;r<rows;r++)for(let c=0;c<cols;c++){
-  const lat=south+(r+.5)/rows*(north-south),lng=west+(c+.5)/cols*(east-west);
-  locations.push({lat:+lat.toFixed(4),lng:+lng.toFixed(4)});
- }
- // Aproximar cache a ~1/3 da grade, evitando chamadas a cada pequena mudança.
- const dl=(north-south)/rows,dx=(east-west)/cols;
- const key=[Math.round(south/(dl||.01)),Math.round(west/(dx||.01)),Math.round(z)].join(":");
- return {key,locations};
-}
-function render(data){
- clean();
- if(!map||!window.google?.maps)return;
- for(const row of data){
-  if(row.rain<.08)continue; // Evitar símbolos para precipitação arredondada residual
+function draw(items){
+ clear();
+ for(const item of items){
+  const kind=type(item.code,item.mm,item.cloud);
   const overlay=new google.maps.OverlayView();
   overlay.onAdd=function(){
-   const el=document.createElement("div");
-   el.className="cx-cloud-location";
-   el.title="Estimativa de precipitação "+row.rain.toFixed(1)+" mm · Open-Meteo (modelo, não radar)";
-   el.style.opacity=String(clamp(.16+row.rain/11,.17,.43));
-   const radians=(row.windDir||0)*Math.PI/180,dx=Math.sin(radians)*18,dy=-Math.cos(radians)*18;
-   el.style.setProperty("--cx-cloud-wind-x",dx.toFixed(1)+"px");
-   el.style.setProperty("--cx-cloud-wind-y",dy.toFixed(1)+"px");
-   el.style.setProperty("--cx-cloud-wind-duration",clamp(78-row.windSpeed*3,23,85)+"s");
-   el.innerHTML='<span class="cx-cloud-shape">☁</span>'+(row.rain>=.3?'<span class="cx-cloud-rain">╱╱╱</span>':"");
-   this.node=el;this.getPanes().overlayLayer.append(el);
+   const el=document.createElement("span");el.className="cx-weather-map-symbol cx-weather-"+kind;
+   el.textContent=emoji[kind];
+   el.title=names[kind]+" · previsão Open-Meteo, não radar";
+   el.style.setProperty("--w-x",(Math.sin(item.wind*Math.PI/180)*15).toFixed(1)+"px");
+   el.style.setProperty("--w-y",(-Math.cos(item.wind*Math.PI/180)*15).toFixed(1)+"px");
+   this.el=el;this.getPanes().overlayLayer.append(el);
   };
   overlay.draw=function(){
-   if(!this.node)return;
-   const pixel=this.getProjection()?.fromLatLngToDivPixel(new google.maps.LatLng(row.lat,row.lng));
-   if(!pixel)return;
-   this.node.style.transform="translate("+Math.round(pixel.x)+"px,"+Math.round(pixel.y)+"px) translate(-50%,-50%)";
-   const zoom=map.getZoom()||12;this.node.style.display=zoom<3||zoom>=15?"none":"";
+   if(!this.el)return;
+   const pixel=this.getProjection()?.fromLatLngToDivPixel({lat:item.lat,lng:item.lng});
+   if(pixel){this.el.style.left=Math.round(pixel.x)+"px";this.el.style.top=Math.round(pixel.y)+"px";}
   };
-  overlay.onRemove=function(){this.node?.remove();this.node=null};
+  overlay.onRemove=function(){this.el?.remove();this.el=null};
   overlay.setMap(map);overlays.push(overlay);
  }
 }
 async function refresh(){
- if(!map||loading||document.hidden)return;
- const {key,locations}=sample();
- if(!locations.length){previousKey=key;clean();return}
- if(!firstLoad&&key===previousKey&&Date.now()-lastLoad<20*60*1000)return;
- previousKey=key;firstLoad=false;loading=true;
+ if(!map||busy||document.hidden)return;
+ const {points,key}=grid();if(!points.length){latest=key;clear();return}
+ if(key===latest&&Date.now()-lastTime<15*60*1000)return;
+ const cached=cache.get(key);
+ if(cached&&Date.now()-cached.when<15*60*1000){latest=key;lastTime=Date.now();draw(cached.items);return}
+ busy=true;latest=key;
  try{
-  const url="https://api.open-meteo.com/v1/forecast?latitude="+locations.map(x=>x.lat).join(",")+
-   "&longitude="+locations.map(x=>x.lng).join(",")+
-   "&current=precipitation,cloud_cover,wind_speed_10m,wind_direction_10m&forecast_days=1&timezone=auto";
-  const response=await fetch(url,{cache:"default"});
-  if(!response.ok)throw Error("Precipitation "+response.status);
-  const raw=await response.json(),parts=Array.isArray(raw)?raw:[raw];
-  // Não aplicar dados de uma região se o mapa já mudou para outra.
-  if(previousKey!==key)return;
-  render(locations.map((point,i)=>({
-   ...point,
-   rain:Math.max(0,Number(parts[i]?.current?.precipitation||0)),
-   windDir:Number(parts[i]?.current?.wind_direction_10m||0),
-   windSpeed:Number(parts[i]?.current?.wind_speed_10m||0)
-  })));
-  lastLoad=Date.now();
- }catch(error){console.debug("Nuvens por região indisponíveis:",error.message);clean()}
- finally{loading=false}
+  const q=new URLSearchParams({
+   latitude:points.map(p=>p.lat).join(","),
+   longitude:points.map(p=>p.lng).join(","),
+   current:"weather_code,cloud_cover,precipitation,wind_direction_10m",
+   forecast_days:"1",timezone:"UTC"
+  });
+  const response=await fetch("https://api.open-meteo.com/v1/forecast?"+q,{cache:"default"});
+  if(!response.ok)throw Error("Open-Meteo "+response.status);
+  const raw=await response.json(),rows=Array.isArray(raw)?raw:[raw];
+  if(key!==grid().key)return;
+  const items=points.map((p,i)=>({
+   ...p,code:Number(rows[i]?.current?.weather_code??0),
+   cloud:Number(rows[i]?.current?.cloud_cover??0),
+   mm:Number(rows[i]?.current?.precipitation??0),
+   wind:Number(rows[i]?.current?.wind_direction_10m??0)
+  }));
+  cache.set(key,{when:Date.now(),items});
+  if(cache.size>9)cache.delete(cache.keys().next().value);
+  lastTime=Date.now();draw(items);
+ }catch(e){console.warn("CoopEX: mapa meteorológico indisponível",e);lastTime=0}
+ finally{busy=false;if(grid().key!==key)schedule()}
 }
-function schedule(){
- clearTimeout(timer);
- timer=setTimeout(refresh,1100);
-}
-function setup(){
+function schedule(){clearTimeout(timer);timer=setTimeout(refresh,800)}
+function start(){
  if(map||!window.COOPEX_GOOGLE_NATIVE)return;
  map=window.COOPEX_GOOGLE_NATIVE;
- installPrecipitation();
  map.addListener("idle",schedule);
- map.addListener("zoom_changed",()=>{
-  if((map.getZoom()||0)>=15)clean();
-  schedule();
- });
- // As previsões são horárias: renovar os tiles sem recarregar a página.
- setInterval(()=>{
-  if(document.hidden||!precipitationLayer)return;
-  const index=map.overlayMapTypes.getArray().indexOf(precipitationLayer);
-  if(index>=0)map.overlayMapTypes.removeAt(index);
-  precipitationLayer=null;installPrecipitation();
- },60*60*1000);
- schedule();
- setInterval(refresh,20*60*1000);
+ map.addListener("zoom_changed",schedule);
  document.addEventListener("visibilitychange",()=>{if(!document.hidden)schedule()});
+ setInterval(()=>{lastTime=0;schedule()},20*60*1000);
+ schedule();
 }
-window.addEventListener("coopex:google-native-ready",setup);
-if(document.readyState==="complete")setup();else window.addEventListener("load",setup);
+window.addEventListener("coopex:google-native-ready",start);
+if(document.readyState==="complete")start();else window.addEventListener("load",start);
 })();
