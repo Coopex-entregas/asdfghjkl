@@ -439,12 +439,46 @@ document.querySelectorAll(".filters [data-filter]").forEach(button=>{
  button.setAttribute("aria-pressed",String(button.dataset.filter==="todos"));
  button.addEventListener("click",()=>selectGoogleStatus(button.dataset.filter));
 });
+const neighborhoodCache=new Map();
+let neighborhoodSelection="";
+function reverseNeighborhood(){
+ const entry=lastItems.find(i=>String(i.id)===String(selectedId));
+ if(!entry||!Number.isFinite(+entry.lat)||!Number.isFinite(+entry.lng))return;
+ if(!document.getElementById("details")?.classList.contains("visible"))return;
+ const lat=+entry.lat,lng=+entry.lng;
+ const key=lat.toFixed(4)+","+lng.toFixed(4),token=String(entry.id)+":"+key;
+ if(token===neighborhoodSelection)return;
+ neighborhoodSelection=token;
+ const label=document.getElementById("personArea");
+ if(neighborhoodCache.has(key)){if(label)label.textContent=neighborhoodCache.get(key);return}
+ if(!geocoder||neighborhoodCache.size>180)return;
+ if(label)label.textContent="Localizando bairro…";
+ geocoder.geocode({location:{lat,lng}},(results,status)=>{
+  if(neighborhoodSelection!==token)return;
+  let found="";
+  if(status==="OK"&&results?.length){
+   for(const result of results){
+    for(const component of result.address_components||[]){
+     if(component.types?.includes("sublocality_level_1")||component.types?.includes("neighborhood")){
+      found=component.long_name;break;
+     }
+    }
+    if(found)break;
+   }
+  }
+  if(!found)found=entry.endereco||"Bairro não identificado";
+  neighborhoodCache.set(key,found);
+  if(neighborhoodSelection===token&&label)label.textContent=found;
+ });
+}
+
 function onMapData(event){
  const detail=event.detail||{};
  if(Array.isArray(detail.items))lastItems=detail.items;
  selectedId=detail.selectedId;
  if(typeof detail.searchingAddress==="boolean")searchingAddress=detail.searchingAddress;
  updateMarkers(lastItems,selectedId);
+ if(selectedId!=null)reverseNeighborhood();else neighborhoodSelection="";
 }
 window.addEventListener("coopex:map-data",onMapData);
 window.addEventListener("coopex:map-mode",event=>{
@@ -452,6 +486,7 @@ window.addEventListener("coopex:map-mode",event=>{
  updateMode();
 });
 window.addEventListener("coopex:map-view",event=>{
+ if(document.body.classList.contains("cx-google-only"))return;
  if(!googleMap||syncingFromGoogle)return;
  const d=event.detail||{};
  if(!Number.isFinite(d.lat)||!Number.isFinite(d.lng))return;
