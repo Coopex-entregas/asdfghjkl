@@ -590,7 +590,7 @@ async function cxAddPrices(routes,waypoints,generation){
    }else{
     const headline=document.createElement("strong");
     headline.textContent="Total: "+cxMoney(total);
-    wrap.append(headline,breakdown);
+    wrap.append(headline);
    }
    option.append(wrap);
   }
@@ -761,6 +761,10 @@ for(const input of [origin,document.getElementById("cxDestinationMirror")]){
 window.addEventListener("coopex:route-fields-cleared",invalidateRoutes);
 window.addEventListener("coopex:exit-directions",exitDirections);
 window.addEventListener("coopex:map-data",suggestions);
+window.addEventListener("coopex:history-focus",()=>{
+ suggestions();if(hits)hits.hidden=false;
+ loadPreferences();
+});
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
 const markers=new Map(),lastPositions=new Map();
 let previewWindow=null;
