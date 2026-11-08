@@ -1610,3 +1610,53 @@ body #addressPanel.cx-directions-mode #cxRoutes .cx-route-price{
   max-width:100%!important;
  }
 }
+
+/* Previsão meteorológica: nuvens de vidro translúcidas sem bloquear o mapa. */
+.cx-weather-haze{
+ position:absolute!important;display:block!important;
+ transform:translate(-50%,-50%)!important;
+ pointer-events:none!important;user-select:none!important;overflow:visible!important;
+ z-index:0!important;isolation:isolate!important;filter:none!important;
+}
+.cx-weather-haze,.cx-weather-haze *{pointer-events:none!important}
+.cx-weather-haze-shape{
+ position:absolute!important;inset:0!important;display:block!important;
+ border-radius:50%!important;
+ background:
+  radial-gradient(ellipse 36% 39% at 30% 56%,rgba(230,237,244,.90),transparent 98%),
+  radial-gradient(ellipse 41% 43% at 51% 38%,rgba(250,252,255,.98),transparent 96%),
+  radial-gradient(ellipse 37% 36% at 69% 56%,rgba(215,227,238,.88),transparent 98%),
+  radial-gradient(ellipse 53% 40% at 49% 68%,rgba(229,238,246,.78),transparent 99%)!important;
+ box-shadow:none!important;filter:blur(11px)!important;
+ animation:cx-haze-drift 58s ease-in-out infinite alternate!important;
+}
+.cx-weather-haze-wet .cx-weather-haze-shape{
+ background:
+  radial-gradient(ellipse 36% 40% at 29% 54%,rgba(164,183,202,.77),transparent 99%),
+  radial-gradient(ellipse 40% 44% at 53% 40%,rgba(212,224,235,.93),transparent 99%),
+  radial-gradient(ellipse 42% 36% at 69% 60%,rgba(164,184,203,.80),transparent 99%),
+  radial-gradient(ellipse 52% 39% at 50% 67%,rgba(191,208,223,.83),transparent 99%)!important;
+}
+.cx-weather-haze-rain{
+ display:block!important;position:absolute!important;
+ left:13%!important;top:52%!important;width:74%!important;height:73%!important;
+ overflow:hidden!important;
+}
+.cx-weather-haze-rain i{
+ display:block!important;position:absolute!important;top:0!important;
+ width:2px!important;height:12px!important;border-radius:2px!important;
+ background:linear-gradient(to bottom,rgba(83,148,196,0),rgba(73,153,201,.85))!important;
+ transform:rotate(15deg)!important;animation:cx-haze-rain 1.7s linear infinite!important;
+}
+@keyframes cx-haze-drift{
+ from{translate:0 0}
+ to{translate:var(--cx-wind-x,18px) var(--cx-wind-y,0px)}
+}
+@keyframes cx-haze-rain{
+ 0%{translate:0 -14px;opacity:0}
+ 25%{opacity:.65}
+ 100%{translate:0 54px;opacity:0}
+}
+@media(prefers-reduced-motion:reduce){
+ .cx-weather-haze-shape,.cx-weather-haze-rain i{animation:none!important}
+}
