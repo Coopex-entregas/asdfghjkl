@@ -968,3 +968,100 @@ body #addressPanel.cx-directions-mode #cxQuickDirections{display:none!important}
   flex:0 0 42px!important;height:49px!important;min-height:49px!important;width:42px!important;
  }
 }
+
+/* Layout definitivo da barra superior: altura única e sem quebra no desktop. */
+@media(min-width:960px){
+ body{--cx-header-h:52px;--cx-header-x:10px;--cx-header-gap:7px}
+ body #addressPanel.cx-search-idle:not(.cx-directions-mode){
+  position:fixed!important;top:var(--cx-header-x)!important;left:var(--cx-header-x)!important;
+  width:clamp(265px,26vw,475px)!important;height:var(--cx-header-h)!important;
+  max-height:var(--cx-header-h)!important;min-height:0!important;bottom:auto!important;
+  border:0!important;background:transparent!important;box-shadow:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-content{
+  height:var(--cx-header-h)!important;max-height:var(--cx-header-h)!important;
+  min-height:0!important;padding:0!important;overflow:visible!important;
+  border:0!important;background:none!important;box-shadow:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top{
+  height:var(--cx-header-h)!important;min-height:var(--cx-header-h)!important;
+  max-height:var(--cx-header-h)!important;padding:3px 10px!important;
+  margin:0!important;width:100%!important;border-radius:18px!important;
+ }
+ body:has(#addressPanel.cx-search-idle) #cxTopControlDock{
+  left:calc(10px + clamp(265px,26vw,475px) + 7px)!important;
+ }
+ body:not(:has(#addressPanel.cx-search-idle)) #cxTopControlDock{
+  left:calc(min(450px,100dvw - 54px) + 14px)!important;
+ }
+ body.cx-map-sidebar-closed #cxTopControlDock{left:70px!important}
+ body #cxTopControlDock{
+  position:fixed!important;top:10px!important;right:10px!important;
+  height:52px!important;min-height:52px!important;max-height:52px!important;
+  width:auto!important;max-width:none!important;display:grid!important;
+  grid-template-columns:minmax(0,1fr) minmax(0,.74fr) max-content 42px!important;
+  grid-template-rows:52px!important;gap:7px!important;
+  align-items:stretch!important;align-content:stretch!important;
+  justify-content:stretch!important;flex-wrap:nowrap!important;overflow:visible!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch,
+ body #cxTopControlDock>.weather.glass,
+ body #cxTopControlDock>.filters.glass,
+ body #cxTopControlDock>.back-link{
+  position:relative!important;top:auto!important;left:auto!important;
+  right:auto!important;bottom:auto!important;transform:none!important;
+  width:100%!important;max-width:none!important;min-width:0!important;
+  min-height:52px!important;max-height:52px!important;height:52px!important;
+  margin:0!important;flex:none!important;border-radius:18px!important;
+  box-sizing:border-box!important;
+ }
+ body #cxTopControlDock>.filters.glass{
+  display:flex!important;gap:3px!important;white-space:nowrap!important;
+  padding:4px!important;overflow:hidden!important;
+ }
+ body #cxTopControlDock>.filters.glass .pill{
+  padding:5px clamp(5px,.55vw,11px)!important;font-size:11px!important;
+  white-space:nowrap!important;flex:none!important;min-width:0!important;
+  min-height:39px!important;
+ }
+ body #cxTopControlDock>.back-link{
+  width:42px!important;min-width:42px!important;max-width:42px!important;
+  display:grid!important;place-items:center!important;
+ }
+ body #cxTopControlDock>.weather.glass{
+  padding:5px 10px!important;display:flex!important;
+  align-items:center!important;white-space:nowrap!important;overflow:hidden!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{padding:0 10px!important}
+}
+@media(min-width:960px) and (max-width:1250px){
+ body #cxTopControlDock{grid-template-columns:minmax(0,1fr) minmax(0,.7fr) max-content 38px!important;gap:4px!important}
+ body #cxTopControlDock>.filters.glass .pill{font-size:10px!important;padding:5px!important}
+ body #cxTopControlDock>.back-link{width:38px!important;min-width:38px!important;max-width:38px!important}
+}
+/* Estado de pesquisa limpa: nunca manter o painel grande vazio. */
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-drawer-content{
+ height:auto!important;min-height:0!important;overflow:visible!important;
+}
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-maps-brand,
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-map-nav,
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-drawer-actions,
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-route-editor,
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-route-summary,
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-drawer-stops,
+body #addressPanel.cx-search-idle:not(.cx-directions-mode) .cx-drawer-message{display:none!important}
+/* Horários: status aberto/fechado com cor real e chevron à direita. */
+body #cxPlaceDetails .cx-place-hours{font-size:13px!important;line-height:1.5!important}
+body #cxPlaceDetails .cx-place-hours summary.cx-hours-summary{
+ display:flex!important;align-items:center!important;gap:4px!important;
+ list-style:none!important;margin:0!important;padding:7px 0!important;
+ font-size:13px!important;cursor:pointer!important;position:relative!important;
+}
+body #cxPlaceDetails .cx-place-hours summary.cx-hours-summary::marker{content:""!important}
+body #cxPlaceDetails .cx-place-hours summary.cx-hours-summary::-webkit-details-marker{display:none!important}
+body #cxPlaceDetails .cx-hours-status[data-open="no"]{color:#d32f2f!important;font-weight:800!important}
+body #cxPlaceDetails .cx-hours-status[data-open="yes"]{color:#128d58!important;font-weight:800!important}
+body #cxPlaceDetails .cx-hours-status[data-open="unknown"]{color:#456b85!important}
+body #cxPlaceDetails .cx-hours-label{font-size:12px!important;font-weight:500!important;color:#496778!important;white-space:normal!important}
+body #cxPlaceDetails .cx-hours-chevron{font-size:21px!important;color:#567083!important;margin-left:auto!important;transition:transform .2s}
+body #cxPlaceDetails details[open] .cx-hours-chevron{transform:rotate(180deg)}
