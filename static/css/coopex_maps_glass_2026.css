@@ -1065,3 +1065,88 @@ body #cxPlaceDetails .cx-hours-status[data-open="unknown"]{color:#456b85!importa
 body #cxPlaceDetails .cx-hours-label{font-size:12px!important;font-weight:500!important;color:#496778!important;white-space:normal!important}
 body #cxPlaceDetails .cx-hours-chevron{font-size:21px!important;color:#567083!important;margin-left:auto!important;transition:transform .2s}
 body #cxPlaceDetails details[open] .cx-hours-chevron{transform:rotate(180deg)}
+
+/* Corrigir marcador "0." de summary e seta expansível dos horários. */
+body #cxPlaceDetails details.cx-place-hours{
+ display:block!important;
+ width:100%!important;
+ overflow:visible!important;
+ list-style:none!important;
+ counter-reset:none!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary.cx-hours-summary{
+ display:flex!important;
+ align-items:center!important;
+ justify-content:flex-start!important;
+ flex-wrap:nowrap!important;
+ width:100%!important;
+ min-height:44px!important;
+ gap:5px!important;
+ padding:11px 0!important;
+ margin:0!important;
+ list-style:none!important;
+ list-style-type:none!important;
+ counter-increment:none!important;
+ cursor:pointer!important;
+ color:#496778!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary.cx-hours-summary::before,
+body #cxPlaceDetails details.cx-place-hours>summary.cx-hours-summary::marker,
+body #cxPlaceDetails details.cx-place-hours>summary.cx-hours-summary::-webkit-details-marker{
+ content:none!important;display:none!important;list-style:none!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary .cx-hours-status{
+ display:inline!important;
+ flex:0 0 auto!important;
+ width:auto!important;
+ min-width:0!important;
+ font-size:13px!important;
+ font-weight:800!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary .cx-hours-status[data-open="no"]{
+ color:#d22e35!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary .cx-hours-status[data-open="yes"]{
+ color:#0b9963!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary .cx-hours-label{
+ display:inline!important;
+ flex:1 1 auto!important;
+ min-width:0!important;
+ font-size:12px!important;
+ line-height:1.4!important;
+ font-weight:500!important;
+ color:#4c6879!important;
+}
+body #cxPlaceDetails details.cx-place-hours>summary .cx-hours-chevron{
+ display:inline-block!important;
+ flex:0 0 auto!important;
+ width:20px!important;
+ height:24px!important;
+ margin:0 0 0 auto!important;
+ text-align:center!important;
+ font-size:23px!important;
+ line-height:23px!important;
+ color:#406e8e!important;
+ transform:rotate(0)!important;
+ transition:transform .18s ease!important;
+}
+body #cxPlaceDetails details.cx-place-hours[open]>summary .cx-hours-chevron{
+ transform:rotate(180deg)!important;
+}
+body #cxPlaceDetails details.cx-place-hours .cx-hours-days{
+ display:none!important;
+ width:100%!important;
+ padding:3px 0 8px!important;
+}
+body #cxPlaceDetails details.cx-place-hours[open] .cx-hours-days{
+ display:block!important;
+}
+body #cxPlaceDetails details.cx-place-hours .cx-hours-day{
+ display:block!important;
+ padding:8px 0!important;
+ border-bottom:1px solid rgba(165,192,211,.35)!important;
+ color:#3f5c6d!important;
+ font-size:12px!important;
+ line-height:1.45!important;
+}
