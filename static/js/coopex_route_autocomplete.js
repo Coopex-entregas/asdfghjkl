@@ -61,6 +61,7 @@ for(const input of inputs){
  input.addEventListener("focus",()=>{if(input.value.trim().length>=4){clearTimeout(timer);timer=setTimeout(()=>query(input),600)}});
  input.addEventListener("keydown",e=>{
   if(e.key==="Escape"){close();return}
+  if(e.key==="Enter"){if(!menu.hidden&&currentInput===input&&items[0]?.placePrediction){e.preventDefault();e.stopImmediatePropagation();select(items[0].placePrediction,input)}else close();return}
   if(menu.hidden||currentInput!==input)return;
   if(e.key==="ArrowDown"){e.preventDefault();const first=menu.querySelector("button");first?.focus()}
  });
