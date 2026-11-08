@@ -299,7 +299,7 @@ $("sideToggle").onclick=()=>document.body.classList.add("cx-side-collapsed");
 $("sideExpand").onclick=()=>setAddressMode(true);
 $("sideSearchAddress").onclick=()=>setAddressMode(true);
 $("addressToggle").onclick=()=>setAddressMode(true);
-$("addressClose").onclick=()=>setAddressMode(false);
+$("addressClose").onclick=()=>{const q=$("address");if(q)q.value="";};
 $("addressCollapse").onclick=()=>{
  // Recolher significa voltar ao mapa COOPEX, e não continuar no modo de busca.
  setAddressMode(false);
@@ -312,7 +312,7 @@ $("addressGo").onclick=async()=>{
  if(placePin)placePin.remove();placePin=new ml.Marker({color:"#276bff",pitchAlignment:"viewport"}).setLngLat([selectedAddress.lng,selectedAddress.lat]).addTo(map);
  }catch(e){$("addressMessage").textContent="Busca indisponível no momento";}
 };
-$("address").onkeydown=e=>{if(e.key==="Enter")$("addressGo").click()};
+/* A busca Google controla Enter. */
 $("addStop").onclick=()=>{const p=selectedAddress||viewPoint||dest();if(!p){$("addressMessage").textContent="Pesquise ou marque um ponto no mapa.";return}if(stops.length>=3){$("addressMessage").textContent="Até 3 paradas intermediárias";return}stops.push({...p});stopRender();$("addressMessage").textContent="Parada adicionada."};
 $("stopsClear").onclick=()=>{stops=[];stopRender();};
 $("routeOpen").onclick=openRoute;$("openNav").onclick=openRoute;$("streetView").onclick=street;$("streetTool").onclick=street;
@@ -324,10 +324,10 @@ function showSttuStatus(){
  message.textContent="Interdições, obras e alterações de circulação. Ainda não há feed público validado para congestionamentos automáticos.";
 }
 function phase(){document.body.classList.remove("is-night");}
-const rainFx=$("weatherFx");function rain(level){weatherLevel=level;document.body.classList.toggle("is-rain",level>0);rainFx.replaceChildren();if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;const count=[0,8,18,35][level]||0;const frag=document.createDocumentFragment();for(let i=0;i<count;i++){const d=document.createElement("i");d.className="drop";d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.4)+"s";frag.append(d)}rainFx.append(frag)}
+const rainFx=$("weatherFx");function rain(level){weatherLevel=level;document.body.classList.toggle("is-rain",level>0);rainFx.replaceChildren();if(window.matchMedia("(prefers-reduced-motion: reduce)").matches)return;const count=0;/* Sem efeito de chuva em toda a cidade: exige chuva geográfica confiável. */const frag=document.createDocumentFragment();for(let i=0;i<count;i++){const d=document.createElement("i");d.className="drop";d.style.left=(Math.random()*100)+"%";d.style.animationDelay=(-Math.random()*3)+"s";d.style.animationDuration=(.7+Math.random()*1.4)+"s";frag.append(d)}rainFx.append(frag)}
 async function weather(){
  try{const r=await fetch("https://api.met.no/weatherapi/locationforecast/2.0/compact?lat=-5.7945&lon=-35.2110",{cache:"default"});if(!r.ok)throw Error("Weather HTTP");const data=await r.json(),t=data.properties.timeseries[0].data,details=t.instant.details,next=t.next_1_hours||t.next_6_hours||{},mm=Number(next.details?.precipitation_amount||0),code=next.summary?.symbol_code||"";const level=mm>=6||/heavyrain|thunder/.test(code)?3:mm>=2||/rain|showers/.test(code)?2:mm>0||/drizzle/.test(code)?1:0;
- $("temperature").textContent=Math.round(details.air_temperature)+"°C";$("conditions").textContent=["Sem chuva prevista","Previsão de chuva fraca","Previsão de chuva","Previsão de chuva forte"][level];$("humidity").textContent=details.relative_humidity+"%";$("wind").textContent=Math.round(details.wind_speed||0)+" m/s";$("weatherAlert").textContent=["Sem alerta de chuva na próxima hora.","Possibilidade de pista molhada.","⚠ Chuva prevista: atenção ao deslocamento.","⚠ Previsão de chuva intensa e possíveis alagamentos."][level];rain(level);
+ $("temperature").textContent=Math.round(details.air_temperature)+"°C";const ico=$("weatherIcon");if(ico){const hour=Number(new Intl.DateTimeFormat("pt-BR",{hour:"numeric",hour12:false,timeZone:"America/Fortaleza"}).format(new Date()));ico.textContent=level>0?"🌧️":hour>=18||hour<6?"🌙":"☀️";}$("conditions").textContent=["Sem chuva prevista","Previsão de chuva fraca","Previsão de chuva","Previsão de chuva forte"][level];$("humidity").textContent=details.relative_humidity+"%";$("wind").textContent=Math.round(details.wind_speed||0)+" m/s";$("weatherAlert").textContent=["Sem alerta de chuva na próxima hora.","Possibilidade de pista molhada.","⚠ Chuva prevista: atenção ao deslocamento.","⚠ Previsão de chuva intensa e possíveis alagamentos."][level];rain(level);
  }catch(e){$("conditions").textContent="Previsão indisponível";$("weatherAlert").textContent="Sem informação meteorológica atualizada";rain(0)}
 }
 
@@ -426,6 +426,6 @@ map.on("moveend",()=>{
  window.dispatchEvent(new CustomEvent("coopex:map-view",{detail:{lat:c.lat,lng:c.lng,zoom:map.getZoom()}}));
 });
 map.on("load",()=>{updateGps();});
-render();updateGps();stopRender();weather();showSttuStatus();gpsSocket();
+render();setAddressMode(true);updateGps();stopRender();weather();gpsSocket();
 setInterval(updateGps,12000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
 })();
