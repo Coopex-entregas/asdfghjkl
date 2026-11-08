@@ -7518,6 +7518,74 @@ def _coopex_float_or_none(v):
 
 
 
+
+# Histórico e endereços favoritos COOPEX — compartilhados por todos os admins
+# autenticados. Nenhuma consulta a serviços Google é feita nesta API.
+@app.route('/api/coopex/mapa/preferencias', methods=['GET', 'POST'])
+def coopex_mapa_preferencias():
+    if not session.get('is_admin'):
+        return jsonify({'erro': 'Acesso administrativo necessário'}), 403
+    import json as _json
+    from datetime import timedelta as _timedelta
+    try:
+        db.session.execute(text(
+            "CREATE TABLE IF NOT EXISTS coopex_map_preferences "
+            "(chave VARCHAR(48) PRIMARY KEY, valor TEXT NOT NULL)"
+        ))
+        db.session.commit()
+        row = db.session.execute(text(
+            "SELECT valor FROM coopex_map_preferences WHERE chave = :chave"
+        ), {'chave': 'historico_admin'}).scalar()
+        data = _json.loads(row) if row else {}
+        if not isinstance(data, dict):
+            data = {}
+        cutoff = (datetime.utcnow() - _timedelta(days=92)).timestamp() * 1000
+        now = datetime.utcnow().timestamp() * 1000
+        history = [
+            {'q': item['q'].strip()[:240], 'ts': item['ts']}
+            for item in data.get('history', [])
+            if isinstance(item, dict) and isinstance(item.get('q'), str)
+            and isinstance(item.get('ts'), (int, float))
+            and cutoff <= item['ts'] <= now + 60000 and item['q'].strip()
+        ][:30]
+        places = data.get('places', {})
+        if not isinstance(places, dict):
+            places = {}
+        places = {key: str(places.get(key) or '')[:240] for key in ('home', 'work')}
+        if request.method == 'POST':
+            body = request.get_json(silent=True) or {}
+            action = str(body.get('action') or '').strip()
+            query = str(body.get('q') or '').strip()[:240]
+            if action == 'remember' and query:
+                history = [{'q': query, 'ts': now}] + [
+                    item for item in history if item['q'].casefold() != query.casefold()
+                ]
+                history = history[:30]
+            elif action == 'delete' and query:
+                history = [item for item in history if item['q'].casefold() != query.casefold()]
+            elif action == 'save_place':
+                key = str(body.get('key') or '')
+                if key not in ('home', 'work'):
+                    return jsonify({'erro': 'Local inválido'}), 400
+                places[key] = query
+            elif action == 'clear_history':
+                history = []
+            else:
+                return jsonify({'erro': 'Ação inválida'}), 400
+            payload = _json.dumps({'history': history, 'places': places}, ensure_ascii=False)
+            db.session.execute(text(
+                "INSERT INTO coopex_map_preferences (chave, valor) "
+                "VALUES (:chave, :valor) "
+                "ON CONFLICT (chave) DO UPDATE SET valor = EXCLUDED.valor"
+            ), {'chave': 'historico_admin', 'valor': payload})
+            db.session.commit()
+        return jsonify({'history': history, 'places': places}), 200, {'Cache-Control': 'no-store'}
+    except Exception:
+        db.session.rollback()
+        current_app.logger.exception('Falha nas preferências do mapa COOPEX')
+        return jsonify({'erro': 'Não foi possível salvar o histórico'}), 500
+
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
