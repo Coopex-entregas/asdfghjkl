@@ -127,6 +127,41 @@ for(const [id,ic,label] of tabs){
  b.onclick=()=>setTab(id);nav.append(b);navBtns.set(id,b);
 }
 top.after(nav);
+
+/* Ícones vetoriais uniformes, sem emojis desproporcionais. */
+const iconPaths={
+ search:'<circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/>',
+ compass:'<circle cx="12" cy="12" r="9"/><path d="m15.8 8.2-2.5 5.1-5.1 2.5 2.5-5.1z"/>',
+ directions:'<path d="M4 6h8v6h8"/><path d="m15 7 5 5-5 5"/><circle cx="4" cy="6" r="2"/><circle cx="20" cy="18" r="2"/>',
+ layers:'<path d="m12 3 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5M3 16l9 5 9-5"/>',
+ car:'<path d="M5 11 7 6h10l2 5"/><rect x="3" y="11" width="18" height="7" rx="2"/><path d="M7 18v2m10-2v2M7 14h.01M17 14h.01"/>',
+ motorcycle:'<circle cx="5" cy="17" r="3"/><circle cx="19" cy="17" r="3"/><path d="m8 17 4-7 3 7h4m-7-7-3 0m9-5 2 3"/>',
+ train:'<rect x="5" y="3" width="14" height="15" rx="3"/><path d="M5 10h14M8 22l3-4m5 4-3-4M9 14h.01M15 14h.01"/>',
+ walk:'<circle cx="13" cy="4" r="2"/><path d="m7 21 4-7 2-3 3 2 3 2m-7-4-3 5m3-8 2 2-2 5 5 6"/>',
+ bike:'<circle cx="5" cy="17" r="3.5"/><circle cx="19" cy="17" r="3.5"/><path d="m5 17 5-9 5 9H5m10 0 3-8h-3M8 8h4"/>',
+ arrow:'<path d="m15 18-6-6 6-6"/>',
+ swap:'<path d="M7 20V4m0 0-4 4m4-4 4 4M17 4v16m0 0-4-4m4 4 4-4"/>',
+ plus:'<path d="M12 5v14M5 12h14"/>',
+ menu:'<path d="M4 7h16M4 12h16M4 17h16"/>'
+};
+function vector(name){
+ const path=iconPaths[name];if(!path)return null;
+ const span=document.createElement("span");span.className="cx-icon-vector";span.innerHTML='<svg class="cx-icon-svg" viewBox="0 0 24 24" aria-hidden="true">'+path+'</svg>';return span;
+}
+for(const button of nav.querySelectorAll("button")){
+ const named={explorar:"compass",rotas:"directions",camadas:"layers"}[button.dataset.cxNav];
+ if(!named)continue;const target=button.querySelector("span");
+ if(target){target.replaceWith(vector(named))}
+}
+for(const button of group.querySelectorAll("[data-cx-mode]")){
+ const named={DRIVING:"car",TWO_WHEELER:"motorcycle",TRANSIT:"train",WALKING:"walk",BICYCLING:"bike"}[button.dataset.cxMode];
+ if(named){button.replaceChildren(vector(named))}
+}
+for(const [button,name] of [[routeHeader.querySelector("#cxDirectionsBack"),"arrow"],[routeHeader.querySelector("#cxDirectionsClose"),"menu"],[swap,"swap"],[stopRow.querySelector("#cxStopSubmit"),"plus"]]){
+ if(button)button.replaceChildren(vector(name));
+}
+const hamburger=$("cxDrawerMenu");if(hamburger)hamburger.replaceChildren(vector("menu"));
+
 $("cxDrawerMenu").addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapse()},true);
 const edge=$("addressCollapse"),expandButton=$("sideExpand");
 
@@ -134,7 +169,7 @@ function collapse(){collapsed=true;document.body.classList.add("cx-map-sidebar-c
 function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");}
 edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapsed?expand():collapse()},true);
 expandButton?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();expand()},true);
-const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="☰";reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
+const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="";reopen.append(vector("menu"));reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
 $("routeOpen").addEventListener("click",()=>{if(activeTab!=="rotas")setTab("rotas")},true);
 const hint=document.createElement("div");hint.className="cx-route-hint";hint.textContent="";routes?.after(hint);
 const welcome=results.querySelector(".cx-drawer-welcome");if(welcome)welcome.innerHTML="<strong>Explore no mapa</strong>";
