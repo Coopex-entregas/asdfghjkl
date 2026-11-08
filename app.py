@@ -1490,6 +1490,25 @@ def _registrar_localizacao_em_memoria(auth_info, lat, lng, acc=None, spd=None, h
     segundos_desde_emit = agora_ts - last_emit_ts
     dist_val = float(dist_m or 0)
 
+    # Online indica conexão recente, não movimento. O GPS pode variar vários
+    # metros com o aparelho parado e até reportar velocidade espúria.
+    # Não transformar essa oscilação em velocidade de deslocamento.
+    try:
+        spd = float(spd) if spd is not None else None
+        if spd is not None and (not math.isfinite(spd) or spd < 0 or spd > 180):
+            spd = None
+        if spd is not None and spd < 3.0:
+            spd = 0.0
+        if anterior and segundos_desde_aceite >= 4:
+            # A zona morta aumenta suavemente com a imprecisão informada,
+            # para não confundir deriva GPS com movimento da moto.
+            precision = max(float(acc or 0), float(anterior.get('accuracy') or 0))
+            stationary_radius_m = max(12.0, min(35.0, precision * 1.25))
+            if dist_val <= stationary_radius_m:
+                spd = 0.0
+    except (ValueError, TypeError, OverflowError):
+        spd = None
+
     # Se o app mandar 10/20 vezes em poucos segundos, segura em memória e não emite tudo.
     emitir_agora = True
     if anterior:
