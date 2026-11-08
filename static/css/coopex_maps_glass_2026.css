@@ -754,3 +754,20 @@ body #cxPlaceDetails .cx-place-link{font-size:13px!important;color:#127599!impor
 body #cxPlaceDetails .cx-place-rating{color:#a46b09!important}
 body #cxPlaceDetails .cx-place-description{font-size:13px!important;line-height:1.6!important}
 @media(max-width:700px){body #cxPlaceDetails .cx-place-gallery{height:180px!important;min-height:180px!important}}
+
+body #cxPlaceDetails .cx-place-overview{
+ order:3!important;display:flex!important;flex-wrap:wrap!important;
+ gap:5px 12px!important;margin:0 16px 2px!important;padding:0!important;
+ align-items:center!important;font-size:12px!important;color:#547089!important;
+}
+body #cxPlaceDetails .cx-place-overview .cx-place-rating{
+ font-size:13px!important;font-weight:780!important;color:#b87b0c!important;
+}
+body #cxPlaceDetails .cx-place-overview .cx-place-category{font-size:12px!important;color:#597688!important}
+body #cxPlaceDetails .cx-place-address{order:4!important}
+body #cxPlaceDetails .cx-place-state{order:5!important}
+body #cxPlaceDetails .cx-place-shortcuts{order:6!important}
+body #cxPlaceDetails .cx-place-metadata{order:7!important}
+body #addressPanel.cx-place-view .cx-drawer-content{scroll-behavior:smooth!important}
+body #cxPlaceDetails .cx-place-hours[open] summary{margin-bottom:8px!important}
+body #cxPlaceDetails .cx-place-hours:not([open]){padding-bottom:11px!important}
