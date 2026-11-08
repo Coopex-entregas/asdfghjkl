@@ -30,7 +30,7 @@ function setup(){
    request=fetch("https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&current=temperature_2m,weather_code&hourly=precipitation_probability,weather_code,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7",{cache:"default"});
    const response=await request;if(!response.ok)throw Error("HTTP "+response.status);
    const data=await response.json();forecast=data;if(!forecast?.daily?.time?.length)throw Error("Previsão sem dados");
-   lastFetch=Date.now();if(!panel.hidden)show(forecast);
+   lastFetch=Date.now();show(forecast);
   }catch(e){if(!panel.hidden)panel.textContent="Previsão indisponível no momento. Tente novamente.";console.warn("CoopEX clima:",e)}
   finally{request=null;position()}
  }
@@ -103,6 +103,8 @@ function setup(){
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden){e.preventDefault();e.stopImmediatePropagation();close()}},true);
  window.addEventListener("resize",position);
  window.addEventListener("scroll",position,true);
+ // Atualiza a condição do topo também antes de abrir a previsão.
+ load();
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
 })();
