@@ -537,3 +537,29 @@ body #cxRouteEditor .cx-origin-mount,body #cxRouteEditor .cx-destination-mount{p
 #cxRouteSuggestions button strong{max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:12px}
 #cxRouteSuggestions button small{font-size:11px;color:#66859d;line-height:1.3}
 @media(max-width:700px){body #addressPanel.cx-directions-mode #cxRouteEditor{padding:0 10px 9px!important}}
+
+/* Direções igual à referência: primeira fileira = transporte + voltar/fechar, sem título extra. */
+body #addressPanel.cx-directions-mode #cxRouteEditor{position:relative!important;padding-top:7px!important}
+body #addressPanel.cx-directions-mode #cxDirectionsHeader{
+ position:absolute!important;top:5px!important;left:9px!important;right:9px!important;
+ display:flex!important;justify-content:space-between!important;
+ width:auto!important;height:45px!important;min-height:45px!important;
+ border:none!important;margin:0!important;padding:0!important;z-index:4!important;
+ pointer-events:none!important;
+}
+body #addressPanel.cx-directions-mode #cxDirectionsHeader strong{display:none!important}
+body #addressPanel.cx-directions-mode #cxDirectionsHeader button{
+ width:38px!important;height:38px!important;flex:0 0 38px!important;
+ pointer-events:auto!important;border-radius:12px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-travel-modes{
+ margin:0!important;padding:0 46px 8px!important;min-height:47px!important;
+ gap:2px!important;order:1!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-travel-modes button{
+ min-width:0!important;height:40px!important;padding:6px 3px!important;
+}
+@media(max-width:700px){
+ body #addressPanel.cx-directions-mode #cxRouteEditor .cx-travel-modes{padding-left:42px!important;padding-right:42px!important}
+ body #addressPanel.cx-directions-mode #cxDirectionsHeader{left:5px!important;right:5px!important}
+}
