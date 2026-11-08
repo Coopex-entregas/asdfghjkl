@@ -276,6 +276,7 @@ document.getElementById("stopsClear")?.addEventListener("click",e=>{e.preventDef
 window.addEventListener("coopex:map-data",suggestions);
 window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&streetPanorama)streetPanorama.setVisible(false)});
 const markers=new Map(),lastPositions=new Map();
+let previewWindow=null;
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
 let googleStatusFilter="todos";
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
@@ -326,7 +327,23 @@ function updateMarkers(list,chosen){
     optimized:false,zIndex:chosenNow?100:status==="online"?15:5
    });
    marker.__status=status;marker.__chosen=chosenNow;marker.__initials=initials(i.nome);
-   marker.addListener("click",()=>window.COOPEX_MAP_ACTIONS?.selectCooperado?.(id));
+   marker.addListener("click",()=>{
+    previewWindow?.close();
+    window.COOPEX_MAP_ACTIONS?.selectCooperado?.(id);
+    const current=lastItems.find(x=>String(x.id)===id);
+    if(current&&googleMap){googleMap.panTo(marker.getPosition());if((googleMap.getZoom()||0)<14)googleMap.setZoom(14)}
+   });
+   marker.addListener("mouseover",()=>{
+    if(!previewWindow)previewWindow=new google.maps.InfoWindow({disableAutoPan:true,maxWidth:280});
+    const current=lastItems.find(x=>String(x.id)===id);
+    if(!current)return;
+    const wrap=document.createElement("div");wrap.className="cx-pin-preview";
+    const title=document.createElement("strong");title.textContent=current.nome||"Cooperado";
+    const sub=document.createElement("small");sub.textContent=(state(current)==="offline"?"🔴 Offline":state(current)==="ocioso"?"🟠 Ocioso":"🟢 Online")+" · "+(current.endereco||"Natal/RN");
+    const last=document.createElement("small");last.textContent="GPS: "+(current.ultima_atualizacao||"Não informado");
+    wrap.append(title,sub,last);previewWindow.setContent(wrap);previewWindow.open({map:googleMap,anchor:marker,shouldFocus:false});
+   });
+   marker.addListener("mouseout",()=>{previewWindow?.close()});
    markers.set(id,marker);
   }
  }
