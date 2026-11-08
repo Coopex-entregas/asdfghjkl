@@ -187,6 +187,7 @@ function returnToEmptySearch(){
 }
 $("addressClose")?.addEventListener("click",returnToEmptySearch);
 window.addEventListener("coopex:search-reset",returnToEmptySearch);
+window.addEventListener("coopex:place-details-ready",()=>{panel.classList.remove("cx-search-idle");panel.classList.add("cx-place-view");syncStatsLocation();});
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
@@ -268,8 +269,8 @@ function collapse(){
  document.body.classList.remove("cx-map-sidebar-closed");
  panel.setAttribute("aria-expanded","true");
  edge.textContent="‹";
- document.getElementById("addressClose")?.click();
- returnToEmptySearch();
+ if(document.getElementById("addressClose"))document.getElementById("addressClose").click();
+ else returnToEmptySearch();
  if(document.activeElement instanceof HTMLElement)document.activeElement.blur();
  syncStatsLocation();
 }
