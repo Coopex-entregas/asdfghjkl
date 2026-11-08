@@ -733,7 +733,7 @@ window.addEventListener("coopex:map-mode",e=>{if(!e.detail?.searchingAddress&&st
 const markers=new Map(),lastPositions=new Map();
 let previewWindow=null;
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
-let googleStatusFilter="todos";
+let googleStatusFilter="online";
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
 const state=i=>!i.online?"offline":i.status==="ocioso"?"ocioso":"online";
 const normPos=i=>i&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&+i.lat<-3&&+i.lng<-32;
@@ -823,7 +823,7 @@ function selectGoogleStatus(status){
  updateMode();
 }
 document.querySelectorAll(".filters [data-filter]").forEach(button=>{
- button.setAttribute("aria-pressed",String(button.dataset.filter==="todos"));
+ button.setAttribute("aria-pressed",String(button.dataset.filter==="online"));
  button.addEventListener("click",()=>selectGoogleStatus(button.dataset.filter));
 });
 const neighborhoodCache=new Map();
