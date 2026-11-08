@@ -1679,3 +1679,35 @@ body #cxSearchNotice[hidden]{display:none!important}
 body #cxSearchNotice[data-kind="error"]{color:#a63229!important;background:rgba(255,247,244,.97)!important}
 body #addressPanel.cx-directions-mode #cxSearchNotice{display:none!important}
 @media(max-width:700px){body #cxSearchNotice{top:64px!important;left:8px!important;width:calc(100dvw - 16px)!important}}
+
+/* Contraste alto nas alternativas de rota: nunca texto branco sobre azul claro. */
+body #cxRoutes .cx-route-option,
+body #cxRoutes .cx-route-option.active,
+body #addressPanel #cxRoutes .cx-route-option,
+body #addressPanel #cxRoutes .cx-route-option.active{
+ color:#163d5c!important;
+ text-shadow:none!important;
+}
+body #cxRoutes .cx-route-option strong,
+body #cxRoutes .cx-route-option.active strong,
+body #addressPanel #cxRoutes .cx-route-option strong,
+body #addressPanel #cxRoutes .cx-route-option.active strong{
+ color:#173a56!important;
+ font-weight:850!important;
+ opacity:1!important;
+ text-shadow:none!important;
+}
+body #cxRoutes .cx-route-option small,
+body #cxRoutes .cx-route-option.active small{
+ color:#235b83!important;
+ font-weight:750!important;
+ opacity:1!important;
+ text-shadow:none!important;
+}
+body #cxRoutes .cx-route-option .cx-route-price,
+body #cxRoutes .cx-route-option.active .cx-route-price{
+ color:#087a4d!important;
+ font-weight:850!important;
+ opacity:1!important;
+ text-shadow:none!important;
+}
