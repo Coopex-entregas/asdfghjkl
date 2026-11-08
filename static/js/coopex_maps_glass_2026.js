@@ -78,6 +78,13 @@ wireWaypointDnD();
 const coopBox=document.createElement("div");coopBox.id="cxCoopSearch";coopBox.className="glass";
 coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisar cooperado..." aria-label="Pesquisar cooperado" autocomplete="off"><div id="cxCoopHits" hidden></div>';
 document.body.append(coopBox);
+// Uma única barra responsiva: cooperados | clima | filtros | Voltar.
+const topDock=document.createElement("div");topDock.id="cxTopControlDock";
+topDock.setAttribute("aria-label","Pesquisa de cooperados, clima e filtros");
+document.body.append(topDock);
+for(const element of [coopBox,$("ui")?.querySelector(".weather.glass"),$("ui")?.querySelector(".filters.glass"),$("ui")?.querySelector(".back-link")]){
+ if(element)topDock.append(element);
+}
 const coopInput=coopBox.querySelector("input"),coopHits=coopBox.querySelector("#cxCoopHits");
 let cooperados=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[];
 
