@@ -28,6 +28,26 @@ stopRow.innerHTML='<input id="cxStopInput" type="search" placeholder="Adicionar 
 group.append(stopRow);
 stopRow.querySelector("button").onclick=()=>document.getElementById("addStop")?.click();
 stopRow.querySelector("input").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();document.getElementById("addStop")?.click()}});
+
+/* Organização visual como o painel de direções do Google Maps. */
+const routeHeader=document.createElement("div");routeHeader.id="cxDirectionsHeader";
+routeHeader.innerHTML='<button id="cxDirectionsBack" type="button" title="Voltar ao mapa" aria-label="Voltar">←</button><strong>Rotas</strong><button id="cxDirectionsClose" type="button" title="Recolher o menu" aria-label="Recolher menu">☰</button>';
+group.prepend(routeHeader);
+routeHeader.querySelector("#cxDirectionsBack").onclick=()=>setTab("explorar");
+routeHeader.querySelector("#cxDirectionsClose").onclick=()=>collapse();
+const stopsPanel=$("stopsList");
+if(stopsPanel)group.append(stopsPanel);
+const addDestination=stopRow.querySelector("input");
+addDestination.placeholder="Adicionar destino";
+const routeResultPanel=$("cxRoutes");
+if(routeResultPanel)group.after(routeResultPanel);
+const routeInfo=document.createElement("div");routeInfo.className="cx-route-summary";
+routeInfo.innerHTML='<strong>Rotas sugeridas</strong>';
+if(routeResultPanel)routeResultPanel.before(routeInfo);
+const depRow=originMount;depRow.classList.add("cx-waypoint-row","cx-waypoint-start");
+const arrivalRow=destinationMount;arrivalRow.classList.add("cx-waypoint-row","cx-waypoint-finish");
+const routeMarker=document.createElement("span");routeMarker.className="cx-waypoint-dot";routeMarker.textContent="●";arrivalRow.prepend(routeMarker);
+
 const coopBox=document.createElement("div");coopBox.id="cxCoopSearch";coopBox.className="glass";
 coopBox.innerHTML='<span>⌕</span><input id="cxCoopInput" placeholder="Pesquisar cooperado..." aria-label="Pesquisar cooperado" autocomplete="off"><div id="cxCoopHits" hidden></div>';
 document.body.append(coopBox);
@@ -82,6 +102,10 @@ function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
  for(const [key,b] of navBtns)b.classList.toggle("active",key===id);
  group.hidden=id!=="rotas";
+ routeInfo.hidden=id!=="rotas";
+ nav.hidden=id==="rotas";
+ panel.classList.toggle("cx-directions-mode",id==="rotas");
+ if(id!=="rotas"){$("cxRoutes").hidden=true}
  if(id==="rotas"){
   if(org&&org.parentElement!==originMount)originMount.append(org);
   if(org){org.hidden=false;org.placeholder="Selecione o ponto de partida"}
@@ -92,6 +116,7 @@ function setTab(id){
   if(org?.value.trim())destMirror.focus();else org?.focus();
  }else{
   if(org)org.hidden=true;
+  if(id==="explorar")document.getElementById("cxPlaceDetails")?.remove();
   $("routeOpen").textContent="↗ Direções";
   search.placeholder="Pesquisar rua, número ou estabelecimento";
   if(id==="camadas")$("toolbarToggle")?.click();
