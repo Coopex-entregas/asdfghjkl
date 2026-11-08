@@ -1711,3 +1711,38 @@ body #cxRoutes .cx-route-option.active .cx-route-price{
  opacity:1!important;
  text-shadow:none!important;
 }
+
+/* Lista de cooperados independente do topo: não pode ser cortada pelo overflow. */
+body #cxCoopHits{
+ position:fixed!important;right:auto!important;bottom:auto!important;
+ left:8px;top:70px;display:flex!important;flex-direction:column!important;
+ z-index:2100!important;
+ max-height:min(420px,65dvh)!important;overflow-y:auto!important;
+ overflow-x:hidden!important;padding:5px!important;
+ border:1px solid rgba(255,255,255,.98)!important;
+ border-radius:17px!important;
+ background:linear-gradient(150deg,rgba(248,253,255,.98),rgba(220,240,254,.98))!important;
+ backdrop-filter:blur(24px)!important;
+ box-shadow:0 14px 32px rgba(23,68,110,.30),inset 0 1px 2px white!important;
+ pointer-events:auto!important;
+}
+body #cxCoopHits[hidden]{display:none!important}
+body #cxCoopHits button{
+ display:flex!important;align-items:center!important;gap:10px!important;
+ width:100%!important;min-height:45px!important;
+ padding:9px 10px!important;border:0!important;
+ border-bottom:1px solid rgba(126,176,204,.22)!important;
+ color:#173d60!important;cursor:pointer!important;
+ text-align:left!important;font-size:13px!important;
+ background:transparent!important;
+}
+body #cxCoopHits button:hover,body #cxCoopHits button:focus-visible{
+ background:rgba(168,214,248,.38)!important;outline:none!important;
+ border-radius:11px!important;
+}
+body #cxCoopHits button>span:nth-child(2){
+ flex:1 1 auto!important;min-width:0!important;
+ font-weight:750!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body #cxCoopHits button small{font-size:11px!important;color:#527a96!important;flex:0 0 auto!important}
+body #cxCoopHits .cx-coop-empty{padding:12px 14px;color:#55728c;font-size:12px}
