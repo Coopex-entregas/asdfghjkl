@@ -332,14 +332,10 @@ async function searchAddress(){
    info("A busca retornou apenas a cidade, não o estabelecimento.");
    searchNotice("Não localizei esse estabelecimento. Tente informar o bairro e Natal/RN.","error");return;
   }
-  let place=null;
-  if(r.place_id){
-   try{const {Place}=await google.maps.importLibrary("places");place=new Place({id:r.place_id})}
-   catch(error){console.debug("Place Details indisponível",error)}
-  }
+  // Endereços operacionais não solicitam Places Details Pro/Enterprise.
   if(seq!==placeSequenceInfo)return;
   searchNotice("");
-  destination({lat:p.lat(),lng:p.lng()},r.formatted_address||q,place);
+  destination({lat:p.lat(),lng:p.lng()},r.formatted_address||q);
   remember(q);suggestions();
  });
 }
@@ -944,25 +940,9 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   });
   suggestions();
   googleMap.addListener("click",async event=>{
-   if(event.placeId){
-    event.stop();
-    const position=event.latLng?{lat:event.latLng.lat(),lng:event.latLng.lng()}:null;
-    try{
-     const {Place}=await google.maps.importLibrary("places");
-     const place=new Place({id:event.placeId});
-     await place.fetchFields({fields:["location","displayName","formattedAddress"]});
-     const p=place.location||position;
-     if(!p)throw Error("Sem coordenadas");
-     const lat=typeof p.lat==="function"?p.lat():p.lat;
-     const lng=typeof p.lng==="function"?p.lng():p.lng;
-     destination({lat,lng},place.displayName||place.formattedAddress||"Local selecionado",place);
-    }catch(error){
-     console.warn("CoopEX: não foi possível carregar os dados do local:",error);
-     if(position)destination(position,"Local selecionado");
-     info("Detalhes adicionais indisponíveis para este local.");
-    }
-    return;
-   }
+   // POI continua com a ficha nativa do Google; sem chamadas Places Pro
+   // disparadas pelo CoopEX ao tocar um estabelecimento.
+   if(event.placeId)return;
    if(event.latLng&&document.body.classList.contains("cx-address-mode"))
     destination({lat:event.latLng.lat(),lng:event.latLng.lng()},"Ponto marcado no mapa");
   });
