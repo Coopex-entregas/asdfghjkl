@@ -56,6 +56,9 @@ function calculateWhenReady(){
 destMirror.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();e.stopPropagation();calculateWhenReady()}});
 org?.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();destMirror.focus();calculateWhenReady()}});
 destMirror.addEventListener("change",calculateWhenReady);
+window.addEventListener("coopex:routes-changed",()=>{
+ if(activeTab==="rotas"&&org.value.trim()&&destMirror.value.trim())calculateWhenReady();
+});
 const navBtns=new Map();
 function setTab(id){
  activeTab=id;panel.dataset.cxTab=id;
