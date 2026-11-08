@@ -2911,6 +2911,9 @@ def api_mobile_login_cooperado():
     session['is_admin'] = False
     session['is_master'] = False
     session['tipo'] = 'cooperado'
+    # Somente a sessão do APP NATIVO recebe cookie persistente.
+    # Não modifica prazo de clientes, administradores nem do navegador.
+    session.permanent = True
 
     return jsonify(
         ok=True,
