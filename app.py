@@ -5523,7 +5523,7 @@ def cooperado_app_android():
     agent = (request.headers.get('User-Agent') or '').lower()
     if 'android' not in agent:
         return redirect(url_for('painel_cooperado'))
-    response = make_response(render_template('cooperado_app_android.html'))
+    response = current_app.make_response(render_template('cooperado_app_android.html'))
     response.headers['Cache-Control'] = 'no-store, private'
     return response
 
