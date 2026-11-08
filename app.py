@@ -7687,9 +7687,18 @@ def mapa_motoboys():
         hdg = live.get('heading') if live else None
         speed_saved = live.get('speed') if live else None
         last_seen = live.get('ultima_atualizacao') if live else None
-        online_gps = bool(live and live.get('online'))
-        online_painel = bool(c.online and _coopex_online_recente(c.last_ping))
+        # Regra exclusiva do COOPEX Maps: disponibilidade recente, não movimento.
+        # Não altera o prazo nem a comunicação do aplicativo Android.
+        mapa_limite_s = 60
+        agora_s = pytime.time()
+        ts_gps = float(live.get('last_seen_ts') or 0) if live else 0
+        age_gps = max(0.0, agora_s - ts_gps) if ts_gps else None
+        age_painel = max(0.0, (datetime.utcnow() - c.last_ping.replace(tzinfo=None)).total_seconds()) if c.last_ping else None
+        online_gps = bool(age_gps is not None and age_gps <= mapa_limite_s)
+        online_painel = bool(c.online and age_painel is not None and age_painel <= mapa_limite_s)
         online = bool(online_gps or online_painel)
+        idades_ativas = ([age_gps] if online_gps else []) + ([age_painel] if online_painel else [])
+        idade_sinal_segundos = min(idades_ativas) if idades_ativas else None
 
         if not _coord_valida(lat, lng):
             # A coluna Cooperado.last_lat/last_lng recebe os snapshots GPS novos.
@@ -7742,6 +7751,7 @@ def mapa_motoboys():
             'lng': float(lng) if tem_localizacao else None,
             'tem_localizacao': bool(tem_localizacao),
             'online': bool(online),
+            'sinal_idade_segundos': round(idade_sinal_segundos, 2) if idade_sinal_segundos is not None else None,
             'gps_ao_vivo': bool(online_gps),
             'presenca_painel': bool(online_painel),
             'status': status,
