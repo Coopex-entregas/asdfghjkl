@@ -596,15 +596,22 @@ async function calculateRoutes(){
   const intermediates=waypoints.slice(1,-1);
   info("");
   const {Route}=await google.maps.importLibrary("routes");
-  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:final.lat,lng:final.lng},travelMode:routeMode,computeAlternativeRoutes:routeStops.length===0,fields:["path","distanceMeters","durationMillis","staticDurationMillis","description","routeLabels","legs"],language:"pt-BR",region:"BR"};
-  if(routeMode==="DRIVING"||routeMode==="TWO_WHEELER")options.routingPreference="TRAFFIC_AWARE";
+  // Modo econômico: somente Essentials. NÃO requisitar trânsito em tempo real
+  // (TRAFFIC_AWARE = Pro) nem TWO_WHEELER (Enterprise).
+  const economicalMode=routeMode==="TWO_WHEELER"?"DRIVING":routeMode;
+  const options={origin:{lat:a.lat,lng:a.lng},destination:{lat:final.lat,lng:final.lng},
+   travelMode:economicalMode,computeAlternativeRoutes:routeStops.length===0,
+   fields:["path","distanceMeters","durationMillis","description","routeLabels","legs"],
+   language:"pt-BR",region:"BR"};
+  if(economicalMode==="DRIVING")options.routingPreference="TRAFFIC_UNAWARE";
+  if(routeStops.length>10)throw Error("Para manter a faixa Essentials, use até 10 paradas intermediárias.");
   if(intermediates.length)options.intermediates=intermediates.map(p=>({location:{lat:p.lat,lng:p.lng}}));
   const response=await Route.computeRoutes(options);
   if(generation!==routeGeneration||!document.getElementById("addressPanel")?.classList.contains("cx-directions-mode"))return;
   const found=(response.routes||[]).slice(0,3);
   if(!found.length)throw Error("Nenhum trajeto disponível.");
   hideRoutes();
-  routeAlternatives=found.map(r=>({distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,staticDurationMillis:r.staticDurationMillis,description:r.description||"",legs:(r.legs||[]).map(leg=>({distanceMeters:leg.distanceMeters,durationMillis:leg.durationMillis})),path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():Number(p.lat),lng:typeof p.lng==="function"?p.lng():Number(p.lng)}))}));
+  routeAlternatives=found.map(r=>({distanceMeters:r.distanceMeters,durationMillis:r.durationMillis,description:r.description||"",legs:(r.legs||[]).map(leg=>({distanceMeters:leg.distanceMeters,durationMillis:leg.durationMillis})),path:(r.path||[]).map(p=>({lat:typeof p.lat==="function"?p.lat():Number(p.lat),lng:typeof p.lng==="function"?p.lng():Number(p.lng)}))}));
   routesHost.hidden=false;
   routeAlternatives.forEach((r,i)=>{
    const poly=new google.maps.Polyline({map:googleMap,path:r.path,strokeColor:i===0?"#193feb":"#6894ec",strokeOpacity:i===0?1:.75,strokeWeight:i===0?7:4,zIndex:i===0?90:2});
