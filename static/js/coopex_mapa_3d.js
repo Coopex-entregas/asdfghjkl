@@ -234,7 +234,10 @@ function selectCooperado(id){
  if(cameraPanelOpen)renderCameraPanel();
  render();
  // Somente um mapa visível: movimenta Google quando disponível, mantendo o GPS original.
- if(hasCoord(i)&&!window.COOPEX_GOOGLE_NATIVE)map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),15),pitch:0,bearing:0,duration:650});
+ if(hasCoord(i)){
+  if(window.COOPEX_GOOGLE_NATIVE){window.COOPEX_GOOGLE_NATIVE.panTo({lat:+i.lat,lng:+i.lng});window.COOPEX_GOOGLE_NATIVE.setZoom(17)}
+  else map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),17),pitch:0,bearing:0,duration:650});
+ }
 }
 async function updateGps(){
  if(fetching||document.hidden)return;fetching=true;
@@ -437,9 +440,30 @@ map.on("zoom",updateSpaceMode);
 map.on("load",updateSpaceMode);
 
 function gpsSocket(){
- // GPS periódico moderado e consulta de fallback, sem criar mais um mapa.
- const socketApi=window.io;if(typeof socketApi!=="function")return;
- try{const sock=socketApi({transports:["websocket","polling"]});sock.on("posicao_motoboy_atualizada",d=>{if(!d?.id)return;let old=itemById(d.id);if(old){Object.assign(old,d);if(hasCoord(old)&&d.lat!=null&&d.lng!=null)lastConfirmedGps.set(String(old.id),{lat:+old.lat,lng:+old.lng,source:"live"});render()}else updateGps()});}catch(e){}
+ const connect=window.io;
+ if(typeof connect!=="function"){console.warn("Socket.IO não carregado. Mapa usa atualização de segurança.");return}
+ try{
+  const sock=connect({transports:["websocket","polling"],reconnection:true,reconnectionDelay:1000});
+  function applyEvent(event){
+   if(!event||event.id==null)return;
+   const record=itemById(event.id);
+   if(!record){updateGps();return}
+   const oldLat=record.lat,oldLng=record.lng;
+   Object.assign(record,event);
+   if(event.velocidade_kmh!=null&&event.speed_kmh==null)record.speed_kmh=event.velocidade_kmh;
+   if(event.lat==null)record.lat=oldLat;
+   if(event.lng==null)record.lng=oldLng;
+   if(hasCoord(record)&&event.lat!=null&&event.lng!=null)lastConfirmedGps.set(String(record.id),{lat:+record.lat,lng:+record.lng,source:"live"});
+   render();
+  }
+  sock.on("posicao_motoboy_atualizada",applyEvent);
+  sock.on("coopex_presenca_atualizada",applyEvent);
+  sock.on("connect",()=>updateGps());
+  sock.on("reconnect",()=>updateGps());
+  window.addEventListener("pageshow",()=>updateGps());
+  document.addEventListener("visibilitychange",()=>{if(!document.hidden)updateGps()});
+  window.COOPEX_MAP_SOCKET=sock;
+ }catch(error){console.warn("Conexão ao vivo indisponível:",error)}
 }
 window.COOPEX_MAP_ACTIONS={
  selectCooperado:id=>selectCooperado(id),
@@ -453,5 +477,5 @@ map.on("moveend",()=>{
 });
 map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();weather();gpsSocket();
-setInterval(updateGps,30000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
+setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);setInterval(updateGps,60000);setInterval(weather,20*60*1000);setInterval(phase,60*1000);
 })();
