@@ -258,27 +258,39 @@ function selectCooperado(id){
  }
 }
 let gpsTicket=null;
+let lastGpsFetchAt=0;
+const GPS_FETCH_MIN_GAP_MS=8000;
+const GPS_FETCH_TIMEOUT_MS=12000;
+async function timedGpsFetch(url,options={}){
+ const controller=new AbortController();
+ const timeout=setTimeout(()=>controller.abort(),GPS_FETCH_TIMEOUT_MS);
+ try{return await fetch(url,{...options,signal:controller.signal})}
+ finally{clearTimeout(timeout)}
+}
 async function getCloudflareGpsTicket(force=false){
  const now=Math.floor(Date.now()/1000);
  if(!force&&gpsTicket&&gpsTicket.expires_at>now+90)return gpsTicket;
- const response=await fetch("/api/admin/gps/ticket",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
+ const response=await timedGpsFetch("/api/admin/gps/ticket",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
  if(!response.ok)throw Error("GPS ticket HTTP "+response.status);
  const data=await response.json();
  if(!data.ok||!data.ticket||!data.url)throw Error("GPS ticket invalido");
  gpsTicket=data;
  return gpsTicket;
 }
-async function updateGps(){
+async function updateGps(force=false){
  if(fetching||document.hidden)return;
+ const now=Date.now();
+ if(!force&&now-lastGpsFetchAt<GPS_FETCH_MIN_GAP_MS)return;
+ lastGpsFetchAt=now;
  fetching=true;
  try{
   // GPS: leitura diretamente do Cloudflare Worker. O Render fornece
   // somente uma credencial temporaria a cada 10 minutos, sem trafego de posicoes.
   let token=await getCloudflareGpsTicket();
-  let response=await fetch(token.url,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+token.ticket}});
+  let response=await timedGpsFetch(token.url,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+token.ticket}});
   if(response.status===401){
     token=await getCloudflareGpsTicket(true);
-    response=await fetch(token.url,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+token.ticket}});
+    response=await timedGpsFetch(token.url,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+token.ticket}});
   }
   if(!response.ok)throw Error("Cloudflare GPS HTTP "+response.status);
   const payload=await response.json();
@@ -301,9 +313,14 @@ async function updateGps(){
     coop.ultima_atualizacao=new Date(coop.__lastSignalAt).toLocaleString("pt-BR");
     lastConfirmedGps.set(String(coop.id),{lat:coop.lat,lng:coop.lng,source:"cloudflare"});
    }else{
-    coop.battery_percent=null;coop.charging=null;coop.device_model=null;
-    coop.online=false;coop.gps_ao_vivo=false;coop.presenca_painel=false;
-    coop.__lastSignalAt=null;coop.sinal_idade_segundos=null;coop.status="offline";
+    // A ausência temporária do item no snapshot não apaga o último sinal nem
+    // o nível de bateria. O status expira somente pela idade da última posição
+    // efetivamente recebida, preservando o alfinete no mapa.
+    const age=Number.isFinite(coop.__lastSignalAt)?clock-coop.__lastSignalAt:Infinity;
+    if(age>=MAP_SIGNAL_TIMEOUT_MS){
+      coop.online=false;coop.gps_ao_vivo=false;coop.presenca_painel=false;
+      coop.status="offline";
+    }
    }
   }
   render();
@@ -527,7 +544,21 @@ map.on("moveend",()=>{
 });
 map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();gpsSocket();
-setInterval(updateGps,60000);
+// Mantém o estado atualizado sem depender de F5. Browsers suspendem timers de
+// abas em segundo plano; recuperar imediatamente quando a página voltar.
+setInterval(()=>updateGps(),30000);
+let lastResumeAt=0;
+function retomarGps(){
+ if(document.hidden)return;
+ const now=Date.now();
+ if(now-lastResumeAt<3000)return;
+ lastResumeAt=now;
+ updateGps(true);
+}
+document.addEventListener("visibilitychange",()=>{if(!document.hidden)retomarGps()});
+window.addEventListener("pageshow",retomarGps);
+window.addEventListener("focus",retomarGps);
+window.addEventListener("online",retomarGps);
   // Muda de verde para laranja e depois offline, sem novas consultas.
   let lastStatusSignature="";
   setInterval(()=>{
