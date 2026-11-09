@@ -2673,23 +2673,53 @@ body.cx-modal-active{overflow:hidden!important}
       return 2 * R * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
     }
 
+    // iPhone / navegador: o GPS segue diretamente para Cloudflare, nunca para Render.
+    // O Render apenas emite um ticket assinado uma vez por hora para a sessao logada.
+    let coopexGpsTicket = null;
+    let coopexGpsSending = false;
+    async function getCoopexGpsTicket(refresh = false){
+      const now = Math.floor(Date.now()/1000);
+      if(!refresh && coopexGpsTicket && coopexGpsTicket.expires_at > now + 90)
+        return coopexGpsTicket;
+      const res = await fetch('/api/cooperado/gps/ticket',{
+        cache:'no-store',credentials:'same-origin',headers:{Accept:'application/json'}
+      });
+      if(!res.ok) throw new Error('GPS auth '+res.status);
+      const body = await res.json();
+      if(!body.ok || !body.ticket || !body.url) throw new Error('GPS auth indisponivel');
+      coopexGpsTicket = body;
+      return body;
+    }
     async function sendPosition(lat, lng, accuracy, heading, speed, force = false){
-      // Rastreamento periódico suspenso: não enviar GPS ao Render principal.
-      // A localização da fila usa /api/cooperado/fila/entrar separadamente.
-      return;
+      if(window.AndroidBridge || document.hidden || coopexGpsSending) return;
+      if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       const now = Date.now();
-      const current = { lat, lng };
-      const moved = distanceMeters(lastGpsCoords, current);
-      if (!force && lastGpsSentAt && (now - lastGpsSentAt) < 60000) return;
-      lastGpsCoords = current;
-      lastGpsSentAt = now;
+      if(!force && lastGpsSentAt && (now - lastGpsSentAt) < 60000) return;
+      coopexGpsSending = true;
       try{
-        await fetch(`{{ url_for('cooperado_atualizar_localizacao') }}`, {
-          method:'POST',
-          headers:{ 'Content-Type':'application/json', 'Cache-Control':'no-store' },
-          body: JSON.stringify({ lat, lng, accuracy, heading, speed })
+        let token = await getCoopexGpsTicket();
+        const payload = {lat,lng,accuracy,speed_mps:speed,heading};
+        let res = await fetch(token.url,{
+          method:'POST',mode:'cors',cache:'no-store',
+          headers:{'Authorization':'Bearer '+token.ticket,'Content-Type':'application/json'},
+          body:JSON.stringify(payload)
         });
-      }catch(_){ }
+        if(res.status===401){
+          token = await getCoopexGpsTicket(true);
+          res = await fetch(token.url,{
+            method:'POST',mode:'cors',cache:'no-store',
+            headers:{'Authorization':'Bearer '+token.ticket,'Content-Type':'application/json'},
+            body:JSON.stringify(payload)
+          });
+        }
+        if(!res.ok) throw new Error('GPS Cloudflare '+res.status);
+        lastGpsCoords = {lat,lng};
+        lastGpsSentAt = Date.now();
+      }catch(e){
+        console.warn('COOPEX GPS Cloudflare:',e.message);
+      }finally{
+        coopexGpsSending = false;
+      }
     }
 
     function forceLogout(){
