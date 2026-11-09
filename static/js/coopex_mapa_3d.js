@@ -41,13 +41,22 @@ function keepLastPosition(arr){
   return arr;
 }
 const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
-const MAP_SIGNAL_TIMEOUT_MS=60000; // Uma regra visual apenas no COOPEX Maps.
+const MAP_SIGNAL_TIMEOUT_MS=60000; // Offline após 60 segundos.
+const MAP_SEARCHING_AFTER_MS=15000; // Laranja se o GPS não comunicar há 15 segundos.
+for(const i of items){
+ const age=Number(i.sinal_idade_segundos);
+ if(i.online&&i.sinal_idade_segundos!=null&&Number.isFinite(age)&&age>=0)i.__lastSignalAt=Date.now()-age*1000;
+}
 const state=i=>{
  if(!i.online)return "offline";
- if(Number.isFinite(i.__lastSignalAt)&&Date.now()-i.__lastSignalAt>MAP_SIGNAL_TIMEOUT_MS)return "offline";
+ if(Number.isFinite(i.__lastSignalAt)){
+  const age=Date.now()-i.__lastSignalAt;
+  if(age>=MAP_SIGNAL_TIMEOUT_MS)return "offline";
+  if(age>=MAP_SEARCHING_AFTER_MS)return "ocioso";
+ }
  return i.status==="ocioso"?"ocioso":"online";
 };
-const stateNames={online:"Online",ocioso:"Ocioso",offline:"Offline"};
+const stateNames={online:"Online",ocioso:"Procurando conexão",offline:"Offline"};
 const colors={online:"#0cdb7b",ocioso:"#f5a12c",offline:"#ff4758"};
 const initials=n=>String(n||"CO").trim().split(/\s+/).filter(Boolean).slice(0,2).map(v=>v[0].toLocaleUpperCase("pt-BR")).join("");
 const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
@@ -499,15 +508,19 @@ map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();gpsSocket();
 setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);
  setInterval(updateGps,60000);
- // Envelhece status localmente sem chamadas extras à API nem depender de evento de logout.
- setInterval(()=>{
-  if(document.hidden)return;
-  let changed=false;
-  for(const x of items){
-   if(x.online&&Number.isFinite(x.__lastSignalAt)&&Date.now()-x.__lastSignalAt>MAP_SIGNAL_TIMEOUT_MS){
-    x.online=false;x.gps_ao_vivo=false;x.presenca_painel=false;x.status="offline";changed=true;
+  // Muda de verde para laranja e depois offline, sem novas consultas.
+  let lastStatusSignature="";
+  setInterval(()=>{
+   if(document.hidden)return;
+   const signature=items.map(x=>String(x.id)+":"+state(x)).join("|");
+   if(signature===lastStatusSignature)return;
+   lastStatusSignature=signature;
+   for(const x of items){
+    if(x.online&&Number.isFinite(x.__lastSignalAt)&&Date.now()-x.__lastSignalAt>=MAP_SIGNAL_TIMEOUT_MS){
+     x.online=false;x.gps_ao_vivo=false;x.presenca_painel=false;x.status="offline";
+    }
    }
-  }
-  if(changed)render();
- },5000);/* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
+   render();
+  },5000);
+ /* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
 })();
