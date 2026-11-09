@@ -39,6 +39,7 @@
 <aside id="coopexSide" class="coopex-side glass" aria-label="Painel de cooperados">
   <div class="coopex-side-header"><span class="coopex-side-mark">C</span><div><strong>COOPEX</strong><small>Mapa dos cooperados</small></div><button type="button" id="sideToggle" class="coopex-side-collapse" title="Recolher painel" aria-label="Recolher painel">‹</button></div>
   <div class="coopex-side-intro">Acompanhe seus cooperados ou explore ruas e endereços no mapa.</div>
+  <button type="button" id="coopexOpenMatrix" class="coopex-side-address" style="border:1px solid #1fc97988;background:linear-gradient(135deg,#052d20,#083c2d);color:#a5ffd0;font-weight:800;letter-spacing:.03em" title="Abrir monitor seguro de aparelhos no Cloudflare">◈ &nbsp; Monitor GPS Matrix</button>
   <button type="button" id="sideSearchAddress" class="coopex-side-address">⌕ &nbsp; Pesquisar ruas e endereços</button>
   <div class="coopex-side-list-title"><strong>Cooperados no mapa</strong><span id="sideCount">0</span></div>
   <div id="sideCourierList" class="coopex-side-list" aria-live="off"></div>
@@ -113,5 +114,40 @@
 <script defer src="{{ url_for('static',filename='js/coopex_maps_native_extras.js') }}?v=20261108-native91"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_route_autocomplete.js') }}?v=20261108-route-hist202"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_weather_week.js') }}?v=20261109-weather-readable-v4"></script>
+<script id="coopex-matrix-handoff-v1">
+(function(){
+ 'use strict';
+ const btn=document.getElementById('coopexOpenMatrix');
+ if(!btn)return;
+ const workerOrigin='https://coopex-gps.coopexentregas-rn.workers.dev';
+ btn.addEventListener('click',async()=>{
+  const popup=window.open(workerOrigin+'/','_blank');
+  if(!popup){alert('Permita a abertura de uma nova aba para o Monitor GPS.');return}
+  try{
+   popup.opener=null;
+   btn.disabled=true;
+   const response=await fetch('/api/admin/gps/ticket',{credentials:'same-origin',cache:'no-store',headers:{Accept:'application/json'}});
+   const data=await response.json();
+   if(!response.ok||!data.ok||!data.ticket)throw Error('Não foi possível autenticar o acesso ao Cloudflare.');
+   const source=window.COOPEX_SEED;
+   const names=(Array.isArray(source)?source:[]).filter(x=>x&&x.id!=null).map(x=>({id:x.id,nome:String(x.nome||'Cooperado '+x.id)}));
+   const message={type:'COOPEX_GPS_SESSION',ticket:data.ticket,names};
+   let tries=0;
+   const done=()=>{clearInterval(timer);window.removeEventListener('message',ack);};
+   const ack=e=>{if(e.origin===workerOrigin&&e.source===popup&&e.data?.type==='COOPEX_GPS_ACK')done();};
+   window.addEventListener('message',ack);
+   const send=()=>{
+    if(popup.closed||++tries>35){done();return}
+    try{popup.postMessage(message,workerOrigin)}catch(_){}
+   };
+   const timer=setInterval(send,350);
+   send();
+  }catch(e){
+   try{popup.close()}catch(_){}
+   alert(e.message||'Falha ao abrir monitor seguro.');
+  }finally{btn.disabled=false;}
+ });
+})();
+</script>
 </body>
 </html>
