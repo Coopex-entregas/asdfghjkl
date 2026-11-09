@@ -6234,6 +6234,67 @@ def coopex_admin_gps_cloudflare_ticket():
     return resp
 
 
+@app.get('/api/admin/gps/matrix-login')
+def coopex_gps_matrix_login():
+    """Entrega a credencial temporária SOMENTE ao painel Cloudflare que abriu a janela.
+    Nenhum token é colocado na URL, cookies de GPS ou no armazenamento local.
+    """
+    from flask import make_response
+    if not session.get('is_admin') and not session.get('is_master'):
+        return make_response(
+            '<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
+            '<title>COOPEX GPS — autenticação</title>'
+            '<body style="background:#06130d;color:#d9ffe7;font:16px system-ui;padding:34px">'
+            '<h2>Autenticação COOPEX necessária</h2>'
+            '<p>Entre com sua conta de administrador na COOPEX e depois clique novamente em '
+            '<strong>Conectar com COOPEX</strong> na janela Matrix.</p>'
+            '<a style="color:#6cffb1" href="/login">Entrar na COOPEX</a>'
+            '</body></html>', 401,
+            {'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff',
+             'Referrer-Policy': 'no-referrer'}
+        )
+    ticket_response = coopex_admin_gps_cloudflare_ticket()
+    if getattr(ticket_response, 'status_code', 500) != 200:
+        return ticket_response
+    dados = ticket_response.get_json(silent=True) or {}
+    token = dados.get('ticket')
+    if not token:
+        return jsonify(ok=False, error='ticket_unavailable'), 503
+    # O popup envia o token apenas para a origem exata do Worker, nunca por query string.
+    payload = json.dumps({'type': 'COOPEX_GPS_SESSION',
+                          'ticket': token}, ensure_ascii=True).replace('<', '\\u003c')
+    origem = 'https://coopex-gps.coopexentregas-rn.workers.dev'
+    pagina = (
+        '<!doctype html><html lang="pt-BR"><meta charset="utf-8">'
+        '<title>COOPEX GPS — conectado</title>'
+        '<body style="background:#06130d;color:#d9ffe7;font:16px system-ui;padding:34px">'
+        '<h2>Conectando ao monitor GPS...</h2>'
+        '<p>Esta janela fecha automaticamente após a autenticação.</p>'
+        '<script>(function(){'
+        'const destino=' + json.dumps(origem) + ';'
+        'const payload=' + payload + ';'
+        'if(!window.opener){document.body.innerHTML="<p>Abra o monitor Matrix e clique em Conectar com COOPEX.</p>";return;}'
+        'let i=0;'
+        'const enviar=function(){if(window.opener&&!window.opener.closed)window.opener.postMessage(payload,destino);'
+        'if(++i>=30)clearInterval(timer);};'
+        'const timer=setInterval(enviar,350);enviar();'
+        'window.addEventListener("message",function(e){'
+        'if(e.origin===destino&&e.data&&e.data.type==="COOPEX_GPS_ACK"){clearInterval(timer);window.close();}'
+        '});'
+        '})();</script></body></html>'
+    )
+    resposta = make_response(pagina)
+    resposta.headers['Content-Type'] = 'text/html; charset=utf-8'
+    resposta.headers['Cache-Control'] = 'no-store, private'
+    resposta.headers['Referrer-Policy'] = 'no-referrer'
+    resposta.headers['X-Content-Type-Options'] = 'nosniff'
+    resposta.headers['Content-Security-Policy'] = (
+        "default-src 'none'; script-src 'unsafe-inline'; style-src 'unsafe-inline'; "
+        "base-uri 'none'; form-action 'none'; frame-ancestors 'none'"
+    )
+    return resposta
+
+
 @app.get('/api/admin/gps/positions')
 def coopex_admin_gps_cloudflare_positions():
     """Proxy SOMENTE de leitura; nao consulta o banco nem gera eventos GPS."""
