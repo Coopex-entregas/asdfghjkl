@@ -784,12 +784,12 @@ let previewWindow=null;
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
 let googleStatusFilter="online";
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
-const state=i=>!i.online?"offline":i.status==="ocioso"?"ocioso":"online";
+const state=i=>{if(!i.online)return "offline";const age=Number.isFinite(i.__lastSignalAt)?Date.now()-i.__lastSignalAt:0;return age>=60000?"offline":age>=15000||i.status==="ocioso"?"ocioso":"online"};
 const normPos=i=>i&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&+i.lat<-3&&+i.lng<-32;
 const initials=n=>String(n||"CO").trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x.charAt(0).toUpperCase()).join("");
 function iconFor(status,selected){
  const ring=palette[status]||palette.offline;
- const radius=selected?24:21;
+ const radius=selected?22:19;
  const svg='<svg xmlns="http://www.w3.org/2000/svg" width="60" height="60" viewBox="0 0 60 60">'+
  '<defs><linearGradient id="glass" x1="0" x2="1" y1="0" y2="1"><stop stop-color="#fff" stop-opacity=".98"/><stop offset=".5" stop-color="#eff9ff" stop-opacity=".87"/><stop offset="1" stop-color="#c6e4f8" stop-opacity=".91"/></linearGradient></defs>'+
  '<circle cx="30" cy="32" r="'+(radius+4)+'" fill="#164877" opacity=".16"/>'+
@@ -825,7 +825,7 @@ function updateMarkers(list,chosen){
   }else{
    const marker=new google.maps.Marker({
     map:(googleStatusFilter==="todos"||googleStatusFilter===status)?googleMap:null,position:finalPoint,
-    title:(i.nome||"Cooperado")+" · "+(status==="offline"?"Offline":status==="ocioso"?"Ocioso":"Online"),
+    title:(i.nome||"Cooperado")+" · "+(status==="offline"?"Offline":status==="ocioso"?"Procurando conexão":"Online"),
     icon:iconFor(status,chosenNow),
     label:{text:initials(i.nome),color:"#111c2a",fontWeight:"800",fontSize:"12px"},
     optimized:false,zIndex:chosenNow?100:status==="online"?15:5
@@ -843,7 +843,7 @@ function updateMarkers(list,chosen){
     if(!current)return;
     const wrap=document.createElement("div");wrap.className="cx-pin-preview";
     const title=document.createElement("strong");title.textContent=current.nome||"Cooperado";
-    const sub=document.createElement("small");sub.textContent=(state(current)==="offline"?"🔴 Offline":state(current)==="ocioso"?"🟠 Ocioso":"🟢 Online")+" · "+(current.endereco||"Natal/RN");
+    const sub=document.createElement("small");sub.textContent=(state(current)==="offline"?"🔴 Offline":state(current)==="ocioso"?"🟠 Procurando conexão":"🟢 Online")+" · "+(current.endereco||"Natal/RN");
     const last=document.createElement("small");last.textContent="GPS: "+(current.ultima_atualizacao||"Não informado");
     wrap.append(title,sub,last);previewWindow.setContent(wrap);previewWindow.open({map:googleMap,anchor:marker,shouldFocus:false});
    });
@@ -942,6 +942,7 @@ window.COOPEX_GOOGLE_MAP_ONLOAD=()=>{
   setGoogleCanvasSize();
   googleMap=new google.maps.Map(googleRoot,{
    center:{lat:-5.7945,lng:-35.211},zoom:12,
+   colorScheme:(window.COOPEX_NIGHT_ACTIVE===true?google.maps.ColorScheme.DARK:google.maps.ColorScheme.LIGHT),
    mapTypeId:"roadmap",streetViewControl:true,fullscreenControl:false,
    mapTypeControl:false,zoomControl:true,scaleControl:true,
    rotateControl:false,gestureHandling:"greedy",
