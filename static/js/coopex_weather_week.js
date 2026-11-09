@@ -125,9 +125,6 @@ function setup(){
    const prob=document.createElement("small");prob.textContent="☂ "+percent+"%";
    row.append(weekday,weather,temp,prob);panel.append(row);
   });
-  const disclaimer=document.createElement("small");disclaimer.className="cx-weather-disclaimer";
-  disclaimer.textContent="Probabilidades são previsões da Open-Meteo, não confirmação de chuva no bairro. A chance diária representa o maior percentual previsto em uma hora.";
-  panel.append(disclaimer);
   position();
  }
 
