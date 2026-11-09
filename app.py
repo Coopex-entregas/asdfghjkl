@@ -7729,7 +7729,10 @@ def mapa_motoboys():
         last_seen = live.get('ultima_atualizacao') if live else None
         # Regra exclusiva do COOPEX Maps: disponibilidade recente, não movimento.
         # Não altera o prazo nem a comunicação do aplicativo Android.
-        mapa_limite_s = 60
+        # O app grava retrato de posição no banco a cada ~75s.
+        # Tolerância de 120s evita falso offline durante deploy/reinício
+        # sem manter o processo ocupado nem ampliar a memória residente.
+        mapa_limite_s = 120
         agora_s = pytime.time()
         ts_gps = float(live.get('last_seen_ts') or 0) if live else 0
         age_gps = max(0.0, agora_s - ts_gps) if ts_gps else None
