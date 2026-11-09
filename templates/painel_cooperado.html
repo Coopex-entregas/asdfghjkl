@@ -2674,6 +2674,9 @@ body.cx-modal-active{overflow:hidden!important}
     }
 
     async function sendPosition(lat, lng, accuracy, heading, speed, force = false){
+      // Rastreamento periódico suspenso: não enviar GPS ao Render principal.
+      // A localização da fila usa /api/cooperado/fila/entrar separadamente.
+      return;
       const now = Date.now();
       const current = { lat, lng };
       const moved = distanceMeters(lastGpsCoords, current);
