@@ -1,0 +1,134 @@
+/* COOPEX Maps — camada final de interface, isolada dos estilos legados.
+   O mapa Google, o GPS e os filtros mantêm a própria lógica. */
+:root{--cxui-bg:#071d39;--cxui-face:linear-gradient(180deg,#1b5484 0%,#0e355d 55%,#071d39 100%);--cxui-border:#62baf9;--cxui-ink:#f3faff;--cxui-muted:#c8e4f8;--cxui-shadow:0 8px 21px #021126a3, inset 0 2px 1px #caf0ff80,inset 0 -2px 3px #020f2dbf,0 0 10px #159dff45}
+body #cxTopControlDock,body.cx-night-google #cxTopControlDock{
+  position:fixed!important;display:grid!important;box-sizing:border-box!important;
+  top:11px!important;right:12px!important;left:calc(min(450px,100dvw - 54px) + 12px)!important;
+  width:auto!important;max-width:none!important;min-width:0!important;
+  grid-template-columns:minmax(165px,1fr) minmax(175px,245px) max-content 47px!important;
+  grid-template-rows:52px!important;align-items:center!important;justify-content:stretch!important;
+  column-gap:8px!important;row-gap:0!important;padding:5px 8px!important;
+  height:64px!important;min-height:64px!important;
+  border:1px solid #6bc1ff!important;border-radius:22px!important;
+  background:linear-gradient(180deg,#123c68,#051b36)!important;
+  box-shadow:0 11px 22px #011128a8,inset 0 2px 2px #b7e9ff8c,0 0 10px #078eff65!important;
+  isolation:isolate!important;overflow:visible!important;pointer-events:none!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+}
+body #cxTopControlDock>*{box-sizing:border-box!important;position:relative!important;inset:auto!important;
+ top:auto!important;left:auto!important;right:auto!important;bottom:auto!important;
+ margin:0!important;transform:none!important;pointer-events:auto!important;
+ min-height:48px!important;height:48px!important;max-height:48px!important;
+ border:1px solid var(--cxui-border)!important;border-radius:15px!important;
+ background:var(--cxui-face)!important;box-shadow:var(--cxui-shadow)!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ color:var(--cxui-ink)!important;opacity:1!important;
+}
+body #cxTopControlDock>#cxCoopSearch{grid-column:1!important;grid-row:1!important;min-width:0!important;
+ width:100%!important;max-width:none!important;flex:auto!important;overflow:visible!important}
+body #cxTopControlDock>.weather.glass{grid-column:2!important;grid-row:1!important;
+ width:100%!important;max-width:none!important;min-width:0!important;flex:auto!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ padding:4px 11px!important;gap:6px!important;cursor:pointer!important;overflow:hidden!important}
+body #cxTopControlDock>.filters.glass{grid-column:3!important;grid-row:1!important;
+ width:max-content!important;min-width:0!important;max-width:none!important;flex:auto!important;
+ display:flex!important;align-items:center!important;gap:3px!important;
+ padding:4px!important;overflow:visible!important}
+body #cxTopControlDock>.back-link{grid-column:4!important;grid-row:1!important;
+ width:47px!important;min-width:47px!important;max-width:47px!important;
+ display:grid!important;place-items:center!important;font-size:23px!important;text-decoration:none!important}
+body #cxTopControlDock>#cxTrafficTopButton{display:none!important}
+body #cxTopControlDock #cxCoopInput,body #cxTopControlDock #cxCoopInput::placeholder{
+ color:#f3faff!important;opacity:1!important;font-size:13px!important;font-weight:600!important}
+body #cxTopControlDock .weather.glass #weatherIcon{font-size:23px!important;flex:none!important}
+body #cxTopControlDock .weather.glass #temperature{font-size:19px!important;color:#fff!important;flex:none!important}
+body #cxTopControlDock .weather.glass .cx-weather-place{font-size:11px!important;font-weight:800!important;color:#e9f8ff!important;flex:none!important}
+body #cxTopControlDock .weather.glass .cx-weather-condition{
+ flex:1 1 auto!important;min-width:0!important;overflow:hidden!important;
+ text-overflow:ellipsis!important;white-space:nowrap!important;color:#d6eaff!important;font-size:11px!important}
+body #cxTopControlDock>.filters.glass .pill{font-size:11px!important;font-weight:800!important;
+ min-height:36px!important;height:36px!important;padding:5px 8px!important;flex:none!important;
+ color:#eaf8ff!important;border:1px solid #4a94cc!important;border-radius:11px!important;
+ background:linear-gradient(170deg,#265781,#0e3356)!important;box-shadow:inset 0 1px 1px #c6e9ff70!important}
+body #cxTopControlDock>.filters.glass .pill.active{border-color:#a2e5ff!important;background:linear-gradient(170deg,#147feb,#0756ae)!important;
+ box-shadow:0 0 8px #188ffb8c,inset 0 1px 1px #e0faff86!important}
+body #cxTopControlDock>.filters.glass [data-filter="online"] .dot{background:#18ed78!important;box-shadow:0 0 8px #1afa6f!important}
+body #cxTopControlDock>.filters.glass [data-filter="ocioso"] .dot{background:#ffad25!important;box-shadow:0 0 8px #ffaa18!important}
+body #cxTopControlDock>.filters.glass [data-filter="offline"] .dot{background:#ff465d!important;box-shadow:0 0 8px #ff465d!important}
+/* A busca Google tem área clicável apenas no campo e nos controles.
+   A extensão vazia do painel não deve interceptar cliques. */
+@media(min-width:960px){
+ body #addressPanel.cx-search-idle:not(.cx-directions-mode){
+  background:transparent!important;border-color:transparent!important;
+  box-shadow:none!important;pointer-events:none!important;
+  z-index:1350!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-content{
+  background:transparent!important;box-shadow:none!important;
+  border:0!important;pointer-events:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top{
+  height:64px!important;min-height:64px!important;max-height:64px!important;
+  background:linear-gradient(180deg,#1e5989,#0b2b4c)!important;
+  border:1px solid #79c9ff!important;border-radius:21px!important;
+  box-shadow:var(--cxui-shadow)!important;
+  padding:7px 10px!important;pointer-events:auto!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top input{color:#fff!important;font-weight:650!important;font-size:13px!important}
+ body #addressPanel.cx-search-idle .cx-drawer-top input::placeholder{color:#d7ebfa!important;opacity:1!important}
+ body #addressPanel.cx-search-idle .cx-drawer-top button{
+  color:#f1faff!important;background:linear-gradient(180deg,#246ca5,#113b66)!important;
+  border:1px solid #7fcbff!important;border-radius:12px!important}
+ body #addressPanel.cx-search-idle #cxUnifiedResults{pointer-events:auto!important}
+}
+body #addressPanel.cx-place-view,body #addressPanel.cx-directions-mode{
+ background:linear-gradient(180deg,#123d68,#071d3a)!important;
+ border:1px solid #62bafa!important;border-radius:23px!important;
+ box-shadow:0 8px 26px #001023a8,inset 0 2px 1px #cff6ff88,0 0 11px #149bff65!important;
+}
+body #addressPanel.cx-place-view .cx-drawer-content,body #addressPanel.cx-directions-mode .cx-drawer-content,
+body #addressPanel.cx-place-view .cx-drawer-top{background:transparent!important;opacity:1!important}
+body #addressPanel.cx-place-view #cxPlaceDetails,body #addressPanel.cx-place-view #cxPlaceDetails:not([hidden]){
+ background:linear-gradient(160deg,#174773,#0b2c50)!important;
+ border:1px solid #4b9bd1!important;box-shadow:0 7px 22px #00152da8,inset 0 1px 1px #d3f0ff7c!important;
+ color:#f0f9ff!important;border-radius:20px!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-title{color:#fff!important;font-size:23px!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body #addressPanel.cx-place-view #cxPlaceDetails small{color:#cbe7fa!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:7px!important;padding:10px!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button{
+ min-width:0!important;min-height:64px!important;height:64px!important;padding:7px 3px!important;
+ background:var(--cxui-face)!important;border:1px solid #77c5fa!important;border-radius:13px!important;
+ color:#f4fbff!important;font-size:11px!important;box-shadow:var(--cxui-shadow)!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts .cx-place-directions{
+ background:linear-gradient(150deg,#2289f3,#0755b7)!important}
+body #ui>.stats{bottom:22px!important}
+body #ui>.stats .stat{background:var(--cxui-face)!important;border:1px solid #66b9eb!important;box-shadow:var(--cxui-shadow)!important;
+ color:#f4faff!important;opacity:1!important}
+body #ui>.stats .stat .stat-label{color:#e7f6ff!important;opacity:1!important}
+body #ui>.stats .stat .num{color:#fff!important;opacity:1!important}
+body #cxWeatherWeek{background:linear-gradient(160deg,#164673,#071c39)!important;border:1px solid #61bafc!important;
+ box-shadow:0 14px 38px #000a,inset 0 2px 2px #caebff96!important;color:#f1faff!important}
+body #cxWeatherWeek .cx-week-day *,body #cxWeatherWeek .cx-weather-now,
+body #cxWeatherWeek .cx-weather-disclaimer{color:#f1faff!important}
+body #cxWeatherWeek[hidden]{display:none!important}
+@media(max-width:1350px){
+ body #cxTopControlDock{grid-template-columns:minmax(110px,1fr) minmax(140px,175px) max-content 41px!important;
+ column-gap:5px!important;padding:4px!important}
+ body #cxTopControlDock>.back-link{width:41px!important;min-width:41px!important;max-width:41px!important}
+ body #cxTopControlDock>.filters.glass .pill{padding:5px 6px!important;font-size:10px!important}
+}
+@media(max-width:959px){
+ body #cxTopControlDock{left:10px!important;right:10px!important;max-width:none!important;height:auto!important;
+ min-height:50px!important;display:flex!important;flex-wrap:wrap!important;gap:6px!important;
+ padding:5px!important;border-radius:18px!important}
+ body #cxTopControlDock>*{height:42px!important;min-height:42px!important;max-height:42px!important}
+ body #cxTopControlDock>#cxCoopSearch{flex:1 1 155px!important;width:auto!important}
+ body #cxTopControlDock>.weather.glass{flex:1 1 165px!important;width:auto!important;min-width:140px!important}
+ body #cxTopControlDock>.filters.glass{flex:1 1 auto!important;width:auto!important;max-width:100%!important;overflow-x:auto!important}
+ body #cxTopControlDock>.back-link{flex:0 0 41px!important;min-width:41px!important}
+}
