@@ -110,13 +110,13 @@ def install(host):
 </form></section>
 <section id="coopex-base-config">
 <h2>Localização da base COOPEX</h2>
-<p class="hint">Configure o endereço da cooperativa. O aplicativo utilizará estas coordenadas para validar a entrada na fila dentro do raio de 50 metros. Quando a sede mudar, atualize os campos aqui, sem precisar atualizar o app.</p>
+<p class="hint">Configure o endereço da cooperativa. O aplicativo utilizará estas coordenadas para validar a entrada na fila dentro do raio de 100 metros. Quando a sede mudar, atualize os campos aqui, sem precisar atualizar o app.</p>
 <form action="/admin/pix-sicoob/localizacao-base" method="post">
 <input type="hidden" name="csrf" value="{{ csrf }}">
 <label>Endereço completo da cooperativa</label><input name="endereco_base" maxlength="255" required value="{{ base_endereco }}" placeholder="Rua, número, bairro, Natal/RN">
 <label>Latitude da entrada da base</label><input id="coopex-base-lat" name="latitude" type="number" step="any" min="-90" max="90" required value="{{ base_latitude }}" placeholder="-5.000000">
 <label>Longitude da entrada da base</label><input id="coopex-base-lng" name="longitude" type="number" step="any" min="-180" max="180" required value="{{ base_longitude }}" placeholder="-35.000000">
-<p class="hint">Raio permitido: <strong>50 metros</strong>. Informe as coordenadas exatas da entrada; somente o endereço em texto não permite medir a distância. A precisão do GPS do cooperado também deverá ser conferida.</p>
+<p class="hint">Raio permitido: <strong>100 metros</strong>. Informe as coordenadas exatas da entrada; somente o endereço em texto não permite medir a distância. A precisão do GPS do cooperado também deverá ser conferida.</p>
 <button type="button" onclick="coopexPreencherLocalizacaoBase()" style="background:#e5f0ff;color:#114bb2;border:1px solid #afc9f5">Usar localização atual deste dispositivo</button>
 <p><button type="submit">Salvar endereço da cooperativa</button></p>
 </form>
