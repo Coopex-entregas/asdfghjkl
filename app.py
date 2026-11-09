@@ -885,7 +885,7 @@ def emitir_posicao_motoboy(cooperado: Cooperado, lat: float, lng: float, velocid
             'ultima_atualizacao': ultima_str,
         }
 
-        socketio.emit('posicao_motoboy_atualizada', payload)
+        socketio.emit('posicao_motoboy_atualizada', payload, to='coopex-map-live')
 
     except Exception as e:
         try:
@@ -1447,7 +1447,7 @@ def _emitir_posicao_motoboy_live(info: dict):
             'accuracy_m': info.get('accuracy'),
             'ultima_atualizacao': info.get('ultima_atualizacao') or '',
         }
-        socketio.emit('posicao_motoboy_atualizada', payload)
+        socketio.emit('posicao_motoboy_atualizada', payload, to='coopex-map-live')
     except Exception as e:
         try:
             current_app.logger.warning(f'Falha ao emitir posicao_motoboy_atualizada live: {e}')
@@ -15323,6 +15323,15 @@ def handle_connect(auth=None):
 
 
 # Desconexão do cliente
+@socketio.on("coopex_map_subscribe")
+def coopex_map_subscribe():
+    """Posições ao vivo somente para mapas de administradores autenticados."""
+    if not session.get("is_admin"):
+        return {"ok": False, "error": "unauthorized"}
+    join_room("coopex-map-live")
+    return {"ok": True}
+
+
 @socketio.on("disconnect")
 def handle_disconnect(reason=None):
     # O Socket.IO passa 1 argumento (normalmente o 'reason'), por isso reason=None
