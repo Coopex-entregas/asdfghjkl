@@ -22,7 +22,7 @@ const readWeather=async()=>{
 };
 const ICON=(code,isDay=true)=>code===0?(isDay?"☀️":"🌙"):code<=3?(isDay?"⛅":"☁️"):code<=48?"🌫️":code<=67?"🌧️":code<=77?"🌨️":code<=82?"🌦️":code<=86?"🌨️":"⛈️";
 const DESC=(code,isDay=true)=>code===0?(isDay?"Céu limpo":"Céu limpo à noite"):code<=3?(isDay?"Parcialmente nublado":"Nuvens à noite"):code<=48?"Neblina":code<=67?"Chuva possível":code<=77?"Granizo/neve":code<=82?"Pancadas possíveis":code<=86?"Neve":"Trovoadas";
-const localHour=()=>Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date())));
+const localHour=()=>Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date()));
 function position(){
  if(!panel||panel.hidden||!source)return;
  const r=source.getBoundingClientRect(),w=panel.offsetWidth||330;
