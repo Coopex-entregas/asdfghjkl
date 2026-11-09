@@ -255,20 +255,41 @@ function selectCooperado(id){
  }
 }
 async function updateGps(){
- if(fetching||document.hidden)return;fetching=true;
+ if(fetching||document.hidden)return;
+ fetching=true;
  try{
-  const response=await fetch("/mapa_motoboys?format=json",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
-  if(!response.ok)throw Error("GPS HTTP "+response.status);
-  const data=await response.json();if(!Array.isArray(data))throw Error("Formato GPS inválido");
-  items=keepLastPosition(data);
-   const clock=Date.now();
-   for(const coop of items){
-    const age=Number(coop.sinal_idade_segundos);
-    coop.__lastSignalAt=coop.online&&Number.isFinite(age)&&age>=0?clock-age*1000:null;
+  // A leitura do GPS vem exclusivamente da Cloudflare.
+  // O Render somente transmite o snapshot; nao consulta/atualiza a tabela de entregas.
+  const response=await fetch("/api/admin/gps/positions",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
+  if(!response.ok)throw Error("Cloudflare GPS HTTP "+response.status);
+  const payload=await response.json();
+  if(!payload.ok||!Array.isArray(payload.items))throw Error("Resposta GPS invalida");
+  const updated=new Map(payload.items.map(p=>[String(p.id),p]));
+  const clock=Date.now();
+  for(const coop of items){
+   const p=updated.get(String(coop.id));
+   if(p&&p.lat!=null&&p.lng!=null&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)){
+    coop.lat=+p.lat;coop.lng=+p.lng;
+    coop.accuracy_m=p.accuracy==null?null:Number(p.accuracy);
+    coop.speed_kmh=p.speed_kmh==null?null:Number(p.speed_kmh);
+    coop.gps_ao_vivo=true;coop.online=true;coop.presenca_painel=false;
+    coop.__lastSignalAt=Number(p.updated_ms)||clock;
+    coop.sinal_idade_segundos=Math.max(0,(clock-coop.__lastSignalAt)/1000);
+    coop.status="livre";
+    coop.ultima_atualizacao=new Date(coop.__lastSignalAt).toLocaleString("pt-BR");
+    lastConfirmedGps.set(String(coop.id),{lat:coop.lat,lng:coop.lng,source:"cloudflare"});
+   }else{
+    coop.online=false;coop.gps_ao_vivo=false;coop.presenca_painel=false;
+    coop.__lastSignalAt=null;coop.sinal_idade_segundos=null;coop.status="offline";
    }
-   render();$("gpsStatus").textContent="GPS ativo";
-  if(!lastFit&&mapReady){const good=clusters().map(g=>g[0]);if(good.length){let b=new ml.LngLatBounds();good.forEach(i=>b.extend([+i.lng,+i.lat]));map.fitBounds(b,{padding:{top:160,right:365,bottom:180,left:320},maxZoom:13,duration:0});lastFit=true;}}
- }catch(e){$("gpsStatus").textContent="GPS temporariamente indisponível";console.warn("GPS:",e.message)}
+  }
+  render();
+  $("gpsStatus").textContent="GPS Cloudflare ativo";
+  if(!lastFit&&mapReady){
+   const good=clusters().map(g=>g[0]);
+   if(good.length){const b=new ml.LngLatBounds();good.forEach(i=>b.extend([+i.lng,+i.lat]));map.fitBounds(b,{padding:{top:160,right:365,bottom:180,left:320},maxZoom:13,duration:0});lastFit=true;}
+  }
+ }catch(e){$("gpsStatus").textContent="GPS Cloudflare indisponivel";console.warn("Cloudflare GPS:",e.message);}
  finally{fetching=false;}
 }
 $("search").addEventListener("input",e=>{
@@ -467,32 +488,9 @@ map.on("zoom",updateSpaceMode);
 map.on("load",updateSpaceMode);
 
 function gpsSocket(){
- const connect=window.io;
- if(typeof connect!=="function"){console.warn("Socket.IO não carregado. Mapa usa atualização de segurança.");return}
- try{
-  const sock=connect({transports:["websocket","polling"],reconnection:true,reconnectionDelay:1000});
-  function applyEvent(event){
-   if(!event||event.id==null)return;
-   const record=itemById(event.id);
-   if(!record){updateGps();return}
-   const oldLat=record.lat,oldLng=record.lng;
-   Object.assign(record,event);
-    if(event.online===false)record.__lastSignalAt=null;
-    else if(event.online===true)record.__lastSignalAt=Date.now();
-   if(event.velocidade_kmh!=null&&event.speed_kmh==null)record.speed_kmh=event.velocidade_kmh;
-   if(event.lat==null)record.lat=oldLat;
-   if(event.lng==null)record.lng=oldLng;
-   if(hasCoord(record)&&event.lat!=null&&event.lng!=null)lastConfirmedGps.set(String(record.id),{lat:+record.lat,lng:+record.lng,source:"live"});
-   render();
-  }
-  sock.on("posicao_motoboy_atualizada",applyEvent);
-  sock.on("coopex_presenca_atualizada",applyEvent);
-  sock.on("connect",()=>{sock.emit("coopex_map_subscribe",()=>updateGps());});
-  sock.on("reconnect",()=>{sock.emit("coopex_map_subscribe",()=>updateGps());});
-  window.addEventListener("pageshow",()=>updateGps());
-  document.addEventListener("visibilitychange",()=>{if(!document.hidden)updateGps()});
-  window.COOPEX_MAP_SOCKET=sock;
- }catch(error){console.warn("Conexão ao vivo indisponível:",error)}
+ // O posicionamento nao abre conexao Socket.IO com o Render.
+ // A comunicacao fica isolada no servico GPS da Cloudflare.
+ window.COOPEX_MAP_SOCKET=null;
 }
 window.COOPEX_MAP_ACTIONS={
  selectCooperado:id=>selectCooperado(id),
@@ -506,8 +504,7 @@ map.on("moveend",()=>{
 });
 map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();gpsSocket();
-setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);
- setInterval(updateGps,60000);
+setInterval(updateGps,60000);
   // Muda de verde para laranja e depois offline, sem novas consultas.
   let lastStatusSignature="";
   setInterval(()=>{
