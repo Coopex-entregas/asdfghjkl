@@ -1270,7 +1270,7 @@ import time as pytime
 # CONFIG DE TEMPOS (para NÃO dar NameError)
 # Ajuste os valores como quiser. Também aceita env vars no Render.
 # -------------------------------------------------------------------
-OFFLINE_AFTER_SEC = int(os.getenv("OFFLINE_AFTER_SEC", "120"))  # 2 min sem ping => offline
+OFFLINE_AFTER_SEC = max(180, int(os.getenv("OFFLINE_AFTER_SEC", "180")))  # 2 min sem ping => offline
 IDLE_AFTER_SEC    = int(os.getenv("IDLE_AFTER_SEC", "300"))     # 5 min sem movimento => ocioso
 # Se velocidade >= isso, considera "em movimento"
 MOVING_SPEED_KMH = float(os.getenv("MOVING_SPEED_KMH", "3.0"))
@@ -1289,7 +1289,7 @@ LOCATION_STRONG_HOLD_MAX_M = float(os.getenv("LOCATION_STRONG_HOLD_MAX_M", "35")
 # Não grava latitude/longitude no banco, não cria histórico de trajeto e não faz commit a cada ping.
 # Isso protege o Render quando 50/100 entregadores enviam localização ao mesmo tempo.
 LOCATION_LIVE_MIN_INTERVAL_SEC = int(os.getenv("LOCATION_LIVE_MIN_INTERVAL_SEC", "4"))
-LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC = int(os.getenv("LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC", "5"))
+LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC = max(60, int(os.getenv("LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC", "60")))
 LOCATION_LIVE_MIN_DISTANCE_M = float(os.getenv("LOCATION_LIVE_MIN_DISTANCE_M", "10"))
 LOCATION_LIVE_FORCE_EMIT_DISTANCE_M = float(os.getenv("LOCATION_LIVE_FORCE_EMIT_DISTANCE_M", "35"))
 LOCATION_LIVE_CACHE_MAX = int(os.getenv("LOCATION_LIVE_CACHE_MAX", "300"))
@@ -1514,7 +1514,7 @@ def _registrar_localizacao_em_memoria(auth_info, lat, lng, acc=None, spd=None, h
     if anterior:
         if segundos_desde_aceite < LOCATION_LIVE_MIN_INTERVAL_SEC and dist_val < LOCATION_LIVE_MIN_DISTANCE_M:
             emitir_agora = False
-        if segundos_desde_emit < LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC and dist_val < LOCATION_LIVE_FORCE_EMIT_DISTANCE_M:
+        if segundos_desde_emit < LOCATION_LIVE_MIN_EMIT_INTERVAL_SEC:
             emitir_agora = False
 
     info = {
@@ -7729,7 +7729,7 @@ def mapa_motoboys():
         last_seen = live.get('ultima_atualizacao') if live else None
         # Regra exclusiva do COOPEX Maps: disponibilidade recente, não movimento.
         # Não altera o prazo nem a comunicação do aplicativo Android.
-        mapa_limite_s = 60
+        mapa_limite_s = 180
         agora_s = pytime.time()
         ts_gps = float(live.get('last_seen_ts') or 0) if live else 0
         age_gps = max(0.0, agora_s - ts_gps) if ts_gps else None
