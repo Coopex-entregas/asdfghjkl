@@ -254,13 +254,29 @@ function selectCooperado(id){
   else map.flyTo({center:[+i.lng,+i.lat],zoom:Math.max(map.getZoom(),17),pitch:0,bearing:0,duration:650});
  }
 }
+let gpsTicket=null;
+async function getCloudflareGpsTicket(force=false){
+ const now=Math.floor(Date.now()/1000);
+ if(!force&&gpsTicket&&gpsTicket.expires_at>now+90)return gpsTicket;
+ const response=await fetch("/api/admin/gps/ticket",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
+ if(!response.ok)throw Error("GPS ticket HTTP "+response.status);
+ const data=await response.json();
+ if(!data.ok||!data.ticket||!data.url)throw Error("GPS ticket invalido");
+ gpsTicket=data;
+ return gpsTicket;
+}
 async function updateGps(){
  if(fetching||document.hidden)return;
  fetching=true;
  try{
-  // A leitura do GPS vem exclusivamente da Cloudflare.
-  // O Render somente transmite o snapshot; nao consulta/atualiza a tabela de entregas.
-  const response=await fetch("/api/admin/gps/positions",{cache:"no-store",credentials:"same-origin",headers:{Accept:"application/json"}});
+  // GPS: leitura diretamente do Cloudflare Worker. O Render fornece
+  // somente uma credencial temporaria a cada 10 minutos, sem trafego de posicoes.
+  let token=await getCloudflareGpsTicket();
+  let response=await fetch(token.url,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+token.ticket}});
+  if(response.status===401){
+    token=await getCloudflareGpsTicket(true);
+    response=await fetch(token.url,{cache:"no-store",headers:{Accept:"application/json",Authorization:"Bearer "+token.ticket}});
+  }
   if(!response.ok)throw Error("Cloudflare GPS HTTP "+response.status);
   const payload=await response.json();
   if(!payload.ok||!Array.isArray(payload.items))throw Error("Resposta GPS invalida");
