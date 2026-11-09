@@ -107,6 +107,87 @@ body.cx-night-google #cxWeatherWeek{
  body.cx-night-google #cxTopControlDock>#cxCoopSearch{flex:1 1 150px!important;width:auto!important;max-width:none!important}
  body.cx-night-google #cxTopControlDock>.weather.glass{flex:0 1 185px!important;width:auto!important;max-width:185px!important}
 }
+
+/* Referência: painel de operações COOPEX, vidro SÓLIDO 3D com contraste real. */
+body.cx-night-google{
+ --cx-solid-glass:#102f55;--cx-solid-glass-deep:#0c2342;--cx-solid-text:#eff8ff;
+}
+body.cx-night-google #cxTopControlDock>*,
+body.cx-night-google .cx-unified-drawer,
+body.cx-night-google #ui #details.details,
+body.cx-night-google #ui .stats .stat,
+body.cx-night-google #cxWeatherWeek{
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ background:linear-gradient(165deg,#1e4c7d 0%,#103257 58%,#0b2444 100%)!important;
+ color:#eef7ff!important;
+ border:1px solid #6a9ac7!important;
+ box-shadow:0 12px 30px rgba(1,12,29,.61),inset 0 1px 1px #d6edff7a,inset 0 -2px 5px #06192a!important;
+ opacity:1!important;
+}
+body.cx-night-google .cx-unified-drawer .cx-drawer-content,
+body.cx-night-google .cx-unified-drawer .cx-drawer-top,
+body.cx-night-google .cx-unified-drawer .cx-map-nav,
+body.cx-night-google .cx-unified-drawer .cx-drawer-results,
+body.cx-night-google .cx-unified-drawer .cx-drawer-actions{
+ background:#102f55!important;color:#eef7ff!important;opacity:1!important;
+}
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails:not([hidden]){
+ background:linear-gradient(160deg,#1b4776,#0e2a4b)!important;
+ color:#f3f9ff!important;border:1px solid #517ea9!important;
+ box-shadow:inset 0 1px 1px #cceaff56,0 8px 25px #06111d94!important;
+}
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails *,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-title,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-metadata,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-rating,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours{
+ color:#f0f7ff!important;
+}
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails small,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address{
+ color:#c1d9ef!important;
+}
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails button,
+body.cx-night-google .cx-unified-drawer button,
+body.cx-night-google #cxTopControlDock>.filters.glass .pill{
+ background:linear-gradient(165deg,#285987,#153a64)!important;
+ color:#f7fbff!important;border:1px solid #8abbe8!important;
+ border-radius:12px!important;
+ box-shadow:0 4px 12px #06182f88,inset 0 1px 1px #f2faff59!important;
+ text-shadow:none!important;opacity:1!important;
+}
+body.cx-night-google #cxTopControlDock>.filters.glass .pill.active{
+ background:linear-gradient(160deg,#318bf4,#155ba4)!important;
+ border-color:#d0ecff!important;
+}
+body.cx-night-google #cxTopControlDock input,
+body.cx-night-google #cxTopControlDock #cxCoopSearch *,
+body.cx-night-google .cx-unified-drawer input,
+body.cx-night-google .cx-unified-drawer strong,
+body.cx-night-google .cx-unified-drawer p,
+body.cx-night-google .cx-unified-drawer span,
+body.cx-night-google .cx-unified-drawer label{
+ color:#eef8ff!important;
+}
+body.cx-night-google .cx-unified-drawer input::placeholder,
+body.cx-night-google #cxTopControlDock input::placeholder{color:#c4ddf6!important;opacity:1!important}
+body.cx-night-google #cxTopControlDock>.weather.glass{
+ cursor:pointer!important;
+ background:linear-gradient(165deg,#20598f,#10365b)!important;
+}
+body.cx-night-google #cxTopControlDock>.weather.glass .cx-weather-condition,
+body.cx-night-google #cxTopControlDock>.weather.glass .cx-weather-place{
+ color:#d7edff!important;opacity:1!important;
+}
+body.cx-night-google .cx-place-shortcuts,
+body.cx-night-google .cx-place-metadata,
+body.cx-night-google .cx-place-hours{
+ background:transparent!important;border-color:#668cb0!important;
+}
 </style>
 <script>
 (function(){
@@ -208,6 +289,6 @@ body.cx-night-google #cxWeatherWeek{
 <script defer src="{{ url_for('static',filename='js/coopex_map_layers.js') }}?v=20261108-sem-transito"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_maps_native_extras.js') }}?v=20261108-native91"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_route_autocomplete.js') }}?v=20261108-route-hist202"></script>
-<script defer src="{{ url_for('static',filename='js/coopex_weather_week.js') }}?v=20261109-weather-proxy"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_weather_week.js') }}?v=20261109-weather-fallback-fixed"></script>
 </body>
 </html>
