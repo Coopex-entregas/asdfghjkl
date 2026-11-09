@@ -5516,12 +5516,9 @@ def cooperado_app_android():
     """Página de instalação somente para cooperados autenticados no navegador Android."""
     if session.get('user_id') is None or session.get('is_admin'):
         return redirect(url_for('login'))
-    agent = (request.headers.get('User-Agent') or '').lower()
-    if 'android' not in agent:
-        return redirect(url_for('painel_cooperado'))
-    response = current_app.make_response(render_template('cooperado_app_android.html'))
-    response.headers['Cache-Control'] = 'no-store, private'
-    return response
+    # Acesso provisório pelo HTML completo enquanto o app Android é ajustado.
+    # A rota legada de instalação não pode impedir a entrada no painel.
+    return redirect(url_for('painel_cooperado'))
 
 
 @app.route('/painel_cooperado')
