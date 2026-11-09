@@ -41,8 +41,8 @@ function keepLastPosition(arr){
   return arr;
 }
 const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
-const MAP_SIGNAL_TIMEOUT_MS=60000; // Offline após 60 segundos.
-const MAP_SEARCHING_AFTER_MS=15000; // Laranja se o GPS não comunicar há 15 segundos.
+const MAP_SIGNAL_TIMEOUT_MS=180000; // Offline após 3 minutos sem sinal (GPS a cada 60 segundos).
+const MAP_SEARCHING_AFTER_MS=120000; // Laranja somente após 2 minutos sem sinal.
 for(const i of items){
  const age=Number(i.sinal_idade_segundos);
  if(i.online&&i.sinal_idade_segundos!=null&&Number.isFinite(age)&&age>=0)i.__lastSignalAt=Date.now()-age*1000;
