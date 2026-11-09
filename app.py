@@ -1414,7 +1414,7 @@ def _get_cooperado_auth_from_token(token: str):
 
     row = (
         db.session.query(Cooperado.id, Cooperado.nome)
-        .filter(Cooperado.app_token == token)
+        .filter(Cooperado.app_token == token, Cooperado.ativo.is_(True))
         .first()
     )
     if not row:
