@@ -47,8 +47,8 @@
  <section class="search glass"><span aria-hidden="true">⌕</span><input id="search" autocomplete="off" placeholder="Buscar cooperado..." aria-label="Buscar cooperado"></section>
 <div class="search-results glass" id="results"></div>
 <nav class="filters glass" aria-label="Filtrar cooperados">
-<button type="button" class="pill active" data-filter="todos">Todos</button>
-<button type="button" class="pill" data-filter="online"><span class="dot"></span>Online</button>
+<button type="button" class="pill" data-filter="todos">Todos</button>
+<button type="button" class="pill active" data-filter="online"><span class="dot"></span>Online</button>
 <button type="button" class="pill orange" data-filter="ocioso"><span class="dot"></span>Ocioso</button>
 <button type="button" class="pill red" data-filter="offline"><span class="dot"></span>Offline</button>
 <button type="button" class="pill" id="addressToggle">⌕ Pesquisar endereço</button>
@@ -103,8 +103,8 @@
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261109-google-resilient-gps-v2"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261109-orange30-offline180-all-v2"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-google-official-dark-small-pins"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-orange15-offline60"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_maps_glass_2026.js') }}?v=20261108-glass-esc-v3"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_map_layers.js') }}?v=20261108-sem-transito"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_maps_native_extras.js') }}?v=20261108-native91"></script>
