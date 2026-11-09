@@ -2532,3 +2532,216 @@ body.cx-night-google #ui>.stats>.stat .num{color:#fff!important}
  body.cx-map-sidebar-closed #ui>.stats>.stat .stat-label{font-size:11px!important;gap:4px!important}
  body.cx-map-sidebar-closed #ui>.stats>.stat .num{font-size:23px!important}
 }
+
+/* COOPEX 2026 — design operacional final.
+   Controles e ficha reproduzem acabamento navy-neon da referência;
+   a cartografia Google continua original (day/night). */
+@media(min-width:960px){
+ body #cxTopControlDock{
+  display:grid!important;
+  grid-template-columns:minmax(145px,1fr) minmax(225px,285px) max-content 48px!important;
+  grid-template-rows:56px!important;
+  gap:8px!important;align-items:center!important;
+  min-height:68px!important;height:68px!important;
+  padding:6px 9px!important;
+  border:1px solid #68baff!important;border-radius:0 26px 26px 0!important;
+  background:linear-gradient(180deg,#103356,#071a36 80%)!important;
+  box-shadow:0 10px 28px #010a2080,inset 0 2px 2px #94d9ff8c,0 0 13px #00a8fa5e!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+  pointer-events:auto!important;
+  isolation:isolate!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch{
+  grid-column:1!important;grid-row:1!important;
+  flex:auto!important;max-width:none!important;width:100%!important;
+ }
+ body #cxTopControlDock>.weather.glass{
+  grid-column:2!important;grid-row:1!important;
+  width:100%!important;min-width:0!important;max-width:none!important;
+  flex:auto!important;cursor:pointer!important;
+ }
+ body #cxTopControlDock>.filters.glass{
+  grid-column:3!important;grid-row:1!important;
+  flex:auto!important;max-width:none!important;width:max-content!important;
+ }
+ body #cxTopControlDock>.back-link{
+  grid-column:4!important;grid-row:1!important;
+  width:46px!important;min-width:46px!important;max-width:46px!important;
+ }
+ body #cxTopControlDock>#cxTrafficTopButton{display:none!important}
+ body #addressPanel.cx-search-idle:not(.cx-directions-mode){
+  background:transparent!important;
+  box-shadow:none!important;border-color:transparent!important;
+  pointer-events:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-content{
+  background:transparent!important;pointer-events:none!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top{
+  position:relative!important;
+  pointer-events:auto!important;
+  background:linear-gradient(180deg,#1c4c7b,#0a2648)!important;
+  border:1px solid #79c4ff!important;border-radius:26px 0 0 26px!important;
+  height:68px!important;min-height:68px!important;
+  padding:7px 12px!important;
+  color:#f4faff!important;
+  box-shadow:0 10px 28px #010a2080,inset 0 2px 2px #c0eaff8f,0 0 13px #00a8fa59!important;
+  backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ }
+ body #addressPanel.cx-search-idle #address,
+ body #addressPanel.cx-search-idle .cx-drawer-top input{
+  color:#f5fbff!important;font-size:14px!important;font-weight:650!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top input::placeholder{
+  color:#d2e6fa!important;opacity:1!important;
+ }
+ body #addressPanel.cx-search-idle .cx-drawer-top button{
+  color:#f4faff!important;background:linear-gradient(160deg,#246ba3,#10385e)!important;
+  border:1px solid #87c9fa!important;border-radius:12px!important;
+ }
+ body #addressPanel.cx-search-idle #cxUnifiedResults:not([hidden]){
+  pointer-events:auto!important;
+ }
+}
+body #cxTopControlDock{
+ --cx-glass-text:#edf8ff;
+}
+body #cxTopControlDock>#cxCoopSearch,
+body #cxTopControlDock>.weather.glass,
+body #cxTopControlDock>.filters.glass,
+body #cxTopControlDock>.back-link,
+body.cx-night-google #cxTopControlDock>#cxCoopSearch,
+body.cx-night-google #cxTopControlDock>.weather.glass,
+body.cx-night-google #cxTopControlDock>.filters.glass,
+body.cx-night-google #cxTopControlDock>.back-link{
+ height:49px!important;min-height:49px!important;max-height:49px!important;
+ border:1px solid #5bb4f0!important;border-radius:17px!important;
+ background:linear-gradient(180deg,#1c5080 0%,#092749 100%)!important;
+ color:#f1faff!important;
+ box-shadow:0 5px 14px #020c268a,inset 0 2px 2px #c3f0ff75,0 0 8px #20b0ff4d!important;
+ backdrop-filter:none!important;-webkit-backdrop-filter:none!important;
+ opacity:1!important;transform:none!important;
+}
+body #cxTopControlDock>#cxCoopSearch input,
+body #cxTopControlDock>#cxCoopSearch input::placeholder,
+body #cxTopControlDock>.weather.glass *,
+body #cxTopControlDock>.filters.glass .pill,
+body #cxTopControlDock>.back-link{
+ color:#f2f9ff!important;opacity:1!important;
+}
+body #cxTopControlDock>.weather.glass{
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ gap:6px!important;overflow:hidden!important;padding:5px 10px!important;
+}
+body #cxTopControlDock>.weather.glass #weatherIcon{flex:none!important;font-size:23px!important}
+body #cxTopControlDock>.weather.glass #temperature{flex:none!important;font-size:19px!important;font-weight:850!important}
+body #cxTopControlDock>.weather.glass .cx-weather-place{flex:none!important;font-weight:800!important;font-size:11px!important}
+body #cxTopControlDock>.weather.glass .cx-weather-condition{
+ min-width:0!important;flex:1 1 auto!important;
+ font-size:11px!important;font-weight:750!important;
+ white-space:nowrap!important;overflow:hidden!important;text-overflow:ellipsis!important;
+}
+body #cxTopControlDock>.filters.glass{
+ display:flex!important;gap:5px!important;padding:4px!important;overflow:visible!important;
+}
+body #cxTopControlDock>.filters.glass .pill,
+body.cx-night-google #cxTopControlDock>.filters.glass .pill{
+ height:37px!important;min-height:37px!important;
+ padding:4px 11px!important;border:1px solid #64abdb!important;
+ border-radius:12px!important;
+ background:linear-gradient(180deg,#285985,#113554)!important;
+ color:#e9f6ff!important;font-size:12px!important;font-weight:800!important;
+ box-shadow:inset 0 1px 1px #bdeaff69,0 2px 6px #010e2870!important;
+}
+body #cxTopControlDock>.filters.glass .pill.active,
+body.cx-night-google #cxTopControlDock>.filters.glass .pill.active{
+ background:linear-gradient(175deg,#1787eb,#074c9d)!important;
+ border-color:#a8e4ff!important;
+ box-shadow:0 0 10px #2a99fa8c,inset 0 2px 2px #d2f4ff9c!important;
+}
+body #cxTopControlDock>.back-link,
+body.cx-night-google #cxTopControlDock>.back-link{
+ display:grid!important;place-items:center!important;
+ border-radius:14px!important;
+ font-size:24px!important;
+ background:linear-gradient(165deg,#1d649c,#082d55)!important;
+}
+body #addressPanel.cx-place-view,
+body #addressPanel.cx-directions-mode,
+body.cx-night-google #addressPanel.cx-place-view,
+body.cx-night-google #addressPanel.cx-directions-mode{
+ background:linear-gradient(170deg,#11385f,#071d3b)!important;
+ border:1px solid #5abfff!important;border-radius:24px!important;
+ box-shadow:0 10px 35px #0009,inset 0 2px 2px #b7ecff8c,0 0 12px #16aaff64!important;
+}
+body #addressPanel.cx-place-view .cx-drawer-content,
+body #addressPanel.cx-directions-mode .cx-drawer-content,
+body #addressPanel.cx-place-view .cx-drawer-top,
+body #addressPanel.cx-directions-mode .cx-drawer-top{
+ background:transparent!important;color:#f4faff!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails,
+body #addressPanel.cx-place-view #cxPlaceDetails:not([hidden]),
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails{
+ background:linear-gradient(170deg,#1a4772,#0d2d51)!important;
+ border:1px solid #4e9bcf!important;border-radius:19px!important;
+ box-shadow:inset 0 1px 1px #c2eaff77,0 7px 19px #04142e80!important;
+ color:#edf8ff!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-title{font-size:23px!important;color:#fff!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body #addressPanel.cx-place-view #cxPlaceDetails small{color:#c6e2f7!important;font-size:12px!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts{
+ display:grid!important;grid-template-columns:repeat(4,minmax(0,1fr))!important;
+ gap:6px!important;padding:11px 8px!important;margin-top:8px!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button{
+ min-width:0!important;min-height:61px!important;height:61px!important;
+ padding:7px 3px!important;gap:3px!important;font-size:10px!important;
+ border:1px solid #65bdf2!important;border-radius:13px!important;
+ background:linear-gradient(160deg,#22689f,#0e3c71)!important;
+ color:#fff!important;
+ box-shadow:inset 0 2px 2px #c8edff85,0 3px 10px #061b3780!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button.cx-place-directions{
+ background:linear-gradient(160deg,#1b86f0,#0756b7)!important;
+}
+body #cxWeatherWeek{
+ width:min(540px,calc(100vw - 20px))!important;
+ max-width:calc(100vw - 20px)!important;
+ max-height:min(690px,calc(100dvh - 30px))!important;
+ padding:18px!important;
+ background:linear-gradient(160deg,#174c7b,#071c39)!important;
+ border:1px solid #59bbf5!important;border-radius:22px!important;
+ color:#f4faff!important;
+ box-shadow:0 14px 45px #000b,inset 0 2px 2px #bfeaff8c!important;
+ backdrop-filter:none!important;opacity:1!important;
+}
+body #cxWeatherWeek .cx-week-day{
+ display:grid!important;grid-template-columns:80px minmax(0,1fr) 90px 57px!important;
+ gap:5px!important;align-items:center!important;
+ font-size:12px!important;color:#f2f9ff!important;
+}
+body #cxWeatherWeek .cx-week-day *,
+body #cxWeatherWeek .cx-weather-now,
+body #cxWeatherWeek .cx-week-subtitle,
+body #cxWeatherWeek .cx-weather-evening>strong,
+body #cxWeatherWeek .cx-weather-disclaimer{color:#e6f5ff!important}
+body #cxWeatherWeek .cx-weather-evening,
+body #cxWeatherWeek .cx-weather-hour,
+body #cxWeatherWeek .cx-weather-now{
+ background:#11375e!important;border:1px solid #4386bd!important;
+ color:#f0faff!important;
+}
+body #cxWeatherWeek[hidden]{display:none!important}
+@media(max-width:959px){
+ body #cxTopControlDock{pointer-events:auto!important;background:linear-gradient(160deg,#113656,#081c38)!important;border:1px solid #6bb8ee!important;border-radius:20px!important;padding:5px!important}
+ body #cxTopControlDock>*{min-width:0!important}
+ body #cxTopControlDock>.weather.glass{min-width:142px!important}
+}
+@media(max-width:650px){
+ body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
+ body #cxWeatherWeek .cx-week-day{grid-template-columns:60px minmax(0,1fr) 70px 46px!important}
+}
