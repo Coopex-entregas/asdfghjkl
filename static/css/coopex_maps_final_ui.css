@@ -446,3 +446,114 @@ body #cxWeatherWeek button[aria-label="Fechar previsão"]{color:#fff!important;b
  body #cxWeatherWeek .cx-week-day,body #cxWeatherWeek .cx-week-day *{font-size:11px!important}
  body #cxWeatherWeek .cx-weather-hour{min-height:58px!important}
 }
+
+
+/* v5: rotas legíveis, contornos azulados discretos; nunca tocar na cartografia */
+body #addressPanel.cx-directions-mode,body.cx-address-mode #addressPanel.cx-directions-mode{
+ background:linear-gradient(156deg,rgba(16,78,137,.91),rgba(3,35,83,.95) 57%,rgba(3,26,61,.96))!important;
+ border:1px solid rgba(71,166,230,.63)!important;border-radius:24px!important;
+ box-shadow:0 15px 30px #0008,inset 0 2px 3px #b0e8ff2e,0 0 12px #0089fa62!important;
+ backdrop-filter:blur(23px) saturate(175%)!important;-webkit-backdrop-filter:blur(23px) saturate(175%)!important;
+ color:#f4fbff!important;
+}
+body #addressPanel.cx-directions-mode .cx-drawer-content{background:transparent!important;overflow-y:auto!important;padding:12px 13px!important}
+body #addressPanel.cx-directions-mode .cx-maps-brand{display:flex!important;align-items:center!important;min-height:46px!important;padding:3px 7px!important;margin-bottom:7px!important;color:#f4fbff!important;border:0!important}
+body #addressPanel.cx-directions-mode .cx-maps-brand strong{font-size:16px!important;color:#f4fbff!important;opacity:1!important;text-shadow:0 2px 5px #00132b!important}
+body #addressPanel.cx-directions-mode .cx-maps-brand .cx-map-pin{color:#fb5468!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor{padding:4px 9px 11px!important;gap:11px!important;background:transparent!important;color:#f3faff!important}
+body #addressPanel.cx-directions-mode #cxDirectionsHeader,
+body #addressPanel.cx-directions-mode #cxDirectionsHeader strong{color:#f2faff!important;font-weight:850!important;font-size:15px!important;opacity:1!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints{gap:12px!important;padding-top:5px!important;padding-bottom:5px!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-origin-mount,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-destination-mount{height:51px!important;min-height:51px!important;max-height:51px!important;flex-basis:51px!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxRouteOrigin,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-dest-row,
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxDestinationMirror,
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopInput,
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry input{
+ color:#fff!important;opacity:1!important;
+ background:linear-gradient(160deg,rgba(24,92,150,.86),rgba(7,43,93,.91))!important;
+ border:1px solid rgba(101,190,247,.65)!important;border-radius:14px!important;
+ box-shadow:inset 0 2px 2px #c0eaff4d,0 5px 12px #00132f8c!important;
+ backdrop-filter:blur(12px)!important;-webkit-backdrop-filter:blur(12px)!important;
+ font-size:14px!important;font-weight:700!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxRouteOrigin::placeholder,
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxDestinationMirror::placeholder,
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopInput::placeholder,
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry input::placeholder{color:#cce7fa!important;opacity:1!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-dest-row{padding:3px 5px!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-dest-row input{
+ border:0!important;box-shadow:none!important;background:transparent!important;color:#f6fbff!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-dest-row input::placeholder{color:#d8edff!important;opacity:1!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor button,
+body #addressPanel.cx-directions-mode #cxDirectionsHeader button{
+ color:#f8fcff!important;border:1px solid #61b6ed8c!important;
+ background:linear-gradient(160deg,#216fa8dd,#0a3b7bdc)!important;
+ box-shadow:inset 0 2px 2px #c2ebff52,0 4px 12px #00162a94!important;
+ border-radius:12px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoint-grip,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoint-dot{color:#67d3ff!important}
+body #addressPanel.cx-directions-mode .cx-route-summary,
+body #addressPanel.cx-directions-mode .cx-route-summary *,
+body #addressPanel.cx-directions-mode #cxRoutes,
+body #addressPanel.cx-directions-mode #cxRoutes *,
+body #addressPanel.cx-directions-mode .cx-route-hint,
+body #addressPanel.cx-directions-mode .cx-route-hint *{
+ color:#eef8ff!important;opacity:1!important;
+}
+body #addressPanel.cx-directions-mode .cx-route-summary{margin:13px 9px 4px!important;font-size:14px!important;font-weight:800!important}
+body #addressPanel.cx-directions-mode #cxRoutes .cx-route-option,
+body #addressPanel.cx-directions-mode #cxRoutes .cx-route-card{
+ background:linear-gradient(145deg,#1a6398b8,#07376bbf)!important;
+ border:1px solid #4a9dd56e!important;border-radius:14px!important;
+ box-shadow:0 5px 13px #00152d6b,inset 0 1px 2px #e2f5ff35!important;
+}
+body #addressPanel.cx-directions-mode .cx-maps-brand>.stats .stat,
+body #addressPanel .cx-maps-brand>.stats .stat{
+ background:linear-gradient(160deg,#22679cad,#0c3f7cc7)!important;
+ border:1px solid #59b5ea91!important;border-radius:13px!important;
+ box-shadow:inset 0 1px 2px #d6f2ff68,0 4px 12px #00152b88!important;
+}
+body #addressPanel .cx-maps-brand>.stats .stat-label,
+body #addressPanel .cx-maps-brand>.stats .num{color:#f8fcff!important;opacity:1!important}
+body #addressPanel.cx-directions-mode #cxRouteEditor #stopsList .cx-stop-line{
+ background:linear-gradient(145deg,#175e99a3,#07366dba)!important;
+ border:1px solid #5ba7d569!important;color:#f6fbff!important;border-radius:12px!important;
+}
+/* Remove glare from the original light-theme borders throughout sidebars. */
+body #addressPanel.cx-place-view,body #addressPanel.cx-directions-mode,
+body #addressPanel.cx-place-view .cx-drawer-top,
+body #addressPanel.cx-directions-mode .cx-drawer-top{
+ border-color:rgba(92,178,235,.64)!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button{
+ border-color:rgba(96,186,239,.7)!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-data,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-link{
+ border-top-color:rgba(99,175,228,.22)!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours{border-color:rgba(101,179,225,.44)!important}
+body #cxLayersWidget{transition:left .18s ease,bottom .18s ease!important}
+@media(min-width:960px){
+ body:has(#addressPanel.cx-place-view) #cxLayersWidget,
+ body:has(#addressPanel.cx-directions-mode) #cxLayersWidget,
+ body.cx-stats-in-menu #cxLayersWidget{
+  left:calc(clamp(390px,26.6vw,508px) + 26px)!important;
+  bottom:94px!important;z-index:1900!important;
+ }
+ body:has(#addressPanel.cx-search-idle) #cxLayersWidget:not(.unused){
+  left:15px!important;bottom:89px!important;
+ }
+}
+@media(max-width:959px){
+ body #addressPanel.cx-directions-mode .cx-maps-brand{min-height:42px!important}
+ body:has(#addressPanel.cx-directions-mode) #cxLayersWidget,
+ body:has(#addressPanel.cx-place-view) #cxLayersWidget{
+  left:calc(min(508px,100vw - 36px) + 9px)!important;
+  bottom:100px!important;
+ }
+}
