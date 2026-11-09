@@ -71,7 +71,7 @@ LIVE_SCRIPT = r"""
   'use strict';
 
   const URL_LIVE='/api/admin/live-state';
-  const INTERVALO=20000; // fallback econômico; mudanças relevantes continuam sinalizadas pelo servidor
+  const INTERVALO=8000; // fallback leve; evita atrasar entregas, com controle de atualização pesada
 
   let versao=null;
   let verificando=false;
