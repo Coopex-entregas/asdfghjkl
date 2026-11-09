@@ -10,7 +10,7 @@ document.body.classList.remove("is-night");
 const map=new ml.Map({container:"map",style:DAY_STYLE,center:[-35.211,-5.7945],zoom:12,pitch:0,bearing:0,antialias:true,maxPitch:0,attributionControl:true,dragRotate:false,touchPitch:false});
 map.addControl(new ml.NavigationControl({showCompass:false,showZoom:true,visualizePitch:false}),"top-right");
 window.COOPEX_FREE_GLOBE=map; // Instância existente, sem ativação de API Google paga.
-let selectedId=null,following=false,filter="online",items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],searchText="",trafficEvents=[],selectedAddress=null,viewPoint=null,fetching=false,lastFit=false,satellite=false,weatherLevel=0;
+let selectedId=null,following=false,filter="todos",items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],searchText="",trafficEvents=[],selectedAddress=null,viewPoint=null,fetching=false,lastFit=false,satellite=false,weatherLevel=0;
 let dynamicMarkers=new Map(),stops=[],stopsMarkers=[],placePin=null;
 const lastConfirmedGps=new Map();
 let mapReady=false;
