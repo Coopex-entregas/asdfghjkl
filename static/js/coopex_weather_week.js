@@ -22,7 +22,7 @@ function setup(){
  source.setAttribute("aria-label","Abrir previsão do tempo dos próximos sete dias em Natal");
  source.title="Clique para ver a previsão dos próximos sete dias";
  panel=document.createElement("section");panel.id="cxWeatherWeek";panel.className="cx-weather-week glass";panel.hidden=true;
- panel.style.cssText="position:fixed;z-index:3000;display:block;width:min(430px,calc(100vw - 16px));max-height:75dvh;overflow-y:auto;padding:16px;background:rgba(242,249,255,.97);color:#14324e;border:1px solid #b9d6ed;border-radius:18px;box-shadow:0 12px 40px #143b5a55;font:13px/1.45 system-ui,sans-serif;pointer-events:auto";
+ panel.style.cssText="position:fixed;z-index:3000;width:min(430px,calc(100vw - 16px));max-height:75dvh;overflow-y:auto;padding:16px;background:rgba(242,249,255,.97);color:#14324e;border:1px solid #b9d6ed;border-radius:18px;box-shadow:0 12px 40px #143b5a55;font:13px/1.45 system-ui,sans-serif;pointer-events:auto";
  panel.setAttribute("aria-label","Previsão meteorológica semanal para Natal RN");
  document.body.append(panel);
  async function load(){
@@ -118,7 +118,6 @@ function setup(){
   panel.hidden=false;source.setAttribute("aria-expanded","true");window.dispatchEvent(new Event("coopex:weather-panel-open"));position();load();
  }
  source.addEventListener("click",toggle);
- source.addEventListener("pointerup",e=>{if(e.pointerType==="touch"){e.preventDefault();toggle()} });
  source.addEventListener("keydown",e=>{if(e.key==="Enter"||e.key===" "){e.preventDefault();toggle()}});
  document.addEventListener("pointerdown",e=>{if(!panel.hidden&&!panel.contains(e.target)&&!source.contains(e.target))close()});
  document.addEventListener("keydown",e=>{if(e.key==="Escape"&&!panel.hidden){e.preventDefault();e.stopImmediatePropagation();close()}},true);
