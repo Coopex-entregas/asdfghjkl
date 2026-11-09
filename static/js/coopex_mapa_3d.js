@@ -233,6 +233,9 @@ function showDetails(i){
  const st=state(i),avatar=$("personAvatar");avatar.style.background=colors[st];avatar.textContent=initials(i.nome);
  $("personState").textContent=stateNames[st];$("personState").style.background=colors[st]+"4b";
  $("personArea").textContent=i.endereco||"Natal/RN";$("personSeen").textContent=i.ultima_atualizacao||"Sem GPS";$("personSpeed").textContent=i.speed_kmh==null?"—":Number(i.speed_kmh).toLocaleString("pt-BR",{maximumFractionDigits:1})+" km/h";
+ $("personBattery").textContent=Number.isInteger(Number(i.battery_percent)) && i.battery_percent!==null && i.battery_percent!==undefined ? Number(i.battery_percent)+"%"+(i.charging===true?" · Carregando":"") : "Não informado pelo aplicativo";
+ $("personDevice").textContent=i.device_model?String(i.device_model).slice(0,60):"Não informado pelo aplicativo";
+ $("personAccuracy").textContent=i.accuracy_m==null?"—":Number(i.accuracy_m).toLocaleString("pt-BR",{maximumFractionDigits:0})+" m";
  $("personJobs").textContent=Number(i.entregas_abertas||0);$("follow").disabled=!hasCoord(i);$("follow").textContent=following?"✓ Seguindo":"◎ Seguir";$("stop").disabled=!following;
  const count=trafficEvents.filter(f=>{let p=toIncidentPoint(f);return p&&hasCoord(i)&&kmDistance({lat:+i.lat,lng:+i.lng},p)<1.5}).length;
  const near=$("nearby");near.classList.toggle("visible",count>0);near.textContent=count?("⚠ "+count+" ocorrência(s) de trânsito próximas à localização GPS. Não significa que estão na rota."):"";
@@ -288,6 +291,9 @@ async function updateGps(){
     coop.lat=+p.lat;coop.lng=+p.lng;
     coop.accuracy_m=p.accuracy==null?null:Number(p.accuracy);
     coop.speed_kmh=p.speed_kmh==null?null:Number(p.speed_kmh);
+    coop.battery_percent=(p.battery_percent===null||p.battery_percent===undefined)?null:Number(p.battery_percent);
+    coop.charging=p.charging===true;
+    coop.device_model=p.device_model||null;
     coop.gps_ao_vivo=true;coop.online=true;coop.presenca_painel=false;
     coop.__lastSignalAt=Number(p.updated_ms)||clock;
     coop.sinal_idade_segundos=Math.max(0,(clock-coop.__lastSignalAt)/1000);
@@ -295,6 +301,7 @@ async function updateGps(){
     coop.ultima_atualizacao=new Date(coop.__lastSignalAt).toLocaleString("pt-BR");
     lastConfirmedGps.set(String(coop.id),{lat:coop.lat,lng:coop.lng,source:"cloudflare"});
    }else{
+    coop.battery_percent=null;coop.charging=null;coop.device_model=null;
     coop.online=false;coop.gps_ao_vivo=false;coop.presenca_painel=false;
     coop.__lastSignalAt=null;coop.sinal_idade_segundos=null;coop.status="offline";
    }
