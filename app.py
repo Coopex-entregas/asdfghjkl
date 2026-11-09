@@ -6183,6 +6183,39 @@ def coopex_app_tracking_token():
     return response
 
 
+@app.get('/api/cooperado/gps/ticket')
+def coopex_cooperado_gps_cloudflare_ticket():
+    """Autoriza painel web/iOS a enviar GPS diretamente a Cloudflare.
+    Render verifica somente a sessao ao emitir o ticket, NUNCA recebe coordenadas.
+    """
+    uid = session.get('user_id')
+    if not uid or session.get('is_admin') or session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 403
+    key = os.environ.get('COOPEX_GPS_MAP_SIGN_KEY', '')
+    endpoint = os.environ.get('COOPEX_GPS_API_URL', '').rstrip('/')
+    if not key or not endpoint.startswith('https://'):
+        return jsonify(ok=False, error='not_configured'), 503
+    coop = db.session.query(Cooperado.id).filter(
+        Cooperado.id == int(uid), Cooperado.ativo.is_(True)
+    ).first()
+    if not coop:
+        return jsonify(ok=False, error='inactive'), 403
+    import base64
+    import hashlib
+    import hmac
+    import time
+    expires_at = int(time.time()) + 3600
+    raw = json.dumps({'role': 'cooperado_gps', 'id': int(uid), 'exp': expires_at},
+                     sort_keys=True, separators=(',', ':')).encode('utf-8')
+    body = base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
+    mac = hmac.new(key.encode('utf-8'), body.encode('ascii'), hashlib.sha256).digest()
+    sig = base64.urlsafe_b64encode(mac).rstrip(b'=').decode('ascii')
+    resp = jsonify(ok=True, url=endpoint + '/v1/positions',
+                   ticket=body + '.' + sig, expires_at=expires_at)
+    resp.headers['Cache-Control'] = 'no-store'
+    return resp
+
+
 @app.get('/api/admin/gps/ticket')
 def coopex_admin_gps_cloudflare_ticket():
     """Emite autorizacao curta para o mapa consultar Cloudflare DIRETAMENTE."""
