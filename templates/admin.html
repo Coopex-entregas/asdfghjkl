@@ -330,7 +330,23 @@ try{let data=await create('/admin/pix-sicoob/avulso',{valor:raw.replace(',','.')
 catch(e){alert(e.message);btn.textContent='Copiar Pix'}finally{btn.disabled=false;}
 });
 }
-document.addEventListener('DOMContentLoaded',()=>{attach();avulso();const observer=new MutationObserver(()=>{attach();avulso()});observer.observe(document.body,{childList:true,subtree:true});});
+document.addEventListener('DOMContentLoaded',()=>{
+  attach();avulso();
+  // O monitoramento de todo o body disparava varreduras em LED, fila e modais.
+  // Observe somente alterações estruturais no corpo da tabela de entregas.
+  let agendado=false;
+  const atualizar=()=>{
+    if(agendado||document.visibilityState==='hidden')return;
+    agendado=true;
+    requestAnimationFrame(()=>{agendado=false;attach();avulso()});
+  };
+  const tbody=document.querySelector('#tbl table.tabela tbody');
+  if(tbody)new MutationObserver(m=>{
+    if(m.some(x=>x.addedNodes.length||x.removedNodes.length))atualizar();
+  }).observe(tbody,{childList:true});
+  window.addEventListener('coopex-admin-table-updated',atualizar);
+  document.addEventListener('supervisao:live-updated',atualizar);
+});
 })();
 </script>
 
