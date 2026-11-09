@@ -406,6 +406,16 @@ function collapse(){
  syncStatsLocation();
 }
 function expand(){collapsed=false;document.body.classList.remove("cx-map-sidebar-closed","cx-street-sidebar-collapsed");panel.setAttribute("aria-expanded","true");edge.textContent="‹";edge.setAttribute("aria-label","Recolher menu");syncStatsLocation();}
+// Escape recolhe as fichas e deixa apenas a barra de pesquisa; Street View fecha primeiro.
+window.addEventListener("keydown",event=>{
+ if(event.key!=="Escape"||event.repeat||event.defaultPrevented)return;
+ const pano=window.COOPEX_GOOGLE_NATIVE?.getStreetView?.();
+ if(pano?.getVisible?.()){event.preventDefault();event.stopImmediatePropagation();pano.setVisible(false);return}
+ const opened=panel.classList.contains("cx-place-view")||panel.classList.contains("cx-directions-mode")||
+  !!$("cxPlaceDetails")?.isConnected||panel.classList.contains("cx-search-suggesting")||
+  panel.classList.contains("cx-search-history-open");
+ if(opened){event.preventDefault();event.stopImmediatePropagation();collapse()}
+},true);
 edge.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();collapsed?expand():collapse()},true);
 expandButton?.addEventListener("click",e=>{e.preventDefault();e.stopImmediatePropagation();expand()},true);
 const reopen=document.createElement("button");reopen.id="cxReopenMap";reopen.type="button";reopen.textContent="";reopen.append(vector("menu"));reopen.setAttribute("aria-label","Abrir menu do mapa");reopen.onclick=expand;document.body.append(reopen);
