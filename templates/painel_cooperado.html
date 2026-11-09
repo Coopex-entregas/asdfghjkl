@@ -2677,7 +2677,7 @@ body.cx-modal-active{overflow:hidden!important}
       const now = Date.now();
       const current = { lat, lng };
       const moved = distanceMeters(lastGpsCoords, current);
-      if (!force && lastGpsCoords && moved < 8 && (now - lastGpsSentAt) < 5000) return;
+      if (!force && lastGpsSentAt && (now - lastGpsSentAt) < 60000) return;
       lastGpsCoords = current;
       lastGpsSentAt = now;
       try{
