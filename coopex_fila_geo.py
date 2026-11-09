@@ -30,7 +30,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             return None
         if not endereco or not isfinite(lat) or not isfinite(lng) or abs(lat)>90 or abs(lng)>180:
             return None
-        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':50}
+        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':100}
 
     def authorized():
         uid=session.get('user_id')
@@ -78,8 +78,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             return jsonify(ok=False,erro='Para entrar na fila, você precisa estar na cooperativa. Aproxime-se da base e tente novamente.'),403
         existente=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
         if existente:
-            # Estado confirmado no mesmo banco da fila exibida pelo Admin.
-            emitir_lista_espera()
+            # Responder imediatamente; não emitir atualização global para entrada duplicada.
             return jsonify(ok=True,ja_estava=True,posicao=existente.pos,
                            mensagem='Você já está na fila.')
         max_pos=db.session.query(db.func.max(ListaEspera.pos)).scalar() or 0
