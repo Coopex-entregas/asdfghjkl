@@ -1592,6 +1592,12 @@ function init(){
  window.addEventListener('coopex-led-fila',e=>{
   if(Array.isArray(e.detail)&&e.detail.every(x=>x.id!=null))render(e.detail);
  });
+ // Atualizar pelo banco ao abrir a fila; nao depender de um contador
+ // que foi atualizado por outro listener enquanto a lista ficou antiga.
+ const queueHost=document.querySelector('.bank-group:has(.queue-submenu)');
+ queueHost?.querySelector('.bank-group-btn')?.addEventListener('click',()=>load(),{passive:true});
+ // O menu tambem abre por hover no desktop; uma consulta apenas ao entrar.
+ queueHost?.addEventListener('mouseenter',()=>{if(document.visibilityState==='visible')load()},{passive:true});
  window.addEventListener('coopex-led-socket-ready',load);
  window.addEventListener('pageshow',e=>{if(e.persisted)load()});
  load();
