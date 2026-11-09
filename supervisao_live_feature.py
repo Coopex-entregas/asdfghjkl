@@ -71,12 +71,15 @@ LIVE_SCRIPT = r"""
   'use strict';
 
   const URL_LIVE='/api/admin/live-state';
-  const INTERVALO=8000; // fallback leve; alteracoes da fila chegam por Socket.IO
+  const INTERVALO=20000; // fallback econômico; mudanças relevantes continuam sinalizadas pelo servidor
 
   let versao=null;
   let verificando=false;
   let atualizando=false;
   let pendente=false;
+  let ultimoRefresh=0;
+  const REFRESH_MIN_MS=12000;
+  const FETCH_TIMEOUT_MS=12000;
 
   function normalizar(s){
     return String(s||'')
@@ -329,13 +332,15 @@ LIVE_SCRIPT = r"""
   async function atualizarParcial(){
     if(atualizando) return;
 
-    if(usuarioEditando()){
+    if(document.visibilityState==='hidden'||usuarioEditando()||
+       Date.now()-ultimoRefresh<REFRESH_MIN_MS){
       pendente=true;
       return;
     }
 
     atualizando=true;
     pendente=false;
+    ultimoRefresh=Date.now();
 
     const y=window.scrollY||0;
     const filtros=capturarFiltros();
@@ -344,6 +349,7 @@ LIVE_SCRIPT = r"""
       const r=await fetch(window.location.href,{
         cache:'no-store',
         credentials:'same-origin',
+        signal:AbortSignal.timeout(FETCH_TIMEOUT_MS),
         headers:{
           'Accept':'text/html',
           'X-Requested-With':'supervisao-live'
@@ -503,16 +509,23 @@ def install(app_module):
 
     def requisicao_ruidosa(path):
         p=(path or "").lower()
+        # Não repintar a tabela para telemetria, heartbeats, consultas ou
+        # atualizações administrativas que não alteram entregas/fila.
+        # As alterações de entrega e fila seguem acionando o contador.
         ignorar=(
             "/api/admin/live-state",
             "/socket.io",
             "/healthz",
             "/readyz",
-            "/api/app/localizacao",
+            "/api/app/",
             "/cooperado/atualizar_localizacao",
+            "/cooperado/localizacao",
             "/api/cooperado/presenca",
-            "/api/app/heartbeat",
-            "/api/app/ping",
+            "/api/cooperado/gps/",
+            "/api/admin/gps/",
+            "/api/admin/pix-led",
+            "/admin/pix-sicoob/",
+            "/api/admin/supervisao/recado",
         )
         return any(p.startswith(x) for x in ignorar)
 
