@@ -2715,7 +2715,9 @@ body.cx-modal-active{overflow:hidden!important}
         if(!res.ok) throw new Error('GPS Cloudflare '+res.status);
         lastGpsCoords = {lat,lng};
         lastGpsSentAt = Date.now();
+        paintOk();
       }catch(e){
+        paintWaiting();
         console.warn('COOPEX GPS Cloudflare:',e.message);
       }finally{
         coopexGpsSending = false;
