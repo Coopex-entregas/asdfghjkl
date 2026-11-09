@@ -14,33 +14,14 @@ let selectedId=null,following=false,filter="todos",items=Array.isArray(window.CO
 let dynamicMarkers=new Map(),stops=[],stopsMarkers=[],placePin=null;
 const lastConfirmedGps=new Map();
 let mapReady=false;
-// Guardar o último ponto conhecido desde os dados iniciais do servidor.
+// Somente coordenadas recebidas do Cloudflare servem para posicionar cooperados.
+// Os dados do Render alimentam nome e cadastro, sem utilizar localização legada.
+const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&Math.abs(+i.lat)<=90&&Math.abs(+i.lng)<=180&&!(+i.lat===0&&+i.lng===0);
 for(const i of items){
- if(i&&i.id!=null&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)){
-  lastConfirmedGps.set(String(i.id),{lat:+i.lat,lng:+i.lng,source:i.gps_ao_vivo?"live":"last-known"});
- }
+ if(!i)continue;
+ i.lat=null;i.lng=null;i.gps_ao_vivo=false;i.online=false;i.presenca_painel=false;
+ i.__lastSignalAt=null;i.status="offline";
 }
-
-function keepLastPosition(arr){
-  // A coordenada offline fica imutável até chegar um novo GPS real.
-  // O servidor pode alternar entre memória e localização histórica; isso NÃO
-  // pode deslocar um alfinete offline durante zoom, filtro ou atualização.
-  for(const v of arr){
-    const id=String(v.id);
-    if(v.gps_ao_vivo===true && hasCoord(v)){
-      lastConfirmedGps.set(id,{lat:Number(v.lat),lng:Number(v.lng),source:"live"});
-      continue;
-    }
-    const stored=lastConfirmedGps.get(id);
-    if(stored){
-      v.lat=stored.lat;v.lng=stored.lng;
-    }else if(hasCoord(v)){
-      lastConfirmedGps.set(id,{lat:Number(v.lat),lng:Number(v.lng),source:"last-known"});
-    }
-  }
-  return arr;
-}
-const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
 const MAP_SIGNAL_TIMEOUT_MS=180000; // Offline após 3 minutos sem sinal (GPS a cada 60 segundos).
 const MAP_SEARCHING_AFTER_MS=120000; // Laranja somente após 2 minutos sem sinal.
 for(const i of items){
@@ -300,16 +281,21 @@ async function updateGps(force=false){
   for(const coop of items){
    const p=updated.get(String(coop.id));
    if(p&&p.lat!=null&&p.lng!=null&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)){
+    // A posição só pode vir do Cloudflare; não usar GPS do cadastro legado.
+    if(!hasCoord(p))continue;
     coop.lat=+p.lat;coop.lng=+p.lng;
     coop.accuracy_m=p.accuracy==null?null:Number(p.accuracy);
     coop.speed_kmh=p.speed_kmh==null?null:Number(p.speed_kmh);
     coop.battery_percent=(p.battery_percent===null||p.battery_percent===undefined)?null:Number(p.battery_percent);
     coop.charging=p.charging===true;
     coop.device_model=p.device_model||null;
-    coop.gps_ao_vivo=true;coop.online=true;coop.presenca_painel=false;
     coop.__lastSignalAt=Number(p.updated_ms)||clock;
     coop.sinal_idade_segundos=Math.max(0,(clock-coop.__lastSignalAt)/1000);
-    coop.status="livre";
+    const age=clock-coop.__lastSignalAt;
+    coop.online=age<MAP_SIGNAL_TIMEOUT_MS;
+    coop.gps_ao_vivo=coop.online;
+    coop.presenca_painel=false;
+    coop.status=age>=MAP_SEARCHING_AFTER_MS&&coop.online?"ocioso":coop.online?"livre":"offline";
     coop.ultima_atualizacao=new Date(coop.__lastSignalAt).toLocaleString("pt-BR");
     lastConfirmedGps.set(String(coop.id),{lat:coop.lat,lng:coop.lng,source:"cloudflare"});
    }else{
