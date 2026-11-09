@@ -6165,6 +6165,50 @@ def cooperado_aceitar_corrida():
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 
+@app.get('/api/app/tracking-token')
+def coopex_app_tracking_token():
+    """Token do aplicativo nativo somente para cooperado autenticado."""
+    if not session.get('user_id') or session.get('is_admin') or session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 403
+    if request.headers.get('X-COOPEX-Native-Tracking') != '1':
+        return jsonify(ok=False, error='native_only'), 403
+    coop = Cooperado.query.filter_by(id=int(session['user_id']), ativo=True).first()
+    if not coop:
+        return jsonify(ok=False, error='inactive'), 403
+    if not coop.app_token:
+        coop.ensure_app_token()
+        db.session.commit()
+    response = jsonify(ok=True, token=coop.app_token)
+    response.headers['Cache-Control'] = 'no-store'
+    return response
+
+
+@app.get('/api/admin/gps/positions')
+def coopex_admin_gps_cloudflare_positions():
+    """Proxy SOMENTE de leitura; nao consulta o banco nem gera eventos GPS."""
+    if not session.get('is_admin') and not session.get('is_master'):
+        return jsonify(ok=False, error='unauthorized'), 403
+    endpoint = os.environ.get('COOPEX_GPS_API_URL', '').rstrip('/')
+    secret = os.environ.get('COOPEX_GPS_VIEW_KEY', '')
+    if not endpoint.startswith('https://') or not secret:
+        return jsonify(ok=False, error='not_configured'), 503
+    try:
+        from urllib.request import Request, urlopen
+        url = endpoint + '/v1/positions'
+        query = Request(url, headers={
+            'Authorization': 'Bearer ' + secret,
+            'Accept': 'application/json',
+            'User-Agent': 'COOPEX-Maps/1.0',
+        })
+        with urlopen(query, timeout=2.5) as remote:
+            response = jsonify(json.loads(remote.read(128 * 1024).decode('utf-8')))
+            response.headers['Cache-Control'] = 'no-store'
+            return response
+    except Exception as exc:
+        app.logger.warning('COOPEX GPS Cloudflare indisponivel: %s', type(exc).__name__)
+        return jsonify(ok=False, error='gps_unavailable', items=[]), 503
+
+
 @app.get('/api/app/gps/verify-token')
 def coopex_gps_verificar_token_cloudflare():
     """Valida token nativo para o Worker; não recebe, grava ou processa localização."""
