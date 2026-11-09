@@ -251,3 +251,198 @@ body #cxLayersPanel{
  body #ui>.stats>.stat{height:54px!important;min-height:54px!important}
  body #cxLayersWidget{bottom:77px!important;left:8px!important}
 }
+
+
+/* COOPEX reference fidelity v4 (5th and 6th reference images) – UI only */
+:root{--cx4-glass:linear-gradient(160deg,rgba(29,91,143,.91),rgba(9,46,92,.94) 53%,rgba(2,27,65,.96));--cx4-edge:#69caff;--cx4-shadow:0 10px 27px rgba(0,9,33,.72),inset 0 2px 2px rgba(214,246,255,.6),0 0 13px rgba(0,171,255,.69)}
+/* Place info: clear, readable text and true navy 3D glass */
+body #addressPanel.cx-place-view,body.cx-night-google #addressPanel.cx-place-view{
+ background:var(--cx4-glass)!important;border:1px solid #6ac7ff!important;
+ box-shadow:var(--cx4-shadow)!important;border-radius:23px!important;
+ backdrop-filter:blur(18px) saturate(155%)!important;-webkit-backdrop-filter:blur(18px) saturate(155%)!important;
+ color:#f5fbff!important;
+}
+body #addressPanel.cx-place-view .cx-drawer-content{background:transparent!important;padding:9px 10px 11px!important;gap:5px!important}
+body #addressPanel.cx-place-view .cx-drawer-top{
+ flex:0 0 auto!important;background:var(--cx4-glass)!important;
+ border:1px solid #68bdf5!important;border-radius:20px!important;
+ box-shadow:inset 0 2px 2px #d1f3ff77,0 4px 12px #00132c99!important;
+ padding:5px 8px!important;
+}
+body #addressPanel.cx-place-view .cx-drawer-top input,
+body #addressPanel.cx-place-view .cx-drawer-top input::placeholder{color:#fff!important;opacity:1!important;font-size:14px!important;font-weight:750!important}
+body #addressPanel.cx-place-view #cxPlaceDetails,
+body #addressPanel.cx-place-view #cxPlaceDetails:not([hidden]),
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails{
+ margin:0!important;padding:5px 9px 12px!important;
+ width:100%!important;min-width:0!important;box-sizing:border-box!important;
+ background:transparent!important;border:0!important;border-radius:12px!important;
+ box-shadow:none!important;overflow-y:auto!important;scrollbar-width:thin!important;
+ display:flex!important;flex-direction:column!important;gap:10px!important;
+ color:#f5fbff!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-gallery{
+ display:block!important;position:relative!important;flex:none!important;
+ min-height:0!important;max-height:29dvh!important;overflow:hidden!important;
+ border-radius:17px!important;border:1px solid #65bfff!important;
+ background:#0b2c51!important;box-shadow:0 5px 13px #00132f8c!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-gallery[hidden]{display:none!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-gallery img{
+ width:100%!important;max-width:100%!important;height:clamp(145px,23dvh,215px)!important;
+ max-height:23dvh!important;object-fit:cover!important;border:0!important;
+ border-radius:15px!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-title{
+ display:block!important;font-size:24px!important;font-weight:850!important;
+ line-height:1.15!important;color:#fff!important;text-shadow:0 2px 5px #0008!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-overview{
+ display:flex!important;align-items:center!important;flex-wrap:wrap!important;
+ gap:8px!important;min-height:19px!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-rating{font-size:14px!important;color:#ffcd49!important;font-weight:850!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-category{color:#e4f3ff!important;background:#1d659a88!important;border:1px solid #56a7dc!important;padding:3px 8px!important;border-radius:20px!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-state,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-data,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body #addressPanel.cx-place-view #cxPlaceDetails small,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-metadata{
+ color:#e1f1ff!important;opacity:1!important;font-size:13px!important;line-height:1.45!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit{font-size:11px!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-state[data-open="no"],
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-hours-status[data-open="no"]{color:#ff6574!important;font-weight:800!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-state[data-open="yes"],
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-hours-status[data-open="yes"]{color:#4afba0!important;font-weight:800!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-metadata{
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ background:transparent!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-data,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-link{
+ padding:10px 5px!important;color:#e8f5ff!important;
+ border-top:1px solid #80c7fa42!important;text-decoration:none!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-link{color:#8fdcff!important}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours{
+ margin:0!important;padding:11px!important;border:1px solid #6ec1f36b!important;
+ border-radius:13px!important;background:linear-gradient(150deg,#15518b91,#082e6199)!important;
+ color:#f5fbff!important;box-shadow:inset 0 1px 2px #c8efff35!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours *,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours summary{
+ color:#f0f9ff!important;font-size:13px!important;opacity:1!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ gap:7px!important;padding:0!important;margin:2px 0 5px!important;
+ background:transparent!important;position:relative!important;bottom:auto!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button,
+body.cx-night-google #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button{
+ display:flex!important;align-items:center!important;justify-content:center!important;flex-direction:column!important;
+ min-width:0!important;min-height:65px!important;height:65px!important;padding:5px 2px!important;
+ border-radius:14px!important;background:linear-gradient(155deg,#1975b8bf,#07396fcc)!important;
+ border:1px solid #75caff!important;color:white!important;
+ font-size:12px!important;font-weight:750!important;
+ box-shadow:0 5px 15px #00153299,inset 0 2px 2px #d0f4ff8c,0 0 8px #009dff73!important;
+ backdrop-filter:blur(13px)!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts .cx-place-directions{
+ background:linear-gradient(160deg,#258aff,#0759b8)!important;
+}
+@media(min-width:960px){
+ body #addressPanel.cx-place-view{top:12px!important;bottom:11px!important;left:12px!important;right:auto!important;width:clamp(390px,26.6vw,508px)!important;max-width:calc(100vw - 100px)!important}
+ body #addressPanel.cx-place-view #cxPlaceDetails{max-height:calc(100dvh - 110px)!important;min-height:0!important;flex:1 1 auto!important}
+ body #addressPanel.cx-search-idle .cx-drawer-top{border-radius:23px!important;border-right:1px solid #6ac7ff!important}
+ body #cxTopControlDock,body.cx-night-google #cxTopControlDock{
+  left:calc(clamp(390px,26.6vw,508px) + 19px)!important;right:12px!important;
+  border-radius:23px!important;padding:5px 7px!important;
+  background:var(--cx4-glass)!important;border:1px solid var(--cx4-edge)!important;
+  box-shadow:var(--cx4-shadow)!important;
+  grid-template-columns:minmax(145px,1fr) minmax(168px,285px) max-content 44px!important;
+  gap:7px!important;backdrop-filter:blur(17px) saturate(160%)!important;
+ }
+ body #cxTopControlDock>#cxCoopSearch,body #cxTopControlDock>.weather.glass,
+ body #cxTopControlDock>.filters.glass,body #cxTopControlDock>.back-link{
+  background:linear-gradient(155deg,#235e96bd,#082e62cc)!important;
+  border:1px solid #5abaf7!important;border-radius:16px!important;
+  box-shadow:inset 0 2px 2px #c9efff72,0 5px 12px #00142f80!important;
+  color:#fff!important;
+ }
+ body #cxTopControlDock>.filters.glass .pill{min-height:34px!important;height:34px!important;padding:3px 8px!important}
+ body #cxTopControlDock>.weather.glass .cx-weather-condition{font-size:12px!important}
+}
+/* Layers always in FRONT of the open sidebar, never partially obscured by it */
+@media(min-width:960px){
+ body #cxLayersWidget,
+ body.cx-stats-in-menu #cxLayersWidget,
+ body:has(#addressPanel.cx-place-view) #cxLayersWidget{
+  left:calc(clamp(390px,26.6vw,508px) + 20px)!important;
+  bottom:18px!important;right:auto!important;
+  z-index:1900!important;width:52px!important;height:52px!important;
+  pointer-events:none!important;
+ }
+ body #cxLayersToggle{pointer-events:auto!important}
+}
+body #cxLayersPanel{
+ left:0!important;bottom:60px!important;width:min(328px,calc(100vw - 24px))!important;
+ padding:12px!important;background:var(--cx4-glass)!important;
+ backdrop-filter:blur(20px)!important;border:1px solid #69caff!important;
+ box-shadow:var(--cx4-shadow)!important;color:#fff!important;
+}
+body #cxLayersPanel .cx-layers-panel-header,body #cxLayersPanel .cx-layers-panel-header strong{color:#f3faff!important}
+body #cxLayersPanel [data-cx-maptype]{color:#fff!important;background:linear-gradient(#1c5f96,#082b5c)!important;border:1px solid #73c0f4!important}
+body #cxLayersPanel [data-cx-maptype][aria-pressed=true]{border:2px solid #74e6ff!important;background:linear-gradient(#187fc7,#0b497e)!important}
+/* Forecast: luminous glass and accessible contrast, no dark unreadable subtitles */
+body #cxWeatherWeek{
+ width:min(560px,calc(100vw - 20px))!important;
+ max-height:calc(100dvh - 24px)!important;
+ padding:18px 18px 16px!important;box-sizing:border-box!important;
+ overflow-y:auto!important;scrollbar-width:thin!important;
+ border:1px solid #71c8ff!important;border-radius:23px!important;
+ background:var(--cx4-glass)!important;color:#f7fbff!important;
+ box-shadow:var(--cx4-shadow)!important;
+ backdrop-filter:blur(24px) saturate(160%)!important;
+ -webkit-backdrop-filter:blur(24px) saturate(160%)!important;
+}
+body #cxWeatherWeek .cx-weather-week-head,
+body #cxWeatherWeek .cx-week-subtitle,
+body #cxWeatherWeek .cx-weather-evening>strong,
+body #cxWeatherWeek .cx-weather-evening p,
+body #cxWeatherWeek .cx-week-day,
+body #cxWeatherWeek .cx-week-day *,
+body #cxWeatherWeek .cx-weather-hour *,
+body #cxWeatherWeek .cx-weather-now{
+ color:#f4fbff!important;opacity:1!important;
+ text-shadow:0 1px 2px #00133299!important;
+}
+body #cxWeatherWeek .cx-weather-evening p{color:#d4efff!important;font-size:13px!important;font-weight:650!important}
+body #cxWeatherWeek .cx-weather-now,
+body #cxWeatherWeek .cx-weather-evening,
+body #cxWeatherWeek .cx-weather-hour{
+ border:1px solid #5eaeea!important;background:linear-gradient(155deg,rgba(24,92,147,.71),rgba(7,42,87,.78))!important;
+ border-radius:14px!important;box-shadow:inset 0 2px 2px #bdeaff55,0 5px 12px #00173366!important;
+}
+body #cxWeatherWeek .cx-weather-now{padding:12px!important;font-weight:750!important}
+body #cxWeatherWeek .cx-weather-evening{padding:12px!important}
+body #cxWeatherWeek .cx-weather-hour{padding:9px 4px!important;min-height:67px!important}
+body #cxWeatherWeek .cx-weather-hour small{color:#73d6ff!important;font-size:12px!important;font-weight:850!important}
+body #cxWeatherWeek .cx-week-day{
+ display:grid!important;grid-template-columns:84px minmax(130px,1fr) 93px 58px!important;
+ gap:7px!important;padding:9px 3px!important;
+ border-bottom:1px solid #78cfff42!important;font-size:13px!important;
+}
+body #cxWeatherWeek .cx-week-day span{font-size:13px!important;white-space:normal!important}
+body #cxWeatherWeek .cx-week-day strong,body #cxWeatherWeek .cx-week-day b{font-size:13px!important}
+body #cxWeatherWeek .cx-weather-disclaimer{display:none!important}
+body #cxWeatherWeek .cx-week-subtitle{font-size:15px!important;font-weight:850!important}
+body #cxWeatherWeek button[aria-label="Fechar previsão"]{color:#fff!important;background:linear-gradient(#287fbd,#0b427c)!important;border:1px solid #8bd8ff!important}
+@media(max-width:620px){
+ body #cxWeatherWeek{width:calc(100vw - 12px)!important;padding:12px!important}
+ body #cxWeatherWeek .cx-week-day{grid-template-columns:55px minmax(90px,1fr) 75px 48px!important;gap:3px!important}
+ body #cxWeatherWeek .cx-week-day,body #cxWeatherWeek .cx-week-day *{font-size:11px!important}
+ body #cxWeatherWeek .cx-weather-hour{min-height:58px!important}
+}
