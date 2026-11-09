@@ -2745,3 +2745,20 @@ body #cxWeatherWeek[hidden]{display:none!important}
  body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts{grid-template-columns:repeat(2,minmax(0,1fr))!important}
  body #cxWeatherWeek .cx-week-day{grid-template-columns:60px minmax(0,1fr) 70px 46px!important}
 }
+
+/* Estados de navegação com a mesma leitura cromática da referência. */
+body #cxTopControlDock>.filters.glass .pill[data-filter="online"] .dot{background:#21f77c!important;box-shadow:0 0 7px #16fc6e!important}
+body #cxTopControlDock>.filters.glass .pill[data-filter="ocioso"] .dot{background:#ffac23!important;box-shadow:0 0 7px #ff9b18!important}
+body #cxTopControlDock>.filters.glass .pill[data-filter="offline"] .dot{background:#ff435d!important;box-shadow:0 0 7px #ff405b!important}
+body #cxTopControlDock>.filters.glass .pill[data-filter="online"].active{
+ background:linear-gradient(180deg,#09643e,#063b2b)!important;border-color:#43ff92!important;
+ box-shadow:0 0 10px #0bdc6f88,inset 0 1px 2px #b4ffda7a!important
+}
+body #cxTopControlDock>.filters.glass .pill[data-filter="ocioso"].active{
+ background:linear-gradient(180deg,#8d5210,#50310a)!important;border-color:#ffbf51!important;
+ box-shadow:0 0 10px #f59e2788,inset 0 1px 2px #ffdfab7a!important
+}
+body #cxTopControlDock>.filters.glass .pill[data-filter="offline"].active{
+ background:linear-gradient(180deg,#912b43,#541626)!important;border-color:#ff7185!important;
+ box-shadow:0 0 10px #fa435e88,inset 0 1px 2px #ffd0dc7a!important
+}
