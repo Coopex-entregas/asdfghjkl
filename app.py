@@ -6167,6 +6167,9 @@ def cooperado_aceitar_corrida():
 
 @app.post('/api/app/localizacao')
 def api_app_localizacao():
+    # GPS tracking temporarily suspended until it moves off the primary server.
+    # Return immediately without parsing request, token lookup, database or Socket.IO.
+    return jsonify(ok=True, paused=True, emitido=False, motivo='gps_suspenso_temporariamente'), 200
     """
     Recebe localização do APK/WebView apenas para rastreamento em tempo real.
 
@@ -6334,6 +6337,10 @@ def api_cooperado_localizacao_status():
 
 @app.route('/cooperado/atualizar_localizacao', methods=['POST'])
 def cooperado_atualizar_localizacao():
+    # Browser tracking is also paused. Queue geofence uses a separate endpoint.
+    if session.get('user_id') is None or session.get('is_admin'):
+        return jsonify(status='erro', msg='Não autorizado'), 403
+    return jsonify(status='ok', paused=True, emitido=False), 200
     """
     Atualização de GPS feita pelo painel/web do cooperado.
     Também trabalha somente em memória, sem salvar no banco.
