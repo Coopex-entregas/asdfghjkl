@@ -6165,6 +6165,30 @@ def cooperado_aceitar_corrida():
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 
+@app.get('/api/app/gps/verify-token')
+def coopex_gps_verificar_token_cloudflare():
+    """Valida token nativo para o Worker; não recebe, grava ou processa localização."""
+    auth = (request.headers.get('Authorization') or '').strip()
+    if not auth.lower().startswith('bearer '):
+        return jsonify(ok=False), 401
+    token = auth[7:].strip()
+    if len(token) < 32 or len(token) > 160:
+        return jsonify(ok=False), 401
+    try:
+        coop = db.session.query(Cooperado.id).filter(
+            Cooperado.app_token == token,
+            Cooperado.ativo.is_(True)
+        ).first()
+        if not coop:
+            return jsonify(ok=False), 401
+        response = jsonify(ok=True, cooperado_id=int(coop.id))
+        response.headers['Cache-Control'] = 'no-store'
+        return response
+    except Exception:
+        app.logger.exception('Falha ao validar token GPS')
+        return jsonify(ok=False), 503
+
+
 @app.post('/api/app/localizacao')
 def api_app_localizacao():
     # GPS tracking temporarily suspended until it moves off the primary server.
