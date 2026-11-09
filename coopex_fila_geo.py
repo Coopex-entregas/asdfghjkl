@@ -30,7 +30,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             return None
         if not endereco or not isfinite(lat) or not isfinite(lng) or abs(lat)>90 or abs(lng)>180:
             return None
-        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':30}
+        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':50}
 
     def authorized():
         uid=session.get('user_id')
