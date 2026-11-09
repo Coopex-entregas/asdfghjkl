@@ -7792,13 +7792,8 @@ def mapa_motoboys():
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
 
-    # Última posição persistida: carregamento em lote (inclusive para offline).
-    # Nunca atribuir coordenadas falsas para cooperados sem GPS registrado.
-    posicoes_salvas = {}
-    try:
-        posicoes_salvas = {int(p.cooperado_id): p for p in LocalizacaoCooperado.query.all()}
-    except Exception:
-        posicoes_salvas = {}
+    # Nao consultar tabelas de GPS no Render: Cloudflare e a fonte exclusiva.
+    # O mapa recebe coordenadas pela API do Worker depois de abrir.
 
     # Conta entregas abertas uma única vez para não fazer uma consulta por cooperado.
     abertas_por_coop = {}
@@ -7851,65 +7846,14 @@ def mapa_motoboys():
             return ''
 
     for c in cooperados:
-        live = _get_live_location(c.id)
-        saved = posicoes_salvas.get(int(c.id))
-        # Preferir GPS vivo; na ausência, usar o último sinal conhecido no banco.
-        lat = live.get('lat') if live else None
-        lng = live.get('lng') if live else None
-        acc = live.get('accuracy') if live else None
-        hdg = live.get('heading') if live else None
-        speed_saved = live.get('speed') if live else None
-        last_seen = live.get('ultima_atualizacao') if live else None
-        # Regra exclusiva do COOPEX Maps: disponibilidade recente, não movimento.
-        # Não altera o prazo nem a comunicação do aplicativo Android.
-        mapa_limite_s = 180
-        agora_s = pytime.time()
-        ts_gps = float(live.get('last_seen_ts') or 0) if live else 0
-        age_gps = max(0.0, agora_s - ts_gps) if ts_gps else None
-        age_painel = max(0.0, (datetime.utcnow() - c.last_ping.replace(tzinfo=None)).total_seconds()) if c.last_ping else None
-        online_gps = bool(age_gps is not None and age_gps <= mapa_limite_s)
-        online_painel = bool(c.online and age_painel is not None and age_painel <= mapa_limite_s)
-        online = bool(online_gps or online_painel)
-        idades_ativas = ([age_gps] if online_gps else []) + ([age_painel] if online_painel else [])
-        idade_sinal_segundos = min(idades_ativas) if idades_ativas else None
-
-        if not _coord_valida(lat, lng):
-            # A coluna Cooperado.last_lat/last_lng recebe os snapshots GPS novos.
-            # LocalizacaoCooperado pode conter latitude mais antiga, até após login.
-            # Escolher o par completo (nunca misturar lat e lng de fontes diferentes).
-            if _coord_valida(c.last_lat, c.last_lng):
-                lat, lng = c.last_lat, c.last_lng
-                acc = getattr(c, 'last_accuracy_m', None)
-                hdg = getattr(c, 'last_heading', None)
-                speed_saved = getattr(c, 'last_speed_kmh', None)
-                when = c.last_ping
-            elif saved and _coord_valida(saved.latitude, saved.longitude):
-                lat, lng = saved.latitude, saved.longitude
-                acc = saved.accuracy
-                hdg = saved.heading
-                speed_saved = saved.speed
-                when = saved.atualizado_em
-            else:
-                when = None
-            if _coord_valida(lat, lng):
-                last_seen = _format_brasilia_from_utc(when) if when else 'Última posição registrada'
-
-        tem_localizacao = bool(_coord_valida(lat, lng))
-
+        # Somente cadastro/entregas no Render. NENHUMA leitura de posicoes
+        # salvas, memoria GPS, ultimo ping, ultimo trajeto ou tabela localizacao.
+        lat = lng = acc = hdg = speed_saved = None
+        tem_localizacao = online = online_gps = online_painel = False
+        idade_sinal_segundos = None
         entregas_abertas = abertas_por_coop.get(int(c.id), 0)
-
-        if online and entregas_abertas > 0:
-            status = 'em_corrida'
-        elif online:
-            status = 'livre'
-        else:
-            status = 'offline'
-
-        if live:
-            live['status'] = status
-
-        ultima_txt = last_seen or ''
-
+        status = 'offline'
+        ultima_txt = ''
         nome = c.nome or f'Cooperado {c.id}'
         try:
             nome = _dash_title_case(nome)
@@ -7929,7 +7873,7 @@ def mapa_motoboys():
             'presenca_painel': bool(online_painel),
             'status': status,
             'idle_seconds': 0 if online else None,
-            'tempo_sem_entrega': _tempo_sem_entrega(c.id, online, entregas_abertas),
+            'tempo_sem_entrega': '',
             'accuracy_m': float(acc or 0),
             'speed_kmh': round(float(speed_saved), 1) if online_gps and speed_saved is not None else None,
             'heading': float(hdg or 0),
@@ -7937,7 +7881,7 @@ def mapa_motoboys():
             'endereco': getattr(c, 'zona', None) or getattr(c, 'bairro', None) or '',
             'observacao': getattr(c, 'observacao', '') or '',
             'entregas_abertas': int(entregas_abertas),
-            'modo': 'memoria_sem_salvar_banco',
+            'modo': 'cloudflare_gps',
         })
 
     def _sort_key(x):
