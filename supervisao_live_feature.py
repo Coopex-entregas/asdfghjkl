@@ -71,7 +71,7 @@ LIVE_SCRIPT = r"""
   'use strict';
 
   const URL_LIVE='/api/admin/live-state';
-  const INTERVALO=2000;
+  const INTERVALO=8000; // fallback leve; alteracoes da fila chegam por Socket.IO
 
   let versao=null;
   let verificando=false;
@@ -432,7 +432,7 @@ LIVE_SCRIPT = r"""
     portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
     portalModal();
     loadPortalRequests(false);
-    setInterval(()=>{if(document.visibilityState==='visible')loadPortalRequests(false)},15000);
+    setInterval(()=>{if(document.visibilityState==='visible')loadPortalRequests(false)},30000);
     verificar();
     setInterval(verificar,INTERVALO);
 
