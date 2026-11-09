@@ -1414,7 +1414,7 @@ def _get_cooperado_auth_from_token(token: str):
 
     row = (
         db.session.query(Cooperado.id, Cooperado.nome)
-        .filter(Cooperado.app_token == token, Cooperado.ativo.is_(True))
+        .filter(Cooperado.app_token == token)
         .first()
     )
     if not row:
@@ -2937,10 +2937,6 @@ def logout():
         coop = Cooperado.query.get(uid)
         if coop:
             coop.online = False
-            # Sair voluntario invalida a credencial GPS anterior.
-            # Expiracao automatica de cookie nao passa por /logout.
-            coop.app_token = secrets.token_urlsafe(32)
-            _LOCATION_AUTH_CACHE.clear()
             _LIVE_LOCATION_BY_ID.pop(int(coop.id), None)
             loc = LocalizacaoCooperado.query.filter_by(cooperado_id=coop.id).first()
             if loc:
@@ -6169,29 +6165,6 @@ def cooperado_aceitar_corrida():
     return jsonify(ok=True, status_corrida=entrega.status_corrida)
 
 
-@app.get('/api/app/tracking-token')
-def coopex_app_tracking_token():
-    """Credencial propria e revogavel de GPS, independente do cookie WebView apos login.
-
-    O aplicativo so obtem o token usando a sessao autenticada do cooperado.
-    A coleta posterior usa o endpoint /api/app/localizacao com Bearer.
-    """
-    uid = session.get('user_id')
-    if not uid or session.get('is_admin'):
-        return jsonify(ok=False, error='Nao autorizado'), 401
-    if request.headers.get('X-COOPEX-Native-Tracking') != '1':
-        return jsonify(ok=False, error='Requisicao invalida'), 403
-    coop = Cooperado.query.get(int(uid))
-    if not coop or not bool(coop.ativo):
-        return jsonify(ok=False, error='Cooperado inativo'), 403
-    if not coop.app_token:
-        coop.ensure_app_token()
-        db.session.commit()
-    response = jsonify(ok=True, token=coop.app_token)
-    response.headers['Cache-Control'] = 'no-store, private, max-age=0'
-    return response
-
-
 @app.post('/api/app/localizacao')
 def api_app_localizacao():
     """
@@ -7756,10 +7729,7 @@ def mapa_motoboys():
         last_seen = live.get('ultima_atualizacao') if live else None
         # Regra exclusiva do COOPEX Maps: disponibilidade recente, não movimento.
         # Não altera o prazo nem a comunicação do aplicativo Android.
-        # O app grava retrato de posição no banco a cada ~75s.
-        # Tolerância de 120s evita falso offline durante deploy/reinício
-        # sem manter o processo ocupado nem ampliar a memória residente.
-        mapa_limite_s = 120
+        mapa_limite_s = 60
         agora_s = pytime.time()
         ts_gps = float(live.get('last_seen_ts') or 0) if live else 0
         age_gps = max(0.0, agora_s - ts_gps) if ts_gps else None

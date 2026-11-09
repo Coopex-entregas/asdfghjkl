@@ -47,10 +47,13 @@ for(const i of items){
  const age=Number(i.sinal_idade_segundos);
  if(i.online&&i.sinal_idade_segundos!=null&&Number.isFinite(age)&&age>=0)i.__lastSignalAt=Date.now()-age*1000;
 }
-// O servidor decide disponibilidade com GPS e presença real. Evitar que
-// um único timer no navegador transforme todos em ociosos simultaneamente.
 const state=i=>{
  if(!i.online)return "offline";
+ if(Number.isFinite(i.__lastSignalAt)){
+  const age=Date.now()-i.__lastSignalAt;
+  if(age>=MAP_SIGNAL_TIMEOUT_MS)return "offline";
+  if(age>=MAP_SEARCHING_AFTER_MS)return "ocioso";
+ }
  return i.status==="ocioso"?"ocioso":"online";
 };
 const stateNames={online:"Online",ocioso:"Procurando conexão",offline:"Offline"};
@@ -505,6 +508,19 @@ map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();gpsSocket();
 setInterval(()=>{if(!window.COOPEX_MAP_SOCKET?.connected)updateGps()},15000);
  setInterval(updateGps,60000);
-  // O estado vem do servidor e de eventos individuais, não de um timer global.
+  // Muda de verde para laranja e depois offline, sem novas consultas.
+  let lastStatusSignature="";
+  setInterval(()=>{
+   if(document.hidden)return;
+   const signature=items.map(x=>String(x.id)+":"+state(x)).join("|");
+   if(signature===lastStatusSignature)return;
+   lastStatusSignature=signature;
+   for(const x of items){
+    if(x.online&&Number.isFinite(x.__lastSignalAt)&&Date.now()-x.__lastSignalAt>=MAP_SIGNAL_TIMEOUT_MS){
+     x.online=false;x.gps_ao_vivo=false;x.presenca_painel=false;x.status="offline";
+    }
+   }
+   render();
+  },5000);
  /* Clima mantido por coopex_weather_week.js (Open-Meteo, fonte única). */setInterval(phase,60*1000);
 })();
