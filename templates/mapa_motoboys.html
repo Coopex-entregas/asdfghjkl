@@ -7,6 +7,48 @@
 <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.16.0/dist/maplibre-gl.css">
 <link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_mapa_v2.css') }}?v=20261108-status-hist202">
 <link rel="stylesheet" href="{{ url_for('static',filename='css/coopex_maps_glass_2026.css') }}?v=20261108-glass-unified209">
+<style>
+/* Interface da COOPEX acompanha o mapa Google original no horário noturno. */
+body.cx-night-google #cxTopControlDock>.weather.glass,
+body.cx-night-google #cxTopControlDock>.filters.glass,
+body.cx-night-google #cxTopControlDock>#cxCoopSearch,
+body.cx-night-google .cx-unified-drawer,
+body.cx-night-google #ui #details.details,
+body.cx-night-google #ui .stats .stat,
+body.cx-night-google #cxStreetPreview{
+ background:rgba(27,39,56,.94)!important;
+ color:#f0f5fd!important;
+ border-color:rgba(145,165,190,.42)!important;
+}
+body.cx-night-google .cx-unified-drawer .cx-drawer-content,
+body.cx-night-google .cx-unified-drawer .cx-drawer-top{
+ background:rgba(27,39,56,.95)!important;
+ color:#eef5ff!important;
+}
+body.cx-night-google #cxTopControlDock input,
+body.cx-night-google .cx-unified-drawer input{color:#f1f6ff!important}
+body.cx-night-google #cxTopControlDock .cx-weather-place,
+body.cx-night-google #cxTopControlDock .cx-weather-condition{color:#d4e6ff!important}
+body.cx-night-google #cxWeatherWeek{background:rgba(26,40,58,.98)!important;color:#edf5ff!important;border-color:#57718e!important}
+</style>
+<script>
+(function(){
+ const hour=()=>Number(new Intl.DateTimeFormat("en-US",{hour:"2-digit",hour12:false,timeZone:"America/Fortaleza"}).format(new Date()));
+ const isNight=()=>{const h=hour();return h>=18||h<6};
+ window.COOPEX_NIGHT_ACTIVE=isNight();
+ const apply=()=>document.body&&document.body.classList.toggle("cx-night-google",window.COOPEX_NIGHT_ACTIVE);
+ document.addEventListener("DOMContentLoaded",apply,{once:true});
+ // A API oficial do Google define a paleta na criação do mapa, não por setOptions.
+ // Na transição das 18h/6h, recarregamos uma única vez, preservando a consulta.
+ setInterval(()=>{
+  const next=isNight();
+  if(next!==window.COOPEX_NIGHT_ACTIVE){
+   window.COOPEX_NIGHT_ACTIVE=next;
+   location.reload();
+  }
+ },30000);
+})();
+</script>
 </head>
 <body>
 <div id="map" aria-label="Mapa ao vivo dos cooperados"></div>
@@ -83,12 +125,12 @@
 
 <script src="https://cdn.socket.io/4.7.5/socket.io.min.js" crossorigin="anonymous"></script>
 <script>window.COOPEX_SEED={{ motoboys_js|tojson|safe }};window.COOPEX_GOOGLE_KEY={{ google_maps_api_key|tojson|safe }};</script>
-<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-places-details-restored"></script>
-<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-offline-60s"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_google_map.js') }}?v=20261108-google-official-dark-small-pins"></script>
+<script type="module" src="{{ url_for('static',filename='js/coopex_mapa_3d.js') }}?v=20261108-orange15-offline60"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_maps_glass_2026.js') }}?v=20261108-glass-fix207"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_map_layers.js') }}?v=20261108-sem-transito"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_maps_native_extras.js') }}?v=20261108-native91"></script>
 <script defer src="{{ url_for('static',filename='js/coopex_route_autocomplete.js') }}?v=20261108-route-hist202"></script>
-<script defer src="{{ url_for('static',filename='js/coopex_weather_week.js') }}?v=20261108-clima-unificado-noite"></script>
+<script defer src="{{ url_for('static',filename='js/coopex_weather_week.js') }}?v=20261108-weather-panel-fixed"></script>
 </body>
 </html>
