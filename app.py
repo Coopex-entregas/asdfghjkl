@@ -6410,11 +6410,24 @@ def coopex_cooperado_presenca():
         return jsonify({'ok': False, 'error': 'Não autorizado'}), 403
     try:
         cid = int(session['user_id'])
-        db.session.query(Cooperado).filter(Cooperado.id == cid).update({
+        agora = datetime.utcnow()
+        # O painel consulta a cada 45s, mas um heartbeat recente não exige
+        # outra escrita. Atualiza a cada ~90s, abaixo do limite offline (120s).
+        # GPS continua independente, diretamente no Cloudflare.
+        limite_gravacao = agora - timedelta(seconds=60)
+        alteradas = db.session.query(Cooperado).filter(
+            Cooperado.id == cid,
+            or_(
+                Cooperado.last_ping.is_(None),
+                Cooperado.last_ping <= limite_gravacao,
+                Cooperado.online.is_(False),
+            ),
+        ).update({
             Cooperado.online: True,
-            Cooperado.last_ping: datetime.utcnow(),
+            Cooperado.last_ping: agora,
         }, synchronize_session=False)
-        db.session.commit()
+        if alteradas:
+            db.session.commit()
         return jsonify({'ok': True, 'online': True})
     except Exception:
         db.session.rollback()
