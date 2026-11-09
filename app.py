@@ -2783,12 +2783,8 @@ def login():
             session['is_admin'] = False
             session['is_master'] = False
             session['tipo'] = 'cooperado'   # 👈 ESSENCIAL PARA /cooperado/atualizar_localizacao
-            # Redirecionar SOMENTE cooperado no navegador Android depois do login.
-            # O login nativo do app usa /api/mobile/login_cooperado e não passa aqui.
-            agent = (request.headers.get('User-Agent') or '').lower()
-            android_browser = 'android' in agent and 'wv' not in agent and 'version/4.0' not in agent
-            if android_browser:
-                return redirect(url_for('cooperado_app_android'))
+            # Navegadores Android voltam ao painel HTML completo, com filtros
+            # e ações originais. O aplicativo usa /api/mobile/login_cooperado.
             return redirect(url_for('painel_cooperado'))
 
         # 3) Cliente (login por username OU e-mail)
