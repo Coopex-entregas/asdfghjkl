@@ -2885,7 +2885,7 @@ body.cx-modal-active{overflow:hidden!important}
 const $=id=>document.getElementById(id);
 const pos=$('queue-my-position'), people=$('queue-people'), hint=$('queue-location-status');
 const enter=$('queue-enter'), leave=$('queue-exit');
-let inQueue=false, base=null, offered=false, watchId=null;
+let inQueue=false, base=null, offered=false, watchId=null, joining=false;
 const selfId=Number({{ cooperado_id|tojson }});
 function notice(t){if(hint)hint.textContent=t;}
 function paint(items){
@@ -2920,35 +2920,43 @@ function currentPosition(){
  return new Promise((res,rej)=>{
   if(!navigator.geolocation){rej(Error('Este celular não oferece localização.'));return;}
   navigator.geolocation.getCurrentPosition(res,e=>rej(Error('Ative a localização precisa e autorize o COOPEX no Android.')),
-   {enableHighAccuracy:true,maximumAge:0,timeout:16000});
+   {enableHighAccuracy:true,maximumAge:10000,timeout:12000});
  });
 }
 async function join(){
- if(!base) await fetchBase();
- if(!base)return;
- enter.disabled=true;notice('Obtendo sua posição GPS...');
+ if(joining||inQueue)return;
+ joining=true;enter.disabled=true;
+ notice('Obtendo localização...');
  try{
+  if(!base)await fetchBase();
+  if(!base)throw Error('Base não cadastrada. Tente novamente.');
   const p=await currentPosition(),c=p.coords;
-  notice('Verificando se você está na cooperativa...');
+  notice('Registrando seu nome na fila...');
   const response=await fetch('/api/cooperado/fila/entrar',{
-   method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},
+   method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},
    body:JSON.stringify({latitude:c.latitude,longitude:c.longitude,precisao_m:c.accuracy,timestamp_ms:p.timestamp})
   });
   const d=await response.json();
   if(!response.ok||!d.ok)throw Error(d.erro||'Não foi possível entrar na fila.');
-  // Não declarar sucesso antes de validar a posição persistida no banco.
-  const status=await fetch('/api/cooperado/fila/estado',{credentials:'same-origin',cache:'no-store'});
-  if(!status.ok)throw Error('Entrada enviada, mas não foi possível confirmar sua posição. Atualize o painel.');
-  const state=await status.json();
-  if(!state.ok||!Number.isInteger(Number(state.posicao))||Number(state.posicao)<1)
-   throw Error('A entrada ainda não consta na fila. Tente novamente ou informe a supervisão.');
-  const before=(state.anteriores||[]).map(p=>({cooperado_id:null,nome:p.nome}));
-  const itens=[...before,{cooperado_id:selfId,nome:''}];
-  paint(itens);
-  window.dispatchEvent(new CustomEvent('coopex-queue-update',{detail:{itens,posicao:state.posicao,indice:state.posicao-1}}));
-  notice((d.ja_estava?'Você já estava':'Entrada confirmada')+' na fila · posição '+state.posicao+'º.');
- }catch(e){notice(e.message||'Não foi possível verificar sua localização.');}
- finally{enter.disabled=false;}
+  // POST confirma o commit; nenhuma segunda consulta pode impedir a confirmação.
+  const position=Number(d.posicao);
+  if(!Number.isInteger(position)||position<1)throw Error('Entrada registrada, mas sem posição. Atualize o painel.');
+  inQueue=true;
+  pos.textContent='Sua posição: '+position+'º';
+  enter.style.display='none';leave.style.display='inline-flex';
+  notice((d.ja_estava?'Você já estava':'Entrada confirmada')+' na fila · posição '+position+'º.');
+  // Sincronização da lista de nomes, não bloqueante e sem alterar o sucesso registrado.
+  fetch('/api/cooperado/fila/estado',{credentials:'same-origin',cache:'no-store'})
+   .then(r=>r.ok?r.json():null)
+   .then(state=>{
+    if(!state||!state.ok||state.posicao==null||!inQueue)return;
+    const anteriores=(state.anteriores||[]).map(p=>({cooperado_id:null,nome:p.nome}));
+    const itens=[...anteriores,{cooperado_id:selfId,nome:''}];
+    paint(itens);
+    window.dispatchEvent(new CustomEvent('coopex-queue-update',{detail:{itens,posicao:state.posicao,indice:state.posicao-1}}));
+   }).catch(()=>{});
+ }catch(e){notice(e.message||'Não foi possível registrar sua entrada.');}
+ finally{joining=false;enter.disabled=false;}
 }
 function showExitModal(){
  const backdrop=$('cx-exit-backdrop'),field=$('cx-exit-reason'),error=$('cx-exit-error');
