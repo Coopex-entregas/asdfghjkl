@@ -2875,8 +2875,8 @@ body.cx-modal-active{overflow:hidden!important}
       conectarEventosFila();
       setTimeout(() => {
         requireLocation();
-        fetchGpsStatus();
-        setInterval(fetchGpsStatus, 15000);
+        // GPS periodico suspenso no Render: nao consultar status a cada 15 segundos.
+        // A verificacao pontual para entrar na fila permanece independente.
       }, 700);
     });
   </script>
