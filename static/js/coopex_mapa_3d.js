@@ -546,7 +546,7 @@ map.on("load",()=>{updateGps();});
 render();setAddressMode(true);updateGps();stopRender();gpsSocket();
 // Mantém o estado atualizado sem depender de F5. Browsers suspendem timers de
 // abas em segundo plano; recuperar imediatamente quando a página voltar.
-setInterval(()=>updateGps(),30000);
+setInterval(()=>updateGps(),15000);
 let lastResumeAt=0;
 function retomarGps(){
  if(document.hidden)return;
