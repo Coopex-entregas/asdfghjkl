@@ -510,6 +510,8 @@ def install(app_module):
             "/healthz",
             "/readyz",
             "/api/app/localizacao",
+            "/cooperado/atualizar_localizacao",
+            "/api/cooperado/presenca",
             "/api/app/heartbeat",
             "/api/app/ping",
         )
