@@ -26,11 +26,11 @@ function setup(){
  panel.setAttribute("aria-label","Previsão meteorológica semanal para Natal RN");
  document.body.append(panel);
  async function load(){
-  panel.textContent="Consultando previsão para os próximos sete dias…";position();
+  if(!panel.hidden){panel.textContent="Consultando previsão para os próximos sete dias…";position();}
   if(forecast&&Date.now()-lastFetch<10*60*1000){show(forecast);return}
   if(request)return;
   try{
-   request=fetch("https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day&hourly=precipitation_probability,weather_code,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7",{cache:"no-store"});
+   request=fetch("/api/coopex/clima/previsao",{cache:"no-store",credentials:"same-origin"});
    const response=await request;if(!response.ok)throw Error("HTTP "+response.status);
    const data=await response.json();forecast=data;if(!forecast?.daily?.time?.length)throw Error("Previsão sem dados");
    lastFetch=Date.now();show(forecast);
