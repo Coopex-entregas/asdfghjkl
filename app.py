@@ -7608,6 +7608,46 @@ def coopex_mapa_preferencias():
         return jsonify({'erro': 'Não foi possível salvar o histórico'}), 500
 
 
+# Previsão meteorológica através do servidor COOPEX para evitar bloqueios
+# do navegador ao consultar diretamente o provedor. Cache 5 minutos.
+_COOPEX_WEATHER_CACHE = {'data': None, 'ts': 0}
+
+@app.get('/api/coopex/clima/previsao')
+def coopex_clima_previsao():
+    if not session.get('is_admin'):
+        return jsonify({'ok': False, 'erro': 'Não autorizado'}), 403
+    from urllib.request import Request, urlopen
+    from urllib.error import URLError
+    import time as _weather_time
+    agora = _weather_time.time()
+    if _COOPEX_WEATHER_CACHE['data'] is not None and agora - _COOPEX_WEATHER_CACHE['ts'] < 300:
+        response = jsonify(_COOPEX_WEATHER_CACHE['data'])
+        response.headers['Cache-Control'] = 'private, max-age=180'
+        return response
+    url = ('https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110'
+           '&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day'
+           '&hourly=precipitation_probability,weather_code,temperature_2m'
+           '&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum'
+           '&timezone=America%2FFortaleza&forecast_days=7')
+    try:
+        req = Request(url, headers={'User-Agent': 'COOPEX-Maps/1.0', 'Accept': 'application/json'})
+        with urlopen(req, timeout=9) as connection:
+            data = json.loads(connection.read(160000).decode('utf-8'))
+        if not isinstance(data.get('daily', {}).get('time'), list) or not data.get('current'):
+            raise ValueError('Resposta meteorológica incompleta')
+        _COOPEX_WEATHER_CACHE.update({'data': data, 'ts': agora})
+        response = jsonify(data)
+        response.headers['Cache-Control'] = 'private, max-age=180'
+        return response
+    except Exception:
+        current_app.logger.warning('COOPEX Maps: previsão meteorológica indisponível', exc_info=True)
+        if _COOPEX_WEATHER_CACHE['data'] is not None:
+            response = jsonify(_COOPEX_WEATHER_CACHE['data'])
+            response.headers['Cache-Control'] = 'private, max-age=60'
+            return response
+        return jsonify({'ok': False, 'erro': 'Previsão temporariamente indisponível'}), 503
+
+
 @app.route('/mapa_motoboys')
 def mapa_motoboys():
     if not session.get('is_admin'):
