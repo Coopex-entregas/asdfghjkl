@@ -487,8 +487,8 @@ function gpsSocket(){
   }
   sock.on("posicao_motoboy_atualizada",applyEvent);
   sock.on("coopex_presenca_atualizada",applyEvent);
-  sock.on("connect",()=>updateGps());
-  sock.on("reconnect",()=>updateGps());
+  sock.on("connect",()=>{sock.emit("coopex_map_subscribe",()=>updateGps());});
+  sock.on("reconnect",()=>{sock.emit("coopex_map_subscribe",()=>updateGps());});
   window.addEventListener("pageshow",()=>updateGps());
   document.addEventListener("visibilitychange",()=>{if(!document.hidden)updateGps()});
   window.COOPEX_MAP_SOCKET=sock;
