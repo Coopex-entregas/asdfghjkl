@@ -10,7 +10,7 @@ document.body.classList.remove("is-night");
 const map=new ml.Map({container:"map",style:DAY_STYLE,center:[-35.211,-5.7945],zoom:12,pitch:0,bearing:0,antialias:true,maxPitch:0,attributionControl:true,dragRotate:false,touchPitch:false});
 map.addControl(new ml.NavigationControl({showCompass:false,showZoom:true,visualizePitch:false}),"top-right");
 window.COOPEX_FREE_GLOBE=map; // Instância existente, sem ativação de API Google paga.
-let selectedId=null,following=false,filter="online",items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],searchText="",trafficEvents=[],selectedAddress=null,viewPoint=null,fetching=false,lastFit=false,satellite=false,weatherLevel=0;
+let selectedId=null,following=false,filter="todos",items=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],searchText="",trafficEvents=[],selectedAddress=null,viewPoint=null,fetching=false,lastFit=false,satellite=false,weatherLevel=0;
 let dynamicMarkers=new Map(),stops=[],stopsMarkers=[],placePin=null;
 const lastConfirmedGps=new Map();
 let mapReady=false;
@@ -41,8 +41,8 @@ function keepLastPosition(arr){
   return arr;
 }
 const hasCoord=i=>i&&i.lat!=null&&i.lng!=null&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&(+i.lat<0)&&(+i.lng<0);
-const MAP_SIGNAL_TIMEOUT_MS=60000; // Offline após 60 segundos.
-const MAP_SEARCHING_AFTER_MS=15000; // Laranja se o GPS não comunicar há 15 segundos.
+const MAP_SIGNAL_TIMEOUT_MS=180000; // 3 min sem GPS: desconectado. Preserva a última posição.
+const MAP_SEARCHING_AFTER_MS=30000; // 30 s sem GPS: procurando conexão, sem ocultar o marcador.
 for(const i of items){
  const age=Number(i.sinal_idade_segundos);
  if(i.online&&i.sinal_idade_segundos!=null&&Number.isFinite(age)&&age>=0)i.__lastSignalAt=Date.now()-age*1000;
