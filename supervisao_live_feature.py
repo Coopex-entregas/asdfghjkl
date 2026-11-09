@@ -404,7 +404,6 @@ LIVE_SCRIPT = r"""
       }
 
       const nova=String(d.versao);
-      await loadPortalRequests(false);
 
       if(versao===null){
         versao=nova;
@@ -433,12 +432,12 @@ LIVE_SCRIPT = r"""
     portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
     portalModal();
     loadPortalRequests(false);
-    setInterval(()=>loadPortalRequests(false),5000);
+    setInterval(()=>{if(document.visibilityState==='visible')loadPortalRequests(false)},15000);
     verificar();
     setInterval(verificar,INTERVALO);
 
     document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState==='visible') verificar();
+      if(document.visibilityState==='visible'){verificar();loadPortalRequests(false);}
     });
 
     document.addEventListener('focusout',()=>{
