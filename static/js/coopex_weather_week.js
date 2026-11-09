@@ -3,6 +3,23 @@
 "use strict";
 const find=()=>document.querySelector("#cxTopControlDock>.weather.glass")||document.querySelector("#ui .weather.glass");
 let lastFetch=0,forecast=null,request=null,panel=null,source=null;
+const readWeather=async()=>{
+ const sources=["/api/coopex/clima/previsao","https://api.open-meteo.com/v1/forecast?latitude=-5.7945&longitude=-35.2110&current=temperature_2m,apparent_temperature,relative_humidity_2m,wind_speed_10m,precipitation,weather_code,is_day&hourly=precipitation_probability,weather_code,temperature_2m&daily=weather_code,temperature_2m_max,temperature_2m_min,precipitation_probability_max,precipitation_sum&timezone=America%2FFortaleza&forecast_days=7"];
+ let error=null;
+ for(const url of sources){
+  const controller=new AbortController();
+  const timeout=setTimeout(()=>controller.abort(),9000);
+  try{
+   const response=await fetch(url,{cache:"no-store",credentials:url.startsWith("/")?"same-origin":"omit",signal:controller.signal});
+   if(!response.ok)throw Error("HTTP "+response.status);
+   const data=await response.json();
+   if(!data?.current||!Array.isArray(data?.daily?.time))throw Error("Dados meteorológicos incompletos");
+   return data;
+  }catch(e){error=e}
+  finally{clearTimeout(timeout)}
+ }
+ throw error||Error("Clima temporariamente indisponível");
+};
 const ICON=(code,isDay=true)=>code===0?(isDay?"☀️":"🌙"):code<=3?(isDay?"⛅":"☁️"):code<=48?"🌫️":code<=67?"🌧️":code<=77?"🌨️":code<=82?"🌦️":code<=86?"🌨️":"⛈️";
 const DESC=(code,isDay=true)=>code===0?(isDay?"Céu limpo":"Céu limpo à noite"):code<=3?(isDay?"Parcialmente nublado":"Nuvens à noite"):code<=48?"Neblina":code<=67?"Chuva possível":code<=77?"Granizo/neve":code<=82?"Pancadas possíveis":code<=86?"Neve":"Trovoadas";
 const localHour=()=>Number(new Intl.DateTimeFormat("en-US",{timeZone:"America/Fortaleza",hour:"2-digit",hour12:false}).format(new Date())));
@@ -16,6 +33,8 @@ function position(){
 function close(){if(panel){panel.hidden=true;source?.setAttribute("aria-expanded","false")}}
 function setup(){
  source=find();if(!source||document.getElementById("cxWeatherWeek"))return;
+ const waiting=document.getElementById("conditions");
+ if(waiting)waiting.textContent="Atualizando clima…";
  source.setAttribute("role","button");source.setAttribute("tabindex","0");
  source.style.cursor="pointer";source.style.pointerEvents="auto";
  source.setAttribute("aria-expanded","false");
@@ -26,18 +45,17 @@ function setup(){
  panel.setAttribute("aria-label","Previsão meteorológica semanal para Natal RN");
  document.body.append(panel);
  async function load(){
-  if(!panel.hidden){panel.textContent="Consultando previsão para os próximos sete dias…";position();}
+  if(!panel.hidden){panel.textContent="Atualizando previsão meteorológica…";position();}
   if(forecast&&Date.now()-lastFetch<10*60*1000){show(forecast);return}
   if(request)return;
   try{
-   request=fetch("/api/coopex/clima/previsao",{cache:"no-store",credentials:"same-origin"});
-   const response=await request;if(!response.ok)throw Error("HTTP "+response.status);
-   const data=await response.json();forecast=data;if(!forecast?.daily?.time?.length)throw Error("Previsão sem dados");
+   request=readWeather();
+   const data=await request;forecast=data;if(!forecast?.daily?.time?.length)throw Error("Previsão sem dados");
    lastFetch=Date.now();show(forecast);
   }catch(e){
-   const condition=document.getElementById("conditions");if(condition)condition.textContent="Clima indisponível";
+   const condition=document.getElementById("conditions");if(condition)condition.textContent="Clima indisponível · toque para tentar";
    const temperature=document.getElementById("temperature");if(temperature&&temperature.textContent.trim()==="—")temperature.textContent="—°C";
-   if(!panel.hidden)panel.textContent="Previsão indisponível no momento. Toque novamente para tentar.";
+   if(!panel.hidden)panel.textContent="Previsão indisponível. Feche e abra para tentar novamente.";
    console.warn("CoopEX clima:",e)
   }
   finally{request=null;position()}
@@ -128,7 +146,12 @@ function setup(){
  source.style.touchAction="manipulation";
  // Atualizações periódicas sem consultar a API a cada movimento do mapa.
  load();
- setInterval(()=>{if(!panel.hidden||Date.now()-lastFetch>=10*60*1000)load()},10*60*1000);
+ // Mesmo quando o provedor estiver bloqueado, nunca deixar o mapa mostrando "Consultando".
+ setTimeout(()=>{
+  const condition=document.getElementById("conditions");
+  if(condition&&/consultando|atualizando/i.test(condition.textContent||""))condition.textContent="Clima indisponível · toque para tentar";
+ },22000);
+ setInterval(()=>{if(Date.now()-lastFetch>=10*60*1000)load()},10*60*1000);
 }
 if(document.readyState==="loading")document.addEventListener("DOMContentLoaded",setup);else setup();
 })();
