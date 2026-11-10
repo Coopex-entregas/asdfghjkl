@@ -218,7 +218,8 @@ LIVE_SCRIPT = r"""
       const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'fetch'}});
       const d=await r.json().catch(()=>null);
       if(!r.ok||!d||!d.ok) throw new Error(d?.error||d?.msg||'Não foi possível concluir.');
-      await loadPortalRequests(false);
+      if(cancel) await loadCancelRequests();
+      else await loadPortalRequests(false);
     }catch(e){alert(e.message||'Falha ao processar.');btn.disabled=false;}
   }
 
