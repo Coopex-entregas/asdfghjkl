@@ -115,12 +115,9 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             db.session.rollback()
             app.logger.exception('Falha ao entrar na fila')
             return jsonify(ok=False,erro='Não foi possível entrar na fila.'),500
-        # Confirma o registro persistido; a resposta não depende da entrega do socket.
-        confirmado=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
-        if not confirmado:
-            app.logger.error('Fila: inserção sem registro verificável cooperado_id=%s',coop.id)
-            return jsonify(ok=False,erro='Entrada ainda não confirmada. Tente novamente.'),503
-        response=jsonify(ok=True,entrou=True,posicao=confirmado.pos)
+        # commit() já confirmou a gravação; não executar outro SELECT para
+        # consultar o próprio registro. A posição vem do registro persistido.
+        response=jsonify(ok=True,entrou=True,posicao=row.pos)
         response.headers['Cache-Control']='no-store, private'
         return response
 
