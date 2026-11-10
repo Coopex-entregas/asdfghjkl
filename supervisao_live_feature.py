@@ -14,8 +14,8 @@ from collections import defaultdict, deque
 from threading import Lock
 from datetime import datetime
 
-from flask import g, jsonify, request, session
-from sqlalchemy import text
+from flask import g, jsonify, request, session, has_request_context
+from sqlalchemy import text, event
 
 
 LIVE_STYLE = r"""
@@ -549,6 +549,20 @@ def install(app_module):
             app.logger.warning("Falha no Supervisão ao vivo: %s",exc)
             return jsonify(ok=False,error="live-state indisponível"),503
 
+    # Temporização passiva de SQL. Não captura SQL, parâmetros nem dados pessoais.
+    # Só registra consultas de requisições já monitoradas.
+    @event.listens_for(db.engine, "before_cursor_execute")
+    def _cx_perf_sql_start(conn, cursor, statement, parameters, context, executemany):
+        if has_request_context() and getattr(g, "supervisao_perf_key", None):
+            context._cx_perf_sql_at = time.perf_counter()
+
+    @event.listens_for(db.engine, "after_cursor_execute")
+    def _cx_perf_sql_finish(conn, cursor, statement, parameters, context, executemany):
+        started = getattr(context, "_cx_perf_sql_at", None)
+        if started is not None and has_request_context():
+            g.supervisao_sql_ms = getattr(g, "supervisao_sql_ms", 0.0) + max(0.0, (time.perf_counter()-started)*1000)
+            g.supervisao_sql_count = getattr(g, "supervisao_sql_count", 0) + 1
+
     # supervisao_performance_metrics_v1
     # Medição passiva, limitada e sem GPS, dados pessoais ou alterações de negócios.
     perf_samples = defaultdict(lambda: deque(maxlen=240))
@@ -571,7 +585,7 @@ def install(app_module):
             return "admin"
         return "outros"
 
-    def _perf_reason(route, status, ms, browser=False):
+    def _perf_reason(route, status, ms, browser=False, sql_ms=0.0):
         if status >= 500:
             return "Erro no servidor ou serviço externo; consultar logs."
         if status in (408, 429):
@@ -582,18 +596,21 @@ def install(app_module):
             return "Dentro do limite de alerta."
         if browser:
             return "Demora percebida no navegador. Pode incluir rede, GPS e servidor; causa não isolada."
+        if sql_ms >= 500 and sql_ms >= ms*.5:
+            return "Banco PostgreSQL consumiu %.0f ms (%.0f%% do tempo do servidor)." % (sql_ms,100*sql_ms/max(1,ms))
         if _perf_group(route) == "sicoob":
             return "Tempo elevado em operação Sicoob. Verificar timeout e resposta bancária nos logs."
         return "Tempo elevado no processamento do servidor. Etapa exata ainda não identificada."
 
-    def _perf_push_event(source, key, ms, status):
+    def _perf_push_event(source, key, ms, status, sql_ms=0.0):
         if ms < 2500 and status < 500:
             return
         perf_events.appendleft({
             "hora": datetime.utcnow().strftime("%H:%M:%S UTC"),
             "origem": source, "rota": key, "grupo": _perf_group(key),
             "tempo_ms": round(ms, 1), "http": status,
-            "motivo": _perf_reason(key,status,ms,source=="navegador")
+            "motivo": _perf_reason(key,status,ms,source=="navegador",sql_ms),
+            "banco_ms": round(sql_ms,1) if source=="servidor" else None
         })
 
     def _perf_route():
@@ -628,9 +645,11 @@ def install(app_module):
         key = getattr(g, "supervisao_perf_key", None)
         if key is not None and started is not None:
             duration_ms = max(0, (time.perf_counter() - started) * 1000)
+            sql_ms = getattr(g, "supervisao_sql_ms", 0.0)
+            sql_count = getattr(g, "supervisao_sql_count", 0)
             with perf_lock:
-                perf_samples[key].append((duration_ms, response.status_code))
-                _perf_push_event("servidor", key, duration_ms, response.status_code)
+                perf_samples[key].append((duration_ms, response.status_code, sql_ms, sql_count))
+                _perf_push_event("servidor", key, duration_ms, response.status_code, sql_ms)
         return response
 
     @app.post("/api/telemetria/navegador")
@@ -684,7 +703,10 @@ def install(app_module):
                 "mediana_ms":percentile(durations, .50),
                 "p95_ms":percentile(durations, .95),
                 "max_ms":round(max(durations), 1),
-                "falhas":sum(1 for _,status in entries if status>=500)
+                "banco_media_ms":round(sum(sample[2] for sample in entries)/len(entries),1),
+                "banco_p95_ms":percentile([sample[2] for sample in entries],.95),
+                "consultas_media":round(sum(sample[3] for sample in entries)/len(entries),1),
+                "falhas":sum(1 for sample in entries if sample[1]>=500)
             })
         browser_report=[]
         for name, entries in browser_snapshot.items():
