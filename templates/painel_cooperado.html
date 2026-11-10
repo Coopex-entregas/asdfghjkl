@@ -3355,11 +3355,19 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     }
     const path=url.replace(/\/\d+(?=\/|$)/g,'/<id>');
     const started=performance.now();
+    // O navegador pode suspender timers em segundo plano: não atribuir
+    // esse período a uma suposta lentidão sentida pelo cooperado.
+    let wasHidden=document.hidden;
+    const onVisibility=()=>{if(document.hidden)wasHidden=true};
+    document.addEventListener('visibilitychange',onVisibility);
     return original.apply(this,arguments).then(function(response){
-      send(String(method).toUpperCase(),path,performance.now()-started,response.status);
+      document.removeEventListener('visibilitychange',onVisibility);
+      if(!wasHidden)send(String(method).toUpperCase(),path,performance.now()-started,response.status);
       return response;
     },function(error){
-      send(String(method).toUpperCase(),path,performance.now()-started,0);
+      document.removeEventListener('visibilitychange',onVisibility);
+      if(!wasHidden && error?.name!=='AbortError')
+        send(String(method).toUpperCase(),path,performance.now()-started,0);
       throw error;
     });
   };
@@ -3368,6 +3376,32 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
     if(nav && (/^\/(admin|painel_cooperado)(?:\/|$)/.test(location.pathname)))
       send('GET',location.pathname,nav.duration,200);
   },{once:true});
+})();
+</script>
+
+
+<script id="coopex-cooperado-aba-telemetria-v1">
+(function(){
+ 'use strict';
+ // Mede a troca visual efetiva, não o tempo total de fetch da API.
+ // Nenhum polling: uma amostra somente quando o cooperado muda de aba.
+ const names={'tab-resumo':'resumo','tab-entregas':'entregas',
+              'tab-escalas':'escalas','tab-graficos':'graficos','tab-fila':'fila'};
+ const send=window.fetch.bind(window);
+ document.addEventListener('click',function(event){
+   const btn=event.target.closest?.('.tab-btn[data-tab]');
+   if(!btn || !names[btn.dataset.tab] || document.hidden || btn.classList.contains('active'))return;
+   const tab=btn.dataset.tab,started=performance.now();
+   requestAnimationFrame(()=>requestAnimationFrame(()=>{
+     if(document.hidden || !document.getElementById(tab)?.classList.contains('active'))return;
+     const ms=Math.max(0,Math.round(performance.now()-started));
+     send('/api/telemetria/navegador',{
+       method:'POST',credentials:'same-origin',keepalive:true,
+       headers:{'Content-Type':'application/json'},
+       body:JSON.stringify({rota:'GET /cooperado/aba/'+names[tab],tempo_ms:ms,http:200})
+     }).catch(()=>{});
+   }));
+ },true);
 })();
 </script>
 
