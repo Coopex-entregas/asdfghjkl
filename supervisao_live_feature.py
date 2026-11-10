@@ -127,7 +127,6 @@ LIVE_SCRIPT = r"""
 
 
   let portalLoading=false;
-  let lastCancelCount=0;
 
   function money(v){return Number(v||0).toLocaleString('pt-BR',{style:'currency',currency:'BRL'});}
   function esc(s){return String(s||'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));}
@@ -168,7 +167,8 @@ LIVE_SCRIPT = r"""
   function openPortalRequests(kind){
     currentPortalKind=kind||'credito';
     const o=portalModal();o.classList.add('open');
-    renderPortalCurrent();
+    if(currentPortalKind==='cancel') loadCancelRequests();
+    else renderPortalCurrent();
   }
 
   let portalData={credito:{pendentes:[],recentes:[]},cancel:{pendentes:[],recentes:[]}};
@@ -222,41 +222,33 @@ LIVE_SCRIPT = r"""
     }catch(e){alert(e.message||'Falha ao processar.');btn.disabled=false;}
   }
 
-  function playCancelSiren(){
+  // Cancelamentos são consultados apenas quando o administrador abre a opção.
+  // Não fazer polling: esta rotina é pouco utilizada e executa SQL desnecessário.
+  async function loadCancelRequests(){
     try{
-      const a=new Audio('/static/aviso_pendente.mp3');
-      a.volume=1;a.play().catch(()=>{});
-      setTimeout(()=>{try{const b=new Audio('/static/aviso_pendente.mp3');b.volume=1;b.play().catch(()=>{});}catch(e){}},1100);
-    }catch(e){}
+      const r=await fetch('/api/admin/solicitacoes-cancelamento',{cache:'no-store',credentials:'same-origin'});
+      if(!r.ok) throw new Error('Falha ao consultar cancelamentos: '+r.status);
+      const ca=await r.json();
+      if(ca&&ca.ok) portalData.cancel={pendentes:ca.pendentes||[],recentes:ca.recentes||[]};
+      const xchip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+      xchip.querySelector('.count').textContent=portalData.cancel.pendentes.length;
+      renderPortalCurrent();
+    }catch(e){console.warn('Consulta manual de cancelamentos:',e);}
   }
 
   async function loadPortalRequests(openOnNew){
     if(portalLoading)return;portalLoading=true;
     try{
-      const [cr,ca]=await Promise.all([
-        fetch('/api/admin/solicitacoes-credito',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json()),
-        fetch('/api/admin/solicitacoes-cancelamento',{cache:'no-store',credentials:'same-origin'}).then(r=>r.json())
-      ]);
+      const r=await fetch('/api/admin/solicitacoes-credito',{cache:'no-store',credentials:'same-origin'});
+      if(!r.ok) throw new Error('Falha ao consultar créditos: '+r.status);
+      const cr=await r.json();
       if(cr&&cr.ok) portalData.credito={pendentes:cr.pendentes||[],recentes:cr.recentes||[]};
-      if(ca&&ca.ok) portalData.cancel={pendentes:ca.pendentes||[],recentes:ca.recentes||[]};
-
       const cchip=portalChip('portal-credit-chip','CRÉDITO','credito');
-      const xchip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
-      const cq=portalData.credito.pendentes.length, xq=portalData.cancel.pendentes.length;
-      cchip.querySelector('.count').textContent=cq;cchip.classList.toggle('show',cq>0);
-      xchip.querySelector('.count').textContent=xq;xchip.classList.toggle('show',xq>0);
-
-      if(xq>lastCancelCount){
-        playCancelSiren();
-        currentPortalKind='cancel';
-        portalModal().classList.add('open');
-      }else if(lastCancelCount===0 && xq>0){
-        currentPortalKind='cancel';
-        portalModal().classList.add('open');
-      }
-      lastCancelCount=xq;
-      if(portalModal().classList.contains('open')) renderPortalCurrent();
-    }catch(e){console.warn('Solicitações do portal:',e);}
+      const cq=portalData.credito.pendentes.length;
+      cchip.querySelector('.count').textContent=cq;
+      cchip.classList.toggle('show',cq>0);
+      if(portalModal().classList.contains('open') && currentPortalKind==='credito') renderPortalCurrent();
+    }catch(e){console.warn('Solicitações de crédito:',e);}
     finally{portalLoading=false;}
   }
 
@@ -438,7 +430,8 @@ LIVE_SCRIPT = r"""
   function iniciar(){
     indicador();
     portalChip('portal-credit-chip','CRÉDITO','credito');
-    portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+    const cancelChip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
+    cancelChip.classList.add('show'); // acesso manual, sem polling automático
     portalModal();
     loadPortalRequests(false);
     setInterval(()=>{if(document.visibilityState==='visible')loadPortalRequests(false)},30000);
