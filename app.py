@@ -4985,6 +4985,66 @@ def api_rastreamento(codigo):
     })
 
 
+# Reaproveita apenas as duas consultas de histórico do cabeçalho.
+# Dados de entregas e fila nunca são cacheados; qualquer gravação válida
+# invalida estas estatísticas imediatamente pelo hook da Supervisão.
+import time as _sup_perf_time
+from threading import RLock as _SupPerfLock
+
+_SUP_ADMIN_CACHE_LOCK = _SupPerfLock()
+_SUP_ADMIN_CACHE = {"revision": 0, "stats": None, "stats_date": None,
+                    "stats_exp": 0.0, "formas": None, "formas_exp": 0.0}
+
+def _invalidar_admin_resumo_cache():
+    with _SUP_ADMIN_CACHE_LOCK:
+        _SUP_ADMIN_CACHE["revision"] += 1
+        _SUP_ADMIN_CACHE["stats"] = None
+        _SUP_ADMIN_CACHE["formas"] = None
+
+def _admin_formas_pagamento_cache():
+    agora = _sup_perf_time.monotonic()
+    with _SUP_ADMIN_CACHE_LOCK:
+        if _SUP_ADMIN_CACHE["formas"] is not None and agora < _SUP_ADMIN_CACHE["formas_exp"]:
+            return list(_SUP_ADMIN_CACHE["formas"])
+        formas = [
+            (row[0] or '').strip()
+            for row in db.session.query(Entrega.pagamento)
+                .filter(Entrega.pagamento.isnot(None))
+                .distinct()
+                .order_by(Entrega.pagamento.asc())
+                .all()
+            if (row[0] or '').strip()
+        ]
+        _SUP_ADMIN_CACHE["formas"] = formas
+        _SUP_ADMIN_CACHE["formas_exp"] = _sup_perf_time.monotonic() + 120
+        return list(formas)
+
+def _admin_stats_cache(hoje):
+    agora = _sup_perf_time.monotonic()
+    with _SUP_ADMIN_CACHE_LOCK:
+        if (_SUP_ADMIN_CACHE["stats"] is not None
+                and _SUP_ADMIN_CACHE["stats_date"] == hoje
+                and agora < _SUP_ADMIN_CACHE["stats_exp"]):
+            return _SUP_ADMIN_CACHE["stats"]
+
+        inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
+        mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
+        ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
+        stats_row = db.session.query(
+            func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
+            func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
+            func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
+            func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
+        ).select_from(Entrega).filter(
+            Entrega.data_envio >= ano_ini_utc,
+            Entrega.data_envio <= ano_fim_utc,
+        ).one()
+        resultado = tuple(int(x or 0) for x in stats_row)
+        _SUP_ADMIN_CACHE["stats"] = resultado
+        _SUP_ADMIN_CACHE["stats_date"] = hoje
+        _SUP_ADMIN_CACHE["stats_exp"] = _sup_perf_time.monotonic() + 8
+        return resultado
+
 # =========================================================
 # ADMIN: DASHBOARD PRINCIPAL
 # =========================================================
@@ -5072,30 +5132,8 @@ def admin():
     entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
 
     cooperados = Cooperado.query.filter(Cooperado.ativo.is_(True)).order_by(Cooperado.nome).all()
-    formas_pagamento_disponiveis = [
-        (row[0] or '').strip()
-        for row in db.session.query(Entrega.pagamento)
-            .filter(Entrega.pagamento.isnot(None))
-            .distinct()
-            .order_by(Entrega.pagamento.asc())
-            .all()
-        if (row[0] or '').strip()
-    ]
-
-    inicio_dia_utc, fim_dia_utc = local_date_window_to_utc_range(hoje)
-    mes_ini_utc, mes_fim_utc = month_range_utc(hoje)
-    ano_ini_utc, ano_fim_utc = year_range_utc(hoje)
-
-    stats_row = db.session.query(
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= mes_ini_utc) & (Entrega.data_envio <= mes_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= ano_ini_utc) & (Entrega.data_envio <= ano_fim_utc), 1), else_=0)), 0),
-        func.coalesce(func.sum(case(((Entrega.data_envio >= inicio_dia_utc) & (Entrega.data_envio <= fim_dia_utc) & ((Entrega.status_pagamento == None) | (func.lower(Entrega.status_pagamento) == 'pendente')), 1), else_=0)), 0),
-    ).select_from(Entrega).filter(
-        Entrega.data_envio >= ano_ini_utc,
-        Entrega.data_envio <= ano_fim_utc,
-    ).one()
-    total_dia, total_mes, total_ano, pendentes_dia = [int(x or 0) for x in stats_row]
+    formas_pagamento_disponiveis = _admin_formas_pagamento_cache()
+    total_dia, total_mes, total_ano, pendentes_dia = _admin_stats_cache(hoje)
     estatisticas = {"total_dia": total_dia, "total_mes": total_mes, "total_ano": total_ano}
 
     feriado_hoje = verifica_feriado(hoje)
