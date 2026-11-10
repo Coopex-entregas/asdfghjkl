@@ -2958,8 +2958,10 @@ const pos=$('queue-my-position'), people=$('queue-people'), hint=$('queue-locati
 const enter=$('queue-enter'), leave=$('queue-exit');
 let inQueue=false, base=null, offered=false, watchId=null, joining=false, lastQueueFix=null;
 const selfId=Number({{ cooperado_id|tojson }});
+let lastQueueItems=[];
 function notice(t){if(hint)hint.textContent=t;}
 function paint(items){
+ lastQueueItems=Array.isArray(items)?items.slice():[];
  const idx=items.findIndex(r=>Number(r.cooperado_id)===selfId);
  inQueue=idx>=0;
  pos.textContent=inQueue?'Sua posição: '+(idx+1)+'º':'Você ainda não está na fila.';
@@ -3007,9 +3009,12 @@ async function join(){
  joining=true;enter.disabled=true;
  notice('Obtendo localização...');
  try{
-  if(!base)await fetchBase();
+  // GPS e base são independentes: em acesso frio, obtenha ambos em paralelo.
+  // A posição continua exigindo validação do servidor antes de entrar na fila.
+  const p=base?await currentPosition():(
+   await Promise.all([currentPosition(),fetchBase()]))[0];
   if(!base)throw Error('Base não cadastrada. Tente novamente.');
-  const p=await currentPosition(),c=p.coords;
+  const c=p.coords;
   notice('Registrando seu nome na fila...');
   const response=await fetch('/api/cooperado/fila/entrar',{
    method:'POST',credentials:'same-origin',cache:'no-store',headers:{'Content-Type':'application/json'},
@@ -3024,7 +3029,22 @@ async function join(){
   pos.textContent='Sua posição: '+position+'º';
   enter.style.display='none';leave.style.display='inline-flex';
   notice((d.ja_estava?'Você já estava':'Entrada confirmada')+' na fila · posição '+position+'º.');
-  // Sincronização da lista de nomes, não bloqueante e sem alterar o sucesso registrado.
+  // A confirmação do POST já é suficiente para exibir imediatamente a posição.
+  // Se a lista local tem todos os anteriores, renderizar sem esperar outra rede.
+  const previous=lastQueueItems.filter(x=>Number(x.cooperado_id)!==selfId);
+  if(previous.length===position-1){
+   const itens=[...previous,{cooperado_id:selfId,nome:''}];
+   window.dispatchEvent(new CustomEvent('coopex-queue-update',{
+    detail:{itens,posicao:position,indice:position-1}
+   }));
+  }else{
+   const lead=document.createElement('strong');
+   lead.textContent='À sua frente';
+   const wait=document.createElement('p');
+   wait.textContent=position===1?'Você é o primeiro da fila.':'Atualizando nomes à sua frente…';
+   people.replaceChildren(lead,wait);
+  }
+  // Reconciliação em segundo plano mantém nomes e ordem oficiais do servidor.
   fetch('/api/cooperado/fila/estado',{credentials:'same-origin',cache:'no-store'})
    .then(r=>r.ok?r.json():null)
    .then(state=>{
