@@ -528,6 +528,7 @@ def install(app_module):
     # Ring buffer limitado por processo: sem GPS, IP, nome, IDs ou payload.
     perf_events = deque(maxlen=180)
     perf_browser = defaultdict(lambda: deque(maxlen=120))
+    PERF_WINDOW_SECONDS = 600  # últimos 10 minutos; coleta somente operações reais
 
     def _perf_group(route):
         p = route.lower()
@@ -564,6 +565,7 @@ def install(app_module):
         if ms < 2500 and status < 500:
             return
         perf_events.appendleft({
+            "_at": time.monotonic(),
             "hora": datetime.utcnow().strftime("%H:%M:%S UTC"),
             "origem": source, "rota": key, "grupo": _perf_group(key),
             "tempo_ms": round(ms, 1), "http": status,
@@ -606,7 +608,7 @@ def install(app_module):
             sql_ms = getattr(g, "supervisao_sql_ms", 0.0)
             sql_count = getattr(g, "supervisao_sql_count", 0)
             with perf_lock:
-                perf_samples[key].append((duration_ms, response.status_code, sql_ms, sql_count))
+                perf_samples[key].append((duration_ms, response.status_code, sql_ms, sql_count, time.monotonic()))
                 _perf_push_event("servidor", key, duration_ms, response.status_code, sql_ms)
         return response
 
@@ -633,7 +635,7 @@ def install(app_module):
         if grupo not in ("fila","admin","cooperado","sicoob","login"):
             return jsonify(ok=True)
         with perf_lock:
-            perf_browser[rota].append((ms,code))
+            perf_browser[rota].append((ms,code,time.monotonic()))
             _perf_push_event("navegador", rota, ms, code)
         return jsonify(ok=True)
 
@@ -651,12 +653,26 @@ def install(app_module):
             ordered = sorted(values)
             return round(ordered[min(len(ordered)-1, max(0, ceil(q*len(ordered))-1))], 1)
 
+        # Não exibir tempos antigos como se fossem a velocidade atual.
+        # Ler dados já coletados não executa nenhum teste ou operação bancária.
+        cutoff = time.monotonic() - PERF_WINDOW_SECONDS
         with perf_lock:
-            snapshot = {key:list(values) for key, values in perf_samples.items()}
-            browser_snapshot = {key:list(values) for key, values in perf_browser.items()}
-            events_snapshot = list(perf_events)
+            snapshot = {
+                key:[v for v in values if v[4] >= cutoff]
+                for key, values in perf_samples.items()
+            }
+            browser_snapshot = {
+                key:[v for v in values if v[2] >= cutoff]
+                for key, values in perf_browser.items()
+            }
+            events_snapshot = [
+                {k:v for k,v in ev.items() if k != "_at"}
+                for ev in perf_events if ev["_at"] >= cutoff
+            ]
         report=[]
         for name, entries in snapshot.items():
+            if not entries:
+                continue
             durations = [sample[0] for sample in entries]
             report.append({
                 "rota":name, "amostras":len(entries),
@@ -671,19 +687,21 @@ def install(app_module):
             })
         browser_report=[]
         for name, entries in browser_snapshot.items():
+            if not entries:
+                continue
             durations=[x[0] for x in entries]
             browser_report.append({
                 "rota": name, "amostras": len(entries),
                 "media_ms": round(sum(durations)/len(durations),1),
                 "p95_ms": percentile(durations,.95),
                 "max_ms": round(max(durations),1),
-                "falhas": sum(1 for _,status in entries if status>=500)
+                "falhas": sum(1 for _,status,_ in entries if status>=500)
             })
         report.sort(key=lambda item: item["p95_ms"], reverse=True)
         browser_report.sort(key=lambda item: item["p95_ms"], reverse=True)
         response=jsonify(ok=True,total_rotas=len(report),
-                         medicao="Tempos servidor e navegador medidos separadamente; memória local limitada",
-                         amostras_por_rota=240,rotas=report,
+                         medicao="Amostras reais dos últimos 10 minutos; sem atividade não há p95",
+                         janela_minutos=10,amostras_por_rota=240,rotas=report,
                          navegador=browser_report,eventos=events_snapshot[:75])
         response.headers["Cache-Control"]="no-store, private"
         return response
