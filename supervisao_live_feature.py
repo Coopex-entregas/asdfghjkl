@@ -290,10 +290,7 @@ LIVE_SCRIPT = r"""
     (itens||[]).forEach(item=>{
       const el=document.getElementById(item.id);
       if(!el) return;
-      // Não disparar pesquisa/consulta quando o filtro já tem o mesmo valor.
-      // Atualizações do HTML não devem gerar trabalho de rede em cascata.
-      if(String(el.value)===String(item.value))return;
-      el.value=item.value;
+      if(String(el.value)!==String(item.value)) el.value=item.value;
       try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
       try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
     });
@@ -530,7 +527,6 @@ def install(app_module):
             "/api/cooperado/gps/",
             "/api/admin/gps/",
             "/api/admin/pix-led",
-            "/api/cliente/cotar-entrega",  # orçamento não grava entregas
             "/admin/pix-sicoob/",
             "/api/admin/supervisao/recado",
         )
