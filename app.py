@@ -11645,14 +11645,20 @@ def api_cliente_solicitacoes_cancelamento():
 def api_admin_solicitacoes_cancelamento():
     if not session.get('is_admin') and not session.get('is_master'):
         return jsonify(ok=False, error='unauthorized'), 401
+    # Carrega cliente, entrega e cooperado em conjunto para evitar
+    # uma consulta extra por cancelamento ao montar a lista do administrador.
+    related = (
+        joinedload(SolicitacaoCancelamentoCliente.cliente),
+        joinedload(SolicitacaoCancelamentoCliente.entrega).joinedload(Entrega.cooperado),
+    )
     pendentes = (
-        SolicitacaoCancelamentoCliente.query
+        SolicitacaoCancelamentoCliente.query.options(*related)
         .filter_by(status='pendente')
         .order_by(SolicitacaoCancelamentoCliente.criado_em.asc())
         .all()
     )
     recentes = (
-        SolicitacaoCancelamentoCliente.query
+        SolicitacaoCancelamentoCliente.query.options(*related)
         .filter(SolicitacaoCancelamentoCliente.status.in_(['aprovado', 'recusado']))
         .order_by(SolicitacaoCancelamentoCliente.decidido_em.desc())
         .limit(20).all()
