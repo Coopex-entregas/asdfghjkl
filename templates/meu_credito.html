@@ -1550,7 +1550,7 @@ const verify=async(manual=false)=>{
  }
 };
 check.onclick=()=>verify(true);
-const timer=setInterval(()=>{if(paid||!document.body.contains(w)){clearInterval(timer);return}verify(false)},7000);
+const timer=setInterval(()=>{if(paid||!document.body.contains(w)){clearInterval(timer);return}if(!document.hidden)verify(false)},60000);
 verify(false);
 }catch(error){toast(error.message||'Erro ao gerar Pix');}finally{btn.disabled=false}
 };
