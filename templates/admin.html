@@ -134,6 +134,12 @@ function savePosition(){
   }));
  }catch(e){}
 }
+let scrollSaveScheduled=false;
+function savePositionOnScroll(){
+ if(scrollSaveScheduled)return;
+ scrollSaveScheduled=true;
+ requestAnimationFrame(()=>{scrollSaveScheduled=false;savePosition()});
+}
 function restorePosition(){
  const p=readPosition(),table=document.getElementById('tbl');
  if(table){
@@ -171,7 +177,28 @@ async function updateRows(){
      tr.querySelector('.recb-nome')?.textContent?.trim()
    ].join(':')).join('|');
    if(signature(oldRows)!==signature(newRows)){
-    current.replaceChildren(...[...next.children].map(node=>document.importNode(node,true)));
+    // Reutiliza a RAM e o processador do navegador: só substitui linhas
+    // alteradas. Mantém ações, filtros, ordem e eventos da tabela.
+    const desired=[...next.children];
+    if(desired.some(tr=>!tr.dataset.id)){
+     current.replaceChildren(...desired.map(tr=>document.importNode(tr,true)));
+    }else{
+     const oldById=new Map(oldRows.map(tr=>[tr.dataset.id,tr]));
+     const keepIds=new Set(desired.map(tr=>tr.dataset.id));
+     for(const row of oldRows)if(!keepIds.has(row.dataset.id))row.remove();
+     desired.forEach((incoming,index)=>{
+      const previous=oldById.get(incoming.dataset.id);
+      let row=previous&&previous.isConnected?previous:null;
+      if(!row)row=document.importNode(incoming,true);
+      else if(row.outerHTML!==incoming.outerHTML){
+       const replacement=document.importNode(incoming,true);
+       row.replaceWith(replacement);
+       row=replacement;
+      }
+      const at=current.children[index];
+      if(at!==row)current.insertBefore(row,at||null);
+     });
+    }
     window.dispatchEvent(new Event('coopex-admin-table-updated'));
     document.dispatchEvent(new Event('coopex-admin-table-updated'));
    }
@@ -205,8 +232,8 @@ function init(){
  if(!Number.isFinite(Number(saved.tableY)))saved.tableY=0;
  requestAnimationFrame(()=>requestAnimationFrame(restorePosition));
  const t=document.getElementById('tbl');
- t?.addEventListener('scroll',savePosition,{passive:true});
- window.addEventListener('scroll',savePosition,{passive:true});
+ t?.addEventListener('scroll',savePositionOnScroll,{passive:true});
+ window.addEventListener('scroll',savePositionOnScroll,{passive:true});
  document.addEventListener('submit',savePosition,true);
  document.addEventListener('click',e=>{if(e.target.closest('a[href]'))savePosition()},true);
  window.addEventListener('pagehide',savePosition);
