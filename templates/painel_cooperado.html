@@ -2061,7 +2061,8 @@ body.cx-modal-active{overflow:hidden!important}
 
       if(deliveryAbortController) deliveryAbortController.abort();
       deliveryAbortController = new AbortController();
-      deliveryList.innerHTML = '<div class="loading-state">Carregando entregas…</div>';
+      // Preserve os registros visíveis durante a consulta; não bloquear filtros com tela de carregamento.
+      if (!deliveries.length) deliveryList.innerHTML = '<div class="loading-state">Carregando entregas…</div>';
       document.getElementById('empty-deliveries').style.display = 'none';
       try{
         const response = await fetch(`{{ url_for('api_cooperado_filtrar_entregas') }}?${params.toString()}`, {
@@ -2072,10 +2073,10 @@ body.cx-modal-active{overflow:hidden!important}
         const items = data.items || [];
         deliveryCache.set(cacheKey, items);
         hydrateDeliveries(items);
-        await loadSummaryForCurrentFilters({
+        loadSummaryForCurrentFilters({
           useCache,
           fallbackItems: state.listFilter === 'todas' ? items : null
-        });
+        }).catch(console.error);
       }catch(error){
         if(error.name === 'AbortError') return;
         deliveryList.innerHTML = `<div class="empty-state" style="display:block">${escapeHtml(error.message || 'Falha ao carregar entregas.')}</div>`;
@@ -2153,7 +2154,7 @@ body.cx-modal-active{overflow:hidden!important}
         state.search = filtroCliente.value || '';
         renderList();
         clearTimeout(searchDebounce);
-        searchDebounce=setTimeout(()=>loadDeliveries({useCache:false}).catch(console.error),250);
+        searchDebounce=setTimeout(()=>loadDeliveries({useCache:false,keepTab:true}).catch(console.error),450);
       });
     }
     async function sharedPeriodChanged(){
@@ -2581,8 +2582,9 @@ body.cx-modal-active{overflow:hidden!important}
         const body=await response.json();
         if(!response.ok||!body.ok)throw new Error(body.error||'Falha na operação');
         deliveryCache.clear();summaryCache.clear();chartCache.clear();
-        await loadDeliveries({useCache:false,keepTab:true});
+        // O POST já confirmou a gravação. Exibir resultado sem aguardar outra consulta completa.
         await coopexMessage(body.alteradas.length+' entrega(s) atualizada(s). '+body.ignoradas.length+' não alterada(s).','Operação concluída');
+        loadDeliveries({useCache:false,keepTab:true}).catch(console.error);
       }catch(err){await coopexMessage(err.message||'Erro na operação','Não foi possível concluir');}
     }
     document.getElementById('bulk-paid')?.addEventListener('click',()=>runBulk('marcar_pago'));
