@@ -531,7 +531,6 @@ def install(app_module):
             "/api/admin/gps/",
             "/api/admin/pix-led",
             "/api/cliente/cotar-entrega",  # orçamento não grava entregas
-            "/api/cooperado/entregas",     # filtros apenas leitura
             "/admin/pix-sicoob/",
             "/api/admin/supervisao/recado",
         )
