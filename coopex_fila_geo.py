@@ -99,6 +99,9 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         # Considerar incerteza: não aceitar se o círculo de precisão alcançar fora do raio.
         if dist+precision>item['raio_m']:
             return jsonify(ok=False,erro='Para entrar na fila, você precisa estar na cooperativa. Aproxime-se da base e tente novamente.'),403
+        # Serializar entradas e saídas: a posição máxima deve refletir as alterações
+        # já confirmadas por outra operação concorrente, inclusive em outros workers.
+        db.session.execute(text("SELECT pg_advisory_xact_lock(62410801)"))
         existente=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
         if existente:
             # Responder imediatamente; não emitir atualização global para entrada duplicada.
@@ -137,19 +140,27 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         motivo=str(data.get('motivo') or '').strip()
         if len(motivo)<5 or len(motivo)>500:
             return jsonify(ok=False,erro='Informe o motivo da saída (5 a 500 caracteres).'),400
-        row=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
-        if not row:return jsonify(ok=False,erro='Você não está na fila.'),409
         try:
             ensure_schema()
+            # Mesmo bloqueio da entrada para manter ordem e posições sem colisões.
+            db.session.execute(text("SELECT pg_advisory_xact_lock(62410801)"))
+            row=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
+            if not row:
+                db.session.rollback()
+                return jsonify(ok=False,erro='Você não está na fila.'),409
+            posicao_saida=row.pos
             db.session.execute(text(
                 'INSERT INTO fila_saida_auditoria (cooperado_id,cooperado_nome,motivo,ocorrido_em) '
                 'VALUES (:cid,:nome,:motivo,CURRENT_TIMESTAMP)'
             ),{'cid':coop.id,'nome':coop.nome,'motivo':motivo})
             db.session.delete(row)
-            # Reindexar após a saída para posições contínuas.
+            # Reposicionar apenas quem estava depois da posição removida.
+            # Um único UPDATE SQL substitui a leitura e o loop de toda a fila.
             db.session.flush()
-            itens=ListaEspera.query.order_by(ListaEspera.pos.asc(),ListaEspera.created_at.asc(),ListaEspera.id.asc()).all()
-            for i,it in enumerate(itens,1): it.pos=i
+            ListaEspera.query.filter(ListaEspera.pos > posicao_saida).update(
+                {ListaEspera.pos: ListaEspera.pos - 1},
+                synchronize_session=False,
+            )
             db.session.commit()
             emitir_lista_espera()
             # O motivo e reservado aos administradores autenticados na sala LED.
