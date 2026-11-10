@@ -1887,6 +1887,15 @@ body.cx-modal-active{overflow:hidden!important}
     const deliveryList = document.getElementById('delivery-list');
     const deliveryCache = new Map();
     const summaryCache = new Map();
+    // Cache do dia atual tem validade curta; históricos concluídos são reutilizados.
+    const deliveryCacheAt = new Map();
+    const summaryCacheAt = new Map();
+    function periodCacheValid(key, timestamp, params){
+      if(!timestamp)return false;
+      const today = params.get('fim') === todayISO || params.get('inicio') === todayISO;
+      const ttl = today ? 15000 : 300000;
+      return Date.now()-timestamp < ttl;
+    }
     let deliveryAbortController = null;
     let summaryAbortController = null;
 
@@ -2003,11 +2012,12 @@ body.cx-modal-active{overflow:hidden!important}
 
       if(Array.isArray(fallbackItems)){
         summaryCache.set(cacheKey, fallbackItems);
+        summaryCacheAt.set(cacheKey,Date.now());
         updateSummaryFromItems(fallbackItems);
         return;
       }
 
-      if(useCache && summaryCache.has(cacheKey)){
+      if(useCache && summaryCache.has(cacheKey) && periodCacheValid(cacheKey,summaryCacheAt.get(cacheKey),params)){
         updateSummaryFromItems(summaryCache.get(cacheKey));
         return;
       }
@@ -2022,6 +2032,7 @@ body.cx-modal-active{overflow:hidden!important}
         if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível atualizar o resumo.');
         const items = data.items || [];
         summaryCache.set(cacheKey, items);
+        summaryCacheAt.set(cacheKey,Date.now());
         updateSummaryFromItems(items);
       }catch(error){
         if(error.name === 'AbortError') return;
@@ -2049,7 +2060,7 @@ body.cx-modal-active{overflow:hidden!important}
       const params = filterParams();
       const cacheKey = params.toString();
 
-      if(useCache && deliveryCache.has(cacheKey)){
+      if(useCache && deliveryCache.has(cacheKey) && periodCacheValid(cacheKey,deliveryCacheAt.get(cacheKey),params)){
         const cachedItems = deliveryCache.get(cacheKey);
         hydrateDeliveries(cachedItems);
         await loadSummaryForCurrentFilters({
@@ -2072,6 +2083,7 @@ body.cx-modal-active{overflow:hidden!important}
         if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível filtrar as entregas.');
         const items = data.items || [];
         deliveryCache.set(cacheKey, items);
+        deliveryCacheAt.set(cacheKey,Date.now());
         hydrateDeliveries(items);
         loadSummaryForCurrentFilters({
           useCache,
@@ -2157,31 +2169,39 @@ body.cx-modal-active{overflow:hidden!important}
         searchDebounce=setTimeout(()=>loadDeliveries({useCache:false,keepTab:true}).catch(console.error),450);
       });
     }
-    async function sharedPeriodChanged(){
-      state.inicio=filtroInicio.value||'';
-      state.fim=filtroFim.value||'';
+    let pendingPeriodTimer=null;
+    let lastRequestedPeriod=null;
+    async function sharedPeriodChanged({force=false}={}){
+      if(pendingPeriodTimer){clearTimeout(pendingPeriodTimer);pendingPeriodTimer=null}
+      const start=filtroInicio.value||'';
+      const end=filtroFim.value||'';
+      state.inicio=start;
+      state.fim=end;
       state.allDates=false;
       ensureDateRangeDefaults();
-      summaryCache.clear();chartCache.clear();deliveryCache.clear();
-      // Atualiza Resumo e Produções usando o mesmo período sem trocar a aba visível.
-      await loadDeliveries({useCache:false,keepTab:true});
-      // Gráficos utilizam o mesmo estado de datas; atualizar se estiverem visíveis.
-      if(state.tab==='tab-graficos')await buildCharts();
+      const key=filterParams().toString();
+      // Não disparar novamente quando as datas selecionadas já foram aplicadas.
+      if(!force && key===lastRequestedPeriod)return;
+      lastRequestedPeriod=key;
+      try{
+        // O cache do período anterior permanece disponível. Hoje: no máximo 15s.
+        await loadDeliveries({useCache:true,keepTab:true});
+        if(state.tab==='tab-graficos')await buildCharts();
+      }catch(e){
+        lastRequestedPeriod=null;
+        throw e;
+      }
     }
-    if (filtroInicio){
-      filtroInicio.addEventListener('change', () => {
-        state.inicio = filtroInicio.value || '';
-        state.allDates = false;
+    function queuePeriodChange(){
+      clearTimeout(pendingPeriodTimer);
+      // Se o usuário altera início e fim, aplicar apenas o intervalo final.
+      pendingPeriodTimer=setTimeout(()=>{
+        pendingPeriodTimer=null;
         sharedPeriodChanged().catch(console.error);
-      });
+      },280);
     }
-    if (filtroFim){
-      filtroFim.addEventListener('change', () => {
-        state.fim = filtroFim.value || '';
-        state.allDates = false;
-        sharedPeriodChanged().catch(console.error);
-      });
-    }
+    if(filtroInicio)filtroInicio.addEventListener('change',queuePeriodChange);
+    if(filtroFim)filtroFim.addEventListener('change',queuePeriodChange);
 
     document.getElementById('card-pendencias').addEventListener('click', async () => {
       state.listFilter = 'pendente';
@@ -2198,7 +2218,7 @@ body.cx-modal-active{overflow:hidden!important}
         state.inicio = filtroInicio.value || '';
         state.fim = filtroFim.value || '';
         ensureDateRangeDefaults();
-        await sharedPeriodChanged();
+        await sharedPeriodChanged({force:true});
       });
     }
 
@@ -2210,7 +2230,7 @@ body.cx-modal-active{overflow:hidden!important}
         state.inicio = todayISO;
         state.fim = todayISO;
         state.allDates = false;
-        await sharedPeriodChanged();
+        await sharedPeriodChanged({force:true});
       });
     }
 
