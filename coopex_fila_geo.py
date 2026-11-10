@@ -104,8 +104,10 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         db.session.execute(text("SELECT pg_advisory_xact_lock(62410801)"))
         existente=ListaEspera.query.filter_by(cooperado_id=coop.id).first()
         if existente:
-            # Responder imediatamente; não emitir atualização global para entrada duplicada.
-            return jsonify(ok=True,ja_estava=True,posicao=existente.pos,
+            # Entrada duplicada: liberar imediatamente o lock transacional.
+            posicao_atual=existente.pos
+            db.session.rollback()
+            return jsonify(ok=True,ja_estava=True,posicao=posicao_atual,
                            mensagem='Você já está na fila.')
         max_pos=db.session.query(db.func.max(ListaEspera.pos)).scalar() or 0
         row=ListaEspera(cooperado_id=coop.id,nome=coop.nome,pos=max_pos+1,created_at=datetime.utcnow())
