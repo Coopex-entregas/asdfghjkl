@@ -1083,7 +1083,7 @@ function category(route){
 function td(text,klass){const e=document.createElement('td');e.textContent=text==null?'—':String(text);if(klass)e.className=klass;return e}
 function fmt(ms){return Number.isFinite(Number(ms))?(Number(ms)>=1000?(Number(ms)/1000).toFixed(2)+' s':Math.round(ms)+' ms'):'—'}
 function state(ms,n){
- if(!n)return {word:'Aguardando medições',color:'#90a5bf',level:0};
+ if(!n)return {word:'Sem atividade',color:'#90a5bf',level:0};
  if(ms<=1000)return {word:'Bom',color:'#11a477',level:Math.min(1,ms/800)*.3};
  if(ms<=3000)return {word:'Atenção',color:'#e1a322',level:.3+(ms-1000)/2000*.35};
  return {word:ms>=8000?'Crítico':'Lento',color:'#e34a54',level:Math.min(1,.65+(ms-3000)/12000*.35)};
@@ -1118,7 +1118,7 @@ function paint(data){
    el.querySelector('.cx-health-value').textContent=count?fmt(worst):'—';
    el.querySelector('.cx-health-rating').textContent=st.word;
    el.querySelector('.cx-health-rating').style.color=st.color;
-   el.querySelector('.cx-health-meta').textContent=count+' requisições · '+found.length+' operações';
+   el.querySelector('.cx-health-meta').textContent=count?count+' requisições · '+found.length+' operações':'Nenhuma operação nos últimos 10 min';
    el.querySelector('.cx-health-unit').textContent=group==='banco'?'p95 SQL':'p95 do servidor';
    el.querySelector('.cx-health-dial').style.setProperty('--dial-color',st.color);
    el.querySelector('.cx-health-dial').style.setProperty('--dial-deg',Math.round(st.level*270)+'deg');
@@ -1167,7 +1167,7 @@ function init(){
  const head=document.createElement('div');head.className='cx-health-head';
  const summary=document.createElement('div');
  const title=document.createElement('h3');title.textContent='Saúde do Sistema';
- const desc=document.createElement('p');desc.textContent='Medidores reais de desempenho · Admin, cooperado, fila e banco Sicoob';
+ const desc=document.createElement('p');desc.textContent='Operações reais dos últimos 10 minutos · Admin, cooperado, fila e Sicoob';
  summary.append(title,desc);
  const controls=document.createElement('div');
  const updated=document.createElement('span');updated.id='cx-health-updated';updated.className='cx-health-note';updated.textContent='Aguardando leitura';
@@ -1179,7 +1179,7 @@ function init(){
  buildTable(box,'Tempo percebido no navegador',['Operação','Amostras','Média','p95','Erros']).id='cx-health-browser-body';
  buildTable(box,'Ocorrências lentas e motivo identificado',['Horário','Origem','Operação','Duração','HTTP','Motivo / evidência']).id='cx-health-events-body';
  const note=document.createElement('p');note.className='cx-health-note';
- note.textContent='p95 = 95% das medições ficaram nesse tempo ou abaixo. Histórico limitado à memória do servidor, reinicia após deploy. O velocímetro PostgreSQL mostra tempo gasto nas consultas SQL, não a latência total do banco. A medição de navegador inclui rede e não comprova a causa. Erros e operações lentas exibem motivo evidenciado ou etapa ainda desconhecida. Coleta passiva; sem dados de cooperados e sem coordenadas.';
+ note.textContent='Os medidores consideram apenas os últimos 10 minutos. Sem operações novas, mostram Sem atividade, sem executar testes artificiais. p95 = 95% das medições ficaram nesse tempo ou abaixo. Histórico limitado à memória do servidor, reinicia após deploy. O velocímetro PostgreSQL mostra tempo gasto nas consultas SQL, não a latência total do banco. A medição de navegador inclui rede e não comprova a causa. Erros e operações lentas exibem motivo evidenciado ou etapa ainda desconhecida. Coleta passiva; sem dados de cooperados e sem coordenadas.';
  box.append(note);
  const titlePanel=panel.querySelector('.dashboard-panel-title');
  if(titlePanel)titlePanel.insertAdjacentElement('afterend',box);else panel.prepend(box);
