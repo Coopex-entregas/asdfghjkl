@@ -1023,6 +1023,7 @@ def emitir_lista_espera():
     try:
         itens = (
             ListaEspera.query
+            .options(joinedload(ListaEspera.cooperado))
             .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
             .all()
         )
