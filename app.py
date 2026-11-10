@@ -2770,12 +2770,9 @@ def login():
                     pass
 
             cooperado.ensure_app_token()
+            # A rotina do mapa já persiste presença e token em uma transação.
+            # Evita duas gravações/commits adicionais a cada login.
             _coopex_registrar_login_cooperado_no_mapa(cooperado, fonte="login_web")
-            try:
-                db.session.commit()
-            except Exception:
-                db.session.rollback()
-            marcar_cooperado_online(cooperado, 'login_web')
 
             session.clear()
             session['user_id'] = cooperado.id
