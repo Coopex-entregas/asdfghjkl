@@ -77,7 +77,29 @@
   document.addEventListener('change',e=>{const sel=e.target.closest?.('.coop-edit-select');if(!sel||sel.value!=='__fora_escala__')return;e.preventDefault();e.stopImmediatePropagation();const escolhido=escolherForaEscala();if(!escolhido){sel.value='';return}if(!(window.COOPERADOS||[]).some(c=>String(c.id)===String(escolhido.id)))window.COOPERADOS.push({...escolhido,rotulo:escolhido.nome});let opt=[...sel.options].find(o=>String(o.value)===String(escolhido.id));if(!opt){opt=document.createElement('option');opt.value=String(escolhido.id);opt.textContent=escolhido.nome;sel.insertBefore(opt,sel.options[sel.options.length-1])}sel.value=String(escolhido.id);setTimeout(()=>sel.dispatchEvent(new Event('change',{bubbles:true})),0)},true);
   new MutationObserver(muts=>muts.forEach(m=>m.addedNodes.forEach(n=>{if(n.nodeType!==1)return;if(n.matches?.('.coop-edit-select'))prepararSelect(n);n.querySelectorAll?.('.coop-edit-select').forEach(prepararSelect)}))).observe(document.documentElement,{childList:true,subtree:true});
 
-  function iniciar(){sincronizarTema();aplicarMenu();todos=(window.COOPERADOS||[]).map(x=>({...x}));carregarEscala();carregarAgendamentos();setInterval(()=>{carregarEscala();carregarAgendamentos()},60000)}
+  // Agendamentos só mudam quando os dados da tabela mudam.
+  // Sem recarregamento periódico, e sem consultar a mesma lista repetidamente.
+  let agendamentoAtualizando=false,agendamentoPendente=false;
+  async function sincronizarAgendamentos(){
+    if(document.hidden)return;
+    if(agendamentoAtualizando){agendamentoPendente=true;return}
+    agendamentoAtualizando=true;
+    try{await carregarAgendamentos()}
+    finally{
+      agendamentoAtualizando=false;
+      if(agendamentoPendente){agendamentoPendente=false;sincronizarAgendamentos()}
+    }
+  }
+  function iniciar(){
+    sincronizarTema();aplicarMenu();
+    todos=(window.COOPERADOS||[]).map(x=>({...x}));
+    carregarEscala();
+    sincronizarAgendamentos();
+    // O evento é enviado só quando o Admin substitui linhas efetivamente alteradas.
+    window.addEventListener('coopex-admin-table-updated',sincronizarAgendamentos);
+    // A escala segue leve e independente dos agendamentos.
+    setInterval(()=>{if(!document.hidden)carregarEscala()},60000);
+  }
   if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',iniciar,{once:true});else iniciar();
 })();
 </script>
