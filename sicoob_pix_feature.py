@@ -681,6 +681,27 @@ function display(){const body=el('rows');body.replaceChildren();const filtro=el(
 // evita ocupar todas as threads do Render quando o Sicoob fica indisponível.
 const pixAutoCheckedAt = new Map();
 const pixAutoCooldownMs = 120000;
+// Compartilha o intervalo entre abas do mesmo navegador: recarregar o histórico
+// não deve reiniciar a contagem e verificar novamente a mesma cobrança.
+function lastPixCheck(key){
+ const local=pixAutoCheckedAt.get(key)||0;
+ try{return Math.max(local,Number(localStorage.getItem('coopex-pix-last-check:'+key))||0)}
+ catch(_){return local}
+}
+function rememberPixCheck(key,when){
+ pixAutoCheckedAt.set(key,when);
+ try{localStorage.setItem('coopex-pix-last-check:'+key,String(when))}catch(_){}
+}
+function isAutoPixPending(x,now){
+ if(x.status!=='PENDENTE')return false;
+ if(x.tipo!=='Crédito')return true;
+ // Crédito Pix é emitido com validade de 24 horas. Não consultar
+ // indefinidamente solicitações antigas que continuam PENDENTE no banco.
+ // O botão Verificar continua disponível para conferência manual.
+ if(x.solicitacao_status!=='pendente'||x.credito_id)return false;
+ const emitido=Date.parse(String(x.criado_em||''));
+ return Number.isFinite(emitido)&&emitido<=now&&now-emitido<25*60*60*1000;
+}
 async function load(reconcile=true){
  if(busy||document.hidden)return;
  busy=true;
@@ -691,20 +712,20 @@ async function load(reconcile=true){
   display();
   el('updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');
   if(!reconcile)return;
-  // Só cobranças com QR/chave efetivamente emitida e ainda pendentes.
-  const pending=items.filter(x=>x.status==='PENDENTE');
+  // Somente cobranças ainda ativas. O histórico permanece visível;
+  // registros antigos não causam novas consultas bancárias automáticas.
+  const now=Date.now();
+  const pending=items.filter(x=>isAutoPixPending(x,now));
   if(!pending.length){
    pixAutoCheckedAt.clear();
    return; // Nenhuma pendência = nenhuma consulta bancária.
   }
-  const now=Date.now();
-  // Crédito não precisa rodar na mesma frequência de uma entrega;
-  // reduz ainda mais o uso do Sicoob no histórico.
-  const due=pending.find(x=>now-(pixAutoCheckedAt.get(x.tipo+':'+x.uid)||0)>=
+  // Cada cobrança tem intervalo próprio, inclusive entre abas abertas.
+  const due=pending.find(x=>now-lastPixCheck(x.tipo+':'+x.uid)>=
     (x.tipo==='Crédito'?600000:pixAutoCooldownMs));
   if(!due)return;
   const key=due.tipo+':'+due.uid;
-  pixAutoCheckedAt.set(key,now); // Até em caso de timeout, não repetir imediatamente.
+  rememberPixCheck(key,now); // Erro ou timeout não dispara outra consulta imediata.
   let confirmado=false;
   try{
    const verificacao=await post((due.tipo==='Crédito'?'/api/admin/pix-creditos/'+encodeURIComponent(due.uid)+'/verificar':'/admin/pix-sicoob/'+(due.tipo==='Entrega'?'verificar/':'avulso/'+encodeURIComponent(due.uid)+'/verificar')+(due.tipo==='Entrega'?encodeURIComponent(due.uid):'')));
