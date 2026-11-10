@@ -15836,6 +15836,9 @@ def _coopex_patch_painel_cooperado(response):
 # =========================================================
 @app.get("/rastreio/<token>")
 def rastreio_publico(token):
+    # Só o administrador autenticado pode acompanhar a entrega em andamento.
+    if not session.get("is_admin"):
+        return "<h2>Acesso restrito à administração.</h2>", 403
     try:
         data = ler_token_rastreio(token)
         entrega_id = int(data.get("entrega_id"))
@@ -15847,7 +15850,7 @@ def rastreio_publico(token):
         return "<h2>Entrega não encontrada.</h2>", 404
 
     st = (e.status or "").lower()
-    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
+    if (not e.cooperado_id) or st in ["recebido", "entregue", "concluido", "concluída", "concluida", "finalizada", "finalizado", "cancelado", "cancelada"]:
         return "<h2>Rastreio encerrado: entrega concluída.</h2>", 410
 
     coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "Cooperado")
@@ -15909,6 +15912,8 @@ def rastreio_publico(token):
 
 @app.get("/api/rastreio_pos/<token>")
 def api_rastreio_pos(token):
+    if not session.get("is_admin"):
+        return jsonify(ok=False, error="forbidden"), 403
     try:
         data = ler_token_rastreio(token)
         entrega_id = int(data.get("entrega_id"))
@@ -15920,7 +15925,7 @@ def api_rastreio_pos(token):
         return jsonify(ok=False, error="not_found"), 404
 
     st = (e.status or "").lower()
-    if st in ["recebido", "entregue", "concluido", "concluída", "concluida"]:
+    if (not e.cooperado_id) or st in ["recebido", "entregue", "concluido", "concluída", "concluida", "finalizada", "finalizado", "cancelado", "cancelada"]:
         return jsonify(ok=False, error="ended"), 410
 
     coop = getattr(e, "cooperado", None)
