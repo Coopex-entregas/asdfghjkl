@@ -687,6 +687,7 @@ async function load(reconcile=true){
   display();
   el('updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');
   if(!reconcile)return;
+  // Só cobranças com QR/chave efetivamente emitida e ainda pendentes.
   const pending=items.filter(x=>x.status==='PENDENTE');
   if(!pending.length){
    pixAutoCheckedAt.clear();
@@ -840,10 +841,17 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
         dados=[]
         for row in creditos:
             item=dict(row);item["tipo"]="Crédito";item["uid"]=str(item["id"])
+            # Apenas PIX efetivamente emitido e aguardando pagamento pode
+            # ser conciliado. Não transformar créditos concluídos ou cancelados
+            # em PENDENTE a cada atualização do histórico.
             if item["status"]=="PAGO" and item["credito_id"] and item["solicitacao_status"]=="aprovado":
                 item["status"]="APROVADO"
-            else:
+            elif item["status"]=="PENDENTE" and item["solicitacao_status"]=="pendente":
                 item["status"]="PENDENTE"
+            elif item["status"]=="PAGO":
+                item["status"]="CONFERIR"
+            else:
+                item["status"]="INATIVO"
             dados.append(item)
         for row in avulsos:
             item=dict(row);item["tipo"]="Avulso";item["uid"]=str(item["id"])
