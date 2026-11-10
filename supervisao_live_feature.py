@@ -138,7 +138,7 @@ LIVE_SCRIPT = r"""
     el.id=id; el.className='portal-alert-chip '+cls;
     el.innerHTML=`${label} <span class="count">0</span>`;
     indicador().insertAdjacentElement('afterend',el);
-    el.addEventListener('click',()=>openPortalRequests(cls));
+    el.addEventListener('click',openPortalRequests);
     return el;
   }
 
@@ -163,15 +163,12 @@ LIVE_SCRIPT = r"""
     return o;
   }
 
-  let currentPortalKind='credito';
-  function openPortalRequests(kind){
-    currentPortalKind=kind||'credito';
+  function openPortalRequests(){
     const o=portalModal();o.classList.add('open');
-    if(currentPortalKind==='cancel') loadCancelRequests();
-    else renderPortalCurrent();
+    renderPortalCurrent();
   }
 
-  let portalData={credito:{pendentes:[],recentes:[]},cancel:{pendentes:[],recentes:[]}};
+  let portalData={credito:{pendentes:[],recentes:[]}};
 
   function creditCard(x,pending){
     return `<div class="pr-card">
@@ -179,62 +176,30 @@ LIVE_SCRIPT = r"""
       ${pending?`<div class="pr-actions"><button class="pr-btn ok" data-credit-ok="${x.id}">Aprovar e creditar</button><button class="pr-btn no" data-credit-no="${x.id}">Recusar</button></div>`:`<div class="pr-meta">Status: ${esc(x.status||'')}</div>`}
     </div>`;
   }
-  function cancelCard(x,pending){
-    return `<div class="pr-card danger">
-      <div class="pr-top"><div><div class="pr-name">CANCELAMENTO — ${esc(x.cliente_nome)}</div><div class="pr-meta">Pedido #${x.entrega_id} • ${esc(x.criado_em||'')}</div></div><div class="pr-value">${money(x.valor)}</div></div>
-      <div class="pr-route">${esc(x.origem||'-')} → ${esc(x.destino||'-')}</div>
-      <div class="pr-meta">${x.entregador?'Entregador: '+esc(x.entregador)+' • ':''}${esc(x.motivo||'Cliente solicitou cancelamento.')}</div>
-      ${pending?`<div class="pr-actions"><button class="pr-btn ok" data-cancel-ok="${x.id}">Aceitar cancelamento</button><button class="pr-btn no" data-cancel-no="${x.id}">Recusar</button></div>`:`<div class="pr-meta">Status: ${esc(x.status||'')}</div>`}
-    </div>`;
-  }
-
   function renderPortalCurrent(){
-    const kind=currentPortalKind;
-    const data=portalData[kind]||{pendentes:[],recentes:[]};
+    const data=portalData.credito;
     const modal=portalModal();
-    modal.querySelector('#prModalTitle').textContent=kind==='cancel'?'Solicitações de cancelamento':'Solicitações de crédito';
-    modal.querySelector('#prModalSub').textContent=kind==='cancel'
-      ?'O pedido só será cancelado depois que a administração aceitar.'
-      :'Aprove somente depois de confirmar o pagamento.';
-    const card=kind==='cancel'?cancelCard:creditCard;
+    modal.querySelector('#prModalTitle').textContent='Solicitações de crédito';
+    modal.querySelector('#prModalSub').textContent='Aprove somente depois de confirmar o pagamento.';
+    const card=creditCard;
     modal.querySelector('#prPending').innerHTML=data.pendentes.length?data.pendentes.map(x=>card(x,true)).join(''):'<div class="pr-empty">Nenhuma solicitação pendente.</div>';
     modal.querySelector('#prRecent').innerHTML=data.recentes.length?data.recentes.map(x=>card(x,false)).join(''):'<div class="pr-empty">Nenhuma solicitação processada recentemente.</div>';
 
     modal.querySelectorAll('[data-credit-ok]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-credito/${b.dataset.creditOk}/aprovar`,b));
     modal.querySelectorAll('[data-credit-no]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-credito/${b.dataset.creditNo}/recusar`,b));
-    modal.querySelectorAll('[data-cancel-ok]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-cancelamento/${b.dataset.cancelOk}/aprovar`,b));
-    modal.querySelectorAll('[data-cancel-no]').forEach(b=>b.onclick=()=>portalAction(`/api/admin/solicitacoes-cancelamento/${b.dataset.cancelNo}/recusar`,b));
   }
 
   async function portalAction(url,btn){
-    const cancel=url.includes('cancelamento');
     const approve=url.endsWith('/aprovar');
-    const msg=cancel
-      ?(approve?'Aceitar o cancelamento deste pedido?':'Recusar o cancelamento e manter o pedido ativo?')
-      :(approve?'Confirmar o pagamento e lançar este crédito?':'Recusar esta solicitação de crédito?');
+    const msg=approve?'Confirmar o pagamento e lançar este crédito?':'Recusar esta solicitação de crédito?';
     if(!confirm(msg)) return;
     btn.disabled=true;
     try{
       const r=await fetch(url,{method:'POST',credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'fetch'}});
       const d=await r.json().catch(()=>null);
       if(!r.ok||!d||!d.ok) throw new Error(d?.error||d?.msg||'Não foi possível concluir.');
-      if(cancel) await loadCancelRequests();
-      else await loadPortalRequests(false);
+      await loadPortalRequests(false);
     }catch(e){alert(e.message||'Falha ao processar.');btn.disabled=false;}
-  }
-
-  // Cancelamentos são consultados apenas quando o administrador abre a opção.
-  // Não fazer polling: esta rotina é pouco utilizada e executa SQL desnecessário.
-  async function loadCancelRequests(){
-    try{
-      const r=await fetch('/api/admin/solicitacoes-cancelamento',{cache:'no-store',credentials:'same-origin'});
-      if(!r.ok) throw new Error('Falha ao consultar cancelamentos: '+r.status);
-      const ca=await r.json();
-      if(ca&&ca.ok) portalData.cancel={pendentes:ca.pendentes||[],recentes:ca.recentes||[]};
-      const xchip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
-      xchip.querySelector('.count').textContent=portalData.cancel.pendentes.length;
-      renderPortalCurrent();
-    }catch(e){console.warn('Consulta manual de cancelamentos:',e);}
   }
 
   async function loadPortalRequests(openOnNew){
@@ -248,7 +213,7 @@ LIVE_SCRIPT = r"""
       const cq=portalData.credito.pendentes.length;
       cchip.querySelector('.count').textContent=cq;
       cchip.classList.toggle('show',cq>0);
-      if(portalModal().classList.contains('open') && currentPortalKind==='credito') renderPortalCurrent();
+      if(portalModal().classList.contains('open')) renderPortalCurrent();
     }catch(e){console.warn('Solicitações de crédito:',e);}
     finally{portalLoading=false;}
   }
@@ -431,8 +396,6 @@ LIVE_SCRIPT = r"""
   function iniciar(){
     indicador();
     portalChip('portal-credit-chip','CRÉDITO','credito');
-    const cancelChip=portalChip('portal-cancel-chip','CANCELAMENTOS','cancel');
-    cancelChip.classList.add('show'); // acesso manual, sem polling automático
     portalModal();
     loadPortalRequests(false);
     setInterval(()=>{if(document.visibilityState==='visible')loadPortalRequests(false)},30000);
