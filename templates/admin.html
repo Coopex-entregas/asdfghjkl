@@ -307,7 +307,7 @@ const close=document.createElement('button');close.type='button';close.textConte
 async function watchPix(kind,id,btn){
 const url=kind==='avulso'?'/admin/pix-sicoob/avulso/'+encodeURIComponent(id)+'/verificar':'/admin/pix-sicoob/verificar/'+encodeURIComponent(id);
 for(let n=0;n<36;n++){
-await new Promise(resolve=>setTimeout(resolve,5000));
+await new Promise(resolve=>setTimeout(resolve,60000));
 if(!document.body.contains(btn))return;
 try{const result=await create(url);if(result.status==='PAGO'){
 btn.textContent='Pago ✓';btn.disabled=true;btn.dataset.pixPago='1';btn.title='Pagamento confirmado pelo Sicoob';return;
