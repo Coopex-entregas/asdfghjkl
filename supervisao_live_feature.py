@@ -687,8 +687,11 @@ def install(app_module):
         def percentile(values, q):
             if not values:
                 return None
+            # Percentil por nearest rank (mais adequado para amostras pequenas).
+            # Com duas medições, p95 é a mais lenta, não a mais rápida.
+            from math import ceil
             ordered = sorted(values)
-            return round(ordered[min(len(ordered)-1, int((len(ordered)-1)*q))], 1)
+            return round(ordered[min(len(ordered)-1, max(0, ceil(q*len(ordered))-1))], 1)
 
         with perf_lock:
             snapshot = {key:list(values) for key, values in perf_samples.items()}
