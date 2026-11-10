@@ -1069,7 +1069,7 @@ body.dark-mode .cx-health-btn{background:#243e61;color:#dceeff;border-color:#567
 let mounted=false,loading=false,lastData=null,interval=null;
 const areas=[
  ['admin','Administrador'],['cooperado','Cooperado'],['fila','Fila'],
- ['login','Login'],['sicoob','Sicoob']
+ ['login','Login'],['sicoob','Sicoob'],['banco','PostgreSQL']
 ];
 function category(route){
  const p=String(route||'').toLowerCase();
@@ -1111,21 +1111,22 @@ function paint(data){
  const rows=[...(data.rotas||[])];
  for(const [group] of areas){
    const el=document.querySelector('.cx-health-gauge[data-group="'+group+'"]');if(!el)continue;
-   const found=rows.filter(x=>category(x.rota)===group);
+   const found=group==='banco'?rows:rows.filter(x=>category(x.rota)===group);
    const count=found.reduce((n,x)=>n+Number(x.amostras||0),0);
-   const worst=found.length?Math.max(...found.map(x=>Number(x.p95_ms||0))):null;
+   const worst=found.length?Math.max(...found.map(x=>Number(group==='banco'?x.banco_p95_ms||0:x.p95_ms||0))):null;
    const st=state(worst,count);
    el.querySelector('.cx-health-value').textContent=count?fmt(worst):'—';
    el.querySelector('.cx-health-rating').textContent=st.word;
    el.querySelector('.cx-health-rating').style.color=st.color;
    el.querySelector('.cx-health-meta').textContent=count+' requisições · '+found.length+' operações';
+   el.querySelector('.cx-health-unit').textContent=group==='banco'?'p95 SQL':'p95 do servidor';
    el.querySelector('.cx-health-dial').style.setProperty('--dial-color',st.color);
    el.querySelector('.cx-health-dial').style.setProperty('--dial-deg',Math.round(st.level*270)+'deg');
  }
  const server=document.getElementById('cx-health-server-body');server.replaceChildren();
  for(const r of rows.slice(0,35)){
    const tr=document.createElement('tr');
-   tr.append(td(r.rota),td(r.amostras),td(fmt(r.media_ms)),td(fmt(r.p95_ms),r.p95_ms>3000?'cx-slow':r.p95_ms>1000?'cx-warn':''),td(fmt(r.max_ms)),td(r.falhas));
+   tr.append(td(r.rota),td(r.amostras),td(fmt(r.media_ms)),td(fmt(r.p95_ms),r.p95_ms>3000?'cx-slow':r.p95_ms>1000?'cx-warn':''),td(fmt(r.banco_media_ms)),td(r.consultas_media),td(r.falhas));
    server.append(tr)
  }
  const browser=document.getElementById('cx-health-browser-body');browser.replaceChildren();
@@ -1139,7 +1140,7 @@ function paint(data){
    events.append(tr)
  }
  for(const [id,body] of [['cx-health-server-body',server],['cx-health-browser-body',browser],['cx-health-events-body',events]]){
-   if(!body.children.length){const row=document.createElement('tr');const cell=td('Ainda não há amostras suficientes.');cell.colSpan=id==='cx-health-events-body'?6:id==='cx-health-server-body'?6:5;row.append(cell);body.append(row)}
+   if(!body.children.length){const row=document.createElement('tr');const cell=td('Ainda não há amostras suficientes.');cell.colSpan=id==='cx-health-events-body'?6:id==='cx-health-server-body'?7:5;row.append(cell);body.append(row)}
  }
  document.getElementById('cx-health-updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');
 }
@@ -1174,11 +1175,11 @@ function init(){
  controls.append(updated,' ',button);head.append(summary,controls);box.append(head);
  const gauges=document.createElement('div');gauges.className='cx-health-gauges';
  areas.forEach(([g,name])=>gauges.append(makeGauge(g,name)));box.append(gauges);
- buildTable(box,'Operações no servidor',['Operação','Amostras','Média','p95','Máximo','Erros']).id='cx-health-server-body';
+ buildTable(box,'Operações no servidor',['Operação','Amostras','Média','p95','SQL médio','Consultas','Erros']).id='cx-health-server-body';
  buildTable(box,'Tempo percebido no navegador',['Operação','Amostras','Média','p95','Erros']).id='cx-health-browser-body';
  buildTable(box,'Ocorrências lentas e motivo identificado',['Horário','Origem','Operação','Duração','HTTP','Motivo / evidência']).id='cx-health-events-body';
  const note=document.createElement('p');note.className='cx-health-note';
- note.textContent='p95 = 95% das medições ficaram nesse tempo ou abaixo. Histórico limitado à memória do servidor, reinicia após deploy. A medição de navegador inclui rede e não comprova a causa. Erros e operações lentas exibem motivo evidenciado ou etapa ainda desconhecida. Coleta passiva; sem dados de cooperados e sem coordenadas.';
+ note.textContent='p95 = 95% das medições ficaram nesse tempo ou abaixo. Histórico limitado à memória do servidor, reinicia após deploy. O velocímetro PostgreSQL mostra tempo gasto nas consultas SQL, não a latência total do banco. A medição de navegador inclui rede e não comprova a causa. Erros e operações lentas exibem motivo evidenciado ou etapa ainda desconhecida. Coleta passiva; sem dados de cooperados e sem coordenadas.';
  box.append(note);
  const titlePanel=panel.querySelector('.dashboard-panel-title');
  if(titlePanel)titlePanel.insertAdjacentElement('afterend',box);else panel.prepend(box);
