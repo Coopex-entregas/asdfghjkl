@@ -127,11 +127,9 @@ def install(h):
         # Notifica o administrador somente após a quitação ser gravada.
         # Nenhuma outra página precisa consultar vendas em intervalos fixos.
         try:
-            h.socketio.emit("coopex_credito_pago", {
-                "solicitacao_id": locked.id,
-                "cliente_nome": cli.nome,
-                "valor": float(n)
-            })
+            # Apenas o ID é transmitido; nomes e valores ficam restritos
+            # ao endpoint autenticado do administrador.
+            h.socketio.emit("coopex_credito_pago", {"solicitacao_id": locked.id})
         except Exception:
             app.logger.warning("Aviso de crédito pago não emitido; pagamento já foi confirmado.",exc_info=True)
         return True
