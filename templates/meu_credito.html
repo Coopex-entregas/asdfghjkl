@@ -1457,6 +1457,18 @@ $('sendOrder').onclick=async()=>{
     if(!response.ok||!j?.ok){toast(j?.msg||j?.erro||j?.error||('Não foi possível solicitar o pedido (HTTP '+response.status+').'));return}
     toast(j.msg||'Pedido enviado.');
     if($('salvarDestino').checked){try{await api(API.enderecos,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({apelido:$('entregaContato').value||$('entregaBairro').value||'Entrega',contato:$('entregaContato').value,telefone:$('entregaTelefone').value,endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,referencia:$('entregaReferencia').value})});loadEnds()}catch(e){console.warn('Endereço não salvo:',e)}}
+    // Após confirmação real do servidor, preparar o próximo destino.
+    // Coleta, cadastro do cliente, vendedor, pagamento e tipo de pedido permanecem.
+    ['entregaEndereco','entregaBairro','entregaReferencia','entregaContato','entregaTelefone','destinoSalvo']
+      .forEach(id=>{const field=$(id);if(field)field.value='';});
+    if($('salvarDestino'))$('salvarDestino').checked=false;
+    if($('obs'))$('obs').value='';
+    if($('pedidoRetorno'))$('pedidoRetorno').checked=false;
+    clearTimeout(qt);
+    quoteSerial++;
+    if(quoteController)quoteController.abort();
+    $('estimate').textContent='Informe o destino';
+    $('estimateSource').textContent='A coleta foi mantida. Informe outro bairro de entrega para calcular o próximo pedido.';
     await Promise.allSettled([loadActive(),loadSaldo()]);
   }catch(e){console.error('Erro ao solicitar pedido:',e);toast('Falha ao enviar pedido: '+(e.message||'erro de conexão'))}
   finally{btn.disabled=false;btn.textContent=originalText}
