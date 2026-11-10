@@ -2143,7 +2143,7 @@ body.cx-modal-active{overflow:hidden!important}
       });
     });
 
-    document.getElementById('filtro-status')?.addEventListener('change',async e=>{state.listFilter=e.target.value;state.allDates=e.target.value==='pendente';await loadDeliveries({useCache:true});});
+    document.getElementById('filtro-status')?.addEventListener('change',async e=>{state.listFilter=e.target.value;state.allDates=e.target.value==='pendente';await loadDeliveries({useCache:false});});
     const filtroCliente = document.getElementById('filtro-cliente');
     const filtroInicio = document.getElementById('filtro-inicio');
     const filtroFim = document.getElementById('filtro-fim');
