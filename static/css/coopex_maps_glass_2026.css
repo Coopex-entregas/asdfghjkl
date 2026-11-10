@@ -2762,3 +2762,125 @@ body #cxTopControlDock>.filters.glass .pill[data-filter="offline"].active{
  background:linear-gradient(180deg,#912b43,#541626)!important;border-color:#ff7185!important;
  box-shadow:0 0 10px #fa435e88,inset 0 1px 2px #ffd0dc7a!important
 }
+
+
+/* CoopEX Maps 2026-11-10 — ajuste visual de legibilidade.
+   Somente superfície e tipografia; não altera mapa, posição de painéis ou eventos. */
+body #addressPanel.cx-directions-mode,
+body #addressPanel.cx-place-view,
+body.cx-night-google #addressPanel.cx-directions-mode,
+body.cx-night-google #addressPanel.cx-place-view {
+ color:#f5faff!important;
+ background:linear-gradient(160deg,#164a79 0%,#0a2c54 56%,#08234b 100%)!important;
+ border-color:rgba(120,196,245,.76)!important;
+ box-shadow:0 10px 30px rgba(1,16,45,.46),inset 0 1px 1px rgba(222,245,255,.5)!important;
+}
+body #addressPanel.cx-directions-mode .cx-drawer-content,
+body #addressPanel.cx-place-view .cx-drawer-content,
+body #addressPanel.cx-directions-mode .cx-drawer-content *,
+body #addressPanel.cx-place-view .cx-drawer-content * {
+ text-shadow:none;
+}
+body #addressPanel.cx-directions-mode .cx-route-editor,
+body #addressPanel.cx-directions-mode .cx-waypoint-row,
+body #addressPanel.cx-directions-mode .cx-route-summary,
+body #addressPanel.cx-directions-mode .cx-route-option,
+body #addressPanel.cx-directions-mode .cx-dest-row,
+body #addressPanel.cx-directions-mode .cx-drawer-stops,
+body #addressPanel.cx-directions-mode .cx-route-results,
+body #addressPanel.cx-place-view .cx-place-details,
+body #addressPanel.cx-place-view #cxPlaceDetails {
+ background:linear-gradient(180deg,rgba(34,96,145,.80),rgba(9,45,86,.94))!important;
+ border-color:rgba(119,193,239,.72)!important;
+ color:#f5faff!important;
+ box-shadow:inset 0 1px 1px rgba(225,246,255,.37),0 5px 14px rgba(1,16,42,.27)!important;
+}
+body #addressPanel.cx-directions-mode .cx-route-summary,
+body #addressPanel.cx-directions-mode .cx-route-title,
+body #addressPanel.cx-directions-mode .cx-route-title strong,
+body #addressPanel.cx-directions-mode .cx-route-editor label,
+body #addressPanel.cx-directions-mode .cx-drawer-stoplist,
+body #addressPanel.cx-directions-mode .cx-route-option,
+body #addressPanel.cx-directions-mode .cx-route-option *,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-title,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body #addressPanel.cx-place-view #cxPlaceDetails small,
+body #addressPanel.cx-place-view #cxPlaceDetails a {
+ color:#f3faff!important;
+ opacity:1!important;
+}
+body #addressPanel.cx-directions-mode input,
+body #addressPanel.cx-directions-mode .cx-dest-row input,
+body #addressPanel.cx-directions-mode .cx-origin-mount input,
+body #addressPanel.cx-place-view .cx-drawer-top input {
+ color:#fff!important;
+ -webkit-text-fill-color:#fff!important;
+ font-size:14px!important;
+ font-weight:650!important;
+}
+body #addressPanel.cx-directions-mode input::placeholder,
+body #addressPanel.cx-place-view input::placeholder {
+ color:#d9ebfb!important;
+ -webkit-text-fill-color:#d9ebfb!important;
+ opacity:1!important;
+}
+body #addressPanel.cx-directions-mode .cx-route-tip,
+body #addressPanel.cx-directions-mode .cx-route-hint,
+body #addressPanel.cx-directions-mode .cx-route-guide,
+body #addressPanel.cx-directions-mode .cx-route-title small {
+ color:#deefff!important;
+ opacity:1!important;
+ font-size:12px!important;
+}
+body #addressPanel.cx-directions-mode button,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button {
+ color:#fff!important;
+ font-weight:750!important;
+}
+body #addressPanel.cx-directions-mode .cx-route-option.active {
+ border-color:#a2dcff!important;
+ background:linear-gradient(160deg,#247ed1,#104e91)!important;
+ color:#fff!important;
+}
+body #cxWeatherWeek,
+body.cx-night-google #cxWeatherWeek {
+ background:linear-gradient(160deg,#1b5484,#0c315b 55%,#082548)!important;
+ color:#fff!important;
+ border-color:#76bde9!important;
+ box-shadow:0 12px 30px rgba(2,17,44,.45),inset 0 1px 1px rgba(225,245,255,.45)!important;
+}
+body #cxWeatherWeek .cx-weather-now,
+body #cxWeatherWeek .cx-weather-evening,
+body #cxWeatherWeek .cx-weather-hour {
+ background:linear-gradient(180deg,#235c8d,#0c365f)!important;
+ border-color:#75b4e2!important;
+ color:#fff!important;
+}
+body #cxWeatherWeek .cx-week-day,
+body #cxWeatherWeek .cx-week-day *,
+body #cxWeatherWeek .cx-weather-now *,
+body #cxWeatherWeek .cx-weather-evening *,
+body #cxWeatherWeek .cx-weather-hour *,
+body #cxWeatherWeek .cx-week-subtitle {
+ color:#f4faff!important;
+ opacity:1!important;
+}
+body #cxWeatherWeek .cx-week-day{font-size:13px!important;line-height:1.35!important}
+body #cxWeatherWeek .cx-week-day strong{font-weight:800!important}
+body #cxWeatherWeek .cx-weather-hour{font-size:12px!important}
+body #cxTopControlDock>#cxCoopSearch,
+body #cxTopControlDock>.weather.glass,
+body #cxTopControlDock>.filters.glass,
+body #cxTopControlDock>.back-link {
+ background:linear-gradient(175deg,rgba(34,91,141,.96),rgba(8,42,82,.97))!important;
+ border-color:rgba(112,181,227,.84)!important;
+ box-shadow:0 4px 12px rgba(2,18,47,.36),inset 0 1px 1px rgba(217,243,255,.50)!important;
+}
+body #cxTopControlDock>#cxCoopSearch input,
+body #cxTopControlDock>#cxCoopSearch input::placeholder{
+ color:#f4faff!important;-webkit-text-fill-color:#f4faff!important;opacity:1!important;
+}
+body #cxTopControlDock>.filters.glass .pill{
+ color:#fff!important;opacity:1!important;
+}
