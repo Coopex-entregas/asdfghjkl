@@ -15579,6 +15579,16 @@ def handle_connect(auth=None):
         pass
 
 
+# Inscrição explícita no LED: realizada na conexão e em cada reconexão.
+# Mantém os motivos de saída restritos a administradores autenticados.
+@socketio.on("coopex_led_subscribe")
+def coopex_led_subscribe():
+    if not session.get("is_admin") and not session.get("is_master"):
+        return {"ok": False, "error": "unauthorized"}
+    join_room("coopex-admin-led")
+    return {"ok": True}
+
+
 # Desconexão do cliente
 @socketio.on("coopex_map_subscribe")
 def coopex_map_subscribe():
