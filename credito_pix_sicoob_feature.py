@@ -286,6 +286,55 @@ def install(h):
             app.logger.exception("Falha na verificacao de credito Pix admin")
             return jsonify(erro="Falha ao conferir o Pix com o Sicoob."),502
 
+    @app.post("/api/admin/pix-creditos/<int:sid>/cancelar")
+    def pix_credito_admin_cancelar(sid):
+        """Cancela manualmente cobrança ainda não paga, mantendo auditoria."""
+        if not session.get("is_admin"):
+            abort(403)
+        if request.headers.get("X-CSRF-Token") != session.get("sicoob_csrf"):
+            abort(403)
+        req=Sol.query.get_or_404(sid)
+        row=get_row(sid)
+        if not row:
+            abort(404)
+        if row["credito_id"] or row["e2eid"] or row["status"]=="PAGO" or req.status=="aprovado":
+            return jsonify(erro="Crédito já pago ou lançado; não é possível cancelar."),409
+        if row["status"]=="CANCELADO":
+            return jsonify(ok=True,status="CANCELADO")
+        if row["status"] not in ("PENDENTE","CRIANDO") or req.status!="pendente":
+            return jsonify(erro="Cobrança não está pendente."),409
+        try:
+            # Se o código nunca foi gerado, não há cobrança ativa para cancelar.
+            if row["status"]=="PENDENTE" and row["brcode"]:
+                data,_=bank_call("GET","/cob/"+row["txid"])
+                if data.get("status")=="CONCLUIDA" or data.get("pix"):
+                    # Não descartar pagamento não conciliado.
+                    paid=reconcile(req,row)
+                    return jsonify(erro=("Pagamento confirmado e crédito registrado." if paid
+                        else "O Sicoob indica recebimento: requer conferência antes de cancelar.")),409
+                if data.get("status") not in ("REMOVIDA_PELO_USUARIO_RECEBEDOR","REMOVIDA_PELO_PSP"):
+                    bank_call("PATCH","/cob/"+row["txid"],{"status":"REMOVIDA_PELO_USUARIO_RECEBEDOR"})
+                confirm,_=bank_call("GET","/cob/"+row["txid"])
+                if confirm.get("pix") or confirm.get("status") not in ("REMOVIDA_PELO_USUARIO_RECEBEDOR","REMOVIDA_PELO_PSP"):
+                    return jsonify(erro="Sicoob não confirmou o cancelamento; nada foi alterado."),409
+            # Lock transacional e condição no UPDATE evitam desfazer crédito concluído.
+            locked=Sol.query.filter_by(id=sid).with_for_update().first()
+            current=get_row(sid)
+            if (not locked or locked.status!="pendente" or current["credito_id"]
+                    or current["e2eid"] or current["status"]=="PAGO"):
+                db.session.rollback()
+                return jsonify(erro="Cobrança foi alterada; não cancelada."),409
+            db.session.execute(text("""UPDATE sicoob_credito_pix SET status='CANCELADO'
+                WHERE solicitacao_id=:sid AND status IN ('PENDENTE','CRIANDO')
+                  AND credito_id IS NULL AND e2eid IS NULL"""),{"sid":sid})
+            locked.status="cancelada"
+            db.session.commit()
+            return jsonify(ok=True,status="CANCELADO")
+        except Exception:
+            db.session.rollback()
+            app.logger.exception("Falha ao cancelar Pix de crédito")
+            return jsonify(erro="Não foi possível confirmar o cancelamento no Sicoob."),502
+
     @app.get("/api/admin/pix-creditos/novas-vendas")
     def pix_credito_vendas_admin():
         if not session.get("is_admin"):
