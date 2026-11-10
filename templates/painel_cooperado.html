@@ -3293,5 +3293,50 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
  setInterval(presence,45000);
 })();
 </script>
+
+<script id="coopex-browser-perf-v1">
+(function(){
+  'use strict';
+  if(window.__coopexPerfBrowserInstalled)return;
+  window.__coopexPerfBrowserInstalled=true;
+  const original=window.fetch;
+  if(typeof original!=='function')return;
+  function send(method,path,ms,status){
+    if(!Number.isFinite(ms) || (ms<800 && Math.random()>.08))return;
+    if(ms<2500 && Math.random()>.25)return;
+    const payload=JSON.stringify({rota:method+' '+path,tempo_ms:Math.round(ms),http:status});
+    try{original.call(window,'/api/telemetria/navegador',{method:'POST',credentials:'same-origin',
+      headers:{'Content-Type':'application/json'},body:payload,keepalive:true}).catch(()=>{});}
+    catch(_){}
+  }
+  window.fetch=function(input,init){
+    let url='',method=(init&&init.method)||'GET';
+    try{
+      const u=new URL(typeof input==='string'?input:input.url,location.href);
+      if(u.origin===location.origin)url=u.pathname;
+      if(input instanceof Request && !(init&&init.method))method=input.method||'GET';
+    }catch(_){}
+    if(!url || !/^(\/admin|\/api\/admin\/|\/api\/cooperado\/|\/painel_cooperado|\/cooperado\/)/.test(url)
+       || /\/gps|\/presenca|\/localizacao|\/live-state|\/performance|\/pix-led|\/telemetria|\/fila\/estado/.test(url)){
+      return original.apply(this,arguments);
+    }
+    const path=url.replace(/\/\d+(?=\/|$)/g,'/<id>');
+    const started=performance.now();
+    return original.apply(this,arguments).then(function(response){
+      send(String(method).toUpperCase(),path,performance.now()-started,response.status);
+      return response;
+    },function(error){
+      send(String(method).toUpperCase(),path,performance.now()-started,0);
+      throw error;
+    });
+  };
+  window.addEventListener('load',()=>{
+    const nav=performance.getEntriesByType('navigation')[0];
+    if(nav && (/^\/(admin|painel_cooperado)(?:\/|$)/.test(location.pathname)))
+      send('GET',location.pathname,nav.duration,200);
+  },{once:true});
+})();
+</script>
+
 </body>
 </html>
