@@ -10844,6 +10844,11 @@ def api_pedidos_criar():
         preco = cot.get('preco')
         valor_final = float(preco or 0)
 
+        # Nunca consumir crédito nem marcar como pago quando a tabela não retornou preço.
+        # Pix/Dinheiro podem seguir com valor a confirmar pela Supervisão.
+        if pagamento_in == 'credito' and (preco is None or cot.get('valor_a_informar')):
+            return jsonify(ok=False, msg='Não há preço cadastrado para esta combinação de bairros. Escolha Pix ou Dinheiro para enviar o pedido com valor a confirmar pela supervisão; o crédito não será debitado.'), 409
+
         pagamento = 'Crédito' if pagamento_in == 'credito' else 'Pix' if pagamento_in == 'pix' else 'Dinheiro'
         status_pg = 'pago' if pagamento_in == 'credito' else 'pendente'
 
