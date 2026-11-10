@@ -3593,11 +3593,16 @@ def _bloquear_modo_vendedor(msg='Esta função está disponível somente para o 
 
 
 def _bairro_key(s):
-    s = (s or '').strip().lower()
-    s = unicodedata.normalize('NFD', s)
-    s = ''.join(ch for ch in s if unicodedata.category(ch) != 'Mn')
-    s = re.sub(r'\s+', ' ', s)
-    return s
+    """Chave canônica para preço de bairros; aceita abreviações inequívocas."""
+    s = _norm(s)
+    # O nome utilizado pelos clientes é Nazaré; na tabela consta o nome oficial.
+    # Não usar correspondência parcial genérica, pois bairros diferentes podem coincidir.
+    aliases = {
+        'nazare': 'nossa senhora de nazare',
+        'n s de nazare': 'nossa senhora de nazare',
+        'nossa sra de nazare': 'nossa senhora de nazare',
+    }
+    return aliases.get(s, s)
 
 
 def _buscar_preco_rota_tabela(bairro_origem, bairro_destino):
