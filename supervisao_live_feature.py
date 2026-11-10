@@ -700,10 +700,14 @@ def install(app_module):
                 incrementar_versao()
                 # Impede que os indicadores em cache fiquem desatualizados
                 # após qualquer alteração real de entrega, pagamento ou fila.
-                try:
-                    app_module._invalidar_admin_resumo_cache()
-                except AttributeError:
-                    pass
+                # Mudanças exclusivas da fila não alteram estatísticas de
+                # entregas nem formas de pagamento: preservar estes caches.
+                # O evento da fila e o contador live continuam sendo emitidos.
+                if not request.path.startswith("/api/cooperado/fila/"):
+                    try:
+                        app_module._invalidar_admin_resumo_cache()
+                    except AttributeError:
+                        pass
 
             if request.path != "/admin":
                 return response
