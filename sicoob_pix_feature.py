@@ -529,6 +529,10 @@ let d=await r.json();el.textContent=JSON.stringify(d,null,2);}catch(e){el.textCo
                 VALUES(:id,:tx,:valor,:br,'PENDENTE',:criado,:cliente_nome,:exp)"""),
                 {"id":uid,"tx":txid,"valor":str(amount),"br":brcode,"criado":datetime.utcnow().isoformat(),"cliente_nome":nome_cliente,"exp":(datetime.utcnow()+__import__("datetime").timedelta(hours=24)).isoformat()})
             db.session.commit()
+            try:
+                host.socketio.emit("coopex_pix_atualizado", {"tipo":"Avulso","acao":"criado"})
+            except Exception:
+                app.logger.warning("Aviso Pix avulso não emitido.",exc_info=True)
             return jsonify(id=uid,cliente_nome=nome_cliente,valor=str(amount),brcode=brcode,status="PENDENTE")
         except Exception:
             app.logger.exception("Falha ao criar cobrança Pix avulsa")
@@ -707,7 +711,7 @@ async function load(reconcile=true){
  }catch(e){el('summary').textContent=e.message}
  finally{busy=false}
 }
-function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Recife',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}el('dataInicio').value=todayNatal();el('dataFim').value=todayNatal();['status','tipo','busca','dataInicio','dataFim','anteriores'].forEach(id=>el(id).addEventListener('input',display));el('refresh').onclick=()=>load(true);async function getExpiry(){try{const r=await fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const rows=(await r.json()).cobrancas||[];for(const x of items){const m=rows.find(z=>z.tipo===x.tipo&&String(z.id)===String(x.id));if(m)x.expira_em=m.expira_em}display()}catch(e){}}load(true);setInterval(()=>{if(!document.hidden)load(true)},30000);setInterval(getExpiry,30000);setTimeout(getExpiry,900);setInterval(display,60000);
+function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/Recife',year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date())}el('dataInicio').value=todayNatal();el('dataFim').value=todayNatal();['status','tipo','busca','dataInicio','dataFim','anteriores'].forEach(id=>el(id).addEventListener('input',display));el('refresh').onclick=()=>load(true);async function getExpiry(){try{const r=await fetch('/admin/pix-sicoob/avisos',{credentials:'same-origin',cache:'no-store'});if(!r.ok)return;const rows=(await r.json()).cobrancas||[];for(const x of items){const m=rows.find(z=>z.tipo===x.tipo&&String(z.id)===String(x.id));if(m)x.expira_em=m.expira_em}display()}catch(e){}}load(true);setInterval(()=>{if(!document.hidden)load(true)},60000);setTimeout(getExpiry,900);setInterval(display,60000);
 </script><script id="cx-pix-glass-sync">
 (function(){
  const body=document.body;body.classList.add('cx-pix-history-glass');
@@ -977,6 +981,10 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
                     SET status='PAGO', e2eid=:e, pago_em=:dt WHERE id=:id AND status='PENDENTE'"""),
                     {"e":recebidos[0]["endToEndId"],"dt":datetime.utcnow().isoformat(),"id":uid})
                 db.session.commit()
+                try:
+                    host.socketio.emit("coopex_pix_atualizado", {"tipo":"Avulso","acao":"pago"})
+                except Exception:
+                    app.logger.warning("Aviso Pix avulso pago não emitido.",exc_info=True)
             current=db.session.execute(text("SELECT status FROM sicoob_pix_avulso WHERE id=:id"),{"id":uid}).scalar()
             return jsonify(id=uid,status=current)
         except Exception:
@@ -1047,6 +1055,10 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
                     if changed.rowcount:
                         db.session.commit()
                         paid+=1
+                        try:
+                            host.socketio.emit("coopex_pix_atualizado", {"tipo":"Avulso","acao":"pago"})
+                        except Exception:
+                            app.logger.warning("Aviso Pix webhook não emitido.",exc_info=True)
             return jsonify(ok=True,confirmados=paid)
         except Exception:
             db.session.rollback()
