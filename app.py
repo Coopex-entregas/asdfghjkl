@@ -5054,6 +5054,11 @@ def admin():
     if not session.get('is_admin'):
         return redirect(url_for('login'))
 
+    # HEAD só verifica a disponibilidade; não precisa executar consultas
+    # nem renderizar a tabela de entregas e demais cartões do administrador.
+    if request.method == 'HEAD':
+        return app.response_class('', status=200, mimetype='text/html')
+
     data_inicio = request.args.get('data_inicio')
     data_fim = request.args.get('data_fim')
     cooperado_id = request.args.get('cooperado_id', 'todos')
@@ -5140,14 +5145,18 @@ def admin():
     feriado_hoje = verifica_feriado(hoje)
     tem_pendente = pendentes_dia > 0
 
-    lista_espera = (
-        ListaEspera.query
-        .join(Cooperado, ListaEspera.cooperado_id == Cooperado.id)
-        .filter(Cooperado.ativo.is_(True))
-        .options(joinedload(ListaEspera.cooperado))
-        .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
-        .all()
-    )
+    # Cooperados ativos já foram carregados acima. Evitar JOIN redundante
+    # com a mesma tabela usado também pelo joinedload da fila.
+    cooperados_ativos_ids = {c.id for c in cooperados}
+    lista_espera = [
+        item for item in (
+            ListaEspera.query
+            .options(joinedload(ListaEspera.cooperado))
+            .order_by(ListaEspera.pos.asc(), ListaEspera.created_at.asc())
+            .all()
+        )
+        if item.cooperado_id in cooperados_ativos_ids
+    ]
     ids_em_fila = {it.cooperado_id for it in lista_espera if it.cooperado_id}
     cooperados_disponiveis = [c for c in cooperados if c.id not in ids_em_fila]
 
