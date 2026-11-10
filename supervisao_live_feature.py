@@ -551,12 +551,15 @@ def install(app_module):
 
     # Temporização passiva de SQL. Não captura SQL, parâmetros nem dados pessoais.
     # Só registra consultas de requisições já monitoradas.
-    @event.listens_for(db.engine, "before_cursor_execute")
+    with app.app_context():
+        _perf_sql_engine = db.engine
+
+    @event.listens_for(_perf_sql_engine, "before_cursor_execute")
     def _cx_perf_sql_start(conn, cursor, statement, parameters, context, executemany):
         if has_request_context() and getattr(g, "supervisao_perf_key", None):
             context._cx_perf_sql_at = time.perf_counter()
 
-    @event.listens_for(db.engine, "after_cursor_execute")
+    @event.listens_for(_perf_sql_engine, "after_cursor_execute")
     def _cx_perf_sql_finish(conn, cursor, statement, parameters, context, executemany):
         started = getattr(context, "_cx_perf_sql_at", None)
         if started is not None and has_request_context():
