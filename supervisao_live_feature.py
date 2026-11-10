@@ -517,6 +517,7 @@ def install(app_module):
         # As alterações de entrega e fila seguem acionando o contador.
         ignorar=(
             "/api/admin/live-state",
+            "/api/telemetria/navegador",
             "/socket.io",
             "/healthz",
             "/readyz",
@@ -552,14 +553,56 @@ def install(app_module):
     # Medição passiva, limitada e sem GPS, dados pessoais ou alterações de negócios.
     perf_samples = defaultdict(lambda: deque(maxlen=240))
     perf_lock = Lock()
+    # Ring buffer limitado por processo: sem GPS, IP, nome, IDs ou payload.
+    perf_events = deque(maxlen=180)
+    perf_browser = defaultdict(lambda: deque(maxlen=120))
+
+    def _perf_group(route):
+        p = route.lower()
+        if "pix-sicoob" in p or "pix-creditos" in p:
+            return "sicoob"
+        if "/fila/" in p or "fila_espera" in p:
+            return "fila"
+        if "/login" in p or p.endswith(" /"):
+            return "login"
+        if "/painel_cooperado" in p or "/cooperado/" in p:
+            return "cooperado"
+        if "/admin" in p or "/cadastrar_entrega" in p:
+            return "admin"
+        return "outros"
+
+    def _perf_reason(route, status, ms, browser=False):
+        if status >= 500:
+            return "Erro no servidor ou serviço externo; consultar logs."
+        if status in (408, 429):
+            return "Tempo esgotado ou limite de requisições."
+        if status >= 400:
+            return "Solicitação rejeitada (HTTP %s)." % status
+        if ms < 2500:
+            return "Dentro do limite de alerta."
+        if browser:
+            return "Demora percebida no navegador. Pode incluir rede, GPS e servidor; causa não isolada."
+        if _perf_group(route) == "sicoob":
+            return "Tempo elevado em operação Sicoob. Verificar timeout e resposta bancária nos logs."
+        return "Tempo elevado no processamento do servidor. Etapa exata ainda não identificada."
+
+    def _perf_push_event(source, key, ms, status):
+        if ms < 2500 and status < 500:
+            return
+        perf_events.appendleft({
+            "hora": datetime.utcnow().strftime("%H:%M:%S UTC"),
+            "origem": source, "rota": key, "grupo": _perf_group(key),
+            "tempo_ms": round(ms, 1), "http": status,
+            "motivo": _perf_reason(key,status,ms,source=="navegador")
+        })
 
     def _perf_route():
         path = request.path or ""
         method = request.method.upper()
-        if path in ("/admin", "/painel_cooperado", "/cadastrar_entrega"):
+        if path in ("/", "/login", "/admin", "/painel_cooperado", "/cadastrar_entrega"):
             return method + " " + path
         if path.startswith("/api/admin/") and not any(
-            x in path for x in ("/gps", "/live-state", "/localizacao", "/pix-led", "/performance")
+            x in path for x in ("/gps", "/live-state", "/localizacao", "/pix-led", "/performance", "/diagnostico-performance")
         ):
             return method + " " + str(request.url_rule.rule if request.url_rule else path)
         if path.startswith("/api/cooperado/") and not any(
@@ -587,7 +630,35 @@ def install(app_module):
             duration_ms = max(0, (time.perf_counter() - started) * 1000)
             with perf_lock:
                 perf_samples[key].append((duration_ms, response.status_code))
+                _perf_push_event("servidor", key, duration_ms, response.status_code)
         return response
+
+    @app.post("/api/telemetria/navegador")
+    def supervisao_perf_browser():
+        # Medição do tempo percebido, apenas sessões autenticadas.
+        if session.get("user_id") is None and not session.get("is_admin"):
+            return jsonify(ok=False), 403
+        data = request.get_json(silent=True) or {}
+        rota = str(data.get("rota") or "")[:100]
+        if not re.fullmatch(r"(?:GET|POST|PATCH|PUT|DELETE) /[a-zA-Z0-9_/<.>/-]*", rota):
+            return jsonify(ok=False), 400
+        try:
+            ms = float(data.get("tempo_ms"))
+        except (TypeError, ValueError):
+            return jsonify(ok=False), 400
+        if ms < 0 or ms > 180000:
+            return jsonify(ok=False), 400
+        try:
+            code = int(data.get("http") or 0)
+        except (ValueError, TypeError):
+            code = 0
+        grupo = _perf_group(rota)
+        if grupo not in ("fila","admin","cooperado","sicoob","login"):
+            return jsonify(ok=True)
+        with perf_lock:
+            perf_browser[rota].append((ms,code))
+            _perf_push_event("navegador", rota, ms, code)
+        return jsonify(ok=True)
 
     @app.get("/api/admin/diagnostico-performance")
     def supervisao_admin_performance():
@@ -602,6 +673,8 @@ def install(app_module):
 
         with perf_lock:
             snapshot = {key:list(values) for key, values in perf_samples.items()}
+            browser_snapshot = {key:list(values) for key, values in perf_browser.items()}
+            events_snapshot = list(perf_events)
         report=[]
         for name, entries in snapshot.items():
             durations = [sample[0] for sample in entries]
@@ -613,10 +686,22 @@ def install(app_module):
                 "max_ms":round(max(durations), 1),
                 "falhas":sum(1 for _,status in entries if status>=500)
             })
+        browser_report=[]
+        for name, entries in browser_snapshot.items():
+            durations=[x[0] for x in entries]
+            browser_report.append({
+                "rota": name, "amostras": len(entries),
+                "media_ms": round(sum(durations)/len(durations),1),
+                "p95_ms": percentile(durations,.95),
+                "max_ms": round(max(durations),1),
+                "falhas": sum(1 for _,status in entries if status>=500)
+            })
         report.sort(key=lambda item: item["p95_ms"], reverse=True)
-        response=jsonify(ok=True, total_rotas=len(report),
-                         medicao="servidor Flask; nao inclui rede/browser",
-                         amostras_por_rota=240, rotas=report)
+        browser_report.sort(key=lambda item: item["p95_ms"], reverse=True)
+        response=jsonify(ok=True,total_rotas=len(report),
+                         medicao="Tempos servidor e navegador medidos separadamente; memória local limitada",
+                         amostras_por_rota=240,rotas=report,
+                         navegador=browser_report,eventos=events_snapshot[:75])
         response.headers["Cache-Control"]="no-store, private"
         return response
 
