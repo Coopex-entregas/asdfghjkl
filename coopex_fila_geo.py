@@ -21,16 +21,31 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         item=ConfigSistema.query.filter_by(chave=chave).first()
         return (item.valor or '').strip() if item else ''
 
-    def base():
-        endereco=config('coopex_base_endereco')
+    # A configuração muda raramente. Consultar três chaves em uma operação.
+    # Apenas a consulta visual usa cache; a entrada valida a base atual do banco.
+    _base_cache = {'value': None, 'expires': 0.0}
+
+    def base(allow_cache=False):
+        import time
+        now = time.monotonic()
+        if allow_cache and now < _base_cache['expires']:
+            return _base_cache['value']
+        nomes = ('coopex_base_endereco', 'coopex_base_latitude', 'coopex_base_longitude')
+        rows = ConfigSistema.query.filter(ConfigSistema.chave.in_(nomes)).all()
+        values = {item.chave: (item.valor or '').strip() for item in rows}
+        endereco = values.get('coopex_base_endereco', '')
         try:
-            lat=float(config('coopex_base_latitude'))
-            lng=float(config('coopex_base_longitude'))
-        except (ValueError,TypeError):
-            return None
-        if not endereco or not isfinite(lat) or not isfinite(lng) or abs(lat)>90 or abs(lng)>180:
-            return None
-        return {'endereco':endereco,'latitude':lat,'longitude':lng,'raio_m':100}
+            lat = float(values.get('coopex_base_latitude', ''))
+            lng = float(values.get('coopex_base_longitude', ''))
+        except (ValueError, TypeError):
+            item = None
+        else:
+            item = ({'endereco': endereco, 'latitude': lat, 'longitude': lng, 'raio_m': 100}
+                    if endereco and isfinite(lat) and isfinite(lng) and abs(lat)<=90 and abs(lng)<=180
+                    else None)
+        _base_cache['value'] = item
+        _base_cache['expires'] = now + 30
+        return item
 
     def authorized():
         uid=session.get('user_id')
@@ -48,7 +63,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
     @app.get('/api/cooperado/fila/base')
     def coopex_fila_geo_base():
         if not authorized():return jsonify(ok=False,erro='Não autorizado'),403
-        item=base()
+        item=base(allow_cache=True)
         if not item:return jsonify(ok=False,configurada=False,erro='Base ainda não configurada no Admin → Certificado'),503
         return jsonify(ok=True,configurada=True,base={'endereco':item['endereco'],'latitude':item['latitude'],'longitude':item['longitude']})
 
