@@ -1890,6 +1890,18 @@ body.cx-modal-active{overflow:hidden!important}
     // Cache do dia atual tem validade curta; históricos concluídos são reutilizados.
     const deliveryCacheAt = new Map();
     const summaryCacheAt = new Map();
+    // Cache LRU curto em RAM: impede acumular centenas de filtros consultados
+    // ao longo do dia, sem afetar os dados oficiais ou as operações de escrita.
+    function cacheLimited(cache,times,key,value,maxEntries=10){
+      cache.delete(key);
+      cache.set(key,value);
+      if(times){times.delete(key);times.set(key,Date.now())}
+      while(cache.size>maxEntries){
+        const oldest=cache.keys().next().value;
+        cache.delete(oldest);
+        if(times)times.delete(oldest);
+      }
+    }
     function periodCacheValid(key, timestamp, params){
       if(!timestamp)return false;
       const today = params.get('fim') === todayISO || params.get('inicio') === todayISO;
@@ -2011,8 +2023,7 @@ body.cx-modal-active{overflow:hidden!important}
       const cacheKey = params.toString();
 
       if(Array.isArray(fallbackItems)){
-        summaryCache.set(cacheKey, fallbackItems);
-        summaryCacheAt.set(cacheKey,Date.now());
+        cacheLimited(summaryCache,summaryCacheAt,cacheKey,fallbackItems);
         updateSummaryFromItems(fallbackItems);
         return;
       }
@@ -2031,8 +2042,7 @@ body.cx-modal-active{overflow:hidden!important}
         const data = await response.json();
         if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível atualizar o resumo.');
         const items = data.items || [];
-        summaryCache.set(cacheKey, items);
-        summaryCacheAt.set(cacheKey,Date.now());
+        cacheLimited(summaryCache,summaryCacheAt,cacheKey,items);
         updateSummaryFromItems(items);
       }catch(error){
         if(error.name === 'AbortError') return;
@@ -2084,8 +2094,7 @@ body.cx-modal-active{overflow:hidden!important}
         const data = await response.json();
         if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível filtrar as entregas.');
         const items = data.items || [];
-        deliveryCache.set(cacheKey, items);
-        deliveryCacheAt.set(cacheKey,Date.now());
+        cacheLimited(deliveryCache,deliveryCacheAt,cacheKey,items);
         hydrateDeliveries(items);
         loadSummaryForCurrentFilters({
           useCache,
@@ -2518,7 +2527,9 @@ body.cx-modal-active{overflow:hidden!important}
       const response = await fetch(`{{ url_for('api_cooperado_graficos') }}?${params.toString()}`, {headers:{'Accept':'application/json'},cache:'no-store'});
       const data = await response.json();
       if(!response.ok || data.ok === false) throw new Error(data.error || 'Não foi possível carregar os gráficos.');
+      chartCache.delete(key);
       chartCache.set(key,data);
+      while(chartCache.size>6)chartCache.delete(chartCache.keys().next().value);
       return data;
     }
 
