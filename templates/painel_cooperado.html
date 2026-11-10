@@ -2059,6 +2059,9 @@ body.cx-modal-active{overflow:hidden!important}
       syncFilterUrl();
       const params = filterParams();
       const cacheKey = params.toString();
+      // Anular a busca anterior também quando o destino está em cache:
+      // uma resposta antiga nunca deve substituir a data recém-selecionada.
+      if(deliveryAbortController) deliveryAbortController.abort();
 
       if(useCache && deliveryCache.has(cacheKey) && periodCacheValid(cacheKey,deliveryCacheAt.get(cacheKey),params)){
         const cachedItems = deliveryCache.get(cacheKey);
@@ -2070,7 +2073,6 @@ body.cx-modal-active{overflow:hidden!important}
         return;
       }
 
-      if(deliveryAbortController) deliveryAbortController.abort();
       deliveryAbortController = new AbortController();
       // Preserve os registros visíveis durante a consulta; não bloquear filtros com tela de carregamento.
       if (!deliveries.length) deliveryList.innerHTML = '<div class="loading-state">Carregando entregas…</div>';
