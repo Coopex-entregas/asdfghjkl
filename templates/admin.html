@@ -465,7 +465,7 @@ function draw(){
  led.querySelector('.cx-led-count').textContent=exiting?'SAÍDA':entering?'ENTRADA':('PIX '+pix.length);
 }
 function queueExitSound(){
- if(!enabledSound||!audioContext)return;
+ if(!enabledSound||!audioContext||audioContext.state!=='running')return;
  try{
   if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
   const now=audioContext.currentTime;
@@ -481,7 +481,7 @@ function queueExitSound(){
  }catch(e){}
 }
 function queueEntrySound(){
- if(!enabledSound||!audioContext)return;
+ if(!enabledSound||!audioContext||audioContext.state!=='running')return;
  try{
   if(audioContext.state==='suspended')audioContext.resume().catch(()=>{});
   const now=audioContext.currentTime;
@@ -562,7 +562,14 @@ function connectQueueExitSocket(){
   window.dispatchEvent(new CustomEvent('coopex-led-fila',{detail:fila}));
   draw();
  });
- socket.on('connect',()=>{refreshQueue();window.dispatchEvent(new Event('coopex-led-socket-ready'))});
+ socket.on('connect',()=>{
+  // Garante a sala privada de alertas após toda reconexão, sem consultar o banco.
+  socket.emit('coopex_led_subscribe',ack=>{
+   if(!ack?.ok)console.warn('LED: inscrição em alertas administrativos não confirmada');
+  });
+  refreshQueue();
+  window.dispatchEvent(new Event('coopex-led-socket-ready'));
+ });
  socket.on('connect_error',err=>console.warn('LED realtime: aguardando conexão',err&&err.message));
 }
 
