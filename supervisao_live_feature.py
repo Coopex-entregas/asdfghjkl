@@ -527,6 +527,8 @@ def install(app_module):
             "/api/cooperado/gps/",
             "/api/admin/gps/",
             "/api/admin/pix-led",
+            "/api/admin/pix-creditos/",  # verificações de vendas/PIX não reconstroem a tabela de entregas
+            "/api/cliente/cotar-entrega",  # consulta de preço não altera entregas
             "/admin/pix-sicoob/",
             "/api/admin/supervisao/recado",
         )
