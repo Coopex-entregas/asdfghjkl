@@ -395,15 +395,13 @@ LIVE_SCRIPT = r"""
 
   function iniciar(){
     indicador();
-    portalChip('portal-credit-chip','CRÉDITO','credito');
-    portalModal();
-    loadPortalRequests(false);
-    setInterval(()=>{if(document.visibilityState==='visible')loadPortalRequests(false)},30000);
+    // O crédito é confirmado e lançado pelo fluxo Sicoob.
+    // Não consultar solicitações de crédito em polling nem criar alertas de crédito.
     verificar();
     setInterval(verificar,INTERVALO);
 
     document.addEventListener('visibilitychange',()=>{
-      if(document.visibilityState==='visible'){verificar();loadPortalRequests(false);}
+      if(document.visibilityState==='visible'){verificar();}
     });
 
     document.addEventListener('focusout',()=>{
