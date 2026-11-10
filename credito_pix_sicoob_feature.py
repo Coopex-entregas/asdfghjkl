@@ -84,6 +84,11 @@ def install(h):
     def reconcile(req,row):
         if row["status"]=="PAGO" and req.status=="aprovado":
             return True
+        # Registros CRIANDO, sem QR Code, cancelados ou já creditados
+        # não representam uma cobrança ativa para consultar no banco.
+        if (row["status"] != "PENDENTE" or not str(row["brcode"] or "").strip()
+                or row["credito_id"] or row["e2eid"] or req.status!="pendente"):
+            return False
         data,_=bank_call("GET","/cob/"+row["txid"])
         pix=data.get("pix") or []
         matches=[p for p in pix if p.get("endToEndId") and p.get("txid",row["txid"])==row["txid"]]
@@ -119,6 +124,16 @@ def install(h):
                 "t":matches[0].get("horario") or datetime.utcnow().isoformat(),
                 "c":credit.id,"sid":locked.id})
         db.session.commit()
+        # Notifica o administrador somente após a quitação ser gravada.
+        # Nenhuma outra página precisa consultar vendas em intervalos fixos.
+        try:
+            h.socketio.emit("coopex_credito_pago", {
+                "solicitacao_id": locked.id,
+                "cliente_nome": cli.nome,
+                "valor": float(n)
+            })
+        except Exception:
+            app.logger.warning("Aviso de crédito pago não emitido; pagamento já foi confirmado.",exc_info=True)
         return True
 
     @app.post("/api/cliente/pix-credito/<int:sid>/criar")
