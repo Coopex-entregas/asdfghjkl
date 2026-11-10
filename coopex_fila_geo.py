@@ -117,7 +117,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             return jsonify(ok=False,erro='Não foi possível entrar na fila.'),500
         # commit() já confirmou a gravação; não executar outro SELECT para
         # consultar o próprio registro. A posição vem do registro persistido.
-        response=jsonify(ok=True,entrou=True,posicao=row.pos)
+        response=jsonify(ok=True,entrou=True,posicao=max_pos+1)
         response.headers['Cache-Control']='no-store, private'
         return response
 
