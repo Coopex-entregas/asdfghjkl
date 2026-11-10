@@ -5,7 +5,14 @@ from flask import request, session, jsonify
 from sqlalchemy import text
 
 def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera):
+    _audit_schema_checked = False
+
     def ensure_schema():
+        # DDL por operação pode concorrer com outros requests e atrasar a fila.
+        # Uma vez conferida no processo, a tabela não precisa ser recriada a cada saída.
+        nonlocal _audit_schema_checked
+        if _audit_schema_checked:
+            return
         db.session.execute(text("""
             CREATE TABLE IF NOT EXISTS fila_saida_auditoria (
                 id SERIAL PRIMARY KEY,
@@ -16,6 +23,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
             )
         """))
         db.session.commit()
+        _audit_schema_checked = True
 
     def config(chave):
         item=ConfigSistema.query.filter_by(chave=chave).first()
