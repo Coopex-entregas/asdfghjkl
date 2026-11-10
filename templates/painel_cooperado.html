@@ -2922,7 +2922,7 @@ body.cx-modal-active{overflow:hidden!important}
 const $=id=>document.getElementById(id);
 const pos=$('queue-my-position'), people=$('queue-people'), hint=$('queue-location-status');
 const enter=$('queue-enter'), leave=$('queue-exit');
-let inQueue=false, base=null, offered=false, watchId=null, joining=false;
+let inQueue=false, base=null, offered=false, watchId=null, joining=false, lastQueueFix=null;
 const selfId=Number({{ cooperado_id|tojson }});
 function notice(t){if(hint)hint.textContent=t;}
 function paint(items){
@@ -2954,10 +2954,18 @@ function distance(lat1,lon1,lat2,lon2){
  return 6371000*2*Math.atan2(Math.sqrt(q),Math.sqrt(1-q));
 }
 function currentPosition(){
+ // A observação local de chegada já obteve GPS: reutilizar posição realmente recente.
+ // O servidor continua validando precisão <= 50 m e idade <= 30 segundos.
+ if(lastQueueFix && Date.now()-lastQueueFix.timestamp<=18000 &&
+    Number.isFinite(lastQueueFix.coords.accuracy) && lastQueueFix.coords.accuracy<=50){
+   return Promise.resolve(lastQueueFix);
+ }
  return new Promise((res,rej)=>{
   if(!navigator.geolocation){rej(Error('Este celular não oferece localização.'));return;}
-  navigator.geolocation.getCurrentPosition(res,e=>rej(Error('Ative a localização precisa e autorize o COOPEX no Android.')),
-   {enableHighAccuracy:true,maximumAge:10000,timeout:12000});
+  navigator.geolocation.getCurrentPosition(p=>{
+    lastQueueFix=p;res(p);
+  },e=>rej(Error('Ative a localização precisa e autorize o COOPEX no Android.')),
+   {enableHighAccuracy:true,maximumAge:15000,timeout:9000});
  });
 }
 async function join(){
@@ -3057,6 +3065,7 @@ function startArrivalWatch(){
  if(/COOPEXAndroid\//.test(navigator.userAgent))return;
  if(!navigator.geolocation||watchId!==null)return;
  watchId=navigator.geolocation.watchPosition(p=>{
+  if(p?.coords && Number.isFinite(p.coords.accuracy) && p.coords.accuracy<=50)lastQueueFix=p;
   if(!base||inQueue||offered||document.hidden)return;
   const c=p.coords;
   if(c.accuracy>50)return;
