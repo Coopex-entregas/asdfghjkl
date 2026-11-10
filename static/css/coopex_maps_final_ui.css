@@ -749,3 +749,248 @@ body #addressPanel.cx-directions-mode #cxRouteEditor #stopsList .cx-stop-line{
  body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry button{right:41px!important}
  body #addressPanel.cx-directions-mode #cxRouteEditor #stopsList{padding-right:38px!important}
 }
+
+
+/* CoopEX Maps — painéis Google v9 2026-11-10 */
+/* Apenas UI do painel lateral. A barra superior #cxTopControlDock e o mapa não são modificados. */
+body #addressPanel.cx-search-idle #cxUnifiedResults:not([hidden]),
+body #addressPanel.cx-search-idle.cx-search-history-open #cxUnifiedResults,
+body #addressPanel.cx-search-idle.cx-search-suggesting #cxUnifiedResults {
+ box-sizing:border-box!important;
+ background:linear-gradient(155deg,rgba(212,235,249,.86),rgba(225,242,252,.79))!important;
+ border:1px solid rgba(131,183,213,.48)!important;
+ border-radius:16px!important;
+ box-shadow:0 9px 25px rgba(10,56,91,.18),inset 0 1px rgba(255,255,255,.48)!important;
+ backdrop-filter:blur(20px) saturate(135%)!important;
+ -webkit-backdrop-filter:blur(20px) saturate(135%)!important;
+ padding:5px!important;overflow-x:hidden!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row,
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row .cx-drawer-hit{
+ box-sizing:border-box!important;
+ background:transparent!important;
+ border:0!important;
+ box-shadow:none!important;
+ border-radius:9px!important;
+ min-height:60px!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row{
+ border-bottom:1px solid rgba(72,122,159,.15)!important;
+ margin:0!important;padding:0!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row:last-child{
+ border-bottom:0!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row .cx-drawer-hit{
+ flex:1 1 auto!important;min-width:0!important;
+ padding:7px 8px!important;gap:10px!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-drawer-hit strong,
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row strong{
+ color:#123a59!important;opacity:1!important;font-size:13px!important;
+ line-height:1.35!important;font-weight:700!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-drawer-hit small,
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row small{
+ color:#466d88!important;opacity:1!important;font-size:11px!important;line-height:1.35!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-icon{
+ flex:0 0 34px!important;width:34px!important;height:34px!important;
+ border:1px solid rgba(45,146,179,.13)!important;
+ background:rgba(194,230,242,.7)!important;
+ color:#167e9e!important;box-shadow:none!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-clock{
+ background:rgba(218,231,239,.74)!important;color:#567184!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row .cx-history-edit,
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row button:not(.cx-drawer-hit){
+ color:#116b8c!important;box-shadow:none!important;
+}
+body #addressPanel.cx-search-idle #cxUnifiedResults .cx-history-row:hover{
+ background:rgba(255,255,255,.30)!important;
+}
+/* Rotas: preservar grade de ícones, dar mesmas medidas aos campos e simplificar superfícies. */
+body #addressPanel.cx-directions-mode .cx-drawer-content{
+ padding:8px 12px!important;gap:0!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor{
+ padding:3px 8px 9px!important;
+ gap:6px!important;
+ border:0!important;background:transparent!important;box-shadow:none!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints{
+ display:flex!important;flex-direction:column!important;
+ gap:8px!important;
+ padding:0 42px 0 0!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-origin-mount,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-destination-mount{
+ display:flex!important;align-items:center!important;
+ gap:6px!important;padding:0!important;margin:0!important;
+ min-height:44px!important;height:44px!important;max-height:44px!important;
+ flex:0 0 44px!important;width:100%!important;
+ border:0!important;background:transparent!important;box-shadow:none!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-waypoint-grip{
+ display:grid!important;place-items:center!important;
+ width:16px!important;min-width:16px!important;flex:0 0 16px!important;
+ margin:0!important;color:#bfd9ee!important;opacity:.78!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints>.cx-origin-mount::before,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-waypoint-dot{
+ display:grid!important;place-items:center!important;
+ position:static!important;inset:auto!important;
+ margin:0!important;width:18px!important;min-width:18px!important;flex:0 0 18px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints #cxRouteOrigin,
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-dest-row{
+ width:auto!important;flex:1 1 0!important;min-width:0!important;
+ box-sizing:border-box!important;
+ min-height:42px!important;height:42px!important;max-height:42px!important;
+ padding:5px 10px!important;margin:0!important;
+ background:rgba(43,98,143,.43)!important;
+ border:1px solid rgba(147,194,223,.42)!important;
+ border-radius:11px!important;
+ box-shadow:inset 0 1px rgba(240,250,255,.16)!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-dest-row{
+ display:flex!important;align-items:center!important;gap:5px!important;
+ padding:3px 4px 3px 10px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-dest-row>span:first-child{
+ display:none!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints .cx-dest-row input{
+ padding:5px 3px!important;
+ height:34px!important;min-height:34px!important;
+ border:0!important;background:transparent!important;box-shadow:none!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints #cxSwapRoute{
+ position:absolute!important;top:50%!important;right:0!important;left:auto!important;
+ transform:translateY(-50%)!important;
+ width:35px!important;min-width:35px!important;height:36px!important;min-height:36px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor #stopsList{
+ padding:0 42px 0 40px!important;margin:0!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry{
+ display:flex!important;align-items:center!important;
+ position:relative!important;margin:3px 0 0!important;
+ padding:0 42px 0 40px!important;min-height:43px!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry input{
+ flex:1 1 auto!important;width:100%!important;min-width:0!important;
+ height:42px!important;min-height:42px!important;
+ padding:7px 44px 7px 11px!important;
+ border-radius:11px!important;
+ background:rgba(43,98,143,.43)!important;
+ border:1px solid rgba(147,194,223,.42)!important;
+ box-shadow:none!important;
+}
+body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry button{
+ position:absolute!important;right:45px!important;top:4px!important;
+ height:35px!important;width:35px!important;min-height:35px!important;
+ border:1px solid rgba(147,194,223,.42)!important;
+ box-shadow:none!important;
+}
+body #addressPanel.cx-directions-mode .cx-route-summary{
+ margin:9px 9px 3px!important;padding:5px 0 7px!important;
+ border:0!important;border-bottom:1px solid rgba(171,210,233,.24)!important;
+ background:transparent!important;box-shadow:none!important;
+ font-size:13px!important;
+}
+/* Ficha de local: ocupa o painel, scroll interno, vidro suave e seções legíveis. */
+body #addressPanel.cx-place-view .cx-drawer-content{
+ padding:8px 10px!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails{
+ display:flex!important;flex-direction:column!important;
+ gap:8px!important;min-height:0!important;
+ flex:1 1 auto!important;
+ max-height:calc(100dvh - 85px)!important;
+ margin:3px 0 0!important;padding:11px!important;
+ overflow-y:auto!important;overflow-x:hidden!important;
+ background:linear-gradient(160deg,rgba(30,89,137,.52),rgba(7,44,86,.48))!important;
+ border:1px solid rgba(136,195,229,.31)!important;border-radius:14px!important;
+ box-shadow:inset 0 1px rgba(239,248,255,.20)!important;
+ backdrop-filter:blur(14px)!important;-webkit-backdrop-filter:blur(14px)!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-gallery{
+ min-height:0!important;flex:none!important;margin:0!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-gallery img,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hero-photo{
+ display:block!important;width:100%!important;max-width:100%!important;
+ height:190px!important;object-fit:cover!important;
+ border-radius:11px!important;border:0!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-title{
+ font-size:20px!important;line-height:1.25!important;
+ color:#fff!important;margin:0!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-address,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-state,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-credit,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-category{
+ color:#e2f1fb!important;opacity:1!important;
+ font-size:12px!important;line-height:1.45!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-overview{
+ display:flex!important;flex-wrap:wrap!important;gap:6px!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts{
+ display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;
+ position:static!important;gap:6px!important;
+ padding:4px 0!important;margin:2px 0 0!important;
+ background:transparent!important;box-shadow:none!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button{
+ min-width:0!important;height:47px!important;min-height:47px!important;
+ padding:5px 4px!important;
+ font-size:11px!important;
+ border-radius:10px!important;
+ border:1px solid rgba(125,189,226,.43)!important;
+ box-shadow:none!important;
+ background:rgba(39,99,149,.56)!important;color:#fff!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-shortcuts button.cx-place-directions{
+ background:linear-gradient(160deg,#177bd2,#1164af)!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-metadata{
+ display:flex!important;flex-direction:column!important;gap:0!important;
+ overflow:visible!important;max-height:none!important;
+ border:0!important;padding:0!important;margin:0!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-data,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-link{
+ display:block!important;visibility:visible!important;
+ padding:10px 3px!important;margin:0!important;
+ border:0!important;border-top:1px solid rgba(157,201,229,.24)!important;
+ color:#e9f6ff!important;font-size:12px!important;line-height:1.45!important;
+ text-decoration:none!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-link{
+ color:#99ddff!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours{
+ display:block!important;visibility:visible!important;
+ padding:10px!important;margin:6px 0 0!important;
+ border:1px solid rgba(154,201,229,.38)!important;
+ border-radius:11px!important;background:rgba(35,92,143,.47)!important;
+ box-shadow:none!important;color:#f6fbff!important;
+}
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours summary,
+body #addressPanel.cx-place-view #cxPlaceDetails .cx-place-hours *{
+ color:#f6fbff!important;
+}
+body #cxWeatherWeek .cx-week-title strong,
+body.cx-night-google #cxWeatherWeek .cx-week-title strong{
+ color:#fff!important;opacity:1!important;
+}
+@media(max-width:650px){
+ body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry{padding-right:38px!important}
+ body #addressPanel.cx-directions-mode #cxRouteEditor #cxStopEntry button{right:41px!important}
+ body #addressPanel.cx-directions-mode #cxRouteEditor #stopsList{padding-right:38px!important}
+ body #addressPanel.cx-directions-mode #cxRouteEditor .cx-waypoints{padding-right:38px!important}
+}
