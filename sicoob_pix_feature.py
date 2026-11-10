@@ -705,12 +705,17 @@ async function load(reconcile=true){
   if(!due)return;
   const key=due.tipo+':'+due.uid;
   pixAutoCheckedAt.set(key,now); // Até em caso de timeout, não repetir imediatamente.
+  let confirmado=false;
   try{
-   await post((due.tipo==='Crédito'?'/api/admin/pix-creditos/'+encodeURIComponent(due.uid)+'/verificar':'/admin/pix-sicoob/'+(due.tipo==='Entrega'?'verificar/':'avulso/'+encodeURIComponent(due.uid)+'/verificar')+(due.tipo==='Entrega'?encodeURIComponent(due.uid):'')));
+   const verificacao=await post((due.tipo==='Crédito'?'/api/admin/pix-creditos/'+encodeURIComponent(due.uid)+'/verificar':'/admin/pix-sicoob/'+(due.tipo==='Entrega'?'verificar/':'avulso/'+encodeURIComponent(due.uid)+'/verificar')+(due.tipo==='Entrega'?encodeURIComponent(due.uid):'')));
+   confirmado=verificacao?.pago===true || ['PAGO','APROVADO'].includes(String(verificacao?.status||'').toUpperCase());
   }catch(e){console.warn('Conferência Sicoob pendente; nova tentativa posterior:',e)}
-  // Buscar novamente somente depois de uma verificação efetiva.
-  const refreshed=await fetch('/admin/pix-sicoob/historico/dados',{credentials:'same-origin',cache:'no-store'});
-  if(refreshed.ok){items=(await refreshed.json()).cobrancas||[];display()}
+  // Se permanece pendente, os dados exibidos já estão atualizados; não repetir o GET.
+  // Quando confirmado, atualizar imediatamente a listagem e o estado de pagamento.
+  if(confirmado){
+   const refreshed=await fetch('/admin/pix-sicoob/historico/dados',{credentials:'same-origin',cache:'no-store'});
+   if(refreshed.ok){items=(await refreshed.json()).cobrancas||[];display()}
+  }
  }catch(e){el('summary').textContent=e.message}
  finally{busy=false}
 }
