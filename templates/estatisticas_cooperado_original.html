@@ -1031,5 +1031,171 @@ body:not(.dark-mode) #cxExpOpen{font-size:12px!important;padding:8px 10px!import
 })();
 </script>
 
+
+<style id="coopex-health-dashboard-v1">
+.cx-health{--ch-ink:#17325d;--ch-line:#b9cee98a;--ch-glass:linear-gradient(140deg,rgba(251,254,255,.96),rgba(221,235,255,.72));margin:16px 0 28px;color:var(--ch-ink)}
+.cx-health *{box-sizing:border-box}
+.cx-health-head{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin:0 0 16px}
+.cx-health-head h3{margin:0;font-size:23px;letter-spacing:-.7px;font-weight:850;color:inherit}
+.cx-health-head p{margin:4px 0 0;font-size:12px;opacity:.75}
+.cx-health-btn{cursor:pointer;border:1px solid #a7c3ed;background:linear-gradient(145deg,#ffffffdb,#dceafeae);color:#144aa1;box-shadow:0 5px 15px #103b7116,inset 0 1px 2px #fff;padding:9px 13px;border-radius:12px;font:750 12px system-ui}
+.cx-health-btn:disabled{opacity:.55}
+.cx-health-gauges{display:grid;grid-template-columns:repeat(auto-fit,minmax(172px,1fr));gap:13px}
+.cx-health-gauge{border:1px solid var(--ch-line);border-radius:23px;background:var(--ch-glass);box-shadow:0 11px 28px #113c7620,inset 0 2px 3px #fff9;padding:17px 9px 14px;text-align:center;min-width:0}
+.cx-health-gauge h4{font-size:13px;font-weight:850;margin:0;color:inherit}
+.cx-health-dial{position:relative;width:148px;height:130px;margin:10px auto 0;display:grid;place-items:center}
+.cx-health-dial:before{content:"";position:absolute;width:127px;height:127px;border-radius:50%;background:conic-gradient(from 225deg,var(--dial-color,#9aaecb) 0deg,var(--dial-color,#9aaecb) var(--dial-deg,0deg),#c0cedd5b var(--dial-deg,0deg),#c0cedd5b 270deg,transparent 270deg 360deg);box-shadow:inset 0 3px 6px #11346f26,0 2px 8px #fff}
+.cx-health-dial:after{content:"";position:absolute;width:94px;height:94px;border-radius:50%;background:var(--ch-glass);box-shadow:inset 0 2px 4px #fff8,0 2px 9px #123f7820}
+.cx-health-value{position:relative;z-index:1;font-size:27px;font-weight:900;letter-spacing:-.9px;font-variant-numeric:tabular-nums;margin-top:-8px}
+.cx-health-unit{position:absolute;z-index:2;top:77px;font-size:10px;opacity:.7;font-weight:750}
+.cx-health-rating{font-size:11px;font-weight:850;margin-top:-8px}
+.cx-health-meta{font-size:10px;opacity:.7;margin-top:6px}
+.cx-health-pane{margin-top:15px;background:var(--ch-glass);border:1px solid var(--ch-line);border-radius:19px;box-shadow:0 9px 24px #103a7613;padding:16px}
+.cx-health-pane h4{font-weight:850;font-size:15px;color:inherit;margin:0 0 8px}
+.cx-health-table-scroll{overflow:auto;max-height:390px}
+.cx-health table{width:100%;border-collapse:collapse;font-size:12px;min-width:660px}
+.cx-health th,.cx-health td{text-align:left;padding:10px 8px;border-bottom:1px solid #aec4e65b;vertical-align:top;color:inherit}
+.cx-health th{font-size:11px;font-weight:850;position:sticky;top:0;background:#e8f1ff}
+.cx-health .cx-slow{color:#c03a35;font-weight:850}.cx-health .cx-warn{color:#aa7400;font-weight:850}
+.cx-health-note{font-size:11px;line-height:1.6;opacity:.78}
+body.dark-mode .cx-health{--ch-ink:#e7f2ff;--ch-line:#81a8d03b;--ch-glass:linear-gradient(145deg,rgba(23,46,77,.94),rgba(17,36,64,.86))}
+body.dark-mode .cx-health th{background:#1d3555}
+body.dark-mode .cx-health-btn{background:#243e61;color:#dceeff;border-color:#56789e}
+@media(max-width:600px){.cx-health-gauges{grid-template-columns:repeat(2,minmax(0,1fr));gap:9px}.cx-health-gauge{padding:13px 5px}.cx-health-dial{transform:scale(.87);margin:0 auto -7px}}
+</style>
+<script id="coopex-health-dashboard-script-v1">
+(function(){
+'use strict';
+let mounted=false,loading=false,lastData=null,interval=null;
+const areas=[
+ ['admin','Administrador'],['cooperado','Cooperado'],['fila','Fila'],
+ ['login','Login'],['sicoob','Sicoob']
+];
+function category(route){
+ const p=String(route||'').toLowerCase();
+ if(/pix-sicoob|pix-creditos/.test(p))return 'sicoob';
+ if(/\/fila\//.test(p))return 'fila';
+ if(/\/login|\s\/$/.test(p))return 'login';
+ if(/painel_cooperado|\/cooperado\//.test(p))return 'cooperado';
+ if(/\/admin|cadastrar_entrega/.test(p))return 'admin';
+ return 'outros';
+}
+function td(text,klass){const e=document.createElement('td');e.textContent=text==null?'—':String(text);if(klass)e.className=klass;return e}
+function fmt(ms){return Number.isFinite(Number(ms))?(Number(ms)>=1000?(Number(ms)/1000).toFixed(2)+' s':Math.round(ms)+' ms'):'—'}
+function state(ms,n){
+ if(!n)return {word:'Aguardando medições',color:'#90a5bf',level:0};
+ if(ms<=1000)return {word:'Bom',color:'#11a477',level:Math.min(1,ms/800)*.3};
+ if(ms<=3000)return {word:'Atenção',color:'#e1a322',level:.3+(ms-1000)/2000*.35};
+ return {word:ms>=8000?'Crítico':'Lento',color:'#e34a54',level:Math.min(1,.65+(ms-3000)/12000*.35)};
+}
+function makeGauge(group,label){
+ const el=document.createElement('article');el.className='cx-health-gauge';el.dataset.group=group;
+ const h=document.createElement('h4');h.textContent=label;el.append(h);
+ const dial=document.createElement('div');dial.className='cx-health-dial';
+ const value=document.createElement('div');value.className='cx-health-value';value.textContent='—';
+ const unit=document.createElement('div');unit.className='cx-health-unit';unit.textContent='p95 do servidor';dial.append(value,unit);
+ const rate=document.createElement('div');rate.className='cx-health-rating';rate.textContent='Aguardando';
+ const meta=document.createElement('div');meta.className='cx-health-meta';meta.textContent='0 medições';
+ el.append(dial,rate,meta);return el;
+}
+function buildTable(parent,title,heads){
+ const p=document.createElement('section');p.className='cx-health-pane';
+ const h=document.createElement('h4');h.textContent=title;p.appendChild(h);
+ const sc=document.createElement('div');sc.className='cx-health-table-scroll';
+ const t=document.createElement('table');const thead=document.createElement('thead');const tr=document.createElement('tr');
+ heads.forEach(x=>{const th=document.createElement('th');th.textContent=x;tr.append(th)});
+ thead.append(tr);const tbody=document.createElement('tbody');t.append(thead,tbody);sc.append(t);p.append(sc);parent.append(p);return tbody;
+}
+function paint(data){
+ lastData=data;
+ const rows=[...(data.rotas||[])];
+ for(const [group] of areas){
+   const el=document.querySelector('.cx-health-gauge[data-group="'+group+'"]');if(!el)continue;
+   const found=rows.filter(x=>category(x.rota)===group);
+   const count=found.reduce((n,x)=>n+Number(x.amostras||0),0);
+   const worst=found.length?Math.max(...found.map(x=>Number(x.p95_ms||0))):null;
+   const st=state(worst,count);
+   el.querySelector('.cx-health-value').textContent=count?fmt(worst):'—';
+   el.querySelector('.cx-health-rating').textContent=st.word;
+   el.querySelector('.cx-health-rating').style.color=st.color;
+   el.querySelector('.cx-health-meta').textContent=count+' requisições · '+found.length+' operações';
+   el.querySelector('.cx-health-dial').style.setProperty('--dial-color',st.color);
+   el.querySelector('.cx-health-dial').style.setProperty('--dial-deg',Math.round(st.level*270)+'deg');
+ }
+ const server=document.getElementById('cx-health-server-body');server.replaceChildren();
+ for(const r of rows.slice(0,35)){
+   const tr=document.createElement('tr');
+   tr.append(td(r.rota),td(r.amostras),td(fmt(r.media_ms)),td(fmt(r.p95_ms),r.p95_ms>3000?'cx-slow':r.p95_ms>1000?'cx-warn':''),td(fmt(r.max_ms)),td(r.falhas));
+   server.append(tr)
+ }
+ const browser=document.getElementById('cx-health-browser-body');browser.replaceChildren();
+ for(const r of (data.navegador||[]).slice(0,30)){
+   const tr=document.createElement('tr');tr.append(td(r.rota),td(r.amostras),td(fmt(r.media_ms)),td(fmt(r.p95_ms),r.p95_ms>3000?'cx-slow':''),td(r.falhas));browser.append(tr)
+ }
+ const events=document.getElementById('cx-health-events-body');events.replaceChildren();
+ for(const e of (data.eventos||[])){
+   const tr=document.createElement('tr');
+   tr.append(td(e.hora),td(e.origem),td(e.rota),td(fmt(e.tempo_ms),e.tempo_ms>8000?'cx-slow':'cx-warn'),td(e.http),td(e.motivo));
+   events.append(tr)
+ }
+ for(const [id,body] of [['cx-health-server-body',server],['cx-health-browser-body',browser],['cx-health-events-body',events]]){
+   if(!body.children.length){const row=document.createElement('tr');const cell=td('Ainda não há amostras suficientes.');cell.colSpan=id==='cx-health-events-body'?6:id==='cx-health-server-body'?6:5;row.append(cell);body.append(row)}
+ }
+ document.getElementById('cx-health-updated').textContent='Atualizado às '+new Date().toLocaleTimeString('pt-BR');
+}
+async function refresh(){
+ if(loading||document.hidden)return;
+ const panel=document.getElementById('dashboard-panel-configuracoes');
+ if(!panel?.classList.contains('active'))return;
+ loading=true;const button=document.getElementById('cx-health-refresh');if(button)button.disabled=true;
+ try{
+   const r=await fetch('/api/admin/diagnostico-performance',{credentials:'same-origin',cache:'no-store'});
+   if(!r.ok)throw new Error('HTTP '+r.status);
+   const data=await r.json();
+   if(!data.ok)throw new Error('Dados indisponíveis');
+   paint(data);
+ }catch(e){document.getElementById('cx-health-updated').textContent='Falha ao consultar medições: '+e.message}
+ finally{loading=false;if(button)button.disabled=false}
+}
+function init(){
+ if(mounted)return;
+ const panel=document.getElementById('dashboard-panel-configuracoes');
+ if(!panel)return;
+ mounted=true;
+ const box=document.createElement('section');box.className='cx-health';
+ const head=document.createElement('div');head.className='cx-health-head';
+ const summary=document.createElement('div');
+ const title=document.createElement('h3');title.textContent='Saúde do Sistema';
+ const desc=document.createElement('p');desc.textContent='Medidores reais de desempenho · Admin, cooperado, fila e banco Sicoob';
+ summary.append(title,desc);
+ const controls=document.createElement('div');
+ const updated=document.createElement('span');updated.id='cx-health-updated';updated.className='cx-health-note';updated.textContent='Aguardando leitura';
+ const button=document.createElement('button');button.type='button';button.className='cx-health-btn';button.id='cx-health-refresh';button.textContent='Atualizar medições';button.onclick=refresh;
+ controls.append(updated,' ',button);head.append(summary,controls);box.append(head);
+ const gauges=document.createElement('div');gauges.className='cx-health-gauges';
+ areas.forEach(([g,name])=>gauges.append(makeGauge(g,name)));box.append(gauges);
+ buildTable(box,'Operações no servidor',['Operação','Amostras','Média','p95','Máximo','Erros']).id='cx-health-server-body';
+ buildTable(box,'Tempo percebido no navegador',['Operação','Amostras','Média','p95','Erros']).id='cx-health-browser-body';
+ buildTable(box,'Ocorrências lentas e motivo identificado',['Horário','Origem','Operação','Duração','HTTP','Motivo / evidência']).id='cx-health-events-body';
+ const note=document.createElement('p');note.className='cx-health-note';
+ note.textContent='p95 = 95% das medições ficaram nesse tempo ou abaixo. Histórico limitado à memória do servidor, reinicia após deploy. A medição de navegador inclui rede e não comprova a causa. Erros e operações lentas exibem motivo evidenciado ou etapa ainda desconhecida. Coleta passiva; sem dados de cooperados e sem coordenadas.';
+ box.append(note);
+ const titlePanel=panel.querySelector('.dashboard-panel-title');
+ if(titlePanel)titlePanel.insertAdjacentElement('afterend',box);else panel.prepend(box);
+ document.querySelectorAll('.dashboard-tab-button[data-tab="configuracoes"]').forEach(btn=>btn.addEventListener('click',()=>setTimeout(refresh,80)));
+ interval=setInterval(refresh,15000);refresh();
+}
+function start(){
+ init();
+ if(!mounted){
+  let tries=0;
+  const timer=setInterval(()=>{init();if(mounted||++tries>=25)clearInterval(timer)},300);
+ }
+}
+if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',()=>setTimeout(start,100),{once:true});
+else setTimeout(start,100);
+})();
+</script>
+
 </body>
 </html>
