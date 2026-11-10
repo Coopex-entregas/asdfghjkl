@@ -467,6 +467,36 @@ body.modo-vendedor .seller-topbar-compact{
 #pixResult .coopex-pix-instruction{border-radius:10px!important;background:#eaf4ff!important;color:#123e7b!important;text-align:center!important;padding:11px!important}
 @media(max-width:540px){ #pixResult.show{padding:9px!important}#pixResult .coopex-pix-brand{gap:8px!important;padding:9px!important}#pixResult .coopex-pix-bank{padding-left:8px}#pixResult .coopex-pix-brand strong{font-size:11px!important}#pixResult .coopex-pix-brand span{font-size:10px!important}#pixResult textarea{font-size:11px!important;padding:9px!important}}
 </style>
+
+<style id="coopex-cliente-glass-compact-v3">
+:root{--bg:#e9f3fa;--card:rgba(227,243,253,.78);--line:rgba(130,178,218,.38);--shadow:0 9px 26px rgba(13,60,110,.10),inset 0 1px rgba(255,255,255,.65)}
+html,body{background:linear-gradient(140deg,#edf5fc,#dfedf8 57%,#f0f7fc)!important;color:#173354!important}
+.app{max-width:1740px!important;padding:12px 15px!important}
+.top{border-radius:16px!important;padding:9px 16px!important;margin-bottom:11px!important;min-height:54px!important;background:rgba(240,249,255,.82)!important;box-shadow:var(--shadow)!important;backdrop-filter:blur(14px)!important}
+.brand strong{font-size:17px!important;letter-spacing:-.3px!important}
+.layout{grid-template-columns:196px minmax(0,1fr)!important;gap:12px!important}
+.side{border-radius:16px!important;background:rgba(224,240,251,.69)!important;box-shadow:var(--shadow)!important;backdrop-filter:blur(18px)!important;padding:9px!important}
+.nav{height:42px!important;border-radius:11px!important;margin:2px 0!important;font-size:12px!important}
+.nav.active{background:rgba(20,100,199,.13)!important;box-shadow:inset 3px 0 #0d5bdf!important}
+.hero{padding:14px 18px!important;border-radius:17px!important;grid-template-columns:minmax(0,1fr) minmax(180px,270px)!important;gap:12px!important;box-shadow:0 10px 22px rgba(13,71,167,.17),inset 0 1px rgba(255,255,255,.27)!important}
+.hero h2{font-size:17px!important}.hero .desc{font-size:11px!important}
+.balance{font-size:32px!important;margin:5px 0 2px!important}
+.balance-msg,.balance-label{font-size:11px!important}
+.hero-actions{gap:6px!important}.hero-btn{height:41px!important;border-radius:11px!important;font-size:12px!important;padding:0 13px!important}
+.steps{gap:11px!important;align-items:stretch!important}
+.step-card{background:linear-gradient(150deg,rgba(247,252,255,.83),rgba(217,238,252,.72))!important;border:1px solid rgba(125,179,217,.33)!important;border-radius:16px!important;box-shadow:var(--shadow)!important;backdrop-filter:blur(18px) saturate(125%)!important;padding:13px!important;min-height:0!important}
+.step-head{gap:8px!important;margin-bottom:10px!important}.num{width:30px!important;height:30px!important;font-size:13px!important}.step-head h3{font-size:14px!important}.step-head p{font-size:10px!important;margin-top:2px!important}
+.fields{gap:8px!important;align-content:start!important}.field label{font-size:10px!important;margin-bottom:4px!important}.input,.select,.textarea{min-height:39px!important;border-radius:10px!important;background:rgba(255,255,255,.8)!important;padding:0 10px!important;font-size:12px!important;border-color:rgba(125,173,209,.45)!important}
+.textarea{min-height:69px!important;padding:9px!important}
+.fixed-note{padding:8px 10px!important;font-size:10px!important;line-height:1.4!important}
+.order-bar{position:sticky!important;bottom:7px!important;margin-top:10px!important;background:rgba(224,241,252,.94)!important;backdrop-filter:blur(18px)!important;border-color:rgba(129,181,219,.38)!important;box-shadow:0 8px 24px rgba(12,54,108,.16)!important;border-radius:14px!important;padding:9px 12px!important;min-height:66px!important}
+.estimate{min-width:0!important}.estimate small{font-size:10px!important}.estimate strong{font-size:22px!important}
+#estimateSource{font-size:10px!important;line-height:1.3!important;max-width:580px!important;overflow-wrap:anywhere!important}
+#sendOrder{height:43px!important;min-width:150px!important;font-size:13px!important;border-radius:11px!important}
+#sendOrder:disabled{opacity:.68!important;cursor:progress!important}
+@media(max-width:960px){.app{padding:8px!important}.layout{grid-template-columns:1fr!important}.side{position:static!important;display:flex!important;flex-wrap:wrap!important;gap:3px!important}.nav{width:auto!important;flex:1 1 100px!important;margin:0!important}.hero{grid-template-columns:minmax(0,1fr) minmax(135px,220px)!important}}
+@media(max-width:650px){.top{padding:9px!important}.hero{grid-template-columns:1fr!important}.hero-actions{flex-direction:row!important}.hero-btn{flex:1!important;min-width:0!important;font-size:11px!important}.steps{grid-template-columns:1fr!important}.step-card{padding:12px!important}.fields{grid-template-columns:1fr 1fr!important}.order-bar{bottom:4px!important;gap:7px!important}.estimate strong{font-size:18px!important}#sendOrder{min-width:118px!important;padding:0 10px!important;font-size:11px!important}}
+</style>
 </head>
 <body>
 <div class="app">
@@ -1353,8 +1383,55 @@ function scheduleFixedCollectionSave(){
 });
 
 $('pedidoPagamento').onchange=()=>{$('cashWrap').style.display=$('pedidoPagamento').value==='dinheiro'?'block':'none'};
-let qt;function scheduleQuote(){clearTimeout(qt);qt=setTimeout(quote,350)}['coletaEndereco','coletaBairro','coletaReferencia','entregaEndereco','entregaBairro'].forEach(id=>$(id).addEventListener('input',scheduleQuote));$('pedidoTipo').onchange=scheduleQuote;$('pedidoRetorno').onchange=scheduleQuote;
-async function quote(){const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();if(!ob||!db){$('estimate').textContent='Informe o bairro';$('estimateSource').textContent='';return null}const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};const j=await api(API.cotar,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});if(!j?.ok)return null;if(!j.valor_a_informar && j.preco!==null && j.preco!==undefined){j.preco=Math.ceil(Number(j.preco)-1e-9)}$('estimate').textContent=j.valor_a_informar?'A confirmar':money(j.preco);$('estimateSource').textContent=j.origem_preco==='tabela'?'Valor conforme tabela de bairros':'Bairro sem valor cadastrado — a supervisão informará o preço';return j}
+let qt,quoteSerial=0,quoteController=null;
+function scheduleQuote(){
+ clearTimeout(qt);
+ qt=setTimeout(()=>{quote().catch(e=>console.warn('Cotação',e));},380);
+}
+['coletaEndereco','coletaBairro','coletaReferencia','entregaEndereco','entregaBairro'].forEach(id=>$(id).addEventListener('input',scheduleQuote));
+$('pedidoTipo').onchange=scheduleQuote;
+$('pedidoRetorno').onchange=scheduleQuote;
+async function quote(){
+ const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();
+ if(!ob||!db){
+  quoteSerial++;
+  if(quoteController)quoteController.abort();
+  $('estimate').textContent=!ob?'Informe a coleta':'Informe o destino';
+  $('estimateSource').textContent='O preço será calculado pela tabela COOPEX assim que informar os dois bairros.';
+  return null;
+ }
+ const serial=++quoteSerial;
+ if(quoteController)quoteController.abort();
+ quoteController=new AbortController();
+ $('estimate').textContent='Calculando…';
+ $('estimateSource').textContent='Consultando preços cadastrados de '+ob+' para '+db+'.';
+ const p={tipo:$('pedidoTipo').value,retorno:$('pedidoRetorno').checked,
+  coleta:{endereco:$('coletaEndereco').value,bairro:ob,ref:$('coletaReferencia').value},
+  entrega:{endereco:$('entregaEndereco').value,bairro:db,ref:$('entregaReferencia').value},paradas:[]};
+ try{
+  const resp=await fetch(API.cotar,{method:'POST',credentials:'same-origin',cache:'no-store',
+    headers:{'Content-Type':'application/json','Accept':'application/json'},
+    body:JSON.stringify(p),signal:quoteController.signal});
+  const j=await resp.json().catch(()=>null);
+  if(serial!==quoteSerial)return null;
+  if(!resp.ok||!j?.ok)throw Error(j?.erro||j?.error||'Falha ao consultar a tabela.');
+  if(!j.valor_a_informar && j.preco!==null && j.preco!==undefined && Number.isFinite(Number(j.preco))){
+    j.preco=Math.ceil(Number(j.preco)-1e-9);
+    $('estimate').textContent=money(j.preco);
+    $('estimateSource').textContent='Preço conforme tabela COOPEX: '+ob+' → '+db+'.';
+  }else{
+    $('estimate').textContent='A confirmar';
+    $('estimateSource').textContent='Esta combinação ('+ob+' → '+db+') não tem tarifa cadastrada. A supervisão definirá o valor; pedidos por Pix ou dinheiro podem ser enviados.';
+  }
+  return j;
+ }catch(e){
+  if(e.name==='AbortError'||serial!==quoteSerial)return null;
+  $('estimate').textContent='Consulta indisponível';
+  $('estimateSource').textContent='Não foi possível consultar a tabela agora. Tente novamente ou solicite por Pix/dinheiro com valor a confirmar.';
+  console.warn('Cotação COOPEX:',e);
+  return null;
+ }
+}
 $('sendOrder').onclick=async()=>{
   const btn=$('sendOrder');
   if(btn.disabled)return;
@@ -1366,13 +1443,14 @@ $('sendOrder').onclick=async()=>{
   const originalText=btn.textContent;
   btn.textContent='Enviando pedido...';
   try{
-    // O cadastro automático do endereço não pode bloquear a solicitação.
-    // O próprio pedido já contém os dados completos da coleta.
-    try{await saveFixedCollection(true)}catch(e){console.warn('Não foi possível atualizar o endereço fixo:',e)}
-    // Cotação é auxiliar. Se falhar, o servidor ainda valida o pedido.
-    let q=null;
-    try{q=await quote()}catch(e){console.warn('Cotação indisponível:',e)}
-    if(pay==='credito'&&q?.valor_a_informar){toast('O bairro está sem valor cadastrado. A supervisão precisa informar o preço antes de usar crédito.');return}
+    // Não bloquear o pedido com gravação do endereço nem uma nova cotação.
+    // O servidor recalcula obrigatoriamente o preço com a tabela atual.
+    const ob=$('coletaBairro').value.trim(),db=$('entregaBairro').value.trim();
+    if(pay==='credito' && ($('estimate').textContent==='A confirmar' || $('estimate').textContent==='Consulta indisponível')){
+      toast('Não é possível debitar crédito sem tarifa definida. Escolha Pix ou Dinheiro para enviar com valor a confirmar.');
+      $('pedidoPagamento').focus();
+      return;
+    }
     const p={cliente_nome:$('clienteNome').value,cliente_whatsapp:$('clienteWhatsapp').value,tipo:$('pedidoTipo').value,pagamento:pay,recebe_dinheiro_em:pay==='dinheiro'?$('recebeDinheiro').value:'',obs:$('obs').value,retorno:$('pedidoRetorno').checked,coleta:{endereco:$('coletaEndereco').value,bairro:$('coletaBairro').value,ref:$('coletaReferencia').value,contato:$('coletaContato').value,telefone:$('coletaTelefone').value},entrega:{endereco:$('entregaEndereco').value,bairro:$('entregaBairro').value,ref:$('entregaReferencia').value,contato:$('entregaContato').value,telefone:$('entregaTelefone').value}};
     const response=await fetch(API.pedido,{method:'POST',credentials:'same-origin',headers:{'Content-Type':'application/json'},body:JSON.stringify(p)});
     const j=await response.json().catch(()=>null);
