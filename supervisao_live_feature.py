@@ -9,9 +9,12 @@
 """
 
 import re
+import time
+from collections import defaultdict, deque
+from threading import Lock
 from datetime import datetime
 
-from flask import jsonify, request, session
+from flask import g, jsonify, request, session
 from sqlalchemy import text
 
 
@@ -542,6 +545,78 @@ def install(app_module):
         except Exception as exc:
             app.logger.warning("Falha no Supervisão ao vivo: %s",exc)
             return jsonify(ok=False,error="live-state indisponível"),503
+
+    # supervisao_performance_metrics_v1
+    # Medição passiva, limitada e sem GPS, dados pessoais ou alterações de negócios.
+    perf_samples = defaultdict(lambda: deque(maxlen=240))
+    perf_lock = Lock()
+
+    def _perf_route():
+        path = request.path or ""
+        method = request.method.upper()
+        if path in ("/admin", "/painel_cooperado", "/cadastrar_entrega"):
+            return method + " " + path
+        if path.startswith("/api/admin/") and not any(
+            x in path for x in ("/gps", "/live-state", "/localizacao", "/pix-led", "/performance")
+        ):
+            return method + " " + str(request.url_rule.rule if request.url_rule else path)
+        if path.startswith("/api/cooperado/") and not any(
+            x in path for x in ("/gps", "/presenca", "/localizacao")
+        ):
+            return method + " " + str(request.url_rule.rule if request.url_rule else path)
+        if (path.startswith("/cooperado/") or path.startswith("/admin/")) and not any(
+            x in path for x in ("/gps", "/localizacao", "/rastreio")
+        ):
+            return method + " " + str(request.url_rule.rule if request.url_rule else path)
+        return None
+
+    @app.before_request
+    def supervisao_perf_begin():
+        key = _perf_route()
+        if key is not None:
+            g.supervisao_perf_key = key
+            g.supervisao_perf_started = time.perf_counter()
+
+    @app.after_request
+    def supervisao_perf_complete(response):
+        started = getattr(g, "supervisao_perf_started", None)
+        key = getattr(g, "supervisao_perf_key", None)
+        if key is not None and started is not None:
+            duration_ms = max(0, (time.perf_counter() - started) * 1000)
+            with perf_lock:
+                perf_samples[key].append((duration_ms, response.status_code))
+        return response
+
+    @app.get("/api/admin/diagnostico-performance")
+    def supervisao_admin_performance():
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+
+        def percentile(values, q):
+            if not values:
+                return None
+            ordered = sorted(values)
+            return round(ordered[min(len(ordered)-1, int((len(ordered)-1)*q))], 1)
+
+        with perf_lock:
+            snapshot = {key:list(values) for key, values in perf_samples.items()}
+        report=[]
+        for name, entries in snapshot.items():
+            durations = [sample[0] for sample in entries]
+            report.append({
+                "rota":name, "amostras":len(entries),
+                "media_ms":round(sum(durations)/len(durations), 1),
+                "mediana_ms":percentile(durations, .50),
+                "p95_ms":percentile(durations, .95),
+                "max_ms":round(max(durations), 1),
+                "falhas":sum(1 for _,status in entries if status>=500)
+            })
+        report.sort(key=lambda item: item["p95_ms"], reverse=True)
+        response=jsonify(ok=True, total_rotas=len(report),
+                         medicao="servidor Flask; nao inclui rede/browser",
+                         amostras_por_rota=240, rotas=report)
+        response.headers["Cache-Control"]="no-store, private"
+        return response
 
     @app.after_request
     def supervisao_live_after_request(response):
