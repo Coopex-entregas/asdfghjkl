@@ -698,7 +698,10 @@ async function load(reconcile=true){
    return; // Nenhuma pendência = nenhuma consulta bancária.
   }
   const now=Date.now();
-  const due=pending.find(x=>now-(pixAutoCheckedAt.get(x.tipo+':'+x.uid)||0)>=pixAutoCooldownMs);
+  // Crédito não precisa rodar na mesma frequência de uma entrega;
+  // reduz ainda mais o uso do Sicoob no histórico.
+  const due=pending.find(x=>now-(pixAutoCheckedAt.get(x.tipo+':'+x.uid)||0)>=
+    (x.tipo==='Crédito'?600000:pixAutoCooldownMs));
   if(!due)return;
   const key=due.tipo+':'+due.uid;
   pixAutoCheckedAt.set(key,now); // Até em caso de timeout, não repetir imediatamente.
@@ -833,6 +836,7 @@ function todayNatal(){return new Intl.DateTimeFormat('en-CA',{timeZone:'America/
             e.data_envio AS criado_em,c.expira_em AS expira_em,c.pago_em AS pago_em,e.status_pagamento AS entrega_pago
             FROM sicoob_pix_cobranca c JOIN entrega e ON e.id=c.entrega_id
             WHERE LOWER(TRIM(e.pagamento)) IN ('pix (cooperativa)', 'pix cooperativa', 'pix da cooperativa')
+            AND ((c.brcode IS NOT NULL AND TRIM(c.brcode) <> '') OR c.e2eid IS NOT NULL OR c.status='PAGO')
             ORDER BY e.data_envio DESC LIMIT 300""")).mappings().all()
         creditos=db.session.execute(text("""SELECT p.solicitacao_id AS id, c.nome AS cliente_nome,
             p.valor AS valor, p.status AS status, s.criado_em AS criado_em, p.pago_em AS pago_em,
