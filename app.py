@@ -5494,9 +5494,49 @@ def _cooperado_serializar_entrega(entrega, ajuste_pendente=False):
     }
 
 
+# Cache por cooperado e filtros. Versão no PostgreSQL evita servir valores
+# desatualizados quando as requisições caem em processos diferentes.
+_COOP_HISTORY_CACHE_V2 = {}
+_COOP_HISTORY_LOCK = _SupPerfLock()
+_COOP_HISTORY_LIMIT = 350
+
+def _coop_history_version():
+    try:
+        return int(db.session.execute(
+            text("SELECT versao FROM supervisao_live_version WHERE id=1")
+        ).scalar() or 0)
+    except Exception:
+        # Não reutilizar um resultado cuja validade não pôde ser verificada.
+        return None
+
+def _coop_history_get(key, version):
+    if version is None:
+        return None
+    with _COOP_HISTORY_LOCK:
+        hit = _COOP_HISTORY_CACHE_V2.get(key)
+        if hit and hit[0] == version and hit[1] > _sup_perf_time.monotonic():
+            return hit[2]
+    return None
+
+def _coop_history_put(key, version, payload, ttl):
+    if version is None:
+        return
+    with _COOP_HISTORY_LOCK:
+        if len(_COOP_HISTORY_CACHE_V2) >= _COOP_HISTORY_LIMIT:
+            _COOP_HISTORY_CACHE_V2.clear()
+        _COOP_HISTORY_CACHE_V2[key] = (
+            version, _sup_perf_time.monotonic() + ttl, payload
+        )
+
 def _cooperado_dashboard_resumo(user_id):
     """Resumo em uma única consulta agregada; evita carregar todo o histórico ao entrar."""
+    user_id = int(user_id)
     hoje_local = datetime.now(BRAZIL_TZ).date()
+    versao = _coop_history_version()
+    key = ('resumo', user_id, hoje_local.isoformat())
+    cached = _coop_history_get(key, versao)
+    if cached is not None:
+        return cached
     inicio_hoje, fim_hoje = local_date_window_to_utc_range(hoje_local)
     pago_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) == 'pago'
     pendente_cond = func.lower(func.coalesce(Entrega.status_pagamento, 'pendente')) != 'pago'
@@ -5520,7 +5560,7 @@ def _cooperado_dashboard_resumo(user_id):
         if item[0] is not None
     ]
 
-    return {
+    result = {
         'years': anos,
         'current_year': int(hoje_local.year),
         'today': hoje_local.isoformat(),
@@ -5534,6 +5574,8 @@ def _cooperado_dashboard_resumo(user_id):
             'qtd_hoje': int(row[6] or 0),
         },
     }
+    _coop_history_put(key, versao, result, ttl=45)
+    return result
 
 
 @app.get('/api/mobile/cooperado/resumo')
@@ -5688,6 +5730,16 @@ def api_cooperado_filtrar_entregas():
     if not user_id or session.get('is_admin'):
         return jsonify(ok=False, error='Não autorizado'), 403
 
+    # Reutiliza filtros anteriores sem reprocessar histórico inalterado.
+    # A chave inclui o usuário; a versão troca a cada gravação concluída.
+    cache_version = _coop_history_version()
+    cache_key = ('filtro', int(user_id), tuple(sorted(request.args.items(multi=True))))
+    resultado_cache = _coop_history_get(cache_key, cache_version)
+    if resultado_cache is not None:
+        response = jsonify(resultado_cache)
+        response.headers['Cache-Control'] = 'private, no-store'
+        return response
+
     inicio = request.args.get('inicio')
     fim = request.args.get('fim')
     status_pgto = (request.args.get('status_pgto') or 'todas').lower()
@@ -5709,11 +5761,20 @@ def api_cooperado_filtrar_entregas():
             .all()
         }
 
-    return jsonify(
-        ok=True,
-        count=len(entregas),
-        items=[_cooperado_serializar_entrega(e, e.id in pendentes) for e in entregas]
-    )
+    resultado = {
+        'ok': True,
+        'count': len(entregas),
+        'items': [_cooperado_serializar_entrega(e, e.id in pendentes) for e in entregas],
+    }
+    # Períodos encerrados podem permanecer mais tempo em cache; outros
+    # recebem prazo curto. A versão sempre invalida após uma alteração.
+    data_fim = request.args.get('fim') or ''
+    antigo = (status_pgto != 'pendente' and data_fim
+              and data_fim < datetime.now(BRAZIL_TZ).date().isoformat())
+    _coop_history_put(cache_key, cache_version, resultado, ttl=300 if antigo else 30)
+    response = jsonify(resultado)
+    response.headers['Cache-Control'] = 'private, no-store'
+    return response
 
 
 def _coopex_tipo_pagamento(value):
