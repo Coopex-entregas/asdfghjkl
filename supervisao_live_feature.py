@@ -293,7 +293,7 @@ LIVE_SCRIPT = r"""
 
   // Mantém o documento e cada linha existente. Busca somente IDs/assinaturas
   // e solicita HTML das linhas novas/alteradas (limite de 100 por requisição).
-  async function atualizarParcial(force=false){
+  async function atualizarParcial(force=false, queryOverride=null){
     if(atualizando){pendente=true;return;}
     if(document.visibilityState==='hidden' && !force){pendente=true;return;}
     if(usuarioEditando() && !force){pendente=true;return;}
@@ -305,7 +305,7 @@ LIVE_SCRIPT = r"""
       if(!current)throw Error('Tabela não encontrada');
       const scrollHost=document.getElementById('tbl');
       const y=window.scrollY||0, scrollY=scrollHost?.scrollTop||0,scrollX=scrollHost?.scrollLeft||0;
-      const qs=window.location.search||'';
+      const qs=queryOverride!==null?queryOverride:(window.location.search||'');
       const r=await fetch('/api/admin/entregas/manifesto'+qs,{
         cache:'no-store',credentials:'same-origin',
         signal:AbortSignal.timeout(FETCH_TIMEOUT_MS),
@@ -404,6 +404,10 @@ LIVE_SCRIPT = r"""
       verificando=false;
     }
   }
+
+  window.COOPEX_ADMIN_REFRESH_ROWS=function(query){
+    return atualizarParcial(true,typeof query==='string'?query:null);
+  };
 
   function iniciar(){
     indicador();
