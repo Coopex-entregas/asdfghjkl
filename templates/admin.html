@@ -767,7 +767,7 @@ function init(){
   // Busca preliminar local na tabela já carregada; o Render continua sendo
   // responsável pelo resultado completo e pela validação dos filtros.
   const normalizeSearch=value=>String(value||'')
-    .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('pt-BR').trim();
+    .normalize('NFD').replace(/[^\\x00-\\x7F]/g,'').toLocaleLowerCase('pt-BR').trim();
   function localPreview(){
    const table=document.querySelector('#tbl table.tabela tbody');
    if(!table)return;
@@ -864,6 +864,9 @@ function init(){
   const schedule=(delay=0)=>{clearTimeout(timer);timer=setTimeout(apply,delay);};
   form.querySelectorAll('select,input[type="date"]').forEach(el=>el.addEventListener('change',()=>schedule(0)));
   form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>{
+   // Cancela imediatamente a resposta antiga, ainda durante o debounce.
+   ++serial;
+   if(controller)controller.abort();
    if(el.id==='cliente'||el.id==='endereco')localPreview();
    schedule(450);
   }));
