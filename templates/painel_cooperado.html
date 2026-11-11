@@ -1953,7 +1953,7 @@ body.cx-modal-active{overflow:hidden!important}
         ${item.observacao ? `<div class="delivery-note"><strong style="color:#15306f">Observação:</strong> <span>${escapeHtml(item.observacao)}</span></div>` : ''}
         <div class="delivery-actions">
           <button type="button" class="action-btn" data-role="maps" data-id="${escapeHtml(item.id)}">Maps</button>
-          <button type="button" class="action-btn warn" data-role="pgto" data-id="${escapeHtml(item.id)}">${pago ? 'Pago' : 'Marcar pago'}</button>
+          <button type="button" class="action-btn warn" data-role="pgto" data-id="${escapeHtml(item.id)}" ${pago ? 'disabled' : ''}>${pago ? 'Pago' : 'Marcar pago'}</button>
           <button type="button" class="action-btn primary" data-role="entrega" data-id="${escapeHtml(item.id)}">${entregue ? 'Voltar entrega' : 'Confirmar entrega'}</button>
           <button type="button" class="action-btn" data-role="solicitar-valor" data-id="${escapeHtml(item.id)}" data-valor="${Number(item.valor || 0).toFixed(2)}" ${ajuste ? 'disabled' : ''}>${ajuste ? 'Aguardando aprovação' : 'Solicitar ajuste de valor'}</button>
         </div>
