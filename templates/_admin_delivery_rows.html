@@ -18,7 +18,7 @@
                 {% set st = e.status|lower if e.status else 'pendente' %}
                 {% set origem_bairro = (e.origem_extra.get('bairro') if e.origem_extra is defined and e.origem_extra else '') or e.bairro %}
                 {% set destino_bairro = (e.destino_extra.get('bairro') if e.destino_extra is defined and e.destino_extra else '') or e.bairro %}
-                <tr data-id="{{ e.id }}" class="{{ "row-assigned" if tem_coop else "row-open" }}" data-has-coop="{{ "1" if tem_coop else "0" }}" data-origem-bairro="{{ origem_bairro|e }}" data-destino-bairro="{{ destino_bairro|e }}">
+                <tr data-cx-fingerprint="{{ delivery_fingerprint(e) }}" data-id="{{ e.id }}" class="{{ "row-assigned" if tem_coop else "row-open" }}" data-has-coop="{{ "1" if tem_coop else "0" }}" data-origem-bairro="{{ origem_bairro|e }}" data-destino-bairro="{{ destino_bairro|e }}">
                   <td>
                     <span class="id-with-dot">
                       <span class="status-dot {{ 'ok' if tem_coop else 'no' }}"
