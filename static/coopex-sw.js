@@ -22,12 +22,13 @@ self.addEventListener('fetch', event => {
   try { url = new URL(req.url); } catch (_) { return; }
   if (url.origin !== self.location.origin) return;
   if (req.mode === 'navigate') {
-    event.respondWith(fetch(req).catch(async () => {
+    event.respondWith((async () => {
+      try { const online = await fetch(req); if (![502,503,504].includes(online.status)) return online; } catch (_) {}
       const cache = await caches.open(CACHE);
       return (await cache.match(FALLBACK)) || new Response('COOPEX offline', {
         status:503,headers:{'Content-Type':'text/plain; charset=UTF-8'}
       });
-    }));
+    })());
     return;
   }
   // Apenas JS/CSS/fontes públicos da pasta static. Evita guardar informações de sessões.
