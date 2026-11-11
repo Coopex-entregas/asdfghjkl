@@ -14,6 +14,12 @@
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_theme_shared.css') }}">
 <link rel="stylesheet" href="{{ url_for('static', filename='css/coopex_delivery_glass.css') }}">
 <style id="cx-quick-modal-compact">
+/* A janela da Supervisão é exclusivamente para preenchimento. */
+body.cx-quick-modal .route-msg,body.cx-quick-modal .credit-msg,body.cx-quick-modal #clientMeta,body.cx-quick-modal .fila-note,body.cx-quick-modal .cx-card-head{display:none!important}
+body.cx-quick-modal .rapid-grid>.cx-card{border:none!important;background:transparent!important}
+body.cx-quick-modal .cx-card-body{padding:10px 12px!important}
+body.cx-quick-modal #quickForm{row-gap:10px!important}
+
 body.cx-quick-modal .cx-card-head,body.cx-quick-modal .mode-links,body.cx-quick-modal .fila-note{display:none!important}
 body.cx-quick-modal .cx-card-body{padding-top:12px!important}
 body.cx-quick-modal #quickForm>.cx-actions>a{display:none!important}
