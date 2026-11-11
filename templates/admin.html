@@ -1898,7 +1898,7 @@ border:1px solid var(--vr-line)!important;
   display:flex;align-items:center;justify-content:center;padding:12px;
 }
 #cx-quick-admin-dialog{
-  width:min(1160px,98vw);height:min(780px,94dvh);max-height:96dvh;
+  width:min(830px,calc(100vw - 44px));height:min(565px,calc(100dvh - 48px));max-height:calc(100dvh - 24px);
   display:flex;flex-direction:column;overflow:hidden;
   border-radius:22px;border:1px solid rgba(255,255,255,.6);
   box-shadow:0 26px 80px rgba(0,0,0,.35);background:#f1f7ff;
@@ -1908,8 +1908,8 @@ border:1px solid var(--vr-line)!important;
 #cx-quick-admin-close{border:1px solid #ffffff80;border-radius:10px;color:white;background:#ffffff28;padding:6px 12px;cursor:pointer;font-weight:800}
 #cx-quick-admin-frame{width:100%;flex:1;min-height:0;border:0;background:white}
 @media(max-width:650px){
-  #cx-quick-admin-overlay{padding:0}
-  #cx-quick-admin-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}
+  #cx-quick-admin-overlay{padding:8px}
+  #cx-quick-admin-dialog{width:calc(100vw - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:16px}
 }
 </style>
 <script id="coopex-quick-admin-modal-script">
