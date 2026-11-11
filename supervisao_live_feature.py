@@ -631,6 +631,23 @@ def install(app_module):
         response.headers["Cache-Control"] = "no-store, private"
         return response
 
+    @app.get("/api/admin/credito/saldos-ativos")
+    def coopex_admin_credito_saldos_ativos():
+        """Somente IDs e saldos não zerados; não percorre histórico financeiro."""
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+        C = app_module.Cliente
+        rows = (db.session.query(C.id, C.saldo_atual)
+                .filter(C.saldo_atual.isnot(None))
+                .filter(C.saldo_atual != 0)
+                .all())
+        response = jsonify(ok=True, items=[
+            {"id": int(cid), "saldo": round(float(saldo), 2)}
+            for cid, saldo in rows
+        ])
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
+
     @app.get("/api/admin/solicitacoes-valor/fragmento")
     def coopex_admin_solicitacoes_valor_fragmento():
         if not session.get("is_admin") and not session.get("is_master"):
