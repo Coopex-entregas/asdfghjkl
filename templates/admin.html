@@ -1888,3 +1888,78 @@ border:1px solid var(--vr-line)!important;
   },{once:true});
 })();
 </script>
+
+
+<style id="coopex-quick-admin-modal-style">
+#cx-quick-admin-overlay[hidden]{display:none!important}
+#cx-quick-admin-overlay{
+  position:fixed;inset:0;z-index:100050;background:rgba(8,22,50,.66);
+  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
+  display:flex;align-items:center;justify-content:center;padding:12px;
+}
+#cx-quick-admin-dialog{
+  width:min(1160px,98vw);height:min(780px,94dvh);max-height:96dvh;
+  display:flex;flex-direction:column;overflow:hidden;
+  border-radius:22px;border:1px solid rgba(255,255,255,.6);
+  box-shadow:0 26px 80px rgba(0,0,0,.35);background:#f1f7ff;
+}
+#cx-quick-admin-header{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:5px 12px;background:#0e3dbe;color:white;gap:12px}
+#cx-quick-admin-header strong{font:800 14px system-ui}
+#cx-quick-admin-close{border:1px solid #ffffff80;border-radius:10px;color:white;background:#ffffff28;padding:6px 12px;cursor:pointer;font-weight:800}
+#cx-quick-admin-frame{width:100%;flex:1;min-height:0;border:0;background:white}
+@media(max-width:650px){
+  #cx-quick-admin-overlay{padding:0}
+  #cx-quick-admin-dialog{width:100vw;height:100dvh;max-height:100dvh;border-radius:0}
+}
+</style>
+<script id="coopex-quick-admin-modal-script">
+(function(){
+'use strict';
+let overlay=null, frame=null, opener=null;
+const quickUrl={{ url_for('cadastrar_entrega')|tojson }};
+function create(){
+  if(overlay)return;
+  overlay=document.createElement('div');
+  overlay.id='cx-quick-admin-overlay';
+  overlay.hidden=true;
+  overlay.className='modal';
+  overlay.innerHTML='<section id="cx-quick-admin-dialog" role="dialog" aria-modal="true" aria-label="Entrega rápida"><div id="cx-quick-admin-header"><strong>⚡ Entrega rápida</strong><button id="cx-quick-admin-close" type="button" aria-label="Fechar entrega rápida">Fechar ✕</button></div><iframe id="cx-quick-admin-frame" title="Formulário de entrega rápida"></iframe></section>';
+  document.body.append(overlay);
+  frame=overlay.querySelector('iframe');
+  overlay.querySelector('#cx-quick-admin-close').addEventListener('click',close);
+  overlay.addEventListener('click',e=>{if(e.target===overlay)close();});
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'&&!overlay.hidden)close();});
+}
+function open(e){
+  if(e)e.preventDefault();
+  create();opener=document.activeElement;
+  overlay.hidden=false;overlay.classList.add('open');
+  if(!frame.getAttribute('src'))frame.src=quickUrl+'?modal=1';
+  overlay.querySelector('#cx-quick-admin-close').focus();
+}
+function close(){
+  if(!overlay)return;
+  overlay.hidden=true;overlay.classList.remove('open');
+  if(opener?.focus)opener.focus();
+  window.dispatchEvent(new Event('coopex-admin-modal-closed'));
+}
+window.COOPEX_OPEN_QUICK_DELIVERY=open;
+document.addEventListener('click',e=>{
+  const a=e.target.closest('a[href],button');
+  if(!a)return;
+  if(a.matches('#btnEntregaCompletaAdmin,#adminEntregaCompletaLink'))return;
+  const href=a.getAttribute('href')||'';
+  const text=(a.textContent||'').trim().toLowerCase();
+  const quickLink=href && (new URL(href,location.href).pathname===quickUrl) &&
+     !href.includes('modo=completo');
+  const quickButton=a.closest('.quick-left') && /entrega r[aá]pida|nova entrega/.test(text);
+  if(quickLink||quickButton){e.preventDefault();e.stopImmediatePropagation();open();}
+},true);
+window.addEventListener('message',e=>{
+  if(!frame||e.origin!==location.origin||e.source!==frame.contentWindow)return;
+  const data=e.data;
+  if(!data||data.type!=='coopex-entrega-rapida-salva')return;
+  window.dispatchEvent(new CustomEvent('coopex-admin-delivery-saved',{detail:{id:data.entrega_id}}));
+});
+})();
+</script>
