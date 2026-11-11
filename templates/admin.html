@@ -780,7 +780,31 @@ function init(){
     if(!target||!replacement)throw new Error('Tabela indisponível para atualização.');
     const box=document.getElementById('tbl');
     const y=box?.scrollTop||0,x=box?.scrollLeft||0;
-    target.replaceChildren(...[...replacement.childNodes].map(node=>document.importNode(node,true)));
+    // Atualização diferencial da tabela: preservar linhas e handlers intactos.
+    // O fallback mantém o comportamento original quando não há IDs exclusivos.
+    const currentRows=[...target.children],incomingRows=[...replacement.children];
+    const ids=rows=>rows.map(row=>row.dataset.id).filter(Boolean);
+    const oldIds=ids(currentRows),newIds=ids(incomingRows);
+    const canDiff=oldIds.length===currentRows.length &&
+      newIds.length===incomingRows.length &&
+      new Set(oldIds).size===oldIds.length && new Set(newIds).size===newIds.length;
+    if(!canDiff){
+      target.replaceChildren(...[...replacement.childNodes].map(node=>document.importNode(node,true)));
+    }else{
+      const byId=new Map(currentRows.map(row=>[row.dataset.id,row]));
+      const wanted=new Set(newIds);
+      for(const row of currentRows)if(!wanted.has(row.dataset.id))row.remove();
+      for(let i=0;i<incomingRows.length;i++){
+        const incoming=incomingRows[i];
+        let row=byId.get(incoming.dataset.id);
+        if(!row || !row.isConnected)row=document.importNode(incoming,true);
+        else if(row.outerHTML!==incoming.outerHTML){
+          const fresh=document.importNode(incoming,true);
+          row.replaceWith(fresh);row=fresh;
+        }
+        if(target.children[i]!==row)target.insertBefore(row,target.children[i]||null);
+      }
+    }
     if(box){box.scrollTop=y;box.scrollLeft=x;}
     history.replaceState(history.state,'',url.pathname+url.search+url.hash);
     window.dispatchEvent(new Event('coopex-admin-table-updated'));
