@@ -1,0 +1,19 @@
+{% for s in solicitacoes_valor if s.status != 'pendente' %}
+          {% set aprovado = s.status in ['aprovada', 'aprovado'] %}
+          <article class="request-history-item {{ 'approved' if aprovado else 'rejected' }}">
+            <div class="request-title-row">
+              <strong>Entrega #{{ s.entrega_id }} — {{ s.entrega.cliente if s.entrega else '-' }}</strong>
+              <span class="request-status-chip {{ 'approved' if aprovado else 'rejected' }}">{{ 'Aprovada' if aprovado else 'Recusada' }}</span>
+            </div>
+            <div class="request-person">Solicitado por <strong>{{ s.cooperado.nome if s.cooperado else '-' }}</strong> em {{ to_brasilia(s.criado_em).strftime('%d/%m/%Y %H:%M') if s.criado_em else '-' }}</div>
+            <div class="request-value-grid history-values">
+              <div><span>Valor anterior</span><strong>R$ {{ '%.2f'|format(s.valor_original)|replace('.',',') }}</strong></div>
+              <div><span>Valor solicitado</span><strong>R$ {{ '%.2f'|format(s.valor_solicitado)|replace('.',',') }}</strong></div>
+              <div><span>Valor final</span><strong>R$ {{ '%.2f'|format(s.valor_solicitado if aprovado else s.valor_original)|replace('.',',') }}</strong></div>
+            </div>
+            {% if s.motivo %}<div class="request-reason"><span>Motivo</span>{{ s.motivo }}</div>{% endif %}
+            <div class="request-analysis">Analisado por <strong>{{ s.analisado_por or 'Administrador' }}</strong> em {{ to_brasilia(s.analisado_em).strftime('%d/%m/%Y %H:%M') if s.analisado_em else '-' }}</div>
+          </article>
+          {% else %}
+          <div class="value-request-empty">Ainda não existe histórico de alterações de valor.</div>
+          {% endfor %}
