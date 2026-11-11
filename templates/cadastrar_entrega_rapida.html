@@ -88,6 +88,19 @@
       });
       const data=await response.json();
       if(!response.ok||!data.ok)throw new Error(data.message||data.erro||'Não foi possível registrar a entrega.');
+      // Dentro do Admin: mantém o mesmo formulário sem recarregar a página.
+      // O pai atualiza somente a linha criada.
+      if(new URLSearchParams(location.search).get('modal')==='1' && window.parent!==window){
+        window.parent.postMessage({type:'coopex-entrega-rapida-salva',entrega_id:data.entrega_id},location.origin);
+        reset();
+        const note=el('flash');
+        note.textContent='Entrega #'+data.entrega_id+' cadastrada! Pronta para a próxima.';
+        note.style.display='block';
+        submitting=false;
+        if(btn){btn.disabled=false;btn.textContent='Cadastrar entrega rápida'}
+        cliente.focus();
+        return;
+      }
       // Voltar pelo histórico reutiliza o painel já aberto quando o navegador suporta BFCache.
       const previous=document.referrer?new URL(document.referrer,location.href):null;
       if(previous&&previous.origin===location.origin&&previous.pathname==='/admin'&&history.length>1){
