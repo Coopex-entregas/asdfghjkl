@@ -12702,13 +12702,12 @@ def toggle_pagamento(id):
         if (e.status_pagamento or '').lower() != 'pago':
             e.status_pagamento = 'pago'
             db.session.commit()
-        return jsonify(ok=False, status_pagamento='pago', confirmado_sicoob=True,
-            erro='Pagamento confirmado pelo Sicoob. Não é permitido voltar para pendente.'), 409
-    atual = (e.status_pagamento or 'pendente').lower()
-    novo = 'pago' if atual != 'pago' else 'pendente'
-    e.status_pagamento = novo
-    db.session.commit()
-    return jsonify(ok=True, status_pagamento=novo)
+        return jsonify(ok=True, status_pagamento='pago', confirmado_sicoob=True)
+    # Marcar pago nunca deve alternar o status por um segundo clique.
+    if (e.status_pagamento or '').lower() != 'pago':
+        e.status_pagamento = 'pago'
+        db.session.commit()
+    return jsonify(ok=True, status_pagamento='pago')
 
 
 @app.get('/cooperado/api/ganhos')
