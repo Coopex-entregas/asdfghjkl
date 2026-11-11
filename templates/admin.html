@@ -1899,9 +1899,10 @@ border:1px solid var(--vr-line)!important;
  flex:0 0 42px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
  padding:4px 12px!important;background:#0e3dbe!important;color:white!important;gap:12px!important
 }
-#cx-quick-admin-header strong{font:800 14px system-ui!important}
-#cx-quick-admin-close{border:1px solid #ffffff80;border-radius:10px;color:white;background:#ffffff28;padding:6px 12px;cursor:pointer;font-weight:800}
-#cx-quick-admin-frame{display:block!important;width:100%!important;flex:1 1 auto!important;height:calc(100% - 42px)!important;min-height:0!important;border:0!important;background:transparent!important}
+#cx-quick-admin-header{flex-basis:34px!important;min-height:34px!important;background:#112e53!important;border-bottom:0!important;padding:2px 9px!important}
+#cx-quick-admin-header strong{display:none!important}
+#cx-quick-admin-close{border:1px solid #ffffff60;border-radius:8px;color:white;background:#ffffff20;padding:3px 11px;cursor:pointer;font-weight:900;font-size:16px;line-height:22px}
+#cx-quick-admin-frame{display:block!important;width:100%!important;flex:1 1 auto!important;height:calc(100% - 34px)!important;min-height:0!important;border:0!important;background:transparent!important}
 @media(max-width:650px){
  #cx-quick-admin-overlay{padding:8px!important}
  #cx-quick-admin-dialog{width:calc(100vw - 16px)!important;height:min(520px,calc(100dvh - 16px))!important;max-height:calc(100dvh - 16px)!important}
@@ -1935,7 +1936,7 @@ function create(){
   overlay.id='cx-quick-admin-overlay';
   overlay.hidden=true;
   overlay.className='cx-quick-overlay-isolated';
-  overlay.innerHTML='<section id="cx-quick-admin-dialog" role="dialog" aria-modal="true" aria-label="Entrega rápida"><div id="cx-quick-admin-header"><strong>⚡ Entrega rápida</strong><button id="cx-quick-admin-close" type="button" aria-label="Fechar entrega rápida">Fechar ✕</button></div><iframe id="cx-quick-admin-frame" title="Formulário de entrega rápida"></iframe></section>';
+  overlay.innerHTML='<section id="cx-quick-admin-dialog" role="dialog" aria-modal="true" aria-label="Entrega rápida"><div id="cx-quick-admin-header"><span aria-hidden="true"></span><button id="cx-quick-admin-close" type="button" aria-label="Fechar entrega rápida" title="Fechar">✕</button></div><iframe id="cx-quick-admin-frame" title="Formulário de entrega rápida"></iframe></section>';
   document.body.append(overlay);
   frame=overlay.querySelector('iframe');
   overlay.querySelector('#cx-quick-admin-close').addEventListener('click',close);
