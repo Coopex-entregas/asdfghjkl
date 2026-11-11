@@ -84,6 +84,7 @@ def post_worker_init(worker):
         import creditos_otimizacao_feature
         import pagamentos_normalizacao_feature
         import supervisao_live_feature
+        import fechamento_entregas_feature
         import sync_feature
 
         _corrigir_serializacao_escala(escala_feature)
@@ -102,6 +103,9 @@ def post_worker_init(worker):
         creditos_otimizacao_feature.install(app_module)
         pagamentos_normalizacao_feature.install(app_module)
         supervisao_live_feature.install(app_module)
+        # Após a inicialização do contador live, encerra entregas de dias
+        # anteriores e agenda a próxima virada (horário Natal/RN).
+        fechamento_entregas_feature.install(app_module)
 
         # Sempre por último: precisa enxergar as tabelas de todos os módulos.
         sync_feature.install(app_module)
