@@ -762,6 +762,22 @@ def install(app_module):
 
             html=response.get_data(as_text=True)
 
+            # Resposta enxuta apenas para filtros da tabela, solicitada explicitamente.
+            # A rota admin já validou a sessão e aplicou todos os filtros oficiais.
+            # Não cachear no servidor e não afetar navegação ou live-refresh.
+            if request.headers.get("X-Coopex-Table-Only") == "1":
+                start=html.find('id="tbl"')
+                if start>=0:
+                    match=re.search(r'<tbody(?:\\s[^>]*)?>[\\s\\S]*?</tbody>',html[start:],re.I)
+                    if match:
+                        response.set_data(
+                            '<div id="tbl"><table class="tabela">'
+                            +match.group(0)+'</table></div>'
+                        )
+                        response.headers["Cache-Control"]="no-store, private"
+                        response.headers["X-Coopex-Table-Only"]="1"
+                        return response
+
             # Remove completamente os clientes antigos que chamavam location.reload().
             html=re.sub(
                 r'<style\s+id=["\']supervisao-live-style["\'][^>]*>.*?</style>',
