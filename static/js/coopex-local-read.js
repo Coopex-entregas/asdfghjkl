@@ -28,9 +28,15 @@
     u.pathname==='/api/cooperado/entregas';
   if(!eligible){
    const res=await original(input,init);
-   if(method!=='GET'&&u.origin===location.origin&&res.ok&&
-      /^\/(?:cooperado\/|api\/cooperado\/)/.test(u.pathname)){
-    db.clear(uid).catch(()=>{});
+   // Apenas mudanças efetivas em entregas invalidam os snapshots.
+   // GPS, localização, presença, fila, telemetria e consulta de estado
+   // NÃO podem apagar o histórico a cada atualização automática.
+   const changesDelivery=method!=='GET'&&u.origin===location.origin&&res.ok&&(
+      /^\/cooperado\/(?:marcar_entregue|toggle_pagamento|atualizar_entrega|excluir_entrega|editar_entrega)(?:\/|$)/.test(u.pathname) ||
+      /^\/api\/cooperado\/entregas(?:\/|$)/.test(u.pathname)
+   );
+   if(changesDelivery){
+     db.clear(uid).catch(()=>{});
    }
    return res;
   }
