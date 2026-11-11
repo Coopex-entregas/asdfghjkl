@@ -56,6 +56,74 @@ body.cx-quick-modal #quickForm>.cx-actions>button{flex:1!important;width:100%!im
  body.cx-quick-modal main.cx-wrap {padding:8px!important;}
  body.cx-quick-modal .rapid-grid {display:block!important;}
 }
+
+/* Prioridade sobre coopex_delivery_glass.css: layout modal realmente compacto. */
+html:has(body.cx-quick-modal){overflow:hidden!important}
+html body.cx-page.cx-delivery-glass.cx-quick-modal{
+ display:block!important;width:100%!important;height:100dvh!important;
+ min-height:0!important;max-height:100dvh!important;overflow:hidden!important;
+ margin:0!important;padding:0!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal .cx-topbar,
+html body.cx-page.cx-delivery-glass.cx-quick-modal .mode-links,
+html body.cx-page.cx-delivery-glass.cx-quick-modal .cx-card-head,
+html body.cx-page.cx-delivery-glass.cx-quick-modal .fila-note,
+html body.cx-page.cx-delivery-glass.cx-quick-modal .route-msg,
+html body.cx-page.cx-delivery-glass.cx-quick-modal .credit-msg,
+html body.cx-page.cx-delivery-glass.cx-quick-modal #clientMeta{display:none!important}
+html body.cx-page.cx-delivery-glass.cx-quick-modal .cx-wrap{
+ display:block!important;flex:none!important;width:100%!important;max-width:none!important;
+ height:auto!important;min-height:0!important;margin:0!important;padding:12px 16px!important;
+ overflow:visible!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal .rapid-grid{
+ display:block!important;flex:none!important;width:100%!important;height:auto!important;
+ min-height:0!important;max-height:none!important;margin:0!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal .rapid-grid>.cx-card{
+ display:block!important;min-height:0!important;height:auto!important;margin:0!important;
+ padding:0!important;overflow:visible!important;box-shadow:none!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal .rapid-grid>.cx-card>.cx-card-body{
+ display:block!important;flex:none!important;min-height:0!important;
+ height:auto!important;padding:0!important;margin:0!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm{
+ display:grid!important;flex:none!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;
+ column-gap:12px!important;row-gap:8px!important;justify-content:initial!important;
+ align-content:start!important;min-height:0!important;height:auto!important;
+ margin:0!important;padding:12px!important;border-radius:14px!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm>.cx-grid-2{display:contents!important}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm>.search-box,
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm>.cx-field:not(.search-box),
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm>.cx-actions{grid-column:1/-1!important}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-field{
+ display:block!important;min-height:0!important;margin:0!important;padding:0!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-field label{
+ display:block!important;font-size:11px!important;line-height:14px!important;
+ margin:0 0 3px!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-input,
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-select{
+ width:100%!important;height:38px!important;min-height:38px!important;
+ max-height:38px!important;padding:6px 10px!important;font-size:13px!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-actions{
+ display:block!important;margin:0!important;padding:3px 0 0!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-actions>a{display:none!important}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #quickForm .cx-actions>button{
+ display:block!important;width:100%!important;height:40px!important;
+ min-height:40px!important;max-height:40px!important;margin:0!important;padding:8px!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #results{
+ top:54px!important;max-height:195px!important;overflow:auto!important;z-index:1000!important;
+}
+html body.cx-page.cx-delivery-glass.cx-quick-modal #flash{
+ margin:0 0 7px!important;padding:5px 8px!important;font-size:11px!important;
+}
 </style>
 </head>
 <body class="cx-page cx-delivery-glass"><script>if(new URLSearchParams(location.search).get("modal")==="1")document.body.classList.add("cx-quick-modal");</script>
