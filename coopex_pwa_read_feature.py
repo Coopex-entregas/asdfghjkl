@@ -1,8 +1,21 @@
 """COOPEX PWA: registro de worker e cache de consultas no HTML original."""
 from flask import request, session
+from sqlalchemy import text
 
 def install(app_module):
     app=app_module.app
+    # Registro idempotente: a chave local e a entrega nascem no mesmo COMMIT.
+    # Cria uma única vez; os envios repetidos reencontram o ID oficial.
+    with app.app_context():
+        with app_module.db.engine.begin() as conn:
+            conn.execute(text("""
+                CREATE TABLE IF NOT EXISTS coopex_offline_entrega_ids (
+                    chave VARCHAR(36) PRIMARY KEY,
+                    entrega_id INTEGER NOT NULL,
+                    payload_hash VARCHAR(64) NOT NULL,
+                    criado_em TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+                )
+            """))
     @app.get('/coopex-sw.js')
     def coopex_pwa_worker_v2():
         response=app.send_static_file('coopex-sw.js')
