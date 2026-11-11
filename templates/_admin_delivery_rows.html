@@ -1,3 +1,17 @@
+{% macro telefone_formatado(telefone) -%}
+  {%- set raw = telefone|string -%}
+  {%- set digits = raw|replace('(', '')|replace(')', '')|replace(' ', '')|replace('-', '')|replace('.', '')|replace('+', '') -%}
+  {%- if digits|length in [12, 13] and digits[:2] == '55' -%}
+    {%- set digits = digits[2:] -%}
+  {%- endif -%}
+  {%- if digits|length == 10 -%}
+    ({{ digits[:2] }}) {{ digits[2:6] }}-{{ digits[6:] }}
+  {%- elif digits|length == 11 -%}
+    ({{ digits[:2] }}) {{ digits[2:7] }}-{{ digits[7:] }}
+  {%- else -%}
+    {{ raw }}
+  {%- endif -%}
+{%- endmacro %}
 {% for e in entregas %}
                 {% set tem_coop = (e.cooperado is not none) %}
                 {% set sp = e.status_pagamento|lower if e.status_pagamento else 'pendente' %}
