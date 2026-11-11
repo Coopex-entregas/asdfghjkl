@@ -8460,6 +8460,39 @@ def cadastrar_entrega():
         return redirect(url_for('login'))
 
     if request.method == 'POST':
+        # Chave gerada pelo navegador para reenvio seguro da fila offline.
+        # Ausente: cadastro tradicional sem qualquer mudança.
+        offline_key = (request.form.get('__coopex_offline_id') or '').strip().lower()
+        offline_hash = None
+        if offline_key:
+            import hashlib
+            if not re.fullmatch(r'[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}', offline_key):
+                return jsonify(ok=False, error='Identificador offline inválido'), 400
+            snapshot = sorted(
+                (key, request.form.getlist(key))
+                for key in request.form.keys()
+                if key != '__coopex_offline_id'
+            )
+            offline_hash = hashlib.sha256(
+                json.dumps(snapshot, ensure_ascii=False, sort_keys=True).encode('utf-8')
+            ).hexdigest()
+            # Lock de transação no PostgreSQL serializa duas abas/dispositivos
+            # reenviando a mesma chave ao mesmo tempo.
+            if db.session.bind.dialect.name == 'postgresql':
+                db.session.execute(
+                    text('SELECT pg_advisory_xact_lock(hashtext(:key))'),
+                    {'key': offline_key}
+                )
+            existing = db.session.execute(
+                text('SELECT entrega_id, payload_hash FROM coopex_offline_entrega_ids WHERE chave=:key'),
+                {'key': offline_key}
+            ).first()
+            if existing:
+                if existing.payload_hash != offline_hash:
+                    db.session.rollback()
+                    return jsonify(ok=False, error='Chave offline reutilizada com dados diferentes'), 409
+                db.session.rollback()
+                return jsonify(ok=True, entrega_id=existing.entrega_id, ja_existia=True, message='Entrega já registrada'), 200
         cliente_nome = _dash_title_case((request.form.get('cliente') or '').strip())
         bairro = _dash_title_case((request.form.get('bairro') or request.form.get('entrega_bairro') or '').strip())
         valor_raw = (request.form.get('valor') or '0').strip().replace('.', '').replace(',', '.') if ',' in (request.form.get('valor') or '') and (request.form.get('valor') or '').count(',') == 1 else (request.form.get('valor') or '0').strip().replace(',', '.')
@@ -8537,6 +8570,14 @@ def cadastrar_entrega():
             entrega.data_atribuida = datetime.utcnow()
 
         db.session.add(entrega)
+        if offline_key:
+            # Entrega e chave são persistidas na mesma transação; o COMMIT
+            # confirma ambas ou nenhuma delas.
+            db.session.flush()
+            db.session.execute(text("""
+                INSERT INTO coopex_offline_entrega_ids (chave, entrega_id, payload_hash)
+                VALUES (:key, :eid, :digest)
+            """), {'key': offline_key, 'eid': entrega.id, 'digest': offline_hash})
 
         if cooperado_id:
             coop_atribuido = Cooperado.query.get(int(cooperado_id))
