@@ -767,25 +767,11 @@ function init(){
    controller=new AbortController();
    note('Filtrando…');
    try{
-    const res=await fetch(url.pathname+url.search,{
-     method:'GET',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-     headers:{'Accept':'text/html','X-Requested-With':'fetch'}
-    });
-    if(!res.ok)throw new Error('Erro '+res.status+' ao filtrar. Tente novamente.');
-    const html=await res.text();
-    if(seq!==serial)return;
-    const parsed=new DOMParser().parseFromString(html,'text/html');
-    const target=document.querySelector('#tbl table.tabela tbody');
-    const replacement=parsed.querySelector('#tbl table.tabela tbody');
-    if(!target||!replacement)throw new Error('Tabela indisponível para atualização.');
-    const box=document.getElementById('tbl');
-    const y=box?.scrollTop||0,x=box?.scrollLeft||0;
-    target.replaceChildren(...[...replacement.childNodes].map(node=>document.importNode(node,true)));
-    if(box){box.scrollTop=y;box.scrollLeft=x;}
+    if(typeof window.COOPEX_ADMIN_REFRESH_ROWS!=='function')
+      throw new Error('Atualização incremental ainda não está disponível.');
     history.replaceState(history.state,'',url.pathname+url.search+url.hash);
-    window.dispatchEvent(new Event('coopex-admin-table-updated'));
-    document.dispatchEvent(new Event('coopex-admin-table-updated'));
-    note('');
+    await window.COOPEX_ADMIN_REFRESH_ROWS(url.search);
+    if(seq===serial)note('');
    }catch(e){
     if(e.name==='AbortError'||seq!==serial)return;
     note(e.message||'Não foi possível filtrar.',true);
@@ -1893,23 +1879,32 @@ border:1px solid var(--vr-line)!important;
 <style id="coopex-quick-admin-modal-style">
 #cx-quick-admin-overlay[hidden]{display:none!important}
 #cx-quick-admin-overlay{
-  position:fixed;inset:0;z-index:100050;background:rgba(8,22,50,.66);
-  backdrop-filter:blur(9px);-webkit-backdrop-filter:blur(9px);
-  display:flex;align-items:center;justify-content:center;padding:12px;
+ position:fixed!important;inset:0!important;left:0!important;top:0!important;
+ width:100vw!important;height:100dvh!important;max-width:none!important;max-height:none!important;
+ margin:0!important;transform:none!important;z-index:2147483000!important;
+ display:flex!important;align-items:center!important;justify-content:center!important;
+ padding:16px!important;box-sizing:border-box!important;
+ background:rgba(5,18,43,.62)!important;backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);
 }
 #cx-quick-admin-dialog{
-  width:min(830px,calc(100vw - 44px));height:min(490px,calc(100dvh - 48px));max-height:calc(100dvh - 24px);
-  display:flex;flex-direction:column;overflow:hidden;
-  border-radius:22px;border:1px solid rgba(255,255,255,.6);
-  box-shadow:0 26px 80px rgba(0,0,0,.35);background:#f1f7ff;
+ position:relative!important;inset:auto!important;transform:none!important;
+ width:min(850px,calc(100vw - 40px))!important;
+ height:min(470px,calc(100dvh - 40px))!important;
+ min-height:0!important;max-height:calc(100dvh - 40px)!important;
+ display:flex!important;flex-direction:column!important;overflow:hidden!important;
+ border-radius:18px!important;border:1px solid rgba(230,246,255,.7)!important;
+ box-shadow:0 18px 60px rgba(0,0,0,.42)!important;background:#112e53!important;
 }
-#cx-quick-admin-header{display:flex;align-items:center;justify-content:space-between;min-height:42px;padding:5px 12px;background:#0e3dbe;color:white;gap:12px}
-#cx-quick-admin-header strong{font:800 14px system-ui}
+#cx-quick-admin-header{
+ flex:0 0 42px!important;display:flex!important;align-items:center!important;justify-content:space-between!important;
+ padding:4px 12px!important;background:#0e3dbe!important;color:white!important;gap:12px!important
+}
+#cx-quick-admin-header strong{font:800 14px system-ui!important}
 #cx-quick-admin-close{border:1px solid #ffffff80;border-radius:10px;color:white;background:#ffffff28;padding:6px 12px;cursor:pointer;font-weight:800}
-#cx-quick-admin-frame{width:100%;flex:1;min-height:0;border:0;background:white}
+#cx-quick-admin-frame{display:block!important;width:100%!important;flex:1 1 auto!important;height:calc(100% - 42px)!important;min-height:0!important;border:0!important;background:transparent!important}
 @media(max-width:650px){
-  #cx-quick-admin-overlay{padding:8px}
-  #cx-quick-admin-dialog{width:calc(100vw - 16px);height:calc(100dvh - 16px);max-height:calc(100dvh - 16px);border-radius:16px}
+ #cx-quick-admin-overlay{padding:8px!important}
+ #cx-quick-admin-dialog{width:calc(100vw - 16px)!important;height:min(520px,calc(100dvh - 16px))!important;max-height:calc(100dvh - 16px)!important}
 }
 </style>
 <script id="coopex-quick-admin-modal-script">
@@ -1939,7 +1934,7 @@ function create(){
   overlay=document.createElement('div');
   overlay.id='cx-quick-admin-overlay';
   overlay.hidden=true;
-  overlay.className='modal';
+  overlay.className='cx-quick-overlay-isolated';
   overlay.innerHTML='<section id="cx-quick-admin-dialog" role="dialog" aria-modal="true" aria-label="Entrega rápida"><div id="cx-quick-admin-header"><strong>⚡ Entrega rápida</strong><button id="cx-quick-admin-close" type="button" aria-label="Fechar entrega rápida">Fechar ✕</button></div><iframe id="cx-quick-admin-frame" title="Formulário de entrega rápida"></iframe></section>';
   document.body.append(overlay);
   frame=overlay.querySelector('iframe');
@@ -1951,6 +1946,8 @@ function open(e){
   if(e)e.preventDefault();
   create();opener=document.activeElement;
   overlay.hidden=false;overlay.classList.add('open');
+  if(frame?.contentWindow){try{frame.contentWindow.scrollTo({left:0,top:0,behavior:'instant'});}catch(e){}}
+
   if(!frame.getAttribute('src'))frame.src=quickUrl+'?modal=1';
   syncCreditBalances();
   overlay.querySelector('#cx-quick-admin-close').focus();
