@@ -4120,8 +4120,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         approve && (approve.disabled = true);
         reject && (reject.disabled = true);
         await postJson(`/admin/solicitacao-valor/${id}/${action}`, {});
-        sessionStorage.removeItem('coopexOpenValueRequests');
-        window.location.reload();
+        window.dispatchEvent(new Event('coopex-admin-value-requests-changed'));
+        window.dispatchEvent(new Event('coopex-admin-delivery-saved'));
       }catch(e){
         alert(e.message);
         approve && (approve.disabled = false);
@@ -4140,7 +4140,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         try{
           const j = await postJson('/admin/entregas/marcar-todas-entregues', {ids});
           showToast(`<strong>${j.alteradas || 0} entrega(s) atualizada(s).</strong>`);
-          setTimeout(()=>window.location.reload(), 500);
+          window.dispatchEvent(new Event('coopex-admin-delivery-saved'));
         }catch(e){ alert(e.message); }
         finally{ btnTodasEntregues.disabled = false; }
       });
@@ -4155,8 +4155,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         btnAprovarTodas.disabled = true;
         try{
           await postJson('/admin/solicitacoes-valor/aprovar-todas', {});
-          sessionStorage.setItem('coopexOpenValueRequests', 'pendentes');
-          window.location.reload();
+          window.dispatchEvent(new Event('coopex-admin-value-requests-changed'));
+          window.dispatchEvent(new Event('coopex-admin-delivery-saved'));
         }catch(e){ alert(e.message); }
         finally{ btnAprovarTodas.disabled = false; }
       });
