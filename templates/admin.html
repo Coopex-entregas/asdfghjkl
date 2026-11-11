@@ -1986,3 +1986,42 @@ window.addEventListener('message',e=>{
 });
 })();
 </script>
+
+
+<script id="coopex-value-requests-incremental">
+(function(){
+'use strict';
+let loadingPending=false,loadingHistory=false;
+async function refresh(history=false){
+ const overlay=document.getElementById('valueRequestsOverlay');
+ if(!overlay)return;
+ if(history&&loadingHistory||!history&&loadingPending)return;
+ if(history)loadingHistory=true;else loadingPending=true;
+ try{
+  const url='/api/admin/solicitacoes-valor/fragmento'+(history?'?historico=1':'');
+  const res=await fetch(url,{credentials:'same-origin',cache:'no-store',
+   headers:{Accept:'application/json'}});
+  if(!res.ok)throw new Error('Solicitações '+res.status);
+  const result=await res.json();if(!result.ok)throw new Error('Resposta inválida');
+  const target=document.getElementById(history?'valueRequestHistoryList':'pendingValueRequestsList');
+  if(target)target.innerHTML=result.html||'';
+  if(!history){
+    document.querySelectorAll('[data-request-count]').forEach(x=>x.textContent=String(result.count||0));
+    const btn=document.getElementById('btnAprovarTodasSolicitacoes');
+    if(btn)btn.style.display=result.count?'':'none';
+  }
+ }catch(err){console.warn('Sincronização solicitações de valor:',err)}
+ finally{if(history)loadingHistory=false;else loadingPending=false;}
+}
+window.addEventListener('coopex-admin-value-requests-changed',()=>{
+ refresh(false);
+ const overlay=document.getElementById('valueRequestsOverlay');
+ if(overlay?.classList.contains('open') &&
+   overlay.querySelector('[data-value-tab="historico"].active'))refresh(true);
+});
+document.addEventListener('click',e=>{
+ if(e.target.closest('[data-open-value-requests]'))refresh(false);
+ if(e.target.closest('[data-value-tab="historico"]'))refresh(true);
+});
+})();
+</script>
