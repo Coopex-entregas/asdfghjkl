@@ -768,7 +768,7 @@ def install(app_module):
             if request.headers.get("X-Coopex-Table-Only") == "1":
                 start=html.find('id="tbl"')
                 if start>=0:
-                    match=re.search(r'<tbody(?:\\s[^>]*)?>[\\s\\S]*?</tbody>',html[start:],re.I)
+                    match=re.search(r'<tbody(?:\s[^>]*)?>[\s\S]*?</tbody>',html[start:],re.I)
                     if match:
                         response.set_data(
                             '<div id="tbl"><table class="tabela">'
