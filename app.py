@@ -8478,7 +8478,7 @@ def cadastrar_entrega():
             ).hexdigest()
             # Lock de transação no PostgreSQL serializa duas abas/dispositivos
             # reenviando a mesma chave ao mesmo tempo.
-            if db.session.bind.dialect.name == 'postgresql':
+            if db.session.get_bind().dialect.name == 'postgresql':
                 db.session.execute(
                     text('SELECT pg_advisory_xact_lock(hashtext(:key))'),
                     {'key': offline_key}
