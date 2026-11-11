@@ -290,63 +290,74 @@ LIVE_SCRIPT = r"""
     });
   }
 
-  async function atualizarParcial(){
-    if(atualizando) return;
 
-    if(document.visibilityState==='hidden'||usuarioEditando()||
-       Date.now()-ultimoRefresh<REFRESH_MIN_MS){
-      pendente=true;
-      return;
-    }
-
+  // Mantém o documento e cada linha existente. Busca somente IDs/assinaturas
+  // e solicita HTML das linhas novas/alteradas (limite de 100 por requisição).
+  async function atualizarParcial(force=false){
+    if(atualizando){pendente=true;return;}
+    if(document.visibilityState==='hidden' && !force){pendente=true;return;}
+    if(usuarioEditando() && !force){pendente=true;return;}
     atualizando=true;
     pendente=false;
     ultimoRefresh=Date.now();
-
-    const y=window.scrollY||0;
-    const filtros=capturarFiltros();
-
     try{
-      const r=await fetch(window.location.href,{
-        cache:'no-store',
-        credentials:'same-origin',
+      const current=document.querySelector('#tbl table.tabela tbody');
+      if(!current)throw Error('Tabela não encontrada');
+      const scrollHost=document.getElementById('tbl');
+      const y=window.scrollY||0, scrollY=scrollHost?.scrollTop||0,scrollX=scrollHost?.scrollLeft||0;
+      const qs=window.location.search||'';
+      const r=await fetch('/api/admin/entregas/manifesto'+qs,{
+        cache:'no-store',credentials:'same-origin',
         signal:AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        headers:{
-          'Accept':'text/html',
-          'X-Requested-With':'supervisao-live'
+        headers:{Accept:'application/json'}
+      });
+      if(!r.ok)throw Error('Manifesto '+r.status);
+      const d=await r.json();
+      if(!d.ok||!Array.isArray(d.rows))throw Error('Manifesto inválido');
+      const existing=new Map([...current.querySelectorAll('tr[data-id]')].map(tr=>[String(tr.dataset.id),tr]));
+      const desired=d.rows.map(x=>String(x.id));
+      const changed=d.rows.filter(x=>{
+        const tr=existing.get(String(x.id));
+        return !tr || tr.dataset.cxFingerprint!==x.fp;
+      }).map(x=>String(x.id));
+      const fetched=new Map();
+      for(let i=0;i<changed.length;i+=100){
+        const ids=changed.slice(i,i+100);
+        const u='/api/admin/entregas/linhas?ids='+encodeURIComponent(ids.join(','));
+        const res=await fetch(u,{cache:'no-store',credentials:'same-origin',
+          signal:AbortSignal.timeout(FETCH_TIMEOUT_MS),headers:{Accept:'application/json'}});
+        if(!res.ok)throw Error('Linhas '+res.status);
+        const result=await res.json();
+        if(!result.ok)throw Error('Falha ao obter linhas');
+        const tpl=document.createElement('template');
+        tpl.innerHTML=result.html||'';
+        tpl.content.querySelectorAll('tr[data-id]').forEach(tr=>fetched.set(String(tr.dataset.id),tr));
+        if(ids.some(id=>!fetched.has(id)))throw Error('Linha ausente no servidor');
+      }
+      const kept=new Set(desired);
+      const changedIds=new Set(changed);
+      for(const [id,row] of existing){if(!kept.has(id))row.remove();}
+      const noAssignment=d.rows.filter(x=>!x.cooperado_id);
+      // Ordem devolvida pelo servidor. Não substitui linhas sem mudança.
+      desired.forEach((id,index)=>{
+        let row=fetched.get(id)||existing.get(id);
+        if(!row)return;
+        if(changedIds.has(id)&&existing.has(id)&&existing.get(id).isConnected){
+          existing.get(id).replaceWith(row);
         }
+        const at=current.children[index];
+        if(at!==row)current.insertBefore(row,at||null);
       });
-      if(!r.ok) throw new Error('admin '+r.status);
-
-      const html=await r.text();
-      const docNovo=new DOMParser().parseFromString(html,'text/html');
-
-      trocarConteudo(docNovo,'.tabela tbody');
-      trocarConteudo(docNovo,'#espera-lista');
-      trocarConteudo(docNovo,'#pendingValueRequestsList');
-      trocarConteudo(docNovo,'#valueRequestHistoryList');
-
-      trocarTexto(docNovo,'#kpiTotalDia');
-      trocarTexto(docNovo,'#kpiTotalMes');
-      trocarTexto(docNovo,'#kpiTotalAno');
-
-      atualizarFilaContador(docNovo);
-      atualizarContadoresSolicitacoes(docNovo);
-
-      reaplicarFiltros(filtros);
-
-      requestAnimationFrame(()=>{
-        window.scrollTo(0,y);
-        requestAnimationFrame(()=>window.scrollTo(0,y));
-      });
-
-      try{
-        document.dispatchEvent(new CustomEvent('supervisao:live-updated'));
-      }catch(e){}
-
+      if(changed.length||existing.size!==desired.length){
+        window.dispatchEvent(new Event('coopex-admin-table-updated'));
+        document.dispatchEvent(new Event('coopex-admin-table-updated'));
+      }
+      if(scrollHost){scrollHost.scrollTop=scrollY;scrollHost.scrollLeft=scrollX;}
+      if(window.scrollY!==y)window.scrollTo(0,y);
       statusOnline(true);
     }catch(e){
-      console.warn('Supervisão ao vivo:',e);
+      pendente=true;
+      console.warn('Atualização incremental:',e);
       statusOnline(false);
     }finally{
       atualizando=false;
@@ -409,6 +420,12 @@ LIVE_SCRIPT = r"""
     },true);
 
     window.addEventListener('online',()=>setTimeout(verificar,100));
+    // A Entrega Rápida confirma o cadastro na janela, sem sair do Admin.
+    window.addEventListener('coopex-admin-delivery-saved',()=>atualizarParcial(true));
+    window.addEventListener('coopex-admin-modal-closed',()=>{
+      if(pendente)atualizarParcial(true);
+    });
+
   }
 
   if(document.readyState==='loading'){
