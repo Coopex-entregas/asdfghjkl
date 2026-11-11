@@ -768,6 +768,9 @@ function init(){
   // responsável pelo resultado completo e pela validação dos filtros.
   const normalizeSearch=value=>String(value||'')
     .normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR').trim();
+  // Reutiliza textos normalizados das linhas enquanto não mudarem.
+  // WeakMap não retém linhas removidas, evitando crescimento indefinido da RAM.
+  const previewTextCache=new WeakMap();
   function localPreview(){
    const table=document.querySelector('#tbl table.tabela tbody');
    if(!table)return;
@@ -778,9 +781,14 @@ function init(){
    for(const row of table.rows){
     if(!row.dataset.id)continue;
     const cells=row.cells;
-    const name=normalizeSearch(cells[1]?.textContent);
-    const place=normalizeSearch(cells[2]?.textContent);
-    row.hidden=Boolean((client&&!name.includes(client))||(address&&!place.includes(address)));
+    const rawName=cells[1]?.textContent||'';
+    const rawPlace=cells[2]?.textContent||'';
+    let entry=previewTextCache.get(row);
+    if(!entry||entry.rawName!==rawName||entry.rawPlace!==rawPlace){
+     entry={rawName,rawPlace,name:normalizeSearch(rawName),place:normalizeSearch(rawPlace)};
+     previewTextCache.set(row,entry);
+    }
+    row.hidden=Boolean((client&&!entry.name.includes(client))||(address&&!entry.place.includes(address)));
    }
    note('Buscando no computador… confirmando no servidor');
   }
@@ -851,6 +859,9 @@ function init(){
         if(target.children[i]!==row)target.insertBefore(row,target.children[i]||null);
       }
     }
+    // A consulta oficial substitui a prévia: nenhuma linha deve permanecer
+    // escondida apenas porque uma pesquisa anterior foi digitada.
+    for(const row of target.rows)if(row.hidden)row.hidden=false;
     if(box){box.scrollTop=y;box.scrollLeft=x;}
     history.replaceState(history.state,'',url.pathname+url.search+url.hash);
     window.dispatchEvent(new Event('coopex-admin-table-updated'));
