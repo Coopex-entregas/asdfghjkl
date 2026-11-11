@@ -248,9 +248,9 @@ LIVE_SCRIPT = r"""
     (itens||[]).forEach(item=>{
       const el=document.getElementById(item.id);
       if(!el) return;
+      // Preservar filtros sem disparar novas consultas AJAX desnecessárias.
+      // O controle já está na página: apenas corrigir se o valor foi alterado.
       if(String(el.value)!==String(item.value)) el.value=item.value;
-      try{ el.dispatchEvent(new Event('input',{bubbles:true})); }catch(e){}
-      try{ el.dispatchEvent(new Event('change',{bubbles:true})); }catch(e){}
     });
   }
 
