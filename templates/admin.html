@@ -740,6 +740,15 @@ function init(){
  if(form&&!form.dataset.cxAuto){
   form.dataset.cxAuto='2';
   let timer=null,controller=null,serial=0;
+  // Cache somente em RAM; nunca salva HTML da Supervisão no disco.
+  // TTL pequeno para que Pix, fila e alterações de outros PCs não fiquem antigos.
+  const filterCache=new Map(), FILTER_TTL=8000, FILTER_MAX=8;
+  const clearFilterCache=()=>filterCache.clear();
+  document.addEventListener('supervisao:live-updated',clearFilterCache);
+  document.addEventListener('submit',event=>{
+   if(event.target!==form && String(event.target?.method||'').toUpperCase()==='POST')
+      clearFilterCache();
+  },true);
   const dates=()=>[form.querySelector('#data_inicio'),form.querySelector('#data_fim')];
   const ready=()=>{
    const [start,end]=dates();
@@ -767,17 +776,31 @@ function init(){
    controller=new AbortController();
    note('Filtrando…');
    try{
-    const res=await fetch(url.pathname+url.search,{
-     method:'GET',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-     headers:{'Accept':'text/html','X-Requested-With':'fetch'}
-    });
-    if(!res.ok)throw new Error('Erro '+res.status+' ao filtrar. Tente novamente.');
-    const html=await res.text();
-    if(seq!==serial)return;
+    const key=url.pathname+url.search;
+    const entry=filterCache.get(key);
+    const cached=entry && Date.now()-entry.at<FILTER_TTL && navigator.onLine!==false;
+    let html;
+    if(cached){
+     // Cache rápido para alternância repetida de filtros; mantém dados na RAM.
+     filterCache.delete(key);filterCache.set(key,entry);
+     html=entry.html;
+    }else{
+     const res=await fetch(key,{
+      method:'GET',credentials:'same-origin',cache:'no-store',signal:controller.signal,
+      headers:{'Accept':'text/html','X-Requested-With':'fetch'}
+     });
+     if(!res.ok)throw new Error('Erro '+res.status+' ao filtrar. Tente novamente.');
+     html=await res.text();
+    }
+    if(seq!==serial||controller.signal.aborted)return;
     const parsed=new DOMParser().parseFromString(html,'text/html');
     const target=document.querySelector('#tbl table.tabela tbody');
     const replacement=parsed.querySelector('#tbl table.tabela tbody');
     if(!target||!replacement)throw new Error('Tabela indisponível para atualização.');
+    if(!cached){
+      filterCache.set(key,{html,at:Date.now()});
+      while(filterCache.size>FILTER_MAX)filterCache.delete(filterCache.keys().next().value);
+    }
     const box=document.getElementById('tbl');
     const y=box?.scrollTop||0,x=box?.scrollLeft||0;
     // Atualização diferencial da tabela: preservar linhas e handlers intactos.
