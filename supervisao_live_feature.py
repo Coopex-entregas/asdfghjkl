@@ -258,7 +258,35 @@ LIVE_SCRIPT = r"""
     const atual=document.querySelector(seletor);
     const novo=docNovo.querySelector(seletor);
     if(!atual || !novo) return false;
-    if(atual.innerHTML!==novo.innerHTML) atual.innerHTML=novo.innerHTML;
+    if(atual.innerHTML===novo.innerHTML)return true;
+    // Na tabela da Supervisão, preservar nós existentes quando o registro
+    // não mudou evita recriar botões, listeners e a linha em edição.
+    if(seletor==='.tabela tbody'){
+      const antigas=Array.from(atual.children);
+      const novas=Array.from(novo.children);
+      const ids=rows=>rows.map(row=>row.dataset.id).filter(Boolean);
+      const before=ids(antigas),after=ids(novas);
+      const valid=before.length===antigas.length&&after.length===novas.length&&
+        new Set(before).size===before.length&&new Set(after).size===after.length;
+      if(valid){
+        const byId=new Map(antigas.map(row=>[row.dataset.id,row]));
+        const wanted=new Set(after);
+        antigas.forEach(row=>{if(!wanted.has(row.dataset.id))row.remove()});
+        novas.forEach((incoming,index)=>{
+          let row=byId.get(incoming.dataset.id);
+          if(!row || !row.isConnected)row=document.importNode(incoming,true);
+          else if(row.outerHTML!==incoming.outerHTML){
+            const fresh=document.importNode(incoming,true);
+            row.replaceWith(fresh);
+            row=fresh;
+          }
+          if(atual.children[index]!==row)
+            atual.insertBefore(row,atual.children[index]||null);
+        });
+        return true;
+      }
+    }
+    atual.innerHTML=novo.innerHTML;
     return true;
   }
 
