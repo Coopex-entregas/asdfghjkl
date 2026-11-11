@@ -13,4 +13,29 @@ small{display:block;margin-top:18px;color:#61708e}
 <p>Não foi possível acessar o servidor agora. As operações que dependem da internet não foram registradas ou confirmadas.</p>
 <button onclick="location.reload()">Tentar novamente</button>
 <small>Esta é a primeira etapa do modo offline. A consulta local de dados e a sincronização de alterações ainda serão habilitadas com validação de segurança.</small>
-</main></body></html>
+</main>
+<script>
+(function(){
+ 'use strict';
+ let checking=false,delay=15000;
+ async function check(){
+  if(checking||document.hidden||navigator.onLine===false)return;
+  checking=true;
+  const abort=new AbortController();
+  const timeout=setTimeout(()=>abort.abort(),5000);
+  try{
+   const response=await fetch('/login',{method:'HEAD',cache:'no-store',signal:abort.signal});
+   if(response.ok||response.redirected){
+    window.location.reload();return;
+   }
+  }catch(_){}
+  finally{clearTimeout(timeout);checking=false;}
+  delay=Math.min(60000,delay*1.6);
+ }
+ window.addEventListener('online',check);
+ document.addEventListener('visibilitychange',()=>{if(!document.hidden)check()});
+ function schedule(){setTimeout(async()=>{await check();schedule()},delay);}
+ schedule();
+})();
+</script>
+</body></html>
