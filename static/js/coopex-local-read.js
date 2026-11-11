@@ -43,7 +43,9 @@
   // Sem rede: não aguardar timeout do Render para mostrar consulta já salva.
   // O browser continua sem registrar operações de escrita offline.
   if(navigator.onLine===false){
+   if(req.signal.aborted)throw new DOMException('Consulta cancelada','AbortError');
    const local=await db.read(uid,'entregas',u.search).catch(()=>null);
+   if(req.signal.aborted)throw new DOMException('Consulta cancelada','AbortError');
    if(local){warning(true,local.time);return responseFrom(local.items);}
   }
   // Com rede, servidor continua sendo a fonte oficial.
@@ -58,12 +60,19 @@
     }).catch(()=>{});
     return result;
    }
+   // Sessão expirada: nunca apresentar snapshot de usuário não autorizado.
+   if(result.status===401||result.status===403){
+     db.clear(uid).catch(()=>{});
+     warning(false);
+     return result;
+   }
    if(result.status<500)return result;
   }catch(err){
    if(err?.name==='AbortError')throw err;
   }
   let saved=null;
   try{saved=await db.read(uid,'entregas',u.search)}catch(_){}
+  if(req.signal.aborted)throw new DOMException('Consulta cancelada','AbortError');
   if(saved){
    warning(true,saved.time);
    return responseFrom(saved.items);
