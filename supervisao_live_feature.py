@@ -337,7 +337,6 @@ LIVE_SCRIPT = r"""
       const kept=new Set(desired);
       const changedIds=new Set(changed);
       for(const [id,row] of existing){if(!kept.has(id))row.remove();}
-      const noAssignment=d.rows.filter(x=>!x.cooperado_id);
       // Ordem devolvida pelo servidor. Não substitui linhas sem mudança.
       desired.forEach((id,index)=>{
         let row=fetched.get(id)||existing.get(id);
@@ -391,6 +390,8 @@ LIVE_SCRIPT = r"""
 
       if(nova!==versao){
         versao=nova;
+        // A fila usa sua própria API pequena, sem consultar a tabela de entregas.
+        window.dispatchEvent(new Event('coopex-led-socket-ready'));
         await atualizarParcial();
       }else if(pendente && !usuarioEditando()){
         await atualizarParcial();
