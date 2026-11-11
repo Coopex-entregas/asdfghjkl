@@ -631,6 +631,27 @@ def install(app_module):
         response.headers["Cache-Control"] = "no-store, private"
         return response
 
+    @app.get("/api/admin/solicitacoes-valor/fragmento")
+    def coopex_admin_solicitacoes_valor_fragmento():
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+        S = app_module.SolicitacaoAlteracaoValor
+        hist = request.args.get("historico") == "1"
+        query = S.query.options(joinedload(S.entrega), joinedload(S.cooperado))
+        if hist:
+            items = (query.filter(S.status != "pendente")
+                     .order_by(S.criado_em.desc()).limit(500).all())
+            partial = "_admin_value_history.html"
+        else:
+            items = (query.filter(S.status == "pendente")
+                     .order_by(S.criado_em.desc()).all())
+            partial = "_admin_value_pending.html"
+        result = render_template(partial, solicitacoes_valor=items,
+                                 to_brasilia=app_module.to_brasilia)
+        response = jsonify(ok=True, html=result, count=len(items), historico=hist)
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
+
     # Temporização passiva de SQL. Não captura SQL, parâmetros nem dados pessoais.
     # Só registra consultas de requisições já monitoradas.
     with app.app_context():
