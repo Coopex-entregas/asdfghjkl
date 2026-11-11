@@ -1955,6 +1955,29 @@ document.addEventListener('click',e=>{
   const quickButton=a.closest('.quick-left') && /entrega r[aá]pida|nova entrega/.test(text);
   if(quickLink||quickButton){e.preventDefault();e.stopImmediatePropagation();open();}
 },true);
+// Clonar e excluir sem navegação; o manifesto adiciona/remove somente a linha.
+document.addEventListener('submit',async e=>{
+  const form=e.target;
+  if(!form?.matches?.('form[action]'))return;
+  const url=new URL(form.action,location.href);
+  const isDelete=/^\/excluir_entrega\/\d+$/.test(url.pathname);
+  const isClone=/^\/clonar_entrega\/\d+$/.test(url.pathname);
+  if(!isDelete&&!isClone)return;
+  e.preventDefault();e.stopImmediatePropagation();
+  if(isDelete&&!confirm('Tem certeza que deseja excluir esta entrega?'))return;
+  if(form.dataset.cxSaving==='1')return;
+  form.dataset.cxSaving='1';
+  const button=form.querySelector('[type="submit"]');
+  if(button)button.disabled=true;
+  try{
+    const res=await fetch(url.pathname,{method:'POST',body:new FormData(form),
+      credentials:'same-origin',headers:{Accept:'application/json','X-Requested-With':'fetch'}});
+    const data=await res.json();
+    if(!res.ok||!data.ok)throw new Error(data.message||data.error||'Não foi possível concluir.');
+    window.dispatchEvent(new Event('coopex-admin-delivery-saved'));
+  }catch(err){alert(err.message||'Falha ao atualizar entrega.');}
+  finally{delete form.dataset.cxSaving;if(button)button.disabled=false;}
+},true);
 window.addEventListener('message',e=>{
   if(!frame||e.origin!==location.origin||e.source!==frame.contentWindow)return;
   const data=e.data;
