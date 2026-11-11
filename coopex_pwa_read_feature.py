@@ -1,5 +1,5 @@
 """COOPEX PWA: registro de worker e cache de consultas no HTML original."""
-from flask import request
+from flask import request, session
 
 def install(app_module):
     app=app_module.app
@@ -25,6 +25,8 @@ def install(app_module):
                 '<script defer src="/static/js/coopex-local-read.js"></script>'
                 '<script id="coopex-pwa-script" defer src="/static/js/coopex-pwa-init.js"></script>'
             )
+            if session.get('is_admin') and request.path in ('/admin','/cadastrar_entrega'):
+                scripts += '<script defer src="/static/js/coopex-offline-entregas.js"></script>'
             head=html.lower().find('</head>')
             if head>=0:html=html[:head]+manifest+'\n'+html[head:]
             body=html.lower().rfind('</body>')
