@@ -85,6 +85,7 @@ def post_worker_init(worker):
         import pagamentos_normalizacao_feature
         import supervisao_live_feature
         import sync_feature
+        import coopex_pwa_feature
 
         _corrigir_serializacao_escala(escala_feature)
 
@@ -102,6 +103,7 @@ def post_worker_init(worker):
         creditos_otimizacao_feature.install(app_module)
         pagamentos_normalizacao_feature.install(app_module)
         supervisao_live_feature.install(app_module)
+        coopex_pwa_feature.install(app_module)
 
         # Sempre por último: precisa enxergar as tabelas de todos os módulos.
         sync_feature.install(app_module)
