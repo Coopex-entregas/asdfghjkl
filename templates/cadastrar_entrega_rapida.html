@@ -116,6 +116,14 @@
   };
   function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';coop.value='';routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
   window.addEventListener('pageshow',reset);reset();
+  // ESC dentro do iframe não chega ao documento pai: avisar diretamente.
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && new URLSearchParams(location.search).get('modal')==='1' && window.parent!==window){
+      event.preventDefault();
+      window.parent.postMessage({type:'coopex-entrega-rapida-fechar'},location.origin);
+    }
+  });
+
   
 </script>
 <script id="coopex-quick-schedule">
