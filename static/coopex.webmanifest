@@ -1,0 +1,12 @@
+{
+  "id": "/",
+  "name": "COOPEX – Sistema de Entregas",
+  "short_name": "COOPEX",
+  "lang": "pt-BR",
+  "start_url": "/login",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f4f7ff",
+  "theme_color": "#0f4bff",
+  "description": "Painel COOPEX com preparação para funcionamento offline seguro."
+}
