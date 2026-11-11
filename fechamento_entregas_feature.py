@@ -2,7 +2,7 @@
 
 À virada de cada dia em Natal/RN, encerra entregas de cooperados com
 data_envio anterior ao início do dia local. Não altera status_pagamento,
-não altera canceladas, nem substitui recebedores informados.
+não altera canceladas nem entregas já concluídas; preserva recebedores.
 """
 import logging
 import threading
@@ -22,7 +22,7 @@ def _inicio_hoje_utc_naive():
 
 
 def fechar_pendencias_antigas(app_module):
-    """Fecha no banco apenas entregas de cooperados anteriores a hoje.
+    """Fecha no banco apenas entregas ainda abertas de cooperados anteriores a hoje.
 
     Executa uma única instrução SQL atômica e informa quantos registros
     foram atualizados. Retorno seguro para execução repetida/reinicialização.
@@ -41,12 +41,8 @@ def fechar_pendencias_antigas(app_module):
         WHERE cooperado_id IS NOT NULL
           AND data_envio < :cutoff
           AND lower(coalesce(status, '')) NOT IN ('cancelado', 'cancelada')
-          AND (
-              lower(coalesce(status, '')) NOT IN
-                  ('recebido', 'entregue', 'finalizada', 'finalizado')
-              OR lower(coalesce(status_corrida, '')) != 'finalizada'
-              OR recebido_por IS NULL OR btrim(recebido_por) = ''
-          )
+          AND lower(coalesce(status, '')) NOT IN
+              ('recebido', 'entregue', 'finalizada', 'finalizado')
     """)
     with app_module.app.app_context():
         # Transação única: se falhar, nenhuma entrega será parcialmente alterada.
