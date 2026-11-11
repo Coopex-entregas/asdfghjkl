@@ -5137,6 +5137,20 @@ def admin():
     atribuidos = [e for e in entregas_all if e.cooperado_id]
     entregas = [_enriquecer_entrega(e) for e in (nao_atribuidos + atribuidos)]
 
+    # Filtros AJAX da Supervisão precisam somente das linhas da tabela.
+    # Mantém as mesmas permissões, filtros, ordem, limite e ações oficiais,
+    # mas não consulta fila, KPIs e solicitações nem renderiza todo o painel.
+    # Se o fragmento falhar, segue pelo caminho HTML original.
+    if request.headers.get('X-Coopex-Table-Only') == '1':
+        try:
+            return render_template(
+                'admin_table_fragment.html',
+                entregas=entregas,
+                to_brasilia=to_brasilia,
+            )
+        except Exception:
+            app.logger.exception('COOPEX: falha no fragmento, usando painel completo')
+
     cooperados = Cooperado.query.filter(Cooperado.ativo.is_(True)).order_by(Cooperado.nome).all()
     formas_pagamento_disponiveis = _admin_formas_pagamento_cache()
     total_dia, total_mes, total_ano, pendentes_dia = _admin_stats_cache(hoje)
