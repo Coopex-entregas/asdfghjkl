@@ -5,8 +5,7 @@
  if(!uid || !/^\/painel_cooperado(?:\/|$)/.test(location.pathname))return;
  if(!window.CoopexReadCache || !window.fetch)return;
  const db=window.CoopexReadCache,original=window.fetch.bind(window);
- let pending=0;
- function warning(on){
+  function warning(on,savedAt){
   let el=document.getElementById('coopex-local-read-warning');
   if(!on){if(el)el.remove();return;}
   if(!el){
@@ -15,7 +14,8 @@
    el.style.cssText='position:fixed;bottom:12px;left:12px;right:12px;z-index:9999;padding:10px 14px;border-radius:12px;background:#fff4cf;color:#664a00;border:1px solid #e6cc7a;font:600 12px system-ui;box-shadow:0 7px 25px #0002';
    document.body.appendChild(el);
   }
-  el.textContent='Sem conexão com o servidor: exibindo uma consulta antiga deste computador. Alterações não serão confirmadas até a conexão voltar.';
+  const date=savedAt?new Date(savedAt).toLocaleString('pt-BR'):'data desconhecida';
+  el.textContent='COOPEX offline · consulta local de '+date+'. Dados podem estar desatualizados. Alterações só são confirmadas pelo servidor.';
  }
  function responseFrom(rows){
   return new Response(JSON.stringify({ok:true,items:rows}),{
@@ -34,7 +34,13 @@
    }
    return res;
   }
-  // Consultas oficiais são priorizadas; cache local apenas em falha de rede/5xx.
+  // Sem rede: não aguardar timeout do Render para mostrar consulta já salva.
+  // O browser continua sem registrar operações de escrita offline.
+  if(navigator.onLine===false){
+   const local=await db.read(uid,'entregas',u.search).catch(()=>null);
+   if(local){warning(true,local.time);return responseFrom(local.items);}
+  }
+  // Com rede, servidor continua sendo a fonte oficial.
   let result;
   try{
    result=await original(input,init);
@@ -53,7 +59,7 @@
   let saved=null;
   try{saved=await db.read(uid,'entregas',u.search)}catch(_){}
   if(saved){
-   warning(true);
+   warning(true,saved.time);
    return responseFrom(saved.items);
   }
   if(result)return result;
