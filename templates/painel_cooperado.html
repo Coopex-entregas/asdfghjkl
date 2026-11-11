@@ -3195,10 +3195,14 @@ document.addEventListener('DOMContentLoaded',()=>{
 .cx-calendar-backdrop,.cx-calendar-card,.cx-calendar-head,.cx-calendar-nav,.cx-calendar-day,.cx-calendar-foot button,.cx-glass-date{touch-action:manipulation;-webkit-tap-highlight-color:transparent}
 .cx-calendar-nav{user-select:none;-webkit-user-select:none;-webkit-touch-callout:none}
 .cx-calendar-nav{border:2px solid white;border-radius:13px;width:40px;height:39px;background:linear-gradient(145deg,#fff,#c5e2ff);color:#0e56af;font-size:1.55rem;font-weight:900;box-shadow:0 4px 9px #1d70be28}
-.cx-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:5px}
+.cx-calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));grid-template-rows:repeat(7,minmax(0,1fr));gap:5px;min-height:319px;align-content:start}
 .cx-calendar-weekday{text-align:center;font-size:.7rem;font-weight:950;color:#6683a9;padding:5px 0}
 .cx-calendar-day{min-width:0;aspect-ratio:1;border:1px solid rgba(255,255,255,.95);border-radius:13px;background:rgba(255,255,255,.64);color:#16427f;font-weight:850;font-size:.9rem;box-shadow:inset 0 1px 2px white}
 .cx-calendar-day[disabled]{opacity:.2}
+.cx-calendar-placeholder{display:block;aspect-ratio:1;pointer-events:none}
+.cx-calendar-card,.cx-calendar-grid,.cx-calendar-nav,.cx-calendar-day{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+.cx-calendar-nav,.cx-calendar-day{touch-action:manipulation!important;overscroll-behavior:contain}
+.cx-calendar-card{overscroll-behavior:contain}
 .cx-calendar-day.cx-selected{background:linear-gradient(140deg,#38b5ff,#065bd6);color:white;box-shadow:0 4px 12px #1765d854}
 .cx-calendar-day.cx-today:not(.cx-selected){border:2px solid #2187ea}
 .cx-calendar-foot{display:flex;gap:8px;margin-top:15px}
@@ -3232,6 +3236,14 @@ function render(){
   const b=document.createElement('button');b.type='button';b.className='cx-calendar-day';b.textContent=String(n);
   const value=iso(y,m,n);if(value===selected)b.classList.add('cx-selected');if(value===todayISO)b.classList.add('cx-today');
   b.addEventListener('click',()=>select(value));grid.append(b);
+ }
+ // Sempre 6 semanas: os botões e o calendário não pulam ao mudar de mês.
+ const occupied=offset+days;
+ for(let n=occupied;n<42;n++){
+  const empty=document.createElement('span');
+  empty.className='cx-calendar-placeholder';
+  empty.setAttribute('aria-hidden','true');
+  grid.append(empty);
  }
 }
 function sync(){inputs.forEach(id=>{const el=document.getElementById(id);const btn=document.querySelector('[data-calendar-for="'+id+'"]');if(el&&btn)btn.querySelector('span').textContent=format(el.value);});}
