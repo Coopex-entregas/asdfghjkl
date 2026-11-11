@@ -764,6 +764,26 @@ function init(){
    status.style.color=isError?'#bd3030':'#205c9e';
    status.style.display=msg?'inline-flex':'none';
   }
+  // Busca preliminar local na tabela já carregada; o Render continua sendo
+  // responsável pelo resultado completo e pela validação dos filtros.
+  const normalizeSearch=value=>String(value||'')
+    .normalize('NFD').replace(/[\\u0300-\\u036f]/g,'').toLocaleLowerCase('pt-BR').trim();
+  function localPreview(){
+   const table=document.querySelector('#tbl table.tabela tbody');
+   if(!table)return;
+   const client=normalizeSearch(form.querySelector('#cliente')?.value);
+   const address=normalizeSearch(form.querySelector('#endereco')?.value);
+   if(!client&&!address){for(const row of table.rows)row.hidden=false;return;}
+   // Filtra só as linhas visíveis carregadas: não representa uma busca histórica.
+   for(const row of table.rows){
+    if(!row.dataset.id)continue;
+    const cells=row.cells;
+    const name=normalizeSearch(cells[1]?.textContent);
+    const place=normalizeSearch(cells[2]?.textContent);
+    row.hidden=Boolean((client&&!name.includes(client))||(address&&!place.includes(address)));
+   }
+   note('Buscando no computador… confirmando no servidor');
+  }
   async function apply(){
    if(!form.isConnected||!ready())return;
    const url=new URL(form.action,window.location.href);
@@ -843,7 +863,10 @@ function init(){
   }
   const schedule=(delay=0)=>{clearTimeout(timer);timer=setTimeout(apply,delay);};
   form.querySelectorAll('select,input[type="date"]').forEach(el=>el.addEventListener('change',()=>schedule(0)));
-  form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>schedule(250)));
+  form.querySelectorAll('input[type="text"],input[type="search"]').forEach(el=>el.addEventListener('input',()=>{
+   if(el.id==='cliente'||el.id==='endereco')localPreview();
+   schedule(450);
+  }));
   form.addEventListener('submit',e=>{
    e.preventDefault();
    e.stopImmediatePropagation();
