@@ -816,7 +816,7 @@ function init(){
     }else{
      const res=await fetch(key,{
       method:'GET',credentials:'same-origin',cache:'no-store',signal:controller.signal,
-      headers:{'Accept':'text/html','X-Requested-With':'fetch'}
+      headers:{'Accept':'text/html','X-Requested-With':'fetch','X-Coopex-Table-Only':'1'}
      });
      if(!res.ok)throw new Error('Erro '+res.status+' ao filtrar. Tente novamente.');
      const html=await res.text();
