@@ -12703,11 +12703,16 @@ def toggle_pagamento(id):
             e.status_pagamento = 'pago'
             db.session.commit()
         return jsonify(ok=True, status_pagamento='pago', confirmado_sicoob=True)
-    # Marcar pago nunca deve alternar o status por um segundo clique.
-    if (e.status_pagamento or '').lower() != 'pago':
-        e.status_pagamento = 'pago'
+    # Aplicar o estado escolhido explicitamente, em vez de alternar o estado
+    # recebido do banco: reenvios e requisições repetidas não desfazem pagamento.
+    dados = request.get_json(silent=True) or {}
+    desejado = str(dados.get('status_pagamento') or '').strip().lower()
+    if desejado not in ('pago', 'pendente'):
+        return jsonify(ok=False, error='Informe o status desejado: pago ou pendente'), 400
+    if (e.status_pagamento or 'pendente').lower() != desejado:
+        e.status_pagamento = desejado
         db.session.commit()
-    return jsonify(ok=True, status_pagamento='pago')
+    return jsonify(ok=True, status_pagamento=desejado)
 
 
 @app.get('/cooperado/api/ganhos')

@@ -1566,7 +1566,7 @@ body.cx-modal-active{overflow:hidden!important}
 
             <div class="delivery-actions">
               <button type="button" class="action-btn" data-role="maps" data-id="{{ e.id }}">Maps</button>
-              <button type="button" class="action-btn warn" data-role="pgto" data-id="{{ e.id }}"{{ ' disabled' if pago else '' }}>{{ 'Pago' if pago else 'Marcar pago' }}</button>
+              <button type="button" class="action-btn warn" data-role="pgto" data-id="{{ e.id }}">{{ 'Marcar pendente' if pago else 'Marcar pago' }}</button>
               <button type="button" class="action-btn primary" data-role="entrega" data-id="{{ e.id }}">{{ 'Voltar entrega' if entregue else 'Confirmar entrega' }}</button>
               <button type="button" class="action-btn" data-role="solicitar-valor" data-id="{{ e.id }}" data-valor="{{ '%.2f'|format(e.valor or 0) }}" {% if ajustes_pendentes is defined and e.id in ajustes_pendentes %}disabled{% endif %}>{{ 'Aguardando aprovação' if ajustes_pendentes is defined and e.id in ajustes_pendentes else 'Solicitar ajuste de valor' }}</button>
             </div>
@@ -1953,7 +1953,7 @@ body.cx-modal-active{overflow:hidden!important}
         ${item.observacao ? `<div class="delivery-note"><strong style="color:#15306f">Observação:</strong> <span>${escapeHtml(item.observacao)}</span></div>` : ''}
         <div class="delivery-actions">
           <button type="button" class="action-btn" data-role="maps" data-id="${escapeHtml(item.id)}">Maps</button>
-          <button type="button" class="action-btn warn" data-role="pgto" data-id="${escapeHtml(item.id)}" ${pago ? 'disabled' : ''}>${pago ? 'Pago' : 'Marcar pago'}</button>
+          <button type="button" class="action-btn warn" data-role="pgto" data-id="${escapeHtml(item.id)}">${pago ? 'Marcar pendente' : 'Marcar pago'}</button>
           <button type="button" class="action-btn primary" data-role="entrega" data-id="${escapeHtml(item.id)}">${entregue ? 'Voltar entrega' : 'Confirmar entrega'}</button>
           <button type="button" class="action-btn" data-role="solicitar-valor" data-id="${escapeHtml(item.id)}" data-valor="${Number(item.valor || 0).toFixed(2)}" ${ajuste ? 'disabled' : ''}>${ajuste ? 'Aguardando aprovação' : 'Solicitar ajuste de valor'}</button>
         </div>
@@ -2287,7 +2287,7 @@ body.cx-modal-active{overflow:hidden!important}
           badge.classList.toggle('pending', updates.statusPagamento !== 'pago');
         }
         const btn = item.element.querySelector('[data-role="pgto"]');
-        if (btn){btn.textContent = updates.statusPagamento === 'pago' ? 'Pago' : 'Marcar pago';btn.disabled = updates.statusPagamento === 'pago';}
+        if (btn) btn.textContent = updates.statusPagamento === 'pago' ? 'Marcar pendente' : 'Marcar pago';
       }
       if (updates.statusEntrega) {
         item.statusEntrega = updates.statusEntrega;
@@ -2322,26 +2322,28 @@ body.cx-modal-active{overflow:hidden!important}
     }
 
     async function togglePagamento(btn){
-      if (btn.dataset.busy === '1' || btn.disabled || btn.closest('.entrega-row')?.dataset.statusPagamento === 'pago') return;
+      if (btn.dataset.busy === '1' || btn.disabled) return;
       btn.dataset.busy = '1';
       btn.disabled = true;
       const id = btn.dataset.id;
+      const atual = btn.closest('.entrega-row')?.dataset.statusPagamento || 'pendente';
+      const desejado = atual === 'pago' ? 'pendente' : 'pago';
       try {
         const resp = await fetch(`{{ url_for('toggle_pagamento', id=0) }}`.replace('0', id), {
           method:'POST',
           headers:{'Content-Type':'application/json','X-Requested-With':'fetch'},
-          body: JSON.stringify({})
+          body: JSON.stringify({status_pagamento:desejado})
         });
         const data = await resp.json();
-        if (!resp.ok || data.ok !== true || data.status_pagamento !== 'pago') throw new Error(data.error || 'Falha ao confirmar pagamento');
+        if (!resp.ok || data.ok !== true || data.status_pagamento !== desejado) throw new Error(data.error || 'Falha ao confirmar pagamento');
         if(deliveryAbortController)deliveryAbortController.abort();
         if(summaryAbortController)summaryAbortController.abort();
-        syncRowState(id, { statusPagamento: 'pago' });
+        syncRowState(id, { statusPagamento: desejado });
       } catch (e) {
         alert(e.message || 'Erro ao alterar pagamento');
       } finally {
         btn.dataset.busy = '0';
-        btn.disabled = btn.closest('.entrega-row')?.dataset.statusPagamento === 'pago';
+        btn.disabled = false;
       }
     }
 
