@@ -102,6 +102,15 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
     "max_overflow": 10,
 }
 
+# Proteção: uma conexão que ficar ociosa dentro de uma transação por
+# mais de 120 s é encerrada pelo PostgreSQL. Não limita requisições GPS,
+# conexões ociosas normais, nem transações que estão executando comandos.
+# Evita que um request travado segure indefinidamente conexão e recursos.
+if database_url.startswith('postgresql'):
+    app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = {
+        'options': '-c idle_in_transaction_session_timeout=120000'
+    }
+
 db = SQLAlchemy(app)
 
 @app.route('/healthz')
