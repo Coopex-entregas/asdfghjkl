@@ -767,7 +767,7 @@ function init(){
   // Busca preliminar local na tabela já carregada; o Render continua sendo
   // responsável pelo resultado completo e pela validação dos filtros.
   const normalizeSearch=value=>String(value||'')
-    .normalize('NFD').replace(/[^\\x00-\\x7F]/g,'').toLocaleLowerCase('pt-BR').trim();
+    .normalize('NFD').replace(/\p{M}/gu,'').toLocaleLowerCase('pt-BR').trim();
   function localPreview(){
    const table=document.querySelector('#tbl table.tabela tbody');
    if(!table)return;
