@@ -290,63 +290,73 @@ LIVE_SCRIPT = r"""
     });
   }
 
-  async function atualizarParcial(){
-    if(atualizando) return;
 
-    if(document.visibilityState==='hidden'||usuarioEditando()||
-       Date.now()-ultimoRefresh<REFRESH_MIN_MS){
-      pendente=true;
-      return;
-    }
-
+  // Mantém o documento e cada linha existente. Busca somente IDs/assinaturas
+  // e solicita HTML das linhas novas/alteradas (limite de 100 por requisição).
+  async function atualizarParcial(force=false){
+    if(atualizando){pendente=true;return;}
+    if(document.visibilityState==='hidden' && !force){pendente=true;return;}
+    if(usuarioEditando() && !force){pendente=true;return;}
     atualizando=true;
     pendente=false;
     ultimoRefresh=Date.now();
-
-    const y=window.scrollY||0;
-    const filtros=capturarFiltros();
-
     try{
-      const r=await fetch(window.location.href,{
-        cache:'no-store',
-        credentials:'same-origin',
+      const current=document.querySelector('#tbl table.tabela tbody');
+      if(!current)throw Error('Tabela não encontrada');
+      const scrollHost=document.getElementById('tbl');
+      const y=window.scrollY||0, scrollY=scrollHost?.scrollTop||0,scrollX=scrollHost?.scrollLeft||0;
+      const qs=window.location.search||'';
+      const r=await fetch('/api/admin/entregas/manifesto'+qs,{
+        cache:'no-store',credentials:'same-origin',
         signal:AbortSignal.timeout(FETCH_TIMEOUT_MS),
-        headers:{
-          'Accept':'text/html',
-          'X-Requested-With':'supervisao-live'
+        headers:{Accept:'application/json'}
+      });
+      if(!r.ok)throw Error('Manifesto '+r.status);
+      const d=await r.json();
+      if(!d.ok||!Array.isArray(d.rows))throw Error('Manifesto inválido');
+      const existing=new Map([...current.querySelectorAll('tr[data-id]')].map(tr=>[String(tr.dataset.id),tr]));
+      const desired=d.rows.map(x=>String(x.id));
+      const changed=d.rows.filter(x=>{
+        const tr=existing.get(String(x.id));
+        return !tr || tr.dataset.cxFingerprint!==x.fp;
+      }).map(x=>String(x.id));
+      const fetched=new Map();
+      for(let i=0;i<changed.length;i+=100){
+        const ids=changed.slice(i,i+100);
+        const u='/api/admin/entregas/linhas?ids='+encodeURIComponent(ids.join(','));
+        const res=await fetch(u,{cache:'no-store',credentials:'same-origin',
+          signal:AbortSignal.timeout(FETCH_TIMEOUT_MS),headers:{Accept:'application/json'}});
+        if(!res.ok)throw Error('Linhas '+res.status);
+        const result=await res.json();
+        if(!result.ok)throw Error('Falha ao obter linhas');
+        const tpl=document.createElement('template');
+        tpl.innerHTML=result.html||'';
+        tpl.content.querySelectorAll('tr[data-id]').forEach(tr=>fetched.set(String(tr.dataset.id),tr));
+        if(ids.some(id=>!fetched.has(id)))throw Error('Linha ausente no servidor');
+      }
+      const kept=new Set(desired);
+      const changedIds=new Set(changed);
+      for(const [id,row] of existing){if(!kept.has(id))row.remove();}
+      // Ordem devolvida pelo servidor. Não substitui linhas sem mudança.
+      desired.forEach((id,index)=>{
+        let row=fetched.get(id)||existing.get(id);
+        if(!row)return;
+        if(changedIds.has(id)&&existing.has(id)&&existing.get(id).isConnected){
+          existing.get(id).replaceWith(row);
         }
+        const at=current.children[index];
+        if(at!==row)current.insertBefore(row,at||null);
       });
-      if(!r.ok) throw new Error('admin '+r.status);
-
-      const html=await r.text();
-      const docNovo=new DOMParser().parseFromString(html,'text/html');
-
-      trocarConteudo(docNovo,'.tabela tbody');
-      trocarConteudo(docNovo,'#espera-lista');
-      trocarConteudo(docNovo,'#pendingValueRequestsList');
-      trocarConteudo(docNovo,'#valueRequestHistoryList');
-
-      trocarTexto(docNovo,'#kpiTotalDia');
-      trocarTexto(docNovo,'#kpiTotalMes');
-      trocarTexto(docNovo,'#kpiTotalAno');
-
-      atualizarFilaContador(docNovo);
-      atualizarContadoresSolicitacoes(docNovo);
-
-      reaplicarFiltros(filtros);
-
-      requestAnimationFrame(()=>{
-        window.scrollTo(0,y);
-        requestAnimationFrame(()=>window.scrollTo(0,y));
-      });
-
-      try{
-        document.dispatchEvent(new CustomEvent('supervisao:live-updated'));
-      }catch(e){}
-
+      if(changed.length||existing.size!==desired.length){
+        window.dispatchEvent(new Event('coopex-admin-table-updated'));
+        document.dispatchEvent(new Event('coopex-admin-table-updated'));
+      }
+      if(scrollHost){scrollHost.scrollTop=scrollY;scrollHost.scrollLeft=scrollX;}
+      if(window.scrollY!==y)window.scrollTo(0,y);
       statusOnline(true);
     }catch(e){
-      console.warn('Supervisão ao vivo:',e);
+      pendente=true;
+      console.warn('Atualização incremental:',e);
       statusOnline(false);
     }finally{
       atualizando=false;
@@ -380,6 +390,8 @@ LIVE_SCRIPT = r"""
 
       if(nova!==versao){
         versao=nova;
+        // A fila usa sua própria API pequena, sem consultar a tabela de entregas.
+        window.dispatchEvent(new Event('coopex-led-socket-ready'));
         await atualizarParcial();
       }else if(pendente && !usuarioEditando()){
         await atualizarParcial();
@@ -409,6 +421,12 @@ LIVE_SCRIPT = r"""
     },true);
 
     window.addEventListener('online',()=>setTimeout(verificar,100));
+    // A Entrega Rápida confirma o cadastro na janela, sem sair do Admin.
+    window.addEventListener('coopex-admin-delivery-saved',()=>atualizarParcial(true));
+    window.addEventListener('coopex-admin-modal-closed',()=>{
+      if(pendente)atualizarParcial(true);
+    });
+
   }
 
   if(document.readyState==='loading'){
@@ -503,6 +521,153 @@ def install(app_module):
         except Exception as exc:
             app.logger.warning("Falha no Supervisão ao vivo: %s",exc)
             return jsonify(ok=False,error="live-state indisponível"),503
+
+    # Consulta incremental: manifesto leve + HTML somente das linhas alteradas.
+    # A página /admin continua responsável pela primeira carga e pelos filtros.
+    import hashlib
+    from flask import render_template
+    from sqlalchemy import func, or_
+    from sqlalchemy.orm import joinedload
+
+    def _delivery_fingerprint(entrega):
+        # Não inclui trajetos de GPS nem objetos em memória permanentes.
+        fields = (
+            "id", "cliente", "bairro", "valor", "status", "status_pagamento",
+            "pagamento", "cooperado_id", "data_envio", "data_atribuida",
+            "origem_json", "destino_json", "paradas_json", "recebido_por",
+        )
+        data = tuple(str(getattr(entrega, field, "") or "") for field in fields)
+        return hashlib.blake2s(repr(data).encode("utf-8"), digest_size=10).hexdigest()
+
+    app.jinja_env.globals["delivery_fingerprint"] = _delivery_fingerprint
+
+    def _admin_filtered_delivery_query():
+        Entrega = app_module.Entrega
+        q = Entrega.query
+        direct = request.args.get("entrega_id", type=int)
+        if direct is not None:
+            return q.filter(Entrega.id == direct)
+        start = request.args.get("data_inicio")
+        end = request.args.get("data_fim")
+        if not start and not end:
+            today = datetime.now(app_module.BRAZIL_TZ).date()
+            low, high = app_module.local_date_window_to_utc_range(today)
+            q = q.filter(Entrega.data_envio >= low, Entrega.data_envio <= high)
+        try:
+            if start:
+                low, _ = app_module.local_date_window_to_utc_range(datetime.strptime(start, "%Y-%m-%d").date())
+                q = q.filter(Entrega.data_envio >= low)
+            if end:
+                _, high = app_module.local_date_window_to_utc_range(datetime.strptime(end, "%Y-%m-%d").date())
+                q = q.filter(Entrega.data_envio <= high)
+        except ValueError:
+            from werkzeug.exceptions import BadRequest
+            raise BadRequest("Período inválido")
+        coop = request.args.get("cooperado_id", "todos")
+        if coop != "todos":
+            try:
+                q = q.filter(Entrega.cooperado_id == int(coop))
+            except (TypeError, ValueError):
+                pass
+        status = request.args.get("status_pagamento", "todos")
+        if status == "pago":
+            q = q.filter(func.lower(Entrega.status_pagamento) == "pago")
+        elif status == "pendente":
+            q = q.filter(or_(Entrega.status_pagamento.is_(None),
+                             func.lower(Entrega.status_pagamento) == "pendente"))
+        payment = (request.args.get("forma_pagamento") or "todos").strip().lower()
+        if payment not in ("todos", "todas"):
+            q = q.filter(func.lower(func.coalesce(Entrega.pagamento, "")) == payment)
+        client = (request.args.get("cliente") or "").strip().lower()
+        if client:
+            q = q.filter(func.lower(Entrega.cliente).like("%" + client + "%"))
+        address = (request.args.get("endereco") or "").strip().lower()
+        if address:
+            like = "%" + address + "%"
+            q = q.filter(or_(
+                func.lower(func.coalesce(Entrega.bairro, "")).like(like),
+                func.lower(func.coalesce(Entrega.origem_json, "")).like(like),
+                func.lower(func.coalesce(Entrega.destino_json, "")).like(like),
+                func.lower(func.coalesce(Entrega.paradas_json, "")).like(like),
+            ))
+        return q
+
+    @app.get("/api/admin/entregas/manifesto")
+    def coopex_admin_entregas_manifesto():
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+        Entrega = app_module.Entrega
+        found = (_admin_filtered_delivery_query()
+                 .order_by(Entrega.data_envio.desc()).limit(500).all())
+        # Mesma prioridade visual da tabela: sem cooperado antes de atribuídos.
+        found = [e for e in found if not e.cooperado_id] + [e for e in found if e.cooperado_id]
+        response = jsonify(ok=True, rows=[
+            {"id": int(e.id), "fp": _delivery_fingerprint(e)} for e in found
+        ])
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
+
+    @app.get("/api/admin/entregas/linhas")
+    def coopex_admin_entregas_linhas():
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+        raw = (request.args.get("ids") or "").split(",")
+        try:
+            ids = list(dict.fromkeys(int(x) for x in raw if x.strip()))
+        except (ValueError, TypeError):
+            return jsonify(ok=False, error="ids invalidos"), 400
+        if not ids or len(ids) > 100 or any(x <= 0 for x in ids):
+            return jsonify(ok=False, error="limite de 100 IDs"), 400
+        Entrega = app_module.Entrega
+        found = (Entrega.query.options(joinedload(Entrega.cooperado))
+                 .filter(Entrega.id.in_(ids)).all())
+        indexed = {int(e.id): app_module._enriquecer_entrega(e) for e in found}
+        ordered = [indexed[x] for x in ids if x in indexed]
+        html = render_template(
+            "_admin_delivery_rows.html", entregas=ordered,
+            to_brasilia=app_module.to_brasilia
+        )
+        response = jsonify(ok=True, html=html)
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
+
+    @app.get("/api/admin/credito/saldos-ativos")
+    def coopex_admin_credito_saldos_ativos():
+        """Somente IDs e saldos não zerados; não percorre histórico financeiro."""
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+        C = app_module.Cliente
+        rows = (db.session.query(C.id, C.saldo_atual)
+                .filter(C.saldo_atual.isnot(None))
+                .filter(C.saldo_atual != 0)
+                .all())
+        response = jsonify(ok=True, items=[
+            {"id": int(cid), "saldo": round(float(saldo), 2)}
+            for cid, saldo in rows
+        ])
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
+
+    @app.get("/api/admin/solicitacoes-valor/fragmento")
+    def coopex_admin_solicitacoes_valor_fragmento():
+        if not session.get("is_admin") and not session.get("is_master"):
+            return jsonify(ok=False, error="unauthorized"), 403
+        S = app_module.SolicitacaoAlteracaoValor
+        hist = request.args.get("historico") == "1"
+        query = S.query.options(joinedload(S.entrega), joinedload(S.cooperado))
+        if hist:
+            items = (query.filter(S.status != "pendente")
+                     .order_by(S.criado_em.desc()).limit(500).all())
+            partial = "_admin_value_history.html"
+        else:
+            items = (query.filter(S.status == "pendente")
+                     .order_by(S.criado_em.desc()).all())
+            partial = "_admin_value_pending.html"
+        result = render_template(partial, solicitacoes_valor=items,
+                                 to_brasilia=app_module.to_brasilia)
+        response = jsonify(ok=True, html=result, count=len(items), historico=hist)
+        response.headers["Cache-Control"] = "no-store, private"
+        return response
 
     # Temporização passiva de SQL. Não captura SQL, parâmetros nem dados pessoais.
     # Só registra consultas de requisições já monitoradas.

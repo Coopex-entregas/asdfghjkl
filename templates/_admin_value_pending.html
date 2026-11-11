@@ -1,0 +1,22 @@
+{% for s in solicitacoes_valor if s.status == 'pendente' %}
+          <article class="request-item" data-solicitacao-id="{{ s.id }}" data-status="pendente">
+            <div class="request-main">
+              <div class="request-title-row">
+                <strong>Entrega #{{ s.entrega_id }} — {{ s.entrega.cliente if s.entrega else '-' }}</strong>
+                <span class="request-status-chip pending">Pendente</span>
+              </div>
+              <div class="request-person">Solicitado por <strong>{{ s.cooperado.nome if s.cooperado else '-' }}</strong> em {{ to_brasilia(s.criado_em).strftime('%d/%m/%Y %H:%M') if s.criado_em else '-' }}</div>
+              <div class="request-value-grid">
+                <div><span>Valor anterior</span><strong>R$ {{ '%.2f'|format(s.valor_original)|replace('.',',') }}</strong></div>
+                <div><span>Valor solicitado</span><strong>R$ {{ '%.2f'|format(s.valor_solicitado)|replace('.',',') }}</strong></div>
+              </div>
+              {% if s.motivo %}<div class="request-reason"><span>Motivo</span>{{ s.motivo }}</div>{% endif %}
+            </div>
+            <div class="request-actions">
+              <button type="button" class="request-approve" data-action="approve-request">Aceitar</button>
+              <button type="button" class="request-reject" data-action="reject-request">Recusar</button>
+            </div>
+          </article>
+          {% else %}
+          <div class="value-request-empty">Nenhuma solicitação pendente.</div>
+          {% endfor %}

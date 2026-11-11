@@ -63,14 +63,57 @@
   function render(list){items=list||[];active=-1;results.innerHTML='';if(!items.length){results.innerHTML='<div class="cx-muted" style="padding:12px;text-align:center">Nenhum cliente encontrado.</div>';results.style.display='block';return}items.forEach((x,i)=>{const d=document.createElement('div');d.className='result';d.innerHTML=`<div><strong>${esc(x.nome)}</strong><small>${esc(x.telefone||'sem telefone')} • ${esc(x.bairro_origem||'sem bairro')}</small></div><b style="color:var(--cx-royal-dark);font-size:.74rem">Selecionar</b>`;d.onmousedown=e=>{e.preventDefault();choose(x)};d.onmousemove=()=>activate(i);results.appendChild(d)});results.style.display='block'}
   function activate(i){[...results.querySelectorAll('.result')].forEach(x=>x.classList.remove('active'));const n=results.children[i];if(n){n.classList.add('active');active=i}}
   async function search(q){if(abort)abort.abort();abort=new AbortController();loading.style.display='block';try{const r=await fetch(`{{ url_for('api_busca_clientes_entrega') }}?q=${encodeURIComponent(q)}&limit=12`,{signal:abort.signal,headers:{'X-Requested-With':'fetch'}});const d=await r.json();render(d.ok?d.items:[])}catch(e){if(e.name!=='AbortError')render([])}finally{loading.style.display='none'}}
-  function creditState(profile){const allowed=Boolean(profile.tem_credito);credito.hidden=!allowed;credito.disabled=!allowed;creditMsg.style.display=allowed?'block':'none';if(!allowed){if(pagamento.value==='CREDITO_AUTO')pagamento.value='Pix';creditMsg.textContent='';sync();return}creditMsg.textContent=`Crédito disponível. Saldo: ${money(profile.saldo)}`;if(profile.frequent){pagamento.value='CREDITO_AUTO';creditMsg.textContent=`Cliente usa crédito automático com frequência. Saldo: ${money(profile.saldo)}`}sync()}
-  async function creditProfile(x){const p={saldo:Number(x.saldo_atual||0),tem_credito:Math.abs(Number(x.saldo_atual||0))>0.000001,frequent:false};try{const r=await fetch(`/cliente/${x.id}/credito?format=json`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(r.ok&&d.ok){const m=d.movimentos||[];const consumos=m.filter(a=>String(a.tipo||'').toLowerCase()==='debito'&&(a.entrega_id||String(a.referencia||'').toLowerCase().includes('entrega'))).length;p.saldo=Number(d.saldo_atual||0);p.tem_credito=p.tem_credito||m.length>0||Number(d.total_creditos||0)!==0||Number(d.total_debitos||0)!==0;p.frequent=consumos>=2}}catch(e){}creditState(p);meta.innerHTML=`<strong>${esc(x.nome)}</strong><br>${esc(x.bairro_origem||'Sem bairro')} • Saldo ${money(p.saldo)}`}
-  function choose(x){cliente.value=x.nome||'';clienteId.value=x.id||'';origem.value=x.bairro_origem||'';meta.style.display='block';meta.innerHTML=`<strong>${esc(x.nome)}</strong><br>${esc(x.bairro_origem||'Sem bairro')} • Saldo ${money(x.saldo_atual)}`;creditState({saldo:x.saldo_atual,tem_credito:Math.abs(Number(x.saldo_atual||0))>0.000001,frequent:false});creditProfile(x);hide();sync();lookupSoon(30);destino.focus()}
+  // Saldo em cache compartilhado pelo Admin; nenhuma consulta ao histórico por cliente.
+  let activeCreditBalances=null;
+  let selectedCreditId=0;
+  let creditProfileSeq=0;
+  function creditBalance(id,fallback){
+    if(activeCreditBalances===null)return Number(fallback||0);
+    const n=activeCreditBalances.get(Number(id));
+    return n===undefined?0:Number(n);
+  }
+  function creditState(profile){
+    const balance=Number(profile.saldo||0);
+    const allowed=Math.abs(balance)>=0.005;
+    credito.hidden=!allowed;credito.disabled=!allowed;
+    creditMsg.style.display=allowed?'block':'none';
+    creditMsg.textContent=allowed?('Saldo de crédito: '+money(balance)):'';
+    if(!allowed&&pagamento.value==='CREDITO_AUTO')pagamento.value='Pix';
+    sync();
+  }
+  function refreshCreditSelection(){
+    const id=Number(clienteId.value||0);
+    if(!id)return;
+    const saldo=creditBalance(id,0);
+    creditState({saldo});
+    const profileName=cliente.value||'';
+    if(meta.style.display!=='none')meta.innerHTML=
+      '<strong>'+esc(profileName)+'</strong><br>Saldo '+money(saldo);
+  }
+  function choose(x){
+    cliente.value=x.nome||'';clienteId.value=x.id||'';
+    origem.value=x.bairro_origem||'';
+    meta.style.display='block';
+    creditState({saldo:creditBalance(x.id,x.saldo_atual)});
+    meta.innerHTML='<strong>'+esc(x.nome)+'</strong><br>'+
+      esc(x.bairro_origem||'Sem bairro')+' • Saldo '+money(creditBalance(x.id,x.saldo_atual));
+    hide();sync();lookupSoon(30);destino.focus();
+  }
+  window.addEventListener('message',event=>{
+    if(event.origin!==location.origin||event.source!==window.parent)return;
+    const data=event.data;
+    if(data?.type!=='coopex-creditos-ativos'||!Array.isArray(data.items))return;
+    activeCreditBalances=new Map(data.items.map(x=>[Number(x.id),Number(x.saldo||0)]));
+    refreshCreditSelection();
+  });
+  if(new URLSearchParams(location.search).get('modal')==='1'&&window.parent!==window){
+    window.parent.postMessage({type:'coopex-entrega-rapida-pronta'},location.origin);
+  }
   async function loadRoutes(){if(routes)return routes;const r=await fetch(`{{ url_for('api_list_precos') }}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error();routes=d.items||[];return routes}
   async function lookup(){bairro.value=destino.value.trim();if(!origem.value.trim()||!destino.value.trim()){routeMsg.textContent='Informe coleta e entrega.';sync();return}routeMsg.textContent='Buscando valor...';try{const list=await loadRoutes(),o=norm(origem.value),d=norm(destino.value),r=list.find(x=>(norm(x.origem)===o&&norm(x.destino)===d)||(norm(x.origem)===d&&norm(x.destino)===o));if(r){valor.value=Number(r.valor||0).toFixed(2).replace('.',',');routeMsg.textContent=`Valor encontrado: ${money(r.valor)}`;routeMsg.style.color='var(--cx-green)'}else{routeMsg.textContent='Rota não cadastrada. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}}catch(e){routeMsg.textContent='Não foi possível consultar. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}sync()}
   function lookupSoon(ms=260){clearTimeout(routeTimer);routeTimer=setTimeout(lookup,ms)}
   function sync(){el('sCliente').textContent=cliente.value||'—';el('sColeta').textContent=origem.value||'—';el('sEntrega').textContent=destino.value||'—';const n=parseFloat(String(valor.value||'0').replace(/\./g,'').replace(',','.'))||0;el('sValor').textContent=money(n);el('sPagamento').textContent=pagamento.options[pagamento.selectedIndex]?.text.replace(/^\d+\.\s*/,'')||'—';el('sCooperado').textContent=coop.options[coop.selectedIndex]?.text||'Sem cooperado'}
-  cliente.oninput=()=>{clienteId.value='';meta.style.display='none';creditState({tem_credito:false,saldo:0,frequent:false});clearTimeout(timer);const q=cliente.value.trim();if(q.length<2){hide();sync();return}timer=setTimeout(()=>search(q),160);sync()};
+  cliente.oninput=()=>{clienteId.value='';meta.style.display='none';creditState({saldo:0});clearTimeout(timer);const q=cliente.value.trim();if(q.length<2){hide();sync();return}timer=setTimeout(()=>search(q),160);sync()};
   cliente.onkeydown=e=>{const nodes=[...results.querySelectorAll('.result')];if(!nodes.length||results.style.display==='none')return;if(e.key==='ArrowDown'){e.preventDefault();activate(active<nodes.length-1?active+1:0)}else if(e.key==='ArrowUp'){e.preventDefault();activate(active>0?active-1:nodes.length-1)}else if(e.key==='Enter'&&active>=0){e.preventDefault();choose(items[active])}else if(e.key==='Escape')hide()};
   document.addEventListener('click',e=>{if(!results.contains(e.target)&&e.target!==cliente)hide()});origem.oninput=()=>lookupSoon();destino.oninput=()=>{bairro.value=destino.value;lookupSoon();sync()};valor.oninput=sync;pagamento.onchange=sync;coop.onchange=sync;
   let submitting=false;
@@ -88,6 +131,19 @@
       });
       const data=await response.json();
       if(!response.ok||!data.ok)throw new Error(data.message||data.erro||'Não foi possível registrar a entrega.');
+      // Dentro do Admin: mantém o mesmo formulário sem recarregar a página.
+      // O pai atualiza somente a linha criada.
+      if(new URLSearchParams(location.search).get('modal')==='1' && window.parent!==window){
+        window.parent.postMessage({type:'coopex-entrega-rapida-salva',entrega_id:data.entrega_id},location.origin);
+        reset();
+        const note=el('flash');
+        note.textContent='Entrega #'+data.entrega_id+' cadastrada! Pronta para a próxima.';
+        note.style.display='block';
+        submitting=false;
+        if(btn){btn.disabled=false;btn.textContent='Cadastrar entrega rápida'}
+        cliente.focus();
+        return;
+      }
       // Voltar pelo histórico reutiliza o painel já aberto quando o navegador suporta BFCache.
       const previous=document.referrer?new URL(document.referrer,location.href):null;
       if(previous&&previous.origin===location.origin&&previous.pathname==='/admin'&&history.length>1){
@@ -103,6 +159,14 @@
   };
   function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';coop.value='';routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
   window.addEventListener('pageshow',reset);reset();
+  // ESC dentro do iframe não chega ao documento pai: avisar diretamente.
+  document.addEventListener('keydown',event=>{
+    if(event.key==='Escape' && new URLSearchParams(location.search).get('modal')==='1' && window.parent!==window){
+      event.preventDefault();
+      window.parent.postMessage({type:'coopex-entrega-rapida-fechar'},location.origin);
+    }
+  });
+
   
 </script>
 <script id="coopex-quick-schedule">
