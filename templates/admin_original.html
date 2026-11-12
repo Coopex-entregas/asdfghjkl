@@ -2922,6 +2922,22 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
           dot.title = temCoop ? 'Com cooperado atribuído' : 'Sem cooperado';
         }
 
+        // Mover somente a linha alterada, sem reconstruir a tabela.
+        // Sem cooperado sempre em cima; atribuídas ficam logo abaixo,
+        // preservando a sequência das demais linhas.
+        const tbody=tr.parentElement;
+        if(tbody && tbody.tagName==='TBODY'){
+          const linhas=[...tbody.querySelectorAll(':scope > tr[data-id]')];
+          if(temCoop){
+            const primeiraAtribuida=linhas.find(row=>row!==tr && row.dataset.hasCoop==='1');
+            if(primeiraAtribuida)tbody.insertBefore(tr,primeiraAtribuida);
+            else tbody.appendChild(tr);
+          }else{
+            const primeiraAtribuida=linhas.find(row=>row!==tr && row.dataset.hasCoop==='1');
+            if(primeiraAtribuida)tbody.insertBefore(tr,primeiraAtribuida);
+            else tbody.insertBefore(tr,tbody.firstElementChild);
+          }
+        }
         // Sem caixa nem requisicao de sugestao; atribuicao manual permanece.
         tr.querySelector('.sugestao-coop')?.remove();
         atualizarBadgeAbertas();
