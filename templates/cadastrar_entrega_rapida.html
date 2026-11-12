@@ -168,13 +168,25 @@ html body.cx-page.cx-delivery-glass.cx-quick-modal #flash{
   const cliente=el('cliente'),clienteId=el('cliente_id'),results=el('results'),loading=el('loading'),meta=el('clientMeta');
   const origem=el('coleta_bairro'),destino=el('entrega_bairro'),bairro=el('bairro'),valor=el('valor'),pagamento=el('pagamento'),credito=el('creditOption'),creditMsg=el('creditMsg'),coop=el('cooperado_id'),routeMsg=el('routeMsg');
   let timer=null,routeTimer=null,items=[],active=-1,routes=null,abort=null;
+  let formRevision=0;
   const money=v=>new Intl.NumberFormat('pt-BR',{style:'currency',currency:'BRL'}).format(Number(v||0));
   const esc=s=>String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot',"'":'&#39;'}[c]));
   const norm=s=>String(s||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase().trim().replace(/\s+/g,' ');
   function hide(){results.style.display='none'}
   function render(list){items=list||[];active=-1;results.innerHTML='';if(!items.length){results.innerHTML='<div class="cx-muted" style="padding:12px;text-align:center">Nenhum cliente encontrado.</div>';results.style.display='block';return}items.forEach((x,i)=>{const d=document.createElement('div');d.className='result';d.innerHTML=`<div><strong>${esc(x.nome)}</strong><small>${esc(x.telefone||'sem telefone')} • ${esc(x.bairro_origem||'sem bairro')}</small></div><b style="color:var(--cx-royal-dark);font-size:.74rem">Selecionar</b>`;d.onmousedown=e=>{e.preventDefault();choose(x)};d.onmousemove=()=>activate(i);results.appendChild(d)});results.style.display='block'}
   function activate(i){[...results.querySelectorAll('.result')].forEach(x=>x.classList.remove('active'));const n=results.children[i];if(n){n.classList.add('active');active=i}}
-  async function search(q){if(abort)abort.abort();abort=new AbortController();loading.style.display='block';try{const r=await fetch(`{{ url_for('api_busca_clientes_entrega') }}?q=${encodeURIComponent(q)}&limit=12`,{signal:abort.signal,headers:{'X-Requested-With':'fetch'}});const d=await r.json();render(d.ok?d.items:[])}catch(e){if(e.name!=='AbortError')render([])}finally{loading.style.display='none'}}
+  async function search(q){
+    if(abort)abort.abort();
+    const revision=formRevision,control=new AbortController();abort=control;
+    loading.style.display='block';
+    try{
+      const r=await fetch(`{{ url_for('api_busca_clientes_entrega') }}?q=${encodeURIComponent(q)}&limit=12`,{signal:control.signal,headers:{'X-Requested-With':'fetch'}});
+      const d=await r.json();
+      if(revision!==formRevision||control.signal.aborted)return;
+      render(d.ok?d.items:[]);
+    }catch(e){if(e.name!=='AbortError'&&revision===formRevision)render([]);}
+    finally{if(revision===formRevision)loading.style.display='none';}
+  }
   // Saldo em cache compartilhado pelo Admin; nenhuma consulta ao histórico por cliente.
   let activeCreditBalances=null;
   let selectedCreditId=0;
@@ -222,7 +234,25 @@ html body.cx-page.cx-delivery-glass.cx-quick-modal #flash{
     window.parent.postMessage({type:'coopex-entrega-rapida-pronta'},location.origin);
   }
   async function loadRoutes(){if(routes)return routes;const r=await fetch(`{{ url_for('api_list_precos') }}`,{headers:{Accept:'application/json','X-Requested-With':'fetch'},cache:'no-store'});const d=await r.json();if(!r.ok||!d.ok)throw new Error();routes=d.items||[];return routes}
-  async function lookup(){bairro.value=destino.value.trim();if(!origem.value.trim()||!destino.value.trim()){routeMsg.textContent='Informe coleta e entrega.';sync();return}routeMsg.textContent='Buscando valor...';try{const list=await loadRoutes(),o=norm(origem.value),d=norm(destino.value),r=list.find(x=>(norm(x.origem)===o&&norm(x.destino)===d)||(norm(x.origem)===d&&norm(x.destino)===o));if(r){valor.value=Number(r.valor||0).toFixed(2).replace('.',',');routeMsg.textContent=`Valor encontrado: ${money(r.valor)}`;routeMsg.style.color='var(--cx-green)'}else{routeMsg.textContent='Rota não cadastrada. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}}catch(e){routeMsg.textContent='Não foi possível consultar. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)'}sync()}
+  async function lookup(){
+    const revision=formRevision,from=origem.value.trim(),to=destino.value.trim();
+    bairro.value=to;
+    if(!from||!to){routeMsg.textContent='Informe coleta e entrega.';sync();return;}
+    routeMsg.textContent='Buscando valor...';
+    try{
+      const list=await loadRoutes();
+      if(revision!==formRevision||from!==origem.value.trim()||to!==destino.value.trim())return;
+      const o=norm(from),d=norm(to);
+      const r=list.find(x=>(norm(x.origem)===o&&norm(x.destino)===d)||(norm(x.origem)===d&&norm(x.destino)===o));
+      if(r){valor.value=Number(r.valor||0).toFixed(2).replace('.',',');routeMsg.textContent='Valor encontrado: '+money(r.valor);routeMsg.style.color='var(--cx-green)';}
+      else{routeMsg.textContent='Rota não cadastrada. Informe o valor manualmente.';routeMsg.style.color='var(--cx-warn)';}
+    }catch(e){
+      if(revision!==formRevision)return;
+      routeMsg.textContent='Não foi possível consultar. Informe o valor manualmente.';
+      routeMsg.style.color='var(--cx-warn)';
+    }
+    sync();
+  }
   function lookupSoon(ms=260){clearTimeout(routeTimer);routeTimer=setTimeout(lookup,ms)}
   // A conferência final acontece no próprio formulário; sem painel duplicado.
   function sync(){}
@@ -271,7 +301,26 @@ html body.cx-page.cx-delivery-glass.cx-quick-modal #flash{
       submitting=false;if(btn){btn.disabled=false;btn.textContent='Cadastrar entrega rápida'}
     }
   };
-  function reset(){el('quickForm').reset();clienteId.value='';cliente.value='';meta.style.display='none';hide();results.innerHTML='';credito.hidden=true;credito.disabled=true;creditMsg.style.display='none';pagamento.value='Pix';coop.value='';routeMsg.textContent='Selecione o cliente e informe o destino.';el('flash').style.display='none';sync()}
+  function reset(){
+    formRevision++;
+    clearTimeout(timer);clearTimeout(routeTimer);
+    if(abort){abort.abort();abort=null;}
+    items=[];active=-1;
+    const form=el('quickForm');form.reset();
+    // Restaurar explicitamente todos os campos: reset() sozinho pode manter
+    // valores de controles modificados pelo script ou pelo autocomplete.
+    [cliente,clienteId,origem,destino,bairro,valor].forEach(field=>{field.value='';});
+    pagamento.value='Pix';coop.value='';
+    const firstCoop=[...coop.options].find(x=>x.value==='');
+    if(firstCoop)firstCoop.selected=true;
+    credito.hidden=true;credito.disabled=true;
+    creditMsg.textContent='';creditMsg.style.display='none';
+    meta.textContent='';meta.style.display='none';
+    results.replaceChildren();hide();loading.style.display='none';
+    routeMsg.textContent='';routeMsg.style.color='';
+    const flash=el('flash');flash.textContent='';flash.style.display='none';
+    sync();
+  }
   window.addEventListener('pageshow',reset);reset();
   // ESC dentro do iframe não chega ao documento pai: avisar diretamente.
   document.addEventListener('keydown',event=>{
