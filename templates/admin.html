@@ -96,7 +96,7 @@
     carregarEscala();
     sincronizarAgendamentos();
     // O evento é enviado só quando o Admin substitui linhas efetivamente alteradas.
-    window.addEventListener('coopex-admin-table-updated',sincronizarAgendamentos);
+    // Agendamentos existentes já são consultados na carga inicial; sem repetir a consulta a cada mudança na tabela.
     // A escala segue leve e independente dos agendamentos.
     setInterval(()=>{if(!document.hidden)carregarEscala()},60000);
   }
@@ -696,7 +696,7 @@ function build(){
  board.innerHTML='<div class="cx-led-top"><span class="cx-led-title">◈ LED · SUPERVISÃO</span><div class="cx-led-buttons"><button id="cx-led-note-write" type="button">✎ Recado</button><button id="cx-led-note-read" type="button" hidden>✓ Li o aviso</button><button id="cx-led-note-delete" type="button" hidden>Apagar</button></div></div>'+
  '<div class="cx-led-screen" aria-label="Avisos da supervisão"><div class="cx-led-line queue" id="cx-led-fila"></div><div class="cx-led-line note" id="cx-led-recado" hidden></div><div class="cx-led-line entry" id="cx-led-entrada" hidden></div><div class="cx-led-line exit" id="cx-led-saida" hidden></div><div class="cx-led-line pix" id="cx-led-pix" hidden></div></div>';
  head.appendChild(board);
- const shortcuts=document.createElement('div');shortcuts.className='cx-led-shortcuts';const labels=['Agendar entrega','Ocultar ou mostrar atribuídas','Bairros','Mapa','Agenda'];
+ const shortcuts=document.createElement('div');shortcuts.className='cx-led-shortcuts';const labels=['Agendar entrega','Bairros','Mapa'];
  [...actions.querySelectorAll('button')].forEach((b,i)=>{b.title=labels[i]||b.textContent.trim();b.setAttribute('aria-label',b.title);shortcuts.appendChild(b)});
  host.appendChild(shortcuts);actions.remove();
  const dialog=document.createElement('dialog');dialog.id='cx-supervisao-note-dialog';dialog.innerHTML='<form method="dialog"><h3>Recado para o próximo supervisor</h3><textarea id="cx-note-editor" maxlength="2000" required placeholder="Escreva o recado do turno..."></textarea><p id="cx-note-error" role="alert"></p><menu><button value="cancel">Cancelar</button><button type="button" id="cx-note-save">Salvar recado</button></menu></form>';document.body.appendChild(dialog);
