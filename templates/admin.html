@@ -1949,13 +1949,17 @@ function open(e){
   overlay.hidden=false;overlay.classList.add('open');
   if(frame?.contentWindow){try{frame.contentWindow.scrollTo({left:0,top:0,behavior:'instant'});}catch(e){}}
 
-  if(!frame.getAttribute('src'))frame.src=quickUrl+'?modal=1';
+  // Cada abertura carrega um formulário novo, sem valores nem buscas anteriores.
+  if(frame.getAttribute('src')!==quickUrl+'?modal=1')frame.src=quickUrl+'?modal=1';
   syncCreditBalances();
   overlay.querySelector('#cx-quick-admin-close').focus();
 }
 function close(){
   if(!overlay)return;
   overlay.hidden=true;overlay.classList.remove('open');
+  // Destrói o formulário do iframe (inclusive valores, buscas e timers).
+  // Ao abrir novamente, a rota cria um formulário realmente novo.
+  if(frame&&frame.getAttribute('src')!=='about:blank')frame.src='about:blank';
   if(opener?.focus)opener.focus();
   window.dispatchEvent(new Event('coopex-admin-modal-closed'));
 }
@@ -2007,7 +2011,9 @@ window.addEventListener('message',e=>{
   }
   if(data?.type==='coopex-entrega-rapida-fechar'){close();return;}
   if(!data||data.type!=='coopex-entrega-rapida-salva')return;
+  // Só fecha após confirmação do servidor; preserva o cadastro em caso de erro.
   window.dispatchEvent(new CustomEvent('coopex-admin-delivery-saved',{detail:{id:data.entrega_id,counterOnly:true}}));
+  close();
   syncCreditBalances(true);
 });
 })();
