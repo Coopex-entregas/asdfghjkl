@@ -3009,22 +3009,42 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 
       let salvando = false;
       let timerAtribuicao = null;
-      let ultimaEscolha = null;
+      let houveEscolha = false;
       const valorAnterior = atual || '';
-      function agendarAtribuicao(){
+      let timeoutFechar = null;
+      function cancelarSemAlteracao(){
+        if(salvando || !sel.isConnected) return;
         clearTimeout(timerAtribuicao);
+        clearTimeout(timeoutFechar);
+        document.removeEventListener('pointerdown',confirmarCliqueFora,true);
+        sel.replaceWith(el); // preserva nome e aparência original, sem consulta ao servidor
+      }
+      function concluirEdicao(){
         if(!sel.isConnected || salvando) return;
-        ultimaEscolha = sel.value || '';
-        timerAtribuicao = setTimeout(()=>{
-          if(sel.isConnected && !salvando && (sel.value || '') === ultimaEscolha) salvar();
+        if(!houveEscolha || (sel.value || '') === valorAnterior){cancelarSemAlteracao();return;}
+        salvar();
+      }
+      function agendarFechamento(){
+        clearTimeout(timeoutFechar);
+        if(!sel.isConnected || salvando) return;
+        timeoutFechar = setTimeout(()=>{
+          if(sel.isConnected && !salvando && !houveEscolha) cancelarSemAlteracao();
         },1000);
+      }
+      function agendarAtribuicao(){
+        if(!sel.isConnected || salvando) return;
+        houveEscolha = true;
+        clearTimeout(timerAtribuicao);
+        clearTimeout(timeoutFechar);
+        timerAtribuicao = setTimeout(concluirEdicao,120);
       }
       async function salvar(){
         if(salvando || !sel.isConnected) return;
         clearTimeout(timerAtribuicao);
+        clearTimeout(timeoutFechar);
         const coopId = sel.value || '';
-        // Confirmar tambem ao escolher o mesmo nome ou "Sem Cooperado".
-        // Apenas restaurar visualmente depois da resposta efetiva do servidor.
+        // Somente persistir quando o cooperado realmente foi alterado.
+        if(!houveEscolha || coopId === valorAnterior){cancelarSemAlteracao();return;}
         salvando = true;
         sel.disabled = true;
         const escolhido = (window.COOPERADOS || []).find(x => String(x.id) === String(coopId));
@@ -3057,6 +3077,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       }
       function restaurar(id){
         clearTimeout(timerAtribuicao);
+        clearTimeout(timeoutFechar);
         document.removeEventListener('pointerdown',confirmarCliqueFora,true);
         const c = (window.COOPERADOS || []).find(x => String(x.id)===String(id));
         const span = document.createElement('span');
@@ -3068,26 +3089,25 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(sel.isConnected)sel.replaceWith(span);
         return span;
       }
-      // Confirma ao mudar, ao perder foco e ao clicar em qualquer lugar fora.
-      // O clique fora e capturado antes de outras acoes substituirem o elemento.
-      sel.addEventListener('change', agendarAtribuicao);
-      sel.addEventListener('input', agendarAtribuicao);
-      sel.addEventListener('blur', ()=>{ if(sel.isConnected && !salvando) salvar(); });
-      sel.addEventListener('focusout', ()=>{ if(sel.isConnected && !salvando) salvar(); });
-      const confirmarCliqueFora = (evento)=>{
-        if(!sel.isConnected){ document.removeEventListener('pointerdown',confirmarCliqueFora,true); return; }
-        if(evento.target===sel || sel.contains(evento.target)) return;
-        document.removeEventListener('pointerdown',confirmarCliqueFora,true);
-        if(!salvando) salvar();
+      // Clicar fora cancela de imediato quando nada mudou. Se mudou, salva.
+      sel.addEventListener('change',agendarAtribuicao);
+      sel.addEventListener('input',agendarAtribuicao);
+      sel.addEventListener('blur',concluirEdicao);
+      const confirmarCliqueFora=(evento)=>{
+        if(!sel.isConnected){document.removeEventListener('pointerdown',confirmarCliqueFora,true);return;}
+        if(evento.target===sel || sel.contains(evento.target))return;
+        concluirEdicao();
       };
-      // Usa macrotarefa para que o clique inicial que abriu o select nao conte como clique externo.
-      setTimeout(()=>{ if(sel.isConnected) document.addEventListener('pointerdown',confirmarCliqueFora,true); },0);
-      // Mesmo sem alterar a opção, um nome exibido por 1 segundo é confirmado.
-      agendarAtribuicao();
-      sel.addEventListener('keydown', ev=>{
-        if(ev.key==='Escape'){ev.preventDefault();restaurar(valorAnterior)}
-        if(ev.key==='Enter'){ev.preventDefault();salvar()}
+      setTimeout(()=>{if(sel.isConnected)document.addEventListener('pointerdown',confirmarCliqueFora,true);},0);
+      // Sem escolher outro cooperado, o seletor fecha em até 1 segundo.
+      agendarFechamento();
+      sel.addEventListener('keydown',ev=>{
+        if(ev.key==='Escape'){ev.preventDefault();cancelarSemAlteracao();}
+        if(ev.key==='Enter'){ev.preventDefault();concluirEdicao();}
+        else agendarFechamento();
       });
+      sel.addEventListener('pointerdown',()=>clearTimeout(timeoutFechar));
+      sel.addEventListener('pointerup',agendarFechamento);
     });
 
     async function salvarInlineEntrega(idEntrega, payload){
