@@ -2129,3 +2129,41 @@ document.addEventListener('click',e=>{
  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',start,{once:true});else start();
 })();
 </script>
+
+<script id="coopex-rastreio-copy-20261112">
+(function(){
+ 'use strict';
+ const notice=(text,ok)=>{
+  let bar=document.getElementById('cx-rastreio-copy-status');
+  if(!bar){bar=document.createElement('div');bar.id='cx-rastreio-copy-status';
+   bar.style.cssText='position:fixed;z-index:2147483600;left:50%;bottom:24px;transform:translateX(-50%);padding:12px 18px;border-radius:13px;color:white;box-shadow:0 12px 30px #04194b80;font:700 13px system-ui;pointer-events:none;text-align:center;max-width:calc(100vw - 28px)';
+   document.body.appendChild(bar);}
+  bar.textContent=text;bar.style.background=ok?'#11583a':'#922a3b';bar.hidden=false;
+  clearTimeout(bar._cxTimer);bar._cxTimer=setTimeout(()=>{bar.hidden=true;},3200);
+ };
+ async function copyText(value){
+  if(navigator.clipboard&&window.isSecureContext){
+    try{await navigator.clipboard.writeText(value);return true;}catch(e){}
+  }
+  const field=document.createElement('textarea');
+  field.value=value;field.readOnly=true;field.style.cssText='position:fixed;left:-9999px;opacity:0';
+  document.body.appendChild(field);field.focus();field.select();
+  let ok=false;try{ok=document.execCommand('copy');}catch(e){}
+  field.remove();return ok;
+ }
+ document.addEventListener('click',async e=>{
+  const button=e.target.closest?.('.cx-rastreio-copy[data-rastreio-url]');
+  if(!button)return;
+  e.preventDefault();e.stopPropagation();
+  const link=button.dataset.rastreioUrl;
+  if(!link){notice('Link indisponível para esta entrega.',false);return;}
+  if(await copyText(link)){
+    notice('Link copiado! Envie ao cliente pelo WhatsApp.',true);
+    const old=button.textContent;button.textContent='✓';
+    setTimeout(()=>{if(button.isConnected)button.textContent=old;},1500);
+  }else{
+    notice('Não foi possível copiar. Abra o rastreio e use Compartilhar.',false);
+  }
+ },true);
+})();
+</script>
