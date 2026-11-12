@@ -426,7 +426,12 @@ LIVE_SCRIPT = r"""
 
     window.addEventListener('online',()=>setTimeout(verificar,100));
     // A Entrega Rápida confirma o cadastro na janela, sem sair do Admin.
-    window.addEventListener('coopex-admin-delivery-saved',()=>atualizarParcial(true));
+    window.addEventListener('coopex-admin-delivery-saved',event=>{
+      // O cadastro rapido atualiza o numero no ato, sem abrir consulta da tabela.
+      // A nova linha e integrada pelo verificador incremental normal.
+      if(event.detail?.counterOnly)return;
+      atualizarParcial(true);
+    });
     window.addEventListener('coopex-admin-modal-closed',()=>{
       if(pendente)atualizarParcial(true);
     });
