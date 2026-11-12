@@ -2320,18 +2320,14 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
             <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ url_for('agendar_entrega') }}'">
               Agendar
             </button>
-            <button class="btn alt" id="btnToggleAssigned" type="button" aria-expanded="true">
-              Ocultar
-            </button>
+
             <button class="btn alt" id="btnCopyOpenBairros" type="button">
               Bairros
             </button>
             <button class="btn alt" type="button" onclick="window.open('{{ url_for('mapa_motoboys') }}','_blank','noopener,noreferrer')">
               Mapa
             </button>
-            <button class="btn alt" type="button" onclick="window.__markActionStart&&window.__markActionStart();window.location.href='{{ agenda_url }}'">
-              Agenda
-            </button>
+
             
           </div>
         </div>
@@ -2420,7 +2416,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
 <!-- TABELA -->
         <div class="quick-view-bar">
           <div class="quick-view-chip active" id="chipOpenOnly">Em aberto primeiro</div>
-          <div class="quick-view-chip active" id="chipAssignedInfo">Atribuídas visíveis</div>
+
         </div>
         <div class="table-shell">
           <div class="table-wrap" id="tbl">
