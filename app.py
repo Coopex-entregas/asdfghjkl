@@ -15981,84 +15981,40 @@ def _coopex_patch_painel_cooperado(response):
 # =========================================================
 @app.get("/rastreio/<token>")
 def rastreio_publico(token):
-    # Só o administrador autenticado pode acompanhar a entrega em andamento.
-    if not session.get("is_admin"):
-        return "<h2>Acesso restrito à administração.</h2>", 403
+    # O token assinado autoriza o cliente a visualizar apenas esta entrega.
+    # O link deixa de funcionar assim que a entrega é concluída/cancelada.
     try:
         data = ler_token_rastreio(token)
         entrega_id = int(data.get("entrega_id"))
+        if entrega_id <= 0:
+            raise ValueError("Entrega inválida")
     except Exception:
-        return "<h2>Link inválido.</h2>", 400
+        return "<h2>Link de rastreamento inválido.</h2>", 400
 
-    e = Entrega.query.get(entrega_id)
-    if not e:
+    entrega = Entrega.query.get(entrega_id)
+    if not entrega:
         return "<h2>Entrega não encontrada.</h2>", 404
 
-    st = (e.status or "").lower()
-    if (not e.cooperado_id) or st in ["recebido", "entregue", "concluido", "concluída", "concluida", "finalizada", "finalizado", "cancelado", "cancelada"]:
-        return "<h2>Rastreio encerrado: entrega concluída.</h2>", 410
+    situacao = (entrega.status or "").strip().lower()
+    encerrados = {
+        "recebido", "entregue", "concluido", "concluída", "concluida",
+        "finalizada", "finalizado", "cancelado", "cancelada"
+    }
+    if (not entrega.cooperado_id) or situacao in encerrados:
+        return "<h2>Rastreio encerrado: entrega não está em andamento.</h2>", 410
 
-    coop_nome = (e.cooperado.nome if getattr(e, "cooperado", None) else "Cooperado")
-    html = f"""<!doctype html>
-<html lang="pt-br"><head>
-<meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Rastreio — Entrega #{entrega_id}</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-<style>
-  body{{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;background:#0b1220;color:#fff}}
-  header{{padding:10px 12px;background:linear-gradient(90deg,#0b2cc2,#1a47ff);font-weight:800}}
-  #map{{height: calc(100vh - 54px); width:100%}}
-  .small{{opacity:.9;font-weight:700}}
-</style>
-</head><body>
-<header>Rastreio em tempo real — Entrega #{entrega_id} <span class="small">({coop_nome})</span></header>
-<div id="map"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-<script>
-  const token = {json.dumps(token)};
-  const map = L.map('map', {{ zoomControl:true }}).setView([-5.7945,-35.2110], 13);
-  L.tileLayer('https://{{s}}.tile.openstreetmap.org/{{z}}/{{x}}/{{y}}.png', {{ maxZoom: 19 }}).addTo(map);
-  let marker = null;
-
-  async function pull(){{
-    try{{
-      const r = await fetch('/api/rastreio_pos/'+encodeURIComponent(token), {{cache:'no-store'}});
-      if(r.status === 410){{
-        document.body.innerHTML = '<h2 style="padding:16px">Rastreio encerrado: entrega concluída.</h2>';
-        return;
-      }}
-      const data = await r.json();
-      if(!data.ok) return;
-
-      const lat = data.lat, lng = data.lng;
-      if(typeof lat !== 'number' || typeof lng !== 'number') return;
-
-      const txt = (data.cooperado || '') + ' • ' + (data.quando_local || '');
-      if(!marker){{
-        marker = L.circleMarker([lat,lng], {{
-          radius: 7,
-          weight: 2,
-          fillOpacity: 0.8
-        }}).addTo(map);
-        marker.bindTooltip(txt, {{direction:'top', sticky:true}});
-        map.setView([lat,lng], 15);
-      }} else {{
-        marker.setLatLng([lat,lng]);
-        marker.setTooltipContent(txt);
-      }}
-    }}catch(e){{}}
-  }}
-  pull();
-  setInterval(pull, 5000);
-</script>
-</body></html>"""
-    return html
+    response = make_response(render_template(
+        "rastreio_entrega_publico.html", token=token, entrega_id=entrega_id
+    ))
+    response.headers["Cache-Control"] = "private, no-store, max-age=0"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
+    return response
 
 @app.get("/api/rastreio_pos/<token>")
 def api_rastreio_pos(token):
-    if not session.get("is_admin"):
-        return jsonify(ok=False, error="forbidden"), 403
+    # Acesso restrito a token assinado de entrega em andamento,
+    # sem exigir login do destinatário.
     try:
         data = ler_token_rastreio(token)
         entrega_id = int(data.get("entrega_id"))
