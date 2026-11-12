@@ -16003,7 +16003,7 @@ def rastreio_publico(token):
     if (not entrega.cooperado_id) or situacao in encerrados:
         return "<h2>Rastreio encerrado: entrega não está em andamento.</h2>", 410
 
-    response = make_response(render_template(
+    response = current_app.make_response(render_template(
         "rastreio_entrega_publico.html", token=token, entrega_id=entrega_id
     ))
     response.headers["Cache-Control"] = "private, no-store, max-age=0"
