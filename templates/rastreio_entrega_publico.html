@@ -68,7 +68,7 @@ button{font:700 13px inherit;cursor:pointer}
 (function(){
 'use strict';
 const token={{ token|tojson }};
-const url='/api/rastreio_pos/'+encodeURIComponent(token);
+const ticketUrl='/api/rastreio_ticket/'+encodeURIComponent(token);
 const state=document.getElementById('state'),updated=document.getElementById('updated');
 const dot=document.getElementById('dot'),toast=document.getElementById('toast');
 const map=L.map('map',{zoomControl:false,preferCanvas:true,scrollWheelZoom:true}).setView([-5.7945,-35.2110],12);
@@ -81,7 +81,8 @@ const icon=L.divIcon({
   html:'<div class="coop-pin pulse"><span class="bubble"></span><span class="symbol">🛵</span></div>',
   iconSize:[52,64],iconAnchor:[26,61],popupAnchor:[0,-57]
 });
-let marker=null,coords=null,first=true,timer=null,ended=false,busy=false;
+let marker=null,coords=null,timer=null,ended=false,busy=false;
+let gpsAuth=null,lastAuthAt=0;
 let toastTimer;
 function message(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),3400)}
 function status(text,detail,level){state.textContent=text;updated.textContent=detail||'';dot.className='dot'+(level?' '+level:'')}
@@ -104,28 +105,64 @@ document.getElementById('btnShare').addEventListener('click',async()=>{
   if(await copyLink()){message('Link copiado! Envie ao cliente pelo WhatsApp.');document.getElementById('shareLabel').textContent='Copiado ✓'}
   else{message('Copie o endereço do navegador para enviar ao cliente.');}
 });
+function finish(){
+  ended=true;clearInterval(timer);gpsAuth=null;
+  status('Entrega concluída','O rastreamento desta entrega foi encerrado.','off');
+  document.getElementById('btnShare').disabled=true;
+}
+async function refreshAccess(force=false){
+  // Render confirma a existência da entrega em andamento no máximo a cada 2 minutos.
+  // As posições GPS são lidas somente do Cloudflare.
+  if(!force&&gpsAuth&&Date.now()-lastAuthAt<120000&&gpsAuth.expires_at>Date.now()/1000+90)return gpsAuth;
+  const r=await fetch(ticketUrl,{
+    credentials:'omit',cache:'no-store',headers:{Accept:'application/json'},
+    signal:AbortSignal.timeout(9000)
+  });
+  if(r.status===410){finish();return null;}
+  if(!r.ok)throw Error('Autorização HTTP '+r.status);
+  const auth=await r.json();
+  if(!auth.ok||!auth.ticket||!auth.url)throw Error('Autorização indisponível');
+  gpsAuth=auth;lastAuthAt=Date.now();return auth;
+}
 async function pull(){
   if(busy||ended||document.hidden)return;busy=true;
   try{
-    const response=await fetch(url,{credentials:'omit',cache:'no-store'});
-    if(response.status===410){
-      ended=true;clearInterval(timer);status('Entrega concluída','Este link de rastreamento foi encerrado.','off');
-      document.getElementById('btnShare').disabled=true;return;
+    let auth=await refreshAccess();
+    if(!auth||ended)return;
+    let r=await fetch(auth.url,{
+      headers:{Authorization:'Bearer '+auth.ticket,Accept:'application/json'},
+      credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(9000)
+    });
+    if(r.status===401){
+      auth=await refreshAccess(true);
+      if(!auth||ended)return;
+      r=await fetch(auth.url,{
+        headers:{Authorization:'Bearer '+auth.ticket,Accept:'application/json'},
+        credentials:'omit',cache:'no-store',signal:AbortSignal.timeout(9000)
+      });
     }
-    if(!response.ok)throw Error('HTTP '+response.status);
-    const d=await response.json();
-    if(!d.ok)throw Error('Sem dados');
+    if(!r.ok)throw Error('Cloudflare HTTP '+r.status);
+    const d=await r.json();
+    if(!d.ok)throw Error('Posição indisponível');
     if(typeof d.lat!=='number'||typeof d.lng!=='number'){
-      status('Aguardando sinal do entregador','O mapa mostrará a localização assim que o GPS enviar dados.','');return;
+      status('Aguardando sinal do entregador','Assim que o GPS transmitir, a posição aparecerá aqui.','');return;
     }
-    if(!Number.isFinite(d.lat)||!Number.isFinite(d.lng)||Math.abs(d.lat)>90||Math.abs(d.lng)>180)throw Error('Coordenadas inválidas');
+    if(!Number.isFinite(d.lat)||!Number.isFinite(d.lng)||Math.abs(d.lat)>90||Math.abs(d.lng)>180)
+      throw Error('Coordenadas inválidas');
+    const age=Date.now()-Number(d.updated_ms||0);
+    if(age>180000||age<0){
+      status('Último sinal do entregador','GPS sem atualização recente. Aguardando nova posição.','off');
+      return;
+    }
     coords=[d.lat,d.lng];
-    const label=String(d.cooperado||'Entregador');
-    const detail=d.quando_local?'Última posição: '+d.quando_local:'Posição recebida do GPS';
-    status('Localização do entregador',detail,'ok');
-    if(!marker){marker=L.marker(coords,{icon,title:label,keyboard:true}).addTo(map).bindPopup('<strong>COOPEX • Entregador</strong>');map.setView(coords,15);first=false}
-    else marker.setLatLng(coords);
-  }catch(e){status('Conexão temporariamente indisponível','Tentaremos atualizar a posição automaticamente.','off')}
+    const detail='Posição atualizada '+new Date(d.updated_ms).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    status('Localização do entregador',detail,age<120000?'ok':'');
+    if(!marker){
+      marker=L.marker(coords,{icon,title:'COOPEX • Entregador',keyboard:true})
+        .addTo(map).bindPopup('<strong>COOPEX • Entregador</strong>');
+      map.setView(coords,15);
+    }else marker.setLatLng(coords);
+  }catch(e){if(!ended)status('Conexão temporariamente indisponível','Tentaremos atualizar automaticamente.','off')}
   finally{busy=false}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
