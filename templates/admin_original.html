@@ -3012,7 +3012,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(salvando || !sel.isConnected) return;
         clearTimeout(timerAtribuicao);
         clearTimeout(timeoutFechar);
-        document.removeEventListener('pointerdown',confirmarCliqueFora,true);
+        document.removeEventListener('click',confirmarCliqueFora,true);
         sel.replaceWith(el); // preserva nome e aparência original, sem consulta ao servidor
       }
       function concluirEdicao(){
@@ -3078,7 +3078,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       function restaurar(id){
         clearTimeout(timerAtribuicao);
         clearTimeout(timeoutFechar);
-        document.removeEventListener('pointerdown',confirmarCliqueFora,true);
+        document.removeEventListener('click',confirmarCliqueFora,true);
         const c = (window.COOPERADOS || []).find(x => String(x.id)===String(id));
         const span = document.createElement('span');
         span.className = 'coop-editable';
@@ -3089,27 +3089,22 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(sel.isConnected)sel.replaceWith(span);
         return span;
       }
-      // Clicar fora cancela de imediato quando nada mudou. Se mudou, salva.
+      // O select nativo permanece aberto até haver escolha real.
+      // Não usar blur/focusout ou temporizador: navegadores podem dispará-los
+      // enquanto a lista de opções ainda está aberta.
       sel.addEventListener('change',agendarAtribuicao);
       sel.addEventListener('input',agendarAtribuicao);
-      sel.addEventListener('blur',()=>{
-        // Permite ao navegador concluir primeiro a seleção feita no menu nativo.
-        setTimeout(()=>{if(sel.isConnected)concluirEdicao();},90);
-      });
       const confirmarCliqueFora=(evento)=>{
-        if(!sel.isConnected){document.removeEventListener('pointerdown',confirmarCliqueFora,true);return;}
+        if(!sel.isConnected){document.removeEventListener('click',confirmarCliqueFora,true);return;}
         if(evento.target===sel || sel.contains(evento.target))return;
-        concluirEdicao();
+        if(!salvando)concluirEdicao();
       };
-      setTimeout(()=>{if(sel.isConnected)document.addEventListener('pointerdown',confirmarCliqueFora,true);},0);
-      // Enquanto o usuário mantém a lista aberta, não expirar a escolha.
-      // Clicar em qualquer lugar fora continua cancelando na mesma hora.
+      // Clique fora, não pointerdown: não interfere com o menu nativo.
+      setTimeout(()=>{if(sel.isConnected)document.addEventListener('click',confirmarCliqueFora,true);},0);
       sel.addEventListener('keydown',ev=>{
         if(ev.key==='Escape'){ev.preventDefault();cancelarSemAlteracao();}
         if(ev.key==='Enter'){ev.preventDefault();concluirEdicao();}
       });
-      sel.addEventListener('focus',()=>clearTimeout(timeoutFechar));
-      sel.addEventListener('pointerdown',()=>clearTimeout(timeoutFechar));
     });
 
     async function salvarInlineEntrega(idEntrega, payload){
