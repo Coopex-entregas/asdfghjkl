@@ -2103,3 +2103,55 @@ document.addEventListener('click',e=>{
   font-size:12px!important;line-height:1.4!important;
 }
 </style>
+
+<script id="coopex-admin-kpis-on-delivery-change-v1">
+(function(){
+ 'use strict';
+ // A quantidade do topo é o mesmo #kpiTotalDia movido para a barra do Admin.
+ // Atualizar somente por eventos reais: cadastro, alteração ou linhas sincronizadas.
+ let timer=null,requesting=false,pending=false,lastApplied=0,lastRequest=0;
+ const selectors=[['kpiTotalDia','total_dia'],['kpiTotalMes','total_mes'],['kpiTotalAno','total_ano']];
+ async function consultar(){
+   if(requesting){pending=true;return;}
+   requesting=true;lastRequest=Date.now();
+   try{
+     const response=await fetch('/api/admin/kpis',{
+       method:'GET',credentials:'same-origin',cache:'no-store',
+       headers:{'Accept':'application/json','X-Requested-With':'fetch'},
+       signal:AbortSignal.timeout(10000)
+     });
+     if(!response.ok)throw Error('KPIs HTTP '+response.status);
+     const data=await response.json();
+     if(!data.ok)throw Error('KPIs inválidos');
+     for(const [id,key] of selectors){
+       const node=document.getElementById(id);
+       if(node && Number.isFinite(Number(data[key]))){
+         const amount=String(Math.trunc(Number(data[key])));
+         if(node.textContent!==amount)node.textContent=amount;
+       }
+     }
+     lastApplied=Date.now();
+   }catch(error){
+     console.warn('Atualização do contador de entregas:',error);
+   }finally{
+     requesting=false;
+     if(pending){pending=false;agendar(180);}
+   }
+ }
+ function agendar(ms=180){
+   if(timer!==null)clearTimeout(timer);
+   timer=setTimeout(()=>{timer=null;consultar();},ms);
+ }
+ // Cadastro confirmado: sincroniza o total mesmo se a linha estiver fora do filtro.
+ window.addEventListener('coopex-admin-delivery-saved',()=>agendar(120));
+ // Mudanças reais na tabela por outros usuários: atualizar apenas quando necessário.
+ window.addEventListener('coopex-admin-table-updated',()=>{
+   // Cadastro recente já consultou o servidor, evitando dupla leitura.
+   if(requesting)return;
+   if(Date.now()-lastRequest<900)return;
+   agendar(250);
+ });
+ // Ao retornar de outra página, consultar somente se o navegador restaurou o Admin em cache.
+ window.addEventListener('pageshow',e=>{if(e.persisted)agendar(150);});
+})();
+</script>
