@@ -16011,6 +16011,58 @@ def rastreio_publico(token):
     response.headers["X-Robots-Tag"] = "noindex, nofollow, noarchive"
     return response
 
+@app.get("/api/rastreio_ticket/<token>")
+def api_rastreio_ticket(token):
+    """Autoriza somente a posição Cloudflare do entregador desta entrega.
+    A cada renovação verifica se a entrega ainda está em andamento.
+    """
+    try:
+        info = ler_token_rastreio(token)
+        entrega_id = int(info.get("entrega_id"))
+        if entrega_id <= 0:
+            raise ValueError("invalid")
+    except Exception:
+        return jsonify(ok=False, error="invalid_token"), 400
+    entrega = db.session.query(
+        Entrega.id, Entrega.cooperado_id, Entrega.status
+    ).filter(Entrega.id == entrega_id).first()
+    if not entrega:
+        return jsonify(ok=False, error="not_found"), 404
+    encerrados = {
+        "recebido", "entregue", "concluido", "concluída", "concluida",
+        "finalizada", "finalizado", "cancelado", "cancelada"
+    }
+    if (not entrega.cooperado_id) or (entrega.status or "").strip().lower() in encerrados:
+        return jsonify(ok=False, error="ended"), 410
+
+    chave = os.environ.get("COOPEX_GPS_MAP_SIGN_KEY", "")
+    endpoint = os.environ.get("COOPEX_GPS_API_URL", "").rstrip("/")
+    if not chave or not endpoint.startswith("https://"):
+        return jsonify(ok=False, error="gps_unavailable"), 503
+
+    import base64
+    import hashlib
+    import hmac
+    import time
+    exp = int(time.time()) + 600
+    payload = json.dumps(
+        {"role": "delivery_track", "id": int(entrega.cooperado_id), "exp": exp},
+        sort_keys=True, separators=(",", ":")
+    ).encode("utf-8")
+    body = base64.urlsafe_b64encode(payload).rstrip(b"=").decode("ascii")
+    assinatura = hmac.new(
+        chave.encode("utf-8"), body.encode("ascii"), hashlib.sha256
+    ).digest()
+    assinatura = base64.urlsafe_b64encode(assinatura).rstrip(b"=").decode("ascii")
+    response = jsonify(
+        ok=True, url=endpoint + "/v1/delivery-position",
+        ticket=body + "." + assinatura, expires_at=exp
+    )
+    response.headers["Cache-Control"] = "no-store, private"
+    response.headers["Referrer-Policy"] = "no-referrer"
+    return response
+
+
 @app.get("/api/rastreio_pos/<token>")
 def api_rastreio_pos(token):
     # Acesso restrito a token assinado de entrega em andamento,
