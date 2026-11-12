@@ -278,14 +278,12 @@ html body.cx-page.cx-delivery-glass.cx-quick-modal #flash{
       // Dentro do Admin: mantém o mesmo formulário sem recarregar a página.
       // O pai atualiza somente a linha criada.
       if(new URLSearchParams(location.search).get('modal')==='1' && window.parent!==window){
-        window.parent.postMessage({type:'coopex-entrega-rapida-salva',entrega_id:data.entrega_id},location.origin);
+        // O Admin fecha e descarta este iframe depois de receber a confirmação.
+        // Portanto, nada deste pedido poderá permanecer no próximo cadastro.
         reset();
-        const note=el('flash');
-        note.textContent='Entrega #'+data.entrega_id+' cadastrada! Pronta para a próxima.';
-        note.style.display='block';
+        window.parent.postMessage({type:'coopex-entrega-rapida-salva',entrega_id:data.entrega_id},location.origin);
         submitting=false;
         if(btn){btn.disabled=false;btn.textContent='Cadastrar entrega rápida'}
-        cliente.focus();
         return;
       }
       // Voltar pelo histórico reutiliza o painel já aberto quando o navegador suporta BFCache.
