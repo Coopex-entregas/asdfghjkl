@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#103c96">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<title>COOPEX • Acompanhe sua entrega #{{ entrega_id }}</title>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<style>
+:root{color-scheme:light;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#132c4d;--blue:#1556cf;--blue-dark:#092d74}
+*{box-sizing:border-box}html,body{height:100%;margin:0}
+body{display:flex;flex-direction:column;background:#e8f2ff;color:var(--ink);overflow:hidden}
+.top{z-index:900;flex:0 0 auto;background:linear-gradient(125deg,#071d4a,#1349a5 72%,#246ad2);padding:12px clamp(14px,3vw,28px);color:white;box-shadow:0 6px 24px #092d7440}
+.top-inner{max-width:1450px;margin:auto;display:flex;gap:18px;align-items:center;justify-content:space-between;flex-wrap:wrap}
+.brand{display:flex;align-items:center;gap:10px}
+.logo{width:40px;height:40px;display:grid;place-items:center;border-radius:13px;background:linear-gradient(140deg,#57c0ff,#1264db);box-shadow:0 4px 14px #04194f80;font-size:22px}
+.brand strong{display:block;font-size:15px;letter-spacing:.06em}
+.brand small{display:block;color:#d8eaff;font-size:12px;margin-top:2px}
+.actions{display:flex;align-items:center;gap:8px}
+button{font:700 13px inherit;cursor:pointer}
+.action{border:1px solid #ffffff83;border-radius:12px;background:#ffffff1c;color:white;min-height:39px;padding:7px 12px;font-weight:750;display:inline-flex;align-items:center;justify-content:center;gap:7px}
+.action:focus-visible{outline:3px solid #fff;outline-offset:2px}
+.action.primary{background:white;color:#12418f}
+.status-row{z-index:700;position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom) + 22px);transform:translateX(-50%);width:min(490px,calc(100% - 28px));background:rgba(255,255,255,.97);border:1px solid #ffffff;border-radius:18px;box-shadow:0 10px 35px #102c5b40;padding:12px 16px;display:flex;gap:12px;align-items:center;backdrop-filter:blur(12px)}
+.dot{flex:0 0 10px;width:10px;height:10px;border-radius:50%;background:#e6a318;box-shadow:0 0 0 4px #e6a31824}
+.dot.ok{background:#13a874;box-shadow:0 0 0 4px #13a87422}
+.dot.off{background:#e24e61;box-shadow:0 0 0 4px #e24e6124}
+.details{min-width:0;flex:1}
+.details strong{font-size:13px;display:block}
+.details small{font-size:11px;color:#5d7593;display:block;margin-top:2px;line-height:1.4}
+#map{height:100%;width:100%;flex:1 1 auto;min-height:0;background:#d9eaf9;z-index:1}
+.leaflet-container{font:12px system-ui;background:#d9eaf9}
+.leaflet-control-zoom{border:0!important;box-shadow:0 4px 20px #1239633d!important;overflow:hidden;border-radius:11px!important}
+.leaflet-control-zoom a{width:38px!important;height:38px!important;line-height:38px!important;color:#184d9d!important}
+.coop-pin-wrap{background:transparent!important;border:0!important}
+.coop-pin{display:flex;align-items:center;justify-content:center;position:relative;width:52px;height:58px;filter:drop-shadow(0 7px 8px #0b357660)}
+.coop-pin .bubble{height:44px;width:44px;border-radius:19px 19px 19px 6px;transform:rotate(-45deg);background:linear-gradient(145deg,#5eccff,#0b4fca 70%,#0b317a);border:3px solid #fff;box-shadow:inset 0 2px 6px #ffffff77}
+.coop-pin .symbol{position:absolute;top:9px;left:13px;font-size:24px;line-height:31px}
+.coop-pin.pulse:after{content:"";position:absolute;left:19px;bottom:-5px;width:14px;height:6px;border-radius:50%;background:#113c9766;filter:blur(2px)}
+.toast{position:fixed;top:82px;left:50%;transform:translateX(-50%);z-index:1500;padding:10px 16px;border-radius:12px;background:#0c3067;color:white;font-size:13px;font-weight:700;box-shadow:0 10px 35px #061e5070;display:none;max-width:calc(100vw - 20px);text-align:center}
+.toast.show{display:block}
+@media(max-width:600px){
+ .top{padding:11px 12px}
+ .top-inner{flex-wrap:nowrap;align-items:center;gap:8px}
+ .brand{min-width:0;gap:8px}.logo{width:36px;height:36px;font-size:19px;flex:none}
+ .brand strong{font-size:13px}.brand small{font-size:10px;white-space:nowrap}
+ .actions{gap:6px}.action{min-height:37px;padding:7px 9px;font-size:12px}
+ .action .long{display:none}
+ .status-row{bottom:calc(env(safe-area-inset-bottom) + 14px);padding:10px 12px}
+ .toast{top:76px}
+}
+</style>
+</head>
+<body>
+<header class="top"><div class="top-inner">
+<div class="brand"><div class="logo" aria-hidden="true">🛵</div><div><strong>COOPEX • Rastreio</strong><small>Entrega #{{ entrega_id }} · Acompanhamento ao vivo</small></div></div>
+<div class="actions">
+<button id="btnCenter" class="action" type="button" title="Centralizar no entregador">◎ <span class="long">Centralizar</span></button>
+<button id="btnShare" class="action primary" type="button">↗ <span id="shareLabel">Compartilhar</span></button>
+</div>
+</div></header>
+<main id="map" aria-label="Mapa de acompanhamento da entrega"></main>
+<div class="status-row" role="status" aria-live="polite"><span id="dot" class="dot"></span><div class="details"><strong id="state">Buscando localização do entregador…</strong><small id="updated">A localização será exibida quando estiver disponível.</small></div></div>
+<div id="toast" class="toast" role="status" aria-live="polite"></div>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+(function(){
+'use strict';
+const token={{ token|tojson }};
+const url='/api/rastreio_pos/'+encodeURIComponent(token);
+const state=document.getElementById('state'),updated=document.getElementById('updated');
+const dot=document.getElementById('dot'),toast=document.getElementById('toast');
+const map=L.map('map',{zoomControl:false,preferCanvas:true,scrollWheelZoom:true}).setView([-5.7945,-35.2110],12);
+L.control.zoom({position:'topright'}).addTo(map);
+L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
+  maxZoom:19,attribution:'&copy; OpenStreetMap contributors',updateWhenIdle:true,keepBuffer:2
+}).addTo(map);
+const icon=L.divIcon({
+  className:'coop-pin-wrap',
+  html:'<div class="coop-pin pulse"><span class="bubble"></span><span class="symbol">🛵</span></div>',
+  iconSize:[52,64],iconAnchor:[26,61],popupAnchor:[0,-57]
+});
+let marker=null,coords=null,first=true,timer=null,ended=false,busy=false;
+let toastTimer;
+function message(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),3400)}
+function status(text,detail,level){state.textContent=text;updated.textContent=detail||'';dot.className='dot'+(level?' '+level:'')}
+function center(){if(coords)map.flyTo(coords,Math.max(map.getZoom(),15),{duration:.5});else message('A localização ainda não está disponível.')}
+document.getElementById('btnCenter').addEventListener('click',center);
+async function copyLink(){
+  const link=location.href;
+  try{
+    if(navigator.clipboard?.writeText){await navigator.clipboard.writeText(link);return true;}
+  }catch(_){}
+  const text=document.createElement('textarea');text.value=link;text.setAttribute('readonly','');text.style.position='fixed';text.style.left='-9999px';document.body.append(text);text.select();
+  let ok=false;try{ok=document.execCommand('copy')}catch(_){}text.remove();return ok;
+}
+document.getElementById('btnShare').addEventListener('click',async()=>{
+  // No celular, abrir compartilhamento nativo; em desktop, copiar diretamente.
+  if(navigator.share){
+    try{await navigator.share({title:'Acompanhe sua entrega COOPEX',text:'Veja a localização da sua entrega em andamento:',url:location.href});return}
+    catch(e){if(e.name==='AbortError')return}
+  }
+  if(await copyLink()){message('Link copiado! Envie ao cliente pelo WhatsApp.');document.getElementById('shareLabel').textContent='Copiado ✓'}
+  else{message('Copie o endereço do navegador para enviar ao cliente.');}
+});
+async function pull(){
+  if(busy||ended||document.hidden)return;busy=true;
+  try{
+    const response=await fetch(url,{credentials:'omit',cache:'no-store'});
+    if(response.status===410){
+      ended=true;clearInterval(timer);status('Entrega concluída','Este link de rastreamento foi encerrado.','off');
+      document.getElementById('btnShare').disabled=true;return;
+    }
+    if(!response.ok)throw Error('HTTP '+response.status);
+    const d=await response.json();
+    if(!d.ok)throw Error('Sem dados');
+    if(typeof d.lat!=='number'||typeof d.lng!=='number'){
+      status('Aguardando sinal do entregador','O mapa mostrará a localização assim que o GPS enviar dados.','');return;
+    }
+    if(!Number.isFinite(d.lat)||!Number.isFinite(d.lng)||Math.abs(d.lat)>90||Math.abs(d.lng)>180)throw Error('Coordenadas inválidas');
+    coords=[d.lat,d.lng];
+    const label=String(d.cooperado||'Entregador');
+    const detail=d.quando_local?'Última posição: '+d.quando_local:'Posição recebida do GPS';
+    status('Localização do entregador',detail,'ok');
+    if(!marker){marker=L.marker(coords,{icon,title:label,keyboard:true}).addTo(map).bindPopup('<strong>COOPEX • Entregador</strong>');map.setView(coords,15);first=false}
+    else marker.setLatLng(coords);
+  }catch(e){status('Conexão temporariamente indisponível','Tentaremos atualizar a posição automaticamente.','off')}
+  finally{busy=false}
+}
+document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
+pull();timer=setInterval(pull,15000);
+setTimeout(()=>map.invalidateSize(),150);
+})();
+</script>
+</body></html>
