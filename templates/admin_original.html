@@ -3004,14 +3004,10 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       });
 
       let salvando = false;
-      let timerAtribuicao = null;
       let houveEscolha = false;
       const valorAnterior = atual || '';
-      let timeoutFechar = null;
       function cancelarSemAlteracao(){
         if(salvando || !sel.isConnected) return;
-        clearTimeout(timerAtribuicao);
-        clearTimeout(timeoutFechar);
         document.removeEventListener('click',confirmarCliqueFora,true);
         sel.replaceWith(el); // preserva nome e aparência original, sem consulta ao servidor
       }
@@ -3020,28 +3016,14 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         if(!houveEscolha || (sel.value || '') === valorAnterior){cancelarSemAlteracao();return;}
         salvar();
       }
-      function agendarFechamento(){
-        clearTimeout(timeoutFechar);
-        if(!sel.isConnected || salvando) return;
-        // Nunca fechar a lista enquanto o usuário está escolhendo no select nativo.
-        // O temporizador só funciona quando a edição perdeu o foco.
-        if(document.activeElement === sel) return;
-        timeoutFechar = setTimeout(()=>{
-          if(sel.isConnected && !salvando && document.activeElement !== sel
-              && !houveEscolha) cancelarSemAlteracao();
-        },1000);
-      }
-      function agendarAtribuicao(){
+      function registrarEscolha(){
         if(!sel.isConnected || salvando) return;
         houveEscolha = true;
-        clearTimeout(timerAtribuicao);
-        clearTimeout(timeoutFechar);
-        timerAtribuicao = setTimeout(concluirEdicao,120);
+        // Ao selecionar pelo menu nativo, não aguardar nem abrir outro seletor.
+        concluirEdicao();
       }
       async function salvar(){
         if(salvando || !sel.isConnected) return;
-        clearTimeout(timerAtribuicao);
-        clearTimeout(timeoutFechar);
         const coopId = sel.value || '';
         // Somente persistir quando o cooperado realmente foi alterado.
         if(!houveEscolha || coopId === valorAnterior){cancelarSemAlteracao();return;}
@@ -3076,8 +3058,6 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         }
       }
       function restaurar(id){
-        clearTimeout(timerAtribuicao);
-        clearTimeout(timeoutFechar);
         document.removeEventListener('click',confirmarCliqueFora,true);
         const c = (window.COOPERADOS || []).find(x => String(x.id)===String(id));
         const span = document.createElement('span');
@@ -3092,8 +3072,8 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       // O select nativo permanece aberto até haver escolha real.
       // Não usar blur/focusout ou temporizador: navegadores podem dispará-los
       // enquanto a lista de opções ainda está aberta.
-      sel.addEventListener('change',agendarAtribuicao);
-      sel.addEventListener('input',agendarAtribuicao);
+      // Apenas change confirma uma opção; input pode ocorrer enquanto navega na lista.
+      sel.addEventListener('change',registrarEscolha);
       const confirmarCliqueFora=(evento)=>{
         if(!sel.isConnected){document.removeEventListener('click',confirmarCliqueFora,true);return;}
         if(evento.target===sel || sel.contains(evento.target))return;
