@@ -3024,7 +3024,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       const valorAnterior = atual || '';
       function cancelarSemAlteracao(){
         if(salvando || !sel.isConnected) return;
-        document.removeEventListener('click',confirmarCliqueFora,true);
+        window.removeEventListener('click',confirmarCliqueFora,true);window.removeEventListener('keydown',confirmarEscape,true);
         sel.replaceWith(el); // preserva nome e aparência original, sem consulta ao servidor
       }
       function concluirEdicao(){
@@ -3074,7 +3074,7 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
         }
       }
       function restaurar(id){
-        document.removeEventListener('click',confirmarCliqueFora,true);
+        window.removeEventListener('click',confirmarCliqueFora,true);window.removeEventListener('keydown',confirmarEscape,true);
         const c = (window.COOPERADOS || []).find(x => String(x.id)===String(id));
         const span = document.createElement('span');
         span.className = 'coop-editable';
@@ -3091,14 +3091,32 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       // Apenas change confirma uma opção; input pode ocorrer enquanto navega na lista.
       sel.addEventListener('change',registrarEscolha);
       const confirmarCliqueFora=(evento)=>{
-        if(!sel.isConnected){document.removeEventListener('click',confirmarCliqueFora,true);return;}
+        if(!sel.isConnected){
+          window.removeEventListener('click',confirmarCliqueFora,true);
+          window.removeEventListener('keydown',confirmarEscape,true);
+          return;
+        }
+        // A seleção nativa pode disparar eventos durante a escolha.
         if(evento.target===sel || sel.contains(evento.target))return;
-        if(!salvando)concluirEdicao();
+        if(!salvando)cancelarSemAlteracao();
       };
-      // Clique fora, não pointerdown: não interfere com o menu nativo.
-      setTimeout(()=>{if(sel.isConnected)document.addEventListener('click',confirmarCliqueFora,true);},0);
+      const confirmarEscape=(evento)=>{
+        if(!sel.isConnected){
+          window.removeEventListener('click',confirmarCliqueFora,true);
+          window.removeEventListener('keydown',confirmarEscape,true);
+          return;
+        }
+        if(evento.key==='Escape'||evento.key==='Esc'){
+          evento.preventDefault();
+          evento.stopPropagation();
+          cancelarSemAlteracao();
+        }
+      };
+      // A janela recebe o clique antes dos demais scripts da tabela.
+      // Não usar pointerdown nem blur: eles fechavam a lista antes da escolha.
+      window.addEventListener('click',confirmarCliqueFora,true);
+      window.addEventListener('keydown',confirmarEscape,true);
       sel.addEventListener('keydown',ev=>{
-        if(ev.key==='Escape'){ev.preventDefault();cancelarSemAlteracao();}
         if(ev.key==='Enter'){ev.preventDefault();concluirEdicao();}
       });
     });
