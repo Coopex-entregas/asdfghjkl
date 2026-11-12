@@ -3023,8 +3023,12 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       function agendarFechamento(){
         clearTimeout(timeoutFechar);
         if(!sel.isConnected || salvando) return;
+        // Nunca fechar a lista enquanto o usuário está escolhendo no select nativo.
+        // O temporizador só funciona quando a edição perdeu o foco.
+        if(document.activeElement === sel) return;
         timeoutFechar = setTimeout(()=>{
-          if(sel.isConnected && !salvando && !houveEscolha) cancelarSemAlteracao();
+          if(sel.isConnected && !salvando && document.activeElement !== sel
+              && !houveEscolha) cancelarSemAlteracao();
         },1000);
       }
       function agendarAtribuicao(){
@@ -3088,22 +3092,24 @@ body.dark .value-request-empty{background:#111f38;border-color:#344a72;color:#b7
       // Clicar fora cancela de imediato quando nada mudou. Se mudou, salva.
       sel.addEventListener('change',agendarAtribuicao);
       sel.addEventListener('input',agendarAtribuicao);
-      sel.addEventListener('blur',concluirEdicao);
+      sel.addEventListener('blur',()=>{
+        // Permite ao navegador concluir primeiro a seleção feita no menu nativo.
+        setTimeout(()=>{if(sel.isConnected)concluirEdicao();},90);
+      });
       const confirmarCliqueFora=(evento)=>{
         if(!sel.isConnected){document.removeEventListener('pointerdown',confirmarCliqueFora,true);return;}
         if(evento.target===sel || sel.contains(evento.target))return;
         concluirEdicao();
       };
       setTimeout(()=>{if(sel.isConnected)document.addEventListener('pointerdown',confirmarCliqueFora,true);},0);
-      // Sem escolher outro cooperado, o seletor fecha em até 1 segundo.
-      agendarFechamento();
+      // Enquanto o usuário mantém a lista aberta, não expirar a escolha.
+      // Clicar em qualquer lugar fora continua cancelando na mesma hora.
       sel.addEventListener('keydown',ev=>{
         if(ev.key==='Escape'){ev.preventDefault();cancelarSemAlteracao();}
         if(ev.key==='Enter'){ev.preventDefault();concluirEdicao();}
-        else agendarFechamento();
       });
+      sel.addEventListener('focus',()=>clearTimeout(timeoutFechar));
       sel.addEventListener('pointerdown',()=>clearTimeout(timeoutFechar));
-      sel.addEventListener('pointerup',agendarFechamento);
     });
 
     async function salvarInlineEntrega(idEntrega, payload){
