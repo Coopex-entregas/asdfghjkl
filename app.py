@@ -16119,6 +16119,10 @@ import coopex_financeiro_bridge
 coopex_financeiro_bridge.instalar(
     app, db, Entrega, Cooperado, atribuir_entrega_para_cooperado_core)
 
+# Consulta HMAC de leitura do Financeiro; nao grava no banco da Supervisao.
+import coopex_financeiro_leitura
+coopex_financeiro_leitura.instalar(app, db)
+
 # Diagnostico isolado Sicoob (sem geracao de pagamentos)
 import sicoob_diagnostico_seguro
 import sys as _sicoob_sys
