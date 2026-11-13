@@ -16124,6 +16124,11 @@ coopex_financeiro_bridge.instalar(
 import coopex_sso_admin_original
 coopex_sso_admin_original.instalar(app)
 
+# Ticket exclusivamente da fonte GPS Cloudflare original, consumido por
+# HMAC pelo Financeiro unificado sem duplicar worker/rastreador.
+import coopex_gps_ticket_bridge
+coopex_gps_ticket_bridge.registrar(app)
+
 # Diagnostico isolado Sicoob (sem geracao de pagamentos)
 import sicoob_diagnostico_seguro
 import sys as _sicoob_sys
