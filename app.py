@@ -16004,7 +16004,8 @@ def rastreio_publico(token):
         return "<h2>Rastreio encerrado: entrega não está em andamento.</h2>", 410
 
     response = current_app.make_response(render_template(
-        "rastreio_entrega_publico.html", token=token, entrega_id=entrega_id
+        "rastreio_entrega_publico.html", token=token, entrega_id=entrega_id,
+        google_maps_api_key=_google_maps_api_key()
     ))
     response.headers["Cache-Control"] = "private, no-store, max-age=0"
     response.headers["Referrer-Policy"] = "no-referrer"
