@@ -24,6 +24,8 @@ def _verificar_assinatura(raw,ts_str,signature,secret,now=None):
     if (not secret or len(raw)>2048 or not ts_str or not signature
             or len(signature)!=64):
         return False
+    if not isinstance(ts_str,str) or not ts_str.isascii() or not ts_str.isdecimal():
+        return False
     try:
         instante=int(ts_str)
     except (TypeError,ValueError):
@@ -64,6 +66,8 @@ def instalar(app,db,Entrega,Cooperado,atribuir_core):
         if os.getenv("COOPEX_SUPERVISAO_BRIDGE_ATIVO")!="1":
             return jsonify(ok=False,erro="Ponte desabilitada"),404
         secret=_chave()
+        if request.content_length is None or request.content_length>2048:
+            return jsonify(ok=False,erro="Solicitacao invalida"),413
         raw=request.get_data(cache=False)
         if not _verificar_assinatura(
             raw,request.headers.get("X-COOPEX-Timestamp"),
