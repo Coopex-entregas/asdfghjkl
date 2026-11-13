@@ -57,9 +57,12 @@ class PonteHTTPTest(unittest.TestCase):
         coop_q=MagicMock()
         coop_q.filter.return_value.first.return_value=self.cooperado
         self.db=MagicMock()
-        self.db.session.query.side_effect=[entrega_q,coop_q]
+        self.model_entrega=type("Entrega",(),{"id":123})
+        self.model_cooperado=type("Cooperado",(),{"id":71})
+        self.db.session.query.side_effect=lambda model: (
+            entrega_q if model is self.model_entrega else coop_q)
         self.core=MagicMock(side_effect=self.atribuir_fake)
-        instalar(self.app,self.db,object(),object(),self.core)
+        instalar(self.app,self.db,self.model_entrega,self.model_cooperado,self.core)
         self.client=self.app.test_client()
         self.ambiente=patch.dict(os.environ,{
             "COOPEX_SUPERVISAO_BRIDGE_ATIVO":"1",
