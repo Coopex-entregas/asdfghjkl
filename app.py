@@ -16119,6 +16119,11 @@ import coopex_financeiro_bridge
 coopex_financeiro_bridge.instalar(
     app, db, Entrega, Cooperado, atribuir_entrega_para_cooperado_core)
 
+# SSO autentica administrador master do Financeiro e abre o ADMIN ORIGINAL.
+# Preserva todos os HTML, JS, CSS, URLs, formularios, entregas e Socket.IO.
+import coopex_sso_admin_original
+coopex_sso_admin_original.instalar(app)
+
 # Diagnostico isolado Sicoob (sem geracao de pagamentos)
 import sicoob_diagnostico_seguro
 import sys as _sicoob_sys
