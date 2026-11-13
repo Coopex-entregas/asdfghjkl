@@ -16113,6 +16113,12 @@ def api_rastreio_pos(token):
                    cooperado=coop.nome,
                    quando_local=when_local)
 
+# Ponte autenticada: preserva as emissoes de notificacoes do servidor original.
+# Desligada ate configuracao HMAC explicita nos dois servicos atuais.
+import coopex_financeiro_bridge
+coopex_financeiro_bridge.instalar(
+    app, db, Entrega, Cooperado, atribuir_entrega_para_cooperado_core)
+
 # Diagnostico isolado Sicoob (sem geracao de pagamentos)
 import sicoob_diagnostico_seguro
 import sys as _sicoob_sys
