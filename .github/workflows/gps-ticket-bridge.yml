@@ -1,0 +1,18 @@
+name: Ponte segura do GPS original
+on:
+  push:
+    branches: [gps-ticket-supervisao-para-financeiro-2026]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  testar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: python -m pip install Flask==3.0.3
+      - run: python -m py_compile coopex_gps_ticket_bridge.py test_coopex_gps_ticket_bridge.py app.py
+      - run: python -m unittest -v test_coopex_gps_ticket_bridge
