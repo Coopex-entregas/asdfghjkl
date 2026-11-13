@@ -1,0 +1,22 @@
+name: Ponte Financeiro e Supervisao - validacao isolada
+on:
+  push:
+    branches:
+      - integracao-financeiro-2026
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  ponte:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Dependencias minimas
+        run: python -m pip install Flask==3.0.3 Werkzeug==3.0.3
+      - name: Validar sintaxe
+        run: python -m py_compile coopex_financeiro_bridge.py test_coopex_financeiro_bridge.py
+      - name: Testar autorizacao, corrida alterada e avisos pelo core
+        run: python -m unittest -v test_coopex_financeiro_bridge
