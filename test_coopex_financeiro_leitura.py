@@ -13,6 +13,7 @@ class TestLeitura(unittest.TestCase):
         self.con=MagicMock()
         self.db.engine.connect.return_value.__enter__.return_value=self.con
         self.con.execute.side_effect=[
+            MagicMock(),
             MagicMock(mappings=lambda:MagicMock(all=lambda:[{
                 "id":123,"cliente":"Cliente","bairro":"Tirol","valor":8.0,
                 "pagamento":"Pix","cooperado_id":71,
