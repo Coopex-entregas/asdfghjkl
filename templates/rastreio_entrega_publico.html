@@ -6,7 +6,7 @@
 <meta name="theme-color" content="#103c96">
 <meta name="robots" content="noindex,nofollow,noarchive">
 <title>COOPEX • Acompanhe sua entrega #{{ entrega_id }}</title>
-<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+
 <style>
 :root{color-scheme:light;font-family:Inter,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;--ink:#132c4d;--blue:#1556cf;--blue-dark:#092d74}
 *{box-sizing:border-box}html,body{height:100%;margin:0}
@@ -63,30 +63,43 @@ button{font:700 13px inherit;cursor:pointer}
 <main id="map" aria-label="Mapa de acompanhamento da entrega"></main>
 <div class="status-row" role="status" aria-live="polite"><span id="dot" class="dot"></span><div class="details"><strong id="state">Buscando localização do entregador…</strong><small id="updated">A localização será exibida quando estiver disponível.</small></div></div>
 <div id="toast" class="toast" role="status" aria-live="polite"></div>
-<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+
 <script>
 (function(){
 'use strict';
 const token={{ token|tojson }};
+const googleKey={{ google_maps_api_key|tojson }};
 const ticketUrl='/api/rastreio_ticket/'+encodeURIComponent(token);
 const state=document.getElementById('state'),updated=document.getElementById('updated');
 const dot=document.getElementById('dot'),toast=document.getElementById('toast');
-const map=L.map('map',{zoomControl:false,preferCanvas:true,scrollWheelZoom:true}).setView([-5.7945,-35.2110],12);
-L.control.zoom({position:'topright'}).addTo(map);
-L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',{
-  maxZoom:19,attribution:'&copy; OpenStreetMap contributors',updateWhenIdle:true,keepBuffer:2
-}).addTo(map);
-const icon=L.divIcon({
-  className:'coop-pin-wrap',
-  html:'<div class="coop-pin pulse"><span class="bubble"></span><span class="symbol">🛵</span></div>',
-  iconSize:[52,64],iconAnchor:[26,61],popupAnchor:[0,-57]
-});
+// Usa a mesma Maps JavaScript API do mapa administrativo. Não utiliza tiles OSM bloqueados.
+let map=null;
+const mapOptions={center:{lat:-5.7945,lng:-35.2110},zoom:12,mapTypeControl:false,streetViewControl:false,fullscreenControl:false,gestureHandling:'greedy'};
+function initGoogleMap(){
+  if(!window.google?.maps){status('Mapa indisponível','Não foi possível carregar o Google Maps.','off');return;}
+  map=new google.maps.Map(document.getElementById('map'),mapOptions);
+  pull();
+  timer=setInterval(pull,15000);
+}
+function loadGoogleMap(){
+  if(!googleKey){
+    status('Mapa não configurado','Configure GOOGLE_MAPS_API_KEY no Render para exibir o mapa.','off');
+    return;
+  }
+  window.COOPEX_RASTREIO_MAP_READY=initGoogleMap;
+  window.gm_authFailure=()=>status('Mapa indisponível','Verifique a chave Google Maps e as restrições de domínio no Google Cloud.','off');
+  const script=document.createElement('script');
+  script.src='https://maps.googleapis.com/maps/api/js?key='+encodeURIComponent(googleKey)+'&callback=COOPEX_RASTREIO_MAP_READY&loading=async&v=weekly&language=pt-BR&region=BR';
+  script.async=true;
+  script.onerror=()=>status('Mapa indisponível','Falha ao carregar o Google Maps.','off');
+  document.head.appendChild(script);
+}
 let marker=null,coords=null,timer=null,ended=false,busy=false;
 let gpsAuth=null,lastAuthAt=0;
 let toastTimer;
 function message(msg){toast.textContent=msg;toast.classList.add('show');clearTimeout(toastTimer);toastTimer=setTimeout(()=>toast.classList.remove('show'),3400)}
 function status(text,detail,level){state.textContent=text;updated.textContent=detail||'';dot.className='dot'+(level?' '+level:'')}
-function center(){if(coords)map.flyTo(coords,Math.max(map.getZoom(),15),{duration:.5});else message('A localização ainda não está disponível.')}
+function center(){if(coords&&map){map.panTo({lat:coords[0],lng:coords[1]});map.setZoom(Math.max(map.getZoom(),15));}else message('A localização ainda não está disponível.')}
 document.getElementById('btnCenter').addEventListener('click',center);
 async function copyLink(){
   const link=location.href;
@@ -158,16 +171,19 @@ async function pull(){
     const detail='Posição atualizada '+new Date(d.updated_ms).toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
     status('Localização do entregador',detail,age<120000?'ok':'');
     if(!marker){
-      marker=L.marker(coords,{icon,title:'COOPEX • Entregador',keyboard:true})
-        .addTo(map).bindPopup('<strong>COOPEX • Entregador</strong>');
-      map.setView(coords,15);
-    }else marker.setLatLng(coords);
+      marker=new google.maps.Marker({
+        position:{lat:coords[0],lng:coords[1]},
+        map,
+        title:'COOPEX • Entregador',
+        icon:{url:'data:image/svg+xml;charset=UTF-8,'+encodeURIComponent('<svg xmlns="http://www.w3.org/2000/svg" width="48" height="58" viewBox="0 0 48 58"><path d="M24 2C11 2 2 12 2 25c0 17 22 31 22 31s22-14 22-31C46 12 37 2 24 2z" fill="#1556cf" stroke="white" stroke-width="3"/><text x="24" y="32" text-anchor="middle" font-size="23">🛵</text></svg>'),scaledSize:new google.maps.Size(48,58),anchor:new google.maps.Point(24,56)}
+      });
+      map.setCenter({lat:coords[0],lng:coords[1]});map.setZoom(15);
+    }else marker.setPosition({lat:coords[0],lng:coords[1]});
   }catch(e){if(!ended)status('Conexão temporariamente indisponível','Tentaremos atualizar automaticamente.','off')}
   finally{busy=false}
 }
 document.addEventListener('visibilitychange',()=>{if(!document.hidden)pull()});
-pull();timer=setInterval(pull,15000);
-setTimeout(()=>map.invalidateSize(),150);
+loadGoogleMap();
 })();
 </script>
 </body></html>
