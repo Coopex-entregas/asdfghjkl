@@ -8255,6 +8255,68 @@ def api_update_entrega_inline(entrega_id):
     )
 
 
+@app.post("/coopex-connect/admin/entrega/<int:entrega_id>/forma-pagamento")
+def coopex_admin_alterar_forma_pagamento(entrega_id):
+    """Corrige a modalidade sem modificar o status de pagamento manual da entrega.
+
+    Crédito Auto usa a rotina contábil central existente (débito/estorno por diferença).
+    O histórico bancário Sicoob confirmado não pode ser reclassificado silenciosamente.
+    """
+    if not (session.get("is_admin") or session.get("is_master")):
+        return jsonify(ok=False, error="Acesso restrito ao administrador."), 403
+    dados = request.get_json(silent=True)
+    if not isinstance(dados, dict):
+        return jsonify(ok=False, error="Envie uma forma de pagamento válida."), 400
+    nova = str(dados.get("pagamento") or "").strip()
+    opcoes = {
+        "pix": "Pix",
+        "pix (cooperativa)": "Pix (Cooperativa)",
+        "dinheiro": "Dinheiro",
+        "comanda": "Comanda",
+        "credito_auto": "CREDITO_AUTO",
+    }
+    nova = opcoes.get(nova.casefold())
+    if not nova:
+        return jsonify(ok=False, error="Forma de pagamento não permitida."), 400
+
+    entrega = Entrega.query.get(entrega_id)
+    if entrega is None:
+        return jsonify(ok=False, error="Entrega não encontrada."), 404
+    anterior = entrega.pagamento or ""
+    if anterior == nova:
+        return jsonify(ok=True, pagamento=nova, status_pagamento=entrega.status_pagamento)
+
+    try:
+        confirmado_banco = db.session.execute(db.text(
+            "SELECT 1 FROM sicoob_pix_cobranca WHERE entrega_id=:eid "
+            "AND (status='PAGO' OR e2eid IS NOT NULL) LIMIT 1"
+        ), {"eid":entrega.id}).first() is not None
+        if confirmado_banco:
+            return jsonify(
+                ok=False,
+                error="Pagamento confirmado no Sicoob: a mudança de modalidade exige conciliação administrativa antes de salvar."
+            ), 409
+
+        entrega.pagamento = nova
+        db.session.add(entrega)
+        # Não altera 'pago' ou 'pendente' exceto quando Crédito Auto é consumido.
+        # A função existente também estorna automaticamente se sair de Crédito Auto.
+        if pagamento_usa_credito(anterior) or pagamento_usa_credito(nova):
+            sincronizar_credito_da_entrega(entrega.id)
+        else:
+            db.session.commit()
+        emitir_atualizacao_entrega(entrega, "editada")
+        return jsonify(
+            ok=True, pagamento=entrega.pagamento,
+            status_pagamento=entrega.status_pagamento,
+            entrega_id=entrega.id
+        )
+    except Exception:
+        db.session.rollback()
+        app.logger.exception("Falha ao alterar forma de pagamento da entrega %s", entrega_id)
+        return jsonify(ok=False, error="Não foi possível salvar a forma de pagamento."), 500
+
+
 @app.route('/clonar_entrega/<int:id>', methods=['POST'])
 def clonar_entrega(id):
     if not session.get('is_admin'):
