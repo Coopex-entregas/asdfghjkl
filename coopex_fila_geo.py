@@ -48,7 +48,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         except (ValueError, TypeError):
             item = None
         else:
-            item = ({'endereco': endereco, 'latitude': lat, 'longitude': lng, 'raio_m': 100}
+            item = ({'endereco': endereco, 'latitude': lat, 'longitude': lng, 'raio_m': 80}
                     if endereco and isfinite(lat) and isfinite(lng) and abs(lat)<=90 and abs(lng)<=180
                     else None)
         _base_cache['value'] = item
@@ -98,7 +98,7 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         dist=meters(item['latitude'],item['longitude'],lat,lng)
         # Considerar incerteza: não aceitar se o círculo de precisão alcançar fora do raio.
         if dist+precision>item['raio_m']:
-            return jsonify(ok=False,erro='Para entrar na fila, você precisa estar na cooperativa. Aproxime-se da base e tente novamente.'),403
+            return jsonify(ok=False,erro=f'Fora do raio de 80 m: distancia GPS {dist:.0f} m, precisao {precision:.0f} m. Confira a base configurada.',distancia_m=round(dist),precisao_m=round(precision),raio_m=80),403
         # Serializar entradas e saídas: a posição máxima deve refletir as alterações
         # já confirmadas por outra operação concorrente, inclusive em outros workers.
         db.session.execute(text("SELECT pg_advisory_xact_lock(62410801)"))
