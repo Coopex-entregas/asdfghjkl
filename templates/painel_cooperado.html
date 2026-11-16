@@ -3117,17 +3117,24 @@ function askArrival(){
   $('cx-arrival-yes').focus();
  });
 }
-// Aviso de chegada apenas enquanto a página estiver ativa. Não substituir o GPS nativo em segundo plano.
+// Aviso de chegada em primeiro plano, inclusive no WebView Android.
+// O servico nativo continua responsavel pelo aviso com a tela bloqueada.
+let ultimaTentativaBase=0;
 function startArrivalWatch(){
- // O app Android usa serviço nativo para continuar avisando com a tela bloqueada.
- if(/COOPEXAndroid\//.test(navigator.userAgent))return;
  if(!navigator.geolocation||watchId!==null)return;
  watchId=navigator.geolocation.watchPosition(p=>{
   if(p?.coords && Number.isFinite(p.coords.accuracy) && p.coords.accuracy<=50)lastQueueFix=p;
-  if(!base||inQueue||offered||document.hidden)return;
+  if(!base){
+   if(Date.now()-ultimaTentativaBase>20000){
+    ultimaTentativaBase=Date.now();
+    fetchBase().catch(()=>{});
+   }
+   return;
+  }
+  if(inQueue||offered||document.hidden)return;
   const c=p.coords;
-  if(c.accuracy>50)return;
-  if(distance(c.latitude,c.longitude,base.latitude,base.longitude)+c.accuracy>30)return;
+  if(!Number.isFinite(c.accuracy)||c.accuracy>50||Date.now()-p.timestamp>30000)return;
+  if(distance(c.latitude,c.longitude,base.latitude,base.longitude)+c.accuracy>80)return;
   offered=true;
   try{
    const AudioCtx=window.AudioContext||window.webkitAudioContext;
