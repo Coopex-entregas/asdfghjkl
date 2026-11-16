@@ -42,6 +42,30 @@ def install(app, db, Cooperado, ListaEspera, ConfigSistema, emitir_lista_espera)
         rows = ConfigSistema.query.filter(ConfigSistema.chave.in_(nomes)).all()
         values = {item.chave: (item.valor or '').strip() for item in rows}
         endereco = values.get('coopex_base_endereco', '')
+        # Correcao pontual da latitude digitada incorretamente apos a mudanca
+        # da sede: -5.8117721 em vez de -5.8177210 (erro de ~661 m).
+        # Somente este endereco e valores antigos exatos podem ser atualizados.
+        # A correcao e persistente no banco original, que continua operando
+        # a fila durante a transicao; alteracoes futuras nao sao sobrescritas.
+        if (('coronel' in endereco.casefold() and 'guimar' in endereco.casefold()
+             and '199' in endereco)
+            and values.get('coopex_base_latitude') == '-5.8117721'
+            and values.get('coopex_base_longitude') in ('-35.2133210', '-35.213321')):
+            try:
+                result = db.session.execute(text("""
+                    UPDATE config_sistema SET valor='-5.81772100', atualizado_em=now()
+                    WHERE chave='coopex_base_latitude' AND valor='-5.8117721'
+                """))
+                db.session.commit()
+                if result.rowcount:
+                    app.logger.warning('Latitude da sede COOPEX corrigida: erro de digitacao conhecido')
+                values['coopex_base_latitude'] = '-5.81772100'
+                _base_cache['expires'] = 0
+            except Exception:
+                db.session.rollback()
+                app.logger.exception('Falha ao corrigir latitude antiga da sede COOPEX')
+                # Nao usar coordenada incorreta em caso de falha do reparo.
+                return None
         try:
             lat = float(values.get('coopex_base_latitude', ''))
             lng = float(values.get('coopex_base_longitude', ''))
