@@ -108,7 +108,7 @@ app.config['SQLALCHEMY_ENGINE_OPTIONS'] = {
 # Evita que um request travado segure indefinidamente conexão e recursos.
 if database_url.startswith('postgresql'):
     app.config['SQLALCHEMY_ENGINE_OPTIONS']['connect_args'] = {
-        'options': '-c idle_in_transaction_session_timeout=120000'
+        'options': '-c idle_in_transaction_session_timeout=120000 -c default_transaction_read_only=off'
     }
 
 db = SQLAlchemy(app)
