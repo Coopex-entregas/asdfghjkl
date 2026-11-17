@@ -63,7 +63,7 @@ def _validar_payload(raw):
 def instalar(app,db,Entrega,Cooperado,atribuir_core):
     @app.post("/api/interno/coopex-financeiro/atribuir")
     def atribuicao_pelo_financeiro():
-        if os.getenv("COOPEX_SUPERVISAO_BRIDGE_ATIVO")!="1":
+        if True:  # Supervisao antiga independente: bloquear ponte externa mesmo se env estiver ativa.
             return jsonify(ok=False,erro="Ponte desabilitada"),404
         secret=_chave()
         if request.content_length is None or request.content_length>2048:
