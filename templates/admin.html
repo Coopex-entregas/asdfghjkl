@@ -20,7 +20,7 @@
       if(!document.getElementById('adminEntregaCompletaLink')){const full=document.createElement('a');full.id='adminEntregaCompletaLink';full.href="{{ url_for('cadastrar_entrega', modo='completo') }}";full.innerHTML='<span class="btn-ico">📋</span>Entrega completa';quick.insertAdjacentElement('afterend',full)}
       if(!document.getElementById('adminEscalaLink')){const item=document.createElement('a');item.id='adminEscalaLink';item.href="{{ url_for('escala') }}";item.innerHTML='<span class="btn-ico">🗓</span>Escala semanal';(document.getElementById('adminEntregaCompletaLink')||quick).insertAdjacentElement('afterend',item)}
     }
-    links.filter(a=>(a.textContent||'').toLowerCase().includes('histórico de trajetos')).forEach(a=>a.remove());
+    links.filter(a=>/historico de trajetos|rastreamento|mapa/i.test((a.textContent||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''))).forEach(a=>a.remove());
     const primary=[...document.querySelectorAll('.quick-left .btn')].find(b=>(b.textContent||'').toLowerCase().includes('nova entrega')||(b.textContent||'').toLowerCase().includes('entrega rápida'));
     if(primary){
       const holder=primary.closest('.quick-left');holder.classList.add('quick-delivery-actions');primary.innerHTML='<span class="btn-ico">⚡</span> Entrega rápida';primary.onclick=()=>location.href="{{ url_for('cadastrar_entrega') }}";
@@ -696,7 +696,7 @@ function build(){
  board.innerHTML='<div class="cx-led-top"><span class="cx-led-title">◈ LED · SUPERVISÃO</span><div class="cx-led-buttons"><button id="cx-led-note-write" type="button">✎ Recado</button><button id="cx-led-note-read" type="button" hidden>✓ Li o aviso</button><button id="cx-led-note-delete" type="button" hidden>Apagar</button></div></div>'+
  '<div class="cx-led-screen" aria-label="Avisos da supervisão"><div class="cx-led-line queue" id="cx-led-fila"></div><div class="cx-led-line note" id="cx-led-recado" hidden></div><div class="cx-led-line entry" id="cx-led-entrada" hidden></div><div class="cx-led-line exit" id="cx-led-saida" hidden></div><div class="cx-led-line pix" id="cx-led-pix" hidden></div></div>';
  head.appendChild(board);
- const shortcuts=document.createElement('div');shortcuts.className='cx-led-shortcuts';const labels=['Agendar entrega','Bairros','Mapa'];
+ const shortcuts=document.createElement('div');shortcuts.className='cx-led-shortcuts';const labels=['Agendar entrega','Bairros'];
  [...actions.querySelectorAll('button')].forEach((b,i)=>{b.title=labels[i]||b.textContent.trim();b.setAttribute('aria-label',b.title);shortcuts.appendChild(b)});
  host.appendChild(shortcuts);actions.remove();
  const dialog=document.createElement('dialog');dialog.id='cx-supervisao-note-dialog';dialog.innerHTML='<form method="dialog"><h3>Recado para o próximo supervisor</h3><textarea id="cx-note-editor" maxlength="2000" required placeholder="Escreva o recado do turno..."></textarea><p id="cx-note-error" role="alert"></p><menu><button value="cancel">Cancelar</button><button type="button" id="cx-note-save">Salvar recado</button></menu></form>';document.body.appendChild(dialog);
