@@ -92,6 +92,40 @@ elif database_url.startswith("postgresql+psycopg://"):
 elif database_url.startswith("postgresql://"):
     database_url = database_url.replace("postgresql://", "postgresql+psycopg2://", 1)
 
+# Recuperacao controlada do PostgreSQL LEGADO apos congelamento de migracao.
+# Executar somente quando autorizado no ambiente antigo; sem tocar nos dados.
+if os.getenv("COOPEX_RECUPERAR_BANCO_ANTIGO") == "1":
+    import psycopg2 as _rec_psycopg2
+    from urllib.parse import urlparse as _rec_urlparse
+    _rec_raw = os.getenv("DATABASE_URL", "")
+    _rec_url = _rec_urlparse(_rec_raw)
+    if (_rec_url.path != "/banco_supervisao_9eab"
+            or _rec_url.scheme not in ("postgres", "postgresql")):
+        raise RuntimeError("Recuperacao recusada: nao e banco da Supervisao antiga")
+    _rec_con = _rec_psycopg2.connect(_rec_raw, connect_timeout=8)
+    try:
+        _rec_con.autocommit = True
+        with _rec_con.cursor() as _rec_cur:
+            _rec_cur.execute("SELECT current_database()")
+            if _rec_cur.fetchone()[0] != "banco_supervisao_9eab":
+                raise RuntimeError("Banco diferente do legado; nada alterado")
+            _rec_cur.execute("SET default_transaction_read_only = off")
+            _rec_cur.execute(
+                'ALTER DATABASE "banco_supervisao_9eab" '
+                'RESET default_transaction_read_only'
+            )
+    finally:
+        _rec_con.close()
+    _rec_check = _rec_psycopg2.connect(_rec_raw, connect_timeout=8)
+    try:
+        with _rec_check.cursor() as _rec_cur:
+            _rec_cur.execute("SHOW default_transaction_read_only")
+            if _rec_cur.fetchone()[0] != "off":
+                raise RuntimeError("Banco antigo continua bloqueado")
+    finally:
+        _rec_check.close()
+    app.logger.warning("RECUPERACAO CONCLUIDA: banco antigo novamente gravavel")
+
 app.config['SQLALCHEMY_DATABASE_URI'] = database_url
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
