@@ -1339,7 +1339,7 @@ if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',
 <script id="coopex-led-meiatela-script-v34">
 (function(){
 'use strict';
-const labels=['Pedido','Cliente','Endereço','Valor','Data','Pedido às','Atribuição','Cooperado','Forma','Status','Pagamento','Recebedor','GPS','Ações'];
+const labels=['Pedido','Cliente','Endereço','Valor','Data','Pedido às','Atribuição','Cooperado','Forma','Status','Pagamento','Recebedor','Ações'];
 function labelCards(){
  const t=document.querySelector('#tbl table.tabela tbody');if(!t)return;
  for(const tr of t.rows){Array.from(tr.cells).forEach((td,i)=>{if(i<labels.length)td.setAttribute('data-cx-label',labels[i])})}
