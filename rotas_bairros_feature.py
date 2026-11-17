@@ -222,9 +222,39 @@ def _price():
             options=destination_options,
         ), 409 if destination_options else 404
 
-    value = ROTA_MAP.get((_norm(origin), _norm(destination)))
-    if value is None:
-        value = ROTA_MAP.get((_norm(destination), _norm(origin)))
+    # A tabela PostgreSQL e a fonte de verdade dos precos cadastrados.
+    # O antigo ROTA_MAP e um pacote estatico e nao acompanha edicoes.
+    # Primeiro buscamos valores exatos com os nomes digitados/resolvidos.
+    candidates_o = [origin_raw, origin, origin.split(",")[0].strip()]
+    candidates_d = [destination_raw, destination, destination.split(",")[0].strip()]
+    candidates_o = list(dict.fromkeys(x.strip().lower() for x in candidates_o if x.strip()))
+    candidates_d = list(dict.fromkeys(x.strip().lower() for x in candidates_d if x.strip()))
+    try:
+        rows = DB.session.execute(text("""
+            SELECT origem, destino, valor FROM preco_rota
+            WHERE lower(origem) = ANY(:origens)
+              AND lower(destino) = ANY(:destinos)
+               OR lower(origem) = ANY(:destinos)
+              AND lower(destino) = ANY(:origens)
+            ORDER BY atualizado_em DESC NULLS LAST, id DESC
+        """), {"origens": candidates_o, "destinos": candidates_d}).all()
+        if not rows:
+            # Nomes antigos podem divergir em acentos, abreviacoes e cidades.
+            # A normalizacao reproduz a usada no autocomplete, sem alterar DB.
+            all_rows = DB.session.execute(
+                text("SELECT origem,destino,valor FROM preco_rota ORDER BY atualizado_em DESC NULLS LAST,id DESC")
+            ).all()
+            wanted_o = {_norm(x) for x in candidates_o}
+            wanted_d = {_norm(x) for x in candidates_d}
+            rows = [r for r in all_rows if (
+                (_norm(r[0]) in wanted_o and _norm(r[1]) in wanted_d)
+                or (_norm(r[0]) in wanted_d and _norm(r[1]) in wanted_o)
+            )][:1]
+        value = float(rows[0][2]) if rows else None
+    except Exception:
+        DB.session.rollback()
+        MOD.app.logger.exception("Erro consultando tabela de precos cadastrados")
+        return jsonify(ok=False, error="Tabela de precos indisponivel; tente novamente."), 503
 
     if value is None:
         return jsonify(
