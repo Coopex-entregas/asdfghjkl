@@ -21,6 +21,8 @@ def install(m,feature=None):
  def dump(x):
   return dict(id=x.id,data=str(x.data)[:10],turno=x.turno or "",horario=(x.horario if ROLE=="financeiro" else x.horario_texto) or "",contrato=x.contrato or "",cooperado_nome=name(x))
  def publish(rows):
+  # Supervisao antiga isolada: nunca envia escalas por API a outro sistema.
+  if ROLE == 'escalas':return
   if not TOKEN or not PEER or not rows:return
   data=[dump(x) for x in rows]
   def send():
