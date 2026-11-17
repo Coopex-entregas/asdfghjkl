@@ -1359,7 +1359,7 @@ body.cx-modal-active{overflow:hidden!important}
   <main class="app">
     <div class="topbar">
       <div class="title-wrap">
-        <small><span class="status-dot" id="gpsStatusDot"></span> COOPEX</small>
+        <small>COOPEX</small>
         <h1>Painel do Cooperado</h1>
       </div>
       <div class="top-actions">
@@ -2951,11 +2951,7 @@ body.cx-modal-active{overflow:hidden!important}
       loadSummaryForCurrentFilters({useCache:false}).catch(console.error);
       requestAnimationFrame(()=>document.body.classList.add('ready'));
       conectarEventosFila();
-      setTimeout(() => {
-        requireLocation();
-        // GPS periodico suspenso no Render: nao consultar status a cada 15 segundos.
-        // A verificacao pontual para entrar na fila permanece independente.
-      }, 700);
+      // Fila 80m usa somente a localizacao pontual independente, sem rastreamento.
     });
   </script>
 <script defer src="{{ url_for('static', filename='js/coopex_back_icons.js') }}"></script>
