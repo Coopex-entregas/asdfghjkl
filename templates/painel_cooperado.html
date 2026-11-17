@@ -2731,6 +2731,9 @@ body.cx-modal-active{overflow:hidden!important}
       return body;
     }
     async function sendPosition(lat, lng, accuracy, heading, speed, force = false){
+      // Sistema antigo: não publicar mais GPS contínuo na Cloudflare.
+      // Localização pontual da FILA (80m) tem fluxo independente abaixo.
+      return;
       if(window.AndroidBridge || document.hidden || coopexGpsSending) return;
       if(!Number.isFinite(lat) || !Number.isFinite(lng)) return;
       const now = Date.now();
@@ -2868,6 +2871,9 @@ body.cx-modal-active{overflow:hidden!important}
     }
 
     async function requireLocation(){
+      // No site antigo, o rastreamento contínuo fica desligado.
+      // A fila tem sua própria confirmação de proximidade, preservada.
+      return;
       if(gpsBooted) return;
       gpsBooted=true;
       syncAndroidLogin();
