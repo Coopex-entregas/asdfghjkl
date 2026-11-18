@@ -2178,3 +2178,39 @@ document.addEventListener('click',e=>{
  window.addEventListener('pageshow',event=>{if(event.persisted)agendar(150)});
 })();
 </script>
+
+<style id="coopex-admin-fit-viewport-20261117">
+/* Painel original: ocupar a largura util do navegador em zoom 100%.
+   Preserva colunas, filtros, acoes e scroller vertical; evita arraste lateral. */
+@media (min-width: 1200px) {
+  html,body{max-width:100%!important;overflow-x:hidden!important}
+  .table-shell,#tbl.table-wrap{width:100%!important;max-width:100%!important;min-width:0!important;box-sizing:border-box!important}
+  #tbl.table-wrap{overflow-x:hidden!important;overflow-y:auto!important}
+  #tbl table.tabela{width:100%!important;min-width:0!important;max-width:100%!important;table-layout:fixed!important;border-collapse:separate}
+  #tbl table.tabela th,#tbl table.tabela td{min-width:0!important;box-sizing:border-box!important;overflow:hidden!important;
+    text-overflow:ellipsis;font-size:clamp(10px,.69vw,12px)!important;padding:5px 3px!important}
+  #tbl table.tabela th:nth-child(1),#tbl table.tabela td:nth-child(1){width:5.2%!important}
+  #tbl table.tabela th:nth-child(2),#tbl table.tabela td:nth-child(2){width:10%!important}
+  #tbl table.tabela th:nth-child(3),#tbl table.tabela td:nth-child(3){width:22%!important}
+  #tbl table.tabela th:nth-child(4),#tbl table.tabela td:nth-child(4){width:5.7%!important}
+  #tbl table.tabela th:nth-child(5),#tbl table.tabela td:nth-child(5){width:6.2%!important}
+  #tbl table.tabela th:nth-child(6),#tbl table.tabela td:nth-child(6){width:5.3%!important}
+  #tbl table.tabela th:nth-child(7),#tbl table.tabela td:nth-child(7){width:5.3%!important}
+  #tbl table.tabela th:nth-child(8),#tbl table.tabela td:nth-child(8){width:11%!important}
+  #tbl table.tabela th:nth-child(9),#tbl table.tabela td:nth-child(9){width:6.7%!important}
+  #tbl table.tabela th:nth-child(10),#tbl table.tabela td:nth-child(10){width:5.5%!important}
+  #tbl table.tabela th:nth-child(11),#tbl table.tabela td:nth-child(11){width:5.8%!important}
+  #tbl table.tabela th:nth-child(12),#tbl table.tabela td:nth-child(12){width:7.3%!important}
+  #tbl table.tabela th:nth-child(13),#tbl table.tabela td:nth-child(13){width:4%!important}
+  #tbl table.tabela td:nth-child(3){white-space:normal!important;overflow-wrap:anywhere!important;line-height:1.22!important}
+  #tbl table.tabela td:nth-child(2),#tbl table.tabela td:nth-child(8),#tbl table.tabela td:nth-child(12){
+    overflow-wrap:anywhere!important;white-space:normal!important;line-height:1.2!important}
+  #tbl table.tabela td:nth-child(13) .actions-cell,
+  #tbl table.tabela td:nth-child(13) .action-buttons{display:flex;flex-wrap:wrap;gap:2px;justify-content:center}
+  #tbl .tabela td:nth-child(8) select.coop-edit-select{max-width:100%!important;font-size:11px!important}
+  .bank-toolbar-wrap{max-width:100%!important;min-width:0!important}
+}
+@media (max-width: 1199px){
+  #tbl.table-wrap{max-width:100%!important;overflow-x:auto!important}
+}
+</style>
