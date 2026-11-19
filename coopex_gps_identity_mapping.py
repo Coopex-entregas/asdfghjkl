@@ -1,6 +1,6 @@
 """Identidades GPS da Supervisao antiga para o cadastro oficial Financeiro.
 
-Snapshot dos 93 vinculos confirmados em 19/11/2026.
+Snapshot de IDs operacionais com 5 divergencias revistas pelo Master em 19/11/2026.\nNao altera cadastros, exclusoes ou producoes.
 Atualizar ao confirmar novos vinculos; novos IDs nao reconhecidos DEVEM
 falhar fechados para nao posicionar o cooperado errado.
 As entregas/producoes do sistema antigo continuam usando seus IDs originais.
@@ -38,18 +38,18 @@ SUPERVISAO_PARA_FINANCEIRO = {
     45: 135,
     47: 89,
     49: 78,
-    51: 146,
+    51: 19,
     52: 26,
     54: 47,
     55: 73,
     56: 17,
-    60: 148,
+    60: 96,
     61: 10,
     63: 97,
     64: 70,
     71: 59,
     72: 99,
-    73: 150,
+    73: 7,
     74: 39,
     75: 85,
     76: 80,
@@ -63,7 +63,7 @@ SUPERVISAO_PARA_FINANCEIRO = {
     88: 76,
     90: 14,
     91: 108,
-    92: 158,
+    92: 108,
     93: 109,
     94: 87,
     95: 110,
@@ -96,7 +96,7 @@ SUPERVISAO_PARA_FINANCEIRO = {
     300123: 65,
     300124: 163,
     300125: 164,
-    300126: 106,
+    300126: 165,
     300127: 166,
     300128: 64,
 }
