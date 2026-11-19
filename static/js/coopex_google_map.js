@@ -784,7 +784,7 @@ let previewWindow=null;
 let searchingAddress=false,selectedId=null,lastItems=Array.isArray(window.COOPEX_SEED)?window.COOPEX_SEED:[],syncingFromGoogle=false;
 let googleStatusFilter="todos";
 const palette={online:"#04bd70",ocioso:"#f0a12a",offline:"#ee475d"};
-const state=i=>{if(!i.online)return "offline";const age=Number.isFinite(i.__lastSignalAt)?Date.now()-i.__lastSignalAt:0;return age>=180000?"offline":age>=120000||i.status==="ocioso"?"ocioso":"online"};
+const state=i=>{if(!i.online||!Number.isFinite(i.__lastSignalAt))return "offline";return Date.now()-i.__lastSignalAt<90000?"online":"offline"};
 const normPos=i=>i&&Number.isFinite(+i.lat)&&Number.isFinite(+i.lng)&&+i.lat<-3&&+i.lng<-32;
 const initials=n=>String(n||"CO").trim().split(/\s+/).filter(Boolean).slice(0,2).map(x=>x.charAt(0).toUpperCase()).join("");
 function iconFor(status,selected){
@@ -805,12 +805,11 @@ function updateMarkers(list,chosen){
  if(!googleMap)return;
  const present=new Set();
  for(const i of list){
-  if(i.id==null||i.ativo===false||!normPos(i))continue;
+  if(i.id==null||i.ativo===false||!normPos(i)||state(i)!=="online")continue;
   const id=String(i.id),status=state(i),point={lat:+i.lat,lng:+i.lng};
-  // Status offline apenas altera a cor: mantém a última coordenada válida.
-  const previous=lastPositions.get(id);
-  const finalPoint=status==="offline"&&previous?previous:point;
-  if(status!=="offline"||!previous)lastPositions.set(id,finalPoint);
+  // Nenhum marcador offline: GPS vencido é removido, não preservado.
+  const finalPoint=point;
+  lastPositions.set(id,finalPoint);
   present.add(id);
   const chosenNow=id===String(chosen);
   const existing=markers.get(id);
