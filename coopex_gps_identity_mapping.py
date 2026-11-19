@@ -106,3 +106,13 @@ def id_gps_oficial(source_id):
         return SUPERVISAO_PARA_FINANCEIRO.get(int(source_id))
     except (TypeError,ValueError):
         return None
+# Contingencia temporaria de 19/11/2026: somente os cadastros oficiais
+# confirmados e ATIVOS na conferencia do Master podem transmitir/aparecer.
+# Nao substitui verificacao ao vivo no Financeiro apos migracao.
+GPS_IDS_FINANCEIRO_ATIVOS_CONFIRMADOS = frozenset({6,7,8,9,10,11,13,14,16,17,19,22,23,26,27,29,30,32,35,39,41,42,43,47,48,49,52,56,58,59,61,62,63,64,65,66,69,70,71,73,74,76,77,79,80,85,87,90,93,99,100,109,114,115,121,124,125,126,162,163,165,166})
+
+def id_gps_oficial_ativo(source_id):
+    oficial_id = id_gps_oficial(source_id)
+    if oficial_id not in GPS_IDS_FINANCEIRO_ATIVOS_CONFIRMADOS:
+        return None
+    return oficial_id
