@@ -6352,7 +6352,11 @@ def coopex_cooperado_gps_cloudflare_ticket():
     import hmac
     import time
     expires_at = int(time.time()) + 3600
-    raw = json.dumps({'role': 'cooperado_gps', 'id': int(uid), 'exp': expires_at},
+    from coopex_gps_identity_mapping import id_gps_oficial
+    oficial_id = id_gps_oficial(coop.id)
+    if oficial_id is None:
+        return jsonify(ok=False, error='gps_identity_not_confirmed'), 403
+    raw = json.dumps({'role': 'cooperado_gps', 'id': int(oficial_id), 'exp': expires_at},
                      sort_keys=True, separators=(',', ':')).encode('utf-8')
     body = base64.urlsafe_b64encode(raw).rstrip(b'=').decode('ascii')
     mac = hmac.new(key.encode('utf-8'), body.encode('ascii'), hashlib.sha256).digest()
@@ -6491,7 +6495,11 @@ def coopex_gps_verificar_token_cloudflare():
         ).first()
         if not coop:
             return jsonify(ok=False), 401
-        response = jsonify(ok=True, cooperado_id=int(coop.id))
+        from coopex_gps_identity_mapping import id_gps_oficial
+        oficial_id = id_gps_oficial(coop.id)
+        if oficial_id is None:
+            return jsonify(ok=False, error='gps_identity_not_confirmed'), 403
+        response = jsonify(ok=True, cooperado_id=int(oficial_id))
         response.headers['Cache-Control'] = 'no-store'
         return response
     except Exception:
