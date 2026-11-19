@@ -22,7 +22,7 @@ for(const i of items){
  i.lat=null;i.lng=null;i.gps_ao_vivo=false;i.online=false;i.presenca_painel=false;
  i.__lastSignalAt=null;i.status="offline";
 }
-const MAP_SIGNAL_TIMEOUT_MS=180000; // Offline após 3 minutos sem sinal (GPS a cada 60 segundos).
+const MAP_SIGNAL_TIMEOUT_MS=90000; // Somente sinal GPS recebido nos últimos 90 segundos.
 const MAP_SEARCHING_AFTER_MS=120000; // Laranja somente após 2 minutos sem sinal.
 for(const i of items){
  const age=Number(i.sinal_idade_segundos);
@@ -42,7 +42,7 @@ const colors={online:"#0cdb7b",ocioso:"#f5a12c",offline:"#ff4758"};
 const initials=n=>String(n||"CO").trim().split(/\s+/).filter(Boolean).slice(0,2).map(v=>v[0].toLocaleUpperCase("pt-BR")).join("");
 const norm=v=>String(v||"").normalize("NFD").replace(/[\u0300-\u036f]/g,"").toLowerCase();
 const itemById=id=>items.find(i=>String(i.id)===String(id));
-const inFilter=i=>(filter==="todos"||state(i)===filter)&&(!searchText||norm(i.nome).includes(norm(searchText)));
+const inFilter=i=>state(i)==="online"&&hasCoord(i)&&(!searchText||norm(i.nome).includes(norm(searchText)));
 function buildings(){
  if(!map.isStyleLoaded())return;
  const style=map.getStyle();if(!style)return;
@@ -276,37 +276,31 @@ async function updateGps(force=false){
   if(!response.ok)throw Error("Cloudflare GPS HTTP "+response.status);
   const payload=await response.json();
   if(!payload.ok||!Array.isArray(payload.items))throw Error("Resposta GPS invalida");
-  const updated=new Map(payload.items.map(p=>[String(p.id),p]));
+  // IDs da Cloudflare sao IDs OFICIAIS do Financeiro, nunca IDs antigos da Supervisao.
+  const updated=new Map(payload.items.filter(p=>p&&p.id!=null).map(p=>[String(p.id),p]));
   const clock=Date.now();
   for(const coop of items){
-   const p=updated.get(String(coop.id));
-   if(p&&p.lat!=null&&p.lng!=null&&Number.isFinite(+p.lat)&&Number.isFinite(+p.lng)){
-    // A posição só pode vir do Cloudflare; não usar GPS do cadastro legado.
-    if(!hasCoord(p))continue;
+   const p=updated.get(String(coop.gps_id_oficial));
+   const stamp=Number(p?.updated_ms);
+   const age=clock-stamp;
+   const fresh=p&&hasCoord(p)&&Number.isFinite(stamp)&&stamp>0&&age>=-15000&&age<MAP_SIGNAL_TIMEOUT_MS;
+   if(fresh){
     coop.lat=+p.lat;coop.lng=+p.lng;
     coop.accuracy_m=p.accuracy==null?null:Number(p.accuracy);
     coop.speed_kmh=p.speed_kmh==null?null:Number(p.speed_kmh);
-    coop.battery_percent=(p.battery_percent===null||p.battery_percent===undefined)?null:Number(p.battery_percent);
+    coop.battery_percent=p.battery_percent==null?null:Number(p.battery_percent);
     coop.charging=p.charging===true;
     coop.device_model=p.device_model||null;
-    coop.__lastSignalAt=Number(p.updated_ms)||clock;
-    coop.sinal_idade_segundos=Math.max(0,(clock-coop.__lastSignalAt)/1000);
-    const age=clock-coop.__lastSignalAt;
-    coop.online=age<MAP_SIGNAL_TIMEOUT_MS;
-    coop.gps_ao_vivo=coop.online;
-    coop.presenca_painel=false;
-    coop.status=age>=MAP_SEARCHING_AFTER_MS&&coop.online?"ocioso":coop.online?"livre":"offline";
-    coop.ultima_atualizacao=new Date(coop.__lastSignalAt).toLocaleString("pt-BR");
-    lastConfirmedGps.set(String(coop.id),{lat:coop.lat,lng:coop.lng,source:"cloudflare"});
+    coop.__lastSignalAt=stamp;
+    coop.sinal_idade_segundos=Math.max(0,age/1000);
+    coop.online=true;coop.gps_ao_vivo=true;coop.presenca_painel=false;
+    coop.status="livre";
+    coop.ultima_atualizacao=new Date(stamp).toLocaleString("pt-BR");
    }else{
-    // A ausência temporária do item no snapshot não apaga o último sinal nem
-    // o nível de bateria. O status expira somente pela idade da última posição
-    // efetivamente recebida, preservando o alfinete no mapa.
-    const age=Number.isFinite(coop.__lastSignalAt)?clock-coop.__lastSignalAt:Infinity;
-    if(age>=MAP_SIGNAL_TIMEOUT_MS){
-      coop.online=false;coop.gps_ao_vivo=false;coop.presenca_painel=false;
-      coop.status="offline";
-    }
+    // Ausente, vencido ou com timestamp inválido: retirar imediatamente do mapa.
+    coop.lat=null;coop.lng=null;coop.__lastSignalAt=null;
+    coop.online=false;coop.gps_ao_vivo=false;coop.presenca_painel=false;
+    coop.status="offline";coop.ultima_atualizacao="Sem GPS recente";
    }
   }
   render();
@@ -320,7 +314,7 @@ async function updateGps(force=false){
 }
 $("search").addEventListener("input",e=>{
  searchText=e.target.value.trim();const results=$("results");results.replaceChildren();
- if(searchText){const matching=items.filter(i=>norm(i.nome).includes(norm(searchText))).slice(0,10);for(const i of matching){let b=document.createElement("button");b.className="result";b.innerHTML='<span style="color:'+colors[state(i)]+'">●</span><span><strong>'+esc(i.nome)+'</strong><small>'+stateNames[state(i)]+'</small></span>';b.onclick=()=>{searchText="";$("search").value="";results.classList.remove("open");selectCooperado(i.id)};results.append(b)}results.classList.toggle("open",matching.length>0)}else results.classList.remove("open");
+ if(searchText){const matching=items.filter(i=>inFilter(i)&&norm(i.nome).includes(norm(searchText))).slice(0,10);for(const i of matching){let b=document.createElement("button");b.className="result";b.innerHTML='<span style="color:'+colors[state(i)]+'">●</span><span><strong>'+esc(i.nome)+'</strong><small>'+stateNames[state(i)]+'</small></span>';b.onclick=()=>{searchText="";$("search").value="";results.classList.remove("open");selectCooperado(i.id)};results.append(b)}results.classList.toggle("open",matching.length>0)}else results.classList.remove("open");
  render();
 });
 document.querySelectorAll("[data-filter]").forEach(b=>b.onclick=()=>{filter=b.dataset.filter;document.querySelectorAll("[data-filter]").forEach(v=>v.classList.toggle("active",v===b));render();});
