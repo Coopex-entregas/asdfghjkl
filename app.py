@@ -6352,8 +6352,8 @@ def coopex_cooperado_gps_cloudflare_ticket():
     import hmac
     import time
     expires_at = int(time.time()) + 3600
-    from coopex_gps_identity_mapping import id_gps_oficial
-    oficial_id = id_gps_oficial(coop.id)
+    from coopex_gps_identity_mapping import id_gps_oficial_ativo
+    oficial_id = id_gps_oficial_ativo(coop.id)
     if oficial_id is None:
         return jsonify(ok=False, error='gps_identity_not_confirmed'), 403
     raw = json.dumps({'role': 'cooperado_gps', 'id': int(oficial_id), 'exp': expires_at},
@@ -6495,8 +6495,8 @@ def coopex_gps_verificar_token_cloudflare():
         ).first()
         if not coop:
             return jsonify(ok=False), 401
-        from coopex_gps_identity_mapping import id_gps_oficial
-        oficial_id = id_gps_oficial(coop.id)
+        from coopex_gps_identity_mapping import id_gps_oficial_ativo
+        oficial_id = id_gps_oficial_ativo(coop.id)
         if oficial_id is None:
             return jsonify(ok=False, error='gps_identity_not_confirmed'), 403
         response = jsonify(ok=True, cooperado_id=int(oficial_id))
@@ -8017,6 +8017,8 @@ def mapa_motoboys():
 
     # Nunca incluir contas excluídas/inativas nos indicadores ou no mapa.
     cooperados = Cooperado.query.filter(Cooperado.ativo.is_(True)).order_by(Cooperado.nome).all()
+    from coopex_gps_identity_mapping import id_gps_oficial_ativo
+    cooperados = [c for c in cooperados if id_gps_oficial_ativo(c.id) is not None]
     motoboys_js = []
     status_corrida_abertas = ['pendente', 'aceita']
     status_finalizados = ['entregue', 'recebido', 'finalizada', 'finalizado', 'cancelada', 'cancelado']
@@ -8091,6 +8093,7 @@ def mapa_motoboys():
 
         motoboys_js.append({
             'id': c.id,
+            'gps_id_oficial': id_gps_oficial_ativo(c.id),
             'ativo': True,
             'nome': nome,
             'lat': float(lat) if tem_localizacao else None,
